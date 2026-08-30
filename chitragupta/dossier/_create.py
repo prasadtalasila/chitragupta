@@ -11,6 +11,7 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta.dossier import (
     EVIDENCE_MD,
+    OUTLINE_MD,
     REJECTED_MD,
     RETRIEVAL_MD,
     REVISIONS_MD,
@@ -160,10 +161,53 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      written before this column existed reads, since an absent seventh
      cell is padded in the same way (#254). Without it, a scoped call and
      a corpus-wide one write byte-identical rows, and `dossier status`
-     re-asks a scoped draft's queries against the whole corpus. -->
+     re-asks a scoped draft's queries against the whole corpus.
 
-| date | mode | query | asked | results | chars | collection |
-|---|---|---|---|---|---|---|
+     `origin` is `declared` or `extended` (#455) -- whether the query came
+     verbatim from outline.md or was added with `--origin extended`
+     because a declared section came up thin. Empty for a call that named
+     neither, padded in the same way for a row written before this column
+     existed -- but unlike `collection`'s empty reading, that is not read
+     as "declared": a pre-outline.md call was neither. Without this
+     column, "did this draft follow the outline it declared?" has no
+     evidence to answer from. -->
+
+| date | mode | query | asked | results | chars | collection | origin |
+|---|---|---|---|---|---|---|---|
+"""
+
+
+_OUTLINE_TEMPLATE = """<!-- Outline. Edited by hand before drafting. Per `##`-or-deeper heading:
+     `brief:` (steering, never appears in the draft) and/or one or more
+     `claim:` blocks (your own prose, rewritten -- every sentence that
+     can't be grounded is reported rather than shipped), and an
+     optional `queries:` list of the search terms to run verbatim
+     instead of the skill inventing sub-themes. A section needs at
+     least a brief or a claim; queries: is optional -- plenty of
+     sections are pure framing prose with nothing to search for.
+
+     Declared queries bind by default. `--origin extended` on the
+     skill's own retrieval calls covers a section that came up thin,
+     logged distinctly so `python -m chitragupta.draft dossier outline <draft>`
+     can report whether the draft ran what this file declared.
+
+     Before filling this in, run a broad search or two on the topic
+     (`python -m chitragupta.draft retrieve search "<topic>"`) and skim
+     what the corpus actually returns -- an outline written blind is one
+     whose sections the corpus may not support.
+
+     Example:
+
+     ## Failure modes of co-simulation
+
+     brief: Focus on timestep mismatch and solver divergence; skip
+     FMI-specific tooling.
+
+     queries:
+     - failure modes co-simulation
+     - timestep mismatch solver divergence
+-->
+
 """
 
 
@@ -177,7 +221,7 @@ _TEMPLATES = {
 }
 
 
-def init(draft: Path, genre: str) -> list[Path]:
+def init(draft: Path, genre: str, outline: bool = False) -> list[Path]:
     """Create the dossier skeleton for `draft`. Returns what it wrote.
 
     Only ever creates missing files, so re-running it on a dossier that
@@ -185,6 +229,15 @@ def init(draft: Path, genre: str) -> list[Path]:
     nothing else. That matters because `init` is the one command a genre
     skill runs before it knows what it will find -- it must not be able
     to destroy the thing it exists to protect.
+
+    `outline` is opt-in (#455): most dossiers have no `outline.md`, so it
+    is not one of the seven files every dossier always gets -- see
+    `OUTLINE_MD`'s own docstring for why that distinction matters to
+    `status`. Stdlib-only and ledger-read-only like the rest of `init`:
+    the broad-call survey a human runs before filling `outline.md` in is
+    an ordinary `retrieve search`, not something this command runs for
+    them -- `init` stays the one command a genre skill can call before it
+    knows what it will find.
     """
     target = dossier_dir(draft)
     target.mkdir(parents=True, exist_ok=True)
@@ -197,6 +250,8 @@ def init(draft: Path, genre: str) -> list[Path]:
         SCOPE_MD: _scope(draft, genre, corpus),
         **_TEMPLATES,
     }
+    if outline:
+        contents[OUTLINE_MD] = _OUTLINE_TEMPLATE
     for name, body in contents.items():
         path = target / name
         if path.exists():
@@ -208,7 +263,7 @@ def init(draft: Path, genre: str) -> list[Path]:
 
 def _cmd_init(args: argparse.Namespace) -> int:
     draft = Path(args.draft)
-    written = init(draft, args.genre)
+    written = init(draft, args.genre, outline=args.outline)
     target = dossier_dir(draft)
     if not written:
         print(f"Dossier already complete: {draft_relpath(target)}")

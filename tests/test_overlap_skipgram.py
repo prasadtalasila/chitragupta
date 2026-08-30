@@ -42,7 +42,10 @@ class TestStemFilter:
 
 class TestSkipgramPostings:
     def test_identical_text_matches_on_both_families(self):
-        words = "the validation of a digital twin requires continuous comparison against measurements taken from the physical asset".split()
+        words = (
+            "the validation of a digital twin requires continuous comparison "
+            "against measurements taken from the physical asset"
+        ).split()
         a = overlap_skipgram.skipgram_postings(words, overlap_skipgram.DEFAULT_N)
         b = overlap_skipgram.skipgram_postings(words, overlap_skipgram.DEFAULT_N)
         assert a == b
@@ -50,11 +53,17 @@ class TestSkipgramPostings:
 
     def test_wholly_different_text_shares_no_hash(self):
         a = overlap_skipgram.skipgram_postings(
-            "the validation of a digital twin requires continuous comparison against measurements taken from the physical asset".split(),
+            (
+                "the validation of a digital twin requires continuous comparison "
+                "against measurements taken from the physical asset"
+            ).split(),
             overlap_skipgram.DEFAULT_N,
         )
         b = overlap_skipgram.skipgram_postings(
-            "a recipe for sourdough bread needs flour water salt and patient overnight fermentation before baking".split(),
+            (
+                "a recipe for sourdough bread needs flour water salt and patient "
+                "overnight fermentation before baking"
+            ).split(),
             overlap_skipgram.DEFAULT_N,
         )
         assert {h for h, _s, _e in a}.isdisjoint({h for h, _s, _e in b})
@@ -65,7 +74,10 @@ class TestSkipgramPostings:
         # parity i belongs to. Substituting the word at an EVEN index
         # (4, "digital" -> "physical") must leave every hash the ODD
         # family produced completely unchanged.
-        source = "the validation of a digital twin requires continuous comparison against measurements taken from the physical asset".split()
+        source = (
+            "the validation of a digital twin requires continuous comparison "
+            "against measurements taken from the physical asset"
+        ).split()
         edited = list(source)
         edited[4] = "physical"  # even index
 

@@ -18,6 +18,7 @@ from chitragupta.dossier._citekeys import cited_citekeys
 from chitragupta.dossier import (
     EVIDENCE_MD,
     FILES,
+    OUTLINE_MD,
     REJECTED_MD,
     _resolve_dossier,
     digest,
@@ -30,6 +31,7 @@ from chitragupta.dossier import (
 from chitragupta.dossier._draft_fingerprint import Staleness, staleness, status_lines
 from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._drift_report import _cmd_status_all
+from chitragupta.dossier._outline import OutlineDrift, declared_vs_actual
 from chitragupta.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
 from chitragupta.dossier._sections import Section, sections
 
@@ -55,6 +57,12 @@ class Status:
     retrieval_chars: int = 0
     revisions: list[RevisionCost] = field(default_factory=list)
     fingerprint: Staleness | None = None
+    # Named for the function that fills it in, not "outline_drift" --
+    # this dataclass already has an `outline` field (the draft's own
+    # derived heading structure, from `_sections.sections`), and a name
+    # one edit-distance away from it would read as related to that
+    # rather than to outline.md, the human-authored file this is about.
+    declared_vs_actual: OutlineDrift | None = None
 
     @property
     def drifted(self) -> bool:
@@ -125,11 +133,18 @@ def status(draft_or_dossier: Path) -> Status:
     report.retrieval_chars = sum(segment.chars for segment in report.revisions)
 
     report.recorded = recorded_corpus(dossier)
+    _fill_corpus_drift(report, dossier)
+    if (dossier / OUTLINE_MD).is_file():
+        report.declared_vs_actual = declared_vs_actual(dossier)
+    return report
+
+
+def _fill_corpus_drift(report: Status, dossier: Path) -> None:
+    """`report.current`/`unconsidered`, when a ledger is readable."""
     corpus_keys = known_citekeys()
     if corpus_keys is not None:
         report.current = (len(corpus_keys), digest(corpus_keys))
         report.unconsidered = corpus_keys - cited_citekeys(dossier)
-    return report
 
 
 def _cmd_status(args: argparse.Namespace) -> int:
@@ -156,12 +171,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     print(f"Dossier: {draft_relpath(report.dossier)}")
     _print_status_files(report)
     _print_status_retrieval(report)
+    _print_status_outline(report)
     print()
     _print_status_drift(report)
-    if report.fingerprint is not None:
-        print()
-        for line in status_lines(report.fingerprint):
-            print(line)
+    _print_status_fingerprint(report)
     return 0
 
 
@@ -224,6 +237,25 @@ def _print_status_retrieval(report: Status) -> None:
             print(f"    {segment.label:<24}{segment.calls} call(s), {segment.chars:,} characters")
 
 
+def _print_status_outline(report: Status) -> None:
+    """ "Did this draft follow outline.md?", from `declared_vs_actual`
+    (#455) -- absent when there is no outline.md to have followed."""
+    if report.declared_vs_actual is None:
+        return
+    drift = report.declared_vs_actual
+    run = [q for s in drift.sections.values() for q in s.run]
+    not_run = [(s.heading, q) for s in drift.sections.values() for q in s.not_run]
+    extended = drift.extended
+    print(
+        f"\nOutline: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} run, "
+        f"{len(not_run)} not, {len(extended)} extended."
+    )
+    for heading, query in not_run:
+        print(f"  not run   {heading}: {query!r}")
+    for query in extended:
+        print(f"  extended  {query!r}")
+
+
 def _print_status_drift(report: Status) -> None:
     """The corpus drift block: unavailable, unchanged, or changed with
     the unconsidered citekeys named."""
@@ -254,3 +286,12 @@ def _print_status_drift(report: Status) -> None:
             print(f"    ... and {len(report.unconsidered) - len(shown)} more")
         print("\n  Re-search only if the change you are making touches a sub-theme")
         print("  these could bear on. Drift is not itself a reason to redraft.")
+
+
+def _print_status_fingerprint(report: Status) -> None:
+    """The draft-fingerprint lines, when this draft has ever been stamped."""
+    if report.fingerprint is None:
+        return
+    print()
+    for line in status_lines(report.fingerprint):
+        print(line)

@@ -675,8 +675,14 @@ whoever opens the directory next; those seven are:
 - `steering.md` -- the user's steering.
 - `revisions.md` -- a revision log.
 - `retrieval.md` -- every retrieval call, the Zotero collection it was
-  scoped to (empty for a corpus-wide call), plus a `mark-revision`
-  boundary per revision pass.
+  scoped to (empty for a corpus-wide call), whether the query was
+  declared in `outline.md` or added to extend it (empty for neither),
+  plus a `mark-revision` boundary per revision pass.
+
+A ninth, `outline.md`, is opt-in (`init --outline`) rather than one of
+the seven every dossier gets: the human's own per-section
+brief/claim/declared-queries file, read and validated by the `outline`
+subcommand below. See "The human's own outline" further down.
 
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) is the design.
 
@@ -758,6 +764,39 @@ ever the blocks. A citekey with no block is named in a warning rather
 than dropped: the run that found it never transcribed it, so that
 material is gone rather than mislaid.
 
+#### The human's own outline
+
+`outline.md` (`init --outline`) is a single-draft sibling to the book
+track's `spec.md`, not a second copy of it -- see [BOOKS.md](BOOKS.md)
+for why a book's outline and a survey's don't share one file. Per
+`##`-or-deeper heading, the human declares intent about prose they
+supply rather than leaving a skill to guess: `brief:` (steering,
+consumed once, never appears in the draft) and/or one or more `claim:`
+blocks (rewritten -- every sentence that can't be grounded in the
+corpus is reported rather than shipped), plus an optional `queries:`
+list. A section needs at least a brief or a claim; `queries:` is
+optional even then -- plenty of sections are pure framing prose with
+nothing to search for. Run a broad search or two on the topic
+(`chitragupta draft retrieve search "<topic>"`) before filling this in
+by hand -- an outline written blind is one whose sections the corpus
+may not support.
+
+Declared queries bind by default: a genre skill runs them verbatim
+instead of inventing sub-themes. `--origin extended` on the skill's own
+`retrieve` calls covers a section that came up thin, logged distinctly
+so `chitragupta draft dossier status` can report whether a draft ran
+what `outline.md` declared -- "did this draft follow my outline?"
+becomes decidable rather than trusted. `outline` itself only reads and
+validates; it never calls retrieval and never writes `sections.md` or
+`evidence.md` -- deciding what's kept stays the genre skill's job, the
+same way it already is without an `outline.md` at all.
+
+```bash
+chitragupta draft dossier init content/drafts/survey.md --genre survey --outline
+chitragupta draft dossier outline content/drafts/survey.md
+chitragupta draft dossier outline content/drafts/survey.md --check
+```
+
 | Subcommand | What it does |
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only ever adds missing files -- safe to re-run |
@@ -765,6 +804,7 @@ material is gone rather than mislaid.
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
+| `outline <draft>` | Read and validate `outline.md` -- the human's own per-section brief/claim/declared queries. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
 | `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit (#454). Run after `gate` passes, never before |
 | `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
@@ -779,13 +819,14 @@ material is gone rather than mislaid.
 | Flag | Applies to | What it does |
 | --- | --- | --- |
 | `--genre GENRE` | `init` | Required: `survey`, `thesis-chapter`, `textbook-chapter`, `tutorial`, `deep-research` |
+| `--outline` | `init` | Also create `outline.md` -- opt-in, since most dossiers don't have one |
 | `--all` | `status` | Report every dossier instead of one draft. Mutually exclusive with a draft path |
 | `--json` | `status` | Emit the drift report as JSON, for `draft-reviser` rather than a terminal |
 | `--label TEXT` | `mark-revision` | Short name for this revision. Optional -- an unlabelled marker is numbered by order instead (`revision 1`, `revision 2`, ...) |
 | `--citekeys` | `sections` | Print the derived `sections.md` table instead of the outline. A citekey cited above the first heading is reported on stderr, never filed under a section that doesn't contain it |
 | `--write` | `sections` | With `--citekeys`: write the table into the dossier's `sections.md`, replacing what is there. Refused without `--citekeys`, and refused when the dossier doesn't exist |
+| `--check` | `outline`, `brief` | With `outline`: report shape problems without printing the sections. With `brief`: report what resolves, and what doesn't, without printing the blocks -- what an orchestrator runs before dispatching |
 | `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
-| `--check` | `brief` | Report what resolves, and what doesn't, without printing the blocks -- what an orchestrator runs before dispatching |
 | `--score` | `check-evidence` | Also print each warning's overlap score. Off by default, so there is nothing to reword against until it drops |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
 | `--with-rendered` | `export` | Include `content/rendered/` too -- large, it holds the PDFs |
@@ -861,6 +902,12 @@ described in [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional).
 Combined with `--log`, the collection is written to `retrieval.md` too,
 so a scoped call and a corpus-wide one no longer write identical rows.
 
+Combined with `--log`, `--origin declared|extended` records whether the
+query came verbatim from `outline.md` or was added because a declared
+section came up thin -- so `chitragupta draft dossier status` can report
+whether a draft followed the outline it declared. Omit it for a call
+`outline.md` had no say in.
+
 `evidence` is a lookup, not a stage: use it when a `search` snippet is not
 enough to judge a source you are minded to cite. Nothing is obliged to
 call it. [REJECTION.md](REJECTION.md) explains why an earlier arrangement,
@@ -874,6 +921,7 @@ withdrawn.
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
+| `--origin declared\|extended` | all | -- | With `--log`: whether this query came from `outline.md` verbatim or extended a section that came up thin |
 
 ```bash
 chitragupta draft retrieve search "digital twin architecture" --k 15 \

@@ -56,6 +56,27 @@ REVISIONS_MD = "revisions.md"
 
 RETRIEVAL_MD = "retrieval.md"
 
+
+# `retrieval.md`'s `mode` is always "search" or "evidence" -- the two
+# `python -m chitragupta.draft retrieve` subcommands -- except for this one
+# marker, which can't collide with a real logged call. Shared between
+# `_retrieval.py` (writes it, in `mark_revision`) and
+# `_retrieval_queries.py` (reads it, to skip a boundary row rather than
+# count it as a query), split apart in #467 once #455's origin column
+# pushed `_retrieval.py` back over C2 -- living here instead of in either
+# one keeps the other from reaching across a private (`_`-prefixed) name.
+_REVISION_MARKER_MODE = "revision"
+
+
+# `outline.md` (#455): the human's own per-section brief/claim/declared
+# queries, opt-in via `dossier init --outline` rather than one of the
+# seven `init` always writes -- most dossiers don't have one, and `FILES`
+# below is what `status` iterates to report what a dossier holds, which a
+# usually-absent file would misreport as a gap in every dossier that
+# never asked for one. See `_outline.py`.
+OUTLINE_MD = "outline.md"
+
+
 # The files a dossier holds, in the order `init` writes them and `status`
 # reports them. The value is how `status` counts entries in that file --
 # see `_count`, and the "counts are advisory" note there.

@@ -30,7 +30,7 @@ def rules(findings: list[dict]) -> list[str]:
 
 class TestOrphanMarker:
     def test_a_marker_with_no_math_block_is_reported(self, tmp_path):
-        body = f"# S\n\n<!-- equation: bare -->\n\nprose, no math marker\n"
+        body = "# S\n\n<!-- equation: bare -->\n\nprose, no math marker\n"
         found = style_equations.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.EquationOrphanMarker"]
 

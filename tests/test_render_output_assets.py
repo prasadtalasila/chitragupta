@@ -8,7 +8,7 @@ import.
 """
 
 from chitragupta import render_output
-from tests.conftest import ASCII_FIGURE, MARKED_MD, MARKED_INPUT, TIKZ_FIGURE, figure_pair
+from tests.conftest import ASCII_FIGURE, MARKED_MD, TIKZ_FIGURE, figure_pair
 
 
 class TestLocalImageRefs:

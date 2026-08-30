@@ -140,6 +140,13 @@ def _build_parser() -> Any:
             help="Record this call in DRAFT's dossier (content/dossiers/...), so the "
             "cost of retrieval for this draft is measured rather than estimated",
         )
+        each.add_argument(
+            "--origin",
+            choices=("declared", "extended"),
+            help="With --log: this query came verbatim from outline.md "
+            "(declared) or was added because a declared section came up "
+            "thin (extended). Omit for a call outline.md had no say in",
+        )
     return parser
 
 
@@ -199,6 +206,7 @@ def _log_call(args, results: int, chars: int) -> None:
             results,
             chars,
             collection=getattr(args, "collection", None),
+            origin=args.origin,
         )
     except (dossier.DossierError, OSError) as exc:
         # A measurement is worth less than the retrieval it measures:

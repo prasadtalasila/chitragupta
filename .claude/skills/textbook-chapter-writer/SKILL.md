@@ -83,10 +83,10 @@ python -m chitragupta.draft retrieve search "<query>" --k 15 \
 Three rules, none of them negotiable:
 
 - **Every call, or none.** One unflagged call silently widens the scope
-  for that search, and nothing downstream detects it: `retrieval.md`
-  records the query, the `--k` and the payload size but **not** the
-  collection (#254), so the log cannot tell anyone afterwards which calls
-  were scoped. The discipline has to hold while the run is happening.
+  for that search: `retrieval.md`'s `collection` column (#254) will show
+  it read as corpus-wide after the fact, but by then the run has already
+  read outside the shelf -- the discipline has to hold while the run is
+  happening, not just be checkable afterwards.
 - **`retrieve evidence` takes no `--collection`.** The flag is on
   `search` only, and rightly: `evidence` zooms into one citekey you have
   already chosen, so there is nothing left for a collection to filter.
@@ -234,8 +234,19 @@ candidate for the chapter.
    chapter that presents mechanism without ever answering "why would anyone
    need this" produces students who can follow the steps and can't transfer
    them.
-   If you search the synced corpus for a motivating example, use the same
-   retrieval discipline as the other skills: over-fetch
+   If the dossier has an `outline.md` (`dossier init --outline`, or
+   added later) with declared `queries:` for this section, run those
+   verbatim instead of choosing your own search terms, logged `--origin
+   declared`; a section that comes up thin still gets the reformulation
+   below, logged `--origin extended` instead -- check first with
+   `python -m chitragupta.draft dossier outline content/drafts/<slug>.md
+   --check`. Citing stays optional here regardless, so a `claim:` block
+   is a steer toward a specific assertion worth grounding if the corpus
+   supports it, not an obligation the way it is in the citation-dense
+   genres.
+
+   Otherwise, if you search the synced corpus for a motivating example,
+   use the same retrieval discipline as the other skills: over-fetch
 
    ```bash
    python -m chitragupta.draft retrieve search "<topic>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md

@@ -87,19 +87,28 @@ class TestNoId:
 
 class TestIds:
     def test_two_tables_claiming_one_id(self, tmp_path):
-        body = f"# S\n\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}\n{TABLE}\n{CAPTION}"
+        body = (
+            "# S\n\nAs <!-- tableref: start-here --> shows.\n\n"
+            f"{TABLE}\n{CAPTION}\n{TABLE}\n{CAPTION}"
+        )
         assert "chitragupta.TableDuplicateId" in rules(
             style_tables.findings(draft_with(body, tmp_path))
         )
 
     def test_an_id_that_is_not_kebab_case(self, tmp_path):
-        body = f"# S\n\nAs <!-- tableref: Start Here --> shows.\n\n{TABLE}\n: C.\n<!-- table: Start_Here -->\n"
+        body = (
+            "# S\n\nAs <!-- tableref: Start Here --> shows.\n\n"
+            f"{TABLE}\n: C.\n<!-- table: Start_Here -->\n"
+        )
         assert "chitragupta.TableMalformedId" in rules(
             style_tables.findings(draft_with(body, tmp_path))
         )
 
     def test_a_reference_to_an_id_no_table_declares(self, tmp_path):
-        body = f"# S\n\nAs <!-- tableref: ghost --> shows, and <!-- tableref: start-here --> too.\n\n{TABLE}\n{CAPTION}"
+        body = (
+            "# S\n\nAs <!-- tableref: ghost --> shows, and "
+            f"<!-- tableref: start-here --> too.\n\n{TABLE}\n{CAPTION}"
+        )
         found = style_tables.findings(draft_with(body, tmp_path))
         assert rules(found) == ["chitragupta.TableUnknownRef"]
         assert found[0]["match"] == "ghost"
@@ -121,7 +130,10 @@ class TestReferencedOutsideItsSection:
         assert rules(found) == ["chitragupta.TableRefOutsideSection"]
 
     def test_a_reference_in_the_same_section_is_clean(self, tmp_path):
-        body = f"## One\n\nProse.\n\n## Two\n\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}"
+        body = (
+            "## One\n\nProse.\n\n## Two\n\nAs <!-- tableref: start-here --> shows.\n\n"
+            f"{TABLE}\n{CAPTION}"
+        )
         assert style_tables.findings(draft_with(body, tmp_path)) == []
 
     def test_a_draft_with_no_headings_at_all_has_one_section(self, tmp_path):

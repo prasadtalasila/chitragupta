@@ -1,7 +1,7 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
-**Thirteen of the original twenty-one items have shipped and have been
+**Fourteen of the original twenty-one items have shipped and have been
 removed from this document** rather than marked as done -- so everything
 below is still outstanding, which is what makes the list usable.
 
@@ -748,12 +748,14 @@ Size: M. Depends on: nothing.
 ## 🧭 Theme E: the human's own structure
 
 Themes A-D are about what the pipeline does with what it retrieved. This
-theme is about the two places a **person** cannot currently get a word
-in: supplying the structure before drafting, and hand-editing a draft
-afterwards. Both are already solved at *book* scale and neither at
-single-draft scale --
-`plans/outline-driven-drafting-and-manual-edits.md`
-is the plan, and carries the measurements.
+theme was about two places a **person** could not get a word in:
+supplying the structure before drafting, and hand-editing a draft
+afterwards. Both were already solved at *book* scale and neither at
+single-draft scale -- both have now shipped at single-draft scale too:
+supplying the structure (`outline.md`, #455) and noticing a hand edit
+(the draft fingerprint, #462).
+`plans/outline-driven-drafting-and-manual-edits.md` is the plan and
+carries the measurements for both; only E4 below is still open.
 
 Researched against four upstreams for this theme
 ([OpenScholar](https://github.com/AkariAsai/OpenScholar),
@@ -765,50 +767,6 @@ the four manufacture no queries at all**, and none verifies a citation --
 RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
 array-bounds test. Nothing here is ported as text
 ([INSPIRATION.md](INSPIRATION.md)).
-
-### 🗂 E2: an outline the human writes
-
-A dossier file the person edits before drafting: per section, a heading,
-a brief, and the **declared queries**, which the skill runs verbatim
-instead of inventing sub-themes. `--extend` permits additions where a
-sub-theme comes up thin, logged distinctly so `retrieval.md` can be
-diffed against the declared list -- *"did this draft follow my
-structure?"* becomes decidable rather than trusted.
-
-**Most of the mechanism exists.** `dossier brief --section` already
-resolves a section name through `sections.md` to its evidence blocks, and
-`--check` validates the rows resolve without printing them. What is
-missing is that a human cannot author those rows and four of five genres
-never use them. `deep-research`'s Phase 1 -- broad calls *before* naming
-perspectives, so structure is derived from what the corpus holds -- is
-the best idea already here and should be generalised rather than
-reinvented.
-
-**Prose in an outline is ambiguous and that ambiguity is the defect.**
-Two paragraphs under a heading may be steering or text to preserve, and a
-skill must guess. So intent is declared *about the input*: a **brief**
-(never appears in the draft) or a **claim** (rewritten, with every
-sentence that could not be grounded reported rather than shipped).
-
-**Neither leaves a marker in the draft, and recording authorship is
-explicitly rejected** -- a draft gets revised, the drafting layer
-rewrites what is inside any such span, and the marker would go stale
-while still looking authoritative. Declaring intent about the *input*
-works because a brief is consumed once and a claim's grounding stays
-re-checkable against the ledger; authorship is neither.
-[DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
-argument.
-
-**No sign-off gate.** `spec sign` guards a 178,000-word generation run;
-one survey does not earn a second gate (constraint 2).
-
-> ⚠ **`_retrieval_rows` will swallow the new `origin` column.** Its guard
-> is `if len(cells) not in (6, 7): continue`, so an eighth cell makes
-> every new row **skipped, not rejected** -- `retrieval_cost` undercounts
-> and `recorded_queries` loses the queries. Extend to `(6, 7, 8)` and pad
-> as #254's column is padded.
-
-Size: L. Depends on: E1.
 
 ### 🔁 E4: the draft is the query
 
@@ -822,9 +780,10 @@ intact.
 **Its `y_{t-1}` need not come from a model.** If a person supplies a
 starting draft, or hand-edits one, *their* prose is the query. That makes
 "give the pipeline a draft to work from, and revise it by hand later" the
-same loop with a human in the generation slot -- and it settles a
-question [E2](#-e2-an-outline-the-human-writes) left open, because prose
-used as a **query** needs no provenance marker: it never enters the
+same loop with a human in the generation slot -- and it settles the same
+question outline-driven drafting (shipped: `outline.md`'s `brief`/`claim`
+split) had to answer for prose that enters the draft, because prose used
+as a **query** needs no provenance marker at all: it never enters the
 draft, so there is nothing to keep in sync and nothing to go stale.
 
 Three things this item must get right, each from a measurement rather
@@ -964,7 +923,7 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Thirteen items have shipped and have
+**Only unbuilt work appears here.** Fourteen items have shipped and have
 been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
@@ -977,14 +936,13 @@ is for.
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
 | 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
 | 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 5 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
-| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 7 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 8 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 9 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 10 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
-| 11 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
-| 12 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 5 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 6 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 7 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 8 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 9 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
+| 10 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -1002,8 +960,7 @@ exists.** `plans/` holds the implementation plan for a roadmap item whose
 design is genuinely underdetermined. Of the items still listed here,
 [B4](#-b4-cross-encoder-reranking), [B5](#-b5-pre-gate-self-feedback-loop)
 and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's
-remaining two ([E2](#-e2-an-outline-the-human-writes),
-[E4](#-e4-the-draft-is-the-query)) share
+remaining item, [E4](#-e4-the-draft-is-the-query), shares
 `plans/outline-driven-drafting-and-manual-edits.md`. Several more
 sit there for items that have since shipped, kept as worked examples of
 the convention. Most items need none: the entry above already names the

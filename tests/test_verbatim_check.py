@@ -57,7 +57,8 @@ class TestPdfPath:
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         vc._corpus.BIB.write_text(
-            "@article{smith_2024,\n  title = {T},\n  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
         assert vc.pdf_path("smith_2024") == pdf
 
@@ -84,7 +85,8 @@ class TestPdfPath:
 
     def test_pdf_referenced_but_missing_on_disk_returns_none(self, fixture_repo):
         vc._corpus.BIB.write_text(
-            "@article{smith_2024,\n  title = {T},\n  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
         assert vc.pdf_path("smith_2024") is None
 
@@ -142,7 +144,8 @@ class TestPdfPath:
         pdf.write_bytes(b"%PDF-1.4")
         vc._corpus.BIB.write_text(
             "@article{smith_2024,\n  title = {T},\n"
-            "  file = {Smith - 2024 - Title.pdf:pdfs/21/Smith - 2024 - Title.pdf:application/pdf},\n}\n"
+            "  file = {Smith - 2024 - Title.pdf:pdfs/21/Smith - 2024 - Title.pdf"
+            ":application/pdf},\n}\n"
         )
         assert vc.pdf_path("smith_2024") == pdf
 
@@ -178,7 +181,8 @@ class TestPdfPath:
         pdf = bib_dir / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
         vc._corpus.BIB.write_text(
-            "@article{smith_2024,\n  title = {T},\n  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
         assert vc.pdf_path("smith_2024") == pdf
 
@@ -228,7 +232,8 @@ class TestPages:
         )
 
         vc._corpus.BIB.write_text(
-            "@article{smith_2024,\n  title = {T},\n  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
         result = vc.pages("smith_2024")
         assert any("distinctive verbatim content" in p for p in result)
@@ -734,7 +739,8 @@ class TestCmdScan:
         )
         draft = tmp_path / "draft.md"
         draft.write_text(
-            "As shown [@other_2024], lorem ipsum dolor sit amet consectetur adipiscing elit sed do appears here.\n"
+            "As shown [@other_2024], lorem ipsum dolor sit amet consectetur "
+            "adipiscing elit sed do appears here.\n"
         )
         _add_parsed_item(ledger_con, tmp_path, "other_2024", "completely unrelated filler text")
 

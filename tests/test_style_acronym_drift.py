@@ -4,7 +4,7 @@ current acronym vocabulary. See chitragupta/style_acronym_drift.py and the
 measurement behind it in chitragupta/acronyms.py.
 """
 
-from chitragupta import acronyms, config, dossier, style_acronym_drift
+from chitragupta import acronyms, dossier, style_acronym_drift
 from tests.conftest import content_draft
 
 

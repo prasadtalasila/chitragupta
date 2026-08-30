@@ -263,6 +263,25 @@ class TestInit:
         assert "- language: not settled" in scope
         assert "en-GB" in scope
 
+    def test_outline_is_opt_in(self, draft):
+        """Most dossiers have no outline.md -- confirming the plain
+        `test_writes_every_dossier_file` case above stays true, and that
+        the file only appears when asked for."""
+        dossier.init(draft, "survey")
+        assert not (dossier.dossier_dir(draft) / "outline.md").exists()
+
+    def test_outline_true_writes_outline_md(self, draft):
+        dossier.init(draft, "survey", outline=True)
+        assert (dossier.dossier_dir(draft) / "outline.md").is_file()
+
+    def test_outline_true_does_not_clobber_a_filled_in_outline_md(self, draft):
+        dossier.init(draft, "survey", outline=True)
+        path = dossier.dossier_dir(draft) / "outline.md"
+        path.write_text("## Real section\n\nbrief: real content\n")
+        written = dossier.init(draft, "survey", outline=True)
+        assert written == []
+        assert "Real section" in path.read_text()
+
 
 def _write_glossary(draft, body):
     """Replace the shipped `## Glossary` placeholder with real bullets.
@@ -598,7 +617,8 @@ class TestStatus:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "evidence.md").write_text(
-            "# Kept evidence\n\n## `a_one_2020`\n\n- relevance: x\n\n## `b_two_2021`\n\n- relevance: y\n"
+            "# Kept evidence\n\n## `a_one_2020`\n\n- relevance: x\n\n"
+            "## `b_two_2021`\n\n- relevance: y\n"
         )
         (target / "rejected.md").write_text(
             "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
@@ -1607,6 +1627,97 @@ class TestRecordedQueriesWithCollection:
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == []
 
 
+class TestRecordedQueriesWithOrigin:
+    """`origin` (#455): a scoped/declared call and a corpus-wide/invented
+    one otherwise wrote byte-identical rows, and nothing downstream could
+    tell a draft that followed its `outline.md` from one that didn't."""
+
+    def test_a_declared_call_pairs_with_declared(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared"),
+        ]
+
+    def test_an_extended_call_pairs_with_extended(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "extended"),
+        ]
+
+    def test_a_call_with_no_origin_pairs_with_empty(self, draft):
+        """Unlike `collection`, an unset `origin` has no safe default
+        reading -- a pre-outline.md call was neither declared nor
+        extended, so it stays a third, unspecified state rather than
+        silently reading as either."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", ""),
+        ]
+
+    def test_a_row_written_before_the_origin_column_pairs_with_empty(self, draft):
+        """The landmine: a pre-#455 seven-cell row (date, mode, query,
+        asked, results, chars, collection) must still parse -- and must
+        not be silently skipped, which is what an unwidened `(6, 7)`
+        guard would do to it."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search | old query | 15 | 15 | 100 | |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("old query", ""),
+        ]
+
+    def test_a_row_written_before_the_collection_column_pairs_with_empty_origin_too(self, draft):
+        """A six-cell row -- pre-#254 -- pads all the way to eight, not
+        just to seven."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search | ancient query | 15 | 15 | 100 |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("ancient query", ""),
+        ]
+
+    def test_the_same_query_declared_and_extended_are_two_distinct_pairs(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, origin="declared")
+        dossier.log_retrieval(draft, "search", "twin", 15, 15, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("twin", "declared"),
+            ("twin", "extended"),
+        ]
+
+    def test_a_revision_marker_contributes_no_pair(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
+        _retrieval.mark_revision(draft, "shorten the introduction")
+        dossier.log_retrieval(draft, "search", "co-simulation", 2, 2, 100, origin="extended")
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared"),
+            ("co-simulation", "extended"),
+        ]
+
+    def test_the_landmine_also_costs_correctly_not_only_undercounts_queries(self, draft):
+        """The bug report's other half: an eighth cell must not make the
+        whole row invisible to `retrieval_cost`, not only to
+        `recorded_queries`."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400, origin="declared")
+        assert _retrieval.retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
+
+    def test_a_row_with_an_empty_query_contributes_no_pair(self, draft):
+        """Skipped the same way `recorded_queries` skips it -- an empty
+        query cell is not a call anyone declared or extended."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search |  | 15 | 15 | 100 | | declared |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == []
+
+
 class TestSectionCitekeys:
     def test_maps_a_citekey_to_the_sections_citing_it(self, grounded):
         (grounded / "sections.md").write_text(
@@ -2311,6 +2422,15 @@ class TestInitCLI:
         assert "created scope.md" in out
         assert "No ledger" not in out
 
+    def test_outline_flag_creates_outline_md(self, draft, capsys):
+        assert dossier.main(["init", str(draft), "--genre", "survey", "--outline"]) == 0
+        assert "created outline.md" in capsys.readouterr().out
+        assert (dossier.dossier_dir(draft) / "outline.md").is_file()
+
+    def test_without_outline_flag_no_outline_md(self, draft, capsys):
+        assert dossier.main(["init", str(draft), "--genre", "survey"]) == 0
+        assert "outline.md" not in capsys.readouterr().out
+
 
 class TestStatusCLIOutput:
     def test_a_dossier_that_outlived_its_draft_says_so(self, draft, capsys):
@@ -2332,6 +2452,25 @@ class TestStatusCLIOutput:
         out = capsys.readouterr().out
         assert "1 call(s) returned" in out
         assert "1 kept, 1 rejected" in out
+
+    def test_no_outline_md_means_no_outline_block(self, draft, capsys):
+        dossier.init(draft, "survey")
+        dossier.main(["status", str(draft)])
+        assert "Outline:" not in capsys.readouterr().out
+
+    def test_outline_block_reports_run_not_run_and_extended(self, draft, capsys):
+        dossier.init(draft, "survey", outline=True)
+        (dossier.dossier_dir(draft) / "outline.md").write_text(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n"
+            "- timestep mismatch\n- solver divergence\n"
+        )
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100, origin="declared")
+        dossier.log_retrieval(draft, "search", "surrogate model", 5, 5, 100, origin="extended")
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert "Outline: 1 declared query run, 1 not, 1 extended." in out
+        assert "not run   Failure modes: 'solver divergence'" in out
+        assert "extended  'surrogate model'" in out
 
     def test_a_dossier_with_no_fingerprint_reports_the_current_corpus_instead(self, draft, capsys):
         dossier.init(draft, "survey")

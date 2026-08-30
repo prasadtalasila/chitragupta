@@ -66,13 +66,17 @@ were missing entirely are the two that matter most.
 | `revisions.md` | append-only log of what changed and why | **nowhere** |
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
+| `outline.md` | the human's own per-section brief/claim/declared queries (#455) | **nowhere** |
 
-**`math.md` is the one optional file**, and the only one whose absence is
-not a defect: a draft with no mathematics has none, and a draft using
-§12's inline `$…$` form does not need one. `render` reads it for every
-format that reaches pandoc and ignores it for `--format md`, which is
-what keeps the draft's own text ASCII. Two consequences worth knowing
-before you rename anything:
+**`math.md` and `outline.md` are the two optional files**, and the only
+two whose absence is not a defect. A draft with no mathematics has none
+of the first, and most dossiers have none of the second -- it exists
+only when a human ran `dossier init --outline` (or added it later) to
+declare a structure before drafting. §12's inline `$…$` form also needs
+no `math.md`. `render` reads `math.md` for every format that reaches
+pandoc and ignores it for `--format md`, which is what keeps the draft's
+own text ASCII. Two consequences worth knowing before you rename
+anything:
 
 - A draft and its dossier are tied by **path alone**, and there is no
   `dossier rename`. Moving a draft orphans its mapping, and every
@@ -153,6 +157,20 @@ re-draft. One honest limit worth knowing: it records the *character
 payload* of each call, not tokens, and nothing records what the drafting
 turns themselves cost. Enough to compare two runs; not enough to price a
 whole draft.
+
+**`outline.md` -- the human's own structure, declared rather than
+guessed (#455).** Per section: a heading, a `brief:` (steering, consumed
+once, never appears in the draft) and/or one or more `claim:` blocks
+(the human's own prose, rewritten -- every sentence that can't be
+grounded is reported rather than shipped), and optional declared
+`queries:` a genre skill runs verbatim instead of inventing sub-themes.
+`dossier outline <draft> --check` validates it without printing the
+sections; `dossier outline <draft>` prints them. Reading and validating
+is all this file does on its own -- deciding what's kept and writing
+`sections.md`/`evidence.md` stays the genre skill's job, unchanged.
+`retrieval.md`'s `origin` column (`declared`/`extended`) is what
+`dossier status` reads to answer "did this draft follow its outline?"
+from the record rather than from trust.
 
 ## 💡 Why Markdown
 

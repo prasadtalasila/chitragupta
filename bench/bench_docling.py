@@ -26,8 +26,6 @@ import os
 import time
 from pathlib import Path
 
-import pypdfium2 as pdfium
-
 
 def build_converter(device: str, images: bool, ocr: bool = True):
     from docling.datamodel.accelerator_options import AcceleratorDevice, AcceleratorOptions

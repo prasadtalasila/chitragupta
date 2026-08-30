@@ -151,7 +151,7 @@ def main(argv=None):
     embeddings = np.array([vectors[c] for c in citekeys])
     texts = [doc_texts[c] for c in citekeys]
 
-    fitted, topics = topic_model._fit(texts, embeddings, model)  # noqa: SLF001
+    fitted, topics = topic_model._fit(texts, embeddings, model)
     labels = [int(t) for t in topics]
     ids = sorted(set(labels) - {-1})
     print(

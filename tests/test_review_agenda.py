@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import dossier, review, style_check
+from chitragupta import dossier, review
 from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
 from chitragupta.review import agenda, citation_provenance

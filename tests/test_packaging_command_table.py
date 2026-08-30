@@ -35,6 +35,7 @@ DRAFT_SUBCOMMANDS = {
         "mark-revision",
         "stamp",
         "sections",
+        "outline",
         "brief",
         "set-language",
         "acronyms-suggest",
