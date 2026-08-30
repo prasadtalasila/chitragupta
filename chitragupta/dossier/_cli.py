@@ -31,6 +31,7 @@ from chitragupta.dossier._language import _cmd_set_language
 from chitragupta.dossier._retrieval import _cmd_mark_revision
 from chitragupta.dossier._sections import _cmd_sections
 from chitragupta.dossier._status import _cmd_status
+from chitragupta.dossier._structure import _cmd_structure
 
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
 
@@ -93,6 +94,18 @@ def _add_sections_parser(sub) -> None:
         help="With --citekeys: write the table to the dossier's sections.md",
     )
     p_sections.set_defaults(func=_cmd_sections)
+
+
+def _add_structure_parser(sub) -> None:
+    p_structure = sub.add_parser(
+        "structure",
+        help="Read and validate structure.md -- the human's own per-section brief/claim/queries",
+    )
+    p_structure.add_argument("draft", help="Draft path, or the dossier directory itself")
+    p_structure.add_argument(
+        "--check", action="store_true", help="Report shape problems without printing the sections"
+    )
+    p_structure.set_defaults(func=_cmd_structure)
 
 
 def _add_brief_parser(sub) -> None:
@@ -189,6 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     _add_mark_revision_parser(sub)
     _add_stamp_parser(sub)
     _add_sections_parser(sub)
+    _add_structure_parser(sub)
     _add_brief_parser(sub)
     _add_set_language_parser(sub)
     _add_acronyms_suggest_parser(sub)
