@@ -440,7 +440,7 @@ is true of every sentence in a revised document.
 The rewrite ("find a citekey for this assertion") is inherently a model
 judgement -- no Python here decides what supports a sentence. And the
 report half of the obligation already exists: `chitragupta/review/
-uncited_prose.py` (`python -m chitragupta.draft review uncited`) already
+uncited_prose.py` (`python -m chitragupta.review uncited`) already
 reports which sentences of a draft carry no citation, per-genre-gated and
 already part of the standing agenda/gate flow. `claim` doesn't need a new
 `claims.md` -- recording a second, parallel "which sentences failed

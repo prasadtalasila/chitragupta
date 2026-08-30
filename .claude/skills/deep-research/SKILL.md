@@ -301,7 +301,7 @@ a broad call's raw returns, since the human has already named the angles
 that matter. A section declaring `claim:` is content to ground, not
 steer from: find a citekey per assertion and drop what can't be
 grounded, exactly as the other genre skills do -- `python -m
-chitragupta.draft review uncited` is the backstop.
+chitragupta.review uncited` is the backstop.
 
 **No `outline.md`, or it fails `--check`:** run 1-2 broad retrieval calls
 on the topic itself and skim what the corpus actually returns -- titles,

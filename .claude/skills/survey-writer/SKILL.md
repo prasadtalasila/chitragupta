@@ -226,7 +226,7 @@ collapse them for the sake of a cleaner narrative.
    `--origin extended`), write the grounded sentence into the draft with
    its citation, and **drop, don't ship, any sentence you can't ground**
    -- name what you dropped in your final summary to the user.
-   `python -m chitragupta.draft review uncited` is the backstop that
+   `python -m chitragupta.review uncited` is the backstop that
    catches anything that slips through regardless.
 
    **No `outline.md`, or it fails `--check`:** break the requested topic

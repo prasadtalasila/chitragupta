@@ -225,7 +225,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `--origin extended`), write the grounded sentence into the chapter
    with its citation, and **drop, don't ship, any sentence you can't
    ground** -- name what you dropped in your final summary to the user.
-   `python -m chitragupta.draft review uncited` is the backstop that
+   `python -m chitragupta.review uncited` is the backstop that
    catches anything that slips through regardless.
 
    **No `outline.md`, or it fails `--check`:** search against the RQ and
