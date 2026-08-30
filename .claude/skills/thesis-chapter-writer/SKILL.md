@@ -61,10 +61,10 @@ python -m chitragupta.draft retrieve search "<query>" --k 15 \
 Three rules, none of them negotiable:
 
 - **Every call, or none.** One unflagged call silently widens the scope
-  for that search, and nothing downstream detects it: `retrieval.md`
-  records the query, the `--k` and the payload size but **not** the
-  collection (#254), so the log cannot tell anyone afterwards which calls
-  were scoped. The discipline has to hold while the run is happening.
+  for that search: `retrieval.md`'s `collection` column (#254) will show
+  it read as corpus-wide after the fact, but by then the run has already
+  read outside the shelf -- the discipline has to hold while the run is
+  happening, not just be checkable afterwards.
 - **`retrieve evidence` takes no `--collection`.** The flag is on
   `search` only, and rightly: `evidence` zooms into one citekey you have
   already chosen, so there is nothing left for a collection to filter.
@@ -198,9 +198,39 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 1. **Clarify the research question** the chapter serves, if not already given
    by the user. The chapter's narrative arc should argue toward/around this RQ,
    not just summarize papers in sequence.
-2. **Retrieve broadly, then filter.** Search against the RQ and its
-   component concepts -- over-fetch rather than assuming the top few hits
-   are automatically the right ones:
+2. **Retrieve broadly, then filter.**
+
+   **First, check whether the dossier has an `outline.md`** -- a human
+   writes this file by hand (`dossier init --outline`, or added later)
+   with, per section, a heading, a `brief:` and/or `claim:` block, and
+   optional declared `queries:`:
+
+   ```bash
+   python -m chitragupta.draft dossier outline content/drafts/<slug>.tex --check
+   ```
+
+   **If it exists and passes**, run each section's declared queries
+   **verbatim** instead of searching against the RQ's component concepts
+   yourself, logged `--origin declared` in place of the plain `--log`
+   below. Reformulate and re-search a section that comes up thin, logged
+   `--origin extended` instead -- that distinction is what lets
+   `dossier status` answer "did this chapter follow its outline?" from
+   `retrieval.md` afterwards, so log it honestly rather than as
+   `declared`.
+
+   **A `claim:` section is content to ground, not steer from.** The
+   human's prose there is rewritten, not preserved: find a citekey
+   supporting each assertion (the section's declared queries first, then
+   the assertion's own wording if those don't cover it, logged
+   `--origin extended`), write the grounded sentence into the chapter
+   with its citation, and **drop, don't ship, any sentence you can't
+   ground** -- name what you dropped in your final summary to the user.
+   `python -m chitragupta.draft review uncited` is the backstop that
+   catches anything that slips through regardless.
+
+   **No `outline.md`, or it fails `--check`:** search against the RQ and
+   its component concepts -- over-fetch rather than assuming the top few
+   hits are automatically the right ones:
 
    ```bash
    python -m chitragupta.draft retrieve search "<concept>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.tex

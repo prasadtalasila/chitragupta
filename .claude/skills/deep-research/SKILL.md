@@ -281,12 +281,34 @@ also stamps the corpus fingerprint, which is what lets a later revision
 tell whether the ledger has moved since. It only creates files that are
 missing, so re-running it can't overwrite what you've filled in.
 
-Then run 1-2 broad retrieval calls on the topic itself and skim what the corpus
-actually returns -- titles, sub-fields, recurring angles. Derive 1-2
-**corpus-specific** personas from what's actually there, for `standard`/
-`deep` depth (skip for `quick`). Then map the remaining slots onto these
-five lenses, **adapted and renamed to fit the topic** (drop one that
-genuinely doesn't apply):
+**If the dossier has an `outline.md`** (`dossier init --outline`, or
+added later), check it before doing anything else:
+
+```bash
+python -m chitragupta.draft dossier outline content/drafts/deep-research-<slug>.md --check
+```
+
+If it exists and passes, its sections are the report's declared
+structure -- read it instead of deriving structure from a broad call.
+Each section's declared `queries:` are what Phase 2's interviewer
+subagents run verbatim (`--origin declared` on any `--log` call they
+make) rather than inventing their own; a section that comes up thin
+still gets reformulation, logged `--origin extended` instead -- that
+distinction is what lets `dossier status` answer "did this report follow
+its outline?" from `retrieval.md` afterwards. Derive the interview
+personas below from the outline's own section headings rather than from
+a broad call's raw returns, since the human has already named the angles
+that matter. A section declaring `claim:` is content to ground, not
+steer from: find a citekey per assertion and drop what can't be
+grounded, exactly as the other genre skills do -- `python -m
+chitragupta.draft review uncited` is the backstop.
+
+**No `outline.md`, or it fails `--check`:** run 1-2 broad retrieval calls
+on the topic itself and skim what the corpus actually returns -- titles,
+sub-fields, recurring angles. Derive 1-2 **corpus-specific** personas
+from what's actually there, for `standard`/`deep` depth (skip for
+`quick`). Then map the remaining slots onto these five lenses, **adapted
+and renamed to fit the topic** (drop one that genuinely doesn't apply):
 
 1. **The Practitioner** -- what does applying this in practice surface that
    the papers gloss over?
