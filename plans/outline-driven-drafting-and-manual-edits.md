@@ -1,7 +1,10 @@
 # 🧭 Outline-driven drafting, and picking a hand-edited draft back up
 
-Status: **PR 3 built** (#462, PR pending merge). PR 1 and PR 2 remain
-**designed, unbuilt, unapproved.** Written 2026-08-28.
+Status: **PR 1 shipped (#458). PR 2 (issue #455) built in #467, open and
+green, not yet merged** -- refined below past what the rest of this
+document says; this note plus the "PR 2" section are the current
+source of truth for that item. **PR 3 built and merged (#462).**
+Written 2026-08-28.
 
 Two workflows the drafting layer does not support today:
 
@@ -325,7 +328,17 @@ carrying brackets in mathematics and code** -- not a global `]` delete.
 
 A new dossier file, `outline.md`, created by
 `dossier init --outline` and edited by the human before drafting. Per
-section: the heading, a **brief**, and the **declared queries**.
+section: the heading, and one or more declared-intent blocks (`brief`
+and/or `claim`), plus optional **declared queries**.
+
+**Single-draft dossiers only.** This is a sibling to `scope.md`, not a
+second `spec.md` -- see "Why not simply widen `spec`/`unit` to single
+drafts" above. A book unit like
+`content/drafts/books/digital-twins-for-software-engineers/04-just-enough-modeling.md`
+already gets this from `spec.md` (the brief analogue, at book scale, with
+its own `spec sign` gate) and `unit --source <citekey>` (the grounding
+analogue). `outline.md` never applies to a book unit; nothing in this PR
+touches `chitragupta/spec/` or `chitragupta/unit.py`.
 
 ### Two paragraphs under a heading: the ambiguity is the defect
 
@@ -360,7 +373,7 @@ but nothing can recompute who wrote a sentence after the fact.
 So there is **no author provenance and no aid exemption resting on one**,
 and this plan does not propose one.
 
-#### What is declared instead
+#### What is declared instead, and the outline.md format
 
 Intent is declared **about the input**, checked once and then discharged
 -- not attached to the output, where it would have to survive every later
@@ -376,40 +389,153 @@ by the time the draft exists, and a claim's grounding is re-checkable at
 any point against the ledger. That is the property authorship lacks, and
 why this split survives revision.
 
-`claim` is the one worth building deliberately -- it turns your
-paragraphs into an obligation the pipeline can discharge honestly, and
-*"I could not ground your third sentence in this corpus"* is precisely
-the output this project exists to produce.
+**`brief` and `claim` combine.** They looked mutually exclusive in the
+first draft of this plan, to dodge the "unlabelled prose" ambiguity above
+-- but once each block carries its own explicit label, that ambiguity is
+already resolved, and forbidding the combination buys nothing. A section
+may carry one `brief:` (general steering for the section) and zero or
+more `claim:` blocks (specific assertions to ground and report on).
+Either kind of block may hold multiple paragraphs; a `claim:` block is
+still checked sentence by sentence regardless of paragraph breaks within
+it.
+
+**`queries:` is optional, per section, not per block.** Real `sections.md`
+data (`04-just-enough-modeling`'s own, checked while designing this) shows
+plenty of headings with no citekeys at all -- pure framing/transition
+prose. A `brief`-only section with no `queries:` is drafted from the brief
+with no retrieval attempted. A `claim` section with no `queries:` still
+gets grounding search -- per sentence, using the sentence's own text as
+the query, which is still verbatim rather than invented. Declared
+`queries:` on a claim section are supplementary: useful when an
+assertion's own wording doesn't match corpus vocabulary well.
+
+Format (`##` headings, matching `sections.md`'s own heading style):
+
+```markdown
+## 4.5 Family 3: hybrid
+
+brief: Cover corrected-physics, constrained-learning, and surrogate
+approaches as three distinct strategies, not one blur.
+
+queries:
+- corrected physics data-driven digital twin
+- surrogate model digital twin fast approximation
+
+## 4.7.2 What this chapter is not claiming
+
+claim: None of the three model families is universally superior; the
+choice is dominated by which failure mode you can least afford.
+```
+
+A section needs at least one of `brief`/`claim`; a section with neither
+is a parse error `dossier outline --check` reports (see below), not a
+silent no-op.
 
 **If you want your exact words in the draft, put them in the draft.**
 They are then draft prose like any other. That is not a gap; it is what
 is true of every sentence in a revised document.
 
-**Declared queries bind by default.** The skill runs them verbatim instead
-of inventing sub-themes. `--extend` permits additions where a sub-theme
-comes up thin, and an added query is logged distinctly -- so
-`retrieval.md` can be diffed against the declared list and *"did this
-draft follow my structure?"* becomes decidable rather than trusted.
+#### `claim`'s grounding is skill work, not a new Python subsystem
 
-**`retrieval.md` gains an `origin` column** (`declared` / `extended`),
+The rewrite ("find a citekey for this assertion") is inherently a model
+judgement -- no Python here decides what supports a sentence. And the
+report half of the obligation already exists: `chitragupta/review/
+uncited_prose.py` (`python -m chitragupta.draft review uncited`) already
+reports which sentences of a draft carry no citation, per-genre-gated and
+already part of the standing agenda/gate flow. `claim` doesn't need a new
+`claims.md` -- recording a second, parallel "which sentences failed
+grounding" file next to an aid that already answers that question is
+exactly the kind of "recorded state a later edit can silently falsify" the
+no-provenance-marker argument above rejects.
+
+So a genre skill handling a `claim:` block: runs the section's declared
+queries (if any) plus, per assertion, a search on the sentence's own text
+when the declared queries don't cover it -- logged `--origin extended`,
+same as any other case where the declared list came up thin (see below;
+this is not a new origin value). Writes cited sentences into the draft.
+Drops what it can't ground, and tells the user which sentences it dropped
+in its own final report -- backstopped, not duplicated, by `uncited`.
+
+### Declared queries, the `origin` column, and the landmine
+
+**Declared queries bind by default.** The skill runs them verbatim instead
+of inventing sub-themes -- *reading* `outline.md` and calling
+`retrieve search`/`evidence --log` itself, vetting results and writing
+`evidence.md`/`sections.md` exactly as it does today (this is `deep-
+research` Phase 4's existing shape, generalised to the other four genres,
+not a new automated keep/reject step -- see "what this does not do"
+below). `--extend` permits additional queries where a sub-theme comes up
+thin, and an added query is logged distinctly -- so `retrieval.md` can be
+diffed against the declared list and *"did this draft follow my
+structure?"* becomes decidable rather than trusted.
+
+**`retrieval.md` gains an `origin` column** (`declared` / `extended`,
+empty for a row that predates this column or never declared one),
 exactly as #254 added `collection` for the same reason: a scoped call and
 a corpus-wide one wrote byte-identical rows and nothing downstream could
-tell which had run.
+tell which had run. Unlike `collection`, an empty `origin` has no safe
+default reading -- a pre-outline row was neither declared nor extended,
+so empty is a third state (*unspecified*) that the declared-vs-actual
+diff treats as out of scope, never as compliance.
 
 > ⚠ **`_retrieval_rows` will silently swallow the new column.** Its guard
 > is `if len(cells) not in (6, 7): continue`. An eighth cell makes every
 > new row **skipped, not rejected** -- `retrieval_cost` undercounts and
 > `recorded_queries` loses the queries entirely. Extend the tuple to
-> `(6, 7, 8)` and pad a short row exactly as #254's column is padded.
+> `(6, 7, 8)` and pad a short row exactly as #254's column is padded --
+> both a 6-cell and a 7-cell row pad up to 8. `mark_revision`'s marker row
+> is already 7 cells (its own trailing `collection` cell is always
+> empty); going forward it writes 8, with `origin` also empty -- it is
+> filtered out of every reader by its `mode` cell already, so the pad is
+> inert for it either way, but writing 8 directly keeps new rows uniform
+> rather than relying on the read-side pad for a row shape that isn't
+> actually legacy.
+
+**Command surface** (small, deliberately -- this is plumbing, not a new
+keep/reject authority):
+
+- `chitragupta/dossier/_outline.py` (new): parses `outline.md` into
+  `{heading: OutlineSection(brief, claims, queries)}`; a `dossier
+  outline <draft> [--check]` subcommand prints the parsed structure or,
+  with `--check`, validates it (every section has brief and/or claim,
+  no orphan block) and exits nonzero on a malformed file -- the `dossier
+  brief --check` pattern, reused rather than reinvented.
+- `chitragupta.retrieval_cli`: `--origin {declared,extended}` added
+  alongside the existing `--log` on both `search` and `evidence`,
+  threaded through `_log_call` into `dossier.log_retrieval(...,
+  origin=...)`.
+- `dossier.log_retrieval` gains the `origin` parameter (default `None` ->
+  written as the empty cell, for any caller that doesn't pass one).
+- `dossier._retrieval.recorded_queries_with_origin(dossier) ->
+  list[tuple[str, str]]`, sibling to `recorded_queries_with_collection`,
+  same dedup-on-the-pair shape.
+- `dossier._outline.declared_vs_actual(dossier) -> OutlineDrift`: the
+  actual "did this draft follow my structure?" answer -- reads
+  `outline.md`'s declared queries per section and
+  `recorded_queries_with_origin`, and reports, per section, which
+  declared queries were run, which declared queries were never run, and
+  which `extended` queries were added and why (best-effort: the query
+  text alone, `retrieval.md` records no per-row reason). Read by `dossier
+  status`, the same place drift is already reported.
+
+**What this explicitly does not do.** No `dossier outline run` command
+that itself calls retrieval and writes `sections.md`/`evidence.md`. That
+would put an automated keep/reject decision into the evidence plane --
+exactly the layer boundary `retrieval_cli` (retrieves and logs) vs. the
+skill (decides what's kept) exists to hold, and `deep-research` Phase 4
+already makes this call by model judgement, not by a Python heuristic.
+`_outline.py` reads and validates; the skill decides and writes, same as
+every other genre step today.
 
 **Generalise the corpus-grounded step, which is the best idea already
 here.** `deep-research` Phase 1 runs 1-2 broad calls *before* naming its
 perspectives, so the structure is derived from what the corpus actually
 holds rather than what the topic suggests. An outline written blind is an
 outline whose sections the corpus may not support. `dossier init
---outline` should therefore print what a broad call returns, and the
-skills should read `outline.md` through the existing
-`dossier brief --section`.
+--outline` therefore runs the same 1-2 broad calls and prints what they
+return (titles, sub-fields, recurring angles) before leaving the human to
+fill in `outline.md`'s `brief`/`claim`/`queries` by hand; `deep-research`'s
+own Phase 1 reads `outline.md` when present instead of re-deriving this.
 
 **No sign-off gate.** That ceremony stays book-scale. `spec sign` guards a
 178,000-word generation run; an outline for one survey does not earn a
@@ -418,9 +544,26 @@ constraint 2 says the gate means exactly one thing.
 
 Touches all five genre skills' step 1 (`survey-writer`,
 `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
-`deep-research`). Note that `survey-writer`'s SKILL.md currently states
-that `retrieval.md` records *"not the collection (#254)"*, which is stale
-against the code; a schema change to that file corrects that prose too.
+`deep-research`): read `outline.md` when the dossier has one and run its
+declared queries instead of inventing sub-themes; fall back to today's
+behaviour when it doesn't. Note that `survey-writer`'s SKILL.md currently
+states that `retrieval.md` records *"not the collection (#254)"*, which is
+stale against the code even before this PR; a schema change to that file
+corrects that prose too, in the same pass that adds the `origin` mention.
+
+### What was deliberately cut from an earlier draft of this section
+
+- **A `dossier outline run` command that calls retrieval and writes
+  `sections.md`/`evidence.md` itself.** Automates a decision that belongs
+  to the skill's judgement about what to keep; see above.
+- **A `claims.md` grounding-report file.** The `uncited` review aid
+  already answers "which sentences carry no citation," and a second,
+  parallel record of the same fact is exactly the kind of state that goes
+  stale across a revision without anything noticing.
+- **A third `origin` value for claim-grounding searches.** They're
+  `extended` like any other case where the declared list didn't cover
+  something -- a distinct value here would let a different activity
+  corrupt the declared-vs-actual diff's one job.
 
 ## ▶ PR 3: notice that the draft moved
 
