@@ -149,6 +149,15 @@ turn a wide pass into the re-run this skill exists to avoid.
   wide rewrite reworders more quantities than a scoped one. Same rule as
   `draft-reviser` -- add, drop or re-key a row per quantity, and let the
   render's `[math]` warnings say what you missed.
+- **A table's id survives a rewrite; the number does not need to.**
+  Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md` §13's
+  `<!-- table: id -->` marker renumbers itself, so a wide pass is free
+  to reword the prose around a table without touching its number. What
+  it can still break is the id: a table moved into another section, or
+  dropped while something still points at it with
+  `<!-- tableref: id -->`, is `TableUnreferenced`/`TableUnknownRef`, the
+  same defect a scoped revision could introduce, just more likely here
+  because more sections are in motion at once.
 - **Figures still follow the draft's own genre.** Same rule as
   `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
   drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
