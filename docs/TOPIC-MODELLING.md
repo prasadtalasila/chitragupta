@@ -93,12 +93,15 @@ extracts domain-specific terms first and then chooses each topic's label
 from the recognised terms by C-Value scoring, and Silvello et al. (2016),
 which ranks candidates by both corpus-level and document-level TF-IDF.
 
-This is unbuilt, and it is the single highest-value remaining item,
-because it fixes two things at once: the author-name labels above, and
-BERTopic's own topic names, which on this corpus are stopwords
-(`0_the_and_of_to`) because no `CountVectorizer(stop_words=...)` is
-configured. A person's name is not a domain term and would be excluded by
-construction.
+**Built**, in [#303](https://github.com/prasadtalasila/chitragupta/pull/303) --
+`chitragupta/enrich/topic_labels.py`. It fixed two things at once: the
+author-name labels above, and BERTopic's own topic names, which on this
+corpus were stopwords (`0_the_and_of_to`) because no
+`CountVectorizer(stop_words=...)` was configured. A person's name is not
+a domain term and is excluded by construction: every surname in the
+corpus's own bibliography (1,277 of them) is dropped from the label
+vocabulary, behind `[enrich].topic_exclude_author_names` for a corpus
+where that trade is not worth it.
 
 ### 📄 4. A prefix is the wrong part of a long document
 
@@ -190,10 +193,16 @@ cites work using repeated resampling and model selection (Yengejeh et
 al., 2026, which lands on 83-88 topics for 3,689 forensic-science
 abstracts).
 
-Nothing here measures stability. `chitragupta/enrich/topic_model.py`'s
-own docstring admits topic ids are not stable between runs, and the
-current defaults were chosen from a single sweep of one corpus. That is
-honest but thin, and it is the reason the depth settings are settings.
+**Built**, in [#304](https://github.com/prasadtalasila/chitragupta/pull/304) --
+`bench/bench_topic_depth.py --repeats` refits each setting on 90%
+bootstrap resamples and scores agreement with the full fit by adjusted
+Rand index. The old hardcoded defaults (`n_neighbors=15`,
+`min_cluster_size=10`) scored **0.14** -- barely more stable than
+chance; the shipped defaults (`5`/`3`/`2`) score **0.80**.
+`chitragupta/enrich/topic_model.py`'s own docstring still admits topic
+ids are not stable *between* runs -- membership has to be read by label
+or citekey, not id -- but which *settings* reproduce is now measured
+rather than assumed.
 
 ## 📊 Where the numbers come from
 

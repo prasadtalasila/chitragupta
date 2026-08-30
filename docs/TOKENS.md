@@ -816,8 +816,8 @@ replacement, not the boundary this section measures.
 
 ### 📊 The step 2a boundary, remeasured under `claim:`/`quote:` (A3, #307)
 
-The "after" number [A3](FEATURE-ROADMAP.md#-a3-extraction-at-the-retrieval-boundary)
-asks for -- but as a **controlled** rebuild rather than a second independent
+The "after" number A3 (shipped, #327) asked for -- but as a **controlled**
+rebuild rather than a second independent
 run, because two different judges on the same 45 candidates would confound
 the field contract with keep-rate and prose-length choices that have
 nothing to do with A2. One judge (this one), the same 42 distinct
@@ -894,9 +894,9 @@ is the literal default-call reconstruction, stated as such, not a
 correction of the earlier figure.
 
 **What the boundary still removes, independent of any character count.**
-[A3](FEATURE-ROADMAP.md#-a3-extraction-at-the-retrieval-boundary)'s point was
-never the packet's size on its own -- it is that the packet returned across
-the subagent boundary now carries no raw retrieval window at all, only
+A3's point was never the packet's size on its own -- it is that the
+packet returned across the subagent boundary now carries no raw
+retrieval window at all, only
 `claim:` lines written in the judge's own words plus a `quote:` span where
 one was deliberately captured. *Asserted*, in ["Measured, derived, and
 asserted"](#-measured-derived-and-asserted)'s sense: this run's own

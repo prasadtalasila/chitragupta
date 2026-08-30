@@ -1,6 +1,11 @@
 # 🧠 B4: cross-encoder reranking, and where it sits
 
-Status: **plan.** Written 2026-08-26, for issue 380.
+Status: **shipped**, by
+[PR #418](https://github.com/prasadtalasila/chitragupta/pull/418),
+merged 2026-08-26. Built as designed below -- rerank before the cap,
+off by default, `ms-marco-MiniLM-L6-v2` -- with no deviations.
+
+Written 2026-08-26, for issue 380.
 
 Issue #380 asks for a cross-encoder between `embed_index.search()`'s
 over-fetch and its per-citekey cap, and says the position is the one

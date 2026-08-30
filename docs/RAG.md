@@ -485,9 +485,10 @@ write in a single context, which is `simple_summarize`'s shape with a
 human-sized context window instead of a token budget: nothing truncates,
 but nothing checks either. No genre currently verifies that the citekeys
 it was handed are the citekeys it used --
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s A3 and B2 are the nearest
-existing items, and the union invariant above is the cheap deterministic
-part neither of them names.
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C5 is the item that names
+this exact gap, the union invariant above, and remains unbuilt; A3 and
+B2 addressed adjacent context-leak and synthesis problems and have
+since shipped.
 
 ## ✅ Stage 10: citation and verification
 

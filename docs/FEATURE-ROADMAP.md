@@ -1,7 +1,7 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
 Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
-**Fourteen of the original twenty-one items have shipped and have been
+**Seventeen of the original twenty-one items have shipped and have been
 removed from this document** rather than marked as done -- so everything
 below is still outstanding, which is what makes the list usable.
 
@@ -9,7 +9,7 @@ below is still outstanding, which is what makes the list usable.
 That is this document's counterpart: the capability surface as built,
 pinned to the code by a test. This one is what *would* be built, and is
 allowed to age. Where a `Depends on` entry below names an item that is no
-longer here -- A2, B1, D1 -- that dependency has shipped and is satisfied;
+longer here -- A2, C1 -- that dependency has shipped and is satisfied;
 FEATURES.md describes it and `plans/` has how it was built.
 
 Drafts out of this pipeline carry too much of their sources' wording.
@@ -219,7 +219,7 @@ and an idea is inspiration by definition. Priced item by item:
 | A2 | Two prompt sentences | **~0.** They are generic ("summarize rather than copy"); house style differs anyway |
 | B1 | ~12 lines of dict-counting | **~0.** Already being rewritten -- keyed on citekey rather than title, and with the off-by-one fixed. Only the cap-then-truncate *ordering* has value, and that is an idea |
 | B2 | `prompts_w_references` | **Small.** Its citation mechanics are positional `[n]` against a flat blob, so a substantial rewrite was required regardless. What is lost is validated wording |
-| [B4](#-b4-cross-encoder-reranking) | "reranking code" | **~0.** The shipped reranker is one `compute_score` library call. Everything around it is dead code this roadmap already declines |
+| B4 | "reranking code" | **~0.** The shipped reranker is one `compute_score` library call. Everything around it is dead code this roadmap already declines |
 | D1 | Style guide + ~40 enumerated vetoes | **The whole delta.** ~1 PR |
 | [D4](#-d4-optional-vision-critique) | Loop shape + calibration clause | **~0.** Loop shape is architecture; the clause is two sentences |
 
@@ -328,8 +328,9 @@ Copied OpenScholar code inherits that rule -- and cannot be copied as
 `FlagEmbedding` and `spacy` at module top before any branch, loads a
 spaCy model at import that the module never uses, and reads
 `os.environ["S2_API_KEY"]` at module scope. Port the functions and the
-prompt strings; rewrite the imports. Of everything proposed here, only
-[B4](#-b4-cross-encoder-reranking) genuinely needs the ML stack.
+prompt strings; rewrite the imports. Of everything proposed here, none
+needs the ML stack -- B4, cross-encoder reranking, was the one item
+that did, and it shipped behind `enrich` per this rule.
 
 **4. Attribution is owed for the idea, not for the text.** Nothing is
 copied, so Apache-2.0 §4's notice obligations never attach --
@@ -370,7 +371,7 @@ built and withdrawn.
 ## 💧 Theme A: close the leak
 
 The highest-value theme, and the one the request is actually about.
-A1 is cheap and immediate; A2-A4 are the structural fix.
+A1-A4 have all shipped; what remains is the one half declined below.
 
 ### 🚫 A1b: auto-route findings into `agenda-reviser` -- declined
 
@@ -398,24 +399,6 @@ and the person decides whether to invoke the repair loop. That is one
 extra deliberate act, and it is the act the whole design is built
 around.
 
-### 🔎 A3: extraction at the retrieval boundary
-
-`survey-writer` step 2a already dispatches one subagent per sub-theme
-and already tells it to return "**only** the kept-evidence packet…
-never the raw candidates". The packet, however, still contains
-`support:` -- so raw windows reach the orchestrator anyway.
-
-With A2's fields defined, tighten the contract: the subagent returns
-`claim:` lines it wrote, plus `quote:` spans only where it judges a
-quotation genuinely warranted. **Raw retrieval windows then never enter
-the orchestrator's context at all.**
-
-This is also a token win, and [TOKENS.md](TOKENS.md) already measures
-this exact boundary at 2.45x, so the PR can report a real before/after
-number rather than an estimate.
-
-Size: S-M, mostly SKILL.md. Depends on: A2.
-
 ## 🧩 Theme B: make synthesis structural
 
 Theme A stops wording leaking. Theme B removes the *opportunity* by
@@ -430,38 +413,6 @@ citations, which makes it the rare stylistic feature that can be
 verified rather than trusted.
 
 Size: S. Depends on: nothing.
-
-### 🧠 B4: cross-encoder reranking
-
-**Shipped in 6.28.0, and one of its two claims did not survive
-measurement.** `chitragupta/enrich/embed_index.py` reranks the
-over-fetched passages before the per-citekey cap, behind
-`[enrich].rerank`, **off by default** --
-[docs/CORPUS-SEARCH.md](CORPUS-SEARCH.md) documents the stage order and
-`bench/RESULTS.md` (2026-08-26) the evidence.
-
-OpenScholar's `--ranking_ce` / `--reranker`. `retrieval.py`'s own
-docstring already anticipates the swap, and
-`chitragupta/enrich/embed_index.py` already has a matching
-`search(query, k)` shape. Better-ordered passages do mean the *right*
-passage sits higher -- recall@3 rose from 129 to 139 of 256 queries.
-
-**They do not mean fewer passages are needed, and this item no longer
-claims they do.** The earlier wording said the gain "compounds with B1"
-because fewer passages per source would make multi-source units
-reachable. Measured, source diversity does not move at all (3.590 ->
-3.574 distinct papers in a top-5), and the reason is structural: with a
-cap of 3 and `k` of 5 the count is bounded by the **cap**, not by the
-ordering. `embed_max_passages_per_source` and `k` are the levers for
-that; B4 is not one.
-
-Behind the `enrich` extra per constraint 3. Nothing is taken from
-upstream here in any case: what ships there is a single
-`compute_score` call against a library, and the surrounding machinery is
-the dead code this roadmap already declines. The work is choosing a
-cross-encoder and wiring it to the existing `search(query, k)` shape.
-
-Size: M-L. Depends on: B1.
 
 ### 🔁 B5: pre-gate self-feedback loop
 
@@ -510,20 +461,7 @@ Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 ## ✅ Theme C: verify faithful use
 
 Detection, after Theme A and B have reduced what there is to detect.
-All three are review-layer aids: advisory, exit 0, never gates.
-
-### 📖 C3: quotation and page integrity
-
-Given A2's `quote:` and A4's appendix, verify each quoted span appears
-verbatim in the cited source at the cited page. Deterministic, and
-`chitragupta/passages.py` already owns the quotable-paragraph/page
-ladder. Also §1.2.
-
-**Binary**, and deterministic -- a quoted span either appears at the
-cited page or does not -- so unlike C1 and C2 this one is a legitimate
-candidate for an unattended class. Carries R2 and R10.
-
-Size: M. Depends on: A2, A4.
+Both are review-layer aids: advisory, exit 0, never gates.
 
 ### 🔢 C4: a numeral in prose is a claim too
 
@@ -711,7 +649,10 @@ checklist again come back clean where a reader disagrees, that is new
 evidence and reopens the question; this run is not a permanent proof,
 only the specific answer on the specific corpus asked about.
 
-Size: M. Depends on: D1-D3, and evidence that they left a real gap.
+Size: none. Depends on: nothing. Revisitable only on new evidence -- a
+future book whose figures are denser than this corpus's, where
+`review figure` and this section's checklist come back clean but a
+reader still disagrees.
 
 ### 📏 D5: two checks `review figure` could compute from source
 
@@ -871,10 +812,14 @@ someone reading step 7 and assuming it is outstanding.
 
 ## 🏷 Theme G: topic modelling
 
-**The one theme here with shipped work in it**, which is why it reads
-differently from A-F above. Those propose; this one records what landed
-in [#287](https://github.com/prasadtalasila/chitragupta/pull/287) and
-what it left undone. The evidence -- which published finding argued for
+**The one theme here that is entirely built**, which is why it reads
+differently from A-F above: not a list of what to build next, but a
+record of what landed and the evidence behind each decision.
+[#287](https://github.com/prasadtalasila/chitragupta/pull/287) shipped
+the mechanism, and G1-G4 -- issues
+[#297](https://github.com/prasadtalasila/chitragupta/issues/297)-[#300](https://github.com/prasadtalasila/chitragupta/issues/300),
+closed 2026-08-21 -- closed every gap it left open. Nothing in Theme G
+remains outstanding. The evidence -- which published finding argued for
 each decision, and which measurement on this project's own corpus
 confirmed or contradicted it -- is in
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md); the numbers are in
@@ -893,20 +838,13 @@ this.
 | Unlimited seed lists | Seeds never enter the clustering, so naming topics costs no discovered ones. Routing nine phrases through BERTopic's zero-shot mode had cost 28 emergent topics (81 down to 53) |
 | Per-phrase ranking | Each phrase ranked against *its own* scores. `Standards` peaked at 0.295 corpus-wide while `Digital Twin` had a median of 0.338, so one absolute cutoff returned nothing for the first and half the corpus for the second |
 | Many-to-many matching | A paper is listed under every seed topic it matched, not only its closest |
-| Emergent memberships | Every topic a document belongs to, from HDBSCAN's own soft clustering -- the only one of five mechanisms measured that agrees with the clustering it describes |
-| Configurable depth | `topic_min_cluster_size`, `topic_min_samples`, `topic_neighbors`. Their hardcoded predecessors saturated at 20 documents, capping any corpus at ~13 topics |
+| Emergent memberships | Descriptor-based: cosine to each topic's own corpus-mean-centred centroid, not HDBSCAN's soft-clustering probabilities -- 4.64 topics/paper and 92% plural in the shipped configuration, against 1.64 and 25% before ([#298](https://github.com/prasadtalasila/chitragupta/issues/298)) |
+| Domain-term labels | Topic names come from the corpus's own recognised terms rather than raw frequent words, with every bibliography surname (1,277 of them) excluded from the label vocabulary -- fixes both stopword names (`0_the_and_of_to`) and author-name names (`werner kritzinger, fraunhofer austria`, present in 55 documents' body text) ([#297](https://github.com/prasadtalasila/chitragupta/issues/297)) |
+| Configurable depth, stability-checked | `topic_min_cluster_size`, `topic_min_samples`, `topic_neighbors`. Their hardcoded predecessors saturated at 20 documents, capping any corpus at ~13 topics, and scored an adjusted Rand index of 0.14 under bootstrap resampling -- barely more stable than chance. The shipped defaults score 0.80 ([#300](https://github.com/prasadtalasila/chitragupta/issues/300)) |
 | Whole-document embedding | Chunk-and-pool rather than truncate: a 512 word-piece limit against 22,000-token papers was embedding ~2% of each |
 | Content preprocessing | Reference lists and boilerplate dropped before chunking. Nothing else -- no stop-word or low-frequency filtering, which would destroy the domain terms the corpus is discriminated by |
 | A reader | `chitragupta corpus topics`, tier 1: no venv, no GPU. Ends with the papers no seed matched |
-
-### ⏭ Next
-
-| # | Item | Size | Why | Depends on |
-| --- | --- | --- | --- | --- |
-| G1 | [#297](https://github.com/prasadtalasila/chitragupta/issues/297) domain-term topic labels | M | Labels are stopwords (`0_the_and_of_to`) or author names -- `werner kritzinger, fraunhofer austria` is a top-three topic. Dropping bibliographies did **not** fix it: the name is in 55 documents' body text. The cluster is right; only the label is wrong | -- |
-| G2 | [#298](https://github.com/prasadtalasila/chitragupta/issues/298) descriptor-based membership | M | 1.64 topics/paper and 25% plural, against 5.03 and 92% for the descriptor mechanism measured beside it. HDBSCAN soft membership answers "which density region", which is near-binary for core points | -- |
-| G3 | [#299](https://github.com/prasadtalasila/chitragupta/issues/299) converged topic set | M | Seed and emergent topics are two artefacts describing one corpus, joined by nobody | G2 |
-| G4 | [#300](https://github.com/prasadtalasila/chitragupta/issues/300) stability validation | M | Nothing measures whether a topic set reproduces. One swept setting moved from 13 topics to 5 across an upstream change, with `random_state=42` throughout | -- |
+| A converged topic set | `content/topic_set.json` joins seed and emergent topics into one artefact -- an emergent topic within `topic_converge_similarity` of a seed phrase is renamed by it rather than listed beside it, with the closest match winning each side of the collision ([#299](https://github.com/prasadtalasila/chitragupta/issues/299)) |
 
 ### 🚫 What Theme G is deliberately not doing
 
@@ -923,7 +861,7 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Fourteen items have shipped and have
+**Only unbuilt work appears here.** Seventeen items have shipped and have
 been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
@@ -932,20 +870,17 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
-| 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 5 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 6 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 7 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 8 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 9 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
-| 10 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
-| 11 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 1 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
+| 2 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 3 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 4 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 5 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 6 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
+| 7 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
+Skipped by evidence: [D4](#-d4-optional-vision-critique).
 
 **What changed from the first draft of this document, and why it
 matters.** A1 was PR #1 and "Depends on: nothing". Reading the
@@ -958,8 +893,7 @@ argument.** Check a new proposal against both before costing it.
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
 design is genuinely underdetermined. Of the items still listed here,
-[B4](#-b4-cross-encoder-reranking), [B5](#-b5-pre-gate-self-feedback-loop)
-and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's
+[B5](#-b5-pre-gate-self-feedback-loop) has one, and Theme E's
 remaining item, [E4](#-e4-the-draft-is-the-query), shares
 `plans/outline-driven-drafting-and-manual-edits.md`. Several more
 sit there for items that have since shipped, kept as worked examples of
@@ -973,10 +907,9 @@ so explicitly, and the entry is the ticket rather than a second
 specification -- so a design decision recorded in a plan file is not
 repeated here, and the two cannot drift.
 
-**The leading PRs need no decision and no new dependency.** A3 closes
-the context leak that Theme A's diagnosis is about; B3 is a one-session
-stylistic change with a checkable count. Neither needs the amendment, a
-new model, or a decision from anyone.
+**The leading PR needs no decision and no new dependency.** B3 is a
+one-session stylistic change with a checkable count, and needs neither
+the amendment, a new model, nor a decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
