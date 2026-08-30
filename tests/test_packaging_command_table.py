@@ -33,6 +33,7 @@ DRAFT_SUBCOMMANDS = {
         "init",
         "status",
         "mark-revision",
+        "stamp",
         "sections",
         "brief",
         "set-language",

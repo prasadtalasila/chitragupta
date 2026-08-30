@@ -27,6 +27,7 @@ from chitragupta.dossier import (
     known_citekeys,
     recorded_corpus,
 )
+from chitragupta.dossier._draft_fingerprint import Staleness, staleness, status_lines
 from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._drift_report import _cmd_status_all
 from chitragupta.dossier._retrieval import RevisionCost, retrieval_cost_by_revision
@@ -53,6 +54,7 @@ class Status:
     retrieval_calls: int = 0
     retrieval_chars: int = 0
     revisions: list[RevisionCost] = field(default_factory=list)
+    fingerprint: Staleness | None = None
 
     @property
     def drifted(self) -> bool:
@@ -112,6 +114,7 @@ def status(draft_or_dossier: Path) -> Status:
 
     if draft is not None:
         report.outline = sections(draft.read_text(encoding="utf-8"))
+        report.fingerprint = staleness(draft)
     # One parse of retrieval.md, not two: retrieval_cost_by_revision's
     # segments already exclude mark_revision's boundary rows the same
     # way retrieval_cost does, so the lifetime totals are just their sum
@@ -155,6 +158,10 @@ def _cmd_status(args: argparse.Namespace) -> int:
     _print_status_retrieval(report)
     print()
     _print_status_drift(report)
+    if report.fingerprint is not None:
+        print()
+        for line in status_lines(report.fingerprint):
+            print(line)
     return 0
 
 

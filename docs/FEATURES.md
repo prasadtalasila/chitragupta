@@ -226,12 +226,16 @@ usually the model resuming a draft weeks later, not a person. That is the
 clean split from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
-`status`, `sections`, `brief`, `check-evidence`, `list`, and `export`/
-`restore` for backup. **`status` is the one to know** -- it recomputes
-the corpus fingerprint the dossier recorded, and if the corpus has moved
-it names the citekeys that appear nowhere in the dossier, neither kept
-nor rejected. That distinguishes "new papers exist" from "a paper this
-draft cites has left the corpus", which want opposite responses.
+`status`, `stamp`, `sections`, `brief`, `check-evidence`, `list`, and
+`export`/`restore` for backup. **`status` is the one to know** -- it
+recomputes the corpus fingerprint the dossier recorded, and if the corpus
+has moved it names the citekeys that appear nowhere in the dossier,
+neither kept nor rejected. That distinguishes "new papers exist" from "a
+paper this draft cites has left the corpus", which want opposite
+responses. It also recomputes a **draft fingerprint** the same way,
+reporting `CHANGED since last stamp` when a hand edit has moved the draft
+itself since `stamp` last ran -- see [DOSSIER.md](DOSSIER.md)'s "The
+draft fingerprint".
 
 ### 📖 Evidence: `claim:` and `quote:`
 

@@ -810,28 +810,6 @@ one survey does not earn a second gate (constraint 2).
 
 Size: L. Depends on: E1.
 
-### 🖉 E3: notice that the draft moved
-
-`scope.md` fingerprints the corpus; nothing fingerprints the draft. After
-a hand edit, `sections.md`, `evidence.md` and `math.md` describe a
-document that no longer exists and `draft-reviser` reads them as current.
-The book track already detects this for a unit -- `unit status` reports
-`stale: draft changed since accepted` -- so reuse the vocabulary.
-
-> ⚠ **Not `dossier.digest()`.** That is order-independent over a *set of
-> citekeys* and is meaningless over prose. The text digest is in
-> `chitragupta/spec/_cli.py`.
-
-A digest says only *that* it moved, so `status` also reports four
-staleness classes: a citekey in the draft with no evidence block (drift
-reporting is computed from the dossier, **not** the draft body, so a
-hand-added citation is otherwise invisible forever), an evidence block
-whose citation was deleted, a `sections.md` that no longer matches the
-headings, and a desynced `math.md`. `draft-reviser` offers each repair
-one at a time -- never applies unasked, never blocks.
-
-Size: M. Depends on: nothing.
-
 ### 🔁 E4: the draft is the query
 
 ITER-RETGEN (Shao et al., Findings of EMNLP 2023) forms its next
@@ -871,7 +849,9 @@ human-supplied first draft largely sidesteps it. Note also the authors'
 own limitation: they did not test long-form generation, which is the only
 thing this pipeline does.
 
-Size: M. Depends on: E3 (a draft fingerprint is what says the query moved).
+Size: M. Depends on: the draft fingerprint (#454, [docs/DOSSIER.md](DOSSIER.md)'s
+"The draft fingerprint") -- shipped; a draft fingerprint is what says the
+query moved.
 
 ### 🧾 C5: the citekeys out must be the citekeys in
 
@@ -984,7 +964,7 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Twelve items have shipped and have
+**Only unbuilt work appears here.** Thirteen items have shipped and have
 been removed from this document rather than marked -- what they became is
 described in [FEATURES.md](FEATURES.md), and how each was built is in the
 PR that closed it and in `plans/`. A roadmap that accumulates its own
@@ -995,17 +975,16 @@ is for.
 | --- | --- | --- | --- | --- |
 | 1 | [A3](#-a3-extraction-at-the-retrieval-boundary) extraction at retrieval | A | S-M | A2 |
 | 2 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 3 | [E3](#-e3-notice-that-the-draft-moved) notice the draft moved | E | M | -- |
-| 4 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
-| 5 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
-| 6 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
-| 7 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 8 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 9 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 10 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 11 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | E3 |
-| 12 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
-| 13 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
+| 3 | [B4](#-b4-cross-encoder-reranking) cross-encoder reranking | B | M-L | B1 |
+| 4 | [C3](#-c3-quotation-and-page-integrity) quotation integrity | C | M | A2, A4 |
+| 5 | [E2](#-e2-an-outline-the-human-writes) outline the human writes | E | L | E1 |
+| 6 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
+| 7 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 8 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 9 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 10 | [E4](#-e4-the-draft-is-the-query) the draft is the query | E | M | the draft fingerprint (shipped) |
+| 11 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 12 | [D4](#-d4-optional-vision-critique) vision critique | D | M | D1-D3 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -1022,8 +1001,10 @@ argument.** Check a new proposal against both before costing it.
 exists.** `plans/` holds the implementation plan for a roadmap item whose
 design is genuinely underdetermined. Of the items still listed here,
 [B4](#-b4-cross-encoder-reranking), [B5](#-b5-pre-gate-self-feedback-loop)
-and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's three
-share `plans/outline-driven-drafting-and-manual-edits.md`. Several more
+and [C3](#-c3-quotation-and-page-integrity) have one, and Theme E's
+remaining two ([E2](#-e2-an-outline-the-human-writes),
+[E4](#-e4-the-draft-is-the-query)) share
+`plans/outline-driven-drafting-and-manual-edits.md`. Several more
 sit there for items that have since shipped, kept as worked examples of
 the convention. Most items need none: the entry above already names the
 files, the size and the dependencies, and for a mechanical change that is
@@ -1037,8 +1018,7 @@ repeated here, and the two cannot drift.
 
 **The leading PRs need no decision and no new dependency.** A3 closes
 the context leak that Theme A's diagnosis is about; B3 is a one-session
-stylistic change with a checkable count; E3 makes a hand-edited draft
-visible to the pipeline at all. None of the three needs the amendment, a
+stylistic change with a checkable count. Neither needs the amendment, a
 new model, or a decision from anyone.
 
 ## 🚫 What is deliberately not proposed

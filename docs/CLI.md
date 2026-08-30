@@ -766,6 +766,7 @@ material is gone rather than mislaid.
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
+| `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit (#454). Run after `gate` passes, never before |
 | `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
@@ -799,6 +800,10 @@ chitragupta draft dossier sections content/drafts/survey.md --citekeys --write
 
 # Before a revision session's first retrieval call
 chitragupta draft dossier mark-revision content/drafts/survey.md --label "shorten intro"
+
+# After `draft gate` passes, so `status` can tell a later hand edit apart
+# from an unchanged draft
+chitragupta draft dossier stamp content/drafts/survey.md
 
 # New acronyms this draft's glossary or prose defines; --apply writes them to
 # your [style].acronyms file (see docs/CONFIG.md)
