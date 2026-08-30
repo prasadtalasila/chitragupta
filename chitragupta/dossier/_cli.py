@@ -25,6 +25,7 @@ from chitragupta.dossier._brief import _cmd_brief
 from chitragupta.dossier._acronyms import _cmd_acronyms_suggest
 from chitragupta.dossier import GENRES, DossierError, _cmd_list
 from chitragupta.dossier._create import _cmd_init
+from chitragupta.dossier._draft_fingerprint import _cmd_stamp
 from chitragupta.dossier._evidence_check import _cmd_check_evidence
 from chitragupta.dossier._language import _cmd_set_language
 from chitragupta.dossier._retrieval import _cmd_mark_revision
@@ -63,6 +64,16 @@ def _add_mark_revision_parser(sub) -> None:
         "--label", default="", help="Short name for this revision (the date is already recorded)"
     )
     p_mark_revision.set_defaults(func=_cmd_mark_revision)
+
+
+def _add_stamp_parser(sub) -> None:
+    p_stamp = sub.add_parser(
+        "stamp",
+        help="Record the draft's current text digest in scope.md, so `status` can "
+        "tell a later hand edit from an unchanged draft",
+    )
+    p_stamp.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_stamp.set_defaults(func=_cmd_stamp)
 
 
 def _add_sections_parser(sub) -> None:
@@ -176,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     _add_init_parser(sub)
     _add_status_parser(sub)
     _add_mark_revision_parser(sub)
+    _add_stamp_parser(sub)
     _add_sections_parser(sub)
     _add_brief_parser(sub)
     _add_set_language_parser(sub)

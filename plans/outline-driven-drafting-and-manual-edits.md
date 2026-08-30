@@ -1,6 +1,7 @@
 # 🧭 Outline-driven drafting, and picking a hand-edited draft back up
 
-Status: **designed, unbuilt, unapproved.** Written 2026-08-28.
+Status: **PR 3 built** (#462, PR pending merge). PR 1 and PR 2 remain
+**designed, unbuilt, unapproved.** Written 2026-08-28.
 
 Two workflows the drafting layer does not support today:
 
@@ -422,6 +423,17 @@ that `retrieval.md` records *"not the collection (#254)"*, which is stale
 against the code; a schema change to that file corrects that prose too.
 
 ## ▶ PR 3: notice that the draft moved
+
+**Built by #462.** What shipped matches this section with two choices
+made concrete: `dossier status` reports `CHANGED since last stamp` (not
+this section's `stale: draft changed since accepted` wording, to read
+naturally beside the `unchanged since last stamp` case), and stamping is
+a new `dossier stamp <draft>` verb rather than a bare digest write,
+because a skill cannot hand-compute a sha256 the way it hand-copies the
+corpus digest string in re-grounding mode. The four staleness classes,
+the "not `dossier.digest()`" choice below, and the gate-then-stamp
+ordering are unchanged from this design. See docs/DOSSIER.md's "The
+draft fingerprint" for the shipped shape.
 
 `scope.md` gains a **draft fingerprint** beside its corpus fingerprint,
 and `dossier status` re-derives it and reports

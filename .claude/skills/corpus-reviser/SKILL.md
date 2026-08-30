@@ -179,6 +179,11 @@ turn a wide pass into the re-run this skill exists to avoid.
   pass gets to skip because the rewrite was wide.
 - **The gate is the exit.** Never present a draft that hasn't passed
   `python -m chitragupta.draft gate`.
+- **Re-stamp the draft fingerprint once the gate passes** (#454): `python
+  -m chitragupta.draft dossier stamp content/drafts/<path>`. A wide pass
+  is the one most likely to have touched every section, so skipping this
+  is also the surest way to leave the next revision reading `CHANGED`
+  against a baseline this pass already accounted for.
 - **Run the prose check** -- `python -m chitragupta.draft style
   content/drafts/<path>` -- after the gate and before presenting.
   `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,

@@ -35,7 +35,7 @@ pipeline. Genre: {genre}.
 
 | File | What it holds |
 |---|---|
-| `scope.md` | reader, dialect, what the draft covers and excludes, glossary, corpus fingerprint |
+| `scope.md` | reader, dialect, what the draft covers/excludes, glossary, corpus/draft digests |
 | `evidence.md` | each citekey kept, why, and the supporting quote or paraphrase |
 | `rejected.md` | candidates retrieved and turned down, with the reason |
 | `sections.md` | section heading -> the citekeys cited under it |
@@ -79,6 +79,7 @@ settled with the reader; docs/WRITING-STANDARDS.md section 8
 - draft: {draft_relpath(draft)}
 - created: {date.today().isoformat()}
 {corpus_line}
+- draft digest: not recorded (run `dossier stamp` once the draft is ready)
 
 ## Reader
 

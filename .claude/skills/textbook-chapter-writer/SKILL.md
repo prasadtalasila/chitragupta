@@ -662,7 +662,15 @@ candidate for the chapter.
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
-18. **Present the draft** plus a short note on what it assumes as prior
+18. **Stamp the draft fingerprint, then present.** Nothing edits the
+    chapter's text after this point, so this is where `dossier status`
+    records the baseline a later hand edit is compared against (#454):
+
+    ```bash
+    python -m chitragupta.draft dossier stamp content/drafts/<slug>.md
+    ```
+
+    Then **present the draft** plus a short note on what it assumes as prior
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf` if
     they succeeded, or the warning if not). Tell the user where the dossier

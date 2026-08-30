@@ -340,12 +340,16 @@ branches on the contents, not on the status code.
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
 
-1. `python -m chitragupta.draft dossier status <draft>` -- what is on disk, and
-   has
-   the corpus moved? Then `python -m chitragupta.draft dossier mark-revision <draft>`,
-   before any retrieval call, so `retrieval.md` can tell this revision's
-   cost apart from the last one -- its rows otherwise carry only a date,
-   and two revisions on the same day would merge into one figure.
+1. `python -m chitragupta.draft dossier status <draft>` -- what is on disk,
+   has the corpus moved, and has the *draft* moved since the last
+   `dossier stamp` (#454, FEATURE-ROADMAP.md's E3 -- "The draft
+   fingerprint" in [docs/DOSSIER.md](DOSSIER.md))? A changed draft
+   fingerprint surfaces up to four findings, offered to the user one at a
+   time rather than applied. Then `python -m chitragupta.draft dossier
+   mark-revision <draft>`, before any retrieval call, so `retrieval.md`
+   can tell this revision's cost apart from the last one -- its rows
+   otherwise carry only a date, and two revisions on the same day would
+   merge into one figure.
 2. Read `scope.md` and `steering.md`. These bound what the revision may
    change: a request that contradicts the recorded scope is a scope
    change, and gets said out loud rather than silently applied.
@@ -356,7 +360,10 @@ loop:
    `rejected.md` first so the same candidates aren't re-judged.
 6. Update `evidence.md` / `rejected.md` / `sections.md` for whatever
    actually changed, append to `revisions.md` and `steering.md`.
-7. Re-gate (`python -m chitragupta.draft gate`), rebuild references, re-render.
+7. Re-gate (`python -m chitragupta.draft gate`), rebuild references,
+   re-render, then `python -m chitragupta.draft dossier stamp <draft>` --
+   after the gate passes, so a draft that fails it is never stamped as
+   accepted.
 
 Steps 3 and 4 are where the output-token saving lives: a scoped edit
 inside one section replaces an estimated ~4.6k-token whole-file rewrite.

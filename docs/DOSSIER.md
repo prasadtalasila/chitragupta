@@ -58,7 +58,7 @@ were missing entirely are the two that matter most.
 
 | File | What it holds | Status before this |
 | --- | --- | --- |
-| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint | in the transcript only |
+| `scope.md` | genre, reader, dialect (`language:`), what the draft covers and excludes, glossary, corpus fingerprint, draft fingerprint | in the transcript only |
 | `evidence.md` | each kept citekey, why it was kept, and its claim | **specified** (survey-writer step 2) but written as JSON |
 | `rejected.md` | candidates retrieved and turned down, with the reason | **nowhere** |
 | `sections.md` | section heading -> the citekeys cited under it, and while a run is still going, the ones it plans to cite | **specified** (survey-writer step 8) but written as JSON |
@@ -336,3 +336,66 @@ The fingerprint is written once, by `init`, and is not maintained by any
 command -- the only thing that rewrites it is a re-grounding pass, which
 re-stamps it as the record that the draft was brought back into line with
 that corpus.
+
+## 🧭 The draft fingerprint (#454, FEATURE-ROADMAP.md's E3)
+
+The corpus fingerprint above answers "has the corpus moved since this
+draft was written?" Nothing answered the same question about the draft
+itself, so a hand edit left `sections.md`, `evidence.md` and `math.md`
+describing a document that no longer existed, silently. `scope.md` now
+also carries a text digest of the draft:
+
+```text
+- draft digest: `a1b2c3d4e5f6`
+```
+
+or, before the first stamp:
+
+```text
+- draft digest: not recorded (run `dossier stamp` once the draft is ready)
+```
+
+Unlike the corpus fingerprint, nothing writes this at `init` time --
+`init` often runs before the draft is finished, and stamping a
+half-written draft would make every dossier read as changed on its first
+real `status`. Each of the five genre skills stamps at its own finishing
+step, and `draft-reviser`/`corpus-reviser` re-stamp after their own edits
+-- in every case after `python -m chitragupta.draft gate` passes, never
+before:
+
+```bash
+python -m chitragupta.draft dossier stamp content/drafts/<path>
+```
+
+`agenda-reviser` is the deliberate exception: it may not touch `scope.md`
+at all, so a repair it makes leaves the fingerprint stale on purpose --
+`dossier status` then reads `CHANGED since last stamp`, the honest signal
+that an automated pass, not a person's own revision session, touched the
+draft since anyone last confirmed it.
+
+`python -m chitragupta.draft dossier status` recomputes the digest and
+reports `unchanged since last stamp` or `CHANGED since last stamp`. A
+changed digest by itself only says *that* the draft moved -- most edits
+it catches are prose a reviser has no reason to act on. Only once it has
+changed does `status` also check four more specific classes, each
+already derivable from the dossier and the draft:
+
+| Class | What it means |
+| --- | --- |
+| a citekey cited in the draft with no `evidence.md` block | drift reporting reads the dossier, not the draft body, so a hand-added citation is otherwise invisible to it forever |
+| an `evidence.md` block whose citekey is no longer cited | the reverse: the citation was removed by hand |
+| a heading with no row in `sections.md` | the draft's own outline moved |
+| a `sections.md` row with no matching heading | the same drift, read the other way |
+| a `math.md` row appearing nowhere in the draft | the orphan case `render`'s own `[math]` warnings already report -- the tell that a revision reworded or deleted the equation the row belonged to |
+
+`draft-reviser` offers each finding to the user one at a time and acts
+only on what they agree to -- **never applies a repair unasked, and never
+blocks the revision on one going unanswered.** A digest that has never
+been stamped reports `not recorded` rather than `CHANGED`; that is not
+drift to chase, just a draft nobody has stamped yet.
+
+Reuses the same text digest `chitragupta/spec/_cli.py`'s `spec sign`
+computes over a book's outline (`chitragupta.spec.digest`, a plain
+sha256[:12] of the text) -- not `dossier.digest`, the corpus
+fingerprint's function, which is order-independent over a *set of
+citekeys* and would not move at all for a reworded sentence.

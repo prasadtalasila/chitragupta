@@ -26,6 +26,7 @@ from chitragupta.dossier import (
     _brief,
     _citekeys,
     _create,
+    _draft_fingerprint,
     _drift,
     _evidence_check,
     _retrieval,
@@ -3076,3 +3077,210 @@ class TestCheckEvidenceCommand:
     def test_missing_dossier_is_refused_not_crashed(self, draft, capsys):
         assert dossier.main(["check-evidence", str(draft)]) == 1
         assert "init" in capsys.readouterr().out
+
+
+class TestRecordedDraftDigest:
+    """`scope.md`'s `- draft digest:` line -- #454, FEATURE-ROADMAP.md's E3."""
+
+    def test_a_freshly_initialised_dossier_has_none_recorded(self, draft):
+        dossier.init(draft, "survey")
+        assert _draft_fingerprint.recorded_draft_digest(dossier.dossier_dir(draft)) is None
+
+    def test_no_dossier_at_all_has_none_recorded(self, draft):
+        assert _draft_fingerprint.recorded_draft_digest(dossier.dossier_dir(draft)) is None
+
+    def test_a_hand_written_line_outside_the_recognised_shape_is_none(self, draft):
+        dossier.init(draft, "survey")
+        scope = dossier.dossier_dir(draft) / "scope.md"
+        scope.write_text(scope.read_text(encoding="utf-8") + "\n- draft digest: some day\n")
+        assert _draft_fingerprint.recorded_draft_digest(dossier.dossier_dir(draft)) is None
+
+
+class TestStamp:
+    def test_records_the_drafts_current_digest(self, draft):
+        dossier.init(draft, "survey")
+        _draft_fingerprint.stamp(draft)
+        target = dossier.dossier_dir(draft)
+        from chitragupta.spec import digest as text_digest
+
+        assert _draft_fingerprint.recorded_draft_digest(target) == text_digest(
+            draft.read_text(encoding="utf-8")
+        )
+
+    def test_rewrites_the_line_in_place_rather_than_duplicating_it(self, draft):
+        dossier.init(draft, "survey")
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nOne more paragraph.\n")
+        _draft_fingerprint.stamp(draft)
+        scope_text = (dossier.dossier_dir(draft) / "scope.md").read_text(encoding="utf-8")
+        assert scope_text.count("draft digest:") == 1
+
+    def test_appends_the_line_to_a_dossier_that_predates_this_field(self, draft):
+        dossier.init(draft, "survey")
+        scope = dossier.dossier_dir(draft) / "scope.md"
+        scope.write_text(scope.read_text(encoding="utf-8").replace("- draft digest:", "- x:"))
+        _draft_fingerprint.stamp(draft)
+        assert _draft_fingerprint.recorded_draft_digest(dossier.dossier_dir(draft)) is not None
+
+    def test_refuses_a_draft_with_no_dossier(self, draft):
+        with pytest.raises(FileNotFoundError):
+            _draft_fingerprint.stamp(draft)
+
+    def test_refuses_a_draft_file_that_does_not_exist(self, draft):
+        """A dossier that outlived its draft (the draft was moved or
+        deleted) must not be misreported as "no dossier" -- the two want
+        different fixes, and `stamp()` is the one place a caller could
+        otherwise silently write a fingerprint for a file that isn't
+        there to fingerprint."""
+        dossier.init(draft, "survey")
+        draft.unlink()
+        with pytest.raises(FileNotFoundError, match="No draft at"):
+            _draft_fingerprint.stamp(draft)
+
+
+class TestDraftStaleness:
+    """The four classes are computed only once the fingerprint says the
+    draft moved -- gated so `status` stays quiet on a healthy, unedited
+    draft rather than reporting them unconditionally on every run."""
+
+    def test_never_stamped_reports_no_findings(self, draft):
+        dossier.init(draft, "survey")
+        report = _draft_fingerprint.staleness(draft)
+        assert report.recorded_digest is None
+        assert not report.changed
+        assert report.missing_evidence == []
+
+    def test_unchanged_since_stamp_reports_no_findings(self, draft):
+        dossier.init(draft, "survey")
+        _draft_fingerprint.stamp(draft)
+        report = _draft_fingerprint.staleness(draft)
+        assert not report.changed
+        assert report.missing_evidence == []
+
+    def test_a_hand_added_citation_with_no_evidence_block_is_missing(self, draft):
+        dossier.init(draft, "survey")
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nNew claim [@new_paper_2024].\n")
+        report = _draft_fingerprint.staleness(draft)
+        assert report.changed
+        assert report.missing_evidence == ["new_paper_2024"]
+        assert report.orphaned_evidence == []
+
+    def test_a_deleted_citation_leaves_its_evidence_block_orphaned(self, draft):
+        target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
+        draft.write_text(
+            draft.read_text(encoding="utf-8")
+            + "\n[@ferko_architecting_2022] [@talasila_composable_2025]\n"
+        )
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(
+            draft.read_text(encoding="utf-8").replace(
+                "[@ferko_architecting_2022] [@talasila_composable_2025]",
+                "[@talasila_composable_2025]",
+            )
+        )
+        report = _draft_fingerprint.staleness(draft)
+        assert report.orphaned_evidence == ["ferko_architecting_2022"]
+        assert report.missing_evidence == []
+        assert target == dossier.dossier_dir(draft)
+
+    def test_a_renamed_heading_is_both_new_and_stale(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "sections.md").write_text(
+            _sections.sections_markdown(draft.read_text(encoding="utf-8")), encoding="utf-8"
+        )
+        _draft_fingerprint.stamp(draft)
+        text = draft.read_text(encoding="utf-8").replace("## 1. First", "## 1. Renamed")
+        draft.write_text(text)
+        report = _draft_fingerprint.staleness(draft)
+        assert report.new_headings == ["1. Renamed"]
+        assert report.stale_section_rows == ["1. First"]
+
+    def test_an_orphaned_math_row_is_reported(self, draft):
+        dossier.init(draft, "survey")
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nSpeed `k = 4`.\n")
+        (dossier.dossier_dir(draft) / "math.md").write_text("| `k = 4` | `k = 4` |\n")
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(draft.read_text(encoding="utf-8").replace("Speed `k = 4`.\n", ""))
+        report = _draft_fingerprint.staleness(draft)
+        assert len(report.desynced_math) == 1
+        assert "appears nowhere in the draft" in report.desynced_math[0]
+
+    def test_a_math_gap_is_not_reported_as_desync(self, draft):
+        """A span with no row at all is a *gap*, not a desync -- it never
+        had a row to fall out of sync with. Conflating the two would
+        misreport ordinary unmapped mathematics as "the draft moved"."""
+        dossier.init(draft, "survey")
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nSpeed `k = 4`.\n")
+        (dossier.dossier_dir(draft) / "math.md").write_text("| `k = 4` | `k = 4` |\n")
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nRate `tau = 2`.\n")
+        report = _draft_fingerprint.staleness(draft)
+        assert report.desynced_math == []
+
+
+class TestStatusLines:
+    def test_never_recorded(self, draft):
+        dossier.init(draft, "survey")
+        report = _draft_fingerprint.staleness(draft)
+        lines = _draft_fingerprint.status_lines(report)
+        assert "not recorded" in lines[1]
+
+    def test_unchanged(self, draft):
+        dossier.init(draft, "survey")
+        _draft_fingerprint.stamp(draft)
+        report = _draft_fingerprint.staleness(draft)
+        lines = _draft_fingerprint.status_lines(report)
+        assert "unchanged since last stamp" in lines[1]
+
+    def test_changed_with_no_specific_findings_still_says_changed(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "sections.md").write_text(
+            _sections.sections_markdown(draft.read_text(encoding="utf-8")), encoding="utf-8"
+        )
+        _draft_fingerprint.stamp(draft)
+        draft.write_text(draft.read_text(encoding="utf-8") + "\nA tightened sentence.\n")
+        report = _draft_fingerprint.staleness(draft)
+        lines = _draft_fingerprint.status_lines(report)
+        assert any("CHANGED since last stamp" in line for line in lines)
+        assert len(lines) == 2
+
+    def test_every_finding_class_gets_its_own_line(self, draft):
+        report = _draft_fingerprint.Staleness(
+            recorded_digest="a" * 12,
+            current_digest="b" * 12,
+            missing_evidence=["new_paper_2024"],
+            orphaned_evidence=["old_paper_2020"],
+            new_headings=["1. Renamed"],
+            stale_section_rows=["1. First"],
+            desynced_math=["`k = 4` has a row in math.md but appears nowhere in the draft"],
+        )
+        lines = "\n".join(_draft_fingerprint.status_lines(report))
+        assert "`new_paper_2024` is cited but has no evidence.md block" in lines
+        assert "`old_paper_2020` has an evidence.md block but is no longer cited" in lines
+        assert '"1. Renamed" is a heading with no row in sections.md' in lines
+        assert '"1. First" has a sections.md row but no matching heading' in lines
+        assert "appears nowhere in the draft" in lines
+
+
+class TestStampCLI:
+    def test_stamps_and_status_then_reports_unchanged(self, draft, capsys):
+        dossier.init(draft, "survey")
+        assert dossier.main(["stamp", str(draft)]) == 0
+        assert "stamped" in capsys.readouterr().out
+        dossier.main(["status", str(draft)])
+        assert "unchanged since last stamp" in capsys.readouterr().out
+
+    def test_missing_dossier_is_refused_not_crashed(self, draft, capsys):
+        assert dossier.main(["stamp", str(draft)]) == 1
+        assert "init" in capsys.readouterr().out
+
+    def test_a_missing_draft_is_reported_distinctly_from_a_missing_dossier(self, draft, capsys):
+        dossier.init(draft, "survey")
+        draft.unlink()
+        assert dossier.main(["stamp", str(draft)]) == 1
+        out = capsys.readouterr().out
+        assert "No such draft" in out
+        assert "init" not in out

@@ -169,6 +169,28 @@ cue to go to "When there is no dossier" below. (Only the plain form does
 that; `--json`, used in re-grounding, exits 0 and reports it in the
 payload instead.)
 
+**If `status` reports the draft fingerprint `CHANGED since last stamp`**,
+the draft was hand-edited since the last time this skill (or a human)
+ran `dossier stamp` -- #454, FEATURE-ROADMAP.md's E3. That is not itself
+a problem: a digest changing is expected of a draft anyone edits. What it
+means is that the four findings under it, if any are listed, may be
+real drift between the draft and the rest of the dossier rather than
+something this revision is about to introduce. Offer each one to the
+user **one at a time**, in your own words, and act only on what they
+agree to -- never apply a repair unasked, and never block the revision
+on an unanswered one:
+
+| Finding | What to offer |
+| --- | --- |
+| a citekey is cited with no `evidence.md` block | add a block for it (treat it like a newly kept citation in step 6), or say why it doesn't need one |
+| an `evidence.md` block for a citekey no longer cited | remove the block, or note that the citation belongs back in the draft |
+| a heading with no row in `sections.md` | run `dossier sections --citekeys --write`, the repair primitive that already exists for this |
+| a `sections.md` row with no matching heading | the same command; a rename and a deletion both show up here |
+| a `math.md` row appearing nowhere in the draft | update the row's key to the reworded span, or drop it if the quantity was cut |
+
+A `not recorded` fingerprint means this draft has never been stamped --
+say so once, and don't treat it as drift to chase.
+
 Then read `scope.md` and `steering.md`. **Always both, always first.**
 They are small, and they are what stops a revision from undoing an
 earlier decision the user already made.
@@ -311,6 +333,15 @@ python -m chitragupta.draft render content/drafts/<path> --format md
 Fix and re-run until the gate reports `OK`. **Never present a draft that
 hasn't passed.** A `[missing-binary]` or `[error]` from `render_output`
 is a one-line warning in chat and does not block presenting.
+
+Once the gate passes, re-stamp the draft fingerprint -- the same point
+`scope.md`'s corpus line is re-stamped at in re-grounding mode, and for
+the same reason: stamping before the gate passes would record a
+fingerprint for a draft that was never actually accepted.
+
+```bash
+python -m chitragupta.draft dossier stamp content/drafts/<path>
+```
 
 Two things the genre decides, which a reviser has to look up rather than
 assume:
