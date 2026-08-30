@@ -3126,6 +3126,17 @@ class TestStamp:
         with pytest.raises(FileNotFoundError):
             _draft_fingerprint.stamp(draft)
 
+    def test_refuses_a_draft_file_that_does_not_exist(self, draft):
+        """A dossier that outlived its draft (the draft was moved or
+        deleted) must not be misreported as "no dossier" -- the two want
+        different fixes, and `stamp()` is the one place a caller could
+        otherwise silently write a fingerprint for a file that isn't
+        there to fingerprint."""
+        dossier.init(draft, "survey")
+        draft.unlink()
+        with pytest.raises(FileNotFoundError, match="No draft at"):
+            _draft_fingerprint.stamp(draft)
+
 
 class TestDraftStaleness:
     """The four classes are computed only once the fingerprint says the
@@ -3265,3 +3276,11 @@ class TestStampCLI:
     def test_missing_dossier_is_refused_not_crashed(self, draft, capsys):
         assert dossier.main(["stamp", str(draft)]) == 1
         assert "init" in capsys.readouterr().out
+
+    def test_a_missing_draft_is_reported_distinctly_from_a_missing_dossier(self, draft, capsys):
+        dossier.init(draft, "survey")
+        draft.unlink()
+        assert dossier.main(["stamp", str(draft)]) == 1
+        out = capsys.readouterr().out
+        assert "No such draft" in out
+        assert "init" not in out

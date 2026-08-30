@@ -93,6 +93,8 @@ def stamp(draft: Path) -> Path:
     # `evidence_appendix` import defers for the same reason.
     from chitragupta.spec import digest as text_digest
 
+    if not draft.is_file():
+        raise FileNotFoundError(f"No draft at {draft}.")
     scope = dossier_dir(draft) / SCOPE_MD
     if not scope.is_file():
         raise FileNotFoundError(f"No scope.md at {scope} -- run `dossier init` before stamping.")
@@ -203,6 +205,9 @@ def status_lines(report: Staleness) -> "list[str]":
 
 def _cmd_stamp(args: argparse.Namespace) -> int:
     draft = Path(args.draft)
+    if not draft.is_file():
+        print(f"No such draft: {args.draft}")
+        return 1
     try:
         stamp(draft)
     except FileNotFoundError:
