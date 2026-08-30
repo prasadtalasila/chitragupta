@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, retrieval_iterative
 from chitragupta.retrieval import SearchResult, _full_text, _query_terms, _windows, search
 
 EVIDENCE_CHARS = 600
@@ -117,6 +117,15 @@ def _build_parser() -> Any:
         "any other export nothing is in any collection and this matches "
         "nothing",
     )
+    p_search.add_argument(
+        "--y-prev",
+        metavar="TEXT",
+        help="A hand-edited section's own prose (FEATURE-ROADMAP.md's E4: "
+        "ITER-RETGEN with a human in the generation slot). Appended to the "
+        "query for a second retrieval round, merged with the first and "
+        f"capped back to --k. Bounded to {retrieval_iterative.Y_PREV_MAX_CHARS} "
+        "characters explicitly; omit for an ordinary single-round search",
+    )
 
     p_evidence = sub.add_parser(
         "evidence", help="The passages of one document that bear on the query"
@@ -142,10 +151,11 @@ def _build_parser() -> Any:
         )
         each.add_argument(
             "--origin",
-            choices=("declared", "extended"),
+            choices=("declared", "extended", "reground"),
             help="With --log: this query came verbatim from outline.md "
-            "(declared) or was added because a declared section came up "
-            "thin (extended). Omit for a call outline.md had no say in",
+            "(declared), was added because a declared section came up "
+            "thin (extended), or is a --y-prev re-grounding round after a "
+            "hand edit (reground). Omit for a call outline.md had no say in",
         )
     return parser
 
@@ -172,7 +182,17 @@ def _run_evidence(args) -> "tuple[int, int] | None":
 def _run_search(args) -> tuple[int, int]:
     """The search subcommand: prints the ranking and returns
     (results, chars)."""
-    found = search(args.query, k=args.k, snippet_chars=args.chars, collection=args.collection)
+    if args.y_prev:
+        found, truncated = retrieval_iterative.search_iterative(
+            args.query, args.y_prev, k=args.k, snippet_chars=args.chars, collection=args.collection
+        )
+        if truncated:
+            print(
+                f"  [note] --y-prev was cut to {retrieval_iterative.Y_PREV_MAX_CHARS} "
+                "characters before it was appended to the query."
+            )
+    else:
+        found = search(args.query, k=args.k, snippet_chars=args.chars, collection=args.collection)
     if not found:
         print("No results.")
     chars = _print_results(found)
