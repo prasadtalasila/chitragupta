@@ -32,6 +32,7 @@ stated once and read where you need it.
 - [Retrofitting a book drafted before this track](#-retrofitting-a-book-drafted-before-this-track)
 - [Why an id is required on every heading](#-why-an-id-is-required-on-every-heading)
 - [Why sign-off is a sibling file](#-why-sign-off-is-a-sibling-file)
+- [Why sign-off is recorded per chapter](#-why-sign-off-is-recorded-per-chapter)
 - [Why a chapter is the authored document](#-why-a-chapter-is-the-authored-document)
 - [What `status`'s exit code is, and is not](#-what-statuss-exit-code-is-and-is-not)
 - [What the input digest covers, and what it must not](#-what-the-input-digest-covers-and-what-it-must-not)
@@ -177,6 +178,19 @@ three states apart:
 That non-zero exit is not a new gate --
 [what it is](#-what-statuss-exit-code-is-and-is-not).
 
+It records **one digest per chapter as well**, and `status` names the
+chapters that actually moved:
+
+```text
+content/specs/twins/spec.md: Composable Twins
+  1 part, 2 chapters, 3 sections
+  changed since sign-off: approved at bbf00d09be54, now 1f314ef273fc.
+  chapters changed: ch-cost
+```
+
+[Why per chapter](#-why-sign-off-is-recorded-per-chapter) -- it is what
+keeps a revision to one chapter from freezing the other fourteen.
+
 ## ▶ Step 3: generate one unit
 
 Ask for the contract, which is what the unit is generated *from*:
@@ -273,8 +287,11 @@ Wrote content/specs/twins/units/sec-1.json.
 `accept` writes the record only after the project's one gate passes on
 the draft. It refuses three ways, each for a stated reason:
 
-1. **The outline is not signed off** -- there is nothing to accept a unit
-   against until a human has approved the structure.
+1. **This unit's chapter is not signed off** -- there is nothing to accept
+   a unit against until a human has approved the structure. Asked of the
+   unit's own chapter, not of the whole book, so revising chapter 7 does
+   not stop you accepting a unit in chapter 3
+   ([why](#-why-sign-off-is-recorded-per-chapter)).
 2. **There is no draft** -- generate the unit from its contract first.
 3. **The citation gate refuses the draft.** `accept` *invokes*
    `python -m chitragupta.draft gate` rather than re-implementing or replacing
@@ -552,6 +569,35 @@ reports follow: two sign-offs of an unchanged outline produce
 byte-identical files, so "did this change?" is a diff. *When* it was
 approved is not a question any check asks; *what* was approved is.
 
+## 💡 Why sign-off is recorded per chapter
+
+`signoff.md` records the whole-file digest **and one digest per chapter**,
+each taken over that chapter's `###` heading and everything under it.
+
+The whole-file digest alone cannot answer the question `accept` asks.
+Measured on a fifteen-chapter book (#465): editing a single character in
+one chapter's brief moved the file's digest, so **every one of 672 units
+in all fifteen chapters** reported `signed_off: False`, and `accept`
+refused across the entire book while one chapter sat half-revised. A book
+is revised chapter by chapter over weeks; a book-wide answer makes every
+in-flight revision a book-wide freeze.
+
+The escape -- re-run `spec sign` -- was worse than the freeze. It
+re-approves all fifteen chapters at once, so the record could no longer
+tell "a human read this" from "a human re-approved it as collateral while
+fixing something else." This document already states the principle for
+the retrofit case, and it applies here unchanged: *a sign-off recorded on
+an outline nobody has read is a record of the wrong thing.*
+
+Keyed by chapter **id**, not title, for the reason ids exist at all: a
+reworded heading must not orphan the record of its own approval.
+
+**Nothing migrates an old `signoff.md`.** A file with no chapter lines --
+every book signed before this existed, including the retrofitted one --
+falls back to the whole-book digest, which is the previous behaviour
+exactly. Writing chapter digests into it on a human's behalf would be
+this project inventing an approval, which is the one thing a record of a
+person's decision may never do. Re-run `spec sign` to opt in.
 ## 💡 Why a chapter is the authored document
 
 A chapter is one file; its sections are the headings inside it. An earlier

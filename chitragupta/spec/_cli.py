@@ -21,8 +21,10 @@ from pathlib import Path
 from chitragupta.spec import (
     _KINDS,
     SpecError,
+    chapter_digests,
     digest,
     parse,
+    recorded_chapter_digests,
     recorded_digest,
     signoff_path,
     spec_path,
@@ -153,6 +155,14 @@ def _signoff_text(text: str, parsed: dict, by: str) -> str:
     ]
     if by:
         lines.append(f"- signed by: {by}")
+    # One line per chapter, so a later edit to one chapter leaves the rest
+    # answerable. Without these, `unit accept` can only ask "has the whole
+    # book moved?" and freezes acceptance everywhere on any edit (#465).
+    lines.append("")
+    lines += [
+        f"- chapter `{chapter}`: `{value}`"
+        for chapter, value in sorted(chapter_digests(text).items())
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -171,6 +181,26 @@ def _plural(count: int, word: str) -> str:
     return f"{count} {word}" if count == 1 else f"{count} {word}s"
 
 
+def _report_moved_chapters(book: Path, text: str) -> None:
+    """Name the chapters that actually moved, so "re-read all fifteen" is
+    not the only thing this report can mean. Silent for a `signoff.md`
+    written before chapter lines existed -- there is nothing finer on
+    disk, and inventing a per-chapter answer from a whole-book digest
+    would be a guess about what a person approved."""
+    recorded = recorded_chapter_digests(book)
+    if not recorded:
+        return
+    current = chapter_digests(text)
+    moved = sorted(chapter for chapter, value in current.items() if recorded.get(chapter) != value)
+    gone = sorted(set(recorded) - set(current))
+    if moved:
+        print(f"  chapters changed: {', '.join(moved)}")
+    if gone:
+        print(f"  chapters no longer in the outline: {', '.join(gone)}")
+    if not moved and not gone:
+        print("  no chapter changed: the edit is outside every chapter's span.")
+
+
 def _cmd_status(args) -> int:
     text, parsed = _read(args.book)
     if parsed["problems"]:
@@ -184,6 +214,7 @@ def _cmd_status(args) -> int:
         return 1
     if recorded != digest(text):
         print(f"  changed since sign-off: approved at {recorded}, now {digest(text)}.")
+        _report_moved_chapters(args.book, text)
         return 1
     print(f"  signed off at digest {recorded}.")
     return 0

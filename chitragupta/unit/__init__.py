@@ -128,8 +128,30 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         # record that has to read the same on the Windows CI leg as on
         # Linux.
         "draft": draft_path(book, unit_id).as_posix(),
-        "signed_off": spec.recorded_digest(book) == spec.digest(text),
+        "signed_off": _signed_off(book, text, found["ancestors"]),
     }
+
+
+def _signed_off(book: Path, text: str, ancestors: list[str]) -> bool:
+    """Whether the outline this unit is generated from is approved.
+
+    Asked of the unit's own **chapter**, not of the book. A whole-book
+    answer meant that revising one chapter's brief flipped this False for
+    every unit in every chapter, so `unit accept` refused across a
+    fifteen-chapter book while one chapter sat half-revised (#465). A
+    chapter nobody edited has not moved, and its units stay acceptable.
+
+    Falls back to the whole-book digest when `signoff.md` carries no
+    chapter lines -- every book signed before they existed. That is the
+    old behaviour exactly, which is the point: those books keep working
+    and nothing re-approves them on their author's behalf.
+    """
+    approved = spec.signed_off_chapters(book, text)
+    if approved is None:
+        return spec.recorded_digest(book) == spec.digest(text)
+    # A section's immediate parent is a chapter -- `_unit_problem` refuses
+    # any outline where it is not -- so the last ancestor is the chapter.
+    return bool(ancestors) and ancestors[-1] in approved
 
 
 def input_digest(built: dict) -> str:

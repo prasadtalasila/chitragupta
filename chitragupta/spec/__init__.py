@@ -71,9 +71,6 @@ _KINDS = {2: "part", 3: "chapter", 4: "section"}
 # match it could only report "some line, somewhere".
 _HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*(?:\{#([^}\s]+)\})?\s*$")
 
-# `- spec digest: `a1b2c3d4e5f6`` in signoff.md.
-_DIGEST_LINE = re.compile(r"^-\s*spec digest:\s*`?([0-9a-f]{12})`?", re.MULTILINE)
-
 
 class SpecError(Exception):
     """A book path outside `content/drafts/`, or a book with no spec yet."""
@@ -133,6 +130,41 @@ def digest(text: str) -> str:
     here the order of the outline is exactly what must be covered.
     """
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+
+
+def chapter_digests(text: str) -> dict[str, str]:
+    """A digest per chapter, each taken over that chapter's own span.
+
+    A chapter's span is its `###` heading and everything under it up to
+    the next chapter or part -- so its sections' briefs are covered, which
+    is what a person is actually approving when they approve a chapter.
+
+    This exists because the whole-file digest cannot answer the question
+    `unit accept` asks. One edited brief moved the book's digest, so every
+    unit in every chapter reported `signed_off: False` and acceptance
+    froze book-wide while one chapter sat half-revised (#465). A chapter a
+    person did not touch has not moved, and this is what says so.
+
+    Keyed by chapter id rather than title for the reason ids exist at all:
+    a reworded heading must not orphan the record of its approval.
+    """
+    digests: dict[str, str] = {}
+    current: str | None = None
+    span: list[str] = []
+    for _, line in _prose_lines(text.splitlines()):
+        match = _HEADING.match(line)
+        if match and len(match.group(1)) <= 3:
+            if current:
+                digests[current] = digest("\n".join(span))
+            # A chapter with no id is a parse problem `parse` reports; it
+            # contributes no unit, so there is nothing here to approve.
+            current = match.group(3) if len(match.group(1)) == 3 else None
+            span = []
+        if current:
+            span.append(line)
+    if current:
+        digests[current] = digest("\n".join(span))
+    return digests
 
 
 def _headings(text: str) -> list[dict]:
@@ -243,24 +275,18 @@ def parse(text: str) -> dict:
     return {"title": title, "units": units, "problems": problems + _missing(title, units)}
 
 
-def recorded_digest(book: Path) -> str | None:
-    """The digest `sign` recorded for `book`, or None if none was.
-
-    None covers both "nobody signed off" and "a signoff.md exists but
-    carries no digest" -- a hand-written one, say. Both mean the same
-    thing to every caller: no approval this module can check.
-    """
-    path = signoff_path(book)
-    if not path.is_file():
-        return None
-    match = _DIGEST_LINE.search(path.read_text(encoding="utf-8"))
-    return match.group(1) if match else None
-
-
 # Re-exported so `from chitragupta import spec` reaches the entry point by the
 # name `chitragupta/draft.py` dispatches to, exactly as `chitragupta/dossier/` does. The
 # position matters for the same reason it does there: `_cli` imports the
 # names above from this module, so importing it any earlier would fail on
 # a name this file has not defined yet.
 # pylint: disable=wrong-import-position
+# `_signoff` before `_cli`, and that order is load-bearing rather than
+# alphabetical: `_cli` imports `recorded_digest` *from this module*, so the
+# name has to be bound here before `_cli` is executed.
+from chitragupta.spec._signoff import (
+    recorded_chapter_digests,
+    recorded_digest,
+    signed_off_chapters,
+)
 from chitragupta.spec._cli import main

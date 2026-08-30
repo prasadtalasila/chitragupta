@@ -2066,8 +2066,8 @@ chitragupta draft spec align  content/drafts/<book> [--json]
 | --- | --- | --- |
 | `init` | write an outline skeleton (refuses to overwrite one) | 1 if a spec is already there |
 | `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
-| `sign` | record that a human approved this outline, by digest | 1 on a spec that does not parse |
-| `status` | what the outline holds, and whether it is signed off | 1 when unsigned or changed since sign-off |
+| `sign` | record that a human approved this outline, by whole-file digest and one per chapter | 1 on a spec that does not parse |
+| `status` | what the outline holds, whether it is signed off, and which chapters moved | 1 when unsigned or changed since sign-off |
 | `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding |
 
 Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
@@ -2098,7 +2098,7 @@ chitragupta draft unit status   content/drafts/<book>
 | Command | Does | Exit |
 | --- | --- | --- |
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
-| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the outline is unsigned, the draft is missing, or the gate refuses it |
+| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the unit's own chapter is unsigned, the draft is missing, or the gate refuses it |
 | `status` | where every unit in the book stands | 1 while any unit is not accepted and current |
 
 `--source` is repeatable and is part of the input digest, so grounding a
