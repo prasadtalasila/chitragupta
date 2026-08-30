@@ -902,11 +902,19 @@ described in [ZOTERO.md](ZOTERO.md#-keeping-your-collections-optional).
 Combined with `--log`, the collection is written to `retrieval.md` too,
 so a scoped call and a corpus-wide one no longer write identical rows.
 
-Combined with `--log`, `--origin declared|extended` records whether the
-query came verbatim from `outline.md` or was added because a declared
-section came up thin -- so `chitragupta draft dossier status` can report
-whether a draft followed the outline it declared. Omit it for a call
-`outline.md` had no say in.
+Combined with `--log`, `--origin declared|extended|reground` records
+whether the query came verbatim from `outline.md`, was added because a
+declared section came up thin, or re-ran a section's query with
+`--y-prev` after a hand edit -- so `chitragupta draft dossier status`
+can report whether a draft followed the outline it declared. Omit it
+for a call `outline.md` had no say in.
+
+`search` also takes `--y-prev TEXT` (FEATURE-ROADMAP.md's E4): appends
+`TEXT` -- a hand-edited section's own prose, bounded to 1500 characters
+explicitly, on a word boundary -- to the query for a second retrieval
+round, merges that round's results with the first by citekey (the
+higher score wins), and caps the merged set back to `--k`. Omit it for
+an ordinary single-round search; `evidence` has no equivalent flag.
 
 `evidence` is a lookup, not a stage: use it when a `search` snippet is not
 enough to judge a source you are minded to cite. Nothing is obliged to
@@ -921,13 +929,17 @@ withdrawn.
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |
 | `--log DRAFT` | all | -- | Record the call and its payload size in DRAFT's dossier |
-| `--origin declared\|extended` | all | -- | With `--log`: whether this query came from `outline.md` verbatim or extended a section that came up thin |
+| `--origin declared\|extended\|reground` | all | -- | With `--log`: whether this query came from `outline.md` verbatim, extended a section that came up thin, or re-ran a section's query with `--y-prev` after a hand edit |
+| `--y-prev TEXT` | `search` | -- | Append this text (bounded to 1500 characters) to the query for a second retrieval round, merged with the first and capped back to `--k` -- FEATURE-ROADMAP.md's E4 |
 
 ```bash
 chitragupta draft retrieve search "digital twin architecture" --k 15 \
     --log content/drafts/survey.md
 chitragupta draft retrieve evidence "digital twin architecture" \
     --citekey ferko_architecting_2022 --log content/drafts/survey.md
+chitragupta draft retrieve search "digital twin architecture" \
+    --y-prev "the drift compensator now recomputes offset every cycle" \
+    --k 15 --origin reground --log content/drafts/survey.md
 ```
 
 `--log` appends to `retrieval.md` in that draft's dossier, which is what

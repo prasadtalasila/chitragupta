@@ -44,6 +44,7 @@ Every number below names the command that produced it.
 - [PR 2: an outline the human writes](#-pr-2-an-outline-the-human-writes)
 - [PR 3: notice that the draft moved](#-pr-3-notice-that-the-draft-moved)
 - [B5 amendments](#-amendments-owed-to-b5-not-a-new-item)
+- [PR 4: the draft is the query](#-pr-4-the-draft-is-the-query)
 - [Adjacent, deliberately not bundled](#-adjacent-deliberately-not-bundled)
 - [What is deliberately not proposed](#-what-is-deliberately-not-proposed)
 
@@ -638,6 +639,13 @@ these are amendments to B5:
   bibliography, "nothing came back" means the claim cannot be grounded in
   this corpus -- so the sentence is cut, not cited. Every upstream is
   built to always produce a citation; this inverts that.
+
+## ▶ PR 4: the draft is the query
+
+FEATURE-ROADMAP.md's E4, issue #456. Full design and build order in
+[e4-draft-is-the-query.md](e4-draft-is-the-query.md). Once merged, that
+file's own header records the closing PR per this directory's
+convention.
 
 ## 🔗 Adjacent, deliberately not bundled
 

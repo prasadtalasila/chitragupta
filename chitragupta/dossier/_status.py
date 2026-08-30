@@ -246,14 +246,17 @@ def _print_status_outline(report: Status) -> None:
     run = [q for s in drift.sections.values() for q in s.run]
     not_run = [(s.heading, q) for s in drift.sections.values() for q in s.not_run]
     extended = drift.extended
+    regrounded = drift.regrounded
     print(
         f"\nOutline: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} run, "
-        f"{len(not_run)} not, {len(extended)} extended."
+        f"{len(not_run)} not, {len(extended)} extended, {len(regrounded)} regrounded."
     )
     for heading, query in not_run:
         print(f"  not run   {heading}: {query!r}")
     for query in extended:
         print(f"  extended  {query!r}")
+    for query in regrounded:
+        print(f"  regrounded  {query!r}")
 
 
 def _print_status_drift(report: Status) -> None:

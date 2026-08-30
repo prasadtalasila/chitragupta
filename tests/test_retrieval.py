@@ -676,6 +676,94 @@ class TestCli:
         assert "a2024" in captured.out
         assert "[not logged]" in captured.err
 
+    def test_y_prev_widens_results_beyond_a_plain_search(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        greenhouse = tmp_path / "b2024.txt"
+        greenhouse.write_text("padding " * 50 + "greenhouse actuator calibration drifted")
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Greenhouse Actuator")
+        )
+        ledger.mark_parsed(ledger_con, "b2024", greenhouse)
+
+        assert (
+            retrieval.main(
+                [
+                    "search",
+                    "digital twin architecture",
+                    "--y-prev",
+                    "the greenhouse actuator calibration drifted overnight",
+                ]
+            )
+            == 0
+        )
+        out = capsys.readouterr().out
+        assert "a2024" in out
+        assert "b2024" in out
+
+    def test_y_prev_truncation_is_reported(self, ledger_con, tmp_path, capsys):
+        from chitragupta import retrieval_iterative
+
+        self._seed(ledger_con, tmp_path)
+        long_prose = "digital twin " * 300
+        assert retrieval.main(["search", "digital twin architecture", "--y-prev", long_prose]) == 0
+        out = capsys.readouterr().out
+        assert f"{retrieval_iterative.Y_PREV_MAX_CHARS} characters" in out
+
+    def test_no_y_prev_flag_behaves_exactly_as_before(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "digital twin architecture"]) == 0
+        assert "[note]" not in capsys.readouterr().out
+
+    def test_log_records_reground_origin(self, ledger_con, tmp_path):
+        from chitragupta import dossier
+        from chitragupta.dossier import _retrieval
+
+        self._seed(ledger_con, tmp_path)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert (
+            retrieval.main(
+                [
+                    "search",
+                    "digital twin architecture",
+                    "--y-prev",
+                    "hand-edited prose",
+                    "--log",
+                    str(draft),
+                    "--origin",
+                    "reground",
+                ]
+            )
+            == 0
+        )
+        pairs = _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft))
+        assert ("digital twin architecture", "reground") in pairs
+
+    def test_log_records_one_row_not_two_for_a_y_prev_call(self, ledger_con, tmp_path):
+        from chitragupta import dossier
+
+        self._seed(ledger_con, tmp_path)
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        retrieval.main(
+            [
+                "search",
+                "digital twin architecture",
+                "--y-prev",
+                "hand-edited prose",
+                "--log",
+                str(draft),
+                "--origin",
+                "reground",
+            ]
+        )
+        calls, _ = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        assert calls == 1
+
 
 class TestDocsQuoteTheActualDefaults:
     """docs/CLI.md and docs/RETRIEVAL.md spell these numbers out in prose,
@@ -701,6 +789,13 @@ class TestDocsQuoteTheActualDefaults:
         assert (
             f"{retrieval_cli.EVIDENCE_WINDOWS} x {retrieval_cli.EVIDENCE_CHARS} characters" in retr
         )
+
+    def test_y_prev_bound_is_pinned_in_cli_md(self):
+        from chitragupta import retrieval_iterative
+
+        cli = (config.shipped("docs", "CLI.md")).read_text(encoding="utf-8")
+        y_prev_row = next(line for line in cli.splitlines() if line.startswith("| `--y-prev"))
+        assert f"{retrieval_iterative.Y_PREV_MAX_CHARS} characters" in y_prev_row
 
 
 class TestLogNeverFailsTheSearch:

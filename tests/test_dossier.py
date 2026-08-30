@@ -2468,9 +2468,20 @@ class TestStatusCLIOutput:
         dossier.log_retrieval(draft, "search", "surrogate model", 5, 5, 100, origin="extended")
         dossier.main(["status", str(draft)])
         out = capsys.readouterr().out
-        assert "Outline: 1 declared query run, 1 not, 1 extended." in out
+        assert "Outline: 1 declared query run, 1 not, 1 extended, 0 regrounded." in out
         assert "not run   Failure modes: 'solver divergence'" in out
         assert "extended  'surrogate model'" in out
+
+    def test_outline_block_reports_a_regrounded_query_as_run(self, draft, capsys):
+        dossier.init(draft, "survey", outline=True)
+        (dossier.dossier_dir(draft) / "outline.md").write_text(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100, origin="reground")
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert "Outline: 1 declared query run, 0 not, 0 extended, 1 regrounded." in out
+        assert "regrounded  'timestep mismatch'" in out
 
     def test_a_dossier_with_no_fingerprint_reports_the_current_corpus_instead(self, draft, capsys):
         dossier.init(draft, "survey")

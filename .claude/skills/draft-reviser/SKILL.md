@@ -191,6 +191,28 @@ on an unanswered one:
 A `not recorded` fingerprint means this draft has never been stamped --
 say so once, and don't treat it as drift to chase.
 
+**A `CHANGED` fingerprint is also FEATURE-ROADMAP.md's E4 trigger**: "a
+draft fingerprint is what says the query moved." Once the four
+findings above are settled -- never before, and never folded into the
+same offer -- and only for a section `outline.md` declares one or more
+`queries:` for, offer one more thing: *"Since you hand-edited
+`<heading>`, I can also re-run that section's own declared query --
+currently `<query, read fresh from outline.md>` -- with your new
+wording appended: ITER-RETGEN with you in the generation slot, not a
+model. Want me to?"* Always show the query text verbatim in the offer,
+not just its existence -- `outline.md` is read fresh every time (never
+cached), so if it was edited alongside the draft, this is the only
+place that edit becomes visible before a real retrieval call spends
+on it. If they agree, carry that section's current prose into step 4
+below as `--y-prev`. If they decline, the section has no declared
+query, or there is no `outline.md` for this draft **-- the common
+case, since `outline.md` is opt-in --** say so and move on: there is
+no declared query for round 2 to anchor to, so no offer is made at
+all, not a silently degraded one. Never run this more than once per
+section per revision session; two rounds is the whole mechanism, not
+a loop to repeat. (Editing `outline.md`'s `queries:` alone, with the
+draft untouched, is not itself a trigger -- see `plans/e4-draft-is-the-query.md`.)
+
 Then read `scope.md` and `steering.md`. **Always both, always first.**
 They are small, and they are what stops a revision from undoing an
 earlier decision the user already made.
@@ -257,6 +279,22 @@ Search only when the change opens genuinely new ground. If it does:
 python -m chitragupta.draft retrieve search "<query>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
 python -m chitragupta.draft retrieve evidence "<query>" --citekey <key> --log content/drafts/<path>
 ```
+
+**If step 1's offer was accepted**, run that section's query as a
+re-grounding round instead of a plain search:
+
+```bash
+python -m chitragupta.draft retrieve search "<the section's declared query>" \
+    --y-prev "<the section's current, hand-edited prose>" \
+    --k 15 --collection "<from scope.md>" --log content/drafts/<path> --origin reground
+```
+
+The CLI bounds `--y-prev` itself (1500 characters, on a word boundary,
+and reports it if anything was cut) and merges the two rounds' results
+before capping back to `--k` -- nothing here hand-truncates or
+hand-merges. `--origin reground` is what lets `dossier status` count
+this as the section's declared query having run, distinct from an
+ordinary `declared` or `extended` call.
 
 (or `chitragupta.enrich.embed_index.search()` in place of `search` where the
 embedding stack has been built). `evidence` is optional -- reach for it

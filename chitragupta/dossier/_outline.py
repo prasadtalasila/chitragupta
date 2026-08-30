@@ -209,11 +209,18 @@ class OutlineDrift:
     `extended` is flat, not per-section: `retrieval.md` records no
     section for a call, only the query text and its origin, so an
     `--extend` addition can be reported as having happened but not
-    attributed to the section that came up thin.
+    attributed to the section that came up thin. `regrounded` is the
+    same shape, for a `--y-prev` re-grounding round after a hand edit
+    (FEATURE-ROADMAP.md's E4) -- counted in `run` too, since the
+    underlying declared query did in fact execute (the CLI logs the
+    original query text, not the round-2 concatenation); listed
+    separately so `dossier status` can still say a hand-edit round
+    happened.
     """
 
     sections: "dict[str, SectionDrift]" = field(default_factory=dict)
     extended: list[str] = field(default_factory=list)
+    regrounded: list[str] = field(default_factory=list)
 
 
 def _normalised(query: str) -> str:
@@ -239,8 +246,9 @@ def declared_vs_actual(dossier: Path, outline: "Outline | None" = None) -> Outli
         outline = parse(path.read_text(encoding="utf-8")) if path.is_file() else Outline()
 
     pairs = recorded_queries_with_origin(dossier)
-    run = {_normalised(query) for query, origin in pairs if origin == "declared"}
+    run = {_normalised(query) for query, origin in pairs if origin in ("declared", "reground")}
     extended = [query for query, origin in pairs if origin == "extended"]
+    regrounded = [query for query, origin in pairs if origin == "reground"]
 
     sections = {
         heading: SectionDrift(
@@ -250,7 +258,7 @@ def declared_vs_actual(dossier: Path, outline: "Outline | None" = None) -> Outli
         )
         for heading, section in outline.sections.items()
     }
-    return OutlineDrift(sections=sections, extended=extended)
+    return OutlineDrift(sections=sections, extended=extended, regrounded=regrounded)
 
 
 def _cmd_outline(args: argparse.Namespace) -> int:
