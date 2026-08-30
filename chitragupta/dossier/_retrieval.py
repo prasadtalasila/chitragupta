@@ -150,8 +150,7 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
     row = (
-        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | "
-        "0 | 0 | 0 | | |\n"
+        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 | | |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():

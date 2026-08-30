@@ -10,7 +10,6 @@ draft follow its outline" from retrieval.md alone, without silently
 reading a pre-outline.md dossier as compliant.
 """
 
-
 import pytest
 
 from chitragupta import config, dossier
@@ -98,9 +97,7 @@ class TestParse:
         assert any("more than one brief" in p.problem for p in result.problems)
 
     def test_a_non_bullet_line_under_queries_is_a_problem(self):
-        result = _outline.parse(
-            "## Section\n\nbrief: text\n\nqueries:\nnot a bullet\n"
-        )
+        result = _outline.parse("## Section\n\nbrief: text\n\nqueries:\nnot a bullet\n")
         assert any("expects a `- ` bullet" in p.problem for p in result.problems)
 
     def test_an_empty_brief_mid_edit_is_not_a_problem(self):
@@ -169,6 +166,11 @@ class TestParse:
     def test_empty_text_parses_to_nothing(self):
         result = _outline.parse("")
         assert result.sections == {}
+        assert result.problems == []
+
+    def test_a_blank_line_under_queries_is_not_a_problem(self):
+        result = _outline.parse("## Section\n\nbrief: text\n\nqueries:\n- one\n\n- two\n")
+        assert result.sections["Section"].queries == ["one", "two"]
         assert result.problems == []
 
 
@@ -259,6 +261,18 @@ class TestOutlineCli:
         out = capsys.readouterr().out
         assert "Failure modes" in out
         assert "Focus on timestep mismatch." in out
+
+    def test_prints_claims_and_queries_for_a_brief_less_section(self, draft, capsys):
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "outline.md"
+        path.write_text(
+            "## Why calibration matters\n\nclaim: Calibration dominates error.\n\n"
+            "queries:\n- calibration error\n"
+        )
+        assert dossier.main(["outline", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "claim: Calibration dominates error." in out
+        assert "query: calibration error" in out
 
     def test_check_suppresses_the_printed_sections(self, draft, capsys):
         dossier.init(draft, "survey")

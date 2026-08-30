@@ -617,7 +617,8 @@ class TestStatus:
         dossier.init(draft, "survey")
         target = dossier.dossier_dir(draft)
         (target / "evidence.md").write_text(
-            "# Kept evidence\n\n## `a_one_2020`\n\n- relevance: x\n\n## `b_two_2021`\n\n- relevance: y\n"
+            "# Kept evidence\n\n## `a_one_2020`\n\n- relevance: x\n\n"
+            "## `b_two_2021`\n\n- relevance: y\n"
         )
         (target / "rejected.md").write_text(
             "# Rejected\n\n| citekey | query | why |\n|---|---|---|\n"
@@ -1706,6 +1707,15 @@ class TestRecordedQueriesWithOrigin:
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400, origin="declared")
         assert _retrieval.retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
+
+    def test_a_row_with_an_empty_query_contributes_no_pair(self, draft):
+        """Skipped the same way `recorded_queries` skips it -- an empty
+        query cell is not a call anyone declared or extended."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search |  | 15 | 15 | 100 | | declared |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == []
 
 
 class TestSectionCitekeys:

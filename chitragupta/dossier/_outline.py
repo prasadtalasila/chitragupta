@@ -107,11 +107,13 @@ class _Parser:
         self.mode = "queries"
 
     def add_query_line(self, line: str) -> None:
+        # `line` is already `dispatch`'s rstripped copy, so a match's
+        # captured group can never be empty or whitespace-only -- any
+        # trailing whitespace after the bullet's text would already be
+        # gone, which is why there is no `if query:` guard here.
         item = _QUERY_ITEM.match(line)
         if item:
-            query = item.group(1).strip()
-            if query:
-                self.section.queries.append(query)
+            self.section.queries.append(item.group(1))
         elif line.strip():
             self.problem(f"queries: expects a `- ` bullet, not {line!r}")
 
@@ -201,7 +203,7 @@ class SectionDrift:
 
 @dataclass
 class OutlineDrift:
-    """"Did this draft follow its declared outline?", read from
+    """ "Did this draft follow its declared outline?", read from
     `retrieval.md`'s `origin` column rather than trusted.
 
     `extended` is flat, not per-section: `retrieval.md` records no
@@ -279,8 +281,7 @@ def _cmd_outline(args: argparse.Namespace) -> int:
                 print(f"  query: {query}")
 
     print(
-        f"{len(outline.sections)} section(s), 0 problem(s), "
-        f"{draft_relpath(path)}.",
+        f"{len(outline.sections)} section(s), 0 problem(s), {draft_relpath(path)}.",
         file=sys.stderr,
     )
     return 0

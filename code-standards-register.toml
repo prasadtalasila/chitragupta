@@ -46,7 +46,7 @@ code_lines = 430
 
 [[c2]]
 name = "chitragupta/dossier/_retrieval.py"
-code_lines = 297
+code_lines = 296
 
 [[c2]]
 name = "chitragupta/overlap_skipgram.py"

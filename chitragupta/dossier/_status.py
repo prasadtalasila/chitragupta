@@ -236,7 +236,7 @@ def _print_status_retrieval(report: Status) -> None:
 
 
 def _print_status_outline(report: Status) -> None:
-    """"Did this draft follow outline.md?", from `declared_vs_actual`
+    """ "Did this draft follow outline.md?", from `declared_vs_actual`
     (#455) -- absent when there is no outline.md to have followed."""
     if report.declared_vs_actual is None:
         return
