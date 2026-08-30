@@ -186,6 +186,9 @@ means they are checked only when someone remembers to.
 | A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | no -- the fix is an author decision, same as a table's or figure's |
 | Some sentence refers to each numbered equation | §12 | yes | no -- and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
 | Whether an equation should have been numbered at all -- standalone, final-of-derivation, reused | §12 | **no** | no -- unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
+| A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes -- the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
+| A fenced code line fits the page's column limit | §14 | yes | no -- the fix is a shorter line, and only the author knows which part of it is expendable |
+| A very long token has a breakable form | §14 | yes | **no, and it is not checked at all** -- unlike every other row, the mechanical proxy was built and then rejected: TeX hyphenates long English words correctly, so the rule raised 36 candidates on this project's own book and none of them had a repair that was not a worse word. §14 has the measurement |
 | The reread as the reader | §6 | no | never |
 
 **Nothing in the last column is a continuous score, deliberately.** A
@@ -916,6 +919,69 @@ that does not exist, a table no sentence refers to, and a table
 referenced only from another section. Whether the sentence that refers
 to it actually *explains* it is a judgement, and stays one; §9's table
 records the split.
+
+## 📄 14. What has to fit the page
+
+A draft is read on paper, or on a screen shaped like paper. Three
+things run into the margin there and nowhere else, so they are invisible
+until someone opens the PDF -- which is usually after the draft has been
+reviewed.
+
+### 🔗 Link the text, don't print the URL
+
+Write **`[descriptive text](https://…)`**, not the URL itself. A bare URL is
+worse on three counts: it reads as noise mid-sentence, it gives the PDF
+nothing to click, and a long one is a single unbreakable token.
+
+```markdown
+See [the plant-controller repository](https://github.com/INTO-CPS-Association/plant-controller).
+```
+
+not
+
+```markdown
+See https://github.com/INTO-CPS-Association/plant-controller.
+```
+
+A code span that is *only* a URL counts as a bare one -- the monospace
+font changes nothing about how it reads. A code span with a URL among
+other tokens (`curl https://…`) is a command, and is left alone: making
+it a link would corrupt the thing it prints.
+
+### 📏 Keep a code block inside the page
+
+**73 columns**, measured rather than chosen: at this project's book
+geometry (11pt, 80pt margins) a `verbatim` line fits 76, and at `draft
+render`'s own defaults (12pt, 1in margins) it fits 73. A draft may be
+rendered either way, so the tighter one is the limit.
+
+This is the one overflow nothing downstream can repair. An over-long
+*inline* code span is fixed at render time -- `assets/pandoc/`'s
+`breakable_inline_code.lua` gives it break points -- but a fenced block
+becomes a LaTeX `verbatim`, and a verbatim line is one unbreakable box
+by construction. No filter, package or preamble wraps it. Shorten the
+line: break the pipeline, drop the aligned comment column, abbreviate
+the path.
+
+### 🔤 Prefer a breakable form for a very long token
+
+Where a choice exists, prefer a token under about **15 characters**, or
+one with an internal `-`, `/` or `_` to break at.
+
+**Guidance, with no check behind it, and the reason is worth stating.**
+TeX hyphenates a long English word in a roman font perfectly well:
+`interoperability` sets as `in-teroperability` even in a 4cm column, and
+so does a camelCase identifier written in prose. Measured across this
+project's own 428-page book, no prose word caused an overflow, and a
+rule flagging every token over 15 characters raised 36 candidates --
+`interoperability`, `indistinguishable`, `microcontrollers` -- none of
+which has a repair that is not a worse word. So it stays advice to an
+author choosing between two phrasings, and never becomes a finding. §9's
+table records it beside the other row with no mechanical proxy.
+
+`python -m chitragupta.draft style` reports the decidable part of this
+section -- a bare URL, and a code line over the column limit. The
+third rule is not checked, deliberately, per the paragraph above.
 
 ## 📖 Sources and attribution
 
