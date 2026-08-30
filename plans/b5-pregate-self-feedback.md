@@ -1,9 +1,22 @@
 # Pre-gate self-feedback: one critique pass, R4's count as its acceptance test
 
-Status: **designed, unbuilt.** Written 2026-08-28, for
+Status: **the step shipped; four amendments to it are unbuilt.** Written
+2026-08-28, for
 [issue 385](https://github.com/prasadtalasila/chitragupta/issues/385) --
 [B5](../docs/FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop) in
-docs/FEATURE-ROADMAP.md.
+docs/FEATURE-ROADMAP.md -- and built the same day by
+[PR #438](https://github.com/prasadtalasila/chitragupta/pull/438), which
+added this file and the implementation in one commit and so never got
+the outcome line `plans/README.md` asks for. It is recorded now, in
+["Outcome"](#outcome) below.
+
+**Read this file in two parts.** Everything from here to "Outcome" is
+the design as built, left in the present tense it was written in and
+not rewritten into the past -- it is what the shipped step is checked
+against. **The open work is [Part 2](#part-2-the-four-amendments), at
+the end**: the four amendments a 2026-08-28 read of four upstreams left
+owed, written down by #439 the day after this merged, so none of them
+reached what shipped.
 
 **Written for** whoever builds B5. **It assumes**
 [docs/AUTO-IMPROVEMENT.md](../docs/AUTO-IMPROVEMENT.md) for R1-R11 and the
@@ -370,16 +383,23 @@ mechanisms are not told apart in the same document the issue names:
 
 ## `docs/FEATURE-ROADMAP.md`
 
-B5's existing subsection (`docs/FEATURE-ROADMAP.md:465-492`) is not
-removed -- nothing has shipped yet. Add one line linking this plan, the
-way F3's entry links `plans/f3-agenda-reviser.md`. Its prose already
-names the right dependency ("Depends on: the amendment, A2, and
-`verbatim recheck`," line 492); what is wrong is the **build-order
-table**, whose row 6 (`docs/FEATURE-ROADMAP.md:801`) reads "**amendment**,
-A2, F3" -- F3 is not a dependency (this plan calls no `agenda-reviser`
-machinery, widened or not; see the file table above), so correct that
-cell to "**amendment**, A2, `verbatim recheck` (shipped)," matching the
-prose it currently contradicts.
+B5's existing subsection is not removed -- nothing has shipped yet. Add
+one line linking this plan, the way F3's entry links
+`plans/f3-agenda-reviser.md`. Its prose already names the right
+dependency ("Depends on: the amendment, A2, and `verbatim recheck`");
+what is wrong is the **build-order table**, whose row 6 reads
+"**amendment**, A2, F3" -- F3 is not a dependency (this plan calls no
+`agenda-reviser` machinery, widened or not; see the file table above),
+so correct that cell to "**amendment**, A2, `verbatim recheck`
+(shipped)," matching the prose it currently contradicts.
+
+> **What actually happened, recorded 2026-08-30.** #438 made both edits
+> above and then left the entry reading "Designed, unbuilt" while
+> shipping the step in the same commit, so the roadmap described B5 as
+> unbuilt for two days and #439 wrote the four amendments against that
+> reading. The entry now says which half shipped; the paragraph above is
+> kept as written because Part 2 below is what the roadmap's B5 entry
+> tracks from here.
 
 ## Tests
 
@@ -452,6 +472,228 @@ reading five files and noticing a sixth doesn't have it.
 
 ## Outcome
 
-Not yet built. When a PR closes issue 385, add a line here naming it and
-what changed on the way, per `plans/README.md`'s rule that a plan
-without a recorded outcome is worse than no plan.
+**Shipped by [PR #438](https://github.com/prasadtalasila/chitragupta/pull/438),
+merged 2026-08-28, closing issue 385** -- the same commit that added this
+file, which is why the outcome was never recorded at merge time and is
+recorded here two days later. Five `SKILL.md` files, `docs/GENRE.md`,
+`docs/AUTO-IMPROVEMENT.md`, the roadmap entry and
+`tests/test_skill_pregate_feedback_step.py`, exactly the file table
+above.
+
+Three things read differently in the shipped skills than in the step
+text above, all of them additions rather than reversals, and none of
+them a decision this plan had taken the other way:
+
+- The baseline paragraph names **`agenda-reviser`**'s discipline, not
+  `overlap-reviser`'s. That skill was widened and renamed by #440 a day
+  later; the discipline is the same one.
+- The shipped step quotes `verbatim scan`'s **`tiers_not_run`** when it
+  is non-empty, so a recheck that can only see the deterministic tiers
+  says so rather than reading as a clean bill of health. This plan did
+  not ask for it.
+- It says twice, where this plan says once, that `draft style`'s count
+  is **a proxy and not a work list** -- §9 marks those findings
+  decidable and the step is told to fix none of them.
+
+Nothing in the design above was reversed on the way. That comparison
+was made after the fact, in the 2026-08-30 pass that recorded this
+outcome, rather than by the merging PR.
+
+## Part 2: the four amendments
+
+Status: **unbuilt.** Written 2026-08-30, when the roadmap entry was
+corrected to say the step had shipped.
+[FEATURE-ROADMAP.md's B5](../docs/FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop)
+is the ticket; this is the design.
+
+The four are stated in
+[outline-driven-drafting-and-manual-edits.md](outline-driven-drafting-and-manual-edits.md#-amendments-owed-to-b5-not-a-new-item),
+out of a 2026-08-28 read of OpenScholar, RAGFlow, papersgpt-for-zotero
+and local-deep-research, merged by #439 on 2026-08-29. They are **not restated
+here**; what follows is what each one costs now that the step exists,
+which is a different question from what each one meant when it was
+written against a step that did not.
+
+### A1 -- the length ratio: satisfied, no work
+
+The shipped step keeps the 90% floor as a secondary sanity check and
+never as the acceptance test, which is what R3 requires and what "The
+shape" above already specified. The amendment adds *evidence* for a
+decision already taken -- OpenScholar accepts an edit iff it is ≥90% as
+long as the original, so a longer and wronger answer is always accepted
+and a correct compression always rejected -- and no code or skill text
+follows from it. Close it by citing it, not by editing anything.
+
+The one thing worth doing is cheap: `tests/test_skill_pregate_feedback_step.py`
+already pins that the ratio never decides an acceptance on its own
+(`test_every_step_s_acceptance_test_is_external_and_deterministic`).
+Leave it exactly as it is. A test that grew a citation to an upstream's
+behaviour would be pinning someone else's code.
+
+### A2 -- coverage on evidence retrieved: a located defect
+
+**This is the only one of the four that is a bug rather than a
+sentence.** `chitragupta/dossier/_outline.py::declared_vs_actual` builds
+its `run` set from a logged call's **origin**:
+
+```python
+run = {_normalised(query) for query, origin in pairs if origin in ("declared", "reground")}
+```
+
+`pairs` comes from `recorded_queries_with_origin`, which returns
+`(query, origin)` and drops the rest of the row -- including
+`retrieval.md`'s **`results`** cell, which `_retrieval_rows` already
+parses and hands back as `cells[4]`. So a declared query that ran and
+returned nothing joins `run` and is indistinguishable from one that
+returned twelve candidates, and `dossier status` prints it under
+"followed the outline." That is local-deep-research's failure mode --
+a topic marked covered because a query was *issued* -- reproduced here
+by a set comprehension.
+
+**The fix is binary, so R3 is satisfied by construction**: evidence came
+back for this declared query, or it did not. No score, no threshold.
+
+Three design decisions the implementer should not have to re-take:
+
+1. **Add a bucket; do not redefine `run`.** `SectionDrift` gains a third
+   list beside `run` and `not_run` -- suggested name **`run_empty`**,
+   for a declared query that was issued and returned zero results. `run`
+   keeps meaning "issued", and the new list is a subset of it rather
+   than a fourth state carved out of it. The reason is not taste: #470
+   landed two tests asserting a `reground`-origin call joins the `run`
+   set -- `test_dossier_outline.py::test_a_regrounded_query_is_reported_run_and_regrounded`
+   and `test_dossier.py::test_outline_block_reports_a_regrounded_query_as_run`,
+   the second over the printed report -- and both sit beside
+   `test_an_unspecified_origin_call_is_neither_run_nor_extended`, the
+   invariant they were written not to disturb. Redefining `run` to mean
+   "returned evidence" would flip them on a row whose result count
+   happens to be zero -- a real behaviour
+   change smuggled in under a reporting fix. If a later PR wants `run`
+   to mean "grounded", that is its own decision with its own test edit,
+   not this one's side effect.
+2. **Read the count, do not re-run the query.** The row is on disk;
+   `recorded_queries_with_origin` needs a sibling (or a widened return)
+   that carries `cells[4]` through. `_retrieval_queries.py` is 146 code
+   lines and already documents this exact "three-function family"
+   pattern, so a fourth sibling is the local idiom rather than a new
+   shape. Nothing retrieves anything: this is a read of `retrieval.md`.
+3. **A zero-result row is a fact, not a finding.** `dossier status`
+   reports it in the same advisory register as `not_run` -- one line per
+   query, no exit-code change, no gate. A declared query returning
+   nothing is frequently *correct* (the corpus genuinely has nothing on
+   that sub-theme), which is precisely why A4 below cuts a sentence
+   rather than failing a draft.
+
+**Aggregate before deduplicating, not after**, and this is the one place
+the sibling's shape is forced. `recorded_queries_with_origin` dedupes on
+`(query, origin)` and keeps the *first* row it sees, so by the time it
+returns, the counts of every later row for that pair are gone -- a query
+logged twice, once returning nothing and once returning four after a
+reformulation, would report as whichever row happened to come first. It
+must read as **evidence retrieved**: the sibling folds the rows for a
+pair together as it goes, keeping `max(results)`, and a query is
+`run_empty` only when that maximum is zero. Deduplicating first makes
+the rule uncomputable, and reporting a defect the draft's own history
+already fixed is worse than not reporting one.
+
+### A3 -- the exhaustible query list: a termination condition
+
+All four upstreams stop after a fixed number of rounds because a web
+search has no edge. A closed, human-curated corpus does, and
+`outline.md` (#455) makes the declared query list finite and written
+down -- so "every declared query has either returned evidence or been
+recorded as returning none" is a reachable end state, not an
+approximation of one. **It is B5's sentence to write**, and A2 above is
+what makes it computable: the end state is `not_run` empty, with every
+remaining query in `run` or `run_empty`.
+
+**It does not replace the cap of three.** Two different bounds, and
+conflating them would undo "The shape" above:
+
+| Bound | What it limits | Why |
+| --- | --- | --- |
+| At most three repairs, single-shot | how much *editing* one pass may do | cost, and the self-marking objection -- a retry loop over the skill's own subjective list is where A1b's argument would sneak back in through the acceptance side |
+| The declared list is exhausted | whether the *evidence* behind the draft is complete | a real termination condition, available because the corpus is closed |
+
+So the step gains one sentence, not a loop: after the repairs, report
+whether the outline's declared queries are exhausted, and name the ones
+that are not. It stays advisory -- **this step is never a condition of
+presenting**, and A3 must not become the first thing that makes it one.
+
+Only where an `outline.md` exists. It is optional (#455), and a draft
+without one has no declared list to exhaust; there, the shipped step is
+unchanged and says so, rather than reporting a vacuous "exhausted."
+
+### A4 -- an empty result set is informative
+
+No skill's text says this today -- `grep -rn "cannot be grounded"
+.claude/skills/` returns nothing. Every upstream is built to always
+produce a citation; against a closed bibliography, "nothing came back"
+means the claim **cannot be grounded in this corpus**, so the sentence
+is cut rather than cited to whatever ranked nearest.
+
+One paragraph in the critique step, in the repair list's vocabulary:
+a claim whose sub-theme is `run_empty` is a fourth kind of gap beside
+the three the step already lists (prose claims more than `claim:`
+supports, omits a kept `claim:`, drifts from the recorded wording), and
+its repair is to **cut the sentence, never to re-point it at an adjacent
+citekey**. That last clause is the load-bearing one: re-pointing is how a
+citation becomes decorative, and the gate cannot see it because the
+citekey is real.
+
+Two guards it must carry, both already built:
+
+- **The 90% floor catches the abuse.** "Cut the sentence" is a licence
+  to delete, and deleting lowers every count the acceptance test reads.
+  The floor exists for exactly this and needs no change -- but the step
+  text must put A4's cut *inside* the same accept/revert cycle as every
+  other repair, not beside it as a special case.
+- **`rejected.md` is not for this.** The step logs to `revisions.md`
+  and never to `rejected.md` (shipped, and pinned by
+  `test_every_step_logs_to_revisions_md_and_never_to_rejected_md`). A
+  cut sentence is a revision. The candidate that was never kept is what
+  `rejected.md` records, and that decision was made at evidence time.
+
+### Build order: two PRs, in this order
+
+**PR 1 -- A2, the `declared_vs_actual` defect**
+([issue 480](https://github.com/prasadtalasila/chitragupta/issues/480)).
+`chitragupta/dossier/`
+only: the `results`-carrying sibling in `_retrieval_queries.py`, the
+`run_empty` bucket in `_outline.py`, and the reporting in `_status.py`'s
+`_print_status_outline`, which already has the right shape to copy --
+`regrounded` is counted inside `run` and listed separately underneath,
+which is exactly what `run_empty` needs, so the summary line gains a
+clause and the loop below gains a sibling. Docs: `docs/DOSSIER.md`'s
+`retrieval.md`/`outline.md` sections and `docs/CLI.md`'s `dossier
+status` row. Tests to the 100% bar -- a declared query whose only row is
+`0` results reports `run_empty` and stays in `run`; the same query with
+one zero row and one non-zero row does not (the aggregate-before-dedupe
+rule above, and the test that pins it); the printed report names it once
+under `run_empty` and does not double-count it in the summary's `run`
+figure; a `reground` call still joins `run` (#470's two tests,
+unchanged); an unspecified-origin call is still neither; a dossier with
+no `outline.md` still reports every section empty.
+
+**PR 2 -- A3 and A4, five `SKILL.md` files**
+([issue 481](https://github.com/prasadtalasila/chitragupta/issues/481)).
+One paragraph each into
+the shipped step, in all five skills, plus the two new assertions in
+`tests/test_skill_pregate_feedback_step.py` in the shape its seven
+existing ones use (a text scan over `.claude/skills/`, five in and four
+out). A1 closes with PR 2's description citing it; nothing is edited for
+it.
+
+PR 2 depends on PR 1 only for A3's wording -- "the outline's declared
+queries are exhausted" is a claim about a thing `dossier status` must
+already be able to print. A4 does not depend on PR 1 at all and could
+lead if PR 1 slips.
+
+### What Part 2 deliberately does not do
+
+| Not proposed | Why |
+| --- | --- |
+| Re-critique after a repair | "Smaller than 'loop' suggests" is the whole shape of this item, and A3 gives the *evidence* a termination condition, not the *editing* one |
+| Make the step block a draft | No second gate. `python -m chitragupta.draft gate` means one thing ([WRITING-STANDARDS.md](../docs/WRITING-STANDARDS.md) §10) |
+| A "coverage" percentage in `dossier status` | R3. `run_empty` is a list of queries; a ratio over it would be a continuous score, and someone would optimise it |
+| Re-running an empty declared query automatically | A retrieval call costs, and "the corpus has nothing" is a stable fact about a closed corpus. E4 (#456) already covers the case where a *person* wants another round |
