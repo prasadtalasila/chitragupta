@@ -151,6 +151,13 @@ def _signed_off(book: Path, text: str, ancestors: list[str]) -> bool:
         return spec.recorded_digest(book) == spec.digest(text)
     # A section's immediate parent is a chapter -- `_unit_problem` refuses
     # any outline where it is not -- so the last ancestor is the chapter.
+    #
+    # This holds only while `contract` refuses anything but a section. When
+    # it widens to accept a chapter (#472's PR 3, now that a chapter is the
+    # authored document), a chapter's last ancestor is its *part*, which is
+    # never a key in `approved` -- so every chapter would read as unsigned
+    # forever. That change must resolve the chapter from the unit's own
+    # kind, and pin it with a test.
     return bool(ancestors) and ancestors[-1] in approved
 
 

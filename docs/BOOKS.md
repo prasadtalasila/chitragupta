@@ -576,11 +576,11 @@ each taken over that chapter's `###` heading and everything under it.
 
 The whole-file digest alone cannot answer the question `accept` asks.
 Measured on a fifteen-chapter book (#465): editing a single character in
-one chapter's brief moved the file's digest, so **every one of 672 units
-in all fifteen chapters** reported `signed_off: False`, and `accept`
-refused across the entire book while one chapter sat half-revised. A book
-is revised chapter by chapter over weeks; a book-wide answer makes every
-in-flight revision a book-wide freeze.
+one chapter's brief moved the file's digest, so **every one of the 672
+sections that outline declared, across all fifteen chapters**, reported
+`signed_off: False`, and `accept` refused across the entire book while one
+chapter sat half-revised. A book is revised chapter by chapter over weeks;
+a book-wide answer makes every in-flight revision a book-wide freeze.
 
 The escape -- re-run `spec sign` -- was worse than the freeze. It
 re-approves all fifteen chapters at once, so the record could no longer
@@ -598,6 +598,7 @@ falls back to the whole-book digest, which is the previous behaviour
 exactly. Writing chapter digests into it on a human's behalf would be
 this project inventing an approval, which is the one thing a record of a
 person's decision may never do. Re-run `spec sign` to opt in.
+
 ## 💡 Why a chapter is the authored document
 
 A chapter is one file; its sections are the headings inside it. An earlier
