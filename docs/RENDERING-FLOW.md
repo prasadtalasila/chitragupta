@@ -25,6 +25,7 @@ citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
 - [Figure substitution: four combinations, one real no-op](#-figure-substitution-four-combinations-one-real-no-op)
 - [Figure numbering: a caption wraps the marker, in two passes](#-figure-numbering-a-caption-wraps-the-marker-in-two-passes)
 - [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
+- [Equation numbering: the one pass that reads what `_math` left behind](#-equation-numbering-the-one-pass-that-reads-what-_math-left-behind)
 - [Known defect: the fourth combination isn't a no-op on this host](#-known-defect-the-fourth-combination-isnt-a-no-op-on-this-host)
 - [Unbuilt: a natbib-style mode for thesis fragments](#-unbuilt-a-natbib-style-mode-for-thesis-fragments)
 
@@ -256,8 +257,53 @@ find out:
   gate on `tbl`.
 
 The substitution order in `_substituted` is figures, then tables, then
-mathematics, and it is not arbitrary: a figure substitution can insert a
-fenced ASCII block, and `_math`'s displayed-equation rule reads fences.
+mathematics, then equations, and it is not arbitrary: a figure
+substitution can insert a fenced ASCII block, and `_math`'s
+displayed-equation rule reads fences -- and equation numbering has to run
+*after* mathematics, for the reason the next section states.
+
+## 🔢 Equation numbering: the one pass that reads what `_math` left behind
+
+Issue 457 gives a *marked* equation the same "author writes no number"
+contract as a table or figure, via
+`chitragupta/render_output/_equation_captions.py` -- but unlike either of
+those, not every displayed equation gets one: an author opts a specific
+equation in with `<!-- equation: id -->` directly above the existing
+`<!-- math -->` marker (`docs/WRITING-STANDARDS.md` §12), and an unmarked
+block -- a derivation step -- is untouched by every function in this
+module.
+
+**This module runs last, after `_math.substitute`, not before.** A
+table's or figure's caption sits *beside* content nothing else touches;
+an equation's marker sits above content `_math.py` itself rewrites into
+real `$$...$$`. That rewrite only happens on the pandoc path -- `render`
+passes an empty mapping on the Markdown-to-Markdown path, so
+`_math.substitute` is a no-op there -- which means this module has to
+recognise *two* different shapes of the same marked block, keyed on
+format:
+
+| Draft | Output | A marked block becomes | An `equationref` becomes |
+| --- | --- | --- | --- |
+| `.md` | `tex`, `latex`, `pdf`, `docx`, `html` | `\begin{equation}\n<latex>\n\label{eq:<id>}\n\end{equation}` (LaTeX-bound: LaTeX's own counter numbers it) or `**Equation N:**` above the kept `$$...$$` (docx/html: pandoc numbers nothing outside LaTeX) | `` `Equation~\ref{eq:<id>}`{=latex} `` (LaTeX-bound) or `Equation N` (docx/html) |
+| `.md` | `md` (never reaches pandoc) | `**Equation N:**` above the **untouched** `<!-- math -->` marker and fence | `Equation N` |
+| `.tex` | any | untouched -- `thesis-chapter-writer` writes `\[...\]`/`\(...\)` directly and has no marker vocabulary at all | untouched |
+
+Because this pass is last, it needs no precomputed `declared` list handed
+in from `_substituted` the way figures do: nothing earlier in the chain
+moves an equation marker relative to another one, so counting matches in
+whatever text this module receives agrees with counting them in the
+pristine draft.
+
+**Numbering breaks the "the `md` path is a no-op" rule, on purpose and
+only for numbering.** A marked equation's content is exactly as
+untouched on the `md` path as an unmarked one always was; its number is
+not -- `**Equation N:**` is written there the same way `**Table N:**`
+already is. `python -m chitragupta.draft style`
+(`chitragupta/style_equations.py`) reports a numbered equation nobody
+refers to, or an id problem, the same way `style_tables.py`/
+`style_figures.py` do; it deliberately does not blank fenced code first
+the way those two do, because an equation's own marked block is itself a
+fence -- see that module's docstring.
 
 ## 🐛 Known defect: the fourth combination isn't a no-op on this host
 

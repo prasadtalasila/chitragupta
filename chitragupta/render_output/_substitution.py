@@ -11,7 +11,7 @@ stay identical to the single module it replaced.
 import sys
 from pathlib import Path
 
-from chitragupta.render_output import _math, _tables
+from chitragupta.render_output import _equation_captions, _math, _tables
 from chitragupta.render_output._figure_captions import figures as _declared_figures
 from chitragupta.render_output._figure_captions import substitute_captions, substitute_refs
 from chitragupta.render_output._figures import _figure_warnings, _with_figures_for
@@ -51,10 +51,13 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
 # unresolvable marker costs the most, and the one that would otherwise
 # report nothing at all.
 def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]":
-    """Every figure and table problem in the draft, tagged with its source."""
-    return [("figure", w) for w in _figure_warnings(draft_text, input_path)] + [
-        ("table", w) for w in _tables.warnings(draft_text)
-    ]
+    """Every figure, table and equation problem in the draft, tagged with
+    its source."""
+    return (
+        [("figure", w) for w in _figure_warnings(draft_text, input_path)]
+        + [("table", w) for w in _tables.warnings(draft_text)]
+        + [("equation", w) for w in _equation_captions.warnings(draft_text)]
+    )
 
 
 # Figure captions and references, then figure content, then tables, then
@@ -83,6 +86,15 @@ def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]
 # `tests/test_render_output_math.py` pins that. Tables are the opposite
 # case and pass through here on that path too: their numbers exist
 # nowhere else, since that path never reaches pandoc.
+#
+# Equation numbering runs last, and needs no precomputed list of its own
+# unlike the figure one above: `_equation_captions.py` is the only pass
+# that reads whatever `_math.substitute` left behind rather than content
+# beside it, so nothing earlier in this chain moves an equation marker
+# relative to another one, and counting document order in the result
+# agrees with counting it in `draft_text`. See that module's own
+# docstring for why its numbering, unlike its content, is not gated on
+# `math_mapping` being non-empty -- it runs on every format, `md` included.
 def _substituted(
     draft_text: str, input_path: Path, output_format: str, math_mapping: "dict[str, str]"
 ) -> str:
@@ -91,4 +103,5 @@ def _substituted(
     with_captions = substitute_captions(draft_text, output_format, declared)
     with_refs = substitute_refs(with_captions, output_format, declared)
     with_figures = _with_figures_for(with_refs, input_path, output_format)
-    return _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
+    mathed = _math.substitute(_tables.substitute(with_figures, output_format), math_mapping)
+    return _equation_captions.substitute(mathed, output_format)

@@ -54,6 +54,7 @@ from typing import Any
 
 from chitragupta import config, dossier
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
+from chitragupta.style_equations import findings as equation_findings
 from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
@@ -242,7 +243,12 @@ def check(draft: Path, override: str | None = None) -> dict:
     # `vale_error` rather than raised, because a report naming what did
     # not run is this module's whole header discipline.
     language, source = resolve_language(draft, override)
-    findings = acronym_drift_findings(draft) + table_findings(draft) + figure_findings(draft)
+    findings = (
+        acronym_drift_findings(draft)
+        + table_findings(draft)
+        + figure_findings(draft)
+        + equation_findings(draft)
+    )
     vale_error, proposal = None, None
     try:
         findings = collapse(run_vale(draft, language)) + findings

@@ -1836,9 +1836,12 @@ Report where a draft's prose departs from
 recorded dialect, a glossary acronym whose recorded expansion has
 drifted from the current `[style].acronyms` vocabulary (§9;
 `chitragupta/style_acronym_drift.py`), §13's tables
-(`chitragupta/style_tables.py`), and §10's captioned figures
-(`chitragupta/style_figures.py`). Those last three are the findings here
-*not* sourced from Vale, and they are computed in plain Python.
+(`chitragupta/style_tables.py`), §10's captioned figures
+(`chitragupta/style_figures.py`), and §12's numbered equations
+(`chitragupta/style_equations.py`). Those last four are the findings here
+*not* sourced from Vale, and they are computed in plain Python -- the
+id-validity and reference-problem logic behind all four is shared in
+`chitragupta/style_elements.py` rather than copied per kind.
 **A review aid: it exits 0 whatever it finds**, and nothing in this
 pipeline reads its output back or blocks on it.
 
@@ -1867,6 +1870,22 @@ these until issue 421 amended that section; it now raises the first row:
 | `chitragupta.FigureUnreferenced` | No sentence refers to the figure at all |
 | `chitragupta.FigureUnknownRef` | A `<!-- figureref: -->` naming a figure that does not exist, or one that is not captioned |
 | `chitragupta.FigureRefOutsideSection` | The figure is referred to, but only from another section |
+
+**The equation findings**, issue 457's extension of the same contract to
+equations. Unlike a table or figure, not every displayed equation is
+meant to be numbered -- WRITING-STANDARDS.md §12 leaves that call to the
+author -- so there is no `EquationNoCaption`/`EquationNoId` row: an
+equation is only "declared" at all once the author opts it in with an
+`<!-- equation: id -->` marker, and these findings apply from there:
+
+| Rule | What it means |
+| --- | --- |
+| `chitragupta.EquationOrphanMarker` | An `<!-- equation: -->` marker with no `<!-- math -->` block directly below it, so nothing numbers it |
+| `chitragupta.EquationDuplicateId` | Two equations claim one id; the same `\ref`-collision risk as a duplicate table id |
+| `chitragupta.EquationMalformedId` | An id `\label{eq:<id>}` cannot carry unescaped |
+| `chitragupta.EquationUnreferenced` | No sentence refers to the equation at all |
+| `chitragupta.EquationUnknownRef` | An `<!-- equationref: -->` naming an equation that does not exist |
+| `chitragupta.EquationRefOutsideSection` | The equation is referred to, but only from another section |
 
 ```bash
 chitragupta draft style content/drafts/<path>
