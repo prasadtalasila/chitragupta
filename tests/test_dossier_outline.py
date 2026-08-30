@@ -224,6 +224,38 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].not_run == ["timestep mismatch"]
         assert drift.extended == []
 
+    def test_a_regrounded_query_is_reported_run_and_regrounded(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100, origin="reground")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].run == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].not_run == []
+        assert drift.regrounded == ["timestep mismatch"]
+
+    def test_regrounded_is_reported_flat_not_per_section(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "surrogate model twin", 5, 5, 100, origin="reground")
+        outline_ = _outline.parse("## Family 3\n\nbrief: text\n\nqueries:\n- corrected physics\n")
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.regrounded == ["surrogate model twin"]
+        assert drift.sections["Family 3"].not_run == ["corrected physics"]
+
+    def test_an_unspecified_origin_is_still_neither_run_nor_regrounded(self, draft):
+        """Regression guard for the risk this task is named for: only
+        the literal "reground" string joins `run`. An unspecified origin
+        must still read as not-run, same as before this task."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100)
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].not_run == ["timestep mismatch"]
+        assert drift.regrounded == []
+
     def test_a_claim_only_section_with_no_queries_still_appears_in_drift(self, draft):
         """A claim: section with nothing declared to search for must not
         be silently absent from the diff -- that would make `dossier
