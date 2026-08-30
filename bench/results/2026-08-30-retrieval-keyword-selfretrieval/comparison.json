@@ -1,0 +1,93 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: keywords (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as a question",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7773,
+  "ndcg@5": 0.7089
+ },
+ {
+  "row": "E1 interrogative-strip: question, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "E1 interrogative-strip: keywords, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7321
+ },
+ {
+  "row": "dense-only: sentence-transformers/all-MiniLM-L6-v2",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.6406,
+  "ndcg@5": 0.5225
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/all-MiniLM-L6-v2",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.5859,
+  "ndcg@5": 0.4742
+ },
+ {
+  "row": "dense-only: sentence-transformers/all-mpnet-base-v2",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.6367,
+  "ndcg@5": 0.5069
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/all-mpnet-base-v2",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.6016,
+  "ndcg@5": 0.5124
+ },
+ {
+  "row": "dense-only: sentence-transformers/multi-qa-mpnet-base-dot-v1",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.3359,
+  "ndcg@5": 0.2665
+ },
+ {
+  "row": "dense+rerank: sentence-transformers/multi-qa-mpnet-base-dot-v1",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.4453,
+  "ndcg@5": 0.3497
+ },
+ {
+  "row": "SPECTER2 (adhoc_query + proximity, full corpus)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.5195,
+  "ndcg@5": 0.4201
+ },
+ {
+  "row": "cascade: SPECTER2 shortlist(50) -> sentence-transformers/all-mpnet-base-v2 +rerank",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7109,
+  "ndcg@5": 0.6037
+ }
+]

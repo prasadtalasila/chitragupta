@@ -1,0 +1,25 @@
+{
+  "draft": "bench/fixtures/cloud-computing-for-digital-twins.md",
+  "citekeys": [
+    "alam_c2ps_2017",
+    "bellavista_exploiting_2024",
+    "chandramouli_zero_2023",
+    "deng_cloud-native_2024",
+    "deslauriers_everyday_2022",
+    "gigli_next_2024",
+    "jensen_modelardb_2023",
+    "karabey_aksakalli_deployment_2021",
+    "martin_facilitating_2022",
+    "niedzwiecki_cloud-based_2024",
+    "raith_serverless_2023",
+    "savaglio_generative_2025",
+    "ullah_micado-edge_2021",
+    "wermann_ktwin_2024",
+    "xu_optimized_2023",
+    "zhou_secure_2022"
+  ],
+  "overlap_n_invocations_warm_s": 0.0836700345389545,
+  "scan_cold_s": 60.27775662112981,
+  "scan_warm_s": 0.3562994999811053,
+  "scan_findings": 1
+}

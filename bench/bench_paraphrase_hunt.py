@@ -167,6 +167,12 @@ def lexical_findings(drafts_dir):
     """
     from chitragupta.review import verbatim_check as vc
 
+    # The two tier functions live in private submodules and are not
+    # re-exported by the package, so `vc._exact_tier_findings` raises
+    # AttributeError -- import them from where they actually are.
+    from chitragupta.review.verbatim_check._exact import _exact_tier_findings
+    from chitragupta.review.verbatim_check._skipgram import _skipgram_tier_findings
+
     out = {}
     for chapter in sorted(Path(drafts_dir).glob("*.md")):
         if not chapter.name[0].isdigit():
@@ -176,7 +182,7 @@ def lexical_findings(drafts_dir):
         word_strs = [w.text for w in words]
         newlines = vc._newline_offsets(text)
         found = []
-        for finder in (vc._exact_tier_findings, vc._skipgram_tier_findings):
+        for finder in (_exact_tier_findings, _skipgram_tier_findings):
             rows, _suppressed = finder(
                 words, word_strs, paragraph_citekeys, newlines, text, overlap_index.DEFAULT_N, 1, []
             )

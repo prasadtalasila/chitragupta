@@ -1,0 +1,17 @@
+{"record": "meta", "device": "cuda", "mode": "fresh", "images": false, "ocr": true, "cold_start_s": 7.78, "cuda_visible": "", "n": 16}
+{"record": "pdf", "citekey": "deslauriers_everyday_2022", "pages": 1, "bytes": 411685, "seconds": 1.544, "s_per_page": 1.544, "md_chars": 5343, "ok": true}
+{"record": "pdf", "citekey": "aidasso_towards_2025-1", "pages": 5, "bytes": 1043604, "seconds": 5.316, "s_per_page": 1.063, "md_chars": 27898, "ok": true}
+{"record": "pdf", "citekey": "picone_wldt_2021", "pages": 7, "bytes": 1560127, "seconds": 8.61, "s_per_page": 1.23, "md_chars": 33764, "ok": true}
+{"record": "pdf", "citekey": "noauthor_optimizing_nodate", "pages": 8, "bytes": 551478, "seconds": 3.694, "s_per_page": 0.462, "md_chars": 38534, "ok": true}
+{"record": "pdf", "citekey": "liu_shipboard_2024", "pages": 10, "bytes": 3224780, "seconds": 10.217, "s_per_page": 1.022, "md_chars": 48951, "ok": true}
+{"record": "pdf", "citekey": "vanderhorn_digital_2021", "pages": 11, "bytes": 775155, "seconds": 6.375, "s_per_page": 0.58, "md_chars": 83779, "ok": true}
+{"record": "pdf", "citekey": "castellano_scheduling_2024", "pages": 13, "bytes": 1333696, "seconds": 15.091, "s_per_page": 1.161, "md_chars": 70768, "ok": true}
+{"record": "pdf", "citekey": "tang_evaluation_2025", "pages": 15, "bytes": 5086674, "seconds": 21.662, "s_per_page": 1.444, "md_chars": 73321, "ok": true}
+{"record": "pdf", "citekey": "villalonga_decision-making_2021", "pages": 17, "bytes": 6389717, "seconds": 14.968, "s_per_page": 0.88, "md_chars": 105559, "ok": true}
+{"record": "pdf", "citekey": "frasheri_system_2024-1", "pages": 19, "bytes": 580871, "seconds": 3.928, "s_per_page": 0.207, "md_chars": 53874, "ok": true}
+{"record": "pdf", "citekey": "altawy_security_2016", "pages": 21, "bytes": 4568165, "seconds": 17.565, "s_per_page": 0.836, "md_chars": 122288, "ok": true}
+{"record": "pdf", "citekey": "branlard_digital_2024", "pages": 24, "bytes": 8562979, "seconds": 19.82, "s_per_page": 0.826, "md_chars": 97210, "ok": true}
+{"record": "pdf", "citekey": "afrin_resource_2021", "pages": 29, "bytes": 2895881, "seconds": 24.147, "s_per_page": 0.833, "md_chars": 196115, "ok": true}
+{"record": "pdf", "citekey": "noauthor_open_nodate", "pages": 34, "bytes": 673602, "seconds": 15.31, "s_per_page": 0.45, "md_chars": 67078, "ok": true}
+{"record": "pdf", "citekey": "tournier_survey_2021", "pages": 53, "bytes": 604508, "seconds": 5.797, "s_per_page": 0.109, "md_chars": 134962, "ok": true}
+{"record": "pdf", "citekey": "noauthor_about_nodate", "pages": 675, "bytes": 12684259, "seconds": 242.047, "s_per_page": 0.359, "md_chars": 1445101, "ok": true}
