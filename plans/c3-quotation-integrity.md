@@ -1,8 +1,11 @@
 # 📖 C3: quotation integrity -- verify each quoted span is really in the source
 
-Status: **plan, built.** Written 2026-08-25 for
-[#383](https://github.com/prasadtalasila/chitragupta/issues/383).
-Not yet built; no PR has closed it.
+Status: **shipped**, by
+[PR #416](https://github.com/prasadtalasila/chitragupta/pull/416),
+merged 2026-08-26. Written 2026-08-25 for
+[#383](https://github.com/prasadtalasila/chitragupta/issues/383). What
+changed from this plan on the way is recorded below rather than edited
+out.
 
 **Written for** the person building C3 --
 [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s "Theme C:

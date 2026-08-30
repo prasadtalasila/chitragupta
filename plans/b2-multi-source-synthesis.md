@@ -222,9 +222,11 @@ section unit leans on them by design rather than by omission:
 
 **One residual exposure, named rather than papered over.** Step 3 still
 has the drafter read 500-character retrieval snippets directly
-(`textbook-chapter-writer/SKILL.md:246`), so source wording is in
-context even with A2 shipped. That is roadmap **A3**, extraction at
-retrieval, and it is unbuilt. B2 cannot close it and does not claim to.
+(`textbook-chapter-writer/SKILL.md:258`), so source wording is in
+context even with A2 shipped. Roadmap **A3**, extraction at retrieval,
+shipped (#327) for `survey-writer`'s subagent boundary specifically --
+`textbook-chapter-writer` was outside that PR's scope, so this exposure
+is still open there. B2 cannot close it and does not claim to.
 
 **Why a tutorial's unit is the document.** Not as an exemption, and not
 as a weaker version of the rule -- as the place the guarantee actually
