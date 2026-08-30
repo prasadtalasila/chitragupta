@@ -753,7 +753,15 @@ the finding kept, add `--write`: the report goes to `content/review/`,
 mirroring the draft's path, beside any provenance and coverage reports for the
 same draft.
 
-**(h) Present.** Give the user: headline finding, the single most
+**(h) Stamp the draft fingerprint, then present.** Nothing edits the
+report's text after this point, so this is where `dossier status`
+records the baseline a later hand edit is compared against (#454):
+
+```bash
+python -m chitragupta.draft dossier stamp content/drafts/deep-research-<slug>.md
+```
+
+Then present. Give the user: headline finding, the single most
 important contradiction, the actionable insight, the overall grade, any
 unresolved peer-review concern left in the scorecard, the citekey count,
 the saved path, and the render outcome (paths to the `.tex`/`.pdf` if they

@@ -615,7 +615,15 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
-17. Present the `.tex` fragment (the deliverable to `\input`) plus, if
+17. **Stamp the draft fingerprint, then present.** Nothing edits the
+    fragment's text after this point, so this is where `dossier status`
+    records the baseline a later hand edit is compared against (#454):
+
+    ```bash
+    python -m chitragupta.draft dossier stamp content/drafts/<slug>.tex
+    ```
+
+    Then present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
     it didn't. Tell the user where the dossier is, that changes to this
     chapter should go through `draft-reviser` rather than another run of this

@@ -702,7 +702,15 @@ the lesson design is the part worth keeping either way.
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
 
-19. **Present**, reporting: the draft path, the render outcome (or warning),
+19. **Stamp the draft fingerprint, then present.** Nothing edits the
+    lesson's text after this point, so this is where `dossier status`
+    records the baseline a later hand edit is compared against (#454):
+
+    ```bash
+    python -m chitragupta.draft dossier stamp content/drafts/<slug>.md
+    ```
+
+    Then **present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
     tutorial should go through `draft-reviser` rather than another run of

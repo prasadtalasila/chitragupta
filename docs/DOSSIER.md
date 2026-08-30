@@ -358,13 +358,20 @@ or, before the first stamp:
 Unlike the corpus fingerprint, nothing writes this at `init` time --
 `init` often runs before the draft is finished, and stamping a
 half-written draft would make every dossier read as changed on its first
-real `status`. A skill (`draft-reviser`, and any genre skill's own
-finishing step) records it explicitly, after `python -m chitragupta.draft
-gate` passes:
+real `status`. Each of the five genre skills stamps at its own finishing
+step, and `draft-reviser`/`corpus-reviser` re-stamp after their own edits
+-- in every case after `python -m chitragupta.draft gate` passes, never
+before:
 
 ```bash
 python -m chitragupta.draft dossier stamp content/drafts/<path>
 ```
+
+`agenda-reviser` is the deliberate exception: it may not touch `scope.md`
+at all, so a repair it makes leaves the fingerprint stale on purpose --
+`dossier status` then reads `CHANGED since last stamp`, the honest signal
+that an automated pass, not a person's own revision session, touched the
+draft since anyone last confirmed it.
 
 `python -m chitragupta.draft dossier status` recomputes the digest and
 reports `unchanged since last stamp` or `CHANGED since last stamp`. A

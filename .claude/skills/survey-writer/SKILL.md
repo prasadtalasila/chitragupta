@@ -677,7 +677,15 @@ collapse them for the sake of a cleaner narrative.
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for
     the same draft.
-18. Present the draft plus a one-paragraph summary of thin-coverage areas and
+18. **Stamp the draft fingerprint, then present.** Nothing edits the draft's
+    text after this point, so this is where `dossier status` records the
+    baseline a later hand edit is compared against (#454):
+
+    ```bash
+    python -m chitragupta.draft dossier stamp content/drafts/<slug>.md
+    ```
+
+    Then present the draft plus a one-paragraph summary of thin-coverage areas and
     any unresolved cross-source disagreement, and report the render outcome
     (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
     Tell the user where the dossier is, that changes to this draft should go

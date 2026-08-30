@@ -395,6 +395,15 @@ copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
   `python -m chitragupta.draft gate`.**
 - **Never report a repair you did not verify.** If `recheck` was not run,
   say so rather than describing the edit as accepted.
+- **Never run `dossier stamp`.** It writes `scope.md`, which this skill
+  is already forbidden to touch (#454). Leaving the draft fingerprint
+  stale after a repair is correct, not a gap: the next `dossier status`
+  will read `CHANGED since last stamp`, which is the honest signal that
+  an automated pass -- not a person's own `draft-reviser` session --
+  touched the draft since it was last confirmed. A de-cited sentence in
+  particular can leave `evidence.md` carrying an orphaned block, which is
+  exactly the kind of finding a human should see, not one this skill
+  should silence by re-baselining it away.
 
 ## Sources
 
