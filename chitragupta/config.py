@@ -66,10 +66,10 @@ PROJECT_MARKER = "config.toml"
 def shipped(*parts: str) -> Path:
     """A file that ships with the code, not with the user's project.
 
-    The CSL style, the Vale rules and the default acronym list are the
-    project's own vendored assets: a user gets them by installing, never
-    by authoring them. They therefore resolve from the code's location,
-    not the user's working directory.
+    The CSL style, the Vale rules, the default acronym list and the
+    pandoc Lua filters are the project's own vendored assets: a user
+    gets them by installing, never by authoring them. They therefore
+    resolve from the code's location, not the user's working directory.
 
     One function rather than a constant because it is the single seam
     that changes when `assets/` moves under the import package (#261) and
