@@ -608,6 +608,24 @@ anywhere tests whether a draft actually declines to claim what the
 corpus cannot support. It is the one ability on that list this pipeline
 is *designed* around, and the one with no number.
 
+**It is likely to stay that way, and now for a measured reason rather
+than an unbuilt one.** The roadmap item that would have supplied the
+number -- [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6 -- was skipped
+by evidence (#477): on a corpus of 642 papers about one subject, a
+negative query set cannot be built by subtraction, and the refusal
+signal that does exist has never fired across 303 logged retrieval
+calls. That entry holds the measurement; this row stays **no** and
+should not be read as work merely waiting its turn.
+
+**One thing did change on the way, and it is not a measurement.** The
+signal C6's evidence is read off -- a declared query that ran and came
+back with nothing -- is now *reported*: `dossier status` names it (#480),
+and the five genre skills' pre-gate step is told to cut the sentences
+resting on it rather than cite whatever ranked nearest (#481). That is
+the behaviour, made visible per draft. It is still not a rate: nothing
+counts how often a draft should have refused against how often it did,
+which is what this row is asking for.
+
 **Two findings from Gao §VII-B are worth carrying, both
 counterintuitive.** Retrieved noise is not uniformly harmful: one study
 it cites found that including irrelevant documents *increased* accuracy

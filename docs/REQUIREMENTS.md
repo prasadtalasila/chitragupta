@@ -354,10 +354,16 @@ so a large part of the published technique space is inapplicable rather
 than merely unbuilt. The second is **negative rejection** -- declining
 to answer when the retrieved material does not support one -- named as a
 first-class evaluable ability, which is the behaviour this project is
-built around and the one it has never measured (now
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6). The third is a defence
-of retrieval that does not depend on context length: Gao §VII-A argues
-that RAG's durable advantage over a long-context model is that "the
+built around and the one it has never measured --
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6, which went on to be
+skipped by evidence: on a corpus of 642 papers about one subject, a
+negative query set cannot be built by subtraction, and no retrieval
+call this project has logged has ever come back short. The behaviour is
+reported per draft since #480/#481 -- a declared query that returned
+nothing is named, and the sentences resting on it are cut rather than
+cited -- but reporting it is not measuring the rate. The third is a
+defence of retrieval that does not depend on context length: Gao §VII-A
+argues that RAG's durable advantage over a long-context model is that "the
 entire retrieval and reasoning process is observable, while generation
 solely relying on long context remains a black box". That is §1.1's
 gate property argued from the outside.

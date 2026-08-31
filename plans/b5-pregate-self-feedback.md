@@ -1,6 +1,6 @@
 # Pre-gate self-feedback: one critique pass, R4's count as its acceptance test
 
-Status: **the step shipped; four amendments to it are unbuilt.** Written
+Status: **shipped, both halves.** Written
 2026-08-28, for
 [issue 385](https://github.com/prasadtalasila/chitragupta/issues/385) --
 [B5](../docs/FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop) in
@@ -13,10 +13,11 @@ the outcome line `plans/README.md` asks for. It is recorded now, in
 **Read this file in two parts.** Everything from here to "Outcome" is
 the design as built, left in the present tense it was written in and
 not rewritten into the past -- it is what the shipped step is checked
-against. **The open work is [Part 2](#part-2-the-four-amendments), at
-the end**: the four amendments a 2026-08-28 read of four upstreams left
-owed, written down by #439 the day after this merged, so none of them
-reached what shipped.
+against. [Part 2](#part-2-the-four-amendments) at the end is the second
+half: the four amendments a 2026-08-28 read of four upstreams left owed,
+written down by #439 the day after this merged, so none of them reached
+what shipped. They landed later, as #480 and #481, and Part 2 carries
+its own outcome.
 
 **Written for** whoever builds B5. **It assumes**
 [docs/AUTO-IMPROVEMENT.md](../docs/AUTO-IMPROVEMENT.md) for R1-R11 and the
@@ -501,8 +502,35 @@ outcome, rather than by the merging PR.
 
 ## Part 2: the four amendments
 
-Status: **unbuilt.** Written 2026-08-30, when the roadmap entry was
-corrected to say the step had shipped.
+Status: **shipped.** Written 2026-08-30, when the roadmap entry was
+corrected to say the step had shipped; built 2026-08-31 as two PRs, the
+split this part proposed. **Outcome, in order:**
+
+- **A2** -- [#480](https://github.com/prasadtalasila/chitragupta/issues/480),
+  closed by [PR #482](https://github.com/prasadtalasila/chitragupta/pull/482),
+  released as 6.51.0. `recorded_queries_with_evidence` and
+  `SectionDrift.run_empty` landed as designed below, subset-not-redefinition
+  included. One thing the design got wrong and the implementation fixed:
+  this part first said to dedupe as today and *then* read the counts,
+  which is uncomputable -- the counts are gone by then. The rule as built
+  folds a pair's rows as it goes, keeping "did any row return
+  something", and the paragraph below now says so.
+- **A3 and A4** -- [#481](https://github.com/prasadtalasila/chitragupta/issues/481),
+  in the same PR that removed B5 from the roadmap. One thing moved: the
+  `dossier status` call sits in **A4's** paragraph, before the repair
+  loop, rather than in A3's after it. As first drafted, the step was
+  told to treat `no evidence` as a gap class before it had been told how
+  to obtain that signal, and to obtain it only after the editing was
+  over -- so a gap it named could not be acted on in the same pass. A3
+  now reports from the block A4 already read.
+- **A1** needed no work, as this part predicted, and closed by being
+  cited rather than implemented.
+
+`_STEP_TAIL_CHARS` in `tests/test_skill_pregate_feedback_step.py` went
+from 4300 to 5900 on the way, with the measured max recorded beside it.
+It is the kind of constant that fails silently in the passing direction:
+left alone, the window would have stopped short of the closing clause
+and every test in that file would have gone on passing by not looking.
 [FEATURE-ROADMAP.md's B5](../docs/FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop)
 is the ticket; this is the design.
 
@@ -585,7 +613,10 @@ Three design decisions the implementer should not have to re-take:
    rather than failing a draft.
 
 **Aggregate before deduplicating, not after**, and this is the one place
-the sibling's shape is forced. `recorded_queries_with_origin` dedupes on
+the sibling's shape is forced. (An earlier draft of this paragraph said
+to dedupe as today and then read the counts, which cannot be done: by
+then the later rows' counts are gone. What shipped folds as it goes.)
+`recorded_queries_with_origin` dedupes on
 `(query, origin)` and keeps the *first* row it sees, so by the time it
 returns, the counts of every later row for that pair are gone -- a query
 logged twice, once returning nothing and once returning four after a
