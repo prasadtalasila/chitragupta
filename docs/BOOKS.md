@@ -34,6 +34,7 @@ stated once and read where you need it.
 - [Why sign-off is a sibling file](#-why-sign-off-is-a-sibling-file)
 - [Why sign-off is recorded per chapter](#-why-sign-off-is-recorded-per-chapter)
 - [Why a chapter is the authored document](#-why-a-chapter-is-the-authored-document)
+- [Structure and artifact are different units](#-structure-and-artifact-are-different-units)
 - [What `status`'s exit code is, and is not](#-what-statuss-exit-code-is-and-is-not)
 - [What the input digest covers, and what it must not](#-what-the-input-digest-covers-and-what-it-must-not)
 - [Why `registry check` exits 0, when the two `status` commands do not](#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
@@ -114,8 +115,8 @@ planned top-down, generated bottom-up. Four heading levels, and no more:
 | --- | --- | --- |
 | `# Title` | the book | -- |
 | `## Part {#part-i}` | a part | -- |
-| `### Chapter {#ch-1}` | a **chapter** | one authored document |
-| `#### Section {#sec-1}` | a section | one heading inside it |
+| `### Chapter {#ch-1}` | a **chapter** | one authored document -- and what `unit accept` records |
+| `#### Section {#sec-1}` | a section | one heading inside it -- structure, never a file |
 
 Nothing sits below a section: a level deeper would describe structure the
 outline has no business owning. Text beneath a heading is that heading's
@@ -687,6 +688,32 @@ authored headings** across the first four chapters. Without the rule,
 `align` would put roughly 225 findings on a book that is not wrong, only
 described at chapter granularity, and a check like that is the first thing
 anyone turns off.
+
+## 💡 Structure and artifact are different units
+
+`spec.md` declares **structure**: headings a human approves before any
+prose exists, and what `spec align` checks a draft against. `unit accept`
+records an **artifact**: a file the citation gate runs on, whose whole
+text is hashed into `output_digest` and whose citekeys are extracted. A
+heading has no independent existence on disk.
+
+Before a chapter became the authored document those coincided, because a
+book was one file per section. They cannot now, and **the asymmetry is
+load-bearing**: alignment only has content while the outline is finer
+than the file. Collapse them in either direction -- declare only
+chapters, or go back to one file per section -- and "did you write what
+you said you would?" becomes a question with no possible answer.
+
+So `unit contract|accept|status` resolve against **acceptance units**: a
+chapter the outline describes at section level *is* one; a chapter
+described only at chapter level leaves its single section as one, which
+is every retrofitted book and why they keep working unchanged.
+
+A third sense of the word lives in `chitragupta/review/_units.py` -- the
+scale the multi-source rule binds at, which is **genre-dependent**
+(paragraph for a thesis chapter, section for a textbook one). That one is
+about evidence; this one is about artifacts. They are not the same
+question and are not expected to agree.
 
 ## ✅ What `status`'s exit code is, and is not
 

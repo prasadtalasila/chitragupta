@@ -37,6 +37,7 @@ import json
 from pathlib import Path
 
 from chitragupta import spec
+from chitragupta.spec._align import chapters, section_described
 
 # Where a book's acceptance records live, beside the outline they are
 # accepted against rather than in a fifth top-level directory under
@@ -91,22 +92,53 @@ def record_path(book: Path, unit_id: str) -> Path:
     return spec.spec_dir(book) / UNITS_DIRNAME / f"{unit_id}.json"
 
 
+def acceptance_units(book: Path) -> list[dict]:
+    """What `accept` records, in outline order.
+
+    Not the same as `sections()`, and the difference is the point.
+    `spec.md` declares **structure** -- headings a human approves before
+    any prose exists, and what `spec align` checks a draft against.
+    Acceptance records an **artifact**: a file the citation gate can run
+    on, whose whole text is hashed into `output_digest` and whose citekeys
+    are extracted. A heading has no independent existence on disk.
+
+    Before #472 the two coincided, because a book was one file per
+    section. A chapter is now one authored document with its sections as
+    headings inside it, so a chapter the outline describes at section
+    level **is** the unit. A chapter described only at chapter level
+    declares no structure of its own, so its single section stays the
+    unit -- that is every book retrofitted from prose written before this
+    track, where the section id is the filename.
+
+    The asymmetry is load-bearing. Alignment only has content while the
+    outline is finer than the file: collapse them and "did you write what
+    you said you would?" has no possible answer.
+
+    Nothing to do with `chitragupta/review/_units.py`, which owns a third
+    sense of the word -- the scale the multi-source rule binds at, which
+    is genre-dependent (paragraph for a thesis chapter, section for a
+    textbook one). That one is about evidence, this one about artifacts.
+    """
+    _, parsed = _parsed_spec(book)
+    found: list[dict] = []
+    for chapter, declared in chapters(parsed):
+        found.append(chapter) if section_described(chapter, declared) else found.extend(declared)
+    return found
+
+
 def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
     """The inputs one unit is generated from, and what it must produce."""
-    text, parsed = _parsed_spec(book)
-    found = next((entry for entry in parsed["units"] if entry["id"] == unit_id), None)
+    text, _ = _parsed_spec(book)
+    units = acceptance_units(book)
+    found = next((entry for entry in units if entry["id"] == unit_id), None)
     if found is None:
         raise UnitError(
-            f"no unit `{unit_id}` in {spec.spec_path(book)}. It holds: "
-            + ", ".join(entry["id"] for entry in parsed["units"])
-        )
-    if found["kind"] != "section":
-        raise UnitError(
-            f"`{unit_id}` is a {found['kind']}, not a section. The section is the "
-            f"generation unit; a {found['kind']} names no prose of its own."
+            f"`{unit_id}` is not a unit of {spec.spec_path(book)}. It is accepted in: "
+            + ", ".join(entry["id"] for entry in units)
         )
     return {
         "unit": unit_id,
+        "kind": found["kind"],
         "title": found["title"],
         "ancestors": found["ancestors"],
         "ancestor_titles": found["ancestor_titles"],
@@ -128,11 +160,11 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         # record that has to read the same on the Windows CI leg as on
         # Linux.
         "draft": draft_path(book, unit_id).as_posix(),
-        "signed_off": _signed_off(book, text, found["ancestors"]),
+        "signed_off": _signed_off(book, text, found),
     }
 
 
-def _signed_off(book: Path, text: str, ancestors: list[str]) -> bool:
+def _signed_off(book: Path, text: str, found: dict) -> bool:
     """Whether the outline this unit is generated from is approved.
 
     Asked of the unit's own **chapter**, not of the book. A whole-book
@@ -149,16 +181,26 @@ def _signed_off(book: Path, text: str, ancestors: list[str]) -> bool:
     approved = spec.signed_off_chapters(book, text)
     if approved is None:
         return spec.recorded_digest(book) == spec.digest(text)
-    # A section's immediate parent is a chapter -- `_unit_problem` refuses
-    # any outline where it is not -- so the last ancestor is the chapter.
-    #
-    # This holds only while `contract` refuses anything but a section. When
-    # it widens to accept a chapter (#472's PR 3, now that a chapter is the
-    # authored document), a chapter's last ancestor is its *part*, which is
-    # never a key in `approved` -- so every chapter would read as unsigned
-    # forever. That change must resolve the chapter from the unit's own
-    # kind, and pin it with a test.
-    return bool(ancestors) and ancestors[-1] in approved
+    return chapter_of(found) in approved
+
+
+def chapter_of(found: dict) -> str:
+    """The chapter whose approval covers this unit.
+
+    Resolved from the unit's own kind, and public because more than one
+    caller needs it: reading "the last ancestor" is right for a section
+    and wrong for a chapter, whose last ancestor is its **part**. A part
+    is never a key in the approved set nor an id `spec align` reports, so
+    getting this wrong fails open in one place and closed in another.
+
+    Works on a contract as well as on a parsed outline entry -- `contract`
+    carries `kind` for exactly this reason.
+    """
+    if found["kind"] != "chapter":
+        return found["ancestors"][-1]
+    # A parsed outline entry keys its id `id`; a contract keys the same
+    # value `unit`. Both are passed here, so neither spelling is assumed.
+    return found.get("id") or found["unit"]
 
 
 def input_digest(built: dict) -> str:
@@ -255,7 +297,12 @@ def outline(book: Path) -> list[dict]:
 
 
 def sections(book: Path) -> list[dict]:
-    """Every generation unit in a book's outline, in outline order."""
+    """Every `####` section the outline declares, in outline order.
+
+    The **structural** units: what a human approved and what `spec align`
+    checks a draft against. `acceptance_units` answers the different
+    question of what `accept` records.
+    """
     return [entry for entry in outline(book) if entry["kind"] == "section"]
 
 

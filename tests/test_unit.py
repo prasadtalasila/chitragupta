@@ -18,15 +18,29 @@ GOOD_SPEC = """# Composable Digital Twins
 
 ## Part I: Foundations {#part-foundations}
 
-### Chapter 1: What a twin is {#ch-what}
-
-#### The model half {#sec-model}
+### The model half {#ch-model}
 
 Establish that a twin is a model plus a live data link.
 
-#### The data half {#sec-data}
+#### What a model is {#sec-model-what}
+
+The modelling half.
+
+#### What it leaves out {#sec-model-limits}
+
+The abstraction half.
+
+### The data half {#ch-data}
 
 Establish the link, and why it is the hard half.
+
+#### The link {#sec-data-link}
+
+The wiring half.
+
+#### Its failure modes {#sec-data-fail}
+
+The unreliable half.
 """
 
 
@@ -66,10 +80,31 @@ def sign_off(book):
     spec.main(["sign", str(book)])
 
 
-def write_unit_draft(book, unit_id, body="A paragraph citing @smith_example_2024.\n"):
+# What each chapter declares, so a written draft matches its outline.
+# `unit accept` refuses a chapter whose headings drifted (#472), and this
+# module is about contracts and digests rather than alignment -- a draft
+# that does not match would fail every test here for the wrong reason.
+DECLARED = {
+    "ch-model": ("What a model is", "What it leaves out"),
+    "ch-data": ("The link", "Its failure modes"),
+    "ch-cost": ("The bill",),
+}
+
+
+def write_unit_draft(book, unit_id, body=None):
+    """A chapter carrying the sections its outline declares.
+
+    `body`, when given, replaces the prose under every heading rather than
+    the whole file -- the headings have to stay for the draft to remain
+    aligned with the outline it is accepted against.
+    """
+    prose = body or "A paragraph citing @smith_example_2024.\n"
+    text = f"# {unit_id}\n\n" + "".join(
+        f"## {heading}\n\n{prose}\n" for heading in DECLARED.get(unit_id, ())
+    )
     path = book / f"{unit_id}.md"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body, encoding="utf-8")
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -88,19 +123,19 @@ def corpus(ledger_con, make_ref):
 
 
 def test_a_contract_carries_the_spec_slice_and_the_sources(book):
-    contract = unit.contract(book, "sec-model", ["smith_example_2024"])
+    contract = unit.contract(book, "ch-model", ["smith_example_2024"])
     assert contract["title"] == "The model half"
-    assert contract["ancestors"] == ["part-foundations", "ch-what"]
+    assert contract["ancestors"] == ["part-foundations"]
     assert contract["brief"].startswith("Establish that a twin")
     assert contract["sources"] == ["smith_example_2024"]
-    assert contract["draft"].endswith("twins/sec-model.md")
+    assert contract["draft"].endswith("twins/ch-model.md")
 
 
 def test_only_a_section_is_a_generation_unit(book):
-    """A part or a chapter names no prose of its own -- asking for its
-    contract is a mistake worth reporting, not an empty contract."""
-    with pytest.raises(unit.UnitError, match="not a section"):
-        unit.contract(book, "ch-what", [])
+    """A part is not an acceptance unit -- asking for its contract is a
+    mistake worth reporting, not an empty contract."""
+    with pytest.raises(unit.UnitError, match="not a unit"):
+        unit.contract(book, "part-foundations", [])
 
 
 def test_an_unknown_unit_is_refused_by_name(book):
@@ -111,12 +146,12 @@ def test_an_unknown_unit_is_refused_by_name(book):
 def test_a_spec_that_does_not_parse_is_refused(book):
     spec.spec_path(book).write_text("# Book\n\n## Part I\n", encoding="utf-8")
     with pytest.raises(unit.UnitError, match="does not parse"):
-        unit.contract(book, "sec-model", [])
+        unit.contract(book, "ch-model", [])
 
 
 def test_a_book_with_no_outline_at_all_is_refused_by_name(isolated_config):
     with pytest.raises(unit.UnitError, match="spec init"):
-        unit.contract(isolated_config.DRAFTS_DIR / "unplanned", "sec-model", [])
+        unit.contract(isolated_config.DRAFTS_DIR / "unplanned", "ch-model", [])
 
 
 def test_a_book_outside_content_drafts_is_refused_by_the_cli(isolated_config, tmp_path, capsys):
@@ -127,60 +162,60 @@ def test_a_book_outside_content_drafts_is_refused_by_the_cli(isolated_config, tm
 
 
 def test_the_input_digest_changes_when_the_brief_changes(book):
-    before = unit.input_digest(unit.contract(book, "sec-model", []))
+    before = unit.input_digest(unit.contract(book, "ch-model", []))
     spec.spec_path(book).write_text(
         GOOD_SPEC.replace("a live data link", "a live data link, and nothing else"),
         encoding="utf-8",
     )
-    assert unit.input_digest(unit.contract(book, "sec-model", [])) != before
+    assert unit.input_digest(unit.contract(book, "ch-model", [])) != before
 
 
 def test_the_input_digest_changes_when_the_sources_change(book):
-    contract = unit.contract(book, "sec-model", [])
-    with_source = unit.contract(book, "sec-model", ["smith_example_2024"])
+    contract = unit.contract(book, "ch-model", [])
+    with_source = unit.contract(book, "ch-model", ["smith_example_2024"])
     assert unit.input_digest(contract) != unit.input_digest(with_source)
 
 
 def test_the_input_digest_ignores_the_order_sources_were_given_in(book):
-    first = unit.contract(book, "sec-model", ["b_2020", "a_2019"])
-    second = unit.contract(book, "sec-model", ["a_2019", "b_2020"])
+    first = unit.contract(book, "ch-model", ["b_2020", "a_2019"])
+    second = unit.contract(book, "ch-model", ["a_2019", "b_2020"])
     assert unit.input_digest(first) == unit.input_digest(second)
 
 
 def test_a_units_own_prose_is_not_part_of_its_input_digest(book):
     """Inputs only. A digest that moved when the output did could never
     answer "does this unit need regenerating?"."""
-    before = unit.input_digest(unit.contract(book, "sec-model", []))
-    write_unit_draft(book, "sec-model")
-    assert unit.input_digest(unit.contract(book, "sec-model", [])) == before
+    before = unit.input_digest(unit.contract(book, "ch-model", []))
+    write_unit_draft(book, "ch-model")
+    assert unit.input_digest(unit.contract(book, "ch-model", [])) == before
 
 
 def test_a_tex_unit_is_found_where_a_md_one_would_be(book):
     (book).mkdir(parents=True, exist_ok=True)
-    (book / "sec-model.tex").write_text("A fragment.\n", encoding="utf-8")
-    assert unit.contract(book, "sec-model", [])["draft"].endswith(".tex")
+    (book / "ch-model.tex").write_text("A fragment.\n", encoding="utf-8")
+    assert unit.contract(book, "ch-model", [])["draft"].endswith(".tex")
 
 
 # --- the contract command ------------------------------------------------
 
 
 def test_contract_prints_the_slice_and_the_digest(book, capsys):
-    assert unit.main(["contract", str(book), "sec-model"]) == 0
+    assert unit.main(["contract", str(book), "ch-model"]) == 0
     out = capsys.readouterr().out
     assert "The model half" in out
-    assert unit.input_digest(unit.contract(book, "sec-model", [])) in out
+    assert unit.input_digest(unit.contract(book, "ch-model", [])) in out
     assert "not signed off" in out
 
 
 def test_contract_as_json_is_what_a_skill_reads(book, capsys):
     assert (
-        unit.main(["contract", str(book), "sec-model", "--source", "smith_example_2024", "--json"])
+        unit.main(["contract", str(book), "ch-model", "--source", "smith_example_2024", "--json"])
         == 0
     )
     payload = json.loads(capsys.readouterr().out)
     assert payload["sources"] == ["smith_example_2024"]
     assert payload["input_digest"] == unit.input_digest(
-        unit.contract(book, "sec-model", ["smith_example_2024"])
+        unit.contract(book, "ch-model", ["smith_example_2024"])
     )
     assert payload["signed_off"] is False
 
@@ -195,23 +230,23 @@ def test_contract_refuses_a_unit_the_outline_does_not_hold(book, capsys):
 
 def test_accept_records_the_unit_and_what_it_cites(book, corpus, capsys):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
+    write_unit_draft(book, "ch-model")
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
-    record = json.loads(unit.record_path(book, "sec-model").read_text(encoding="utf-8"))
-    assert record["unit"] == "sec-model"
+    assert unit.main(["accept", str(book), "ch-model", "--source", "smith_example_2024"]) == 0
+    record = json.loads(unit.record_path(book, "ch-model").read_text(encoding="utf-8"))
+    assert record["unit"] == "ch-model"
     assert record["citekeys"] == ["smith_example_2024"]
     assert record["sources"] == ["smith_example_2024"]
     assert record["input_digest"] == unit.input_digest(
-        unit.contract(book, "sec-model", ["smith_example_2024"])
+        unit.contract(book, "ch-model", ["smith_example_2024"])
     )
 
 
 def test_accept_refuses_an_outline_nobody_signed_off(book, corpus, capsys):
-    write_unit_draft(book, "sec-model")
-    assert unit.main(["accept", str(book), "sec-model"]) == 1
+    write_unit_draft(book, "ch-model")
+    assert unit.main(["accept", str(book), "ch-model"]) == 1
     assert "signed off" in capsys.readouterr().err
-    assert not unit.record_path(book, "sec-model").exists()
+    assert not unit.record_path(book, "ch-model").exists()
 
 
 def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus, capsys):
@@ -220,7 +255,7 @@ def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus,
     everywhere while one chapter sat half-revised."""
     book = two_chapter_book
     sign_off(book)
-    write_unit_draft(book, "sec-bill")
+    write_unit_draft(book, "ch-cost")
     path = spec.spec_path(book)
     path.write_text(
         path.read_text(encoding="utf-8").replace(
@@ -229,14 +264,14 @@ def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus,
         encoding="utf-8",
     )
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-bill", "--source", "smith_example_2024"]) == 0
-    assert unit.record_path(book, "sec-bill").is_file()
+    assert unit.main(["accept", str(book), "ch-cost", "--source", "smith_example_2024"]) == 0
+    assert unit.record_path(book, "ch-cost").is_file()
 
 
 def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(two_chapter_book, corpus, capsys):
     book = two_chapter_book
     sign_off(book)
-    write_unit_draft(book, "sec-model")
+    write_unit_draft(book, "ch-model")
     path = spec.spec_path(book)
     path.write_text(
         path.read_text(encoding="utf-8").replace(
@@ -245,7 +280,7 @@ def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(two_chapter_book, 
         encoding="utf-8",
     )
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model"]) == 1
+    assert unit.main(["accept", str(book), "ch-model"]) == 1
     assert "signed off" in capsys.readouterr().err
 
 
@@ -256,20 +291,20 @@ def test_a_book_signed_before_chapter_digests_existed_still_accepts(
     chapter lines. They must keep working, and keep refusing once the
     outline moves at all -- there is nothing finer to fall back on."""
     book = two_chapter_book
-    write_unit_draft(book, "sec-model")
+    write_unit_draft(book, "ch-model")
     text = spec.spec_path(book).read_text(encoding="utf-8")
     spec.signoff_path(book).parent.mkdir(parents=True, exist_ok=True)
     spec.signoff_path(book).write_text(
         f"# Sign-off\n\n- spec digest: `{spec.digest(text)}`\n", encoding="utf-8"
     )
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
+    assert unit.main(["accept", str(book), "ch-model", "--source", "smith_example_2024"]) == 0
 
 
 def test_accept_refuses_a_unit_that_has_no_draft(book, capsys):
     sign_off(book)
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model"]) == 1
+    assert unit.main(["accept", str(book), "ch-model"]) == 1
     assert "no draft" in capsys.readouterr().err
 
 
@@ -277,20 +312,20 @@ def test_accept_refuses_a_draft_the_citation_gate_rejects(book, corpus, capsys):
     """The gate is invoked, not re-implemented: an unaccepted unit is one
     the project's one gate already refuses."""
     sign_off(book)
-    write_unit_draft(book, "sec-model", "Citing @not_in_the_ledger_2030.\n")
+    write_unit_draft(book, "ch-model", "Citing @not_in_the_ledger_2030.\n")
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model"]) == 1
+    assert unit.main(["accept", str(book), "ch-model"]) == 1
     assert "gate" in capsys.readouterr().err
-    assert not unit.record_path(book, "sec-model").exists()
+    assert not unit.record_path(book, "ch-model").exists()
 
 
 def test_accepting_the_same_unit_twice_writes_the_same_bytes(book, corpus):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
-    unit.main(["accept", str(book), "sec-model"])
-    first = unit.record_path(book, "sec-model").read_text(encoding="utf-8")
-    unit.main(["accept", str(book), "sec-model"])
-    assert unit.record_path(book, "sec-model").read_text(encoding="utf-8") == first
+    write_unit_draft(book, "ch-model")
+    unit.main(["accept", str(book), "ch-model"])
+    first = unit.record_path(book, "ch-model").read_text(encoding="utf-8")
+    unit.main(["accept", str(book), "ch-model"])
+    assert unit.record_path(book, "ch-model").read_text(encoding="utf-8") == first
 
 
 # --- status --------------------------------------------------------------
@@ -301,13 +336,13 @@ def test_status_reports_every_section_and_refuses_while_any_is_unwritten(book, c
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     out = capsys.readouterr().out
-    assert "sec-model" in out and "sec-data" in out
+    assert "ch-model" in out and "ch-data" in out
     assert out.count("unwritten") == 2
 
 
 def test_a_written_unit_nobody_accepted_reads_as_drafted(book, capsys):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
+    write_unit_draft(book, "ch-model")
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     assert "drafted" in capsys.readouterr().out
@@ -315,14 +350,14 @@ def test_a_written_unit_nobody_accepted_reads_as_drafted(book, capsys):
 
 def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
     sign_off(book)
-    for unit_id in ("sec-model", "sec-data"):
+    for unit_id in ("ch-model", "ch-data"):
         write_unit_draft(book, unit_id)
         unit.main(["accept", str(book), unit_id])
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 0
     out = capsys.readouterr().out
     # The state is the second column; a `dossier:` one follows it (#472).
-    assert [line.split()[1] for line in out.splitlines() if line.startswith("  sec-")] == [
+    assert [line.split()[1] for line in out.splitlines() if line.startswith("  ch-")] == [
         "accepted",
         "accepted",
     ]
@@ -331,8 +366,8 @@ def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
 
 def test_an_edited_brief_makes_an_accepted_unit_stale(book, corpus, capsys):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
-    unit.main(["accept", str(book), "sec-model"])
+    write_unit_draft(book, "ch-model")
+    unit.main(["accept", str(book), "ch-model"])
     spec.spec_path(book).write_text(
         GOOD_SPEC.replace("a live data link", "a live data link, and nothing else"),
         encoding="utf-8",
@@ -344,9 +379,9 @@ def test_an_edited_brief_makes_an_accepted_unit_stale(book, corpus, capsys):
 
 def test_an_edited_draft_makes_an_accepted_unit_stale(book, corpus, capsys):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
-    unit.main(["accept", str(book), "sec-model"])
-    write_unit_draft(book, "sec-model", "Rewritten, citing @smith_example_2024.\n")
+    write_unit_draft(book, "ch-model")
+    unit.main(["accept", str(book), "ch-model"])
+    write_unit_draft(book, "ch-model", "Rewritten, citing @smith_example_2024.\n")
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     assert "changed since accepted" in capsys.readouterr().out
@@ -354,9 +389,9 @@ def test_an_edited_draft_makes_an_accepted_unit_stale(book, corpus, capsys):
 
 def test_a_deleted_draft_makes_an_accepted_unit_unwritten_again(book, corpus, capsys):
     sign_off(book)
-    write_unit_draft(book, "sec-model")
-    unit.main(["accept", str(book), "sec-model"])
-    (book / "sec-model.md").unlink()
+    write_unit_draft(book, "ch-model")
+    unit.main(["accept", str(book), "ch-model"])
+    (book / "ch-model.md").unlink()
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     assert "unwritten" in capsys.readouterr().out
@@ -366,9 +401,9 @@ def test_a_record_that_is_not_readable_json_reads_as_drafted(book, corpus, capsy
     """Hand-edited or half-written: a record nothing can read is not
     evidence that anybody accepted anything."""
     sign_off(book)
-    write_unit_draft(book, "sec-model")
-    unit.main(["accept", str(book), "sec-model"])
-    unit.record_path(book, "sec-model").write_text("{not json", encoding="utf-8")
+    write_unit_draft(book, "ch-model")
+    unit.main(["accept", str(book), "ch-model"])
+    unit.record_path(book, "ch-model").write_text("{not json", encoding="utf-8")
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 1
     assert "drafted" in capsys.readouterr().out
@@ -386,7 +421,7 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
 def test_the_verb_is_reachable_through_the_drafting_layers_front_door(book, capsys):
     from chitragupta import draft
 
-    assert draft.main(["unit", "contract", str(book), "sec-model"]) == 0
+    assert draft.main(["unit", "contract", str(book), "ch-model"]) == 0
     assert "The model half" in capsys.readouterr().out
 
 

@@ -179,9 +179,13 @@ def build(book) -> dict:
     # chapter generates no prose of its own would be a finding about this
     # module rather than about the book.
     anchors = {entry["id"] for entry in outline}
-    for section in [entry for entry in outline if entry["kind"] == "section"]:
-        state = unit.state(book, section["id"])
-        built["accepted" if state == "accepted" else "skipped"].append(section["id"])
+    # The units that are *accepted*, not every section the outline
+    # declares -- since #472 a section can be a heading inside a chapter
+    # rather than a file of its own, and only a file is ever accepted.
+    # `anchors` above stays the whole outline, for the reason stated there.
+    for entry in unit.acceptance_units(book):
+        state = unit.state(book, entry["id"])
+        built["accepted" if state == "accepted" else "skipped"].append(entry["id"])
     for unit_id in built["accepted"]:
         _read_unit(book, unit_id, built, anchors)
     for edge in built["xrefs"]:
