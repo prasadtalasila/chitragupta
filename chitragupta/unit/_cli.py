@@ -18,12 +18,13 @@ from chitragupta.dossier._draft_fingerprint import recorded_draft_digest
 from chitragupta.spec._align import align
 from chitragupta.unit import (
     UnitError,
+    chapter_of,
     contract,
     draft_path,
     input_digest,
+    acceptance_units,
     record_path,
     record_text,
-    sections,
     state,
 )
 
@@ -69,7 +70,7 @@ def _cmd_accept(args) -> int:
             f"{args.book}'s outline is not signed off, so there is nothing to "
             f"accept a unit against. `python -m chitragupta.draft spec sign {args.book}`."
         )
-    drifted = _misalignment(args.book, built["ancestors"])
+    drifted = _misalignment(args.book, chapter_of(built))
     if drifted:
         return _refuse(
             f"{args.unit}'s chapter no longer matches the outline it was approved "
@@ -99,7 +100,7 @@ def _cmd_accept(args) -> int:
     return 0
 
 
-def _misalignment(book, ancestors: list[str]) -> str:
+def _misalignment(book, chapter: str) -> str:
     """How this unit's chapter disagrees with the outline, or "".
 
     Acceptance records that a human approved *this prose against that
@@ -114,7 +115,7 @@ def _misalignment(book, ancestors: list[str]) -> str:
     """
     parsed = spec.parse(spec.spec_path(book).read_text(encoding="utf-8"))
     for report in align(book, parsed)["chapters"]:
-        if report["id"] != ancestors[-1] or not report.get("written"):
+        if report["id"] != chapter or not report.get("written"):
             continue
         counts = {
             "not authored": len(report["not_authored"]),
@@ -155,7 +156,7 @@ def _fingerprint(book, unit_id: str) -> str:
 
 
 def _cmd_status(args) -> int:
-    found = sections(args.book)
+    found = acceptance_units(args.book)
     rows = [
         {
             "id": entry["id"],

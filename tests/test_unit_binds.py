@@ -1,14 +1,9 @@
 """What `unit accept` refuses once alignment exists, and what `status` says.
 
-Two completions of #472, both scoped to what a section-unit book can
-already express:
-
-- a chapter whose headings have drifted from the outline a human approved
-  cannot have its units accepted -- acceptance records "this prose against
-  that outline", and a drifted chapter makes that record untrue;
-- `unit status` names what the *dossier* says about the same prose, so
-  "stale: draft changed since accepted" stops being the whole story on a
-  book where nothing was ever stamped.
+Now that a chapter is both the authored document and the acceptance unit,
+the chapter being accepted is the very file `spec align` reads -- so
+"these headings drifted" and "this is what you are accepting" are two
+statements about one artifact rather than two.
 """
 
 import json
@@ -30,6 +25,16 @@ Establish the model.
 #### The data half {#sec-data}
 
 Establish the link.
+
+### What a twin costs {#ch-cost}
+
+#### The bill {#sec-bill}
+
+Who pays.
+
+#### The savings {#sec-savings}
+
+What comes back.
 """
 
 CHAPTER = """# What a twin is
@@ -67,36 +72,50 @@ def write(book, name, text):
     (book / f"{name}.md").write_text(text, encoding="utf-8")
 
 
+def accept(book, unit_id):
+    return unit.main(["accept", str(book), unit_id, "--source", "smith_example_2024"])
+
+
 # --- alignment binds acceptance ------------------------------------------
 
 
-def test_accept_refuses_a_unit_whose_chapter_drifted(book, corpus, capsys):
+def test_accept_refuses_a_chapter_whose_headings_drifted(book, corpus, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER.replace("## The data half", "## Something else entirely"))
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 1
+    assert accept(book, "ch-what") == 1
     assert "no longer matches the outline" in capsys.readouterr().err
-    assert not unit.record_path(book, "sec-model").is_file()
+    assert not unit.record_path(book, "ch-what").is_file()
 
 
-def test_accept_takes_a_unit_whose_chapter_aligns(book, corpus, capsys):
+def test_accept_takes_a_chapter_that_aligns(book, corpus, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER)
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
-    assert unit.record_path(book, "sec-model").is_file()
+    assert accept(book, "ch-what") == 0
+    assert unit.record_path(book, "ch-what").is_file()
 
 
-def test_a_chapter_nobody_has_written_yet_does_not_block_acceptance(book, corpus, capsys):
-    """`align` reports an unwritten chapter, but a book is drafted unit by
-    unit -- refusing every unit until the whole chapter exists would make
-    the first one impossible to accept."""
+def test_another_chapter_being_unwritten_does_not_block_this_one(book, corpus, capsys):
+    """A book is drafted chapter by chapter. `align` reports `ch-cost` as
+    not written yet, and that must not hold up the chapter that is."""
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
+    write(book, "ch-what", CHAPTER)
     capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 0
+    assert accept(book, "ch-what") == 0
+
+
+def test_reordered_sections_are_named_in_the_refusal(book, corpus, capsys):
+    spec.main(["sign", str(book)])
+    write(
+        book,
+        "ch-what",
+        "# What a twin is\n\n## The data half\n\nP @smith_example_2024.\n\n"
+        "## The model half\n\nP.\n",
+    )
+    capsys.readouterr()
+    assert accept(book, "ch-what") == 1
+    assert "out of order" in capsys.readouterr().err
 
 
 # --- status cross-reports the dossier ------------------------------------
@@ -104,8 +123,8 @@ def test_a_chapter_nobody_has_written_yet_does_not_block_acceptance(book, corpus
 
 def test_status_names_what_the_dossier_says_about_the_same_prose(book, corpus, capsys):
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"])
+    write(book, "ch-what", CHAPTER)
+    accept(book, "ch-what")
     capsys.readouterr()
     unit.main(["status", str(book)])
     assert "dossier: no dossier" in capsys.readouterr().out
@@ -113,12 +132,12 @@ def test_status_names_what_the_dossier_says_about_the_same_prose(book, corpus, c
 
 def test_status_as_json_carries_the_same_answer(book, corpus, capsys):
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"])
+    write(book, "ch-what", CHAPTER)
+    accept(book, "ch-what")
     capsys.readouterr()
     unit.main(["status", str(book), "--json"])
     payload = json.loads(capsys.readouterr().out)
-    entry = [u for u in payload["units"] if u["id"] == "sec-model"][0]
+    entry = [u for u in payload["units"] if u["id"] == "ch-what"][0]
     assert entry["state"] == "accepted"
     assert entry["fingerprint"] == "no dossier"
 
@@ -127,9 +146,9 @@ def test_status_says_when_a_stamped_fingerprint_agrees(book, corpus, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    _create.init(book / "sec-model.md", "textbook-chapter")
-    _draft_fingerprint.stamp(book / "sec-model.md")
+    write(book, "ch-what", CHAPTER)
+    _create.init(book / "ch-what.md", "textbook-chapter")
+    _draft_fingerprint.stamp(book / "ch-what.md")
     capsys.readouterr()
     unit.main(["status", str(book)])
     assert "dossier: agrees" in capsys.readouterr().out
@@ -139,10 +158,10 @@ def test_status_says_when_a_stamped_fingerprint_disagrees(book, corpus, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    _create.init(book / "sec-model.md", "textbook-chapter")
-    _draft_fingerprint.stamp(book / "sec-model.md")
-    write(book, "sec-model", "Rewritten, citing @smith_example_2024.\n")
+    write(book, "ch-what", CHAPTER)
+    _create.init(book / "ch-what.md", "textbook-chapter")
+    _draft_fingerprint.stamp(book / "ch-what.md")
+    write(book, "ch-what", CHAPTER.replace("More prose.", "Rewritten prose."))
     capsys.readouterr()
     unit.main(["status", str(book)])
     assert "dossier: disagrees" in capsys.readouterr().out
@@ -152,34 +171,21 @@ def test_status_says_when_a_dossier_exists_but_nobody_stamped(book, corpus, caps
     from chitragupta.dossier import _create
 
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    _create.init(book / "sec-model.md", "textbook-chapter")
+    write(book, "ch-what", CHAPTER)
+    _create.init(book / "ch-what.md", "textbook-chapter")
     capsys.readouterr()
     unit.main(["status", str(book)])
     assert "dossier: not stamped" in capsys.readouterr().out
-
-
-def test_reordered_sections_are_named_in_the_refusal(book, corpus, capsys):
-    spec.main(["sign", str(book)])
-    write(
-        book,
-        "ch-what",
-        "# What a twin is\n\n## The data half\n\nP.\n\n## The model half\n\nP.\n",
-    )
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    capsys.readouterr()
-    assert unit.main(["accept", str(book), "sec-model", "--source", "smith_example_2024"]) == 1
-    assert "out of order" in capsys.readouterr().err
 
 
 def test_status_says_when_a_stamped_draft_has_since_been_deleted(book, corpus, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])
-    write(book, "sec-model", "A paragraph citing @smith_example_2024.\n")
-    _create.init(book / "sec-model.md", "textbook-chapter")
-    _draft_fingerprint.stamp(book / "sec-model.md")
-    (book / "sec-model.md").unlink()
+    write(book, "ch-what", CHAPTER)
+    _create.init(book / "ch-what.md", "textbook-chapter")
+    _draft_fingerprint.stamp(book / "ch-what.md")
+    (book / "ch-what.md").unlink()
     capsys.readouterr()
     unit.main(["status", str(book)])
     assert "dossier: stamped, no draft" in capsys.readouterr().out
