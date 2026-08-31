@@ -142,6 +142,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta review quotation <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review agenda <draft>` | `--json`, `--formats` |
 | `chitragupta review support <draft>` | `--json`, `--write`, `--formats` |
+| `chitragupta review union <book>/book.tex` | `--json`, `--write`, `--formats` |
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
@@ -149,9 +150,9 @@ command already has -- this is a front door, not a redesign.
 | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
-That is 4 layers and 24 verbs and aids (3 + 11 + 9 + 1), plus 3
-package-level commands, giving **53 invocable leaf commands**: 3 + 3 +
-(5 + 29) + (8 + 4) + 1. The counts are stated because a table is easy to
+That is 4 layers and 25 verbs and aids (3 + 11 + 10 + 1), plus 3
+package-level commands, giving **54 invocable leaf commands**: 3 + 3 +
+(5 + 29) + (9 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the
 suite.

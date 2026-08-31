@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-27, describing the
-nine aids as they stand.
+Status: **reference.** Written 2026-08-22. Updated 2026-08-31, describing the
+ten aids as they stand.
 
 **Written for** you, after a draft is finished -- someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also **take no lock**, so any of them runs happily while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The nine aids
+## 🧩 The ten aids
 
 **`review provenance` -- does the cited paper actually say this?** The
 gate answers "is this citekey real?" exactly, and that is all it can
@@ -136,9 +136,12 @@ project carries a `quote:` yet, because A2's contract makes one a
 deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
-**`review agenda` -- one ranked, deduplicated worklist across the other
-eight.** Each of the aids above answers its own question in isolation;
-this one reads what they already wrote (each optional -- an aid that
+**`review agenda` -- one ranked, deduplicated worklist across the eight
+it reads.** Eight, not nine: `union` reads a book rather than a draft, so
+its findings are about a different object than the agenda's other inputs
+and it is deliberately not among them. Each of the aids above answers its
+own question in isolation; this one reads what they already wrote (each
+optional -- an aid that
 never ran is named as absent, not treated as clean), plus the drafting
 layer's prose check and the dossier's drift report, and merges them into
 one ordered list a person or a future reviser skill can work down. In its
@@ -169,6 +172,25 @@ passages by similarity, which weakens the discriminator in the same way
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) records for its own tier 3,
 and a band here would claim a precision this corpus does not support.
 
+**`review union` -- did assembling the book lose a source?** The only aid
+that reads a *book* rather than a draft, and the only one whose answer is
+pure set arithmetic. Every unit of a book records, when
+`python -m chitragupta.draft unit accept` accepts it, the citekeys its
+prose stands on. `book-assembler` then composes those units into one
+document, and a combining step is exactly where a source goes missing
+with no error and no log ([RAG.md](RAG.md) catalogues why). So this
+subtracts one set from the other, in both directions, and locates what it
+finds: "`book.tex` lost `smith_2024`, which `ch-model` stands on."
+
+Two things it deliberately will not do. A unit whose acceptance record no
+longer describes its prose -- unwritten, never accepted, or edited since
+-- is **named as unchecked rather than compared against**, because a
+stale record's citekeys answer for text that no longer exists and would
+report a drop that is not one. And the other direction, a citekey the
+assembly carries that no unit records, is **withheld entirely while any
+unit is unchecked**: it could simply be that unit's, and this aid does
+not guess. Run it after the outstanding units are accepted for an answer.
+
 ## 📋 What every report looks like
 
 One output contract, mirroring the draft's own path exactly as
@@ -187,6 +209,15 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.quotation.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.agenda.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.support.md      (+ .tex/.pdf, .json)
+```
+
+`union` is the one aid this example cannot show, because it reads a book
+rather than a single-topic draft. The contract is the same rule applied
+to the book's own path:
+
+```text
+content/drafts/<book>/book.tex
+  -> content/review/<book>/book.union.md           (+ .tex/.pdf, .json)
 ```
 
 `review provenance` and `review agenda` write by default. The rest
@@ -208,7 +239,7 @@ report, not a render of it -- `.tex`/`.pdf` are another document.
 
 ## ⏱ What the layer costs
 
-**Zero tokens, always.** Eight of the nine aids are deterministic
+**Zero tokens, always.** Nine of the ten aids are deterministic
 Python with no model call at all. `support`'s real NLI entailment
 model has no token cost either -- it scores, it does not generate --
 but it is a real model load, and the only aid besides `verbatim`'s

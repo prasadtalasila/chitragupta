@@ -38,6 +38,7 @@ short path; this is the full set.
   - [`chitragupta review uncited`](#-chitragupta-review-uncited)
   - [`chitragupta review quotation`](#-chitragupta-review-quotation)
   - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
+  - [`chitragupta review union`](#-chitragupta-review-union)
   - [`chitragupta draft render`](#-chitragupta-draft-render)
   - [`chitragupta draft style`](#-chitragupta-draft-style)
   - [`chitragupta draft spec`](#-chitragupta-draft-spec)
@@ -304,8 +305,9 @@ chitragupta review synthesis content/drafts/<slug>.md            # how many sour
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
-chitragupta review agenda content/drafts/<slug>.md               # merges the other eight into one ranked worklist
+chitragupta review agenda content/drafts/<slug>.md               # merges the eight draft-level aids into one worklist
 chitragupta review support content/drafts/<slug>.md              # does the cited source actually entail this claim?
+chitragupta review union content/drafts/<book>/book.tex          # did assembling the book lose a unit's citekey?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -1259,6 +1261,53 @@ counts *findings* -- one per citation the entailer actually scored
 source whose passages carried no readable text to score against. A
 citekey cited twice that turns out unscoreable is one `unscoreable`
 entry but zero of its two findings count as scored.
+
+### 🧾 `chitragupta review union`
+
+Does an assembled book still cite every citekey its accepted units stand
+on? The one aid that reads a **book** rather than a draft, and the one
+whose answer is pure set arithmetic: `python -m chitragupta.draft unit
+accept` recorded each unit's citekeys before assembly existed, so this
+subtracts one set from the other and locates what it finds -- "`book.tex`
+lost `smith_2024`, which `ch-model` stands on". **Advisory, exits 0
+whatever it finds**, and it blocks no book. Stdlib-only: no corpus read,
+no index, no model.
+
+Two refusals, both exit 1. A path in no book, or in one whose `spec.md`
+does not parse, has no expected set to compare against. And a path that
+*is* one of the book's own units is refused by name, because pointed at a
+unit this aid would report every other unit's citekeys as lost -- a
+confident and wholly wrong report.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The assembled document, e.g. `content/drafts/<book>/book.tex` |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the book's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+chitragupta review union content/drafts/twins/book.tex
+# ... --write --formats md
+# ... --json > union.json
+```
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`units_checked`, `units_unchecked` (each with the `unit state` that
+disqualified it), `citekeys_assembled`, `appeared_determinable`, and one
+`findings` object per citekey -- `id`, `citekey`, `status`
+(`dropped`/`appeared`), and `units`.
+
+**Read `appeared_determinable` before acting on the absence of an
+`appeared` finding.** A unit that is unwritten, never accepted, or edited
+since acceptance is not compared against -- its record would answer for
+text that no longer exists. While any such unit remains, a citekey the
+assembly carries that no unit records may simply be *that* unit's, so
+this aid withholds the direction entirely rather than guessing, and
+`appeared_determinable` is `false`. `dropped` is unaffected: a citekey an
+accepted unit stands on and the assembly does not carry is a finding
+whatever the other units are doing.
 
 ### 🧩 `chitragupta review synthesis`
 

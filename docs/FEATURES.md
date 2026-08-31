@@ -29,7 +29,7 @@ and do not update this file, that test fails.
 - [The four layers](#-the-four-layers)
 - [Corpus layer: turning a library into a ledger](#-corpus-layer-turning-a-library-into-a-ledger)
 - [Drafting layer: writing something grounded](#-drafting-layer-writing-something-grounded)
-- [Review layer: nine advisory aids](#-review-layer-nine-advisory-aids)
+- [Review layer: ten advisory aids](#-review-layer-ten-advisory-aids)
 - [Enrichment layer: optional depth](#-enrichment-layer-optional-depth)
 - [Cross-cutting features](#-cross-cutting-features)
 - [What this deliberately does not do](#-what-this-deliberately-does-not-do)
@@ -303,7 +303,7 @@ the drafting layer's own sidecar rather than the corpus plane.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
 proposal parked at #401.
 
-## 🔍 Review layer: nine advisory aids
+## 🔍 Review layer: ten advisory aids
 
 Run by hand on a finished draft. **None of them gates anything, and none
 may be promoted to a gate** -- [SOUL.md](../SOUL.md) has why. Each
@@ -319,19 +319,23 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review figure` | what a TikZ figure's own geometry says -- overlapping nodes, protrusion, overlong labels |
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
-| `review agenda` | merges the other eight aids' reports into one ranked, deduplicated worklist |
+| `review agenda` | merges the eight draft-level aids' reports into one ranked, deduplicated worklist |
 | `review support` | does the cited source actually entail this claim, scored by a real NLI entailment model |
+| `review union` | does an assembled book still cite every citekey its accepted units stand on? The one aid that reads a book rather than a draft |
 
 **Why they are not gates, stated once because it is the design and not an
 omission:** the gate answers a question with one correct answer -- is this
 citekey in the ledger? -- so it can be automatic and absolute. Seven of
-the nine answer questions of judgement, where a machine verdict would
+the ten answer questions of judgement, where a machine verdict would
 be either wrong often enough to be ignored, or trusted more than it
 deserves. `quotation` is binary and deterministic and still not a gate,
 because what it is measured against is the parse rather than the ledger
--- [ARCHITECTURE.md](ARCHITECTURE.md) has it. `agenda` asks no question
-of its own; it inherits whichever answer -- judgement or binary --
-produced each item it surfaces.
+-- [ARCHITECTURE.md](ARCHITECTURE.md) has it. `union` is the second such
+case and is no more a gate for it: set arithmetic over what a unit
+recorded, which decides nothing about whether the assembly is right to
+have dropped a source. `agenda` asks no question of its own; it inherits
+whichever answer -- judgement or binary -- produced each item it
+surfaces.
 
 **[REVIEW.md](REVIEW.md) explains each aid** -- what it answers, and the
 distinctions that are easy to get wrong, such as `coverage` and
@@ -386,7 +390,7 @@ decision rather than a gap:
   manager. There is no auto-download and no auto-sync.
 - **It does not rewrite a citekey**, ever -- not to sanitise it, not to
   deduplicate it.
-- **It does not promote a review aid to a gate.** Nine advisory aids
+- **It does not promote a review aid to a gate.** Ten advisory aids
   and one gate is the design, and `review quotation` is the case that
   proves it rather than the exception: binary, deterministic, and still
   advisory. See [SOUL.md](../SOUL.md).

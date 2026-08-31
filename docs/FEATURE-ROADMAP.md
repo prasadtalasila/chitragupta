@@ -7,9 +7,13 @@ removed from this document** rather than marked as done. A twentieth,
 a priority now"*
 ([#379](https://github.com/prasadtalasila/chitragupta/issues/379)) and is
 removed too, recorded under [the build order](#-build-order) so it is not
-re-proposed as an oversight. Of the items added since, **C6** (measure
-the refusal) has left the build order but **keeps its section**, because
-it was skipped on its own evidence
+re-proposed as an oversight. Of the items added since, **C5** (the
+citekey union invariant) has shipped and is removed on the same rule as
+the nineteen -- it is `chitragupta review union`, described in
+[REVIEW.md](REVIEW.md), and the book surface it was specified for is the
+whole of what shipped; and **C6** (measure the refusal) has left the
+build order but **keeps its section**, because it was skipped on its own
+evidence
 ([#477](https://github.com/prasadtalasila/chitragupta/issues/477)) and
 what was measured is the reason -- the same treatment D4 gets.
 Everything still in the build order is outstanding, which is what makes
@@ -729,33 +733,6 @@ RAGFlow's only check on a model-emitted marker is `i < len(chunks)`, an
 array-bounds test. Nothing here is ported as text
 ([INSPIRATION.md](INSPIRATION.md)).
 
-### 🧾 C5: the citekeys out must be the citekeys in
-
-A deterministic invariant for any synthesis that combines evidence:
-**after every combining step, the union of citekeys in the inputs must
-equal the union in the output.** Set arithmetic, no model, no judgement.
-
-The shapes this guards against are catalogued in
-[RAG.md](RAG.md#-the-synthesis-shape-how-n-passages-become-one-section):
-of LlamaIndex's five synthesis modes, four can drop a source with no
-error and no log -- by truncating the tail, by declining to fold a
-passage into a running answer, or by attrition across summarisation
-levels. Only the one that keeps a fixed-length slot per input can say
-which input a missing output belongs to.
-
-Here the relevant surfaces are `deep-research`'s Phase 5, where each
-writer is dispatched with the citekeys its section will stand on, and
-`book-assembler`, which composes accepted units. In both, the expected
-set is already recorded before generation, so the check is a comparison
-against something on disk rather than a reconstruction.
-
-**Advisory, and it reports both directions**: a citekey dropped, and a
-citekey that appeared from nowhere. The second is the gate's business and
-the gate will catch it; reporting it here is how a *located* failure
-("section 4 lost `smith_2024`") reaches a person instead of a diff.
-
-Size: S-M. Depends on: nothing.
-
 ## 🔄 Theme F: the auto-improvement loop
 
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) specifies a seven-step track
@@ -848,7 +825,6 @@ is for.
 | --- | --- | --- | --- | --- |
 | 1 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 | 2 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 3 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).

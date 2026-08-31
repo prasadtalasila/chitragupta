@@ -70,6 +70,17 @@ _SECTION_HEADING_RE = re.compile(
 REVIEW_MD = REPO_ROOT / "docs" / "REVIEW.md"
 REVIEW_TEXT = REVIEW_MD.read_text(encoding="utf-8")
 
+# The draft stem REVIEW.md's output-contract block demonstrates each aid
+# against. Nine of the ten read a single-topic draft and are shown on
+# `survey.md`; `union` reads a *book* assembled from units, so showing it
+# as `survey.union.md` would document a path nobody can produce. The
+# exception is listed rather than the assertion loosened to any stem: the
+# filename is exactly what #341 updated in one place and not the other,
+# and a substring check on `.union.md` alone would pass on prose that
+# never states where the report lands.
+_DEFAULT_STEM = "survey"
+_EXAMPLE_STEM = {"union": "book"}
+
 
 @pytest.fixture(scope="module")
 def section() -> str:
@@ -151,9 +162,10 @@ class TestEveryAidIsDocumented:
         # The report filename, not the command: #341 once updated one and
         # not the other, so the two are checked independently rather than
         # one standing in for the other.
-        assert f"survey.{aid}.md" in REVIEW_TEXT, (
+        stem = _EXAMPLE_STEM.get(aid, _DEFAULT_STEM)
+        assert f"{stem}.{aid}.md" in REVIEW_TEXT, (
             f"docs/REVIEW.md's output-contract block does not show "
-            f"`survey.{aid}.md`. Every aid writes one, mirroring the draft's path."
+            f"`{stem}.{aid}.md`. Every aid writes one, mirroring its input's path."
         )
 
 

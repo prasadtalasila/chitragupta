@@ -309,7 +309,8 @@ not. Reading an artefact is not calling a layer.
 
 ## 🔍 Layer 4: the review layer
 
-Nine aids behind one command, run over a finished draft. **What each
+Ten aids behind one command, run over a finished draft -- or, in
+`union`'s case, over a book assembled from finished drafts. **What each
 one answers, what a report looks like, and how to read one is
 [REVIEW.md](REVIEW.md)** -- this section is only the layer's boundary:
 where it sits, and what it may not do.

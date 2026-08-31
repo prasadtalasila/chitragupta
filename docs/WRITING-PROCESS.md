@@ -95,7 +95,7 @@ extra retrieval round (ITER-RETGEN with you standing in for the model,
 [DOSSIER.md](DOSSIER.md#-the-fingerprint-as-a-retrieval-trigger-456-feature-roadmapmds-e4)).
 
 **Before you decide a draft is finished**, [REVIEW.md](REVIEW.md) is
-the human-facing check -- nine advisory aids (verbatim overlap,
+the human-facing check -- ten advisory aids (verbatim overlap,
 citation provenance, uncited claims, and more) that never block, only
 report. None of them is a gate; the only mechanical gate is
 `citation_gate`, and it only refuses a fabricated citekey.

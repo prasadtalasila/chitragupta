@@ -61,6 +61,7 @@ REVIEW_FLAT_AIDS = {
     "quotation",
     "agenda",
     "support",
+    "union",
 }
 
 CORPUS_VERBS = {"sync", "ledger", "topics"}
