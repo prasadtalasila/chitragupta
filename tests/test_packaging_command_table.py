@@ -44,7 +44,7 @@ DRAFT_SUBCOMMANDS = {
         "export",
         "restore",
     },
-    "spec": {"init", "show", "sign", "status", "align"},
+    "spec": {"init", "show", "sign", "status", "align", "seed"},
     "unit": {"contract", "accept", "status"},
     "registry": {"build", "check", "excerpt"},
     "tldr": {"write", "show"},

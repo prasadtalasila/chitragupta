@@ -2060,6 +2060,7 @@ chitragupta draft spec show content/drafts/<book> --unit sec-1
 chitragupta draft spec sign content/drafts/<book> --by "<name>"
 chitragupta draft spec status content/drafts/<book>
 chitragupta draft spec align  content/drafts/<book> [--json]
+chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 ```
 
 | Command | Does | Exit |
@@ -2069,6 +2070,7 @@ chitragupta draft spec align  content/drafts/<book> [--json]
 | `sign` | record that a human approved this outline, by whole-file digest and one per chapter | 1 on a spec that does not parse |
 | `status` | what the outline holds, whether it is signed off, and which chapters moved | 1 when unsigned or changed since sign-off |
 | `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding |
+| `seed` | write each chapter's declared sections into its dossier `outline.md`, as bare headings | 1 on an unsigned or unparseable outline |
 
 Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
 section -- and a **chapter** is one authored document whose sections are

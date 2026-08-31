@@ -1,4 +1,4 @@
-"""`python -m chitragupta.draft spec`'s five commands and their argparse tree.
+"""`python -m chitragupta.draft spec`'s six commands and their argparse tree.
 
 Split from `chitragupta/spec/__init__.py` for the reason `chitragupta/dossier/_cli.py`
 was split from its own package: parsing an outline and printing one are
@@ -13,7 +13,6 @@ see docs/ARCHITECTURE.md's one-entry-point-per-layer invariant.
 """
 
 import argparse
-import json
 import sys
 from collections import Counter
 from pathlib import Path
@@ -23,13 +22,13 @@ from chitragupta.spec import (
     SpecError,
     chapter_digests,
     digest,
-    parse,
     recorded_chapter_digests,
     recorded_digest,
     signoff_path,
     spec_path,
 )
-from chitragupta.spec._align import align
+from chitragupta.spec import _align, _seed
+from chitragupta.spec._read import read_spec, report_problems
 
 _BOOK_HELP = "The book's directory under content/drafts/ (it need not exist yet)"
 
@@ -58,26 +57,6 @@ _TEMPLATE = """# {title}
 
 What this section must establish, and what it leaves to another.
 """
-
-
-def _read(book: Path) -> tuple[str, dict]:
-    """A book's spec text and its parse, refusing a book that has none."""
-    path = spec_path(book)
-    if not path.is_file():
-        raise SpecError(
-            f"No spec at {path}. Write one with `python -m chitragupta.draft spec init {book}`."
-        )
-    text = path.read_text(encoding="utf-8")
-    return text, parse(text)
-
-
-def _report_problems(parsed: dict, book: Path) -> int:
-    """Print every parse problem and refuse. Always returns 1, so a
-    caller reads as `return _report_problems(...)`."""
-    for problem in parsed["problems"]:
-        print(f"[spec] {problem}", file=sys.stderr)
-    print(f"{len(parsed['problems'])} problem(s) in {spec_path(book)}.", file=sys.stderr)
-    return 1
 
 
 def _cmd_init(args) -> int:
@@ -127,9 +106,9 @@ def _show_unit(book: Path, text: str, parsed: dict, unit_id: str) -> int:
 
 
 def _cmd_show(args) -> int:
-    text, parsed = _read(args.book)
+    text, parsed = read_spec(args.book)
     if parsed["problems"]:
-        return _report_problems(parsed, args.book)
+        return report_problems(parsed, args.book)
     if args.unit:
         return _show_unit(args.book, text, parsed, args.unit)
     _show_tree(parsed)
@@ -167,9 +146,9 @@ def _signoff_text(text: str, parsed: dict, by: str) -> str:
 
 
 def _cmd_sign(args) -> int:
-    text, parsed = _read(args.book)
+    text, parsed = read_spec(args.book)
     if parsed["problems"]:
-        return _report_problems(parsed, args.book)
+        return report_problems(parsed, args.book)
     path = signoff_path(args.book)
     path.write_text(_signoff_text(text, parsed, args.by), encoding="utf-8")
     print(f"Signed off {len(parsed['units'])} unit(s) at digest {digest(text)}.")
@@ -202,9 +181,9 @@ def _report_moved_chapters(book: Path, text: str) -> None:
 
 
 def _cmd_status(args) -> int:
-    text, parsed = _read(args.book)
+    text, parsed = read_spec(args.book)
     if parsed["problems"]:
-        return _report_problems(parsed, args.book)
+        return report_problems(parsed, args.book)
     counts = Counter(unit["kind"] for unit in parsed["units"])
     print(f"{spec_path(args.book)}: {parsed['title']}")
     print("  " + ", ".join(_plural(counts[kind], kind) for kind in _KINDS.values()))
@@ -220,49 +199,21 @@ def _cmd_status(args) -> int:
     return 0
 
 
-def _print_chapter_alignment(report: dict) -> None:
-    print(f"  {report['id']:<24} {report['title']}")
-    if not report["section_described"]:
-        print("    described at chapter level; nothing to align.")
-        return
-    if not report.get("written"):
-        print(f"    not written yet: {report['draft']}")
-        return
-    for title in report["not_authored"]:
-        print(f"    not authored: {title}")
-    for title in report["not_declared"]:
-        print(f"    not declared: {title}")
-    for declared, authored in report["renamed"]:
-        print(f"    renamed: {declared} -> {authored}")
-    if report["out_of_order"]:
-        print("    out of order: the sections are all here, in a different sequence.")
-    if not report["findings"]:
-        print("    aligned.")
-
-
-def _cmd_align(args) -> int:
-    _, parsed = _read(args.book)
-    if parsed["problems"]:
-        return _report_problems(parsed, args.book)
-    report = align(args.book, parsed)
-    if args.json:
-        print(json.dumps(report, indent=2, sort_keys=True))
-        return 1 if report["findings"] else 0
-    print(f"{spec_path(args.book)}: {parsed['title']}")
-    for chapter in report["chapters"]:
-        _print_chapter_alignment(chapter)
-    return 1 if report["findings"] else 0
-
-
 def _parser() -> argparse.ArgumentParser:
     """The argparse tree, split from `main` so neither crosses the
-    25-statement limit docs/CODE-STANDARDS.md sets. Building the tree and
-    dispatching into it are separate jobs, and `align` was the subcommand
-    that made keeping them together cost a finding."""
+    25-statement limit docs/CODE-STANDARDS.md sets.
+
+    `align` and `seed` register themselves from their own modules, the
+    way `chitragupta/dossier/` lets `_outline.py` and `_sections.py` carry
+    their own commands: the check and the flags that reach it stay in one
+    file, and this one stops growing a subparser block per feature.
+    """
     parser = argparse.ArgumentParser(
         prog="python -m chitragupta.draft spec",
         description="The outline a book is generated from, and the human "
-        "sign-off on it. Stdlib only; writes only under content/specs/.",
+        "sign-off on it. Stdlib only. Writes under content/specs/, except "
+        "`seed`, which hands a chapter's structure to its dossier through "
+        "`dossier init` rather than writing there itself.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -285,14 +236,8 @@ def _parser() -> argparse.ArgumentParser:
     p_status.add_argument("book", help=_BOOK_HELP)
     p_status.set_defaults(func=_cmd_status)
 
-    p_align = sub.add_parser(
-        "align", help="Whether each authored chapter still matches the outline"
-    )
-    p_align.add_argument("book", help=_BOOK_HELP)
-    p_align.add_argument(
-        "--json", action="store_true", help="Machine-readable, for a skill to read"
-    )
-    p_align.set_defaults(func=_cmd_align)
+    _align.add_parser(sub, _BOOK_HELP)
+    _seed.add_parser(sub, _BOOK_HELP)
 
     return parser
 

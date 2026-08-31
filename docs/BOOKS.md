@@ -22,7 +22,7 @@ stated once and read where you need it.
 - [Before you start](#-before-you-start)
 - [Step 1: write the outline](#-step-1-write-the-outline)
 - [Step 2: sign the outline off](#-step-2-sign-the-outline-off)
-- [Step 3: generate one unit](#-step-3-generate-one-unit)
+- [Step 3: hand each chapter to its author](#-step-3-hand-each-chapter-to-its-author)
 - [Step 4: accept the unit](#-step-4-accept-the-unit)
 - [Step 5: build and read the registries](#-step-5-build-and-read-the-registries)
 - [Step 6: assemble the book](#-step-6-assemble-the-book)
@@ -63,7 +63,7 @@ sign-offs is mechanical.
 | --- | --- | --- |
 | 1 | `spec init`, then edit `spec.md` | you |
 | 2 | `spec sign` | **you, and only you** |
-| 3 | `unit contract` -> a genre skill writes the prose | skill |
+| 3 | `spec seed`, then a genre skill writes the prose | you, then skill |
 | 4 | `spec align`, then `unit accept` | you, per unit |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` | skill |
@@ -191,7 +191,42 @@ content/specs/twins/spec.md: Composable Twins
 [Why per chapter](#-why-sign-off-is-recorded-per-chapter) -- it is what
 keeps a revision to one chapter from freezing the other fourteen.
 
-## ▶ Step 3: generate one unit
+## ▶ Step 3: hand each chapter to its author
+
+The spec owns the book's structure; the genre skills own its content. This
+is the handover:
+
+```bash
+python -m chitragupta.draft spec seed content/drafts/twins --genre textbook-chapter
+```
+
+```text
+  ch-1                     Chapter 1: What a twin is
+    added: The model half
+    added: The data half
+  ch-2                     Chapter 2: What a twin costs
+    unchanged: every declared section is already named.
+```
+
+For each chapter the outline describes at section level, it writes that
+chapter's section names into its dossier's `outline.md` as bare `##`
+headings and stops. Every `brief:`, `claim:` and `queries:` line beneath
+them is left for whoever drafts the chapter -- a brief the spec invented
+would be the book track writing content.
+
+It **refuses an unsigned outline**, because seeding from a structure
+nobody approved puts unsettled section names in front of an author as
+though they were decided. It **never rewrites a heading**, so it is safe
+to re-run once the spec grows a section; `--dry-run` says what it would
+add. The write itself is done by `dossier init`, so the package that owns
+`content/dossiers/` stays the one creating files in it.
+
+A freshly seeded outline has headings and no briefs, so
+`dossier outline <draft> --check` will report each as "neither a brief:
+nor a claim: block". That is the correct reading: nobody has filled it in
+yet.
+
+## ▶ Step 3b: generate one unit
 
 Ask for the contract, which is what the unit is generated *from*:
 
