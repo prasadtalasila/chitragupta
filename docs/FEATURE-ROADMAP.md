@@ -461,7 +461,8 @@ Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
 ## ✅ Theme C: verify faithful use
 
 Detection, after Theme A and B have reduced what there is to detect.
-Both are review-layer aids: advisory, exit 0, never gates.
+C4 is a review-layer aid: advisory, exit 0, never gates. C6 was the
+other, and is skipped by evidence below.
 
 ### 🔢 C4: a numeral in prose is a claim too
 
@@ -520,7 +521,58 @@ says so. **Advisory, and the harder half is the ground truth rather than
 the check** -- a sub-theme the corpus covers thinly is not the same as
 one it does not cover, and conflating them would manufacture failures.
 
-Size: M. Depends on: nothing, though it reads best beside E4 (shipped, #456).
+**Skipped by evidence, 2026-08-31 (#477).** The ground truth this
+section calls "the harder half" was built and measured before writing
+any check, and **both constructions this section proposes are
+contaminated by the same structural fact**: 642 papers on one subject,
+so no subset's vocabulary is absent from its complement.
+
+*Keywords from entries in the bib file but not parsed.* Twenty-nine
+such entries carry a `keywords` field. Scored against the 497-item
+parsed-only index with the source entry excluded, their top-1 BM25
+median is 13.27 against the 256 positive queries' 13.44, and fourteen
+of the twenty-nine score at or above the positive median. Every one
+matches at least twenty-one parsed documents. An unparsed entry is not
+an absent topic -- it is one unread paper on a topic the corpus covers
+well.
+
+*A held-out shelf excluded by `--collection`.* Indexing the complement
+of one shelf and querying with the keywords of parsed entries on it
+moves the median top-1 score as follows.
+
+| Held-out shelf | n | Median top-1, shelf present | Held out |
+| --- | --- | --- | --- |
+| Structural Health Monitoring | 7 | 20.79 | **21.10** |
+| Security | 12 | 19.57 | 17.48 |
+| Standards | 7 | 5.48 | 5.40 |
+| DT Platforms | 10 | 11.85 | **12.03** |
+
+Removing the shelf **raises** the score in two of the four, and no
+query returned fewer than k. Deleting the structural-health-monitoring
+shelf does not remove structural health monitoring from the corpus.
+
+**And the behaviour has never been exercised.** `_bm25_scores` in
+`chitragupta/retrieval.py` keeps only a document scoring above zero, so
+`results` < `asked` in a dossier's `retrieval.md` is a real refusal
+signal rather than a proxy for one. Across all 22 dossiers -- 303
+logged retrieval calls -- it has never occurred, and no draft in
+`content/drafts/` states a refusal. Even with a clean negative set, the
+numerator and the denominator would both be zero on this corpus.
+
+Worth stating plainly rather than overclaiming, three ways. The sample
+sizes are small: n=29 for the first construction, n=7-12 per shelf for
+the second. A third construction was **not** falsified -- a
+hand-authored graded negative query set, out-of-domain and
+near-domain, needs no model and would work; it is declined because its
+ground truth is human judgment checked into the repository, which is
+precisely what this section set out to avoid. And nothing here says
+negative rejection does not matter, only that this corpus cannot
+measure it.
+
+Size: none. Depends on: nothing. Revisitable on either of two changes:
+a corpus spanning more than one subject, where excluding a shelf makes
+its topic genuinely absent and the constructions above become sound; or
+a decision to accept a hand-authored negative set as ground truth.
 
 ## 📐 Theme D: figure layout
 
@@ -834,11 +886,11 @@ is for.
 | 3 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 | 4 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
 | 5 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 6 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
-Skipped by evidence: [D4](#-d4-optional-vision-critique).
+Skipped by evidence: [C6](#-c6-measure-the-refusal),
+[D4](#-d4-optional-vision-critique).
 
 **What changed from the first draft of this document, and why it
 matters.** A1 was PR #1 and "Depends on: nothing". Reading the
