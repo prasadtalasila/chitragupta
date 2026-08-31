@@ -122,7 +122,10 @@ def acceptance_units(book: Path) -> list[dict]:
     _, parsed = _parsed_spec(book)
     found: list[dict] = []
     for chapter, declared in chapters(parsed):
-        found.append(chapter) if section_described(chapter, declared) else found.extend(declared)
+        if section_described(chapter, declared):
+            found.append(chapter)
+        else:
+            found.extend(declared)
     return found
 
 
