@@ -1264,14 +1264,21 @@ entry but zero of its two findings count as scored.
 
 ### 🧾 `chitragupta review union`
 
-Does an assembled book still cite every citekey its accepted units stand
+Does an assembled book still carry every citekey its accepted units stand
 on? The one aid that reads a **book** rather than a draft, and the one
-whose answer is pure set arithmetic: `python -m chitragupta.draft unit
-accept` recorded each unit's citekeys before assembly existed, so this
-subtracts one set from the other and locates what it finds -- "`book.tex`
-lost `smith_2024`, which `ch-model` stands on". **Advisory, exits 0
-whatever it finds**, and it blocks no book. Stdlib-only: no corpus read,
-no index, no model.
+whose answer is pure set arithmetic. **Advisory, exits 0 whatever it
+finds**, and it blocks no book. Stdlib-only: no corpus read, no index, no
+model.
+
+**It resolves the assembly's includes rather than reading it for
+citekeys**, because `book.tex` is a skeleton -- it `\input`s its units,
+citeproc having resolved each unit's citations inside that unit, so the
+assembly's own text states no citekey. Subtracting against that text
+would report every source in a correct book as lost. So a *dropped*
+finding is an accepted unit the assembly never includes, located to that
+unit and carrying every citekey the book then holds nowhere else; an
+*appeared* finding is a citekey in a file the assembly includes that no
+unit owns -- a title page, an appendix, a preamble file.
 
 Two refusals, both exit 1. A path in no book, or in one whose `spec.md`
 does not parse, has no expected set to compare against. And a path that
@@ -1294,20 +1301,29 @@ chitragupta review union content/drafts/twins/book.tex
 ```
 
 **`--json`** carries the envelope every review aid's JSON carries, plus
-`units_checked`, `units_unchecked` (each with the `unit state` that
-disqualified it), `citekeys_assembled`, `appeared_determinable`, and one
-`findings` object per citekey -- `id`, `citekey`, `status`
-(`dropped`/`appeared`), and `units`.
+`units_checked` and `units_unchecked` (each unit with whether the
+assembly `included` it, and for the unchecked ones the `unit status`
+state that disqualified it), `units_omitted`, `includes_outside_units`,
+`includes_unresolved`, `citekeys_outside_units`,
+`appeared_determinable`, and one `findings` object per citekey -- `id`,
+`citekey`, `status` (`dropped`/`appeared`), and `units`.
 
 **Read `appeared_determinable` before acting on the absence of an
 `appeared` finding.** A unit that is unwritten, never accepted, or edited
 since acceptance is not compared against -- its record would answer for
 text that no longer exists. While any such unit remains, a citekey the
-assembly carries that no unit records may simply be *that* unit's, so
-this aid withholds the direction entirely rather than guessing, and
-`appeared_determinable` is `false`. `dropped` is unaffected: a citekey an
-accepted unit stands on and the assembly does not carry is a finding
-whatever the other units are doing.
+assembly states outside its units may be recorded by that unit after all,
+so this withholds the direction entirely rather than guessing, and
+`appeared_determinable` is `false`. When it is `true`, an empty result is
+a real answer rather than an unasked question: the assembly's own text
+and every non-unit file it includes were opened and read, and
+`includes_outside_units` says which. `dropped` is unaffected either way.
+
+**`includes_unresolved` is not noise.** An include naming a file that is
+not on disk -- or one that is not text, which a `book.md` link to a cover
+image or a PDF will be -- is material this run could not open, so a
+report with entries there covers less than it appears to. Nothing is
+silently skipped, and neither case takes the run out.
 
 ### 🧩 `chitragupta review synthesis`
 

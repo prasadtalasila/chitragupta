@@ -11,25 +11,37 @@ No model, no judgement, no threshold.
 docs/RAG.md catalogues why a combining step drops a source silently --
 four of LlamaIndex's five synthesis modes can lose one with no error and
 no log. What makes a *located* answer possible here is that the expected
-set was recorded before the assembly existed, so "book.tex lost
-`smith_2024`, which `sec-model-what` stands on" is a subtraction rather
-than a reconstruction.
+set was recorded before the assembly existed, so "the book dropped
+`smith_2024`, which `ch-model` stands on" is a subtraction rather than a
+reconstruction.
 
-**Both directions, and one of them is withheld.** A citekey an accepted
-unit carries and the assembly does not is always a finding: a source a
-unit stands on vanished when the book was composed. A citekey in the
-assembly that no unit records is only a finding when *every* unit has
-been assessed -- while one is unwritten, unaccepted or edited since
-acceptance, that citekey may simply be where it came from, so this
-reports that it cannot tell rather than a fabrication it has not earned.
-The gate is what catches an invented citekey; what this adds is a
-location.
+**A book is composed by reference, and reading it any other way gives a
+wholly false report.** `book.tex` is structure only -- it `\\input`s its
+units and citeproc resolved each unit's citations inside that unit -- so
+the assembly's own text contains no citekey, and subtracting against it
+would report every source in the book as lost. `_citekey_union_includes`
+owns that resolution and its docstring owns the argument; what follows
+from it is the shape of both directions here:
+
+- **Dropped**: an accepted unit the assembly never includes. Including a
+  unit includes all of its prose, so omitting one is how a source
+  actually goes missing at this step -- and every citekey only that unit
+  stood on goes with it. Located to the unit.
+- **Appeared**: a citekey in something the assembly includes that is
+  *not* a unit -- a title page, an appendix, a preamble file. It entered
+  outside any acceptance record, which the gate cannot see because the
+  citekey is perfectly real.
+
+Appeared is **withheld** while any unit is unchecked: that citekey may
+be one of theirs, and this reports that it cannot tell rather than a
+finding it has not earned.
 
 **A unit whose record no longer describes its prose is not compared
 against.** `unit.state` distinguishes `unwritten`/`drafted`/`stale:`
 from `accepted`, and a stale record's citekeys describe text that no
 longer exists -- comparing against them reports a drop that is not one.
-Those units are named in the report instead, never silently skipped.
+Those units are named in the report instead, never silently skipped,
+and so is any include that resolved to no file on disk.
 
 One of the ten commands in the **review layer**: read over a finished
 assembly, by a person or by a driver, never a gate, never holding the
@@ -50,51 +62,11 @@ import hashlib
 import json
 import shlex
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import citation_gate, config, review, unit
-from chitragupta.review import _citekey_union_render
-
-
-@dataclass
-class UnitInput:
-    """One acceptance unit as an input to the assembly: what it stands on,
-    and whether that record can be believed. `citekeys` is empty for
-    anything but an `accepted` unit -- see the module docstring."""
-
-    unit: str
-    state: str
-    citekeys: list[str] = field(default_factory=list)
-
-
-@dataclass
-class UnionResult:
-    assembled: Path
-    checked: list[UnitInput] = field(default_factory=list)
-    unchecked: list[UnitInput] = field(default_factory=list)
-    cited: set[str] = field(default_factory=set)  # citekeys in the assembly itself
-
-    @property
-    def dropped(self) -> dict[str, list[str]]:
-        """`citekey -> the accepted units that stand on it`, for every one
-        the assembly does not carry. In outline order, so a reader walks
-        the book's own structure rather than an alphabet."""
-        found: dict[str, list[str]] = {}
-        for entry in self.checked:
-            for key in entry.citekeys:
-                if key not in self.cited:
-                    found.setdefault(key, []).append(entry.unit)
-        return found
-
-    @property
-    def appeared(self) -> set[str] | None:
-        """Citekeys the assembly carries that no unit recorded, or `None`
-        when an unassessed unit means the question cannot be answered."""
-        if self.unchecked:
-            return None
-        expected = {key for entry in self.checked for key in entry.citekeys}
-        return self.cited - expected
+from chitragupta.review import _citekey_union_includes, _citekey_union_render
+from chitragupta.review._citekey_union_result import UnionResult, UnitInput
 
 
 def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
@@ -109,6 +81,12 @@ def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
     return list(record["citekeys"])
 
 
+def _citekeys(text: str) -> set[str]:
+    """Every citekey in `text`, by the extractor the gate and `unit accept`
+    both use -- so the two sides of the subtraction are the same set."""
+    return {key for _, key in citation_gate.extract_citekeys(text)}
+
+
 def compute(assembled: Path) -> UnionResult:
     """The invariant over `assembled` and the book directory holding it.
 
@@ -117,24 +95,42 @@ def compute(assembled: Path) -> UnionResult:
     in either case, and inventing one is the failure this aid exists to
     catch.
     """
-    book = Path(assembled).parent
-    result = UnionResult(assembled=Path(assembled))
-    for entry in unit.acceptance_units(book):
+    assembled = Path(assembled)
+    book = assembled.parent
+    units = unit.acceptance_units(book)
+    text = assembled.read_text(encoding="utf-8")
+    included, others, unread = _citekey_union_includes.split(
+        book, text, {entry["id"] for entry in units}
+    )
+
+    result = UnionResult(
+        assembled=assembled,
+        # The assembly's *own* citekeys: its skeleton plus every file it
+        # pulls in that no unit owns. Never a unit's -- reading those here
+        # would answer the question with its own input.
+        own=_citekeys(text).union(*(_citekeys(body) for _, body in others)),
+        outside_units=[name for name, _ in others],
+        unresolved=unread,
+    )
+    for entry in units:
         unit_id = entry["id"]
         state = unit.state(book, unit_id)
+        # A unit that is both unincluded and unbelievable is reported as
+        # unchecked, not as dropped: without a usable record there are no
+        # citekeys to say were lost. The report names both facts.
         if state == "accepted":
-            result.checked.append(UnitInput(unit_id, state, _recorded_citekeys(book, unit_id)))
+            result.checked.append(
+                UnitInput(unit_id, state, unit_id in included, _recorded_citekeys(book, unit_id))
+            )
         else:
-            result.unchecked.append(UnitInput(unit_id, state))
-    text = Path(assembled).read_text(encoding="utf-8")
-    result.cited = {key for _, key in citation_gate.extract_citekeys(text)}
+            result.unchecked.append(UnitInput(unit_id, state, unit_id in included))
     return result
 
 
 def refuse_a_unit(assembled: Path) -> str | None:
     """Why `assembled` is one of the book's own units, if it is.
 
-    Pointed at `sec-model-what.md`, this aid would report every *other*
+    Pointed at `ch-model.md`, this aid would report every *other*
     unit's citekeys as dropped -- a confident and wholly wrong report,
     and the one misuse the path shape makes easy. Checked by id rather
     than by name, so it holds for both suffixes a genre skill emits.
@@ -199,11 +195,21 @@ def union_payload(result: UnionResult, command: str) -> dict:
     payload = review.envelope(result.assembled, "union", command)
     payload.update(
         {
-            "units_checked": [entry.unit for entry in result.checked],
-            "units_unchecked": [
-                {"unit": entry.unit, "state": entry.state} for entry in result.unchecked
+            "units_checked": [
+                {"unit": entry.unit, "included": entry.included} for entry in result.checked
             ],
-            "citekeys_assembled": len(result.cited),
+            "units_unchecked": [
+                {"unit": entry.unit, "state": entry.state, "included": entry.included}
+                for entry in result.unchecked
+            ],
+            "units_omitted": [entry.unit for entry in result.omitted],
+            # What the assembly pulled in besides its units, and what it
+            # named but could not be found. Both reported rather than
+            # dropped: a run that quietly skipped an include would be
+            # claiming coverage of prose it never opened.
+            "includes_outside_units": result.outside_units,
+            "includes_unresolved": result.unresolved,
+            "citekeys_outside_units": len(result.own),
             "appeared_determinable": result.appeared is not None,
             "findings": _findings(result),
         }

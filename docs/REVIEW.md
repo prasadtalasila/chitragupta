@@ -178,18 +178,34 @@ pure set arithmetic. Every unit of a book records, when
 `python -m chitragupta.draft unit accept` accepts it, the citekeys its
 prose stands on. `book-assembler` then composes those units into one
 document, and a combining step is exactly where a source goes missing
-with no error and no log ([RAG.md](RAG.md) catalogues why). So this
-subtracts one set from the other, in both directions, and locates what it
-finds: "`book.tex` lost `smith_2024`, which `ch-model` stands on."
+with no error and no log ([RAG.md](RAG.md) catalogues why).
+
+**A book is composed by reference, and that is what makes this
+checkable.** `book.tex` is a skeleton: it `\input`s its units, and
+citeproc resolved each unit's citations inside that unit, so the
+assembly's own text states no citekey at all. Reading it for citekeys and
+subtracting would report every source in a correct book as lost. What
+actually goes missing here is a *unit* -- including one includes all of
+its prose, so omitting one drops every source only it stood on. The
+finding is located: "`02-twin-shadow` was left out, and 33 sources went
+with it."
+
+The other direction is the assembly's **own** material: a citekey in a
+title page, an appendix, or a preamble file it includes. That entered
+outside every acceptance record, which the gate cannot see because the
+citekey is perfectly real.
 
 Two things it deliberately will not do. A unit whose acceptance record no
 longer describes its prose -- unwritten, never accepted, or edited since
 -- is **named as unchecked rather than compared against**, because a
 stale record's citekeys answer for text that no longer exists and would
-report a drop that is not one. And the other direction, a citekey the
-assembly carries that no unit records, is **withheld entirely while any
-unit is unchecked**: it could simply be that unit's, and this aid does
-not guess. Run it after the outstanding units are accepted for an answer.
+report a drop that is not one; if it was also left out of the assembly,
+the report says both, because the two want different fixes. And the
+appeared direction is **withheld entirely while any unit is unchecked**:
+that unit may record the citekey after all, and this aid does not guess.
+Run it once the outstanding units are accepted for an answer. It also
+names every non-unit file it read and every include it could not find on
+disk, so a report cannot be misread as covering prose it never opened.
 
 ## 📋 What every report looks like
 
