@@ -1627,6 +1627,73 @@ class TestRecordedQueriesWithCollection:
         assert _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft)) == []
 
 
+class TestRecordedQueriesWithEvidence:
+    """#480: `retrieval.md`'s `results` cell, read back as the binary
+    "did this call return anything" -- the fourth sibling in the family
+    above, and the one `declared_vs_actual` needs to tell a declared
+    query that found nothing from one that found twelve."""
+
+    def test_a_call_that_returned_rows_reports_evidence(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 100, origin="declared")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared", True),
+        ]
+
+    def test_a_call_that_returned_nothing_reports_no_evidence(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 0, 0, origin="declared")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared", False),
+        ]
+
+    def test_rows_are_folded_together_before_the_pair_is_deduplicated(self, draft):
+        """The ordering rule: dedupe first and the later row's count is
+        gone, so a query searched twice reports whichever row happened
+        to come first."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 0, 0, origin="declared")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 4, 900, origin="declared")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared", True),
+        ]
+
+    def test_the_empty_call_may_be_the_later_one(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 4, 900, origin="declared")
+        dossier.log_retrieval(draft, "search", "digital twin", 15, 0, 0, origin="declared")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("digital twin", "declared", True),
+        ]
+
+    def test_the_same_query_at_two_origins_is_two_distinct_answers(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "twin", 15, 0, 0, origin="declared")
+        dossier.log_retrieval(draft, "search", "twin", 15, 6, 400, origin="extended")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("twin", "declared", False),
+            ("twin", "extended", True),
+        ]
+
+    def test_an_unreadable_results_cell_is_not_read_as_empty(self, draft):
+        """A hand-edited row whose `results` cell is not a number says
+        nothing about what came back. Reading it as zero would
+        manufacture a gap out of a typo, which is the one direction this
+        report must not fail in."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search | hand edited | 15 | some | 100 | | declared |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == [
+            ("hand edited", "declared", True),
+        ]
+
+    def test_a_revision_marker_is_not_a_call(self, draft):
+        dossier.init(draft, "survey")
+        _retrieval.mark_revision(draft, "shorten intro")
+        assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == []
+
+
 class TestRecordedQueriesWithOrigin:
     """`origin` (#455): a scoped/declared call and a corpus-wide/invented
     one otherwise wrote byte-identical rows, and nothing downstream could
@@ -2471,6 +2538,22 @@ class TestStatusCLIOutput:
         assert "Outline: 1 declared query run, 1 not, 1 extended, 0 regrounded." in out
         assert "not run   Failure modes: 'solver divergence'" in out
         assert "extended  'surrogate model'" in out
+
+    def test_outline_block_names_a_declared_query_that_returned_nothing(self, draft, capsys):
+        """#480: the call ran, so it stays in the `run` count -- and the
+        block says how many of those came back with nothing, and which."""
+        dossier.init(draft, "survey", outline=True)
+        (dossier.dossier_dir(draft) / "outline.md").write_text(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="declared")
+        dossier.main(["status", str(draft)])
+        out = capsys.readouterr().out
+        assert (
+            "Outline: 1 declared query run (1 with no evidence), 0 not, "
+            "0 extended, 0 regrounded." in out
+        )
+        assert "no evidence  Failure modes: 'timestep mismatch'" in out
 
     def test_outline_block_reports_a_regrounded_query_as_run(self, draft, capsys):
         dossier.init(draft, "survey", outline=True)

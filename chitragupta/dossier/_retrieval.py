@@ -225,6 +225,8 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
 # `_retrieval_queries.py` (#467) -- re-exported here, at the spot they
 # used to be defined, so `_retrieval.recorded_queries` and its two
 # siblings keep working for every caller this project already has
+# (`_with_evidence`, #480, never lived here and is re-exported only so
+# that the family reads as one from either module)
 # (`chitragupta/review/agenda/_recheck.py`, `chitragupta/dossier/_drift.py`,
 # `chitragupta/dossier/_outline.py`, and this module's own test suite)
 # without a mechanical rename across files the split didn't otherwise
@@ -233,6 +235,7 @@ def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
 from chitragupta.dossier._retrieval_queries import (  # noqa: F401,E402
     recorded_queries,
     recorded_queries_with_collection,
+    recorded_queries_with_evidence,
     recorded_queries_with_origin,
 )
 

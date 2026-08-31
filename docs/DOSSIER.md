@@ -172,6 +172,25 @@ is all this file does on its own -- deciding what's kept and writing
 `dossier status` reads to answer "did this draft follow its outline?"
 from the record rather than from trust.
 
+**A declared query that came back empty is not a declared query
+answered (#480).** `status` reads the `results` column too, and reports
+a query it issued that returned nothing separately from the ones that
+returned candidates -- counted in the same "run" figure, since the call
+did happen, and named underneath:
+
+```text
+Outline: 2 declared queries run (1 with no evidence), 1 not, 0 extended, 0 regrounded.
+  no evidence  Fault tolerance: 'fault injection digital twin'
+  not run   Fault tolerance: 'co-simulation standards validation'
+```
+
+Advisory, like everything else in this block, and **binary** rather than
+a coverage score -- evidence came back for that query or it did not.
+Where the same query was searched twice, once for nothing and once for
+four after a reformulation, it counts as answered: the rows are folded
+together before the query is deduplicated, so a gap the draft's own
+history closed is not reported as still open.
+
 ## 💡 Why Markdown
 
 Everything a dossier holds is read by a model or by a human, both of
