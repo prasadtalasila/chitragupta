@@ -321,7 +321,8 @@ def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
     capsys.readouterr()
     assert unit.main(["status", str(book)]) == 0
     out = capsys.readouterr().out
-    assert [line.split()[-1] for line in out.splitlines() if line.startswith("  sec-")] == [
+    # The state is the second column; a `dossier:` one follows it (#472).
+    assert [line.split()[1] for line in out.splitlines() if line.startswith("  sec-")] == [
         "accepted",
         "accepted",
     ]

@@ -320,15 +320,22 @@ Wrote content/specs/twins/units/sec-1.json.
 ```
 
 `accept` writes the record only after the project's one gate passes on
-the draft. It refuses three ways, each for a stated reason:
+the draft. It refuses four ways, each for a stated reason:
 
 1. **This unit's chapter is not signed off** -- there is nothing to accept
    a unit against until a human has approved the structure. Asked of the
    unit's own chapter, not of the whole book, so revising chapter 7 does
    not stop you accepting a unit in chapter 3
    ([why](#-why-sign-off-is-recorded-per-chapter)).
-2. **There is no draft** -- generate the unit from its contract first.
-3. **The citation gate refuses the draft.** `accept` *invokes*
+2. **The unit's chapter no longer matches the outline** -- acceptance
+   records that a human approved *this prose against that outline*, and a
+   chapter whose headings have drifted makes the record say something
+   untrue. `spec align` lists what moved. A chapter nobody has written yet
+   is deliberately not a refusal: a book is drafted unit by unit, and
+   holding the first unit until the whole chapter exists would make it
+   impossible to accept.
+3. **There is no draft** -- generate the unit from its contract first.
+4. **The citation gate refuses the draft.** `accept` *invokes*
    `python -m chitragupta.draft gate` rather than re-implementing or replacing
    it. A unit nobody may cite from is not a unit a book may assemble
    from, and this is the existing gate doing its existing job -- not a
@@ -340,7 +347,23 @@ sources, what it cites, and a digest of the prose itself. It carries
 byte-identical files and a diff of `content/specs/` is a diff of what was
 accepted.
 
-Repeat steps 3 and 4 per section. `unit status` is the board:
+Repeat steps 3 and 4 per unit. `unit status` is the board, and it names
+what the *dossier* says about the same prose beside what this layer
+recorded:
+
+```text
+  sec-1                    accepted                     dossier: agrees
+  sec-2                    stale: draft changed since accepted   dossier: disagrees
+```
+
+Two records of the same text exist and they answer different questions:
+`accept`'s `output_digest` is "has this changed since a human accepted
+it", the dossier's fingerprint is "has it changed since the sidecars were
+reconciled". Different commands refresh them -- `unit accept` and
+`dossier stamp` -- so they can disagree, and neither report used to
+mention the other. `no dossier`, `not stamped`, `agrees`, `disagrees` and
+`stamped, no draft` are the five answers. Reported, never enforced:
+this layer does not judge a dossier.
 
 ```bash
 python -m chitragupta.draft unit status content/drafts/twins
