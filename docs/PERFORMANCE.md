@@ -20,8 +20,8 @@ Related reading:
   fidelity, and why two other candidates were evaluated and dropped.
 - [PARALLELISM.md](PARALLELISM.md) -- how the parallel parse is built:
   architecture diagrams, what each component does, and the roadmap.
-- [REVIEW.md](REVIEW.md) -- what the nine review aids do; this document
-  prices them.
+- [REVIEW.md](REVIEW.md) -- what the ten review aids do; this document
+  prices the nine that were measured.
 - `bench/RESULTS.md` -- the raw measurement record with per-PDF timings.
   Developer-only: `bench/` is excluded from the release archive, so it is
   in the repository but not in a downloaded release.
@@ -484,12 +484,21 @@ including the conclusions later ones overturned.
 ## 🔍 What a review pass costs
 
 Everything above is the corpus layer. This is the **review layer**
-([REVIEW.md](REVIEW.md)) -- nine aids. Eight are deterministic Python
+([REVIEW.md](REVIEW.md)) -- nine of the ten aids. Eight are deterministic Python
 with no model call at all. The ninth, `support`, scores every citation
 with a real NLI entailment model ([CONFIG.md](CONFIG.md)) -- no LLM, so
 **the token cost of every figure here is still zero**, but it is a real
 model load, and the only aid besides `verbatim`'s tier 3 with a real
 wall-clock and memory floor.
+
+**`union`, the tenth, is not in any figure below and is not being
+silently averaged into one.** It reads a book rather than a draft, so it
+has no place in a per-draft review pass, and nothing here has measured
+it. What can be said without measuring: it parses one assembled document
+and one small JSON per unit, with no corpus read, no index and no model,
+which puts it in the same class as `uncited` rather than anywhere near
+`verbatim` or `support`. Priced properly when there is a real assembled
+book to price it against.
 
 Measured 2026-08-27 on this host, across five real drafts spanning
 1,258 to 18,061 words, with and without a dossier, at `--formats md`.

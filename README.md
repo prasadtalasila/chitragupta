@@ -78,10 +78,12 @@ conscience:
   evidence, rejected candidates, a revision log -- and read back to
   change it. That is why a draft is never revised by re-running the
   skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is nine advisory aids for a finished draft:
+- **The review layer** is ten advisory aids for a finished draft:
   provenance, verbatim, coverage, synthesis, figure layout, uncited
-  prose, quotation integrity, claim support, and agenda -- one ranked,
-  deduplicated worklist merged across the other eight. None of
+  prose, quotation integrity, claim support, citekey union -- which asks
+  whether assembling a book lost a source a unit stands on -- and agenda,
+  one ranked, deduplicated worklist merged across the eight that read a
+  draft. None of
   them is a gate -- not even `quotation`, whose answer is binary --
   which is not the same as borrowed wording being fine to leave once
   you have found it

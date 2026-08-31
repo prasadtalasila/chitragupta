@@ -38,6 +38,7 @@ short path; this is the full set.
   - [`chitragupta review uncited`](#-chitragupta-review-uncited)
   - [`chitragupta review quotation`](#-chitragupta-review-quotation)
   - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
+  - [`chitragupta review union`](#-chitragupta-review-union)
   - [`chitragupta draft render`](#-chitragupta-draft-render)
   - [`chitragupta draft style`](#-chitragupta-draft-style)
   - [`chitragupta draft spec`](#-chitragupta-draft-spec)
@@ -304,8 +305,9 @@ chitragupta review synthesis content/drafts/<slug>.md            # how many sour
 chitragupta review figure content/drafts/<topic>/<slug>.md   # what the TikZ figures' geometry says
 chitragupta review uncited content/drafts/<slug>.md              # which sentences carry no citation at all
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
-chitragupta review agenda content/drafts/<slug>.md               # merges the other eight into one ranked worklist
+chitragupta review agenda content/drafts/<slug>.md               # merges the eight draft-level aids into one worklist
 chitragupta review support content/drafts/<slug>.md              # does the cited source actually entail this claim?
+chitragupta review union content/drafts/<book>/book.tex          # did assembling the book lose a unit's citekey?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -1259,6 +1261,69 @@ counts *findings* -- one per citation the entailer actually scored
 source whose passages carried no readable text to score against. A
 citekey cited twice that turns out unscoreable is one `unscoreable`
 entry but zero of its two findings count as scored.
+
+### 🧾 `chitragupta review union`
+
+Does an assembled book still carry every citekey its accepted units stand
+on? The one aid that reads a **book** rather than a draft, and the one
+whose answer is pure set arithmetic. **Advisory, exits 0 whatever it
+finds**, and it blocks no book. Stdlib-only: no corpus read, no index, no
+model.
+
+**It resolves the assembly's includes rather than reading it for
+citekeys**, because `book.tex` is a skeleton -- it `\input`s its units,
+citeproc having resolved each unit's citations inside that unit, so the
+assembly's own text states no citekey. Subtracting against that text
+would report every source in a correct book as lost. So a *dropped*
+finding is an accepted unit the assembly never includes, located to that
+unit and carrying every citekey the book then holds nowhere else; an
+*appeared* finding is a citekey in a file the assembly includes that no
+unit owns -- a title page, an appendix, a preamble file.
+
+Two refusals, both exit 1. A path in no book, or in one whose `spec.md`
+does not parse, has no expected set to compare against. And a path that
+*is* one of the book's own units is refused by name, because pointed at a
+unit this aid would report every other unit's citekeys as lost -- a
+confident and wholly wrong report.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The assembled document, e.g. `content/drafts/<book>/book.tex` |
+| `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
+| `--write` | off | Also write the report to `content/review/`, mirroring the book's path. Printing stays the default |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+
+```bash
+chitragupta review union content/drafts/twins/book.tex
+# ... --write --formats md
+# ... --json > union.json
+```
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`units_checked` and `units_unchecked` (each unit with whether the
+assembly `included` it, and for the unchecked ones the `unit status`
+state that disqualified it), `units_omitted`, `includes_outside_units`,
+`includes_unresolved`, `citekeys_outside_units`,
+`appeared_determinable`, and one `findings` object per citekey -- `id`,
+`citekey`, `status` (`dropped`/`appeared`), and `units`.
+
+**Read `appeared_determinable` before acting on the absence of an
+`appeared` finding.** A unit that is unwritten, never accepted, or edited
+since acceptance is not compared against -- its record would answer for
+text that no longer exists. While any such unit remains, a citekey the
+assembly states outside its units may be recorded by that unit after all,
+so this withholds the direction entirely rather than guessing, and
+`appeared_determinable` is `false`. When it is `true`, an empty result is
+a real answer rather than an unasked question: the assembly's own text
+and every non-unit file it includes were opened and read, and
+`includes_outside_units` says which. `dropped` is unaffected either way.
+
+**`includes_unresolved` is not noise.** An include naming a file that is
+not on disk -- or one that is not text, which a `book.md` link to a cover
+image or a PDF will be -- is material this run could not open, so a
+report with entries there covers less than it appears to. Nothing is
+silently skipped, and neither case takes the run out.
 
 ### 🧩 `chitragupta review synthesis`
 
