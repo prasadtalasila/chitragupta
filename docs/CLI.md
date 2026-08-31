@@ -2100,8 +2100,8 @@ chitragupta draft unit status   content/drafts/<book>
 | Command | Does | Exit |
 | --- | --- | --- |
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
-| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the unit's own chapter is unsigned, the draft is missing, or the gate refuses it |
-| `status` | where every unit in the book stands | 1 while any unit is not accepted and current |
+| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the unit's own chapter is unsigned or misaligned, the draft is missing, or the gate refuses it |
+| `status` | where every unit stands, and what its dossier says about the same prose (`--json`) | 1 while any unit is not accepted and current |
 
 `--source` is repeatable and is part of the input digest, so grounding a
 unit in a different set of papers is a different unit to generate. The

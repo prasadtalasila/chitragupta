@@ -13,9 +13,13 @@ import sys
 from pathlib import Path
 
 from chitragupta import citation_gate, spec
+from chitragupta.dossier import dossier_dir
+from chitragupta.dossier._draft_fingerprint import recorded_draft_digest
+from chitragupta.spec._align import align
 from chitragupta.unit import (
     UnitError,
     contract,
+    draft_path,
     input_digest,
     record_path,
     record_text,
@@ -65,6 +69,13 @@ def _cmd_accept(args) -> int:
             f"{args.book}'s outline is not signed off, so there is nothing to "
             f"accept a unit against. `python -m chitragupta.draft spec sign {args.book}`."
         )
+    drifted = _misalignment(args.book, built["ancestors"])
+    if drifted:
+        return _refuse(
+            f"{args.unit}'s chapter no longer matches the outline it was approved "
+            f"against ({drifted}). `python -m chitragupta.draft spec align {args.book}` "
+            "lists what moved."
+        )
     draft = Path(built["draft"])
     if not draft.is_file():
         return _refuse(
@@ -88,14 +99,77 @@ def _cmd_accept(args) -> int:
     return 0
 
 
+def _misalignment(book, ancestors: list[str]) -> str:
+    """How this unit's chapter disagrees with the outline, or "".
+
+    Acceptance records that a human approved *this prose against that
+    outline*, so a chapter whose headings have drifted makes the record
+    say something untrue. Only chapters the outline describes at section
+    level are held to it; `align` reports the rest as having nothing to
+    align, and they carry no findings.
+
+    A chapter nobody has written yet is deliberately not a refusal. A book
+    is drafted unit by unit, and `align`'s "not written yet" would
+    otherwise make the very first unit impossible to accept.
+    """
+    parsed = spec.parse(spec.spec_path(book).read_text(encoding="utf-8"))
+    for report in align(book, parsed)["chapters"]:
+        if report["id"] != ancestors[-1] or not report.get("written"):
+            continue
+        counts = {
+            "not authored": len(report["not_authored"]),
+            "not declared": len(report["not_declared"]),
+            "renamed": len(report["renamed"]),
+        }
+        named = [f"{n} {what}" for what, n in counts.items() if n]
+        if report["out_of_order"]:
+            named.append("out of order")
+        return ", ".join(named)
+    return ""
+
+
+def _fingerprint(book, unit_id: str) -> str:
+    """What the *dossier* says about this unit's prose.
+
+    Two records of the same text exist -- this layer's `output_digest`,
+    written by `accept`, and the dossier's draft fingerprint, written by
+    `dossier stamp`. They answer different questions ("changed since a
+    human accepted it" against "changed since the sidecars were
+    reconciled") and are refreshed by different commands, so they can
+    disagree. Neither report mentioned the other, which left "stale:
+    draft changed since accepted" as the whole story on a book where
+    nothing had been stamped at all.
+
+    Reported, never enforced: this layer does not judge a dossier.
+    """
+    draft = draft_path(book, unit_id)
+    target = dossier_dir(draft)
+    if not target.is_dir():
+        return "no dossier"
+    recorded = recorded_draft_digest(target)
+    if recorded is None:
+        return "not stamped"
+    if not draft.is_file():
+        return "stamped, no draft"
+    return "agrees" if recorded == spec.digest(draft.read_text(encoding="utf-8")) else "disagrees"
+
+
 def _cmd_status(args) -> int:
     found = sections(args.book)
-    accepted = 0
-    for section in found:
-        current = state(args.book, section["id"])
-        if current == "accepted":
-            accepted += 1
-        print(f"  {section['id']:<24} {current}")
+    rows = [
+        {
+            "id": entry["id"],
+            "state": state(args.book, entry["id"]),
+            "fingerprint": _fingerprint(args.book, entry["id"]),
+        }
+        for entry in found
+    ]
+    accepted = sum(1 for row in rows if row["state"] == "accepted")
+    if args.json:
+        print(json.dumps({"units": rows, "accepted": accepted}, indent=2, sort_keys=True))
+        return 0 if accepted == len(found) else 1
+    for row in rows:
+        print(f"  {row['id']:<24} {row['state']:<38} dossier: {row['fingerprint']}")
     print(f"\n  {accepted} of {len(found)} unit(s) accepted and current.")
     return 0 if accepted == len(found) else 1
 
@@ -129,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
 
     p_status = sub.add_parser("status", help="Where every unit in the book stands")
     p_status.add_argument("book", help=_BOOK_HELP)
+    p_status.add_argument(
+        "--json", action="store_true", help="Machine-readable, for a skill to read"
+    )
     p_status.set_defaults(func=_cmd_status)
 
     args = parser.parse_args(argv)
