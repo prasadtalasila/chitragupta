@@ -800,7 +800,7 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | Subcommand | What it does |
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only ever adds missing files -- safe to re-run |
-| `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since |
+| `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since. With an `outline.md`, also which declared queries ran, which returned nothing (`no evidence`, #480), and which were never issued |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |

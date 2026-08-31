@@ -245,12 +245,21 @@ def _print_status_outline(report: Status) -> None:
     drift = report.declared_vs_actual
     run = [q for s in drift.sections.values() for q in s.run]
     not_run = [(s.heading, q) for s in drift.sections.values() for q in s.not_run]
+    empty = [(s.heading, q) for s in drift.sections.values() for q in s.run_empty]
     extended = drift.extended
     regrounded = drift.regrounded
+    # The clause is conditional and the counts beside it are not: "0
+    # extended" is a fact about a run, where "(0 with no evidence)" on
+    # every clean draft would be a standing reminder of a state that
+    # mostly does not occur (#480).
+    no_evidence = f" ({len(empty)} with no evidence)" if empty else ""
     print(
-        f"\nOutline: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} run, "
-        f"{len(not_run)} not, {len(extended)} extended, {len(regrounded)} regrounded."
+        f"\nOutline: {len(run)} declared quer{'y' if len(run) == 1 else 'ies'} "
+        f"run{no_evidence}, {len(not_run)} not, {len(extended)} extended, "
+        f"{len(regrounded)} regrounded."
     )
+    for heading, query in empty:
+        print(f"  no evidence  {heading}: {query!r}")
     for heading, query in not_run:
         print(f"  not run   {heading}: {query!r}")
     for query in extended:

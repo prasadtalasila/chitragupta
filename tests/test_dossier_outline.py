@@ -200,6 +200,67 @@ class TestDeclaredVsActual:
         assert drift.sections["Failure modes"].not_run == ["timestep mismatch"]
         assert drift.sections["Failure modes"].run == []
 
+    def test_a_declared_query_that_returned_nothing_is_reported_run_empty(self, draft):
+        """#480: coverage is marked on evidence retrieved, never on
+        query issued. The call happened, so it stays in `run` -- what it
+        must not do is read like a query that came back with twelve."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="declared")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].run == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].run_empty == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].not_run == []
+
+    def test_a_declared_query_that_returned_something_is_not_run_empty(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 5, 100, origin="declared")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].run_empty == []
+
+    def test_a_query_answered_after_an_empty_first_call_is_not_run_empty(self, draft):
+        """The reformulation case: searched once for nothing, once for
+        four. Reporting that as uncovered would name a gap the draft's
+        own history already closed."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="declared")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 4, 900, origin="declared")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].run == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].run_empty == []
+
+    def test_a_query_never_run_is_not_reported_run_empty(self, draft):
+        """`run_empty` is a subset of `run`, not a second name for
+        `not_run` -- a query nobody issued has no result to be empty."""
+        dossier.init(draft, "survey")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].not_run == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].run_empty == []
+
+    def test_a_regrounded_query_that_returned_nothing_is_run_empty(self, draft):
+        """A re-grounding round (E4, #456) counts in `run` like any
+        declared call, so it can come back empty like any declared
+        call."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "timestep mismatch", 5, 0, 0, origin="reground")
+        outline_ = _outline.parse(
+            "## Failure modes\n\nbrief: text\n\nqueries:\n- timestep mismatch\n"
+        )
+        drift = _outline.declared_vs_actual(dossier.dossier_dir(draft), outline_)
+        assert drift.sections["Failure modes"].run == ["timestep mismatch"]
+        assert drift.sections["Failure modes"].run_empty == ["timestep mismatch"]
+
     def test_an_extended_query_is_reported_flat_not_per_section(self, draft):
         """retrieval.md records no section for a call, only query text
         and origin -- an --extend addition is visible as having

@@ -1,9 +1,15 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-28.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-30.
 **Eighteen of the original twenty-one items have shipped and have been
-removed from this document** rather than marked as done -- so everything
-below is still outstanding, which is what makes the list usable.
+removed from this document** rather than marked as done. One more has
+been removed without shipping: B3, section thesis with a source count,
+closed unbuilt as *"not a priority now"*
+([#379](https://github.com/prasadtalasila/chitragupta/issues/379)) and
+recorded under [the build order](#-build-order) so it is not re-proposed
+as an oversight. Everything below is still outstanding, which is what
+makes the list usable -- with one item **partly** built, [B5](#-b5-pre-gate-self-feedback-loop),
+whose entry says which half shipped and which did not.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -404,59 +410,56 @@ around.
 Theme A stops wording leaking. Theme B removes the *opportunity* by
 changing what a paragraph is required to be.
 
-### ✍ B3: section thesis with source count
-
-The sample's property 3: each section opens with a one-sentence
-synthesised claim and the number of distinct sources behind it. Cheap,
-and the count is deterministically checkable against the section's own
-citations, which makes it the rare stylistic feature that can be
-verified rather than trusted.
-
-Size: S. Depends on: nothing.
-
 ### 🔁 B5: pre-gate self-feedback loop
 
-Designed, unbuilt -- `plans/b5-pregate-self-feedback.md` is the
-authoritative design; this section is the ticket, not a second
-specification.
+**The step shipped ([#438](https://github.com/prasadtalasila/chitragupta/pull/438),
+2026-08-28); four amendments written the day after did not.** Each of
+the five genre skills that drafts fresh prose from an evidence packet now
+critiques that draft against `evidence.md` before gating -- up to five
+gaps listed, the top three repaired, one edit each, no retry and no
+second critique pass -- and keeps an edit only if `draft gate`,
+`verbatim recheck --baseline` and `draft style` all say it made nothing
+worse. `tests/test_skill_pregate_feedback_step.py` pins it, and
+**`plans/b5-pregate-self-feedback.md` is the authoritative design for
+both halves**: what shipped, and what is left. This section is the
+ticket, not a second specification.
 
-OpenScholar's `--feedback`: before running the citation gate, the skill
-critiques its own draft against the evidence packet and repairs gaps.
-Cheaper than the redraft cycle a gate failure currently triggers, and
-it composes with A1's scan -- one repair pass, two classes of finding.
+What is left is what **a 2026-08-28 read of four upstreams (Theme E's
+research) left owed**. It was written down by #439, merged the day after
+the step did, so none of it reached what shipped. One line each, and
+their status:
 
-**Smaller than "loop" suggests.** Upstream is not iterative: one
-feedback call producing a prioritised list, then at most three
-single-pass edits, with no re-critique.
+- The length-ratio rejection is **confirmed from source** (OpenScholar
+  accepts an edit iff it is ≥90% as long as the original, so a longer
+  and wronger answer is always accepted). **Already satisfied**: the
+  shipped step keeps the ratio as a secondary sanity floor and never as
+  the acceptance test, which is what **R3** requires.
+- Coverage must be marked on **evidence retrieved, never on query
+  issued**. **Open, and it names a located defect rather than a
+  preference**: `dossier/_outline.py::declared_vs_actual` computes its
+  `run` set from a logged call's *origin*, never from that row's
+  `results` count, so a declared query that ran and returned nothing
+  reads exactly like one that returned twelve. That is the upstream
+  failure mode, inside this repository.
+- A **fixed corpus makes a declared query list exhaustible**, so a real
+  termination condition is available here and is in none of the four
+  upstreams. **Open**, and it is the one place this design beats every
+  one of them.
+- **An empty result set is informative** -- it means the claim cannot be
+  grounded, so the sentence is cut rather than cited. **Open**: no
+  skill's text says this today.
 
-**Its safety mechanism cannot be copied, and the first draft of this
-roadmap copied it anyway.** Upstream accepts an edit if the result is
-more than 90% the length of the original. That is a continuous score,
-and **R3** forbids one as an acceptance criterion: *"An unattended
-item's check is **binary**. No continuous score is ever the thing being
-optimised."* The correct acceptance test here already exists -- **R4**'s
-*"the total objective-class count must not rise, else the edit
-reverts"*, made deterministic by `verbatim recheck`, which shipped in
-5.7.0. Keep the length ratio only as a secondary sanity check against
-gutting a draft, never as the thing being satisfied.
+Filed as [#480](https://github.com/prasadtalasila/chitragupta/issues/480)
+(the defect) and
+[#481](https://github.com/prasadtalasila/chitragupta/issues/481)
+(the two skill-text amendments); the fourth needs no issue, and closes
+by being cited in #481's PR.
 
-This item is also self-marking in the sense
-[A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined) declines,
-and it needs the amendment. It sits late for both reasons rather than
-one.
-
-**A 2026-08-28 read of four upstreams (Theme E's research) left four
-amendments owed to this item.** They are recorded in
-`plans/b5-pregate-self-feedback.md`, which is the authoritative design;
-in one line each, so this ticket says what moved without becoming a
-second specification: the length-ratio rejection is now **confirmed from
-source**; coverage must be marked on **evidence retrieved, never on query
-issued**; a **fixed corpus makes a declared query list exhaustible**, so
-a real termination condition is available here and is not in any of the
-four; and **an empty result set is informative** -- it means the claim
-cannot be grounded, so the sentence is cut rather than cited.
-
-Size: M. Depends on: the amendment, A2, and `verbatim recheck`.
+Size: S (three amendments; the fourth needs no work). Depends on:
+nothing. The amendment it once waited on was
+[taken](#-the-decision-that-gated-part-of-this-taken) and applied in
+6.20.1 by #312, and A2 and `verbatim recheck` both shipped before the
+step did.
 
 ## ✅ Theme C: verify faithful use
 
@@ -829,16 +832,22 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [B3](#-b3-section-thesis-with-source-count) section thesis + count | B | S | -- |
-| 2 | [B5](#-b5-pre-gate-self-feedback-loop) pre-gate self-feedback | B | M | **amendment**, A2, `verbatim recheck` (shipped) |
-| 3 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 4 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 5 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 6 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 1 | [B5](#-b5-pre-gate-self-feedback-loop) the four amendments to the shipped step | B | S | -- |
+| 2 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 3 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 4 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
+| 5 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
 Skipped by evidence: [D4](#-d4-optional-vision-critique).
+Deprioritised unbuilt, and removed from this document rather than
+carried as a permanent number 1: **B3**, section thesis with a source
+count -- issue
+[#379](https://github.com/prasadtalasila/chitragupta/issues/379), closed
+2026-08-26 with *"Not a priority now"*. Its design survives in that
+issue, which is where to start if it is ever wanted; nothing else in
+this roadmap depended on it.
 
 **What changed from the first draft of this document, and why it
 matters.** A1 was PR #1 and "Depends on: nothing". Reading the
@@ -863,9 +872,11 @@ so explicitly, and the entry is the ticket rather than a second
 specification -- so a design decision recorded in a plan file is not
 repeated here, and the two cannot drift.
 
-**The leading PR needs no decision and no new dependency.** B3 is a
-one-session stylistic change with a checkable count, and needs neither
-the amendment, a new model, nor a decision from anyone.
+**The leading PR needs no decision and no new dependency.** B5's
+amendments need neither the amendment (taken in #312, and the step they
+amend has already shipped under it), a new model, nor a decision from
+anyone -- and one of the four asks for no work at all, while a second is
+a located one-function defect rather than a design.
 
 ## 🚫 What is deliberately not proposed
 

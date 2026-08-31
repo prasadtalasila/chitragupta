@@ -133,8 +133,52 @@ def recorded_queries_with_origin(dossier: Path) -> list[tuple[str, str]]:
     is: the same query logged once declared and once extended is two
     different facts about the run, and collapsing them would hide that a
     declared query also had to be extended.
+
+    Says nothing about what a call *returned* --
+    `recorded_queries_with_evidence` is the sibling that does, and this
+    function is now a projection of it, so the two cannot disagree about
+    which pairs exist.
     """
-    seen: dict[tuple[str, str], None] = {}
+    return [(query, origin) for query, origin, _ in recorded_queries_with_evidence(dossier)]
+
+
+def _returned_something(cell: str) -> bool:
+    """Whether a row's `results` cell reports at least one result.
+
+    An unreadable cell -- a hand edit, since nothing else writes this
+    file -- reads as **True**, not as zero. The asymmetry is deliberate:
+    a caller uses this to report a declared query the corpus could not
+    answer, and reading a typo as "returned nothing" would manufacture
+    that finding out of the typo. Silence is the safe direction here,
+    the same way `_retrieval_rows` skips a row it cannot parse rather
+    than raising on it.
+    """
+    try:
+        return int(cell) > 0
+    except ValueError:
+        return True
+
+
+def recorded_queries_with_evidence(dossier: Path) -> list[tuple[str, str, bool]]:
+    """The distinct (query, origin, returned-anything) triples this draft
+    was retrieved with, first seen first -- the family's fourth member
+    (#480).
+
+    **Binary, not a count.** The question a caller has is whether a
+    declared query can be said to have covered its sub-theme, and that is
+    "evidence came back or it did not" -- `docs/AUTO-IMPROVEMENT.md`'s R3
+    forbids an unattended check from optimising a continuous score, and a
+    result *count* handed out here is exactly the thing someone would
+    later average into one.
+
+    **Folded before the pair is deduplicated, which is the whole reason
+    this exists rather than a `results` column bolted onto
+    `recorded_queries_with_origin`.** A query searched twice -- nothing,
+    then four after a reformulation -- must read as evidence retrieved;
+    deduplicating first would keep whichever row happened to come first
+    and report the reformulation as a gap the draft had in fact closed.
+    """
+    seen: dict[tuple[str, str], bool] = {}
     for cells in _retrieval_rows(dossier):
         if cells[1] == _REVISION_MARKER_MODE:
             continue
@@ -142,5 +186,6 @@ def recorded_queries_with_origin(dossier: Path) -> list[tuple[str, str]]:
         if not query:
             continue
         origin = cells[7].replace("\\|", "|").strip()
-        seen[(query, origin)] = None
-    return list(seen)
+        key = (query, origin)
+        seen[key] = seen.get(key, False) or _returned_something(cells[4])
+    return [(query, origin, evidence) for (query, origin), evidence in seen.items()]

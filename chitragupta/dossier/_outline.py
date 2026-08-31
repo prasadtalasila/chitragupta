@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta.dossier import OUTLINE_MD, _resolve_dossier, draft_relpath
-from chitragupta.dossier._retrieval import recorded_queries_with_origin
+from chitragupta.dossier._retrieval import recorded_queries_with_evidence
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.*)$")
 _BRIEF = re.compile(r"^brief:\s*(.*)$", re.IGNORECASE)
@@ -194,11 +194,18 @@ def parse(text: str) -> Outline:
 @dataclass
 class SectionDrift:
     """One `outline.md` section's declared queries, split by whether
-    `retrieval.md` shows them actually run verbatim (`origin=declared`)."""
+    `retrieval.md` shows them actually run verbatim (`origin=declared`).
+
+    `run_empty` is a **subset of `run`** (#480): issued, and every row
+    for it reported zero results. `run` keeps meaning *issued* -- a
+    re-grounding round is reported run on its origin alone (#470) -- and
+    a sub-theme the corpus could not answer is not one covered.
+    """
 
     heading: str
     run: list[str] = field(default_factory=list)
     not_run: list[str] = field(default_factory=list)
+    run_empty: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -245,16 +252,19 @@ def declared_vs_actual(dossier: Path, outline: "Outline | None" = None) -> Outli
         path = dossier / OUTLINE_MD
         outline = parse(path.read_text(encoding="utf-8")) if path.is_file() else Outline()
 
-    pairs = recorded_queries_with_origin(dossier)
-    run = {_normalised(query) for query, origin in pairs if origin in ("declared", "reground")}
-    extended = [query for query, origin in pairs if origin == "extended"]
-    regrounded = [query for query, origin in pairs if origin == "reground"]
+    triples = recorded_queries_with_evidence(dossier)
+    declared = [(q, e) for q, origin, e in triples if origin in ("declared", "reground")]
+    run = {_normalised(q) for q, _ in declared}
+    grounded = {_normalised(q) for q, evidence in declared if evidence}
+    extended = [query for query, origin, _ in triples if origin == "extended"]
+    regrounded = [query for query, origin, _ in triples if origin == "reground"]
 
     sections = {
         heading: SectionDrift(
             heading=heading,
             run=[q for q in section.queries if _normalised(q) in run],
             not_run=[q for q in section.queries if _normalised(q) not in run],
+            run_empty=[q for q in section.queries if _normalised(q) in run - grounded],
         )
         for heading, section in outline.sections.items()
     }
