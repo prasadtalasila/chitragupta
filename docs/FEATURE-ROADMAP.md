@@ -15,9 +15,12 @@ whole of what shipped; and **C6** (measure the refusal) has left the
 build order but **keeps its section**, because it was skipped on its own
 evidence
 ([#477](https://github.com/prasadtalasila/chitragupta/issues/477)) and
-what was measured is the reason -- the same treatment D4 gets.
-Everything still in the build order is outstanding, which is what makes
-the list usable.
+what was measured is the reason -- the same treatment D4 gets. **C4** (a
+numeral in prose is a claim too) has left it the same way and for a
+different reason: not falsified but **mis-specified**, defining the
+complement of the finding it was commissioned for, which its own plan
+found while measuring it. Everything still in the build order is
+outstanding, which is what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -430,8 +433,11 @@ ask for no work at all.
 ## ✅ Theme C: verify faithful use
 
 Detection, after Theme A and B have reduced what there is to detect.
-C4 is a review-layer aid: advisory, exit 0, never gates. C6 was the
-other, and is skipped by evidence below.
+**Nothing in this theme remains open.** C1, C2, C3 and C5 shipped and
+were removed from this document; the two that did not are both here on
+their own measurements rather than on cost -- C6 skipped as falsified,
+C4 deferred as mis-specified. Both keep their sections, because what was
+measured is the reason.
 
 ### 🔢 C4: a numeral in prose is a claim too
 
@@ -461,7 +467,58 @@ all**: a survey is full of legitimate bare numerals. Ship it reporting
 what it finds and let a real draft say whether the signal survives.
 Carries R2 and R10 like any aid.
 
-Size: M. Depends on: C1's sentence splitting.
+**Deferred as mis-specified, 2026-08-31.** The design was worked through
+in full and is in `plans/c4-numeral-as-claim.md`, which carries the
+measurements and recommends against building itself. Three findings, and
+**the first is independent of this corpus**.
+
+*The aid this section describes reports the complement of the case this
+section motivates it with.* The example above is a magnitude with a real
+citation beside it and nothing relating the number to the source. But an
+adjacent citekey is the only traceable origin that turns out to exist,
+so treating it as one marks that example **traced** -- and what gets
+reported is the other case, a magnitude with no citation at all. Either
+the example is not what C4 is for, or the origin list is. That would be
+true on any corpus.
+
+*Two of the three traceable origins have no instances.* Across all 22
+dossiers in `content/dossiers/` and both snapshots under
+`content/backup/`: **zero** carry a `math.md`, and **zero** carry a
+`quote:` line. §12's mapped form has never been used on a real draft,
+and A2's quote contract is the one `review quotation` already reports as
+empty.
+
+*The gate never fires, and the base rate is zero.* A numeral is a claim
+only in the genres where prose is expected to be sourced. Counted over
+live and backup dossiers, **37 of 37 record `textbook-chapter`** -- no
+survey, thesis chapter or deep-research report has ever been drafted
+here -- and in a textbook chapter the numerals are invented worked
+examples (`Floor 0.031, ceiling 0.15`), which is what that genre is.
+Over **11,106 claim sentences**, the failure this section guards against
+occurs **0 times**.
+
+The inverse check -- is the cited magnitude's number in the cited
+source? -- was built rather than argued about, and fails its own
+control: real magnitudes matched 11 of 11, digits-shuffled controls 9 of
+11, because `passages.source_passages` hands back whole-paper text
+averaging 102,658 characters. Narrowing to `provenance`'s matched
+passage would discriminate, and is refused by
+[REVIEW.md](REVIEW.md)'s own third limit -- passage matching is the weak
+link, so a number missing from a wrongly matched passage would be a
+false accusation of fabrication.
+
+**Not the same as C6's skip, which is why it is filed separately.**
+C6's ground-truth construction was *falsified*. Nothing here is; the one
+construction that was falsified is the plan's own invention. C4 is
+mis-specified, and separately unmeasurable on a single-genre corpus.
+
+Size: M, and unchanged -- this is not a costing decision. Depends on:
+C1's sentence splitting. **Revisitable on either of two changes**, and
+they are not the same one: a survey, thesis chapter or deep-research
+draft with a dossier, which would give the genre gate something to fire
+on and the base rate a chance to be non-zero; or a decision that the
+finding is the *cited* case, which is a different aid from the one
+designed, and needs a passage narrow enough to discriminate in.
 
 ### 🙅 C6: measure the refusal
 
@@ -824,12 +881,15 @@ is for.
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
 | 1 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 2 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
 Skipped by evidence: [C6](#-c6-measure-the-refusal),
 [D4](#-d4-optional-vision-critique).
+Deferred as mis-specified:
+[C4](#-c4-a-numeral-in-prose-is-a-claim-too) -- a separate line from the
+skips on purpose, because the reason differs: those two were falsified,
+C4 defines the complement of the finding it was commissioned for.
 Deprioritised unbuilt, and removed from this document rather than
 carried as a permanent number 1: **B3**, section thesis with a source
 count -- issue
@@ -848,13 +908,24 @@ argument.** Check a new proposal against both before costing it.
 
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
-design is genuinely underdetermined. **None of the three items still
-listed here has one**, which is a statement about them rather than a gap:
-each entry already names its files, its size and its dependencies, and
-for a mechanical change that is the whole plan. The plans that sit there
-are for items that have since shipped, kept as worked examples of the
-convention. `plans/README.md` has the three tests for when a plan
-earns its place. That directory does not ship.
+design is genuinely underdetermined. **The one item still listed here
+has none**, which is a statement about it rather than a gap: D5's entry
+already names its files, its size and its dependencies, and for a
+mechanical change that is the whole plan. `plans/README.md` has the
+three tests for when a plan earns its place. That directory does not
+ship.
+
+**One plan here is for an item that was never built**, and it is worth
+knowing why before assuming a plan means a commitment.
+`plans/c4-numeral-as-claim.md` was written because C4's contracts could
+not be settled without measuring, and measuring is what deferred it:
+the aid as designed reports the complement of the case C4 is motivated
+by, and the corpus has no draft that could exercise it either way. The
+plan is kept rather than deleted because its exclusions, genre table and
+naming all survive -- only the definition of the finding has to be
+re-opened. **A plan records a decision, including a decision not to
+build**, which is the same convention that keeps a shipped item's plan
+around as a worked example.
 
 **Where an item names its own plan, the plan governs**, and the entry is
 the ticket rather than a second specification -- so a design decision
