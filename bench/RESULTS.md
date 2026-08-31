@@ -40,9 +40,10 @@ if it is obvious which is which, so:
 | [2026-08-26b: what cross-encoding the over-fetched passages costs](#2026-08-26b-what-cross-encoding-the-over-fetched-passages-costs) | **Current** | The cost half of #380, which the section above deliberately left unmeasured. At the shipped pool of 20 the cheapest reranker makes an `embed_index.search()` call **2.5x** more expensive on a GPU and **5.75x** on a CPU; `bge-reranker-base`, the quality winner above, costs a full **second per call on CPU**. Read beside that section's "recall@5 unchanged", this is what makes `rerank = false` the only defensible default |
 | [2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?](#2026-08-27-does-claim-support-checking-c2-separate-supported-claims-from-unsupported-ones-on-this-corpus) | **Current, qualitative only** | 71 real citations scored across four real drafts; a human read of the 20 lowest- and 20 highest-scored found the dominant failure at the low end is the wrong passage being matched, not genuine non-entailment. No `labels.json`/`--crosscheck` was run, so there is no separation statistic here, only the qualitative pattern and its examples |
 | [2026-08-29: does stripping interrogatives recover the recall a question-form query loses (#453, roadmap E1)?](#2026-08-29-does-stripping-interrogatives-recover-the-recall-a-question-form-query-loses-453-roadmap-e1) | **Current** | Re-runs docs/CORPUS-SEARCH.md's own measurement against today's 256-row corpus (up from 208). Confirms the **provably inert on keyword queries** property (recall@5 and nDCG@5 both exactly unchanged) and finds **full** recovery for a `"what is X"`-form question here, not the partial recovery the original write-up found for a three-template mix -- read as a property of this narrower template, not a correction to the original finding |
-| [2026-08-30: a full-suite re-run, and the three figures it moved](#2026-08-30-a-full-suite-re-run-and-the-three-figures-it-moved) | **Current** | Every script here re-run on 96 allowed CPUs against a 497-PDF corpus, so **no figure in it is like-for-like with the sections above**. Supersedes three: the 55m 30s serial baseline (now **42m 49s**), `scan`'s 26.8s cold corpus index (now **~62s**, because `scan` gained tiers 2 and 3 after that figure was taken), and the 16.5s converter cold start (now **free to rebuild per PDF**). The parallel efficiency curve is **unchanged** |
+| [2026-08-30: a full-suite re-run, and the three figures it moved](#2026-08-30-a-full-suite-re-run-and-the-three-figures-it-moved) | **Current** | Every script here re-run on 96 allowed CPUs against a 497-PDF corpus, so **no figure in it is like-for-like with the sections above**. Supersedes three: the 55m 30s serial baseline (now **42m 49s**), `scan`'s 26.8s cold corpus index (now **~62s**, because `scan` gained tiers 2 and 3 after that figure was taken), and the 16.5s converter cold start (now **free to rebuild per PDF**). The parallel efficiency curve is **unchanged**. Also finds the **OCR stage 33% slower** per corpus -- visible only serially, because at 12/24 workers the extra CPUs hide it |
+| [The shipped embedding model is no longer the best-recall one](#the-shipped-embedding-model-is-no-longer-the-best-recall-one) | **Current, and it overturns a ranking above** | Organic recall is 14/15/16 of 22 for MiniLM-L6 / mpnet-base / multi-qa-mpnet, against the 2026-08-16 section's 11-13 with the **shipped default ahead**. The shipped default is now second. All three still catch 4/4 graded rungs. **Not a recommendation to change the default** -- one run, partly-resolving labels, and the winner also returns the most findings, with no precision measurement for any of them |
 | [The corpus moved under every hand-authored label](#the-corpus-moved-under-every-hand-authored-label) | **Current, and it invalidates arms above** | Finding ids are built from parsed-passage offsets, and a re-parse moved them. Every arm scored against a committed `labels.json` is now scoring against a partial ground truth -- 4 stale in `overlap_gate`, 176 unlabelled in `overlap_df`, 18 stale in `skipgram`, and **41 of 48** in `retrieval_ground_truth`, which refuses to run rather than build a partial set. Arm B of #194 cannot be re-measured until a human re-judges its pairs |
-| [Reproducibility: not tested, not restored](#reproducibility-not-tested-not-restored) | **A null, and an underpowered one** | `repro_check --sample 50` returned 0 differences on every comparison. This file's own ["Power, stated plainly"](#power-stated-plainly) says a 0-of-50 arm is "fully consistent with a 2% rate rather than evidence of stability". The contract in docs/ARCHITECTURE.md stands unaltered |
+| [Reproducibility: confirmed at power, and the rates reproduce](#reproducibility-confirmed-at-power-and-the-rates-reproduce) | **Current** | The n=50 arm returned 0 differences and was discarded as underpowered, per this file's own ["Power, stated plainly"](#power-stated-plainly). Re-run at **n=300**, the instability reappears and reaches the passage **text**: 0.33% same-config multi-GPU against a recorded ~0.3%, 0.67% across-config against ~1.0%, and 0/300 on one GPU. docs/ARCHITECTURE.md's contract is confirmed, not merely unchallenged |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -4003,6 +4004,39 @@ reuse code in `pdf_text.py` and `enrich/docling_parse.py` is not wrong
 and should not be reverted** -- but 16.5s should no longer be quoted as a
 per-document penalty.
 
+### The shipped embedding model is no longer the best-recall one
+
+`bench_embed_model_compare.py`, all three `docs/CONFIG.md` candidates,
+scored over the same 22 organic close-paraphrase pairs:
+
+| Model | Embedding findings | Organic recall | Graded rungs |
+| --- | --- | --- | --- |
+| `all-MiniLM-L6-v2` | 173 | 14/22 | 4/4 |
+| `all-mpnet-base-v2` *(shipped default)* | 178 | 15/22 | 4/4 |
+| `multi-qa-mpnet-base-dot-v1` | 181 | **16/22** | 4/4 |
+
+**This overturns the [2026-08-16
+section](#2026-08-16-which-drop-in-embedding-model-does-tier-3-overlap-detection-see-the-most-with)'s
+ranking.** That section has recall at 11/22-13/22 "with `all-mpnet-base-v2`
+(the shipped `config.toml.example` default) ahead by 2 pairs"; here every
+model is 3 pairs better and the *order* has changed, with the shipped
+default now second. All three still catch all four graded rungs, so the
+capability finding is untouched.
+
+**This is not a recommendation to change the default.** One run, on one
+corpus, against labels whose ids only partly resolve (see above), and
+`multi-qa-mpnet-base-dot-v1` also returns the most findings -- 181 against
+178 -- so some of its extra recall may be volume rather than precision.
+There is still no precision measurement for any of the three. What it
+establishes is that the 2026-08-16 ranking should not be quoted as
+current without re-running it.
+
+A methodological note, because it caught this author out: a standalone
+`bench_paraphrase_hunt.py --crosscheck` that omits `--embed-record` scores
+the shipped default at 13/22 rather than 15/22. `bench_embed_model_compare.py`
+supplies that flag; the standalone invocation does not, and its number is
+the wrong one to quote.
+
 ### What re-measured cleanly
 
 | Section | Recorded | This run |
@@ -4073,35 +4107,89 @@ That last row is the one worth keeping: it is the prediction the
 explanation makes, and it is the only arm measured today that came out
 slower than recorded.
 
-### OCR: read the CPU column before the speedup
+### OCR: the parallel arms look faster, and the OCR stage is slower
 
 | Workers | OCR off | OCR on | Cost now | Cost then |
 | --- | --- | --- | --- | --- |
+| **1** | **2568.9s** | **7371.3s** | **2.87x** | 2.08x |
 | 12 | 244.6s | 745.9s | 3.05x | 3.91x |
 | 24 | 184.5s | 628.1s | 3.40x | 4.79x |
 
-The OCR-on arms improved 39-45% where everything else improved 21%.
-**This is very likely the CPU count, not software.** OCR is CPU-bound:
-these runs used 43.7% and **80.6%** of 96 cores -- about 77 cores at 24
-workers -- and the recorded run was capped at 48. The OCR-off arms sit at
-20-35% CPU, inside both limits, and show the ordinary 21%. Reading "OCR
-got 45% faster" as a docling improvement would be the mistake here.
+**The serial row is the one that matters, and it was nearly not
+measured.** At 12 and 24 workers OCR-on improved 39-45% where everything
+else improved 21%, which reads as a win. Serially it is the opposite:
+OCR-on is **6.2% slower** than recorded (7371.3s against 6941.4s) while
+OCR-off on the same host is 22.9% *faster*.
+
+Subtracting gives the OCR stage's own cost over the corpus: **4802.4s
+today against 3611.0s recorded, +33.0%.** So the non-OCR parse got
+faster and the OCR stage got substantially slower; at 12 and 24 workers
+the extra CPUs (up to **80.6% of 96 cores**, against a recorded run
+capped at 48) more than cover that, and the regression disappears behind
+them. The serial arm uses 4.1% of 96 cores -- about 4 -- so it cannot
+hide anything.
+
+**Read the 39-45% parallel improvement as extra cores masking a slower
+OCR stage, not as a speedup.** An earlier draft of this section had it as
+"very likely the CPU count, not software" and stopped there; that was
+half right, and the missing half inverts the sign. `rapidocr` is
+resolving `PP-OCRv6_*` models on this host, where the recorded run
+predates them -- the likely cause, not verified here.
 
 The 24-worker rows are also the first reachable with a **stock**
 checkout: `worker_ceiling()` is `allowed_cpus // 4`, so 24 here against
 the 12 that forced the recorded run to relax the clamp.
 
-### Reproducibility: not tested, not restored
+### `estimate.py` still understates, by less than its docstring says
+
+The serial OCR-on measurement above is the real check on the tool's own
+prediction from a 16-PDF OCR-on sample:
+
+| Model | Predicted | Measured | Error |
+| --- | --- | --- | --- |
+| per-doc | 1h 56m 55s | **2h 02m 51s** | **4.8% low** (docstring: 9%) |
+| per-page | 1h 37m 14s | **2h 02m 51s** | **20.9% low** (docstring: 41%) |
+
+**The docstring's guidance holds unchanged: read the per-doc figure and
+treat it as a floor.** Both models still understate, in the same order,
+and the per-page model is still the looser bound -- it is the ranking
+that matters, and it survives. Each is a tighter floor than the recorded
+run found, which is a property of this host rather than a fix.
+
+A note on how this was nearly got wrong: before the serial arm existed,
+the per-doc prediction was compared against the *recorded* 6941.4s and
+appeared to land within 1%. That was an artefact of comparing a
+prediction for this machine against a different machine's measurement.
+The comparison only means anything against a same-host number, which is
+what the row above is.
+
+### Reproducibility: confirmed at power, and the rates reproduce
 
 `repro_check.py --sample 50` returned **0 differences** on every
-comparison -- same-config at 1 and at 4 GPUs, and across configurations.
+comparison, which is worth nothing: ["Power, stated
+plainly"](#power-stated-plainly) says in advance that "a 0-of-50 arm is
+fully consistent with a 2% rate rather than evidence of stability". At
+~0.3% same-config, fifty documents predicts 0.17 differences. So the arm
+was re-run at n=300, which is the order the recorded finding rests on:
 
-**This is not evidence of stability, and this file said so in advance.**
-["Power, stated plainly"](#power-stated-plainly) states that "a 0-of-50
-arm is fully consistent with a 2% rate rather than evidence of
-stability". At the recorded rates -- ~0.3% of documents same-config,
-~1.0% across-config -- 50 documents predicts 0.15 and 0.5 differences
-respectively. Observing zero is what an *unchanged* system looks like.
+| Comparison | n | docs | .txt | sidecar | spans | **texts** |
+| --- | --- | --- | --- | --- | --- | --- |
+| same-config, 1 GPU | 300 | 0 | 0 | 0 | 0 | **0** |
+| same-config, 4 GPUs | 300 | 3 | 3 | 3 | **1** | **1** |
+| across-config, 1 vs 4 GPUs | 300 | 2 | 2 | 2 | **2** | **2** |
 
-The contract in [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) and the
-README therefore stands unaltered by this run.
+**The instability reappears, reaches the passage text, and the rates
+match.** Same-config multi-GPU text disagreement is 1/300 = **0.33%**
+against a recorded "roughly 0.3%"; across-config is 2/300 = **0.67%**
+against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300,
+consistent with serial parsing never having been observed to vary.
+
+So [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)'s contract and the
+README's "not bit-reproducible with every parser" are **confirmed at
+power**, not merely left standing.
+
+The `--outliers-only` arm (36 documents above 49 pages, 155 pages/doc)
+returned 0 differences on every comparison. **That is another
+underpowered null and is not evidence that large documents are stable**
+-- at 0.33%, 36 documents predicts 0.12 differences. It is reported
+because it was run, not because it shows anything.

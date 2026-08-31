@@ -122,11 +122,15 @@ added. Measured 2026-08-04, end to end over the whole 501-PDF corpus:
 | 12 | 310.2s | 1213.9s | **3.91x** |
 | 24 | 237.6s | 1139.0s | **4.79x** |
 
-> **Re-measured 2026-08-30:** 12 workers **745.9s** OCR on / **244.6s**
-> off (3.05x), 24 workers **628.1s** / **184.5s** (3.40x) -- a smaller
-> cost of OCR than the 3.91x/4.79x above. **Read that as the CPU count,
-> not as software:** OCR is CPU-bound, those runs used up to 80.6% of 96
-> cores, and the run above was capped at 48.
+> **Re-measured 2026-08-30/31, and the parallel rows mislead.** 12
+> workers **745.9s** OCR on / **244.6s** off (3.05x) and 24 workers
+> **628.1s** / **184.5s** (3.40x) look like a *smaller* cost of OCR than
+> the 3.91x/4.79x above. Serially it is the reverse: **7371.3s** on /
+> **2568.9s** off is **2.87x**, against 2.08x above, and OCR-on is 6.2%
+> *slower* than the row above while OCR-off is 22.9% faster. The OCR
+> stage's own cost over the corpus is **+33%**. The parallel arms hide
+> that behind extra CPUs (up to 80.6% of 96 cores, against a run capped
+> at 48); the serial arm uses about 4 and cannot.
 
 Equivalently, from the other side -- **turning OCR on roughly halves how
 well the pipeline parallelises**:
