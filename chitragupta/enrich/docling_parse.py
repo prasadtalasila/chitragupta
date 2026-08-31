@@ -92,7 +92,10 @@ def _build_converter(threads: int | None = None) -> Any:
     DocumentConverter keeps its `initialized_pipelines` cache on the
     instance, so a converter per document re-initialises the layout,
     table and OCR models every time -- 16.5s of measured cold start, on a
-    corpus of 501 PDFs.
+    corpus of 501 PDFs. That figure no longer reproduces on docling
+    2.117.0, where rebuilding per PDF costs 0.7% (bench/RESULTS.md,
+    2026-08-30); the reuse is kept regardless, since the cost belongs to
+    the installed docling rather than to this code.
     """
     from docling.datamodel.base_models import InputFormat
     from docling.datamodel.pipeline_options import PdfPipelineOptions

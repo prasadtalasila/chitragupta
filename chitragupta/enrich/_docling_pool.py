@@ -44,6 +44,12 @@ class _LazyConverter:
     and deferring the build means a fully-cached run -- the common case
     for a re-run of `enrich.py --stages docling` -- never loads
     them at all.
+
+    That 16.5s no longer reproduces: on docling 2.117.0 a converter
+    rebuilt per PDF costs 0.7% more than one reused for the whole run
+    (bench/RESULTS.md, 2026-08-30). **Keep the reuse anyway** -- the
+    second benefit above is unaffected, and the cost is a property of
+    the installed docling rather than of this code.
     """
 
     def __init__(self) -> None:

@@ -1,0 +1,116 @@
+{
+  "n_docs": 497,
+  "repeats": 1,
+  "rows": [
+    {
+      "n_neighbors": 15,
+      "n_components": 5,
+      "min_cluster_size": 10,
+      "min_samples": null,
+      "topics": 2,
+      "outlier_share": 0.0,
+      "median_size": 478,
+      "topics_per_doc": 1.0,
+      "stability": null
+    },
+    {
+      "n_neighbors": 15,
+      "n_components": 5,
+      "min_cluster_size": 5,
+      "min_samples": null,
+      "topics": 25,
+      "outlier_share": 0.24949698189134809,
+      "median_size": 15,
+      "topics_per_doc": 1.7987927565392354,
+      "stability": null
+    },
+    {
+      "n_neighbors": 15,
+      "n_components": 5,
+      "min_cluster_size": 3,
+      "min_samples": null,
+      "topics": 51,
+      "outlier_share": 0.1790744466800805,
+      "median_size": 6,
+      "topics_per_doc": 1.6317907444668007,
+      "stability": null
+    },
+    {
+      "n_neighbors": 10,
+      "n_components": 5,
+      "min_cluster_size": 10,
+      "min_samples": null,
+      "topics": 14,
+      "outlier_share": 0.2776659959758551,
+      "median_size": 24,
+      "topics_per_doc": 1.6096579476861168,
+      "stability": null
+    },
+    {
+      "n_neighbors": 10,
+      "n_components": 5,
+      "min_cluster_size": 5,
+      "min_samples": null,
+      "topics": 29,
+      "outlier_share": 0.21730382293762576,
+      "median_size": 12,
+      "topics_per_doc": 1.5875251509054327,
+      "stability": null
+    },
+    {
+      "n_neighbors": 10,
+      "n_components": 5,
+      "min_cluster_size": 3,
+      "min_samples": null,
+      "topics": 51,
+      "outlier_share": 0.1227364185110664,
+      "median_size": 7,
+      "topics_per_doc": 1.6981891348088531,
+      "stability": null
+    },
+    {
+      "n_neighbors": 10,
+      "n_components": 5,
+      "min_cluster_size": 3,
+      "min_samples": 2,
+      "topics": 75,
+      "outlier_share": 0.11871227364185111,
+      "median_size": 4,
+      "topics_per_doc": 1.5311871227364184,
+      "stability": null
+    },
+    {
+      "n_neighbors": 5,
+      "n_components": 5,
+      "min_cluster_size": 5,
+      "min_samples": 3,
+      "topics": 43,
+      "outlier_share": 0.09859154929577464,
+      "median_size": 9,
+      "topics_per_doc": 1.4285714285714286,
+      "stability": null
+    },
+    {
+      "n_neighbors": 5,
+      "n_components": 5,
+      "min_cluster_size": 3,
+      "min_samples": 2,
+      "topics": 82,
+      "outlier_share": 0.10462776659959759,
+      "median_size": 4,
+      "topics_per_doc": 1.386317907444668,
+      "stability": null
+    },
+    {
+      "n_neighbors": 5,
+      "n_components": 10,
+      "min_cluster_size": 3,
+      "min_samples": 2,
+      "topics": 86,
+      "outlier_share": 0.11066398390342053,
+      "median_size": 4,
+      "topics_per_doc": 1.336016096579477,
+      "stability": null
+    }
+  ]
+}

@@ -1,0 +1,595 @@
+{
+ "what": "close-paraphrase candidates in a real drafted book, judged by reading each claim against the source it cites, then cross-checked against every detection tier",
+ "method": "bench/bench_paraphrase_hunt.py",
+ "book": "digital-twins-for-software-engineers (15 chapters, restored from a content backup; gitignored, so this is not reproducible from a fresh clone)",
+ "population": {
+  "citations_in_book": 866,
+  "claims_with_a_readable_cited_source": 825,
+  "skipped_as_pointer_or_no_source": 41,
+  "shortlisted_at_lexical_support_ge_0.5": 128,
+  "judged": 48
+ },
+ "judgments": {
+  "quoted": 3,
+  "paraphrase": 22,
+  "no-match": 13,
+  "no": 8,
+  "third-party-echo": 2
+ },
+ "close_paraphrase_by_tier": {
+  "NOTHING": 6,
+  "embedding": 13,
+  "embedding, exact": 2,
+  "embedding, exact, skip-gram": 1
+ },
+ "candidates": [
+  {
+   "id": "ch13-ferko_standardisation_2023-32",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 32,
+   "citekey": "ferko_standardisation_2023",
+   "lexical_support": 1.0,
+   "judgment": "quoted",
+   "reason": "both borrowed phrases sit inside quote marks and cite the source",
+   "tiers": [
+    "embedding",
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch13-mattila_interoperability_2025-35",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 35,
+   "citekey": "mattila_interoperability_2025",
+   "lexical_support": 1.0,
+   "judgment": "quoted",
+   "reason": "the borrowed clause is quoted and cited",
+   "tiers": [
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch02-kritzinger_digital_2018-173",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 173,
+   "citekey": "kritzinger_digital_2018",
+   "lexical_support": 0.9,
+   "judgment": "paraphrase",
+   "reason": "Kritzinger's DT definition restated inside a definition blockquote, not verbatim",
+   "tiers": [
+    "embedding",
+    "exact"
+   ]
+  },
+  {
+   "id": "ch07-gomes_calibration_2024-464",
+   "chapter": "07-should-you-trust-the-twin.md",
+   "line": 464,
+   "citekey": "gomes_calibration_2024",
+   "lexical_support": 0.9,
+   "judgment": "paraphrase",
+   "reason": "'optimise the model's accuracy about the future evolution' restates the abstract's calibration sentence",
+   "tiers": [
+    "embedding",
+    "exact"
+   ]
+  },
+  {
+   "id": "ch02-esterle_autonomous_2024-1-603",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 603,
+   "citekey": "esterle_autonomous_2024-1",
+   "lexical_support": 0.857,
+   "judgment": "paraphrase",
+   "reason": "the DT-vs-shadow difference sentence restated clause for clause",
+   "tiers": []
+  },
+  {
+   "id": "ch02-bottjer_review_2023-1-362",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 362,
+   "citekey": "bottjer_review_2023-1",
+   "lexical_support": 0.824,
+   "judgment": "no-match",
+   "reason": "top passage is the paper's Industry 4.0 framing, not the ISO definition the claim states",
+   "tiers": [
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch02-fitzgerald_engineering_2024-1-324",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 324,
+   "citekey": "fitzgerald_engineering_2024-1",
+   "lexical_support": 0.818,
+   "judgment": "paraphrase",
+   "reason": "'data tells state, models tell expected behaviour' follows the source's two-sentence structure",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch04-anwer_developing_2025-101",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 101,
+   "citekey": "anwer_developing_2025",
+   "lexical_support": 0.818,
+   "judgment": "paraphrase",
+   "reason": "'three main classes ... model-based, data-driven, hybrid' near-verbatim",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch08-stadtmann_diagnostic_2024-276",
+   "chapter": "08-where-ai-fits.md",
+   "line": 276,
+   "citekey": "stadtmann_diagnostic_2024",
+   "lexical_support": 0.81,
+   "judgment": "no",
+   "reason": "summarises what the paper did; normal attribution of a contribution",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch15-combemale_challenges_2025-622",
+   "chapter": "15-twins-at-scale.md",
+   "line": 622,
+   "citekey": "combemale_challenges_2025",
+   "lexical_support": 0.81,
+   "judgment": "no",
+   "reason": "reports the paper's own finding count, attributed",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch02-ali_modeling_2024-344",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 344,
+   "citekey": "ali_modeling_2024",
+   "lexical_support": 0.8,
+   "judgment": "third-party-echo",
+   "reason": "the shared wording is NASA's definition, which the cited paper also quotes",
+   "tiers": [
+    "exact"
+   ]
+  },
+  {
+   "id": "ch01-alskaif_evolution_2025-354",
+   "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+   "line": 354,
+   "citekey": "alskaif_evolution_2025",
+   "lexical_support": 0.778,
+   "judgment": "paraphrase",
+   "reason": "continuous/discontinuous change with the same two examples, reordered",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch02-kritzinger_digital_2018-169",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 169,
+   "citekey": "kritzinger_digital_2018",
+   "lexical_support": 0.778,
+   "judgment": "no-match",
+   "reason": "top passage is the Digital Model definition, not the Digital Shadow one the claim restates",
+   "tiers": [
+    "embedding",
+    "exact"
+   ]
+  },
+  {
+   "id": "ch08-stadtmann_diagnostic_2024-1018",
+   "chapter": "08-where-ai-fits.md",
+   "line": 1018,
+   "citekey": "stadtmann_diagnostic_2024",
+   "lexical_support": 0.778,
+   "judgment": "no",
+   "reason": "duplicate of 8, same contribution summary",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch06-hugues_twinops_2022-781",
+   "chapter": "06-simulators.md",
+   "line": 781,
+   "citekey": "hugues_twinops_2022",
+   "lexical_support": 0.769,
+   "judgment": "paraphrase",
+   "reason": "the FMI interface sentence restated, 'typically in combination with other models' carried over",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch02-leirmo_digital_2024-182",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 182,
+   "citekey": "leirmo_digital_2024",
+   "lexical_support": 0.765,
+   "judgment": "paraphrase",
+   "reason": "Kritzinger's three categories restated in the same order via the citing paper",
+   "tiers": []
+  },
+  {
+   "id": "ch02-vanderhorn_digital_2021-383",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 383,
+   "citekey": "vanderhorn_digital_2021",
+   "lexical_support": 0.75,
+   "judgment": "no-match",
+   "reason": "top passage is the lexicon table, not the generalised definition the claim states",
+   "tiers": [
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch06-friedrich_cofmpy_2025-778",
+   "chapter": "06-simulators.md",
+   "line": 778,
+   "citekey": "friedrich_cofmpy_2025",
+   "lexical_support": 0.75,
+   "judgment": "no",
+   "reason": "generic description of what FMI/FMU are; top passage is about co-simulation motivation",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch11-frasheri_advanced_2024-764",
+   "chapter": "11-twin-services.md",
+   "line": 764,
+   "citekey": "frasheri_advanced_2024",
+   "lexical_support": 0.75,
+   "judgment": "paraphrase",
+   "reason": "the what-if definition restated clause for clause inside a blockquote",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch15-kapteyn_probabilistic_2021-421",
+   "chapter": "15-twins-at-scale.md",
+   "line": 421,
+   "citekey": "kapteyn_probabilistic_2021",
+   "lexical_support": 0.75,
+   "judgment": "no",
+   "reason": "the draft's own summary of the paper's aim, not its wording",
+   "tiers": [
+    "exact"
+   ]
+  },
+  {
+   "id": "ch07-pinon_fischer_fundamentals_2024-109",
+   "chapter": "07-should-you-trust-the-twin.md",
+   "line": 109,
+   "citekey": "pinon_fischer_fundamentals_2024",
+   "lexical_support": 0.733,
+   "judgment": "paraphrase",
+   "reason": "'a measure of confidence ... this in turn requires the sources of uncertainty identified' follows the source sentence",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch12-van_schalkwyk_achieving_2023-517",
+   "chapter": "12-platforms-and-composability.md",
+   "line": 517,
+   "citekey": "van_schalkwyk_achieving_2023",
+   "lexical_support": 0.731,
+   "judgment": "no-match",
+   "reason": "the four-item benefits list the claim restates is not in the retrieved abstract",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch13-schweiger_empirical_2019-309",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 309,
+   "citekey": "schweiger_empirical_2019",
+   "lexical_support": 0.722,
+   "judgment": "no-match",
+   "reason": "top passage is the survey's terminology discussion, not the needs finding",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch02-parle_comparative_2024-445",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 445,
+   "citekey": "parle_comparative_2024",
+   "lexical_support": 0.714,
+   "judgment": "paraphrase",
+   "reason": "'3D models or interactive dashboards ... help stakeholders understand complex processes' carried over",
+   "tiers": []
+  },
+  {
+   "id": "ch04-rasheed_digital_2020-542",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 542,
+   "citekey": "rasheed_digital_2020",
+   "lexical_support": 0.714,
+   "judgment": "paraphrase",
+   "reason": "'at the intersection of physics-based high-fidelity simulations and data-driven models' carried over",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch04-kapteyn_toward_2020-545",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 545,
+   "citekey": "kapteyn_toward_2020",
+   "lexical_support": 0.714,
+   "judgment": "no-match",
+   "reason": "top passage is the model-library construction, not the intractability motivation",
+   "tiers": []
+  },
+  {
+   "id": "ch08-worden_artificial_2023-279",
+   "chapter": "08-where-ai-fits.md",
+   "line": 279,
+   "citekey": "worden_artificial_2023",
+   "lexical_support": 0.714,
+   "judgment": "no",
+   "reason": "generic SHM framing; the retrieved passage is a reference list for novelty detection",
+   "tiers": []
+  },
+  {
+   "id": "ch13-bottjer_review_2023-1-257",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 257,
+   "citekey": "bottjer_review_2023-1",
+   "lexical_support": 0.706,
+   "judgment": "no-match",
+   "reason": "same ISO definition as 5; the retrieved passage is again the Industry 4.0 framing",
+   "tiers": [
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch04-thelen_comprehensive_2022-530",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 530,
+   "citekey": "thelen_comprehensive_2022",
+   "lexical_support": 0.704,
+   "judgment": "paraphrase",
+   "reason": "the physics-informed loss sentence restated almost clause for clause",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch04-tygesen_state---art_2019-816",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 816,
+   "citekey": "tygesen_state---art_2019",
+   "lexical_support": 0.688,
+   "judgment": "paraphrase",
+   "reason": "'machine-learning components where the physics is not fully understood' carried over",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch05-gomes_sensing_2024-103",
+   "chapter": "05-just-enough-simulation.md",
+   "line": 103,
+   "citekey": "gomes_sensing_2024",
+   "lexical_support": 0.686,
+   "judgment": "no-match",
+   "reason": "the wall-clock/simulated-time sentence restated is not the passage retrieved",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch04-lugaresi_digital_2025-615",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 615,
+   "citekey": "lugaresi_digital_2025",
+   "lexical_support": 0.684,
+   "judgment": "no-match",
+   "reason": "top passage is the tutorial's structure section, not the validity-range claim",
+   "tiers": []
+  },
+  {
+   "id": "ch13-chae_survey_2023-425",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 425,
+   "citekey": "chae_survey_2023",
+   "lexical_support": 0.682,
+   "judgment": "paraphrase",
+   "reason": "'terms, quality requirements, a measurement process framework' restates the source's list",
+   "tiers": []
+  },
+  {
+   "id": "ch11-bohlbro_visualisation_2024-245",
+   "chapter": "11-twin-services.md",
+   "line": 245,
+   "citekey": "bohlbro_visualisation_2024",
+   "lexical_support": 0.68,
+   "judgment": "paraphrase",
+   "reason": "'modest system-level understanding ... use and act on' and 'widens the target group' carried over",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch01-pinon_fischer_fundamentals_2024-110",
+   "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+   "line": 110,
+   "citekey": "pinon_fischer_fundamentals_2024",
+   "lexical_support": 0.667,
+   "judgment": "paraphrase",
+   "reason": "'the name attached later / NASA 2010 gave the first detailed definition' follows the source sentence",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch06-hugues_twinops_2022-798",
+   "chapter": "06-simulators.md",
+   "line": 798,
+   "citekey": "hugues_twinops_2022",
+   "lexical_support": 0.667,
+   "judgment": "third-party-echo",
+   "reason": "the shared sentence is FMI standard text the cited paper also restates; the draft says so",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch07-shao_analysis_2023-1212",
+   "chapter": "07-should-you-trust-the-twin.md",
+   "line": 1212,
+   "citekey": "shao_analysis_2023",
+   "lexical_support": 0.667,
+   "judgment": "paraphrase",
+   "reason": "the VVUQ-as-credibility-assessment framing restated from the source's own sentence",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch11-van_dinter_reference_2023-740",
+   "chapter": "11-twin-services.md",
+   "line": 740,
+   "citekey": "van_dinter_reference_2023",
+   "lexical_support": 0.667,
+   "judgment": "no",
+   "reason": "a pointer to a literature, not a checkable claim about it",
+   "tiers": []
+  },
+  {
+   "id": "ch13-jacoby_open-source_2023-37",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 37,
+   "citekey": "jacoby_open-source_2023",
+   "lexical_support": 0.667,
+   "judgment": "no-match",
+   "reason": "only the paper's title was retrieved; the incompatibility finding is not in it",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch14-mertens_continuous_2024-649",
+   "chapter": "14-running-twins-in-production.md",
+   "line": 649,
+   "citekey": "mertens_continuous_2024",
+   "lexical_support": 0.667,
+   "judgment": "paraphrase",
+   "reason": "'constant evolution of systems, users needs and environments demands adaptation' restated; the quoted half is attributed",
+   "tiers": [
+    "embedding",
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch03-tao_five-dimension_2019-483",
+   "chapter": "03-anatomy-of-a-twin.md",
+   "line": 483,
+   "citekey": "tao_five-dimension_2019",
+   "lexical_support": 0.647,
+   "judgment": "paraphrase",
+   "reason": "the five dimensions restated in the source's own order with 'ties ... together' carried over",
+   "tiers": []
+  },
+  {
+   "id": "ch05-schweiger_empirical_2019-672",
+   "chapter": "05-just-enough-simulation.md",
+   "line": 672,
+   "citekey": "schweiger_empirical_2019",
+   "lexical_support": 0.645,
+   "judgment": "no-match",
+   "reason": "top passage is the FMI-implementation discussion, not the step-size/tolerance finding",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch04-chen_service_2024-496",
+   "chapter": "04-just-enough-modeling.md",
+   "line": 496,
+   "citekey": "chen_service_2024",
+   "lexical_support": 0.64,
+   "judgment": "no-match",
+   "reason": "top passage is the AM model-variety summary, not the hybrid-model trend",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch13-cavalieri_proposal_2023-1156",
+   "chapter": "13-standards-and-open-source.md",
+   "line": 1156,
+   "citekey": "cavalieri_proposal_2023",
+   "lexical_support": 0.636,
+   "judgment": "no",
+   "reason": "a fragmentary table row, not a claim",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch15-martinelli_hierarchical_2024-103",
+   "chapter": "15-twins-at-scale.md",
+   "line": 103,
+   "citekey": "martinelli_hierarchical_2024",
+   "lexical_support": 0.633,
+   "judgment": "quoted",
+   "reason": "the borrowed clause sits inside quote marks and cites the source",
+   "tiers": [
+    "exact",
+    "skip-gram"
+   ]
+  },
+  {
+   "id": "ch02-bohlbro_visualisation_2024-443",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 443,
+   "citekey": "bohlbro_visualisation_2024",
+   "lexical_support": 0.632,
+   "judgment": "paraphrase",
+   "reason": "'features, patterns, trends and relationships not apparent in raw data' carried over nearly whole",
+   "tiers": [
+    "embedding"
+   ]
+  },
+  {
+   "id": "ch01-grieves_digital_2017-108",
+   "chapter": "01-why-anyone-pays-for-a-digital-twin.md",
+   "line": 108,
+   "citekey": "grieves_digital_2017",
+   "lexical_support": 0.625,
+   "judgment": "paraphrase",
+   "reason": "'real space, virtual space and a data link' plus the 2002 Michigan framing restated",
+   "tiers": []
+  },
+  {
+   "id": "ch02-pfeiffer_towards_2025-179",
+   "chapter": "02-twin-shadow-model-simulation.md",
+   "line": 179,
+   "citekey": "pfeiffer_towards_2025",
+   "lexical_support": 0.625,
+   "judgment": "no-match",
+   "reason": "top passage is the digital-model category, not the digital-twin one the claim restates",
+   "tiers": [
+    "embedding"
+   ]
+  }
+ ]
+}
