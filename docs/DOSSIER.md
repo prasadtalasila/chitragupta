@@ -402,8 +402,11 @@ that corpus.
 The corpus fingerprint above answers "has the corpus moved since this
 draft was written?" Nothing answered the same question about the draft
 itself, so a hand edit left `sections.md`, `evidence.md` and `math.md`
-describing a document that no longer existed, silently. `scope.md` now
-also carries a text digest of the draft:
+describing a document that no longer existed, silently. This is also the
+mechanism behind "how do I hand a revised draft back?" --
+[WRITING-PROCESS.md](WRITING-PROCESS.md#-handing-a-hand-edited-draft-back-for-the-next-iteration)
+walks through that from the user's side; what follows is the format it
+rests on. `scope.md` now also carries a text digest of the draft:
 
 ```text
 - draft digest: `a1b2c3d4e5f6`

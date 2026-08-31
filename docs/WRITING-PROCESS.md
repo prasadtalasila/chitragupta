@@ -1,22 +1,26 @@
 # ✍ Writing process: from a bare corpus to a finished draft or book
 
-Status: **reference.** Written 2026-08-30.
+Status: **reference.** Written 2026-08-30. Updated 2026-08-31, with the
+command surface for writing and revising a draft, and how a hand-edited
+draft is picked back up.
 
 **Written for** someone about to write with this pipeline, start to
 finish -- the order the phases happen in, and which document has the
 detail for each. **Assumed:** none of the setup has happened yet; if
 your corpus is already synced, skip to whichever phase you're at.
 **Not covered here:** which genre to pick, in detail
-([GENRE.md](GENRE.md)); the exact command surface
-([CLI.md](CLI.md)); config knobs ([CONFIG.md](CONFIG.md)); how to get
-your library into shape ([ZOTERO.md](ZOTERO.md)). This document is the
-map between those; each has the depth this one deliberately skips.
+([GENRE.md](GENRE.md)); every flag and every command this pipeline
+exposes ([CLI.md](CLI.md)); config knobs ([CONFIG.md](CONFIG.md)); how
+to get your library into shape ([ZOTERO.md](ZOTERO.md)). This document
+is the map between those; each has the depth this one deliberately
+skips.
 
 ## 🧭 Table of contents
 
 - [Phase 1: set up your corpus](#-phase-1-set-up-your-corpus)
 - [Phase 2: write a first draft](#-phase-2-write-a-first-draft)
 - [Phase 3: revise a draft](#-phase-3-revise-a-draft)
+- [Handing a hand-edited draft back for the next iteration](#-handing-a-hand-edited-draft-back-for-the-next-iteration)
 - [Phase 4: write book chapters](#-phase-4-write-book-chapters)
 - [Phase 5: assemble the book](#-phase-5-assemble-the-book)
 
@@ -45,14 +49,20 @@ PDFs attached, turned into a ledger this pipeline can search.
 
 ## ✍ Phase 2: write a first draft
 
+| Step | What | Command | Who runs it |
+| --- | --- | --- | --- |
+| 1 | Optional: declare your own structure | `chitragupta draft dossier init content/drafts/<slug>.md --genre <genre> --outline`, then edit the `outline.md` it writes | you |
+| 2 | Ask for the draft, in plain words | e.g. "write a survey section on digital twin composability" | you |
+| 3 | Retrieve evidence, write the draft, and run its own gate -> references -> render chain | `chitragupta draft gate`, `chitragupta draft references`, `chitragupta draft render` -- the same three commands as [CLI.md](CLI.md#-the-full-first-run-step-by-step) step 9, which you can also run by hand | the matching skill |
+| 4 | Read what it wrote | the draft under `content/drafts/`, its dossier under `content/dossiers/`, and -- for four of the five genres -- its evidence sidecar | you |
+
 **Ask for it in plain words.** You do not invoke a skill by name --
 "write a survey section on digital twin composability", "draft a thesis
 chapter on runtime verification for autonomous robots", "write a
 textbook chapter introducing digital twin asset reuse", "write a
 tutorial that builds a minimal digital twin asset from scratch", "do
 deep research on fault injection for digital twin testbeds". The
-matching skill picks the request up and runs its own
-gate -> references -> render chain for you.
+matching skill picks the request up and runs step 3 above for you.
 
 **Which of the five genres actually matches what you asked for** is
 [GENRE.md](GENRE.md#-picking-one)'s whole job -- read it if you're not
@@ -62,11 +72,11 @@ comes down to what your reader is doing while they read -- entering a
 field, reading adversarially for a claim, studying worked examples,
 following you at a keyboard, or reconciling several perspectives.
 
-**Optional, before you ask: declare your own structure.** `dossier init
-<draft> --outline` creates `outline.md`, where you write each section's
-`brief:`, `claim:`, and optionally the exact `queries:` to search --
-the skill runs those verbatim instead of inventing sub-themes.
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md) has the format.
+**Step 1 is optional, and is the only step before you ask.** It writes
+`outline.md`, where you set out each section's `brief:`, one or more
+`claim:` blocks, and optionally the exact `queries:` to search -- the
+skill runs those verbatim instead of inventing sub-themes.
+[DOSSIER.md](DOSSIER.md) has the format.
 
 Every finished draft gets a **dossier** in `content/dossiers/` --
 working state a later session reloads instead of re-running everything
@@ -88,11 +98,65 @@ the dossier instead of redoing the research:
 | The whole corpus re-searched, cost regardless | say so explicitly -- "re-check the entire draft against the corpus" | `corpus-reviser`. Re-runs every recorded sub-theme query against the current corpus, honouring what was already rejected and why |
 | A repair queued by a review scan | "work the review agenda" | `agenda-reviser`. Fixes one unattended finding at a time -- a short verbatim run, a prose issue, an uncited claim -- never applies a repair unasked, and re-verifies every fix through the gate |
 
+**The default path, step by step.**
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-revising-a-draft) has the full
+reasoning behind each step; this is the command surface `draft-reviser`
+runs:
+
+| Step | What | Command | Who runs it |
+| --- | --- | --- | --- |
+| 1 | Check what's on disk, whether the corpus moved, and whether the draft itself moved since the last stamp | `chitragupta draft dossier status content/drafts/<slug>.md`, then `chitragupta draft dossier mark-revision content/drafts/<slug>.md` before any retrieval | skill |
+| 2 | Read the recorded scope and steering, so the change stays inside what you already agreed | reads `scope.md`, `steering.md` | skill |
+| 3 | Find the affected sections | `chitragupta draft dossier sections content/drafts/<slug>.md --citekeys --write` | skill |
+| 4 | Edit only those sections, at their line ranges | -- | skill |
+| 5 | Re-search only if the change opens genuinely new ground, honouring `rejected.md` first | `chitragupta draft retrieve search "<query>" --log content/drafts/<slug>.md` | skill |
+| 6 | Update the dossier for whatever actually changed | writes `evidence.md`/`rejected.md`/`sections.md`, appends to `revisions.md`/`steering.md` | skill |
+| 7 | Re-gate, rebuild references, re-render, then stamp -- only once the gate passes | `chitragupta draft gate`, `chitragupta draft references`, `chitragupta draft render`, `chitragupta draft dossier stamp content/drafts/<slug>.md` | skill |
+
+The copy-edit pass -- a grammar fix, a dialect conversion, a rephrase to
+meet a style guideline -- is the one exception: steps 3 and 5 never run,
+it reads and edits the whole draft rather than one section, and it
+leaves a single `revisions.md` entry naming the convention applied
+rather than the sections touched.
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md#-the-copy-edit-pass-and-the-entry-it-leaves)
+has why that inversion is still the cheap path.
+
 `draft-reviser` also handles **re-grounding**: when a corpus sync
 removes a paper your draft cites, or -- once you've hand-edited a
 section -- when you want that section's own new wording to drive one
 extra retrieval round (ITER-RETGEN with you standing in for the model,
 [DOSSIER.md](DOSSIER.md#-the-fingerprint-as-a-retrieval-trigger-456-feature-roadmapmds-e4)).
+
+### ✏ Handing a hand-edited draft back for the next iteration
+
+You don't have to route a change through a skill at all. Open
+`content/drafts/<slug>.md` in your own editor and change it directly, at
+the same path -- there is no `dossier rename`, so saving it under a
+different path orphans its dossier, and every equation in the draft
+silently reverts to typewriter text on the next render
+([DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-454-feature-roadmapmds-e3)).
+
+Nothing runs automatically when you save, and you don't have to tell the
+pipeline you edited it. The next time you ask for a revision -- or run
+`chitragupta draft dossier status content/drafts/<slug>.md` yourself --
+step 1 above compares a digest of the draft's current text against the
+one recorded at the last `dossier stamp`. A changed digest reports
+`CHANGED since last stamp` and only then checks four more specific
+things your edit might have caused: a citation you added with no
+`evidence.md` block, an `evidence.md` block for a citation you removed,
+a heading with no row in `sections.md`, and a `sections.md` row with no
+matching heading. `draft-reviser` offers each finding to you one at a
+time and acts only on what you agree to -- it never applies a repair
+unasked, and it never blocks the revision on one going unanswered.
+(`agenda-reviser` is the one exception: it may not touch `scope.md`, so a
+repair it makes leaves the fingerprint deliberately stale -- the honest
+signal that an automated pass, not your own revision session, touched
+the draft since anyone last confirmed it.)
+
+Nothing here is a gate. A hand-edited draft that never gets re-stamped
+just makes the next revision less efficient -- it cannot make a draft
+wrong, because `chitragupta draft gate` still stands between any draft
+and its citekeys.
 
 **Before you decide a draft is finished**, [REVIEW.md](REVIEW.md) is
 the human-facing check -- ten advisory aids (verbatim overlap,

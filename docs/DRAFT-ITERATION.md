@@ -1,12 +1,14 @@
 # ✍ Iterating on a draft
 
-Status: **implemented.** Written 2026-08-06. Updated 2026-08-24.
+Status: **implemented.** Written 2026-08-06. Updated 2026-08-31.
 
 **Written for** someone changing the drafting layer or the dossier
-format. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md) for the layers
-and [TOKENS.md](TOKENS.md) for the two cost pools. **Not covered here:**
-how to *use* a dossier day to day, which is [CLI.md](CLI.md)'s
-`dossier` section.
+format -- and the reasoning behind the command surface
+[WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft)'s Phase
+3 walks a user through. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)
+for the layers and [TOKENS.md](TOKENS.md) for the two cost pools. **Not
+covered here:** how to *use* a dossier day to day, which is
+[CLI.md](CLI.md)'s `dossier` section.
 
 Why drafting costs what it costs, and how a draft is revised weeks later
 without re-running the pipeline that produced it.
@@ -336,6 +338,12 @@ knows. Exiting 0 regardless is part of the same contract: the caller
 branches on the contents, not on the status code.
 
 ## ✍ Revising a draft
+
+[WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft) has the
+same loop as a command table, and, next to it, how a draft you hand-edit
+yourself is picked back up on the next revision -- read that first if
+you want the user-facing walkthrough; this section is the reasoning
+behind each of its steps.
 
 The `draft-reviser` skill reads the dossier instead of the corpus. Its
 loop:
