@@ -26,10 +26,13 @@ Reads and refuses nothing. Whether a misalignment withholds acceptance is
 """
 
 import difflib
+import json
 import re
 from pathlib import Path
 
 from chitragupta.dossier._sections import sections as _draft_sections
+from chitragupta.spec import spec_path
+from chitragupta.spec._read import read_spec, report_problems
 
 # `3.`, `3.1`, `3.1.2 ` at the start of a heading. A genre skill numbers
 # what it writes and the outline does not, so `3.1 The model half` and
@@ -169,3 +172,46 @@ def align(book: Path, parsed: dict) -> dict:
     """Every chapter's alignment, and whether anything disagreed."""
     reports = [align_chapter(book, chapter, declared) for chapter, declared in chapters(parsed)]
     return {"chapters": reports, "findings": sum(report["findings"] for report in reports)}
+
+
+def _print_chapter(report: dict) -> None:
+    print(f"  {report['id']:<24} {report['title']}")
+    if not report["section_described"]:
+        print("    described at chapter level; nothing to align.")
+        return
+    if not report.get("written"):
+        print(f"    not written yet: {report['draft']}")
+        return
+    for title in report["not_authored"]:
+        print(f"    not authored: {title}")
+    for title in report["not_declared"]:
+        print(f"    not declared: {title}")
+    for declared, authored in report["renamed"]:
+        print(f"    renamed: {declared} -> {authored}")
+    if report["out_of_order"]:
+        print("    out of order: the sections are all here, in a different sequence.")
+    if not report["findings"]:
+        print("    aligned.")
+
+
+def _cmd_align(args) -> int:
+    _, parsed = read_spec(args.book)
+    if parsed["problems"]:
+        return report_problems(parsed, args.book)
+    report = align(args.book, parsed)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 1 if report["findings"] else 0
+    print(f"{spec_path(args.book)}: {parsed['title']}")
+    for chapter in report["chapters"]:
+        _print_chapter(chapter)
+    return 1 if report["findings"] else 0
+
+
+def add_parser(sub, book_help: str) -> None:
+    """Register `align`. Kept beside the check it runs, the way
+    `chitragupta/dossier/_outline.py` keeps its own command."""
+    parser = sub.add_parser("align", help="Whether each authored chapter still matches the outline")
+    parser.add_argument("book", help=book_help)
+    parser.add_argument("--json", action="store_true", help="Machine-readable, for a skill to read")
+    parser.set_defaults(func=_cmd_align)

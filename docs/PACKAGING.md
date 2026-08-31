@@ -124,7 +124,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta draft style <draft>...` | `--language`, `--json` |
 | `chitragupta draft retrieve` | `search`, `evidence` |
 | `chitragupta draft dossier` | `init`, `status`, `mark-revision`, `stamp`, `sections`, `outline`, `brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`, `export`, `restore` |
-| `chitragupta draft spec` | `init`, `show`, `sign`, `status`, `align` |
+| `chitragupta draft spec` | `init`, `show`, `sign`, `status`, `align`, `seed` |
 | `chitragupta draft unit` | `contract`, `accept`, `status` |
 | `chitragupta draft registry` | `build`, `check`, `excerpt` |
 | `chitragupta draft tldr` | `write`, `show` |
@@ -150,8 +150,8 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
 That is 4 layers and 24 verbs and aids (3 + 11 + 9 + 1), plus 3
-package-level commands, giving **52 invocable leaf commands**: 3 + 3 +
-(5 + 28) + (8 + 4) + 1. The counts are stated because a table is easy to
+package-level commands, giving **53 invocable leaf commands**: 3 + 3 +
+(5 + 29) + (8 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the
 suite.
