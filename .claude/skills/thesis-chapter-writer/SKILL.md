@@ -432,6 +432,28 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     dispatch and not a deterministic check -- nothing in this pipeline
     scores this automatically.
 
+    **A sub-theme the corpus could not answer is a fourth kind of gap,
+    and reading it costs one command.** Before listing anything, where
+    the dossier has an `outline.md`:
+
+    ```bash
+    python -m chitragupta.draft dossier status content/drafts/<slug>.tex
+    ```
+
+    Its `Outline:` block reports each declared query as run, `no
+    evidence` (it ran and returned nothing) or `not run` (nobody issued
+    it). Every sentence resting on a `no evidence` sub-theme is
+    ungrounded, and the repair is to **cut the sentence, never to
+    re-point it at whichever citekey ranked nearest**. Against a closed,
+    human-curated bibliography an empty result set is information: it
+    means the claim cannot be grounded here. A re-pointed citation is
+    invisible to the gate, because that citekey is real. Cut inside the
+    same accept-or-revert cycle as every other repair below -- the 90%
+    floor is what stops a cut becoming a rewrite that deletes its way to
+    a lower count. Where there is no `outline.md` there is no declared
+    list, so skip this and the closing report below rather than
+    inventing either.
+
     Take the baseline before touching anything:
 
     ```bash
@@ -489,6 +511,16 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     5. Log the attempt in the dossier's `revisions.md`: which gap, what
        you changed, and the outcome -- accepted or reverted. Never write
        any of this to `rejected.md`.
+
+    **Then say whether the declared queries are exhausted**, from the
+    `Outline:` block you read before starting -- no second call. The
+    declared list is exhausted when every query ran and none was
+    reported `no evidence` or `not run`. Say so in one sentence, naming
+    the ones that are not. This is a **real termination condition**,
+    available because the corpus is closed and the declared list is
+    finite, where an open-web tool has only a fixed round count. It
+    bounds nothing above: the three-repair cap stands, and an
+    unexhausted list never withholds a draft.
 
     If nothing on the list clears the bar, or the list was empty,
     continue to the gate exactly as if this step had not run -- the

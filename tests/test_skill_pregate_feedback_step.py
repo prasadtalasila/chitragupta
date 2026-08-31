@@ -63,11 +63,15 @@ _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 
 # How far the step may run from its anchor before it has said the
 # acceptance test, the cap, the single-shot rule and the presenting
-# clause. Measured max is 4034 characters (`deep-research`, which adds
+# clause. Measured max is 5649 characters (`deep-research`, which adds
 # a paragraph distinguishing this from its own Phase 7 peer review, on
 # top of the tier/decidability caveats every file carries near its two
-# `verbatim scan`/`draft style` mentions).
-_STEP_TAIL_CHARS = 4300
+# `verbatim scan`/`draft style` mentions). #481's two paragraphs -- the
+# empty-result rule and the exhaustion report -- added ~1200 to every
+# file, which is why this is 5900 rather than the 4300 it was: the
+# window has to reach past them to the closing clause, or the tests
+# below start passing because the sentence they check fell outside it.
+_STEP_TAIL_CHARS = 5900
 
 # The single-shot rule, stated once per step so a later edit cannot
 # quietly turn this into a retry loop the way agenda-reviser's R7
@@ -102,6 +106,26 @@ _LENGTH_FLOOR = "90% of its own"
 # didn't work -- see agenda-reviser's own step 6).
 _REVISIONS = "revisions.md"
 _REJECTED_EXCLUDED = "Never write any of this to `rejected.md`"
+
+# #481's A4: the empty-result rule. `_NEVER_REPOINT` is the load-bearing
+# half -- "cut the sentence" alone would leave re-pointing the citation
+# at an adjacent citekey open, and that is the failure the gate
+# structurally cannot see, because the citekey is real. `_STATUS` is
+# pinned here rather than with the report below because the ordering is
+# the point: the step has to read the `no evidence` split *before* the
+# repair loop, or a gap it names cannot be acted on in the same pass.
+_NO_EVIDENCE = "`no evidence`"
+_CUT = "cut the sentence"
+_NEVER_REPOINT = "never to re-point it"
+_STATUS = "dossier status"
+
+# #481's A3: the exhaustion report. `_NO_OUTLINE` pins the absent case --
+# outline.md is optional (#455), and a draft without one has no declared
+# list, so the step must say nothing rather than report a vacuous
+# "exhausted".
+_EXHAUSTED = "declared queries are exhausted"
+_NO_OUTLINE = "there is no declared list"
+
 
 # The clause that keeps this a repair pass rather than a gate -- the
 # same invariant test_skill_verbatim_scan_step.py pins for a different
@@ -239,6 +263,52 @@ def test_every_step_logs_to_revisions_md_and_never_to_rejected_md():
         f"the logging contract is incomplete in {offenders}. A repair that didn't work "
         "belongs in `revisions.md`, never in `rejected.md` -- that file is about sources "
         "turned down, not repairs that failed."
+    )
+
+
+def test_every_step_says_an_empty_result_means_cutting_the_sentence():
+    """#481's A4. A sub-theme the corpus cannot answer is the one gap
+    class whose repair is a deletion, and the clause that matters is the
+    prohibition beside it: re-pointing the sentence at whichever citekey
+    ranked nearest is invisible to the gate, because that citekey is
+    real."""
+    offenders = {}
+    for path in _genre_skill_files():
+        text = _normalised(path)
+        for start, end in _step_blocks(text):
+            window = text[start:end]
+            missing = [
+                phrase for phrase in (_NO_EVIDENCE, _CUT, _NEVER_REPOINT) if phrase not in window
+            ]
+            if missing:
+                offenders.setdefault(path.parent.name, []).extend(missing)
+    assert not offenders, (
+        f"the empty-result rule is incomplete in {offenders}. Without it a genre skill "
+        "grounds a claim the corpus cannot support on whatever ranked nearest, and the "
+        "gate cannot see it -- the citekey is real."
+    )
+
+
+def test_every_step_reports_exhaustion_without_making_it_a_bound():
+    """#481's A3. The declared query list is finite, so exhaustion is a
+    real termination condition rather than a round count -- but it is a
+    *report*. A step that turned it into a bound on editing would undo
+    the single-shot cap this file already pins, and one that made it a
+    condition of presenting would be a second gate."""
+    offenders = {}
+    for path in _genre_skill_files():
+        text = _normalised(path)
+        for start, end in _step_blocks(text):
+            window = text[start:end]
+            missing = [
+                phrase for phrase in (_EXHAUSTED, _STATUS, _NO_OUTLINE) if phrase not in window
+            ]
+            if missing:
+                offenders.setdefault(path.parent.name, []).extend(missing)
+    assert not offenders, (
+        f"the exhaustion report is incomplete in {offenders}. `{_NO_OUTLINE}` is what "
+        "keeps a dossier without an outline.md from reporting a vacuous 'exhausted'; the "
+        "split it reads comes from `dossier status` (#480), pinned by the test above."
     )
 
 

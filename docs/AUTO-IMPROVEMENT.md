@@ -367,10 +367,16 @@ cover B5:
 - It does not widen step 5 above and is not a build-order step in this
   track; it is a sibling mechanism the roadmap tracks separately, under
   B5.
-- It calls `verbatim scan`/`recheck` and `draft style` directly, the
-  same commands `agenda-reviser` and every genre skill's own later
-  steps already call. It never calls `review agenda`, so there is no
-  overlap with this track's own machinery to exempt it from.
+- It calls `verbatim scan`/`recheck`, `draft style` and `dossier status`
+  directly, the same commands `agenda-reviser` and every genre skill's
+  own later steps already call. It never calls `review agenda`, so there
+  is no overlap with this track's own machinery to exempt it from.
+- Its termination condition is the **declared query list**, not a round
+  count (#481): `outline.md`'s list is finite, so "every declared query
+  ran and none came back empty" is decidable. That is a report the step
+  prints, never a bound on how much it may edit and never a condition of
+  presenting -- the three-repair cap is what bounds the editing, and R3
+  is why exhaustion is reported as a binary rather than a proportion.
 
 ## 🚫 What this does not change
 

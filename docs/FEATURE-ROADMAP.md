@@ -1,15 +1,19 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-30.
-**Eighteen of the original twenty-one items have shipped and have been
-removed from this document** rather than marked as done. One more has
-been removed without shipping: B3, section thesis with a source count,
-closed unbuilt as *"not a priority now"*
-([#379](https://github.com/prasadtalasila/chitragupta/issues/379)) and
-recorded under [the build order](#-build-order) so it is not re-proposed
-as an oversight. Everything below is still outstanding, which is what
-makes the list usable -- with one item **partly** built, [B5](#-b5-pre-gate-self-feedback-loop),
-whose entry says which half shipped and which did not.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-31.
+**Nineteen of the original twenty-one items have shipped and have been
+removed from this document** rather than marked as done. A twentieth,
+**B3** (section thesis with a source count), was closed unbuilt as *"not
+a priority now"*
+([#379](https://github.com/prasadtalasila/chitragupta/issues/379)) and is
+removed too, recorded under [the build order](#-build-order) so it is not
+re-proposed as an oversight. Of the items added since, **C6** (measure
+the refusal) has left the build order but **keeps its section**, because
+it was skipped on its own evidence
+([#477](https://github.com/prasadtalasila/chitragupta/issues/477)) and
+what was measured is the reason -- the same treatment D4 gets.
+Everything still in the build order is outstanding, which is what makes
+the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -353,8 +357,9 @@ reach items in this roadmap and are easy to breach by accident:
   emit one.
 - **R3** -- *"An unattended item's check is **binary**. No continuous
   score is ever the thing being optimised."* This is the one most
-  likely to be broken here, and [B5](#-b5-pre-gate-self-feedback-loop) broke
-  it in the first draft of this document. Every aid below is therefore
+  likely to be broken here, and B5 broke it in the first draft of this
+  document (its entry has since been removed, shipped;
+  `plans/b5-pregate-self-feedback.md` keeps the account). Every aid below is therefore
   annotated **binary** (an agenda may consume it and a loop may act on
   it) or **continuous** (a human reads it; nothing acts on it
   unattended).
@@ -407,64 +412,22 @@ around.
 
 ## 🧩 Theme B: make synthesis structural
 
-Theme A stops wording leaking. Theme B removes the *opportunity* by
-changing what a paragraph is required to be.
-
-### 🔁 B5: pre-gate self-feedback loop
-
-**The step shipped ([#438](https://github.com/prasadtalasila/chitragupta/pull/438),
-2026-08-28); four amendments written the day after did not.** Each of
-the five genre skills that drafts fresh prose from an evidence packet now
-critiques that draft against `evidence.md` before gating -- up to five
-gaps listed, the top three repaired, one edit each, no retry and no
-second critique pass -- and keeps an edit only if `draft gate`,
-`verbatim recheck --baseline` and `draft style` all say it made nothing
-worse. `tests/test_skill_pregate_feedback_step.py` pins it, and
-**`plans/b5-pregate-self-feedback.md` is the authoritative design for
-both halves**: what shipped, and what is left. This section is the
-ticket, not a second specification.
-
-What is left is what **a 2026-08-28 read of four upstreams (Theme E's
-research) left owed**. It was written down by #439, merged the day after
-the step did, so none of it reached what shipped. One line each, and
-their status:
-
-- The length-ratio rejection is **confirmed from source** (OpenScholar
-  accepts an edit iff it is ≥90% as long as the original, so a longer
-  and wronger answer is always accepted). **Already satisfied**: the
-  shipped step keeps the ratio as a secondary sanity floor and never as
-  the acceptance test, which is what **R3** requires.
-- Coverage must be marked on **evidence retrieved, never on query
-  issued**. **Open, and it names a located defect rather than a
-  preference**: `dossier/_outline.py::declared_vs_actual` computes its
-  `run` set from a logged call's *origin*, never from that row's
-  `results` count, so a declared query that ran and returned nothing
-  reads exactly like one that returned twelve. That is the upstream
-  failure mode, inside this repository.
-- A **fixed corpus makes a declared query list exhaustible**, so a real
-  termination condition is available here and is in none of the four
-  upstreams. **Open**, and it is the one place this design beats every
-  one of them.
-- **An empty result set is informative** -- it means the claim cannot be
-  grounded, so the sentence is cut rather than cited. **Open**: no
-  skill's text says this today.
-
-Filed as [#480](https://github.com/prasadtalasila/chitragupta/issues/480)
-(the defect) and
-[#481](https://github.com/prasadtalasila/chitragupta/issues/481)
-(the two skill-text amendments); the fourth needs no issue, and closes
-by being cited in #481's PR.
-
-Size: S (three amendments; the fourth needs no work). Depends on:
-nothing. The amendment it once waited on was
-[taken](#-the-decision-that-gated-part-of-this-taken) and applied in
-6.20.1 by #312, and A2 and `verbatim recheck` both shipped before the
-step did.
+Theme A stopped wording leaking. Theme B removed the *opportunity* by
+changing what a paragraph is required to be, and **nothing in it remains
+open**: B1-B4 shipped and were removed from this document, B3 was
+dropped unbuilt (see [the build order](#-build-order)), and B5 -- the
+pre-gate self-feedback step in the five genre skills -- shipped in two
+halves, #438 and then the four amendments a 2026-08-28 read of four
+upstreams left owed (#480, #481).
+`plans/b5-pregate-self-feedback.md` carries both halves and the
+measurements behind them, including the one amendment that turned out to
+ask for no work at all.
 
 ## ✅ Theme C: verify faithful use
 
 Detection, after Theme A and B have reduced what there is to detect.
-Both are review-layer aids: advisory, exit 0, never gates.
+C4 is a review-layer aid: advisory, exit 0, never gates. C6 was the
+other, and is skipped by evidence below.
 
 ### 🔢 C4: a numeral in prose is a claim too
 
@@ -523,7 +486,58 @@ says so. **Advisory, and the harder half is the ground truth rather than
 the check** -- a sub-theme the corpus covers thinly is not the same as
 one it does not cover, and conflating them would manufacture failures.
 
-Size: M. Depends on: nothing, though it reads best beside E4 (shipped, #456).
+**Skipped by evidence, 2026-08-31 (#477).** The ground truth this
+section calls "the harder half" was built and measured before writing
+any check, and **both constructions this section proposes are
+contaminated by the same structural fact**: 642 papers on one subject,
+so no subset's vocabulary is absent from its complement.
+
+*Keywords from entries in the bib file but not parsed.* Twenty-nine
+such entries carry a `keywords` field. Scored against the 497-item
+parsed-only index with the source entry excluded, their top-1 BM25
+median is 13.27 against the 256 positive queries' 13.44, and fourteen
+of the twenty-nine score at or above the positive median. Every one
+matches at least twenty-one parsed documents. An unparsed entry is not
+an absent topic -- it is one unread paper on a topic the corpus covers
+well.
+
+*A held-out shelf excluded by `--collection`.* Indexing the complement
+of one shelf and querying with the keywords of parsed entries on it
+moves the median top-1 score as follows.
+
+| Held-out shelf | n | Median top-1, shelf present | Held out |
+| --- | --- | --- | --- |
+| Structural Health Monitoring | 7 | 20.79 | **21.10** |
+| Security | 12 | 19.57 | 17.48 |
+| Standards | 7 | 5.48 | 5.40 |
+| DT Platforms | 10 | 11.85 | **12.03** |
+
+Removing the shelf **raises** the score in two of the four, and no
+query returned fewer than k. Deleting the structural-health-monitoring
+shelf does not remove structural health monitoring from the corpus.
+
+**And the behaviour has never been exercised.** `_bm25_scores` in
+`chitragupta/retrieval.py` keeps only a document scoring above zero, so
+`results` < `asked` in a dossier's `retrieval.md` is a real refusal
+signal rather than a proxy for one. Across all 22 dossiers -- 303
+logged retrieval calls -- it has never occurred, and no draft in
+`content/drafts/` states a refusal. Even with a clean negative set, the
+numerator and the denominator would both be zero on this corpus.
+
+Worth stating plainly rather than overclaiming, three ways. The sample
+sizes are small: n=29 for the first construction, n=7-12 per shelf for
+the second. A third construction was **not** falsified -- a
+hand-authored graded negative query set, out-of-domain and
+near-domain, needs no model and would work; it is declined because its
+ground truth is human judgment checked into the repository, which is
+precisely what this section set out to avoid. And nothing here says
+negative rejection does not matter, only that this corpus cannot
+measure it.
+
+Size: none. Depends on: nothing. Revisitable on either of two changes:
+a corpus spanning more than one subject, where excluding a shelf makes
+its topic genuinely absent and the constructions above become sound; or
+a decision to accept a hand-authored negative set as ground truth.
 
 ## 📐 Theme D: figure layout
 
@@ -832,15 +846,14 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [B5](#-b5-pre-gate-self-feedback-loop) the four amendments to the shipped step | B | S | -- |
-| 2 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-| 3 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
-| 4 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
-| 5 | [C6](#-c6-measure-the-refusal) measure the refusal | C | M | -- |
+| 1 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 2 | [C4](#-c4-a-numeral-in-prose-is-a-claim-too) numeral as a claim | C | M | C1 |
+| 3 | [C5](#-c5-the-citekeys-out-must-be-the-citekeys-in) citekey union invariant | C | S-M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
-Skipped by evidence: [D4](#-d4-optional-vision-critique).
+Skipped by evidence: [C6](#-c6-measure-the-refusal),
+[D4](#-d4-optional-vision-critique).
 Deprioritised unbuilt, and removed from this document rather than
 carried as a permanent number 1: **B3**, section thesis with a source
 count -- issue
@@ -859,24 +872,24 @@ argument.** Check a new proposal against both before costing it.
 
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
-design is genuinely underdetermined. Of the items still listed here,
-[B5](#-b5-pre-gate-self-feedback-loop) has one. Several more
-sit there for items that have since shipped, kept as worked examples of
-the convention. Most items need none: the entry above already names the
-files, the size and the dependencies, and for a mechanical change that is
-the whole plan. `plans/README.md` has the three tests for when a plan
+design is genuinely underdetermined. **None of the three items still
+listed here has one**, which is a statement about them rather than a gap:
+each entry already names its files, its size and its dependencies, and
+for a mechanical change that is the whole plan. The plans that sit there
+are for items that have since shipped, kept as worked examples of the
+convention. `plans/README.md` has the three tests for when a plan
 earns its place. That directory does not ship.
 
-**Where an item names its own plan, the plan governs.** B5's entry says
-so explicitly, and the entry is the ticket rather than a second
-specification -- so a design decision recorded in a plan file is not
-repeated here, and the two cannot drift.
+**Where an item names its own plan, the plan governs**, and the entry is
+the ticket rather than a second specification -- so a design decision
+recorded in a plan file is not repeated here, and the two cannot drift.
+B5's entry said so explicitly for as long as it was here, and
+`plans/b5-pregate-self-feedback.md` is the worked example.
 
-**The leading PR needs no decision and no new dependency.** B5's
-amendments need neither the amendment (taken in #312, and the step they
-amend has already shipped under it), a new model, nor a decision from
-anyone -- and one of the four asks for no work at all, while a second is
-a located one-function defect rather than a design.
+**The leading PR needs no decision and no new dependency.** D5 is two
+arithmetic checks over TikZ source `review figure` already parses -- a
+node's final point size, and a declared colour pair a greyscale print
+cannot separate. No model, no new package, and no decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
