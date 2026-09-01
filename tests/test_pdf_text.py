@@ -740,44 +740,47 @@ class TestWorkerCeiling:
     are -- which is why it can be asked before the bibliography is read."""
 
     def test_docling_charges_four_cpus_per_worker(self, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        assert pdf_text.worker_ceiling() == 12
+        assert pdf_text.worker_ceiling(docling=True) == 12
 
     def test_pdftotext_gets_one_per_cpu(self, monkeypatch):
         """A short single-threaded subprocess, so charging it a docling
         worker's 4 CPUs would under-use the machine."""
-        monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        assert pdf_text.worker_ceiling() == 48
+        assert pdf_text.worker_ceiling(docling=False) == 48
 
     @pytest.mark.parametrize("cpus,expected", [(1, 1), (4, 1), (8, 2), (16, 4), (48, 12)])
     def test_the_table_the_docs_promise(self, monkeypatch, cpus, expected):
-        monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: cpus)
-        assert pdf_text.worker_ceiling() == expected
+        assert pdf_text.worker_ceiling(docling=True) == expected
 
     def test_never_below_one(self, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 1)
-        assert pdf_text.worker_ceiling() == 1
+        assert pdf_text.worker_ceiling(docling=True) == 1
+
+    def test_docling_regardless_of_config_parser(self, monkeypatch):
+        """chitragupta/enrich/ always builds a Docling pool and must pass
+        docling=True unconditionally -- worker_ceiling must not re-derive
+        that from config.PARSER, which enrich never sets (#502)."""
+        monkeypatch.setattr(config, "PARSER", "pdftotext")
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+        assert pdf_text.worker_ceiling(docling=True) == 12
 
 
 class TestResolveWorkers:
     @pytest.fixture(autouse=True)
     def _host(self, monkeypatch):
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(config, "PARSER", "docling")
 
     def test_default_of_one_stays_one(self, monkeypatch):
         """The default must reproduce the historical behaviour exactly --
         no pool, no subprocesses -- however many CPUs are lying around."""
         monkeypatch.setattr(config, "PARSER_WORKERS", 1)
-        assert pdf_text.resolve_workers(500) == (1, None)
+        assert pdf_text.resolve_workers(500, docling=True) == (1, None)
 
     def test_auto_divides_cpus_by_the_cost_of_a_docling_worker(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        assert pdf_text.resolve_workers(500) == (12, None)
+        assert pdf_text.resolve_workers(500, docling=True) == (12, None)
 
     @pytest.mark.parametrize("cpus,expected", [(4, 1), (8, 2), (16, 4), (48, 12)])
     def test_auto_on_small_hosts(self, monkeypatch, cpus, expected):
@@ -785,14 +788,14 @@ class TestResolveWorkers:
         just because a 48-CPU host would be."""
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: cpus)
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        assert pdf_text.resolve_workers(500)[0] == expected
+        assert pdf_text.resolve_workers(500, docling=True)[0] == expected
 
     def test_oversized_request_is_clamped_and_explained(self, monkeypatch):
         """Silently obeying thrashes the host; silently ignoring hides the
         clamp. Say it."""
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(config, "PARSER_WORKERS", 15)
-        workers, note = pdf_text.resolve_workers(500)
+        workers, note = pdf_text.resolve_workers(500, docling=True)
         assert workers == 2
         assert "15" in note
         assert "2" in note
@@ -800,24 +803,35 @@ class TestResolveWorkers:
 
     def test_request_within_the_ceiling_is_not_explained(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
-        assert pdf_text.resolve_workers(500) == (4, None)
+        assert pdf_text.resolve_workers(500, docling=True) == (4, None)
 
     def test_never_more_workers_than_documents(self, monkeypatch):
         """Standing up 12 docling workers to parse 3 documents costs 12
         model loads to save two documents' worth of work."""
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        assert pdf_text.resolve_workers(3)[0] == 3
+        assert pdf_text.resolve_workers(3, docling=True)[0] == 3
 
     def test_no_documents_still_resolves_to_one(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        assert pdf_text.resolve_workers(0)[0] == 1
+        assert pdf_text.resolve_workers(0, docling=True)[0] == 1
 
     def test_pdftotext_worker_is_not_charged_four_cpus(self, monkeypatch):
         """Each pdftotext is a short single-threaded subprocess, so the
         docling divisor would under-use the host by 4x here."""
-        monkeypatch.setattr(config, "PARSER", "pdftotext")
         monkeypatch.setattr(config, "PARSER_WORKERS", "auto")
-        assert pdf_text.resolve_workers(500)[0] == 48
+        assert pdf_text.resolve_workers(500, docling=False)[0] == 48
+
+    def test_docling_regardless_of_config_parser(self, monkeypatch):
+        """Same #502 regression one level up: chitragupta/enrich/ passes
+        docling=True while config.PARSER is "pdftotext" and must still get
+        the docling-sized ceiling and complaint wording, not the
+        pdftotext one."""
+        monkeypatch.setattr(config, "PARSER", "pdftotext")
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
+        monkeypatch.setattr(config, "PARSER_WORKERS", 15)
+        workers, note = pdf_text.resolve_workers(500, docling=True)
+        assert workers == 2
+        assert "per docling worker" in note
 
 
 class TestDoclingThreads:
@@ -912,27 +926,26 @@ def _fake_nvidia_smi(monkeypatch, n_gpus=None, returncode=0, raises=None, found=
 
 
 class TestGpuCount:
-    def test_zero_when_backend_is_not_docling(self, monkeypatch):
-        """pdftotext has no GPU path at all, so there is nothing to
-        spread across devices."""
-        monkeypatch.setattr(config, "PARSER", "pdftotext")
-        assert pdf_text.gpu_count() == 0
+    def test_zero_when_the_pool_is_not_docling(self):
+        """A pdftotext pool has no GPU path at all, so there is nothing
+        to spread across devices -- whatever config.PARSER currently
+        says. `chitragupta/sync.py` decides the `docling` argument from that
+        setting; `chitragupta/enrich/` always passes True (#502)."""
+        assert pdf_text.gpu_count(docling=False) == 0
 
     def test_counts_the_gpus_nvidia_smi_lists(self, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
         _fake_nvidia_smi(monkeypatch, n_gpus=4)
-        assert pdf_text.gpu_count() == 4
+        assert pdf_text.gpu_count(docling=True) == 4
 
     def test_counting_does_not_import_torch(self, monkeypatch):
         """The point of asking nvidia-smi: a parent that has imported
         torch pays 1.2s and ~200MB for a question it can answer without
         either, and a parent that has *initialised CUDA* cannot fork."""
-        monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.delitem(sys.modules, "torch", raising=False)
         _fake_nvidia_smi(monkeypatch, n_gpus=2)
 
-        pdf_text.gpu_count()
+        pdf_text.gpu_count(docling=True)
 
         assert "torch" not in sys.modules
 
@@ -940,42 +953,38 @@ class TestGpuCount:
         """A slim container can pass /dev/nvidia* through without the
         driver's CLI tools. Returning 0 there would silently put every
         worker back on cuda:0."""
-        monkeypatch.setattr(config, "PARSER", "docling")
         _fake_nvidia_smi(monkeypatch, found=False)
         monkeypatch.setitem(
             sys.modules,
             "torch",
             types.SimpleNamespace(cuda=types.SimpleNamespace(device_count=lambda: 3)),
         )
-        assert pdf_text.gpu_count() == 3
+        assert pdf_text.gpu_count(docling=True) == 3
 
     def test_a_failing_nvidia_smi_falls_back_too(self, monkeypatch):
         """Present but unhappy -- a driver/library mismatch makes it exit
         non-zero rather than print an empty list."""
-        monkeypatch.setattr(config, "PARSER", "docling")
         _fake_nvidia_smi(monkeypatch, n_gpus=0, returncode=9)
         monkeypatch.setitem(
             sys.modules,
             "torch",
             types.SimpleNamespace(cuda=types.SimpleNamespace(device_count=lambda: 1)),
         )
-        assert pdf_text.gpu_count() == 1
+        assert pdf_text.gpu_count(docling=True) == 1
 
     def test_a_hanging_nvidia_smi_does_not_hang_the_sync(self, monkeypatch):
         """A wedged driver makes nvidia-smi block forever. That must cost
         _NVIDIA_SMI_TIMEOUT and a fallback, not the whole run."""
-        monkeypatch.setattr(config, "PARSER", "docling")
         _fake_nvidia_smi(monkeypatch, raises=subprocess.TimeoutExpired(["nvidia-smi"], 10))
         monkeypatch.setitem(sys.modules, "torch", None)
-        assert pdf_text.gpu_count() == 0
+        assert pdf_text.gpu_count(docling=True) == 0
 
     def test_zero_when_neither_nvidia_smi_nor_torch_can_answer(self, monkeypatch):
         """The enrich group may be installed without a working torch, and
         a missing GPU is not an error -- it just means one device."""
-        monkeypatch.setattr(config, "PARSER", "docling")
         _fake_nvidia_smi(monkeypatch, found=False)
         monkeypatch.setitem(sys.modules, "torch", None)
-        assert pdf_text.gpu_count() == 0
+        assert pdf_text.gpu_count(docling=True) == 0
 
     def test_a_broken_cuda_runtime_counts_as_no_gpus(self, monkeypatch):
         """torch imports fine but the driver is missing or mismatched --
@@ -984,14 +993,25 @@ class TestGpuCount:
         def explode():
             raise RuntimeError("CUDA driver version is insufficient")
 
-        monkeypatch.setattr(config, "PARSER", "docling")
         _fake_nvidia_smi(monkeypatch, found=False)
         monkeypatch.setitem(
             sys.modules,
             "torch",
             types.SimpleNamespace(cuda=types.SimpleNamespace(device_count=explode)),
         )
-        assert pdf_text.gpu_count() == 0
+        assert pdf_text.gpu_count(docling=True) == 0
+
+    def test_docling_regardless_of_config_parser(self, monkeypatch):
+        """chitragupta/enrich/ always runs Docling, whatever [parser].backend
+        says -- so a pool built with docling=True must count real GPUs
+        even when config.PARSER is "pdftotext", the shipped default.
+        Regression test for #502, where gpu_count re-derived
+        "is this Docling" from config.PARSER and got it wrong for every
+        enrich caller."""
+        monkeypatch.setattr(config, "PARSER", "pdftotext")
+        monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
+        _fake_nvidia_smi(monkeypatch, n_gpus=2)
+        assert pdf_text.gpu_count(docling=True) == 2
 
 
 class TestVisibleDevices:
@@ -1087,21 +1107,19 @@ class TestUsableDevices:
     hands work to whoever is free first."""
 
     @pytest.fixture(autouse=True)
-    def _docling_and_no_device_mask(self, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "docling")
+    def _no_device_mask(self, monkeypatch):
         monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
 
-    def test_no_gpus_means_no_devices_and_nothing_to_say(self, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "pdftotext")
-        assert pdf_text.usable_devices() == ([], None)
+    def test_no_gpus_means_no_devices_and_nothing_to_say(self):
+        assert pdf_text.usable_devices(docling=False) == ([], None)
 
     def test_every_card_free_is_every_card_used(self, monkeypatch):
         _fake_gpus(monkeypatch, {i: _ROOMY for i in range(4)})
-        assert pdf_text.usable_devices() == ([0, 1, 2, 3], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1, 2, 3], None)
 
     def test_a_full_card_is_skipped_and_named(self, monkeypatch):
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _ROOMY, 2: _ROOMY, 3: _ROOMY})
-        devices, complaint = pdf_text.usable_devices()
+        devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == [1, 2, 3]
         assert "cuda:0 (0.6 GiB free)" in complaint
         # The survivors are named too: "which card is it using?" is the
@@ -1112,11 +1130,11 @@ class TestUsableDevices:
         """The boundary is >=, so a card with precisely enough room is
         used rather than left idle."""
         _fake_gpus(monkeypatch, {0: pdf_text._GPU_MIN_FREE_MIB, 1: _ROOMY})
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_a_card_one_MiB_short_is_skipped(self, monkeypatch):
         _fake_gpus(monkeypatch, {0: pdf_text._GPU_MIN_FREE_MIB - 1, 1: _ROOMY})
-        devices, complaint = pdf_text.usable_devices()
+        devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == [1]
         assert "cuda:0" in complaint
 
@@ -1124,7 +1142,7 @@ class TestUsableDevices:
         """Slower -- measured 4.7x with OCR off, 1.8x with it on -- but
         a run that finishes, which beats 456 failures."""
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _CRAMPED})
-        devices, complaint = pdf_text.usable_devices()
+        devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == []
         assert "every GPU is busy" in complaint
         assert "parsing on the CPU" in complaint
@@ -1134,22 +1152,22 @@ class TestUsableDevices:
         strength of a measurement we don't have is the worse mistake, and
         _demote_to_cpu recovers from the assignment if it was wrong."""
         _fake_gpus(monkeypatch, {i: _ROOMY for i in range(2)}, returncode=9)
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_an_unreadable_card_is_assumed_usable(self, monkeypatch):
         """A driver that can't report on one card prints "[N/A]" for it."""
         _fake_gpus(monkeypatch, {0: "[N/A]", 1: _ROOMY})
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_every_card_unreadable_is_no_reading_at_all(self, monkeypatch):
         _fake_gpus(monkeypatch, {0: "[N/A]", 1: "[N/A]"})
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_a_card_nvidia_smi_did_not_report_on_is_kept(self, monkeypatch):
         """nvidia-smi listed four cards but gave memory for three, so the
         physical mapping runs out before the device list does."""
         _fake_gpus(monkeypatch, {0: _ROOMY, 1: _ROOMY, 2: _ROOMY}, listed=4)
-        assert pdf_text.usable_devices() == ([0, 1, 2, 3], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1, 2, 3], None)
 
     def test_cuda_visible_devices_are_checked_by_physical_card(self, monkeypatch):
         """The trap this mapping exists for: with CUDA_VISIBLE_DEVICES=3,1
@@ -1157,7 +1175,7 @@ class TestUsableDevices:
         at index 0 would check the wrong card and skip the wrong one."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "3,1")
         _fake_gpus(monkeypatch, {0: _ROOMY, 1: _ROOMY, 2: _ROOMY, 3: _CRAMPED})
-        devices, complaint = pdf_text.usable_devices()
+        devices, complaint = pdf_text.usable_devices(docling=True)
         assert devices == [1]
         assert "cuda:0" in complaint
 
@@ -1166,7 +1184,7 @@ class TestUsableDevices:
         and guessing which card is which would skip an arbitrary one."""
         monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "GPU-abc,GPU-def")
         _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _CRAMPED, 2: _ROOMY, 3: _ROOMY})
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_a_hanging_nvidia_smi_does_not_hang_the_sync(self, monkeypatch):
         """A wedged driver makes nvidia-smi block rather than answer.
@@ -1177,7 +1195,7 @@ class TestUsableDevices:
             {0: _ROOMY, 1: _ROOMY},
             raises=subprocess.TimeoutExpired(["nvidia-smi"], 10),
         )
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
 
     def test_no_nvidia_smi_means_no_filtering(self, monkeypatch):
         """torch answered the count; nothing can answer the memory."""
@@ -1187,7 +1205,17 @@ class TestUsableDevices:
             "torch",
             types.SimpleNamespace(cuda=types.SimpleNamespace(device_count=lambda: 2)),
         )
-        assert pdf_text.usable_devices() == ([0, 1], None)
+        assert pdf_text.usable_devices(docling=True) == ([0, 1], None)
+
+    def test_docling_regardless_of_config_parser(self, monkeypatch):
+        """Same #502 regression as TestGpuCount, one level up: a Docling
+        pool built while config.PARSER is "pdftotext" (chitragupta/enrich/'s
+        actual situation) must still see and filter real GPUs."""
+        monkeypatch.setattr(config, "PARSER", "pdftotext")
+        _fake_gpus(monkeypatch, {0: _CRAMPED, 1: _ROOMY})
+        devices, complaint = pdf_text.usable_devices(docling=True)
+        assert devices == [1]
+        assert "cuda:0" in complaint
 
 
 class TestParseVisibleDevices:
@@ -1465,7 +1493,7 @@ class TestPrestartPool:
     def test_the_fixture_above_means_a_pool_really_is_coming(self):
         """Guards the guard: if this stops being >1, every "starts
         nothing" test below would pass for the wrong reason."""
-        assert pdf_text.worker_ceiling() > 1
+        assert pdf_text.worker_ceiling(docling=True) > 1
 
     def test_starts_the_forkserver_when_a_pool_is_coming(self, monkeypatch, started):
         monkeypatch.setattr(config, "PARSER", "docling")
@@ -1500,7 +1528,7 @@ class TestPrestartPool:
 
         pdf_text.prestart_pool()
 
-        assert pdf_text.worker_ceiling() == 1
+        assert pdf_text.worker_ceiling(docling=True) == 1
         assert started == []
 
     def test_auto_on_a_large_machine_does_start(self, monkeypatch, started):
@@ -1525,7 +1553,7 @@ class TestPrestartPool:
 
         pdf_text.prestart_pool()
 
-        assert pdf_text.resolve_workers(100)[0] == 1
+        assert pdf_text.resolve_workers(100, docling=True)[0] == 1
         assert started == []
 
     def test_the_pdftotext_backend_starts_nothing(self, monkeypatch, started):

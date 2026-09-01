@@ -69,8 +69,14 @@ def allowed_cpus() -> int:
     return os.cpu_count() or 1
 
 
-def worker_ceiling() -> int:
+def worker_ceiling(docling: bool) -> int:
     """The most workers this machine can sustain, whatever the run holds.
+
+    `docling` names whether *this* pool runs Docling workers -- not
+    whether `config.PARSER` currently says "docling". `chitragupta/enrich/`
+    always runs Docling regardless of that setting, so a caller there
+    passes `docling=True` unconditionally rather than this function
+    re-deriving it from a setting that does not describe it -- see #502.
 
     Split out from resolve_workers because it is the one ceiling that
     does *not* depend on how many documents there are, so it can be asked
@@ -78,15 +84,18 @@ def worker_ceiling() -> int:
     prestart_pool decline on a machine that will end up serial anyway.
     """
     cpus = allowed_cpus()
-    if config.PARSER == "docling":
+    if docling:
         return max(1, cpus // _CPUS_PER_DOCLING_WORKER)
     # Each pdftotext is a short, single-threaded subprocess, so charging
     # it a docling worker's CPU budget would under-use the machine.
     return cpus
 
 
-def resolve_workers(n_docs: int) -> tuple[int, str | None]:
+def resolve_workers(n_docs: int, docling: bool) -> tuple[int, str | None]:
     """(workers, complaint) for a run that has `n_docs` to parse.
+
+    `docling` is passed straight through to worker_ceiling -- see its
+    docstring for why this is not re-derived from `config.PARSER` here.
 
     The resolved count is the smallest of three independent ceilings,
     floored at 1: what was asked for, what the machine can sustain, and
@@ -99,7 +108,7 @@ def resolve_workers(n_docs: int) -> tuple[int, str | None]:
     believing they configured something they didn't.
     """
     cpus = allowed_cpus()
-    ceiling = worker_ceiling()
+    ceiling = worker_ceiling(docling)
 
     requested = config.PARSER_WORKERS
     wanted = ceiling if requested == "auto" else requested
@@ -110,11 +119,7 @@ def resolve_workers(n_docs: int) -> tuple[int, str | None]:
         complaint = (
             f"  WARNING [parser].workers={requested} exceeds what this host can "
             f"sustain ({cpus} CPUs available to this process"
-            + (
-                f", ~{_CPUS_PER_DOCLING_WORKER} per docling worker"
-                if config.PARSER == "docling"
-                else ""
-            )
+            + (f", ~{_CPUS_PER_DOCLING_WORKER} per docling worker" if docling else "")
             + f") -- using {workers}."
         )
     return workers, complaint

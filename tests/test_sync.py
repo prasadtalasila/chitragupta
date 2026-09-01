@@ -998,7 +998,7 @@ class TestGpuAssignment:
         cuda:0 in every process, so without an explicit per-worker device
         N workers contend for one card while the rest idle."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync_pool._executor_for(2):
@@ -1022,7 +1022,7 @@ class TestGpuAssignment:
         that; calling across the seam can.
         """
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync_pool._executor_for(2):
@@ -1039,7 +1039,7 @@ class TestGpuAssignment:
         """usable_devices decides; this asserts sync passes its answer
         through rather than re-deriving a count of its own."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync_pool._executor_for(2):
@@ -1053,7 +1053,7 @@ class TestGpuAssignment:
         reason."""
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(
-            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0")
+            pdf_text._pool, "usable_devices", lambda docling: ([1], "  WARNING skipping cuda:0")
         )
         self._capture(monkeypatch)
 
@@ -1077,7 +1077,7 @@ class TestGpuAssignment:
         to exist on the machine running the test.
         """
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         chosen = multiprocessing.get_context()
         monkeypatch.setattr(pdf_text._pool, "process_pool_context", lambda: (chosen, None))
         captured = self._capture(monkeypatch)
@@ -1092,7 +1092,7 @@ class TestGpuAssignment:
         the ledger open as live sqlite connections, and SQLite says not
         to carry an open connection across fork()."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         captured = self._capture(monkeypatch)
 
         with sync_pool._executor_for(2):
@@ -1104,7 +1104,7 @@ class TestGpuAssignment:
         """A pool that quietly fell back to spawn looks exactly like one
         that got what was configured, and is ~1.5s slower to start."""
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([], None))
         monkeypatch.setattr(
             pdf_text._pool,
             "process_pool_context",
@@ -1119,7 +1119,7 @@ class TestGpuAssignment:
 
     def test_a_cpu_only_host_still_builds_a_working_pool(self, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([], None))
         captured = self._capture(monkeypatch)
 
         with sync_pool._executor_for(2):

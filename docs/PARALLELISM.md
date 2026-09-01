@@ -82,6 +82,19 @@ entry point — the dependency runs the other way everywhere else. Both
 delegate every *policy* decision to `pdf_text`, so "how many workers, which
 start method, which GPU" is answered in exactly one place.
 
+**The two entry points disagree on what `[parser].backend` means to them.**
+`chitragupta/sync.py` follows it: a `pdftotext`-configured sync never touches
+GPU or docling-worker sizing at all. `chitragupta/enrich/` always runs
+Docling — it has no other backend — regardless of what `[parser].backend`
+says, since that setting governs the corpus layer's own parse, not
+enrichment's. `resolve_workers`, `worker_ceiling`, `gpu_count` and
+`usable_devices` therefore all take an explicit `docling: bool` argument
+rather than reading `config.PARSER` themselves: `chitragupta/sync.py` passes
+`config.PARSER == "docling"`, `chitragupta/enrich/` always passes `True`. A
+version of this that read `config.PARSER` directly made every GPU on a
+`pdftotext`-configured host (the shipped default) invisible to enrichment's
+own pool — see #502.
+
 ## 🔄 The parse path, end to end
 
 ```text
@@ -131,7 +144,7 @@ runs print identically.
 
 All in `chitragupta/pdf_text/` unless noted.
 
-### 🧮 `resolve_workers(n_docs) -> (workers, complaint)`
+### 🧮 `resolve_workers(n_docs, docling) -> (workers, complaint)`
 
 ```text
    what you asked for ──┐
@@ -148,10 +161,10 @@ An over-large request is **clamped and said out loud on stderr** — never
 silently obeyed (which thrashes), never silently ignored (which leaves
 someone believing they configured something they didn't).
 
-### 📏 `worker_ceiling()`
+### 📏 `worker_ceiling(docling)`
 
 The machine ceiling alone: `allowed_cpus() // _CPUS_PER_DOCLING_WORKER`
-for docling, `allowed_cpus()` for `pdftotext`. Separate from
+when `docling` is true, `allowed_cpus()` otherwise. Separate from
 `resolve_workers` because it is the one ceiling independent of the
 document count, so `prestart_pool` can consult it before the bibliography
 has been read.
@@ -220,9 +233,9 @@ worker piles onto one card.
 `devices` is a **list of cards**, not a count, which is what keeps a card
 that has no memory free out of the rotation entirely.
 
-### 🖥 `usable_devices()`
+### 🖥 `usable_devices(docling)`
 
-`gpu_count()` narrowed to the cards with at least 2.5 GiB free
+`gpu_count(docling)` narrowed to the cards with at least 2.5 GiB free
 (`nvidia-smi --query-gpu=index,memory.free`), which is a docling worker's
 ~1.7 GiB of models plus its CUDA context, plus room to be wrong.
 
@@ -265,12 +278,13 @@ A CUDA OOM that survives the CPU retry is marked `transient`, so the
 ledger retries it next run rather than writing the document off as
 unparseable. It was the machine's fault, not the PDF's.
 
-### 🔢 `gpu_count()`
+### 🔢 `gpu_count(docling)`
 
-Reads `nvidia-smi --list-gpus`, applying `CUDA_VISIBLE_DEVICES` by hand
-since nvidia-smi ignores it and torch does not. Falls back to torch only
-where the driver's CLI is absent — the point is to answer the question
-without importing torch into the parent.
+`0` outright when `docling` is false — this pool has no GPU path.
+Otherwise reads `nvidia-smi --list-gpus`, applying `CUDA_VISIBLE_DEVICES`
+by hand since nvidia-smi ignores it and torch does not. Falls back to
+torch only where the driver's CLI is absent — the point is to answer the
+question without importing torch into the parent.
 
 ### ⏱ `_as_they_land()` — `chitragupta/sync_pool.py`
 
@@ -310,7 +324,7 @@ is why `forkserver` is worth a fixed 1–2s rather than a multiple.
   [parser].workers = 1       ──► strictly serial: no pool, no subprocess,
                                   no pickling. The default.
   [parser].workers = <int>   ──┐
-  [parser].workers = "auto"  ──┴─► min(requested, worker_ceiling(), n_docs)
+  [parser].workers = "auto"  ──┴─► min(requested, worker_ceiling(docling), n_docs)
 ```
 
 `1` is not "a pool of one" — it is a different code path. A routine sync

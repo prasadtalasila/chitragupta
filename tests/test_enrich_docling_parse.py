@@ -596,7 +596,7 @@ class TestReusingTheCorpusLayersParse:
             "_executor_for",
             lambda workers: types.SimpleNamespace(map=fake_map, shutdown=lambda **kw: None),
         )
-        monkeypatch.setattr(pdf_text, "resolve_workers", lambda n: (4, None))
+        monkeypatch.setattr(pdf_text, "resolve_workers", lambda n, docling: (4, None))
 
         reusable = self._corpus_parsed(tmp_path)
         others = []
@@ -1129,7 +1129,7 @@ class TestParallelHelpers:
             captured.update(kwargs)
             return contextlib.nullcontext()
 
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([0, 1, 2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([0, 1, 2, 3], None))
         monkeypatch.setattr(pdf_text._pool, "ProcessPoolExecutor", record)
         with _docling_pool._executor_for(2):
             pass
@@ -1146,7 +1146,7 @@ class TestParallelHelpers:
         """Two pool builders, one contract. This one skipped the check
         until PR #40 review caught it."""
         captured = {}
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([1, 2], "  WARNING"))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([1, 2], "  WARNING"))
         monkeypatch.setattr(
             pdf_text._pool,
             "ProcessPoolExecutor",
@@ -1164,7 +1164,7 @@ class TestParallelHelpers:
         not iterable" at startup. Invisible to a test that only compares
         initargs to a literal, because the initializer is never run."""
         captured = {}
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([2, 3], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([2, 3], None))
         monkeypatch.setattr(
             pdf_text._pool,
             "ProcessPoolExecutor",
@@ -1182,7 +1182,7 @@ class TestParallelHelpers:
 
     def test_a_skipped_card_is_reported_not_swallowed(self, monkeypatch, capsys):
         monkeypatch.setattr(
-            pdf_text._pool, "usable_devices", lambda: ([1], "  WARNING skipping cuda:0")
+            pdf_text._pool, "usable_devices", lambda docling: ([1], "  WARNING skipping cuda:0")
         )
         monkeypatch.setattr(
             pdf_text._pool, "ProcessPoolExecutor", lambda **kwargs: contextlib.nullcontext()
@@ -1195,7 +1195,7 @@ class TestParallelHelpers:
     def test_a_start_method_complaint_is_printed_not_swallowed(self, monkeypatch, capsys):
         """A pool that quietly falls back to spawn looks identical to one
         that got what was configured, and is ~1.5s slower to start."""
-        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda: ([], None))
+        monkeypatch.setattr(pdf_text._pool, "usable_devices", lambda docling: ([], None))
         monkeypatch.setattr(
             pdf_text._pool,
             "process_pool_context",
