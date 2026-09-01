@@ -74,6 +74,16 @@ class TestGetHelpers:
         with pytest.raises(ValueError, match="must be a number"):
             config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
 
+    def test_float_raises_named_error_on_unparseable_env_var(self, monkeypatch):
+        # A bare float() call raises "could not convert string to float"
+        # with no indication of which setting was misconfigured -- this
+        # getter's own error names the key and env var like every other
+        # wrong-value case here does.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3.0}})
+        monkeypatch.setenv("MY_TIMEOUT", "not-a-number")
+        with pytest.raises(ValueError, match="MY_TIMEOUT.*must be a number"):
+            config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
+
     @pytest.mark.parametrize(
         "raw,expected",
         [
@@ -165,6 +175,17 @@ class TestGetHelpers:
 
     def test_int_raises_on_bool_in_toml(self, monkeypatch):
         monkeypatch.setattr(config, "_toml", {"enrich": {"count": True}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
+
+    @pytest.mark.parametrize("raw", ["3.0", "1e3"])
+    def test_int_raises_on_a_float_shaped_string(self, monkeypatch, raw):
+        # A string is parsed with int(), not float(): "3.0"/"1e3" read as
+        # a whole number only by a much looser standard than the PR's
+        # own "quoted whole number" contract, and float(str(huge_int))
+        # can lose precision that int() never would.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": raw}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)

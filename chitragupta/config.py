@@ -168,10 +168,14 @@ def _get_float(env_var: str, *toml_path: str, default: float) -> float:
     raw = _raw_setting(env_var, toml_path)
     if raw is None:
         return default
+    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a number, not {raw!r}."
     if env_var in os.environ:
-        return float(raw)
+        try:
+            return float(raw)
+        except ValueError:
+            raise ValueError(problem) from None
     if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise ValueError(f"{'/'.join(toml_path)} (or {env_var}) must be a number, not {raw!r}.")
+        raise ValueError(problem)
     return float(raw)
 
 
@@ -179,20 +183,30 @@ def _get_int(env_var: str, *toml_path: str, default: int) -> int:
     """A whole-number setting, exact. Rejects a fractional value instead
     of silently truncating it: `int(_get_float(...))` used to turn
     `min_tokens = 0.5` into 0 and `topic_min_cluster_size = 3.9` into 3
-    with no signal that the config was never an integer."""
+    with no signal that the config was never an integer.
+
+    A string is parsed with `int()`, not `float()` -- matching
+    `_get_positive_int`/`_get_workers`'s existing tolerance for a quoted
+    integer, but rejecting `"3.0"`/`"1e3"` as too permissive a reading of
+    "whole number", and never losing precision on a large integer string
+    the way a float round-trip would.
+    """
     raw = _raw_setting(env_var, toml_path)
     if raw is None:
         return default
     problem = f"{'/'.join(toml_path)} (or {env_var}) must be a whole number, not {raw!r}."
     if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
         raise ValueError(problem)
-    try:
-        value = float(raw)
-    except ValueError:
-        raise ValueError(problem) from None
-    if not value.is_integer():
-        raise ValueError(problem)
-    return int(value)
+    if isinstance(raw, str):
+        try:
+            return int(raw.strip())
+        except ValueError:
+            raise ValueError(problem) from None
+    if isinstance(raw, float):
+        if not raw.is_integer():
+            raise ValueError(problem)
+        return int(raw)
+    return raw
 
 
 def _get_positive_int(env_var: str, *toml_path: str, default: int) -> int:
