@@ -321,7 +321,7 @@ Wrote content/specs/twins/units/sec-1.json.
 ```
 
 `accept` writes the record only after the project's one gate passes on
-the draft. It refuses four ways, each for a stated reason:
+the draft. It refuses five ways, each for a stated reason:
 
 1. **This unit's chapter is not signed off** -- there is nothing to accept
    a unit against until a human has approved the structure. Asked of the
@@ -336,11 +336,25 @@ the draft. It refuses four ways, each for a stated reason:
    holding the first unit until the whole chapter exists would make it
    impossible to accept.
 3. **There is no draft** -- generate the unit from its contract first.
-4. **The citation gate refuses the draft.** `accept` *invokes*
-   `python -m chitragupta.draft gate` rather than re-implementing or replacing
-   it. A unit nobody may cite from is not a unit a book may assemble
-   from, and this is the existing gate doing its existing job -- not a
-   second one.
+4. **A `--source` is not in the ledger** (#506). `--source` names the
+   papers this unit claims to be grounded in, and the acceptance record
+   keeps that claim permanently, so it is checked against the ledger
+   before anything is written. A record asserting grounding in a citekey
+   no real parse ever produced is exactly the fabricated reference
+   [CLAUDE.md](../CLAUDE.md)'s one rule exists to prevent. Refused with
+   the argument-shaped faults above rather than beside the gate's
+   findings, where it would read as a defect in the prose.
+5. **The citation gate refuses the draft.** `accept` runs the project's
+   one gate rather than re-implementing or replacing it -- it reads the
+   draft once and hands *that string* to `citation_gate.check_text`,
+   reporting through `citation_gate.report`, which is the same printer
+   `python -m chitragupta.draft gate` itself uses, so the two read
+   identically. Reading once is the point: `accept` used to gate the
+   *path* and then re-read the file to hash and record it, so a write
+   landing between the two calls produced a permanent record for prose
+   the gate had never seen (#506/m-69). A unit nobody may cite from is
+   not a unit a book may assemble from, and this is the existing gate
+   doing its existing job -- not a second one.
 
 The record holds the input digest the prose was generated against, the
 sources, what it cites, and a digest of the prose itself. It carries

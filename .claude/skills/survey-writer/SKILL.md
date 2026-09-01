@@ -293,8 +293,11 @@ collapse them for the sake of a cleaner narrative.
    python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md
    ```
 
-   A warning means re-read whether that claim is really your own reading of
-   the source -- not a cue to keep rewording until the warning stops.
+   Two kinds of warning. `N blocks under one citekey` means `evidence.md`
+   has more than one block for that paper and only the first is ever read
+   -- merge them. A reword warning means re-read whether that claim is
+   really your own reading of the source, and is not a cue to keep
+   rewording until the warning stops.
 2a. **On a broad topic, put steps 1-2 behind a subagent.** Dispatch one
    `general-purpose` subagent per sub-theme, all in one message, each told to
    run the retrieve-and-score loop above and return **only** the kept-evidence

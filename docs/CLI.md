@@ -806,14 +806,14 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
-| `outline <draft>` | Read and validate `outline.md` -- the human's own per-section brief/claim/declared queries. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
+| `outline <draft>` | Read and validate `outline.md` -- the human's own per-section brief/claim/declared queries. A section is a `##`-or-deeper heading; a level-1 line is the file's own title and is passed over. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
 | `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit (#454). Run after `gate` passes, never before |
 | `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
-| `check-evidence <draft>` | Advisory: does any `claim:` in `evidence.md` read like its own `quote:` with the words moved? Never blocks a draft from being read -- exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
+| `check-evidence <draft>` | Advisory, two checks over `evidence.md`. First, any citekey carrying **more than one block** -- the first is the one every reader gets, so the rest are text nothing will read (#506). Then: does any `claim:` read like its own `quote:` with the words moved? Never blocks a draft from being read -- exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
@@ -2211,7 +2211,7 @@ chitragupta draft unit status   content/drafts/<book>
 | Command | Does | Exit |
 | --- | --- | --- |
 | `contract` | the inputs one unit is generated from, and their digest | 1 on an unknown unit, a part/chapter, or a spec that does not parse |
-| `accept` | record a generated unit, once `chitragupta.draft gate` passes on it | 1 if the unit's own chapter is unsigned or misaligned, the draft is missing, or the gate refuses it |
+| `accept` | record a generated unit, once the citation gate passes on it | 1 if the unit's own chapter is unsigned or misaligned, the draft is missing, a `--source` is not in the ledger, or the gate refuses it |
 | `status` | where every unit stands, and what its dossier says about the same prose (`--json`) | 1 while any unit is not accepted and current |
 
 `--source` is repeatable and is part of the input digest, so grounding a

@@ -168,7 +168,8 @@ def load_mapping(draft: Path) -> "dict[str, str]":
 
     Empty rather than raising, because an absent mapping is the ordinary
     state of every draft written before this existed and of every draft
-    with no mathematics in it. `warnings()` is what tells those two apart.
+    with no mathematics in it. `_math_findings.findings()` is what tells
+    those two apart, through the `has_mapping_file` flag it takes.
     """
     path = mapping_path(draft)
     if path is None or not path.is_file():

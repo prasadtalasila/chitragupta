@@ -99,10 +99,15 @@ moved under the draft. Without `scope.md` a reviser has no way to tell an
 omission from an exclusion, and will helpfully add back the section you
 asked to leave out.
 
-**`evidence.md` -- what was kept, and why.** One block per kept citekey,
-carrying `relevance:` (why this source bears on the sub-theme), `claim:`
-(what it establishes, in the drafter's own words) and an optional
-`quote:` (its exact wording). **Only `claim:` may be drafted prose
+**`evidence.md` -- what was kept, and why.** One block per kept citekey
+-- and where a later pass or a hand edit has written two under the same
+citekey, the **first** is the block every reader gets, with the rest
+reported by `check-evidence` (#506). Keeping the last was the earlier
+behaviour and was silent, so a second block displaced the evidence a
+drafting run had already been handed with nothing anywhere saying so.
+Each block carries `relevance:` (why this source bears on the
+sub-theme), `claim:` (what it establishes, in the drafter's own words)
+and an optional `quote:` (its exact wording). **Only `claim:` may be drafted prose
 from**, and the ordering is the whole mechanism: it is written at the
 moment the evidence is judged, before any sentence of the draft exists,
 so it cannot be a lightly-edited copy of the passage. `quote:` is absent
@@ -159,7 +164,9 @@ turns themselves cost. Enough to compare two runs; not enough to price a
 whole draft.
 
 **`outline.md` -- the human's own structure, declared rather than
-guessed (#455).** Per section: a heading, a `brief:` (steering, consumed
+guessed (#455).** Per section: a `##`-or-deeper heading (a level-1 line
+is the file's own title, and is passed over rather than becoming a
+section with nothing under it), a `brief:` (steering, consumed
 once, never appears in the draft) and/or one or more `claim:` blocks
 (the human's own prose, rewritten -- every sentence that can't be
 grounded is reported rather than shipped), and optional declared
@@ -190,6 +197,32 @@ Where the same query was searched twice, once for nothing and once for
 four after a reformulation, it counts as answered: the rows are folded
 together before the query is deduplicated, so a gap the draft's own
 history closed is not reported as still open.
+
+## 🔑 Which tokens count as a citekey, and why the rule has two halves
+
+A citekey is read out of a dossier from a backticked or `@`-prefixed
+token. The default shape requires a separator run -- a letter start, then
+at least one `_`/`:`/`-` followed by more alphanumerics -- so
+`@noauthor_digital_nodate` is a citekey and `@someone` and `@2` are not.
+That requirement is not cosmetic: this set is differenced against the
+ledger in *both* directions, and on the "what has left the corpus?" side
+an invented token would be reported as a broken citation that is not one.
+
+It also made a whole family of real citekeys invisible. `Doe2024` and
+`Lamport94` -- the default style of several reference managers -- carry
+no separator at all, so a dossier written that way contributed nothing to
+any parse, and a paper it cited leaving the corpus was **never** reported
+(#506). A false negative there is the worse failure of the two, since the
+draft goes on citing a source the ledger no longer holds.
+
+Both halves are kept by admitting a separator-free token only when it is
+one this dossier can already be shown to know: a member of the ledger, or
+a citekey the dossier itself *declares* by opening an `evidence.md`
+heading with it. The second is what closes the departed-key case, which
+ledger membership alone cannot -- a key that has left the ledger is by
+definition not in it. A heading is structural; prose is not, so prose
+still cannot promote a word into a broken-citation report. The strict
+scan is never replaced by the loose one, only added to.
 
 ## 💡 Why Markdown
 
@@ -290,7 +323,10 @@ wording from copyrighted sources. See [GENRE.md](GENRE.md#-the-five-drafting-gen
 for what each of the five drafting genres otherwise produces.
 
 **The self-check.** `python -m chitragupta.draft dossier check-evidence <draft>`
-compares each block's `claim:` against its own `quote:`
+runs two checks. It first names any citekey carrying more than one
+block, since the findings below it are then about text that may not be
+the block in play. It then compares each block's `claim:` against its
+own `quote:`
 (`chitragupta/dossier/_evidence_check.py`, reusing
 `chitragupta/overlap_skipgram.py`'s stemmed word stream) and warns when the
 claim reads like the quote with its words moved. **Advisory, printed,

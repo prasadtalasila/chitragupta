@@ -332,9 +332,10 @@ the lesson design is the part worth keeping either way.
    retrieved and turned down into `rejected.md`'s citekey table, with the
    query that surfaced it and a few words on why. Then run
    `python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.md`
-   -- advisory, flags a `claim:` that reads like its `quote:` reworded; a
-   warning is a cue to re-read your own judgment, not to reword until it
-   stops.
+   -- advisory. Flags a citekey carrying more than one `evidence.md`
+   block (the first is the one every reader gets, so merge them), and a
+   `claim:` that reads like its `quote:` reworded; a reword warning is a
+   cue to re-read your own judgment, not to reword until it stops.
 
 7. **Budget the length.** A tutorial should be completable in one sitting.
    If the path is outgrowing that, split it into a sequence of tutorials with
