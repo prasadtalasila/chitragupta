@@ -1313,6 +1313,45 @@ class TestStallWatchdog:
             blocked.set()
         assert killed, "workers were left running after the stall"
 
+    def test_a_stall_cancels_jobs_that_never_started(self, many_corpus, monkeypatch):
+        """#491: with the shipped pdftotext backend, terminate_workers is a
+        no-op (it only reaches ProcessPoolExecutor's `_processes`), so the
+        stall path's only way to stop queued-but-unstarted jobs is
+        cancelling them on the executor itself. Without that, the thread
+        pool keeps draining its queue after the run has already reported
+        those documents as failed -- writing content/parsed/<citekey>.txt
+        for citekeys the ledger says failed."""
+        import threading
+        import time
+
+        started = []
+        blocked = threading.Event()
+        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.3)
+
+        def fake(job):
+            started.append(job[1])
+            blocked.wait(30)
+            return fake_extract_one_factory()(job)
+
+        monkeypatch.setattr(pdf_text, "extract_one", fake)
+        try:
+            sync.run()
+            # sync.run() only returns once _as_they_land has given up, so
+            # anything appended to `started` from here on ran *after* the
+            # stall was reported -- exactly the citekeys the cancel must
+            # have dropped, whatever the worker count turns out to be.
+            at_stall = list(started)
+            # Give a still-queued (uncancelled) job a chance to start.
+            time.sleep(0.5)
+        finally:
+            blocked.set()
+            time.sleep(0.2)
+
+        assert len(at_stall) < 6, "nothing was left queued when the run gave up -- test is vacuous"
+        assert started == at_stall, (
+            f"job(s) started after the stall was already reported: {started[len(at_stall) :]}"
+        )
+
     def test_a_stalled_document_is_not_blamed_on_a_dead_worker(
         self, many_corpus, monkeypatch, caplog
     ):
