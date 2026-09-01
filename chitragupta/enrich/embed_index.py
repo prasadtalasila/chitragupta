@@ -204,15 +204,27 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     # run was asked to index. Runs after the loop completes, not inside
     # it, so an interrupted run (which `raise`s above) never deletes
     # chunks on the strength of a partial pass.
-    current_citekeys = {doc.citekey for doc in docs}
-    everything = collection.get()
-    orphaned_ids = [
-        chunk_id
-        for chunk_id, metadata in zip(everything["ids"], everything["metadatas"])
-        if metadata.get("citekey") not in current_citekeys
-    ]
-    if orphaned_ids:
-        collection.delete(ids=orphaned_ids)
+    #
+    # Guarded on `docs` being non-empty for the same reason: an empty or
+    # freshly-recreated ledger makes build_corpus() return `[]`, and
+    # `current_citekeys` would then match nothing at all in the
+    # collection -- pruning would read as "every document departed" and
+    # empty a real index over what is far more likely a wrong-project
+    # `CHITRAGUPTA_PROJECT`/cwd than a corpus that actually went to zero.
+    # An empty `docs` is the maximal partial pass, and gets the same
+    # "prune nothing" treatment the interrupt guard above gives a
+    # partial one.
+    orphaned_ids = []
+    if docs:
+        current_citekeys = {doc.citekey for doc in docs}
+        everything = collection.get(include=["metadatas"])
+        orphaned_ids = [
+            chunk_id
+            for chunk_id, metadata in zip(everything["ids"], everything["metadatas"])
+            if metadata.get("citekey") not in current_citekeys
+        ]
+        if orphaned_ids:
+            collection.delete(ids=orphaned_ids)
 
     logging_setup.say(
         logger,

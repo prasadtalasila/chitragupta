@@ -61,7 +61,7 @@ class FakeCollection:
         for i, doc, emb, meta in zip(ids, documents, embeddings, metadatas):
             self._store[i] = {"document": doc, "embedding": emb, "metadata": meta}
 
-    def get(self, where=None):
+    def get(self, where=None, include=None):
         items = list(self._store.items())
         if where:
             key, value = next(iter(where.items()))
@@ -411,6 +411,22 @@ class TestBuildIndexPrunesDepartedCitekeys:
         collection = client.collections[embed_index.collection_name()]
 
         embed_index.build_index([doc])
+
+        assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
+
+    def test_an_empty_corpus_prunes_nothing(self, isolated_config, fake_enrich_deps, tmp_path):
+        # An empty `docs` is the maximal partial pass, not proof every
+        # document departed -- build_corpus() returns [] for an empty or
+        # freshly-recreated ledger, and the far more likely cause is a
+        # wrong-project CHITRAGUPTA_PROJECT/cwd than a corpus that
+        # actually went to zero. Emptying a real index over that would
+        # cost a full re-embed to recover.
+        doc = self.make_doc(tmp_path, "word " * 10)
+        embed_index.build_index([doc])
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+
+        embed_index.build_index([])
 
         assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
 
