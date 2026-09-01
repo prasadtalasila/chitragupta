@@ -24,6 +24,53 @@ from tests.conftest import (
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
+class TestRunPandoc:
+    """`_run_pandoc` in isolation, via a mocked `subprocess.run` -- no
+    real pandoc needed, unlike the rest of this module's tests."""
+
+    def _fake_completed(self, stdout="", stderr=""):
+        return subprocess.CompletedProcess(
+            args=["pandoc"], returncode=0, stdout=stdout, stderr=stderr
+        )
+
+    def test_forwards_stderr_on_a_successful_exit(self, monkeypatch, capsys):
+        # M-7: capture_output=True was silently discarding this -- citeproc's
+        # own diagnostics ("citation not found", a missing image) land on
+        # pandoc's stderr with exit 0, not a raised CalledProcessError.
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            lambda *a, **k: self._fake_completed(
+                stderr="[WARNING] Citeproc: citation X not found\n"
+            ),
+        )
+        render_output._run_pandoc(["pandoc"], {})
+        err = capsys.readouterr().err
+        assert "[pandoc] [WARNING] Citeproc: citation X not found" in err
+
+    def test_multiple_stderr_lines_are_each_prefixed(self, monkeypatch, capsys):
+        monkeypatch.setattr(
+            subprocess, "run", lambda *a, **k: self._fake_completed(stderr="line one\nline two\n")
+        )
+        render_output._run_pandoc(["pandoc"], {})
+        err = capsys.readouterr().err
+        assert "[pandoc] line one" in err
+        assert "[pandoc] line two" in err
+
+    def test_empty_stderr_prints_nothing(self, monkeypatch, capsys):
+        monkeypatch.setattr(subprocess, "run", lambda *a, **k: self._fake_completed(stderr=""))
+        render_output._run_pandoc(["pandoc"], {})
+        assert capsys.readouterr().err == ""
+
+    def test_a_nonzero_exit_still_raises(self, monkeypatch):
+        def fake_run(*a, **k):
+            raise subprocess.CalledProcessError(1, ["pandoc"], stderr="fatal error")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(subprocess.CalledProcessError):
+            render_output._run_pandoc(["pandoc"], {})
+
+
 class TestRenderMarkdown:
     """`--format md` on a Markdown draft, which is a citation-numbering
     job rather than a format conversion and so never calls pandoc."""

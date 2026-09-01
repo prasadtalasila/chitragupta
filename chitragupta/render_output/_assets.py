@@ -8,22 +8,36 @@ references are never grounds to read or write outside its directory.
 import re
 import shutil
 from pathlib import Path
+from urllib.parse import unquote
 
 from chitragupta.render_output._figures import _figure_refs, _resolve_sibling
 
 
-# Matches Markdown image syntax: ![alt](path) or ![alt](path "title").
-_MD_IMAGE_RE = re.compile(r'!\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
+# Matches Markdown image syntax: ![alt](path) or ![alt](path "title"), and
+# CommonMark's angle-bracket form for a destination containing a literal
+# space: ![alt](<my figure.png>). `[^)\s]+` alone (the bare form) can never
+# match a space at all, so a path saved with one -- a screenshot's default
+# name, say -- needs this second alternative or it is never even found
+# (m-58).
+_MD_IMAGE_RE = re.compile(
+    r'!\[[^\]]*\]\((?:<(?P<angled>[^>]*)>|(?P<bare>[^)\s]+))(?:\s+"[^"]*")?\)'
+)
 # A URI scheme prefix (http:, https:, data:, ...) -- pandoc fetches these
 # itself; nothing local to copy.
 _URI_SCHEME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 
 
 def _local_image_refs(text: str) -> list[str]:
-    """Every local (non-URL) image path a Markdown draft references."""
+    """Every local (non-URL) image path a Markdown draft references.
+
+    Percent-decoded: a *bare* (non-bracketed) destination can't contain a
+    literal space at all, so pandoc/CommonMark's own answer for one is
+    percent-encoding it (`my%20figure.png`) -- which resolves to nothing
+    on disk unless it's decoded back to the real filename first (m-58).
+    """
     return [
-        ref
-        for ref in (m.group(1) for m in _MD_IMAGE_RE.finditer(text))
+        unquote(ref)
+        for ref in (m.group("angled") or m.group("bare") for m in _MD_IMAGE_RE.finditer(text))
         if not _URI_SCHEME_RE.match(ref)
     ]
 
