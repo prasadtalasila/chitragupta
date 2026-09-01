@@ -366,6 +366,7 @@ flowchart TB
 
   GOOD(["<b>quotable</b><br/><small>a real, reading-ordered paragraph<br/>with the page it sits on</small>"])
   MEH(["<b>page-level only</b><br/><small>the passage carries no text —<br/><code>quotable</code> is false, by design</small>"])
+  NONE(["<b>nothing, with a reason</b><br/><small>no passages and an explanation<br/>of why — never a silent empty</small>"])
 
   ASK --> R1
   R1 -- "the enrichment layer's docling stage has run" --> GOOD
@@ -373,18 +374,22 @@ flowchart TB
   R2 -- "the corpus layer parsed this<br/>with <i>[parser].backend = docling</i>" --> GOOD
   R2 -- "missing<br/><i>(pdftotext leaves no passages)</i>" --> R3
   R3 -- "the backend left page breaks<br/><i>(both of them do)</i>" --> MEH
-  R3 -- "one page, or none" --> R4
-  R4 --> MEH
+  R3 -- "one page, or none<br/><i>(one page is held, not discarded)</i>" --> R4
+  R3 -- "one page held, and no readable PDF" --> MEH
+  R4 -- "pdftotext returned text" --> MEH
+  R4 -- "no text layer, nothing held" --> NONE
 
   classDef ask fill:#fff7ed,stroke:#c2410c,color:#431407
   classDef rung fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
   classDef good fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#052e16
   classDef meh fill:#f8fafc,stroke:#94a3b8,color:#0f172a
+  classDef none fill:#fef2f2,stroke:#dc2626,color:#450a0a
 
   class ASK ask
   class R1,R2,R3,R4 rung
   class GOOD good
   class MEH meh
+  class NONE none
 ```
 
 Rungs 1 and 2 hold the same kind of record from the same function; they

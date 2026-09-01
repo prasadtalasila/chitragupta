@@ -199,7 +199,7 @@ It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
 | --- | --- | --- |
-| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher | fault |
+| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher **whose basename names a Python interpreter** | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
@@ -221,8 +221,20 @@ That distinction is what lets the hook run this early at all. Both fault
 checks are corpus-independent by construction:
 
 - The launcher check reads a config file, calls `shutil.which`, and -- for
-  each distinct launcher that resolves -- spawns it once to ask whether it
-  can import `chitragupta`. No corpus either way.
+  each distinct launcher that resolves *and is Python-shaped* -- spawns it
+  once to ask whether it can import `chitragupta`. No corpus either way.
+
+  The interpreter condition is not fussiness (#509/m-38): the probe is
+  `<program> -c "import chitragupta"`, which is a Python invocation and
+  nothing else. Run against a launcher that is not Python -- `bash`, `uv`,
+  `node` -- the program either rejects `-c` or runs something unrelated,
+  exits non-zero, and gets reported as "cannot import chitragupta" every
+  single session: a fault about the probe rather than about the hook.
+  Every launcher this repository ships is Python, so this is latent
+  rather than observed; a settings file naming `bash` is legal, though,
+  and would have produced that false fault with nothing pointing at the
+  cause. An unrecognised launcher is simply not spawned, and reports
+  nothing rather than something wrong.
 - **A fabricated citekey is absent from an empty ledger and a full one
   alike.** Measured before it was relied on: with no `ledger.sqlite`
   present at all, `chitragupta.draft gate` exits 0 on a citation-free draft and

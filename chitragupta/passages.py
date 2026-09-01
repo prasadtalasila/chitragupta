@@ -53,8 +53,10 @@ drafting agent as evidence is under exactly the same constraint as a
 passage shown to a reviewer, and the two should not answer "what does
 this source say here?" from different text -- but today they do.
 
-Stdlib only (sqlite3/re/subprocess), like citation_gate.py and
-references.py -- runs with bare `python`, no venv.
+Stdlib only (sqlite3/json/subprocess), like citation_gate.py and
+references.py -- runs with bare `python`, no venv. The `re` that used to
+be in that list left with the stopword vocabulary; see
+`chitragupta/_passage_words.py`, whose `distinctive` is re-exported here.
 """
 
 import json
