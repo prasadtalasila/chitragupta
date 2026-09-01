@@ -45,7 +45,13 @@ def _load_cache() -> dict:
 
     A version or image-setting mismatch invalidates the whole cache
     rather than any one entry: both change what every .md in
-    config.DOCLING_DIR should contain, not just one document's."""
+    config.DOCLING_DIR should contain, not just one document's. Scale is
+    one such setting -- the worker converter key at
+    `_docling_pool.py:87` already includes it, and a fingerprint-unchanged
+    PDF re-converted at a different `DOCLING_IMAGE_SCALE` produces
+    differently-sized bitmaps -- but the comparison here omitted it, so a
+    scale change silently kept serving old bitmaps for every doc this
+    cache still considered fresh (#504, m-46)."""
     try:
         data = json.loads(config.DOCLING_CACHE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -56,6 +62,7 @@ def _load_cache() -> dict:
         data.get("version") != _CACHE_VERSION
         or data.get("images") != config.DOCLING_IMAGES
         or data.get("ocr") != config.PARSER_OCR
+        or data.get("image_scale") != config.DOCLING_IMAGE_SCALE
     ):
         return {}
     items = data.get("items")
@@ -87,6 +94,7 @@ def _save_cache(cache: dict) -> None:
             "version": _CACHE_VERSION,
             "images": config.DOCLING_IMAGES,
             "ocr": config.PARSER_OCR,
+            "image_scale": config.DOCLING_IMAGE_SCALE,
             "items": cache,
         }
         tmp_path.write_text(json.dumps(payload), encoding="utf-8")

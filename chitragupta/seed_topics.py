@@ -146,7 +146,15 @@ def load_report(path: "Path | None" = None) -> dict:
     report_path = config.TOPIC_SEEDS_PATH if path is None else Path(path)
     if not report_path.exists():
         return {}
-    return json.loads(report_path.read_text(encoding="utf-8"))
+    try:
+        return json.loads(report_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        # A truncated write (a killed mid-run process, matching the
+        # failure mode `_docling_cache`/`retrieval_cache` already guard
+        # against elsewhere in this codebase) otherwise surfaced as a raw
+        # JSONDecodeError instead of the clean refusal every other
+        # malformed-file path in this module gets (#504, m-32).
+        raise SeedTopicsError(f"{report_path} is not valid JSON: {exc}") from exc
 
 
 def report(data: dict, phrase: "str | None" = None) -> str:

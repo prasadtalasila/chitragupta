@@ -110,6 +110,14 @@ One related defect, recorded because the term is central here and the fix
 is not the same one: **`co-simulation` tokenizes to `simulation`** -- the
 `co` is dropped by the `len(w) > 2` filter.
 
+The same filter drops a whole-word query term like `AI`, `ML`, `5G` or
+`QA` -- real content words in an engineering corpus, not noise. Lowering
+the floor would need an `_INDEX_SCHEMA_VERSION` bump (every cached
+document re-tokenized, and every existing query's ranking changed), so
+`python -m chitragupta.draft retrieve` instead warns on stderr, naming
+each dropped term, rather than letting a query built entirely from them
+return empty with nothing to explain why.
+
 ## 🪜 The four stages
 
 `chitragupta/enrich/embed_index.py::search(query, k)` is four stages, of

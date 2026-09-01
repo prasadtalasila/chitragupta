@@ -82,7 +82,7 @@ def write_record(book, unit_id, citekeys, *, draft_text=None):
     return path
 
 
-def assemble(book, unit_ids, *, beside=None, unresolved=()):
+def assemble(book, unit_ids, *, beside=None, unresolved=(), missing_units=()):
     """A `book.tex` as `book-assembler` composes one: structure only.
 
     **It never inlines a unit's citekey, because the real one does not.**
@@ -95,11 +95,19 @@ def assemble(book, unit_ids, *, beside=None, unresolved=()):
 
     `beside` is `{filename: contents}` for material the assembly includes
     that is not a unit -- a title page, an appendix -- and `unresolved`
-    names includes with no file behind them.
+    names includes with no file behind them. Every unit's own `.tex` is
+    written here too, trivially, unless its id is in `missing_units` --
+    a real book.tex names each unit's rendered file, and #496 is exactly
+    about what happens when that file is not actually there.
     """
     names = list(unresolved) + list(beside or {}) + [f"{u}.tex" for u in unit_ids]
     for name, text in (beside or {}).items():
         (book / name).write_text(text, encoding="utf-8")
+    for unit_id in unit_ids:
+        if unit_id not in missing_units:
+            (book / f"{unit_id}.tex").write_text(
+                f"Rendered prose for {unit_id}.\n", encoding="utf-8"
+            )
     body = "\n".join("\\input{" + name + "}" for name in names)
     path = book / "book.tex"
     path.write_text(
@@ -245,6 +253,26 @@ class TestResolvingWhatTheAssemblyNames:
         assert result.outside_units == ["front.tex"]
         assert result.unresolved == []
         assert result.dropped == {}
+
+
+class TestAUnitStemWithNoFileBehindIt:
+    def test_a_renamed_or_deleted_chapter_file_is_not_read_as_included(self, book):
+        """`\\input{ch-data.tex}` still names a unit id, but if the file
+        itself is gone -- renamed or deleted after the unit was accepted
+        -- resolving that unit's stem must not short-circuit into
+        "included" before the include is actually checked (#496): that
+        is exactly the silent loss this aid exists to catch."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        # book.tex names both units' rendered .tex, matching a real
+        # assembly, but ch-data's file is not actually there -- renamed
+        # or deleted after the unit was accepted.
+        assembled = assemble(book, ["ch-model", "ch-data"], missing_units=["ch-data"])
+
+        result = citekey_union.compute(assembled)
+
+        assert result.dropped == {"jones_2023": ["ch-data"]}
+        assert [entry.unit for entry in result.omitted] == ["ch-data"]
 
 
 class TestItSaysWhatItCouldNotRead:

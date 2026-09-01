@@ -954,6 +954,12 @@ it was measuring.
 Exits 1 with the fix if there is no ledger; an empty result set is not an
 error.
 
+A query word of 1-2 characters (`AI`, `ML`, `5G`, `QA`) never reaches
+ranking on either side of the index -- [CORPUS-SEARCH.md](CORPUS-SEARCH.md)
+has why. Either subcommand warns on stderr, naming each such word, rather
+than letting a query built entirely from them return empty with nothing
+to explain why.
+
 ### 🗺 `chitragupta review agenda`
 
 One ranked, deduplicated worklist merged across the other eight aids'

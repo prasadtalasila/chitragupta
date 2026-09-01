@@ -20,7 +20,7 @@ import pytest
 
 from chitragupta import config, dossier, review
 from chitragupta.review import __main__ as review_main
-from chitragupta.review import _uncited_render, _units, uncited_prose
+from chitragupta.review import _blocks, _claims, _uncited_render, _units, uncited_prose
 from tests.test_review_units import draft_at, write_scope
 
 
@@ -38,6 +38,46 @@ def report_for(draft: Path, genre: str | None = None) -> uncited_prose.Report:
 def found_text(draft: Path, genre: str | None = None) -> list[str]:
     """The sentence of every finding this draft raises."""
     return [f["sentence"] for f in uncited_prose.findings(report_for(draft, genre))]
+
+
+class TestEachSentenceCarriesItsOwnLine:
+    def test_a_five_sentence_block_reports_five_distinct_lines(self):
+        """Every sentence in a block used to carry the block's first
+        line, so a finding could point up to five lines above the
+        sentence quoted beside it (#496). Mapped via `sentences.spans`
+        offsets, each sentence should report the line it actually sits
+        on, one sentence per physical line here."""
+        text = "Alpha is true.\nBeta is true.\nGamma is true.\nDelta is true.\nEpsilon is true.\n"
+        lines = [s.line for s in _claims.claim_sentences(text)]
+        assert lines == [1, 2, 3, 4, 5]
+
+    def test_a_wrapped_list_item_falls_back_to_the_blocks_first_line(self):
+        """A hard-wrapped list item is one block across several physical
+        lines (`_blocks.spans`'s own docstring), but `text_of` strips its
+        marker from the *front* of the already-joined text, shifting
+        every line after the first by the marker's length. Reproducing
+        that shift in `line_of_offset` was rejected as unmeasured
+        (#496 review discussion), so every sentence in such a block
+        still reports the block's first line -- a documented coarsening,
+        not a silent wrong answer."""
+        text = "- Alpha claims one thing. Beta claims\n  another thing entirely.\n"
+        lines = [s.line for s in _claims.claim_sentences(text)]
+        assert lines == [1, 1]
+
+    def test_a_table_row_or_tex_heading_first_line_is_never_plain(self):
+        """`_blocks.spans` never actually hands `line_of_offset` a
+        multi-line block starting with a table row or a TeX heading --
+        `spans` gives a table row its own one-line block, and a heading
+        block is excluded before `claim_sentences` ever calls this. Both
+        branches of `_is_plain_paragraph` are still pinned directly here
+        so the classification itself, not just what reaches it today, is
+        correct."""
+        assert _blocks._is_plain_paragraph(["| a | b |", "| c | d |"]) is False
+        assert _blocks._is_plain_paragraph(["\\section{Title}", "more"]) is False
+
+    def test_a_plain_multiline_paragraph_still_maps_precisely(self):
+        assert _blocks.line_of_offset(3, ["Alpha.", "Beta."], 0) == 3
+        assert _blocks.line_of_offset(3, ["Alpha.", "Beta."], 7) == 4
 
 
 class TestRegistration:

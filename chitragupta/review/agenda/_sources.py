@@ -52,6 +52,7 @@ class AidSource:
     available: bool = False
     stale: bool = False
     data: dict | None = None
+    reason: str | None = None
 
 
 @dataclass
@@ -96,7 +97,14 @@ def _read_aid_json(draft: Path, aid: str) -> AidSource:
     path = review.report_path(draft, aid, "json")
     if not path.is_file():
         return AidSource()
-    data = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        # A truncated or hand-edited sidecar must not take the whole
+        # agenda down (#496) -- this class degrades to absent like every
+        # other absent input the module docstring lists, with the reason
+        # carried along rather than swallowed.
+        return AidSource(reason=f"{path}: {exc}")
     stale = path.stat().st_mtime < draft.stat().st_mtime
     return AidSource(available=True, stale=stale, data=data)
 

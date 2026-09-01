@@ -112,6 +112,18 @@ class TestTheUniverse:
         a_source(KEY, (4, f"It has {SPAN} in it."))
         assert checked(draft) == []
 
+    def test_a_draft_outside_drafts_dir_checks_nothing(self, isolated_config):
+        """Under content/ but not content/drafts/ -- report_dir's
+        documented flat fallback for this layer. `dossier_dir` refuses
+        such a path with `DossierError`; every sibling aid degrades to
+        an empty report here rather than raising, and this one must too
+        (#496)."""
+        draft = config.CONTENT_DIR / "elsewhere.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(f"Layered twins are the norm [@{KEY}].\n", encoding="utf-8")
+        assert checked(draft) == []
+        assert quotation.main([str(draft)]) == 0
+
     def test_a_quote_the_draft_no_longer_cites_is_not_checked(self, isolated_config):
         draft = a_draft(citekeys="[@other_paper_2020]")
         a_dossier(draft, block(KEY, SPAN))

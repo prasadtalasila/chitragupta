@@ -68,7 +68,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import config, evidence_appendix, ledger, passages, review
-from chitragupta.dossier import dossier_dir
+from chitragupta.dossier import DossierError, dossier_dir
 from chitragupta.review import _quotation_render
 from chitragupta.review._quotation_match import Checked, check_one
 
@@ -91,7 +91,15 @@ def build_report(draft: Path) -> Report:
     twenty connections to answer that.
     """
     draft = Path(draft)
-    spans = evidence_appendix.quoted_spans(draft.read_text(encoding="utf-8"), dossier_dir(draft))
+    try:
+        directory = dossier_dir(draft)
+    except DossierError:
+        # Under content/ but not content/drafts/ -- report_dir's
+        # documented flat fallback for this layer (#496). Every sibling
+        # aid degrades to an empty report here rather than raising, so
+        # this one must too.
+        return Report(draft, [])
+    spans = evidence_appendix.quoted_spans(draft.read_text(encoding="utf-8"), directory)
     if not spans:
         return Report(draft, [])
     with ledger.connection() as con:

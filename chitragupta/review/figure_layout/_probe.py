@@ -21,6 +21,7 @@ reasoning for both, and both were arrived at by compiling rather than by
 reading documentation.
 """
 
+import os
 import re
 import subprocess
 import tempfile
@@ -44,6 +45,18 @@ _CGBOX_RE = re.compile(
 # ever needs the name -- while the declaration's own spelling comes from
 # there, so widening it stays one edit rather than two that can drift.
 _NODE_NAME_RE = re.compile(_NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
+
+
+# pdflatex wraps every log line -- `\typeout`'s CGBOX lines included --
+# at `max_print_line` (~79 columns by default), which breaks the
+# one-line `_CGBOX_RE` parse for a node whose name runs long (#496): the
+# node then reads as declared but not measured, and can raise a false
+# protrusion finding on a figure that compiled fine. kpathsea overrides
+# a texmf.cnf setting with a same-named environment variable, so setting
+# this in the subprocess env (below) is enough -- no texmf.cnf edit, and
+# no `-max-print-line` flag, which pdflatex/web2c does not offer. 1000 is
+# comfortably past any real node name this project's figures use.
+_MAX_PRINT_LINE = "1000"
 
 
 class FigureCompileError(RuntimeError):
@@ -186,6 +199,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
             capture_output=True,
             text=True,
             check=False,
+            env={**os.environ, "max_print_line": _MAX_PRINT_LINE},
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))

@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, retrieval, retrieval_cli
+from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli
 
 from tests.conftest import make_reference
 
@@ -24,6 +24,23 @@ class TestTokenize:
 
     def test_keeps_numbers(self):
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
+
+
+class TestShortQueryTerms:
+    def test_no_short_terms_returns_empty(self):
+        assert retrieval.short_query_terms("digital twin architecture") == []
+
+    def test_flags_two_and_one_character_words(self):
+        # "in" is not flagged -- it is dropped as a stopword regardless of
+        # length, so naming it would not explain anything the length
+        # floor specifically cost this query.
+        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "5g"]
+
+    def test_a_short_stopword_is_not_flagged(self):
+        assert retrieval.short_query_terms("the role of AI in industry") == ["ai"]
+
+    def test_a_query_of_only_short_terms_is_entirely_flagged(self):
+        assert retrieval.short_query_terms("AI ML QA") == ["ai", "ml", "qa"]
 
 
 class TestQueryTerms:
@@ -399,6 +416,24 @@ class TestIndexCaching:
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
 
+    def test_a_matching_fingerprint_with_missing_term_freqs_is_rebuilt(self, ledger_con):
+        # #504, M-24: a dict entry whose "fingerprint" matches but whose
+        # "term_freqs"/"length" are missing or the wrong type used to be
+        # reused as-is and crash _bm25_scores's entry["length"] read with
+        # a raw KeyError -- against this module's own documented promise
+        # that any unexpected shape is a cache miss, not a crash.
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        with ledger.connection() as con:
+            item = ledger.all_items(con)[0]
+        fp = retrieval_cache._fingerprint(item)
+        config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            json.dumps({"version": 1, "items": {"a2024": {"fingerprint": fp}}})
+        )
+
+        results = retrieval.search("digital")
+        assert [r.citekey for r in results] == ["a2024"]
+
     def test_removed_citekey_is_dropped_from_the_cache(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
         retrieval.search("digital")
@@ -563,6 +598,32 @@ class TestCli:
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["search", "quantum chromodynamics"]) == 0
         assert "No results." in capsys.readouterr().out
+
+    def test_a_query_of_only_short_terms_warns_why_it_is_empty(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI ML"]) == 0
+        err = capsys.readouterr().err
+        assert "too short to search on" in err
+        assert "ai" in err
+        assert "ml" in err
+
+    def test_a_mixed_query_still_warns_about_its_dropped_short_terms(
+        self, ledger_con, tmp_path, capsys
+    ):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        err = capsys.readouterr().err
+        assert "too short to search on (dropped): ai" in err
+
+    def test_a_query_with_no_short_terms_does_not_warn(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "digital twin architecture"]) == 0
+        assert "too short to search on" not in capsys.readouterr().err
+
+    def test_evidence_also_warns_about_a_short_term(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        retrieval.main(["evidence", "AI patterns", "--citekey", "a2024"])
+        assert "too short to search on (dropped): ai" in capsys.readouterr().err
 
     def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
         """The `search` counterpart above is covered; this is its

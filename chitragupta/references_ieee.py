@@ -53,13 +53,24 @@ def _format_authors(field: str) -> str:
     """A BibTeX author/editor field as an IEEE author list.
 
     IEEE abbreviates to "first author et al." past six names; below that
-    it lists all of them, with "and" before the last.
+    it lists all of them, with "and" before the last. BibTeX's own
+    "and others" truncation marker (a literal trailing "others" name) is
+    rendered the same way, not as a fabricated author named "others".
+
+    Split on a zero-width "and" (matched only, never consumed) rather
+    than the literal `" and "` -- bibtexparser preserves an author
+    field's original line wrapping, so this ledger column can carry the
+    separator split across a line break (`chitragupta/bib_reader.py`'s
+    `_parse_authors` has the identical case and the same fix).
     """
-    names = [n.strip() for n in field.split(" and ") if n.strip()]
+    names = [n.strip() for n in re.split(r"(?<=\s)and(?=\s)", field) if n.strip()]
+    truncated = bool(names) and names[-1].lower() == "others"
+    if truncated:
+        names = names[:-1]
     if not names:
         return ""
     formatted = [_format_name(n) for n in names]
-    if len(formatted) > 6:
+    if truncated or len(formatted) > 6:
         return f"{formatted[0]} et al."
     if len(formatted) == 1:
         return formatted[0]
@@ -69,9 +80,10 @@ def _format_authors(field: str) -> str:
 
 
 # Where the containing work's name lives, in the order BibTeX/biblatex
-# variants prefer it. "booktitle" is checked last because an @inbook entry
-# can carry both, and there the journal-shaped field is the wrong one.
-_VENUE_FIELDS = ("journal", "journaltitle", "booktitle")
+# variants prefer it. "booktitle" is checked first because an @inbook
+# entry can carry both, and there the journal-shaped field is the wrong
+# one.
+_VENUE_FIELDS = ("booktitle", "journaltitle", "journal")
 
 
 def _md_escape(text: str) -> str:
@@ -122,6 +134,20 @@ def _authors_part(fields: dict[str, str]) -> str:
     return _md_escape(authors) if authors else ""
 
 
+def _strip_trailing_period(title: str) -> str:
+    """Drops one trailing sentence-ending period, but not an abbreviation's.
+
+    A title's own closing "." (added by whoever typed the bib entry, since
+    `format_entry` adds its own) is redundant and stripped. A title ending
+    in an abbreviation like "U.S." carries a period that belongs to the
+    last letter, not the sentence, and stripping it would leave "U.S,"
+    once `format_entry` appends its trailing comma/quote.
+    """
+    if not title.endswith(".") or re.search(r"(?:^|\.)[A-Za-z]\.$", title):
+        return title
+    return title[:-1]
+
+
 def _title_part(title: str, fields: dict[str, str]) -> str:
     """The title, quoted or italicised by IEEE's container rule.
 
@@ -133,7 +159,7 @@ def _title_part(title: str, fields: dict[str, str]) -> str:
     reliable here than the entry type: this corpus's exports use
     @misc for both preprints and books.
     """
-    title = _md_escape((title or "").strip().rstrip("."))
+    title = _md_escape(_strip_trailing_period((title or "").strip()))
     if not title:
         return ""
     has_container = any(fields.get(f) for f in _VENUE_FIELDS)
@@ -141,13 +167,13 @@ def _title_part(title: str, fields: dict[str, str]) -> str:
 
 
 def _venue_part(fields: dict[str, str]) -> str:
-    venue = next((fields[f] for f in _VENUE_FIELDS if fields.get(f)), "")
-    if not venue:
+    field_name = next((f for f in _VENUE_FIELDS if fields.get(f)), "")
+    if not field_name:
         return ""
-    venue = _md_escape(venue.strip())
+    venue = _md_escape(fields[field_name].strip())
     # "in" only for a paper inside a proceedings/edited volume, which
     # is what a booktitle (rather than a journal) means.
-    prefix = "in " if fields.get("booktitle") and not fields.get("journal") else ""
+    prefix = "in " if field_name == "booktitle" else ""
     return f"{prefix}*{venue}*"
 
 
@@ -159,9 +185,11 @@ def _locator_parts(fields: dict[str, str]) -> list[str]:
     if fields.get("number"):
         parts.append(f"no. {_md_escape(fields['number'])}")
     if fields.get("pages"):
-        # BibTeX page ranges are "1--10"; IEEE prints an en dash, and the
-        # doubled hyphen is a TeX-ism that shouldn't reach a Markdown reader.
-        pages = re.sub(r"-{2,}", "–", fields["pages"].strip())
+        # BibTeX page ranges are usually "1--10" but a straight single-
+        # hyphen export ("1-10") is common too; IEEE prints an en dash
+        # either way, and the hyphen is a TeX-ism that shouldn't reach a
+        # Markdown reader.
+        pages = re.sub(r"(?<=\d)-+(?=\d)", "–", fields["pages"].strip())
         label = "pp." if re.search(r"[–,]", pages) else "p."
         parts.append(f"{label} {_md_escape(pages)}")
     return parts
