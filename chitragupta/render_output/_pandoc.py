@@ -185,7 +185,7 @@ def _pandoc_command(
     return cmd, env
 
 
-def _run_pandoc(cmd: list, env: dict) -> None:
+def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     """Runs pandoc, then forwards any stderr it printed even though it
     exited 0.
 
