@@ -26,6 +26,7 @@ import pytest
 
 from chitragupta import review
 from chitragupta.review import figure_layout
+from chitragupta.review.figure_layout import _probe
 
 
 def _has_tikz() -> bool:
@@ -583,6 +584,64 @@ class TestProbePlacement:
         built = figure_layout.scaffold("% just a comment\n", [])
 
         assert "\\begin{document}" in built
+
+
+class TestMaxPrintLineEnv:
+    """pdflatex wraps its log at `max_print_line` (~79 by default),
+    breaking the one-line CGBOX parse for a long node name -- a node
+    reports "declared but not measured" and can raise a false protrusion
+    finding on a figure that compiled fine (#496). kpathsea overrides a
+    texmf.cnf setting with a same-named environment variable, so
+    `node_boxes` has to set `max_print_line` in the subprocess env,
+    generously, rather than leave the ~79-column default wrap in place.
+
+    No real `pdflatex` needed: `subprocess.run` is faked, so this runs
+    everywhere `needs_tikz`'s geometry tests self-skip.
+    """
+
+    def test_the_subprocess_env_sets_a_generous_max_print_line(self, tmp_path, monkeypatch):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(kwargs)
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(_probe.subprocess, "run", fake_run)
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"
+        )
+
+        figure_layout.node_boxes(figure)
+
+        assert len(calls) == 1
+        env = calls[0].get("env")
+        assert env is not None
+        # Comfortably past any real node name -- the ~79-column default
+        # is what breaks a long one; 1000 columns will not wrap in
+        # practice.
+        assert int(env["max_print_line"]) >= 1000
+
+    def test_the_rest_of_the_hosts_environment_still_reaches_pdflatex(self, tmp_path, monkeypatch):
+        """The override must not replace the subprocess environment
+        wholesale -- pdflatex still needs PATH/HOME/TEXMF* etc. from the
+        host to find its own installation."""
+        monkeypatch.setenv("A_MARKER_ONLY_THE_HOST_SETS", "yes")
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(kwargs)
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(_probe.subprocess, "run", fake_run)
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"
+        )
+
+        figure_layout.node_boxes(figure)
+
+        assert calls[0]["env"]["A_MARKER_ONLY_THE_HOST_SETS"] == "yes"
 
 
 @needs_tikz
