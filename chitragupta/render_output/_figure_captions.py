@@ -96,11 +96,39 @@ def _caption_wrap_for(figure: "Figure", marker: str, output_format: str) -> str:
     `\\thefigure` is ever written, unlike the hand-authored float this
     replaces. Everything else has no counter to defer to, so the number is
     written here, the same reasoning `_tables._caption_for` uses for `md`.
+
+    Issue 494: an earlier revision spelled the LaTeX-bound branch as one
+    `\\begin{figure}...\\end{figure}` block with the caption interpolated
+    straight into `\\caption{...}`. Pandoc's raw-TeX passthrough reads a
+    `\\begin{env}...\\end{env}` span as one opaque, byte-identical block --
+    the same mechanism `_figures.py`'s own `\\input{...}` markers rely on
+    -- so everything between those two commands, caption included, reached
+    pdflatex unparsed and unescaped: `&` broke the compile, `%` truncated
+    the rest of the line including the `\\label`, and `[@key]` reached the
+    PDF as literal, unresolved text. `_tables._caption_for` never has this
+    problem, because a table's caption is pandoc's own native caption
+    syntax, not text glued inside a hand-written raw block.
+
+    The fix mirrors that: `\\begin{figure}` and `\\end{figure}` are each
+    their own explicit raw block (a fenced ` ```{=latex} ` block, pandoc's
+    own syntax for "copy this verbatim to the writer"), so neither one
+    reads ahead for a matching partner and swallows what sits between them.
+    The caption itself is ordinary pandoc Markdown -- Pandoc-processed,
+    citations and all -- with only the `\\caption{`/`}\\label{fig:...}`
+    wrapper injected as raw *inline* spans (the same
+    `` `...`{=latex} `` idiom `_figureref_for` below already uses), so it
+    survives the Markdown reader as `\\caption{...}` around whatever the
+    caption actually says rather than around its literal source text.
     """
     if output_format in _LATEX_BOUND:
+        caption_line = (
+            f"`\\caption{{`{{=latex}}{figure.caption}`}}\\label{{fig:{figure.id}}}`{{=latex}}"
+        )
         return (
-            f"\\begin{{figure}}\n{marker}\n"
-            f"\\caption{{{figure.caption}}}\n\\label{{fig:{figure.id}}}\n\\end{{figure}}"
+            f"```{{=latex}}\n\\begin{{figure}}\n```\n"
+            f"{marker}\n\n"
+            f"{caption_line}\n\n"
+            f"```{{=latex}}\n\\end{{figure}}\n```"
         )
     return f"{marker}\n**Figure {figure.number}:** {figure.caption}"
 

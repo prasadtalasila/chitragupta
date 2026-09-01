@@ -889,6 +889,67 @@ class TestCaptionedFigureRenderReal:
         )
         assert compiled.returncode == 0, compiled.stdout[-2000:]
 
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_caption_with_ampersand_and_percent_still_compiles(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        # Issue 494: an earlier revision interpolated the caption straight
+        # into a raw `\caption{...}`, so `&` failed pdflatex ("Misplaced
+        # alignment tab") and `%` silently truncated the rest of the line,
+        # including the `\label`. Both now go through pandoc's own
+        # Markdown-to-LaTeX escaping like any other prose in the draft.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n<!-- figure: figures/fig1 -->\nCost & throughput rose 5%, see below.\n"
+        )
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert "\\label{fig:fig1}" in source, "a % must not have truncated the label away"
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+    @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+    def test_a_caption_citing_a_real_key_resolves_through_citeproc(self, isolated_config, tmp_path):
+        # Issue 494: a caption citing `[@citekey]` used to reach the PDF as
+        # literal, unresolved text -- the table path's own docstring
+        # establishes captions legitimately cite. The caption now reaches
+        # pandoc's Markdown reader like any other prose, so citeproc
+        # resolves it the same way.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{a_2024,\n  author={Doe, Jane},\n  title={A Paper},\n  year={2024},\n}\n"
+        )
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n<!-- figure: figures/fig1 -->\nAs reported [@a_2024].\n")
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert "[@a_2024]" not in source, "the citekey must resolve, not survive literally"
+        assert "\\label{fig:fig1}" in source
+
     @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
     def test_a_captioned_figure_to_md_gets_a_bold_numbered_caption(self, isolated_config, tmp_path):
         isolated_config.BIB_FILE_PATH.write_text("")
