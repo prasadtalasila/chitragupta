@@ -16,7 +16,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, render_output
-from chitragupta.render_output import _math
+from chitragupta.render_output import _math, _math_findings
 
 
 MAPPING = """\
@@ -168,52 +168,52 @@ class TestConvergesOnTheDollarConvention:
 
 class TestWarnings:
     def test_a_math_shaped_span_with_no_row_is_a_gap(self, isolated_config):
-        found = _math.warnings("the value `h = 9` here", {}, False)
+        found = _math_findings.warnings("the value `h = 9` here", {}, False)
         assert found == ["`h = 9` looks like a quantity but has no row in math.md"]
 
     def test_a_bare_symbol_the_equations_use_is_a_gap(self, isolated_config):
         # The case the operator heuristic cannot see, and the dominant
         # shape in the corpus this was measured against.
-        found = _math.warnings("predicts `W` now", {"x": "W + 1"}, False)
+        found = _math_findings.warnings("predicts `W` now", {"x": "W + 1"}, False)
         assert found == [
             "`W` is a symbol this draft's own equations use, but has no row in math.md"
         ]
 
     def test_a_greek_control_word_counts_as_a_symbol(self, isolated_config):
-        found = _math.warnings("the `tau` here", {"x": "\\tau + 1"}, False)
+        found = _math_findings.warnings("the `tau` here", {"x": "\\tau + 1"}, False)
         assert "`tau` is a symbol" in found[0]
 
     def test_a_non_greek_control_word_is_not_a_symbol(self, isolated_config):
         # \frac must not make `frac` a symbol worth warning about.
-        assert _math.warnings("the `frac` here", {"x": "\\frac{1}{2}"}, False) == []
+        assert _math_findings.warnings("the `frac` here", {"x": "\\frac{1}{2}"}, False) == []
 
     def test_a_plain_identifier_is_not_a_gap(self, isolated_config):
-        assert _math.warnings("field `as_of` here", {}, False) == []
+        assert _math_findings.warnings("field `as_of` here", {}, False) == []
 
     def test_a_citekey_is_never_a_gap(self, isolated_config):
-        assert _math.warnings("see `zech_digital-twins-as--service_2024`", {}, False) == []
+        assert _math_findings.warnings("see `zech_digital-twins-as--service_2024`", {}, False) == []
 
     def test_a_mapped_span_is_not_a_gap(self, isolated_config):
-        assert _math.warnings("the `tau` here", {"tau": "\\tau"}, True) == []
+        assert _math_findings.warnings("the `tau` here", {"tau": "\\tau"}, True) == []
 
     def test_a_row_matching_nothing_is_an_orphan(self, isolated_config):
-        found = _math.warnings("no maths here", {"tau": "\\tau"}, True)
+        found = _math_findings.warnings("no maths here", {"tau": "\\tau"}, True)
         assert found == ["`tau` has a row in math.md but appears nowhere in the draft"]
 
     def test_a_row_used_only_in_a_block_is_not_an_orphan(self, isolated_config):
         text = "<!-- math -->\n```\ndW/dt\n```\n"
-        assert _math.warnings(text, {"dW/dt": "X"}, True) == []
+        assert _math_findings.warnings(text, {"dW/dt": "X"}, True) == []
 
     def test_orphans_are_not_reported_when_there_is_no_mapping_file(self, isolated_config):
         # Without a file there is nothing to have gone stale, and every
         # row would be reported against a draft that never had one.
-        assert _math.warnings("no maths here", {"tau": "\\tau"}, False) == []
+        assert _math_findings.warnings("no maths here", {"tau": "\\tau"}, False) == []
 
     def test_a_span_inside_a_marked_block_is_not_scanned_as_inline(self, isolated_config):
         # The block is handled by check(); scanning its body as spans too
         # would double-report.
         text = "<!-- math -->\n```\nh = 9\n```\n"
-        assert _math.warnings(text, {"h = 9": "h = 9"}, True) == []
+        assert _math_findings.warnings(text, {"h = 9": "h = 9"}, True) == []
 
     def test_a_span_inside_an_ordinary_fence_is_not_scanned_as_inline(self, isolated_config):
         # m-56: only marked math blocks were masked before the span scan,
@@ -221,7 +221,7 @@ class TestWarnings:
         # own Markdown source, say) was flagged as a gap even though it is
         # not draft prose at all.
         text = "```markdown\nThe gain is `tau` here.\n```\n"
-        assert _math.warnings(text, {"x": "\\tau + 1"}, False) == []
+        assert _math_findings.warnings(text, {"x": "\\tau + 1"}, False) == []
 
 
 class TestAnUnmarkedFenceHoldingAnEquation:
@@ -238,31 +238,31 @@ class TestAnUnmarkedFenceHoldingAnEquation:
     def test_an_untagged_fence_holding_a_relation_is_a_gap(self, isolated_config):
         # Verbatim from the chapter that reported it, blockquote and all.
         text = "> Call it `C`. Adopt when\n>\n> ```\n> C x I  >  F\n> ```\n>\n> where `I`\n"
-        assert _math.warnings(text, {}, False)[0] == (
+        assert _math_findings.warnings(text, {}, False)[0] == (
             "`C x I  >  F` looks like a displayed equation but its fence has no "
             "`<!-- math -->` marker. Tag the fence if it is code."
         )
 
     def test_a_marked_fence_is_not_reported_as_unmarked(self, isolated_config):
         text = "<!-- math -->\n```\nC x I > F\n```\n"
-        assert _math.warnings(text, {"C x I > F": "C \\times I > F"}, True) == []
+        assert _math_findings.warnings(text, {"C x I > F": "C \\times I > F"}, True) == []
 
     def test_a_tagged_fence_is_code(self, isolated_config):
         # A tag is the author saying "code", so it settles the question
         # a bare fence leaves open. `python`-tagged constants were the
         # only other candidates the corpus scan turned up.
         text = "```python\nDRY_THRESHOLD = 35.0\n```\n"
-        assert _math.warnings(text, {}, False) == []
+        assert _math_findings.warnings(text, {}, False) == []
 
     def test_a_fence_of_program_output_is_code(self, isolated_config):
         # An underscore identifier is code and never a quantity -- the
         # same distinction `as_of` draws for spans. This is what keeps a
         # tutorial's captured output quiet.
         text = "```\nhour 11  sensor= 38.2  predicted_next= 35.0\n```\n"
-        assert _math.warnings(text, {}, False) == []
+        assert _math_findings.warnings(text, {}, False) == []
 
     def test_a_fence_with_no_operator_in_it_is_not_an_equation(self, isolated_config):
-        assert _math.warnings("```\nchitragupta draft render\n```\n", {}, False) == []
+        assert _math_findings.warnings("```\nchitragupta draft render\n```\n", {}, False) == []
 
     def test_an_ascii_figure_is_not_an_equation(self, isolated_config):
         # The other inhabitant of a bare fence (§10). No box border is
@@ -270,17 +270,17 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         # is what separates the two -- this is the largest class of false
         # positive the corpus turned up.
         figure = "\n".join(["+------+", "| twin | -> readings", "+------+", "", "|", "v"])
-        assert _math.warnings(f"```\n{figure}\n```\n", {}, False) == []
+        assert _math_findings.warnings(f"```\n{figure}\n```\n", {}, False) == []
 
     def test_an_empty_fence_is_not_an_equation(self, isolated_config):
-        assert _math.warnings("```\n```\n", {}, False) == []
+        assert _math_findings.warnings("```\n```\n", {}, False) == []
 
     def test_a_tagged_fence_does_not_hide_the_untagged_one_after_it(self, isolated_config):
         # Fence delimiters pair in order. Matching an opener without its
         # info string would pair a tagged block's *closer* with the next
         # block's opener, swallowing the equation between them.
         text = "```sql\nselect 1\n```\n\ntext\n\n```\nC x I > F\n```\n"
-        assert _math.warnings(text, {}, False) == [
+        assert _math_findings.warnings(text, {}, False) == [
             "`C x I > F` looks like a displayed equation but its fence has no "
             "`<!-- math -->` marker. Tag the fence if it is code."
         ]
@@ -289,7 +289,7 @@ class TestAnUnmarkedFenceHoldingAnEquation:
         # The whole body in a warning would be a paragraph; the first
         # line is enough to find the fence.
         text = "```\n-8 = -24k + g\ng = 24k - 8\n```\n"
-        assert _math.warnings(text, {}, False) == [
+        assert _math_findings.warnings(text, {}, False) == [
             "`-8 = -24k + g` looks like a displayed equation but its fence has no "
             "`<!-- math -->` marker. Tag the fence if it is code."
         ]
@@ -426,3 +426,46 @@ class TestImportBoundary:
 
         draft = config.DRAFTS_DIR / "dt" / "tank.md"
         assert _math.mapping_path(draft) == dossier.dossier_dir(draft) / _math.MAPPING_FILENAME
+
+
+class TestFindingsCarryTheirKind:
+    """m-66 (#506). `dossier._draft_fingerprint._math_desync` selected
+    the orphans by testing whether a warning's *text* ended in "appears
+    nowhere in the draft" -- this module's prose, not its contract. A
+    reworded sentence would have emptied that check silently, with every
+    test in `TestWarnings` above still green, because they assert the
+    message and never the selection."""
+
+    def test_every_kind_is_reported_under_its_own_name(self, isolated_config):
+        text = "the value `h = 9` and `W` here\n\n```\nC x I > F\n```\n"
+        kinds = [
+            found.kind for found in _math_findings.findings(text, {"tau": "\\tau", "x": "W"}, True)
+        ]
+        assert sorted(set(kinds)) == ["fence", "gap", "orphan", "symbol"]
+
+    def test_warnings_is_findings_reduced_to_its_messages(self, isolated_config):
+        text = "the value `h = 9` here"
+        found = _math_findings.findings(text, {"tau": "\\tau"}, True)
+        assert _math_findings.warnings(text, {"tau": "\\tau"}, True) == [f.message for f in found]
+
+    def test_the_orphan_filter_survives_a_reworded_message(self, isolated_config, monkeypatch):
+        """The regression proper. `findings` is stubbed to return one
+        orphan whose message no longer ends in the phrase the old filter
+        matched on. Pre-fix `_math_desync` returns `[]` -- the staleness
+        check silently reporting no desynced math at all; post-fix it
+        returns the orphan, because the selection is on `kind`.
+        """
+        from chitragupta.dossier import _draft_fingerprint
+
+        monkeypatch.setattr(
+            _math_findings,
+            "findings",
+            lambda text, mapping, found_file: [
+                _math_findings.MathFinding("gap", "`h = 9` looks like a quantity, no row"),
+                _math_findings.MathFinding("orphan", "`tau` has a row but is unused"),
+            ],
+        )
+        monkeypatch.setattr(_math, "load_mapping", lambda draft: {"tau": "\\tau"})
+        monkeypatch.setattr(_math, "mapping_path", lambda draft: None)
+        found = _draft_fingerprint._math_desync(Path("draft.md"), "no maths here")
+        assert found == ["`tau` has a row but is unused"]

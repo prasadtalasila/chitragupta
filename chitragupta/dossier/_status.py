@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config
-from chitragupta.dossier._citekeys import cited_citekeys
+from chitragupta.dossier._citekeys import cited_citekeys, declared_citekeys
 from chitragupta.dossier import (
     EVIDENCE_MD,
     FILES,
@@ -144,7 +144,8 @@ def _fill_corpus_drift(report: Status, dossier: Path) -> None:
     corpus_keys = known_citekeys()
     if corpus_keys is not None:
         report.current = (len(corpus_keys), digest(corpus_keys))
-        report.unconsidered = corpus_keys - cited_citekeys(dossier)
+        known = corpus_keys | declared_citekeys(dossier)
+        report.unconsidered = corpus_keys - cited_citekeys(dossier, known)
 
 
 def _cmd_status(args: argparse.Namespace) -> int:

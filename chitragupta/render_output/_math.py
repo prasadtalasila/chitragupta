@@ -208,41 +208,6 @@ def _body_of(match: "re.Match[str]") -> str:
     return re.sub(r"^[ \t>]*", "", match.group("body"), flags=re.M).strip()
 
 
-def _fence_gaps(masked: str) -> "list[str]":
-    """Every untagged fence in `masked` that looks like a displayed equation.
-
-    `masked` has the marked blocks already blanked out, so what this sees
-    is the fences nobody claimed. An untagged one is the open question:
-    a tag is the author saying "code", and §12 gives every other fence a
-    `<!-- math -->` marker, so a bare fence holding a relation is either
-    an unmarked equation or a tag somebody forgot -- and both are worth
-    saying, because the two remedies are one word each.
-
-    This is the shape #406 reported: `C x I  >  F` reached the pdf as
-    `\\begin{verbatim}` between two inline equations, and every check
-    §12 had agreed the chapter was clean. The span scan cannot see it --
-    it blanks fences first, correctly, since a fence usually is code --
-    and no post-render grep for `\\texttt{}` can, since a fence never
-    becomes one.
-    """
-    found = []
-    for match in _FENCE_RE.finditer(masked):
-        if match.group("tag").strip():
-            continue
-        body = _body_of(match)
-        lines = body.splitlines()
-        if len(lines) > _MAX_EQUATION_LINES:
-            continue
-        # `lines[0]` is reached only once the body has matched, so an
-        # empty fence cannot get here.
-        if _MATH_SHAPED_RE.search(body) and not _SNAKE_CASE_RE.search(body):
-            found.append(
-                f"`{lines[0]}` looks like a displayed equation but its fence has no "
-                "`<!-- math -->` marker. Tag the fence if it is code."
-            )
-    return found
-
-
 def substitute(text: str, mapping: "dict[str, str]") -> str:
     """`text` with every mapped span and block rewritten as `$...$`.
 
@@ -278,54 +243,6 @@ def substitute(text: str, mapping: "dict[str, str]") -> str:
         return match.group(0) if latex is None else f"${latex}$"
 
     return _SPAN_RE.sub(_span, text)
-
-
-def warnings(text: str, mapping: "dict[str, str]", has_mapping_file: bool) -> "list[str]":
-    """Every gap and orphan in `text`, as lines a caller can print.
-
-    A *gap* is a span that should have a row and has not: math-shaped, or
-    equal to a symbol the mapping's own LaTeX already uses -- or, since
-    #406, an untagged fence holding an equation nobody marked. A *orphan*
-    is a row matching nothing, the tell that a revision reworded or
-    deleted the sentence it belonged to.
-
-    Fences are reported first, the way `substitute` rewrites them first:
-    a displayed equation is the bigger thing to have got wrong, and the
-    symbols in it usually explain the inline gaps underneath.
-
-    `has_mapping_file` separates "this draft has no mathematics" from
-    "this draft's mapping is gone" -- the second is what a rename looks
-    like, and without the distinction they are the same silence.
-    """
-    masked = _BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
-    found = _fence_gaps(masked)
-    # m-56: `_fence_gaps` above needs ordinary fences left visible in
-    # `masked` (it is what finds an untagged one holding an equation),
-    # but the span scan below must not walk into one -- a `tau`-shaped
-    # token shown inside a code example is code, not draft prose, the
-    # same fence-body corruption `substitute` guards against.
-    span_masked = _FENCE_RE.sub(lambda m: "\n" * m.group(0).count("\n"), masked)
-    spans = {m.group("body").strip() for m in _SPAN_RE.finditer(span_masked)}
-    symbols = _symbols_of(mapping)
-
-    for span in sorted(spans - set(mapping)):
-        if _CITEKEY_RE.match(span):
-            continue
-        if _MATH_SHAPED_RE.search(span):
-            found.append(f"`{span}` looks like a quantity but has no row in {MAPPING_FILENAME}")
-        elif span in symbols:
-            found.append(
-                f"`{span}` is a symbol this draft's own equations use, "
-                f"but has no row in {MAPPING_FILENAME}"
-            )
-
-    if has_mapping_file:
-        used = spans | {_body_of(m) for m in _BLOCK_RE.finditer(text)}
-        for orphan in sorted(set(mapping) - used):
-            found.append(
-                f"`{orphan}` has a row in {MAPPING_FILENAME} but appears nowhere in the draft"
-            )
-    return found
 
 
 def check(text: str, draft: Path, mapping: "dict[str, str]") -> None:

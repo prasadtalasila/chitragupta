@@ -387,3 +387,22 @@ class TestOutlineCli:
         assert dossier.main(["init", str(draft), "--genre", "survey", "--outline"]) == 0
         assert dossier.main(["outline", str(draft), "--check"]) == 0
         assert "0 section(s), 0 problem(s)" in capsys.readouterr().err
+
+
+class TestTheTitleLineIsNotASection:
+    """m-64 (#506). `_HEADING` accepted `#` as well as `##`, so an
+    `outline.md` that opened with its own title got a section named after
+    that title, carrying neither a `brief:` nor a `claim:` -- which
+    `--check` then reported as a real problem with the outline."""
+
+    def test_a_leading_level_one_title_is_not_a_section(self):
+        result = _outline.parse(
+            "# Survey outline\n\n## Failure modes\n\nbrief: Focus on timestep mismatch.\n"
+        )
+        assert list(result.sections) == ["Failure modes"]
+        assert result.problems == []
+
+    def test_level_two_and_deeper_are_still_sections(self):
+        result = _outline.parse("## Failure modes\n\nbrief: One.\n\n### Sub-case\n\nbrief: Two.\n")
+        assert list(result.sections) == ["Failure modes", "Sub-case"]
+        assert result.problems == []

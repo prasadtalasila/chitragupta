@@ -12,7 +12,7 @@ import json
 import sys
 from pathlib import Path
 
-from chitragupta import citation_gate, spec
+from chitragupta import citation_gate, ledger, spec
 from chitragupta.dossier import dossier_dir
 from chitragupta.dossier._draft_fingerprint import recorded_draft_digest
 from chitragupta.spec._align import align
@@ -63,34 +63,79 @@ def _refuse(message: str) -> int:
     return 1
 
 
-def _cmd_accept(args) -> int:
-    built = contract(args.book, args.unit, args.source)
+def _refusal_before_the_ledger(args, built: dict, draft: Path) -> "str | None":
+    """Why `built` may not be accepted at all, or None if it may.
+
+    Everything answerable from the outline and the filesystem alone, so
+    that a book nobody signed off still refuses with that reason on a
+    checkout whose ledger has not been built -- opening the ledger first
+    would have turned "not signed off" into a connection error.
+    """
     if not built["signed_off"]:
-        return _refuse(
+        return (
             f"{args.book}'s outline is not signed off, so there is nothing to "
             f"accept a unit against. `python -m chitragupta.draft spec sign {args.book}`."
         )
     drifted = _misalignment(args.book, chapter_of(built))
     if drifted:
-        return _refuse(
+        return (
             f"{args.unit}'s chapter no longer matches the outline it was approved "
             f"against ({drifted}). `python -m chitragupta.draft spec align {args.book}` "
             "lists what moved."
         )
-    draft = Path(built["draft"])
     if not draft.is_file():
-        return _refuse(
-            f"no draft at {draft}. Generate the unit from its contract before accepting it."
-        )
-    # The project's one gate, invoked rather than re-implemented: a unit
-    # nobody may cite from is not a unit a book may assemble from. It
-    # prints its own PASS/FAIL, so nothing is restated here.
-    if citation_gate.run([str(draft)]) != 0:
+        return f"no draft at {draft}. Generate the unit from its contract before accepting it."
+    return None
+
+
+def _unknown_sources(built: dict, known: "set[str]") -> "str | None":
+    """Why `--source` may not be recorded, or None if it may.
+
+    `--source` names the papers this unit claims to be grounded in, and
+    that claim went into the permanent acceptance record unchecked
+    (#506/m-69) -- the one thing CLAUDE.md's single rule forbids, since a
+    record naming a citekey no real parse ever produced is exactly the
+    fabricated reference this project exists to stop. Refused with the
+    other argument-shaped faults rather than beside the gate's findings,
+    where it would read as a defect in the prose.
+    """
+    unknown = [source for source in built["sources"] if source not in known]
+    if not unknown:
+        return None
+    return (
+        f"{', '.join(unknown)} is not in the ledger, so it cannot be "
+        "recorded as a source this unit is grounded in. "
+        "`python -m chitragupta.corpus sync` picks up a newly exported .bib."
+    )
+
+
+def _cmd_accept(args) -> int:
+    built = contract(args.book, args.unit, args.source)
+    draft = Path(built["draft"])
+    refusal = _refusal_before_the_ledger(args, built, draft)
+    if refusal:
+        return _refuse(refusal)
+
+    with ledger.connection() as con:
+        known = ledger.known_citekeys(con)
+    refusal = _unknown_sources(built, known)
+    if refusal:
+        return _refuse(refusal)
+
+    # The draft is read exactly once and the gate is run over *that*
+    # string. Gating the path and then re-reading it (which is what this
+    # did) left a window in which a write between the two calls got a
+    # permanent record -- digest and citekeys both -- for prose the gate
+    # had never seen (#506/m-69). The gate's own PASS/FAIL shape is kept
+    # by calling its reporter rather than paraphrasing it here.
+    text = draft.read_text(encoding="utf-8")
+    result = citation_gate.check_text(draft, text, known)
+    citation_gate.report(str(draft), result)
+    if not result.ok:
         return _refuse(
             f"the citation gate refuses {draft}, so it cannot be "
             "accepted. Fix the citekeys it named."
         )
-    text = draft.read_text(encoding="utf-8")
     # Same LaTeX-aware blanking the gate itself just applied to this
     # draft -- recording with the Markdown rules would drop a citation
     # sitting between two LaTeX-quoted phrases from the permanent record.

@@ -1934,6 +1934,89 @@ class TestDrift:
         assert report.draft is None
 
 
+class TestSeparatorFreeCitekeys:
+    """M-28 (#506). `_KEY` requires a `_`/`:`/`-` run, so a citekey
+    spelled the way several reference managers spell one by default --
+    `Doe2024`, no separator anywhere -- was invisible to every dossier
+    parse. The dossier contributed nothing, and a cited paper that left
+    the corpus was never reported in `drift().missing`.
+    """
+
+    @pytest.fixture
+    def separator_free(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text("# Kept evidence\n\n## `Doe2024`\n\nWhy kept.\n")
+        (target / "sections.md").write_text(
+            "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
+            "| 1. First | `Doe2024` |\n"
+        )
+        return target
+
+    def test_a_separator_free_cited_key_that_left_the_ledger_is_reported(self, separator_free):
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        report = _drift.drift(separator_free)
+        assert report.missing == {"Doe2024": ["1. First"]}
+
+    def test_a_separator_free_key_still_in_the_ledger_is_not_missing(self, separator_free):
+        _seed_corpus([("Doe2024", "Doe", "text")])
+        report = _drift.drift(separator_free)
+        assert report.missing == {}
+
+    def test_a_separator_free_key_in_the_ledger_counts_as_considered(self, separator_free):
+        """The other direction: `unconsidered` is the ledger minus what the
+        dossier mentions, so a key the parse could not see made a paper the
+        draft actually cites look like one nobody had looked at."""
+        _seed_corpus([("Doe2024", "Doe", "text")])
+        assert _drift.drift(separator_free).unconsidered == 0
+
+    def test_a_prose_word_that_is_not_in_the_ledger_is_still_not_a_citekey(self, separator_free):
+        """What the separator requirement was holding, and still holds: a
+        shapeless token is admitted only by *equalling* a real ledger
+        citekey, so `@someone` cannot become a broken-citation finding."""
+        target = separator_free
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n## `Doe2024`\n\nAs @someone put it.\n"
+        )
+        _seed_corpus([("other_paper_2025", "Other", "unrelated text")])
+        assert set(_drift.drift(target).missing) == {"Doe2024"}
+
+
+class TestDuplicateEvidenceBlocks:
+    """m-65 (#506). Two `## `key`` blocks for one citekey silently kept
+    the *last*, so a second block -- appended by a later retrieval pass,
+    or by a hand edit that pasted a heading twice -- displaced the
+    evidence a drafting run had already been handed, with nothing
+    anywhere saying so."""
+
+    @pytest.fixture
+    def doubled(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n"
+            "## `kept_paper_2024`\n\nThe first reading.\n\n"
+            "## `kept_paper_2024`\n\nThe second reading.\n"
+        )
+        return target
+
+    def test_the_first_block_is_the_one_every_reader_gets(self, doubled):
+        block = _citekeys.evidence_blocks(doubled)["kept_paper_2024"]
+        assert "The first reading." in block
+        assert "The second reading." not in block
+
+    def test_the_duplicate_is_counted_rather_than_swallowed(self, doubled):
+        assert _citekeys.duplicate_evidence_keys(doubled) == {"kept_paper_2024": 2}
+
+    def test_a_key_appearing_once_is_not_reported(self, grounded):
+        assert _citekeys.duplicate_evidence_keys(grounded) == {}
+
+    def test_check_evidence_names_the_duplicated_key(self, draft, doubled, capsys):
+        assert dossier.main(["check-evidence", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "kept_paper_2024: 2 blocks under one citekey" in out
+
+
 class TestDriftCollectionScoping:
     """#254: a query scoped with `--collection` must rank candidates over
     that shelf only, not the whole corpus -- the false-drift bug a
@@ -3531,3 +3614,62 @@ class TestStampCLI:
         out = capsys.readouterr().out
         assert "No such draft" in out
         assert "init" not in out
+
+
+class TestWhatCountsAsDeclared:
+    """The line `declared_citekeys` holds: an `evidence.md` heading is a
+    structural declaration and may carry a shape `_KEY` refuses, but only
+    where the heading *opens* with the delimited token."""
+
+    def test_a_heading_with_a_trailing_note_still_declares(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n## `Doe2024` -- kept for section 3\n\nWhy kept.\n"
+        )
+        assert _citekeys.declared_citekeys(target) == {"Doe2024"}
+
+    def test_a_prose_heading_declares_nothing(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(
+            "# Kept evidence\n\n## Papers about `Doe2024` and others\n\nNotes.\n"
+        )
+        assert _citekeys.declared_citekeys(target) == set()
+
+    def test_a_dossier_with_no_evidence_file_declares_nothing(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").unlink()
+        assert _citekeys.declared_citekeys(target) == set()
+
+
+class TestPassingKnownOnlyEverAdds:
+    """The invariant that makes M-28's widening safe, and the one a
+    filtered single scan quietly broke: `known` is a *union* with the
+    strict scan, never a substitution for it.
+
+    `_LOOSE_KEY` is greedy over `[_:-]`, so `@smith_x_2024:` tokenises
+    loosely as `smith_x_2024:` -- neither in any ledger nor strictly
+    key-shaped. Read through a filtered loose scan, a key the strict
+    pattern had always found disappeared the moment a caller passed
+    `known`, which is a false negative on the `drift().missing` path.
+    """
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "@smith_x_2024:",
+            "@smith_x_2024-",
+            "cites `kept_paper_2024`-style rows",
+            "`a_b_2024` and `c_d_2025`",
+            "prose with no citekey at all",
+        ],
+    )
+    def test_a_known_set_never_removes_a_strictly_matched_key(self, text):
+        strict = set(_sections._citekeys(text))
+        assert strict <= set(_sections._citekeys(text, set()))
+        assert strict <= set(_sections._citekeys(text, {"Doe2024"}))
+
+    def test_a_key_is_not_reported_twice_when_both_scans_see_it(self):
+        assert _sections._citekeys("`a_b_2024`", {"a_b_2024"}) == ["a_b_2024"]

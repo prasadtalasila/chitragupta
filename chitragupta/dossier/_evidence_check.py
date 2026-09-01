@@ -26,7 +26,7 @@ import re
 from pathlib import Path
 
 from chitragupta.dossier import _resolve_dossier, draft_relpath
-from chitragupta.dossier._citekeys import evidence_blocks
+from chitragupta.dossier._citekeys import duplicate_evidence_keys, evidence_blocks
 from chitragupta.overlap_index import _norm, gram_hashes
 from chitragupta.overlap_skipgram import stem_filter
 
@@ -132,6 +132,17 @@ def _cmd_check_evidence(args: argparse.Namespace) -> int:
             f"`python -m chitragupta.draft dossier init {args.draft} --genre <genre>`."
         )
         return 1
+
+    # Printed before the claim/quote findings and independently of them:
+    # a duplicated heading means the block a run was handed is not the
+    # block the file's author last wrote, which makes every finding below
+    # it about text that may not be the one in play (#506/m-65).
+    for citekey, count in duplicate_evidence_keys(target).items():
+        print(
+            f"[warn] {citekey}: {count} blocks under one citekey -- the first is "
+            "the one every reader gets. Merge them, or the later ones are text "
+            "nothing will ever read."
+        )
 
     findings = reworded_claims(target)
     if not findings:

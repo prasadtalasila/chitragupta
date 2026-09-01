@@ -270,17 +270,46 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
     return keys
 
 
-def check_document(path: Path, known_citekeys: set[str]) -> GateResult:
+def check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult:
+    """Gate `text`, attributed to `path` for reporting.
+
+    Split from `check_document` so a caller that must gate and then *act
+    on* the same bytes can hold them: `unit accept` gated the file and
+    then re-read it to hash and record its citekeys, so a write landing
+    between the two calls got a permanent acceptance record for prose the
+    gate never saw (#506/m-69). `path` is still needed -- the LaTeX rule
+    below is chosen by suffix -- but it is not read here.
+    """
     result = GateResult(path=path)
     # .tex drafts get LaTeX-aware blanking: a backtick there is a quote,
     # and the Markdown inline-code rule blanked real citations between
     # two quoted phrases (see _blank_code).
     latex = path.suffix.lower() == ".tex"
-    for line_no, key in extract_citekeys(path.read_text(encoding="utf-8"), latex=latex):
+    for line_no, key in extract_citekeys(text, latex=latex):
         result.total_citations += 1
         if key not in known_citekeys:
             result.unknown.append((line_no, key))
     return result
+
+
+def check_document(path: Path, known_citekeys: set[str]) -> GateResult:
+    return check_text(path, path.read_text(encoding="utf-8"), known_citekeys)
+
+
+def report(label: str, result: GateResult) -> None:
+    """Print one document's verdict in the gate's own PASS/FAIL shape.
+
+    One printer, so a caller gating a document it already holds in memory
+    reports it identically to `run()` rather than paraphrasing it.
+    """
+    if result.ok:
+        print(
+            f"OK    {label}: {result.total_citations} citation(s), all verified against the ledger."
+        )
+        return
+    print(f"FAIL  {label}: {len(result.unknown)} unresolved citekey(s):")
+    for line_no, key in result.unknown:
+        print(f"        {label}:{line_no}: @{key} not found in ledger -- not sourced from bib sync")
 
 
 def run(paths: list[str]) -> int:
@@ -325,18 +354,8 @@ def run(paths: list[str]) -> int:
             print(f"FAIL  {p}: {exc}")
             continue
         result = check_document(checked, known)
-        if result.ok:
-            print(
-                f"OK    {p}: {result.total_citations} citation(s), all verified against the ledger."
-            )
-        else:
-            all_ok = False
-            print(f"FAIL  {p}: {len(result.unknown)} unresolved citekey(s):")
-            for line_no, key in result.unknown:
-                print(
-                    f"        {p}:{line_no}: @{key} not found in ledger "
-                    f"-- not sourced from bib sync"
-                )
+        all_ok = all_ok and result.ok
+        report(p, result)
 
     return 0 if all_ok else 1
 

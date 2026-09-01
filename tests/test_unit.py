@@ -429,3 +429,80 @@ def test_no_subcommand_is_a_malformed_invocation():
     with pytest.raises(SystemExit) as exit_info:
         unit.main([])
     assert exit_info.value.code == 2
+
+
+# --- #506/m-69: what accept may record, and what it gated ----------------
+
+
+def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, corpus, capsys):
+    """The permanent acceptance record names the papers a unit is
+    grounded in, and `--source` went into it unchecked -- a record
+    asserting grounding in a citekey no real parse ever produced, which
+    is precisely what CLAUDE.md's one rule forbids."""
+    sign_off(book)
+    write_unit_draft(book, "ch-model")
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "ch-model", "--source", "invented_source_2030"]) == 1
+    assert "not in the ledger" in capsys.readouterr().err
+    assert not unit.record_path(book, "ch-model").exists()
+
+
+def test_accept_names_every_unknown_source_not_just_the_first(book, corpus, capsys):
+    sign_off(book)
+    write_unit_draft(book, "ch-model")
+    capsys.readouterr()
+    assert (
+        unit.main(
+            [
+                "accept",
+                str(book),
+                "ch-model",
+                "--source",
+                "invented_one_2030",
+                "--source",
+                "invented_two_2031",
+            ]
+        )
+        == 1
+    )
+    err = capsys.readouterr().err
+    assert "invented_one_2030" in err
+    assert "invented_two_2031" in err
+
+
+def test_accept_gates_the_very_text_it_records(book, corpus, monkeypatch, capsys):
+    """The draft is read once. `accept` used to gate the *path* (the gate
+    opened the file itself) and then re-read it to hash and record, so a
+    write landing between the two calls produced a permanent record --
+    output digest and citekeys both -- for prose the gate had never seen.
+    Pinned by capturing the string the gate was actually handed and
+    checking the record was computed from that same string.
+    """
+    from chitragupta import citation_gate
+
+    sign_off(book)
+    write_unit_draft(book, "ch-model", "Citing @smith_example_2024.\n")
+    gated = []
+    real = citation_gate.check_text
+
+    def capture(path, text, known):
+        gated.append(text)
+        return real(path, text, known)
+
+    monkeypatch.setattr(citation_gate, "check_text", capture)
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "ch-model", "--source", "smith_example_2024"]) == 0
+    record = json.loads(unit.record_path(book, "ch-model").read_text(encoding="utf-8"))
+    assert len(gated) == 1
+    assert record["output_digest"] == spec.digest(gated[0])
+
+
+def test_accept_prints_the_gates_own_verdict(book, corpus, capsys):
+    """The gate is still invoked rather than re-implemented, and still
+    reports in its own shape -- `report()` is the one printer, so a
+    document gated in memory reads identically to `draft gate <file>`."""
+    sign_off(book)
+    write_unit_draft(book, "ch-model", "Citing @smith_example_2024.\n")
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "ch-model", "--source", "smith_example_2024"]) == 0
+    assert "citation(s), all verified against the ledger." in capsys.readouterr().out

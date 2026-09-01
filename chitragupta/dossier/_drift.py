@@ -27,6 +27,7 @@ from chitragupta.dossier._citekeys import (
     CITED_FILES,
     _citekeys_in,
     cited_citekeys,
+    declared_citekeys,
     rejected_reasons,
     section_citekeys,
 )
@@ -253,8 +254,14 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     report.corpus_available = True
     report.current = (len(corpus.citekeys), digest(corpus.citekeys))
 
-    sections_citing = section_citekeys(dossier)
-    cited = _citekeys_in(dossier, CITED_FILES)
+    # The ledger *plus* what this dossier declares by giving a citekey its
+    # own `evidence.md` heading. The ledger alone cannot answer "which
+    # cited papers left the corpus?" for a separator-free key, because a
+    # key that left it is not in it -- see `declared_citekeys` (#506/M-28).
+    known = corpus.citekeys | declared_citekeys(dossier)
+
+    sections_citing = section_citekeys(dossier, known)
+    cited = _citekeys_in(dossier, CITED_FILES, known)
     report.missing = {
         citekey: sections_citing.get(citekey, []) for citekey in sorted(cited - corpus.citekeys)
     }
@@ -263,7 +270,7 @@ def drift(dossier: Path, corpus: "Corpus | None" = None) -> Drift:
     # the point. Re-offering a paper the draft already turned down as if
     # it were new would cost exactly the re-judging that `rejected.md`
     # exists to prevent.
-    mentioned = cited_citekeys(dossier)
+    mentioned = cited_citekeys(dossier, known)
     report.unconsidered = len(corpus.citekeys - mentioned)
 
     declined = rejected_reasons(dossier)
