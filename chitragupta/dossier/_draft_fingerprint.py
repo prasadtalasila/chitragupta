@@ -42,7 +42,7 @@ from chitragupta import citation_gate
 from chitragupta.dossier import SCOPE_MD, dossier_dir, draft_relpath
 from chitragupta.dossier._citekeys import citekeys_by_section, evidence_blocks
 from chitragupta.dossier._sections import sections
-from chitragupta.render_output import _math
+from chitragupta.render_output import _math, _math_findings
 
 # `- draft digest: `a1b2c3d4e5f6`` or `- draft digest: not recorded (...)`
 # in scope.md -- one field over from `dossier._CORPUS_LINE`'s corpus
@@ -131,21 +131,25 @@ class Staleness:
 
 
 def _math_desync(draft: Path, text: str) -> "list[str]":
-    """The `math.md` orphans among `_math.warnings()`'s findings.
+    """The `math.md` orphans among `_math_findings.findings()`'s results.
 
     Filtered to orphans only -- a row with no matching span, the tell
     that a revision reworded or deleted the sentence it belonged to.
-    `warnings()` also reports *gaps* (a quantity-shaped span with no
+    `findings()` also reports *gaps* (a quantity-shaped span with no
     row), which is a pre-existing hygiene finding rather than evidence
-    that the draft moved, so it is deliberately excluded here.
+    that the draft moved, so they are deliberately excluded here.
+
+    Selected on `MathFinding.kind`, not on how the message reads: this
+    filter used to test the sentence's last five words, so a reworded
+    warning would have emptied the check with nothing failing (#506/m-66).
     """
     mapping = _math.load_mapping(draft)
     mapping_file = _math.mapping_path(draft)
     has_mapping_file = mapping_file is not None and mapping_file.is_file()
     return [
-        warning
-        for warning in _math.warnings(text, mapping, has_mapping_file)
-        if warning.endswith("appears nowhere in the draft")
+        finding.message
+        for finding in _math_findings.findings(text, mapping, has_mapping_file)
+        if finding.kind == "orphan"
     ]
 
 

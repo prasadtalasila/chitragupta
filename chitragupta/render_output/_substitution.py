@@ -11,7 +11,7 @@ stay identical to the single module it replaced.
 import sys
 from pathlib import Path
 
-from chitragupta.render_output import _equation_captions, _math, _tables
+from chitragupta.render_output import _equation_captions, _math, _math_findings, _tables
 from chitragupta.render_output._figure_captions import figures as _declared_figures
 from chitragupta.render_output._figure_captions import substitute_captions, substitute_refs
 from chitragupta.render_output._figures import _figure_warnings, _with_figures_for
@@ -36,7 +36,9 @@ def _checked_math_mapping(draft_text: str, input_path: Path) -> "dict[str, str]"
     mapping = _math.load_mapping(input_path)
     path = _math.mapping_path(input_path)
     _math.check(draft_text, input_path, mapping)
-    for warning in _math.warnings(draft_text, mapping, path is not None and path.is_file()):
+    for warning in _math_findings.warnings(
+        draft_text, mapping, path is not None and path.is_file()
+    ):
         print(f"[math] {warning}", file=sys.stderr)
     return mapping
 

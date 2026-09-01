@@ -352,9 +352,10 @@ citekeys into `rejected.md` with the query and the reason. The
 interviewers cannot do this for you, and six packets sitting in your
 context are not a record. Then run
 `python -m chitragupta.draft dossier check-evidence content/drafts/deep-research-<slug>.md`
--- advisory, flags a `claim:` that reads like its own `quote:` reworded; a
-warning is a cue to re-read the transcription, not to keep rewording until
-it goes quiet.
+-- advisory. Flags a citekey carrying more than one `evidence.md` block
+(the first is the one every reader gets, so merge them), and a `claim:`
+that reads like its own `quote:` reworded; a reword warning is a cue to
+re-read the transcription, not to keep rewording until it goes quiet.
 
 No web fallback: if a perspective's searches turn up nothing relevant after
 reasonable reformulation, that's a real "thin coverage" finding to report,

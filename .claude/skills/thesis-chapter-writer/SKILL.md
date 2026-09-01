@@ -255,7 +255,9 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    on why ("shares vocabulary only", "wrong domain", "superseded by X"),
    so the next revision doesn't re-judge the same papers. Then run
    `python -m chitragupta.draft dossier check-evidence content/drafts/<slug>.tex`
-   -- advisory, flags a `claim:` that reads like its `quote:` reworded.
+   -- advisory. Flags a citekey carrying more than one `evidence.md`
+   block (the first is the one every reader gets, so merge them), and a
+   `claim:` that reads like its `quote:` reworded.
 3. **Reformulate and re-search if a concept comes up thin.** Try synonyms
    or adjacent terms and search again before concluding the corpus doesn't
    cover something -- and if it genuinely doesn't after a real attempt, say

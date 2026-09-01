@@ -147,23 +147,35 @@ def chapter_digests(text: str) -> dict[str, str]:
 
     Keyed by chapter id rather than title for the reason ids exist at all:
     a reworded heading must not orphan the record of its approval.
+
+    Headings are *found* through `_prose_lines`, so a `### comment` inside
+    a fenced block cannot open a phantom chapter -- but each span is then
+    digested from the **raw** lines it covers, fences and all. Digesting
+    the prose-only view was #506/M-27: a brief's fenced example is part of
+    what a person approves, and an edit inside one left the digest exactly
+    where it was, so `unit accept` went ahead against outline text nobody
+    had signed.
     """
-    digests: dict[str, str] = {}
-    current: str | None = None
-    span: list[str] = []
-    for _, line in _prose_lines(text.splitlines()):
+    lines = text.splitlines()
+    # (index into `lines`, chapter id or None) for every part/chapter
+    # heading, in file order. `None` closes the preceding chapter's span
+    # without opening one: a part boundary ends a chapter, and a chapter
+    # heading with no id is a parse problem `parse` reports -- it
+    # contributes no unit, so there is nothing here to approve.
+    boundaries: list[tuple[int, str | None]] = []
+    for number, line in _prose_lines(lines):
         match = _HEADING.match(line)
         if match and len(match.group(1)) <= 3:
-            if current:
-                digests[current] = digest("\n".join(span))
-            # A chapter with no id is a parse problem `parse` reports; it
-            # contributes no unit, so there is nothing here to approve.
-            current = match.group(3) if len(match.group(1)) == 3 else None
-            span = []
-        if current:
-            span.append(line)
-    if current:
-        digests[current] = digest("\n".join(span))
+            chapter = match.group(3) if len(match.group(1)) == 3 else None
+            boundaries.append((number - 1, chapter))
+
+    digests: dict[str, str] = {}
+    for position, (start, chapter) in enumerate(boundaries):
+        if chapter is None:
+            continue
+        following = boundaries[position + 1 :]
+        end = following[0][0] if following else len(lines)
+        digests[chapter] = digest("\n".join(lines[start:end]))
     return digests
 
 

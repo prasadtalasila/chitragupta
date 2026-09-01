@@ -411,6 +411,73 @@ def test_status_names_only_the_chapter_that_moved(book, capsys):
     assert "ch-what" not in out
 
 
+# --- #506: what the digest covers, and what the sign-off can be read back as
+
+
+FENCED_CHAPTER = """# Composable Digital Twins
+
+## Part I: Foundations {#part-foundations}
+
+### Chapter 1: What a twin is {#ch-what}
+
+#### The model half {#sec-model}
+
+Establish that a twin is a model plus a live data link, in this shape:
+
+```text
+### Chapter 1: not a heading
+model + live link
+```
+"""
+
+
+def test_an_edit_inside_a_fenced_block_moves_its_chapters_digest():
+    """M-27: the digest is taken over the raw slice, fences included.
+
+    Digesting the prose-only view left an edit inside a brief's fenced
+    example invisible, so `unit accept` went ahead against outline text
+    nobody signed.
+    """
+    before = spec.chapter_digests(FENCED_CHAPTER)
+    after = spec.chapter_digests(FENCED_CHAPTER.replace("model + live link", "model + a link"))
+    assert before["ch-what"] != after["ch-what"]
+
+
+def test_a_heading_inside_a_fence_still_does_not_open_a_chapter():
+    """The other half of M-27: headings are found through the prose-only
+    view even though the span digested is the raw one, so the `###` line
+    inside the fenced block above is text, not a second chapter."""
+    assert sorted(spec.chapter_digests(FENCED_CHAPTER)) == ["ch-what"]
+
+
+COLON_ID = TWO_CHAPTERS.replace("{#ch-what}", "{#ch:what}")
+
+
+def test_a_chapter_id_with_a_colon_signs_off_and_reads_back(book):
+    """m-63: `_HEADING` accepts a colon in an id and the writer backticks
+    it, but the sign-off reader's id group excluded colons -- so `ch:what`
+    signed cleanly and was never in `signed_off_chapters`, refusing its
+    units forever."""
+    write_spec(book, COLON_ID)
+    spec.main(["sign", str(book)])
+    assert spec.recorded_chapter_digests(book) == spec.chapter_digests(COLON_ID)
+    assert "ch:what" in spec.signed_off_chapters(book, COLON_ID)
+
+
+def test_a_hand_written_chapter_line_without_backticks_is_still_read(book):
+    """The bare alternative the reader keeps: a hand-edited signoff.md is
+    a supported input, and there a colon is the field separator."""
+    write_spec(book, TWO_CHAPTERS)
+    digests = spec.chapter_digests(TWO_CHAPTERS)
+    spec.signoff_path(book).write_text(
+        "# Sign-off\n\n"
+        f"- spec digest: `{spec.digest(TWO_CHAPTERS)}`\n\n"
+        f"- chapter ch-what: {digests['ch-what']}\n",
+        encoding="utf-8",
+    )
+    assert spec.recorded_chapter_digests(book) == {"ch-what": digests["ch-what"]}
+
+
 # --- the entry point -----------------------------------------------------
 
 

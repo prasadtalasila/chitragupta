@@ -58,9 +58,52 @@ _KEY = r"[A-Za-z][A-Za-z0-9]*(?:[_:-]+[A-Za-z0-9]+)+"
 _CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
 
 
-def _citekeys(text: str) -> list[str]:
-    """Every citekey token in `text`, in either delimiter, in order."""
-    return [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
+# The same two delimiters with the separator requirement dropped. This is
+# only ever read alongside a *known* set of ledger citekeys (#506/M-28):
+# `Knuth1984` and `Lamport94` are the default style of several reference
+# managers, and `_KEY` cannot see them at all, so a dossier written that
+# way contributed nothing to any parse -- a cited paper leaving the corpus
+# was never reported in `drift().missing`, which is the exact false
+# negative the comment above calls the worse failure.
+#
+# Membership in the ledger, not shape, is what makes these safe to accept:
+# the reason `_KEY` needs a separator is that a shapeless token could be
+# prose (`@someone`) invented into a broken-citation report, and a token
+# that equals a real ledger citekey cannot be invented by construction.
+# So this pattern is deliberately never used on its own -- it is read only
+# alongside `known`, and only ever as an *addition* to the strict scan.
+_LOOSE_KEY = r"[A-Za-z][A-Za-z0-9_:-]*"
+
+_LOOSE_CITEKEY_TOKEN = re.compile(rf"`({_LOOSE_KEY})`|@({_LOOSE_KEY})")
+
+
+def _citekeys(text: str, known: "set[str] | None" = None) -> list[str]:
+    """Every citekey token in `text`, in either delimiter, in order.
+
+    Pass `known` -- a ledger's citekeys -- on any path that differences
+    this result against that ledger, and separator-free keys spelled
+    exactly as the ledger spells them are read too.
+
+    A union of the two scans, never a substitution of one for the other.
+    Filtering a single loose scan by "in `known`, or strictly key-shaped"
+    reads like the same thing and is not: `_LOOSE_KEY` is greedy over
+    `[_:-]`, so `@smith_x_2024:` tokenises as `smith_x_2024:`, which is
+    neither in the ledger nor a strict match -- and a key the strict scan
+    had always found would have been *lost* the moment a caller passed
+    `known`. That is a new false negative in the direction the comment
+    above calls the worse failure, arriving with the fix for one.
+    """
+    strict = [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
+    if known is None:
+        return strict
+    seen = set(strict)
+    found = list(strict)
+    for backticked, at_form in _LOOSE_CITEKEY_TOKEN.findall(text):
+        token = backticked or at_form
+        if token in known and token not in seen:
+            seen.add(token)
+            found.append(token)
+    return found
 
 
 @dataclass

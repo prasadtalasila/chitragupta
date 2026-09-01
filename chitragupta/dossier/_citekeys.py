@@ -18,7 +18,7 @@ from chitragupta.dossier import (
     _ROW_SPLIT,
     dossier_dir,
 )
-from chitragupta.dossier._sections import _citekeys
+from chitragupta.dossier._sections import _LOOSE_KEY, _citekeys
 
 # `- **Term** -- definition` bullets under a `## Glossary` heading in
 # scope.md. A forgiving parser, not a schema: #190's resolving comment
@@ -63,12 +63,14 @@ def glossary_terms(draft: Path) -> dict[str, str]:
     return terms
 
 
-def _citekeys_in(dossier: Path, names: tuple[str, ...]) -> set[str]:
+def _citekeys_in(
+    dossier: Path, names: tuple[str, ...], known: "set[str] | None" = None
+) -> set[str]:
     found: set[str] = set()
     for name in names:
         path = dossier / name
         if path.is_file():
-            found |= set(_citekeys(path.read_text(encoding="utf-8")))
+            found |= set(_citekeys(path.read_text(encoding="utf-8"), known))
     return found
 
 
@@ -83,7 +85,7 @@ CITED_FILES = (EVIDENCE_MD, SECTIONS_MD)
 MENTIONED_FILES = (EVIDENCE_MD, REJECTED_MD, SECTIONS_MD)
 
 
-def cited_citekeys(dossier: Path) -> set[str]:
+def cited_citekeys(dossier: Path, known: "set[str] | None" = None) -> set[str]:
     """Every citekey the dossier mentions, kept or rejected.
 
     Used to answer "which papers in the corpus were never considered for
@@ -91,8 +93,12 @@ def cited_citekeys(dossier: Path) -> set[str]:
     it names what to go and look at. Matched loosely (any backticked
     token that looks like a BibTeX key) so that a hand-edited
     `evidence.md` still contributes.
+
+    Every caller here differences the result against a ledger, so every
+    caller should pass that ledger as `known` -- see `_sections._citekeys`
+    for why separator-free keys need it to be seen at all.
     """
-    return _citekeys_in(dossier, MENTIONED_FILES)
+    return _citekeys_in(dossier, MENTIONED_FILES, known)
 
 
 def rejected_reasons(dossier: Path) -> dict[str, str]:
@@ -120,7 +126,7 @@ def rejected_reasons(dossier: Path) -> dict[str, str]:
     return found
 
 
-def section_citekeys(dossier: Path) -> dict[str, list[str]]:
+def section_citekeys(dossier: Path, known: "set[str] | None" = None) -> dict[str, list[str]]:
     """citekey -> the `sections.md` sections that cite it.
 
     The point is scope, not bookkeeping: a reviser handed "this citekey
@@ -130,13 +136,13 @@ def section_citekeys(dossier: Path) -> dict[str, list[str]]:
     every other read here.
     """
     found: dict[str, list[str]] = {}
-    for title, citekeys in citekeys_by_section(dossier).items():
+    for title, citekeys in citekeys_by_section(dossier, known).items():
         for citekey in citekeys:
             found.setdefault(citekey, []).append(title)
     return found
 
 
-def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
+def citekeys_by_section(dossier: Path, known: "set[str] | None" = None) -> dict[str, list[str]]:
     """section -> the citekeys `sections.md` assigns to it, in row order.
 
     The file has one parser, and this is it -- `section_citekeys` is this
@@ -169,7 +175,47 @@ def citekeys_by_section(dossier: Path) -> dict[str, list[str]]:
         cells = [cell.strip().replace(r"\|", "|") for cell in _ROW_SPLIT.split(stripped.strip("|"))]
         if len(cells) != 2 or [cell.lower() for cell in cells] == ["section", "citekeys"]:
             continue
-        found[cells[0]] = _citekeys(cells[1])
+        found[cells[0]] = _citekeys(cells[1], known)
+    return found
+
+
+# A heading that *opens* with a delimited token: ``## `Doe2024` `` and
+# ``## `Doe2024` -- kept for section 3`` both, since `evidence_blocks`'
+# own docstring names the second as a normal form. Structural, not prose
+# -- writing a citekey as an `evidence.md` heading is the dossier
+# declaring "this is a paper", which is why `declared_citekeys` may trust
+# a shape `_sections._KEY` refuses. The anchor is what keeps it
+# structural: a token further along the line is prose about the block,
+# and prose may not promote a word to a citekey.
+_KEY_HEADING = re.compile(rf"^(?:`({_LOOSE_KEY})`|@({_LOOSE_KEY}))(?:\s|$)")
+
+
+def declared_citekeys(dossier: Path) -> set[str]:
+    """The citekeys `evidence.md` declares by giving each one a heading.
+
+    Read alongside a ledger as the `known` set for every path that
+    differences a dossier against one. The ledger alone is not enough for
+    the question `drift().missing` asks -- "which cited papers have *left*
+    the corpus?" -- because a key that left it is by definition not in it,
+    so a separator-free citekey would have stayed invisible exactly in the
+    case #506/M-28 reported (a `Doe2024` dropped from the bib was never
+    reported as broken).
+
+    Only a heading counts, and only one that *opens* with a delimited
+    token. That is what keeps the false-positive line the separator
+    requirement used to hold on its own: prose cannot promote a word to a
+    citekey, because prose is not the start of a heading.
+    """
+    path = dossier / EVIDENCE_MD
+    if not path.is_file():
+        return set()
+    found = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("## "):
+            continue
+        match = _KEY_HEADING.match(line[3:].strip())
+        if match:
+            found.add(match.group(1) or match.group(2))
     return found
 
 
@@ -190,17 +236,50 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
     all falls back to its own text: a hand-written dossier is a supported
     input everywhere else here, and a block nobody can address is a block
     the next run re-retrieves.
+
+    A key with more than one block keeps the **first** and the rest are
+    counted for `duplicate_evidence_keys` to report. Both halves are the
+    fix for #506/m-65: this used to keep the last silently, so a second
+    block appended for the same paper -- the natural result of two
+    retrieval passes, or of a hand edit that pasted a heading twice --
+    displaced the evidence a drafting run had already been given, with
+    nothing anywhere saying so.
     """
+    return _parse_evidence(dossier)[0]
+
+
+def duplicate_evidence_keys(dossier: Path) -> dict[str, int]:
+    """citekey -> how many blocks `evidence.md` carries for it, for the
+    keys carrying more than one. Empty when every key appears once.
+
+    Separate from `evidence_blocks` rather than a second return value
+    because the two answer different questions and almost every caller
+    only wants the first -- but the count has to come from the same parse,
+    which is why both go through `_parse_evidence`.
+    """
+    return _parse_evidence(dossier)[1]
+
+
+def _parse_evidence(dossier: Path) -> tuple[dict[str, str], dict[str, int]]:
+    """`evidence.md` read once: its first block per key, and the counts
+    for any key that appeared more than once."""
     path = dossier / EVIDENCE_MD
     if not path.is_file():
-        return {}
+        return {}, {}
     found: dict[str, str] = {}
+    counts: dict[str, int] = {}
     key: str | None = None
     body: list[str] = []
+
+    def close() -> None:
+        if key is None:
+            return
+        counts[key] = counts.get(key, 0) + 1
+        found.setdefault(key, "\n".join(body).rstrip() + "\n")
+
     for line in path.read_text(encoding="utf-8").splitlines():
         if line.startswith("## "):
-            if key is not None:
-                found[key] = "\n".join(body).rstrip() + "\n"
+            close()
             heading = line[3:].strip()
             tokens = _citekeys(heading)
             key = tokens[0] if tokens else heading.strip("` ")
@@ -208,9 +287,8 @@ def evidence_blocks(dossier: Path) -> dict[str, str]:
             continue
         if key is not None:
             body.append(line)
-    if key is not None:
-        found[key] = "\n".join(body).rstrip() + "\n"
-    return found
+    close()
+    return found, {name: count for name, count in counts.items() if count > 1}
 
 
 # suggest_acronyms/NoUserAcronymsFile/apply_suggestions/_cmd_acronyms_suggest
