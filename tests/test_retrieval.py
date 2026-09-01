@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, retrieval, retrieval_cli
+from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli
 
 from tests.conftest import make_reference
 
@@ -412,6 +412,24 @@ class TestIndexCaching:
             json.dumps({"version": 1, "items": {"a2024": "not-a-dict"}})
         )
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+
+        results = retrieval.search("digital")
+        assert [r.citekey for r in results] == ["a2024"]
+
+    def test_a_matching_fingerprint_with_missing_term_freqs_is_rebuilt(self, ledger_con):
+        # #504, M-24: a dict entry whose "fingerprint" matches but whose
+        # "term_freqs"/"length" are missing or the wrong type used to be
+        # reused as-is and crash _bm25_scores's entry["length"] read with
+        # a raw KeyError -- against this module's own documented promise
+        # that any unexpected shape is a cache miss, not a crash.
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        with ledger.connection() as con:
+            item = ledger.all_items(con)[0]
+        fp = retrieval_cache._fingerprint(item)
+        config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            json.dumps({"version": 1, "items": {"a2024": {"fingerprint": fp}}})
+        )
 
         results = retrieval.search("digital")
         assert [r.citekey for r in results] == ["a2024"]
