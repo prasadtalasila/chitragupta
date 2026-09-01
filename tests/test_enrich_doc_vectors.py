@@ -7,9 +7,8 @@ test_enrich_topic_seeding.py) already exercises indirectly through
 document_embeddings().
 """
 
-import json
+import os
 
-from chitragupta import config
 from chitragupta.enrich import doc_vectors
 
 
@@ -44,16 +43,13 @@ class TestSaveEmbedCacheIsAtomic:
     ):
         doc_vectors._save_embed_cache({"a2024": {"hash": "old"}})
 
-        real_replace = __import__("os").replace
-
         def dying_replace(*a, **kw):
             raise OSError("disk full")
 
-        monkeypatch.setattr("os.replace", dying_replace)
+        monkeypatch.setattr(os, "replace", dying_replace)
         try:
             doc_vectors._save_embed_cache({"a2024": {"hash": "new"}})
         except OSError:
             pass
 
         assert doc_vectors._load_embed_cache() == {"a2024": {"hash": "old"}}
-        monkeypatch.setattr("os.replace", real_replace)
