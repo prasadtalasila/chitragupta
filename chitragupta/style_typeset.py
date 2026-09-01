@@ -114,11 +114,11 @@ _REFERENCES_RE = re.compile(
 )
 
 # A fenced block, opening fence to closing fence, with the content
-# captured. Deliberately not `citation_gate._FENCED_CODE_RE`: that one
-# matches the whole fence including its delimiters, because it exists to
-# blank the block out, and here the delimiter lines must be excluded --
-# an info string like ```python is not a content line and cannot
-# overflow anything.
+# captured. Deliberately not `citation_gate._blank_fenced`: that one
+# blanks the whole fence including its delimiter lines, because it
+# exists to blank the block out, and here the delimiter lines must be
+# excluded -- an info string like ```python is not a content line and
+# cannot overflow anything.
 _FENCE_RE = re.compile(
     r"^([ \t]*)(`{3,}|~{3,})[^\n]*\n(.*?)^[ \t]*\2[^\n]*$", re.MULTILINE | re.DOTALL
 )

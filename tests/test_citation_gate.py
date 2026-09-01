@@ -69,6 +69,41 @@ class TestExtractLatexCitations:
             "smith2024"
         ]
 
+    def test_biblatex_multicite_second_group_is_caught(self):
+        # \cites{a}{b} takes one {key} group per citation. Capturing only
+        # the first group let a fabricated second key read as "0 citations"
+        # instead of unresolved -- the false-negative class this regex
+        # exists to close.
+        assert citation_gate.extract_citekeys_from_line("\\cites{a2024}{b2024}") == [
+            "a2024",
+            "b2024",
+        ]
+
+    def test_multicite_with_pre_post_notes_per_key(self):
+        assert citation_gate.extract_citekeys_from_line(
+            "\\parencites[see][p.\\ 3]{a2024}[cf.][p.\\ 9]{b2024}"
+        ) == ["a2024", "b2024"]
+
+    def test_multicite_in_a_document_reports_the_right_line(self):
+        text = "Prose first.\n\\cites{a2024}{b2024} close the argument.\n"
+        assert citation_gate.extract_citekeys(text) == [(2, "a2024"), (2, "b2024")]
+
+    def test_braces_inside_a_between_group_bracket_note_are_not_keys(self):
+        # A note between two multicite groups may itself contain braces
+        # (\emph{cf}); reading them as a {key} group would invent a
+        # citekey and block a sound draft.
+        assert citation_gate.extract_citekeys_from_line("\\cites{a2024}[\\emph{cf}]{b2024}") == [
+            "a2024",
+            "b2024",
+        ]
+
+    def test_a_prose_brace_group_after_whitespace_is_not_a_second_key(self):
+        # Trailing groups are consumed only when directly adjacent --
+        # biblatex multicites are written adjacent, while `\citep{a} {x}`
+        # is a citation followed by an ordinary prose brace group, and
+        # swallowing that would invent a citekey and block a sound draft.
+        assert citation_gate.extract_citekeys_from_line("\\citep{a2024} {emphasised}") == ["a2024"]
+
     def test_unrelated_command_not_matched(self):
         assert citation_gate.extract_citekeys_from_line("\\section{Introduction}") == []
 
@@ -109,6 +144,17 @@ class TestExtractPandocCitations:
     def test_suppress_author_form(self):
         assert citation_gate.extract_citekeys_from_line("Smith (-@smith2024) showed...") == [
             "smith2024"
+        ]
+
+    def test_digit_start_key_is_caught(self):
+        # Pandoc's own grammar allows a key to begin with a digit or an
+        # underscore; requiring a letter made such a citation invisible to
+        # the gate (read as 0 citations) while pandoc still rendered it.
+        assert citation_gate.extract_citekeys_from_line("[@3dprinting_2020]") == ["3dprinting_2020"]
+
+    def test_underscore_start_key_is_caught(self):
+        assert citation_gate.extract_citekeys_from_line("As @_draft2020 argued...") == [
+            "_draft2020"
         ]
 
     def test_key_with_hyphens_and_underscores(self):
@@ -235,6 +281,102 @@ class TestCodeAndVerbatimExclusion:
     def test_real_citation_after_a_fenced_block_is_still_caught(self):
         text = "```python\n@dataclass\nclass Foo: pass\n```\nAs shown in [@smith2024].\n"
         assert citation_gate.extract_citekeys(text) == [(5, "smith2024")]
+
+    def test_tilde_fenced_code_is_not_a_citation(self):
+        # ~~~ is the other CommonMark fence dialect; leaving it unblanked
+        # made an in-code @dataclass read as a citation, a FAIL that
+        # pushes the blocking hook to mangle valid teaching code.
+        text = "~~~python\n@dataclass\nclass Foo:\n    pass\n~~~\n"
+        assert citation_gate.extract_citekeys(text) == []
+
+    def test_stray_fence_marker_in_prose_does_not_shift_pairing(self):
+        # A fence opener is a line-start construct. Pairing every ```
+        # token in document order let one prose mention of ``` shift the
+        # pairing: the prose after it (citations included) was blanked and
+        # the next real code block's interior was exposed.
+        text = (
+            "A fence opens with three backticks (```) on its own line.\n"
+            "Grounded claim [@smith2024].\n"
+            "```python\n"
+            "@dataclass\n"
+            "class Foo: pass\n"
+            "```\n"
+        )
+        assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
+
+    def test_inline_triple_backtick_span_is_not_a_fence_opener(self):
+        # CommonMark: a backtick fence's info string may not contain a
+        # backtick, so a line-start ``` code ``` span is a paragraph, not
+        # an opener. Treating it as one would blank the whole rest of the
+        # document -- every later citation reading as 0 citations.
+        text = "``` bash -c ``` runs a command.\nGrounded claim [@smith2024].\n"
+        assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
+
+    def test_tab_indented_marker_is_not_a_fence(self):
+        # A tab indents by four columns in CommonMark, so a tab-indented
+        # ``` line is indented code, not a fence opener.
+        text = "\t```\nGrounded claim [@smith2024].\n"
+        assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
+
+    def test_indented_marker_is_not_a_fence(self):
+        # Four or more spaces of indent is indented code, not a fence
+        # opener (CommonMark); treating it as one would blank the prose
+        # that follows.
+        text = "    ```\nGrounded claim [@smith2024].\n"
+        assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
+
+    def test_unclosed_fence_blanks_to_end_of_document(self):
+        # CommonMark runs an unclosed fence to the end of the document; an
+        # @-token after one is still code, not a citation.
+        text = "```python\n@dataclass\nclass Foo: pass\n"
+        assert citation_gate.extract_citekeys(text) == []
+
+
+class TestLatexBlanking:
+    """In LaTeX a backtick is an open-quote character, not code markup.
+
+    Applying Markdown's inline-code and fence blanking to `.tex` input
+    let the span between two quoted phrases on one line read as "inline
+    code" -- blanking a real `\\citep{...}` between them, so a fabricated
+    citekey passed the gate as 0 citations. LaTeX mode must blank only
+    LaTeX's own verbatim environments."""
+
+    def test_double_backtick_quotes_do_not_eat_a_citation(self):
+        text = "The ``digital twin'' approach \\citep{fabricated2024} extends the ``model'' view.\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
+
+    def test_single_backtick_quotes_do_not_eat_a_citation(self):
+        text = "The `digital twin' approach \\citep{smith2024} is `neat'.\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "smith2024")]
+
+    def test_fence_blanking_is_off_in_latex_mode(self):
+        # Three backticks in LaTeX are quotes (`` then `), not a fence;
+        # fence blanking across two such runs would eat the prose between.
+        text = "He said ```why''' twice.\nStill cited \\citep{smith2024}.\nAnd ```again'''.\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(2, "smith2024")]
+
+    def test_latex_verbatim_is_still_blanked_in_latex_mode(self):
+        text = "\\begin{verbatim}\n\\citep{fake_key}\n\\end{verbatim}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == []
+
+    def test_markdown_mode_is_the_default_and_unchanged(self):
+        assert citation_gate.extract_citekeys("use the `@override` annotation") == []
+
+    def test_check_document_gates_a_tex_draft_through_latex_quoting(self, tmp_path):
+        draft = tmp_path / "chapter.tex"
+        draft.write_text(
+            "The ``digital twin'' approach \\citep{fabricated2024} extends the ``model'' view.\n",
+            encoding="utf-8",
+        )
+        result = citation_gate.check_document(draft, {"real2024"})
+        assert result.total_citations == 1
+        assert result.unknown == [(1, "fabricated2024")]
+
+    def test_check_document_md_still_blanks_inline_code(self, tmp_path):
+        draft = tmp_path / "chapter.md"
+        draft.write_text("use the `@override` annotation\n", encoding="utf-8")
+        result = citation_gate.check_document(draft, set())
+        assert result.ok and result.total_citations == 0
 
 
 class TestCheckDocument:

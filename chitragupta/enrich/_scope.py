@@ -74,7 +74,12 @@ def draft_citekeys(path: Path) -> set[str]:
     Returns a set: a draft cites the same paper many times, and the
     caller wants the papers, not the citations.
     """
-    return {key for _, key in citation_gate.extract_citekeys(path.read_text(encoding="utf-8"))}
+    return {
+        key
+        for _, key in citation_gate.extract_citekeys(
+            path.read_text(encoding="utf-8"), latex=path.suffix.lower() == ".tex"
+        )
+    }
 
 
 def resolve_scope(args, selected) -> "tuple[set[str] | None, int | None]":

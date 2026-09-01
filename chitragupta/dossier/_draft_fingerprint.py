@@ -159,7 +159,9 @@ def staleness(draft: Path) -> Staleness:
     if not report.changed:
         return report
 
-    cited = {key for _, key in citation_gate.extract_citekeys(text)}
+    cited = {
+        key for _, key in citation_gate.extract_citekeys(text, latex=draft.suffix.lower() == ".tex")
+    }
     recorded_evidence = set(evidence_blocks(target))
     report.missing_evidence = sorted(cited - recorded_evidence)
     report.orphaned_evidence = sorted(recorded_evidence - cited)
