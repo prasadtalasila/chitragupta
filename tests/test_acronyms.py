@@ -4,7 +4,46 @@ vendored entry the user doesn't redefine still applies. See
 assets/style/README.md and GitHub issue #190.
 """
 
+import pytest
+
 from chitragupta import acronyms, config
+
+
+class TestLoadDegradesCleanly:
+    """#504, m-31: a malformed acronyms file used to propagate a raw
+    tomllib.TOMLDecodeError, and a non-string expansion crashed
+    stale_expansions() with AttributeError on the first .strip() call."""
+
+    def test_unparseable_toml_raises_a_typed_error(self, monkeypatch, tmp_path):
+        bad = tmp_path / "bad.toml"
+        bad.write_text("this is not = = valid toml [[[", encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", bad)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", bad)
+
+        with pytest.raises(acronyms.AcronymsError, match="could not be parsed"):
+            acronyms.load_vocabulary()
+
+    def test_a_non_string_value_is_dropped_not_raised(self, monkeypatch, tmp_path):
+        vendored = tmp_path / "vendored.toml"
+        vendored.write_text(
+            'PDF = "Portable Document Format"\nCOUNT = 42\n',
+            encoding="utf-8",
+        )
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
+
+        assert acronyms.load_vocabulary() == {"PDF": "Portable Document Format"}
+
+    def test_a_non_string_value_does_not_crash_stale_expansions(self, monkeypatch, tmp_path):
+        vendored = tmp_path / "vendored.toml"
+        vendored.write_text("COUNT = 42\n", encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", vendored)
+
+        # "COUNT" was filtered out of the vocabulary entirely, so no
+        # glossary entry can be compared against it -- the crash this
+        # guards against never gets the chance to happen.
+        assert acronyms.stale_expansions({"COUNT (COUNT)": "Count"}) == {}
 
 
 def test_defaults_to_the_vendored_file_when_no_override_is_set(monkeypatch, tmp_path):

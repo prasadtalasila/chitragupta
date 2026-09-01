@@ -61,7 +61,7 @@ class FakeCollection:
         for i, doc, emb, meta in zip(ids, documents, embeddings, metadatas):
             self._store[i] = {"document": doc, "embedding": emb, "metadata": meta}
 
-    def get(self, where=None):
+    def get(self, where=None, include=None):
         items = list(self._store.items())
         if where:
             key, value = next(iter(where.items()))
@@ -75,6 +75,11 @@ class FakeCollection:
     def delete(self, ids):
         for i in ids:
             self._store.pop(i, None)
+
+    def update(self, ids, metadatas):
+        for i, meta in zip(ids, metadatas):
+            if i in self._store:
+                self._store[i]["metadata"] = meta
 
     def query(self, query_embeddings, n_results):
         self.last_n_results = n_results
@@ -350,6 +355,122 @@ class TestBuildIndexIncremental:
 
         remaining = collection.get(where={"citekey": "a2024"})
         assert len(remaining["ids"]) == counts["a2024"] == 1
+
+
+class TestBuildIndexPrunesDepartedCitekeys:
+    """#503, M-23: build_index only ever upserts, so a citekey dropped
+    from the bib (and, after re-export + sync, the ledger) kept its
+    chunks in Chroma forever -- contradicting search()'s own documented
+    invariant that a returned citekey always resolves against the
+    ledger."""
+
+    def make_doc(self, tmp_path, text, citekey="a2024"):
+        parsed = tmp_path / f"{citekey}.txt"
+        parsed.write_text(text)
+        return CorpusDoc(citekey=citekey, title="A", pdf_path=None, text_path=str(parsed))
+
+    def test_a_citekey_absent_from_the_next_corpus_is_deleted(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
+        departed = self.make_doc(tmp_path, "word " * 10, citekey="departed_2024")
+        staying = self.make_doc(tmp_path, "other word " * 10, citekey="staying_2024")
+        embed_index.build_index([departed, staying])
+
+        embed_index.build_index([staying])  # departed_2024 no longer in the corpus
+
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+        assert collection.get(where={"citekey": "departed_2024"})["ids"] == []
+        assert len(collection.get(where={"citekey": "staying_2024"})["ids"]) == 1
+
+    def test_an_interrupted_run_prunes_nothing(
+        self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch
+    ):
+        departed = self.make_doc(tmp_path, "word " * 10, citekey="departed_2024")
+        staying = self.make_doc(tmp_path, "other word " * 10, citekey="staying_2024")
+        embed_index.build_index([departed, staying])
+
+        def raise_interrupt(*a, **kw):
+            raise KeyboardInterrupt
+
+        monkeypatch.setattr(embed_index, "_embed_doc", raise_interrupt)
+        with pytest.raises(KeyboardInterrupt):
+            embed_index.build_index([staying])
+
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+        # A partial pass says nothing about who departed -- must not prune.
+        assert len(collection.get(where={"citekey": "departed_2024"})["ids"]) == 1
+
+    def test_nothing_departed_leaves_the_collection_untouched(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
+        doc = self.make_doc(tmp_path, "word " * 10)
+        embed_index.build_index([doc])
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+
+        embed_index.build_index([doc])
+
+        assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
+
+    def test_an_empty_corpus_prunes_nothing(self, isolated_config, fake_enrich_deps, tmp_path):
+        # An empty `docs` is the maximal partial pass, not proof every
+        # document departed -- build_corpus() returns [] for an empty or
+        # freshly-recreated ledger, and the far more likely cause is a
+        # wrong-project CHITRAGUPTA_PROJECT/cwd than a corpus that
+        # actually went to zero. Emptying a real index over that would
+        # cost a full re-embed to recover.
+        doc = self.make_doc(tmp_path, "word " * 10)
+        embed_index.build_index([doc])
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+
+        embed_index.build_index([])
+
+        assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
+
+
+class TestBuildIndexRefreshesStaleTitle:
+    """#503, m-48: the unchanged-text skip compared only text_hash, so a
+    bib correction to a document's title never reached the stored
+    metadata -- search() would serve the old title indefinitely."""
+
+    def make_doc(self, tmp_path, text, title, citekey="a2024"):
+        parsed = tmp_path / f"{citekey}.txt"
+        parsed.write_text(text)
+        return CorpusDoc(citekey=citekey, title=title, pdf_path=None, text_path=str(parsed))
+
+    def test_a_corrected_title_is_written_without_re_encoding(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
+        doc = self.make_doc(tmp_path, "word " * 10, title="Old Title")
+        embed_index.build_index([doc])
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+        upserts_before = len(collection.upserted)
+
+        corrected = self.make_doc(tmp_path, "word " * 10, title="Corrected Title")
+        counts = embed_index.build_index([corrected])
+
+        assert counts["a2024"] == 1
+        assert len(collection.upserted) == upserts_before  # no re-encode -- text is unchanged
+        remaining = collection.get(where={"citekey": "a2024"})
+        assert remaining["metadatas"][0]["title"] == "Corrected Title"
+
+    def test_an_unchanged_title_triggers_no_update(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
+        doc = self.make_doc(tmp_path, "word " * 10, title="Same Title")
+        embed_index.build_index([doc])
+        client = FakeChromaClient.instances[-1]
+        collection = client.collections[embed_index.collection_name()]
+        monkeypatch_calls = []
+        collection.update = lambda *a, **kw: monkeypatch_calls.append((a, kw))
+
+        embed_index.build_index([doc])
+
+        assert monkeypatch_calls == []
 
 
 class TestBuildIndexReporting:

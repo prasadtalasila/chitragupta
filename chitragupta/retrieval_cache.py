@@ -88,7 +88,14 @@ def _load_index(items: list, tokenize_item) -> dict:
     Any cache read/schema problem (missing file, corrupt JSON, stale
     schema version, or valid JSON in an unexpected shape -- a bare array,
     an "items"/per-citekey entry that isn't a dict) is treated as a cache
-    miss -- rebuild from scratch rather than fail the search.
+    miss -- rebuild from scratch rather than fail the search. That
+    promise used to stop at the entry's own shape: a dict with a matching
+    "fingerprint" but a missing or wrong-typed "term_freqs"/"length" (a
+    hand-edited cache, or a future format this version predates) was
+    reused as-is and crashed `_bm25_scores`'s `entry["length"]`/
+    `entry["term_freqs"]` reads with a raw KeyError (#504, M-24) --
+    checked here instead, so the same unexpected-shape entry costs one
+    re-tokenization rather than failing the whole search.
     """
     cached = _load_cache()
     current_citekeys = {item["citekey"] for item in items}
@@ -98,7 +105,12 @@ def _load_index(items: list, tokenize_item) -> dict:
         citekey = item["citekey"]
         fp = _fingerprint(item)
         cached_entry = cached.get(citekey)
-        if isinstance(cached_entry, dict) and cached_entry.get("fingerprint") == fp:
+        if (
+            isinstance(cached_entry, dict)
+            and cached_entry.get("fingerprint") == fp
+            and isinstance(cached_entry.get("term_freqs"), dict)
+            and isinstance(cached_entry.get("length"), int)
+        ):
             new_index[citekey] = cached_entry
         else:
             new_index[citekey] = {"fingerprint": fp, **tokenize_item(item)}
