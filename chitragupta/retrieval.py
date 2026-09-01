@@ -94,6 +94,22 @@ def _tokenize(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _STOPWORDS]
 
 
+def short_query_terms(query: str) -> list[str]:
+    """1-2 character words in `query` dropped *only* by the length floor.
+
+    A stopword this short ("in", "of") is excluded -- it is dropped by
+    `_STOPWORDS` regardless of length, so naming it explains nothing.
+    What's left is a real content word ("AI", "5G") that can never
+    contribute to ranking, letting a caller (the CLI) warn instead of a
+    query built from only such terms returning empty unexplained. Not
+    applied to `_tokenize` itself: lowering the floor needs an index
+    format change (`_INDEX_SCHEMA_VERSION`).
+    """
+    return [
+        w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 2 and w not in _STOPWORDS
+    ]
+
+
 def _query_terms(query: str) -> list[str]:
     """`_tokenize(query)` with interrogatives also dropped -- query-side
     only, so a document's own term frequencies and every IDF stay put."""

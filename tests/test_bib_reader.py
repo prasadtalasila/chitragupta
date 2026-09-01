@@ -35,6 +35,15 @@ class TestParseAuthors:
             ("John", "Doe"),
         ]
 
+    def test_separator_split_across_a_wrapped_line(self):
+        # bibtexparser preserves an author field's original line wrapping;
+        # the separator itself can fall on a line break rather than being
+        # a plain " and ".
+        assert bib_reader._parse_authors("Smith, Jane\n  and Doe, John") == [
+            ("Jane", "Smith"),
+            ("John", "Doe"),
+        ]
+
 
 class TestCleanTitle:
     def test_strips_braces(self):

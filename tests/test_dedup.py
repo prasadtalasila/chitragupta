@@ -14,6 +14,12 @@ class TestNormalizeTitle:
     def test_collapses_punctuation_and_whitespace(self):
         assert dedup._normalize_title("A Paper: Part I -- Overview!") == "a paper part i overview"
 
+    def test_bib_readers_missing_title_placeholder_normalises_to_empty(self):
+        assert dedup._normalize_title("Untitled") == ""
+
+    def test_punctuation_only_title_normalises_to_empty(self):
+        assert dedup._normalize_title("???") == ""
+
 
 class TestNormalizeDoi:
     def test_strips_url_prefix(self):
@@ -81,3 +87,21 @@ class TestFindDuplicates:
 
     def test_empty_reference_list(self):
         assert dedup.find_duplicates([]) == []
+
+    def test_entries_missing_a_title_are_not_flagged_as_duplicates(self):
+        # bib_reader defaults a missing title field to the literal string
+        # "Untitled"; without excluding that placeholder, every entry
+        # missing a title would fall into one bucket and be flagged as a
+        # duplicate of every other one.
+        refs = [
+            make_reference(citekey="a2024", title="Untitled"),
+            make_reference(citekey="b2024", title="Untitled"),
+        ]
+        assert dedup.find_duplicates(refs) == []
+
+    def test_punctuation_only_titles_are_not_flagged_as_duplicates(self):
+        refs = [
+            make_reference(citekey="a2024", title="???"),
+            make_reference(citekey="b2024", title="---"),
+        ]
+        assert dedup.find_duplicates(refs) == []

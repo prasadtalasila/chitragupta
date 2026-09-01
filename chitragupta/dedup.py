@@ -26,7 +26,13 @@ from chitragupta.bib_reader import Reference
 def _normalize_title(title: str) -> str:
     text = re.sub(r"[{}]", "", title).lower()
     text = re.sub(r"[^a-z0-9\s]", " ", text)
-    return " ".join(text.split())
+    normalized = " ".join(text.split())
+    # "Untitled" is bib_reader's placeholder for a missing title field,
+    # not real title text; a punctuation-only title normalizes to the
+    # same empty string. Either way it isn't a real title to match on --
+    # treated as empty so every entry missing a title doesn't collide in
+    # one bucket and get flagged as a duplicate of every other.
+    return "" if normalized == "untitled" else normalized
 
 
 def _normalize_doi(doi: str) -> str:
@@ -53,7 +59,9 @@ def find_duplicates(references: list[Reference]) -> list[list[Reference]]:
         if ref.doi:
             by_doi[_normalize_doi(ref.doi)].append(ref)
         if ref.title:
-            by_title[_normalize_title(ref.title)].append(ref)
+            normalized_title = _normalize_title(ref.title)
+            if normalized_title:
+                by_title[normalized_title].append(ref)
 
     seen_groups: set[frozenset[str]] = set()
     groups: list[list[Reference]] = []
