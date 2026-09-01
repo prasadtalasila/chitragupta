@@ -148,6 +148,14 @@ class TestSubstitute:
     def test_a_double_backtick_span_is_not_a_span(self, isolated_config):
         assert _math.substitute("``tau``", {"tau": "\\tau"}) == "``tau``"
 
+    def test_a_backtick_span_inside_an_ordinary_fence_is_not_touched(self, isolated_config):
+        # m-56: only marked math blocks were masked before the inline-span
+        # pass ran, so a fence showing Markdown source -- e.g. a tutorial's
+        # own example -- had its `tau` rewritten to $\tau$ even though it
+        # is a code example, not draft prose.
+        text = "```markdown\nThe gain is `tau` here.\n```\n"
+        assert _math.substitute(text, {"tau": "\\tau"}) == text
+
 
 class TestConvergesOnTheDollarConvention:
     """The design's central claim, and the cheapest way to test it."""
@@ -206,6 +214,14 @@ class TestWarnings:
         # would double-report.
         text = "<!-- math -->\n```\nh = 9\n```\n"
         assert _math.warnings(text, {"h = 9": "h = 9"}, True) == []
+
+    def test_a_span_inside_an_ordinary_fence_is_not_scanned_as_inline(self, isolated_config):
+        # m-56: only marked math blocks were masked before the span scan,
+        # so a `tau`-shaped token shown inside a code example (a tutorial's
+        # own Markdown source, say) was flagged as a gap even though it is
+        # not draft prose at all.
+        text = "```markdown\nThe gain is `tau` here.\n```\n"
+        assert _math.warnings(text, {"x": "\\tau + 1"}, False) == []
 
 
 class TestAnUnmarkedFenceHoldingAnEquation:

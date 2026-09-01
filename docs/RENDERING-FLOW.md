@@ -204,8 +204,24 @@ is gone:
 
 | Pass | What it resolves | LaTeX-bound (`tex`/`latex`/`pdf`) | Everything else |
 | --- | --- | --- | --- |
-| `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in `\begin{figure}...\caption{}\label{fig:<id>}...\end{figure}` -- LaTeX's own counter numbers it, no `\thefigure` override ever written | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
+| `substitute_captions` | The `[marker, caption]` pair | Wraps the untouched marker in a `\begin{figure}`/`\end{figure}` pair, each its own raw `` ```{=latex} `` block -- LaTeX's own counter numbers it, no `\thefigure` override ever written. The caption stays pandoc-visible text, with only `` `\caption{`{=latex} `` and `` `}\label{fig:<id>}`{=latex} `` injected around it as raw-attribute spans, so a caption's own `[@key]`, `&` or `%` is Markdown-processed and LaTeX-escaped like any other prose rather than landing raw inside `\caption{...}` (issue 494) | `<marker>\n**Figure N:** <caption>`, N counted in document order among captioned figures only |
 | `substitute_refs` | An inline `<!-- figureref: <id> -->` | `` `Figure~\ref{fig:<id>}`{=latex} `` -- the same raw-attribute-span reason `_tables._reference_for` needs for `~` | `Figure N` |
+
+**Why `\begin{figure}` and `\end{figure}` cannot share one raw block with
+the caption between them.** Pandoc's raw-TeX passthrough reads a bare
+`\begin{env}...\end{env}` span -- the same mechanism `\input{...}` markers
+rely on elsewhere in this file -- as one opaque block, copied to the
+writer byte-identical and never Markdown-processed. An earlier revision
+interpolated the caption straight into such a span, which is exactly why
+it was neither Markdown-processed nor LaTeX-escaped: a caption's `&` broke
+pdflatex, a `%` silently truncated the rest of the line (the `\label`
+included), and a caption's own `[@key]` reached the PDF as literal,
+unresolved text. Splitting `\begin{figure}`/`\end{figure}` into two
+explicit fenced raw blocks, with the caption as ordinary pandoc content
+between them, is what lets the caption go through the Markdown reader at
+all -- the same fix shape `_tables._caption_for` already had, one row up,
+because a table's caption was never trapped inside a hand-written raw
+environment in the first place.
 
 An **uncaptioned** marker matches neither pass's regex and renders
 exactly as ["Figure substitution" above](#-figure-substitution-four-combinations-one-real-no-op)

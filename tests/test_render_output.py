@@ -24,6 +24,53 @@ from tests.conftest import (
 from tests.conftest import pandoc_available, pdflatex_available, tikz_available
 
 
+class TestRunPandoc:
+    """`_run_pandoc` in isolation, via a mocked `subprocess.run` -- no
+    real pandoc needed, unlike the rest of this module's tests."""
+
+    def _fake_completed(self, stdout="", stderr=""):
+        return subprocess.CompletedProcess(
+            args=["pandoc"], returncode=0, stdout=stdout, stderr=stderr
+        )
+
+    def test_forwards_stderr_on_a_successful_exit(self, monkeypatch, capsys):
+        # M-7: capture_output=True was silently discarding this -- citeproc's
+        # own diagnostics ("citation not found", a missing image) land on
+        # pandoc's stderr with exit 0, not a raised CalledProcessError.
+        monkeypatch.setattr(
+            subprocess,
+            "run",
+            lambda *a, **k: self._fake_completed(
+                stderr="[WARNING] Citeproc: citation X not found\n"
+            ),
+        )
+        render_output._run_pandoc(["pandoc"], {})
+        err = capsys.readouterr().err
+        assert "[pandoc] [WARNING] Citeproc: citation X not found" in err
+
+    def test_multiple_stderr_lines_are_each_prefixed(self, monkeypatch, capsys):
+        monkeypatch.setattr(
+            subprocess, "run", lambda *a, **k: self._fake_completed(stderr="line one\nline two\n")
+        )
+        render_output._run_pandoc(["pandoc"], {})
+        err = capsys.readouterr().err
+        assert "[pandoc] line one" in err
+        assert "[pandoc] line two" in err
+
+    def test_empty_stderr_prints_nothing(self, monkeypatch, capsys):
+        monkeypatch.setattr(subprocess, "run", lambda *a, **k: self._fake_completed(stderr=""))
+        render_output._run_pandoc(["pandoc"], {})
+        assert capsys.readouterr().err == ""
+
+    def test_a_nonzero_exit_still_raises(self, monkeypatch):
+        def fake_run(*a, **k):
+            raise subprocess.CalledProcessError(1, ["pandoc"], stderr="fatal error")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(subprocess.CalledProcessError):
+            render_output._run_pandoc(["pandoc"], {})
+
+
 class TestRenderMarkdown:
     """`--format md` on a Markdown draft, which is a citation-numbering
     job rather than a format conversion and so never calls pandoc."""
@@ -888,6 +935,84 @@ class TestCaptionedFigureRenderReal:
             text=True,
         )
         assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and tikz_available),
+        reason="pandoc/pdflatex/tikz.sty not installed",
+    )
+    def test_a_caption_with_ampersand_and_percent_still_compiles(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        # Issue 494: an earlier revision interpolated the caption straight
+        # into a raw `\caption{...}`, so `&` failed pdflatex ("Misplaced
+        # alignment tab") and `%` silently truncated the rest of the line,
+        # including the `\label`. Both now go through pandoc's own
+        # Markdown-to-LaTeX escaping like any other prose in the draft.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text(
+            "# Title\n\n<!-- figure: figures/fig1 -->\nCost & throughput rose 5%, see below.\n"
+        )
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        # `\label{fig:fig1}` merely being *present* in the source does not
+        # prove the % was escaped -- an unescaped `%` earlier on the same
+        # line would only comment out everything up to the next physical
+        # line break, and `\label{...}` could still survive intact on a
+        # line pandoc happened to wrap onto. What actually discriminates
+        # is that pandoc's own LaTeX escaping ran on the caption at all:
+        # `&` becomes `\&` and `%` becomes `\%`, and neither raw character
+        # may appear unescaped anywhere in the caption's own text. Pandoc's
+        # own `--wrap=auto` can still break the caption's *own* line onto
+        # the next one at a word boundary, so the substring checks below
+        # run against a copy with pandoc's soft line breaks collapsed back
+        # to spaces rather than the raw file text.
+        unwrapped = source.replace("\n", " ")
+        assert "Cost \\& throughput" in unwrapped, "the & must be LaTeX-escaped by pandoc"
+        assert "5\\%," in unwrapped, "the % must be LaTeX-escaped by pandoc, not left raw"
+        assert "Cost & throughput" not in unwrapped, "an unescaped & must not survive into the .tex"
+        assert "5%," not in unwrapped, "an unescaped % must not survive into the .tex source"
+        assert "\\label{fig:fig1}" in source
+        compiled = subprocess.run(
+            ["pdflatex", "-interaction=nonstopmode", out_path.name],
+            cwd=out_path.parent,
+            capture_output=True,
+            text=True,
+        )
+        assert compiled.returncode == 0, compiled.stdout[-2000:]
+
+    @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+    def test_a_caption_citing_a_real_key_resolves_through_citeproc(self, isolated_config, tmp_path):
+        # Issue 494: a caption citing `[@citekey]` used to reach the PDF as
+        # literal, unresolved text -- the table path's own docstring
+        # establishes captions legitimately cite. The caption now reaches
+        # pandoc's Markdown reader like any other prose, so citeproc
+        # resolves it the same way.
+        con = ledger.connect()
+        ledger.upsert_reference(con, make_reference(citekey="a_2024", title="A Paper", year="2024"))
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{a_2024,\n  author={Doe, Jane},\n  title={A Paper},\n  year={2024},\n}\n"
+        )
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        draft_dir.mkdir(parents=True)
+        figure_pair(draft_dir)
+        draft = draft_dir / "tutorial.md"
+        draft.write_text("# Title\n\n<!-- figure: figures/fig1 -->\nAs reported [@a_2024].\n")
+
+        out_path = render_output.render(str(draft), output_format="tex")
+
+        source = out_path.read_text()
+        assert "[@a_2024]" not in source, "the citekey must resolve, not survive literally"
+        assert "\\label{fig:fig1}" in source
 
     @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
     def test_a_captioned_figure_to_md_gets_a_bold_numbered_caption(self, isolated_config, tmp_path):

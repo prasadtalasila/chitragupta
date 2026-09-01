@@ -86,6 +86,24 @@ def built_collection(chromadb_module) -> Any:
     return collection if collection.count() else None
 
 
+def corpus_key() -> str:
+    """The Chroma collection name tier 3 would read or write right now --
+    `embed_index.collection_name()`, exposed through this seam so a
+    caller outside `chitragupta/enrich/` never imports it directly (see
+    module docstring).
+
+    Computed from `config.EMBEDDING_MODEL` alone, so it costs nothing --
+    no chroma client, no installed enrich group -- and is available even
+    where `built_collection()` above returns `None`. That is the point:
+    `recheck` records this beside a baseline so a later comparison can
+    tell "the corpus was rebuilt under a different model" from "an edit
+    changed the findings", which `tier == "embedding"` alone cannot say.
+    """
+    from chitragupta.enrich import embed_index
+
+    return embed_index.collection_name()
+
+
 class Embedder:
     """The sentence-transformers model, loaded on first use.
 

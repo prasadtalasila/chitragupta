@@ -81,7 +81,6 @@ imports for stages this one doesn't need. The genre-writing skills under
 """
 
 import os
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -130,7 +129,12 @@ from chitragupta.render_output._figures import (
     _with_figures_for,
 )
 from chitragupta.render_output._cli import main
-from chitragupta.render_output._pandoc import _has_code_block, _pandoc_command, _render_csl
+from chitragupta.render_output._pandoc import (
+    _has_code_block,
+    _pandoc_command,
+    _render_csl,
+    _run_pandoc,
+)
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
 from chitragupta.render_output._substitution import (
     _checked_math_mapping,
@@ -300,6 +304,6 @@ def render(
             fragment,
             _has_code_block(draft_text),
         )
-        subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+        _run_pandoc(cmd, env)
 
     return out_path  # pragma: no cover-windows

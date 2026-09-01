@@ -168,6 +168,18 @@ class TestBuiltCollection:
         assert overlap_chroma.built_collection(chromadb) is collection
 
 
+class TestCorpusKey:
+    def test_it_matches_the_collection_name_with_no_chroma_installed(self, monkeypatch):
+        """Decided by `config.EMBEDDING_MODEL` alone -- available even on
+        a host with neither the enrich group nor a built collection,
+        which is what lets `scan_payload` record it unconditionally
+        (#500)."""
+        from chitragupta.enrich import embed_index
+
+        monkeypatch.setitem(sys.modules, "chromadb", None)
+        assert overlap_chroma.corpus_key() == embed_index.collection_name()
+
+
 class TestEmbedder:
     """The lazy model handle. Every method here is one line over the
     model, so what is worth pinning is the laziness and the shapes."""
