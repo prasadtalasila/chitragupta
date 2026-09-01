@@ -56,8 +56,14 @@ def _format_authors(field: str) -> str:
     it lists all of them, with "and" before the last. BibTeX's own
     "and others" truncation marker (a literal trailing "others" name) is
     rendered the same way, not as a fabricated author named "others".
+
+    Split on a zero-width "and" (matched only, never consumed) rather
+    than the literal `" and "` -- bibtexparser preserves an author
+    field's original line wrapping, so this ledger column can carry the
+    separator split across a line break (`chitragupta/bib_reader.py`'s
+    `_parse_authors` has the identical case and the same fix).
     """
-    names = [n.strip() for n in field.split(" and ") if n.strip()]
+    names = [n.strip() for n in re.split(r"(?<=\s)and(?=\s)", field) if n.strip()]
     truncated = bool(names) and names[-1].lower() == "others"
     if truncated:
         names = names[:-1]

@@ -31,9 +31,13 @@ class TestShortQueryTerms:
         assert retrieval.short_query_terms("digital twin architecture") == []
 
     def test_flags_two_and_one_character_words(self):
-        # "in" is flagged too -- it is short regardless of also being a
-        # stopword the ordinary tokenizer would drop for a separate reason.
-        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "in", "5g"]
+        # "in" is not flagged -- it is dropped as a stopword regardless of
+        # length, so naming it would not explain anything the length
+        # floor specifically cost this query.
+        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "5g"]
+
+    def test_a_short_stopword_is_not_flagged(self):
+        assert retrieval.short_query_terms("the role of AI in industry") == ["ai"]
 
     def test_a_query_of_only_short_terms_is_entirely_flagged(self):
         assert retrieval.short_query_terms("AI ML QA") == ["ai", "ml", "qa"]

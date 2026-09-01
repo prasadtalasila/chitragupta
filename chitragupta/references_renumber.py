@@ -27,7 +27,7 @@ _CITATION_GROUP_RE = re.compile(
 # as `[3, p. 33]` rather than falling through to the per-key pass below,
 # which would leave the surrounding brackets in place and nest a second
 # pair around the number (`[[3], p. 33]`).
-_LOCATOR_GROUP_RE = re.compile(r"\[\s*(-?@[A-Za-z][A-Za-z0-9_-]*)\s*,\s*([^\[\]@;]+?)\s*\]")
+_LOCATOR_GROUP_RE = re.compile(r"\[\s*(-?@[A-Za-z][A-Za-z0-9_-]*)\s*,\s*([^\[\]@;]+)\]")
 # citation_gate's own Pandoc-citation regex, not a second definition of
 # one. Its negative lookbehind is what keeps `@` inside a larger token
 # from reading as a citation -- this project's own tutorial draft carries
@@ -83,22 +83,27 @@ def _group_edits(
     return edits, covered
 
 
-def _locator_edits(blanked: str, numbers: dict[str, int]) -> list[tuple[int, int, str]]:
+def _locator_edits(text: str, blanked: str, numbers: dict[str, int]) -> list[tuple[int, int, str]]:
     """A single citekey with a preserved locator (`[@a, p. 33]`).
 
     No overlap check against `_group_edits`'s `covered` here: that regex
     only matches a bracket containing nothing but ";"-separated keys, and
     this pattern only matches one containing a ",", so the two can never
     claim the same span.
+
+    The locator itself is sliced from `text`, not `match.group(2)` off
+    `blanked` -- `blanked` has every code span replaced with spaces, so a
+    locator carrying one (a code span inside the locator text) would
+    otherwise render with the code silently blanked out of the draft
+    instead of renumbered.
     """
     edits: list[tuple[int, int, str]] = []
     for match in _LOCATOR_GROUP_RE.finditer(blanked):
         key_match = _BARE_KEY_RE.match(match.group(1))
         if key_match is None or key_match.group(1) not in numbers:
             continue
-        edits.append(
-            (match.start(), match.end(), f"[{numbers[key_match.group(1)]}, {match.group(2)}]")
-        )
+        locator = text[match.start(2) : match.end(2)].strip()
+        edits.append((match.start(), match.end(), f"[{numbers[key_match.group(1)]}, {locator}]"))
     return edits
 
 
@@ -134,7 +139,7 @@ def renumber(text: str, numbers: dict[str, int]) -> str:
     blanked = citation_gate._blank_code(text)
 
     group_edits, covered = _group_edits(blanked, numbers)
-    locator_edits = _locator_edits(blanked, numbers)
+    locator_edits = _locator_edits(text, blanked, numbers)
     covered.extend((start, end) for start, end, _ in locator_edits)
     edits = group_edits + locator_edits + _bare_key_edits(blanked, numbers, covered)
 

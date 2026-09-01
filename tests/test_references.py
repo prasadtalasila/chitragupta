@@ -195,6 +195,15 @@ class TestFormatEntry:
         )
         assert entry.startswith("J. Doe et al.,")
 
+    def test_author_separator_split_across_a_wrapped_line(self):
+        # bibtexparser preserves an author field's original line wrapping
+        # in the ledger's bib_fields column, so the separator itself can
+        # fall on a line break rather than being a plain " and ".
+        entry = references.format_entry(
+            "k", "T", "2024", {"author": "Smith, Jane\n  and Doe, John", "journal": "J"}
+        )
+        assert entry.startswith("J. Smith and J. Doe,")
+
     def test_page_range_with_a_single_hyphen_gets_an_en_dash(self):
         entry = references.format_entry("k", "T", "2024", {"journal": "J", "pages": "1-10"})
         assert "pp. 1–10," in entry
@@ -327,6 +336,16 @@ class TestRenumber:
         assert (
             references.renumber("Use `[@a]` for this. Real [@b].", self.NUMBERS)
             == "Use `[@a]` for this. Real [2]."
+        )
+
+    def test_a_locator_carrying_a_code_span_keeps_it_verbatim(self):
+        # The locator is rewritten from a code-blanked copy that has
+        # replaced every code span with spaces, purely to locate the
+        # citation -- the replacement text itself must come from the
+        # real draft, or the code span silently disappears.
+        assert (
+            references.renumber("See [@a, see `x`] for the flag.", self.NUMBERS)
+            == "See [1, see `x`] for the flag."
         )
 
 

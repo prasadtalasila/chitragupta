@@ -95,17 +95,19 @@ def _tokenize(text: str) -> list[str]:
 
 
 def short_query_terms(query: str) -> list[str]:
-    """1-2 character words in `query`, in the order they appear.
+    """1-2 character words in `query` dropped *only* by the length floor.
 
-    These never reach `_tokenize`'s output on either the index or the
-    query side (its `len(w) > 2` floor), so a term like "AI", "ML", "5G"
-    or "QA" can never contribute to ranking -- and a query built entirely
-    from such terms returns empty with nothing in the result to say why.
-    Exposed so a caller (the CLI) can warn instead of leaving that
-    silent; not applied to `_tokenize` itself, since lowering the floor
-    would need an index format change (`_INDEX_SCHEMA_VERSION`).
+    A stopword this short ("in", "of") is excluded -- it is dropped by
+    `_STOPWORDS` regardless of length, so naming it explains nothing.
+    What's left is a real content word ("AI", "5G") that can never
+    contribute to ranking, letting a caller (the CLI) warn instead of a
+    query built from only such terms returning empty unexplained. Not
+    applied to `_tokenize` itself: lowering the floor needs an index
+    format change (`_INDEX_SCHEMA_VERSION`).
     """
-    return [w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 2]
+    return [
+        w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 2 and w not in _STOPWORDS
+    ]
 
 
 def _query_terms(query: str) -> list[str]:
