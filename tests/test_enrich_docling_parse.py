@@ -1229,6 +1229,38 @@ class TestParseCorpusParallelBrokenPool:
         assert all(status[f"d{i}"].startswith("error:") for i in range(4))
         assert "worker" in capsys.readouterr().out.lower()
 
+    def test_a_break_mid_submission_keeps_the_futures_already_submitted(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """Building `futures` via a single list comprehension would let a
+        BrokenProcessPool raised partway through the submit loop discard
+        every future already handed to the executor -- real, in-flight
+        work thrown away for the same reason this whole PR exists.
+        Submitting biggest-first, d3 and d2 must be submitted (and
+        therefore still collected) before d1's submit() blows up."""
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures.process import BrokenProcessPool
+
+        real_executor = ThreadPoolExecutor(max_workers=4)
+
+        class PartiallyDeadExecutor:
+            def submit(self, fn, job):
+                doc, _threads = job
+                if doc.citekey == "d1":
+                    raise BrokenProcessPool("died mid-submission")
+                return real_executor.submit(fn, job)
+
+            def shutdown(self, *args, **kwargs):
+                real_executor.shutdown(*args, **kwargs)
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: PartiallyDeadExecutor())
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert status["d3"].startswith("ok:")
+        assert status["d2"].startswith("ok:")
+        assert status["d1"].startswith("error:")
+        assert status["d0"].startswith("error:")
+
 
 class TestParseOneFingerprint:
     def test_fingerprint_is_captured_before_conversion_not_after(

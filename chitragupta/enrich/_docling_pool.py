@@ -155,8 +155,8 @@ def _adopt_cached(
     parent rather than sent to a worker. Filtered by a citekey set, not
     `d not in pending` -- that would compare whole dataclasses against
     every pending doc for every doc in the corpus, the quadratic scan
-    docling_parse.py's own `reusable` set (parse_corpus, above) exists to
-    avoid.
+    `chitragupta.enrich.docling_parse.parse_corpus`'s own `reusable` set
+    exists to avoid.
     """
     from chitragupta.enrich.docling_parse import parse_doc
 
@@ -168,6 +168,24 @@ def _adopt_cached(
             status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
         except Exception as exc:  # noqa: BLE001 -- as below
             status[doc.citekey] = f"error: {exc}"
+
+
+def _submit_jobs(executor, jobs: list[tuple]) -> tuple[list, Exception | None]:
+    """Submit one job at a time rather than in a single list
+    comprehension, so a `BrokenProcessPool` raised partway through a
+    batch doesn't discard the futures already submitted -- those may
+    already be running or finished, and `_drain` below must still
+    collect them instead of leaking them to the dead executor.
+    """
+    futures = []
+    broken = None
+    for job in jobs:
+        try:
+            futures.append(executor.submit(parse_one, job))
+        except BrokenProcessPool as pool_exc:
+            broken = pool_exc
+            break
+    return futures, broken
 
 
 def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> Exception | None:
@@ -186,7 +204,10 @@ def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> 
     handler calls os._exit without unwinding this function at all, so the
     cache has to already be on disk by the time that fires -- the same
     reason its own docstring gives for why chitragupta/sync.py's ledger
-    commits synchronously per document rather than once at the end.
+    commits synchronously per document rather than once at the end. A
+    failed doc's `worker_cache` is empty (parse_one only writes into it
+    once conversion succeeds), so that save is skipped rather than
+    rewriting the same file for nothing.
 
     Not `with executor`: the context manager waits for every queued job,
     so Ctrl+C would drain the whole corpus before exiting.
@@ -200,7 +221,7 @@ def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> 
     done = 0
     try:
         with pdf_text.interrupt_guard(executor, lambda: f"{done}/{len(jobs)} document(s) parsed"):
-            futures = [executor.submit(parse_one, job) for job in jobs]
+            futures, broken = _submit_jobs(executor, jobs)
             for future in as_completed(futures):
                 try:
                     citekey, doc_status, worker_cache = future.result()
@@ -208,13 +229,11 @@ def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> 
                     broken = pool_exc
                     continue
                 status[citekey] = doc_status
-                cache.update(worker_cache)
-                _save_cache(cache)
+                if worker_cache:
+                    cache.update(worker_cache)
+                    _save_cache(cache)
                 done += 1
                 logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
-    except BrokenProcessPool as pool_exc:
-        # submit() itself raises once the pool is already known-broken.
-        broken = pool_exc
     except KeyboardInterrupt:
         executor.shutdown(wait=False, cancel_futures=True)
         pdf_text.terminate_workers(executor)
