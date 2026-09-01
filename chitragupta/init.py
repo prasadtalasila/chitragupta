@@ -67,6 +67,12 @@ SOURCE_ROOT = PACKAGE_ROOT.parent
 # find and edit, not something anything here reads.
 COPY_VERBATIM = (".claude", "docs", "assets", "AGENTS.md", "CLAUDE.md", "SOUL.md", "README.md")
 
+
+class ScaffoldSourceMissing(Exception):
+    """An installation that cannot write a complete scaffold -- see
+    `scaffold`, which refuses rather than writing a partial one."""
+
+
 # The one entry that changes name on the way in. config.toml is
 # gitignored per-user data (chitragupta/config.py's PROJECT_MARKER), so
 # init writes the user's own starting copy, never the tracked template
@@ -211,6 +217,24 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
     writes, from this one manifest, rather than a second and
     hand-maintained listing of it.
     """
+    missing = [
+        name for name in (*COPY_VERBATIM, CONFIG_EXAMPLE) if not (SOURCE_ROOT / name).exists()
+    ]
+    if missing:
+        # Refused before anything is written (#509/m-37). `_write_tree`
+        # on an absent source `rglob`s nothing and returns `[]`, so a
+        # wheel built without `.claude/` scaffolded a project with no
+        # citation-gate hook, printed a report that simply did not
+        # mention it, and exited 0. The one thing a scaffold must not do
+        # is report success for a project missing the gate -- and a
+        # partial scaffold is worse than none, since the user has no
+        # reason to look.
+        raise ScaffoldSourceMissing(
+            f"this installation is missing {', '.join(missing)}, so the scaffold "
+            f"it would write is incomplete. Expected under {SOURCE_ROOT}. "
+            "Reinstall chitragupta-cli, or run from a git checkout."
+        )
+
     report = []
     for name in COPY_VERBATIM:
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
@@ -238,7 +262,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(sys.argv[1:] if argv is None else argv)
-    for line in scaffold(args.dir, force=args.force, dry_run=args.dry_run):
+    try:
+        report = scaffold(args.dir, force=args.force, dry_run=args.dry_run)
+    except ScaffoldSourceMissing as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
+    for line in report:
         print(line)
     return 0
 

@@ -118,7 +118,15 @@ def read(con, citekey: str) -> dict | None:
     try:
         current = _fingerprint(con, citekey)
     except TldrError:
-        current = None
+        # Uncomputable is stale, not fresh (#509/m-41). `current = None`
+        # compared equal to a stored `fingerprint` of `None` -- a sidecar
+        # written when the fingerprint could not be computed either --
+        # and the pair reported `stale: False`, i.e. "this summary is of
+        # the current parse", about a parse this cannot even see. The
+        # docstring's promise is the opposite, and a summary nobody can
+        # verify is exactly the one a reader should be told to re-check.
+        payload["stale"] = True
+        return payload
     payload["stale"] = current != payload.get("fingerprint")
     return payload
 

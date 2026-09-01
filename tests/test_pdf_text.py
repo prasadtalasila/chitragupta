@@ -115,8 +115,18 @@ class FakeDoclingDocument:
 
 
 class FakeDoclingResult:
+    """What a real docling `convert()` returns on a clean parse.
+
+    `status` is not decoration: real docling always sets it, and
+    `check_docling_status` now *fails closed* on its absence (#509/m-36)
+    -- a fake without it was standing in for a docling that had renamed
+    the attribute, which is exactly the state that must never be read as
+    success.
+    """
+
     def __init__(self, markdown, texts=None):
         self.document = FakeDoclingDocument(markdown, texts)
+        self.status = types.SimpleNamespace(name="SUCCESS")
 
 
 class FakeDoclingConverter:
@@ -1759,10 +1769,20 @@ class TestDoclingPartialSuccess:
         out = pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
         assert out.read_text().startswith("# Parsed content")
 
-    def test_a_backend_without_a_status_attribute_is_not_rejected(self):
-        """Defensive: don't make the check itself a new failure mode if a
-        docling version stops exposing status."""
-        pdf_text.check_docling_status(types.SimpleNamespace())
+    def test_a_result_without_a_status_attribute_is_refused(self):
+        """m-36 (#509), and a deliberate reversal of what this test used
+        to assert. The old contract was "don't make the check itself a new
+        failure mode if a docling version stops exposing status" -- which
+        sounds cautious and is not: without `status` a PARTIAL_SUCCESS,
+        a document that stops at page k of n, cannot be told from a clean
+        parse, so the lenient reading writes truncated text to
+        `content/parsed/` and marks it parsed. An upstream rename is a
+        loud one-line fix caught on the first document; a silently
+        truncated corpus is not discoverable at all, and this pipeline's
+        whole job is that its sources are what they claim to be."""
+        with pytest.raises(pdf_text.ExtractionError) as raised:
+            pdf_text.check_docling_status(types.SimpleNamespace())
+        assert "no `status` attribute" in str(raised.value)
 
 
 class _FakeResult:

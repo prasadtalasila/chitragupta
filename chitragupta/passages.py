@@ -53,12 +53,13 @@ drafting agent as evidence is under exactly the same constraint as a
 passage shown to a reviewer, and the two should not answer "what does
 this source say here?" from different text -- but today they do.
 
-Stdlib only (sqlite3/re/subprocess), like citation_gate.py and
-references.py -- runs with bare `python`, no venv.
+Stdlib only (sqlite3/json/subprocess), like citation_gate.py and
+references.py -- runs with bare `python`, no venv. The `re` that used to
+be in that list left with the stopword vocabulary; see
+`chitragupta/_passage_words.py`, whose `distinctive` is re-exported here.
 """
 
 import json
-import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -66,62 +67,21 @@ from typing import Any
 
 from chitragupta import config
 
-# Lowercase alphanumeric runs, stopwords and very short words dropped, so
-# matching keys off the words that actually distinguish one claim from
-# another.
-_WORD = re.compile(r"[a-z0-9]+")
+# Re-exported so `passages.distinctive` keeps resolving for every existing
+# caller -- see chitragupta/_passage_words.py for why the vocabulary moved
+# out. `__all__` names it so the import is not read as unused.
+from chitragupta._passage_words import distinctive
 
-_CORE_STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "of",
-    "on",
-    "in",
-    "for",
-    "and",
-    "to",
-    "with",
-    "is",
-    "are",
-    "be",
-    "this",
-    "that",
-    "as",
-    "by",
-    "from",
-    "at",
-}
-
-# Shared with chitragupta/retrieval.py, which imports _CORE_STOPWORDS
-# from here (this module has no drafting-layer dependents, so this is
-# the direction that keeps the corpus/enrichment/review layers
-# independent of drafting). Editing this constant moves retrieval.py's
-# BM25 index too and needs _INDEX_SCHEMA_VERSION bumped there --
-# passages.py's own extras just below are free to change on their own.
-_STOPWORDS = _CORE_STOPWORDS | {
-    "it",
-    "its",
-    "can",
-    "has",
-    "have",
-    "was",
-    "were",
-    "which",
-    "such",
-    "these",
-    "those",
-    "their",
-    "than",
-    "then",
-    "but",
-    "not",
-    "also",
-}
-
-
-def distinctive(text: str) -> set[str]:
-    return {w for w in _WORD.findall(text.lower()) if len(w) > 2 and w not in _STOPWORDS}
+__all__ = [
+    "Passage",
+    "PASSAGE_LABELS",
+    "clear_sidecar",
+    "distinctive",
+    "passage_records",
+    "sidecar_path",
+    "source_passages",
+    "write_sidecar",
+]
 
 
 @dataclass
@@ -297,6 +257,12 @@ def _from_pages(raw: str) -> list[Passage]:
     ]
 
 
+# The reason is non-`None` exactly when the list is empty, and that
+# pairing is what #509/m-42 restored at both ends: a held single-page
+# rung-3 result used to be dropped on the way to rung 4 and returned as
+# `([], "no parsed text with page breaks and no readable PDF")` when rung
+# 4 could not run -- false about the first half -- while an empty rung 4
+# returned `([], None)`, no passages and no explanation at all.
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     """Best available passages for `citekey`, plus a reason if there are
     none."""
@@ -314,6 +280,7 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
         return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
     parsed_path, pdf_path, _title = row
+    single_page: list[Passage] = []
     if parsed_path and Path(parsed_path).exists():
         raw = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
         found = _from_pages(raw)
@@ -324,25 +291,55 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
         # rather than every docling parse.
         if len(found) > 1:
             return found, None
+        # Held rather than discarded (#509/m-42). Falling through is right
+        # only while rung 4 might still do better; when it cannot -- no
+        # PDF, or pdftotext produces nothing -- returning `[]` threw away
+        # real parsed text and reported "no parsed text with page breaks
+        # and no readable PDF", which is false about the first half. One
+        # page attributed to p.1 is a worse answer than several; it is a
+        # far better one than none.
+        single_page = found
 
     if pdf_path and Path(pdf_path).exists():
-        try:
-            # encoding/errors rather than a bare text=True: that decodes
-            # with the *platform* encoding under strict error handling, so
-            # a single undecodable byte anywhere in a paper -- a ligature,
-            # a stray control character, anything under a C-locale host --
-            # raises UnicodeDecodeError, which is not in the except clause
-            # below and would take down a whole report over one PDF. Same
-            # guard the parsed-text branch above already applies.
-            out = subprocess.run(
-                ["pdftotext", "-layout", pdf_path, "-"],
-                capture_output=True,
-                check=True,
-                encoding="utf-8",
-                errors="replace",
-            )
-        except (OSError, subprocess.CalledProcessError) as exc:
-            return [], f"couldn't run pdftotext on the PDF ({exc})"
-        return _from_pages(out.stdout), None
+        return _from_pdf(pdf_path, single_page)
 
+    if single_page:
+        return single_page, None
     return [], "no parsed text with page breaks and no readable PDF"
+
+
+# `single_page` is whatever rung 3 held -- a form-feed-free parse read as
+# one page. It is the answer whenever this rung cannot better it, which is
+# the half of #509/m-42 that used to return `[]` and a reason that was
+# false about the parsed text it had just thrown away.
+def _from_pdf(pdf_path: str, single_page: list[Passage]) -> tuple[list[Passage], str | None]:
+    """Rung 4: `pdftotext` over the PDF, falling back to `single_page`."""
+    try:
+        # encoding/errors rather than a bare text=True: that decodes
+        # with the *platform* encoding under strict error handling, so
+        # a single undecodable byte anywhere in a paper -- a ligature,
+        # a stray control character, anything under a C-locale host --
+        # raises UnicodeDecodeError, which is not in the except clause
+        # below and would take down a whole report over one PDF. Same
+        # guard the parsed-text branch above already applies.
+        out = subprocess.run(
+            ["pdftotext", "-layout", pdf_path, "-"],
+            capture_output=True,
+            check=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        if single_page:
+            return single_page, None
+        return [], f"couldn't run pdftotext on the PDF ({exc})"
+    from_pdf = _from_pages(out.stdout)
+    if from_pdf:
+        return from_pdf, None
+    if single_page:
+        return single_page, None
+    # An empty rung 4 used to return `([], None)` -- no passages and no
+    # reason, which every caller renders as a blank where an explanation
+    # belongs (#509/m-42). pdftotext exiting 0 on a scanned PDF with no
+    # text layer is the ordinary way to get here.
+    return [], "the PDF has no extractable text layer -- it may be scanned images"
