@@ -399,7 +399,12 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        assert rc == 0
+        # Nonzero: docs/CLI.md's exit code is sync's only documented API
+        # for an unattended caller, and a bib file that yields 0 references
+        # against a non-empty ledger is exactly the SUSPICIOUS state above
+        # -- reporting it as "clean" (rc == 0) would let a broken export
+        # sit unnoticed indefinitely.
+        assert rc == 1
         assert "SUSPICIOUS" in out
         assert "3 ledger item(s)" in out
         assert "Review the" not in out
@@ -427,7 +432,7 @@ class TestRun:
         capsys.readouterr()
 
         write_bib(basic_corpus.BIB_FILE_PATH, "")
-        with pytest.raises(RuntimeError, match="Refusing to prune"):
+        with pytest.raises(ledger.PruneRefused, match="Refusing to prune"):
             sync.run(remove_stale=True)
 
         con = ledger.connect()
@@ -436,6 +441,28 @@ class TestRun:
         finally:
             con.close()
         assert known == {"smith_example_2024", "noauthor_page_nodate", "doe_broken_2023"}
+
+    def test_main_reports_the_remove_stale_refusal_instead_of_a_traceback(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # main() is the unattended entrypoint (docs/CLI.md); run() raising
+        # RuntimeError on this exact shape (see the refusal test above)
+        # must not reach main()'s caller as an uncaught traceback -- an
+        # unattended --remove-stale cron run needs a refusal message and a
+        # nonzero exit, not a stack trace in its log.
+        from chitragupta import logging_setup
+
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        monkeypatch.setattr(logging_setup, "configure", lambda: None)
+        sync.run()
+        capsys.readouterr()
+
+        write_bib(basic_corpus.BIB_FILE_PATH, "")
+        rc = sync.main(["--remove-stale"])
+        err = capsys.readouterr().err
+
+        assert rc == 1
+        assert "Refusing to prune" in err
 
     def test_no_pdf_breakdown_distinguishes_the_failure_reasons(
         self, isolated_config, monkeypatch, capsys

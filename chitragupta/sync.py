@@ -244,7 +244,15 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     # it is resolved, not just the run that produced it. It is not
     # retried, so `failed` (which counts this run's attempts) is zero for
     # it -- and a corpus with a hole in it must never report success.
-    return 1 if (tally.failed or tally.backend_unavailable or kinds["deterministic"]) else 0
+    # `suspicious` (the bib file yielding 0 references against a non-empty
+    # ledger) is included for the same reason: sync's exit code is an
+    # unattended caller's only documented API (docs/CLI.md), so a broken
+    # export must not read as "clean" indefinitely.
+    return (
+        1
+        if (tally.failed or tally.backend_unavailable or kinds["deterministic"] or suspicious)
+        else 0
+    )
 
 
 def main(argv: "list[str] | None" = None) -> int:
@@ -296,6 +304,17 @@ def main(argv: "list[str] | None" = None) -> int:
         # schedule"), not a failure worth persisting.
         print(f"  {exc}", file=sys.stderr)
         return runlock.EXIT_ALREADY_RUNNING
+    except ledger.PruneRefused as exc:
+        # ledger.prune_missing's guard (--remove-stale against a bib file
+        # that yielded 0 references) raises rather than silently wiping
+        # the ledger. main() is the unattended entrypoint (docs/CLI.md),
+        # so that refusal must reach the caller as a message and a
+        # nonzero exit, not an uncaught traceback. A distinct exception
+        # type, not bare RuntimeError, so an unrelated internal bug
+        # elsewhere in run() doesn't get misread as this well-understood
+        # refusal.
+        print(f"  {exc}", file=sys.stderr)
+        return 1
 
 
 def refuse_direct_invocation() -> int:
