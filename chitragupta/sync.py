@@ -101,7 +101,9 @@ def _dispatch_and_apply(con, to_parse, tally) -> None:
     figure (see pdf_text.resolve_workers on why that -- not the
     requested value -- is the number worth reporting).
     """
-    workers, complaint = pdf_text.resolve_workers(len(to_parse))
+    workers, complaint = pdf_text.resolve_workers(
+        len(to_parse), docling=(config.PARSER == "docling")
+    )
     if complaint:
         logger.warning(complaint)
     tally.workers = workers
