@@ -231,13 +231,22 @@ def _bucket_title(bucket: str) -> str:
 
 
 def _not_run_lines(not_run: list[dict]) -> list[str]:
-    """One line per tier that did not run, naming it and why.
+    """One line per coverage gap, naming the tier and why.
 
     Shared by the printed and written forms so the two cannot end up
     saying different things about the same scan -- the same reason
-    `scan_command` is built once and handed to both.
+    `scan_command` is built once and handed to both. `"did not run"` is
+    only said of an entry that is actually `partial: False` -- an entry
+    that ran and still contributed real findings gets its own phrasing,
+    so the two forms cannot contradict the prose `_scan_render.py`
+    prints directly above them (#499).
     """
-    return [f"tier {entry['tier']} did not run: {entry['reason']}" for entry in not_run]
+    return [
+        f"tier {entry['tier']} did not run: {entry['reason']}"
+        if not entry.get("partial")
+        else f"tier {entry['tier']} ran, but not against everything: {entry['reason']}"
+        for entry in not_run
+    ]
 
 
 # The finding fields the JSON payload publishes, in the order they are

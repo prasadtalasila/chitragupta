@@ -3128,6 +3128,37 @@ class TestEmbeddingTier:
         assert entry["partial"] is True
         assert "renamed" in entry["reason"]
 
+    def test_the_denominator_counts_every_recorded_section_not_only_the_ones_with_prose(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # Copilot review on #499: the denominator was `unmatched +
+        # len(sections)`, but `sections` drops a title-matched heading
+        # that contributed no prose (empty, or only code/fences) -- so a
+        # dossier recording 3 sections with one renamed and one matched
+        # but empty used to report "1 of 2" instead of "1 of 3".
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar(
+            "source_2024",
+            [{"text": "A restated claim about the subject.", "label": "text", "page": 2}],
+        )
+        tier3(
+            {("protecting", "restated claim"): 0.95},
+            sections={
+                "Current Heading": ["source_2024"],
+                "Empty Heading": ["k_2024"],
+                "A Heading That Was Renamed": ["k_2024"],
+            },
+        )
+        draft = _tier3_draft(
+            "# Current Heading\n\nThe study reports a strategy of protecting profit here.\n"
+            "\n# Empty Heading\n\n# Trailing\n\nMore unrelated prose.\n"
+        )
+
+        _findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        [entry] = [e for e in not_run if "section(s) the dossier's" in e["reason"]]
+        assert "1 of 3" in entry["reason"]
+
     def test_a_cited_source_absent_from_the_collection_is_named_as_a_partial_gap(
         self, ledger_con, tmp_path, tier3
     ):
@@ -3197,6 +3228,20 @@ class TestReportingWhatDidNotRun:
         assert "this run was" in partial and "not complete" in partial
         assert "The tier that can see one did" not in partial
         assert "1 of 2 section(s)" in partial
+
+    def test_a_partial_entrys_bullet_line_does_not_say_did_not_run(self):
+        # Copilot review on #499: `_not_run_lines` hardcoded "did not
+        # run" for every entry, contradicting the paragraph directly
+        # above a partial entry's bullet, which says the tier ran.
+        text = vc.format_scan(
+            [], 8, 0, [{"tier": "embedding", "reason": "1 of 2 renamed", "partial": True}]
+        )
+        assert "did not run" not in text
+        assert "ran, but not against everything" in text
+
+    def test_the_printed_form_still_says_did_not_run_for_a_tier_that_never_ran(self):
+        text = vc.format_scan([], 8, 0, [{"tier": "embedding", "reason": "no dossier"}])
+        assert "tier embedding did not run: no dossier" in text
 
     def test_the_payload_carries_what_did_not_run(self, ledger_con, tmp_path, capsys):
         draft = tmp_path / "draft.md"

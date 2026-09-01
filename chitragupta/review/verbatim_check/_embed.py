@@ -174,14 +174,20 @@ def _partial_coverage_reasons(
         # "nothing to scope to" case above. A draft with 9 of 10 headings
         # renamed would otherwise scan the one matched section and say
         # nothing about the other nine.
+        #
+        # The denominator is `scope.citekeys_by_section`, not `unmatched
+        # + len(sections)` -- `sections` only holds sections that also
+        # survived prose/sentence extraction, so a matched heading with
+        # no usable prose (an empty section, or one that is only code or
+        # fences) would silently disappear from that count too.
         reasons.append(
             {
                 "reason": (
-                    f"{unmatched} of {unmatched + len(sections)} section(s) the dossier's "
-                    "sections.md records citekeys for could not be matched to this draft's "
-                    "own headings -- probably renamed since `python -m chitragupta.dossier "
-                    "sections <draft> --citekeys --write` last ran; only the matched "
-                    "section(s) below were scanned"
+                    f"{unmatched} of {len(scope.citekeys_by_section)} section(s) the "
+                    "dossier's sections.md records citekeys for could not be matched to "
+                    "this draft's own headings -- probably renamed since `python -m "
+                    "chitragupta.dossier sections <draft> --citekeys --write` last ran; "
+                    "only the matched section(s) below were scanned"
                 ),
                 "partial": True,
             }

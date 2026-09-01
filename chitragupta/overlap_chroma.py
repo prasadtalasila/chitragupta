@@ -201,6 +201,10 @@ def absent_citekeys(collection, citekeys) -> set[str]:
     """
     if not citekeys:
         return set()
-    hits = collection.get(where={"citekey": {"$in": list(citekeys)}}, include=["metadatas"])
+    # Sorted, not just `list()`-ed: a caller may pass a `set`, whose
+    # iteration order is not insertion order and is not stable across
+    # runs, and a query built from it would make `collection.gets` and
+    # any log of what was asked for order-dependent for no reason.
+    hits = collection.get(where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"])
     present = {m.get("citekey") for m in hits["metadatas"]}
     return set(citekeys) - present
