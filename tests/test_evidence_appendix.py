@@ -460,6 +460,26 @@ class TestEmit:
         with pytest.raises(evidence_appendix.config.OutsideContentDir):
             evidence_appendix.emit(outside)
 
+    def test_an_output_dir_outside_the_content_directory_is_refused(
+        self, isolated_config, tmp_path
+    ):
+        # --output-dir's help promises confinement to content/, and the
+        # sidecar is the one artifact made of verbatim quoted spans from
+        # copyrighted PDFs -- the exact content .gitignore exists to keep
+        # contained. The promise was unenforced: emit() used the argument
+        # verbatim, so the sidecar landed anywhere on the filesystem.
+        con = ledger.connect()
+        seed(con, "doe_a_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/survey.md")
+        draft.write_text("Body [@doe_a_2024].\n", encoding="utf-8")
+        write_dossier(draft, "## `doe_a_2024`\n\nquote: the span\n")
+        elsewhere = tmp_path / "outside-content"
+
+        with pytest.raises(evidence_appendix.config.OutsideContentDir):
+            evidence_appendix.emit(draft, out_dir=elsewhere)
+        assert not elsewhere.exists()  # refused before anything was written
+
 
 class TestMain:
     def test_it_prints_the_written_path_and_returns_0(self, isolated_config, capsys):
