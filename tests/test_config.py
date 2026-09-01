@@ -32,10 +32,11 @@ class TestGetHelpers:
         monkeypatch.delenv("MY_VAR", raising=False)
         assert config._get("MY_VAR", "section", "key", default="fallback") == "fallback"
 
-    def test_default_when_leaf_is_not_a_string(self, monkeypatch):
+    def test_raises_when_leaf_is_not_a_string(self, monkeypatch):
         monkeypatch.setattr(config, "_toml", {"section": {"key": 123}})
         monkeypatch.delenv("MY_VAR", raising=False)
-        assert config._get("MY_VAR", "section", "key", default="fallback") == "fallback"
+        with pytest.raises(ValueError, match="must be a string"):
+            config._get("MY_VAR", "section", "key", default="fallback")
 
     def test_float_env_var_wins(self, monkeypatch):
         monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3.0}})
@@ -57,12 +58,31 @@ class TestGetHelpers:
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5) == 1.5
 
-    def test_float_default_when_bool_in_toml(self, monkeypatch):
+    def test_float_raises_when_bool_in_toml(self, monkeypatch):
         # bool is a subclass of int in Python -- must not be silently
         # accepted as a numeric timeout.
         monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": True}})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
-        assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5) == 1.5
+        with pytest.raises(ValueError, match="must be a number"):
+            config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
+
+    def test_float_raises_when_string_in_toml(self, monkeypatch):
+        # A quoted number in TOML used to silently default instead of
+        # signalling the value was never read as a float.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": "3.0"}})
+        monkeypatch.delenv("MY_TIMEOUT", raising=False)
+        with pytest.raises(ValueError, match="must be a number"):
+            config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
+
+    def test_float_raises_named_error_on_unparseable_env_var(self, monkeypatch):
+        # A bare float() call raises "could not convert string to float"
+        # with no indication of which setting was misconfigured -- this
+        # getter's own error names the key and env var like every other
+        # wrong-value case here does.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3.0}})
+        monkeypatch.setenv("MY_TIMEOUT", "not-a-number")
+        with pytest.raises(ValueError, match="MY_TIMEOUT.*must be a number"):
+            config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
 
     @pytest.mark.parametrize(
         "raw,expected",
@@ -94,15 +114,87 @@ class TestGetHelpers:
         monkeypatch.delenv("MY_FLAG", raising=False)
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is False
 
-    def test_bool_default_when_missing_or_wrong_type(self, monkeypatch):
+    def test_bool_default_when_missing(self, monkeypatch):
         monkeypatch.delenv("MY_FLAG", raising=False)
         monkeypatch.setattr(config, "_toml", {"enrich": {}})
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is True
-        # A non-bool in the toml is ignored rather than coerced.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"flag": "yes"}})
-        assert config._get_bool("MY_FLAG", "enrich", "flag", default=False) is False
         monkeypatch.setattr(config, "_toml", {"enrich": "nope"})
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is True
+
+    def test_bool_raises_when_toml_leaf_is_not_a_bool(self, monkeypatch):
+        # A quoted `collapse_citations = "false"` used to silently mean
+        # `default` (often True) instead of the False actually written.
+        monkeypatch.delenv("MY_FLAG", raising=False)
+        monkeypatch.setattr(config, "_toml", {"enrich": {"flag": "yes"}})
+        with pytest.raises(ValueError, match="must be true or false"):
+            config._get_bool("MY_FLAG", "enrich", "flag", default=False)
+
+    def test_int_env_var_wins(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.setenv("MY_COUNT", "9")
+        assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 9
+
+    def test_int_falls_back_to_toml_number(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
+
+    def test_int_default_when_missing(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        assert config._get_int("MY_COUNT", "enrich", "count", default=5) == 5
+
+    def test_int_accepts_a_whole_valued_float(self, monkeypatch):
+        # TOML's own `count = 3.0` and a whole-number env var string both
+        # denote an integer; only the fractional case is rejected below.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3.0}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
+
+    def test_int_accepts_a_quoted_whole_number_in_toml(self, monkeypatch):
+        # Matches _get_positive_int and _get_workers, which have always
+        # accepted a quoted integer -- the same value spelled either way
+        # in a config file is intentionally not a type error here.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": "3"}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
+
+    def test_int_raises_on_fractional_toml_value(self, monkeypatch):
+        # int(_get_float(...)) used to silently truncate 3.9 to 3; this
+        # is the defect the getter exists to close.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3.9}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
+
+    def test_int_raises_on_fractional_env_var(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.setenv("MY_COUNT", "3.5")
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
+
+    def test_int_raises_on_bool_in_toml(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": True}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
+
+    @pytest.mark.parametrize("raw", ["3.0", "1e3"])
+    def test_int_raises_on_a_float_shaped_string(self, monkeypatch, raw):
+        # A string is parsed with int(), not float(): "3.0"/"1e3" read as
+        # a whole number only by a much looser standard than the PR's
+        # own "quoted whole number" contract, and float(str(huge_int))
+        # can lose precision that int() never would.
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": raw}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
+
+    def test_int_raises_on_non_numeric_string(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"count": "many"}})
+        monkeypatch.delenv("MY_COUNT", raising=False)
+        with pytest.raises(ValueError, match="must be a whole number"):
+            config._get_int("MY_COUNT", "enrich", "count", default=1)
 
 
 class TestRealConfigToml:
