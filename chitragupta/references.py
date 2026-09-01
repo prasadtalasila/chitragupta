@@ -124,15 +124,17 @@ def section_start(lines: list[str]) -> int | None:
 
 
 def section_end(lines: list[str], start: int) -> int:
-    """Index just past the heading at `lines[start]`: the next heading of
-    any level after it, or `len(lines)` if none follows. General-purpose
-    despite living beside the References-specific helpers above -- every
-    caller passes `section_start`'s return, but nothing here requires
-    that heading to be References specifically. The same "next heading,
-    any level" extent `chitragupta/dossier/_sections.py`'s `sections()` computes for
-    its own outline, kept as a separate, smaller implementation here
-    rather than importing the dossier (drafting-review) layer from this
-    corpus-adjacent module.
+    """Index of the next heading line after `lines[start]` (of any
+    level), or `len(lines)` if none follows -- i.e. `lines[start:end]` is
+    the whole section `lines[start]` heads, heading included.
+
+    General-purpose despite living beside the References-specific helpers
+    above -- every caller passes `section_start`'s return, but nothing
+    here requires that heading to be References specifically. The same
+    "next heading, any level" extent `chitragupta/dossier/_sections.py`'s
+    `sections()` computes for its own outline, kept as a separate,
+    smaller implementation here rather than importing the dossier
+    (drafting-review) layer from this corpus-adjacent module.
 
     Every caller used to treat "the References heading" as "to end of
     file" -- `apply`/`numbered_markdown` deleted whatever came after it,
