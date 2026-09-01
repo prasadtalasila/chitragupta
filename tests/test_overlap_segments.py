@@ -161,6 +161,14 @@ class TestUnmatchedSections:
         text = "# Title\n\nProse.\n"
         assert self._unmatched(text, {"Title": []}) == 0
 
+    def test_an_empty_recorded_title_with_no_matching_heading_is_still_not_unmatched(self):
+        # The gap an empty-citekey title can hide in: it also fails the
+        # title-match check, but it is still "legitimately thin", not a
+        # renamed heading -- the loop below would drop it via `if not
+        # citekeys` regardless of whether its title matched anything.
+        text = "# Current Heading\n\nProse.\n"
+        assert self._unmatched(text, {"Old Empty Name": []}) == 0
+
 
 class TestMatchedWords:
     def test_it_counts_distinct_words_not_the_sum_of_overlapping_windows(self):

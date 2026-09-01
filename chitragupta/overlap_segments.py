@@ -163,7 +163,13 @@ def draft_sections(
     line_starts = _line_starts(text)
     draft_headings = dossier.sections(text)
     draft_titles = {heading.title for heading in draft_headings}
-    unmatched = sum(1 for title in citekeys_by_section if title not in draft_titles)
+    # Only a title recording real citekeys counts as unmatched -- a
+    # title the dossier records with an empty list is "legitimately
+    # thin", the same case the loop below drops via `if not citekeys`,
+    # not a heading that moved out from under the mapping.
+    unmatched = sum(
+        1 for title, keys in citekeys_by_section.items() if keys and title not in draft_titles
+    )
     found = []
     for section in draft_headings:
         citekeys = citekeys_by_section.get(section.title) or []
