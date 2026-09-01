@@ -2434,7 +2434,7 @@ unattended.
 | Exit code | Meaning | What an unattended caller should do |
 | --- | --- | --- |
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
-| `1` | At least one document failed, or a prior deterministic failure is still unresolved | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
+| `1` | At least one document failed, a prior deterministic failure is still unresolved, or the bib file yielded 0 references against a non-empty ledger (printed as `SUSPICIOUS`) | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why, or fix the bib export/`BIB_FILE` |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
