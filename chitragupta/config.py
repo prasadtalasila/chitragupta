@@ -149,27 +149,64 @@ except FileNotFoundError as _exc:
 
 
 def _get(env_var: str, *toml_path: str, default: str = "") -> str:
-    if env_var in os.environ:
-        return os.environ[env_var]
-    node = _toml
-    for key in toml_path:
-        if not isinstance(node, dict):
-            return default
-        node = node.get(key, {})
-    return node if isinstance(node, str) else default
+    """A string setting. Raises if the TOML node is present with a
+    non-string type instead of silently falling back to `default` --
+    `path = 123` in `[bib]` used to mean the default path with no signal
+    that the value written was never read."""
+    raw = _raw_setting(env_var, toml_path)
+    if raw is None:
+        return default
+    if not isinstance(raw, str):
+        raise ValueError(f"{'/'.join(toml_path)} (or {env_var}) must be a string, not {raw!r}.")
+    return raw
 
 
 def _get_float(env_var: str, *toml_path: str, default: float) -> float:
+    """A numeric setting. Raises if the TOML node is present with a
+    non-numeric type -- previously silently defaulted, the same
+    wrong-typed-value hazard `_get`/`_get_bool` had."""
+    raw = _raw_setting(env_var, toml_path)
+    if raw is None:
+        return default
+    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a number, not {raw!r}."
     if env_var in os.environ:
-        return float(os.environ[env_var])
-    node = _toml
-    for key in toml_path:
-        if not isinstance(node, dict):
-            return default
-        node = node.get(key, {})
-    if isinstance(node, (int, float)) and not isinstance(node, bool):
-        return float(node)
-    return default
+        try:
+            return float(raw)
+        except ValueError:
+            raise ValueError(problem) from None
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(problem)
+    return float(raw)
+
+
+def _get_int(env_var: str, *toml_path: str, default: int) -> int:
+    """A whole-number setting, exact. Rejects a fractional value instead
+    of silently truncating it: `int(_get_float(...))` used to turn
+    `min_tokens = 0.5` into 0 and `topic_min_cluster_size = 3.9` into 3
+    with no signal that the config was never an integer.
+
+    A string is parsed with `int()`, not `float()` -- matching
+    `_get_positive_int`/`_get_workers`'s existing tolerance for a quoted
+    integer, but rejecting `"3.0"`/`"1e3"` as too permissive a reading of
+    "whole number", and never losing precision on a large integer string
+    the way a float round-trip would.
+    """
+    raw = _raw_setting(env_var, toml_path)
+    if raw is None:
+        return default
+    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a whole number, not {raw!r}."
+    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
+        raise ValueError(problem)
+    if isinstance(raw, str):
+        try:
+            return int(raw.strip())
+        except ValueError:
+            raise ValueError(problem) from None
+    if isinstance(raw, float):
+        if not raw.is_integer():
+            raise ValueError(problem)
+        return int(raw)
+    return raw
 
 
 def _get_positive_int(env_var: str, *toml_path: str, default: int) -> int:
@@ -267,15 +304,21 @@ def _raw_setting(env_var: str, toml_path: tuple[str, ...]) -> Any:
 def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:
     """Env vars arrive as strings, so "false"/"0"/"no" have to be read as
     False -- bool("false") is True, which would make every documented way
-    of turning a setting off via the environment silently turn it on."""
+    of turning a setting off via the environment silently turn it on.
+
+    Raises if the TOML node is present with a non-bool type: a quoted
+    `collapse_citations = "false"` used to silently mean the default
+    (often True) rather than the False the user wrote."""
+    raw = _raw_setting(env_var, toml_path)
+    if raw is None:
+        return default
     if env_var in os.environ:
-        return os.environ[env_var].strip().lower() in ("1", "true", "yes", "on")
-    node = _toml
-    for key in toml_path:
-        if not isinstance(node, dict):
-            return default
-        node = node.get(key, {})
-    return node if isinstance(node, bool) else default
+        return raw.strip().lower() in ("1", "true", "yes", "on")
+    if not isinstance(raw, bool):
+        raise ValueError(
+            f"{'/'.join(toml_path)} (or {env_var}) must be true or false, not {raw!r}."
+        )
+    return raw
 
 
 # PROJECT_ROOT / <absolute path> correctly collapses to the absolute path
@@ -496,15 +539,13 @@ PARSER_STALL_TIMEOUT = _get_optional_float(
 # match against. Measured over the same 10 PDFs, pdftotext produced
 # 0.01% such tokens and a since-removed backend produced 4.19% -- three
 # orders of magnitude apart -- so 1% sits well clear of both.
-PARSE_LONG_WORD_CHARS = int(
-    _get_float("PARSE_LONG_WORD_CHARS", "parser", "long_word_chars", default=20)
-)
+PARSE_LONG_WORD_CHARS = _get_int("PARSE_LONG_WORD_CHARS", "parser", "long_word_chars", default=20)
 PARSE_LONG_WORD_RATIO = _get_float(
     "PARSE_LONG_WORD_RATIO", "parser", "long_word_ratio", default=0.01
 )
 # Below this many words the ratio is too noisy to mean anything (a
 # cover page, or a scan that yielded almost no text).
-PARSE_MIN_TOKENS = int(_get_float("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200))
+PARSE_MIN_TOKENS = _get_int("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200)
 
 
 def _get_log_level(env_var: str, *toml_path: str, default: str) -> str:
@@ -646,13 +687,11 @@ SEED_TOPIC_MIN_SIMILARITY = _get_float(
 # be read by a person deciding what to draft, and a topic answering with
 # 238 papers has told them nothing. Raise it when a topic is genuinely
 # broad and you want the tail.
-SEED_TOPIC_MAX_PAPERS = int(
-    _get_float(
-        "SEED_TOPIC_MAX_PAPERS",
-        "enrich",
-        "seed_topic_max_papers",
-        default=25,
-    )
+SEED_TOPIC_MAX_PAPERS = _get_int(
+    "SEED_TOPIC_MAX_PAPERS",
+    "enrich",
+    "seed_topic_max_papers",
+    default=25,
 )
 # Whether the words a topic is *named* by exclude the corpus's own
 # authors. Names, not clusters: this never touches how documents are
@@ -699,23 +738,19 @@ TOPIC_EXCLUDE_AUTHOR_NAMES = _get_bool(
 # spectral initialisation genuinely fails when n_neighbors >= n_samples,
 # which is what the original formula existed for. What it never did was
 # scale *up*.
-TOPIC_MIN_CLUSTER_SIZE = int(
-    _get_float(
-        "TOPIC_MIN_CLUSTER_SIZE",
-        "enrich",
-        "topic_min_cluster_size",
-        default=3,
-    )
+TOPIC_MIN_CLUSTER_SIZE = _get_int(
+    "TOPIC_MIN_CLUSTER_SIZE",
+    "enrich",
+    "topic_min_cluster_size",
+    default=3,
 )
 # HDBSCAN's own default is min_cluster_size; lowering it makes the
 # clustering less conservative and leaves fewer documents as outliers.
-TOPIC_MIN_SAMPLES = int(
-    _get_float(
-        "TOPIC_MIN_SAMPLES",
-        "enrich",
-        "topic_min_samples",
-        default=2,
-    )
+TOPIC_MIN_SAMPLES = _get_int(
+    "TOPIC_MIN_SAMPLES",
+    "enrich",
+    "topic_min_samples",
+    default=2,
 )
 # UMAP's neighbourhood size, the other half of granularity: smaller reads
 # more local structure and yields more, finer topics.
@@ -735,13 +770,11 @@ TOPIC_MIN_SAMPLES = int(
 # 15/10 pairing scoring 0.14 is the finding worth carrying: it was not
 # merely coarse, it was barely repeatable, which no amount of reading its
 # output would have revealed.
-TOPIC_NEIGHBORS = int(
-    _get_float(
-        "TOPIC_NEIGHBORS",
-        "enrich",
-        "topic_neighbors",
-        default=5,
-    )
+TOPIC_NEIGHBORS = _get_int(
+    "TOPIC_NEIGHBORS",
+    "enrich",
+    "topic_neighbors",
+    default=5,
 )
 
 # Whether the bertopic stage also records, per document, every topic it
@@ -797,13 +830,11 @@ TOPIC_MEMBERSHIP_RATIO = _get_float(
 # the ratio binds for most documents and the cap catches only the
 # genuinely diffuse ones -- which is the division of labour the two
 # settings are for.
-TOPIC_MEMBERSHIP_MAX = int(
-    _get_float(
-        "TOPIC_MEMBERSHIP_MAX",
-        "enrich",
-        "topic_membership_max",
-        default=8,
-    )
+TOPIC_MEMBERSHIP_MAX = _get_int(
+    "TOPIC_MEMBERSHIP_MAX",
+    "enrich",
+    "topic_membership_max",
+    default=8,
 )
 # The join of the two topic answers: the phrases the author wrote, and
 # the topics the corpus turned out to have. Written by the `converge`

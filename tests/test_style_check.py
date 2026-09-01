@@ -153,6 +153,42 @@ class TestRunVale:
         assert any(a.startswith("--filter=") and "DialectGB" in a for a in argv)
         assert "--no-exit" in argv
 
+    def test_the_draft_path_is_resolved_not_passed_as_typed(self, draft, monkeypatch):
+        """cwd=config.PROJECT_ROOT below means a relative path is relative
+        to the *caller's* cwd, not vale's -- so vale must always be handed
+        an absolute one, regardless of what the caller passed in (#495)."""
+        monkeypatch.chdir(draft.parent)
+        argv = style_check._vale_argv(Path(draft.name), None)
+        assert argv[-1] == str(draft.resolve())
+
+    def test_a_nonzero_exit_with_empty_stdout_is_reported_not_swallowed(self, draft, monkeypatch):
+        """Vale's own errors -- a broken filter, a missing file, a bad
+        config -- write to stderr and leave stdout empty. Read as "{}"
+        that would report a clean draft vale never actually opened (#495)."""
+        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+
+        def _run(argv, **kwargs):  # pylint: disable=unused-argument
+            return subprocess.CompletedProcess(argv, 1, stdout="", stderr="Fatal: bad filter")
+
+        monkeypatch.setattr(subprocess, "run", _run)
+        with pytest.raises(style_check.MissingBinary, match="Fatal: bad filter"):
+            style_check.run_vale(draft, None)
+
+    def test_a_nonzero_exit_with_findings_on_stdout_is_not_treated_as_an_error(
+        self, draft, monkeypatch
+    ):
+        """`--no-exit` is meant to make findings not affect the exit code,
+        but if a future vale release breaks that contract this must still
+        prefer the findings it did produce over discarding them."""
+        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        payload = {str(draft): [finding()]}
+
+        def _run(argv, **kwargs):  # pylint: disable=unused-argument
+            return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(payload), stderr="")
+
+        monkeypatch.setattr(subprocess, "run", _run)
+        assert style_check.run_vale(draft, None)[0]["Match"] == "simply"
+
 
 class TestCollapse:
     def test_repeats_of_one_token_become_one_finding_with_a_count(self):
@@ -466,6 +502,23 @@ class TestCheckWiring:
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [])
         assert style_check.check(draft)["proposed_language"] is None
+
+    def test_propose_false_skips_the_extra_vale_runs_even_when_unset(self, draft, monkeypatch):
+        """The agenda's `_read_style` never reads `proposed_language`
+        (#495, m-73), so `propose=False` must stop `propose_language`
+        (two more Vale runs) from being called at all -- not just discard
+        its result."""
+        monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
+        calls = []
+
+        def _run(d, lang):  # pylint: disable=unused-argument
+            calls.append(lang)
+            return []
+
+        monkeypatch.setattr(style_check, "run_vale", _run)
+        result = style_check.check(draft, propose=False)
+        assert result["proposed_language"] is None
+        assert calls == [None]  # only the main check's run, no en-GB/en-US probes
 
     def test_findings_include_acronym_drift_alongside_vales_own(self, draft, monkeypatch):
         """The one chitragupta.style_check finding not sourced from Vale still

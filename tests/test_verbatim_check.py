@@ -248,9 +248,9 @@ class TestSentencesCiting:
     def test_returns_paragraphs_mentioning_citekey(self, tmp_path):
         draft = tmp_path / "draft.md"
         draft.write_text(
-            "Paragraph one mentions smith_2024 here.\n\n"
+            "Paragraph one mentions [@smith_2024] here.\n\n"
             "Paragraph two does not.\n\n"
-            "Paragraph three also cites smith_2024 again.\n"
+            "Paragraph three also cites [@smith_2024] again.\n"
         )
         result = vc.sentences_citing(str(draft), "smith_2024")
         assert len(result) == 2
@@ -260,6 +260,27 @@ class TestSentencesCiting:
         draft = tmp_path / "draft.md"
         draft.write_text("Nothing relevant here.\n")
         assert vc.sentences_citing(str(draft), "smith_2024") == []
+
+    def test_a_suffixed_sibling_does_not_match_the_bare_key(self, tmp_path):
+        """#497: bare substring matching made `smith_2024` match a
+        paragraph citing only the suffixed sibling `smith_2024a` -- a
+        BibTeX disambiguation suffix, routine in a real export -- and
+        reported overlap runs against a source that paragraph never
+        cites."""
+        draft = tmp_path / "draft.md"
+        draft.write_text(
+            "Paragraph one cites only the suffixed sibling [@smith_2024a].\n\n"
+            "Paragraph two cites the bare key [@smith_2024].\n"
+        )
+        result = vc.sentences_citing(str(draft), "smith_2024")
+        assert len(result) == 1
+        assert "Paragraph two" in result[0]
+
+    def test_the_suffixed_sibling_itself_still_matches(self, tmp_path):
+        draft = tmp_path / "draft.md"
+        draft.write_text("Paragraph one cites only the suffixed sibling [@smith_2024a].\n")
+        result = vc.sentences_citing(str(draft), "smith_2024a")
+        assert len(result) == 1
 
 
 def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):

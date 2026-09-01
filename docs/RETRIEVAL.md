@@ -94,9 +94,10 @@ Two properties matter when you compare it with the alternative:
   see [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#-what-the-corpus-layer-keeps-when-it-uses-docling).)
 
 Term-frequency statistics are cached to `content/retrieval_index.json`,
-keyed by a cheap per-document fingerprint (the parsed file's size and
-mtime, not its content), so a call only re-tokenizes documents whose text
-changed.
+keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
+`status`, and the parsed file's size and mtime -- not its content), so a
+call only re-tokenizes documents whose text changed or whose ledger
+status moved off `parsed` (#490).
 
 ### 🪟 One window chooser, shared and deterministic
 

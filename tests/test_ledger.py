@@ -441,6 +441,44 @@ class TestUpsertReferenceRehashSkip:
         assert row == (st.st_size, st.st_mtime_ns)
 
 
+class TestUpsertReferenceParsedPathOnHashChange:
+    """#490: a PDF replaced by a new version invalidates the text
+    parsed from the old one -- upsert_reference must not leave
+    parsed_path pointing at it once the hash changes."""
+
+    def test_a_changed_hash_clears_parsed_path(self, ledger_con, tmp_path):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"v1 content")
+        ref = make_reference(pdf_path=str(pdf))
+        ledger.upsert_reference(ledger_con, ref)
+        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+
+        pdf.write_bytes(b"v2 content, totally different")
+        ledger.upsert_reference(ledger_con, ref)
+
+        (parsed_path,) = ledger_con.execute(
+            "SELECT parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
+        ).fetchone()
+        assert parsed_path is None
+
+    def test_an_unchanged_hash_leaves_parsed_path_alone(self, ledger_con, tmp_path):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"stable content")
+        ref = make_reference(pdf_path=str(pdf))
+        ledger.upsert_reference(ledger_con, ref)
+        out = tmp_path / "out.txt"
+        ledger.mark_parsed(ledger_con, ref.citekey, out)
+
+        # A forced reparse of a byte-identical PDF must not discard text
+        # that is still accurate -- only a real parse result should.
+        ledger.upsert_reference(ledger_con, ref, force=True)
+
+        (parsed_path,) = ledger_con.execute(
+            "SELECT parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
+        ).fetchone()
+        assert parsed_path == str(out)
+
+
 class TestMarkParsed:
     def test_sets_status_and_clears_error(self, ledger_con, tmp_path):
         ref = make_reference()

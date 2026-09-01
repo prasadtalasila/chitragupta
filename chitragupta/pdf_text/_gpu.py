@@ -11,8 +11,6 @@ import shutil
 import subprocess
 import sys
 
-from chitragupta import config
-
 # nvidia-smi normally answers in tens of milliseconds; a driver in a bad
 # state is what makes it hang, and that must not hang a sync that would
 # otherwise have run on the CPU.
@@ -116,18 +114,20 @@ def _gpu_free_mib_nvidia_smi() -> "dict[int, int] | None":
     return free or None
 
 
-def usable_devices() -> "tuple[list[int], str | None]":
-    """(the CUDA device numbers worth giving a worker, a complaint).
+def usable_devices(docling: bool) -> "tuple[list[int], str | None]":
+    """(the CUDA device numbers worth giving a worker, a complaint), for
+    a pool that will (`docling=True`) or will not run Docling workers.
 
-    Round-robin over `range(gpu_count())` assumes every card has room for
-    a worker. The run this was written for found GPU 0 already holding
-    44.4 GiB of a previous run's orphaned workers: the four workers
-    assigned to it could not load a model at all, and -- because a worker
-    that fails takes about 19s where a working one takes minutes -- those
-    four went on to claim, and fail, 334 of the corpus's 456 documents. A
-    poisoned worker is not merely useless, it is *faster* than a working
-    one, so the pool feeds it preferentially. Skipping a full card up
-    front is the difference between a slower run and a ruined one.
+    Round-robin over `range(gpu_count(docling))` assumes every card has
+    room for a worker. The run this was written for found GPU 0 already
+    holding 44.4 GiB of a previous run's orphaned workers: the four
+    workers assigned to it could not load a model at all, and -- because
+    a worker that fails takes about 19s where a working one takes
+    minutes -- those four went on to claim, and fail, 334 of the corpus's
+    456 documents. A poisoned worker is not merely useless, it is
+    *faster* than a working one, so the pool feeds it preferentially.
+    Skipping a full card up front is the difference between a slower run
+    and a ruined one.
 
     Forgiving in exactly the way gpu_count is: no nvidia-smi, a reading
     it won't give, or a device list this can't map back to physical cards
@@ -136,7 +136,7 @@ def usable_devices() -> "tuple[list[int], str | None]":
     occasional bad assignment, which _extract_docling now recovers from
     anyway.
     """
-    n_gpus = gpu_count()
+    n_gpus = gpu_count(docling)
     if n_gpus <= 0:
         return [], None
     free = _gpu_free_mib_nvidia_smi()
@@ -206,20 +206,27 @@ def _gpu_count_nvidia_smi() -> "int | None":
     return sum(1 for line in result.stdout.splitlines() if line.startswith("GPU "))
 
 
-def gpu_count() -> int:
+def gpu_count(docling: bool) -> int:
     """CUDA devices Docling could use, or 0.
 
-    Deliberately forgiving: no nvidia-smi, no torch, a torch without
-    CUDA, or a driver mismatch all mean "no GPUs to spread across", which
-    is a perfectly good answer -- not a reason to take down a sync that
-    would otherwise have run on the CPU.
+    `docling` names whether *this pool* will run Docling workers -- not
+    whether `config.PARSER` currently says "docling". `chitragupta/sync.py`'s
+    pool follows the configured backend, but `chitragupta/enrich/docling_parse.py`
+    always runs Docling regardless of `config.PARSER` (enrichment has no
+    other backend), so gating on the config setting made every GPU on a
+    pdftotext-configured host invisible to it -- see #502.
+
+    Deliberately forgiving otherwise: no nvidia-smi, no torch, a torch
+    without CUDA, or a driver mismatch all mean "no GPUs to spread
+    across", which is a perfectly good answer -- not a reason to take
+    down a sync that would otherwise have run on the CPU.
 
     nvidia-smi first, torch second. The fallback matters on a host whose
     driver tools aren't on PATH (a slim container that still passes
     /dev/nvidia* through), where dropping to 0 would silently undo the
     per-worker GPU assignment and put every worker back on cuda:0.
     """
-    if config.PARSER != "docling":
+    if not docling:
         return 0
     counted = _gpu_count_nvidia_smi()
     if counted is not None:

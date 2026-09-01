@@ -102,7 +102,10 @@ def _read_aid_json(draft: Path, aid: str) -> AidSource:
 
 
 def _read_style(draft: Path) -> StyleSource:
-    result = style_check.check(draft)
+    # propose=False: the agenda never reads `proposed_language` (m-73,
+    # issue #495), so the two extra Vale runs `check()` would otherwise
+    # spend computing it on every unset-dialect draft are pure waste here.
+    result = style_check.check(draft, propose=False)
     return StyleSource(available=True, partial=bool(result["vale_error"]), data=result)
 
 

@@ -146,7 +146,14 @@ def _vale_argv(draft: Path, language: str | None) -> list[str]:
         "--output=JSON",
         "--no-exit",  # findings are not this command's exit code; see the docstring
         f"--filter={rule_filter(language)}",
-        str(draft),
+        # Resolved rather than passed as the caller typed it: the process
+        # below runs with cwd=config.PROJECT_ROOT so vale can find the
+        # vendored config, but a relative draft path is relative to the
+        # *caller's* cwd -- from anywhere else, vale fails to find the
+        # file while every Python-side check (resolved against the real
+        # cwd) still passes, and that mismatch is exactly the "could not
+        # run" this function exists to catch (#495).
+        str(Path(draft).resolve()),
     ]
 
 
@@ -166,6 +173,20 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
         check=False,
         cwd=config.PROJECT_ROOT,
     )
+    # `--no-exit` keeps a nonzero exit reserved for vale itself failing to
+    # run -- a missing file, a broken filter, a malformed config -- rather
+    # than for findings. Those failures write to stderr and leave stdout
+    # empty, which `json.loads(result.stdout or "{}")` below would
+    # otherwise read as "{}": a clean run indistinguishable from a run
+    # that never happened (#495). Checked before the parse, not folded
+    # into the except below, because empty-and-nonzero is vale refusing
+    # to run at all, not vale producing output this module can't read.
+    if result.returncode != 0 and not result.stdout.strip():
+        raise MissingBinary(
+            f"vale exited {result.returncode} without checking the draft "
+            f"({result.stderr.strip() or 'no stderr output'}). The draft is "
+            "unaffected -- this check is advisory."
+        )
     # Vale prints `{}` for a clean run and a JSON object keyed by path
     # otherwise. A parse failure is a broken vendored config rather than a
     # broken draft, so it is raised at the caller rather than swallowed
@@ -234,8 +255,14 @@ def propose_language(draft: Path) -> tuple[str, dict[str, int]] | None:
     return best, counts
 
 
-def check(draft: Path, override: str | None = None) -> dict:
-    """Everything one draft's report is built from, as data."""
+def check(draft: Path, override: str | None = None, propose: bool = True) -> dict:
+    """Everything one draft's report is built from, as data.
+
+    `propose=False` skips `propose_language` (two extra Vale runs)
+    entirely -- for a caller that never reads `proposed_language`, such
+    as the review agenda's `_read_style` (#495), those runs cost the
+    same two subprocess launches for nothing every single time it reads
+    the `prose` class."""
     # The Python-side findings are computed first and survive a missing
     # Vale. They used to be appended to `run_vale`'s result, so the
     # `MissingBinary` it raises took the glossary and table findings down
@@ -258,7 +285,9 @@ def check(draft: Path, override: str | None = None) -> dict:
         vale_error = str(exc)
     # Not attempted without Vale: the proposal is measured *by* running
     # it both ways, so on a host without it there is nothing to measure.
-    proposed = propose_language(draft) if language is None and vale_error is None else None
+    proposed = (
+        propose_language(draft) if propose and language is None and vale_error is None else None
+    )
     if proposed:
         proposal = {"language": proposed[0], "findings_by_language": proposed[1]}
     return {

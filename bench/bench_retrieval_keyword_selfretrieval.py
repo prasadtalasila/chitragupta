@@ -105,8 +105,18 @@ def self_check():
     # stripping it must change the outcome: proof the rows below see the
     # fix, not just that they run.
     fake_items = [
-        {"citekey": "real_2024", "title": "digital twin architecture", "parsed_path": None},
-        {"citekey": "decoy_2024", "title": "what what what happened next", "parsed_path": None},
+        {
+            "citekey": "real_2024",
+            "title": "digital twin architecture",
+            "parsed_path": None,
+            "status": "parsed",
+        },
+        {
+            "citekey": "decoy_2024",
+            "title": "what what what happened next",
+            "parsed_path": None,
+            "status": "parsed",
+        },
     ]
     index = {item["citekey"]: retrieval._tokenize_item(item) for item in fake_items}
     wrapped_hits = retrieval._bm25_scores(index, retrieval._tokenize("what is digital twin"))

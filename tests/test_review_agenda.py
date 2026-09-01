@@ -119,7 +119,7 @@ class TestReadStyle:
         monkeypatch.setattr(
             _sources.style_check,
             "check",
-            lambda d, override=None: {"findings": [], "vale_error": None},
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
         source = _sources._read_style(draft)
         assert source == _sources.StyleSource(
@@ -132,7 +132,10 @@ class TestReadStyle:
         monkeypatch.setattr(
             _sources.style_check,
             "check",
-            lambda d, override=None: {"findings": [], "vale_error": "vale is not on PATH"},
+            lambda d, override=None, propose=True: {
+                "findings": [],
+                "vale_error": "vale is not on PATH",
+            },
         )
         source = _sources._read_style(draft)
         assert source.partial is True
@@ -182,7 +185,7 @@ class TestCollect:
         monkeypatch.setattr(
             _sources.style_check,
             "check",
-            lambda d, override=None: {"findings": [], "vale_error": None},
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
         sources = _sources.collect(draft)
         assert set(sources.aids) == set(_sources.AID_NAMES)
@@ -967,7 +970,7 @@ class TestBuildAgendaAndCli:
         monkeypatch.setattr(
             agenda._sources.style_check,
             "check",
-            lambda d, override=None: {"findings": [], "vale_error": None},
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
         return draft
 
@@ -1389,7 +1392,7 @@ class TestBaselineCli:
         monkeypatch.setattr(
             agenda._sources.style_check,
             "check",
-            lambda d, override=None: {"findings": [], "vale_error": None},
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
         return draft
 
@@ -1514,7 +1517,7 @@ class TestBaselineCli:
         monkeypatch.setattr(
             agenda._sources.style_check,
             "check",
-            lambda d, override=None: {
+            lambda d, override=None, propose=True: {
                 "findings": [{"line": 3, "rule": "chitragupta.Weasel", "message": "weasel"}],
                 "vale_error": None,
             },
