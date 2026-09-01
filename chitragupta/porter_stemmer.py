@@ -205,31 +205,47 @@ _STEP4_SUFFIXES = (
 )
 
 
+def _longest_matching_suffix(word: str, suffixes) -> "str | None":
+    """The longest entry of `suffixes` that `word` ends with, or `None` --
+    Porter's steps 2-4 select one suffix per word (the longest that fits,
+    since a shorter listed suffix can itself be a tail of a longer one,
+    e.g. "ational" ends with "tional") and test its condition exactly
+    once, rather than falling through to a shorter suffix when that test
+    fails."""
+    longest = None
+    for suffix in suffixes:
+        if word.endswith(suffix) and (longest is None or len(suffix) > len(longest)):
+            longest = suffix
+    return longest
+
+
 def _step2(word: str) -> str:
-    for suffix, replacement in _STEP2_RULES:
-        stem = _split_suffix(word, suffix)
-        if stem is not None and _measure(stem) > 0:
-            return stem + replacement
-    return word
+    suffix = _longest_matching_suffix(word, (rule[0] for rule in _STEP2_RULES))
+    if suffix is None:
+        return word
+    replacement = dict(_STEP2_RULES)[suffix]
+    stem = word[: -len(suffix)]
+    return stem + replacement if _measure(stem) > 0 else word
 
 
 def _step3(word: str) -> str:
-    for suffix, replacement in _STEP3_RULES:
-        stem = _split_suffix(word, suffix)
-        if stem is not None and _measure(stem) > 0:
-            return stem + replacement
-    return word
+    suffix = _longest_matching_suffix(word, (rule[0] for rule in _STEP3_RULES))
+    if suffix is None:
+        return word
+    replacement = dict(_STEP3_RULES)[suffix]
+    stem = word[: -len(suffix)]
+    return stem + replacement if _measure(stem) > 0 else word
 
 
 def _step4(word: str) -> str:
     stem = _split_suffix(word, "ion")
     if stem is not None and _measure(stem) > 1 and stem.endswith(("s", "t")):
         return stem
-    for suffix in _STEP4_SUFFIXES:
-        stem = _split_suffix(word, suffix)
-        if stem is not None and _measure(stem) > 1:
-            return stem
-    return word
+    suffix = _longest_matching_suffix(word, _STEP4_SUFFIXES)
+    if suffix is None:
+        return word
+    stem = word[: -len(suffix)]
+    return stem if _measure(stem) > 1 else word
 
 
 def _step5a(word: str) -> str:
