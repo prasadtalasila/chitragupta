@@ -59,6 +59,24 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 _BULLET_RE = re.compile(r"^[-*]\s+(.*)$")
 
+# A code fence opener/closer at column 0 (``` or ~~~). Dash lines inside
+# a fenced block are code, not content -- a Description quoting a YAML
+# snippet must not land that snippet in main's commit history. Column 0
+# deliberately, though CommonMark allows three spaces of indent: an
+# indented marker here is far likelier a wrapped bullet's continuation
+# line that happens to start with ``` or ~~~ (seen live on PR 518, where
+# " ~~~)," truncated the composed body as an "unclosed fence") -- and an
+# indented dash line never matches _BULLET_RE anyway, so an indented
+# fence has nothing here to protect against. Matched on the marker's
+# first three characters only; a longer fence still toggles.
+_FENCE_RE = re.compile(r"^(```|~~~)")
+
+# A checkbox bullet's payload. The heading exclusion below catches the
+# template's three checklist sections by name; a checkbox under any
+# other heading (a hand-added "Reviewer checklist") is still a checkbox,
+# not a commit-body bullet.
+_CHECKBOX_RE = re.compile(r"^\[[ xX]\]\s")
+
 # Template sections whose bullets are checkboxes, not content -- matched
 # case-insensitively since a PR body is free text, not the template file
 # itself. "Additional information" is left scannable rather than added
@@ -96,21 +114,43 @@ def _bullets_in(text: str) -> list[str]:
     """
     bullets: list[str] = []
     current = None
-    for line in text.splitlines():
+    for line in _outside_fences(text):
         stripped = line.strip()
         if not stripped:
             current = None
             continue
         match = _BULLET_RE.match(line)
-        if match:
+        if match and not _CHECKBOX_RE.match(match.group(1)):
             bullets.append(match.group(1).strip())
             current = len(bullets) - 1
+            continue
+        if match:
+            current = None  # a checkbox: not content, and not a bullet to continue
             continue
         if line[:1].isspace() and current is not None:
             bullets[current] = f"{bullets[current]} {stripped}"
             continue
         current = None
     return bullets
+
+
+def _outside_fences(text: str) -> "list[str]":
+    """`text`'s lines with every fenced code block removed.
+
+    Each stripped region leaves one blank line behind so a wrapped
+    bullet can never continue across where a fence stood. An unclosed
+    fence swallows the rest of the text, as CommonMark reads it.
+    """
+    kept: list[str] = []
+    fence = None
+    for line in text.splitlines():
+        marker = _FENCE_RE.match(line)
+        if marker and (fence is None or marker.group(1) == fence):
+            fence = marker.group(1) if fence is None else None
+            kept.append("")
+        elif fence is None:
+            kept.append(line)
+    return kept
 
 
 # GitHub's own closing-keyword vocabulary, in every form it accepts, and

@@ -89,6 +89,54 @@ class TestBulletsIn:
         )
         assert merge_pr._bullets_in(text) == ["First change.", "Second change."]
 
+    def test_dash_lines_inside_a_fenced_block_are_not_bullets(self, merge_pr):
+        # A Description quoting a YAML/Markdown snippet carries dash lines
+        # that are code, not content; scraping them lands the snippet
+        # verbatim in main's permanent commit history -- the exact
+        # non-conforming body this script exists to prevent.
+        text = (
+            "- Real change, concrete.\n\n"
+            "```yaml\n"
+            "- not: a bullet\n"
+            "- also: code\n"
+            "```\n\n"
+            "- Second real change.\n"
+        )
+        assert merge_pr._bullets_in(text) == [
+            "Real change, concrete.",
+            "Second real change.",
+        ]
+
+    def test_tilde_fences_are_respected_too(self, merge_pr):
+        text = "~~~\n- code line\n~~~\n\n- Real change.\n"
+        assert merge_pr._bullets_in(text) == ["Real change."]
+
+    def test_an_unclosed_fence_swallows_the_rest_of_the_section(self, merge_pr):
+        # CommonMark runs an unclosed fence to the end of the block; a
+        # dash line after one is still code.
+        text = "- Real change.\n\n```\n- code line\n"
+        assert merge_pr._bullets_in(text) == ["Real change."]
+
+    def test_a_wrapped_bullet_mentioning_a_fence_is_not_truncated(self, merge_pr):
+        # Seen live on PR 518's dry run: a bullet wrapping onto an
+        # indented continuation line that *begins* with ~~~ read as an
+        # unclosed fence opener, truncating the bullet and swallowing the
+        # rest of the section. Only a column-0 marker toggles: an indented
+        # dash line never matched _BULLET_RE in the first place, so
+        # nested-in-bullet fences need no stripping here.
+        text = "- Anchored per CommonMark (both ``` and\n  ~~~), so nothing shifts.\n"
+        assert merge_pr._bullets_in(text) == [
+            "Anchored per CommonMark (both ``` and ~~~), so nothing shifts."
+        ]
+
+    def test_a_checkbox_bullet_is_never_content(self, merge_pr):
+        # The heading exclusion catches the template's three checklist
+        # sections by name; a checkbox under any *other* heading (a
+        # hand-added "Reviewer checklist") is still a checkbox, not a
+        # commit-body bullet.
+        text = "- [x] Ticked a box.\n- [ ] Unticked box.\n- Real change.\n"
+        assert merge_pr._bullets_in(text) == ["Real change."]
+
     def test_a_star_marker_is_normalized_like_a_dash(self, merge_pr):
         assert merge_pr._bullets_in("* Fix the thing.\n") == ["Fix the thing."]
 
