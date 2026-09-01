@@ -10,7 +10,9 @@ import os
 import multiprocessing
 import re
 import sys
+import threading
 import types
+from concurrent.futures import Future
 from pathlib import Path
 
 import pytest
@@ -587,14 +589,17 @@ class TestReusingTheCorpusLayersParse:
         """
         dispatched = []
 
-        def fake_map(jobs_fn, jobs):
-            dispatched.extend(d.citekey for d, _threads in jobs)
-            return [(d.citekey, "ok: parsed", [1, 2]) for d, _threads in jobs]
+        def fake_submit(_fn, job):
+            doc, _threads = job
+            dispatched.append(doc.citekey)
+            future = Future()
+            future.set_result((doc.citekey, "ok: parsed", {doc.citekey: [1, 2]}))
+            return future
 
         monkeypatch.setattr(
             _docling_pool,
             "_executor_for",
-            lambda workers: types.SimpleNamespace(map=fake_map, shutdown=lambda **kw: None),
+            lambda workers: types.SimpleNamespace(submit=fake_submit, shutdown=lambda **kw: None),
         )
         monkeypatch.setattr(pdf_text, "resolve_workers", lambda n, docling: (4, None))
 
@@ -1001,6 +1006,25 @@ class TestParseCorpus:
         assert "simulated docling failure" in status["b2024"]
         assert status["c2024"] == "error: c2024: no PDF to parse"
 
+    def test_serial_path_reports_progress_per_document(
+        self, isolated_config, fake_docling, tmp_path, capsys
+    ):
+        """The single-worker branch used to print nothing at all -- a run
+        over a real corpus was indistinguishable from a hang for the
+        length of every parse (#501, the same convention chitragupta/sync.py
+        and the parallel leg both already follow)."""
+        docs = [
+            CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(tmp_path / f"p{i}.pdf"))
+            for i in range(2)
+        ]
+        for doc in docs:
+            Path(doc.pdf_path).write_bytes(b"%PDF")
+
+        docling_parse.parse_corpus(docs)
+        out = capsys.readouterr().out
+        assert "[1/2] d0" in out
+        assert "[2/2] d1" in out
+
 
 def _thread_executor(workers):
     """A real ProcessPoolExecutor would run parse_one in a child
@@ -1101,6 +1125,169 @@ class TestParseCorpusParallel:
         )
         docling_parse.parse_corpus(self._docs(tmp_path))
         assert submitted == ["d4", "d3", "d2", "d1", "d0"]
+
+    def test_progress_follows_completion_not_submission_order(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path, capsys
+    ):
+        """executor.map() blocks on *submitted* order, so with LPT
+        scheduling nothing prints until the biggest document -- submitted
+        first -- finishes, even if smaller ones land sooner. That is the
+        killed-at-399-of-501 convention (issue #50) verbatim (#501). d4 is
+        the biggest here and is gated to finish last; the fix must still
+        report the smaller ones as they land, not block behind it.
+
+        Gated on `_save_cache` rather than on `parse_one`'s own
+        invocation: that call happens on the *main* thread inside
+        `_drain`'s `as_completed` loop, so by the time it has landed
+        twice, those two futures are guaranteed already fully processed
+        there -- gating on a flag set from inside a *worker* thread's
+        callable races the main thread's bookkeeping for the same
+        future and is not reliably ordered.
+        """
+        real_parse_one = _docling_pool.parse_one
+        real_save_cache = _docling_pool._save_cache
+        two_saved = threading.Event()
+
+        def counting_save(cache):
+            real_save_cache(cache)
+            if len(cache) >= 2:
+                two_saved.set()
+
+        def gated(job):
+            doc, _threads = job
+            if doc.citekey == "d4":
+                assert two_saved.wait(5), "the smaller docs' cache saves never landed"
+            return real_parse_one(job)
+
+        monkeypatch.setattr(_docling_pool, "parse_one", gated)
+        monkeypatch.setattr(_docling_pool, "_save_cache", counting_save)
+        docling_parse.parse_corpus(self._docs(tmp_path))
+        lines = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  [")]
+        assert "d4" not in lines[0]
+        assert "d4" in lines[-1]
+
+
+class TestParseCorpusParallelBrokenPool:
+    """The hazards `sync_pool` already closed, reintroduced in the
+    docling leg (#501): `executor.map()` had no per-future exception
+    handling and no cache save in a `finally`, so one OOM-killed worker
+    lost every fingerprint from the run, completed documents included."""
+
+    @pytest.fixture(autouse=True)
+    def _pool(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(config, "PARSER", "docling")
+        monkeypatch.setattr(config, "PARSER_WORKERS", 4)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+
+    def _docs(self, tmp_path, n=4):
+        docs = []
+        for i in range(n):
+            pdf = tmp_path / f"p{i}.pdf"
+            pdf.write_bytes(b"%PDF" + b"x" * (50 * i))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
+        return docs
+
+    def test_work_finished_before_the_pool_died_is_not_thrown_away(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        from concurrent.futures.process import BrokenProcessPool
+
+        real_parse_one = _docling_pool.parse_one
+
+        def die_on_d0(job):
+            doc, _threads = job
+            if doc.citekey == "d0":
+                raise BrokenProcessPool("a worker died")
+            return real_parse_one(job)
+
+        monkeypatch.setattr(_docling_pool, "parse_one", die_on_d0)
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert status["d0"].startswith("error:")
+        assert all(status[f"d{i}"].startswith("ok:") for i in range(1, 4))
+        cache = json.loads(isolated_config.DOCLING_CACHE_PATH.read_text())
+        assert set(cache["items"]) == {"d1", "d2", "d3"}
+
+    def test_a_pool_already_broken_at_submit_time_is_handled_too(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path, capsys
+    ):
+        """submit() itself raises once the pool is already known-broken --
+        a second path to the same outcome, one `as_completed` never sees."""
+        from concurrent.futures.process import BrokenProcessPool
+
+        class DeadExecutor:
+            def submit(self, *args, **kwargs):
+                raise BrokenProcessPool("pool was already dead")
+
+            def shutdown(self, *args, **kwargs):
+                pass
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: DeadExecutor())
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert all(status[f"d{i}"].startswith("error:") for i in range(4))
+        assert "worker" in capsys.readouterr().out.lower()
+
+    def test_a_break_mid_submission_keeps_the_futures_already_submitted(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """Building `futures` via a single list comprehension would let a
+        BrokenProcessPool raised partway through the submit loop discard
+        every future already handed to the executor -- real, in-flight
+        work thrown away for the same reason this whole PR exists.
+        Submitting biggest-first, d3 and d2 must be submitted (and
+        therefore still collected) before d1's submit() blows up."""
+        from concurrent.futures import ThreadPoolExecutor
+        from concurrent.futures.process import BrokenProcessPool
+
+        real_executor = ThreadPoolExecutor(max_workers=4)
+
+        class PartiallyDeadExecutor:
+            def submit(self, fn, job):
+                doc, _threads = job
+                if doc.citekey == "d1":
+                    raise BrokenProcessPool("died mid-submission")
+                return real_executor.submit(fn, job)
+
+            def shutdown(self, *args, **kwargs):
+                real_executor.shutdown(*args, **kwargs)
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: PartiallyDeadExecutor())
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert status["d3"].startswith("ok:")
+        assert status["d2"].startswith("ok:")
+        assert status["d1"].startswith("error:")
+        assert status["d0"].startswith("error:")
+
+
+class TestParseOneFingerprint:
+    def test_fingerprint_is_captured_before_conversion_not_after(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """A PDF replaced while the parse is running must be recorded
+        against the fingerprint it had when the parse *started*, matching
+        the serial path's stat-before-parse order -- not the one it ends
+        with, which would be served forever against text read from the
+        old bytes (#501)."""
+        pdf = tmp_path / "p.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        doc = CorpusDoc(citekey="p2024", title="t", pdf_path=str(pdf))
+        pre_stat = os.stat(pdf)
+        pre_fingerprint = [pre_stat.st_size, pre_stat.st_mtime_ns]
+
+        real_convert = FakeDocumentConverter.convert
+
+        def convert_then_replace(self, pdf_path):
+            result = real_convert(self, pdf_path)
+            pdf.write_bytes(b"%PDF-1.4" + b"x" * 500)
+            return result
+
+        monkeypatch.setattr(FakeDocumentConverter, "convert", convert_then_replace)
+        _citekey, status, cache = _docling_pool.parse_one((doc, None))
+        assert status.startswith("ok:")
+        assert cache[doc.citekey] == pre_fingerprint
 
 
 class TestParallelHelpers:
@@ -1370,16 +1557,39 @@ class TestParseCorpusInterrupt:
     def test_interrupt_keeps_finished_work_and_says_so(
         self, isolated_config, fake_docling, monkeypatch, tmp_path, capsys
     ):
-        seen = []
+        """Now that results land in *completion* order (as_completed), not
+        submission order (map), the interrupt has to be gated on a real
+        completion count rather than on invocation count -- otherwise
+        which job "wins" the race to raise first is a coin flip. d0 is
+        the smallest file, so LPT scheduling submits it last; it blocks
+        until two other jobs' fingerprints have actually been persisted,
+        then blows up the pool deterministically.
+
+        Gated on `_save_cache`, not on `parse_one`'s own invocation: that
+        call happens on the *main* thread inside `_drain`'s
+        `as_completed` loop, so two landed saves guarantee those two
+        futures are already fully processed there. A flag set from
+        inside a *worker* thread's callable instead races the main
+        thread's own bookkeeping for that same future.
+        """
         real = _docling_pool.parse_one
+        real_save_cache = _docling_pool._save_cache
+        two_saved = threading.Event()
+
+        def counting_save(cache):
+            real_save_cache(cache)
+            if len(cache) >= 2:
+                two_saved.set()
 
         def interrupt_after_two(job):
-            seen.append(job[0].citekey)
-            if len(seen) == 3:
+            doc, _threads = job
+            if doc.citekey == "d0":
+                assert two_saved.wait(5), "the other jobs' cache saves never landed"
                 raise KeyboardInterrupt
             return real(job)
 
         monkeypatch.setattr(_docling_pool, "parse_one", interrupt_after_two)
+        monkeypatch.setattr(_docling_pool, "_save_cache", counting_save)
         docs = self._docs(tmp_path)
         with pytest.raises(KeyboardInterrupt):
             docling_parse.parse_corpus(docs)
@@ -1389,7 +1599,7 @@ class TestParseCorpusInterrupt:
         # The cache is persisted on the way out, so the documents that did
         # finish are not re-parsed on the next run.
         cache = json.loads(isolated_config.DOCLING_CACHE_PATH.read_text())
-        assert len(cache["items"]) >= 1
+        assert len(cache["items"]) >= 2
 
     def test_progress_is_reported_as_documents_land(
         self, isolated_config, fake_docling, tmp_path, capsys
