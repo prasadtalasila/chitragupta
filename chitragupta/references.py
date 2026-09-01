@@ -152,6 +152,12 @@ def section_end(lines: list[str], start: int) -> int:
     return len(lines)
 
 
+class MissingCitekey(KeyError):
+    """A citekey cited in a draft with no ledger row (m-60): a `KeyError`
+    subclass, so every existing `except KeyError` still catches it, but a
+    caller wrapping a whole pipeline can catch this one refusal by name."""
+
+
 def entries(citekeys: list[str], con) -> dict[str, str]:
     """citekey -> its IEEE entry, without a number, for every key given.
 
@@ -176,7 +182,7 @@ def entries(citekeys: list[str], con) -> dict[str, str]:
     }
     missing = [k for k in citekeys if k not in rows]
     if missing:
-        raise KeyError(
+        raise MissingCitekey(
             "citekey(s) cited in the draft but missing from the ledger -- "
             "run `python -m chitragupta.corpus sync`, or re-check "
             "`python -m chitragupta.draft gate` "

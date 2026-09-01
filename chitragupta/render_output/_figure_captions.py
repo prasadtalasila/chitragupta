@@ -96,11 +96,39 @@ def _caption_wrap_for(figure: "Figure", marker: str, output_format: str) -> str:
     `\\thefigure` is ever written, unlike the hand-authored float this
     replaces. Everything else has no counter to defer to, so the number is
     written here, the same reasoning `_tables._caption_for` uses for `md`.
+
+    Issue 494: an earlier revision spelled the LaTeX-bound branch as one
+    `\\begin{figure}...\\end{figure}` block with the caption interpolated
+    straight into `\\caption{...}`. Pandoc's raw-TeX passthrough reads a
+    `\\begin{env}...\\end{env}` span as one opaque, byte-identical block --
+    the same mechanism `_figures.py`'s own `\\input{...}` markers rely on
+    -- so everything between those two commands, caption included, reached
+    pdflatex unparsed and unescaped: `&` broke the compile, `%` truncated
+    the rest of the line including the `\\label`, and `[@key]` reached the
+    PDF as literal, unresolved text. `_tables._caption_for` never has this
+    problem, because a table's caption is pandoc's own native caption
+    syntax, not text glued inside a hand-written raw block.
+
+    The fix mirrors that: `\\begin{figure}` and `\\end{figure}` are each
+    their own explicit raw block (a fenced ` ```{=latex} ` block, pandoc's
+    own syntax for "copy this verbatim to the writer"), so neither one
+    reads ahead for a matching partner and swallows what sits between them.
+    The caption itself is ordinary pandoc Markdown -- Pandoc-processed,
+    citations and all -- with only the `\\caption{`/`}\\label{fig:...}`
+    wrapper injected as raw *inline* spans (the same
+    `` `...`{=latex} `` idiom `_figureref_for` below already uses), so it
+    survives the Markdown reader as `\\caption{...}` around whatever the
+    caption actually says rather than around its literal source text.
     """
     if output_format in _LATEX_BOUND:
+        caption_line = (
+            f"`\\caption{{`{{=latex}}{figure.caption}`}}\\label{{fig:{figure.id}}}`{{=latex}}"
+        )
         return (
-            f"\\begin{{figure}}\n{marker}\n"
-            f"\\caption{{{figure.caption}}}\n\\label{{fig:{figure.id}}}\n\\end{{figure}}"
+            "```{=latex}\n\\begin{figure}\n```\n"
+            f"{marker}\n\n"
+            f"{caption_line}\n\n"
+            "```{=latex}\n\\end{figure}\n```"
         )
     return f"{marker}\n**Figure {figure.number}:** {figure.caption}"
 
@@ -169,11 +197,39 @@ def substitute_refs(text: str, output_format: str, declared: "list[Figure] | Non
     return _FIGUREREF_RE.sub(replace, text)
 
 
+def _continuation_line(text: str, match: "re.Match[str]") -> str | None:
+    """The line right after `match`'s caption, if it looks like the same
+    prose paragraph continuing rather than a new block.
+
+    `_FIGURE_CAPTION_PAIR_RE` takes any non-blank line under a marker as
+    the caption (m-59): a paragraph that was never meant to be a caption
+    at all -- one that just happens to start right under the marker, with
+    no blank line separating them, the ordinary Markdown shape for a
+    wrapped sentence -- has its first line silently read as a one-line
+    caption while its second line is left as ordinary text directly
+    beneath it. A non-blank line immediately following the caption is
+    this shape's symptom: it means the "caption" may really be the first
+    line of a longer paragraph, not a deliberate one-line caption. A
+    following line that starts a new marker, heading or comment is a
+    deliberate abutment, not this; excluded the same way the caption
+    group itself excludes them.
+    """
+    rest = text[match.end() :]
+    if not rest.startswith("\n"):
+        return None
+    line = rest[1:].split("\n", 1)[0]
+    stripped = line.strip()
+    if stripped and not line.lstrip().startswith(("<!--", "%", "#")):
+        return stripped
+    return None
+
+
 def warnings(text: str) -> "list[str]":
     """A captioned figure's id, and a `figureref` naming one -- mirroring
     `_tables.warnings`'s duplicate-id and unknown-ref checks. A `.tex`
     fragment carries neither marker, so both are empty there."""
-    declared_ids = [figure.id for figure in figures(text)]
+    declared = figures(text)
+    declared_ids = [figure.id for figure in declared]
     found = [
         f"`{figure_id}` is declared by more than one figure"
         for figure_id in sorted(set(declared_ids))
@@ -182,5 +238,14 @@ def warnings(text: str) -> "list[str]":
     found += [
         f"`{ref}` is referred to but no figure declares it"
         for ref in sorted({ref for ref, _ in references(text)} - set(declared_ids))
+    ]
+    found += [
+        f"`{figure.id}`'s caption is immediately followed by a non-blank line "
+        f'("{continuation}") -- the caption may really be the first line of that '
+        "paragraph, not a deliberate one-line caption; add a blank line after the "
+        "marker if it should be uncaptioned, or after the caption if it should stay "
+        "one line"
+        for figure, match in zip(declared, _FIGURE_CAPTION_PAIR_RE.finditer(text))
+        if (continuation := _continuation_line(text, match)) is not None
     ]
     return found

@@ -5,7 +5,7 @@ import subprocess
 
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, references
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
@@ -182,14 +182,17 @@ def main(argv: list[str] | None = None) -> int:
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows
         print(f"[error] pandoc failed: {exc.stderr or exc}{_figure_repair_hint(args.input)}")
         return 1
-    except KeyError as exc:
+    except references.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a
         # cited key that isn't there stops it (references.build_section's
         # own error names the keys and what to run). Reported the same way
         # as any other render failure rather than as a traceback: a genre
         # skill's documented reaction to `[error]` is to warn and carry on
         # presenting the draft, which is right here too -- the draft is
-        # fine, only this one derived copy could not be built.
+        # fine, only this one derived copy could not be built. Caught by
+        # this specific exception, not a bare `except KeyError`, so a
+        # genuine bug elsewhere in the pipeline surfaces as itself instead
+        # of being reported as though it were this refusal (m-60).
         print(f"[error] {exc.args[0] if exc.args else exc}")
         return 1
 

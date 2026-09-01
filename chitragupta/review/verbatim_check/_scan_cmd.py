@@ -10,7 +10,7 @@ import shlex
 import sys
 from pathlib import Path
 
-from chitragupta import config, review
+from chitragupta import config, overlap_chroma, review
 from chitragupta.review.verbatim_check._scan import (
     _flags,
     _matched_note,
@@ -163,6 +163,14 @@ def scan_payload(
             # `_BASELINE_FIELDS` and ignores everything else, so a payload
             # written before this key existed still reads.
             "tiers_not_run": not_run or [],
+            # The collection name tier 3 reads or writes *right now*
+            # (`overlap_chroma.corpus_key()`), recorded even when the tier
+            # did not run -- `[enrich].embedding_model` alone decides it,
+            # so it costs nothing to compute. `recheck` compares this
+            # against a rescan's own value to warn when the corpus was
+            # rebuilt under a different model between the baseline and
+            # now, which `tiers_not_run` alone cannot say (#500).
+            "corpus_key": overlap_chroma.corpus_key(),
             "findings": [published(f) for f in findings],
         }
     )
