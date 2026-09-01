@@ -197,11 +197,39 @@ def substitute_refs(text: str, output_format: str, declared: "list[Figure] | Non
     return _FIGUREREF_RE.sub(replace, text)
 
 
+def _continuation_line(text: str, match: "re.Match[str]") -> str | None:
+    """The line right after `match`'s caption, if it looks like the same
+    prose paragraph continuing rather than a new block.
+
+    `_FIGURE_CAPTION_PAIR_RE` takes any non-blank line under a marker as
+    the caption (m-59): a paragraph that was never meant to be a caption
+    at all -- one that just happens to start right under the marker, with
+    no blank line separating them, the ordinary Markdown shape for a
+    wrapped sentence -- has its first line silently read as a one-line
+    caption while its second line is left as ordinary text directly
+    beneath it. A non-blank line immediately following the caption is
+    this shape's symptom: it means the "caption" may really be the first
+    line of a longer paragraph, not a deliberate one-line caption. A
+    following line that starts a new marker, heading or comment is a
+    deliberate abutment, not this; excluded the same way the caption
+    group itself excludes them.
+    """
+    rest = text[match.end() :]
+    if not rest.startswith("\n"):
+        return None
+    line = rest[1:].split("\n", 1)[0]
+    stripped = line.strip()
+    if stripped and not line.lstrip().startswith(("<!--", "%", "#")):
+        return stripped
+    return None
+
+
 def warnings(text: str) -> "list[str]":
     """A captioned figure's id, and a `figureref` naming one -- mirroring
     `_tables.warnings`'s duplicate-id and unknown-ref checks. A `.tex`
     fragment carries neither marker, so both are empty there."""
-    declared_ids = [figure.id for figure in figures(text)]
+    declared = figures(text)
+    declared_ids = [figure.id for figure in declared]
     found = [
         f"`{figure_id}` is declared by more than one figure"
         for figure_id in sorted(set(declared_ids))
@@ -210,5 +238,14 @@ def warnings(text: str) -> "list[str]":
     found += [
         f"`{ref}` is referred to but no figure declares it"
         for ref in sorted({ref for ref, _ in references(text)} - set(declared_ids))
+    ]
+    found += [
+        f"`{figure.id}`'s caption is immediately followed by a non-blank line "
+        f'("{continuation}") -- the caption may really be the first line of that '
+        "paragraph, not a deliberate one-line caption; add a blank line after the "
+        "marker if it should be uncaptioned, or after the caption if it should stay "
+        "one line"
+        for figure, match in zip(declared, _FIGURE_CAPTION_PAIR_RE.finditer(text))
+        if (continuation := _continuation_line(text, match)) is not None
     ]
     return found

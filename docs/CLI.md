@@ -1586,9 +1586,10 @@ The payload carries four things:
   a verdict, the aid, the draft, the exact command, the version.
 - The three flags that set the reporting floor: `min_run`, `gap`,
   `limit`.
-- How many findings the allowlist suppressed (`suppressed`), and which
-  tiers did not run at all and why (`tiers_not_run`). Both are described
-  below.
+- How many findings the allowlist suppressed (`suppressed`), which tiers
+  did not run at all and why (`tiers_not_run`), and the Chroma collection
+  name the embedding tier reads or writes right now (`corpus_key`, #500).
+  All three are described below.
 - One object per finding, with `id`, `citekey`, `page`, `end_page`,
   `tier`, `span_words`, `matched_words`, `start`, `line`, `char_start`,
   `char_end`, `draft_text`, `fragment`, `context`, `cites_source`,
@@ -1624,6 +1625,12 @@ any of them.
 That is what the field is for. `findings: []` alone cannot distinguish a
 draft that was checked and is clean from one a tier never looked at. The
 printed and written reports say the same thing in prose.
+
+`corpus_key` is `embed_index.collection_name()`, namespaced by
+`[enrich].embedding_model` -- recorded even when `tiers_not_run` lists
+`embedding`, since `config.EMBEDDING_MODEL` alone decides it and costs
+nothing to compute. `recheck` reads it, and `tiers_not_run`, off a
+baseline to warn when either has changed since (#500) -- see below.
 
 `page` and `end_page` are the lowest and highest page an n-gram in the
 run actually *starts* on (#131). They are equal for an ordinary
@@ -1714,6 +1721,13 @@ score as no improvement. A rewrite that resolves its own finding by
 lifting from a *different* source shows up as a `new` finding and a delta
 that did not fall, which is the case the count exists to catch.
 
+Every `tier: "embedding"` finding is excluded too (#500). That tier is
+advisory only -- its findings move with tier availability and the
+embedding model, not only with an edit -- so counting them would stall
+`agenda-reviser`'s strictly-falling loop for reasons no edit caused: a
+baseline taken before the enrich group was installed, say, would then
+report a run of embedding findings as `new` on the very next rescan.
+
 The floor comes from the baseline, not from a flag. Two scans are only
 comparable at the same `--min-run`/`--gap`, and the baseline's already
 happened; a `--min-run` here would let a strict run be compared against a
@@ -1736,7 +1750,9 @@ naming the remedy:
   `resolved` findings are printed straight out of the baseline and never
   rescanned. So a payload can carry an `id` and still be missing
   something the output line reads, which is exactly what one written
-  between `id` and `end_page` landing does.
+  between `id` and `end_page` landing does -- and, since #500, one
+  written before `objective_before`/`objective_after` started reading
+  `tier` off every finding.
 - one from a **different release series** (`major.minor`). What counts as
   one finding changes between releases -- #131 made a run that used to
   report as two merge into one, giving wording nobody touched a different
@@ -1755,6 +1771,18 @@ Refusing rather than warning costs nothing here: `recheck` re-scans
 anyway, so if it can run at all then `scan --write` can too, and against
 a warm index that is a sub-second re-take. The payload still carries
 `baseline_version` as provenance for the comparison it did make.
+
+One case warns instead of refusing (#500): a baseline whose
+`tiers_not_run` or `corpus_key` disagree with this rescan's own. Neither
+makes the baseline invalid to compare against -- tiers 1 and 2 are
+unaffected either way, and `objective_before`/`objective_after` already
+exclude tier 3 -- so `recheck` still reports `resolved`/`persisting`/`new`
+and adds a `warnings` line (both forms) saying the enrich group's
+installed state or the corpus's embedding model changed since the
+baseline, so an `embedding` entry in `resolved`/`new` may reflect that
+rather than an edit. A baseline predating `corpus_key` is not treated as
+a mismatch, the same posture the release-series check takes on a missing
+`version`.
 
 There is no `--write`. A scan report is kept beside the draft because it
 is read again months later; a comparison against one particular baseline

@@ -1,5 +1,5 @@
 """Building the pandoc invocation itself: the CSL style a render actually
-uses, and the argv/environment pandoc runs under.
+uses, the argv/environment pandoc runs under, and running it.
 
 Split from `chitragupta/render_output/__init__.py` (#441). Re-exported
 from there like every other `_X.py` sibling in this package -- see that
@@ -9,6 +9,8 @@ stay identical to the single module it replaced.
 
 import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 from chitragupta import config
@@ -181,3 +183,20 @@ def _pandoc_command(
         env = {**os.environ, "TEXINPUTS": f"{input_path.resolve().parent}:"}
     cmd += ["-o", str(out_path)]
     return cmd, env
+
+
+def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
+    """Runs pandoc, then forwards any stderr it printed even though it
+    exited 0.
+
+    `capture_output=True` was silently discarding it on the success path
+    (M-7) -- citeproc's own diagnostics ("citation not found", a missing
+    image) land on pandoc's stderr with a zero exit code, not a raised
+    `CalledProcessError`, so nothing surfaced them. `check=True` still
+    raises on a nonzero exit; that exception already carries its own
+    stderr, so this is only for the case a raise never reaches.
+    """
+    result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+    if result.stderr.strip():
+        for line in result.stderr.splitlines():
+            print(f"[pandoc] {line}", file=sys.stderr)

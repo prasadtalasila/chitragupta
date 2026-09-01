@@ -53,6 +53,7 @@ for the same reason those exist: a caller printing to stderr at render
 time needs the same three checks a style report needs, computed once.
 """
 
+import itertools
 import re
 from typing import NamedTuple
 
@@ -125,11 +126,17 @@ def references(text: str) -> "list[tuple[str, int]]":
 
 def _substitute_ascii(text: str) -> str:
     """`text` on the `md` path: a numbered label above each untouched block."""
-    numbers = {m.group("id"): n for n, m in enumerate(_EQUATION_ASCII_RE.finditer(text), start=1)}
+    # m-57: numbered by position, not by a dict keyed on id -- the same
+    # reason `_tables.substitute` numbers captions by position instead of
+    # a dict: two equations sharing an id would otherwise both look up
+    # the *same* (last-written) dict entry and render the same number.
+    # `sub` visits matches in document order, so a plain counter numbers
+    # each one correctly regardless of what id it claims.
+    counter = itertools.count(1)
 
     def _replace(match: "re.Match[str]") -> str:
         indent = match.group("indent")
-        number = numbers[match.group("id")]
+        number = next(counter)
         return f"{indent}**Equation {number}:**\n{match.group('block')}"
 
     return _EQUATION_ASCII_RE.sub(_replace, text)
@@ -139,11 +146,16 @@ def _substitute_dollar(text: str, output_format: str) -> str:
     """`text` on every path `_math.substitute` has already run real math
     through: a real `equation` environment for a LaTeX-bound format, a
     written number beside the kept `$$...$$` for everything else."""
-    numbers = {m.group("id"): n for n, m in enumerate(_EQUATION_DOLLAR_RE.finditer(text), start=1)}
+    # m-57: same positional fix as _substitute_ascii above. A LaTeX-bound
+    # format's \label still keys off the id, not the number -- two
+    # equations sharing an id still produce a multiply-defined label, but
+    # that is a draft-authoring error `warnings` below already reports
+    # ("declared by more than one equation"), not a numbering bug.
+    counter = itertools.count(1)
 
     def _replace(match: "re.Match[str]") -> str:
         indent = match.group("indent")
-        number = numbers[match.group("id")]
+        number = next(counter)
         if output_format in _LATEX_BOUND:
             return (
                 f"{indent}\\begin{{equation}}\n{match.group('latex')}\n"
