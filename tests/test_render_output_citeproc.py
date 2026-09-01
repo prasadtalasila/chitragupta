@@ -44,6 +44,21 @@ class TestSwapManualRefsForCiteproc:
         text = "A claim \\citep{k}.\n\n\\section{References}\n"
         assert render_output._swap_manual_refs_for_citeproc(text) == text
 
+    def test_content_after_references_survives_in_the_pandoc_copy(self):
+        # M-8: this used to drop everything from the heading to end of
+        # file -- an appendix or acknowledgments after References vanished
+        # from tex/pdf/docx output while the md path (references.apply)
+        # kept it, so two renders of one draft disagreed.
+        text = (
+            "A claim [@k].\n\n"
+            "## References\n\n[1] A Paper, 2024. `k`\n\n"
+            "## Acknowledgments\n\nThanks to everyone.\n"
+        )
+        out = render_output._swap_manual_refs_for_citeproc(text)
+        assert "## Acknowledgments" in out
+        assert "Thanks to everyone." in out
+        assert out.index("::: {#refs}") < out.index("## Acknowledgments")
+
 
 class TestAliasFor:
     def test_replaces_double_hyphen(self):

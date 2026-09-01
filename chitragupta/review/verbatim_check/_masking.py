@@ -47,16 +47,23 @@ def _mask_for_scan(text: str) -> str:
     (titles, venues), so scanning it would flag every source's own title
     page as "verbatim overlap with itself".
 
-    `references.section_start` is handed the *original* lines (its own
-    contract -- it blanks internally just to find the heading) and
-    returns an index into them; `_blank_code` never changes line count,
-    so that index still lines up with the blanked text's lines.
+    `references.section_start`/`section_end` are handed the *original*
+    lines (their own contract -- they blank internally just to find
+    headings) and return indices into them; `_blank_code` never changes
+    line count, so those indices still line up with the blanked text's
+    lines.
+
+    Only the section itself is blanked, not everything after it -- an
+    appendix or acknowledgments section introduced by its own heading
+    after References is not generated from bib metadata, so lifted prose
+    there must stay scannable rather than reading clean (M-8/m-33/m-34).
     """
     original_lines = text.splitlines(keepends=True)
     idx = references.section_start(original_lines)
     lines = citation_gate._blank_code(text).splitlines(keepends=True)
     if idx is not None:
-        lines = lines[:idx] + [re.sub(r"[^\n]", " ", line) for line in lines[idx:]]
+        end = references.section_end(original_lines, idx)
+        lines = lines[:idx] + [re.sub(r"[^\n]", " ", line) for line in lines[idx:end]] + lines[end:]
     return "".join(lines)
 
 
