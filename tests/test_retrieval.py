@@ -201,6 +201,26 @@ class TestSearch:
 
         assert retrieval.search("blockchain") == []
 
+    def test_a_cached_hit_is_invalidated_by_a_later_parse_failure(self, ledger_con, tmp_path):
+        # The real #490 order: search() once while 'parsed' (writing the
+        # on-disk cache against a fingerprint that says nothing about
+        # status), then a parse failure on the *same* file path -- title,
+        # parsed_path and the file's own stat are all unchanged, so a
+        # fingerprint blind to status would still hit and serve the
+        # cached, pre-failure tokens straight past _full_text's guard.
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
+        ref = make_reference(citekey="a2024", title="Unrelated Title")
+        ledger.upsert_reference(ledger_con, ref)
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+
+        results = retrieval.search("blockchain")
+        assert len(results) == 1
+        assert results[0].citekey == "a2024"
+
+        ledger.mark_parse_failed(ledger_con, "a2024", "corrupt pdf")
+        assert retrieval.search("blockchain") == []
+
     def test_no_matching_terms_excludes_item(self, ledger_con):
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="a2024", title="Completely unrelated")

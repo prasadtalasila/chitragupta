@@ -37,8 +37,15 @@ def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
 
 
 def _fingerprint(item) -> list:
+    # `status` matters as much as the file itself: a parse failure after
+    # a PDF change can leave parsed_path -- and the file it names -- byte
+    # identical while the row moves off 'parsed' (#490). Without it here,
+    # a cache entry written before that failure keeps matching and
+    # `_load_index`/`_ephemeral_index` skip `_tokenize_item` -> `_full_text`
+    # entirely, serving the superseded text through the very guard meant
+    # to stop that.
     exists, size, mtime_ns = _parsed_file_stat(item["parsed_path"])
-    return [item["title"] or "", item["parsed_path"] or "", exists, size, mtime_ns]
+    return [item["title"] or "", item["parsed_path"] or "", item["status"], exists, size, mtime_ns]
 
 
 def _load_cache() -> dict:
