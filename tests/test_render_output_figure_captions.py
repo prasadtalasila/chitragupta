@@ -112,3 +112,29 @@ class TestWarnings:
         text = CAPTIONED_MD + "\n<!-- figureref: ghost -->\n"
         warnings = render_output._figure_captions.warnings(text)
         assert any("ghost" in w and "no figure declares it" in w for w in warnings)
+
+    def test_a_caption_with_no_blank_line_before_the_next_prose_is_flagged(self):
+        text = "<!-- figure: figures/fig1 -->\nOne reading path.\nover two lines.\n"
+        warnings = render_output._figure_captions.warnings(text)
+        assert any(
+            "fig1" in w and "over two lines." in w and "non-blank line" in w for w in warnings
+        )
+
+    def test_a_caption_followed_by_a_blank_line_is_not_flagged(self):
+        assert render_output._figure_captions.warnings(CAPTIONED_MD) == []
+
+    def test_a_caption_with_no_trailing_newline_at_all_is_not_flagged(self):
+        # The caption is the very last line of the file -- no `\n` after
+        # it at all, not even a blank one, so there is no next line to
+        # read as a continuation.
+        text = "<!-- figure: figures/fig1 -->\nOne reading path."
+        warnings = render_output._figure_captions.warnings(text)
+        assert not any("non-blank line" in w for w in warnings)
+
+    def test_a_caption_immediately_followed_by_a_new_marker_is_not_flagged(self):
+        text = (
+            "<!-- figure: figures/fig1 -->\nOne reading path.\n"
+            "<!-- figure: figures/fig2 -->\nA second caption.\n"
+        )
+        warnings = render_output._figure_captions.warnings(text)
+        assert not any("non-blank line" in w for w in warnings)

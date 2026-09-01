@@ -496,6 +496,13 @@ class TestBuildSection:
         with pytest.raises(KeyError, match="fabricated2024"):
             references.build_section(["a2024", "fabricated2024"], ledger_con)
 
+    def test_missing_citekey_raises_the_dedicated_subclass(self, ledger_con):
+        # m-60: a caller that wants to catch *this* refusal specifically
+        # (render_output._cli.main, so a genuine bug elsewhere doesn't get
+        # misreported as it) needs a type narrower than bare KeyError.
+        with pytest.raises(references.MissingCitekey):
+            references.build_section(["fabricated2024"], ledger_con)
+
 
 class TestApply:
     def test_no_citekeys_returns_message_and_leaves_file_untouched(self, isolated_config, tmp_path):

@@ -261,7 +261,19 @@ def substitute(text: str, mapping: "dict[str, str]") -> str:
 
     text = _BLOCK_RE.sub(_block, text)
 
+    # m-56: every marked math block is gone from `text` by now (rewritten
+    # to `$$...$$` above), so any fence _FENCE_RE still finds here is a
+    # genuine code example -- a tutorial showing its own Markdown source,
+    # say -- whose backtick spans are code, not draft prose, and must not
+    # be walked into by the span pass below.
+    fence_spans = [(m.start(), m.end()) for m in _FENCE_RE.finditer(text)]
+
+    def _in_a_fence(pos: int) -> bool:
+        return any(start <= pos < end for start, end in fence_spans)
+
     def _span(match: "re.Match[str]") -> str:
+        if _in_a_fence(match.start()):
+            return match.group(0)
         latex = mapping.get(match.group("body").strip())
         return match.group(0) if latex is None else f"${latex}$"
 
@@ -287,7 +299,13 @@ def warnings(text: str, mapping: "dict[str, str]", has_mapping_file: bool) -> "l
     """
     masked = _BLOCK_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     found = _fence_gaps(masked)
-    spans = {m.group("body").strip() for m in _SPAN_RE.finditer(masked)}
+    # m-56: `_fence_gaps` above needs ordinary fences left visible in
+    # `masked` (it is what finds an untagged one holding an equation),
+    # but the span scan below must not walk into one -- a `tau`-shaped
+    # token shown inside a code example is code, not draft prose, the
+    # same fence-body corruption `substitute` guards against.
+    span_masked = _FENCE_RE.sub(lambda m: "\n" * m.group(0).count("\n"), masked)
+    spans = {m.group("body").strip() for m in _SPAN_RE.finditer(span_masked)}
     symbols = _symbols_of(mapping)
 
     for span in sorted(spans - set(mapping)):

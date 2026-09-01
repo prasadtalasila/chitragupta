@@ -66,6 +66,37 @@ class TestMainCli:
         assert rc == 1
         assert "[error]" in out
 
+    def test_an_unrelated_keyerror_is_not_swallowed(self, isolated_config, monkeypatch):
+        # m-60: the old bare `except KeyError` around the whole pipeline
+        # would have reported a genuine bug here as though it were a
+        # missing citekey. Narrowed to references.MissingCitekey, so a
+        # plain KeyError from anywhere else in render() must propagate.
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("text\n")
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft)])
+
+        def _boom(*args, **kwargs):
+            raise KeyError("not a citekey problem")
+
+        monkeypatch.setattr(render_output, "render", _boom)
+        with pytest.raises(KeyError, match="not a citekey problem"):
+            render_output.main()
+
+    def test_a_citekey_missing_from_the_ledger_prints_and_returns_1(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        # `--format md` reaches references.write_numbered without needing
+        # pandoc/pdflatex, so this exercises m-60's dedicated
+        # MissingCitekey catch on a host with neither installed.
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("See [@fabricated2024].\n")
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "md"])
+        rc = render_output.main()
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert "[error]" in out
+        assert "fabricated2024" in out
+
     @pytest.mark.skipif(
         not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
     )

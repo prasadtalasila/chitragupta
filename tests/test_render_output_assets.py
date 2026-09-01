@@ -27,6 +27,26 @@ class TestLocalImageRefs:
     def test_no_images_returns_empty_list(self):
         assert render_output._local_image_refs("Just text, no images.\n") == []
 
+    def test_a_bracketed_target_with_a_space_is_matched(self):
+        # m-58: `[^)\s]+` never matched a path with a literal space at
+        # all -- CommonMark's answer to that is wrapping the destination
+        # in angle brackets, which this must also recognise.
+        text = "![alt](<my figure.png>)\n"
+        assert render_output._local_image_refs(text) == ["my figure.png"]
+
+    def test_a_percent_encoded_space_is_unquoted(self):
+        # m-58: pandoc/CommonMark's answer for an *unwrapped* destination
+        # with a space is percent-encoding it -- the regex already
+        # matches "my%20figure.png" as one token (no whitespace in it),
+        # but it must be decoded before it's treated as a filesystem path
+        # or it never resolves to the real file.
+        text = "![alt](my%20figure.png)\n"
+        assert render_output._local_image_refs(text) == ["my figure.png"]
+
+    def test_a_bracketed_target_with_a_title_is_still_matched(self):
+        text = '![alt](<my figure.png> "A title").\n'
+        assert render_output._local_image_refs(text) == ["my figure.png"]
+
 
 class TestCopyLocalImages:
     def test_copies_an_existing_local_image(self, tmp_path):
@@ -67,6 +87,36 @@ class TestCopyLocalImages:
         render_output._copy_local_images(draft, dest_dir)
 
         assert list(dest_dir.iterdir()) == []
+
+    def test_copies_a_bracketed_target_with_a_space_in_its_name(self, tmp_path):
+        # m-58: a genuinely realistic filename -- a screenshot or export
+        # saved with its default, space-containing name -- was silently
+        # never copied, so a `tex` output referencing it failed to
+        # compile standalone.
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        (src_dir / "my figure.png").write_bytes(b"fake png bytes")
+        draft = src_dir / "draft.md"
+        draft.write_text("![alt](<my figure.png>)\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_images(draft, dest_dir)
+
+        assert (dest_dir / "my figure.png").read_bytes() == b"fake png bytes"
+
+    def test_copies_a_percent_encoded_target(self, tmp_path):
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        (src_dir / "my figure.png").write_bytes(b"fake png bytes")
+        draft = src_dir / "draft.md"
+        draft.write_text("![alt](my%20figure.png)\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_images(draft, dest_dir)
+
+        assert (dest_dir / "my figure.png").read_bytes() == b"fake png bytes"
 
     def test_creates_nested_destination_directories(self, tmp_path):
         src_dir = tmp_path / "drafts"

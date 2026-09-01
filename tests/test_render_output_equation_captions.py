@@ -96,6 +96,16 @@ class TestSubstituteMarkdown:
         assert "Equation 1 relates mass and energy." in out
         assert "Equation 1 is the one that matters." in out
 
+    def test_two_equations_sharing_an_id_are_numbered_positionally(self):
+        # m-57: a `numbers` dict keyed by id let a later equation
+        # overwrite an earlier one's number -- both equations claiming
+        # `energy` used to render as "Equation 2". _tables.substitute
+        # already numbers by position for the same reason (a reused id
+        # cannot resolve as a dict key); this must match.
+        out = _equation_captions.substitute(DRAFT + DRAFT, "md")
+        assert "**Equation 1:**\n<!-- math -->\n```\nE = m * c^2\n```" in out
+        assert "**Equation 2:**\n<!-- math -->\n```\nE = m * c^2\n```" in out
+
 
 class TestSubstituteLatexBound:
     """The text handed in here is already past `_math.substitute`, which
@@ -144,6 +154,13 @@ class TestSubstituteOtherPandocFormats:
     def test_a_reference_becomes_a_literal_equation_number(self):
         out = _equation_captions.substitute(_mathed(), "docx")
         assert "Equation 1 relates mass" in out
+
+    def test_two_equations_sharing_an_id_are_numbered_positionally(self):
+        # m-57: same last-wins bug, on the dollar-substituted path.
+        mathed = _mathed(DRAFT + DRAFT)
+        out = _equation_captions.substitute(mathed, "docx")
+        assert "**Equation 1:**\n$$\nE = mc^2\n$$" in out
+        assert "**Equation 2:**\n$$\nE = mc^2\n$$" in out
 
 
 class TestSubstituteLeavesAlone:
