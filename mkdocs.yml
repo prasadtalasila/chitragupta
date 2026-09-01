@@ -155,6 +155,7 @@ nav:
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
       - Architecture: docs/ARCHITECTURE.md
+      - Security architecture: docs/SECURITY.md
       - Rendering flow: docs/RENDERING-FLOW.md
       - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md

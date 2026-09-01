@@ -340,25 +340,27 @@ Output lands in `content/review/`, mirroring the draft's path exactly as
 `render_output._output_dir`; a draft resolving outside `content/` is
 refused, the same tier-1 rule the gate chain follows.
 
-and can therefore be automatic and absolute. Seven of the nine answer
-questions of judgement -- the original six, plus `support`, which scores
-a claim against its cited source's passage but never calls the verdict
-itself -- where a machine verdict would be either wrong often enough to
-be ignored, or trusted more than it deserves. They give you the evidence
-and leave the call to you.
+Only one check in this system is measured against ground truth and can
+therefore be automatic and absolute: `chitragupta.draft gate` in layer 2.
+Within layer 4's **nine draft-level aids** (all except the book-level
+`union` report), seven answer questions of judgement -- `provenance`,
+`coverage`, `verbatim`, `synthesis`, `figure`, `uncited`, and
+`support`. For these, a machine verdict would be either wrong often
+enough to be ignored, or trusted more than it deserves. They give you
+evidence and leave the call to you.
 
-**`quotation` is the seventh, and it is not one of those.** Its question
--- does this quoted span appear in the source it is attributed to? -- is
-binary, deterministic, and about as close to ground truth as anything
-outside the gate. It is the sharpest test this section has, so it is
-worked through rather than excepted, immediately below.
+**`quotation` is the eighth draft-level aid, and it is not one of
+those.** Its question -- does this quoted span appear in the source it is
+attributed to? -- is binary, deterministic, and about as close to ground
+truth as anything outside the gate. It is the sharpest test this section
+has, so it is worked through rather than excepted, immediately below.
 
-**`agenda` is the eighth, and it asks no question of its own.** It
-merges what the other eight already found into one ranked list, so each
-item it surfaces carries whichever answer -- judgement or binary --
-produced it, unchanged. Merging does not turn a judgement into a fact:
-an `agenda` item inherited from `provenance` is still something to read
-and decide, not something `agenda` has itself concluded.
+**`agenda` is the ninth draft-level aid, and it asks no question of its
+own.** It merges what the other eight already found into one ranked
+list, so each item it surfaces carries whichever answer -- judgement or
+binary -- produced it, unchanged. Merging does not turn a judgement into
+a fact: an `agenda` item inherited from `provenance` is still something
+to read and decide, not something `agenda` has itself concluded.
 
 **Which side a check falls on is decided by what it is measured against,
 not by how decidable its answer is.** The two are easy to conflate, and
@@ -773,6 +775,9 @@ and the literature behind them.
 against any other writer, not just sync against sync. The second one to
 start exits `2` rather than interleaving, and the lock releases itself if
 its holder is killed.
+
+Like SQLite itself, this guarantee assumes a local filesystem: on NFS,
+SMB, or cloud-synchronised mounts, locking is not reliable.
 
 Readers are never blocked: `python -m chitragupta.corpus ledger`, the citation gate,
 retrieval and **the whole review layer** all run happily while a sync is

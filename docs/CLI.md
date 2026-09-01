@@ -884,6 +884,9 @@ AGENTS.md keeps as the source of truth rather than something this
 pipeline copies). Restore refuses the whole archive -- rather than
 skipping a member -- if any entry is a link or device node, escapes the
 extraction directory, or sits outside those three directories.
+[SECURITY.md](SECURITY.md#archive-restore-denial-of-service-limits)
+covers the current restore-size/member-count DoS limits and operator
+guidance.
 
 ### 🔎 `chitragupta draft retrieve`
 
