@@ -1134,23 +1134,33 @@ class TestParseCorpusParallel:
         first -- finishes, even if smaller ones land sooner. That is the
         killed-at-399-of-501 convention (issue #50) verbatim (#501). d4 is
         the biggest here and is gated to finish last; the fix must still
-        report the smaller ones as they land, not block behind it."""
+        report the smaller ones as they land, not block behind it.
+
+        Gated on `_save_cache` rather than on `parse_one`'s own
+        invocation: that call happens on the *main* thread inside
+        `_drain`'s `as_completed` loop, so by the time it has landed
+        twice, those two futures are guaranteed already fully processed
+        there -- gating on a flag set from inside a *worker* thread's
+        callable races the main thread's bookkeeping for the same
+        future and is not reliably ordered.
+        """
         real_parse_one = _docling_pool.parse_one
-        completed = []
-        two_done = threading.Event()
+        real_save_cache = _docling_pool._save_cache
+        two_saved = threading.Event()
+
+        def counting_save(cache):
+            real_save_cache(cache)
+            if len(cache) >= 2:
+                two_saved.set()
 
         def gated(job):
             doc, _threads = job
             if doc.citekey == "d4":
-                assert two_done.wait(5), "the smaller docs never completed"
-                return real_parse_one(job)
-            result = real_parse_one(job)
-            completed.append(doc.citekey)
-            if len(completed) == 2:
-                two_done.set()
-            return result
+                assert two_saved.wait(5), "the smaller docs' cache saves never landed"
+            return real_parse_one(job)
 
         monkeypatch.setattr(_docling_pool, "parse_one", gated)
+        monkeypatch.setattr(_docling_pool, "_save_cache", counting_save)
         docling_parse.parse_corpus(self._docs(tmp_path))
         lines = [line for line in capsys.readouterr().out.splitlines() if line.startswith("  [")]
         assert "d4" not in lines[0]
@@ -1520,25 +1530,34 @@ class TestParseCorpusInterrupt:
         completion count rather than on invocation count -- otherwise
         which job "wins" the race to raise first is a coin flip. d0 is
         the smallest file, so LPT scheduling submits it last; it blocks
-        until two other jobs have actually finished, then blows up the
-        pool deterministically.
+        until two other jobs' fingerprints have actually been persisted,
+        then blows up the pool deterministically.
+
+        Gated on `_save_cache`, not on `parse_one`'s own invocation: that
+        call happens on the *main* thread inside `_drain`'s
+        `as_completed` loop, so two landed saves guarantee those two
+        futures are already fully processed there. A flag set from
+        inside a *worker* thread's callable instead races the main
+        thread's own bookkeeping for that same future.
         """
         real = _docling_pool.parse_one
-        completed = []
-        two_done = threading.Event()
+        real_save_cache = _docling_pool._save_cache
+        two_saved = threading.Event()
+
+        def counting_save(cache):
+            real_save_cache(cache)
+            if len(cache) >= 2:
+                two_saved.set()
 
         def interrupt_after_two(job):
             doc, _threads = job
             if doc.citekey == "d0":
-                assert two_done.wait(5), "the other jobs never completed"
+                assert two_saved.wait(5), "the other jobs' cache saves never landed"
                 raise KeyboardInterrupt
-            result = real(job)
-            completed.append(result[0])
-            if len(completed) == 2:
-                two_done.set()
-            return result
+            return real(job)
 
         monkeypatch.setattr(_docling_pool, "parse_one", interrupt_after_two)
+        monkeypatch.setattr(_docling_pool, "_save_cache", counting_save)
         docs = self._docs(tmp_path)
         with pytest.raises(KeyboardInterrupt):
             docling_parse.parse_corpus(docs)
