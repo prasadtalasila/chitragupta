@@ -916,7 +916,24 @@ class TestCaptionedFigureRenderReal:
         out_path = render_output.render(str(draft), output_format="tex")
 
         source = out_path.read_text()
-        assert "\\label{fig:fig1}" in source, "a % must not have truncated the label away"
+        # `\label{fig:fig1}` merely being *present* in the source does not
+        # prove the % was escaped -- an unescaped `%` earlier on the same
+        # line would only comment out everything up to the next physical
+        # line break, and `\label{...}` could still survive intact on a
+        # line pandoc happened to wrap onto. What actually discriminates
+        # is that pandoc's own LaTeX escaping ran on the caption at all:
+        # `&` becomes `\&` and `%` becomes `\%`, and neither raw character
+        # may appear unescaped anywhere in the caption's own text. Pandoc's
+        # own `--wrap=auto` can still break the caption's *own* line onto
+        # the next one at a word boundary, so the substring checks below
+        # run against a copy with pandoc's soft line breaks collapsed back
+        # to spaces rather than the raw file text.
+        unwrapped = source.replace("\n", " ")
+        assert "Cost \\& throughput" in unwrapped, "the & must be LaTeX-escaped by pandoc"
+        assert "5\\%," in unwrapped, "the % must be LaTeX-escaped by pandoc, not left raw"
+        assert "Cost & throughput" not in unwrapped, "an unescaped & must not survive into the .tex"
+        assert "5%," not in unwrapped, "an unescaped % must not survive into the .tex source"
+        assert "\\label{fig:fig1}" in source
         compiled = subprocess.run(
             ["pdflatex", "-interaction=nonstopmode", out_path.name],
             cwd=out_path.parent,
