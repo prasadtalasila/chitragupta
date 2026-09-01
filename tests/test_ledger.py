@@ -244,9 +244,14 @@ class TestUpsertReference:
 
         assert ledger.upsert_reference(ledger_con, ref) is False
         row = ledger_con.execute(
-            "SELECT status FROM items WHERE citekey = ?", (ref.citekey,)
+            "SELECT status, parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
         assert row[0] == "parsed"  # status preserved, not reset
+        # M-5's fix is conditional on the hash actually changing -- this
+        # is the other arm, and without a real assertion here nothing
+        # proves a routine metadata-only re-sync doesn't also null a
+        # still-valid parsed_path.
+        assert row[1] == str(tmp_path / "parsed.txt")
 
     def test_missing_parsed_text_needs_reparse(self, ledger_con, tmp_path):
         """The row says parsed; the file it names is gone. Without this
@@ -322,23 +327,35 @@ class TestUpsertReference:
         pdf.write_bytes(b"version 2, totally different")
         assert ledger.upsert_reference(ledger_con, ref) is True
         row = ledger_con.execute(
-            "SELECT status FROM items WHERE citekey = ?", (ref.citekey,)
+            "SELECT status, parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
         assert row[0] == "discovered"
+        # M-5: without this, retrieval._full_text (which reads parsed_path
+        # for every row regardless of status) keeps serving version 1's
+        # text as current while pdf_hash already describes version 2 --
+        # until the reparse this "discovered" status is meant to trigger
+        # actually runs and completes.
+        assert row[1] is None
 
     def test_pdf_removed_goes_back_to_no_pdf(self, ledger_con, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
+        (tmp_path / "parsed.txt").write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "parsed.txt")
 
         ref_no_pdf = make_reference(pdf_path=None)
         needs_parse = ledger.upsert_reference(ledger_con, ref_no_pdf)
         assert needs_parse is False
         row = ledger_con.execute(
-            "SELECT status, pdf_hash FROM items WHERE citekey = ?", (ref.citekey,)
+            "SELECT status, pdf_hash, parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
-        assert row == ("no_pdf", None)
+        # No PDF means no current text either -- same M-5 hash-changed
+        # condition (pdf_hash went from set to None), so parsed_path
+        # clears along with it rather than pointing at a paper the bib
+        # file no longer attaches a PDF to.
+        assert row == ("no_pdf", None, None)
 
     def test_updates_bibliographic_fields_in_place(self, ledger_con):
         ref = make_reference(title="Original Title")
@@ -467,6 +484,51 @@ class TestMarkParseFailed:
             "SELECT status, parse_error FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
         assert row == ("parse_failed", "pdftotext exploded")
+
+    def test_a_transient_failure_keeps_the_still_valid_parsed_path(self, ledger_con, tmp_path):
+        # transient=True means the *run* failed (a dead pool worker, a
+        # stalled run), not the document -- the PDF's content, and so
+        # its already-parsed text, is unchanged and still correct.
+        # Clearing parsed_path here too (as well as on the real M-5 path,
+        # upsert_reference's hash-change branch) would blank retrieval
+        # for every in-flight document whenever one pool worker dies,
+        # for text that was never actually invalidated.
+        ref = make_reference()
+        ledger.upsert_reference(ledger_con, ref)
+        parsed_path = tmp_path / "out.txt"
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_path)
+
+        ledger.mark_parse_failed(ledger_con, ref.citekey, "pool worker died", transient=True)
+
+        row = ledger_con.execute(
+            "SELECT status, parsed_path, parse_error FROM items WHERE citekey = ?",
+            (ref.citekey,),
+        ).fetchone()
+        assert row == ("parse_failed", str(parsed_path), "pool worker died")
+
+    def test_a_hash_changed_reparse_that_then_fails_stays_cleared(self, ledger_con, tmp_path):
+        # M-5's actual scenario: a paper parsed from PDF v1 whose
+        # attachment is replaced with a corrupt v2. upsert_reference's
+        # hash-change branch already clears parsed_path as soon as the
+        # new hash is seen (before any parse is attempted) -- this
+        # confirms mark_parse_failed, called after the reparse attempt
+        # fails, doesn't need to (and, per the transient test above,
+        # must not) reintroduce it.
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"version 1")
+        ref = make_reference(pdf_path=str(pdf))
+        ledger.upsert_reference(ledger_con, ref)
+        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+
+        pdf.write_bytes(b"version 2, corrupt")
+        ledger.upsert_reference(ledger_con, ref)
+        ledger.mark_parse_failed(ledger_con, ref.citekey, "pdftotext exploded")
+
+        row = ledger_con.execute(
+            "SELECT status, parsed_path, parse_error FROM items WHERE citekey = ?",
+            (ref.citekey,),
+        ).fetchone()
+        assert row == ("parse_failed", None, "pdftotext exploded")
 
 
 class TestKnownCitekeysAndAllItems:

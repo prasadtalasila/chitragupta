@@ -175,7 +175,15 @@ def mark_parse_failed(
     document -- a dead pool worker, a stalled run. Those are retried
     automatically. The default is deterministic: the backend read this
     particular PDF and could not parse it, so re-reading it next run
-    would only waste the same time again."""
+    would only waste the same time again.
+
+    Deliberately leaves parsed_path untouched: this is called for a PDF
+    whose *content* is unchanged from the last successful parse (a
+    changed PDF already went through upsert_reference's hash-change path,
+    which clears parsed_path there -- see its docstring, M-5). Clearing
+    it here too would also wipe it on a transient (retried) failure,
+    where the previously parsed text is still correct and still on disk.
+    """
     con.execute(
         "UPDATE items SET status = 'parse_failed', parse_error = ?, failure_kind = ? "
         "WHERE citekey = ?",

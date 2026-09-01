@@ -210,12 +210,22 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
     else:
         new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
         needs_parse = needs_parse or must_reparse
+        # M-5: keep the existing parsed_path only while the PDF content
+        # this row was last parsed from is unchanged. Once pdf_hash
+        # differs from what's stored, the old parsed text belongs to a
+        # superseded version -- retrieval._full_text reads parsed_path
+        # for every row regardless of status, so leaving it in place
+        # would serve that stale text as current until a reparse
+        # happens to complete (which may never run, or may itself fail).
+        old_parsed_path = row[5]
+        parsed_path = old_parsed_path if pdf_hash == row[0] else None
         con.execute(
             """
             UPDATE items SET
                 item_type = ?, title = ?, year = ?, doi = ?,
                 url = ?, pdf_path = ?, pdf_hash = ?, pdf_size = ?, pdf_mtime_ns = ?,
-                status = ?, last_synced = ?, bib_fields = ?, collections = ?
+                status = ?, last_synced = ?, bib_fields = ?, collections = ?,
+                parsed_path = ?
             WHERE citekey = ?
             """,
             (
@@ -232,6 +242,7 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
                 now,
                 _bib_fields_json(ref),
                 _collections_json(ref),
+                parsed_path,
                 ref.citekey,
             ),
         )
