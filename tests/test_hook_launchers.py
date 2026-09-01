@@ -259,10 +259,16 @@ class TestImportFaultDirectly:
 def fake_interpreter(tmp_path):
     """A throwaway program that ignores its arguments and exits with a
     chosen code, optionally after a delay -- stands in for a `python` that
-    starts but cannot import `chitragupta`, or one too slow to answer."""
+    starts but cannot import `chitragupta`, or one too slow to answer.
+
+    Named `python3`, and that is load-bearing since #509/m-38: the import
+    probe now only runs against a program whose basename looks like a
+    Python interpreter, so a stand-in called anything else would not be
+    probed at all and these tests would pass vacuously.
+    """
 
     def make(code: int, sleep: float = 0) -> str:
-        script = tmp_path / "fake-interpreter"
+        script = tmp_path / "python3"
         script.write_text(
             f"#!/bin/sh\n{f'sleep {sleep}' if sleep else ''}\nexit {code}\n", encoding="utf-8"
         )
@@ -383,3 +389,57 @@ class TestImportProbeIsPerDistinctProgram:
             )
         )
         assert calls == []
+
+
+class TestTheImportProbeOnlyRunsAgainstAPython:
+    """m-38 (#509). `_import_fault` runs `<program> -c "import
+    chitragupta"`, which is a Python invocation and nothing else. Against
+    a non-Python launcher -- `bash`, `uv`, `node` -- the program either
+    rejects `-c` or runs something unrelated, exits non-zero, and gets
+    reported as "cannot import chitragupta" every single session: a fault
+    about the probe, not about the hook."""
+
+    @pytest.mark.parametrize(
+        "program",
+        [
+            "python",
+            "python3",
+            "python3.12",
+            "/usr/bin/python3.13",
+            "C:/Py/python.exe",
+            "py",
+            "pypy3",
+        ],
+    )
+    def test_an_interpreter_is_probed(self, program):
+        assert hook_launchers._is_python_interpreter(program)
+
+    @pytest.mark.parametrize("program", ["bash", "/bin/sh", "uv", "node", "sh.exe"])
+    def test_anything_else_is_not(self, program):
+        assert not hook_launchers._is_python_interpreter(program)
+
+    def test_a_bash_launcher_produces_no_import_fault(self, settings, tmp_path):
+        """End to end, and genuinely red before the fix: `bash -c "import
+        chitragupta"` exits non-zero on any host."""
+        program = tmp_path / "bash"
+        program.write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+        program.chmod(program.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        found = hook_launchers.faults(
+            settings(
+                {
+                    "hooks": {
+                        "PostToolUse": [
+                            {
+                                "hooks": [
+                                    {
+                                        "command": str(program),
+                                        "args": ["${CLAUDE_PROJECT_DIR}/x.py"],
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                }
+            )
+        )
+        assert found == []

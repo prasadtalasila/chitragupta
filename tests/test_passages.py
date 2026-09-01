@@ -382,8 +382,85 @@ class TestPdfFallback:
         finally:
             con.close()
 
+        # The parsed text is form-feed-free, so rung 3 held one page. With
+        # rung 4 unable to run, that held page is the best answer there is
+        # -- returning `[]` here threw away real parsed text (#509/m-42).
+        assert [p.page for p in found] == [1]
+        assert "feeds" in {word for p in found for word in p.words}
+        assert reason is None
+
+    def test_pdftotext_failure_with_nothing_held_is_reported(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        _add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
+
+        def boom(*a, **k):
+            raise OSError("pdftotext not on PATH")
+
+        monkeypatch.setattr(passages.subprocess, "run", boom)
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+
         assert found == []
         assert "pdftotext" in reason
+
+    def test_an_empty_pdftotext_result_gets_a_reason(self, isolated_config, monkeypatch, tmp_path):
+        """m-42 (#509): an empty rung 4 used to return `([], None)` -- no
+        passages and no reason, which every caller renders as a blank
+        where an explanation belongs. pdftotext exiting 0 on a scanned PDF
+        with no text layer is the ordinary way to get here."""
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        _add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
+        monkeypatch.setattr(
+            passages.subprocess,
+            "run",
+            lambda *a, **k: types.SimpleNamespace(stdout="", returncode=0),
+        )
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+        assert found == []
+        assert "no extractable text layer" in reason
+
+    def test_an_empty_pdftotext_result_falls_back_to_the_held_page(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        monkeypatch.setattr(
+            passages.subprocess,
+            "run",
+            lambda *a, **k: types.SimpleNamespace(stdout="", returncode=0),
+        )
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+        assert [p.page for p in found] == [1]
+        assert reason is None
+
+    def test_no_pdf_at_all_still_returns_the_held_page(self, isolated_config):
+        """The other half: rung 3 held one page and there is no rung 4 to
+        try, so returning `[]` reported "no parsed text with page breaks
+        and no readable PDF" -- false about the first half."""
+        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=None)
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+        assert [p.page for p in found] == [1]
+        assert reason is None
 
     def test_undecodable_pdftotext_output_does_not_take_down_the_report(
         self, isolated_config, monkeypatch, tmp_path

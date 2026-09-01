@@ -242,3 +242,42 @@ class TestScaffoldedDocLinksResolve:
             "Dangling relative Markdown link(s) in a scaffolded project "
             "(target not among init's COPY_VERBATIM):\n" + "\n".join(broken)
         )
+
+
+class TestAnIncompleteInstallationRefuses:
+    """m-37 (#509). `_write_tree` on an absent source `rglob`s nothing and
+    returns `[]`, so a wheel built without `.claude/` scaffolded a project
+    with **no citation-gate hook**, printed a report that simply did not
+    mention it, and exited 0. A partial scaffold is worse than none: the
+    user has no reason to look."""
+
+    def test_a_missing_source_refuses_before_writing_anything(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
+        dest = tmp_path / "project"
+        with pytest.raises(init.ScaffoldSourceMissing) as raised:
+            init.scaffold(dest)
+        assert ".claude" in str(raised.value)
+        assert not dest.exists()
+
+    def test_the_missing_names_are_all_reported_not_just_the_first(self, tmp_path, monkeypatch):
+        source = tmp_path / "partial"
+        (source / ".claude").mkdir(parents=True)
+        (source / ".claude" / "settings.json").write_text("{}", encoding="utf-8")
+        monkeypatch.setattr(init, "SOURCE_ROOT", source)
+        with pytest.raises(init.ScaffoldSourceMissing) as raised:
+            init.scaffold(tmp_path / "project")
+        message = str(raised.value)
+        assert "docs" in message and "AGENTS.md" in message
+        assert ".claude" not in message
+
+    def test_dry_run_refuses_too(self, tmp_path, monkeypatch):
+        """A `--dry-run` that printed a tree the real run could not write
+        would be the same lie one step earlier."""
+        monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
+        with pytest.raises(init.ScaffoldSourceMissing):
+            init.scaffold(tmp_path / "project", dry_run=True)
+
+    def test_the_cli_exits_one_and_says_so(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
+        assert init.main([str(tmp_path / "project")]) == 1
+        assert "[error]" in capsys.readouterr().err

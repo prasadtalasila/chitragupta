@@ -42,7 +42,7 @@ clone.
 import json
 import shutil
 import subprocess
-from pathlib import Path
+from pathlib import Path, PurePath
 
 # Generous on purpose: this runs once per session, not once per keystroke,
 # and a launcher that is merely slow to start (a cold venv on a networked
@@ -119,7 +119,7 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
                 if program and program not in programs:
                     programs.append(program)
     for program in programs:
-        if shutil.which(program):
+        if _is_python_interpreter(program) and shutil.which(program):
             fault = _import_fault(program)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
@@ -184,6 +184,34 @@ def _program_name(hook: dict) -> str | None:
     if not isinstance(command, str) or not command.split():
         return None
     return command if "args" in hook else command.split()[0]
+
+
+def _is_python_interpreter(program: str) -> bool:
+    """Does `program` name a Python interpreter?
+
+    `_import_fault` runs `<program> -c "import chitragupta"`, which is a
+    Python invocation and nothing else. Running it against a launcher that
+    is not Python -- `bash`, `uv`, `node` -- means the program either
+    rejects `-c` or runs something unrelated, and either way exits
+    non-zero, which this module would then report as "cannot import
+    chitragupta" every single session. That fault would be about the
+    probe, not about the hook (#509/m-38).
+
+    Latent rather than observed: every launcher this repository ships is
+    Python today. It is a *silent* latency, though -- a settings file
+    naming `bash` is legal and would produce a false fault on every
+    session with nothing pointing at the cause -- so the probe is gated
+    on what it can actually answer for.
+
+    Basename, with any version suffix and a Windows extension removed, so
+    `/usr/bin/python3.12` and `C:/…/python.exe` are both recognised. Not
+    a guess about arbitrary interpreters: an unrecognised program is
+    simply not probed, which is the pre-package behaviour and reports
+    nothing rather than something wrong.
+    """
+    stem = PurePath(program).name.lower()
+    stem = stem[: -len(".exe")] if stem.endswith(".exe") else stem
+    return stem.split("-")[0].rstrip("0123456789.") in ("python", "py", "pypy")
 
 
 def _import_fault(program: str) -> str | None:

@@ -57,6 +57,7 @@ the whole cache rather than any single entry, since all three change
 what every .md should contain.
 """
 
+import importlib.util
 import json
 import logging
 import os
@@ -268,6 +269,26 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     chitragupta/enrich/__main__.py and chitragupta/sync.py both do; an ad-hoc script
     that doesn't will fail immediately rather than subtly.
     """
+    # Probed once, here, rather than discovered per document (#509/m-40).
+    # `_build_converter` imports docling lazily, so on a host without the
+    # enrich extra every document failed with its own `error: No module
+    # named 'docling'` and the stage reported `partial` -- which says
+    # "some documents did not parse", when what happened is that the
+    # stage could not run at all and nobody has been told to install
+    # anything. `parse_corpus` still returns a per-citekey mapping, so the
+    # one honest answer is one shared `skipped:` line naming the fix.
+    if importlib.util.find_spec("docling") is None:
+        # Probed for `docling` by name rather than through
+        # `pdf_text.is_available()`: that answers for `config.PARSER`,
+        # which may be `pdftotext`, and this stage uses docling
+        # unconditionally whatever the parser setting says.
+        reason = (
+            "skipped: docling is not installed, so this stage cannot run "
+            "-- pip install chitragupta-cli[enrich]"
+        )
+        logging_setup.say(logger, f"  {reason}", level=logging.WARNING)
+        return {doc.citekey: reason for doc in docs if doc.pdf_path}
+
     cache = _load_cache()
     status = {}
 

@@ -30,6 +30,13 @@ logger = logging.getLogger("chitragupta.enrich")
 
 def stage_docling(docs, args) -> dict:
     status = docling_parse.parse_corpus(docs)
+    # `skipped` before `partial` (#509/m-40). `parse_corpus` now returns
+    # one shared `skipped:` line for every document when docling is not
+    # installed; reading that as `partial` would say "some documents did
+    # not parse" about a stage that never ran, and hide the install step
+    # inside a per-document detail map.
+    if status and all(value.startswith("skipped") for value in status.values()):
+        return {"status": "skipped", "detail": next(iter(status.values()))}
     errors = {k: v for k, v in status.items() if v.startswith("error")}
     return {"status": "ok" if not errors else "partial", "detail": status}
 

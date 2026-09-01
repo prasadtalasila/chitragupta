@@ -106,6 +106,25 @@ class TestStaleness:
         ledger_con.commit()
         assert tldr.read(ledger_con, "smith2024")["stale"] is True
 
+    def test_a_sidecar_whose_fingerprint_is_null_also_reads_as_stale(self, ledger_con):
+        """m-41 (#509), and the case the test above cannot reach. There
+        the *stored* fingerprint is a real string, so `None != "abc"` was
+        already True. When the sidecar itself carries a null fingerprint
+        -- written at a moment the parse could not be read either -- the
+        comparison was `None != None`, which is False, and `read` reported
+        `stale: False`: "this summary is of the current parse", about a
+        parse it cannot see at all. That is the exact opposite of what the
+        docstring above promises."""
+        _add_item("smith2024", "Original parsed text.")
+        tldr.write(ledger_con, "smith2024", "A summary.")
+        path = tldr.sidecar_path("smith2024")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["fingerprint"] = None
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        ledger_con.execute("DELETE FROM items WHERE citekey = ?", ("smith2024",))
+        ledger_con.commit()
+        assert tldr.read(ledger_con, "smith2024")["stale"] is True
+
 
 class TestMissingSummaryIsNotAnError:
     def test_no_sidecar_at_all(self, ledger_con):

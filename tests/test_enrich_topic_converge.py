@@ -306,3 +306,55 @@ class TestRunTopicConverge:
 
         with pytest.raises(ValueError, match="different embedding model"):
             topic_converge.run_topic_converge([], ())
+
+
+class TestMembershipsAreSynthesisedWhenAbsent(TestRunTopicConverge):
+    """m-43 (#509). `memberships` is `None` whenever
+    `[topics].topic_distribution` is off, and `build` reads only that
+    field -- so converging on such a corpus silently produced zero
+    emergent topics and listed every paper as uncovered. That is a report
+    about the setting, dressed up as a finding about the library."""
+
+    def test_assignments_stand_in_and_the_result_says_so(self, isolated_config, monkeypatch):
+        FakeModel.VECTORS = {}
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0, "c": 1},
+            memberships=None,
+            vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0], "c": [0.0, 0.0, 1.0]},
+        )
+        result = topic_converge.run_topic_converge([], ())
+        assert result["n_emergent"] == 2
+        assert result["uncovered"] == []
+        assert result["membership_source"] == "assignments"
+
+    def test_the_outlier_topic_is_not_a_topic(self, isolated_config, monkeypatch):
+        """-1 is HDBSCAN's "no cluster", left out here exactly as
+        `topic_descriptors` leaves it out -- otherwise the stand-in would
+        invent a topic the clustering never found."""
+        FakeModel.VECTORS = {}
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": -1},
+            memberships=None,
+            vectors={"a": [1.0, 0.0, 0.0], "b": [0.0, 0.0, 1.0]},
+        )
+        result = topic_converge.run_topic_converge([], ())
+        assert [t["topic_id"] for t in result["topics"]] == [0]
+        assert result["uncovered"] == ["b"]
+
+    def test_real_memberships_are_used_unchanged_and_named(self, isolated_config, monkeypatch):
+        FakeModel.VECTORS = {}
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 1},
+            memberships={"a": {"0": 0.9, "1": 0.6}, "b": {"1": 0.8}},
+            vectors={"a": [1.0, 0.0, 0.0], "b": [0.0, 0.0, 1.0]},
+        )
+        result = topic_converge.run_topic_converge([], ())
+        assert result["membership_source"] == "memberships"
+        by_id = {t["topic_id"]: t for t in result["topics"]}
+        assert {m["citekey"] for m in by_id[1]["members"]} == {"a", "b"}

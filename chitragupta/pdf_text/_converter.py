@@ -147,8 +147,23 @@ def check_docling_status(result) -> None:
     makes it skip exactly the short documents truncation produces.
     """
     status = getattr(result, "status", None)
+    if status is None:
+        # Fail closed (#509/m-36). Treating an absent `status` as success
+        # inverted this check's whole purpose: docling renaming or moving
+        # the attribute would have made every PARTIAL_SUCCESS -- a
+        # document that stops at page k of n -- pass silently, which is
+        # the one outcome the docstring above says must never be written.
+        # An upstream rename is a loud, one-line fix found on the first
+        # document; a silently truncated corpus is not discoverable at all.
+        raise ExtractionError(
+            "docling returned a result with no `status` attribute, so a "
+            "PARTIAL_SUCCESS cannot be told from a SUCCESS -- refusing to "
+            "write a parse that may stop mid-document. The installed "
+            "docling no longer reports status where this expects it; see "
+            "chitragupta/pdf_text/_converter.py."
+        )
     name = getattr(status, "name", str(status))
-    if status is None or name == "SUCCESS":
+    if name == "SUCCESS":
         return
     # Deduplicated and capped: docling appends one error per failed page,
     # so a timeout on a 675-page book produced 675 identical copies of

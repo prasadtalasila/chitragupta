@@ -5,9 +5,10 @@ at module top), so these stay fast and don't need real model weights.
 """
 
 import contextlib
+import importlib.machinery
 import json
-import os
 import multiprocessing
+import os
 import re
 import sys
 import threading
@@ -98,8 +99,17 @@ class FakeDocument:
 
 
 class FakeConversionResult:
+    """What a real docling `convert()` returns on a clean parse.
+
+    `status` is not decoration: real docling always sets it, and
+    `check_docling_status` now *fails closed* on its absence (#509/m-36),
+    since without it a PARTIAL_SUCCESS -- a document that stops at page k
+    of n -- cannot be told from a clean parse.
+    """
+
     def __init__(self, markdown, pictures=None, texts=None):
         self.document = FakeDocument(markdown, pictures, texts)
+        self.status = types.SimpleNamespace(name="SUCCESS")
 
 
 class FakeDocumentConverter:
@@ -173,6 +183,14 @@ def fake_docling(monkeypatch):
         ("docling_core.types", types.ModuleType("docling_core.types")),
         ("docling_core.types.doc", core_doc),
     ]:
+        # Every fake gets a `__spec__`, which a normally-imported module
+        # always has and a bare `types.ModuleType` never does.
+        # `importlib.util.find_spec` -- which `parse_corpus`'s
+        # not-installed probe calls (#509/m-40) -- raises `ValueError` on
+        # a name already in `sys.modules` with no spec, so a fake without
+        # one stands in for something that cannot exist.
+        if mod.__spec__ is None:
+            mod.__spec__ = importlib.machinery.ModuleSpec(name, loader=None)
         monkeypatch.setitem(sys.modules, name, mod)
     return FakeDocumentConverter
 
@@ -1704,3 +1722,51 @@ class _PartialResult:
         self.status = types.SimpleNamespace(name=status_name)
         self.errors = [types.SimpleNamespace(error_message=m) for m in messages]
         self.document = FakeDocument("# partial")
+
+
+class TestDoclingNotInstalledIsSkippedNotPartial:
+    """m-40 (#509). `_build_converter` imports docling lazily, so on a
+    host without the enrich extra every document failed with its own
+    `error: No module named 'docling'` and the stage reported `partial` --
+    which says "some documents did not parse", when what happened is that
+    the stage could not run at all and nobody has been told to install
+    anything."""
+
+    def test_every_document_gets_one_shared_skipped_reason(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            docling_parse.importlib.util,
+            "find_spec",
+            lambda name: None if name == "docling" else object(),
+        )
+        pdf = tmp_path / "a.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        docs = [
+            CorpusDoc(citekey="a2024", title="A", pdf_path=str(pdf)),
+            CorpusDoc(citekey="b2024", title="B", pdf_path=str(pdf)),
+        ]
+        status = docling_parse.parse_corpus(docs)
+        assert set(status) == {"a2024", "b2024"}
+        assert len(set(status.values())) == 1
+        reason = status["a2024"]
+        assert reason.startswith("skipped:")
+        assert "pip install chitragupta-cli[enrich]" in reason
+
+    def test_the_stage_reports_skipped_and_surfaces_the_install_step(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        from chitragupta.enrich import stages
+
+        monkeypatch.setattr(
+            docling_parse.importlib.util,
+            "find_spec",
+            lambda name: None if name == "docling" else object(),
+        )
+        pdf = tmp_path / "a.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        result = stages.stage_docling(
+            [CorpusDoc(citekey="a2024", title="A", pdf_path=str(pdf))], None
+        )
+        assert result["status"] == "skipped"
+        assert "pip install chitragupta-cli[enrich]" in result["detail"]

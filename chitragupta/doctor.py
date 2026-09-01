@@ -61,10 +61,39 @@ def _check_binaries() -> list[str]:
     return found
 
 
+# Every top-level import name the `enrich` extra installs, in
+# `pyproject.toml`'s `[tool.poetry.extras]` order. Import names, not
+# distribution names, because that is what a stage actually does and what
+# a partial install actually breaks -- `sentence-transformers` imports as
+# `sentence_transformers`.
+ENRICH_MODULES = (
+    "sentence_transformers",
+    "chromadb",
+    "bertopic",
+    "docling",
+    "adapters",
+)
+
+
 def _check_enrich_extra() -> str:
-    if importlib.util.find_spec("sentence_transformers") is not None:
+    """Every module the extra installs, not one of them (#509/m-35).
+
+    Probing `sentence_transformers` alone reported the whole tier ok on a
+    host that had it and nothing else -- so `doctor` passed and the run
+    then failed at the first stage that reached for `docling`, which is
+    the opposite of what a preflight is for. A partial install is the
+    likely state, not a contrived one: the packages are large, and a
+    failed or interrupted `pip install ...[enrich]` leaves exactly this.
+    """
+    missing = [module for module in ENRICH_MODULES if importlib.util.find_spec(module) is None]
+    if not missing:
         return "[ok] the enrich extra is importable"
-    return "[missing] the enrich extra is not installed -- pip install chitragupta-cli[enrich]"
+    if len(missing) == len(ENRICH_MODULES):
+        return "[missing] the enrich extra is not installed -- pip install chitragupta-cli[enrich]"
+    return (
+        f"[missing] the enrich extra is installed but incomplete: {', '.join(missing)} "
+        "-- pip install chitragupta-cli[enrich]"
+    )
 
 
 def _check_gpu_torch() -> str:

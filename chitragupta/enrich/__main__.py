@@ -245,11 +245,28 @@ def _run_stages(args, selected, scope: set[str] | None = None) -> int:
         results[name] = result
         _report_stage_result(result)
 
+    return _summarise(results)
+
+
+def _summarise(results: dict) -> int:
+    """Print the run's summary and return its exit code.
+
+    Nonzero if any stage errored (#509/m-39). A stage failing does not
+    abort the run -- the `except` in `_run_stages` is deliberate, since a
+    later stage may still be worth attempting -- but returning 0
+    afterwards made "everything worked" and "everything errored"
+    indistinguishable to the only consumer that cannot read the summary:
+    cron, which is how this is actually run.
+    """
     _say("\n=== Summary ===")
     for name in STAGE_ORDER:
         if name in results:
             _say(f"  {name:10s} {results[name]['status']}")
-    return 0
+    errored = [name for name, result in results.items() if result.get("status") == "error"]
+    if not errored:
+        return 0
+    _say(f"\n{len(errored)} stage(s) errored: {', '.join(errored)}")
+    return 1
 
 
 def _report_stage_result(result) -> None:

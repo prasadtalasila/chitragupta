@@ -2,11 +2,14 @@
 installs, never exits non-zero (SOUL.md's aid-not-gate rule)."""
 
 import importlib.metadata
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
 import chitragupta.doctor as doctor
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class FakeEntryPoint(SimpleNamespace):
@@ -44,6 +47,33 @@ class TestCheckEnrichExtra:
         result = doctor._check_enrich_extra()
         assert "[missing]" in result
         assert "chitragupta-cli[enrich]" in result
+        assert "incomplete" not in result
+
+    def test_a_partial_install_is_reported_and_names_what_is_missing(self, monkeypatch):
+        """m-35 (#509): probing `sentence_transformers` alone reported the
+        whole tier ok on a host that had it and nothing else, so `doctor`
+        passed and the run failed at the first stage reaching for
+        `docling` -- the opposite of what a preflight is for."""
+        monkeypatch.setattr(
+            doctor.importlib.util,
+            "find_spec",
+            lambda name: object() if name == "sentence_transformers" else None,
+        )
+        result = doctor._check_enrich_extra()
+        assert "[missing]" in result
+        assert "incomplete" in result
+        assert "docling" in result
+        assert "sentence_transformers" not in result
+
+    def test_every_module_the_extra_installs_is_probed(self):
+        """The list is `pyproject.toml`'s, read from it rather than
+        restated here -- a package added to the extra and not to
+        `ENRICH_MODULES` would otherwise go unprobed forever."""
+        import tomllib
+
+        data = tomllib.loads(REPO_ROOT.joinpath("pyproject.toml").read_text(encoding="utf-8"))
+        declared = data["tool"]["poetry"]["extras"]["enrich"]
+        assert [name.replace("-", "_") for name in declared] == list(doctor.ENRICH_MODULES)
 
 
 class TestCheckGpuTorch:

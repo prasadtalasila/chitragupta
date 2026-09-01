@@ -146,6 +146,35 @@ def build(memberships: dict, citekeys: list, named: dict, seed_report: dict) -> 
     }
 
 
+def _memberships_of(found: dict) -> "tuple[dict, str]":
+    """`topics.json`'s many-to-many view, or a single-membership stand-in
+    for it, plus which of the two this is.
+
+    `memberships` is `None` whenever `[topics].topic_distribution` is off,
+    and `build` reads *only* that field -- so converging on such a corpus
+    silently produced zero emergent topics and listed every paper as
+    uncovered (#509/m-43). That is a report about the setting, dressed up
+    as a finding about the library.
+
+    `assignments` still holds the one thing the clustering is sure of:
+    which cluster each document landed in. Synthesised into
+    single-membership rows here, and named in the result through
+    `membership_source`, so the output says which view it is rather than
+    letting the narrow one pass for the full one. The outlier topic (-1)
+    is not a topic and is left out, exactly as `topic_descriptors` leaves
+    it out.
+    """
+    memberships = found.get("memberships")
+    if memberships:
+        return memberships, "memberships"
+    synthesised = {
+        citekey: {str(topic_id): 1.0}
+        for citekey, topic_id in (found.get("assignments") or {}).items()
+        if int(topic_id) >= 0
+    }
+    return synthesised, "assignments"
+
+
 def run_topic_converge(docs, seed_phrases: tuple) -> dict:
     """Join the two topic artefacts and write `content/topic_set.json`.
 
@@ -160,7 +189,7 @@ def run_topic_converge(docs, seed_phrases: tuple) -> dict:
             "this stage joins what the others found and computes no topics itself."
         )
     found = json.loads(config.TOPICS_PATH.read_text(encoding="utf-8"))
-    memberships = found.get("memberships") or {}
+    memberships, membership_source = _memberships_of(found)
 
     # `found["assignments"]` is a clustering computed against a specific
     # embedding space; `vectors` below is re-embedded under *today's*
@@ -199,6 +228,7 @@ def run_topic_converge(docs, seed_phrases: tuple) -> dict:
     named = converge(dict(zip(ids, (row.tolist() for row in descriptors))), seed_vectors)
     report = seed_topics.load_report()
     result = build(memberships, citekeys, named, report)
+    result["membership_source"] = membership_source
     config.TOPIC_SET_PATH.parent.mkdir(parents=True, exist_ok=True)
     config.TOPIC_SET_PATH.write_text(json.dumps(result, indent=2), encoding="utf-8")
     return result

@@ -291,10 +291,30 @@ class TestMain:
         rc = enrich_script.main()
         out = capsys.readouterr().out
 
-        assert rc == 0
+        # Nonzero, and the second stage still ran (#509/m-39). The two are
+        # not in tension: a stage failing must not abort the run, because
+        # a later stage may still be worth attempting -- but returning 0
+        # afterwards made "everything worked" and "everything errored"
+        # indistinguishable to the only consumer that cannot read the
+        # summary, which is cron, which is how this is actually run.
+        assert rc == 1
         assert "error" in out
         assert "stage exploded" in out
         assert "embed" in out  # second stage still ran despite the first raising
+        assert "1 stage(s) errored: docling" in out
+
+    def test_a_run_with_no_errored_stage_still_exits_zero(self, monkeypatch, capsys):
+        docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
+        monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "docling,embed"])
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "docling", lambda d, a: {"status": "skipped", "detail": "d"}
+        )
+        monkeypatch.setitem(
+            enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"}
+        )
+        assert enrich_script.main() == 0
+        assert "errored" not in capsys.readouterr().out
 
 
 class TestForDraftScope:
