@@ -42,7 +42,7 @@ statements = 26
 
 [[c2]]
 name = "chitragupta/config.py"
-code_lines = 430
+code_lines = 444
 
 [[c2]]
 name = "chitragupta/overlap_skipgram.py"

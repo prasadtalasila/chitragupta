@@ -425,11 +425,11 @@ amount of reranking can reorder a passage that was never fetched. It is
 also the expensive knob when `rerank` is on, since the reranker scores
 the whole pool.
 
-**All three are validated at load**, unlike most numeric settings here:
-a value below 1, a float, or a bool raises immediately and names the
-key. That is deliberate, because every nonsense value fails *quietly*
-otherwise -- `embed_top_k = 0` returns no results at all, which reads
-like an empty corpus rather than a typo.
+**All three are validated at load**, and go further than a plain
+whole-number setting: a value below 1, not just a wrong type, raises
+immediately and names the key. That is deliberate, because every
+nonsense value fails *quietly* otherwise -- `embed_top_k = 0` returns no
+results at all, which reads like an empty corpus rather than a typo.
 
 **`rerank`** turns on a cross-encoder that reorders the over-fetched
 passages **before** that cap is applied (#380). Off by default, and that
@@ -470,19 +470,31 @@ typos. That is deliberate: `bool("false")` is `True` in Python, so
 without it every documented way of turning a setting off via the
 environment would silently turn it on.
 
-**A wrong TOML type falls back silently.** String and boolean settings
-return their default when the value has the wrong type, rather than
-raising. So `ocr = "true"` -- a string, not a boolean -- is read as the
-default `false`, with no complaint. Quote strings; don't quote booleans
-or numbers.
+**A wrong TOML type raises, once a value is present at all.** A missing
+key still takes its default, but `ocr = "true"` -- a string, not a
+boolean -- raises rather than being silently read as the default
+(previously `false`, with no complaint). The same now holds for a
+number where a string setting is expected (`path = 123`) and a string or
+bool where a numeric setting is expected (`timeout = "9.5"`,
+`timeout = true`). Quote strings; don't quote booleans or plain numeric
+settings like a timeout.
 
-**Seven settings are validated at load and fail loudly:** `workers`,
-`start_method`, `document_timeout`, `stall_timeout`, and the three that
+**Whole-number settings reject a fractional value, but tolerate a quoted
+whole number.** `topic_min_cluster_size = 3.9` raises instead of
+silently truncating to `3` -- the earlier `int(...)` conversion floored
+it with no signal that the config was never an integer.
+`topic_min_cluster_size = "3"` still works, the same as `workers` and
+the three search-sizing settings below, which have always accepted a
+quoted integer.
+
+**Every setting on this page fails loudly on a bad value now.** `workers`,
+`start_method`, `document_timeout`, `stall_timeout` and the three that
 size a search -- `embed_top_k`, `embed_max_passages_per_source` and
-`embed_overfetch_multiplier`. A bad value raises
-immediately, naming the key, the environment variable, and what was
-expected -- rather than surfacing much later as a nonsense pool size or a
-strange timeout.
+`embed_overfetch_multiplier` -- were already validated at load. Every
+other setting now raises too, once a value is present with the wrong
+type, naming the key, the environment variable, and what was expected --
+rather than surfacing much later as a nonsense pool size or a strange
+timeout.
 
 ## 🗒 Notes on individual settings
 
