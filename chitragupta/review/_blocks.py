@@ -174,6 +174,21 @@ def text_of(block: list[str]) -> str:
     return joined
 
 
+def _is_plain_paragraph(block: list[str]) -> bool:
+    """Whether `text_of(block)` takes its default `" ".join` branch
+    untouched by a further substitution -- the only branch whose offsets
+    `line_of_offset` maps precisely, decided by the same checks
+    `text_of` itself makes, in the same order.
+    """
+    first = block[0]
+    if TABLE_ROW.match(first) or TEX_HEADING.match(first):
+        return False
+    joined = " ".join(_QUOTE_MARKER.sub("", line).strip() for line in block)
+    if _TEX_STRUCTURE.search(joined) or _TEX_ROW_END.search(joined):
+        return False
+    return not any(marker.match(first) for marker in (LIST_ITEM, _TEX_ITEM, HEADING))
+
+
 def line_of_offset(block_start: int, block: list[str], offset: int) -> int:
     """Which physical line (absolute, matching `spans`'s own numbering)
     `offset` -- a character offset into `text_of(block)` -- falls on.
@@ -181,20 +196,27 @@ def line_of_offset(block_start: int, block: list[str], offset: int) -> int:
     Exact for the plain multi-line paragraph `text_of`'s default branch
     builds: `" ".join` of each line's quote-marker-stripped, stripped
     text, one line's worth of it a sentence-finding caller needs to
-    locate precisely (#496). Every other branch -- a table row, a TeX
-    structure, a list or heading marker -- is one physical line in every
-    case a caller of `spans` actually reaches it for (a header row's own
-    line is never a body row's, and a heading block never reaches a
-    caller that asks this at all), so any offset in it is `block_start`
-    regardless of exactness -- the early return below covers it without
-    reproducing `text_of`'s other branches here.
+    locate precisely (#496).
 
-    `offset` is always within `text_of(block)`'s own length here --
-    `sentences.spans`' tightened offsets never exceed the text they were
-    cut from -- so the search below always finds a line and never falls
-    through.
+    Every other branch -- a table row, a TeX structure, a list or
+    heading marker -- falls back to `block_start` instead of computing a
+    precise offset. A table row and a heading are one physical line in
+    every case a caller of `spans` actually reaches them for (a header
+    row's own line is never a body row's, and a heading block never
+    reaches a caller that asks this at all), so the fallback there is
+    exact too. **A list or TeX item is not always one line** -- a
+    hard-wrapped bullet stays one block across several physical lines
+    (`spans`'s own docstring) -- and `text_of` strips that block's marker
+    from the *front* of the already-joined text, shifting every
+    subsequent line's offset by the marker's length. Reproducing that
+    shift here to stay exact was rejected: it would restate `text_of`'s
+    marker-stripping in a second place for a case this project has not
+    measured, against the same "measured, not guessed" bar the module
+    docstring sets. `block_start` is what every sentence in such a block
+    reported before this offset mapping existed, so this is a documented
+    coarsening, not a regression.
     """
-    if len(block) == 1:
+    if len(block) == 1 or not _is_plain_paragraph(block):
         return block_start
     cursor = 0
     ends = []
@@ -202,4 +224,8 @@ def line_of_offset(block_start: int, block: list[str], offset: int) -> int:
         cursor += len(_QUOTE_MARKER.sub("", raw).strip())
         ends.append(cursor)
         cursor += 1  # the joining space
+    # `offset` is always within `text_of(block)`'s own length here --
+    # `sentences.spans`' tightened offsets never exceed the text they
+    # were cut from -- so this always finds a line and never falls
+    # through.
     return block_start + next(index for index, end in enumerate(ends) if offset <= end)
