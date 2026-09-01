@@ -194,7 +194,13 @@ def _snippet(text: str, terms: set[str], window: int = 500) -> str:
 
 def _full_text(item: sqlite3.Row) -> str:
     text_parts = [item["title"] or ""]
-    if item["parsed_path"]:
+    # A non-'parsed' status means parsed_path may point at a superseded
+    # version's text (or none at all) -- mark_parse_failed and a
+    # hash-changed re-sync both leave the column set without updating what
+    # it names (#490). overlap_index_ledger.py already gates on status;
+    # this was BM25 retrieval and evidence's own read serving the stale
+    # text as current.
+    if item["status"] == "parsed" and item["parsed_path"]:
         try:
             text_parts.append(
                 Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")

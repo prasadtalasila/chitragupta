@@ -188,6 +188,19 @@ class TestSearch:
         assert len(results) == 1
         assert results[0].citekey == "a2024"
 
+    def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
+        # #490: a parsed doc whose PDF changes and then fails to reparse
+        # keeps its old parsed_path in the row; retrieval must not read it,
+        # because it names text from the superseded (pre-change) PDF.
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
+        ref = make_reference(citekey="a2024", title="Unrelated Title")
+        ledger.upsert_reference(ledger_con, ref)
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        ledger.mark_parse_failed(ledger_con, "a2024", "corrupt pdf")
+
+        assert retrieval.search("blockchain") == []
+
     def test_no_matching_terms_excludes_item(self, ledger_con):
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="a2024", title="Completely unrelated")
@@ -455,6 +468,12 @@ class TestEvidence:
     def test_a_citekey_with_no_parsed_text_is_not_an_error(self, ledger_con):
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
         assert retrieval_cli.evidence("a2024", "quantum entanglement") == []
+
+    def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
+        # #490, same read boundary as retrieval.search's regression above.
+        self._seed(ledger_con, tmp_path, "simulation time must follow wall clock time")
+        ledger.mark_parse_failed(ledger_con, "a2024", "corrupt pdf")
+        assert retrieval_cli.evidence("a2024", "wall clock") == []
 
     def test_the_title_alone_can_carry_a_match(self, ledger_con):
         ledger.upsert_reference(
