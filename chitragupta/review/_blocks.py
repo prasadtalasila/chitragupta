@@ -172,3 +172,34 @@ def text_of(block: list[str]) -> str:
         if marker.match(block[0]):
             return marker.sub("", joined, count=1)
     return joined
+
+
+def line_of_offset(block_start: int, block: list[str], offset: int) -> int:
+    """Which physical line (absolute, matching `spans`'s own numbering)
+    `offset` -- a character offset into `text_of(block)` -- falls on.
+
+    Exact for the plain multi-line paragraph `text_of`'s default branch
+    builds: `" ".join` of each line's quote-marker-stripped, stripped
+    text, one line's worth of it a sentence-finding caller needs to
+    locate precisely (#496). Every other branch -- a table row, a TeX
+    structure, a list or heading marker -- is one physical line in every
+    case a caller of `spans` actually reaches it for (a header row's own
+    line is never a body row's, and a heading block never reaches a
+    caller that asks this at all), so any offset in it is `block_start`
+    regardless of exactness -- the early return below covers it without
+    reproducing `text_of`'s other branches here.
+
+    `offset` is always within `text_of(block)`'s own length here --
+    `sentences.spans`' tightened offsets never exceed the text they were
+    cut from -- so the search below always finds a line and never falls
+    through.
+    """
+    if len(block) == 1:
+        return block_start
+    cursor = 0
+    ends = []
+    for raw in block:
+        cursor += len(_QUOTE_MARKER.sub("", raw).strip())
+        ends.append(cursor)
+        cursor += 1  # the joining space
+    return block_start + next(index for index, end in enumerate(ends) if offset <= end)

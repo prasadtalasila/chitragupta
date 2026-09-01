@@ -101,6 +101,14 @@ def split(
     returned for the caller to take citekeys from -- read here, once,
     rather than resolved here and opened again there.
 
+    **A unit-stem match still has to resolve, same as any other
+    include.** Marking it "included" on the id match alone -- before
+    `_resolve` ever runs -- let a renamed or deleted chapter file report
+    "included" regardless (#496), which is exactly the silent loss this
+    aid exists to catch. So a unit-stem include that does not resolve to
+    a real file joins `unread` instead of `included`, and the caller then
+    reports it the same way an omitted unit is reported.
+
     **Two ways an include goes unread, and both are returned rather than
     dropped.** It may resolve to no file at all; or it may resolve to
     something that is not text -- a `book.md` may link a cover image or a
@@ -115,12 +123,12 @@ def split(
     unread: list[str] = []
     for target in references(text):
         stem = Path(target).stem
-        if stem in unit_ids:
-            included.add(stem)
-            continue
         resolved = _resolve(book, target)
         if resolved is None:
             unread.append(target)
+            continue
+        if stem in unit_ids:
+            included.add(stem)
             continue
         try:
             others.append((resolved.name, resolved.read_text(encoding="utf-8")))

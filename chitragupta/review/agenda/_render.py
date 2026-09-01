@@ -25,6 +25,8 @@ _NO_CLASS_AIDS = ("synthesis", "figure")
 
 def _aid_note(aid: str, label: str, source) -> str:
     if not source.available:
+        if source.reason:
+            return f"- {label}: not run -- {source.reason}"
         return f"- {label}: not run"
     state = "read, no item class defined" if aid in _NO_CLASS_AIDS else "read"
     if source.stale:

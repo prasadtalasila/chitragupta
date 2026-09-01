@@ -20,7 +20,7 @@ import pytest
 
 from chitragupta import config, dossier, review
 from chitragupta.review import __main__ as review_main
-from chitragupta.review import _uncited_render, _units, uncited_prose
+from chitragupta.review import _claims, _uncited_render, _units, uncited_prose
 from tests.test_review_units import draft_at, write_scope
 
 
@@ -38,6 +38,18 @@ def report_for(draft: Path, genre: str | None = None) -> uncited_prose.Report:
 def found_text(draft: Path, genre: str | None = None) -> list[str]:
     """The sentence of every finding this draft raises."""
     return [f["sentence"] for f in uncited_prose.findings(report_for(draft, genre))]
+
+
+class TestEachSentenceCarriesItsOwnLine:
+    def test_a_five_sentence_block_reports_five_distinct_lines(self):
+        """Every sentence in a block used to carry the block's first
+        line, so a finding could point up to five lines above the
+        sentence quoted beside it (#496). Mapped via `sentences.spans`
+        offsets, each sentence should report the line it actually sits
+        on, one sentence per physical line here."""
+        text = "Alpha is true.\nBeta is true.\nGamma is true.\nDelta is true.\nEpsilon is true.\n"
+        lines = [s.line for s in _claims.claim_sentences(text)]
+        assert lines == [1, 2, 3, 4, 5]
 
 
 class TestRegistration:

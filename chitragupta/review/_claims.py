@@ -196,19 +196,27 @@ def claim_sentences(text: str) -> list[Sentence]:
     found = []
     for start, end, block in _blocks.spans(lines):
         after = lines[end] if end < len(lines) else ""
-        if not block.strip() or _excluded(lines[start - 1 : end], after):
+        raw_block = lines[start - 1 : end]
+        if not block.strip() or _excluded(raw_block, after):
             continue
         block_cites = bool(citation_gate.extract_citekeys_from_line(block))
-        # No empty-sentence guard: `sentences.split` strips first and only
-        # splits *between* a terminator and a following capital, so a
-        # block with any content in it yields only non-empty parts. The
-        # `block.strip()` test above is what rules out the other case.
-        for sentence in sentences.split(block):
+        # No empty-sentence guard: `sentences.spans` tightens past a
+        # span's leading and trailing whitespace and drops any that come
+        # back empty, so a block with any content in it yields only
+        # non-empty spans. The `block.strip()` test above is what rules
+        # out the other case.
+        #
+        # Offsets, not `sentences.split`, so each sentence maps to its
+        # own line via `_blocks.line_of_offset` (#496) -- every sentence
+        # in a block used to carry the block's first line, which could
+        # point a finding several lines above the sentence quoted beside
+        # it.
+        for sent_start, sent_end in sentences.spans(block):
             found.append(
                 Sentence(
-                    start,
-                    sentence,
-                    bool(citation_gate.extract_citekeys_from_line(sentence)),
+                    _blocks.line_of_offset(start, raw_block, sent_start),
+                    block[sent_start:sent_end],
+                    bool(citation_gate.extract_citekeys_from_line(block[sent_start:sent_end])),
                     block_cites,
                 )
             )

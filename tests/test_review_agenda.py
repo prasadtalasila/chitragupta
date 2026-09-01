@@ -111,6 +111,20 @@ class TestReadAidJson:
         source = _sources._read_aid_json(draft, "provenance")
         assert source.stale is True
 
+    def test_truncated_json_degrades_to_unavailable_with_a_reason(self, isolated_config):
+        """One corrupted aid sidecar must not take down the whole agenda
+        (#496) -- the module docstring's "each degrading to absent"
+        covers a truncated file, not only a missing one."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+        path = review.write_json(draft, "provenance", {"findings": []})
+        path.write_text('{"findings": [', encoding="utf-8")
+
+        source = _sources._read_aid_json(draft, "provenance")
+        assert source.available is False
+        assert source.data is None
+        assert source.reason is not None
+
 
 class TestReadStyle:
     def test_clean_run_is_not_partial(self, isolated_config, monkeypatch):
@@ -815,6 +829,23 @@ class TestRenderMarkdown:
         assert "no item class defined" in rendered
         assert "vale not on PATH" in rendered
         assert "corpus ledger is unavailable" in rendered
+
+    def test_an_unavailable_source_with_a_reason_names_it(self):
+        """A truncated aid sidecar (#496) degrades to unavailable with a
+        reason -- the header should say why it was not read rather than
+        the bare "not run" a genuinely missing file gets."""
+        sources = _sources_stub(
+            aids={
+                "provenance": _sources.AidSource(
+                    reason="content/review/t/survey.provenance.json: bad JSON"
+                ),
+            }
+        )
+        rendered = _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[]),
+            "cmd",
+        )
+        assert "not run -- content/review/t/survey.provenance.json: bad JSON" in rendered
 
     def test_no_dossier_is_named(self):
         rendered = _render.render_markdown(
