@@ -2943,10 +2943,17 @@ def tier3(monkeypatch, ledger_con):
     by the caller. Returns a function taking `{(draft_fragment,
     source_fragment): cosine}`."""
 
-    def install(scores, sections=None):
+    def install(scores, sections=None, missing=frozenset()):
         class FakeCollection:
             def query(self, query_embeddings, n_results, where):
                 return {"metadatas": [[]], "distances": [[]]}
+
+            def get(self, where, include=None):
+                # Every cited citekey is "embedded" by default -- a test
+                # that wants #499's stale-collection reason opts in with
+                # `missing`, so every other test here stays a clean run.
+                wanted = where["citekey"]["$in"]
+                return {"metadatas": [{"citekey": k} for k in wanted if k not in missing]}
 
         scope = overlap_embed.Scope(
             sections if sections is not None else {"Section": ["source_2024"]},
@@ -3043,6 +3050,52 @@ class TestEmbeddingTier:
         findings, _, _, _ = vc.scan_findings(str(draft))
 
         assert [f["tier"] for f in findings if f["tier"] == "embedding"] == []
+        assert any(f["tier"] == "exact" for f in findings)
+
+    def test_a_real_paraphrase_survives_the_cap_when_the_same_section_also_quotes(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # #499 (M-14): the per-section cap used to run *before* the
+        # dedupe against tier 1/2, not after. A section that quotes one
+        # source verbatim (the strongest alignment -- later dropped as a
+        # duplicate of the exact-tier finding) and paraphrases a second
+        # source elsewhere lost the real paraphrase: the cap kept the
+        # verbatim alignment as the section's one slot, and only
+        # afterwards was it found to duplicate tier 1 and dropped,
+        # leaving nothing behind.
+        shared = "alpha beta gamma delta epsilon zeta eta theta iota kappa"
+        _add_parsed_item(ledger_con, tmp_path, "quoted_2024", shared)
+        _add_sidecar("quoted_2024", [{"text": shared + ".", "label": "text", "page": 1}])
+        _add_parsed_item(ledger_con, tmp_path, "paraphrased_2024", "unrelated corpus text")
+        _add_sidecar(
+            "paraphrased_2024",
+            [
+                {
+                    "text": "Firms save their return on investment while adapting to "
+                    "modern technologies with minimal risk.",
+                    "label": "text",
+                    "page": 9,
+                },
+            ],
+        )
+        # The verbatim quote's alignment (0.95) outscores the paraphrase's
+        # (0.85), so the un-fixed cap would keep the quote's alignment and
+        # discard the paraphrase before the exact-tier dedupe ever runs.
+        tier3(
+            {("alpha", "alpha"): 0.95, ("protecting", "save their"): 0.85},
+            sections={"Section": ["quoted_2024", "paraphrased_2024"]},
+        )
+        draft = _tier3_draft(
+            f"# Section\n\n{shared} and then some more prose. The study reports a "
+            "strategy of protecting profit while adopting new tooling at low "
+            "exposure.\n"
+        )
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        [embed] = [f for f in findings if f["tier"] == "embedding"]
+        assert embed["citekey"] == "paraphrased_2024"
+        assert embed["page"] == embed["end_page"] == 9
         assert any(f["tier"] == "exact" for f in findings)
 
     def test_the_allowlist_suppresses_a_tier_three_finding_too(
@@ -3168,6 +3221,88 @@ class TestEmbeddingTier:
         assert "sections.md" in not_run[0]["reason"]
         assert "--citekeys --write" in not_run[0]["reason"]
 
+    def test_a_partly_renamed_dossier_still_scans_the_matched_section_and_says_so(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # #499 (M-15): a draft with some headings renamed used to scan
+        # only the matched section(s) with no signal that the rest were
+        # skipped -- the `not_run` mechanism only ever fired at *zero*
+        # matches. "checked against all three tiers" was then simply
+        # false for the unmatched sections.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar(
+            "source_2024",
+            [{"text": "A restated claim about the subject.", "label": "text", "page": 2}],
+        )
+        tier3(
+            {("protecting", "restated claim"): 0.95},
+            sections={"Current Heading": ["source_2024"], "A Heading That Was Renamed": ["k_2024"]},
+        )
+        draft = _tier3_draft(
+            "# Current Heading\n\nThe study reports a strategy of protecting profit here.\n"
+        )
+
+        findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        assert any(f["tier"] == "embedding" for f in findings)
+        [entry] = [e for e in not_run if "1 of 2" in e["reason"]]
+        assert entry["partial"] is True
+        assert "renamed" in entry["reason"]
+
+    def test_the_denominator_counts_every_recorded_section_not_only_the_ones_with_prose(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # Copilot review on #499: the denominator was `unmatched +
+        # len(sections)`, but `sections` drops a title-matched heading
+        # that contributed no prose (empty, or only code/fences) -- so a
+        # dossier recording 3 sections with one renamed and one matched
+        # but empty used to report "1 of 2" instead of "1 of 3".
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar(
+            "source_2024",
+            [{"text": "A restated claim about the subject.", "label": "text", "page": 2}],
+        )
+        tier3(
+            {("protecting", "restated claim"): 0.95},
+            sections={
+                "Current Heading": ["source_2024"],
+                "Empty Heading": ["k_2024"],
+                "A Heading That Was Renamed": ["k_2024"],
+            },
+        )
+        draft = _tier3_draft(
+            "# Current Heading\n\nThe study reports a strategy of protecting profit here.\n"
+            "\n# Empty Heading\n\n# Trailing\n\nMore unrelated prose.\n"
+        )
+
+        _findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        [entry] = [e for e in not_run if "section(s) the dossier's" in e["reason"]]
+        assert "1 of 3" in entry["reason"]
+
+    def test_a_cited_source_absent_from_the_collection_is_named_as_a_partial_gap(
+        self, ledger_con, tmp_path, tier3
+    ):
+        # #499 (M-16): a cited source with no chunks in `content/chroma/`
+        # used to rank last in `shortlist` and be silently cut by the
+        # cap with no signal -- the corpus grew a paper since `enrich`
+        # last ran, and nothing said the tier could not see it.
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar(
+            "source_2024",
+            [{"text": "A restated claim about the subject.", "label": "text", "page": 2}],
+        )
+        tier3({("protecting", "restated claim"): 0.95}, missing={"source_2024"})
+        draft = _tier3_draft(
+            "# Section\n\nThe study reports a strategy of protecting profit here.\n"
+        )
+
+        _findings, _, _, not_run = vc.scan_findings(str(draft))
+
+        [entry] = [e for e in not_run if "1 cited source" in e["reason"]]
+        assert entry["partial"] is True
+        assert "enrich" in entry["reason"]
+
 
 class TestReportingWhatDidNotRun:
     def test_the_printed_form_names_the_tier_and_the_reason(self):
@@ -3197,6 +3332,37 @@ class TestReportingWhatDidNotRun:
         assert "The tier that can see one did" in incomplete
         assert "not complete" not in complete
         assert "checked against all three tiers" in complete
+
+    def test_a_partial_gap_reads_differently_from_a_tier_that_never_ran(self):
+        # #499: the tier ran and the findings below are real -- the report
+        # must not say "the tier that can see one did not run here" when
+        # it plainly did.
+        partial = vc.render_scan_markdown(
+            Path("content/drafts/d.md"),
+            [],
+            8,
+            None,
+            "cmd",
+            0,
+            [{"tier": "embedding", "reason": "1 of 2 section(s) ... renamed", "partial": True}],
+        )
+        assert "this run was" in partial and "not complete" in partial
+        assert "The tier that can see one did" not in partial
+        assert "1 of 2 section(s)" in partial
+
+    def test_a_partial_entrys_bullet_line_does_not_say_did_not_run(self):
+        # Copilot review on #499: `_not_run_lines` hardcoded "did not
+        # run" for every entry, contradicting the paragraph directly
+        # above a partial entry's bullet, which says the tier ran.
+        text = vc.format_scan(
+            [], 8, 0, [{"tier": "embedding", "reason": "1 of 2 renamed", "partial": True}]
+        )
+        assert "did not run" not in text
+        assert "ran, but not against everything" in text
+
+    def test_the_printed_form_still_says_did_not_run_for_a_tier_that_never_ran(self):
+        text = vc.format_scan([], 8, 0, [{"tier": "embedding", "reason": "no dossier"}])
+        assert "tier embedding did not run: no dossier" in text
 
     def test_the_payload_carries_what_did_not_run(self, ledger_con, tmp_path, capsys):
         draft = tmp_path / "draft.md"

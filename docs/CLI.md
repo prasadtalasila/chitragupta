@@ -1592,8 +1592,8 @@ The payload carries four things:
   a verdict, the aid, the draft, the exact command, the version.
 - The three flags that set the reporting floor: `min_run`, `gap`,
   `limit`.
-- How many findings the allowlist suppressed (`suppressed`), which tiers
-  did not run at all and why (`tiers_not_run`), and the Chroma collection
+- How many findings the allowlist suppressed (`suppressed`), what
+  coverage gap each `tiers_not_run` entry names, and the Chroma collection
   name the embedding tier reads or writes right now (`corpus_key`, #500).
   All three are described below.
 - One object per finding, with `id`, `citekey`, `page`, `end_page`,
@@ -1621,16 +1621,28 @@ deterministic tiers, which have no similarity to report. It ranks within
 a section. It is not a probability, and not comparable to anything the
 other tiers publish.
 
-`tiers_not_run` is one `{"tier", "reason"}` object per detection tier
-that could not run at all, and `[]` when every tier ran. Only the
-embedding tier can appear there today. It needs four things: the optional
-enrichment layer, a built `content/chroma/`, the Docling passage
-sidecars, and the draft's own dossier. A healthy checkout can be missing
-any of them.
+`tiers_not_run` is one `{"tier", "reason", "partial"}` object per
+coverage gap, and `[]` when every tier ran with nothing left uncovered.
+Only the embedding tier can appear there today, and it can contribute
+more than one entry, since a heading-renamed gap and a stale-corpus gap
+are independent and each get their own message.
 
-That is what the field is for. `findings: []` alone cannot distinguish a
-draft that was checked and is clean from one a tier never looked at. The
-printed and written reports say the same thing in prose.
+`"partial": false` means the tier did not run at all. It needs four
+things: the optional enrichment layer, a built `content/chroma/`, the
+Docling passage sidecars, and the draft's own dossier. A healthy
+checkout can be missing any of them.
+
+`"partial": true` means the tier ran and the findings in the payload
+are real, but it did not run against everything the draft cites: some
+of the dossier's recorded section headings could not be matched to this
+draft's own headings (probably renamed since `sections --citekeys
+--write` last ran), or some cited source has no chunks in the embedded
+corpus (the corpus grew since `enrich` last ran).
+
+That is what the field is for either way. `findings: []` alone cannot
+distinguish a draft that was checked and is clean from one a tier never
+looked at, or looked at only in part. The printed and written reports
+say the same thing in prose.
 
 `corpus_key` is `embed_index.collection_name()`, namespaced by
 `[enrich].embedding_model` -- recorded even when `tiers_not_run` lists

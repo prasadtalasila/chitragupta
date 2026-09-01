@@ -29,16 +29,21 @@ def scan_findings(
     stronger tier already covers -- see below) and sorted longest-first,
     each dict naming which tier produced it (`"tier"`); `suppressed` is
     the total the allowlist (see `_load_allowlist_phrases`) dropped,
-    summed across tiers; `not_run` is one `{"tier", "reason"}` entry per
-    tier that could not run at all.
+    summed across tiers; `not_run` is one `{"tier", "reason", "partial"}`
+    entry per gap in what a tier covered -- either it did not run at all
+    (`"partial": False`) or it ran but not against everything the draft
+    cites (`"partial": True`, #499) -- and a tier can contribute more
+    than one entry, e.g. a renamed heading and a stale embedded corpus
+    are independent gaps with independent fixes.
 
     `not_run` is the fourth return value rather than a silent empty
     contribution because the two are not the same claim. Tiers 1 and 2
     are always available, so an empty result from either means "checked,
     nothing found". Tier 3 depends on the optional enrichment layer, a
     built `content/chroma/`, Docling sidecars and the draft's dossier;
-    an empty result from it means either "checked, nothing found" or
-    "never ran", and a report that cannot tell a reader which is
+    an empty result from it means either "checked, nothing found",
+    "never ran", or "ran, but only against part of what this draft
+    cites" -- and a report that cannot tell a reader which is
     overstating what was checked.
 
     Every tier finder shares this function's tokenization, allowlist and
@@ -108,34 +113,26 @@ def scan_findings(
         )
     ]
 
-    embed_findings, embed_suppressed, embed_not_run = _embed_tier_findings(
-        draft, words, word_strs, paragraph_citekeys, newlines, text, min_run, allowlist
-    )
-    # Overlap, not containment, for tier 3 -- the opposite of the rule
-    # just above, deliberately. A tier-2 finding is dropped only when a
-    # tier-1 one fully contains it, because a short verbatim island
-    # inside a longer paraphrased passage is exactly what tier 2 exists
-    # to widen. A tier-3 alignment is already a whole passage, several
-    # sentences wide, and it is normal for it to *contain* the tier-1 or
-    # tier-2 finding rather than the other way round -- so containment
-    # would never fire and the same passage would be reported twice, once
-    # with an exact span a reviewer can act on and once with a soft one.
-    # Any overlap means a deterministic tier already pointed here.
+    # Tier 3 is filtered against these two tiers' spans *before* it ever
+    # applies its own per-section cap -- see `_embed_tier_findings` for
+    # why the order matters (#499) -- so nothing further needs doing
+    # with `embed_findings` here.
     lexical_findings = exact_findings + skipgram_findings
-    embed_findings = [
-        f
-        for f in embed_findings
-        if not any(
-            other["citekey"] == f["citekey"]
-            and other["start"] < f["start"] + f["span_words"]
-            and f["start"] < other["start"] + other["span_words"]
-            for other in lexical_findings
-        )
-    ]
+    embed_findings, embed_suppressed, embed_reasons = _embed_tier_findings(
+        draft,
+        words,
+        word_strs,
+        paragraph_citekeys,
+        newlines,
+        text,
+        min_run,
+        allowlist,
+        lexical_findings,
+    )
 
     findings = lexical_findings + embed_findings
     suppressed = exact_suppressed + skipgram_suppressed + embed_suppressed
-    not_run = [{"tier": "embedding", "reason": embed_not_run}] if embed_not_run is not None else []
+    not_run = [{"tier": "embedding", **entry} for entry in embed_reasons]
 
     # Longest run first, no silent truncation -- every finding above the
     # floor prints unless --limit narrows it, matching the issue's explicit
@@ -234,13 +231,22 @@ def _bucket_title(bucket: str) -> str:
 
 
 def _not_run_lines(not_run: list[dict]) -> list[str]:
-    """One line per tier that did not run, naming it and why.
+    """One line per coverage gap, naming the tier and why.
 
     Shared by the printed and written forms so the two cannot end up
     saying different things about the same scan -- the same reason
-    `scan_command` is built once and handed to both.
+    `scan_command` is built once and handed to both. `"did not run"` is
+    only said of an entry that is actually `partial: False` -- an entry
+    that ran and still contributed real findings gets its own phrasing,
+    so the two forms cannot contradict the prose `_scan_render.py`
+    prints directly above them (#499).
     """
-    return [f"tier {entry['tier']} did not run: {entry['reason']}" for entry in not_run]
+    return [
+        f"tier {entry['tier']} did not run: {entry['reason']}"
+        if not entry.get("partial")
+        else f"tier {entry['tier']} ran, but not against everything: {entry['reason']}"
+        for entry in not_run
+    ]
 
 
 # The finding fields the JSON payload publishes, in the order they are

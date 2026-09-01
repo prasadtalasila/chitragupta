@@ -7,7 +7,7 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 
 from pathlib import Path
 
-from chitragupta import overlap_embed, overlap_segments
+from chitragupta import overlap_chroma, overlap_embed, overlap_segments
 from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted
 from chitragupta.review.verbatim_check._masking import _DraftWord
 from chitragupta.review.verbatim_check._shared import (
@@ -27,22 +27,33 @@ def _embed_tier_findings(
     text: str,
     min_run: int,
     allowlist: list[tuple[str, ...]],
-) -> tuple[list[dict], int, str | None]:
+    lexical_findings: list[dict],
+) -> tuple[list[dict], int, list[dict]]:
     """Tier 3: embedding-based paraphrase detection by local alignment
     over sentence embeddings (`chitragupta/overlap_embed.py`, #134/#164). Same
     shared contract as the other two tier finders, plus a third return
-    value the other two have no use for: **why the tier did not run**.
+    value the other two have no use for: **what this run does not cover**.
 
-    That third value is the point of the tier being wired in at all on a
-    host that cannot run it. Tier 1 and tier 2 are always available --
-    they read an index this repo builds from parsed text with no optional
-    dependency -- so "found nothing" is the only thing either can say.
-    This tier needs the enrichment layer's embedding stack, a built
-    `content/chroma/`, Docling passage sidecars and the draft's own
-    dossier, and any of those can be absent on a perfectly healthy
-    checkout. A tier that quietly contributed nothing in that state would
-    make a report of a never-checked draft indistinguishable from a
-    report of a clean one.
+    `lexical_findings` is tier 1's and tier 2's own findings (already
+    computed by the caller), needed *before* `overlap_embed.report()`
+    narrows the alignments -- see the comment at the filter below for
+    why the order matters (#499).
+
+    That third value -- `[{"reason": str, "partial": bool}, ...]` -- is
+    the point of the tier being wired in at all on a host that cannot run
+    it, or that cannot run it against everything a draft cites. Tier 1
+    and tier 2 are always available -- they read an index this repo
+    builds from parsed text with no optional dependency -- so "found
+    nothing" is the only thing either can say. This tier needs the
+    enrichment layer's embedding stack, a built `content/chroma/`,
+    Docling passage sidecars and the draft's own dossier, any of which
+    can be absent on a perfectly healthy checkout (`partial: False`,
+    nothing else ran); and even when it can run, a heading renamed since
+    the dossier was last written or a cited source the corpus grew since
+    `enrich` last ran can each leave part of a draft uncompared while the
+    tier still reports real findings elsewhere (`partial: True`, #499).
+    A caller that only asked "did this tier run at all" could not tell
+    either partial case from a clean, complete run.
 
     No `gap` parameter, unlike the other two. Tier 1 and tier 2 merge
     same-diagonal matches with a word-level gap tolerance; the alignment
@@ -53,9 +64,9 @@ def _embed_tier_findings(
     """
     scope, reason = overlap_embed.open_scope(Path(draft))
     if scope is None:
-        return [], 0, reason
+        return [], 0, [{"reason": reason, "partial": False}]
 
-    sections = overlap_segments.draft_sections(
+    sections, unmatched = overlap_segments.draft_sections(
         text, [(w.char, w.char_end) for w in words], scope.citekeys_by_section
     )
     if not sections:
@@ -68,12 +79,19 @@ def _embed_tier_findings(
         return (
             [],
             0,
-            (
-                "the draft's headings and its dossier's sections.md do not agree on a "
-                "single section -- regenerate it with `python -m chitragupta.dossier sections "
-                "<draft> --citekeys --write`"
-            ),
+            [
+                {
+                    "reason": (
+                        "the draft's headings and its dossier's sections.md do not agree "
+                        "on a single section -- regenerate it with `python -m "
+                        "chitragupta.dossier sections <draft> --citekeys --write`"
+                    ),
+                    "partial": False,
+                }
+            ],
         )
+
+    reasons = _partial_coverage_reasons(scope, sections, unmatched)
 
     alignments = overlap_embed.align_draft(scope, sections)
     # The position map is built from *every* alignment and the report
@@ -85,6 +103,29 @@ def _embed_tier_findings(
     # `UNCITED SOURCE` whenever the strongest match happened to be a
     # paper it does not name.
     citekeys_at_position = _embed_citekeys_at_positions(alignments)
+
+    # Filtered against tier 1's and tier 2's spans *before* `report()`
+    # applies its per-section cap, not after (#499). A section that
+    # quotes a source verbatim -- the strongest alignment there -- and
+    # also paraphrases it elsewhere used to lose the paraphrase: the
+    # verbatim alignment consumed the section's one cap slot, and only
+    # afterwards was it discovered to duplicate the exact-tier finding
+    # and dropped. Filtering first lets the cap fall on what tiers 1
+    # and 2 could not already see, which is the point of this tier.
+    # Overlap, not containment -- a tier-3 alignment is a whole passage
+    # and normally *contains* the exact or skip-gram span rather than
+    # the other way round, so containment would never fire and the same
+    # passage would be reported twice.
+    alignments = [
+        a
+        for a in alignments
+        if not any(
+            other["citekey"] == a.citekey
+            and other["start"] < a.word_end
+            and a.word_start < other["start"] + other["span_words"]
+            for other in lexical_findings
+        )
+    ]
 
     findings = []
     suppressed = 0
@@ -111,7 +152,59 @@ def _embed_tier_findings(
                 citekeys_at_position,
             )
         )
-    return findings, suppressed, None
+    return findings, suppressed, reasons
+
+
+def _partial_coverage_reasons(
+    scope: overlap_embed.Scope, sections: list[overlap_segments.DraftSection], unmatched: int
+) -> list[dict]:
+    """The `partial: True` entries `_embed_tier_findings` returns
+    alongside real findings -- coverage gaps that do not stop the tier
+    from running, unlike the two `partial: False` cases above (#499).
+
+    Two independent gaps, kept as two independent entries rather than
+    merged into one message: a renamed heading and a corpus grown since
+    `enrich` last ran have different fixes, and a reviewer needs to tell
+    them apart.
+    """
+    reasons = []
+    if unmatched:
+        # Some, not zero, of the recorded sections matched -- the tier
+        # still runs and still reports real findings, so this is not the
+        # "nothing to scope to" case above. A draft with 9 of 10 headings
+        # renamed would otherwise scan the one matched section and say
+        # nothing about the other nine.
+        #
+        # The denominator is `scope.citekeys_by_section`, not `unmatched
+        # + len(sections)` -- `sections` only holds sections that also
+        # survived prose/sentence extraction, so a matched heading with
+        # no usable prose (an empty section, or one that is only code or
+        # fences) would silently disappear from that count too.
+        reasons.append(
+            {
+                "reason": (
+                    f"{unmatched} of {len(scope.citekeys_by_section)} section(s) the "
+                    "dossier's sections.md records citekeys for could not be matched to "
+                    "this draft's own headings -- probably renamed since `python -m "
+                    "chitragupta.dossier sections <draft> --citekeys --write` last ran; "
+                    "only the matched section(s) below were scanned"
+                ),
+                "partial": True,
+            }
+        )
+    cited = {key for section in sections for key in section.citekeys}
+    stale = overlap_chroma.absent_citekeys(scope.collection, cited)
+    if stale:
+        reasons.append(
+            {
+                "reason": (
+                    f"{len(stale)} cited source(s) have no chunks in the embedded corpus "
+                    "-- run `python -m chitragupta.enrich` to catch reuse from them"
+                ),
+                "partial": True,
+            }
+        )
+    return reasons
 
 
 def _embed_citekeys_at_positions(

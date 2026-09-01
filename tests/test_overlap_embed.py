@@ -41,14 +41,20 @@ class FakeEmbedder:
 
 
 class FakeCollection:
-    def __init__(self, response=None, count=1):
+    def __init__(self, response=None, count=1, get_response=None):
         self.response = response
+        self.get_response = get_response
         self.queries = []
+        self.gets = []
         self._count = count
 
     def query(self, query_embeddings, n_results, where):
         self.queries.append({"n": len(query_embeddings), "n_results": n_results, "where": where})
         return self.response
+
+    def get(self, where, include=None):
+        self.gets.append({"where": where, "include": include})
+        return self.get_response
 
     def count(self):
         return self._count
@@ -314,6 +320,34 @@ class TestShortlist:
         assert collection.queries[0]["where"] == {
             "citekey": {"$in": ["a_2024", "b_2024", "c_2024"]}
         }
+
+
+class TestAbsentCitekeys:
+    """#499 (M-16): a metadata-only presence check, distinct from
+    `shortlist`'s similarity ranking -- see `absent_citekeys`'s
+    docstring for why the two cannot share one signal."""
+
+    def test_every_cited_key_present_is_empty(self):
+        collection = FakeCollection(
+            get_response={"metadatas": [{"citekey": "a_2024"}, {"citekey": "b_2024"}]}
+        )
+        assert overlap_chroma.absent_citekeys(collection, ["a_2024", "b_2024"]) == set()
+
+    def test_a_citekey_with_no_chunk_anywhere_is_reported(self):
+        collection = FakeCollection(get_response={"metadatas": [{"citekey": "a_2024"}]})
+        assert overlap_chroma.absent_citekeys(collection, ["a_2024", "b_2024"]) == {"b_2024"}
+
+    def test_no_citekeys_is_no_query(self):
+        collection = FakeCollection()
+        assert overlap_chroma.absent_citekeys(collection, []) == set()
+        assert collection.gets == []
+
+    def test_it_queries_by_citekey_not_by_similarity(self):
+        collection = FakeCollection(get_response={"metadatas": []})
+        overlap_chroma.absent_citekeys(collection, ["a_2024", "b_2024"])
+        assert collection.gets == [
+            {"where": {"citekey": {"$in": ["a_2024", "b_2024"]}}, "include": ["metadatas"]}
+        ]
 
 
 class TestOpenScope:

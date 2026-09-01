@@ -87,14 +87,21 @@ def _how_to_read(not_run: list[dict]) -> list[str]:
 def _completeness_paragraph(not_run: list[dict]) -> list[str]:
     """What this particular scan does not rule out.
 
-    Two different sentences, because "the paraphrase tier ran and found
-    nothing here" and "the paraphrase tier never ran" are two different
-    states of knowledge and only one of them is about the draft.
-    `tests/test_skill_verbatim_scan_step.py` holds every skill's run
-    of this scan to the same standard -- say what it cannot see -- and
-    this is where the report itself keeps that promise.
+    Three different sentences, because "the paraphrase tier ran and
+    found nothing here", "the paraphrase tier never ran", and "the
+    paraphrase tier ran but not against everything this draft cites"
+    are three different states of knowledge and only one of them is a
+    clean bill of health. `tests/test_skill_verbatim_scan_step.py` holds
+    every skill's run of this scan to the same standard -- say what it
+    cannot see -- and this is where the report itself keeps that
+    promise. Entries carry `"partial": True` when the tier ran and
+    still contributed findings but skipped part of what it should have
+    covered (#499) -- absent, not merely omitted, that key means the
+    tier that could see one did not run at all.
     """
-    if not_run:
+    absent = [entry for entry in not_run if not entry.get("partial")]
+    partial = [entry for entry in not_run if entry.get("partial")]
+    if absent:
         return (
             [
                 "**A clean run is not a clean bill of health**, and this run was",
@@ -105,7 +112,24 @@ def _completeness_paragraph(not_run: list[dict]) -> list[str]:
                 "not run here:",
                 "",
             ]
-            + [f"- {line}" for line in _not_run_lines(not_run)]
+            + [f"- {line}" for line in _not_run_lines(absent)]
+            + [
+                "",
+                "So this report is silently incomplete rather than wrong. See",
+                "docs/PLAGIARISM.md.",
+                "",
+            ]
+        )
+    if partial:
+        return (
+            [
+                "**A clean run is not a clean bill of health**, and this run was",
+                "not complete. The embedding tier -- the only one that can see a",
+                "genuine restatement -- ran and the findings below are real, but it",
+                "did not run against everything this draft cites:",
+                "",
+            ]
+            + [f"- {line}" for line in _not_run_lines(partial)]
             + [
                 "",
                 "So this report is silently incomplete rather than wrong. See",

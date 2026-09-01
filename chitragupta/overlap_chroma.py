@@ -202,3 +202,27 @@ def _ranked_citekeys(raw: dict) -> list[str]:
             if citekey is not None and distance < best.get(citekey, float("inf")):
                 best[citekey] = distance
     return sorted(best, key=lambda key: best[key])
+
+
+def absent_citekeys(collection, citekeys) -> set[str]:
+    """Which of `citekeys` own no chunk in `collection` at all.
+
+    A metadata-only `get`, not a similarity query -- the same call
+    `embed_index.py`'s own upsert uses to check what is already indexed.
+    `shortlist`'s ranking cannot answer this: a citekey that ranks last
+    there may simply be topically distant, still with real chunks in the
+    collection, and `shortlist` has no way to tell that case apart from a
+    source the enrichment layer has never embedded (#499, M-16) -- the
+    corpus grew a paper since `enrich` last ran, that paper never made
+    the shortlist's cap, and nothing said why. This is the presence check
+    that lets a caller say why, without changing how `shortlist` ranks.
+    """
+    if not citekeys:
+        return set()
+    # Sorted, not just `list()`-ed: a caller may pass a `set`, whose
+    # iteration order is not insertion order and is not stable across
+    # runs, and a query built from it would make `collection.gets` and
+    # any log of what was asked for order-dependent for no reason.
+    hits = collection.get(where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"])
+    present = {m.get("citekey") for m in hits["metadatas"]}
+    return set(citekeys) - present

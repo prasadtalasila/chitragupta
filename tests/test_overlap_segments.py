@@ -18,7 +18,10 @@ from tests.conftest import make_reference
 
 def segments(text, mapping):
     words, _ = vc._tokenize_draft(text)
-    return overlap_segments.draft_sections(text, [(w.char, w.char_end) for w in words], mapping)
+    found, _unmatched = overlap_segments.draft_sections(
+        text, [(w.char, w.char_end) for w in words], mapping
+    )
+    return found
 
 
 class TestDraftSections:
@@ -121,6 +124,50 @@ class TestDraftSections:
     def test_a_section_with_no_prose_at_all_is_dropped(self):
         text = "# Title\n\n"
         assert segments(text, {"Title": ["k_2024"]}) == []
+
+
+class TestUnmatchedSections:
+    """#499 (M-15): a recorded section title with no matching draft
+    heading used to be indistinguishable from one the dossier legitimately
+    recorded no citekeys for -- both simply produced no `DraftSection`.
+    """
+
+    def _unmatched(self, text, mapping):
+        words, _ = vc._tokenize_draft(text)
+        _found, unmatched = overlap_segments.draft_sections(
+            text, [(w.char, w.char_end) for w in words], mapping
+        )
+        return unmatched
+
+    def test_a_heading_the_dossier_does_not_name_counts_as_unmatched(self):
+        text = "# Renamed Since\n\nProse.\n"
+        assert self._unmatched(text, {"Old Name": ["smith_2024"]}) == 1
+
+    def test_a_matched_heading_is_not_unmatched(self):
+        text = "# Title\n\nBody prose here, several words long.\n"
+        assert self._unmatched(text, {"Title": ["smith_2024"]}) == 0
+
+    def test_only_the_unmatched_recorded_titles_are_counted(self):
+        # 9 of 10 headings renamed is the shape #499 names -- one matched
+        # title must not inflate the count the other nine contribute.
+        text = "# Kept\n\nProse.\n"
+        mapping = {"Kept": ["k_2024"], **{f"Old {i}": ["k_2024"] for i in range(9)}}
+        assert self._unmatched(text, mapping) == 9
+
+    def test_a_section_with_no_recorded_citekeys_is_not_unmatched(self):
+        # Distinct from a renamed heading: the dossier does name this
+        # section, it simply recorded no citekeys for it -- a choice, not
+        # a heading that moved out from under the mapping.
+        text = "# Title\n\nProse.\n"
+        assert self._unmatched(text, {"Title": []}) == 0
+
+    def test_an_empty_recorded_title_with_no_matching_heading_is_still_not_unmatched(self):
+        # The gap an empty-citekey title can hide in: it also fails the
+        # title-match check, but it is still "legitimately thin", not a
+        # renamed heading -- the loop below would drop it via `if not
+        # citekeys` regardless of whether its title matched anything.
+        text = "# Current Heading\n\nProse.\n"
+        assert self._unmatched(text, {"Old Empty Name": []}) == 0
 
 
 class TestMatchedWords:
