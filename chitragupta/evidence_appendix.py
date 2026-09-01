@@ -223,11 +223,14 @@ def emit(draft: Path, output_format: str = "md", out_dir: Path | None = None) ->
     # dispatch, so importing it here at module scope would make the two
     # packages import each other on the way up. chitragupta/render_output/
     # _cli.py defers its own `render` import for the same reason.
-    from chitragupta.render_output import render
-    from chitragupta.render_output._paths import _output_dir
+    from chitragupta.render_output import _target_dir, render
 
     draft = config.require_inside_content(draft)
-    target = Path(out_dir) if out_dir is not None else _output_dir(draft)
+    # _target_dir rather than a bare Path(out_dir): the sidecar is
+    # verbatim quoted spans from copyrighted PDFs, and --output-dir's
+    # documented confinement to content/ was otherwise unenforced --
+    # naming a directory must not widen where this pipeline may write.
+    target = _target_dir(draft, out_dir)
     markdown = write(draft, target)
     if markdown is None or output_format == "md":
         return markdown
