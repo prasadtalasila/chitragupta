@@ -418,6 +418,15 @@ class TestTheImportProbeOnlyRunsAgainstAPython:
     def test_anything_else_is_not(self, program):
         assert not hook_launchers._is_python_interpreter(program)
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason=(
+            "a shebang script is not directly executable on Windows, so "
+            "`shutil.which` never resolves it and the PATH fault fires "
+            "before the probe this case is about -- the same reason "
+            "TestImportProbeThroughFaults skips there"
+        ),
+    )
     def test_a_bash_launcher_produces_no_import_fault(self, settings, tmp_path):
         """End to end, and genuinely red before the fix: `bash -c "import
         chitragupta"` exits non-zero on any host."""
