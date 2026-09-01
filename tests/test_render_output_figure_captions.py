@@ -7,7 +7,10 @@ caption that wraps around it), the way `tests/test_enrich_*.py` mirrors
 `chitragupta/enrich/`.
 """
 
+from pathlib import Path
+
 from chitragupta import render_output
+from chitragupta.render_output import _substitution
 from tests.conftest import CAPTIONED_MD, MARKED_MD
 
 
@@ -102,6 +105,28 @@ class TestSubstituteCaptions:
         out = render_output._figure_captions.substitute_captions(CAPTIONED_MD, "pdf")
         assert "```{=latex}\n\\begin{figure}\n```" in out
         assert "```{=latex}\n\\end{figure}\n```" in out
+
+    def test_a_captioned_figures_new_fences_do_not_confuse_later_math(self):
+        # `_substitution.py`'s own comment says equation numbering runs
+        # last "because a figure substitution can also introduce a fenced
+        # ASCII block, and `_math`'s own display rule reads fences" --
+        # this fix adds two more ` ```{=latex} ` fences per captioned
+        # figure where before there were none. Each is a self-contained,
+        # balanced open/close pair (`_math._FENCE_RE` matches greedily
+        # paired, not by toggling a running parity), so a `<!-- math -->`
+        # block after a captioned figure must still resolve.
+        draft_text = (
+            "# Title\n\n" + CAPTIONED_MD + "\nWriting `W` for water, the model is:\n\n"
+            "<!-- math -->\n```\ndW/dt = -W/tau\n```\n"
+        )
+        mapping = {"W": "W", "dW/dt = -W/tau": "\\frac{dW}{dt} = -\\frac{W}{\\tau}"}
+
+        out = _substitution._substituted(
+            draft_text, Path("content/drafts/dt/tutorial.md"), "pdf", mapping
+        )
+
+        assert "$$\n\\frac{dW}{dt} = -\\frac{W}{\\tau}\n$$" in out
+        assert "$W$" in out
 
     def test_non_latex_gets_a_bold_numbered_paragraph(self):
         out = render_output._figure_captions.substitute_captions(CAPTIONED_MD, "md")
