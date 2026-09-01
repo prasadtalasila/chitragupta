@@ -100,7 +100,12 @@ DEFAULT_N = 5
 # `.fpr`/`skipgram_index.bin` written before that change holds postings
 # this tier would no longer generate, and a stale one would keep
 # reporting exactly the findings the fix removes.
-_TOKENIZER_VERSION = 2
+#
+# Bumped to 3 for #505: porter_stemmer's steps 2-4 now stop at the first
+# (longest) matching suffix instead of falling through to a shorter one
+# when its measure condition fails, so words like "argument"/"agreement"
+# stem differently than before.
+_TOKENIZER_VERSION = 3
 _HEADER_VERSION = 1
 
 # A skip-gram window counts as evidence only if fewer than this share of
