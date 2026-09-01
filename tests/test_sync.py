@@ -399,7 +399,12 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        assert rc == 0
+        # Nonzero: docs/CLI.md's exit code is sync's only documented API
+        # for an unattended caller, and a bib file that yields 0 references
+        # against a non-empty ledger is exactly the SUSPICIOUS state above
+        # -- reporting it as "clean" (rc == 0) would let a broken export
+        # sit unnoticed indefinitely.
+        assert rc == 1
         assert "SUSPICIOUS" in out
         assert "3 ledger item(s)" in out
         assert "Review the" not in out
@@ -427,7 +432,7 @@ class TestRun:
         capsys.readouterr()
 
         write_bib(basic_corpus.BIB_FILE_PATH, "")
-        with pytest.raises(RuntimeError, match="Refusing to prune"):
+        with pytest.raises(ledger.PruneRefused, match="Refusing to prune"):
             sync.run(remove_stale=True)
 
         con = ledger.connect()
@@ -436,6 +441,28 @@ class TestRun:
         finally:
             con.close()
         assert known == {"smith_example_2024", "noauthor_page_nodate", "doe_broken_2023"}
+
+    def test_main_reports_the_remove_stale_refusal_instead_of_a_traceback(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # main() is the unattended entrypoint (docs/CLI.md); run() raising
+        # RuntimeError on this exact shape (see the refusal test above)
+        # must not reach main()'s caller as an uncaught traceback -- an
+        # unattended --remove-stale cron run needs a refusal message and a
+        # nonzero exit, not a stack trace in its log.
+        from chitragupta import logging_setup
+
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        monkeypatch.setattr(logging_setup, "configure", lambda: None)
+        sync.run()
+        capsys.readouterr()
+
+        write_bib(basic_corpus.BIB_FILE_PATH, "")
+        rc = sync.main(["--remove-stale"])
+        err = capsys.readouterr().err
+
+        assert rc == 1
+        assert "Refusing to prune" in err
 
     def test_no_pdf_breakdown_distinguishes_the_failure_reasons(
         self, isolated_config, monkeypatch, capsys
@@ -1285,6 +1312,45 @@ class TestStallWatchdog:
         finally:
             blocked.set()
         assert killed, "workers were left running after the stall"
+
+    def test_a_stall_cancels_jobs_that_never_started(self, many_corpus, monkeypatch):
+        """#491: with the shipped pdftotext backend, terminate_workers is a
+        no-op (it only reaches ProcessPoolExecutor's `_processes`), so the
+        stall path's only way to stop queued-but-unstarted jobs is
+        cancelling them on the executor itself. Without that, the thread
+        pool keeps draining its queue after the run has already reported
+        those documents as failed -- writing content/parsed/<citekey>.txt
+        for citekeys the ledger says failed."""
+        import threading
+        import time
+
+        started = []
+        blocked = threading.Event()
+        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.3)
+
+        def fake(job):
+            started.append(job[1])
+            blocked.wait(30)
+            return fake_extract_one_factory()(job)
+
+        monkeypatch.setattr(pdf_text, "extract_one", fake)
+        try:
+            sync.run()
+            # sync.run() only returns once _as_they_land has given up, so
+            # anything appended to `started` from here on ran *after* the
+            # stall was reported -- exactly the citekeys the cancel must
+            # have dropped, whatever the worker count turns out to be.
+            at_stall = list(started)
+            # Give a still-queued (uncancelled) job a chance to start.
+            time.sleep(0.5)
+        finally:
+            blocked.set()
+            time.sleep(0.2)
+
+        assert len(at_stall) < 6, "nothing was left queued when the run gave up -- test is vacuous"
+        assert started == at_stall, (
+            f"job(s) started after the stall was already reported: {started[len(at_stall) :]}"
+        )
 
     def test_a_stalled_document_is_not_blamed_on_a_dead_worker(
         self, many_corpus, monkeypatch, caplog

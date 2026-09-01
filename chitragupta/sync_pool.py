@@ -130,6 +130,15 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
             warned = False
         if not done:
             stalled.append(True)
+            # cancel_futures drops every job the pool has not yet started
+            # (thread or process). terminate_workers is the other half:
+            # it kills docling's in-flight *processes*, but is a no-op for
+            # the pdftotext ThreadPoolExecutor, which has no `_processes`
+            # to reach -- without this cancel, its queue keeps draining
+            # after this run has already reported those citekeys failed,
+            # writing content/parsed/<citekey>.txt for them behind the
+            # ledger's back.
+            executor.shutdown(wait=False, cancel_futures=True)
             pdf_text.terminate_workers(executor)
             logger.warning(
                 "WARNING no document finished in %ss ([parser].stall_timeout) -- "

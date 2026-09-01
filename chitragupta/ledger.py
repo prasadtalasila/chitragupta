@@ -222,6 +222,14 @@ def find_stale(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tuple[s
     return [(citekey, parsed_path) for citekey, parsed_path in rows if citekey not in seen_citekeys]
 
 
+class PruneRefused(RuntimeError):
+    """prune_missing's guard: the bib file yielded 0 references against a
+    non-empty ledger. A distinct type, not a bare RuntimeError, so a
+    caller (chitragupta/sync.py's main()) can catch this specific refusal
+    without also swallowing an unrelated internal RuntimeError as if it
+    were the same well-understood, print-and-exit-1 case."""
+
+
 def prune_missing(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tuple[str, str | None]]:
     """Removes ledger rows whose citekey is no longer in the bib file.
 
@@ -259,7 +267,7 @@ def prune_missing(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tupl
         # (every row is trivially "stale"), but the message should stay
         # accurate even if this guard's condition changes later.
         (total,) = con.execute("SELECT COUNT(*) FROM items").fetchone()
-        raise RuntimeError(
+        raise PruneRefused(
             f"Refusing to prune: the bib file yielded 0 references but the "
             f"ledger has {total} existing item(s). This almost always "
             "means the bib file is empty, corrupted, or misconfigured "
