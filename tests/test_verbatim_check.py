@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta.review import verbatim_check as vc
-from chitragupta import config, ledger, overlap_embed, overlap_index
+from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_index
 from tests.conftest import make_reference
 
 
@@ -1979,7 +1979,7 @@ class TestRecheck:
         return draft
 
     def _baseline(self, draft, tmp_path, **kwargs):
-        findings, min_run, suppressed, _ = vc.scan_findings(str(draft), **kwargs)
+        findings, min_run, suppressed, not_run = vc.scan_findings(str(draft), **kwargs)
         command = vc.scan_command(
             str(draft), min_run, kwargs.get("gap", 1), kwargs.get("limit"), False, True
         )
@@ -1991,6 +1991,7 @@ class TestRecheck:
             kwargs.get("limit"),
             suppressed,
             command,
+            not_run,
         )
         path = tmp_path / "baseline.json"
         path.write_text(json.dumps(payload, indent=2))
@@ -2109,6 +2110,126 @@ class TestRecheck:
 
         assert [f["severity"] for f in result["persisting"]] == ["quoted"]
         assert (result["objective_before"], result["objective_after"]) == (0, 0)
+
+    def test_objective_counts_exclude_the_embedding_tier(self, ledger_con, tmp_path, capsys):
+        """Tier 3 is advisory only -- its findings move with tier
+        availability and the embedding model, not only with an edit, so
+        counting them would stall the strictly-falling loop for reasons
+        no edit caused (#500)."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        embed_finding = dict(payload["findings"][0])
+        embed_finding.update({"id": "synthetic-embedding-finding", "tier": "embedding"})
+        payload["findings"].append(embed_finding)
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["objective_before"] == 2
+        assert "synthetic-embedding-finding" in [f["id"] for f in result["resolved"]]
+
+    def test_a_baseline_missing_tier_is_refused(self, ledger_con, tmp_path):
+        """`objective()` reads `f["tier"]` on every baseline finding now,
+        and a payload written before that field existed must be refused
+        rather than `KeyError`, the same shape as the `end_page` case
+        above."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        for finding in payload["findings"]:
+            del finding["tier"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        with pytest.raises(ValueError) as exc:
+            vc.cmd_recheck(str(draft), str(baseline))
+        assert "tier" in str(exc.value)
+
+    def test_no_drift_warning_on_an_unchanged_host(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["warnings"] == []
+
+    def test_a_baseline_recording_different_tier_availability_warns(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """A baseline taken while the embedding tier could run (or
+        couldn't) compared against a rescan where that flipped -- the
+        enrich group installed or removed, the corpus built or not --
+        gets a caveat rather than a silent reinterpretation of its
+        resolved/new embedding findings (#500)."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["tiers_not_run"] = []
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert any("tier availability changed" in w for w in result["warnings"])
+
+    def test_a_baseline_with_a_different_corpus_key_warns(self, ledger_con, tmp_path, capsys):
+        """The corpus key is namespaced by `[enrich].embedding_model`, so a
+        mismatch means the corpus was rebuilt under a different model
+        since the baseline -- embedding findings are not comparable
+        across that (#500)."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["corpus_key"] = "corpus-some-other-model"
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert any("corpus key changed" in w for w in result["warnings"])
+
+    def test_a_baseline_missing_tiers_not_run_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """An older baseline predates this field too (`scan_payload` added
+        it additively) -- absent means "unknown", not "every tier ran",
+        which would otherwise misread a rescan where the embedding tier
+        is unavailable (the ordinary case for a draft outside
+        `content/drafts/`) as tier availability having changed."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        del payload["tiers_not_run"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["warnings"] == []
+
+    def test_a_baseline_missing_corpus_key_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """An older baseline predates this field -- `None` means
+        "unknown", not "different", the same posture `_series` takes on a
+        missing version."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        del payload["corpus_key"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["warnings"] == []
+
+    def test_the_text_form_prints_the_drift_warning(self, ledger_con, tmp_path, capsys):
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        payload["corpus_key"] = "corpus-some-other-model"
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        vc.cmd_recheck(str(draft), str(baseline))
+
+        assert "warning: corpus key changed" in capsys.readouterr().out
 
     def test_a_capped_baseline_is_refused(self, ledger_con, tmp_path):
         """`--limit` truncates, so a finding absent from a capped baseline
@@ -3085,6 +3206,19 @@ class TestReportingWhatDidNotRun:
 
         payload = json.loads(capsys.readouterr().out)
         assert payload["tiers_not_run"][0]["tier"] == "embedding"
+
+    def test_the_payload_carries_the_corpus_key(self, ledger_con, tmp_path, capsys):
+        """Recorded even though the tier above never ran -- it costs
+        nothing to compute (`config.EMBEDDING_MODEL` alone decides it),
+        and `recheck` needs it to tell a rebuilt corpus from an edit
+        (#500)."""
+        draft = tmp_path / "draft.md"
+        draft.write_text("Prose with no dossier anywhere at all.\n")
+
+        vc.cmd_scan(str(draft), as_json=True)
+
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["corpus_key"] == overlap_chroma.corpus_key()
 
     def test_a_score_rides_inside_the_tier_note_only_when_there_is_one(self):
         assert vc._tier_note({"tier": "exact", "score": None}) == "tier=exact"

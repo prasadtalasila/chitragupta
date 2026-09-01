@@ -356,17 +356,32 @@ count of *objective* findings -- the `long` and `short` buckets.
 
 A run that is both quoted and cited is excluded from that count.
 Otherwise converting a lift into a properly attributed quotation would
-score as no improvement.
+score as no improvement. So is every `tier: "embedding"` finding: that
+tier is advisory only (see above), and its findings move with tier
+availability and the embedding model as much as with an edit, so
+counting them would stall the agenda-reviser loop -- which continues only
+while the count strictly falls -- for reasons no edit caused (#500).
 
 It refuses a baseline it cannot compare against:
 
 - another aid's payload;
 - one written under `--limit`, where truncation makes "absent" ambiguous;
-- one missing a field the comparison prints, such as `id`, a locator, or
-  `end_page` from a build before #131;
+- one missing a field the comparison prints, such as `id`, a locator,
+  `tier`, or `end_page` from a build before #131;
 - one from a different release series, since what counts as one finding
   can change between them;
 - one that is unreadable or not JSON.
+
+It warns, rather than refusing, when the baseline's `tiers_not_run` or
+`corpus_key` -- the Chroma collection name tier 3 reads or writes,
+namespaced by `[enrich].embedding_model` -- disagree with this rescan's
+own: unlike the cases above, tiers 1 and 2 are unaffected either way and
+the objective count already excludes tier 3, so the baseline is still a
+valid comparison basis. The warning only says that an `embedding` entry
+in `resolved`/`new` may reflect the enrich group being installed or
+removed, or the corpus being rebuilt under a different model, rather than
+an edit. A baseline predating `corpus_key` (before #500) is not treated
+as a mismatch -- there is nothing recorded to compare against.
 
 **What may be repaired without asking is decided by the buckets above,
 not by the model.** A `short` run is reworded unattended. A `long` one
