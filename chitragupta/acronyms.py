@@ -15,11 +15,34 @@ from pathlib import Path
 from chitragupta import config
 
 
+class AcronymsError(RuntimeError):
+    """An acronyms TOML file (vendored or the user's own) exists but
+    cannot be read as one.
+
+    Raised rather than skipped past, matching `chitragupta/seed_topics.py`'s
+    `SeedTopicsError`: a malformed file is a typo in something the author
+    wrote by hand, and a silent fallback to "no vocabulary" would produce
+    a review that looks clean while quietly ignoring every acronym they
+    defined."""
+
+
 def _load(path: Path) -> dict[str, str]:
     if not path.is_file():
         return {}
-    with path.open("rb") as handle:
-        return tomllib.load(handle)
+    try:
+        with path.open("rb") as handle:
+            parsed = tomllib.load(handle)
+    except (tomllib.TOMLDecodeError, OSError) as exc:
+        raise AcronymsError(f"{path} could not be parsed as TOML: {exc}") from exc
+    # A non-string value (a table, an array, a bare number) can't be an
+    # expansion -- filtered here rather than raised, unlike the parse
+    # failure above, so one mistyped entry in an otherwise-good file
+    # doesn't cost the whole vocabulary. Silently dropping it is safe
+    # because every consumer only ever *adds* acronyms to a glossary
+    # (suggest()) or compares against one (stale_expansions()); a term
+    # this file's author never got a valid expansion for behaves the
+    # same as a term they never mentioned at all (#504, m-31).
+    return {k: v for k, v in parsed.items() if isinstance(v, str)}
 
 
 def load_vocabulary() -> dict[str, str]:

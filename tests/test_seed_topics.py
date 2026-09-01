@@ -102,6 +102,16 @@ class TestLoadReport:
         elsewhere.write_text(json.dumps({"n_docs": 9}), encoding="utf-8")
         assert seed_topics.load_report(elsewhere)["n_docs"] == 9
 
+    def test_truncated_json_raises_the_module_s_typed_error(self, isolated_config):
+        """#504, m-32: a killed mid-write process used to surface here as
+        a raw json.JSONDecodeError instead of the clean refusal every
+        other malformed-file path in this module gets."""
+        isolated_config.TOPIC_SEEDS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.TOPIC_SEEDS_PATH.write_text('{"n_docs": 3, "assig', encoding="utf-8")
+
+        with pytest.raises(seed_topics.SeedTopicsError, match="not valid JSON"):
+            seed_topics.load_report()
+
 
 SAMPLE = {
     "model": "sentence-transformers/all-MiniLM-L6-v2",

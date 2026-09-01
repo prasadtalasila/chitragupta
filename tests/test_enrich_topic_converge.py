@@ -195,7 +195,15 @@ class TestRunTopicConverge:
 
         cfg.TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
         cfg.TOPICS_PATH.write_text(
-            json.dumps({"assignments": assignments, "memberships": memberships}), encoding="utf-8"
+            json.dumps(
+                {
+                    "assignments": assignments,
+                    "memberships": memberships,
+                    "embedding_model": cfg.EMBEDDING_MODEL,
+                    "embedding_method": doc_vectors.EMBED_METHOD,
+                }
+            ),
+            encoding="utf-8",
         )
         monkeypatch.setattr(
             doc_vectors, "corpus_texts", lambda docs: {c: "text" for c in assignments}
@@ -257,3 +265,44 @@ class TestRunTopicConverge:
         result = topic_converge.run_topic_converge([], ())
         assert result["n_seed_named"] == 0
         assert result["n_emergent"] == 2
+
+    def test_a_different_embedding_model_refuses_to_converge(self, isolated_config, monkeypatch):
+        """#504, m-47: `assignments` is a clustering computed against a
+        specific embedding space. Zipping it with vectors re-embedded
+        under a *different* model would pair a topic id with a vector it
+        was never clustered against and hand back a plausible-looking,
+        meaningless result."""
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0},
+            memberships={"a": {"0": 0.9}, "b": {"0": 0.8}},
+            vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0]},
+        )
+        stale = json.loads(isolated_config.TOPICS_PATH.read_text(encoding="utf-8"))
+        stale["embedding_model"] = "a-retired-model"
+        isolated_config.TOPICS_PATH.write_text(json.dumps(stale), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="different embedding model"):
+            topic_converge.run_topic_converge([], ())
+
+    def test_a_pre_m47_topics_json_with_no_recorded_model_refuses_to_converge(
+        self, isolated_config, monkeypatch
+    ):
+        """A topics.json written before this fix has no "embedding_model"
+        key at all -- must not compare equal to today's config by
+        accident and silently converge against the wrong assumption."""
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            assignments={"a": 0, "b": 0},
+            memberships={"a": {"0": 0.9}, "b": {"0": 0.8}},
+            vectors={"a": [1.0, 0.0, 0.0], "b": [1.0, 0.1, 0.0]},
+        )
+        stale = json.loads(isolated_config.TOPICS_PATH.read_text(encoding="utf-8"))
+        del stale["embedding_model"]
+        del stale["embedding_method"]
+        isolated_config.TOPICS_PATH.write_text(json.dumps(stale), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="different embedding model"):
+            topic_converge.run_topic_converge([], ())

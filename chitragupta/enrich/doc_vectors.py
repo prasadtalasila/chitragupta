@@ -12,6 +12,7 @@ Needs the "enrich" Poetry group, like everything else in this package.
 """
 
 import json
+import os
 import re
 
 from chitragupta import config
@@ -20,14 +21,28 @@ from chitragupta.enrich.corpus import CorpusDoc
 
 
 def _load_embed_cache() -> dict:
-    if config.TOPIC_EMBED_CACHE_PATH.exists():
-        return json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
-    return {}
+    """Corrupt or unexpected-shape cache data is treated as empty rather
+    than raised (#504, M-24) -- see `_docling_cache._load_cache` for the
+    same defensive shape, applied here so a process killed mid-`_save_embed_cache`
+    doesn't take down every later bertopic/seed-topics/converge run until
+    someone hand-deletes the file; it costs one avoidable re-embed pass
+    instead."""
+    try:
+        data = json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
 
 def _save_embed_cache(cache: dict) -> None:
+    """Atomic write-then-replace, mirroring `_docling_cache._save_cache`:
+    a process killed mid-write leaves the previous, still-valid cache in
+    place instead of a torn file that the next `_load_embed_cache` call
+    would otherwise have to treat as a total loss."""
     config.TOPIC_EMBED_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    config.TOPIC_EMBED_CACHE_PATH.write_text(json.dumps(cache), encoding="utf-8")
+    tmp_path = config.TOPIC_EMBED_CACHE_PATH.with_suffix(".json.tmp")
+    tmp_path.write_text(json.dumps(cache), encoding="utf-8")
+    os.replace(tmp_path, config.TOPIC_EMBED_CACHE_PATH)
 
 
 def corpus_texts(docs: list[CorpusDoc]) -> dict:

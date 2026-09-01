@@ -885,6 +885,7 @@ class TestCacheLoading:
             "version": _docling_cache._CACHE_VERSION,
             "images": isolated_config.DOCLING_IMAGES,
             "ocr": isolated_config.PARSER_OCR,
+            "image_scale": isolated_config.DOCLING_IMAGE_SCALE,
             "items": items,
         }
         payload.update(overrides)
@@ -941,6 +942,33 @@ class TestCacheLoading:
         assert _docling_cache._load_cache() == {"good2024": [123, 456]}
 
         monkeypatch.setattr(isolated_config, "PARSER_OCR", not isolated_config.PARSER_OCR)
+        assert _docling_cache._load_cache() == {}
+
+    def test_toggling_image_scale_invalidates_whole_cache(self, isolated_config, monkeypatch):
+        """#504, m-46: the worker converter key at _docling_pool.py:87
+        already includes DOCLING_IMAGE_SCALE, so a scale change produces
+        differently-sized bitmaps for every fingerprint-unchanged PDF --
+        but the cache's own invalidation check ignored it until now,
+        serving the old bitmaps forever."""
+        self._write_cache(isolated_config, {"good2024": [123, 456]})
+        assert _docling_cache._load_cache() == {"good2024": [123, 456]}
+
+        monkeypatch.setattr(
+            isolated_config, "DOCLING_IMAGE_SCALE", isolated_config.DOCLING_IMAGE_SCALE + 1.0
+        )
+        assert _docling_cache._load_cache() == {}
+
+    def test_a_pre_m46_cache_with_no_recorded_scale_is_invalidated(self, isolated_config):
+        """A cache written before this fix has no "image_scale" key at
+        all -- must not compare equal to today's float by accident."""
+        payload = {
+            "version": _docling_cache._CACHE_VERSION,
+            "images": isolated_config.DOCLING_IMAGES,
+            "ocr": isolated_config.PARSER_OCR,
+            "items": {"good2024": [123, 456]},
+        }
+        isolated_config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
+        isolated_config.DOCLING_CACHE_PATH.write_text(json.dumps(payload))
         assert _docling_cache._load_cache() == {}
 
     def test_save_then_load_round_trips(self, isolated_config):
