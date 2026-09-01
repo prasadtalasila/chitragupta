@@ -168,7 +168,7 @@ def prestart_pool() -> None:
     """
     if config.PARSER != "docling" or config.PARSER_WORKERS == 1:
         return
-    if worker_ceiling() <= 1:
+    if worker_ceiling(docling=True) <= 1:
         return  # pragma: no cover-windows
     if start_method()[0] != "forkserver":
         return

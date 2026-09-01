@@ -100,6 +100,15 @@ def docling_process_pool(workers: int, warn: Callable[[str], None]) -> ProcessPo
     what `init_worker` is handed -- see #290. Both already import this
     package, so this costs no new dependency edge.
 
+    Always builds a *Docling* pool -- the name says so, and both callers
+    only ever call it to run Docling workers -- so `usable_devices` is
+    asked with `docling=True` unconditionally. It is *not* re-derived from
+    `config.PARSER` here: that setting is `chitragupta/sync.py`'s own choice of
+    backend, but `chitragupta/enrich/` always runs Docling regardless of it,
+    and re-deriving "is this a Docling pool" from `config.PARSER` made every
+    GPU on a `pdftotext`-configured host invisible to enrich's pool -- see
+    #502.
+
     `warn` is a `str -> None` callback rather than a fixed logger, because
     the two callers report a complaint differently: chitragupta/sync.py logs it
     plainly, chitragupta/enrich/docling_parse.py mirrors it to stdout via
@@ -116,7 +125,7 @@ def docling_process_pool(workers: int, warn: Callable[[str], None]) -> ProcessPo
     ctx, complaint = process_pool_context()
     if complaint:
         warn(complaint)
-    devices, gpu_complaint = usable_devices()
+    devices, gpu_complaint = usable_devices(docling=True)
     if gpu_complaint:
         warn(gpu_complaint)
     return ProcessPoolExecutor(

@@ -210,12 +210,22 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
     else:
         new_status, must_reparse = _next_status(row, pdf_hash, force, ref.citekey)
         needs_parse = needs_parse or must_reparse
+        # A changed hash means the bytes behind the old parsed_path are
+        # gone -- keeping the column would let it survive byte-identical
+        # (title, parsed_path, exists, size, mtime) through a --reparse
+        # that then fails deterministically, since none of those describe
+        # *content* (#490). Untouched on a same-hash update (including a
+        # forced reparse of an unchanged PDF): the old text is still
+        # accurate until a real parse says otherwise.
+        old_hash = row[0]
+        parsed_path = None if pdf_hash != old_hash else row[5]
         con.execute(
             """
             UPDATE items SET
                 item_type = ?, title = ?, year = ?, doi = ?,
                 url = ?, pdf_path = ?, pdf_hash = ?, pdf_size = ?, pdf_mtime_ns = ?,
-                status = ?, last_synced = ?, bib_fields = ?, collections = ?
+                status = ?, last_synced = ?, bib_fields = ?, collections = ?,
+                parsed_path = ?
             WHERE citekey = ?
             """,
             (
@@ -232,6 +242,7 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
                 now,
                 _bib_fields_json(ref),
                 _collections_json(ref),
+                parsed_path,
                 ref.citekey,
             ),
         )

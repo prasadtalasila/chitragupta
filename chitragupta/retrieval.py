@@ -16,7 +16,10 @@ This module reads the ledger's `parsed_path` -- `content/parsed/*.txt` --
 and never `content/docling/`, so running the enrichment layer's Docling
 stage does not change what BM25 ranks or what its snippets say; only `[parser].backend`
 does. And nothing in `chitragupta/enrich/__main__.py` imports this module, so
-the enrichment layer neither uses nor updates this index.
+the enrichment layer neither uses nor updates this index. `parsed_path` is
+only ever read when the row's `status` is `'parsed'` (#490) -- a failed
+reparse or a hash-changed sync can leave the column pointing at text a
+superseded PDF produced, and `status` is what says so.
 
 Ranking is Okapi BM25 (stdlib-only: no rank_bm25 dependency), not raw
 term-frequency -- term-frequency alone has no document-length
@@ -194,7 +197,13 @@ def _snippet(text: str, terms: set[str], window: int = 500) -> str:
 
 def _full_text(item: sqlite3.Row) -> str:
     text_parts = [item["title"] or ""]
-    if item["parsed_path"]:
+    # A non-'parsed' status means parsed_path may point at a superseded
+    # version's text (or none at all) -- mark_parse_failed and a
+    # hash-changed re-sync both leave the column set without updating what
+    # it names (#490). overlap_index_ledger.py already gates on status;
+    # this was BM25 retrieval and evidence's own read serving the stale
+    # text as current.
+    if item["status"] == "parsed" and item["parsed_path"]:
         try:
             text_parts.append(
                 Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")

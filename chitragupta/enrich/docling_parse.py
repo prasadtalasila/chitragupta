@@ -295,7 +295,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
     pending = [
         d for d in docs if d.pdf_path and not _is_cached(d, cache) and d.citekey not in reusable
     ]
-    workers, complaint = pdf_text.resolve_workers(len(pending))
+    workers, complaint = pdf_text.resolve_workers(len(pending), docling=True)
     if complaint:
         logging_setup.say(logger, complaint, level=logging.WARNING)
 

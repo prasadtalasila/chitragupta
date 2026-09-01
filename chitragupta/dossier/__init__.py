@@ -187,12 +187,14 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
     nothing here goes through it, and `chitragupta.retrieval.search()`, which
     does, is off limits for the same reason (see `_ephemeral_index`).
 
-    Four columns rather than one because the drift scan needs the same
+    Five columns rather than one because the drift scan needs the same
     fields `chitragupta.retrieval` indexes on plus the one `bib_collections`
     reads: `title` and `parsed_path` are what a BM25 entry is built from,
-    `title` is also what makes a reported candidate legible without a
-    second lookup, and `collections` is what lets a scoped query's
-    candidates be filtered to the shelf it actually ran against (#254).
+    `status` is what `retrieval._full_text` requires alongside `parsed_path`
+    to keep a superseded parse from being served as current (#490), `title`
+    is also what makes a reported candidate legible without a second
+    lookup, and `collections` is what lets a scoped query's candidates be
+    filtered to the shelf it actually ran against (#254).
     """
     if not config.LEDGER_PATH.exists():
         return None
@@ -202,7 +204,9 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
         return None
     try:
         con.row_factory = sqlite3.Row
-        return con.execute("SELECT citekey, title, parsed_path, collections FROM items").fetchall()
+        return con.execute(
+            "SELECT citekey, title, parsed_path, status, collections FROM items"
+        ).fetchall()
     except sqlite3.DatabaseError:
         return None
     finally:
