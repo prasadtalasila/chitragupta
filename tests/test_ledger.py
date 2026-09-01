@@ -383,6 +383,11 @@ class TestUpsertReferenceRehashSkip:
         pdf.write_bytes(b"stable content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
+        # Parsed, so the second upsert is a true no-op run -- a row still
+        # at 'discovered' now correctly comes back needs_parse=True (see
+        # TestDiscoveredIsRescheduled), which is not the case under test.
+        (tmp_path / "out.txt").write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
 
         calls = []
         original_hash_pdf = ledger_upsert._hash_pdf
@@ -635,6 +640,41 @@ class TestFailedParseIsRetried:
             "SELECT status FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
         assert row[0] == "discovered"
+
+
+class TestDiscoveredIsRescheduled:
+    """A row stranded at 'discovered' must come back for parsing.
+
+    'discovered' means "needs parsing" everywhere else in the pipeline,
+    but the unchanged-hash path returned needs_parse=False for it, so any
+    run that separated upsert from parse -- backend unavailable, Ctrl+C
+    or a crash between upsert and the result landing -- stranded the
+    document permanently: the next healthy sync counted it "unchanged"
+    and exited 0, and the paper stayed invisible to retrieval for good.
+    The same silent-drop failure TestFailedParseIsRetried closed for
+    parse_failed, one state over.
+    """
+
+    def test_a_discovered_row_with_an_unchanged_pdf_is_parsed_next_run(
+        self, isolated_config, ledger_con, tmp_path
+    ):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4 content")
+        ref = make_reference(pdf_path=str(pdf))
+
+        # Run 1 upserts but the parse never happens (no mark_* call) --
+        # the backend was missing, or the run was interrupted.
+        assert ledger.upsert_reference(ledger_con, ref) is True
+
+        # Run 2, same bytes, healthy: the document must still be parsed.
+        assert ledger.upsert_reference(ledger_con, ref) is True
+
+    def test_a_discovered_row_without_a_pdf_is_not_parsed(self, isolated_config, ledger_con):
+        """No PDF means nothing to parse -- rescheduling applies only to
+        rows that actually have a document waiting."""
+        ref = make_reference(pdf_path=None)
+        ledger.upsert_reference(ledger_con, ref)
+        assert ledger.upsert_reference(ledger_con, ref) is False
 
 
 class TestFailureKind:
