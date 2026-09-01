@@ -165,4 +165,13 @@ def _swap_manual_refs_for_citeproc(text: str) -> str:
     if idx is None:
         return text
     heading = lines[idx] if lines[idx].endswith("\n") else lines[idx] + "\n"
-    return "".join(lines[:idx]).rstrip() + f"\n\n{heading}\n{_REFS_ANCHOR}"
+    # M-8: only the manual entries are swapped for the anchor -- an
+    # appendix or acknowledgments section introduced by its own heading
+    # after References is not part of it and must reach pandoc too,
+    # or it silently vanishes from tex/pdf/docx output while the md path
+    # (references.apply) keeps it.
+    tail = "".join(lines[references.section_end(lines, idx) :])
+    out = "".join(lines[:idx]).rstrip() + f"\n\n{heading}\n{_REFS_ANCHOR}"
+    if tail.strip():
+        out = out.rstrip() + "\n\n" + tail.lstrip("\n")
+    return out

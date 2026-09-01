@@ -100,6 +100,45 @@ class TestHasSection:
         assert not references.has_section(f"# Draft\n\n{heading}\n\nProse.\n")
 
 
+class TestSectionEnd:
+    # M-8/m-33/m-34: three consumers used to treat "the References
+    # heading" as "to end of file" -- an appendix or acknowledgments
+    # section introduced by its own heading after References is not part
+    # of it and must not be truncated, masked, or overwritten along with
+    # it.
+    def test_runs_to_the_next_heading_of_any_level(self):
+        draft = "## References\n\n[1] X. `k`\n\n## Appendix\n\nmore\n"
+        lines = draft.splitlines(keepends=True)
+        start = references.section_start(lines)
+        end = references.section_end(lines, start)
+        assert lines[start:end] == ["## References\n", "\n", "[1] X. `k`\n", "\n"]
+        assert lines[end] == "## Appendix\n"
+
+    def test_a_deeper_heading_still_ends_the_section(self):
+        # References is never itself subsectioned in this project's
+        # output, so any heading after it -- even a nominally "nested"
+        # one -- belongs to whatever follows, not to References.
+        draft = "## References\n\n[1] X. `k`\n\n### Acknowledgments\n\nthanks\n"
+        lines = draft.splitlines(keepends=True)
+        start = references.section_start(lines)
+        end = references.section_end(lines, start)
+        assert lines[end] == "### Acknowledgments\n"
+
+    def test_runs_to_end_of_file_when_nothing_follows(self):
+        draft = "## References\n\n[1] X. `k`\n"
+        lines = draft.splitlines(keepends=True)
+        start = references.section_start(lines)
+        end = references.section_end(lines, start)
+        assert end == len(lines)
+
+    def test_a_heading_inside_a_code_fence_does_not_end_the_section(self):
+        draft = "## References\n\n[1] X. `k`\n\n```markdown\n## Appendix\n```\n\nstill references\n"
+        lines = draft.splitlines(keepends=True)
+        start = references.section_start(lines)
+        end = references.section_end(lines, start)
+        assert end == len(lines)
+
+
 class TestFormatEntry:
     def test_article_is_quoted_inside_an_italic_journal(self):
         entry = references.format_entry(
@@ -318,6 +357,35 @@ class TestNumberedMarkdown:
         assert "First [1]. Then [2]." in out
         assert out.index("A Paper") < out.index("B Paper")
 
+    def test_content_after_an_existing_section_survives(self, ledger_con):
+        # M-8: an appendix or acknowledgments introduced by its own
+        # heading after References used to vanish along with the old
+        # section -- both the md path and every pandoc render disagreed
+        # about whether it still existed.
+        self._seed(ledger_con)
+        draft = "One [@b2024].\n\n## References\n\n[1] old entry\n\n## Appendix\n\nSupplementary.\n"
+        out = references.numbered_markdown(draft, ledger_con)
+        assert "## Appendix" in out
+        assert "Supplementary." in out
+        assert out.index("## References") < out.index("## Appendix")
+
+    def test_a_citekey_cited_only_in_the_surviving_tail_is_still_numbered(self, ledger_con):
+        # The tail is preserved verbatim by section splicing alone, but a
+        # `[@citekey]` marker there still needs the same renumbering pass
+        # the body gets -- otherwise a citekey cited only in an appendix
+        # would come back as a bare, unresolved `[@key]` in an otherwise
+        # fully numbered document.
+        self._seed(ledger_con)
+        draft = (
+            "Body cites [@b2024].\n\n## References\n\n[1] old\n\n"
+            "## Appendix\n\nAlso cites [@a2023] here.\n"
+        )
+        out = references.numbered_markdown(draft, ledger_con)
+        assert "[@" not in out
+        assert "Body cites [1]." in out
+        assert "Also cites [2] here." in out
+        assert '[2] J. Doe, "A Paper," *J. Things*, 2023.' in out
+
 
 class TestWriteNumbered:
     def test_writes_into_the_output_directory_and_leaves_the_draft_alone(
@@ -473,6 +541,29 @@ class TestApply:
         second_pass = draft.read_text()
         assert second_pass.count("## References") == 1
         assert second_pass == first_pass
+
+    def test_content_after_an_existing_section_survives(self, isolated_config, tmp_path):
+        # M-8: apply() used to delete everything from the References
+        # heading to end of file -- an appendix introduced by its own
+        # heading right after References was not part of it.
+        con = ledger.connect()
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
+        con.close()
+
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text(
+            "Body text citing [@smith2024].\n\n"
+            "## References\n\n- stale entry\n\n"
+            "## Appendix\n\nSupplementary material.\n"
+        )
+        references.apply(draft)
+
+        text = draft.read_text()
+        assert "## Appendix" in text
+        assert "Supplementary material." in text
+        assert text.index("## References") < text.index("## Appendix")
 
 
 class TestMainCli:

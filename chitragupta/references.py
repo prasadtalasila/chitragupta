@@ -76,6 +76,14 @@ from chitragupta.references_renumber import _format_numbers  # noqa: F401
 # carries none, while "6. References" and "6) References" still do.
 _HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+(?:\.\d+)*[.)]?\s*)?References\s*$", re.IGNORECASE)
 
+# Any Markdown ATX heading, for section_end below -- deliberately not
+# level-restricted: a heading nested under References (e.g. an
+# "### Acknowledgments" some genre skill emits right after the
+# bibliography) still marks where the References section stops, the same
+# "next heading, any level" extent dossier.sections() uses for its own
+# outline.
+_ANY_HEADING_RE = re.compile(r"^#{1,6}\s")
+
 
 def used_citekeys(text: str) -> list[str]:
     """Every citekey cited in `text`, deduped, in order of first appearance.
@@ -113,6 +121,35 @@ def section_start(lines: list[str]) -> int | None:
         if _HEADING_RE.match(line.strip()):
             return i
     return None
+
+
+def section_end(lines: list[str], start: int) -> int:
+    """Index of the next heading line after `lines[start]` (of any
+    level), or `len(lines)` if none follows -- i.e. `lines[start:end]` is
+    the whole section `lines[start]` heads, heading included.
+
+    General-purpose despite living beside the References-specific helpers
+    above -- every caller passes `section_start`'s return, but nothing
+    here requires that heading to be References specifically. The same
+    "next heading, any level" extent `chitragupta/dossier/_sections.py`'s
+    `sections()` computes for its own outline, kept as a separate,
+    smaller implementation here rather than importing the dossier
+    (drafting-review) layer from this corpus-adjacent module.
+
+    Every caller used to treat "the References heading" as "to end of
+    file" -- `apply`/`numbered_markdown` deleted whatever came after it,
+    `render_output` stripped it from what pandoc sees, and the verbatim
+    scanner masked it from detection. All three silently lost or hid an
+    appendix or acknowledgments section introduced by its own heading
+    after References, which is not part of it (M-8/m-33/m-34). Fence-aware
+    the same way section_start is, and for the same reason: a `#` shown
+    inside a code example must not end the section early.
+    """
+    blanked = citation_gate._blank_code("".join(lines)).splitlines()
+    for i in range(start + 1, len(blanked)):
+        if _ANY_HEADING_RE.match(blanked[i].strip()):
+            return i
+    return len(lines)
 
 
 def entries(citekeys: list[str], con) -> dict[str, str]:
@@ -210,14 +247,29 @@ def numbered_markdown(text: str, con, heading: str | None = None) -> str:
 
     lines = text.splitlines(keepends=True)
     index = section_start(lines)
+    tail = ""
     if index is not None:
         if heading is None:
             heading = re.sub(r"^#+\s*", "", lines[index].strip())
+        # M-8: only the References section itself is dropped here, not
+        # everything after it -- an appendix or acknowledgments section
+        # introduced by its own heading is not part of References.
+        tail = "".join(lines[section_end(lines, index) :])
         text = "".join(lines[:index]).rstrip() + "\n"
 
-    body = renumber(text, {key: number for number, key in enumerate(keys, start=1)})
+    numbering = {key: number for number, key in enumerate(keys, start=1)}
+    body = renumber(text, numbering)
     section = build_section(keys, con, heading or "References", label_citekeys=False)
-    return body.rstrip() + "\n\n" + section
+    result = body.rstrip() + "\n\n" + section
+    if tail.strip():
+        # A citekey cited only in the tail (an appendix citing a source
+        # References didn't already cover) still needs the same
+        # first-appearance numbering applied to the body above --
+        # `used_citekeys` was read from the whole original text, so its
+        # number is already in `numbering` and its entry already in
+        # `section`.
+        result = result.rstrip() + "\n\n" + renumber(tail, numbering).lstrip("\n")
+    return result
 
 
 def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
@@ -251,8 +303,17 @@ def apply(path: Path, heading: str = "References") -> str:
 
     lines = text.splitlines(keepends=True)
     idx = section_start(lines)
-    head = "".join(lines[:idx]) if idx is not None else text
+    if idx is None:
+        head, tail = text, ""
+    else:
+        # M-8: only the old References section is replaced -- an
+        # appendix or acknowledgments section introduced by its own
+        # heading after it is not part of References and must survive.
+        head = "".join(lines[:idx])
+        tail = "".join(lines[section_end(lines, idx) :])
     new_text = head.rstrip() + "\n\n" + section.rstrip() + "\n"
+    if tail.strip():
+        new_text = new_text.rstrip() + "\n\n" + tail.lstrip("\n")
     path.write_text(new_text, encoding="utf-8")
     return f"{path}: wrote References section with {len(keys)} citekey(s)"
 

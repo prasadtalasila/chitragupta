@@ -541,6 +541,19 @@ class TestMaskForScan:
         text = "Just prose, no heading at all.\n"
         assert vc._mask_for_scan(text) == text
 
+    def test_a_section_after_references_stays_scannable(self):
+        # M-8: masking used to run References-to-EOF, so lifted prose in
+        # a post-References appendix or acknowledgments section (introduced
+        # by its own heading) was unscannable and read clean.
+        text = (
+            "Intro text here.\n\n"
+            "## References\n\n[1] Some Title, Some Venue.\n\n"
+            "## Appendix\n\nLifted prose that should still be scanned.\n"
+        )
+        masked = vc._mask_for_scan(text)
+        assert "Some Title" not in masked
+        assert "Lifted prose that should still be scanned." in masked
+
 
 class TestTokenizeDraft:
     def test_flat_word_list_spans_paragraphs(self):
