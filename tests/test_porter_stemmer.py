@@ -31,6 +31,16 @@ class TestStem:
         assert stem("relational") == "relat"
         assert stem("conditional") == "condit"
 
+    def test_step4_stops_at_the_longest_matching_suffix(self):
+        # "argument" ends with both "-ment" and "-ent"; Porter's algorithm
+        # selects the longest match ("-ment"), tests its measure condition
+        # once, and stops there rather than falling through to "-ent" when
+        # that test fails. Same for the "-ement" family below.
+        assert stem("argument") == "argument"
+        assert stem("agreement") == "agreement"
+        assert stem("basement") == "basement"
+        assert stem("casement") == "casement"
+
     def test_short_word_is_returned_unchanged(self):
         assert stem("as") == "as"
         assert stem("is") == "is"
