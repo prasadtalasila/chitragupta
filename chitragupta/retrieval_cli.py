@@ -65,7 +65,7 @@ def evidence(
         # _full_text addresses its columns by name.
         con.row_factory = sqlite3.Row
         row = con.execute(
-            "SELECT title, parsed_path FROM items WHERE citekey = ?", (citekey,)
+            "SELECT title, parsed_path, status FROM items WHERE citekey = ?", (citekey,)
         ).fetchone()
         con.row_factory = None
     if row is None:
