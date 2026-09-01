@@ -11,7 +11,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import citation_gate, config
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -116,7 +116,17 @@ def sentences_citing(draft: str | Path, citekey: str) -> list[str]:
     Paraphrased-but-uncited sentences sitting next to a citation are
     exactly where borrowed wording hides, so compare the whole
     paragraph against the source.
+
+    Membership is a real citekey match, via `citation_gate`'s own
+    extractor, not a bare substring test: BibTeX disambiguation suffixes
+    are routine in a real export, so `citekey in p` would also match a
+    paragraph citing only the suffixed sibling `f"{citekey}a"`, reporting
+    overlap runs against a source that paragraph never cites.
     """
     text = Path(draft).read_text(encoding="utf-8")
     paras = re.split(r"\n\s*\n", text)
-    return [re.sub(r"\s+", " ", p) for p in paras if citekey in p]
+    return [
+        re.sub(r"\s+", " ", p)
+        for p in paras
+        if citekey in citation_gate.extract_citekeys_from_line(p)
+    ]

@@ -114,9 +114,15 @@ def _sentence_around(text: str, citekey: str) -> str:
     The split itself is `chitragupta/sentences.py`'s, shared with tier 3 of the
     overlap scan (`chitragupta/overlap_embed.py`) -- see that module on why the
     two aids must not each keep their own idea of where a sentence ends.
+
+    Membership is a real citekey match, via `citation_gate`'s own
+    extractor, not a bare substring test: BibTeX disambiguation suffixes
+    are routine in a real export, so `citekey in part` would also match a
+    sentence citing only the suffixed sibling `f"{citekey}a"` -- scoring
+    the wrong claim against the source.
     """
     for part in sentences.split(text):
-        if citekey in part:
+        if citekey in citation_gate.extract_citekeys_from_line(part):
             return _tidy(part)
     return _tidy(text)
 

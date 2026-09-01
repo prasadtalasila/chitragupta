@@ -738,6 +738,19 @@ class TestEdgeShapes:
         part -- return the tidied paragraph rather than nothing."""
         assert cp._sentence_around("no marker here at all", "ghost_2024") == "no marker here at all"
 
+    def test_a_suffixed_sibling_does_not_match_the_bare_key(self, isolated_config):
+        """#497: bare substring matching made `smith2020` match text
+        citing only `smith2020a` -- a BibTeX disambiguation suffix, which
+        real exports use routinely. The first sentence here cites only
+        the suffixed sibling and must not win over the second, which
+        cites the bare key."""
+        text = "First one [@smith2020a]. Second one [@smith2020]."
+        assert cp._sentence_around(text, "smith2020") == "Second one."
+
+    def test_the_suffixed_sibling_itself_still_matches(self, isolated_config):
+        text = "First one [@smith2020a]. Second one [@smith2020]."
+        assert cp._sentence_around(text, "smith2020a") == "First one."
+
     def test_claim_with_no_matching_words_reports_no_passage(self, isolated_config):
         _add_item("a_2024", parsed_text="ontology metamodel\fresilience safety")
         path = config.CONTENT_DIR / "d.md"
