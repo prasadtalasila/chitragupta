@@ -125,10 +125,10 @@ def _caption_wrap_for(figure: "Figure", marker: str, output_format: str) -> str:
             f"`\\caption{{`{{=latex}}{figure.caption}`}}\\label{{fig:{figure.id}}}`{{=latex}}"
         )
         return (
-            f"```{{=latex}}\n\\begin{{figure}}\n```\n"
+            "```{=latex}\n\\begin{figure}\n```\n"
             f"{marker}\n\n"
             f"{caption_line}\n\n"
-            f"```{{=latex}}\n\\end{{figure}}\n```"
+            "```{=latex}\n\\end{figure}\n```"
         )
     return f"{marker}\n**Figure {figure.number}:** {figure.caption}"
 
