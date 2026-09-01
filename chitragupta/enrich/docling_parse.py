@@ -303,7 +303,12 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
         _parse_with_pool(docs, pending, cache, status, workers)
     else:
         converter = _LazyConverter()
-        for doc in docs:
+        for i, doc in enumerate(docs, 1):
+            # Opened before the slow call, per DEVELOPER-AGENTS.md's
+            # write-lock convention -- otherwise a serial run over a real
+            # corpus prints nothing for the length of one parse per
+            # document, indistinguishable from a hang (issue #50).
+            logging_setup.say(logger, f"  [{i}/{len(docs)}] {doc.citekey}")
             try:
                 out_path = parse_doc(doc, cache=cache, converter=converter)
                 status[doc.citekey] = f"ok: {out_path}"
