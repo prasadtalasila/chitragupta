@@ -74,8 +74,16 @@ class Reference:
 
 
 def _parse_authors(author_field: str) -> list[tuple[str, str]]:
+    # bibtexparser preserves an author field's original line wrapping, so
+    # a separator split across a line break (`... Doe\n  and Jane Smith`)
+    # is whitespace, not the literal " and " a naive split() requires --
+    # missing it silently collapses two authors into one mangled name.
+    # A zero-width split on "and" (matched only, never consumed) so any
+    # whitespace before and after -- one space, a wrapped newline, a
+    # stray double space -- stays attached to its neighbouring segment
+    # and is trimmed by the per-name strip() below, the same as before.
     authors = []
-    for name in author_field.split(" and "):
+    for name in re.split(r"(?<=\s)and(?=\s)", author_field):
         name = name.strip()
         if not name:
             continue

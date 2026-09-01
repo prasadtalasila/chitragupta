@@ -21,6 +21,13 @@ from chitragupta import citation_gate
 _CITATION_GROUP_RE = re.compile(
     r"\[\s*-?@[A-Za-z][A-Za-z0-9_-]*(?:\s*;\s*-?@[A-Za-z][A-Za-z0-9_-]*)*\s*\]"
 )
+# A single citekey with a preserved locator -- `[@doe2020, p. 33]` --
+# which `_CITATION_GROUP_RE` above deliberately does not match (its own
+# comment: a prefix or locator must not be silently dropped). Renumbered
+# as `[3, p. 33]` rather than falling through to the per-key pass below,
+# which would leave the surrounding brackets in place and nest a second
+# pair around the number (`[[3], p. 33]`).
+_LOCATOR_GROUP_RE = re.compile(r"\[\s*(-?@[A-Za-z][A-Za-z0-9_-]*)\s*,\s*([^\[\]@;]+?)\s*\]")
 # citation_gate's own Pandoc-citation regex, not a second definition of
 # one. Its negative lookbehind is what keeps `@` inside a larger token
 # from reading as a citation -- this project's own tutorial draft carries
@@ -56,6 +63,62 @@ def _format_numbers(numbers: list[int]) -> str:
     return ", ".join(out)
 
 
+def _group_edits(
+    blanked: str, numbers: dict[str, int]
+) -> tuple[list[tuple[int, int, str]], list[tuple[int, int]]]:
+    """`;`-separated citekey groups (`[@a; @b]`), IEEE-contracted."""
+    edits: list[tuple[int, int, str]] = []
+    covered: list[tuple[int, int]] = []
+    for match in _CITATION_GROUP_RE.finditer(blanked):
+        keys = _BARE_KEY_RE.findall(match.group())
+        # Marked covered either way, so that a group holding even one
+        # unnumbered key is left exactly as written. Without this the
+        # per-key pass below would still rewrite its *known* keys and
+        # leave `[[1]; @zzz]` -- a mangling that is worse than the
+        # untouched marker, which at least reads as an obvious omission.
+        covered.append((match.start(), match.end()))
+        if any(k not in numbers for k in keys):
+            continue
+        edits.append((match.start(), match.end(), _format_numbers([numbers[k] for k in keys])))
+    return edits, covered
+
+
+def _locator_edits(blanked: str, numbers: dict[str, int]) -> list[tuple[int, int, str]]:
+    """A single citekey with a preserved locator (`[@a, p. 33]`).
+
+    No overlap check against `_group_edits`'s `covered` here: that regex
+    only matches a bracket containing nothing but ";"-separated keys, and
+    this pattern only matches one containing a ",", so the two can never
+    claim the same span.
+    """
+    edits: list[tuple[int, int, str]] = []
+    for match in _LOCATOR_GROUP_RE.finditer(blanked):
+        key_match = _BARE_KEY_RE.match(match.group(1))
+        if key_match is None or key_match.group(1) not in numbers:
+            continue
+        edits.append(
+            (match.start(), match.end(), f"[{numbers[key_match.group(1)]}, {match.group(2)}]")
+        )
+    return edits
+
+
+def _bare_key_edits(
+    blanked: str, numbers: dict[str, int], covered: list[tuple[int, int]]
+) -> list[tuple[int, int, str]]:
+    """Anything left: a bare `@key`, or one inside a group with a prefix.
+
+    Replaced individually so the words around it survive.
+    """
+    edits: list[tuple[int, int, str]] = []
+    for match in _BARE_KEY_RE.finditer(blanked):
+        if any(start <= match.start() < end for start, end in covered):
+            continue
+        number = numbers.get(match.group(1))
+        if number is not None:
+            edits.append((match.start(), match.end(), f"[{number}]"))
+    return edits
+
+
 def renumber(text: str, numbers: dict[str, int]) -> str:
     """Rewrites `text`'s citekey markers as IEEE numbers from `numbers`.
 
@@ -70,28 +133,10 @@ def renumber(text: str, numbers: dict[str, int]) -> str:
     """
     blanked = citation_gate._blank_code(text)
 
-    edits: list[tuple[int, int, str]] = []
-    covered: list[tuple[int, int]] = []
-    for match in _CITATION_GROUP_RE.finditer(blanked):
-        keys = _BARE_KEY_RE.findall(match.group())
-        # Marked covered either way, so that a group holding even one
-        # unnumbered key is left exactly as written. Without this the
-        # per-key pass below would still rewrite its *known* keys and
-        # leave `[[1]; @zzz]` -- a mangling that is worse than the
-        # untouched marker, which at least reads as an obvious omission.
-        covered.append((match.start(), match.end()))
-        if any(k not in numbers for k in keys):
-            continue
-        edits.append((match.start(), match.end(), _format_numbers([numbers[k] for k in keys])))
-
-    # Anything left: a bare `@key`, or one inside a group with a prefix or
-    # locator. Replaced individually so the words around it survive.
-    for match in _BARE_KEY_RE.finditer(blanked):
-        if any(start <= match.start() < end for start, end in covered):
-            continue
-        number = numbers.get(match.group(1))
-        if number is not None:
-            edits.append((match.start(), match.end(), f"[{number}]"))
+    group_edits, covered = _group_edits(blanked, numbers)
+    locator_edits = _locator_edits(blanked, numbers)
+    covered.extend((start, end) for start, end, _ in locator_edits)
+    edits = group_edits + locator_edits + _bare_key_edits(blanked, numbers, covered)
 
     out = []
     position = 0

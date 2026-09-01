@@ -32,7 +32,14 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config, ledger, retrieval_iterative
-from chitragupta.retrieval import SearchResult, _full_text, _query_terms, _windows, search
+from chitragupta.retrieval import (
+    SearchResult,
+    _full_text,
+    _query_terms,
+    _windows,
+    search,
+    short_query_terms,
+)
 
 EVIDENCE_CHARS = 600
 EVIDENCE_WINDOWS = 2
@@ -241,6 +248,22 @@ def _log_call(args, results: int, chars: int) -> None:
         print(f"  Logged to {path}")
 
 
+def _warn_of_short_terms(query: str) -> None:
+    """Names any 1-2 character query word that ranking can never see.
+
+    A query built entirely from such terms returns empty with nothing in
+    that result to explain why; a mixed query silently drops just the
+    short ones. Either way the reader making sense of the result deserves
+    to know before they conclude the corpus has nothing on the topic.
+    """
+    dropped = short_query_terms(query)
+    if dropped:
+        print(
+            f"  [note] too short to search on (dropped): {', '.join(dropped)}",
+            file=sys.stderr,
+        )
+
+
 def main(argv: "list[str] | None" = None) -> int:
     args = _build_parser().parse_args(argv)
 
@@ -251,6 +274,8 @@ def main(argv: "list[str] | None" = None) -> int:
             file=sys.stderr,
         )
         return 1
+
+    _warn_of_short_terms(args.query)
 
     if args.command == "evidence":
         outcome = _run_evidence(args)

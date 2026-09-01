@@ -187,6 +187,35 @@ class TestFormatEntry:
         entry = references.format_entry("k", "T", "2024", {"author": author, "journal": "J"})
         assert entry.startswith("F. Last0 et al.,")
 
+    def test_bibtex_and_others_truncation_renders_as_et_al(self):
+        # BibTeX's own truncation marker is a literal trailing "others"
+        # name, not a real author -- it must not render as one.
+        entry = references.format_entry(
+            "k", "T", "2024", {"author": "Doe, Jane and others", "journal": "J"}
+        )
+        assert entry.startswith("J. Doe et al.,")
+
+    def test_page_range_with_a_single_hyphen_gets_an_en_dash(self):
+        entry = references.format_entry("k", "T", "2024", {"journal": "J", "pages": "1-10"})
+        assert "pp. 1–10," in entry
+
+    def test_title_ending_in_an_abbreviation_keeps_its_period(self):
+        entry = references.format_entry("k", "A Report on the U.S.", "2024", {})
+        assert "*A Report on the U.S.*" in entry
+
+    def test_title_ending_in_an_ordinary_period_has_it_stripped(self):
+        entry = references.format_entry("k", "A Study.", "2024", {})
+        assert "*A Study*" in entry
+
+    def test_booktitle_wins_over_journal_for_a_dual_field_entry(self):
+        # An @inbook entry can carry both; the journal-shaped field is the
+        # wrong one for it, so the container title comes from booktitle.
+        entry = references.format_entry(
+            "k", "A Chapter", "2024", {"journal": "J. Stray", "booktitle": "Proc. Conf."}
+        )
+        assert "in *Proc. Conf.*" in entry
+        assert "J. Stray" not in entry
+
     def test_editor_is_used_when_there_is_no_author(self):
         entry = references.format_entry(
             "k", "A Volume", "2015", {"editor": "Ed, One", "publisher": "Springer"}
@@ -245,6 +274,9 @@ class TestRenumber:
             # key itself is replaced, because collapsing the whole bracket
             # would silently delete "see" and "p. 33".
             ("Locator [see @a, p. 33].", "Locator [see [1], p. 33]."),
+            # A single key with a preserved locator and no prefix word
+            # renumbers without nesting a second bracket around it.
+            ("Locator [@a, p. 33].", "Locator [1, p. 33]."),
             ("Spaces [ @a ; @b ].", "Spaces [1], [2]."),
         ],
     )
@@ -278,6 +310,9 @@ class TestRenumber:
 
     def test_a_group_is_left_alone_if_any_key_is_unnumbered(self):
         assert references.renumber("[@a; @zzz]", self.NUMBERS) == "[@a; @zzz]"
+
+    def test_a_locator_group_is_left_alone_if_the_key_is_unnumbered(self):
+        assert references.renumber("[@zzz, p. 33]", self.NUMBERS) == "[@zzz, p. 33]"
 
     def test_a_citation_inside_a_code_fence_is_untouched(self):
         # A tutorial showing `[@citekey]` in an example is teaching the

@@ -26,6 +26,19 @@ class TestTokenize:
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
 
+class TestShortQueryTerms:
+    def test_no_short_terms_returns_empty(self):
+        assert retrieval.short_query_terms("digital twin architecture") == []
+
+    def test_flags_two_and_one_character_words(self):
+        # "in" is flagged too -- it is short regardless of also being a
+        # stopword the ordinary tokenizer would drop for a separate reason.
+        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "in", "5g"]
+
+    def test_a_query_of_only_short_terms_is_entirely_flagged(self):
+        assert retrieval.short_query_terms("AI ML QA") == ["ai", "ml", "qa"]
+
+
 class TestQueryTerms:
     def test_strips_wh_words_and_a_modal(self):
         assert retrieval._query_terms("what are the failure modes of co-simulation") == [
@@ -563,6 +576,32 @@ class TestCli:
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["search", "quantum chromodynamics"]) == 0
         assert "No results." in capsys.readouterr().out
+
+    def test_a_query_of_only_short_terms_warns_why_it_is_empty(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI ML"]) == 0
+        err = capsys.readouterr().err
+        assert "too short to search on" in err
+        assert "ai" in err
+        assert "ml" in err
+
+    def test_a_mixed_query_still_warns_about_its_dropped_short_terms(
+        self, ledger_con, tmp_path, capsys
+    ):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        err = capsys.readouterr().err
+        assert "too short to search on (dropped): ai" in err
+
+    def test_a_query_with_no_short_terms_does_not_warn(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "digital twin architecture"]) == 0
+        assert "too short to search on" not in capsys.readouterr().err
+
+    def test_evidence_also_warns_about_a_short_term(self, ledger_con, tmp_path, capsys):
+        self._seed(ledger_con, tmp_path)
+        retrieval.main(["evidence", "AI patterns", "--citekey", "a2024"])
+        assert "too short to search on (dropped): ai" in capsys.readouterr().err
 
     def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
         """The `search` counterpart above is covered; this is its
