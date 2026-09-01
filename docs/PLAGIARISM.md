@@ -81,10 +81,13 @@ installed. A lift from a source a section never cited remains tiers 1 and
 2's business alone.
 
 That is this tier set's characteristic failure and the reason `scan`
-now names the tiers that **did not run**, with the reason, in both its
-printed and written forms and as `tiers_not_run` in the JSON payload.
-An unbuilt or unavailable tier does not otherwise announce itself, so a
-thin result and a thorough one look identical.
+now names both what **did not run at all** and what ran **against only
+part of what a draft cites** -- a heading renamed since the dossier's
+`sections.md` was last written, or a cited source the corpus grew since
+`enrich` last embedded it -- with the reason, in both its printed and
+written forms and as `tiers_not_run` in the JSON payload. An unbuilt,
+unavailable or partially-covering tier does not otherwise announce
+itself, so a thin result and a thorough one look identical.
 
 ## ⚖ The two tools, and when each is right
 

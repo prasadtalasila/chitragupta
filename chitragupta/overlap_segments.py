@@ -134,9 +134,11 @@ def draft_sections(
     text: str,
     word_spans: list[tuple[int, int]],
     citekeys_by_section: dict[str, list[str]],
-) -> list[DraftSection]:
+) -> tuple[list[DraftSection], int]:
     """The draft's sections, each with the citekeys its dossier records
-    and the sentences it is made of.
+    and the sentences it is made of, plus how many of the dossier's
+    recorded sections could not be matched to one of the draft's own
+    headings.
 
     Sections come from `chitragupta.dossier.sections`, which is the repo's one
     outline parser and already skips fenced code and LaTeX verbatim --
@@ -148,10 +150,22 @@ def draft_sections(
     length that a whole-corpus search is the wrong shape for this corpus,
     and falling back to one wherever the dossier happened to be thin
     would reintroduce exactly that, silently.
+
+    The second return value is a different failure from that one, and
+    the caller needs to be able to tell them apart (#499). A recorded
+    section title that matches no heading in `text` at all -- a heading
+    renamed since `sections --citekeys --write` last ran -- silently
+    scanned nothing for that source, and a caller comparing only the
+    returned sections against a zero count could not distinguish "the
+    dossier legitimately named this section thin" from "this section's
+    heading moved and nothing was ever compared against its sources".
     """
     line_starts = _line_starts(text)
+    draft_headings = dossier.sections(text)
+    draft_titles = {heading.title for heading in draft_headings}
+    unmatched = sum(1 for title in citekeys_by_section if title not in draft_titles)
     found = []
-    for section in dossier.sections(text):
+    for section in draft_headings:
         citekeys = citekeys_by_section.get(section.title) or []
         if not citekeys:
             continue
@@ -166,7 +180,7 @@ def draft_sections(
         section_sentences = _sentences_in(text, word_spans, start, end)
         if section_sentences:
             found.append(DraftSection(section.title, list(citekeys), section_sentences))
-    return found
+    return found, unmatched
 
 
 def _line_starts(text: str) -> list[int]:
