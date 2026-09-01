@@ -121,6 +121,19 @@ class TestRunTopicModel:
         with pytest.raises(ValueError, match="Need at least 2 documents"):
             topic_model.run_topic_model(docs)
 
+    def test_records_the_embedding_model_and_method(
+        self, isolated_config, fake_bertopic_stack, tmp_path
+    ):
+        """#504, m-47: topic_converge.py needs these to refuse pairing a
+        clustering against vectors from a different embedding space."""
+        from chitragupta.enrich import doc_vectors
+
+        docs = make_docs_with_text(2, tmp_path)
+        result = topic_model.run_topic_model(docs)
+
+        assert result["embedding_model"] == isolated_config.EMBEDDING_MODEL
+        assert result["embedding_method"] == doc_vectors.EMBED_METHOD
+
     def test_scaling_formula_for_small_corpus(self, isolated_config, fake_bertopic_stack, tmp_path):
         # n_docs=6: n_neighbors=min(15,5)=5, n_components=min(5,max(2,4))=4,
         # min_cluster_size=max(2,min(10,3))=3.

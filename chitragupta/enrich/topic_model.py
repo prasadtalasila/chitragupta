@@ -279,6 +279,14 @@ def run_topic_model(docs: list[CorpusDoc]) -> dict:
         "n_docs": len(texts),
         "assignments": dict(zip(citekeys, [int(t) for t in topics])),
         "topic_info": json.loads(topic_model.get_topic_info().to_json(orient="records")),
+        # Recorded so `topic_converge.py` can refuse to pair these
+        # `assignments` with vectors it re-embeds under a *different*
+        # model or pooling method (#504, m-47) -- exactly the two things
+        # `doc_vectors.document_embeddings`'s own cache already keys a
+        # single document's vector on, just not previously recorded at
+        # the level of "the whole clustering run that produced this file".
+        "embedding_model": config.EMBEDDING_MODEL,
+        "embedding_method": doc_vectors.EMBED_METHOD,
     }
     memberships = topic_memberships(embeddings, citekeys, topics)
     if memberships is not None:

@@ -162,6 +162,25 @@ def run_topic_converge(docs, seed_phrases: tuple) -> dict:
     found = json.loads(config.TOPICS_PATH.read_text(encoding="utf-8"))
     memberships = found.get("memberships") or {}
 
+    # `found["assignments"]` is a clustering computed against a specific
+    # embedding space; `vectors` below is re-embedded under *today's*
+    # config, silently a different space if `embedding_model`/`method`
+    # changed since the bertopic stage last ran. Zipping the two together
+    # anyway would pair a topic id with a vector it was never clustered
+    # against and hand back a plausible-looking, meaningless result
+    # (#504, m-47) -- caught here, in the same "re-run the earlier stage"
+    # shape the missing-file check above already uses, rather than left
+    # for a reader to notice the descriptors don't make sense.
+    if (
+        found.get("embedding_model") != config.EMBEDDING_MODEL
+        or found.get("embedding_method") != doc_vectors.EMBED_METHOD
+    ):
+        raise ValueError(
+            f"{config.TOPICS_PATH} was built under a different embedding model or "
+            "method than the one configured now. Re-run the bertopic stage before "
+            "converging, or its assignments won't match these vectors."
+        )
+
     doc_texts = doc_vectors.corpus_texts(docs)
     _client, model = embed_index.get_client_and_model()
     vectors = doc_vectors.document_embeddings(doc_texts, model)

@@ -20,18 +20,25 @@ unchanged-vs-changed check that deletes-then-reinserts on a real change
 closes that gap too.
 """
 
-import hashlib
 import logging
-import os
 import re
-import subprocess
-import tempfile
-from pathlib import Path
 from typing import Any
 
 from chitragupta import config, logging_setup
 from chitragupta.enrich import _rerank
 from chitragupta.enrich.corpus import CorpusDoc
+from chitragupta.enrich.embed_text import chunk_text, get_text, hash_text, strip_image_refs
+
+__all__ = [
+    "chunk_text",
+    "get_text",
+    "hash_text",
+    "strip_image_refs",
+    "collection_name",
+    "get_client_and_model",
+    "build_index",
+    "search",
+]
 
 # Fixed name for the same reason chitragupta/sync.py pins its own: this
 # module is imported, never run as __main__, but naming it here
@@ -66,75 +73,6 @@ def collection_name() -> str:
     return f"{_COLLECTION_PREFIX}-{slug}"[:63].rstrip("-.")
 
 
-def hash_text(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8", errors="ignore")).hexdigest()
-
-
-def strip_image_refs(markdown: str) -> str:
-    """Drop Docling's image markers from text on its way to the embedder.
-
-    Two forms, depending on config.DOCLING_IMAGES: a bare `<!-- image -->`
-    placeholder, or a real `![Image](<stem>_artifacts/image_000000_<64 hex
-    chars>.png)` reference. Neither carries meaning an embedding can use,
-    and the second is worse than the first: chunk_text() splits on
-    whitespace, so a ~100-character path hashes down to a single "word"
-    that displaces real text from a 200-word chunk.
-
-    Captions survive deliberately -- Docling emits them as their own
-    text items ("Figure 3. Sensor placement..."), not as the image's alt
-    text, so they're real prose about the figure and worth embedding.
-    """
-    without_refs = re.sub(r"^[ \t]*!\[[^\]]*\]\([^)]*\)[ \t]*$", "", markdown, flags=re.MULTILINE)
-    without_placeholders = re.sub(
-        r"^[ \t]*<!--\s*image\s*-->[ \t]*$", "", without_refs, flags=re.MULTILINE
-    )
-    # Collapse the blank runs those deletions leave behind, so chunking
-    # doesn't see paragraph gaps where a figure used to sit.
-    return re.sub(r"\n{3,}", "\n\n", without_placeholders)
-
-
-def get_text(doc: CorpusDoc) -> str | None:
-    """Best available text for a doc: Docling output > existing parsed text
-    > on-the-fly pdftotext. Doesn't require the Docling stage to have run."""
-    docling_path = config.DOCLING_DIR / f"{doc.citekey}.md"
-    if docling_path.exists():
-        return strip_image_refs(docling_path.read_text(encoding="utf-8"))
-    if doc.text_path and Path(doc.text_path).exists():
-        return Path(doc.text_path).read_text(encoding="utf-8")
-    if doc.pdf_path:
-        # mkstemp with the descriptor closed at once, and a manual unlink
-        # in finally -- deliberately *not* a NamedTemporaryFile `with`
-        # block wrapped around the subprocess call. On Windows an open
-        # handle keeps the file exclusively locked, and pdftotext writing
-        # to that same path while Python still holds it open fails with
-        # PermissionError -- POSIX allows a second open of the same path,
-        # which is why this only surfaced on this repo's Windows CI leg.
-        # Only the *name* is wanted here, so the descriptor is closed
-        # before anything else happens; any construct that held the file
-        # open across the run() below would reintroduce exactly the lock
-        # this close is here to release.
-        fd, tmp_name = tempfile.mkstemp(suffix=".txt")
-        os.close(fd)
-        try:
-            subprocess.run(
-                ["pdftotext", "-layout", doc.pdf_path, tmp_name],
-                check=True,
-                capture_output=True,
-            )
-            return Path(tmp_name).read_text(encoding="utf-8", errors="ignore")
-        finally:
-            os.unlink(tmp_name)
-    return None
-
-
-def chunk_text(text: str, chunk_words: int = 200, overlap_words: int = 40) -> list[str]:
-    words = text.split()
-    if not words:
-        return []
-    step = chunk_words - overlap_words
-    return [" ".join(words[i : i + chunk_words]) for i in range(0, len(words), step)]
-
-
 def get_client_and_model() -> tuple[Any, Any]:
     import chromadb
     from sentence_transformers import SentenceTransformer
@@ -143,6 +81,25 @@ def get_client_and_model() -> tuple[Any, Any]:
     client = chromadb.PersistentClient(path=str(config.CHROMA_DIR))
     model = SentenceTransformer(config.EMBEDDING_MODEL)
     return client, model
+
+
+def _refresh_stale_title(collection, doc: CorpusDoc, existing: dict) -> None:
+    """Patch a corrected title into already-upserted, unchanged chunks.
+
+    Split out of `_embed_doc` to keep that function under the statement
+    limit, not for reuse -- `existing` is a `get(where={"citekey": ...})`
+    result computed by the caller, not something worth recomputing here.
+    A title-only edit doesn't need `model.encode()` to run again (#503,
+    m-48): the staleness check that reaches this function already
+    compared `text_hash`, so folding the title into that comparison
+    would re-embed on every bib correction for no reason.
+    """
+    stale_titles = [m.get("title") != doc.title for m in existing["metadatas"]]
+    if any(stale_titles):
+        collection.update(
+            ids=existing["ids"],
+            metadatas=[{**m, "title": doc.title} for m in existing["metadatas"]],
+        )
 
 
 def _embed_doc(doc: CorpusDoc, position: int, total: int, collection, model) -> tuple[int, str]:
@@ -170,6 +127,7 @@ def _embed_doc(doc: CorpusDoc, position: int, total: int, collection, model) -> 
     # so an index built before #57 keeps working without a rebuild.
     existing = collection.get(where={"citekey": doc.citekey})
     if existing["ids"] and all(m.get("text_hash") == text_hash for m in existing["metadatas"]):
+        _refresh_stale_title(collection, doc, existing)
         print(f" -- unchanged, {len(existing['ids'])} chunk(s)", flush=True)
         return len(existing["ids"]), "unchanged"
     if existing["ids"]:
@@ -237,11 +195,35 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
         )
         raise
 
+    # A citekey dropped from the bib (and, after re-export + sync, the
+    # ledger) leaves its chunks in Chroma forever otherwise -- upsert only
+    # ever adds/overwrites, never removes what a *departed* document wrote
+    # (#503, M-23). This is the one place able to tell "departed" from
+    # "merely unchanged": `docs` is build_corpus()'s whole current ledger,
+    # so any chunk whose citekey isn't in it belongs to no document this
+    # run was asked to index. Runs after the loop completes, not inside
+    # it, so an interrupted run (which `raise`s above) never deletes
+    # chunks on the strength of a partial pass.
+    current_citekeys = {doc.citekey for doc in docs}
+    everything = collection.get()
+    orphaned_ids = [
+        chunk_id
+        for chunk_id, metadata in zip(everything["ids"], everything["metadatas"])
+        if metadata.get("citekey") not in current_citekeys
+    ]
+    if orphaned_ids:
+        collection.delete(ids=orphaned_ids)
+
     logging_setup.say(
         logger,
         f"  {len(docs)} document(s): {tallies['embedded']} embedded, "
         f"{tallies['unchanged']} unchanged, {tallies['no_text']} with no text -- "
-        f"{sum(counts.values())} chunk(s) in the index",
+        f"{sum(counts.values())} chunk(s) in the index"
+        + (
+            f", {len(orphaned_ids)} orphaned chunk(s) from departed citekeys removed"
+            if orphaned_ids
+            else ""
+        ),
     )
     return counts
 
