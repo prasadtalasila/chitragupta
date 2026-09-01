@@ -17,8 +17,11 @@ from chitragupta import review
 # be missing something the output line needs. `end_page` is the live case
 # -- a payload written between `id` landing and #131's page range claims
 # the same release series, passes the version check below, and then
-# crashes `_page_range`. Checked against `_PAYLOAD_FIELDS` in the tests,
-# so a field required here but never written cannot slip in.
+# crashes `_page_range`. `tier` is the same shape of case for
+# `recheck_findings`' `objective()`, which excludes the embedding tier
+# from the count (#500) and would `KeyError` without it rather than
+# refuse cleanly. Checked against `_PAYLOAD_FIELDS` in the tests, so a
+# field required here but never written cannot slip in.
 _BASELINE_FIELDS = (
     "id",
     "citekey",
@@ -27,6 +30,7 @@ _BASELINE_FIELDS = (
     "span_words",
     "severity",
     "line",
+    "tier",
 )
 
 

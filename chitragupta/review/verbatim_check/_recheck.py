@@ -12,16 +12,49 @@ import json
 import shlex
 from pathlib import Path
 
-from chitragupta import review
+from chitragupta import overlap_chroma, review
 from chitragupta.review.verbatim_check._baseline import load_baseline
 from chitragupta.review.verbatim_check._scan import _page_range, published, scan_findings
 
 
+def _tier_drift_warnings(baseline: dict, not_run: list[dict]) -> list[str]:
+    """Advisory lines naming what changed, between the baseline's own scan
+    and this rescan, in what `objective()` below deliberately cannot see:
+    which tiers ran, and which corpus the embedding tier compared against.
+
+    Warns rather than refuses, unlike `load_baseline`'s release-series
+    check: tiers 1 and 2 are unaffected by either drift and `objective()`
+    already excludes tier 3 from the count, so neither makes the baseline
+    an invalid comparison basis -- only the embedding entries surfacing in
+    `resolved`/`new` need the caveat, not the whole comparison (#500).
+    """
+    warnings = []
+    baseline_not_run = {entry["tier"] for entry in baseline.get("tiers_not_run", [])}
+    current_not_run = {entry["tier"] for entry in not_run}
+    if baseline_not_run != current_not_run:
+        warnings.append(
+            "tier availability changed since the baseline: not run then "
+            f"{sorted(baseline_not_run) or ['none']}, not run now "
+            f"{sorted(current_not_run) or ['none']} -- embedding findings in "
+            "resolved/new may reflect that rather than an edit"
+        )
+    baseline_corpus_key = baseline.get("corpus_key")
+    current_corpus_key = overlap_chroma.corpus_key()
+    if baseline_corpus_key is not None and baseline_corpus_key != current_corpus_key:
+        warnings.append(
+            f"corpus key changed since the baseline ({baseline_corpus_key} -> "
+            f"{current_corpus_key}) -- the embedding model or corpus was rebuilt, so "
+            "embedding findings are not comparable to the baseline's"
+        )
+    return warnings
+
+
 def recheck_findings(
     draft: str | Path, baseline: dict
-) -> tuple[list[dict], list[dict], list[dict], int, int]:
-    """`(resolved, persisting, new, objective_before, objective_after)`
-    for `draft` against `baseline`, rescanned at the baseline's own floor.
+) -> tuple[list[dict], list[dict], list[dict], int, int, list[str]]:
+    """`(resolved, persisting, new, objective_before, objective_after,
+    warnings)` for `draft` against `baseline`, rescanned at the
+    baseline's own floor.
 
     The floor comes from the baseline rather than from a flag because two
     scans are only comparable at the same one, and the baseline's already
@@ -36,7 +69,7 @@ def recheck_findings(
     persisting -- understating progress, which is the direction an
     acceptance test should err in.
     """
-    findings, _, _, _ = scan_findings(draft, baseline["min_run"], baseline["gap"], None)
+    findings, _, _, not_run = scan_findings(draft, baseline["min_run"], baseline["gap"], None)
     payload_now = [published(f) for f in findings]
     before = baseline["findings"]
 
@@ -46,14 +79,20 @@ def recheck_findings(
     persisting = [f for f in payload_now if f["id"] in before_ids]
     new = [f for f in payload_now if f["id"] not in before_ids]
 
-    # "Objective" is the two defect buckets. A run that is both quoted and
-    # cited is a correctly attributed quotation, so counting it here would
-    # make converting a lift into a quotation -- one of the two repairs
-    # this loop is for -- look like no improvement at all.
+    # "Objective" is the two defect buckets, deterministic tiers only. A
+    # run that is both quoted and cited is a correctly attributed
+    # quotation, so counting it here would make converting a lift into a
+    # quotation -- one of the two repairs this loop is for -- look like no
+    # improvement at all. `tier == "embedding"` is excluded the same way:
+    # that tier's own docstring calls it "advisory only, permanently" --
+    # its findings move with tier availability and the embedding model,
+    # not only with an edit, so counting them here would stall this
+    # loop's strictly-falling counter for reasons no edit caused (#500).
     def objective(items: list[dict]) -> int:
-        return sum(1 for f in items if f["severity"] != "quoted")
+        return sum(1 for f in items if f["severity"] != "quoted" and f["tier"] != "embedding")
 
-    return resolved, persisting, new, objective(before), objective(payload_now)
+    warnings = _tier_drift_warnings(baseline, not_run)
+    return resolved, persisting, new, objective(before), objective(payload_now), warnings
 
 
 def recheck_command(draft: str | Path, baseline: str | Path) -> str:
@@ -88,6 +127,7 @@ def recheck_payload(
     groups: tuple[list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
     command: str,
+    warnings: list[str] | None = None,
 ) -> dict:
     """The comparison as data -- the form the remediation loop reads.
 
@@ -111,6 +151,7 @@ def recheck_payload(
             "resolved": resolved,
             "persisting": persisting,
             "new": new,
+            "warnings": warnings or [],
         }
     )
     return payload
@@ -121,6 +162,7 @@ def format_recheck(
     baseline: dict,
     groups: tuple[list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
+    warnings: list[str] | None = None,
 ) -> str:
     """The plain-text form, for stdout."""
     resolved, persisting, new = groups
@@ -141,6 +183,8 @@ def format_recheck(
             )
         lines.append("")
     lines.append(f"objective findings (long + short): {before} -> {after} ({after - before:+d})")
+    for warning in warnings or []:
+        lines.append(f"\nwarning: {warning}")
     return "\n".join(lines)
 
 
@@ -155,12 +199,13 @@ def cmd_recheck(draft: str | Path, baseline: str | Path, as_json: bool = False) 
     edit had happened yet.
     """
     loaded = load_baseline(baseline)
-    resolved, persisting, new, before, after = recheck_findings(draft, loaded)
+    resolved, persisting, new, before, after, warnings = recheck_findings(draft, loaded)
     groups, counts = (resolved, persisting, new), (before, after)
 
     if not as_json:
-        print(format_recheck(baseline, loaded, groups, counts))
+        print(format_recheck(baseline, loaded, groups, counts, warnings))
         return
 
     command = recheck_command(draft, baseline)
-    print(json.dumps(recheck_payload(draft, baseline, loaded, groups, counts, command), indent=2))
+    payload = recheck_payload(draft, baseline, loaded, groups, counts, command, warnings)
+    print(json.dumps(payload, indent=2))
