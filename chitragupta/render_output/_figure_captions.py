@@ -200,7 +200,8 @@ def warnings(text: str) -> "list[str]":
     """A captioned figure's id, and a `figureref` naming one -- mirroring
     `_tables.warnings`'s duplicate-id and unknown-ref checks. A `.tex`
     fragment carries neither marker, so both are empty there."""
-    declared_ids = [figure.id for figure in figures(text)]
+    declared = figures(text)
+    declared_ids = [figure.id for figure in declared]
     found = [
         f"`{figure_id}` is declared by more than one figure"
         for figure_id in sorted(set(declared_ids))
@@ -216,7 +217,7 @@ def warnings(text: str) -> "list[str]":
         "paragraph, not a deliberate one-line caption; add a blank line after the "
         "marker if it should be uncaptioned, or after the caption if it should stay "
         "one line"
-        for figure, match in zip(figures(text), _FIGURE_CAPTION_PAIR_RE.finditer(text))
+        for figure, match in zip(declared, _FIGURE_CAPTION_PAIR_RE.finditer(text))
         if (continuation := _continuation_line(text, match)) is not None
     ]
     return found
