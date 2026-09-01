@@ -27,17 +27,27 @@ def _tier_drift_warnings(baseline: dict, not_run: list[dict]) -> list[str]:
     already excludes tier 3 from the count, so neither makes the baseline
     an invalid comparison basis -- only the embedding entries surfacing in
     `resolved`/`new` need the caveat, not the whole comparison (#500).
+
+    A baseline missing `tiers_not_run` or `corpus_key` predates both
+    fields (`scan_payload` added them additively) and is treated as
+    "unknown", not "everything ran"/"no key recorded" -- the same
+    posture `_series` takes on a missing `version`, and for the same
+    reason: asserting a value the baseline never recorded would read a
+    real environment change into a payload that simply predates being
+    able to say so.
     """
     warnings = []
-    baseline_not_run = {entry["tier"] for entry in baseline.get("tiers_not_run", [])}
-    current_not_run = {entry["tier"] for entry in not_run}
-    if baseline_not_run != current_not_run:
-        warnings.append(
-            "tier availability changed since the baseline: not run then "
-            f"{sorted(baseline_not_run) or ['none']}, not run now "
-            f"{sorted(current_not_run) or ['none']} -- embedding findings in "
-            "resolved/new may reflect that rather than an edit"
-        )
+    baseline_not_run_raw = baseline.get("tiers_not_run")
+    if baseline_not_run_raw is not None:
+        baseline_not_run = {entry["tier"] for entry in baseline_not_run_raw}
+        current_not_run = {entry["tier"] for entry in not_run}
+        if baseline_not_run != current_not_run:
+            warnings.append(
+                "tier availability changed since the baseline: not run then "
+                f"{sorted(baseline_not_run) or ['none']}, not run now "
+                f"{sorted(current_not_run) or ['none']} -- embedding findings in "
+                "resolved/new may reflect that rather than an edit"
+            )
     baseline_corpus_key = baseline.get("corpus_key")
     current_corpus_key = overlap_chroma.corpus_key()
     if baseline_corpus_key is not None and baseline_corpus_key != current_corpus_key:

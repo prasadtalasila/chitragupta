@@ -2186,6 +2186,24 @@ class TestRecheck:
 
         assert any("corpus key changed" in w for w in result["warnings"])
 
+    def test_a_baseline_missing_tiers_not_run_is_not_treated_as_a_mismatch(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """An older baseline predates this field too (`scan_payload` added
+        it additively) -- absent means "unknown", not "every tier ran",
+        which would otherwise misread a rescan where the embedding tier
+        is unavailable (the ordinary case for a draft outside
+        `content/drafts/`) as tier availability having changed."""
+        draft = self._planted(ledger_con, tmp_path)
+        baseline = self._baseline(draft, tmp_path)
+        payload = json.loads(baseline.read_text())
+        del payload["tiers_not_run"]
+        baseline.write_text(json.dumps(payload, indent=2))
+
+        result = self._recheck(draft, baseline, capsys)
+
+        assert result["warnings"] == []
+
     def test_a_baseline_missing_corpus_key_is_not_treated_as_a_mismatch(
         self, ledger_con, tmp_path, capsys
     ):
