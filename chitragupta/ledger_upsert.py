@@ -274,9 +274,14 @@ def _next_status(row, pdf_hash, force, citekey) -> tuple[str, bool]:
         return "discovered", False
     if pdf_hash != old_hash:
         return ("discovered" if pdf_hash else "no_pdf"), pdf_hash is not None
-    if pdf_hash is not None and (
-        (old_status == "parsed" and not _parse_outputs_present(citekey, old_parsed_path))
-        or (old_status == "parse_failed" and old_kind != "deterministic")
-    ):
+    # 'discovered' rides in the same branch: it *means* "needs parsing",
+    # but this path used to return needs_parse=False for it, so any run
+    # that separated upsert from parse (backend unavailable, interrupt or
+    # crash before the result landed) stranded the document permanently --
+    # the next healthy sync counted it "unchanged" and exited 0, the
+    # silent-drop failure the retry above already closed for parse_failed.
+    outputs_gone = old_status == "parsed" and not _parse_outputs_present(citekey, old_parsed_path)
+    transient_failure = old_status == "parse_failed" and old_kind != "deterministic"
+    if pdf_hash is not None and (old_status == "discovered" or outputs_gone or transient_failure):
         return "discovered", True
     return old_status, False
