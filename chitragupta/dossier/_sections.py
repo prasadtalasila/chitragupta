@@ -201,7 +201,9 @@ def sections(text: str) -> list[Section]:
     return found
 
 
-def attribute_citekeys(text: str) -> tuple[list[tuple[Section, list[str]]], list[str]]:
+def attribute_citekeys(
+    text: str, *, latex: bool = False
+) -> tuple[list[tuple[Section, list[str]]], list[str]]:
     """(section, its citekeys) for every heading, plus the unattributed ones.
 
     The join key is the line number: `sections()` gives each heading a
@@ -224,7 +226,10 @@ def attribute_citekeys(text: str) -> tuple[list[tuple[Section, list[str]]], list
     outline = sections(text)
     per_section: list[tuple[Section, list[str]]] = [(section, []) for section in outline]
     unattributed: list[str] = []
-    for line, citekey in citation_gate.extract_citekeys(text):
+    # latex selects LaTeX-aware code blanking (backtick is a quote there,
+    # not code markup) -- without it a citation between two LaTeX-quoted
+    # phrases silently vanished from the derived table.
+    for line, citekey in citation_gate.extract_citekeys(text, latex=latex):
         for section, keys in per_section:
             if section.start <= line <= section.end:
                 if citekey not in keys:
@@ -236,7 +241,7 @@ def attribute_citekeys(text: str) -> tuple[list[tuple[Section, list[str]]], list
     return per_section, unattributed
 
 
-def sections_markdown(text: str) -> str:
+def sections_markdown(text: str, *, latex: bool = False) -> str:
     """The finished `sections.md` for a draft, header and all.
 
     Deterministic, so it can be regenerated rather than maintained: the
@@ -246,7 +251,7 @@ def sections_markdown(text: str) -> str:
     literal, so the round trip through `citekeys_by_section()` returns
     the heading as written.
     """
-    per_section, _ = attribute_citekeys(text)
+    per_section, _ = attribute_citekeys(text, latex=latex)
     rows = "".join(
         f"| {section.title.replace('|', r'\|')} | {', '.join(f'`{key}`' for key in keys)} |\n"
         for section, keys in per_section
@@ -289,12 +294,13 @@ def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
     table to build and a caller that piped this somewhere should hear
     about it rather than write an empty file.
     """
-    per_section, unattributed = attribute_citekeys(text)
+    latex = draft.suffix.lower() == ".tex"
+    per_section, unattributed = attribute_citekeys(text, latex=latex)
     if not per_section:
         print(f"No headings in {draft_relpath(draft)}.", file=sys.stderr)
         return 1
 
-    table = sections_markdown(text)
+    table = sections_markdown(text, latex=latex)
     if write:
         target = dossier_dir(draft) / SECTIONS_MD
         if not target.parent.is_dir():

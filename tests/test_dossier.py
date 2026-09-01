@@ -3011,6 +3011,20 @@ class TestAttributeCitekeys:
         "More [@c_three_2022].\n"
     )
 
+    def test_latex_mode_keeps_a_citation_between_latex_quotes(self):
+        # In a .tex draft a backtick is an open quote; without LaTeX-aware
+        # blanking the span between two ``quoted'' phrases read as inline
+        # code and the citation inside it vanished from the derived table.
+        text = (
+            "## 1. Background\n"
+            "\n"
+            "The ``digital twin'' approach \\citep{a_one_2024} extends "
+            "the ``model'' view.\n"
+        )
+        per_section, unattributed = _sections.attribute_citekeys(text, latex=True)
+        assert unattributed == []
+        assert [(s.title, keys) for s, keys in per_section] == [("1. Background", ["a_one_2024"])]
+
     def test_each_citekey_lands_in_the_section_that_cites_it(self):
         per_section, unattributed = _sections.attribute_citekeys(self.MD)
         assert [(section.title, keys) for section, keys in per_section] == [
