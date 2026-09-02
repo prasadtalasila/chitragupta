@@ -142,6 +142,7 @@ nav:
   - Home: README.md
   - Getting started:
       - What it does: docs/FEATURES.md
+      - The working vocabulary: docs/GLOSSARY.md
       - Installing and the CLI surface: docs/PACKAGING.md
       - Getting your library in: docs/ZOTERO.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
@@ -156,7 +157,6 @@ nav:
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
       - Architecture: docs/ARCHITECTURE.md
-      - Rendering flow: docs/RENDERING-FLOW.md
       - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md
@@ -177,6 +177,7 @@ nav:
   - Working on it:
       - Feature roadmap: docs/FEATURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
+      - Rendering flow: docs/RENDERING-FLOW.md
       - Tokens: docs/TOKENS.md
       - Rejection: docs/REJECTION.md
       - Plagiarism detection, how it works: docs/PLAGIARISM-DESIGN.md

@@ -168,6 +168,13 @@ paragraph deliberately does not spell that old invocation out --
 reader a command which no longer works, and it decides by path rather
 than by reading the surrounding sentence.
 
+---
+
+**Everything below this line is for the maintainers** -- why the
+command surface is shaped and named the way it is, and what a shipped
+name costs to change. If you are installing and using the pipeline, the
+sections above are the whole story.
+
 ## 💡 The module form, and why it survives
 
 Every row above has an exact equivalent:

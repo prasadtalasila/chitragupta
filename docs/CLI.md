@@ -146,7 +146,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all nine aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -249,15 +249,15 @@ either way (see [Installing](#-installing)).
 #    leaves every entry without a PDF, are in ZOTERO.md.
 mkdir -p papers && cp /path/to/your/exported-library.bib papers/bibliography.bib
 
-# 3. Create your config, if step 1 didn't already: config.toml is
-#    gitignored per-host data, so a git checkout has none -- chitragupta
-#    init already wrote it from the same template, from an installed
-#    package. chitragupta/config.py refuses to import without it (naming
-#    this exact command). Every key in it is optional -- see CONFIG.md.
+# 3. Create your config, if step 1 didn't already. `chitragupta init`
+#    writes config.toml for you; on a git checkout you copy the template
+#    yourself, and every command refuses to run without it, naming this
+#    exact fix. Every key in it is optional -- see CONFIG.md.
 cp config.toml.example config.toml   # git checkout only
 
-# 4. Sync the corpus layer from papers/bibliography.bib. Tier 2: needs the
-#    venv, and holds the write lock.
+# 4. Sync the corpus from papers/bibliography.bib. Needs the virtual
+#    environment, and only one sync (or enrichment run) can write at a
+#    time -- a second one waits its turn.
 chitragupta corpus sync
 # chitragupta corpus sync --reparse         # re-extract text even if the PDF is unchanged
 # chitragupta corpus sync --remove-stale    # only after reading the stale list it prints

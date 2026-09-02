@@ -1,33 +1,30 @@
 # ✨ Features
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-24, describing the
-pipeline as it stands at 6.20.2.
+Status: **reference.** Written 2026-08-22. Updated 2026-09-02,
+describing the pipeline as it stands at 6.60.
 
-**Written for** someone deciding whether this does what they need, and
-for anyone who wants the whole capability surface in one place rather
-than assembled from twelve documents. **Assumed:** nothing.
-**Not covered here:** how to invoke any of it
-([CLI.md](CLI.md)), how the workflow *flows*
-([DIAGRAMS.md](DIAGRAMS.md) draws it eleven ways), or why the
+**Written for** you -- someone who writes technical documents (a
+survey, a thesis chapter, a textbook, a report) and is deciding whether
+this tool does what you need, or wants its whole capability surface in
+one place. **Assumed:** nothing -- not this repository's layout, not
+its code, not any earlier document. **Not covered here:** how to invoke
+any of it ([CLI.md](CLI.md)), how the workflow *flows*
+([DIAGRAMS.md](DIAGRAMS.md) draws it thirteen ways), or why the
 architecture is shaped this way ([ARCHITECTURE.md](ARCHITECTURE.md),
 [SOUL.md](../SOUL.md)).
 
 **This document routes; it does not restate.** Every feature names the
-document that owns its detail, and stops there. That is a deliberate
-constraint, not modesty: two documents describing one mechanism drift
-apart, and this repository has repaired exactly that twice -- a Layer 4
-section that still claimed three review aids when there were six (#345),
-and a command-count sentence whose arithmetic nothing checked (#348). A
-comprehensive features document is the single most likely place for the
-third occurrence, so every list and count here is pinned to the code by
-`tests/test_features_doc.py`. If you add a review aid or a genre skill
-and do not update this file, that test fails.
+document that owns its detail, and stops there -- two documents
+describing one mechanism drift apart, and a features catalogue is the
+most likely place for it. (How that constraint is enforced is at the
+[foot of this page](#-how-this-document-stays-true).)
 
 ## 🧭 Table of contents
 
 - [The guarantee everything else serves](#-the-guarantee-everything-else-serves)
 - [The four layers](#-the-four-layers)
 - [Corpus layer: turning a library into a ledger](#-corpus-layer-turning-a-library-into-a-ledger)
+- [Finding what to write about: topic discovery](#-finding-what-to-write-about-topic-discovery)
 - [Drafting layer: writing something grounded](#-drafting-layer-writing-something-grounded)
 - [Review layer: ten advisory aids](#-review-layer-ten-advisory-aids)
 - [Enrichment layer: optional depth](#-enrichment-layer-optional-depth)
@@ -92,12 +89,12 @@ it.
 
 ```mermaid
 flowchart TB
-  L1["<b>Layer 1 · Corpus</b> — deterministic, safe unattended<br/><small>sync · ledger · topics</small>"]:::f
-  L3["<b>Layer 3 · Enrichment</b> — optional, extends the corpus<br/><small>docling · embeddings · topic model · seed topics</small>"]:::o
+  L1["<b>Layer 1 · Corpus</b> — deterministic, safe unattended<br/><small>sync · ledger · topics · discover</small>"]:::f
+  L3["<b>Layer 3 · Enrichment</b> — optional, extends the corpus<br/><small>docling · embeddings · topic model · seed topics · topic graph</small>"]:::o
   L2["<b>Layer 2 · Drafting</b> — generative, you review it<br/><small>9 skills · dossier · retrieval · references · evidence · render · style · book pipeline</small>"]:::f
   GATE{{"<b>chitragupta draft gate</b><br/><small>this layer's only exit</small>"}}:::g
   OUT["rendered document"]:::out
-  L4["<b>Layer 4 · Review</b> — advisory, never a gate<br/><small>8 aids, each exits 0 whatever it finds</small>"]:::f
+  L4["<b>Layer 4 · Review</b> — advisory, never a gate<br/><small>10 aids, each exits 0 whatever it finds</small>"]:::f
 
   L1 -->|"a ledger to draft from"| L2
   L1 -.->|"optional, never run for you"| L3
@@ -133,6 +130,7 @@ same bibliography in, same citekeys out.
 | `corpus sync` | bib read, ledger update, PDF text extraction, duplicate-citekey check, stale-citekey report | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | `corpus ledger` | inspect what the corpus holds, by citekey, collection or status | [CLI.md](CLI.md) |
 | `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](TOPIC-MODELLING.md) |
+| `corpus discover` | start from any phrase and find the topics, papers and neighbours your corpus actually holds | [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) |
 | Two parser backends | `pdftotext` (fast, bit-reproducible) or Docling (layout-aware) | [PDF-PARSER.md](PDF-PARSER.md) |
 | Zotero group support | export a shared group library without Better BibTeX | [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md) |
 
@@ -153,6 +151,42 @@ Four nuances worth knowing before you rely on it:
 - **A topic id is not a stable identifier.** Clustering is whole-corpus,
   so adding one document can renumber every other document's topic.
   Stable across a re-run, not across a corpus change.
+
+## 🕸 Finding what to write about: topic discovery
+
+Before you draft, you often need the lie of the land: what is my
+library actually about, which papers belong to a theme, and what sits
+next to it? `chitragupta corpus discover` answers that from your own
+corpus -- no web search, no generated summary, every paper named by its
+real citekey.
+
+| You ask | You get |
+| --- | --- |
+| `corpus discover` | every topic in your corpus, with how many papers each holds |
+| `corpus discover "digital twin"` | that topic's papers with full references, the *other* topics each paper belongs to, and the linked topics -- with the shared papers that link them named |
+| `corpus discover "cyber replica"` (any phrasing) | the nearest real topic, found by meaning as well as wording -- and the output tells you *how* it matched (`resolved_via`) |
+| `corpus discover --paper smith2021` | which topics one paper belongs to |
+| `... --out overview.md` | a topic overview file -- papers, related topics, and representative sentences quoted verbatim from the papers themselves -- ready to seed a new draft |
+| `... --html topics.html` | your whole topic landscape as one clickable page that works offline, forever |
+
+Three properties worth knowing before you rely on it:
+
+- **Nothing is generated.** Topic relations are computed from your
+  papers (shared membership, and closeness in meaning); overview
+  snippets are real sentences quoted with their citekeys. If a phrase
+  matches no topic, the tool says so and falls back to a clearly
+  labelled paper search rather than inventing an answer.
+- **Every link is explainable.** Two topics are shown as related either
+  because named papers belong to both, or because a named pair of
+  papers sits closest across them -- never because of an opaque score
+  alone.
+- **You can measure it on your own corpus.** A small file of questions
+  you write yourself, with the topics they should reach, scores the
+  whole lookup so a settings change is a measured decision
+  ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) has the how).
+
+The relations come from the optional enrichment layer's topic stages;
+the lookup itself is instant and works wherever the corpus does.
 
 ## ✍ Drafting layer: writing something grounded
 
@@ -406,7 +440,18 @@ decision rather than a gap:
 
 - Never used it: [README.md](../README.md), then
   [ZOTERO.md](ZOTERO.md) to get your library in.
+- Deciding what to write about: [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md).
 - Choosing a genre: [GENRE.md](GENRE.md).
 - Looking for a command: [CLI.md](CLI.md).
-- Want the picture: [DIAGRAMS.md](DIAGRAMS.md), eleven views.
+- Want the picture: [DIAGRAMS.md](DIAGRAMS.md), thirteen views.
 - Wondering what is coming: [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md).
+
+## 🧷 How this document stays true
+
+For the maintainers rather than for you: a features catalogue is where
+doc drift happens first, and this repository has repaired exactly that
+twice -- a review-layer section that still claimed three aids when
+there were six (#345), and a command-count sentence whose arithmetic
+nothing checked (#348). So every list and count here is pinned to the
+code by `tests/test_features_doc.py`: add a review aid or a genre skill
+without updating this file, and that test fails.

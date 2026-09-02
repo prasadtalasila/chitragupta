@@ -10,6 +10,12 @@ page -- are built; the design they implement is
 exist at all; this document covers what happens next -- relating them,
 finding them, and reading them.
 
+**Written for** you, before a draft exists: someone with a synced
+library asking "what is my corpus actually about, and where should the
+next draft start?" The how-it-is-computed passages carry their
+reasoning for the curious and are safe to skim -- the worked session
+below is the part to read first.
+
 > **On the sources quoted below.** None of the systems and papers this
 > feature borrows from is in `content/ledger.sqlite`, so none has a
 > citekey; each is named inline with a link and listed in full at the
@@ -23,7 +29,7 @@ finding them, and reading them.
 
 - [What the feature is for](#-what-the-feature-is-for)
 - [A worked session](#-a-worked-session)
-- [The artefact: content/topic_graph.json](#-the-artefact-contenttopic_graphjson)
+- [The topic graph file](#-the-topic-graph-file-and-when-to-look-inside-it)
 - [Overlap edges](#-overlap-edges-shared-members-gated-by-surprise)
 - [Semantic edges](#-semantic-edges-best-match-cosine-mutual-top-k)
 - [The hierarchy](#-the-hierarchy)
@@ -42,7 +48,7 @@ Start from a phrase, find the corpus's real topics near it, see each
 topic's papers with their bibliographic details, walk to the linked
 topics, and take away an extractive overview grounded enough to seed a
 draft. Scripted (`--json` everywhere) and interactive (successive
-invocations; G9 adds a graph page), and with no generative model
+invocations, or the `--html` graph page), and with no generative model
 anywhere: embeddings, BM25, classic statistics and a cross-encoder
 scorer. Every citekey shown comes from the ledger via the
 topic artefacts -- the same rule that binds every other part of this
@@ -134,12 +140,17 @@ $ chitragupta corpus discover "cyber replica of a physical system" --json
 }
 ```
 
-## 📦 The artefact: `content/topic_graph.json`
+## 📦 The topic graph file, and when to look inside it
 
-Written by `chitragupta enrich --stages topic-graph`, the sixth and
-last stage, which -- like `converge` before it -- computes no topics
-itself and refuses when `content/topic_set.json` is missing or was
-built under a different embedding model.
+You normally never open `content/topic_graph.json` -- `corpus discover`
+and the `--html` page read it for you. It is documented here for the
+day you script against it with `--json`, or wonder why the tool asked
+you to re-run a stage. One enrichment run
+(`chitragupta enrich --stages topic-graph`, the sixth and last stage)
+writes it from the topics the earlier stages already found; if those
+inputs are missing, or were built under a different embedding model,
+the stage stops and tells you which one to re-run rather than
+producing plausible-looking nonsense.
 
 ```json
 {

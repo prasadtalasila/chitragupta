@@ -418,6 +418,48 @@ so a *hand*-edited draft is as invisible to this pipeline as to the other
 four -- Theme E3 in
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-e3-notice-that-the-draft-moved).
 
+### 🕸 Five more, read for topic discovery (2026-09-02)
+
+A third structured read -- **OpenScholar** (this time its retrieval
+half; §2.2 already covers its synthesis half), **FlashRAG**,
+**RAG-Retrieval**, **FlashRank** and **llama_index**, alongside a
+re-read of AutoRAG and MiniRAG -- preceded the topic-discovery feature
+([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)), and unlike the reads above
+this one ended in shipped code the same day, so the findings can be
+stated as decisions rather than notes. The itemised
+borrowed/refused ledger is in
+[INSPIRATION.md](INSPIRATION.md#-topic-discovery); what belongs *here*
+is what the landscape said about the requirements.
+
+**The landscape's retrieval quality lives in three reusable, LLM-free
+mechanisms, and all three transferred.** Rank-based fusion (RRF, via
+llama_index's fusion retriever -- rank-based, so BM25 and cosine never
+need calibrating against each other); the
+bi-encoder-recall-then-cross-encoder-precision cascade (OpenScholar
+runs it over 45M papers with a 110M/340M model pair; here the same
+shape rescores a topic list in milliseconds, through the reranker the
+embed index already loads); and extractive-only compression (FlashRAG's
+extractive refiner -- select sentences, never summarise -- which is
+also what §1.2's faithful-use requirement independently demands).
+
+**The landscape's headline quality comes from LLM stages this project
+refuses, and the refusals were cheap.** MiniRAG's per-chunk LLM entity
+extraction is replaced by the topic model that already exists;
+OpenScholar's self-feedback loop and post-hoc citation attribution
+solve a problem the citekey invariant defines away; AutoRAG 2.x is an
+LLM agent at query time, so only its archived 1.x *methodology*
+transferred -- the hand-labelled gold set and per-stage metrics that
+`bench/topic_discovery_eval.py` now implements, with the generated-QA
+circularity §"Two more" documents avoided by hand-writing the queries.
+
+**One requirement sharpened.** The graph-RAG systems keep documents and
+concepts in one traversable structure; this project's equivalent
+(topics and papers, typed edges, every edge explainable by naming
+citekeys) confirmed that a *personal-corpus* graph needs no graph
+database, no service, and no LLM -- one derived JSON file suffices at
+this scale, which is an architectural claim §3.1's two-plane separation
+predicted and the feature now demonstrates.
+
 ### 🔍 2.3 Plagiarism detection for a closed corpus (source-vs-draft overlap, iThenticate-style)
 
 A distinct sub-landscape. No open-source tool matches iThenticate's
@@ -747,6 +789,7 @@ production, not just designed. As of v5.29.0:
 | Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
 | Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent (#105, #106, #108: each fully designed, then closed "not a priority") |
 | Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built (#135-#139) -- see [BOOKS.md](BOOKS.md) |
+| Topic discovery: topic graph, phrase-to-topic resolution with a cross-encoder precision tier, extractive overviews, gold-set benchmark, offline HTML map | Built (#557-#559 and the two PRs after them) -- LLM-free end to end, every relation explainable by naming citekeys; see [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) and §"Five more" above for what the landscape contributed and what was refused |
 
 Competitive position in one sentence: **commercial tools (Paperguide,
 SciSpace, Jenni, ThesisAI, ...) remain feature supersets as products, but
