@@ -524,7 +524,31 @@ class TestOverviewFile:
         monkeypatch.setattr(_overview, "_load_model", refuse)
         target = tmp_path / "no-such-dir" / "overview.md"
         assert discover.main(["digital twin", "--out", str(target)]) == 1
-        assert str(target) in capsys.readouterr().out
+        streams = capsys.readouterr()
+        # The stream is pinned, not just the text: the failure line is
+        # diagnostics on stderr, and stdout stays whatever the view emitted.
+        assert str(target) in streams.err
+        assert str(target) not in streams.out
+
+    def test_an_unwritable_out_path_leaves_json_stdout_parseable(
+        self, isolated_config, tmp_path, capsys, monkeypatch
+    ):
+        """`--json --out` has already written the payload to stdout by the
+        time the write fails, so a failure line on that stream would leave
+        the caller parsing JSON followed by prose."""
+        from chitragupta.discover import _overview
+
+        prepare(isolated_config)
+
+        def refuse():
+            raise ImportError("no")
+
+        monkeypatch.setattr(_overview, "_load_model", refuse)
+        target = tmp_path / "no-such-dir" / "overview.md"
+        assert discover.main(["digital twin", "--json", "--out", str(target)]) == 1
+        streams = capsys.readouterr()
+        assert json.loads(streams.out)["topic"]["label"] == "digital twin"
+        assert str(target) in streams.err
 
     def test_a_graph_stale_against_the_topic_set_refuses(self, isolated_config, capsys):
         """One stage re-run without the other leaves a label only
