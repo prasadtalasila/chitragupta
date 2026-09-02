@@ -419,6 +419,12 @@ hierarchy is a collapsible tree. It is a pure renderer of the same
 artefacts `--json` reads, so the page cannot disagree with the
 terminal.
 
+Being one more view of those artefacts is also why the flag composes
+with `--json` rather than refusing it: `--html FILE --json` reports the
+write as `{"written": FILE}`, so a caller driving `discover` for
+machine-readable output gets a document on every invocation and never a
+plain sentence it cannot parse.
+
 One deviation from the plan, recorded there too: the plan named a
 `discover graph` subcommand, but the reader's positional argument is a
 free phrase, and a reserved word would shadow any topic literally

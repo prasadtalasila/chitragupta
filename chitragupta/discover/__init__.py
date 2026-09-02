@@ -144,10 +144,20 @@ def _paper_view(args, topic_set) -> int:
 def _run(args) -> int:
     if args.html:
         try:
-            print(f"written: {_page.write_page(args.html)}")
+            written = _page.write_page(args.html)
         except OSError as failure:
-            print(f"Could not write the page to {args.html}: {failure}")
+            # Stderr in both modes, unlike the success line below: a
+            # failure line is never part of the payload, which is the
+            # rule _topic_view's --out write already follows. Under
+            # --json nothing has reached stdout yet, so the caller reads
+            # an empty document and a nonzero exit rather than a
+            # sentence in the stream they opened expecting one.
+            print(f"Could not write the page to {args.html}: {failure}", file=sys.stderr)
             return 1
+        # The page is a pure renderer of the artefacts --json reads
+        # (docs/TOPIC-DISCOVERY.md), so --html is one more view and
+        # honours the flag like every other one rather than ignoring it.
+        _emit(args, {"written": written}, f"written: {written}")
         return 0
 
     graph = _data.load_graph()
