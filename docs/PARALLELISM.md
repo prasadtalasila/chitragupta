@@ -349,6 +349,23 @@ Each backend gets the concurrency it can use:
 | The pool goes silent | Watchdog warns at half `stall_timeout`, then abandons the outstanding documents as **transient** failures — they were never given a fair attempt, so they are retried next run |
 | Ctrl+C | `interrupt_guard` terminates workers (SIGTERM, grace period, then kill) and `os._exit`s |
 
+**The enrichment pool answers a dead worker differently, and the rows
+above are the corpus layer's.** Since #584,
+`chitragupta/enrich/_docling_pool.py` rebuilds the pool and hands the
+unfinished jobs back to it, up to `_MAX_POOL_REBUILDS` (2) more times --
+halving `workers` each time, because memory pressure is the realistic
+cause of a death and retrying at the same width reproduces it, and
+handing the jobs over smallest-first, because the document that killed
+the pool cannot be identified but is disproportionately the one
+biggest-first submitted first. Only what no pool landed is reported
+failed. A rebuilt pool that lands nothing at all ends the loop early
+rather than spending another build's model loads on the same answer.
+
+`sync_pool.py` deliberately does not do this: its unfinished documents
+are marked *transient* and retried on the next run, and one of its
+documents costs seconds where a docling parse costs minutes -- so
+abandoning a batch there is not the same size of mistake.
+
 Ctrl+C needs an explicit SIGINT handler because `except KeyboardInterrupt`
 around the result loop **does not work**: the loop stops consuming, the
 handler never runs, and the process sits until in-flight workers finish —
