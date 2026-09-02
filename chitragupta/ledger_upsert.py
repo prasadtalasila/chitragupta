@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -33,6 +34,14 @@ if TYPE_CHECKING:
     # bibtexparser (chitragupta/bib_reader.py's only dependency) just to
     # check citekeys against the ledger.
     from chitragupta.bib_reader import Reference
+
+# `chitragupta.sync`, not this module's own name, exactly as
+# chitragupta/sync_pool.py does: the only thing written here is a
+# mid-sync warning, and "chitragupta.sync" is the string docs/CLI.md
+# tells a scheduler to grep logs/pipeline.log for. `sync`'s *stdout* is
+# a documented, diffable contract, so it goes to the log rather than
+# into the middle of that output.
+logger = logging.getLogger("chitragupta.sync")
 
 
 def _hash_pdf(path: str) -> str:
@@ -110,6 +119,60 @@ def _bib_fields_json(ref: Reference) -> str | None:
     return json.dumps(kept, sort_keys=True) if kept else None
 
 
+def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | None]:
+    """`(size, mtime_ns, hash)` for this reference's PDF, or all-`None`
+    when there is nothing readable behind `ref.pdf_path`."""
+    if not ref.pdf_path:
+        return None, None, None
+    # The other all-`None` case, recorded identically to the reference
+    # that simply has no `file` field: the PDF that was there when
+    # `bib_reader` read the bib file and is gone by the time this runs --
+    # moved, renamed or deleted by the reference manager while the sync
+    # was already under way. That race used to abort the whole run with
+    # an uncaught OSError from os.stat, taking every document still
+    # unvisited with it (plans/code-review-2026-09.md, m-71);
+    # chitragupta/enrich/docling_parse.py's `_is_cached` already catches
+    # the identical race on the other layer's stat, and this is the same
+    # answer.
+    #
+    # "For this run" is the whole of the claim: `pdf_path` is still
+    # written to the row, so a file that comes back is picked up by the
+    # next sync with no --reparse and no manual repair. What the run
+    # loses is one document's parse, reported rather than inferred.
+    #
+    # The `try` spans the hash as well as the stat, deliberately: the
+    # same disappearance one microsecond later surfaces from `_hash_pdf`'s
+    # open instead, and a half-filled answer (a size with no hash) is a
+    # state `_next_status` has no branch for.
+    #
+    # What this does *not* reach is `sync`'s printed tally, and the
+    # `logger.warning` below is why that was accepted rather than
+    # papered over. `sync_decide._to_parse` counts the no-PDF case off
+    # `ref.pdf_path`, which is still set here -- so the summary line
+    # files this document under "unchanged" and the run can still exit
+    # 0. Correcting that needs `upsert_reference` to return more than
+    # `needs_parse`, i.e. every call site changed, for a summary count;
+    # the per-document WARNING in logs/pipeline.log is where sync's
+    # per-document reporting lives anyway, and the row itself is
+    # accurate (`no_pdf`, re-parsed on the run after the file returns).
+    try:
+        pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
+        stat_unchanged = (
+            row is not None and row[0] is not None and (row[1], row[2]) == (pdf_size, pdf_mtime_ns)
+        )
+        # Trust an unchanged (size, mtime) instead of re-hashing -- a
+        # deliberate trade-off (PR #8 review): always-hashing *would*
+        # still catch a same-size edit that also preserves mtime (e.g.
+        # `cp --preserve=timestamps` overwriting the file in place), which
+        # this stat-first check cannot. That's judged rare enough, and
+        # re-reading every PDF's bytes on every run expensive enough at
+        # this corpus's scale, to accept losing that one edge case.
+        return pdf_size, pdf_mtime_ns, (row[0] if stat_unchanged else _hash_pdf(ref.pdf_path))
+    except OSError as exc:
+        logger.warning("no-pdf  %s: %s", ref.citekey, exc)
+        return None, None, None
+
+
 def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     """Every file a successful parse leaves behind, not just the row.
 
@@ -168,21 +231,7 @@ def upsert_reference(
         (ref.citekey,),
     ).fetchone()
 
-    pdf_size = pdf_mtime_ns = None
-    pdf_hash = None
-    if ref.pdf_path:
-        pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
-        stat_unchanged = (
-            row is not None and row[0] is not None and (row[1], row[2]) == (pdf_size, pdf_mtime_ns)
-        )
-        # Trust an unchanged (size, mtime) instead of re-hashing -- a
-        # deliberate trade-off (PR #8 review): always-hashing *would*
-        # still catch a same-size edit that also preserves mtime (e.g.
-        # `cp --preserve=timestamps` overwriting the file in place), which
-        # this stat-first check cannot. That's judged rare enough, and
-        # re-reading every PDF's bytes on every run expensive enough at
-        # this corpus's scale, to accept losing that one edge case.
-        pdf_hash = row[0] if stat_unchanged else _hash_pdf(ref.pdf_path)
+    pdf_size, pdf_mtime_ns, pdf_hash = _pdf_identity(ref, row)
 
     needs_parse = False
     if force and pdf_hash is not None:

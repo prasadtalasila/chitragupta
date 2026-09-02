@@ -12,8 +12,11 @@ two reasons that are both about what a *reader* needs:
     references do.
 """
 
+import sqlite3
 import subprocess
 import sys
+import threading
+import time
 
 import pytest
 
@@ -159,6 +162,37 @@ class TestReadOnly:
         before = config.LEDGER_PATH.stat().st_mtime_ns
         assert ledger_cli.main([]) == 0
         assert config.LEDGER_PATH.stat().st_mtime_ns == before
+
+    def test_it_waits_out_a_writers_commit_window(self, corpus):
+        """m-72: nothing here sets `journal_mode = WAL`, so the default
+        rollback journal *does* lock a reader out for the length of a
+        writer's commit -- and `timeout=0` turned that short, certain
+        window into an immediate `SQLITE_BUSY`, i.e. this command failing
+        exactly when its own docstring says it is most worth running.
+
+        A real held lock rather than an assertion about the `timeout`
+        argument, because the argument is not the claim; surviving the
+        window is. The writer is released well inside sqlite's default
+        timeout, so the reader only has to outlast 0.3s of waiting.
+        """
+        writer = sqlite3.connect(config.LEDGER_PATH, isolation_level=None)
+        writer.execute("BEGIN EXCLUSIVE")
+        result = {}
+
+        def read():
+            result["code"] = ledger_cli.main([])
+
+        reader = threading.Thread(target=read)
+        try:
+            reader.start()
+            time.sleep(0.3)
+        finally:
+            writer.execute("ROLLBACK")
+            writer.close()
+        reader.join(timeout=30)
+
+        assert not reader.is_alive()
+        assert result["code"] == 0
 
     def test_a_pre_failure_kind_ledger_still_summarises(
         self, isolated_config, ledger_con, tmp_path, capsys
