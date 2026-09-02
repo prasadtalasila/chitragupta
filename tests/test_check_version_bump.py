@@ -465,14 +465,18 @@ class TestBlocksAMerge:
         assert order[0][1][:2] == ["git", "fetch"]
         assert "--tags" in order[0][1]
         assert order[1][1] == ["--offline"]
-        assert "Refusing to merge" in capsys.readouterr().out
+        # stderr, not stdout: merge_pr.py's stdout is the composed
+        # commit body, and a refusal is not part of that artefact.
+        captured = capsys.readouterr()
+        assert "Refusing to merge" in captured.err
+        assert "Refusing to merge" not in captured.out
 
     def test_a_sound_bump_does_not_block_and_says_nothing_extra(self, check, monkeypatch, capsys):
         monkeypatch.setattr(check.subprocess, "run", lambda *a, **k: None)
         monkeypatch.setattr(check, "main", lambda argv: 0)
 
         assert check.blocks_a_merge() is False
-        assert "Refusing" not in capsys.readouterr().out
+        assert "Refusing" not in capsys.readouterr().err
 
     def test_an_unreadable_base_ref_blocks_too(self, check, monkeypatch, capsys):
         """`main()` exits 1 for a base ref it cannot read as well as for
@@ -483,7 +487,7 @@ class TestBlocksAMerge:
         monkeypatch.setattr(check, "main", lambda argv: 1)
 
         assert check.blocks_a_merge() is True
-        assert "Refusing to merge" in capsys.readouterr().out
+        assert "Refusing to merge" in capsys.readouterr().err
 
     def test_any_other_exit_code_proceeds(self, check, monkeypatch):
         """Only 1 means "do not merge". A 2 (argparse usage) or anything

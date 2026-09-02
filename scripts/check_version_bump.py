@@ -299,10 +299,15 @@ def blocks_a_merge() -> bool:
     subprocess.run(["git", "fetch", "origin", "--tags", "--quiet"], check=False, cwd=REPO_ROOT)
     if main(["--offline"]) != 1:
         return False
+    # stderr, like the `::error::` lines `main()` just emitted and
+    # unlike everything else `merge_pr.py` prints: its stdout is the
+    # composed commit body, which someone may well be piping or reading
+    # as the artefact it is, and a refusal is not part of that.
     print(
         "Refusing to merge: the version bump is no longer sound against "
         "main. Raise pyproject.toml's version, push, and re-run -- there "
-        "is deliberately no override, since bumping is the fix either way."
+        "is deliberately no override, since bumping is the fix either way.",
+        file=sys.stderr,
     )
     return True
 
