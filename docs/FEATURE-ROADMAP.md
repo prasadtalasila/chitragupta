@@ -370,8 +370,10 @@ reach items in this roadmap and are easy to breach by accident:
   annotated **binary** (an agenda may consume it and a loop may act on
   it) or **continuous** (a human reads it; nothing acts on it
   unattended).
-- **R4** -- after an accepted edit, every aid re-runs and the total
-  objective-class count must not rise, else the edit reverts.
+- **R4** -- after an accepted edit, every aid re-runs and the result is
+  compared by finding identity as well as by count: the repaired item
+  is `resolved`, no objective-class finding is `new`, and the total has
+  not risen, else the edit reverts.
 - **R10** -- a new aid is registered in *both* `review.AIDS` and
   `__main__.AIDS`, and appears in AGENTS.md, CLI.md, the README tables
   and `mkdocs.yml`. `review/__main__.py` raises `RuntimeError` when the
