@@ -94,7 +94,8 @@ STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge", "topic
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
 DESCRIPTION = (
-    "The enrichment layer: Docling -> embeddings/Chroma -> BERTopic. "
+    "The enrichment layer: Docling -> embeddings/Chroma -> BERTopic -> "
+    "seeded topics -> converged topic set -> topic graph. "
     "Each stage probes its own prerequisites and reports honestly."
 )
 

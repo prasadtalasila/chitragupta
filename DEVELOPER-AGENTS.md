@@ -1,12 +1,38 @@
 # 🤖 DEVELOPER-AGENTS.md
 
-Guidance for coding agents (and anyone else) **working on this repository
-itself**, as opposed to using it to draft content. The user-facing half is
-[AGENTS.md](AGENTS.md); the why behind both is [SOUL.md](SOUL.md).
+The contract for coding agents (and anyone else) **working on this
+repository itself**, as opposed to using it to draft content. The
+drafting half is [AGENTS.md](AGENTS.md); the why behind both is
+[SOUL.md](SOUL.md).
 
 [AGENTS.md](AGENTS.md)'s citekey invariant binds code here too: no module
 may generate, guess or rewrite a citekey, and no new check may be promoted
-into a gate beside `chitragupta/citation_gate.py`.
+into a gate beside `chitragupta/citation_gate.py`. That includes test
+fixtures, doc examples and the committed sample project -- a fabricated
+citekey in an example teaches the fabrication this project exists to
+prevent.
+
+**Where to look for what**, since this file is long and a session rarely
+needs all of it:
+
+- Every change: [Role](#-role), [Behavioural
+  rules](#-behavioural-rules-think-before-coding),
+  [Code standards](#-code-standards), and the
+  [full shipping cycle](#-shipping-a-code-change-the-full-cycle), which
+  is the checklist the rest of the file explains.
+- Before writing code: [Module boundaries](#-module-boundaries),
+  [Environment constraints](#-environment-constraints-on-this-host), and
+  -- for anything under `chitragupta/enrich/` --
+  [the enrichment layer](#-the-enrichment-layer-chitraguptaenrich-chitraguptaenrich__main__py)
+  and [the stage conventions](#-conventions-a-new-stage-has-to-follow).
+- Before claiming done: [the local
+  checks](#-before-claiming-a-task-complete-run-all-local-checks),
+  [the linters](#-the-linters-which-are-enforced), and
+  [the OpenCodeReview step](#-reviewing-before-you-push-the-opencodereview-plugin).
+- Landing it: [Commit messages](#-commit-messages),
+  [Merging](#-merging), [Issues and pull
+  requests](#-issues-and-pull-requests), and
+  [Versioning and releases](#-versioning-and-releases).
 
 ## 🎭 Role
 
@@ -124,6 +150,37 @@ read the
 other way: it sits beside the two aids it belongs with, not in
 `scripts/`, which holds dev tooling and no layer entry point at all.
 
+## 📂 The committed sample project is pipeline output, not prose
+
+`examples/sample-project/` is the worked example the user documentation
+quotes: five synthetic sample papers and every artefact the pipeline
+derives from them -- drafts, dossiers, review reports, renders, a signed
+spec, the topic artefacts. Two rules follow from what it is:
+
+- **Regenerate, never hand-edit.** Every committed artefact there was
+  produced by actually running the pipeline (`examples/README.md` has
+  the map; `examples/sample-project/regenerate.sh` rebuilds the
+  uncommitted substrate). A change that alters an artefact's format --
+  the dossier grammar, a review report's shape, the topic graph's schema
+  -- makes the committed samples stale, and the fix is to re-run the
+  affected command in that directory and commit its real output.
+  Hand-editing a sample to match a format change produces exactly the
+  fabricated-example problem the directory exists to avoid, and the
+  documentation snippets quoting the artefact must move in the same PR
+  (the docs sweep in
+  [the shipping cycle](#-shipping-a-code-change-the-full-cycle)'s step 4
+  covers those).
+- **The citekey invariant holds even here.** The sample citekeys
+  (`sample_*`) exist in `examples/sample-project/papers/bibliography.bib`
+  and were synced from real (if synthetic) PDFs; a new sample citation
+  goes through the same bib-export-then-sync path, never a typed-in key.
+
+`examples/` is deliberately excluded from the mkdocs site
+(`mkdocs.yml`'s `exclude_docs`) -- documentation refers to it by path in
+backticks, never by link -- and is named in `chitragupta/init.py`'s
+`DELIBERATE_DIFFERENCES`, because `init` must not scaffold someone
+else's sample corpus into a fresh project.
+
 ## 🖥 Environment constraints on this host
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
@@ -222,8 +279,9 @@ artifact.
 
 ## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
-Implements Docling -> sentence-transformers/Chroma ->
-BERTopic -> Pandoc/LaTeX, one script for both host and Docker. Each stage
+Implements six stages -- Docling -> sentence-transformers/Chroma ->
+BERTopic -> seeded topics -> converged topic set -> topic graph -- plus
+the Pandoc/LaTeX render path, one script for both host and Docker. Each stage
 self-probes its own prerequisites (pandoc/pdflatex on PATH) and
 reports honestly (`skipped`/`missing-binary`) rather than assuming the
 target implies availability -- don't "fix" a skip by hardcoding
@@ -243,9 +301,10 @@ don't trade it away. The flag narrows the corpus to the citekeys one
 draft cites, and the reason a narrow run and a full run can be mixed in
 either order without repeating work is that the caches are keyed by
 document and merged, never rewritten to match the run's own view of the
-corpus. `embed` and `bertopic` are refused rather than scoped, because
+corpus. `embed`, `bertopic` and the three topic stages after them are
+refused rather than scoped, because
 each writes one whole-corpus artefact with no partial form -- allowing
-either needs the Chroma collection to record its own coverage first.
+any of them needs the Chroma collection to record its own coverage first.
 [docs/LADDERS.md](docs/LADDERS.md#-scoping-a-run-to-one-draft) owns that
 reasoning; keep it there rather than restating it.
 
