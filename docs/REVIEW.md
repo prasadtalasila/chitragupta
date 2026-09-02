@@ -243,10 +243,13 @@ use.
 The full written set exists to read:
 `docs/examples/sample-project/content/review/dt-overview/` holds every
 draft-reading aid's `.md` and `.json` for four real drafts -- open
-[`survey.agenda.md`](examples/sample-project/content/review/dt-overview/survey.agenda.md)
+[`trust-chapter.agenda.md`](examples/sample-project/content/review/dt-overview/trust-chapter.agenda.md)
 there to see what a merged worklist looks like on a
 draft that mostly passes, which is the common case and the one examples
-rarely show.
+rarely show, and
+[`survey.agenda.md`](examples/sample-project/content/review/dt-overview/survey.agenda.md)
+beside it for the contrasting case -- the same merge on a draft whose
+verbatim runs give a reviser items it may act on unasked.
 
 Two properties of every report, both deliberate:
 

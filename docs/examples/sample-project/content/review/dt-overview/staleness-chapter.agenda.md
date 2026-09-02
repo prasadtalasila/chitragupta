@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/staleness-chapter.md`
-- chitragupta 6.61.0
+- chitragupta 6.61.7
 
 ## How to read this
 
@@ -39,7 +39,7 @@ person to decide.
 - `44be99531d05` [unattended] (Exercises): chitragupta.Just: 'just' (1x)
 ### unsupported-claim
 
-- `6e8823894243` [surfaced] (3.1 Motivation): `[@sample_dt_factory_2022]` scores no support found: Field studies report that the costly failures are precisely the quiet ones, wher
-- `05fea357e710` [surfaced] (3.1 Motivation): `[@sample_dt_sync_2023]` scores no support found: Field studies report that the costly failures are precisely the quiet ones, wher
-- `50c3bfa4ad00` [surfaced] (Summary): `[@sample_dt_factory_2022]` scores no support found: Staleness is the age of a value at the moment it is used; a budget turns a decis
-- `f180a83fa221` [surfaced] (Summary): `[@sample_dt_sync_2023]` scores no support found: Staleness is the age of a value at the moment it is used; a budget turns a decis
+- `6e8823894243` [surfaced] (3.1 Motivation): `[@sample_dt_factory_2022]` scores weak: Field studies report that the costly failures are precisely the quiet ones, wher
+- `05fea357e710` [surfaced] (3.1 Motivation): `[@sample_dt_sync_2023]` scores weak: Field studies report that the costly failures are precisely the quiet ones, wher
+- `50c3bfa4ad00` [surfaced] (Summary): `[@sample_dt_factory_2022]` scores weak: Staleness is the age of a value at the moment it is used; a budget turns a decis
+- `f180a83fa221` [surfaced] (Summary): `[@sample_dt_sync_2023]` scores weak: Staleness is the age of a value at the moment it is used; a budget turns a decis

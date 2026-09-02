@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review coverage content/drafts/dt-overview/trust-chapter.tex --query 'operator trust override log authority' --k 5 --write`
-- chitragupta 6.61.0
+- chitragupta 6.61.7
 
 ## How to read this
 
@@ -26,13 +26,11 @@ Top 5 results per query.
 
 ## Coverage
 
-No candidates found for any query -- nothing to compare against.
+**100%** -- 2 of 2 retrieved candidates are cited.
 
 ### Cited but not surfaced by these queries
 
 Not necessarily a problem -- see above.
 
-- `sample_dt_factory_2022`
 - `sample_dt_overview_2024`
-- `sample_dt_sync_2023`
 - `sample_ml_anomaly_2023`

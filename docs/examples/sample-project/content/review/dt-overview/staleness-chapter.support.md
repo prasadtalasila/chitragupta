@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review support content/drafts/dt-overview/staleness-chapter.md --write`
-- chitragupta 6.61.0
+- chitragupta 6.61.7
 
 ## How to read this
 
@@ -34,16 +34,16 @@ and found wanting".
 
 ### Not scored
 
-- `sample_dt_factory_2022`: no parsed text with page breaks and no readable PDF
-- `sample_dt_sync_2023`: no parsed text with page breaks and no readable PDF
+- `sample_dt_factory_2022`: the source's passages carry no readable text to score against (page-level only)
+- `sample_dt_sync_2023`: the source's passages carry no readable text to score against (page-level only)
 
 ## Findings
 
-- **line 18** `[@sample_dt_factory_2022]` (not scored -- no parsed text with page breaks and no readable PDF) (`5ad855819b5f`)
+- **line 18** `[@sample_dt_factory_2022]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`5ad855819b5f`)
   > Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.
-- **line 20** `[@sample_dt_sync_2023]` (not scored -- no parsed text with page breaks and no readable PDF) (`ee2aa913e518`)
+- **line 20** `[@sample_dt_sync_2023]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`ee2aa913e518`)
   > Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.
-- **line 83** `[@sample_dt_sync_2023]` (not scored -- no parsed text with page breaks and no readable PDF) (`2c11f1c3447b`)
+- **line 83** `[@sample_dt_sync_2023]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`2c11f1c3447b`)
   > Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.
-- **line 83** `[@sample_dt_factory_2022]` (not scored -- no parsed text with page breaks and no readable PDF) (`94314cccb028`)
+- **line 83** `[@sample_dt_factory_2022]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`94314cccb028`)
   > Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.
