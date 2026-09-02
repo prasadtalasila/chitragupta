@@ -1050,7 +1050,10 @@ class TestParseCorpus:
         assert status["a2024"].startswith("ok:")
         assert status["b2024"].startswith("error:")
         assert "simulated docling failure" in status["b2024"]
-        assert status["c2024"] == "error: c2024: no PDF to parse"
+        # Not an `error:` -- there was never a PDF to parse, and that
+        # verdict is what pinned the stage at `partial` forever (#586,
+        # TestUrlOnlyEntryIsSkippedNotAnError below).
+        assert status["c2024"] == docling_parse.NO_PDF_SKIP
 
     def test_serial_path_reports_progress_per_document(
         self, isolated_config, fake_docling, tmp_path, capsys
@@ -1524,7 +1527,7 @@ class TestParseCorpusParallelEdges:
             docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
 
         status = docling_parse.parse_corpus(docs)
-        assert status["nopdf"].startswith("error:")
+        assert status["nopdf"] == docling_parse.NO_PDF_SKIP
         assert "no PDF to parse" in status["nopdf"]
         assert all(status[f"d{i}"].startswith("ok:") for i in range(3))
 
@@ -1770,3 +1773,79 @@ class TestDoclingNotInstalledIsSkippedNotPartial:
         )
         assert result["status"] == "skipped"
         assert "pip install 'chitragupta-cli[enrich]'" in result["detail"]
+
+
+class TestUrlOnlyEntryIsSkippedNotAnError:
+    """#586. A bibliography entry with no PDF at all -- a standards page,
+    a software link, a website -- was reported `error: <citekey>: no PDF
+    to parse`, and `stages.stage_docling` reads any `error` prefix as
+    `partial`. On the 642-document corpus that surfaced this, 145 entries
+    are URL-only, so the stage could never report `ok` again whatever the
+    corpus did -- and 460 documents that failed for a real reason (a dead
+    parse worker) sat in the same bucket, indistinguishable.
+
+    The same correction #509 made for a missing docling install, one
+    level down: a document the stage correctly did not parse is
+    `skipped`, not a failure.
+    """
+
+    @staticmethod
+    def _docs(tmp_path, n_pdfs):
+        docs = [CorpusDoc(citekey="urlonly", title="A standards page", pdf_path=None)]
+        for i in range(n_pdfs):
+            pdf = tmp_path / f"p{i}.pdf"
+            pdf.write_bytes(b"%PDF" + b"x" * i)
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
+        return docs
+
+    def test_the_serial_path_reports_a_skip(self, isolated_config, fake_docling, tmp_path):
+        status = docling_parse.parse_corpus(self._docs(tmp_path, 1))
+
+        assert status["urlonly"].startswith("skipped:")
+        assert status["d0"].startswith("ok:")
+
+    def test_the_pool_path_reports_a_skip(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The two paths report failures at two different call sites --
+        the serial loop in parse_corpus and _adopt_cached in the pool leg
+        -- so a fix at one of them leaves the other reporting an error."""
+        monkeypatch.setattr(config, "PARSER_WORKERS", 4)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+        # Threads rather than processes, as TestParseCorpusParallelEdges
+        # does: the fake docling lives in this process's sys.modules and
+        # a spawned worker would import the real one.
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+
+        status = docling_parse.parse_corpus(self._docs(tmp_path, 3))
+
+        assert status["urlonly"].startswith("skipped:")
+        assert all(status[f"d{i}"].startswith("ok:") for i in range(3))
+
+    def test_the_stage_reports_ok_when_the_only_unparsed_entry_has_no_pdf(
+        self, isolated_config, fake_docling, tmp_path
+    ):
+        """The symptom the issue is about: `partial` on a run where
+        nothing went wrong."""
+        from chitragupta.enrich import stages
+
+        result = stages.stage_docling(self._docs(tmp_path, 1), None)
+
+        assert result["status"] == "ok"
+        assert result["detail"]["urlonly"].startswith("skipped:")
+
+    def test_a_real_parse_failure_is_still_partial(self, isolated_config, fake_docling, tmp_path):
+        """The skip must not swallow the case it was hiding. A PDF that
+        is declared and fails to parse stays an error, and one alongside
+        a URL-only entry still reports the stage `partial`."""
+        from chitragupta.enrich import stages
+
+        (tmp_path / "explode.pdf").write_bytes(b"%PDF explode")
+        docs = self._docs(tmp_path, 1)
+        docs.append(CorpusDoc(citekey="bad", title="t", pdf_path=str(tmp_path / "explode.pdf")))
+
+        result = stages.stage_docling(docs, None)
+
+        assert result["status"] == "partial"
+        assert result["detail"]["bad"].startswith("error:")
+        assert result["detail"]["urlonly"].startswith("skipped:")
