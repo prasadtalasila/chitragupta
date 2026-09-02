@@ -75,8 +75,6 @@ def overlap_edges(members: dict, n_docs: int, p_value: float) -> list:
 def _best_match(rows_a, rows_b) -> "tuple[float, int, int]":
     """Symmetrised average best-match cosine between two unit-row
     matrices, plus the indices of the single closest pair."""
-    import numpy as np
-
     cosines = rows_a @ rows_b.T
     forward = cosines.max(axis=1).mean()
     backward = cosines.max(axis=0).mean()
