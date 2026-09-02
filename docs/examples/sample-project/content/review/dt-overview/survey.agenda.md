@@ -38,14 +38,14 @@ person to decide.
 ### verbatim-run
 
 - `6bdcbebedc51` [unattended] (1. Introduction): 13-word verbatim run citing `sample_dt_overview_2024`
-- `84cebc824e5b` [unattended] (1. Introduction): 6-word verbatim run citing `sample_dt_overview_2024`
+- `84cebc824e5b` [unattended] (1. Introduction): 15-word verbatim run citing `sample_dt_overview_2024`, 6 matched
 - `a5c3ae10b25d` [unattended] (1. Introduction): 13-word verbatim run citing `sample_dt_overview_2024`
 - `15443321c043` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
-- `3e716e1cee1c` [unattended] (2. Keeping the twin true): 8-word verbatim run citing `sample_dt_sync_2023`
+- `3e716e1cee1c` [unattended] (2. Keeping the twin true): 17-word verbatim run citing `sample_dt_sync_2023`, 8 matched
 - `b0c514d34af4` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
 - `539fac477a87` [unattended] (2. Keeping the twin true): 9-word verbatim run citing `sample_dt_sync_2023`
 - `dc32161a46ac` [unattended] (2. Keeping the twin true): 13-word verbatim run citing `sample_dt_sync_2023`
-- `91bce1eac368` [unattended] (2. Keeping the twin true): 5-word verbatim run citing `sample_dt_factory_2022`
+- `91bce1eac368` [unattended] (2. Keeping the twin true): 13-word verbatim run citing `sample_dt_factory_2022`, 5 matched
 - `3acc4d59f0b1` [unattended] (4. Integrating with everything else): 11-word verbatim run citing `sample_std_interop_2021`
 - `1561cffaa101` [unattended] (4. Integrating with everything else): 10-word verbatim run citing `sample_std_interop_2021`
 ### unsupported-claim

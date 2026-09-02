@@ -307,6 +307,7 @@ class TestVerbatimRunItems:
             "id": "abc123",
             "citekey": "a2024",
             "line": 5,
+            "span_words": 20,
             "matched_words": 20,
             "fragment": "some borrowed wording",
             "severity": "long",
@@ -344,6 +345,28 @@ class TestVerbatimRunItems:
         )
         items = _items_findings.verbatim_run_items(source, [])
         assert "citing" not in items[0].summary
+
+    def test_an_ungapped_run_is_summarised_by_its_length_alone(self):
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(span_words=13, matched_words=13)]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].summary == "13-word verbatim run citing `a2024`"
+
+    def test_a_gapped_match_reports_its_span_and_its_matched_count(self):
+        """A skip-gram or embedding finding matches fewer words than it
+        spans, and summarising it by `matched_words` alone reads as a
+        verbatim run shorter than `--min-run` -- which cannot happen and
+        which no report claims: `_scan.py`'s `_matched_note` renders the
+        same finding as `15 words, 6 matched`. The agenda has to agree
+        with the aid it is quoting."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(span_words=15, matched_words=6)]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].summary == "15-word verbatim run citing `a2024`, 6 matched"
 
 
 class TestProseItems:

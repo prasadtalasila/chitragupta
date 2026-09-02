@@ -71,7 +71,7 @@
       "citekey": "sample_dt_overview_2024",
       "line": 12,
       "unattended": true,
-      "summary": "6-word verbatim run citing `sample_dt_overview_2024`",
+      "summary": "15-word verbatim run citing `sample_dt_overview_2024`, 6 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "37ecd99c7d48",
@@ -128,7 +128,7 @@
       "citekey": "sample_dt_sync_2023",
       "line": 23,
       "unattended": true,
-      "summary": "8-word verbatim run citing `sample_dt_sync_2023`",
+      "summary": "17-word verbatim run citing `sample_dt_sync_2023`, 8 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "ac105de4520f"
@@ -180,7 +180,7 @@
       "citekey": "sample_dt_factory_2022",
       "line": 37,
       "unattended": true,
-      "summary": "5-word verbatim run citing `sample_dt_factory_2022`",
+      "summary": "13-word verbatim run citing `sample_dt_factory_2022`, 5 matched",
       "detail": {
         "severity": "short",
         "verbatim_id": "3eaf8415fcc3"
