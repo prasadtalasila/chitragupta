@@ -472,8 +472,11 @@ class TestBuildIndexPrunesPastTheSqliteVariableLimit:
     """
 
     def make_doc(self, tmp_path, text, citekey="a2024"):
+        # `encoding` named where the sibling helpers in this module leave
+        # it to the locale: those predate the encoding sweep, and CI's
+        # Windows leg is why new writes state it.
         parsed = tmp_path / f"{citekey}.txt"
-        parsed.write_text(text)
+        parsed.write_text(text, encoding="utf-8")
         return CorpusDoc(citekey=citekey, title="A", pdf_path=None, text_path=str(parsed))
 
     def seed_departed_chunks(self, collection, count):
