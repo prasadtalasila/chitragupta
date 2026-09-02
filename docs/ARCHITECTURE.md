@@ -546,6 +546,15 @@ The first two are the subject of
 `plans/outline-driven-drafting-and-manual-edits.md`,
 which is a proposal and not built. The third is a settled decision.
 
+[SECURITY.md](SECURITY.md) is the same list read from the security side,
+and it is longer: this pipeline does not sandbox a PDF, a TeX run or
+Pandoc, does not detect malware or sanitise a document, and does not
+protect you from anything that can already write to your project
+directory or your `PATH`. It also says what it *does* do -- the
+content-root containment checks, the archive-restore allowlist, the
+one-writer lock, and how the release path handles credentials -- and
+what stays the operator's responsibility.
+
 ## 🔧 What each capability requires
 
 The pipeline probes for what it needs and reports what is missing, so a

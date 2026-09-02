@@ -7,6 +7,12 @@ discipline every other review aid's `*_payload` function documents).
 from chitragupta import review
 from chitragupta.review.agenda._items import CLASSES
 
+# `{aid: review.AIDS[aid] for aid in _sources.AID_NAMES}`, restated
+# rather than derived -- and the restatement is load-bearing to get
+# right, because `_source_notes` below indexes `agenda.sources.aids` by
+# every key here. A key `AID_NAMES` does not have is a `KeyError`
+# mid-report, not a missing line. `TestAidNames` asserts the two against
+# each other for that reason (#573).
 _SOURCE_LABELS = {
     "provenance": "Citation provenance",
     "verbatim": "Verbatim scan",

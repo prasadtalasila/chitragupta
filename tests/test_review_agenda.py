@@ -82,6 +82,53 @@ class TestAidNames:
         source -- not `agenda` reading its `.json` at all."""
         assert "support" in _sources.AID_NAMES
 
+    def test_excludes_exactly_agenda_and_union(self):
+        """The relationship `_sources.py`'s own comment states, asserted
+        rather than left to that comment (#573).
+
+        Every existing test in this module derives its expectations
+        *from* `AID_NAMES`, so before this one the tuple could fall
+        behind `review.AIDS` without a single test going red -- which is
+        how `union` came to be missing from it while the comment above
+        it still said `agenda` was the only exclusion. An eleventh aid
+        now has to decide whether `agenda` reads it.
+
+        `union` is excluded for what its findings are about, not for
+        where they live: it files `<stem>.union.json` beside a reviewable
+        path like the rest, but it reads an assembled book, and a
+        citekey the assembly dropped is a fact about the assembly rather
+        than a sentence anyone can repair in the draft this worklist was
+        asked about. The same book-not-draft ground
+        docs/PERFORMANCE.md leaves it out of the draft-review cost
+        figures on.
+        """
+        assert set(_sources.AID_NAMES) == set(review.AIDS) - {"agenda", "union"}
+
+    def test_reads_in_the_registry_s_own_order(self):
+        """The other half of that comment: "in `review.AIDS`'s own
+        order". Not cosmetic -- `_render._SOURCE_LABELS` restates that
+        order a third time, and the assertion below pins the two
+        together."""
+        read = set(_sources.AID_NAMES)
+        assert _sources.AID_NAMES == tuple(aid for aid in review.AIDS if aid in read)
+
+    def test_render_s_source_labels_are_the_registry_s_own(self):
+        """`_render._SOURCE_LABELS` is a third hand-maintained copy of
+        the same eight aids -- their keys *and* `review.AIDS`' own label
+        strings -- and it fails harder than `AID_NAMES` does when it
+        drifts: `_render.py`'s header builder does
+        `agenda.sources.aids[aid]` for every key in it, so a key
+        `AID_NAMES` lacks is a `KeyError` mid-report rather than a
+        missing line.
+
+        Asserted rather than deduplicated: collapsing it to a
+        comprehension over `AID_NAMES` would be a change to the
+        rendering path, which #573 is not about. This is the guard that
+        makes that refactor safe to do later, or unnecessary.
+        """
+        assert _render._SOURCE_LABELS == {aid: review.AIDS[aid] for aid in _sources.AID_NAMES}
+        assert tuple(_render._SOURCE_LABELS) == _sources.AID_NAMES
+
 
 class TestReadAidJson:
     def test_absent_json_is_reported_unavailable(self, isolated_config):
