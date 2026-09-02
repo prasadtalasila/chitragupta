@@ -3,11 +3,11 @@
   "aid": "support",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review support content/drafts/dt-overview/staleness-chapter.md --write",
-  "version": "6.61.0",
+  "version": "6.61.7",
   "scored": 0,
   "unscoreable": {
-    "sample_dt_factory_2022": "no parsed text with page breaks and no readable PDF",
-    "sample_dt_sync_2023": "no parsed text with page breaks and no readable PDF"
+    "sample_dt_factory_2022": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_dt_sync_2023": "the source's passages carry no readable text to score against (page-level only)"
   },
   "findings": [
     {
@@ -16,7 +16,7 @@
       "citekey": "sample_dt_factory_2022",
       "claim": "Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "ee2aa913e518",
@@ -24,7 +24,7 @@
       "citekey": "sample_dt_sync_2023",
       "claim": "Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "2c11f1c3447b",
@@ -32,7 +32,7 @@
       "citekey": "sample_dt_sync_2023",
       "claim": "Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "94314cccb028",
@@ -40,7 +40,7 @@
       "citekey": "sample_dt_factory_2022",
       "claim": "Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     }
   ]
 }

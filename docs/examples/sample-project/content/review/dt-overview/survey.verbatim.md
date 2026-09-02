@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/survey.md --min-run 8 --gap 1 --write`
-- chitragupta 6.61.0
+- chitragupta 6.61.7
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this
@@ -66,4 +66,72 @@ docs/PLAGIARISM.md.
 
 ## Findings
 
-No verbatim run of 8 words or more was found anywhere in the draft.
+11 run(s), grouped most-damning-first.
+
+### Short runs
+
+#### 17 words, 8 matched -- `sample_dt_sync_2023` p.1 (tier=skip-gram)
+
+> across nine simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second
+
+In context: threshold push and event driven flows across nine simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second polling while holding worst case staleness...
+
+#### 15 words, 6 matched -- `sample_dt_overview_2024` p.1 (tier=skip-gram)
+
+> synthetic survey of forty deployments twenty eight systems described as twins were by this definition
+
+In context: strictly keeps expectations honest in one synthetic survey of forty deployments twenty eight systems described as twins were by this definition shadows this survey groups the sample...
+
+#### 13 words, 5 matched -- `sample_dt_factory_2022` p.1 (tier=skip-gram)
+
+> showing supervisors agreeing with the twin in over ninety five percent of cases
+
+In context: accuracy but a published override log showing supervisors agreeing with the twin in over ninety five percent of cases both failures it records were silent...
+
+#### 13 words -- `sample_dt_overview_2024` p.1 (tier=exact)
+
+> a digital model exchanges data with its physical counterpart only through manual steps
+
+In context: here begins by fixing that vocabulary a digital model exchanges data with its physical counterpart only through manual steps a digital shadow adds an automatic...
+
+#### 13 words -- `sample_dt_overview_2024` p.1 (tier=exact)
+
+> synthetic survey of forty deployments twenty eight systems described as twins were by
+
+In context: strictly keeps expectations honest in one synthetic survey of forty deployments twenty eight systems described as twins were by this definition shadows this survey groups...
+
+#### 13 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+> a twin that knows it is stale must say so on every read
+
+In context: much as technical marking staleness explicitly a twin that knows it is stale must say so on every read roughly halved operator mistrust incidents in...
+
+#### 11 words -- `sample_std_interop_2021` p.1 (tier=exact)
+
+> twin pilots rarely die of modelling problems they die of integration
+
+In context: model 4 integrating with everything else twin pilots rarely die of modelling problems they die of integration interoperability requires agreement at three layers...
+
+#### 10 words -- `sample_std_interop_2021` p.1 (tier=exact)
+
+> integrated a new asset in a median of six days
+
+In context: named owners sites that maintained one integrated a new asset in a median of six days against seven weeks where semantics were...
+
+#### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+> twin is only as trustworthy as its last synchronisation
+
+In context: 2 keeping the twin true a twin is only as trustworthy as its last synchronisation comparing periodic pull threshold push and...
+
+#### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+> reduced transmitted volume by 71 percent against one second
+
+In context: simulated production cells event driven synchronisation reduced transmitted volume by 71 percent against one second polling while holding worst case staleness...
+
+#### 9 words -- `sample_dt_sync_2023` p.1 (tier=exact)
+
+> both during slow thermal drift that never crossed its
+
+In context: study s two worst staleness excursions both during slow thermal drift that never crossed its configured delta trust is behavioural as...

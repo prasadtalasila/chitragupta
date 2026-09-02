@@ -34,6 +34,21 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
         section = section_anchor(sections, line)
         span = finding.get("fragment") or finding.get("draft_text") or finding.get("id", "")
         citekey = finding.get("citekey")
+        # Summarised by `span_words` with `matched_words` appended when the
+        # two differ, which is `_scan.py`'s `_matched_note` in the aid's own
+        # report ("15 words, 6 matched"). Summarising by `matched_words`
+        # alone described a gapped skip-gram or embedding match as a run
+        # shorter than `--min-run`, which no scan can produce -- and the
+        # agenda must not describe a finding differently from the aid it
+        # quotes. The condition is on the two counts rather than on `tier`
+        # so that any tier matching fewer words than it spans reads right.
+        # `_matched_note` itself is deliberately not imported: this module
+        # reads the aids' filed JSON and nothing else, which is what lets an
+        # agenda be built from reports on disk without the aid that wrote
+        # them being importable -- and that private helper indexes both keys
+        # directly, where every read here tolerates a partial payload.
+        words = finding.get("span_words", "?")
+        matched = finding.get("matched_words", "?")
         items.append(
             Item(
                 id=item_id("verbatim", "verbatim-run", section, citekey, span),
@@ -42,8 +57,9 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
                 citekey=citekey,
                 line=line,
                 unattended=(severity == "short"),
-                summary=f"{finding.get('matched_words', '?')}-word verbatim run"
-                + (f" citing `{citekey}`" if citekey else ""),
+                summary=f"{words}-word verbatim run"
+                + (f" citing `{citekey}`" if citekey else "")
+                + (f", {matched} matched" if matched != words else ""),
                 detail={"severity": severity, "verbatim_id": finding.get("id")},
             )
         )

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review provenance content/drafts/dt-overview/staleness-tutorial.md`
-- chitragupta 6.61.0
+- chitragupta 6.61.7
 
 ## How to read this
 
@@ -32,34 +32,29 @@ the band as a rough reading order rather than a measurement.
 
 ## Summary
 
-- 3 no support found
-
-## Sources that could not be read
-
-- `sample_dt_factory_2022`: no parsed text with page breaks and no readable PDF
-- `sample_dt_overview_2024`: no parsed text with page breaks and no readable PDF
-- `sample_dt_sync_2023`: no parsed text with page breaks and no readable PDF
-
-Findings for these show a score of 0 because there was nothing to compare against, not because the claim is unsupported.
+- 1 no support found
+- 2 weak
 
 ## Findings
 
 ### No support found
 
-#### Line 107 -- `[@sample_dt_sync_2023]` (0% match)
+#### Line 109 -- `[@sample_dt_factory_2022]` (19% match)
 
 > Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.
 
-*Source unavailable: no parsed text with page breaks and no readable PDF*
+Best match is on **page 2** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
 
-#### Line 109 -- `[@sample_dt_factory_2022]` (0% match)
+### Weak
+
+#### Line 107 -- `[@sample_dt_sync_2023]` (37% match)
 
 > Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.
 
-*Source unavailable: no parsed text with page breaks and no readable PDF*
+Best match is on **page 1** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
 
-#### Line 111 -- `[@sample_dt_overview_2024]` (0% match)
+#### Line 111 -- `[@sample_dt_overview_2024]` (40% match)
 
 > For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.
 
-*Source unavailable: no parsed text with page breaks and no readable PDF*
+Best match is on **page 1** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.

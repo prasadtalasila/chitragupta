@@ -3,7 +3,7 @@
   "aid": "synthesis",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review synthesis content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.61.0",
+  "version": "6.61.7",
   "genre": "thesis-chapter",
   "unit": "paragraph",
   "unit_source": "scope.md",

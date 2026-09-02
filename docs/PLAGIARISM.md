@@ -136,11 +136,16 @@ Three consecutive scans of an unchanged draft measured 20,172 /
 20,141 / 20,340 ms. **Anything that re-scans in a loop pays this every
 time**, which is the figure to plan a repair loop against.
 
-A written scan report to read alongside this page:
+Two written scan reports to read alongside this page, both real
+whole-draft scans over the sample corpus, banner and tier report
+included:
 [`survey.verbatim.md`](examples/sample-project/content/review/dt-overview/survey.verbatim.md)
-is a real whole-draft scan over the sample corpus, banner and tier
-report included -- note how it names the tiers that ran, which is the
-"a clean run is not a clean bill of health" rule below made visible.
+is the draft that quotes its sources, so its runs are found and each
+names the tier that found it, and
+[`trust-chapter.verbatim.md`](examples/sample-project/content/review/dt-overview/trust-chapter.verbatim.md)
+is the other outcome -- nothing found, by every tier that ran. Read the
+second one's tier list before reading its result: that is the "a clean
+run is not a clean bill of health" rule below made visible.
 
 ## ⚖ Advisory, never blocking
 
