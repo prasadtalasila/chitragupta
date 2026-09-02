@@ -37,9 +37,11 @@ if TYPE_CHECKING:
 
 # `chitragupta.sync`, not this module's own name, exactly as
 # chitragupta/sync_pool.py does: the only thing written here is a
-# mid-sync warning, and "chitragupta.sync" is the string docs/CLI.md
-# tells a scheduler to grep logs/pipeline.log for. `sync`'s *stdout* is
-# a documented, diffable contract, so it goes to the log rather than
+# mid-sync warning, and docs/CLI.md documents "chitragupta.sync" as the
+# `%(name)s` every corpus-layer line in logs/pipeline.log carries,
+# "whatever the command that started it is spelled". A name of this
+# module's own would put one warning outside that. `sync`'s *stdout* is
+# a documented, diffable contract, so this goes to the log rather than
 # into the middle of that output.
 logger = logging.getLogger("chitragupta.sync")
 
