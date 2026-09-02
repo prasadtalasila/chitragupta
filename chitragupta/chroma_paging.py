@@ -65,4 +65,11 @@ def all_rows(collection, **criteria) -> dict:
             return {"ids": ids, "metadatas": metadatas}
         ids += page["ids"]
         metadatas += page["metadatas"]
-        offset += PAGE_SIZE
+        # By what came back, not by what was asked for. chromadb 1.5.9
+        # answers with a full page until the last one, so the two agree
+        # today -- but nothing in its contract promises that, and a
+        # backend that returns 2 rows to a request for 3 is not saying it
+        # has run out. Advancing by `PAGE_SIZE` there steps over exactly
+        # the rows it withheld, and hands the caller a partial collection
+        # it has no way to notice (Copilot, #583).
+        offset += len(page["ids"])
