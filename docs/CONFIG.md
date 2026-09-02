@@ -830,7 +830,11 @@ candidates below spell it `entailment`, but `ENTAILMENT` and
 `LABEL_0`/`LABEL_1`/`LABEL_2` -- what the mapping falls back to when
 nobody filled it in. The first two work; the third raises
 `entailment.EntailmentLabelError`, naming this setting, the model it
-resolved to, and the labels that model actually reports. It is not
+resolved to, and the labels that model actually reports. The same
+refusal covers the blunter mistake of pointing this setting at a
+cross-encoder that is not an NLI model at all -- a reranker, say: its
+labels are perfectly well named, and none of them is an entailment
+class. It is not
 guessed at on purpose: which column is entailment is not recoverable
 from `LABEL_2`, and picking one would decide whether a claim reads as
 supported on a coin flip. Configuring such a checkpoint is a

@@ -64,8 +64,9 @@ def _entailment_index(id2label: dict) -> int:
         "an entailment label. Claim-support scoring reads the entailment "
         "probability out of the model's own id2label mapping and will not "
         "guess which column that is. Point [enrich].entailment_model (or "
-        "ENTAILMENT_MODEL) at a checkpoint whose labels are named, e.g. "
-        "cross-encoder/nli-deberta-v3-small."
+        "ENTAILMENT_MODEL) at a checkpoint whose id2label includes an "
+        "entailment class, spelled any way -- an NLI model, in other words, "
+        "e.g. cross-encoder/nli-deberta-v3-small."
     )
 
 
