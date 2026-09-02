@@ -29,27 +29,39 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
     minutes serial with docling -- and that case is opt-in.
     """
     to_parse = []
-    for ref in references:
-        # One transaction for the whole loop, closed below (#511/m-75).
-        # Committing per reference made a no-op sync 646 fsync'd write
-        # transactions on the corpus this was measured against, and opened
-        # 646 windows in which the read-only inspector could see a
-        # half-written ledger.
-        needs_parse = ledger.upsert_reference(con, ref, force=reparse, commit=False)
-        if not ref.pdf_path:
-            tally.no_pdf += 1
-            tally.no_pdf_reasons[ref.pdf_resolution] += 1
-            label = bib_reader.PDF_RESOLUTION_LABELS[ref.pdf_resolution]
-            print(f"  no-pdf  {ref.citekey}: {label}")
-            continue
-        if not needs_parse:
-            tally.skipped += 1
-            continue
-        if not parser_available:
-            tally.backend_unavailable += 1
-            continue
-        to_parse.append(ref)
-    con.commit()
+    try:
+        for ref in references:
+            # One transaction for the whole loop rather than one per
+            # reference (#511/m-75). `last_synced` moves on every row on
+            # every run, so a *no-op* sync rewrote all of them -- 646
+            # fsync'd write transactions on the corpus this was measured
+            # against, and 646 windows in which the read-only inspector
+            # could see a half-written ledger.
+            needs_parse = ledger.upsert_reference(con, ref, force=reparse, commit=False)
+            if not ref.pdf_path:
+                tally.no_pdf += 1
+                tally.no_pdf_reasons[ref.pdf_resolution] += 1
+                label = bib_reader.PDF_RESOLUTION_LABELS[ref.pdf_resolution]
+                print(f"  no-pdf  {ref.citekey}: {label}")
+                continue
+            if not needs_parse:
+                tally.skipped += 1
+                continue
+            if not parser_available:
+                tally.backend_unavailable += 1
+                continue
+            to_parse.append(ref)
+    finally:
+        # `finally`, not a plain call after the loop, and this is the
+        # whole reason the batching is acceptable. docs/DESIGN.md rejects
+        # locking the ledger precisely because it "would force a run into
+        # one transaction, discarding the incremental commit points on a
+        # crash" -- and this loop has a live raise path: a PDF moved
+        # between the bib read and `_stat_pdf` raises `OSError`
+        # (plans/code-review-2026-09.md, m-71, still open). Committing on
+        # the way out keeps that guarantee at batch granularity: every
+        # row written is a whole row, so what finished is still on disk.
+        con.commit()
     return to_parse
 
 

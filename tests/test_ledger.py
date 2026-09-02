@@ -885,3 +885,35 @@ class TestUpsertBatching:
         sync_decide._to_parse(counted, refs, False, True, tally)
         assert counted.commits == 1
         assert ledger.known_citekeys(ledger_con) == {f"k{n}_2024" for n in range(5)}
+
+
+class TestBatchingKeepsFinishedRowsOnACrash:
+    """The guarantee `docs/DESIGN.md`'s rejected-alternatives paragraph
+    turns on, and the reason m-75's batching is acceptable at all: one
+    transaction for the loop must not discard finished rows when the loop
+    raises. It has a live raise path -- a PDF moved between the bib read
+    and `_stat_pdf` raises `OSError` (m-71, still open) -- so the commit
+    is in a `finally`. Every row written is a whole row, so committing on
+    the way out is safe."""
+
+    def test_a_raise_mid_loop_still_commits_what_finished(self, ledger_con, monkeypatch):
+        from chitragupta import ledger_upsert, sync_decide
+
+        real = ledger_upsert.upsert_reference
+
+        def explode_on_the_third(con, ref, force=False, commit=True):
+            if ref.citekey == "k2_2024":
+                raise OSError("the PDF moved mid-sync")
+            return real(con, ref, force=force, commit=commit)
+
+        monkeypatch.setattr(ledger, "upsert_reference", explode_on_the_third)
+        tally = types.SimpleNamespace(
+            no_pdf=0,
+            no_pdf_reasons=collections.Counter(),
+            skipped=0,
+            backend_unavailable=0,
+        )
+        refs = [make_reference(citekey=f"k{n}_2024") for n in range(5)]
+        with pytest.raises(OSError):
+            sync_decide._to_parse(ledger_con, refs, False, True, tally)
+        assert ledger.known_citekeys(ledger_con) == {"k0_2024", "k1_2024"}
