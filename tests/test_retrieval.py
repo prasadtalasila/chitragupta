@@ -11,8 +11,24 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli
+from chitragupta.dossier import _retrieval
 
 from tests.conftest import make_reference
+
+
+def retrieval_cost(target):
+    """(calls, chars) over a whole `retrieval.md`, as the sum of its
+    per-revision segments.
+
+    `dossier.retrieval_cost` used to answer this directly and was deleted
+    in #515: `_status` computes the lifetime figures this same way, and a
+    second whole-file reader was surface nothing production called. These
+    cases are about `log_retrieval`'s row format -- pipe escaping, a
+    hand-edited row, a file created before `init` -- so they need *a*
+    reader, and using the one production uses is the point.
+    """
+    segments = _retrieval.retrieval_cost_by_revision(target)
+    return sum(s.calls for s in segments), sum(s.chars for s in segments)
 
 
 class TestTokenize:
@@ -646,7 +662,7 @@ class TestCli:
         draft.write_text("# s\n")
 
         assert retrieval.main(["search", "digital twin architecture", "--log", str(draft)]) == 0
-        calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        calls, chars = retrieval_cost(dossier.dossier_dir(draft))
         assert calls == 1
         assert chars > 0
         assert "Logged to" in capsys.readouterr().out
@@ -861,7 +877,7 @@ class TestCli:
                 "reground",
             ]
         )
-        calls, _ = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        calls, _ = retrieval_cost(dossier.dossier_dir(draft))
         assert calls == 1
 
 

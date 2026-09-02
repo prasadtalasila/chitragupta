@@ -299,6 +299,17 @@ def outline(book: Path) -> list[dict]:
     return parsed["units"]
 
 
+# **Kept deliberately with no production caller** (#515). Nothing in
+# `chitragupta/` calls this today -- `acceptance_units` is what the `unit`
+# verbs need -- and it was reported as removable surface. It stays because
+# it is not surface for its own sake: `acceptance_units` and `outline`
+# both explain themselves *by contrast with this one* ("not the same as
+# `sections()`", "`sections` is the generation unit and is what most
+# callers want"), and test_acceptance_unit.py's
+# `test_the_structural_units_are_unchanged_by_any_of_this` is a real #472
+# regression pin -- widening acceptance to whole chapters must not have
+# moved what the outline *declares*. Inlining the filter there would keep
+# the assertion and lose the name that makes it mean something.
 def sections(book: Path) -> list[dict]:
     """Every `####` section the outline declares, in outline order.
 

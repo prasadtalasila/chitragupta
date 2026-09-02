@@ -219,18 +219,32 @@ def _command(draft_path: Path, as_json: bool) -> str:
     return shlex.join(parts)
 
 
-def write_report(draft_path: Path, formats: list[str]) -> dict[str, Path]:
+# `run()` calls this rather than repeating its body (#515/m-90). It used
+# to inline the same `review.write(...)`, which left the only caller of
+# this function in the test suite -- two spellings of one path, and the
+# tested one not the one that ships.
+#
+# `report` is the already-built report, passed by `run()` because it needs
+# the same one for the JSON payload; omitted, this builds it. Building it
+# twice is the only thing the shared path would otherwise cost, and
+# `build_report` walks every cited source.
+def write_report(
+    draft_path: Path, formats: list[str], report: "dict | None" = None
+) -> dict[str, Path]:
     """Writes the report and returns {format: path} for what succeeded.
 
     The report lands in `content/review/`, mirroring the draft's own
     place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
     it -- `chitragupta/review/__init__.py` owns both the path and the degrade-on-missing-
     binary behaviour, shared with the other two review aids.
+
     """
     return review.write(
         draft_path,
         "provenance",
-        _citation_provenance_render.render_markdown(build_report(draft_path)),
+        _citation_provenance_render.render_markdown(
+            build_report(draft_path) if report is None else report
+        ),
         formats,
     )
 
@@ -292,9 +306,7 @@ def run(args: argparse.Namespace) -> int:
 
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     report = build_report(draft_path)
-    written = review.write(
-        draft_path, "provenance", _citation_provenance_render.render_markdown(report), formats
-    )
+    written = write_report(draft_path, formats, report)
     payload = _citation_provenance_render.provenance_payload(
         report, _command(draft_path, args.json)
     )

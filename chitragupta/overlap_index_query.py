@@ -22,6 +22,16 @@ def pages_for_gram(index: CorpusIndex, gram_hash: int, citekey: "str | None" = N
     second occurrence of the same phrase, or two documents sharing one
     page number) would otherwise repeat that page once per posting, which
     is not what "which pages" means to a caller.
+
+    **Kept deliberately with no production caller** (#515). Only
+    `postings_for_gram` below is called today, by `verbatim_check`'s scan
+    mode, which needs `token_position`. This is the other half of the
+    pair this module exists to be -- its own docstring names both
+    questions -- and the two are one bisect apart: deleting this would
+    leave a module answering half of what it says it answers, and the
+    next caller wanting "which pages" would write the deduplication again.
+    Named here rather than left looking like an oversight, which is the
+    drift the report was actually about.
     """
     lo = bisect_left(index.grams, gram_hash)
     hi = bisect_right(index.grams, gram_hash, lo=lo)

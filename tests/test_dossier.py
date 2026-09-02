@@ -35,6 +35,21 @@ from chitragupta.dossier import (
 )
 
 
+def retrieval_cost(target):
+    """(calls, chars) over a whole `retrieval.md`, as the sum of its
+    per-revision segments.
+
+    `dossier.retrieval_cost` used to answer this directly and was deleted
+    in #515: `_status` computes the lifetime figures this same way, and a
+    second whole-file reader was surface nothing production called. These
+    cases are about `log_retrieval`'s row format -- pipe escaping, a
+    hand-edited row, a file created before `init` -- so they need *a*
+    reader, and using the one production uses is the point.
+    """
+    segments = _retrieval.retrieval_cost_by_revision(target)
+    return sum(s.calls for s in segments), sum(s.chars for s in segments)
+
+
 @pytest.fixture
 def draft(isolated_config):
     """A draft where a genre skill would save one, in the nested layout
@@ -1106,13 +1121,13 @@ class TestRetrievalLog:
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400)
         dossier.log_retrieval(draft, "evidence", "digital twin", 1, 3, 2100)
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (2, 4500)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (2, 4500)
 
     def test_creates_the_file_for_a_dossier_that_predates_it(self, draft):
         dossier.init(draft, "survey")
         (dossier.dossier_dir(draft) / "retrieval.md").unlink()
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_creates_the_dossier_when_a_skill_logs_before_init(self, draft):
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
@@ -1123,23 +1138,23 @@ class TestRetrievalLog:
         written = {path.name for path in dossier.init(draft, "survey")}
         assert "retrieval.md" not in written
         assert "scope.md" in written
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_a_pipe_in_the_query_does_not_break_the_row(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "twin | shadow", 15, 15, 100)
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_a_hand_edited_row_is_skipped_rather_than_fatal(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         path = dossier.dossier_dir(draft) / "retrieval.md"
         path.write_text(path.read_text() + "| 2026-08-06 | search | q | 15 | 15 | lots |\n")
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_no_log_means_no_cost(self, draft):
         dossier.init(draft, "survey")
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (0, 0)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (0, 0)
 
     def test_status_reports_the_measured_cost(self, draft, capsys):
         dossier.init(draft, "survey")
@@ -1175,7 +1190,7 @@ class TestRetrievalLog:
             stale.setattr(Path, "exists", lambda self: False)
             dossier.log_retrieval(draft, "search", "second", 15, 15, 200)
 
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (2, 300)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (2, 300)
 
     def test_a_row_appended_while_the_file_is_being_created_is_not_overwritten(
         self, draft, monkeypatch
@@ -1213,7 +1228,7 @@ class TestRetrievalLog:
             dossier.log_retrieval(draft, "search", "winner", 15, 15, 100)
 
         assert injected, "the interleaving never happened, so nothing was tested"
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (2, 300)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (2, 300)
 
     def test_status_flags_a_run_that_searched_and_recorded_nothing(self, draft, capsys):
         """The signature of a run that closed without transcribing what
@@ -1243,12 +1258,12 @@ class TestRetrievalLog:
         dossier.log_retrieval(draft, "search", "digital twin\narchitecture", 15, 15, 100)
         text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
         assert "digital twin architecture" in text
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_tabs_and_carriage_returns_are_flattened_too(self, draft):
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "twin\tshadow\r\nmodel", 15, 15, 100)
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_a_scoped_call_records_its_collection(self, draft):
         dossier.init(draft, "survey")
@@ -1262,7 +1277,7 @@ class TestRetrievalLog:
         dossier.init(draft, "survey")
         path = dossier.dossier_dir(draft) / "retrieval.md"
         path.write_text(path.read_text() + "| 2026-01-01 | search | q | 15 | 15 | 100 |\n")
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
 
 class TestRevisionMarker:
@@ -1360,7 +1375,7 @@ class TestRevisionMarker:
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
         _retrieval.mark_revision(draft, "pass two")
-        assert dossier.retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
     def test_creates_the_dossier_when_called_before_init(self, draft):
         _retrieval.mark_revision(draft, "early")
@@ -1424,7 +1439,7 @@ class TestRevisionMarker:
         _retrieval.mark_revision(draft, "no search needed")  # empty, dropped
 
         report = _status.status(draft)
-        calls, chars = dossier.retrieval_cost(dossier.dossier_dir(draft))
+        calls, chars = retrieval_cost(dossier.dossier_dir(draft))
         assert (report.retrieval_calls, report.retrieval_chars) == (calls, chars) == (2, 300)
 
 
@@ -1769,11 +1784,11 @@ class TestRecordedQueriesWithOrigin:
 
     def test_the_landmine_also_costs_correctly_not_only_undercounts_queries(self, draft):
         """The bug report's other half: an eighth cell must not make the
-        whole row invisible to `retrieval_cost`, not only to
+        whole row invisible to the cost reader, not only to
         `recorded_queries`."""
         dossier.init(draft, "survey")
         dossier.log_retrieval(draft, "search", "digital twin", 15, 15, 2400, origin="declared")
-        assert _retrieval.retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 2400)
 
     def test_a_row_with_an_empty_query_contributes_no_pair(self, draft):
         """Skipped the same way `recorded_queries` skips it -- an empty
