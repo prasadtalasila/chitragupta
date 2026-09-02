@@ -823,6 +823,20 @@ genuine drop-in regardless of label ordering: confirmed for real by
 loading all three and comparing their actual `id2label` values, not
 assumed from one model's shape.
 
+**The match is case-insensitive, and a checkpoint that names no
+entailment label is refused rather than guessed at.** All three
+candidates below spell it `entailment`, but `ENTAILMENT` and
+`Entailment` are both common elsewhere on HuggingFace, and so is
+`LABEL_0`/`LABEL_1`/`LABEL_2` -- what the mapping falls back to when
+nobody filled it in. The first two work; the third raises
+`entailment.EntailmentLabelError`, naming this setting, the model it
+resolved to, and the labels that model actually reports. It is not
+guessed at on purpose: which column is entailment is not recoverable
+from `LABEL_2`, and picking one would decide whether a claim reads as
+supported on a coin flip. Configuring such a checkpoint is a
+configuration error with a legible message, not a silent scoring
+change.
+
 Real investigation for this section: all three candidates were loaded for
 real via `sentence_transformers.CrossEncoder` in `.venv-full`, their real
 `id2label`, real parameter count (`m.model.num_parameters()`) and real
