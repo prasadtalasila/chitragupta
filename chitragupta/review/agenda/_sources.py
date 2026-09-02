@@ -21,11 +21,17 @@ from chitragupta.dossier._drift import Drift
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
 # of `review.AIDS`: `agenda` itself is excluded, and so is `union`.
 #
-# `union` reads an *assembled book* rather than a draft, and this is a
-# per-draft worklist: there is no draft path to key its `.json` off, and
-# a citekey dropped between a unit and the assembly is a fact about the
-# assembly, not about any one unit's prose. docs/PERFORMANCE.md leaves
-# it out of the draft-review cost figures on the same ground. This
+# `union` is excluded because of *what its findings are about*, not
+# because they could not be found: it takes a reviewable path under
+# `content/` and files `<stem>.union.json` beside it exactly as the other
+# eight do, so `_read_aid_json` would locate one perfectly well. But it
+# reads an **assembled book**, and its `dropped`/`appeared` findings are
+# facts about the assembly -- a citekey that a unit stands on and the
+# assembled document does not -- rather than about any one draft's prose,
+# which is what every class in `_items.py` describes and what a person
+# repairs by editing. There is no sentence to fix in the draft this
+# worklist was asked about. docs/PERFORMANCE.md leaves `union` out of the
+# draft-review cost figures on the same book-not-draft ground. This
 # comment said "only `agenda` itself is excluded" through the release
 # that made `union` the tenth aid, which is what #573 was: the sentence
 # that pins the invariant down was the one thing nothing checked.

@@ -93,10 +93,14 @@ class TestAidNames:
         it still said `agenda` was the only exclusion. An eleventh aid
         now has to decide whether `agenda` reads it.
 
-        `union` is excluded because it reads an assembled book rather
-        than a draft, and `agenda` is a per-draft worklist -- the same
-        ground docs/PERFORMANCE.md leaves it out of the draft-review
-        cost figures on.
+        `union` is excluded for what its findings are about, not for
+        where they live: it files `<stem>.union.json` beside a reviewable
+        path like the rest, but it reads an assembled book, and a
+        citekey the assembly dropped is a fact about the assembly rather
+        than a sentence anyone can repair in the draft this worklist was
+        asked about. The same book-not-draft ground
+        docs/PERFORMANCE.md leaves it out of the draft-review cost
+        figures on.
         """
         assert set(_sources.AID_NAMES) == set(review.AIDS) - {"agenda", "union"}
 
