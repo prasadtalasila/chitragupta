@@ -21,8 +21,8 @@ person. That is the tedious half, and the half that gets skipped.
 
 That scan runs two deterministic tiers -- exact and word-swap-tolerant
 skip-gram -- plus an embedding tier that only runs where the optional
-enrichment layer, the Docling sidecars and the draft's own dossier are
-all present, and that only ever compares a section against the sources
+enrichment layer, the Docling sidecars, a synced ledger and the draft's
+own dossier are all present, and that only ever compares a section against the sources
 that section already cites. So **genuine restatement is only detected
 where the embedding tier can run**, and even there not from a source the
 section never cited -- while these drafts are LLM-written, which makes

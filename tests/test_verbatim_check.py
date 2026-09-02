@@ -238,6 +238,45 @@ class TestPages:
         result = vc.pages("smith_2024")
         assert any("distinctive verbatim content" in p for p in result)
 
+    def test_a_pdftotext_failure_falls_through_to_the_parsed_text(self, fixture_repo, monkeypatch):
+        """#516. `pdftotext` ran with `check=True` and no handler, so a
+        poppler-less host or one corrupt PDF gave `verbatim locate` a
+        traceback -- while the identical fallback was already sitting one
+        branch above, for the no-PDF case. A page-level answer from the
+        parsed text is worse than one from the PDF and far better than a
+        stack trace."""
+        pdf = fixture_repo / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4 not really a pdf")
+        vc._corpus.BIB.write_text(
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+        )
+        parsed_dir = fixture_repo / "content" / "parsed"
+        parsed_dir.mkdir(parents=True, exist_ok=True)
+        (parsed_dir / "smith_2024.txt").write_text("the parsed fallback text")
+
+        def refuse(*args, **kwargs):
+            raise subprocess.CalledProcessError(1, "pdftotext")
+
+        monkeypatch.setattr(vc._corpus.subprocess, "run", refuse)
+        assert vc.pages("smith_2024") == ["the parsed fallback text"]
+
+    def test_a_missing_pdftotext_binary_falls_through_too(self, fixture_repo, monkeypatch):
+        """The other half: `OSError`, not a non-zero exit -- what a host
+        with no poppler actually raises."""
+        pdf = fixture_repo / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4 not really a pdf")
+        vc._corpus.BIB.write_text(
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+        )
+
+        def refuse(*args, **kwargs):
+            raise OSError("pdftotext not found")
+
+        monkeypatch.setattr(vc._corpus.subprocess, "run", refuse)
+        assert vc.pages("smith_2024") == []
+
 
 class TestNorm:
     def test_tokenizes_lowercase_alnum(self):
@@ -330,6 +369,24 @@ class TestCmdOverlap:
         vc.cmd_overlap(str(draft), "smith_2024", n=4)
         out = capsys.readouterr().out
         assert "words, pdf p." in out
+
+    def test_a_citation_marker_does_not_weld_the_words_around_it(
+        self, ledger_con, tmp_path, capsys
+    ):
+        """m-53 (#516). `cmd_overlap` deleted `[@key]` rather than
+        blanking it, welding the tokens either side into one -- so a run
+        sitting exactly at the n-gram floor lost a word, fell below it,
+        and went unreported by the one mode that exists to find such runs.
+        Four words with the marker mid-run: welded they are three tokens
+        and no 4-gram matches; spaced they are four and it does."""
+        shared_phrase = "brown fox jumps over"
+        _add_parsed_item(ledger_con, tmp_path, "smith_2024", f"Intro. {shared_phrase}. More.")
+
+        draft = tmp_path / "draft.md"
+        draft.write_text(f"As shown, brown fox[@smith_2024]jumps over the rest.\n")
+
+        vc.cmd_overlap(str(draft), "smith_2024", n=4)
+        assert "words, pdf p." in capsys.readouterr().out
 
     def test_no_overlap_found(self, ledger_con, tmp_path, capsys):
         _add_parsed_item(
@@ -515,6 +572,30 @@ class TestQuoteCharSpans:
 
     def test_no_quotes_returns_empty(self):
         assert vc._quote_char_spans("nothing quoted here at all") == []
+
+    def test_an_inch_mark_does_not_open_a_span(self):
+        """m-54 (#516). A lone straight quote used to open a span that ran
+        to the *opening* mark of the next real quotation, so every finding
+        in the stretch between was demoted into the low-priority `quoted`
+        bucket -- the failure direction that hides reuse."""
+        text = 'The pipe is 6" across. Later the author writes "a real quotation" and stops.'
+        spans = vc._quote_char_spans(text)
+        assert [text[start:end] for start, end in spans] == ['"a real quotation"']
+
+    def test_a_span_does_not_cross_a_paragraph_break(self):
+        """The other guard: anything else unpaired -- a typo, a quotation
+        nobody closed -- costs at most the paragraph it sits in."""
+        text = 'He said "this was never closed.\n\nA new paragraph that must stay scannable.'
+        assert vc._quote_char_spans(text) == []
+
+    def test_a_real_quotation_spanning_two_lines_is_still_one_span(self):
+        """A line break is not a paragraph break: a quotation wrapped by
+        the author's editor must still read as quoted."""
+        text = 'She wrote "a quotation that\nwraps across two lines" and stopped.'
+        spans = vc._quote_char_spans(text)
+        assert [text[start:end] for start, end in spans] == [
+            '"a quotation that\nwraps across two lines"'
+        ]
 
 
 class TestMaskForScan:

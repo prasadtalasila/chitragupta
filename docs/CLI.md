@@ -1542,8 +1542,12 @@ contiguous rather than an alignment around an ellipsis.
 Layer 4, the review layer, with four subcommands: verbatim overlap
 between a draft and one cited source, a whole-draft x whole-corpus scan,
 a re-scan compared against a recorded one, and page location for a
-phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary,
-so that subcommand needs poppler-utils on `PATH`. `overlap`, `scan` and
+phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary when
+the source has a PDF, so poppler-utils on `PATH` gets it page numbers
+from the PDF itself. Without it, `locate` falls back to
+`content/parsed/` rather than failing (#516) -- page-level rather than
+layout-accurate, and the same fallback a source with no PDF already
+took. `overlap`, `scan` and
 `recheck` read already-parsed text via `chitragupta/overlap_index.py`'s cache
 instead. Run with no arguments to print its usage.
 
@@ -1627,10 +1631,11 @@ Only the embedding tier can appear there today, and it can contribute
 more than one entry, since a heading-renamed gap and a stale-corpus gap
 are independent and each get their own message.
 
-`"partial": false` means the tier did not run at all. It needs four
+`"partial": false` means the tier did not run at all. It needs five
 things: the optional enrichment layer, a built `content/chroma/`, the
-Docling passage sidecars, and the draft's own dossier. A healthy
-checkout can be missing any of them.
+Docling passage sidecars, the draft's own dossier, and a synced ledger to
+read source passages from. A healthy checkout can be missing any of
+them.
 
 `"partial": true` means the tier ran and the findings in the payload
 are real, but it did not run against everything the draft cites: some

@@ -279,7 +279,8 @@ method, the peak-memory figures and the caveats:
 **Two aids are the cost of the layer now, not one.** `verbatim` is
 90--94% of any run where its embedding tier can execute, and 447 ms
 where it cannot -- a 44--86x difference that depends on whether the
-dossier, the Docling sidecars and the enrichment layer are all present,
+dossier, the Docling sidecars, the ledger and the enrichment layer are
+all present,
 not on the draft. `support` has no such off switch: it always loads
 the entailment model and scores every citation, so it costs
 21.2--62.3 s on every draft measured, dossier or not. Where `verbatim`'s

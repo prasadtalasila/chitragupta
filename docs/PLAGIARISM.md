@@ -1,11 +1,11 @@
 # 🔍 Plagiarism / verbatim-reuse detection
 
-Status: **implemented, three detection tiers of a planned three.** The second
-and third shipped advisory-only. The third runs only where the optional
-enrichment layer, the Docling passage sidecars and the draft's own dossier are
-all present. Written 2026-08-10. Updated 2026-08-27 with measured scan
-costs; tier 2 added 2026-08-13 (#133), tier 3 added 2026-08-15
-(#134/#164).
+Status: **implemented, three detection tiers of a planned three.** The
+second and third shipped advisory-only. The third runs only where the
+optional enrichment layer, the Docling passage sidecars, a synced ledger
+and the draft's own dossier are all present. Written 2026-08-10. Updated
+2026-08-27 with measured scan costs; tier 2 added 2026-08-13 (#133),
+tier 3 added 2026-08-15 (#134/#164).
 
 **Written for** someone deciding whether `chitragupta/review/verbatim_check/`'s
 `overlap`/`scan` modes are enough review before presenting a draft, or
@@ -34,8 +34,8 @@ detectors, and every finding names the one that produced it:
   that sees a genuine restatement.
 
 That third tier is also the narrowest. It runs only where the optional
-enrichment layer, the Docling passage sidecars and the draft's own
-dossier are all present, and it compares a section only against the
+enrichment layer, the Docling passage sidecars, a synced ledger and the
+draft's own dossier are all present, and it compares a section only against the
 sources that section already cites.
 
 This is the one **tier set** in this project whose options
@@ -105,9 +105,9 @@ itself, so a thin result and a thorough one look identical.
 wall-clock and memory only.
 
 **One question decides it: can tier 3 run?** It needs the `enrich`
-group, `content/chroma/`, the Docling sidecars and the draft's own
-dossier, all four. Without any one of them a full-draft `scan` is
-**447 ms**. With all four it is **19.7--41.0 s** -- a 44--86x
+group, `content/chroma/`, the Docling sidecars, the draft's own dossier
+and a synced ledger, all five. Without any one of them a full-draft
+`scan` is **447 ms**. With all of them it is **19.7--41.0 s** -- a 44--86x
 difference that has nothing to do with the draft.
 
 **Where tier 3 runs, estimate from citekeys, not words.** Measured
@@ -231,6 +231,15 @@ Each finding reports five things:
 - **Whether the run touches quote delimiters** -- straight or curly
   double quotes, or a Markdown blockquote line. A deterministic bit, not
   a severity judgment.
+
+  Two things bound how far a quoted span may reach, both added in #516
+  after a single stray delimiter was found demoting real findings into
+  this bucket. A double quote straight after a digit is an inch or
+  second mark (`a 6" pipe`) and does not open a span; and no span may
+  cross a blank line, so an unclosed quotation costs at most its own
+  paragraph rather than running on to the *opening* mark of the next
+  real quotation. Mixed delimiters are still tolerated -- a
+  half-applied smart-quote pass produces exactly that.
 - **`tier`**, naming the detector that produced it.
 
 The page range does not run the other way. A remainder shorter than the

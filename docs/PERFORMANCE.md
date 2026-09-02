@@ -519,8 +519,9 @@ parsed words, a 547 MB overlap index.
 
 **A factor of 23 used to separate the cheapest run from the dearest,
 and draft length was not what moved it.** `verbatim`'s tier 3 needs the
-`enrich` group, `content/chroma/`, the Docling sidecars and the draft's
-own dossier, all four ([PLAGIARISM.md](PLAGIARISM.md)). Where any is
+`enrich` group, `content/chroma/`, the Docling sidecars, the draft's own
+dossier and a synced ledger, all five
+([PLAGIARISM.md](PLAGIARISM.md)). Where any is
 missing the scan is **447 ms**; where all are present it is
 **19.7--41.0 s** -- that 23x (1,859 ms to 43,793 ms) was the whole
 story before `support` existed.

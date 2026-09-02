@@ -194,7 +194,15 @@ def draft_sections(
         # and as a segment it is short enough that its embedding is
         # almost pure topic -- exactly the thing windowing exists to keep
         # out of the comparison.
-        start = line_starts[section.start]
+        # Both ends guarded, not just `end` (#516/m-55). A heading on the
+        # draft's final line with no trailing newline has
+        # `section.start == len(line_starts)`, because `_line_starts`
+        # records a start per newline and there is none after it -- so
+        # this raised `IndexError` and took down the whole scan. Clamped
+        # to `len(text)`, the section spans nothing, has no sentences, and
+        # is dropped below: a heading with no body under it is exactly
+        # what it is.
+        start = line_starts[section.start] if section.start < len(line_starts) else len(text)
         end = line_starts[section.end] if section.end < len(line_starts) else len(text)
         section_sentences = _sentences_in(text, word_spans, start, end)
         if section_sentences:

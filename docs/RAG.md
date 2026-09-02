@@ -522,10 +522,10 @@ the sources; the benefit is that `gate` never cries wolf.
 **Overlap detection**, which most RAG systems lack entirely, runs three
 tiers whose findings are unioned: an exact word-run match, a stemmed
 skip-gram match tolerant of substituted words, and an embedding tier that
-is the only one that sees genuine restatement. The third is also the
-narrowest -- it needs the enrichment layer, the Docling sidecars and the
-dossier all present -- so **a clean scan is never a clean bill of
-health**, and the report names every tier that could not run.
+is the only one that sees genuine restatement. The third is also
+the narrowest -- it needs the enrichment layer, the Docling sidecars, a
+synced ledger and the dossier all present -- so **a clean scan is never
+a clean bill of health**, and the report names every tier that could not run.
 
 ## ♻ Stage 11: revision
 

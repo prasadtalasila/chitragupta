@@ -438,10 +438,10 @@ the only gate.
 The caveat travels with it, in every skill, because the drafter is the
 one it is about. Two of the three detection tiers see wording only, so a
 genuine restatement is invisible to them. The third sees one, but runs
-only where the optional enrichment layer, the Docling sidecars and the
-draft's dossier are all present -- which is why the first command above
-is not optional: rebuilding `sections.md` is the one of those four
-conditions a skill can satisfy for itself. Where a tier still could not
+only where the optional enrichment layer, the Docling sidecars, a synced
+ledger and the draft's dossier are all present -- which is why the first
+command above is not optional: rebuilding `sections.md` is the one of
+those conditions a skill can satisfy for itself. Where a tier still could not
 run, the skill quotes the `tiers_not_run` reason the scan gave rather
 than presenting two tiers of three as a clean result. So a clean scan is
 not a clean bill of health.

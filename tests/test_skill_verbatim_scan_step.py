@@ -77,8 +77,8 @@ _CAVEAT = "genuine restatement is only detected where the embedding tier can run
 # What the skill must report when a tier was skipped. The payload key
 # itself, because that is what the reader has to be shown: paraphrasing
 # it loses the reason, and the reasons are written to be read by a person
-# mid-review (`overlap_embed.unavailable_reason`: "the four ways this
-# tier is unavailable want four different fixes").
+# mid-review (`overlap_embed_scope.unavailable_reason`: "the five ways
+# this tier is unavailable want five different fixes").
 _TIERS = "tiers_not_run"
 
 # `--citekeys --write` and nothing looser: the bare `dossier sections`
