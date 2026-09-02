@@ -346,7 +346,12 @@ def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
         start = time.monotonic()
         try:
             outcome["result"] = read()
-        except BaseException as exc:  # noqa: BLE001 -- re-raised below, not swallowed
+        # `BaseException`, not `Exception`, and not swallowed either way:
+        # anything that escapes here would kill the thread with `outcome`
+        # half-filled, and the caller would then fail on a missing dict
+        # key rather than on the real cause. `read()` is a CLI `main()`
+        # in one of the three callers, so `SystemExit` is not far-fetched.
+        except BaseException as exc:  # noqa: BLE001 -- re-raised by the caller
             outcome["error"] = exc
         outcome["waited"] = time.monotonic() - start
 
