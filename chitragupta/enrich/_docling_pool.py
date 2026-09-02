@@ -158,7 +158,7 @@ def _adopt_cached(
     `chitragupta.enrich.docling_parse.parse_corpus`'s own `reusable` set
     exists to avoid.
     """
-    from chitragupta.enrich.docling_parse import parse_doc
+    from chitragupta.enrich.docling_parse import _failure, parse_doc
 
     pending_keys = {d.citekey for d in pending}
     for doc in docs:
@@ -167,7 +167,11 @@ def _adopt_cached(
         try:
             status[doc.citekey] = f"ok: {parse_doc(doc, cache=cache)}"
         except Exception as exc:  # noqa: BLE001 -- as below
-            status[doc.citekey] = f"error: {exc}"
+            # _failure, not `f"error: {exc}"`: a PDF-less document lands
+            # here rather than in the pool (`pending` filters it out), so
+            # this is the parallel leg's copy of the same classification
+            # the serial loop makes -- see its comment at #586.
+            status[doc.citekey] = _failure(doc, exc)
 
 
 def _submit_jobs(executor, jobs: list[tuple]) -> tuple[list, Exception | None]:

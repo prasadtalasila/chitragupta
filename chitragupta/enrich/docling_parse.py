@@ -81,6 +81,29 @@ from chitragupta.enrich.corpus import CorpusDoc
 # chitragupta/sync.py documents at its own getLogger call.
 logger = logging.getLogger("chitragupta.enrich.docling_parse")
 
+# A bibliography entry with no PDF at all -- a standards page, a software
+# link, a website -- is not a parse failure: there was never anything to
+# parse. Reported in the `skipped:` vocabulary stages.stage_docling
+# already understands (#586), rather than as an `error:`, which that
+# function reads as `partial` for the whole stage. On the 642-document
+# corpus that surfaced this, 145 entries are URL-only, so the stage could
+# never report `ok` again whatever the corpus did -- and the 460
+# documents that failed for a real reason in the same run were
+# indistinguishable from the 145 that were never parseable. The same
+# correction #509 made for a missing docling install, one level down.
+NO_PDF_SKIP = "skipped: no PDF to parse -- a URL-only bibliography entry"
+
+
+def _failure(doc: CorpusDoc, exc: Exception) -> str:
+    """The status a batch records for a document that did not parse."""
+    # Decided from the document rather than from `exc`: parse_doc raises
+    # for a caller that asked for this one document (`parse_doc(doc)`
+    # without a batch around it should still fail loudly), and matching on
+    # its message would couple this classification to that string.
+    # `not doc.pdf_path` is the same predicate parse_doc tested before
+    # raising, so the two cannot drift apart.
+    return NO_PDF_SKIP if not doc.pdf_path else f"error: {exc}"
+
 
 def _build_converter(threads: int | None = None) -> Any:
     """Always configured, never bare: `do_ocr` has to be set explicitly
@@ -334,6 +357,6 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
                 out_path = parse_doc(doc, cache=cache, converter=converter)
                 status[doc.citekey] = f"ok: {out_path}"
             except Exception as exc:  # noqa: BLE001  # report per-doc, don't abort the batch
-                status[doc.citekey] = f"error: {exc}"
+                status[doc.citekey] = _failure(doc, exc)
     _save_cache(cache)
     return status
