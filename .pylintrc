@@ -1,7 +1,16 @@
 # pylint configuration, adopted from DTaaS (INTO-CPS-Association/DTaaS),
 # the same source docs/CODE-STANDARDS.md takes this project's code
-# standards from. Kept byte-identical to upstream below this header so
-# the deviation is visible in a diff.
+# standards from. Everything below this header is upstream's, verbatim,
+# **except** the two settings named here -- so a diff against upstream
+# shows this project's deviations and nothing else:
+#
+#   disable=            ([MESSAGES CONTROL]) -- this project's own list,
+#                       each entry carrying its reason beside it.
+#   py-version=3.12     ([MASTER]) -- see the note at that setting.
+#
+# The rule is "no silent deviation", not "no deviation": a setting
+# changed here has to be listed here, or the byte-identical claim above
+# becomes the kind of stale comment #512 was about.
 #
 # ENFORCED. `.github/workflows/ci.yml`'s `lint` job runs
 # `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a

@@ -546,22 +546,30 @@ PYLINTRC = REPO_ROOT / ".pylintrc"
 DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
 
 
-def _push_trigger_filters(workflow: Path) -> set:
+def _push_trigger_filters(workflow: Path) -> "set | None":
     """The filter keys under a workflow's `on: push:` block, by
-    indentation. Deliberately not a YAML parse -- see the caller."""
+    indentation, or **None** where no `push:` block in that shape was
+    found. Deliberately not a YAML parse -- see the caller.
+
+    `None` rather than an empty set, and the caller refuses it. An
+    unreadable file returning `set()` would have made "this workflow has
+    no filters to check" and "this reader could not find the block"
+    the same answer -- so a reformat (an inline mapping, a trailing
+    comment after `push:`, a different indent) would have turned the
+    check below into a silent pass. That is the exact defect class #509
+    was about, and a drift guard is the last place to reintroduce it.
+    """
     lines = workflow.read_text(encoding="utf-8").splitlines()
-    try:
-        start = lines.index("  push:")
-    except ValueError:
-        return set()
+    start = next((i for i, line in enumerate(lines) if line == "  push:"), None)
+    if start is None:
+        return None
     found = set()
     for line in lines[start + 1 :]:
         if line.strip() and not line.startswith("    "):
             break
         stripped = line.strip()
-        if stripped.endswith(":") or ": " in stripped:
-            if line.startswith("    ") and not line.startswith("      "):
-                found.add(stripped.split(":", 1)[0])
+        if (stripped.endswith(":") or ": " in stripped) and not line.startswith("      "):
+            found.add(stripped.split(":", 1)[0])
     return found
 
 
@@ -606,6 +614,15 @@ class TestTheToolingConfigDoesNotDriftFromWhatItConfigures:
         """
         for workflow in (CI_WORKFLOW, DOCS_WORKFLOW):
             filters = _push_trigger_filters(workflow)
+            # Both of these are known to have a filtered push trigger, so
+            # "nothing found" means this reader could not read the file,
+            # not that there is nothing to check. Refused loudly rather
+            # than passed over.
+            assert filters, (
+                f"{workflow.name} has no `  push:` block this reader recognises, so the "
+                "branch/tag check below did not run. If the trigger was reformatted, "
+                "update `_push_trigger_filters` -- do not delete this assertion."
+            )
             if "branches" in filters or "branches-ignore" in filters:
                 assert not {"tags", "tags-ignore"} & filters, (
                     f"{workflow.name}'s push trigger mixes a branch filter with a tag "
@@ -651,7 +668,28 @@ class TestThePushTriggerReaderItself:
         )
         assert _push_trigger_filters(workflow) == {"branches"}
 
-    def test_a_workflow_with_no_push_trigger_is_not_a_finding(self, tmp_path):
+    def test_a_workflow_with_no_push_trigger_reads_as_none_not_empty(self, tmp_path):
+        """The distinction the caller refuses on: `None` is "no block
+        found", `set()` would be "a block with no filters" -- and
+        collapsing them is how a reformat turns the check into a silent
+        pass."""
         workflow = tmp_path / "manual.yml"
         workflow.write_text("on:\n  workflow_dispatch:\n", encoding="utf-8")
-        assert _push_trigger_filters(workflow) == set()
+        assert _push_trigger_filters(workflow) is None
+
+    @pytest.mark.parametrize(
+        "block,why",
+        [
+            ("  push:  # main only\n    branches: [main]\n", "a trailing comment"),
+            ("  push: {branches: [main]}\n", "an inline mapping"),
+            ("   push:\n     branches: [main]\n", "a different indent"),
+        ],
+    )
+    def test_a_reformatted_trigger_reads_as_unreadable_rather_than_clean(
+        self, tmp_path, block, why
+    ):
+        """Each of these used to yield `set()`, which the caller read as
+        "nothing to check" and passed."""
+        workflow = tmp_path / "docs.yml"
+        workflow.write_text(f"on:\n{block}", encoding="utf-8")
+        assert _push_trigger_filters(workflow) is None, why
