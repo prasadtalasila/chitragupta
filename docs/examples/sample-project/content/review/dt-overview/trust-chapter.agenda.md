@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex`
-- chitragupta 6.61.0
+- chitragupta 6.61.1
 
 ## How to read this
 
@@ -37,9 +37,9 @@ person to decide.
 ### unsupported-claim
 
 - `d61be667af63` [surfaced] (The argument): `[@sample_dt_sync_2023]` scores no support found: In comparative trials, explicit staleness marking -- returning every value with 
-- `d414f7ba40c8` [surfaced] (The argument): `[@sample_dt_factory_2022]` scores no support found: The packaging line twin of gained scheduling authority station by station, and e
+- `6ede10a70930` [surfaced] (The argument): `[@sample_dt_factory_2022]` scores no support found: The packaging line twin of [...] gained scheduling authority station by station,
 - `59e95473b6bd` [surfaced] (The argument): `[@sample_ml_anomaly_2023]` scores no support found: Comparing anomaly detectors over twin state streams, the learned model with the 
-- `9bb0648624a6` [surfaced] (Synthesis): `[@sample_dt_overview_2024]` scores no support found: The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is
+- `972e8b4ccf59` [surfaced] (Synthesis): `[@sample_dt_overview_2024]` scores no support found: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha
 ### uncited-claim
 
 - `d4740a26c3ff` [surfaced] (Operational Trust as the Limiting Resource of Digital-Twin Deployments): \label{ch:trust}

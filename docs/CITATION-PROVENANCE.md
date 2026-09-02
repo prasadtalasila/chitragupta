@@ -478,10 +478,10 @@ absolute threshold that meant the same thing for both sources would
 require normalising by passage length, which buys precision the tool
 does not claim to have.
 
-## 🐛 Two things the build got wrong first
+## 🐛 Three things the build got wrong first
 
-Worth recording, because both are the kind of defect only a real run
-finds -- and the second was caused by the fix for the first.
+Worth recording, because all three are the kind of defect only a real
+run finds -- and the second was caused by the fix for the first.
 
 ### 🐛 Too narrow: the citing line
 
@@ -550,6 +550,39 @@ hard-wrapped over three lines is still one claim.
 The general lesson, since it is the second instance: the claim unit has a
 *correct size*, and both failures came from choosing that size by
 document syntax the code did not actually model.
+
+### 🐛 Narrative citations deleted wholesale (issue #570)
+
+Both fixes above are about a claim's *extent*. This one is about what
+survives inside it. Citation markup is removed before scoring, so the
+markers do not read as content words the cited paper ought to contain --
+right for `[@key]` and `\citep{key}`, which stand *outside* the
+sentence's grammar as an aside the reader could skip. It is wrong for
+`\citet{key}`, which renders as "Smith et al. (2024)" and *is* a noun
+phrase in the sentence. Deleting it produced claims like "The vocabulary
+of sharpens the claim" and "The packaging line twin of gained scheduling
+authority", quoted back at a reviewer as though the draft had written
+the dangling "of".
+
+Narrative markers are now replaced by `[...]` rather than removed.
+
+**An elision, not the author-year text it stands for**, which is the one
+decision here a reader might expect to go the other way. This report
+scores a claim by word overlap against the cited paper's own text, and
+that text contains its own authors' names -- on the title page, in the
+running head, in its self-citations. Substituting "Smith" would hand
+every narrative citation a hit unrelated to the claim, inflating exactly
+the band that flags weak support, silently and in the direction that
+hides a problem. `[...]` contributes no word to `distinctive()`, so the
+score is unchanged and only the quoted text moves.
+
+Found by a Copilot review of #569, which is to say by the committed
+sample project rather than by a test. `thesis-chapter-writer` has always
+been documented as emitting `\citep`/`\citet`
+([GENRE.md](GENRE.md)), so the narrative form was never exotic --
+it simply had no draft in this repository using it until the sample
+project arrived, and so no committed report in which the dangling "of"
+was visible to a reader.
 
 ## 📊 Sizing (as built)
 
