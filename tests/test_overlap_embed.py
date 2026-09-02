@@ -16,6 +16,7 @@ import types
 import pytest
 
 from chitragupta import (
+    chroma_paging,
     config,
     ledger,
     overlap_chroma,
@@ -24,6 +25,11 @@ from chitragupta import (
     overlap_segments,
 )
 from tests.conftest import make_reference
+
+
+# SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on how
+# many rows one Chroma `get` may return -- see FakeCollection.get.
+SQLITE_VARIABLE_LIMIT = 32766
 
 
 class FakeEmbedder:
@@ -60,9 +66,25 @@ class FakeCollection:
         self.queries.append({"n": len(query_embeddings), "n_results": n_results, "where": where})
         return self.response
 
-    def get(self, where, include=None):
-        self.gets.append({"where": where, "include": include})
-        return self.get_response
+    def get(self, where, include=None, limit=None, offset=None):
+        """Paged, and refusing an over-large page, because Chroma's
+        SQLite backend does both (#581): one bound variable per row
+        *returned*, so a result set past SQLITE_VARIABLE_LIMIT raises
+        instead of coming back short. `ids` is synthesised rather than
+        stored -- a real `get` always returns it, `chroma_paging.all_rows`
+        reads it to decide whether a page was the last one, and nothing
+        here cares what the ids say."""
+        self.gets.append({"where": where, "include": include, "limit": limit, "offset": offset})
+        metadatas = (self.get_response or {}).get("metadatas", [])
+        metadatas = metadatas[offset or 0 :]
+        if limit is not None:
+            metadatas = metadatas[:limit]
+        if len(metadatas) > SQLITE_VARIABLE_LIMIT:
+            raise RuntimeError(
+                "Error executing plan: Internal error: error returned from "
+                "database: (code: 1) too many SQL variables"
+            )
+        return {"ids": [f"row{i}" for i in range(len(metadatas))], "metadatas": metadatas}
 
     def count(self):
         return self._count
@@ -354,8 +376,25 @@ class TestAbsentCitekeys:
         collection = FakeCollection(get_response={"metadatas": []})
         overlap_chroma.absent_citekeys(collection, ["a_2024", "b_2024"])
         assert collection.gets == [
-            {"where": {"citekey": {"$in": ["a_2024", "b_2024"]}}, "include": ["metadatas"]}
+            {
+                "where": {"citekey": {"$in": ["a_2024", "b_2024"]}},
+                "include": ["metadatas"],
+                "limit": chroma_paging.PAGE_SIZE,
+                "offset": 0,
+            }
         ]
+
+    def test_cited_sources_owning_more_chunks_than_sqlite_allows_are_still_read(self):
+        """#581: the `$in` list is short -- one entry per source a draft
+        cites -- but the *result set* is every chunk those sources own,
+        and that is what SQLite counts. A draft citing enough well-chunked
+        papers put this past the limit, and the presence check raised
+        instead of reporting.
+        """
+        present = [{"citekey": "a_2024"} for _ in range(SQLITE_VARIABLE_LIMIT + 1)]
+        collection = FakeCollection(get_response={"metadatas": present})
+
+        assert overlap_chroma.absent_citekeys(collection, ["a_2024", "b_2024"]) == {"b_2024"}
 
 
 class TestOpenScope:
