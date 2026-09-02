@@ -173,6 +173,7 @@ nav:
       - Which guide applies: CLAUDE.md
       - Drafting with it: AGENTS.md
       - Architecture: docs/ARCHITECTURE.md
+      - Security: docs/SECURITY.md
       - The dossier (machine-facing): docs/DOSSIER.md
       - Diagrams: docs/DIAGRAMS.md
       - Ladders and fallbacks: docs/LADDERS.md

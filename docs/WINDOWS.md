@@ -32,7 +32,7 @@ because three OS packages have no apt to install them from.
 | | Native Windows | WSL2 (Debian/Ubuntu) |
 | --- | --- | --- |
 | Corpus sync, drafting, the citation gate | yes | yes |
-| The review layer's ten aids | yes, bar `verbatim` (needs `pdftotext`) | yes |
+| The review layer's ten aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only three of its eight checks without `pdflatex` | yes |
 | `draft render` to PDF | needs Pandoc + a TeX distribution installed by hand | yes, via `os-deps` |
 | `chitragupta enrich` | yes | yes |
 | GPU acceleration | CPU only | yes -- see [below](#-gpu-features-under-wsl2) |
@@ -124,9 +124,17 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
 
 Without step 4, `draft render` and the `verbatim` aid report a missing
 binary rather than failing obscurely, and the corresponding tests
-self-skip. Nothing else is affected -- the citation gate, `corpus sync`,
-every genre skill and nine of the ten review aids need no OS package at
-all.
+self-skip. The citation gate, `corpus sync`, every genre skill and eight
+of the ten review aids need no OS package at all.
+
+**The tenth is `figure`, and it is the one to watch**, because it
+neither refuses nor reports a missing binary: five of its eight checks
+need `pdflatex`, so without TeX it runs and reports the other three,
+naming what it skipped. Both of the checks a reader would call the point
+of a layout check -- node overlap and content protrusion -- are in the
+five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s own "Needs
+`pdflatex`" column for the split. A green `figure` report on a host
+without TeX is three-eighths of a report, not a clean one.
 
 ## 🐧 Installing: WSL2
 
