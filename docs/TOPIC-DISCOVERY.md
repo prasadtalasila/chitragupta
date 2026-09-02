@@ -1,11 +1,11 @@
 # 🕸 Topic discovery: from a phrase to the papers, the graph, and an overview
 
-Status: **reference for a feature landing in stages.** Written
-2026-09-02. The `topic-graph` enrichment stage, the `corpus discover`
-reader, its precision tier and the gold-set benchmark documented here
-are built; the HTML graph view is G9 in
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md), with the whole design in
-`plans/g5-topic-discovery.md`.
+Status: **reference.** Written 2026-09-02. All five parts documented
+here -- the `topic-graph` enrichment stage, the `corpus discover`
+reader, its precision tier, the gold-set benchmark and the HTML graph
+page -- are built; the design they implement is
+`plans/g5-topic-discovery.md` (G5-G9 in
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s numbering).
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
 exist at all; this document covers what happens next -- relating them,
 finding them, and reading them.
@@ -32,8 +32,8 @@ finding them, and reading them.
 - [The precision tier](#-the-precision-tier)
 - [The overview file](#-the-overview-file---out)
 - [The gold set](#-the-gold-set)
+- [The graph page](#-the-graph-page)
 - [Alternatives considered](#-alternatives-considered)
-- [What lands next](#-what-lands-next)
 - [Sources](#-sources)
 
 ## 🎯 What the feature is for
@@ -379,6 +379,27 @@ is what turns `[discover].min_similarity`'s "0.35 is a starting point,
 not a measurement" into a measurement; re-run the script after every
 knob change and quote the numbers in the PR that moves the knob.
 
+## 🖼 The graph page
+
+`chitragupta corpus discover --html topics.html` writes the whole graph
+as **one static file**: inline CSS and JavaScript, the data embedded as
+a JSON island (with `<` escaped, so no topic label can close the script
+tag early), and no reference to the network anywhere -- the page keeps
+working from `file://` after the corpus that produced it has moved on.
+Topics sit on a circle (a deliberate non-choice of force layout: at
+tens of topics a circle is legible, renders identically every run, and
+costs no physics code), overlap edges drawn solid and semantic edges
+dashed, seed topics green and emergent blue; clicking a topic opens its
+papers, both linked-topic lists with their evidence, and the stored
+hierarchy is a collapsible tree. It is a pure renderer of the same
+artefacts `--json` reads, so the page cannot disagree with the
+terminal.
+
+One deviation from the plan, recorded there too: the plan named a
+`discover graph` subcommand, but the reader's positional argument is a
+free phrase, and a reserved word would shadow any topic literally
+labelled "graph" -- so it shipped as the `--html` flag.
+
 ## 🚫 Alternatives considered
 
 Recorded so each is not re-proposed as an oversight; the longer
@@ -397,13 +418,6 @@ versions are in `plans/g5-topic-discovery.md`.
 | LLM query expansion before retrieval | The one part of the borrowed fusion pattern that needs a generative model at query time |
 | Citation-count priors on members (OpenScholar uses one) | Needs an external API per query; the `.bib` is a closed universe by design |
 | Abstractive topic summaries | The same failure class as a fabricated citekey; discovery output is extractive or it is not emitted |
-
-## ▶ What lands next
-
-G9 adds the self-contained HTML graph page over the same JSON the CLI
-emits -- both edge families visually distinct, a per-topic ego view,
-and the stored hierarchy as a tree -- and updates this document when it
-lands.
 
 ## 📚 Sources
 

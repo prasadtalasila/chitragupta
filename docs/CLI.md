@@ -557,6 +557,7 @@ relation and each resolution rung is computed.
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
+| `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit |
 
 ```bash
 chitragupta corpus discover
@@ -564,6 +565,7 @@ chitragupta corpus discover
 # chitragupta corpus discover "cyber replica" --json
 # chitragupta corpus discover "digital twin" --out overview.md
 # chitragupta corpus discover --paper kritzinger_digital_2018
+# chitragupta corpus discover --html topics.html
 ```
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,

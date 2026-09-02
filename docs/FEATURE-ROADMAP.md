@@ -824,16 +824,18 @@ someone reading step 7 and assuming it is outstanding.
 
 ## 🏷 Theme G: topic modelling
 
-**Mostly built, and the built half reads differently from A-F above**:
-a record of what landed and the evidence behind each decision.
+**The one theme here that is entirely built**, which is why it reads
+differently from A-F above: not a list of what to build next, but a
+record of what landed and the evidence behind each decision.
 [#287](https://github.com/prasadtalasila/chitragupta/pull/287) shipped
-the mechanism, and G1-G4 -- issues
+the mechanism; G1-G4 -- issues
 [#297](https://github.com/prasadtalasila/chitragupta/issues/297)-[#300](https://github.com/prasadtalasila/chitragupta/issues/300),
-closed 2026-08-21 -- closed every gap it left open. What remains is the
-**discovery** half, G5-G9 below: reading what the model produced was
-never built, and `content/topic_set.json` shipped without a consumer.
-`plans/g5-topic-discovery.md` governs the design of all five;
-[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) documents each as it lands.
+closed 2026-08-21 -- closed every gap it left open; and the
+**discovery** half, G5-G9 (`plans/g5-topic-discovery.md` governs the
+design), closed the last one: `content/topic_set.json` had shipped
+without a consumer, and [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) now
+documents the graph stage, the `corpus discover` reader, its precision
+tier, the gold-set benchmark and the HTML graph page that read it.
 The evidence -- which published finding argued for
 each decision, and which measurement on this project's own corpus
 confirmed or contradicted it -- is in
@@ -861,20 +863,6 @@ this.
 | A reader | `chitragupta corpus topics`, tier 1: no venv, no GPU. Ends with the papers no seed matched |
 | A converged topic set | `content/topic_set.json` joins seed and emergent topics into one artefact -- an emergent topic within `topic_converge_similarity` of a seed phrase is renamed by it rather than listed beside it, with the closest match winning each side of the collision ([#299](https://github.com/prasadtalasila/chitragupta/issues/299)) |
 
-### 🕸 G9: topic discovery -- what remains after the reader shipped
-
-One design, one plan (`plans/g5-topic-discovery.md`, which governs --
-this entry is the ticket, not a second specification). G5 (the
-`topic-graph` stage), G6 (`corpus discover`, the reader), G7 (its
-precision tier) and G8 (the gold-set benchmark) have shipped and left
-this document per the rule above; what they became is in
-[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md). One PR remains:
-
-- **G9, HTML graph view**: one self-contained page (inline data and
-  script, no CDN, no server) rendering the same JSON the CLI emits --
-  both edge families visually distinct, per-topic ego view, the
-  hierarchy as a tree. Size M.
-
 ### 🚫 What Theme G is deliberately not doing
 
 | Not proposed | Why |
@@ -899,12 +887,7 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [G9](#-g9-topic-discovery----what-remains-after-the-reader-shipped) HTML graph view | G | M | G6 (shipped) |
-| 2 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
-
-G9 leads not because D5 lost value but because it closes a design
-already governed by a written plan, and interleaving an unrelated PR
-into the sequence buys nothing.
+| 1 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -932,9 +915,10 @@ argument.** Check a new proposal against both before costing it.
 
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
-design is genuinely underdetermined: G9 shares
-`plans/g5-topic-discovery.md`, which governs them. **D5 alone has
-none**, which is a statement about it rather than a gap: its entry
+design is genuinely underdetermined -- `plans/g5-topic-discovery.md`,
+which governed the shipped G5-G9 sequence, is the recent worked
+example. **D5, the one item still listed, has none**,
+which is a statement about it rather than a gap: its entry
 already names its files, its size and its dependencies, and for a
 mechanical change that is the whole plan. `plans/README.md` has the
 three tests for when a plan earns its place. That directory does not
@@ -958,13 +942,10 @@ recorded in a plan file is not repeated here, and the two cannot drift.
 B5's entry said so explicitly for as long as it was here, and
 `plans/b5-pregate-self-feedback.md` is the worked example.
 
-**Neither the leading PR nor any other item here needs a decision or a
-new dependency.** G9's design questions are settled in its plan,
-and their heaviest ingredient (`sentence_transformers.CrossEncoder`) is
-already in the enrich group. D5 is two arithmetic checks over TikZ
-source `review figure` already parses -- a node's final point size, and
-a declared colour pair a greyscale print cannot separate. No model, no
-new package, and no decision from anyone.
+**The leading PR needs no decision and no new dependency.** D5 is two
+arithmetic checks over TikZ source `review figure` already parses -- a
+node's final point size, and a declared colour pair a greyscale print
+cannot separate. No model, no new package, and no decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 
