@@ -2,9 +2,9 @@
 
 Status: **built.** Written 2026-09-02; closed the same day by the
 five-PR sequence it prescribed -- PR #557 (G5, the `topic-graph`
-stage), PR #558 (G6, `corpus discover`), then G7 (precision tier),
-G8 (gold-set benchmark) and G9 (the HTML page), the last landing with
-this line.
+stage), PR #558 (G6, `corpus discover`), PR #559 (G7, the precision
+tier), PR #562 (G8, the gold-set benchmark) and PR #564 (G9, the HTML
+page), the last landing with this line.
 Two things changed on the way: the hierarchy moved from
 `bertopic.hierarchical_topics()` to a scipy linkage over topic
 centroids (the fitted model is never persisted, and linkage covers seed
