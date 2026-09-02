@@ -510,7 +510,7 @@ class TestBuildSection:
                     "volume": "3",
                     "number": "2",
                     "pages": "11--20",
-                    # Dropped by ledger_upsert._BIB_FIELDS_KEPT rather than formatted.
+                    # Dropped by ledger_bib_fields._BIB_FIELDS_KEPT rather than formatted.
                     "abstract": "Not part of a reference entry.",
                 },
             ),

@@ -102,7 +102,7 @@ def format_entry(citekey: str, title: str, year: str, fields: dict[str, str]) ->
     """One IEEE-style bibliography entry, without its "[n] " number.
 
     `fields` is the ledger's `bib_fields` for this citekey (see
-    ledger_upsert._BIB_FIELDS_KEPT), and may be empty -- a row synced before that
+    ledger_bib_fields._BIB_FIELDS_KEPT), and may be empty -- a row synced before that
     column existed, or an entry that genuinely carries nothing but a
     title. The entry then degrades to title and year rather than failing:
     a thinner reference is still a true one, and `sync` is what fixes it.

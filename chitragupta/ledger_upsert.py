@@ -2,11 +2,16 @@
 `chitragupta/ledger.py`'s `upsert_reference` used to hold directly.
 
 Split from `chitragupta/ledger.py` (#441): `upsert_reference`, the
-status-transition logic in `_next_status`, the PDF stat-before-hash check
-(module docstring), and the `bib_fields`/`collections` JSON encoding form
-one self-contained unit that never touches the schema, the migrations, or
-the read-only status queries the rest of `ledger.py` still holds -- none
-of it is called from anywhere else in that module.
+status-transition logic in `_next_status` and the PDF stat-before-hash
+check (module docstring) form one self-contained unit that never touches
+the schema, the migrations, or the read-only status queries the rest of
+`ledger.py` still holds -- none of it is called from anywhere else in
+that module.
+
+The `bib_fields`/`collections` JSON encoding came along in that split and
+left again in issue #556's, once this module crossed the 250-code-line
+ratchet: `chitragupta/ledger_bib_fields.py` holds it now, and that
+module's docstring has why.
 
 `upsert_reference` stays reachable as `ledger.upsert_reference`, via a
 module-level re-export in `ledger.py`, the same shape
@@ -18,7 +23,6 @@ sites, none of which had to change.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 import sqlite3
@@ -26,7 +30,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from chitragupta import config, passages
+from chitragupta import config, ledger_bib_fields, passages
 
 if TYPE_CHECKING:
     # Only for the upsert_reference type hint -- citation_gate.py imports
@@ -59,69 +63,7 @@ def _stat_pdf(path: str) -> tuple[int, int]:
     return st.st_size, st.st_mtime_ns
 
 
-# Fields carried over verbatim from the BibTeX entry into the bib_fields
-# column (chitragupta/ledger.py's _MIGRATIONS version 3), for chitragupta/references.py to
-# format a full bibliography entry from. Deliberately a fixed allowlist
-# rather than the whole entry dict: a reference manager's export carries
-# per-host noise (`file` paths, `abstract`, `keywords`, timestamps,
-# arbitrary `note` fields) that nothing formats and that would churn the
-# ledger on every re-export. `title`/`year`/`doi` are omitted -- they have
-# real columns.
-_BIB_FIELDS_KEPT = (
-    "author",
-    "editor",
-    "journal",
-    "journaltitle",
-    "booktitle",
-    "series",
-    "volume",
-    "number",
-    "pages",
-    "publisher",
-    "institution",
-    "school",
-    "address",
-    "location",
-    "edition",
-    "howpublished",
-    "organization",
-    "eprint",
-    "eprinttype",
-    "archiveprefix",
-    "primaryclass",
-)
-
-
-def _collections_json(ref: Reference) -> str | None:
-    """`ref`'s Zotero collection paths as a JSON array, or None for no rows.
-
-    None rather than `"[]"` so a library exported without Better BibTeX's
-    JabRef fields leaves the column NULL rather than writing an empty
-    array into every row -- the two mean the same thing to a reader, and
-    NULL is what a pre-migration row already holds.
-    """
-    return json.dumps(list(ref.collections)) if ref.collections else None
-
-
-def _bib_fields_json(ref: Reference) -> str | None:
-    """`ref`'s formatting-relevant BibTeX fields as a JSON object.
-
-    Returns None (SQL NULL) when the entry has none of them, so "this
-    entry genuinely carries no author or venue" and "this row predates
-    the column" read the same to references.py -- both fall back to the
-    title/year columns, which is the same output either way.
-    """
-    kept = {
-        key: value
-        for key, value in ref.fields.items()
-        if key.lower() in _BIB_FIELDS_KEPT and str(value).strip()
-    }
-    # sort_keys so a re-sync of an unchanged entry writes a byte-identical
-    # value rather than reordering it with the export's dict order.
-    return json.dumps(kept, sort_keys=True) if kept else None
-
-
-def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | None]:
+def _pdf_identity(ref: Reference, row, on_missing_pdf) -> tuple[int | None, int | None, str | None]:
     """`(size, mtime_ns, hash)` for this reference's PDF, or all-`None`
     when there is nothing readable behind `ref.pdf_path`."""
     if not ref.pdf_path:
@@ -147,16 +89,24 @@ def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | No
     # open instead, and a half-filled answer (a size with no hash) is a
     # state `_next_status` has no branch for.
     #
-    # What this does *not* reach is `sync`'s printed tally, and the
-    # `logger.warning` below is why that was accepted rather than
-    # papered over. `sync_decide._to_parse` counts the no-PDF case off
-    # `ref.pdf_path`, which is still set here -- so the summary line
-    # files this document under "unchanged" and the run can still exit
-    # 0. Correcting that needs `upsert_reference` to return more than
-    # `needs_parse`, i.e. every call site changed, for a summary count;
-    # the per-document WARNING in logs/pipeline.log is where sync's
-    # per-document reporting lives anyway, and the row itself is
-    # accurate (`no_pdf`, re-parsed on the run after the file returns).
+    # `on_missing_pdf` is how this reaches `sync`'s printed tally and
+    # exit code (issue #556): without it the run reported the document
+    # as "unchanged" and exited 0, because `sync_decide` decides the
+    # no-PDF case from `ref.pdf_path`, which is still set here. A
+    # callback rather than a wider return type, because the *policy* --
+    # which counter, which label, which exit code -- belongs to
+    # `sync_decide`, and because widening `needs_parse` would have
+    # changed every call site (250-odd, nearly all of them tests) to
+    # carry a value one caller wants.
+    #
+    # It is handed the exception, not just a signal, and that is
+    # load-bearing rather than a courtesy: this catches every `OSError`,
+    # so the cause may be a permission or an I/O error rather than a
+    # missing file, and those are different diagnoses with different
+    # remedies. `sync_decide._lost_pdf_reason` is what tells them apart,
+    # off the exception's type -- so a signal alone would have forced
+    # every cause into one reason and one piece of wrong advice. Which
+    # is what the first version of this did, until review caught it.
     try:
         pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
         stat_unchanged = (
@@ -172,6 +122,8 @@ def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | No
         return pdf_size, pdf_mtime_ns, (row[0] if stat_unchanged else _hash_pdf(ref.pdf_path))
     except OSError as exc:
         logger.warning("no-pdf  %s: %s", ref.citekey, exc)
+        if on_missing_pdf is not None:
+            on_missing_pdf(exc)
         return None, None, None
 
 
@@ -209,7 +161,11 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
 
 
 def upsert_reference(
-    con: sqlite3.Connection, ref: Reference, force: bool = False, commit: bool = True
+    con: sqlite3.Connection,
+    ref: Reference,
+    force: bool = False,
+    commit: bool = True,
+    on_missing_pdf=None,
 ) -> bool:
     """Insert or update a reference's bibliographic fields.
 
@@ -224,6 +180,12 @@ def upsert_reference(
     The default stays `True` so a caller that does one upsert (every
     test here, and any future ad-hoc use) is unchanged; `sync_decide`
     passes `False` and commits once around its whole loop.
+    `on_missing_pdf`, when given, is called with the `OSError` if
+    `ref.pdf_path` was set and could not be read (issue #556). Optional
+    for the same reason `commit` has a default: it exists for the one
+    caller that reports a run, and every other call site stays as it
+    was. `_pdf_identity` has why the signal is a callback rather than a
+    wider return type.
     """
     now = datetime.now(timezone.utc).isoformat()
 
@@ -233,7 +195,7 @@ def upsert_reference(
         (ref.citekey,),
     ).fetchone()
 
-    pdf_size, pdf_mtime_ns, pdf_hash = _pdf_identity(ref, row)
+    pdf_size, pdf_mtime_ns, pdf_hash = _pdf_identity(ref, row, on_missing_pdf)
 
     needs_parse = False
     if force and pdf_hash is not None:
@@ -266,8 +228,8 @@ def upsert_reference(
                 pdf_mtime_ns,
                 status,
                 now,
-                _bib_fields_json(ref),
-                _collections_json(ref),
+                ledger_bib_fields.bib_fields_json(ref),
+                ledger_bib_fields.collections_json(ref),
             ),
         )
     else:
@@ -303,8 +265,8 @@ def upsert_reference(
                 pdf_mtime_ns,
                 new_status,
                 now,
-                _bib_fields_json(ref),
-                _collections_json(ref),
+                ledger_bib_fields.bib_fields_json(ref),
+                ledger_bib_fields.collections_json(ref),
                 parsed_path,
                 ref.citekey,
             ),

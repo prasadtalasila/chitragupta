@@ -5,11 +5,14 @@ Split from `chitragupta/overlap_index.py` (#441). Deliberately not
 `chitragupta/ledger.py::connect()`: that runs the schema, migrations and
 a commit -- a writer, which contradicts this module's "no writer lock"
 contract (see `chitragupta/overlap_index.py`'s own module docstring).
-Opened read-only for the same reason `chitragupta/ledger_cli.py`'s own
-CLI (`ledger_cli.main`) is, though no longer with the same `timeout`:
-that CLI waits out a writer's commit window since m-72, and this path
-still raises `SQLITE_BUSY` out of whichever query it was in the middle
-of. See issue #552.
+Opened read-only, and with sqlite's default `timeout` rather than 0,
+for the same two reasons `chitragupta/ledger_cli.py`'s own CLI
+(`ledger_cli.main`) is. The ledger has no `journal_mode = WAL`, so a
+reader is locked out for the length of a writer's commit, and a zero
+timeout turned that short, certain window into a `SQLITE_BUSY` raised
+out of whichever query this was in the middle of -- on a path a review
+aid reaches while a sync may well be running (m-72, issue #552).
+Waiting takes no lock, so it does not compromise the contract above.
 """
 
 import sqlite3
@@ -21,7 +24,7 @@ from chitragupta import config
 def _ledger_connect_ro() -> "sqlite3.Connection | None":
     if not config.LEDGER_PATH.exists():
         return None
-    return sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=0)
+    return sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
 
 
 def ledger_item(citekey: str) -> "tuple[str, str] | None":

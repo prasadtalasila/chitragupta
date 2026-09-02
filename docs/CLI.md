@@ -453,9 +453,42 @@ chitragupta corpus sync
 # chitragupta corpus sync --remove-stale
 # chitragupta corpus sync --reparse --remove-stale
 
-# Exit codes: 0 = clean, 1 = at least one parse failed,
+# Exit codes: 0 = clean, 1 = the corpus has a hole in it,
 #             2 = another run holds the lock.
 ```
+
+**What "a hole in it" means, since the exit code is the whole API an
+unattended caller has.** `sync` exits 1 when this run had a parse
+failure, when a previous run left a deterministic one (not retried, so
+it stays nonzero until you deal with it), when the parse backend was
+unavailable, when the bib file yielded no references against a
+non-empty ledger -- and **when a PDF the bib file points at cannot be
+read**, whether because it is not on disk or because this host cannot
+open it. That last one is the newest, and the GitHub Release that
+introduced it says which version; this page deliberately does not,
+because a "since x.y.z" here is a second place the number has to be
+right and the release notes are the first.
+
+Those last two used to exit 0, reported only in the summary's `no-PDF
+breakdown` line, which made them invisible to precisely the caller that
+cannot read a summary (issue #556). They are the only no-PDF reasons
+that gate the code:
+
+| `no-PDF breakdown` reason | Exit | Why |
+| --- | --- | --- |
+| `PDF path no longer exists on disk` | **1** | The bib file claims a PDF the disk does not have. `chitragupta/bib_reader.py` calls it "a silent data-loss failure". Fix the path, or drop the `file` field |
+| `PDF is on disk but could not be read` | **1** | Permissions, or a failing device. The file is there, so fixing the path is *not* the remedy -- check the mode, the mount, the disk |
+| `no file field in bib entry` | 0 | An item with no attachment saved. An ordinary state of a bibliography |
+| `non-PDF attachment only` | 0 | Typically an HTML snapshot saved instead of the PDF. Invisible to retrieval, but not a hole |
+| `malformed file field` | 0 | This project could not parse the `file` field's `Desc:path:mimetype` shape |
+
+The split is by *remedy*: the first two mean a document the corpus was
+promised and did not get, and the run must not report success. The other
+three mean an item that never had a PDF here.
+
+If a stale path in your bib file is expected and you would rather the
+scheduled run stayed green, fix the path or drop the `file` field --
+there is deliberately no flag to suppress it.
 
 ### ♻ When `sync` re-parses a document it already parsed
 
@@ -2515,8 +2548,8 @@ command that started it is spelled -- and either layer can be narrowed
 back out:
 
 ```bash
-grep 'src\.sync' logs/pipeline.log      # just the corpus layer
-grep 'src\.enrich' logs/pipeline.log    # just the enrichment layer
+grep 'chitragupta\.sync' logs/pipeline.log      # just the corpus layer
+grep 'chitragupta\.enrich' logs/pipeline.log    # just the enrichment layer
 ```
 
 The interleaved view is often the useful one, though, since the

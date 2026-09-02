@@ -10,7 +10,17 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import bib_reader, config, ledger, pdf_text, runlock, sync, sync_pool
+from chitragupta import (
+    bib_reader,
+    config,
+    ledger,
+    ledger_upsert,
+    pdf_text,
+    runlock,
+    sync,
+    sync_decide,
+    sync_pool,
+)
 from tests.conftest import make_reference
 
 
@@ -508,7 +518,9 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        assert rc == 0
+        # 1, not 0, since issue #556: one of these four reasons is
+        # `pdf_path_gone`, which now gates the exit code.
+        assert rc == 1
         assert "4 without a PDF attachment" in out
         assert "no-pdf  no_file_field_2024: no file field in bib entry" in out
         assert "no-pdf  pdf_gone_2024: PDF path no longer exists on disk" in out
@@ -520,6 +532,152 @@ class TestRun:
             "1 non-PDF attachment only (e.g. an HTML snapshot), "
             "1 malformed file field (couldn't parse mime/path)"
         ) in out
+
+    def test_only_a_gone_pdf_makes_the_run_nonzero(self, isolated_config, capsys):
+        """Issue #556 gates the exit code on `pdf_path_gone` alone, not on
+        `tally.no_pdf`. The other three reasons are ordinary states of a
+        bibliography -- an item with no attachment saved, an HTML-only
+        snapshot, a `file` field this project cannot parse -- and a corpus
+        full of them is not a corpus with a hole in it. Only the reason
+        `bib_reader` itself calls "a silent data-loss failure" is."""
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@misc{no_file_field_2024,
+  title = {No File Field At All},
+}
+
+@article{html_only_2024,
+  title = {Only An HTML Snapshot},
+  author = {Doe, John},
+  year = {2024},
+  file = {page.html:page.html:text/html},
+}
+
+@article{malformed_2024,
+  title = {Malformed File Field},
+  author = {Roe, Jan},
+  year = {2024},
+  file = {just-a-filename-no-colons},
+}
+""",
+        )
+        (isolated_config.BIB_FILE_PATH.parent / "page.html").write_text("<html></html>")
+
+        rc = sync.run()
+
+        assert rc == 0
+        assert "3 without a PDF attachment" in capsys.readouterr().out
+
+    def test_a_pdf_that_vanishes_after_the_bib_was_read_reports_as_gone(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """Issue #556. #553 made this race non-fatal, but the report did
+        not follow: `sync_decide` decides the no-PDF case from
+        `ref.pdf_path`, which is still set for a file that went away
+        *after* `bib_reader` looked -- so the document was filed under
+        "unchanged" and the run exited 0. It is the same condition
+        `bib_reader` already reports as `pdf_path_gone`, only detected a
+        moment later, so it now reports as that and nothing new."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{vanishing_paper_2024,
+  title = {A Paper Whose File Vanishes Mid-Run},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        # The race itself, made deterministic: `bib_reader` resolved the
+        # path against a file that was there, and it is gone by the time
+        # the upsert stats it.
+        # `FileNotFoundError`, spelled out, because that is what a real
+        # `os.stat` raises and because `_lost_pdf_reason` classifies on
+        # the type. `OSError(2, ...)` would work too -- CPython selects
+        # the subclass from the errno -- but relying on that makes a
+        # reader check a rule to see what is being simulated.
+        def gone(path):
+            raise FileNotFoundError(2, "No such file or directory", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", gone)
+
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert "0 unchanged" in out  # the miscount this closes
+        assert "1 without a PDF attachment" in out
+        assert "no-pdf  vanishing_paper_2024: PDF path no longer exists on disk" in out
+        assert "no-PDF breakdown: 1 PDF path no longer exists on disk" in out
+        assert rc == 1
+
+    def test_an_unreadable_pdf_is_not_reported_as_a_missing_one(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """The reason is classified on the exception's type, not on "any
+        `OSError` means gone". A PDF that is present but unreadable -- no
+        permission, a failing device -- reported as "no longer exists on
+        disk" sends the reader after the one remedy that cannot help,
+        since the path is fine. Both still exit 1: both are documents the
+        corpus was promised and did not get."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{unreadable_paper_2024,
+  title = {A Paper This Host Cannot Open},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        def denied(path):
+            raise PermissionError(13, "Permission denied", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", denied)
+
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert "could not be read" in out
+        assert "no longer exists on disk" not in out
+        assert rc == 1
+
+    def test_a_path_component_that_is_not_a_directory_reads_as_gone(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """`ENOTDIR` rides with the missing-file case: nothing is at that
+        path either, which is what that label claims."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{not_a_dir_2024,
+  title = {A Paper Behind A File Pretending To Be A Directory},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        def not_a_dir(path):
+            raise NotADirectoryError(20, "Not a directory", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", not_a_dir)
+
+        assert sync.run() == 1
+        assert (
+            "no-pdf  not_a_dir_2024: PDF path no longer exists on disk" in capsys.readouterr().out
+        )
 
     def test_no_pdf_breakdown_omitted_when_everything_resolves(
         self, basic_corpus, monkeypatch, capsys
@@ -597,6 +755,46 @@ class TestRun:
         finally:
             con.close()
         assert rows["smith_example_2024"]["status"] == "discovered"
+
+
+class TestLostPdfReason:
+    """`sync_decide._lost_pdf_reason`, on its own rather than through a
+    run: which no-PDF reason an unreadable `ref.pdf_path` reports as. The
+    distinction matters because the two reasons carry different remedies
+    and both gate the exit code (issue #556)."""
+
+    @pytest.mark.parametrize(
+        "exc, expected",
+        [
+            (FileNotFoundError(2, "No such file or directory"), bib_reader.PDF_PATH_GONE),
+            (NotADirectoryError(20, "Not a directory"), bib_reader.PDF_PATH_GONE),
+            (PermissionError(13, "Permission denied"), bib_reader.PDF_UNREADABLE),
+            (OSError(5, "Input/output error"), bib_reader.PDF_UNREADABLE),
+            (OSError("no errno at all"), bib_reader.PDF_UNREADABLE),
+        ],
+    )
+    def test_it_classifies_on_the_exception_type(self, exc, expected):
+        assert sync_decide._lost_pdf_reason(exc) == expected
+
+    def test_an_errno_built_oserror_lands_where_its_subclass_does(self):
+        """Worth pinning because it surprised a reviewer: `OSError(2,
+        ...)` is not a plain `OSError`. CPython selects the subclass from
+        the errno, so it arrives here already a `FileNotFoundError` and
+        classifies as gone. A caller that builds its errors that way --
+        or a library that does -- gets the right reason without knowing
+        this function exists."""
+        built = OSError(2, "No such file or directory", "/nope.pdf")
+        assert isinstance(built, FileNotFoundError)
+        assert sync_decide._lost_pdf_reason(built) == bib_reader.PDF_PATH_GONE
+
+    def test_every_reason_it_can_return_has_a_label_and_gates_the_exit(self):
+        """Neither list may drift from the other: a reason with no label
+        raises `KeyError` in `sync_decide`'s own print, and one missing
+        from `PDF_LOST_REASONS` would report the hole and still exit 0 --
+        the exact defect #556 was filed for."""
+        returnable = {bib_reader.PDF_PATH_GONE, bib_reader.PDF_UNREADABLE}
+        assert returnable <= set(bib_reader.PDF_RESOLUTION_LABELS)
+        assert returnable == set(bib_reader.PDF_LOST_REASONS)
 
 
 class TestCliEntrypoint:

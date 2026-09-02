@@ -250,9 +250,26 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     # ledger) is included for the same reason: sync's exit code is an
     # unattended caller's only documented API (docs/CLI.md), so a broken
     # export must not read as "clean" indefinitely.
+    #
+    # `bib_reader.PDF_LOST_REASONS` joins them for that same reason
+    # (issue #556): a PDF this export claims and this host cannot
+    # produce -- gone, or present and unreadable -- is a document
+    # silently missing from the corpus, and reporting it in the summary
+    # while exiting 0 made it silent to exactly the caller that cannot
+    # read a summary. Gated on those reasons rather than on
+    # `tally.no_pdf`, because the other three describe an item that
+    # never had a PDF here: an ordinary state of a bibliography, not a
+    # hole. That list lives in `bib_reader` beside the reasons
+    # themselves, so adding a reason cannot silently miss this gate.
     return (
         1
-        if (tally.failed or tally.backend_unavailable or kinds["deterministic"] or suspicious)
+        if (
+            tally.failed
+            or tally.backend_unavailable
+            or kinds["deterministic"]
+            or suspicious
+            or any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS)
+        )
         else 0
     )
 

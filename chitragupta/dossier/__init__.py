@@ -186,11 +186,26 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
     nothing here goes through it, and `chitragupta.retrieval.search()`, which
     does, is off limits for the same reason (see `_ephemeral_index`).
 
-    `timeout=0` is deliberately *not* what that CLI now does, and the
-    difference is not an improvement here: since m-72 the CLI waits out a
-    writer's commit window, where this path still gives up on the spot
-    and returns `None`, which the caller reads as "no readable ledger"
-    rather than "a sync was committing". See issue #552.
+    The `timeout` is sqlite's own default rather than 0, matching that
+    CLI, and here the reason is sharper than "the command dies" (issue
+    #552, m-72's other half). The ledger has no `journal_mode = WAL`, so
+    under the default rollback journal a reader is locked out for the
+    length of a writer's commit; `timeout=0` turned that short, certain
+    window into an immediate `SQLITE_BUSY`, which the `except` below
+    swallowed into `None` -- and every caller reads `None` as "there is
+    no readable ledger on this machine". So a `dossier status` that
+    happened to overlap a commit reported a drift scan against no corpus
+    at all, indistinguishable from a machine that has none. A loud
+    failure would have been better than that; waiting is better than
+    both, and takes no lock while it waits.
+
+    That is also why `None` is *still* the answer for a busy ledger
+    rather than a third state: with a timeout the case needs a commit
+    longer than five seconds to happen at all, and inventing a
+    "temporarily unavailable" return for every caller to learn would cost
+    more than the residue is worth. The residue is bounded and honest --
+    `Drift.corpus_available` reports "no corpus", which is unspecific
+    rather than wrong.
 
     Five columns rather than one because the drift scan needs the same
     fields `chitragupta.retrieval` indexes on plus the one `bib_collections`
@@ -204,7 +219,7 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
     if not config.LEDGER_PATH.exists():
         return None
     try:
-        con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=0)
+        con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
     except sqlite3.Error:
         return None
     try:

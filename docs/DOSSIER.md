@@ -413,12 +413,19 @@ has moved, and the command names the citekeys that appear nowhere in the
 dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
-The ledger is opened read-only with `timeout=0`. This is an inspection:
-it must not take a write lock or run a migration. `python -m
-chitragupta.corpus ledger` opens it read-only for the same reason but no
-longer with the same `timeout` -- it waits out a writer's commit window
-rather than giving up on the spot, and whether this path should do the
-same is [issue #552](https://github.com/prasadtalasila/chitragupta/issues/552).
+The ledger is opened read-only, exactly as `python -m
+chitragupta.corpus ledger` opens it. This is an inspection: it must not
+take a write lock or run a migration.
+
+**It does wait for a writer's commit, though, and that is not a
+contradiction.** The ledger uses SQLite's default rollback journal, under
+which a reader is locked out for the length of a commit. Until issue #552
+this path used a zero busy-timeout and swallowed the resulting
+`SQLITE_BUSY` into "there is no readable ledger" -- so a `dossier status`
+that happened to overlap a sync's commit reported a drift scan against no
+corpus at all, indistinguishable from a machine that has none. Waiting
+the window out takes no lock while it waits, so the "must not interfere"
+property is untouched and the answer is now the right one.
 
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers

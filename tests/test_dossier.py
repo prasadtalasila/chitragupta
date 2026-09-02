@@ -33,6 +33,7 @@ from chitragupta.dossier import (
     _sections,
     _status,
 )
+from tests.conftest import WRITE_LOCK_HOLD, read_under_a_held_write_lock
 
 
 def retrieval_cost(target):
@@ -617,6 +618,22 @@ class TestKnownCitekeys:
     def test_an_empty_ledger_is_a_set_not_none(self, isolated_config):
         _seed_ledger([])
         assert dossier.known_citekeys() == set()
+
+    def test_it_waits_out_a_writers_commit_window(self, isolated_config):
+        """Issue #552: `_corpus_rows` opened the ledger with `timeout=0`,
+        and wrapped its query in `except sqlite3.DatabaseError` -- so a
+        read landing inside a sync's commit window returned `None`, which
+        every caller reads as "there is no readable ledger". A `dossier
+        status` run that happened to overlap a commit therefore reported a
+        drift scan against no corpus at all, indistinguishable from a
+        machine that has none. Worse than the CLI's version of m-72,
+        which at least failed loudly."""
+        _seed_ledger(["a_one_2020", "b_two_2021"])
+
+        citekeys, waited = read_under_a_held_write_lock(dossier.known_citekeys)
+
+        assert citekeys == {"a_one_2020", "b_two_2021"}  # not None
+        assert waited >= WRITE_LOCK_HOLD / 2
 
     def test_the_digest_ignores_insertion_order(self):
         assert dossier.digest({"b", "a"}) == dossier.digest({"a", "b"})

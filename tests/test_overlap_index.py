@@ -8,7 +8,11 @@ import pytest
 
 from chitragupta import config, ledger, overlap_index, overlap_index_doc
 
-from tests.conftest import make_reference
+from tests.conftest import (
+    WRITE_LOCK_HOLD,
+    make_reference,
+    read_under_a_held_write_lock,
+)
 
 
 def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
@@ -230,6 +234,25 @@ class TestLedgerItem:
         pdf_hash, parsed_path = result
         assert pdf_hash
         assert Path(parsed_path) == parsed
+
+
+class TestLedgerItemUnderAWriteLock:
+    def test_it_waits_out_a_writers_commit_window(self, ledger_con, tmp_path):
+        """Issue #552, the other half: `_ledger_connect_ro` opened the
+        ledger with `timeout=0` too, so a read landing inside a sync's
+        commit window raised `SQLITE_BUSY` out of whichever query it was
+        in the middle of -- the same loud failure `ledger_cli` had before
+        m-72, on a path a review aid reaches while a sync may well be
+        running."""
+        parsed = _add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
+
+        result, waited = read_under_a_held_write_lock(
+            lambda: overlap_index.ledger_item("smith_2024")
+        )
+
+        assert result is not None
+        assert Path(result[1]) == parsed
+        assert waited >= WRITE_LOCK_HOLD / 2
 
 
 class TestBuildCorpusIndex:

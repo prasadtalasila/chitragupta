@@ -48,11 +48,33 @@ PDF_MALFORMED_FILE_FIELD = "malformed_file_field"
 PDF_PATH_GONE = "pdf_path_gone"
 PDF_NON_PDF_ATTACHMENT = "non_pdf_attachment"
 
+# The one reason in this set that `_resolve_pdf_path` never produces:
+# a PDF that is on disk and that this host cannot read anyway
+# (permissions, or a failing device). `chitragupta/sync_decide.py` is
+# what sets it, from the `OSError` `ledger_upsert` hands back when the
+# stat or the hash fails -- so it is only reachable once a run is
+# already under way, which is why the bib-read-time resolver has no
+# branch for it. It lives here rather than there because this is where
+# a reader looks for the set of reasons the no-PDF breakdown can report,
+# and a sixth one kept somewhere else would be found by nobody
+# (issue #556).
+PDF_UNREADABLE = "pdf_unreadable"
+
+# The reasons that mean the corpus has a hole in it, as opposed to an
+# item that never had a PDF on this host. `chitragupta/sync.py` gates its
+# exit code on these and not on the whole no-PDF count: an entry with no
+# attachment, an HTML-only snapshot and an unparseable `file` field are
+# ordinary states of a bibliography, where a PDF this export claims and
+# this host cannot produce is a document silently missing from the
+# corpus (issue #556).
+PDF_LOST_REASONS = (PDF_PATH_GONE, PDF_UNREADABLE)
+
 # Dict order doubles as the fixed, deterministic order sync.py's
 # no-PDF breakdown reports these in.
 PDF_RESOLUTION_LABELS = {
     PDF_NO_FILE_FIELD: "no file field in bib entry",
     PDF_PATH_GONE: "PDF path no longer exists on disk",
+    PDF_UNREADABLE: "PDF is on disk but could not be read (permissions, or an I/O error)",
     PDF_NON_PDF_ATTACHMENT: "non-PDF attachment only (e.g. an HTML snapshot)",
     PDF_MALFORMED_FILE_FIELD: "malformed file field (couldn't parse mime/path)",
 }
