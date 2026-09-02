@@ -94,7 +94,7 @@ logger = logging.getLogger("chitragupta.enrich.docling_parse")
 NO_PDF_SKIP = "skipped: no PDF to parse -- a URL-only bibliography entry"
 
 
-def _failure(doc: CorpusDoc, exc: Exception) -> str:
+def _failure_status(doc: CorpusDoc, exc: Exception) -> str:
     """The status a batch records for a document that did not parse."""
     # Decided from the document rather than from `exc`: parse_doc raises
     # for a caller that asked for this one document (`parse_doc(doc)`
@@ -357,6 +357,6 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
                 out_path = parse_doc(doc, cache=cache, converter=converter)
                 status[doc.citekey] = f"ok: {out_path}"
             except Exception as exc:  # noqa: BLE001  # report per-doc, don't abort the batch
-                status[doc.citekey] = _failure(doc, exc)
+                status[doc.citekey] = _failure_status(doc, exc)
     _save_cache(cache)
     return status
