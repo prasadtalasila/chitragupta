@@ -21,7 +21,8 @@ it resolves against the artefacts on disk and writes nothing unless
 `--out` names a file.
 
     python bench/topic_discovery_eval.py
-    python bench/topic_discovery_eval.py --gold content/topic_gold.toml --out bench/results/gold.json
+    python bench/topic_discovery_eval.py --gold content/topic_gold.toml \\
+        --out bench/results/gold.json
 
 What `self_check()` cannot see: a gold file whose expectations are
 themselves wrong, and any change in how the enrich stages *build* the
@@ -147,7 +148,9 @@ def main() -> int:
     args = parser.parse_args()
     self_check()
 
-    from chitragupta import config  # noqa: PLC0415
+    # Imported after self_check() and inside main(), like every bench
+    # script: config resolves PROJECT_ROOT from the cwd at import time.
+    from chitragupta import config
 
     gold_path = Path(args.gold) if args.gold else config.CONTENT_DIR / "topic_gold.toml"
     if not gold_path.exists():
