@@ -327,9 +327,11 @@ do*.
 
 **Every repair is verified before it is kept.** `python -m chitragupta.draft
 gate` and `python -m chitragupta.review verbatim recheck` both have to come back
-clean, the finding has to be gone, and the count of objective findings
-must not have risen. That last condition catches a rewrite that fixes its
-own finding by lifting from a different source.
+clean, the finding has to be gone, the count of objective findings must
+not have risen, and no *new* objective finding may have appeared. The
+last two conditions are not the same one twice: a rewrite that fixes its
+own finding by lifting from a different source leaves the count exactly
+where it was, and is caught only by being listed as new.
 
 Two attempts per finding, one pass per invocation. Every attempt is
 logged in `revisions.md` with its outcome, refusals included.

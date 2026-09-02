@@ -248,6 +248,14 @@ Accept the repair only if **all** of:
   unexpanded acronym or a `Just` raises the `prose` count, and the total
   rising is exactly what this check exists to catch, so the verbatim
   repair reverts even though it fixed its own finding;
+- **no item in the comparison's `new` carries `unattended: true`** --
+  the delta above is a total, and a total holds level when a repair
+  resolves its own finding and introduces a different objective one.
+  That edit is a swap, not a neutral outcome, and it reverts. Read
+  `new` as a list rather than inferring it from the count, which is
+  R4's own wording; a `new` item that is *not* unattended is reported
+  in step 7 for the human, not reverted, since surfaced classes were
+  never this skill's to act on;
 - **if the draft's dossier has a `math.md`**, a repaired quantity still
   matches it (docs/WRITING-STANDARDS.md §12) -- this skill is the
   likeliest of all of them to break that mapping and the least likely to

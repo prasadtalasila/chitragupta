@@ -1741,8 +1741,10 @@ reports `objective_before`, `objective_after` and `objective_delta`.
 quoted and cited is excluded, because converting a lift into a properly
 attributed quotation is one of the two repairs available, and it must not
 score as no improvement. A rewrite that resolves its own finding by
-lifting from a *different* source shows up as a `new` finding and a delta
-that did not fall, which is the case the count exists to catch.
+lifting from a *different* source shows up in `new`, and that list is
+what catches it: one finding resolved and one appearing leaves
+`objective_delta` at exactly 0, so a caller reading the delta alone
+cannot tell that repair from one that changed nothing.
 
 Every `tier: "embedding"` finding is excluded too (#500). That tier is
 advisory only -- its findings move with tier availability and the

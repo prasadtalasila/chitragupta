@@ -200,10 +200,30 @@ and different enough to be dangerous.
 | **Keep / discard / crash, one row per attempt** | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is. Not as a file: `revisions.md` already exists | R6 |
 | **Simplicity as the tie-breaker** | **Yes.** Where a deletion and a rewrite both pass, prefer the smaller diff. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already | R8 |
 | **Baseline first** | **Yes.** The agenda taken before the pass is that baseline | R9 |
-| **One scalar metric that must go down** | **Partly, and the gap is real.** The asymmetry is not boolean-versus-scalar but local-versus-global: `val_bpb` catches a regression *anywhere*, while a per-finding re-check cannot see that fixing one verbatim run introduced another | R4 |
+| **One scalar metric that must go down** | **Partly, and the gap is real -- in both directions.** The asymmetry is not boolean-versus-scalar but local-versus-global: `val_bpb` catches a regression *anywhere*, while a per-finding re-check cannot see that fixing one verbatim run introduced another. The scalar's own blind spot is the mirror image, and is why R4 reads both the count and the identity sets -- see below | R4 |
 | **A fixed per-iteration budget** | **No, and it is not needed.** Its experiments are competing alternatives on one leaderboard, so they must be comparable. Agenda items are independent repairs that do not compete | -- |
 | **A dedicated git branch, advanced or reset per experiment** | **No -- structurally unavailable.** `content/drafts/` and `content/dossiers/` are gitignored, so a user's drafts are not in git. What transfers is the *granularity*: one experiment reverts alone | R5 |
 | **"NEVER STOP"** | **No, and the opposite is correct here** | R7 |
+
+**On the scalar, and what a level count hides.** A total answers "is the
+draft worse?" and nothing finer. Fix one objective finding, introduce
+another, and the count is unchanged -- so an edit that swapped one
+defect for a different one is indistinguishable from an edit that
+changed nothing, and the swapped-in defect is kept. That is not a
+hypothetical about drafts; it is the ordinary experience of working on
+this repository's own code, where every "did I break something?" is
+answered by diffing a recorded per-test baseline rather than by reading
+a pass count, precisely because a total moves for reasons a name does
+not (`DEVELOPER-AGENTS.md`, "Baseline the suite before you edit").
+
+R4 therefore reads both, and the second half costs nothing to add: R2
+already requires every finding to carry an identity stable across runs,
+and `chitragupta/review/agenda/_recheck.py` already emits
+`resolved`/`persisting`/`new` matched on that id beside the count. The
+requirement was written against the count alone when neither existed.
+Keeping the count as well is deliberate -- it is the cross-class signal
+that catches a `verbatim-run` repair raising the `prose` count -- but a
+level count is no longer read as evidence that nothing regressed.
 
 **On never stopping.** It is the most quotable thing in `program.md` and
 the least transferable. A discarded training run costs five GPU-minutes
