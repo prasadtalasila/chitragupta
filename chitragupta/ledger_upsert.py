@@ -143,10 +143,22 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     return True
 
 
-def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = False) -> bool:
+def upsert_reference(
+    con: sqlite3.Connection, ref: Reference, force: bool = False, commit: bool = True
+) -> bool:
     """Insert or update a reference's bibliographic fields.
 
     Returns True if the PDF content is new/changed and needs (re-)parsing.
+
+    `commit=False` leaves the transaction open for the caller to close
+    (#511/m-75). Every row is rewritten on every run -- `last_synced`
+    always moves -- so a no-op sync over the 646-entry corpus this was
+    measured on was 646 separate fsync'd write transactions. It also
+    multiplied the windows in which the read-only inspector sees a
+    half-written ledger, which is the reason this matters beyond speed.
+    The default stays `True` so a caller that does one upsert (every
+    test here, and any future ad-hoc use) is unchanged; `sync_decide`
+    passes `False` and commits once around its whole loop.
     """
     now = datetime.now(timezone.utc).isoformat()
 
@@ -246,7 +258,8 @@ def upsert_reference(con: sqlite3.Connection, ref: Reference, force: bool = Fals
                 ref.citekey,
             ),
         )
-    con.commit()
+    if commit:
+        con.commit()
     return needs_parse
 
 

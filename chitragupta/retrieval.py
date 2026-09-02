@@ -40,6 +40,17 @@ cache. Building a snippet for the returned top-k still reads those
 surrounding text, not just term counts.
 """
 
+# The paragraph above is the *cross-run* half of "Scale": what survives
+# between processes, on disk. The within-run half lives in
+# `retrieval_cache._load_cache`, which memoizes the parsed index per
+# process on the file's `(path, size, mtime_ns)` -- 14 MB live on the
+# corpus this was measured against, and `deep-research` dispatches
+# several parallel subagents that each call `search()` more than once, so
+# re-parsing it per call was the largest fixed cost in a retrieval run
+# (#511/m-74). Said here as a comment rather than in the docstring above
+# because docs/CODE-STANDARDS.md's C2 counts docstring lines and this
+# module has two of headroom.
+
 import math
 import re
 import sqlite3

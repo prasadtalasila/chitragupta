@@ -930,3 +930,69 @@ class TestLogNeverFailsTheSearch:
         assert "a2024" in captured.out, "the retrieval results must still be printed"
         assert "[not logged]" in captured.err
         assert "No space left on device" in captured.err
+
+
+class TestTheIndexIsParsedOncePerProcess:
+    """m-74 (#511). `search()` json-parses the whole term-frequency index
+    -- 14 MB live on the corpus this was measured against -- and
+    deep-research dispatches several parallel subagents that each call it
+    more than once. Re-parsing per call is the single largest fixed cost
+    in a retrieval run and buys nothing, because within one process the
+    file only changes when `_save_cache` writes it."""
+
+    def test_a_second_load_does_not_reread_the_file(self, ledger_con, tmp_path, monkeypatch):
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text("digital twin content", encoding="utf-8")
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        retrieval.search("digital")
+
+        reads = []
+        real = retrieval_cache._read_cache_file
+        monkeypatch.setattr(retrieval_cache, "_read_cache_file", lambda: reads.append(1) or real())
+        retrieval_cache._load_cache()
+        retrieval_cache._load_cache()
+        assert reads == []
+
+    def test_a_rewrite_by_this_process_is_seen_without_a_reread(self, ledger_con, tmp_path):
+        """`_save_cache` refreshes the memo from what it just wrote, so
+        the next `_load_cache` neither re-parses nor serves the old
+        payload -- the two ways this could have gone wrong."""
+        config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
+        assert set(retrieval_cache._load_cache()) == {"a2024"}
+        retrieval_cache._save_cache({"b2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
+        assert set(retrieval_cache._load_cache()) == {"b2024"}
+
+    def test_a_rewrite_behind_this_modules_back_is_picked_up(self, tmp_path):
+        """The stamp is `(path, size, mtime_ns)`, so a file replaced by
+        something else -- another process, a test -- is re-read."""
+        config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
+        assert set(retrieval_cache._load_cache()) == {"a2024"}
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            json.dumps(
+                {
+                    "version": retrieval_cache._INDEX_SCHEMA_VERSION,
+                    "items": {"c2024": {"fingerprint": [], "length": 1, "term_freqs": {}}},
+                }
+            ),
+            encoding="utf-8",
+        )
+        retrieval_cache._forget_cache()
+        assert set(retrieval_cache._load_cache()) == {"c2024"}
+
+    def test_the_path_is_part_of_the_stamp(self, tmp_path, monkeypatch):
+        """Two trees' indexes can be the same size, and `mtime_ns` is not
+        a guarantee across filesystems. `config.RETRIEVAL_INDEX_PATH` is
+        not a constant across a test session, so it is in the key."""
+        config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
+        retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
+        first = retrieval_cache._index_stamp()
+        monkeypatch.setattr(config, "RETRIEVAL_INDEX_PATH", tmp_path / "elsewhere.json")
+        assert retrieval_cache._index_stamp() != first
+        assert retrieval_cache._load_cache() == {}
+
+    def test_an_absent_index_stamps_without_raising(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(config, "RETRIEVAL_INDEX_PATH", tmp_path / "never-written.json")
+        assert retrieval_cache._load_cache() == {}

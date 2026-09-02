@@ -78,12 +78,17 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
     declared = {table.line for table in tables}
     captions = {_tables.line_of(text, m.start()) for m in _CAPTION_RE.finditer(text)}
     heads = [_tables.line_of(text, m.start()) for m in _TABLE_HEAD_RE.finditer(text)]
+    # Split once, not per table (#511/m-77). Both uses below were
+    # `text.splitlines()` inside the loop, so the cost was O(document) per
+    # table -- on the 178k-word book this module was tuned against, that
+    # is the whole document re-split for every table in it.
+    lines = text.splitlines()
     found = []
     for index, line in enumerate(heads):
         # Bounded by the next table, or a bare table would count the
         # caption belonging to the captioned table three paragraphs below
         # it and report nothing at all.
-        next_head = heads[index + 1] if index + 1 < len(heads) else len(text.splitlines()) + 1
+        next_head = heads[index + 1] if index + 1 < len(heads) else len(lines) + 1
         following = {c for c in captions if line < c < next_head}
         if following & declared:
             continue
@@ -91,7 +96,7 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
             found.append(
                 _finding(
                     "no-id",
-                    text.splitlines()[line - 1].strip(),
+                    lines[line - 1].strip(),
                     min(following),
                     "this table's caption carries no `<!-- table: <id> -->` "
                     "marker under it, so no sentence can refer to it "
@@ -102,7 +107,7 @@ def _uncaptioned(text: str, tables: "list[_tables.Table]") -> "list[dict]":
             found.append(
                 _finding(
                     "no-caption",
-                    text.splitlines()[line - 1].strip(),
+                    lines[line - 1].strip(),
                     line,
                     "this table has no caption line, so it renders with no "
                     "number in every format (WRITING-STANDARDS.md §13).",

@@ -369,7 +369,9 @@ two documents.
 ```
 
 A dedicated sqlite file rather than the ledger itself, so holding the
-lock does not force the ledger's five commit points into one transaction.
+lock does not force the ledger's six commit points into one transaction
+([DESIGN.md](DESIGN.md) has where they are, and why the one that batches
+the bibliography-upsert loop still keeps finished rows on a crash).
 `BEGIN IMMEDIATE` takes a RESERVED lock, which does not block readers, and
 after `kill -9` it is released immediately — staleness handles itself,
 with no PID liveness check and no platform-specific code.

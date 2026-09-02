@@ -67,7 +67,11 @@ def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
     and `retrieval._bm25_scores` are pure, and the only thing that persists
     is `retrieval_cache`'s cache write between them. So this composes the
     same two halves and skips the middle -- seeding from the on-disk
-    cache where a fingerprint still matches (`_load_cache` only reads),
+    cache where a fingerprint still matches -- and `_load_cache` is only
+    ever *read* here, which is now a contract rather than an observation:
+    since #511/m-74 it returns a memoized, shared dict rather than a fresh
+    parse, and its docstring cites this module by name as one of the two
+    callers that may not mutate it --
     tokenizing the rest into memory, and never writing back. A warm cache
     makes this nearly free; a cold or absent one costs one tokenization
     of the corpus, paid once per scan and dropped when it returns.

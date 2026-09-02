@@ -268,3 +268,26 @@ class TestSourceSentences:
 
     def test_a_citekey_that_is_not_in_the_ledger_yields_nothing(self, ledger_con):
         assert overlap_segments.source_sentences(ledger_con, "ghost_2024") == []
+
+
+class TestTheWordIndexIsNotRebuiltPerSentence:
+    """m-76 (#511). `_one_sentence` rebuilt a list of every word's first
+    character from `word_spans` on every call -- once per sentence, and
+    the same list every time -- making the word-index lookup
+    O(words x sentences) before a single embedding had been computed.
+    `_word_range` now bisects `word_spans` directly through `key=`."""
+
+    def test_word_range_reads_the_spans_directly(self):
+        spans = [(0, 3), (5, 9), (11, 14), (20, 25)]
+        assert overlap_segments._word_range(spans, 0, 20) == (0, 3)
+        assert overlap_segments._word_range(spans, 5, 11) == (1, 2)
+
+    def test_an_offset_between_two_words_lands_on_the_later_one(self):
+        """The half-open contract `_one_sentence` relies on: an offset
+        inside the gap belongs to the next word, not the previous."""
+        spans = [(0, 3), (10, 13)]
+        assert overlap_segments._word_range(spans, 4, 14) == (1, 2)
+
+    def test_a_range_covering_nothing_is_empty(self):
+        spans = [(0, 3), (10, 13)]
+        assert overlap_segments._word_range(spans, 20, 30) == (2, 2)
