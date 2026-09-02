@@ -611,7 +611,7 @@ relation and each resolution rung is computed.
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
-| `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit |
+| `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit. Composes with `--json`, which reports the write as `{"written": FILE}` rather than as a sentence |
 
 ```bash
 chitragupta corpus discover
@@ -620,6 +620,7 @@ chitragupta corpus discover
 # chitragupta corpus discover "digital twin" --out overview.md
 # chitragupta corpus discover --paper kritzinger_digital_2018
 # chitragupta corpus discover --html topics.html
+# chitragupta corpus discover --html topics.html --json
 ```
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,
@@ -636,14 +637,22 @@ the semantic rung is skipped with a one-line note and resolution
 degrades to the lexical rungs. Exits `1` when the graph artefact is
 missing (naming the stage to run), when `--paper` names a citekey in no
 topic, when a phrase resolves nowhere and even the fallback finds
-nothing -- and when an `--out` file cannot be written. That last one is
-raised *after* the topic view has already printed, so it is the one
-`discover` failure where the command both answered the question and
-returned nonzero. A script driving `--out` therefore has to check the
-exit status: stdout carries the topic view either way, and the
+nothing -- and when an `--out` or `--html` file cannot be written. The
+`--out` one is raised *after* the topic view has already printed, so it
+is the one `discover` failure where the command both answered the
+question and returned nonzero. A script driving `--out` therefore has to
+check the exit status: stdout carries the topic view either way, and the
 plain-text line naming the path and the OS error goes to **stderr**, so
 `discover "x" --json --out FILE > view.json` leaves a valid JSON file
 even when the write fails.
+
+`--html`'s write failure goes to **stderr** too, and for the rule rather
+than for that reason: a failure line is diagnostics in either mode, so
+the stream does not depend on `--json`. What `--html` has instead of a
+printed view is nothing at all before the write, so a failed
+`discover --html FILE --json > out.json` leaves `out.json` empty and the
+exit status is the only thing to read. The success line is the half that
+does depend on the flag, because under `--json` it *is* the payload.
 
 ### ✅ `chitragupta draft gate`
 

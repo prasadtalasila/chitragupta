@@ -109,6 +109,18 @@ class TestCli:
         assert "digital twin" in text
         assert str(target) in capsys.readouterr().out
 
+    def test_html_under_json_emits_a_payload_rather_than_a_sentence(
+        self, isolated_config, tmp_path, capsys
+    ):
+        """`--json` means "stdout is a JSON document" on every other
+        discover invocation, and `--html` is one more view of the same
+        artefacts -- so the write is reported as a payload here too,
+        not as the prose line a caller cannot parse."""
+        prepare(isolated_config)
+        target = tmp_path / "topics.html"
+        assert discover.main(["--html", str(target), "--json"]) == 0
+        assert json.loads(capsys.readouterr().out) == {"written": str(target)}
+
     def test_missing_artefacts_refuse_with_the_stage_to_run(
         self, isolated_config, tmp_path, capsys
     ):
@@ -119,4 +131,25 @@ class TestCli:
         prepare(isolated_config)
         target = tmp_path / "no-dir" / "t.html"
         assert discover.main(["--html", str(target)]) == 1
-        assert str(target) in capsys.readouterr().out
+        streams = capsys.readouterr()
+        # The stream is pinned, not just the text, and unconditionally:
+        # a failure line is diagnostics in either mode, which is the rule
+        # _topic_view's --out write failure already follows. Reporting it
+        # on stdout in one mode and stderr in the other would be two
+        # rules for one module.
+        assert str(target) in streams.err
+        assert str(target) not in streams.out
+
+    def test_an_unwritable_target_under_json_keeps_prose_off_stdout(
+        self, isolated_config, tmp_path, capsys
+    ):
+        """The `--json` half of the rule above: nothing has reached stdout
+        by the time the write fails, so an empty stdout and a nonzero exit
+        is what the caller reads -- never a sentence in the stream they
+        opened expecting a document."""
+        prepare(isolated_config)
+        target = tmp_path / "no-dir" / "t.html"
+        assert discover.main(["--html", str(target), "--json"]) == 1
+        streams = capsys.readouterr()
+        assert streams.out == ""
+        assert str(target) in streams.err
