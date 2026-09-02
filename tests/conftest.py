@@ -293,3 +293,72 @@ def figure_pair(draft_dir, name="fig1"):
     (draft_dir / "figures" / f"{name}.tex").write_text(TIKZ_FIGURE)
     (draft_dir / "figures" / f"{name}.txt").write_text(ASCII_FIGURE)
     return draft_dir
+
+
+# How long `read_under_a_held_write_lock` holds the ledger's EXCLUSIVE
+# lock. Comfortably inside sqlite's 5s default busy timeout, so a reader
+# that waits recovers with room to spare, and long enough that half of it
+# is an unambiguous "this call blocked" on a loaded CI runner.
+WRITE_LOCK_HOLD = 0.5
+
+
+def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
+    """Run `read` while another connection holds the ledger's EXCLUSIVE
+    lock, release it after `hold` seconds, and return `(result, waited)`.
+
+    Shared by every read-only ledger path that has to survive a writer's
+    commit window -- `ledger_cli.main` (m-72), `dossier._corpus_rows` and
+    `overlap_index_ledger._ledger_connect_ro` (issue #552). One helper
+    rather than a copy of this thread dance in each of the three test
+    modules, which is the duplication `docs/CODE-STANDARDS.md` calls the
+    highest-value thing to catch.
+
+    A real held lock rather than an assertion about the `timeout`
+    argument, because the argument is not the claim; surviving the window
+    is. The ledger has no `journal_mode = WAL`, so under the default
+    rollback journal a reader really is locked out for the length of a
+    commit.
+
+    `waited` is what makes the returned result mean anything. A reader
+    that did not reach its query until after the rollback would succeed
+    without ever meeting a lock, and so would pass against the very
+    `timeout=0` these tests exist to reject; it cannot have returned
+    before the lock was released, so a call that took an appreciable
+    fraction of `hold` is one that blocked and recovered. The reader
+    signals just before it starts for the same reason.
+
+    Anything `read` raises is re-raised here rather than swallowed, so
+    the `timeout=0` case fails as the `sqlite3.OperationalError: database
+    is locked` it actually is instead of as a missing dict key.
+    """
+    import sqlite3
+    import threading
+    import time
+
+    writer = sqlite3.connect(config.LEDGER_PATH, isolation_level=None)
+    writer.execute("BEGIN EXCLUSIVE")
+    entered = threading.Event()
+    outcome = {}
+
+    def run():
+        entered.set()
+        start = time.monotonic()
+        try:
+            outcome["result"] = read()
+        except BaseException as exc:  # noqa: BLE001 -- re-raised below, not swallowed
+            outcome["error"] = exc
+        outcome["waited"] = time.monotonic() - start
+
+    reader = threading.Thread(target=run)
+    try:
+        reader.start()
+        assert entered.wait(timeout=30)
+        time.sleep(hold)
+    finally:
+        writer.execute("ROLLBACK")
+        writer.close()
+    reader.join(timeout=30)
+    assert not reader.is_alive()
+    if "error" in outcome:
+        raise outcome["error"]
+    return outcome["result"], outcome["waited"]

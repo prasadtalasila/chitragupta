@@ -274,8 +274,10 @@ reports on:
 - `search()` reaches the ledger through `ledger.connect()`, which mkdirs
   `content/`, executes the schema and runs migrations. That is a write
   connection, and the whole point of `status` opening the ledger
-  `mode=ro, timeout=0` is that an inspection must not take a write lock
-  or block behind a sync that is mid-run.
+  `mode=ro` is that an inspection must not take a write lock or run a
+  migration. (It *does* wait out a writer's commit window, since issue
+  #552 -- waiting takes no lock, and the alternative was reporting an
+  empty corpus. See [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)
 - `search()` builds its index through `retrieval._load_index`, which
   calls `_save_cache()` whenever any document's fingerprint has moved.
   After the sync that caused the drift being reported, that is not an

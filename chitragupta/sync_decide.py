@@ -37,11 +37,29 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
             # fsync'd write transactions on the corpus this was measured
             # against, and 646 windows in which the read-only inspector
             # could see a half-written ledger.
-            needs_parse = ledger.upsert_reference(con, ref, force=reparse, commit=False)
-            if not ref.pdf_path:
+            # `vanished` collects the OSError if the PDF `bib_reader`
+            # resolved has gone away since (issue #556). It is per
+            # reference, not per run, because it decides this
+            # reference's reason below.
+            vanished = []
+            needs_parse = ledger.upsert_reference(
+                con, ref, force=reparse, commit=False, on_missing_pdf=vanished.append
+            )
+            # `ref.pdf_resolution` was decided when `bib_reader` read the
+            # bib file, at which point this PDF was still there -- so a
+            # PDF that went away between then and the upsert's stat needs
+            # the reason it *would* have been given had it gone a moment
+            # earlier. That reason already exists: `pdf_path_gone` is the
+            # same condition, and bib_reader's own comment calls it "a
+            # silent data-loss failure, not a 'never had a PDF' one".
+            # Reporting it as that rather than as a new kind is what
+            # keeps one condition from having two names, and needs no new
+            # label, no new counter and no new line of output.
+            resolution = bib_reader.PDF_PATH_GONE if vanished else ref.pdf_resolution
+            if vanished or not ref.pdf_path:
                 tally.no_pdf += 1
-                tally.no_pdf_reasons[ref.pdf_resolution] += 1
-                label = bib_reader.PDF_RESOLUTION_LABELS[ref.pdf_resolution]
+                tally.no_pdf_reasons[resolution] += 1
+                label = bib_reader.PDF_RESOLUTION_LABELS[resolution]
                 print(f"  no-pdf  {ref.citekey}: {label}")
                 continue
             if not needs_parse:

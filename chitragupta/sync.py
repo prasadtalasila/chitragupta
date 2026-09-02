@@ -250,9 +250,27 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     # ledger) is included for the same reason: sync's exit code is an
     # unattended caller's only documented API (docs/CLI.md), so a broken
     # export must not read as "clean" indefinitely.
+    #
+    # `pdf_path_gone` joins them for that same reason (issue #556), and
+    # it is the *only* no-PDF reason that does. The other three -- no
+    # `file` field, a non-PDF attachment, a `file` field this project
+    # cannot parse -- describe an item that never had a PDF here, which
+    # is an ordinary state of a bibliography and not a hole in the
+    # corpus. This one describes a PDF the bib file still points at that
+    # is not on disk: `bib_reader`'s own comment calls it "a silent
+    # data-loss failure", and reporting it in the summary while exiting 0
+    # made it silent to exactly the caller that cannot read a summary.
+    # Gated on the reason, not on `tally.no_pdf`, so a corpus with
+    # HTML-only attachments still exits clean.
     return (
         1
-        if (tally.failed or tally.backend_unavailable or kinds["deterministic"] or suspicious)
+        if (
+            tally.failed
+            or tally.backend_unavailable
+            or kinds["deterministic"]
+            or suspicious
+            or tally.no_pdf_reasons[bib_reader.PDF_PATH_GONE]
+        )
         else 0
     )
 

@@ -314,8 +314,8 @@ min_tokens = 200
 # DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
 #
 # One file for both `python -m chitragupta.corpus sync` and `python -m chitragupta.enrich`: each
-# line names its source, so `grep 'src\.sync' logs/pipeline.log` splits
-# them back apart. The drafting-layer CLIs (chitragupta.draft gate/dossier/
+# line names its source, so `grep 'chitragupta\.sync' logs/pipeline.log`
+# splits them back apart. The drafting-layer CLIs (chitragupta.draft gate/dossier/
 # retrieve/references/render) print to stdout and are not logged here --
 # see docs/CONFIG.md for why.
 #

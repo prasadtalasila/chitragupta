@@ -142,8 +142,10 @@ only under `--remove-stale`.
 
 It is idempotent and incremental -- a PDF whose bytes haven't changed is
 not re-parsed -- which is what makes the second run nearly free. Exit
-codes: `0` clean, `1` at least one parse failed, `2` another writer holds
-the lock.
+codes: `0` clean, `1` the corpus has a hole in it (a failed parse, or a
+PDF the bib file points at that is not on disk), `2` another writer
+holds the lock. [CLI.md](CLI.md#-chitragupta-corpus-sync) enumerates
+what counts.
 
 `ledger` is the other half, and deliberately unlike the first: read-only,
 taking no lock, on the bare-`python` tier, so it answers "what does the

@@ -491,6 +491,34 @@ class TestAPdfThatVanishesMidSync:
         ).fetchone()
         assert row == ("no_pdf", None, None, None)
 
+    def test_it_tells_a_caller_that_asked_and_nothing_more(self, ledger_con, tmp_path):
+        """Issue #556: `on_missing_pdf` is how `sync` learns to count and
+        report this, since `needs_parse` alone cannot distinguish it from
+        a reference that never had a PDF. It fires only for a
+        `ref.pdf_path` that could not be read -- not for a reference
+        with no `file` field, and not for one whose PDF is fine."""
+        seen = []
+
+        gone = make_reference(citekey="gone_2024", pdf_path=str(tmp_path / "absent.pdf"))
+        ledger.upsert_reference(ledger_con, gone, on_missing_pdf=seen.append)
+        assert len(seen) == 1
+        assert isinstance(seen[0], OSError)  # the cause, not just a signal
+
+        del seen[:]
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="never_had_one_2024"), on_missing_pdf=seen.append
+        )
+        assert seen == []
+
+        readable = tmp_path / "real.pdf"
+        readable.write_bytes(b"real content")
+        ledger.upsert_reference(
+            ledger_con,
+            make_reference(citekey="fine_2024", pdf_path=str(readable)),
+            on_missing_pdf=seen.append,
+        )
+        assert seen == []
+
     def test_an_already_parsed_row_moves_to_no_pdf_and_recovers(self, ledger_con, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"real content")
@@ -980,10 +1008,10 @@ class TestBatchingKeepsFinishedRowsOnACrash:
 
         real = ledger_upsert.upsert_reference
 
-        def explode_on_the_third(con, ref, force=False, commit=True):
+        def explode_on_the_third(con, ref, force=False, commit=True, on_missing_pdf=None):
             if ref.citekey == "k2_2024":
                 raise OSError("the PDF moved mid-sync")
-            return real(con, ref, force=force, commit=commit)
+            return real(con, ref, force=force, commit=commit, on_missing_pdf=on_missing_pdf)
 
         monkeypatch.setattr(ledger, "upsert_reference", explode_on_the_third)
         tally = types.SimpleNamespace(

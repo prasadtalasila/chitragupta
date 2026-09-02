@@ -10,7 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import bib_reader, config, ledger, pdf_text, runlock, sync, sync_pool
+from chitragupta import (
+    bib_reader,
+    config,
+    ledger,
+    ledger_upsert,
+    pdf_text,
+    runlock,
+    sync,
+    sync_pool,
+)
 from tests.conftest import make_reference
 
 
@@ -508,7 +517,9 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        assert rc == 0
+        # 1, not 0, since issue #556: one of these four reasons is
+        # `pdf_path_gone`, which now gates the exit code.
+        assert rc == 1
         assert "4 without a PDF attachment" in out
         assert "no-pdf  no_file_field_2024: no file field in bib entry" in out
         assert "no-pdf  pdf_gone_2024: PDF path no longer exists on disk" in out
@@ -520,6 +531,83 @@ class TestRun:
             "1 non-PDF attachment only (e.g. an HTML snapshot), "
             "1 malformed file field (couldn't parse mime/path)"
         ) in out
+
+    def test_only_a_gone_pdf_makes_the_run_nonzero(self, isolated_config, capsys):
+        """Issue #556 gates the exit code on `pdf_path_gone` alone, not on
+        `tally.no_pdf`. The other three reasons are ordinary states of a
+        bibliography -- an item with no attachment saved, an HTML-only
+        snapshot, a `file` field this project cannot parse -- and a corpus
+        full of them is not a corpus with a hole in it. Only the reason
+        `bib_reader` itself calls "a silent data-loss failure" is."""
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@misc{no_file_field_2024,
+  title = {No File Field At All},
+}
+
+@article{html_only_2024,
+  title = {Only An HTML Snapshot},
+  author = {Doe, John},
+  year = {2024},
+  file = {page.html:page.html:text/html},
+}
+
+@article{malformed_2024,
+  title = {Malformed File Field},
+  author = {Roe, Jan},
+  year = {2024},
+  file = {just-a-filename-no-colons},
+}
+""",
+        )
+        (isolated_config.BIB_FILE_PATH.parent / "page.html").write_text("<html></html>")
+
+        rc = sync.run()
+
+        assert rc == 0
+        assert "3 without a PDF attachment" in capsys.readouterr().out
+
+    def test_a_pdf_that_vanishes_after_the_bib_was_read_reports_as_gone(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """Issue #556. #553 made this race non-fatal, but the report did
+        not follow: `sync_decide` decides the no-PDF case from
+        `ref.pdf_path`, which is still set for a file that went away
+        *after* `bib_reader` looked -- so the document was filed under
+        "unchanged" and the run exited 0. It is the same condition
+        `bib_reader` already reports as `pdf_path_gone`, only detected a
+        moment later, so it now reports as that and nothing new."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{vanishing_paper_2024,
+  title = {A Paper Whose File Vanishes Mid-Run},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        # The race itself, made deterministic: `bib_reader` resolved the
+        # path against a file that was there, and it is gone by the time
+        # the upsert stats it.
+        def gone(path):
+            raise OSError(2, "No such file or directory", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", gone)
+
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert "0 unchanged" in out  # the miscount this closes
+        assert "1 without a PDF attachment" in out
+        assert "no-pdf  vanishing_paper_2024: PDF path no longer exists on disk" in out
+        assert "no-PDF breakdown: 1 PDF path no longer exists on disk" in out
+        assert rc == 1
 
     def test_no_pdf_breakdown_omitted_when_everything_resolves(
         self, basic_corpus, monkeypatch, capsys

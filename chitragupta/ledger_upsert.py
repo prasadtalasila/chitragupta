@@ -121,7 +121,7 @@ def _bib_fields_json(ref: Reference) -> str | None:
     return json.dumps(kept, sort_keys=True) if kept else None
 
 
-def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | None]:
+def _pdf_identity(ref: Reference, row, on_missing_pdf) -> tuple[int | None, int | None, str | None]:
     """`(size, mtime_ns, hash)` for this reference's PDF, or all-`None`
     when there is nothing readable behind `ref.pdf_path`."""
     if not ref.pdf_path:
@@ -147,16 +147,23 @@ def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | No
     # open instead, and a half-filled answer (a size with no hash) is a
     # state `_next_status` has no branch for.
     #
-    # What this does *not* reach is `sync`'s printed tally, and the
-    # `logger.warning` below is why that was accepted rather than
-    # papered over. `sync_decide._to_parse` counts the no-PDF case off
-    # `ref.pdf_path`, which is still set here -- so the summary line
-    # files this document under "unchanged" and the run can still exit
-    # 0. Correcting that needs `upsert_reference` to return more than
-    # `needs_parse`, i.e. every call site changed, for a summary count;
-    # the per-document WARNING in logs/pipeline.log is where sync's
-    # per-document reporting lives anyway, and the row itself is
-    # accurate (`no_pdf`, re-parsed on the run after the file returns).
+    # `on_missing_pdf` is how this reaches `sync`'s printed tally and
+    # exit code (issue #556): without it the run reported the document
+    # as "unchanged" and exited 0, because `sync_decide` decides the
+    # no-PDF case from `ref.pdf_path`, which is still set here. A
+    # callback rather than a wider return type, because the *policy* --
+    # which counter, which label, which exit code -- belongs to
+    # `sync_decide`, and because widening `needs_parse` would have
+    # changed every call site (250-odd, nearly all of them tests) to
+    # carry a value one caller wants.
+    #
+    # It is handed the exception, not just a signal: this catches every
+    # `OSError`, so the cause may be a permission or an I/O error rather
+    # than a missing file, and `sync` files all of them in the one
+    # `pdf_path_gone` bucket. That bucket is approximate by choice --
+    # the `logger.warning` below is the record that carries the real
+    # errno, and inventing a reason per errno would multiply the
+    # breakdown line for cases nobody has hit.
     try:
         pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
         stat_unchanged = (
@@ -172,6 +179,8 @@ def _pdf_identity(ref: Reference, row) -> tuple[int | None, int | None, str | No
         return pdf_size, pdf_mtime_ns, (row[0] if stat_unchanged else _hash_pdf(ref.pdf_path))
     except OSError as exc:
         logger.warning("no-pdf  %s: %s", ref.citekey, exc)
+        if on_missing_pdf is not None:
+            on_missing_pdf(exc)
         return None, None, None
 
 
@@ -209,7 +218,11 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
 
 
 def upsert_reference(
-    con: sqlite3.Connection, ref: Reference, force: bool = False, commit: bool = True
+    con: sqlite3.Connection,
+    ref: Reference,
+    force: bool = False,
+    commit: bool = True,
+    on_missing_pdf=None,
 ) -> bool:
     """Insert or update a reference's bibliographic fields.
 
@@ -225,6 +238,15 @@ def upsert_reference(
     test here, and any future ad-hoc use) is unchanged; `sync_decide`
     passes `False` and commits once around its whole loop.
     """
+    # `on_missing_pdf`, when given, is called with the `OSError` if
+    # `ref.pdf_path` was set and could not be read (issue #556).
+    # Optional for the same reason `commit` has a default: it exists for
+    # the one caller that reports a run, and every other call site stays
+    # as it was. `_pdf_identity` has why the signal is a callback rather
+    # than a wider return type. In a comment rather than the docstring
+    # only because this module sits one line under the 250-code-line C2
+    # limit and docstrings count against it where comments do not -- the
+    # next change here has to split the module instead.
     now = datetime.now(timezone.utc).isoformat()
 
     row = con.execute(
@@ -233,7 +255,7 @@ def upsert_reference(
         (ref.citekey,),
     ).fetchone()
 
-    pdf_size, pdf_mtime_ns, pdf_hash = _pdf_identity(ref, row)
+    pdf_size, pdf_mtime_ns, pdf_hash = _pdf_identity(ref, row, on_missing_pdf)
 
     needs_parse = False
     if force and pdf_hash is not None:

@@ -446,9 +446,31 @@ chitragupta corpus sync
 # chitragupta corpus sync --remove-stale
 # chitragupta corpus sync --reparse --remove-stale
 
-# Exit codes: 0 = clean, 1 = at least one parse failed,
+# Exit codes: 0 = clean, 1 = the corpus has a hole in it,
 #             2 = another run holds the lock.
 ```
+
+**What "a hole in it" means, since the exit code is the whole API an
+unattended caller has.** `sync` exits 1 when this run had a parse
+failure, when a previous run left a deterministic one (not retried, so
+it stays nonzero until you deal with it), when the parse backend was
+unavailable, when the bib file yielded no references against a
+non-empty ledger -- and, since 6.54.0, **when the bib file points at a
+PDF that is not on disk**.
+
+That last one used to exit 0, reported only in the summary's `no-PDF
+breakdown` line, which made it invisible to precisely the caller that
+cannot read a summary (issue #556). It is the one no-PDF reason that
+gates the code: an item with no attachment saved, one carrying only an
+HTML snapshot, and one whose `file` field cannot be parsed are all
+ordinary states of a bibliography and still exit 0. A PDF the bib file
+claims and the disk does not have is not -- `chitragupta/bib_reader.py`
+calls it "a silent data-loss failure", and a corpus with a hole in it
+must not report success.
+
+If a stale path in your bib file is expected and you would rather the
+scheduled run stayed green, fix the path or drop the `file` field --
+there is deliberately no flag to suppress it.
 
 ### ♻ When `sync` re-parses a document it already parsed
 
@@ -2461,8 +2483,8 @@ command that started it is spelled -- and either layer can be narrowed
 back out:
 
 ```bash
-grep 'src\.sync' logs/pipeline.log      # just the corpus layer
-grep 'src\.enrich' logs/pipeline.log    # just the enrichment layer
+grep 'chitragupta\.sync' logs/pipeline.log      # just the corpus layer
+grep 'chitragupta\.enrich' logs/pipeline.log    # just the enrichment layer
 ```
 
 The interleaved view is often the useful one, though, since the

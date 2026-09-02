@@ -321,7 +321,8 @@ The values in full:
   `chitragupta/enrich/__main__.py` write here, and each line names its source
   (`chitragupta.sync`, `chitragupta.enrich`,
   `chitragupta.enrich.docling_parse`), so
-  `grep 'src\.sync' logs/pipeline.log` recovers a per-command view. The
+  `grep 'chitragupta\.sync' logs/pipeline.log` recovers a per-command
+  view. The
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
