@@ -358,10 +358,13 @@ gets to make.
 | `embed` | a semantic index for retrieval and the verbatim embedding tier |
 | `bertopic` | topic clustering over the corpus |
 | `seed-topics` | your own seed topics, folded into that clustering |
-| `converge` | the convergence check over repeated topic runs |
+| `converge` | seed and emergent topics, joined into one topic set |
+| `topic-graph` | the topic graph: how topics relate, by shared papers and by meaning |
 
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) carries the evidence for the
-topic stages; [PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
+topic stages; [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) covers the graph
+the last stage derives and the discovery feature being built on it;
+[PERFORMANCE.md](PERFORMANCE.md) covers what they cost.
 
 ## 🧩 Cross-cutting features
 

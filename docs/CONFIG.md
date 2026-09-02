@@ -376,6 +376,8 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
 | `topic_converge_similarity` | `TOPIC_CONVERGE_SIMILARITY` | number, cosine similarity | `0.45` | `0.45` |
 | `topic_exclude_author_names` | `TOPIC_EXCLUDE_AUTHOR_NAMES` | boolean | `true` | `true` |
+| `topic_graph_neighbors` | `TOPIC_GRAPH_NEIGHBORS` | integer | `5` | `5` |
+| `topic_graph_p_value` | `TOPIC_GRAPH_P_VALUE` | number, significance level | `0.01` | `0.01` |
 | `topic_min_cluster_size` | `TOPIC_MIN_CLUSTER_SIZE` | integer | `3` | `3` |
 | `topic_min_samples` | `TOPIC_MIN_SAMPLES` | integer | `2` | `2` |
 | `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `5` | `5` |
@@ -1102,6 +1104,26 @@ the end names the papers no topic of either kind reached.
 only the topic descriptors -- arithmetic over vectors already cached, no
 clustering -- and joins. Run it after `bertopic` and `seed-topics`; on
 its own it reports itself skipped rather than quietly clustering for you.
+
+### 🕸 The topic graph
+
+`content/topic_graph.json` is how the converged topics relate, written
+by the `topic-graph` stage after `converge` and read by nothing that
+computes -- the reader's whole job is to display it. Two settings shape
+it, and [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) carries the reasoning
+behind both:
+
+- `[enrich].topic_graph_p_value` -- how surprising a shared-member count
+  must be (hypergeometric tail against the corpus size) before two
+  topics get an overlap edge. A significance level rather than a weight
+  floor, so it needs no re-tuning when the corpus grows.
+- `[enrich].topic_graph_neighbors` -- semantic edges survive only
+  between mutual top-k neighbours. Mutual, because a global similarity
+  floor either floods the dense region of the topic space or starves
+  the sparse one.
+
+Like `converge`, the stage re-runs nothing and reports itself skipped
+when there is no topic set to graph.
 
 ### 🏷 What a topic is called
 

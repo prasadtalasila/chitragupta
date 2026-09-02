@@ -163,6 +163,7 @@ nav:
       - Corpus search, stage by stage: docs/CORPUS-SEARCH.md
       - RAG stage by stage, and six other systems: docs/RAG.md
       - Topic modelling, the evidence: docs/TOPIC-MODELLING.md
+      - Topic discovery: docs/TOPIC-DISCOVERY.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md

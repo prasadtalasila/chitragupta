@@ -64,8 +64,9 @@ The numbers are introduction order, not a dependency rank.
 
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
-(`--stages docling,embed,bertopic,seed-topics,converge`, each reporting `ok`, `partial`,
-`skipped`, `missing-binary` or `error`). There are five, and every one
+(`--stages docling,embed,bertopic,seed-topics,converge,topic-graph`,
+each reporting `ok`, `partial`,
+`skipped`, `missing-binary` or `error`). There are six, and every one
 of them writes a corpus artefact -- which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.
@@ -204,7 +205,7 @@ Every command above and the flags it takes are in
 Worth stating plainly, because the natural assumption is the expensive
 one and it is wrong. **By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
-for one of the five stages. The rest of this section is its reach.
+for one of the six stages. The rest of this section is its reach.
 
 `chitragupta/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
 **every row in the ledger, and nothing else.** `ledger.all_items()` is a

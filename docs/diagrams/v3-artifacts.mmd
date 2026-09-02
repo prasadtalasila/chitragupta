@@ -27,6 +27,7 @@ flowchart TB
       TOP[/"content/topics.json"/]
       SED[/"content/topic_seeds.json"/]
       CVG[/"content/topic_set.json"/]
+      TGR[/"content/topic_graph.json"/]
     end
 
     subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
@@ -61,6 +62,7 @@ flowchart TB
   TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
   TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
   SED --> CVG
+  CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
 
   TXT -- "chitragupta/retrieval_cache.py" --> RIX
 
@@ -82,7 +84,7 @@ flowchart TB
 
   class BIB,PDF,CFG mine
   class LED,TXT,CPS corpus
-  class DOC,CHR,TOP,SED,CVG heavy
+  class DOC,CHR,TOP,SED,CVG,TGR heavy
   class RIX,DCA,TCA cache
   class DRF,REN,RVW draft
   class LCK lock

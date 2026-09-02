@@ -2290,7 +2290,8 @@ stays in this drafting-layer sidecar rather than the corpus plane, and
 ### 🧠 `chitragupta enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
-BERTopic -> seed topics -> converge. **Needs the venv.** Each stage probes
+BERTopic -> seed topics -> converge -> topic graph. **Needs the
+venv.** Each stage probes
 its own prerequisites and reports a real per-stage status. A
 `skipped/missing-binary` result on a machine without TeX Live is
 therefore a correct answer rather than a bug.
@@ -2299,8 +2300,8 @@ therefore a correct answer rather than a bug.
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all five, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge` |
-| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics` or `converge` |
+| `--stages STAGES` | all six, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge,topic-graph` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics`, `converge` or `topic-graph` |
 
 ```bash
 chitragupta enrich
