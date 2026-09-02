@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review coverage content/drafts/dt-overview/survey.md --query 'digital twin synchronisation staleness' --query 'anomaly detection state stream' --k 5 --write`
-- chitragupta 6.60.3
+- chitragupta 6.61.0
 
 ## How to read this
 

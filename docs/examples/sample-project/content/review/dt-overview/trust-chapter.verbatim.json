@@ -3,7 +3,7 @@
   "aid": "verbatim",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review verbatim scan content/drafts/dt-overview/trust-chapter.tex --min-run 8 --gap 1 --write",
-  "version": "6.60.3",
+  "version": "6.61.0",
   "min_run": 8,
   "gap": 1,
   "limit": null,

@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/survey.md",
-  "version": "6.60.3",
+  "version": "6.61.0",
   "sources": {
     "aids": {
       "provenance": {

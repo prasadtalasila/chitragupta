@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/survey.md --min-run 8 --gap 1 --write`
-- chitragupta 6.60.3
+- chitragupta 6.61.0
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this

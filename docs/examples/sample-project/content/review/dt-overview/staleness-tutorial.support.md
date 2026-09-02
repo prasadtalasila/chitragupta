@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review support content/drafts/dt-overview/staleness-tutorial.md --write`
-- chitragupta 6.60.3
+- chitragupta 6.61.0
 
 ## How to read this
 

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/staleness-chapter.md --write`
-- chitragupta 6.60.3
+- chitragupta 6.61.0
 
 - Quotes checked: 2
 - Confirmed in the cited source: 0

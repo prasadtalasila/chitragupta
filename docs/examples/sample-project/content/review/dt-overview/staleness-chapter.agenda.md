@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/staleness-chapter.md`
-- chitragupta 6.60.3
+- chitragupta 6.61.0
 
 ## How to read this
 
