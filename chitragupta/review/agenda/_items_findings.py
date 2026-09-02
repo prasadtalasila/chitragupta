@@ -42,6 +42,11 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
         # agenda must not describe a finding differently from the aid it
         # quotes. The condition is on the two counts rather than on `tier`
         # so that any tier matching fewer words than it spans reads right.
+        # `_matched_note` itself is deliberately not imported: this module
+        # reads the aids' filed JSON and nothing else, which is what lets an
+        # agenda be built from reports on disk without the aid that wrote
+        # them being importable -- and that private helper indexes both keys
+        # directly, where every read here tolerates a partial payload.
         words = finding.get("span_words", "?")
         matched = finding.get("matched_words", "?")
         items.append(
