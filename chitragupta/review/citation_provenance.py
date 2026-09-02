@@ -228,6 +228,12 @@ def _command(draft_path: Path, as_json: bool) -> str:
 # the same one for the JSON payload; omitted, this builds it. Building it
 # twice is the only thing the shared path would otherwise cost, and
 # `build_report` walks every cited source.
+#
+# The constraint the parameter carries: it must be
+# `build_report(draft_path)` for *this same* `draft_path`, built now. A
+# stale or foreign one would write a report to this draft's path
+# describing a different draft -- which is exactly the shape this aid
+# exists to catch in someone else's prose.
 def write_report(
     draft_path: Path, formats: list[str], report: "dict | None" = None
 ) -> dict[str, Path]:
@@ -237,7 +243,6 @@ def write_report(
     place under `content/drafts/`, with its `.tex`/`.pdf` renders beside
     it -- `chitragupta/review/__init__.py` owns both the path and the degrade-on-missing-
     binary behaviour, shared with the other two review aids.
-
     """
     return review.write(
         draft_path,

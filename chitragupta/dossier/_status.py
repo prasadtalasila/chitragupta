@@ -123,11 +123,13 @@ def status(draft_or_dossier: Path) -> Status:
     if draft is not None:
         report.outline = sections(draft.read_text(encoding="utf-8"))
         report.fingerprint = staleness(draft)
-    # One parse of retrieval.md, not two: retrieval_cost_by_revision's
-    # segments already exclude mark_revision's boundary rows the same
-    # way retrieval_cost does, so the lifetime totals are just their sum
-    # -- calling retrieval_cost here too would parse the same file twice
-    # for numbers `_retrieval_rows` only needed to compute once.
+    # One parse of retrieval.md: retrieval_cost_by_revision's segments
+    # already exclude mark_revision's boundary rows, so the lifetime
+    # totals are just their sum. There used to be a whole-file
+    # `retrieval_cost` beside it, and this comment used to explain why
+    # calling it here as well would parse the same file twice for numbers
+    # `_retrieval_rows` had already computed. That was the only reason it
+    # had left, so #515 deleted it.
     report.revisions = retrieval_cost_by_revision(dossier)
     report.retrieval_calls = sum(segment.calls for segment in report.revisions)
     report.retrieval_chars = sum(segment.chars for segment in report.revisions)
