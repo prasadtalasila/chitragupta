@@ -480,7 +480,7 @@ class TestAPdfThatVanishesMidSync:
         ref = make_reference(pdf_path=str(pdf))
 
         def vanish(path):
-            raise OSError(2, "No such file or directory", path)
+            raise FileNotFoundError(2, "No such file or directory", path)
 
         monkeypatch.setattr(ledger_upsert, "_hash_pdf", vanish)
 

@@ -18,6 +18,7 @@ from chitragupta import (
     pdf_text,
     runlock,
     sync,
+    sync_decide,
     sync_pool,
 )
 from tests.conftest import make_reference
@@ -595,8 +596,13 @@ class TestRun:
         # The race itself, made deterministic: `bib_reader` resolved the
         # path against a file that was there, and it is gone by the time
         # the upsert stats it.
+        # `FileNotFoundError`, spelled out, because that is what a real
+        # `os.stat` raises and because `_lost_pdf_reason` classifies on
+        # the type. `OSError(2, ...)` would work too -- CPython selects
+        # the subclass from the errno -- but relying on that makes a
+        # reader check a rule to see what is being simulated.
         def gone(path):
-            raise OSError(2, "No such file or directory", path)
+            raise FileNotFoundError(2, "No such file or directory", path)
 
         monkeypatch.setattr(ledger_upsert, "_stat_pdf", gone)
 
@@ -749,6 +755,46 @@ class TestRun:
         finally:
             con.close()
         assert rows["smith_example_2024"]["status"] == "discovered"
+
+
+class TestLostPdfReason:
+    """`sync_decide._lost_pdf_reason`, on its own rather than through a
+    run: which no-PDF reason an unreadable `ref.pdf_path` reports as. The
+    distinction matters because the two reasons carry different remedies
+    and both gate the exit code (issue #556)."""
+
+    @pytest.mark.parametrize(
+        "exc, expected",
+        [
+            (FileNotFoundError(2, "No such file or directory"), bib_reader.PDF_PATH_GONE),
+            (NotADirectoryError(20, "Not a directory"), bib_reader.PDF_PATH_GONE),
+            (PermissionError(13, "Permission denied"), bib_reader.PDF_UNREADABLE),
+            (OSError(5, "Input/output error"), bib_reader.PDF_UNREADABLE),
+            (OSError("no errno at all"), bib_reader.PDF_UNREADABLE),
+        ],
+    )
+    def test_it_classifies_on_the_exception_type(self, exc, expected):
+        assert sync_decide._lost_pdf_reason(exc) == expected
+
+    def test_an_errno_built_oserror_lands_where_its_subclass_does(self):
+        """Worth pinning because it surprised a reviewer: `OSError(2,
+        ...)` is not a plain `OSError`. CPython selects the subclass from
+        the errno, so it arrives here already a `FileNotFoundError` and
+        classifies as gone. A caller that builds its errors that way --
+        or a library that does -- gets the right reason without knowing
+        this function exists."""
+        built = OSError(2, "No such file or directory", "/nope.pdf")
+        assert isinstance(built, FileNotFoundError)
+        assert sync_decide._lost_pdf_reason(built) == bib_reader.PDF_PATH_GONE
+
+    def test_every_reason_it_can_return_has_a_label_and_gates_the_exit(self):
+        """Neither list may drift from the other: a reason with no label
+        raises `KeyError` in `sync_decide`'s own print, and one missing
+        from `PDF_LOST_REASONS` would report the hole and still exit 0 --
+        the exact defect #556 was filed for."""
+        returnable = {bib_reader.PDF_PATH_GONE, bib_reader.PDF_UNREADABLE}
+        assert returnable <= set(bib_reader.PDF_RESOLUTION_LABELS)
+        assert returnable == set(bib_reader.PDF_LOST_REASONS)
 
 
 class TestCliEntrypoint:
