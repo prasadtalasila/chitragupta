@@ -1,6 +1,21 @@
 # G5-G9: topic discovery -- from a phrase to the papers, the graph, and an overview
 
-Status: **plan, unbuilt.** Written 2026-09-02. Implements
+Status: **built.** Written 2026-09-02; closed the same day by the
+five-PR sequence it prescribed -- PR #557 (G5, the `topic-graph`
+stage), PR #558 (G6, `corpus discover`), then G7 (precision tier),
+G8 (gold-set benchmark) and G9 (the HTML page), the last landing with
+this line.
+Two things changed on the way: the hierarchy moved from
+`bertopic.hierarchical_topics()` to a scipy linkage over topic
+centroids (the fitted model is never persisted, and linkage covers seed
+topics too -- amended below before G5 shipped), and G9 shipped as a
+`--html` flag rather than a `discover graph` subcommand, because the
+reader's positional argument is a free phrase and a reserved word would
+shadow a topic literally labelled "graph".
+[docs/TOPIC-DISCOVERY.md](../docs/TOPIC-DISCOVERY.md) is the living
+reference; this plan stays as the record of the design decisions.
+
+Originally: implements
 [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s G5-G9, the first
 Theme G work since G1-G4 closed, and the first consumer of
 `content/topic_set.json` -- the artefact
