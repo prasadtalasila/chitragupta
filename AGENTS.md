@@ -1,14 +1,17 @@
 # 🤖 AGENTS.md
 
-Guidance for coding agents (and anyone else) **using this pipeline to
-draft content**.
+The contract for agents (and anyone else) **using this pipeline to
+draft content**. A draft here is co-authored: the human curates the
+corpus, sets the scope and steers; the agent retrieves, writes grounded
+prose, and records the judgement behind it. This file is the agent's
+half of that bargain.
 
 > **Changing chitragupta's own code, rather than drafting with it? Read
 > `DEVELOPER-AGENTS.md` first -- it governs.** (In a git checkout only --
 > `chitragupta init` deliberately does not scaffold it; see `CLAUDE.md`'s
-> routing table.) Test
-> policy, the local check suite, environment constraints, code standards,
-> and commit/PR/release conventions all live there.
+> routing table.) Test policy, the local check suite, environment
+> constraints, code standards, and commit/PR/release conventions all
+> live there.
 >
 > [CLAUDE.md](CLAUDE.md) is the one-screen router between the two, for an
 > agent that has not yet worked out which task it is on.
@@ -16,12 +19,22 @@ draft content**.
 [SOUL.md](SOUL.md) is the one-page why behind everything below. When this
 file and that one seem to disagree, that one is the tie-breaker.
 
+Every artefact shape this file names -- a dossier, a review report, a
+gate-passed draft, a signed spec -- exists as a real, committed example
+under `docs/examples/sample-project/`, produced by running the real
+pipeline over five sample papers.
+[docs/examples/README.md](docs/examples/README.md) is the map. When in doubt
+about what a file should look like, look there before inventing a shape.
+
 ## 🔑 The hard invariant: never fabricate a citekey
 
 Fabricated placeholder references have made it into real papers before --
 that is the failure mode this pipeline is built to prevent, and it is why
 this is the one rule that cannot bend. [SOUL.md](SOUL.md) states the
-invariant itself.
+invariant itself. In a conventional retrieval pipeline the model is
+*asked* not to invent a reference; here, nothing you generate can reach
+a rendered document without passing a check you cannot talk your way
+past.
 
 Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 (source of truth -- see below) and was picked up into `content/ledger.sqlite`
@@ -51,6 +64,10 @@ wrong on disk. Treat the instruction above as belt-and-suspenders, not
 the only line of defense -- and still run the gate by hand before calling
 a draft done, since the hook only fires on the tool call that wrote the
 file, not on demand.
+
+The gate proves every citekey is *real*. Whether each cited paper
+actually *supports* its sentence is a different question, answered by
+the review layer below -- advisorily, never as a block.
 
 ## 🧼 Start each draft in a clean session
 
@@ -132,6 +149,16 @@ enrichment layer is optional and nothing above it needs it.
   read -> ledger update -> PDF text extraction -> duplicate-citekey check
   -> stale-citekey report. No LLM calls, no judgment calls, idempotent;
   safe to run unattended. docs/ARCHITECTURE.md has the stage detail.
+
+  The same layer also *reads itself back*: `python -m chitragupta.corpus
+  ledger` lists what is synced, and `python -m chitragupta.corpus discover`
+  maps what the corpus is about -- a topic's papers, its neighbouring
+  topics, and the bridges between them -- once the enrichment layer has
+  built the topic graph. Both are read-only and lock-free, so either is
+  a legitimate way for a drafting session to orient itself before any
+  draft exists; `docs/TOPIC-DISCOVERY.md` has the workflow, and
+  [`discover_digital_twin.txt`](docs/examples/sample-project/content/discover_digital_twin.txt)
+  in the sample project is a real transcript of one.
 - **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked
   on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
@@ -145,7 +172,9 @@ enrichment layer is optional and nothing above it needs it.
   (`content/dossiers/<the draft's path minus its suffix>/`, Markdown,
   owned by `chitragupta/dossier/`) holding the reader, scope, glossary, kept
   evidence, **rejected candidates and why**, and the steering the user
-  gave in chat. That is what makes a draft revisable weeks later:
+  gave in chat -- `docs/examples/sample-project/content/dossiers/dt-overview/`
+  holds four real ones, exactly as drafting filled them. That is what
+  makes a draft revisable weeks later:
   `draft-reviser` reads the dossier and edits the affected sections
   instead of re-running the genre skill over the whole topic -- including
   when the change comes from the corpus rather than from you, re-grounding
@@ -158,6 +187,17 @@ enrichment layer is optional and nothing above it needs it.
   and keeps no repair that `python -m chitragupta.draft gate` and `python -m
   chitragupta.review verbatim recheck` do not both accept. Never re-run a genre
   skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
+
+  **The human's own prose is a first-class input, not an obstacle.** An
+  `outline.md` in the dossier can declare, per section, a brief the
+  draft must obey but never show, the human's own claims to be grounded,
+  and the exact retrieval queries to run verbatim; a hand-written
+  section is grounded against the corpus, and any sentence the corpus
+  cannot warrant is dropped *and named back to the user*, never silently
+  kept. Steering respects the same boundary in reverse: obey it in
+  emphasis and selection, but never let it manufacture support the
+  corpus does not offer -- "the corpus does not contain this" is a
+  correct and expected answer, not a failure to route around.
 
   **Verbatim source wording has one legitimate home, and it is not the
   draft.** The dossier's `evidence.md` records it in a `quote:` field --
@@ -182,43 +222,44 @@ enrichment layer is optional and nothing above it needs it.
   summary itself -- a person or a skill composes it -- and
   `python -m chitragupta.corpus ledger` is untouched.
 - **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
-  Docling, embeddings and topic modelling over the same corpus. It extends
+  Docling, embeddings and topic modelling over the same corpus, ending
+  in the topic graph that `corpus discover` reads. It extends
   the *corpus* layer rather than the drafting one -- nothing in it is
   generative, everything it writes is a corpus artefact, and it takes the
   same write lock as `sync` for that reason. Run by a human, never by a
   skill. It imports nothing from the drafting or review layers, which is
   what keeps this picture free of a cycle -- a per-draft stage wrapping
   either one would reintroduce it.
-- **Layer 4, the review layer -- advisory** (`chitragupta/review/citation_provenance.py`,
-  `chitragupta/review/verbatim_check/`,
-  `chitragupta/review/citation_coverage.py`,
-  `chitragupta/review/synthesis.py`,
-  `chitragupta/review/figure_layout/`,
-  `chitragupta/review/uncited_prose.py`,
-  `chitragupta/review/quotation.py`,
-  `chitragupta/review/agenda/` and
-  `chitragupta/review/claim_support.py`): read over
-  a finished draft -- by you, or by a skill that runs one on your
-  behalf. Never a gate. Each reads a draft plus
-  the corpus -- or, for `figure_layout`, the figures the draft
-  references, for `uncited_prose`, nothing beyond the draft itself, for
-  `quotation`, the dossier's own quoted spans, or for `agenda`, the
-  other eight aids' own reports, the drafting layer's prose check, and
-  the dossier's drift report, merged into one ranked worklist -- and
-  produces **evidence for a human judgement, never a
-  verdict** -- every one exits 0 whether it finds something or not, and
+- **Layer 4, the review layer -- advisory** (`python -m chitragupta.review`,
+  owned by `chitragupta/review/`): ten aids that read over a finished
+  draft -- by you, or by a skill that runs one on your behalf. Never a
+  gate. By subcommand: `provenance` (does the cited paper say this),
+  `verbatim` (how much wording came along from the sources), `coverage`
+  (what retrieval surfaced that was never cited), `synthesis` (which
+  sections lean on one source), `figure` (do the referenced figures fit
+  their boxes), `uncited` (which sentences carry no citation at all),
+  `quotation` (is each recorded quote really in its source), `support`
+  (does the source entail the claim, by a real NLI model), `union` (does
+  an assembled book still carry every citekey its accepted units stand
+  on), and `agenda` -- which runs nothing itself, but merges the other
+  eight draft-reading aids' reports, the drafting layer's prose check
+  and the dossier's drift report into one ranked, deduplicated worklist.
+  Each produces **evidence for a human judgement, never a verdict** --
+  every one exits 0 whether it finds something or not, and
   none may block a draft. Don't promote one to a gate --
-  [SOUL.md](SOUL.md) has why. It **takes no lock**: read-only over the
-  corpus, so it keeps working during a `sync`, like `python -m
+  [SOUL.md](SOUL.md) has why. The layer **takes no lock**: read-only over
+  the corpus, so it keeps working during a `sync`, like `python -m
   chitragupta.corpus ledger` and retrieval. Input is a draft under `content/`;
   output is
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
-  `chitragupta/review/__init__.py` owning that contract.
+  `chitragupta/review/__init__.py` owning that contract --
+  `docs/examples/sample-project/content/review/dt-overview/` shows the full
+  set for real drafts.
 
   *Review*, not *verification*: `chitragupta.draft gate` is verification, it lives
   in the drafting layer, and it is that layer's only exit. The gate
-  answers a question with one correct answer and may block; these three
+  answers a question with one correct answer and may block; these ten
   answer questions of judgement and may not.
 
   **One correct answer is what a gate needs, not what earns it.** The
@@ -234,7 +275,7 @@ enrichment layer is optional and nothing above it needs it.
   promoting any new check into a gate beside `chitragupta/citation_gate.py`.
   docs/ARCHITECTURE.md's "Layer 4" has the argument.
 
-  `verbatim_check`'s `scan` mode is the whole-draft × whole-corpus one,
+  `verbatim`'s `scan` mode is the whole-draft × whole-corpus one,
   and the complement of the citation gate: the gate proves every citekey
   is real, the scan reports what wording came along with them. It runs
   three detection tiers, and the one that sees a genuine restatement
@@ -262,6 +303,12 @@ than the whole of it -- `citation_provenance`, `verbatim_check`, the
 enrichment layer -- goes through that one ladder rather than re-deriving
 passages, so a caller cannot accidentally quote from a rung that isn't
 quotable. See docs/LADDERS.md.
+
+Log what you retrieve: `python -m chitragupta.draft retrieve search
+"<query>" --log <draft>` appends the call to the dossier's
+`retrieval.md`, and that log is what makes the dossier's drift report
+able to say, months later, which *new* papers the draft's own queries
+would surface today.
 
 ## ⚙ Config lives in `config.toml`
 

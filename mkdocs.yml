@@ -116,27 +116,43 @@ markdown_extensions:
 # machinery, or agent instructions that docs/GENRE.md already summarises
 # for a human reader.
 exclude_docs: |
-  .claude/
-  .github/
-  .venv-full/
-  .venv/
-  assets/csl/
-  assets/vale/
-  bench/
-  content/
-  docker/
-  logs/
-  papers/
-  scripts/
-  site/
-  chitragupta/
-  tests/
-  CITATION.cff
-  config.toml
-  config.toml.example
-  poetry.lock
-  poetry.toml
-  pyproject.toml
+  /.claude/
+  /.github/
+  /.venv-full/
+  /.venv/
+  /assets/csl/
+  /assets/vale/
+  /bench/
+  /content/
+  /docker/
+  /logs/
+  /papers/
+  /scripts/
+  /site/
+  /chitragupta/
+  /tests/
+  /CITATION.cff
+  /config.toml
+  /config.toml.example
+  /poetry.lock
+  /poetry.toml
+  /pyproject.toml
+  # The patterns above are anchored to the repository root (gitignore
+  # syntax) so they stop matching the sample project's own content/ and
+  # papers/ under docs/examples/, which the documentation links to. What
+  # stays out of the site there is only the regenerable machine state a
+  # local `regenerate.sh` run leaves on disk -- the same set the sample's
+  # own .gitignore keeps out of git.
+  docs/examples/sample-project/content/ledger.sqlite
+  docs/examples/sample-project/content/parsed/
+  docs/examples/sample-project/content/chroma/
+  docs/examples/sample-project/content/docling/
+  docs/examples/sample-project/content/overlap/
+  docs/examples/sample-project/content/*_cache.json
+  docs/examples/sample-project/content/retrieval_index.json
+  docs/examples/sample-project/content/pipeline.lock.db
+  docs/examples/sample-project/content/pipeline.lock.db.holder
+  docs/examples/sample-project/logs/
 
 nav:
   - Home: README.md

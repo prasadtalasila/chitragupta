@@ -1,12 +1,38 @@
 # 🤖 DEVELOPER-AGENTS.md
 
-Guidance for coding agents (and anyone else) **working on this repository
-itself**, as opposed to using it to draft content. The user-facing half is
-[AGENTS.md](AGENTS.md); the why behind both is [SOUL.md](SOUL.md).
+The contract for coding agents (and anyone else) **working on this
+repository itself**, as opposed to using it to draft content. The
+drafting half is [AGENTS.md](AGENTS.md); the why behind both is
+[SOUL.md](SOUL.md).
 
 [AGENTS.md](AGENTS.md)'s citekey invariant binds code here too: no module
 may generate, guess or rewrite a citekey, and no new check may be promoted
-into a gate beside `chitragupta/citation_gate.py`.
+into a gate beside `chitragupta/citation_gate.py`. That includes test
+fixtures, doc examples and the committed sample project -- a fabricated
+citekey in an example teaches the fabrication this project exists to
+prevent.
+
+**Where to look for what**, since this file is long and a session rarely
+needs all of it:
+
+- Every change: [Role](#-role), [Behavioural
+  rules](#-behavioural-rules-think-before-coding),
+  [Code standards](#-code-standards), and the
+  [full shipping cycle](#-shipping-a-code-change-the-full-cycle), which
+  is the checklist the rest of the file explains.
+- Before writing code: [Module boundaries](#-module-boundaries),
+  [Environment constraints](#-environment-constraints-on-this-host), and
+  -- for anything under `chitragupta/enrich/` --
+  [the enrichment layer](#-the-enrichment-layer-chitraguptaenrich-chitraguptaenrich__main__py)
+  and [the stage conventions](#-conventions-a-new-stage-has-to-follow).
+- Before claiming done: [the local
+  checks](#-before-claiming-a-task-complete-run-all-local-checks),
+  [the linters](#-the-linters-which-are-enforced), and
+  [the OpenCodeReview step](#-reviewing-before-you-push-the-opencodereview-plugin).
+- Landing it: [Commit messages](#-commit-messages),
+  [Merging](#-merging), [Issues and pull
+  requests](#-issues-and-pull-requests), and
+  [Versioning and releases](#-versioning-and-releases).
 
 ## 🎭 Role
 
@@ -124,6 +150,40 @@ read the
 other way: it sits beside the two aids it belongs with, not in
 `scripts/`, which holds dev tooling and no layer entry point at all.
 
+## 📂 The committed sample project is pipeline output, not prose
+
+`docs/examples/sample-project/` is the worked example the user documentation
+quotes: five synthetic sample papers and every artefact the pipeline
+derives from them -- drafts, dossiers, review reports, renders, a signed
+spec, the topic artefacts. Two rules follow from what it is:
+
+- **Regenerate, never hand-edit.** Every committed artefact there was
+  produced by actually running the pipeline (`docs/examples/README.md` has
+  the map; `docs/examples/sample-project/regenerate.sh` rebuilds the
+  uncommitted substrate). A change that alters an artefact's format --
+  the dossier grammar, a review report's shape, the topic graph's schema
+  -- makes the committed samples stale, and the fix is to re-run the
+  affected command in that directory and commit its real output.
+  Hand-editing a sample to match a format change produces exactly the
+  fabricated-example problem the directory exists to avoid, and the
+  documentation snippets quoting the artefact must move in the same PR
+  (the docs sweep in
+  [the shipping cycle](#-shipping-a-code-change-the-full-cycle)'s step 4
+  covers those).
+- **The citekey invariant holds even here.** The sample citekeys
+  (`sample_*`) exist in `docs/examples/sample-project/papers/bibliography.bib`
+  and were synced from real (if synthetic) PDFs; a new sample citation
+  goes through the same bib-export-then-sync path, never a typed-in key.
+
+Living under `docs/`, the sample project is part of the mkdocs site and
+of what `chitragupta init` scaffolds, deliberately: documentation links
+to its artefacts (small snippets are quoted inline; anything larger is a
+hyperlink), and a fresh project gets the worked example as a safe
+playground. The one carve-out is markdownlint -- see the negated glob in
+["The linters, which are enforced"](#-the-linters-which-are-enforced):
+pipeline output is not lint-shaped and may not be hand-edited to become
+so.
+
 ## 🖥 Environment constraints on this host
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
@@ -222,8 +282,9 @@ artifact.
 
 ## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
-Implements Docling -> sentence-transformers/Chroma ->
-BERTopic -> Pandoc/LaTeX, one script for both host and Docker. Each stage
+Implements six stages -- Docling -> sentence-transformers/Chroma ->
+BERTopic -> seeded topics -> converged topic set -> topic graph -- plus
+the Pandoc/LaTeX render path, one script for both host and Docker. Each stage
 self-probes its own prerequisites (pandoc/pdflatex on PATH) and
 reports honestly (`skipped`/`missing-binary`) rather than assuming the
 target implies availability -- don't "fix" a skip by hardcoding
@@ -243,9 +304,10 @@ don't trade it away. The flag narrows the corpus to the citekeys one
 draft cites, and the reason a narrow run and a full run can be mixed in
 either order without repeating work is that the caches are keyed by
 document and merged, never rewritten to match the run's own view of the
-corpus. `embed` and `bertopic` are refused rather than scoped, because
+corpus. `embed`, `bertopic` and the three topic stages after them are
+refused rather than scoped, because
 each writes one whole-corpus artefact with no partial form -- allowing
-either needs the Chroma collection to record its own coverage first.
+any of them needs the Chroma collection to record its own coverage first.
 [docs/LADDERS.md](docs/LADDERS.md#-scoping-a-run-to-one-draft) owns that
 reasoning; keep it there rather than restating it.
 
@@ -439,7 +501,7 @@ Before saying so, actually run, in this repo:
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
   ruff check chitragupta scripts .claude/hooks
   ruff format --check chitragupta scripts tests bench .claude/hooks
-  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"
   ```
 
 - `poetry check`.
@@ -517,8 +579,15 @@ to match would only relocate the gap:
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 ruff format --check chitragupta scripts tests bench .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"   # npm i -g markdownlint-cli2
 ```
+
+The one negation is stated in the command for the same
+narrower-glob-is-a-decision reason: `docs/examples/sample-project/` is
+pipeline *output* -- drafts, dossiers, review reports -- which is never
+lint-shaped and may not be hand-edited to become so (see "The committed
+sample project is pipeline output"). `docs/examples/README.md`, the
+hand-written page beside it, stays inside the glob.
 
 **Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
 reports `tail`'s status, so a real finding passes for a clean run. That is
@@ -710,7 +779,8 @@ entirely -- a clean OCR run says nothing about them.
 
 What *does* cover Markdown, so "OCR came back clean" is never read as
 "the standing instructions were reviewed": `markdownlint-cli2 "*.md"
-"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"` (see
+"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
+"!docs/examples/sample-project"` (see
 ["The linters, which are enforced"](#-the-linters-which-are-enforced)) for
 style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
 test, for the one class of factual claim that has a machine-readable

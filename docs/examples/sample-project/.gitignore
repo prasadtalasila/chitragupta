@@ -1,0 +1,14 @@
+# Regenerable machine state -- rebuilt by `regenerate.sh` (a real
+# `corpus sync` plus the enrich topic stages). Everything human-readable
+# that the documentation cites is committed; everything a command
+# rebuilds byte-for-byte-equivalently is not.
+content/ledger.sqlite
+content/parsed/
+content/chroma/
+content/docling/
+content/*_cache.json
+content/retrieval_index.json
+content/pipeline.lock.db
+content/pipeline.lock.db.holder
+logs/
+content/overlap/

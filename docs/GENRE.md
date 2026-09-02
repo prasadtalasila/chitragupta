@@ -100,6 +100,21 @@ for how a draft and its dossier get backed up.
 
 ## ✍ The five drafting genres
 
+Four of the five have a committed, gate-passed sample under a thousand
+words each, drafted by the real pipeline over the five-paper sample
+corpus, each with its dossier beside it under `content/dossiers/`:
+[`survey.md`](examples/sample-project/content/drafts/dt-overview/survey.md)
+(survey),
+[`staleness-tutorial.md`](examples/sample-project/content/drafts/dt-overview/staleness-tutorial.md)
+(tutorial -- every step executed for real before being presented, as
+the genre requires),
+[`staleness-chapter.md`](examples/sample-project/content/drafts/dt-overview/staleness-chapter.md)
+(textbook chapter) and
+[`trust-chapter.tex`](examples/sample-project/content/drafts/dt-overview/trust-chapter.tex)
+(thesis chapter fragment). Read them as samples of *shape* -- the
+sources are
+synthetic -- but the shapes are exactly what each genre below promises.
+
 ### 📚 `survey-writer`
 
 Topic-clustered literature survey, background section, related-work

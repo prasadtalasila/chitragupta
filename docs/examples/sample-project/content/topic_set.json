@@ -1,0 +1,111 @@
+{
+  "model": "sentence-transformers/all-mpnet-base-v2",
+  "embedding_method": "chunk-mean-content-v2",
+  "converge_similarity": 0.45,
+  "n_docs": 5,
+  "n_seed_named": 3,
+  "n_emergent": 2,
+  "topics": [
+    {
+      "label": "topic-0",
+      "provenance": "emergent",
+      "topic_id": 0,
+      "members": [
+        {
+          "citekey": "sample_ml_anomaly_2023",
+          "score": 0.590058
+        },
+        {
+          "citekey": "sample_dt_sync_2023",
+          "score": 0.394773
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.372023
+        }
+      ]
+    },
+    {
+      "label": "topic-1",
+      "provenance": "emergent",
+      "topic_id": 1,
+      "members": [
+        {
+          "citekey": "sample_std_interop_2021",
+          "score": 0.770421
+        },
+        {
+          "citekey": "sample_dt_overview_2024",
+          "score": 0.568182
+        }
+      ]
+    },
+    {
+      "label": "digital twin",
+      "provenance": "seed",
+      "topic_id": null,
+      "members": [
+        {
+          "citekey": "sample_dt_overview_2024",
+          "score": 0.552929
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.377993
+        },
+        {
+          "citekey": "sample_dt_sync_2023",
+          "score": 0.322219
+        },
+        {
+          "citekey": "sample_ml_anomaly_2023",
+          "score": 0.215237
+        },
+        {
+          "citekey": "sample_std_interop_2021",
+          "score": 0.193215
+        }
+      ]
+    },
+    {
+      "label": "anomaly detection",
+      "provenance": "seed",
+      "topic_id": null,
+      "members": [
+        {
+          "citekey": "sample_ml_anomaly_2023",
+          "score": 0.486939
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.272542
+        }
+      ]
+    },
+    {
+      "label": "interoperability standards",
+      "provenance": "seed",
+      "topic_id": null,
+      "members": [
+        {
+          "citekey": "sample_std_interop_2021",
+          "score": 0.605213
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.260582
+        },
+        {
+          "citekey": "sample_dt_overview_2024",
+          "score": 0.252977
+        },
+        {
+          "citekey": "sample_dt_sync_2023",
+          "score": 0.252536
+        }
+      ]
+    }
+  ],
+  "uncovered": [],
+  "membership_source": "memberships"
+}

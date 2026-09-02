@@ -1,0 +1,88 @@
+\chapter{Operational Trust as the Limiting Resource of Digital-Twin
+Deployments}\label{ch:trust}
+
+\section{Research question}\label{sec:trust-rq}
+
+This chapter addresses RQ2: \emph{what limits the operational authority
+a digital twin is granted -- model accuracy, or something else?} The
+question matters because deployment decisions are usually argued in
+accuracy terms, while the corpus examined here suggests the binding
+constraint lies elsewhere.
+
+\section{The argument}\label{sec:trust-argument}
+
+Three strands of evidence converge on the same answer: the limiting
+resource is \emph{operator trust}, and trust responds to the twin's
+honesty about its own state rather than to its accuracy in the mean.
+
+First, the synchronisation literature separates the two directly. In
+comparative trials, explicit staleness marking -- returning every value
+with its age, so a twin that has stopped tracking reality says so --
+roughly halved operator mistrust incidents without any change to the
+underlying model {[}1{]}. Accuracy was held constant; honesty moved;
+trust followed the honesty.
+
+Second, the longest observational record in the corpus shows authority
+following audited agreement rather than claimed accuracy. The packaging
+line twin of {[}2{]} gained scheduling authority station by station, and
+each extension was argued from a published override log -- supervisors
+observed agreeing with the twin in over ninety-five percent of cases --
+not from validation statistics. The two failures that record contains
+were both \emph{silent} divergences between plant and model, and the
+study's operational recommendation is to treat any such divergence as a
+severity-one defect {[}2{]}.
+
+Third, the same asymmetry appears at the analytics layer. Comparing
+anomaly detectors over twin state streams, the learned model with the
+best mean precision was also the one whose failure was invisible: it
+absorbed a slow drift into its own retraining baseline and missed it
+entirely, while an incorruptible statistical baseline flagged it
+{[}3{]}. The recommended layered configuration buys accuracy where it is
+cheap but anchors trust to the component whose errors are legible.
+
+\section{Synthesis}\label{sec:trust-synthesis}
+
+Across all three strands, the mechanism that converts a working twin
+into a trusted one is the same: make its uncertainty visible at the
+point of use, and let humans audit the record on their own schedule. The
+vocabulary of {[}4{]} sharpens the claim: what distinguishes a twin from
+a shadow is a closed actuation loop, and closing that loop is precisely
+the step organisations refuse until the audit trail exists. Authority,
+in other words, is granted against the override log, not against the
+validation report.
+
+\section{Limitations}\label{sec:trust-limitations}
+
+The corpus is small and synthetic, its trust measures are behavioural
+proxies (mistrust incidents, override rates) rather than instruments,
+and no study in it manipulates honesty and accuracy independently. The
+claim this chapter defends is therefore directional: where the two have
+been separated at all, honesty dominated.
+
+\phantomsection\label{refs}
+\begin{CSLReferences}{0}{0}
+\bibitem[\citeproctext]{ref-sample_dt_sync_2023}
+\CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{C. Chen and D. Devi, {``State synchronisation strategies
+for operational digital twins,''} \emph{Synthetic Sample Papers}, vol.
+1, pp. 6--11, 2023.}
+
+\bibitem[\citeproctext]{ref-sample_dt_factory_2022}
+\CSLLeftMargin{{[}2{]} }%
+\CSLRightInline{E. Eriksen, {``A digital twin on the factory floor: An
+eighteen-month case study,''} \emph{Synthetic Sample Papers}, vol. 1,
+pp. 12--17, 2022.}
+
+\bibitem[\citeproctext]{ref-sample_ml_anomaly_2023}
+\CSLLeftMargin{{[}3{]} }%
+\CSLRightInline{F. Farah and G. Gupta, {``Lightweight anomaly detection
+over digital-twin state streams,''} \emph{Synthetic Sample Papers}, vol.
+1, pp. 18--23, 2023.}
+
+\bibitem[\citeproctext]{ref-sample_dt_overview_2024}
+\CSLLeftMargin{{[}4{]} }%
+\CSLRightInline{A. Author and B. Builder, {``Digital twins: Definitions,
+distinctions, and a short taxonomy,''} \emph{Synthetic Sample Papers},
+vol. 1, pp. 1--5, 2024.}
+
+\end{CSLReferences}

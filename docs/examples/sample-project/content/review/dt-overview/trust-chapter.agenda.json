@@ -1,0 +1,347 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "agenda",
+  "draft": "content/drafts/dt-overview/trust-chapter.tex",
+  "command": "python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex",
+  "version": "6.61.0",
+  "sources": {
+    "aids": {
+      "provenance": {
+        "available": true,
+        "stale": false
+      },
+      "verbatim": {
+        "available": true,
+        "stale": false
+      },
+      "coverage": {
+        "available": true,
+        "stale": false
+      },
+      "synthesis": {
+        "available": true,
+        "stale": false
+      },
+      "figure": {
+        "available": false,
+        "stale": false
+      },
+      "uncited": {
+        "available": true,
+        "stale": false
+      },
+      "quotation": {
+        "available": true,
+        "stale": false
+      },
+      "support": {
+        "available": true,
+        "stale": false
+      }
+    },
+    "style": {
+      "available": true,
+      "partial": false
+    },
+    "drift": {
+      "available": true,
+      "corpus_available": true
+    }
+  },
+  "pass_bound": 3,
+  "objective_class_count": 0,
+  "items": [
+    {
+      "id": "d61be667af63",
+      "class": "unsupported-claim",
+      "section": "The argument",
+      "citekey": "sample_dt_sync_2023",
+      "line": 26,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: In comparative trials, explicit staleness marking -- returning every value with ",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "In comparative trials, explicit staleness marking -- returning every value with its age, so a twin that has stopped tracking reality says so -- roughly halved operator mistrust incidents without any change to the underlying model.",
+        "provenance_id": "08929896014b",
+        "also_flagged": [
+          {
+            "id": "03a10e02f0d6",
+            "class": "uncited-claim"
+          }
+        ]
+      }
+    },
+    {
+      "id": "d414f7ba40c8",
+      "class": "unsupported-claim",
+      "section": "The argument",
+      "citekey": "sample_dt_factory_2022",
+      "line": 31,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: The packaging line twin of gained scheduling authority station by station, and e",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
+        "provenance_id": "5b6f8760160e"
+      }
+    },
+    {
+      "id": "59e95473b6bd",
+      "class": "unsupported-claim",
+      "section": "The argument",
+      "citekey": "sample_ml_anomaly_2023",
+      "line": 45,
+      "unattended": false,
+      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: Comparing anomaly detectors over twin state streams, the learned model with the ",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Comparing anomaly detectors over twin state streams, the learned model with the best mean precision was also the one whose failure was invisible: it absorbed a slow drift into its own retraining baseline and missed it entirely, while an incorruptible statistical baseline flagged it.",
+        "provenance_id": "b615334a17de",
+        "also_flagged": [
+          {
+            "id": "902e6461ea7c",
+            "class": "uncited-claim"
+          }
+        ]
+      }
+    },
+    {
+      "id": "9bb0648624a6",
+      "class": "unsupported-claim",
+      "section": "Synthesis",
+      "citekey": "sample_dt_overview_2024",
+      "line": 55,
+      "unattended": false,
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
+        "provenance_id": "4324aaca7f52"
+      }
+    },
+    {
+      "id": "d4740a26c3ff",
+      "class": "uncited-claim",
+      "section": "Operational Trust as the Limiting Resource of Digital-Twin Deployments",
+      "citekey": null,
+      "line": 4,
+      "unattended": false,
+      "summary": "\\label{ch:trust}",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "1bd9a671d309"
+      }
+    },
+    {
+      "id": "79e394126f5e",
+      "class": "uncited-claim",
+      "section": "Research question",
+      "citekey": null,
+      "line": 7,
+      "unattended": false,
+      "summary": "\\label{sec:trust-rq}",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "38b4f646e700"
+      }
+    },
+    {
+      "id": "af107d98e386",
+      "class": "uncited-claim",
+      "section": "Research question",
+      "citekey": null,
+      "line": 9,
+      "unattended": false,
+      "summary": "This chapter addresses RQ2: \\emph{what limits the operational authority a digita",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "7ecf34614eeb"
+      }
+    },
+    {
+      "id": "f5e4c97f0de3",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 16,
+      "unattended": false,
+      "summary": "\\label{sec:trust-argument}",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "7a8f2a2c0026"
+      }
+    },
+    {
+      "id": "60febebc8dca",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 18,
+      "unattended": false,
+      "summary": "Three strands of evidence converge on the same answer: the limiting resource is ",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "f988e6a59cc2"
+      }
+    },
+    {
+      "id": "4ff94cf6ac24",
+      "class": "uncited-claim",
+      "section": "Synthesis",
+      "citekey": null,
+      "line": 50,
+      "unattended": false,
+      "summary": "\\label{sec:trust-synthesis}",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "a072943f6005"
+      }
+    },
+    {
+      "id": "36ae8634c962",
+      "class": "uncited-claim",
+      "section": "Limitations",
+      "citekey": null,
+      "line": 62,
+      "unattended": false,
+      "summary": "\\label{sec:trust-limitations}",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "99544f7d9ead"
+      }
+    },
+    {
+      "id": "04afcf46eb82",
+      "class": "uncited-claim",
+      "section": "Limitations",
+      "citekey": null,
+      "line": 64,
+      "unattended": false,
+      "summary": "The corpus is small and synthetic, its trust measures are behavioural proxies (m",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "0f4700a7622a"
+      }
+    },
+    {
+      "id": "7feb3cb1fafd",
+      "class": "uncited-claim",
+      "section": "Limitations",
+      "citekey": null,
+      "line": 66,
+      "unattended": false,
+      "summary": "The claim this chapter defends is therefore directional: where the two have been",
+      "detail": {
+        "block_cites": false,
+        "uncited_id": "dd959254e9f8"
+      }
+    },
+    {
+      "id": "82989c627ad8",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 22,
+      "unattended": false,
+      "summary": "First, the synchronisation literature separates the two directly.",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "8c7d8312f926"
+      }
+    },
+    {
+      "id": "03a10e02f0d6",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 26,
+      "unattended": false,
+      "summary": "Accuracy was held constant; honesty moved; trust followed the honesty.",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "e10b7482cd7e",
+        "also_flagged": [
+          {
+            "id": "d61be667af63",
+            "class": "unsupported-claim"
+          }
+        ]
+      }
+    },
+    {
+      "id": "9b3b3a830cf2",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 29,
+      "unattended": false,
+      "summary": "Second, the longest observational record in the corpus shows authority following",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "b08c41c6c202"
+      }
+    },
+    {
+      "id": "c607c0693426",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 40,
+      "unattended": false,
+      "summary": "Third, the same asymmetry appears at the analytics layer.",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "7884b5a69100"
+      }
+    },
+    {
+      "id": "902e6461ea7c",
+      "class": "uncited-claim",
+      "section": "The argument",
+      "citekey": null,
+      "line": 45,
+      "unattended": false,
+      "summary": "The recommended layered configuration buys accuracy where it is cheap but anchor",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "99a871315851",
+        "also_flagged": [
+          {
+            "id": "59e95473b6bd",
+            "class": "unsupported-claim"
+          }
+        ]
+      }
+    },
+    {
+      "id": "2b4fb22c185b",
+      "class": "uncited-claim",
+      "section": "Synthesis",
+      "citekey": null,
+      "line": 52,
+      "unattended": false,
+      "summary": "Across all three strands, the mechanism that converts a working twin into a trus",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "5782654d3d89"
+      }
+    },
+    {
+      "id": "47496afd7b7d",
+      "class": "uncited-claim",
+      "section": "Synthesis",
+      "citekey": null,
+      "line": 58,
+      "unattended": false,
+      "summary": "Authority, in other words, is granted against the override log, not against the ",
+      "detail": {
+        "block_cites": true,
+        "uncited_id": "2e22445b63a8"
+      }
+    }
+  ]
+}

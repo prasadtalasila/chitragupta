@@ -51,7 +51,8 @@ what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
 
-Seven files, each answering a question the draft itself cannot. The
+Nine files -- seven required, two optional -- each answering a question
+the draft itself cannot. The
 "status before" column is kept because it is the argument for the file
 existing: two were specified but never made durable, and the two that
 were missing entirely are the two that matter most.
@@ -67,6 +68,30 @@ were missing entirely are the two that matter most.
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
 | `outline.md` | the human's own per-section brief/claim/declared queries (#455) | **nowhere** |
+
+Four filled dossiers are committed to read alongside this page:
+`docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
+sample draft, written by real drafting runs. The survey's
+[`evidence.md`](examples/sample-project/content/dossiers/dt-overview/survey/evidence.md)
+shows the block shape at its smallest -- one kept citekey, why it was
+kept, the claim the draft rests on it, and (because a quotation was
+intended) the exact span:
+
+```markdown
+## `sample_dt_sync_2023`
+
+relevance: the synchronisation theme's only quantitative comparison
+claim: event-driven synchronisation cut transmitted volume by 71 percent against one-second polling with sub-two-second worst-case staleness, and explicit staleness marking roughly halved operator mistrust incidents
+quote: a twin that knows it is stale must say so on every read
+```
+
+and its
+[`rejected.md`](examples/sample-project/content/dossiers/dt-overview/survey/rejected.md)
+records the other half of the same judgement -- a
+paper retrieval surfaced that the draft declined, with the reason
+(`surfaced for this query but says nothing about staleness; kept for the
+integration theme instead`), which is what a reviser months later reads
+before re-offering the same paper.
 
 **`math.md` and `outline.md` are the two optional files**, and the only
 two whose absence is not a defect. A draft with no mathematics has none
@@ -122,7 +147,7 @@ revision retrieves the same papers, re-reads them, and re-reaches the
 same judgement, paying the full cost of a decision already made. A
 reviser is required to honour it: a candidate listed here with a reason
 is not retrieved and re-judged. It is also the largest file in the
-dossier, which is why the dossier is seven files rather than one -- a
+dossier, which is why the dossier is several files rather than one -- a
 revision loads only what it needs, and this one is needed only when a
 change reopens a sub-theme for searching.
 
@@ -485,7 +510,7 @@ draft since anyone last confirmed it.
 reports `unchanged since last stamp` or `CHANGED since last stamp`. A
 changed digest by itself only says *that* the draft moved -- most edits
 it catches are prose a reviser has no reason to act on. Only once it has
-changed does `status` also check four more specific classes, each
+changed does `status` also check five more specific classes, each
 already derivable from the dossier and the draft:
 
 | Class | What it means |
@@ -515,7 +540,7 @@ A `CHANGED` fingerprint is also ITER-RETGEN's `y_{t-1}` (Shao et al.,
 slot instead of a model: a hand-edited section's own prose can stand
 in for the paper's "previous generation" and drive one extra
 retrieval round for that section, rather than a plain single-round
-search. `draft-reviser` offers this once the four staleness findings
+search. `draft-reviser` offers this once the five staleness findings
 above are settled, and only for a section `outline.md` declares a
 query for -- never applies it unasked, same as every other repair
 this fingerprint gates.

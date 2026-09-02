@@ -74,6 +74,19 @@ sign-offs is mechanical.
 Steps 3 and 4 repeat per chapter. Steps 5 to 7 are what
 `.claude/skills/book-assembler/` does in one run.
 
+A real spec partway through this ladder is committed:
+the sample project holds a signed two-chapter outline
+([`spec.md`](examples/sample-project/content/specs/twin-basics/spec.md)),
+its sign-off record
+([`signoff.md`](examples/sample-project/content/specs/twin-basics/signoff.md)),
+and one accepted unit
+([`units/ch-staleness.json`](examples/sample-project/content/specs/twin-basics/units/ch-staleness.json))
+whose authored chapter sits at
+[`content/drafts/twin-basics/ch-staleness.md`](examples/sample-project/content/drafts/twin-basics/ch-staleness.md)
+-- with the second
+chapter honestly `unwritten`, because a spec is allowed to be ahead of
+its book and the registries say so rather than pretending otherwise.
+
 ## 🔧 Before you start
 
 You need a synced corpus, because every unit is grounded in it:

@@ -125,6 +125,18 @@ bench/results/specter2_paper_cache.json
 # message when config.toml is absent, rather than silently falling back,
 # so a host is never running settings its owner didn't choose.
 config.toml
+# ...except the sample project's, which is a shipped input of the
+# worked examples, not per-host data (committed with `git add -f`).
+!docs/examples/sample-project/config.toml
+
+# The `papers/` rule above ignores the user's own bibliography wherever
+# it lives -- but the sample project's five synthetic CC0 papers and
+# their .bib export are the worked examples' committed input universe,
+# not per-host data. Without this negation they silently never reach
+# git, which is exactly how they went missing the first time: local
+# builds kept passing off the working tree while every clean checkout
+# lacked them.
+!docs/examples/sample-project/papers/
 
 # Built documentation site (mkdocs.yml -> .github/workflows/docs.yml).
 # Generated from the repository itself; nothing here is a source file.

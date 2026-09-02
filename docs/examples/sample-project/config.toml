@@ -1,0 +1,583 @@
+# Central configuration for the research pipeline.
+#
+# Copy this to config.toml (gitignored, per-host) before running anything:
+#     cp config.toml.example config.toml
+#
+# Every key below is OPTIONAL -- anything you delete falls back to the
+# default noted beside it, so the smallest valid file is an empty one.
+#
+# Any value can be overridden per-run by an environment variable of the
+# same name, without editing this file:
+#     BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync
+#
+# Full reference -- accepted values, defaults, and how each value is
+# parsed:                                         docs/CONFIG.md
+# What each setting costs, measured:              docs/PERFORMANCE.md
+
+[bib]
+# The BibTeX export -- the source of truth for citekeys and bibliographic
+# metadata. A manual, point-in-time export from your reference manager,
+# not continuously auto-synced: re-export after adding papers, then
+# re-run `python -m chitragupta.corpus sync`. Gitignored, per-host data.
+# Relative to the repo root, or absolute.  Default: papers/bibliography.bib
+path = "papers/bibliography.bib"
+
+# Which BibTeX field carries Zotero collection membership, so a draft can
+# retrieve from the subset you curated for it rather than the whole
+# library. `groups` is JabRef's field, and what Better BibTeX writes under
+# "Export JabRef-specific fields" -- Zotero's own exporter drops
+# collections entirely, so on a plain export nothing is in any collection
+# and every command behaves as it did before. docs/ZOTERO.md has the
+# click-path.                                             Default: groups
+collections_field = "groups"
+
+[content]
+# Everything this pipeline writes lives under here: sync's ledger.sqlite
+# and parsed/, the drafting layer's drafts/, dossiers/ and rendered/, the
+# review layer's review/, and the enrichment stages' docling/, chroma/,
+# topics.json.
+# This is also what every tier-1 command that takes a path will accept
+# as an input: citation_gate, references and render_output refuse a
+# draft that resolves outside it, and so do all three of chitragupta.review's
+# aids. ledger takes no path argument at all, so the rule applies to it
+# vacuously.
+# That one directory is then the whole record of the work, and a copy of
+# it is complete.
+# Relative to the repo root, or absolute.  Default: content
+dir = "content"
+
+
+[render]
+# How `python -m chitragupta.draft render` formats citations. Used by
+# nothing else -- not by sync, not by the citation gate.
+
+# The CSL style pandoc's --citeproc formats citations and the
+# bibliography with. IEEE ships with this repo; the CSL project
+# (github.com/citation-style-language/styles) publishes several thousand
+# others, and any .csl file works here.
+#
+# It is vendored rather than fetched at render time for two reasons:
+# rendering has to work on a host with no network, and a style that
+# changed underneath a draft would silently renumber a document that had
+# already been reviewed. Delete this key and pandoc falls back to its own
+# default, which is Chicago author-date.
+# Set this only to point at *your own* style. Left unset (as it ships),
+# the vendored assets/csl/ieee.csl is resolved from wherever this code is
+# installed -- which is the only way it is found once this is a wheel
+# rather than a checkout, since a shipped asset does not live in your
+# project directory. A value here is relative to your project directory,
+# or absolute.                             Default: the vendored ieee.csl
+# csl = "my-styles/acm.csl"
+
+# Whether a run of consecutive citations collapses -- [3]–[6] rather than
+# [3], [4], [5], [6].
+#
+# The IEEE Reference Guide's own examples use the collapsed form, but
+# upstream ieee.csl does not produce it: that needs one CSL attribute
+# (collapse="citation-number") which the style omits. Rather than carry a
+# modified copy of a CC BY-SA style in-tree, render_output.py adds that
+# attribute to a *temp copy* at render time, leaving assets/csl/ieee.csl
+# byte-identical to what the CSL project publishes -- so it can be
+# re-fetched and diffed. See assets/csl/README.md.
+#
+# false renders whatever the style on disk says, unmodified. A style that
+# sets `collapse` itself is never overridden either way.
+#                                                           Default: true
+collapse_citations = true
+
+[style]
+# `vale_config` and `language` are what `python -m chitragupta.draft style`
+# checks a draft's prose against -- a review aid: it exits 0 whatever it
+# finds, and nothing in this pipeline blocks on it
+# (docs/ARCHITECTURE.md, "Layer 4"). `acronyms`, below, is read by the
+# five genre-writing skills at drafting time instead, not by this
+# command.
+
+# The Vale configuration and rule package. Vendored, for the reason the
+# CSL style above is: a style fetched at run time is not the style that
+# was reviewed, and a check whose rules differ between two clones is not
+# a check. Point this at your own house style to override what ships --
+# assets/vale/README.md documents the rules and what they deliberately
+# leave out.
+#
+# The `vale` binary itself is optional. Without it this command reports
+# missing-binary and every other command is unaffected, exactly as render
+# behaves without pandoc.
+# Set this only to point at your own house style. Left unset (as it
+# ships), the vendored assets/vale/vale.ini is resolved from wherever
+# this code is installed, for the reason [render] csl gives above. A
+# value here is relative to your project directory, or absolute.
+#                                          Default: the vendored vale.ini
+# vale_config = "my-styles/vale.ini"
+
+# A fallback dialect, for a draft whose dossier records none. BCP-47:
+# en-GB, en-US, en-IN.
+#
+# A fallback, never an override -- the `language:` line in a draft's own
+# scope.md always wins, because a thesis at an Indian university and an
+# IEEE submission legitimately differ and only the per-draft record knows
+# which this is. This is the standing preference for someone who has
+# chosen the same dialect four times running.
+#
+# Nothing is silent about it: the report names which source a dialect came
+# from, so a draft checked against this never reads like one that declared
+# its own. Leave it unset and a draft with no recorded dialect is told
+# what it looks like instead, with the command to record it.
+#                                                          Default: unset
+# language = "en-GB"
+
+# The acronym vocabulary a genre skill reads at step 0: PDF, CPU, URL and
+# similar are vendored (assets/style/acronyms.toml, always loaded);
+# point this at your own file to add your field's vocabulary on top of
+# it, merged rather than replacing it -- your domain acronyms are your
+# data, not this project's. Copy assets/style/acronyms.toml.example to
+# content/acronyms.toml (gitignored, per-host, the same footing as this
+# file) and point this key there -- not back at
+# assets/style/acronyms.toml itself, which is the vendored file this
+# merges *over*. See assets/style/README.md.
+#                                          Default: assets/style/acronyms.toml
+# acronyms = "content/acronyms.toml"
+
+[parser]
+# Which backend `python -m chitragupta.corpus sync` uses to turn a PDF into
+# content/parsed/<citekey>.txt.
+#
+#   "pdftotext"  default -- fast, needs poppler-utils on PATH, no Python
+#                dependency, native page boundaries (form feeds between
+#                pages).
+#   "docling"    best structural fidelity (reading order, sections,
+#                tables), needs the "enrich" dependency group. Its own
+#                output has no page boundaries, but chitragupta/pdf_text.py
+#                inserts the same form feeds explicitly, so
+#                chitragupta/review/verbatim_check.py's page locating and sync's
+#                pages/s summary line both work the same way regardless
+#                of backend.
+#
+# One thing to know before switching: docling is roughly 42x slower than
+# pdftotext, so a first sync over a large unparsed corpus is measured in
+# tens of minutes, not seconds. Raise `workers` below to spread that
+# across cores.
+#
+# docs/PDF-PARSER.md compares them properly; docs/PERFORMANCE.md has the
+# timings.                                              Default: pdftotext
+backend = "pdftotext"
+
+# Whether the docling backend runs its OCR stage. docling's own default
+# is on; this project's is off. Ignored by the pdftotext backend.
+#
+# That is a trade, not a free win. OCR runs on the CPU, and what it costs
+# depends on how parallel the run is: measured over the full corpus,
+# 2.08x serially but 3.91x at 12 workers and 4.79x at 24, because it
+# competes with the parallelism for CPU. In exchange it reads text stored
+# in the PDF as a *bitmap* rather than as characters. Turning it off changed the extracted text of
+# 8 of 16 sampled documents: mostly publisher furniture and figure
+# sub-captions, but one lost 10.1% of its characters including two whole
+# tables embedded as images.
+#
+# So: false suits born-digital papers. Set true for scans (with OCR off,
+# docling extracts almost nothing from a scan) or where tables-as-images
+# matter more than parse time. The parse-quality guard below will NOT
+# catch a wrong choice -- it looks for run-together words, not for
+# content that never arrived. Figures: docs/PERFORMANCE.md.
+#                                                          Default: false
+ocr = false
+
+# How many documents `python -m chitragupta.corpus sync` parses at once.
+#
+#   1        default, and the historical behaviour: one document at a
+#            time, no pool, no subprocesses. Nothing about a run changes
+#            unless you raise this.
+#   <int>    that many workers, clamped -- see below.
+#   "auto"   as many as this machine can sustain.
+#
+# Counts *documents* in flight; each docling worker is itself
+# multi-threaded, which is why the ceiling is not "one worker per CPU".
+#
+# The resolved count is min(what you asked for, what the machine allows,
+# how many documents actually need parsing), never below 1. "What the
+# machine allows" is the CPUs this *process* may run on -- not the
+# machine's total, which on a shared or containerised machine can be far
+# larger -- divided by 4 for docling:
+#
+#   CPUs available to the process   4    8    16   48
+#   "auto" resolves to              1    2    4    12
+#
+# NOTE that divisor is measurably conservative. A full-corpus sweep found
+# 32 workers 1.41x faster than the 12 this allows on a 48-CPU machine,
+# with the CPU still only 71% busy. Raising it is a behaviour change and
+# has not been made; docs/PERFORMANCE.md has the numbers.
+#
+# So a four-core desktop resolves to 2, and asking for 15 there still
+# gets 2 -- clamped and said out loud on stderr, rather than silently
+# obeyed (which thrashes) or silently ignored.
+#
+# Two things this cannot see: a cgroup CPU *quota* (`docker --cpus=2`)
+# throttles without changing which CPUs are permitted, and RAM is not
+# considered at all. Set an explicit number on either.
+#
+# With docling, each worker also claims one CUDA device round-robin, so a
+# multi-GPU machine uses all its cards instead of stacking every worker
+# on cuda:0 (which is what docling's own AUTO resolution does in every
+# process). Restrict that with CUDA_VISIBLE_DEVICES; there is no separate
+# setting for it.
+#
+# A card with under 2.5 GiB free -- one another process is already using
+# -- is left out of that rotation and said so on stderr, because a worker
+# that cannot load a model fails documents far faster than a working
+# worker parses them, and the pool then feeds it most of the corpus. If
+# every card is busy the run parses on the CPU instead, and a worker that
+# runs out of device memory mid-run falls back to the CPU rather than
+# failing the rest of its documents. docs/PARALLELISM.md has the detail.
+#                                                              Default: 1
+workers = 1
+
+# How that pool creates its worker processes. Consulted only when
+# workers > 1 AND backend = "docling"; nothing else uses a process pool,
+# so on a default run this setting does nothing at all.
+#
+#   "auto"        default: "forkserver" where the platform has it
+#                 (Linux, macOS), "spawn" where it doesn't (Windows).
+#   "forkserver"  one helper process imports torch and docling; every
+#                 worker is forked from it.
+#   "spawn"       a fresh interpreter per worker, importing everything
+#                 itself.
+#
+# Worth a fixed 1-2s off pool startup, which is most of a run when there
+# are a handful of documents and nothing when there are hundreds. It does
+# not make a bulk parse faster -- the numbers, and why, are in
+# docs/PERFORMANCE.md.
+#
+# "fork" is deliberately not an option: it is no faster than forkserver,
+# and a forked worker would inherit this process's open sqlite
+# connections (the run lock and the ledger), which SQLite's own
+# documentation says not to do.
+#
+# Both available methods re-import the calling program's __main__ in each
+# worker, so a script driving this must guard its top level with
+# `if __name__ == "__main__":`. See DEVELOPER.md.          Default: "auto"
+start_method = "auto"
+
+# Give up on a single document after this many seconds.
+# A positive number, or "off" (also "none", "false", or empty) for no
+# limit. 0 and negative numbers are rejected rather than read as "off".
+#
+# Applies to both backends, by the mechanism each has -- and those are
+# not equally strong:
+#   - pdftotext: a subprocess timeout, i.e. a real kill. The one backend
+#     where a wedged parse can actually be stopped.
+#   - docling: its own check *between* pipeline stages. Bounds a
+#     pathologically slow document; will not interrupt a hang inside one
+#     stage.
+#
+# Any value has to clear the slowest document you legitimately have --
+# in this project's own corpus that is a 675-page book taking 246s on its
+# own, so measure before setting it. A timed-out document is reported as
+# a failure, not silently truncated, and sync's summary names it. It is
+# *not* retried on its own, unlike a stall_timeout casualty below: the
+# limit that expired is this one, so retrying under it would spend the
+# same minutes to reach the same answer. Raise this, then re-run with
+# --reparse.
+#                                                          Default: "off"
+document_timeout = "off"
+
+# Give up on a *parallel* run when no document at all has completed for
+# this many seconds. Same accepted values as document_timeout.
+#
+# Not a per-document deadline, and that difference is the point: with
+# several workers completions arrive constantly, so total silence across
+# the whole pool separates a hung worker from a merely slow document far
+# better than any per-document number could.
+#
+# On by default, unlike most safety valves here, because the failure it
+# catches is one a user actually hit: a run that never finishes. The
+# default is loose on purpose, a warning is printed at half the budget,
+# and a false positive is cheap -- outstanding documents are marked
+# failed and retried next run, not lost. Only applies when workers > 1.
+#                                                           Default: 1800
+stall_timeout = 1800
+
+# Parse-quality guard. `sync` warns when more than `long_word_ratio` of a
+# document's words are longer than `long_word_chars` -- what a backend
+# losing the spaces between words looks like. Retrieval tokenizes on
+# whitespace, so fused words stop matching queries entirely. Documents
+# shorter than `min_tokens` words are skipped as too noisy to judge.
+#
+# A warning, never a failure: the text is still usable, and an unusual
+# corpus could trip it legitimately.       Defaults: 20 / 0.01 / 200
+long_word_chars = 20
+long_word_ratio = 0.01
+min_tokens = 200
+
+[logging]
+# How much the pipeline writes to logs/pipeline.log (rotated,
+# gitignored -- created on first run). One of Python's own level names:
+# DEBUG, INFO, WARNING, ERROR, CRITICAL. Case-insensitive.
+#
+# One file for both `python -m chitragupta.corpus sync` and `python -m chitragupta.enrich`: each
+# line names its source, so `grep 'chitragupta\.sync' logs/pipeline.log`
+# splits them back apart. The drafting-layer CLIs (chitragupta.draft gate/dossier/
+# retrieve/references/render) print to stdout and are not logged here --
+# see docs/CONFIG.md for why.
+#
+# Only affects the file. Terminal output (stdout/stderr) is unchanged by
+# this setting -- the per-document progress and summary lines print
+# exactly as they always have, regardless of level.
+#                                                            Default: INFO
+level = "INFO"
+
+[provenance]
+# The citation-provenance tool's own thresholds, not the review layer's --
+# the section keeps the tool's name, not the layer's.
+# chitragupta/review/citation_provenance.py bands the fraction of a citing sentence's
+# distinctive words found in the best-matching source passage. Below
+# weak_score a finding reads "no support found", which means "go look at
+# this one first" -- never "this citation is wrong". At or above
+# good_score it is banded "supported".
+#
+# Round numbers rather than tuned ones, because the report sets a reading
+# order for a human, not a pass/fail line.  Defaults: 0.20 / 0.50
+weak_score = 0.20
+good_score = 0.50
+
+[enrich]
+# Used only by chitragupta/enrich/* (the "enrich" dependency group), never by sync
+# or the citation gate. The table name is matched exactly and there is no
+# fallback: a config.toml spelling this header anything else -- [heavy] is
+# the one worth naming, since it is what this table used to be called --
+# gets the defaults below, silently, rather than an error.
+
+# Which sentence-transformers model backs semantic search.
+#
+# NOTE the default below is not the code's fallback. If this key is
+# absent entirely you get all-MiniLM-L6-v2 (smaller, faster, less
+# nuanced); this file ships all-mpnet-base-v2 (larger, more accurate,
+# ~4-5x the compute). Both are genuine drop-ins.
+#
+# Not every model is: the bge-* and e5-* families expect "query: " /
+# "passage: " prefixes that this code does not add, so they would run
+# without error and silently underperform. docs/CONFIG.md's "Choosing an
+# embedding model" lists what works and what needs a code change first.
+#
+# Changing this does not re-embed the existing index -- rebuild it with
+# `python -m chitragupta.enrich --stages embed`.
+#                       Default if absent: sentence-transformers/all-MiniLM-L6-v2
+embedding_model = "sentence-transformers/all-mpnet-base-v2"
+
+# ---------------------------------------------------------------------
+# The three numbers that size embed_index.search(). They are one setting
+# in three parts, and read best as the pipeline they describe:
+#
+#   over-fetch k * multiplier  ->  [rerank]  ->  cap per citekey  ->  keep k
+#
+# docs/CORPUS-SEARCH.md draws it. All three are validated at load: a
+# value below 1, a float or a bool raises, naming the key -- because
+# each nonsense value fails as a quietly empty result rather than as an
+# error.
+# ---------------------------------------------------------------------
+
+# How many passages a search returns when the caller doesn't say. A
+# default, not a ceiling -- the CLI's --k and any skill that names a k
+# still win.
+#                                                             Default: 5
+embed_top_k = 5
+
+# The most chunks of one citekey embed_index.search() will return among
+# its top k (#305): a per-citekey cap applied to the ranked list before
+# it's truncated, so one thoroughly-matched paper can't fill every
+# slot. BM25's chitragupta.retrieval.search() needs no matching key --
+# it's already one-per-citekey by construction. Lower to 1 for maximal
+# source diversity per query; raise it where a single paper legitimately
+# deserves more of the result.
+#                                                             Default: 3
+embed_max_passages_per_source = 3
+
+# How much deeper than k to fetch from Chroma before capping, so that
+# dropping a dominant paper's excess chunks *promotes* another paper's
+# chunk into the window rather than merely shortening the list. At 1 the
+# cap can only shorten -- which is the failure #305 existed to fix.
+#
+# This is the lever for "the right paper never came back at all": 27% of
+# correct papers never entered the pool in the measurement behind #380.
+# It is also the expensive one when rerank is on, since the reranker
+# scores the whole pool -- 5 -> 20 -> 50 chunks costs roughly
+# 1x -> 3.3x -> 7.2x.
+#                                                             Default: 4
+embed_overfetch_multiplier = 4
+
+# Whether embed_index.search() reorders its over-fetched passages with a
+# cross-encoder before that cap is applied (#380). Off, and that is a
+# measurement rather than caution -- bench/RESULTS.md, 2026-08-26:
+#   - recall@5 does not move (156 of 256 either way; the correct paper
+#     is lost 20x and gained 20x, so the swaps cancel);
+#   - source diversity does not move at all -- the cap sets it, not the
+#     ordering, so this does NOT help multi-source drafting;
+#   - what it does buy is shallow ordering: recall@3 129 -> 139 of 256;
+#   - it costs 2.5x a search call on a GPU and 5.75x on a CPU.
+# Turn it on if you read the top 3 and not the top 5. Rebuild nothing:
+# unlike embedding_model this changes ranking only, not the index.
+#                                                         Default: false
+rerank = false
+
+# Which cross-encoder scores (query, passage) pairs when rerank is on.
+# Read only when it is.
+#
+# This takes a *cross-encoder* -- one that scores both texts jointly in a
+# single forward pass -- not an embedding model, so the "query: " /
+# "passage: " prefix warning above does NOT apply here: BAAI/bge-reranker
+# -base is a sequence-classification cross-encoder and is a genuine
+# drop-in. docs/CORPUS-SEARCH.md's "Choosing a reranker" has the measured
+# comparison; the short version is that bge-reranker-base won on recall
+# by five queries in 256 and costs 3.5-4.8x more, which is why the
+# cheaper model is the default.
+#            Default: cross-encoder/ms-marco-MiniLM-L6-v2
+rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
+
+# Which sentence_transformers.CrossEncoder model scores claim-support
+# checking's (premise, hypothesis) pairs -- chitragupta/entailment.py's
+# Entailer, the aid that flags a citing sentence's claim as unsupported by
+# its cited source's retrieved passage.
+#
+# NOTE the default below is not the code's fallback. If this key is
+# absent entirely you get nli-deberta-v3-small (the smaller of the two
+# DeBERTa-v3 candidates investigated -- cross-encoder/nli-MiniLM2-L6-H768,
+# a different family, has fewer parameters still; see docs/CONFIG.md --
+# 141,897,219 parameters, 87.55 MNLI-mismatched accuracy); this file
+# ships nli-deberta-v3-base (larger, 184,424,451 parameters, 90.04
+# MNLI-mismatched accuracy). Both are genuine drop-ins, confirmed by
+# actually loading each one.
+#
+# Not every model is: facebook/bart-large-mnli and the MoritzLaurer/*
+# zero-shot-MNLI models are transformers.pipeline("zero-shot-classification")
+# models, not CrossEncoder-wrapped ones, and would need a second ML code
+# path to use here. docs/CONFIG.md's "Choosing an entailment model" lists
+# what works and what needs a code change first.
+#
+# Changing this affects only the next run that touches claim-support
+# checking -- unlike embedding_model above, there is no index to rebuild.
+#                       Default if absent: cross-encoder/nli-deberta-v3-small
+entailment_model = "cross-encoder/nli-deberta-v3-base"
+
+# Whether the docling stage also extracts figure bitmaps, into
+# content/docling/<doc>_artifacts/, plus a <doc>.figures.json giving each
+# figure's page, caption, and the exact string to cite it by.
+#
+# Those images are a *reading aid* for checking a draft against its
+# sources. They are never inserted into a draft: a figure's copyright is
+# not the paper's citekey to grant (see DEVELOPER.md's "Figures and
+# copyright"). Two costs before turning it on:
+#   - it invalidates the whole docling cache, so the next run re-parses
+#     every PDF from scratch. That re-parse is the point, not a bug --
+#     the existing .md files genuinely have no figure references yet.
+#   - the PNGs are real disk: a 17-page paper produced 13 of them.
+#                                                          Default: false
+docling_images = false
+
+# Render scale for those bitmaps -- 2.0 is roughly 144 DPI, enough to
+# read a figure back without storing print-resolution files.
+#                                                            Default: 2.0
+docling_image_scale = 2.0
+
+# --- Seed topics -------------------------------------------------------
+# Seed topics are phrases you write yourself in content/seed_topics.toml
+# (start from assets/style/topics.toml.example). `--stages seed-topics`
+# matches them against the corpus; `chitragupta corpus topics` prints the
+# result. With no such file nothing below applies: the bertopic stage
+# behaves exactly as it always has and the seed-topics stage is skipped.
+
+# How many papers one seed topic may list, best-scoring first.
+#
+# This is the selection rule. Each phrase is ranked against its *own*
+# scores, because measured over a real 497-document corpus every phrase
+# had its own scale -- "Standards" peaked at 0.295 corpus-wide while
+# "Digital Twin" had a median of 0.338, so one cutoff returned nothing for
+# the first and half the library for the second. Raise it when a topic is
+# genuinely broad and you want the tail; the report always says how many
+# papers were considered, so you can tell a truncated list from a short one.
+#                                                             Default: 25
+seed_topic_max_papers = 25
+
+# The noise floor beneath that ranking -- not the selection rule. It only
+# keeps a seed that means nothing (a person's name left in the list)
+# returning nothing rather than its 25 nearest neighbours.
+#                                                           Default: 0.15
+seed_topic_min_similarity = 0.15
+
+# Note there is no setting for how many seed topics you may write, and
+# no reason for one. Seeds never steer the clustering: they are matched
+# against the same document vectors afterwards, so a hundred seed phrases
+# cost exactly as many emergent topics as none -- zero. Routing them
+# through BERTopic's zero-shot mode did cost topics (81 down to 53 for
+# nine phrases, measured) and that path has been removed.
+
+# How close an emergent topic must sit to a seed phrase for that phrase to
+# *name* it, in the converged set (content/topic_set.json). Above this the
+# topic is listed under your wording; below it, it keeps a derived label
+# and sits beside your phrase as its own topic.
+#
+# Higher than seed_topic_min_similarity on purpose: that floor decides
+# which papers are worth listing under a phrase and is loose by design,
+# while this decides whether two topics are the *same* topic. Being wrong
+# here merges things you expected to see apart.
+#                                                           Default: 0.45
+topic_converge_similarity = 0.45
+
+# Whether the words a topic is *named* by exclude the corpus's own
+# authors -- read from your bibliography, not a name list. Names only:
+# this never changes which papers are grouped together, just how the
+# group is described.
+#
+# On because the failure was severe: `werner kritzinger, fraunhofer
+# austria` was a top-three topic, which is a person and an institution
+# rather than a subject. The cost, measured: of 1,277 surnames in this
+# corpus's bibliography, five are also ordinary words (black, brown, can,
+# park, wood) and leave the label vocabulary too. Turn this off for a
+# corpus where that trade is wrong.
+#                                                           Default: true
+topic_exclude_author_names = true
+
+# How fine the emergent topic structure is -- the depth knob, and the one
+# worth turning first. Measured on a real 497-document corpus, holding
+# everything else fixed:
+#
+#     topic_min_cluster_size = 10   13 topics, 27% outliers, median 19 papers
+#     topic_min_cluster_size = 5    25 topics, 19% outliers, median 13
+#     topic_min_cluster_size = 2    50 topics, 12% outliers, median 6
+#     ...with topic_min_samples = 1 75 topics, 10% outliers, median 5
+#
+# The outlier rate falls as topics get finer, so a coarse setting both
+# under-clusters and discards more of the corpus. Raise these two for
+# fewer, broader topics; lower them for more, sharper ones. Both are
+# clamped down automatically on a corpus too small to honour them.
+#                                                          Defaults: 3 / 2
+topic_min_cluster_size = 2
+topic_min_samples = 1
+
+# UMAP's neighbourhood size, the other half of granularity: smaller reads
+# more local structure and yields more, finer topics.
+#
+# 5 rather than 10 because it is better on three axes at once, measured:
+# 83 topics against 76, 9% of the corpus left out against 17%, and a
+# stability of 0.80 against 0.71 -- how well the same setting reproduces
+# under resampling. The pairing hardcoded before 6.9.0 scored 0.14 there.
+#                                                              Default: 5
+topic_neighbors = 2
+
+# Whether the bertopic stage also records which topics each document
+# belongs to, rather than only the single topic id BERTopic returns. A
+# paper genuinely about two things cannot be expressed by one id: on a
+# real 497-document corpus, 140 papers belong to more than one topic.
+#
+# Applies to an unseeded run. With a seed list BERTopic swaps out its
+# clusterer and there is nothing left to ask for soft memberships -- run
+# the stage without seeds when the question is "what is in my corpus that
+# I have not named yet".
+#                                                            Default: true
+topic_distribution = true
+
+# How strong a topic must be relative to that document's own strongest to
+# count, and how many may be kept. Relative rather than absolute for the
+# same reason the seed ranking is: a fixed floor means something entirely
+# different at 7 topics than at 70.
+#                                                       Defaults: 0.5 / 8
+topic_membership_ratio = 0.5
+topic_membership_max = 8

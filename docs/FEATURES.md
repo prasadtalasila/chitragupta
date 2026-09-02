@@ -19,6 +19,13 @@ describing one mechanism drift apart, and a features catalogue is the
 most likely place for it. (How that constraint is enforced is at the
 [foot of this page](#-how-this-document-stays-true).)
 
+Every artefact named below also exists as a real, committed example:
+`docs/examples/sample-project/` (see [the examples map](examples/README.md))
+holds gate-passed drafts of four genres,
+their dossiers, the review layer's reports, renders, a signed book
+outline and the topic-discovery artefacts, all produced by running the
+pipeline over five sample papers.
+
 ## 🧭 Table of contents
 
 - [The guarantee everything else serves](#-the-guarantee-everything-else-serves)
@@ -217,8 +224,8 @@ mistake costs.
 ### 🗂 The dossier: why a draft is revisable months later
 
 Every drafting run writes `content/dossiers/<the draft's path minus its
-suffix>/` -- Markdown, seven files, readable by a human or a model with
-no tooling at all.
+suffix>/` -- Markdown, nine files (two of them optional), readable by a
+human or a model with no tooling at all.
 
 ```mermaid
 flowchart LR
@@ -249,8 +256,9 @@ mirroring is what lets `draft dossier export` bundle a draft with
 everything belonging to it by matching paths, rather than by keeping a
 registry that could fall out of step.
 
-Seven files -- `scope`, `evidence`, `rejected`, `sections`, `steering`,
-`revisions`, `retrieval` -- each answering a question the draft itself
+Nine files -- `scope`, `evidence`, `rejected`, `sections`, `steering`,
+`revisions`, `retrieval`, and the optional `math` and `outline` -- each
+answering a question the draft itself
 cannot. **[DOSSIER.md](DOSSIER.md) explains each one**, what it holds and
 what goes wrong without it, plus the `claim:`/`quote:` contract and why
 the whole thing is Markdown.

@@ -1,0 +1,128 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "agenda",
+  "draft": "content/drafts/dt-overview/staleness-tutorial.md",
+  "command": "python -m chitragupta.review agenda content/drafts/dt-overview/staleness-tutorial.md",
+  "version": "6.61.0",
+  "sources": {
+    "aids": {
+      "provenance": {
+        "available": true,
+        "stale": false
+      },
+      "verbatim": {
+        "available": true,
+        "stale": false
+      },
+      "coverage": {
+        "available": true,
+        "stale": false
+      },
+      "synthesis": {
+        "available": true,
+        "stale": false
+      },
+      "figure": {
+        "available": false,
+        "stale": false
+      },
+      "uncited": {
+        "available": true,
+        "stale": false
+      },
+      "quotation": {
+        "available": true,
+        "stale": false
+      },
+      "support": {
+        "available": true,
+        "stale": false
+      }
+    },
+    "style": {
+      "available": true,
+      "partial": false
+    },
+    "drift": {
+      "available": true,
+      "corpus_available": true
+    }
+  },
+  "pass_bound": 3,
+  "objective_class_count": 2,
+  "items": [
+    {
+      "id": "5a8bf91ec244",
+      "class": "prose",
+      "section": "3. Mark staleness instead",
+      "citekey": null,
+      "line": 66,
+      "unattended": true,
+      "summary": "chitragupta.WideCodeLine: 'print(f\"STALE ({age:.0f}s old) -- last known temperature: {s' (1x)",
+      "detail": {
+        "message": "this code line is 90 columns wide, over the 76 a page fits. A fenced block renders as LaTeX `verbatim`, which wraps only because the render loads `fvextra`; keeping the line short avoids the continuation marker a wrap leaves behind (WRITING-STANDARDS.md \u00a714).",
+        "severity": "suggestion",
+        "count": 1
+      }
+    },
+    {
+      "id": "3f97e7ce6b6d",
+      "class": "prose",
+      "section": "Where to go next",
+      "citekey": null,
+      "line": 110,
+      "unattended": true,
+      "summary": "chitragupta.Just: 'just' (1x)",
+      "detail": {
+        "message": "'just' -- adverb or adjective? Only the adverb is a defect marker (WRITING-STANDARDS.md \u00a72, \u00a79).",
+        "severity": "suggestion",
+        "count": 1
+      }
+    },
+    {
+      "id": "f07a256b30b1",
+      "class": "unsupported-claim",
+      "section": "Where to go next",
+      "citekey": "sample_dt_sync_2023",
+      "line": 107,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
+        "provenance_id": "a2f8f98703b5"
+      }
+    },
+    {
+      "id": "dc34bfbaf303",
+      "class": "unsupported-claim",
+      "section": "Where to go next",
+      "citekey": "sample_dt_factory_2022",
+      "line": 109,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
+        "provenance_id": "09fb4da73bdb"
+      }
+    },
+    {
+      "id": "c8114fcf4d83",
+      "class": "unsupported-claim",
+      "section": "Where to go next",
+      "citekey": "sample_dt_overview_2024",
+      "line": 111,
+      "unattended": false,
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: For the vocabulary of what you just built -- and why it is a shadow, not yet a t",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.",
+        "provenance_id": "0fab0f944cc3"
+      }
+    }
+  ]
+}

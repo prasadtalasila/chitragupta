@@ -1,0 +1,14 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "uncited",
+  "draft": "content/drafts/dt-overview/staleness-chapter.md",
+  "command": "python -m chitragupta.review uncited content/drafts/dt-overview/staleness-chapter.md --write",
+  "version": "6.61.0",
+  "genre": "textbook-chapter",
+  "genre_source": "scope.md",
+  "standing": "ordinary",
+  "sentences_total": 27,
+  "uncited": 25,
+  "bare": 22,
+  "findings": []
+}

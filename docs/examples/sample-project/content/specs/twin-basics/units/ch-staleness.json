@@ -1,0 +1,14 @@
+{
+  "citekeys": [
+    "sample_dt_factory_2022",
+    "sample_dt_sync_2023"
+  ],
+  "draft": "content/drafts/twin-basics/ch-staleness.md",
+  "input_digest": "de17eeb5b763",
+  "output_digest": "94be8bcdc69f",
+  "sources": [
+    "sample_dt_factory_2022",
+    "sample_dt_sync_2023"
+  ],
+  "unit": "ch-staleness"
+}

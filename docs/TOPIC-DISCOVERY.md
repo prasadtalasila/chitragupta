@@ -77,9 +77,22 @@ personal corpus is hundreds of papers, not millions.
 
 ## 🧪 A worked session
 
-Real output from a four-paper fixture (two seed papers about digital
-twins, three about machine learning, one -- `dt2022` -- in both). First,
-the map:
+Everything this page describes also exists as committed artefacts over
+the five-paper sample corpus: a full `corpus discover` transcript
+([`discover_digital_twin.txt`](examples/sample-project/content/discover_digital_twin.txt)),
+the graph it read
+([`topic_graph.json`](examples/sample-project/content/topic_graph.json)),
+the offline page
+([`topic_map.html`](examples/sample-project/content/topic_map.html)),
+and a measured gold set with its per-rung scores
+([`topic_gold.toml`](examples/sample-project/content/topic_gold.toml),
+[`topic_gold_results.json`](examples/sample-project/content/topic_gold_results.json))
+-- including one deliberately misspelled query the fuzzy rung has to
+catch and one out-of-corpus query that must fall through to search.
+
+Below, real output from a four-paper fixture (two seed papers about
+digital twins, three about machine learning, one -- `dt2022` -- in
+both). First, the map:
 
 ```console
 $ chitragupta corpus discover

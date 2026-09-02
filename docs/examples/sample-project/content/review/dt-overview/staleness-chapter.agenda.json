@@ -1,0 +1,141 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "agenda",
+  "draft": "content/drafts/dt-overview/staleness-chapter.md",
+  "command": "python -m chitragupta.review agenda content/drafts/dt-overview/staleness-chapter.md",
+  "version": "6.61.0",
+  "sources": {
+    "aids": {
+      "provenance": {
+        "available": true,
+        "stale": false
+      },
+      "verbatim": {
+        "available": true,
+        "stale": false
+      },
+      "coverage": {
+        "available": true,
+        "stale": false
+      },
+      "synthesis": {
+        "available": true,
+        "stale": false
+      },
+      "figure": {
+        "available": false,
+        "stale": false
+      },
+      "uncited": {
+        "available": true,
+        "stale": false
+      },
+      "quotation": {
+        "available": true,
+        "stale": false
+      },
+      "support": {
+        "available": true,
+        "stale": false
+      }
+    },
+    "style": {
+      "available": true,
+      "partial": false
+    },
+    "drift": {
+      "available": true,
+      "corpus_available": true
+    }
+  },
+  "pass_bound": 3,
+  "objective_class_count": 1,
+  "items": [
+    {
+      "id": "44be99531d05",
+      "class": "prose",
+      "section": "Exercises",
+      "citekey": null,
+      "line": 71,
+      "unattended": true,
+      "summary": "chitragupta.Just: 'just' (1x)",
+      "detail": {
+        "message": "'just' -- adverb or adjective? Only the adverb is a defect marker (WRITING-STANDARDS.md \u00a72, \u00a79).",
+        "severity": "suggestion",
+        "count": 1
+      }
+    },
+    {
+      "id": "6e8823894243",
+      "class": "unsupported-claim",
+      "section": "3.1 Motivation",
+      "citekey": "sample_dt_factory_2022",
+      "line": 18,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: Field studies report that the costly failures are precisely the quiet ones, wher",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.",
+        "provenance_id": "5ad855819b5f"
+      }
+    },
+    {
+      "id": "05fea357e710",
+      "class": "unsupported-claim",
+      "section": "3.1 Motivation",
+      "citekey": "sample_dt_sync_2023",
+      "line": 20,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Field studies report that the costly failures are precisely the quiet ones, wher",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.",
+        "provenance_id": "ee2aa913e518"
+      }
+    },
+    {
+      "id": "50c3bfa4ad00",
+      "class": "unsupported-claim",
+      "section": "Summary",
+      "citekey": "sample_dt_factory_2022",
+      "line": 83,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: Staleness is the age of a value at the moment it is used; a budget turns a decis",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.",
+        "provenance_id": "94314cccb028",
+        "also_flagged": [
+          {
+            "id": "f180a83fa221",
+            "class": "unsupported-claim"
+          }
+        ]
+      }
+    },
+    {
+      "id": "f180a83fa221",
+      "class": "unsupported-claim",
+      "section": "Summary",
+      "citekey": "sample_dt_sync_2023",
+      "line": 83,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Staleness is the age of a value at the moment it is used; a budget turns a decis",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.",
+        "provenance_id": "2c11f1c3447b",
+        "also_flagged": [
+          {
+            "id": "50c3bfa4ad00",
+            "class": "unsupported-claim"
+          }
+        ]
+      }
+    }
+  ]
+}

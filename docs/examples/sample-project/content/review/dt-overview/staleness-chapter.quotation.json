@@ -1,0 +1,30 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "quotation",
+  "draft": "content/drafts/dt-overview/staleness-chapter.md",
+  "command": "python -m chitragupta.review quotation content/drafts/dt-overview/staleness-chapter.md --write",
+  "version": "6.61.0",
+  "quotes_total": 2,
+  "found": 0,
+  "absent": 0,
+  "unverifiable": 2,
+  "quotes": [
+    {
+      "id": "83d94ccd0599",
+      "citekey": "sample_dt_factory_2022",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "96ff258b3e52",
+      "citekey": "sample_dt_sync_2023",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no parsed text with page breaks and no readable PDF"
+    }
+  ],
+  "findings": []
+}

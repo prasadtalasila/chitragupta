@@ -1,0 +1,56 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "support",
+  "draft": "content/drafts/dt-overview/trust-chapter.tex",
+  "command": "python -m chitragupta.review support content/drafts/dt-overview/trust-chapter.tex --write",
+  "version": "6.61.0",
+  "scored": 0,
+  "unscoreable": {
+    "sample_dt_factory_2022": "no parsed text with page breaks and no readable PDF",
+    "sample_dt_overview_2024": "no parsed text with page breaks and no readable PDF",
+    "sample_dt_sync_2023": "no parsed text with page breaks and no readable PDF",
+    "sample_ml_anomaly_2023": "no parsed text with page breaks and no readable PDF"
+  },
+  "findings": [
+    {
+      "id": "08929896014b",
+      "line": 26,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "In comparative trials, explicit staleness marking -- returning every value with its age, so a twin that has stopped tracking reality says so -- roughly halved operator mistrust incidents without any change to the underlying model.",
+      "score": 0.0,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "5b6f8760160e",
+      "line": 31,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
+      "score": 0.0,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "5b6f8760160e",
+      "line": 38,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
+      "score": 0.0,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "b615334a17de",
+      "line": 45,
+      "citekey": "sample_ml_anomaly_2023",
+      "claim": "Comparing anomaly detectors over twin state streams, the learned model with the best mean precision was also the one whose failure was invisible: it absorbed a slow drift into its own retraining baseline and missed it entirely, while an incorruptible statistical baseline flagged it.",
+      "score": 0.0,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "4324aaca7f52",
+      "line": 55,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
+      "score": 0.0,
+      "note": "no parsed text with page breaks and no readable PDF"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "synthesis",
+  "draft": "content/drafts/dt-overview/survey.md",
+  "command": "python -m chitragupta.review synthesis content/drafts/dt-overview/survey.md --write",
+  "version": "6.61.0",
+  "genre": "survey",
+  "unit": "paragraph",
+  "unit_source": "scope.md",
+  "units_total": 21,
+  "uncited": 14,
+  "single_source": 4,
+  "multi_source": 3,
+  "declared": 0,
+  "undeclared": 4,
+  "single_source_pct": 57.142857142857146,
+  "findings": [
+    {
+      "id": "5829640e92e1",
+      "kind": "single_source",
+      "line": 5,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_dt_overview_2024"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "ca0110915422",
+      "kind": "single_source",
+      "line": 22,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_dt_sync_2023"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "eb126d7246f7",
+      "kind": "single_source",
+      "line": 46,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_ml_anomaly_2023"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "38f7145d8865",
+      "kind": "single_source",
+      "line": 58,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_std_interop_2021"
+      ],
+      "declared": null,
+      "longest_run": 0
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "uncited",
+  "draft": "content/drafts/dt-overview/survey.md",
+  "command": "python -m chitragupta.review uncited content/drafts/dt-overview/survey.md --write",
+  "version": "6.61.0",
+  "genre": "survey",
+  "genre_source": "scope.md",
+  "standing": "exceptional",
+  "sentences_total": 23,
+  "uncited": 8,
+  "bare": 1,
+  "findings": [
+    {
+      "id": "49ea2256160e",
+      "line": 16,
+      "sentence": "This survey groups the sample corpus into three themes -- keeping the twin true to its asset, using its state stream, and integrating it with everything else -- and closes with the gaps the corpus leaves open.",
+      "block_cites": false
+    },
+    {
+      "id": "4d7403ef038c",
+      "line": 5,
+      "sentence": "The phrase *digital twin* is applied to systems with very different levels of ambition, and the corpus surveyed here begins by fixing that vocabulary.",
+      "block_cites": true
+    },
+    {
+      "id": "841d1fb8bc75",
+      "line": 22,
+      "sentence": "A twin is only as trustworthy as its last synchronisation.",
+      "block_cites": true
+    },
+    {
+      "id": "fe47623570bf",
+      "line": 31,
+      "sentence": "Trust is behavioural as much as technical.",
+      "block_cites": true
+    },
+    {
+      "id": "14fc9d46f400",
+      "line": 46,
+      "sentence": "Once a twin exists, its state stream is a naturally clean substrate for analytics.",
+      "block_cites": true
+    },
+    {
+      "id": "562a15a8c78d",
+      "line": 58,
+      "sentence": "Twin pilots rarely die of modelling problems; they die of integration.",
+      "block_cites": true
+    },
+    {
+      "id": "ecdf4f5e661d",
+      "line": 72,
+      "sentence": "Three gaps stand out.",
+      "block_cites": true
+    },
+    {
+      "id": "2ba2d479ed94",
+      "line": 72,
+      "sentence": "The corpus measures synchronisation and anomaly detection separately, but no paper studies how detector accuracy degrades under the staleness its own synchronisation strategy permits.",
+      "block_cites": true
+    }
+  ]
+}

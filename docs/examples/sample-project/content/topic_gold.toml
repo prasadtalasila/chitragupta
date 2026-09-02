@@ -1,0 +1,23 @@
+# Gold queries for the sample corpus -- see assets/style/topic_gold.toml.example.
+
+[[query]]
+phrase = "digital twin"
+topics = ["digital twin"]
+
+[[query]]
+phrase = "digitl twin"          # typo: the fuzzy rung's job
+topics = ["digital twin"]
+
+[[query]]
+phrase = "detecting unusual sensor behaviour"
+topics = ["anomaly detection"]
+citekeys = ["sample_ml_anomaly_2023"]
+
+[[query]]
+phrase = "asset model registries and semantics"
+topics = ["interoperability standards"]
+citekeys = ["sample_std_interop_2021"]
+
+[[query]]
+phrase = "a subject this corpus does not cover"
+topics = []                     # should fall through to search

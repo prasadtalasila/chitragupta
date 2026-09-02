@@ -1,0 +1,44 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "provenance",
+  "draft": "content/drafts/dt-overview/staleness-tutorial.md",
+  "command": "python -m chitragupta.review provenance content/drafts/dt-overview/staleness-tutorial.md",
+  "version": "6.61.0",
+  "unreadable": {
+    "sample_dt_sync_2023": "no parsed text with page breaks and no readable PDF",
+    "sample_dt_factory_2022": "no parsed text with page breaks and no readable PDF",
+    "sample_dt_overview_2024": "no parsed text with page breaks and no readable PDF"
+  },
+  "findings": [
+    {
+      "id": "a2f8f98703b5",
+      "line": 107,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
+      "score": 0.0,
+      "band": "no support found",
+      "passage": null,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "09fb4da73bdb",
+      "line": 109,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
+      "score": 0.0,
+      "band": "no support found",
+      "passage": null,
+      "note": "no parsed text with page breaks and no readable PDF"
+    },
+    {
+      "id": "0fab0f944cc3",
+      "line": 111,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.",
+      "score": 0.0,
+      "band": "no support found",
+      "passage": null,
+      "note": "no parsed text with page breaks and no readable PDF"
+    }
+  ]
+}

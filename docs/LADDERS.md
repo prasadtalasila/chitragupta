@@ -264,11 +264,12 @@ is fewer than it sounds:
 | `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
 | `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
 | `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
+| `seed-topics`, `converge`, `topic-graph` | **refused** | The same shape as `bertopic`, downstream of it: each overwrites one whole-corpus artefact (`content/topic_seeds.json`, `content/topic_set.json`, `content/topic_graph.json`), derived from the whole topic model above it |
 
-So the filter changes the behaviour of exactly one stage of the three,
-and the other two are deliberately out of reach.
+So the filter changes the behaviour of exactly one stage of the six,
+and the other five are deliberately out of reach.
 
-The two refusals are a **tier**, not a ladder, in this page's vocabulary,
+The refusals are a **tier**, not a ladder, in this page's vocabulary,
 and they are the reason the flag is safe to offer at all. Asked to scope
 `embed`, the run stops and prints the two commands to use instead.
 
