@@ -66,8 +66,15 @@ def _topic_view(args, label: str, via: str, graph, topic_set, terms) -> int:
     _emit(args, data, _render.render_topic(data))
     if args.out:
         quoted = _overview.snippets(_data.members_of(topic_set)[label], graph, label)
-        with open(args.out, "w", encoding="utf-8") as handle:
-            handle.write(_overview.build_markdown(data, quoted))
+        try:
+            with open(args.out, "w", encoding="utf-8") as handle:
+                handle.write(_overview.build_markdown(data, quoted))
+        except OSError as failure:
+            # The view above already printed; only the file write failed,
+            # and "exit 1 naming the path" beats a traceback that buries
+            # the topic view the user asked for.
+            print(f"Could not write the overview to {args.out}: {failure}")
+            return 1
     return 0
 
 

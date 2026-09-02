@@ -35,6 +35,10 @@ def _load_model() -> "Any":
 
 
 def _parsed_texts(citekeys: list) -> dict:
+    # Guarded before the query: an empty list would render "IN ()",
+    # which sqlite rejects as a syntax error rather than an empty match.
+    if not citekeys:
+        return {}
     con = _data.read_only_connection()
     try:
         placeholders = ",".join("?" * len(citekeys))
@@ -67,8 +71,9 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
     cosine to the topic centroid in the same centred space the graph
     stage stored. `None` -- distinct from "no candidates" -- when the
     enrich extra is absent, so the caller can say what is missing."""
-    node = next(t for t in graph["topics"] if t["label"] == label)
-    centroid = node.get("centroid") or []
+    from chitragupta.discover import _render  # pylint: disable=import-outside-toplevel
+
+    centroid = _render._graph_node(graph, label).get("centroid") or []
     if not centroid:
         return []
     candidates = _candidate_sentences(_parsed_texts([m["citekey"] for m in members]))

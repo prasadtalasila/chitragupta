@@ -511,6 +511,37 @@ class TestOverviewFile:
         assert "# bare" in text
         assert "none above the graph's floors" in text
 
+    def test_an_unwritable_out_path_exits_one_naming_it(
+        self, isolated_config, tmp_path, capsys, monkeypatch
+    ):
+        from chitragupta.discover import _overview
+
+        prepare(isolated_config)
+
+        def refuse():
+            raise ImportError("no")
+
+        monkeypatch.setattr(_overview, "_load_model", refuse)
+        target = tmp_path / "no-such-dir" / "overview.md"
+        assert discover.main(["digital twin", "--out", str(target)]) == 1
+        assert str(target) in capsys.readouterr().out
+
+    def test_a_graph_stale_against_the_topic_set_refuses(self, isolated_config, capsys):
+        """One stage re-run without the other leaves a label only
+        topic_set.json knows; that is a refusal naming topic-graph, not
+        a StopIteration traceback."""
+        graph = json.loads(json.dumps(GRAPH))
+        graph["topics"] = [t for t in graph["topics"] if t["label"] != "digital twin"]
+        write_artefacts(isolated_config, graph=graph, topic_set=TOPIC_SET, topics=TOPICS_JSON)
+        make_ledger(isolated_config, ["p1", "p2", "p3", "p4"])
+        assert discover.main(["digital twin"]) == 1
+        assert "topic-graph" in capsys.readouterr().out
+
+    def test_snippets_with_no_members_touch_no_sql(self, isolated_config):
+        from chitragupta.discover import _overview
+
+        assert _overview._parsed_texts([]) == {}
+
     def test_nothing_is_written_without_the_flag(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
         discover.main(["digital twin"])

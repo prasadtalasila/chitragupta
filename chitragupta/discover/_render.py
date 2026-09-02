@@ -66,8 +66,22 @@ def _linked(graph: dict, label: str) -> dict:
     return {"overlap": overlap, "semantic": semantic}
 
 
+def _graph_node(graph: dict, label: str) -> dict:
+    """The graph's node for a topic-set label, or the refusal that names
+    the drift: the two artefacts are written by different stages, and one
+    re-run without the other leaves labels only one of them knows."""
+    node = next((t for t in graph["topics"] if t["label"] == label), None)
+    if node is None:
+        raise _data.MissingArtefact(
+            f"topic_graph.json does not know the topic {label!r} -- the graph is "
+            "stale against topic_set.json; re-run `python -m chitragupta.enrich "
+            "--stages topic-graph`."
+        )
+    return node
+
+
 def build_topic(label: str, graph: dict, topic_set: dict, terms: dict) -> dict:
-    node = next(t for t in graph["topics"] if t["label"] == label)
+    node = _graph_node(graph, label)
     members = _data.members_of(topic_set)[label]
     by_paper = _data.topics_of(topic_set)
     entries = _data.entries_for([m["citekey"] for m in members])
