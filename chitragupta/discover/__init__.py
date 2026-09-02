@@ -20,7 +20,7 @@ import argparse
 import json as json_module
 
 from chitragupta import retrieval
-from chitragupta.discover import _data, _overview, _render, _resolve, _walk
+from chitragupta.discover import _data, _overview, _page, _render, _resolve, _walk
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -52,6 +52,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=5,
         help="results to show when falling back to paper search (default: 5)",
+    )
+    parser.add_argument(
+        "--html",
+        metavar="FILE",
+        help="write the whole topic graph as one self-contained HTML page and exit",
     )
     return parser
 
@@ -114,21 +119,33 @@ def main(argv=None) -> int:
         return 1
 
 
+def _paper_view(args, topic_set) -> int:
+    data = _render.build_paper(args.paper, topic_set)
+    if data is None:
+        print(
+            f"{args.paper} is in no topic -- is the citekey right, "
+            "and has the enrich pipeline run since it was synced?"
+        )
+        return 1
+    _emit(args, data, _render.render_paper(data))
+    return 0
+
+
 def _run(args) -> int:
+    if args.html:
+        try:
+            print(f"written: {_page.write_page(args.html)}")
+        except OSError as failure:
+            print(f"Could not write the page to {args.html}: {failure}")
+            return 1
+        return 0
+
     graph = _data.load_graph()
     topic_set = _data.load_topic_set()
     terms = _data.top_terms(topic_set)
 
     if args.paper:
-        data = _render.build_paper(args.paper, topic_set)
-        if data is None:
-            print(
-                f"{args.paper} is in no topic -- is the citekey right, "
-                "and has the enrich pipeline run since it was synced?"
-            )
-            return 1
-        _emit(args, data, _render.render_paper(data))
-        return 0
+        return _paper_view(args, topic_set)
 
     phrase = " ".join(args.phrase).strip()
     if not phrase:
