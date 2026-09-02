@@ -483,11 +483,16 @@ class TestTheInstallScriptProvidesTheLauncher:
         """The `libglib2.0-0t64` precedent, for the same reason it exists
         there: `apt-get install` takes no alternatives, so naming a
         package a release does not carry fails the whole stage rather
-        than the one line."""
+        than the one line.
+
+        Through the *shared* `apt_has_candidate`, not a second copy of
+        the probe -- adding the second caller is what turned that idiom
+        into something with one home."""
         script = self._script()
-        probe = script.index('apt-cache policy "$launcher_pkg"')
+        probe = script.index('apt_has_candidate "$launcher_pkg"')
         install = script.index("sudo_if_needed apt-get install")
         assert probe < install
+        assert script.count("apt-cache policy") == 1, "one probe, two callers"
 
     def test_python_deps_reports_launcher_faults(self):
         """The load-bearing half. `os-deps` is apt/root-only and opt-in,

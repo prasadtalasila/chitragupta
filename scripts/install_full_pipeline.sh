@@ -84,6 +84,35 @@ sudo_if_needed() {
     fi
 }
 
+# Can this release actually install PKG? Two callers in install_os_deps
+# need it -- the GLib 64-bit-time_t rename picks between two names, and
+# python-is-python3 is dropped entirely where it does not exist -- and
+# both exist because `apt-get install` takes no alternatives on the
+# command line: one absent name fails the whole stage, TeX Live and
+# Pandoc with it.
+#
+# `policy` rather than `show`: after a rename the old name survives in the
+# index as a record with no installation candidate, so `show` succeeds on
+# a name `install` then refuses. The candidate line is the thing that
+# actually answers "can this be installed here" -- measured on Debian 13,
+# where libglib2.0-0 reports "Candidate: (none)" and libglib2.0-0t64
+# reports a version.
+#
+# Captured into a variable rather than piped into grep, because this
+# script runs under `set -o pipefail` and `grep -q` exits at its first
+# match: apt-cache then takes SIGPIPE, the pipeline reports failure, and
+# the caller's fallback fires on the release where the probe just
+# *succeeded*. Caught by testing the branch rather than by reading it --
+# it selects the wrong name every time.
+apt_has_candidate() {
+    local policy
+    policy="$(apt-cache policy "$1" 2>/dev/null || true)"
+    case "$policy" in
+        ""|*"Candidate: (none)"*) return 1 ;;
+    esac
+    return 0
+}
+
 install_os_deps() {
     echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry,"
     echo "the python-is-python3 launcher name) ..."
@@ -93,24 +122,8 @@ install_os_deps() {
     # apt-get takes no alternatives on the command line -- so pick
     # whichever name this release actually has rather than hardcoding one
     # and breaking every host on the other side of the rename.
-    # `policy` rather than `show`: after the rename the old name survives
-    # in the index as a record with no installation candidate, so `show`
-    # succeeds on a name `install` then refuses. The candidate line is
-    # the thing that actually answers "can this be installed here" --
-    # measured on Debian 13, where libglib2.0-0 reports
-    # "Candidate: (none)" and libglib2.0-0t64 reports a version.
-    #
-    # Captured into a variable rather than piped into grep, because this
-    # script runs under `set -o pipefail` and `grep -q` exits at its
-    # first match: apt-cache then takes SIGPIPE, the pipeline reports
-    # failure, and the fallback fires on the release where the probe
-    # just *succeeded*. Caught by testing the branch rather than by
-    # reading it -- it selects the wrong name every time.
     glib_pkg="libglib2.0-0t64"
-    glib_policy="$(apt-cache policy "$glib_pkg" 2>/dev/null || true)"
-    case "$glib_policy" in
-        ""|*"Candidate: (none)"*) glib_pkg="libglib2.0-0" ;;
-    esac
+    apt_has_candidate "$glib_pkg" || glib_pkg="libglib2.0-0"
     # `python-is-python3` is what puts the *name* `python` on PATH. It is
     # here rather than in a doc because nothing else can put it there:
     # `.claude/settings.json` launches every hook this repository
@@ -124,25 +137,18 @@ install_os_deps() {
     # every test still passes. Drafts then land ungated, which is the one
     # failure CLAUDE.md's binding rule exists to prevent.
     #
-    # Probed the same way as glib above, and for the same reason stated
-    # there: `apt-get install` takes no alternatives on the command line,
-    # so a release that does not carry this package would fail the whole
-    # stage -- TeX Live and Pandoc included -- over one convenience
-    # symlink. Empty rather than absent on such a host, so the expansion
-    # below simply contributes no argument. `policy` rather than `show`
-    # for the reason glib's comment gives, and captured into a variable
-    # rather than piped into grep for the `pipefail`/SIGPIPE reason it
-    # gives too.
+    # Probed rather than named outright, for the reason apt_has_candidate
+    # states: a release that does not carry this package would otherwise
+    # fail the whole stage -- TeX Live and Pandoc included -- over one
+    # convenience symlink. Emptied rather than left set, so the expansion
+    # below contributes no argument at all on such a host.
     launcher_pkg="python-is-python3"
-    launcher_policy="$(apt-cache policy "$launcher_pkg" 2>/dev/null || true)"
-    case "$launcher_policy" in
-        ""|*"Candidate: (none)"*)
-            echo "Note: $launcher_pkg is unavailable on this release -- skipping." >&2
-            echo "If \`python\` is not on your PATH, Claude Code's hooks cannot" >&2
-            echo "start (docs/HOOKS.md); symlink it to python3 by hand." >&2
-            launcher_pkg=""
-            ;;
-    esac
+    if ! apt_has_candidate "$launcher_pkg"; then
+        echo "Note: $launcher_pkg is unavailable on this release -- skipping." >&2
+        echo "If \`python\` is not on your PATH, Claude Code's hooks cannot" >&2
+        echo "start (docs/HOOKS.md); symlink it to python3 by hand." >&2
+        launcher_pkg=""
+    fi
     sudo_if_needed apt-get install -y --no-install-recommends \
         python3 python3-venv python3-pip ${launcher_pkg:+"$launcher_pkg"} \
         python3-poetry \
