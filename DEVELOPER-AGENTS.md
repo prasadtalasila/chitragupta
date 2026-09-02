@@ -354,25 +354,38 @@ absence fails tests that have nothing to do with configuration --
 the `build` job for that reason, and the session-start hook tells a new
 clone to. Nobody had told a *worktree*, and the cost of not knowing was
 16 of the 17 failures that a whole release run then carried as a
-constant: **17 failed / 4490 passed without the file, 1 failed / 4503
-passed with it**, measured on `origin/main` at 6.53.46.
+constant.
 
-**Then baseline what is left, and write the counts down before touching
-anything.** After that `cp`, a red test is nearly always yours -- but
-not always: the residue is toolchain, not configuration. On a host with
-no `os-deps` installed, `pdftotext` is absent and
-`tests/test_sync.py`'s forkserver case fails in *every* checkout,
-including the one you would have called clean, and the render and PDF
-tests self-skip (which is why a local run wants
-`--cov-fail-under=0`; see the coverage note below). A version already
-released moves the count again.
+**A finished checkout on a complete toolchain has no known failures at
+all**, which is the number actually worth having, because it is the one
+that makes any red yours. Measured on `origin/main` at 6.53.46, one
+worktree, one `.venv-full`, three states:
 
-So "did I break something?" is answered by diffing pass and fail counts
-against that record, and by name where they moved -- not by reading raw
-red, and not by assuming the residue is zero. The same holds for a lint
-finding your commit did not make true: name it in the PR rather than
-fixing it here (the surgical-changes rule above, and step 4 of the
-shipping cycle).
+| State | Result |
+| --- | --- |
+| No `config.toml`, no `os-deps` | 17 failed, 4490 passed, 70 skipped |
+| `config.toml`, no `os-deps` | 1 failed, 4503 passed, 72 skipped |
+| `config.toml` + `install_full_pipeline.sh os-deps` | **0 failed, 4573 passed, 3 skipped** |
+
+The middle row's one failure is `tests/test_sync.py`'s forkserver case,
+which shells out to `pdftotext`; it fails identically in the main
+checkout on such a host, so it is a missing binary rather than
+anything about the worktree. The last row's three skips are the two
+wanting a `papers/bibliography.bib` -- gitignored per-host data, absent
+on any fresh checkout and in CI -- and one case that only has something
+to skip over off Linux.
+
+**So baseline, and expect zero.** Write the counts down before touching
+anything, then answer "did I break something?" by diffing pass and fail
+counts against that record, and by name where they moved. What a
+baseline is *for* on a complete host is the residue you cannot remove:
+an already-released version moves the count, and a partial toolchain
+turns real coverage into a self-skip, which is why such a host wants
+`--cov-fail-under=0` (see the coverage note below). It is not a licence
+to carry red that the two setup commands above would have removed. The
+same holds for a lint finding your commit did not make true: name it in
+the PR rather than fixing it here (the surgical-changes rule above, and
+step 4 of the shipping cycle).
 
 Run it from the venv whose pin matches `pyproject.toml` -- the
 `.venv-full/bin/python` the command below already names. A second venv
