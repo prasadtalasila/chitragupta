@@ -10,9 +10,11 @@ cannot be broken out of by a hostile label -- the embedded JSON escapes
 import json
 import re
 
+import pytest
+
 
 from chitragupta import discover
-from chitragupta.discover import _page
+from chitragupta.discover import _data, _page
 
 from tests.test_discover import GRAPH, TOPIC_SET, prepare
 
@@ -26,6 +28,24 @@ class TestPayload:
         assert dt["members"][0]["title"] == "Title of p1"
         assert dt["linked"]["overlap"][0]["shared"] == ["p2"]
         assert payload["hierarchy"] == GRAPH["hierarchy"]
+
+    def test_a_graph_node_the_topic_set_does_not_know_refuses(self, isolated_config):
+        """One stage re-run without the other is drift; the page must
+        refuse like the terminal views, not render empty member lists
+        that disagree with --json."""
+        prepare(isolated_config)
+        topic_set = json.loads(json.dumps(TOPIC_SET))
+        topic_set["topics"] = [t for t in topic_set["topics"] if t["label"] != "digital twin"]
+        with pytest.raises(_data.MissingArtefact, match="drifted"):
+            _page.build_payload(GRAPH, topic_set, {})
+
+    def test_ids_in_the_page_are_index_based(self, isolated_config):
+        """A topic label is free text and HTML forbids whitespace in an
+        id, so the circles must be addressed by index, never by label."""
+        prepare(isolated_config)
+        html = _page.build_html(_page.build_payload(GRAPH, TOPIC_SET, {}))
+        assert '"dot-" + index' in html
+        assert '"dot-" + label' not in html
 
     def test_an_empty_topic_set_needs_no_ledger(self, isolated_config):
         """No members, no titles to look up -- and therefore no refusal

@@ -75,11 +75,14 @@ function chord(a, b, cls, width) {
 }
 DATA.edges_overlap.forEach(e => chord(e.a, e.b, "edge-overlap", 1 + 4 * e.overlap_coeff));
 DATA.edges_semantic.forEach(e => chord(e.a, e.b, "edge-semantic", 1 + 2 * e.similarity));
-function show(label) {
+function show(index) {
   document.querySelectorAll("circle.topic").forEach(c => c.classList.remove("selected"));
-  const dot = document.getElementById("dot-" + label);
+  /* ids are index-based ("dot-3"), never label-based: HTML forbids
+     whitespace in an id, and topic labels are free text. */
+  const dot = document.getElementById("dot-" + index);
   if (dot) dot.classList.add("selected");
-  const t = DATA.topics.find(t => t.label === label);
+  const t = DATA.topics[index];
+  const label = t.label;
   const panel = document.getElementById("panel");
   const papers = t.members.map(m =>
     `<li><code>${esc(m.citekey)}</code> [${m.score.toFixed(2)}] ${esc(m.title)}</li>`).join("");
@@ -98,14 +101,14 @@ function show(label) {
 function esc(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-DATA.topics.forEach(t => {
+DATA.topics.forEach((t, index) => {
   const c = document.createElementNS(NS, "circle");
   c.setAttribute("cx", pos[t.label].x);
   c.setAttribute("cy", pos[t.label].y);
   c.setAttribute("r", 6 + 2.5 * Math.sqrt(t.members.length));
   c.setAttribute("class", "topic" + (t.provenance === "seed" ? " seed" : ""));
-  c.setAttribute("id", "dot-" + t.label);
-  c.addEventListener("click", () => show(t.label));
+  c.setAttribute("id", "dot-" + index);
+  c.addEventListener("click", () => show(index));
   svg.appendChild(c);
   const txt = document.createElementNS(NS, "text");
   const outward = pos[t.label].x >= cx;
@@ -114,7 +117,7 @@ DATA.topics.forEach(t => {
   txt.setAttribute("text-anchor", outward ? "start" : "end");
   txt.setAttribute("class", "label");
   txt.textContent = t.label;
-  txt.addEventListener("click", () => show(t.label));
+  txt.addEventListener("click", () => show(index));
   svg.appendChild(txt);
 });
 (function tree() {

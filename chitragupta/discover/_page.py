@@ -25,9 +25,20 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
     topics, plus both raw edge lists and the stored hierarchy."""
     titles = _titles(topic_set)
     members_by_label = _data.members_of(topic_set)
+    # A graph node the topic set does not know is artefact drift (one
+    # stage re-run without the other), and the page must refuse exactly
+    # as the terminal views do -- an empty member list would render a
+    # plausible-looking page that disagrees with `--json`.
+    strays = [n["label"] for n in graph["topics"] if n["label"] not in members_by_label]
+    if strays:
+        raise _data.MissingArtefact(
+            f"topic_set.json does not know the topics {', '.join(sorted(strays))} -- "
+            "the artefacts have drifted; re-run `python -m chitragupta.enrich "
+            "--stages converge,topic-graph`."
+        )
     topics = []
     for node in graph["topics"]:
-        members = members_by_label.get(node["label"], [])
+        members = members_by_label[node["label"]]
         topics.append(
             {
                 "label": node["label"],
