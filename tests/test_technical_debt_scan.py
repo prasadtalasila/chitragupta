@@ -45,6 +45,7 @@ an outstanding cost.
 
 import ast
 import re
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -539,3 +540,118 @@ class TestTheNewPinsFailLoudlyWhenReworded:
             _regex_pin(
                 _BENCH_SELF_CHECK_COUNT_RE, "20 scripts have one, out of 22 total.", "the doc"
             )
+
+
+PYLINTRC = REPO_ROOT / ".pylintrc"
+DOCS_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "docs.yml"
+
+
+def _push_trigger_filters(workflow: Path) -> set:
+    """The filter keys under a workflow's `on: push:` block, by
+    indentation. Deliberately not a YAML parse -- see the caller."""
+    lines = workflow.read_text(encoding="utf-8").splitlines()
+    try:
+        start = lines.index("  push:")
+    except ValueError:
+        return set()
+    found = set()
+    for line in lines[start + 1 :]:
+        if line.strip() and not line.startswith("    "):
+            break
+        stripped = line.strip()
+        if stripped.endswith(":") or ": " in stripped:
+            if line.startswith("    ") and not line.startswith("      "):
+                found.add(stripped.split(":", 1)[0])
+    return found
+
+
+class TestTheToolingConfigDoesNotDriftFromWhatItConfigures:
+    """#512's four config findings, each turned into the check that would
+    have caught it. All four were silent: a stale claim in a config file
+    is read by people, not by anything that fails."""
+
+    def test_the_pylintrc_python_floor_matches_the_project(self):
+        """m-83: `.pylintrc` said `py-version=3.10` against a project
+        pinned `^3.12`, so pylint's version-dependent checks answered for
+        an interpreter this project does not support -- which *suppresses*
+        findings rather than adding them."""
+        pylintrc = PYLINTRC.read_text(encoding="utf-8")
+        match = re.search(r"^py-version=(\d+)\.(\d+)$", pylintrc, re.MULTILINE)
+        assert match, ".pylintrc no longer sets py-version in the shape this test reads"
+        declared = tomllib.loads(PYPROJECT_TOML.read_text(encoding="utf-8"))
+        floor = declared["tool"]["poetry"]["dependencies"]["python"]
+        assert floor.lstrip("^~>=").startswith(f"{match.group(1)}.{match.group(2)}"), (
+            f".pylintrc's py-version ({match.group(1)}.{match.group(2)}) does not match "
+            f"pyproject.toml's python constraint ({floor}). Pylint would be checking "
+            "against an interpreter this project does not support."
+        )
+
+    def test_the_pylintrc_does_not_still_call_itself_unenforced(self):
+        """m-83's other half: the header said "NOT ENFORCED YET. No CI job
+        runs this" while `ci.yml`'s lint job ran it at a blocking bar."""
+        pylintrc = PYLINTRC.read_text(encoding="utf-8")
+        assert "NOT ENFORCED" not in pylintrc
+        assert "pylint --rcfile=.pylintrc" in CI_WORKFLOW.read_text(encoding="utf-8")
+
+    def test_no_workflow_mixes_a_branch_filter_with_a_tag_filter(self):
+        """m-84: under a `branches:`-filtered push trigger a tag push
+        already matches nothing, so `tags-ignore` there does not narrow
+        the trigger -- it re-enables builds for every tag the ignore list
+        does not name. `ci.yml`'s own header documents the rule.
+
+        Read by hand rather than with a YAML parser: `pyyaml` reaches this
+        venv only as a transitive dependency of the docs group, and a test
+        that imports it would go red on a leg that installs less. The
+        `push:` block is six lines.
+        """
+        for workflow in (CI_WORKFLOW, DOCS_WORKFLOW):
+            filters = _push_trigger_filters(workflow)
+            if "branches" in filters or "branches-ignore" in filters:
+                assert not {"tags", "tags-ignore"} & filters, (
+                    f"{workflow.name}'s push trigger mixes a branch filter with a tag "
+                    f"filter ({sorted(filters)}), which widens it rather than narrowing it."
+                )
+
+    def test_the_venv_cache_has_no_prefix_fallback(self):
+        """m-87: `restore-keys` restored an older lock's venv, and
+        `poetry install` without `--sync` never uninstalls -- so a package
+        removed from the lock stayed importable, and on `main` was re-saved
+        under the new lock's hash. CI would keep passing on an import a
+        clean install cannot satisfy."""
+        text = CI_WORKFLOW.read_text(encoding="utf-8")
+        restore_keys = [
+            line for line in text.splitlines() if line.strip().startswith("restore-keys:")
+        ]
+        assert restore_keys == [], (
+            "ci.yml restores a cache by key prefix again: "
+            f"{restore_keys}. See #512/m-87 for why that carries a removed "
+            "package forward forever."
+        )
+
+
+class TestThePushTriggerReaderItself:
+    """The helper the m-84 check rests on, exercised against the shape
+    that was actually in the tree -- so the check is known to have been
+    red before the fix rather than assumed to have been."""
+
+    def test_it_sees_a_mixed_filter(self, tmp_path):
+        workflow = tmp_path / "docs.yml"
+        workflow.write_text(
+            "name: Docs\n\non:\n  push:\n    branches: [main]\n"
+            "    tags-ignore:\n      - 'v*'\n  pull_request:\n    branches: [main]\n",
+            encoding="utf-8",
+        )
+        assert _push_trigger_filters(workflow) == {"branches", "tags-ignore"}
+
+    def test_it_stops_at_the_next_top_level_trigger(self, tmp_path):
+        workflow = tmp_path / "ci.yml"
+        workflow.write_text(
+            "on:\n  push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n",
+            encoding="utf-8",
+        )
+        assert _push_trigger_filters(workflow) == {"branches"}
+
+    def test_a_workflow_with_no_push_trigger_is_not_a_finding(self, tmp_path):
+        workflow = tmp_path / "manual.yml"
+        workflow.write_text("on:\n  workflow_dispatch:\n", encoding="utf-8")
+        assert _push_trigger_filters(workflow) == set()

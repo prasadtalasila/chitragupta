@@ -83,9 +83,23 @@ jobs:
       # without ever writing its own. That asymmetry is what keeps this
       # repository under the 10GB-per-repo cache limit: six open PRs
       # writing their own ~1-2GB entry would thrash it, one entry per
-      # `poetry.lock` hash does not. `restore-keys` falls back to the
-      # newest same-OS entry on a lock-hash miss, which is still a real
-      # head start over an empty `.venv-full`.
+      # `poetry.lock` hash does not.
+      #
+      # **No `restore-keys`** (#512/m-87). The prefix fallback restored
+      # the newest same-OS entry on a lock-hash miss, which reads like a
+      # free head start and is not one: `poetry install` without `--sync`
+      # never uninstalls, so a package *removed* from the lock stayed
+      # importable in the restored venv -- and on `main` that venv was
+      # then re-saved under the **new** lock's hash, carrying the removed
+      # package forward for good. CI would keep passing on an import that
+      # a clean install cannot satisfy, which is the exact opposite of
+      # what the paragraph below claims this step is for. `--sync` is the
+      # other available fix and is worse here: it would strip the
+      # cpu-torch wheel swap `install_full_pipeline.sh` performs after
+      # `poetry install`, re-downloading it on every run.
+      #
+      # The cost is a cold install whenever `poetry.lock` changes, which
+      # is exactly when a clean install is the thing worth testing.
       #
       # This never lets a hit skip the install script below: it still
       # runs unconditionally, against whatever `.venv-full` this step
@@ -100,7 +114,6 @@ jobs:
         with:
           path: .venv-full
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
-          restore-keys: venv-${{ runner.os }}-
 
       # Dogfoods the project's own single install path (DEVELOPER-AGENTS.md: "don't
       # add a second install path") rather than hand-rolling equivalent
@@ -170,7 +183,7 @@ jobs:
           if [ "${{ steps.venv-cache.outputs.cache-hit }}" = "true" ]; then
             echo "venv cache: HIT for ${{ steps.venv-cache.outputs.cache-primary-key }}"
           else
-            echo "venv cache: MISS for ${{ steps.venv-cache.outputs.cache-primary-key }} (fell back to a restore-keys match, or installed from nothing)"
+            echo "venv cache: MISS for ${{ steps.venv-cache.outputs.cache-primary-key }} (installing from an empty .venv-full)"
           fi
 
       # Saved only from `main`, and only on a miss -- a cache write on
