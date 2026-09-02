@@ -101,7 +101,7 @@ alter a paragraph was to run Phase 1 through Phase 7 again.
 
 ## 🗂 The dossier
 
-**The format moved to [DOSSIER.md](DOSSIER.md)** -- the seven files, the
+**The format moved to [DOSSIER.md](DOSSIER.md)** -- the nine files, the
 `claim:`/`quote:` contract, why it is Markdown, why it is several files
 rather than one, how `sections.md` is derived, and the corpus
 fingerprint. It is machine-facing documentation, because its reader is

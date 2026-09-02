@@ -240,6 +240,13 @@ content/drafts/<book>/book.tex
 print, and write only under `--write`, because printing is the usual
 use.
 
+The full written set exists to read:
+`examples/sample-project/content/review/dt-overview/` holds every
+draft-reading aid's `.md` and `.json` for four real drafts -- open
+`survey.agenda.md` there to see what a merged worklist looks like on a
+draft that mostly passes, which is the common case and the one examples
+rarely show.
+
 Two properties of every report, both deliberate:
 
 - **It opens with a banner saying it is not a verdict.** A report found

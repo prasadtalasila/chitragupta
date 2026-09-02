@@ -136,6 +136,12 @@ Three consecutive scans of an unchanged draft measured 20,172 /
 20,141 / 20,340 ms. **Anything that re-scans in a loop pays this every
 time**, which is the figure to plan a repair loop against.
 
+A written scan report to read alongside this page:
+`examples/sample-project/content/review/dt-overview/survey.verbatim.md`
+is a real whole-draft scan over the sample corpus, banner and tier
+report included -- note how it names the tiers that ran, which is the
+"a clean run is not a clean bill of health" rule below made visible.
+
 ## ⚖ Advisory, never blocking
 
 Both belong to the **review layer**, so both are advisory and neither

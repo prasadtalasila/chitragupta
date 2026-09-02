@@ -5,7 +5,7 @@
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/trust-chapter.tex --min-run 8 --gap 1 --write`
 - chitragupta 6.59.1
-- Allowlist: none configured (`/workspace/.claude/worktrees/topic-discovery/examples/sample-project/content/verbatim_allowlist.toml` not found)
+- Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this
 

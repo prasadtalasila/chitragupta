@@ -69,6 +69,27 @@ were missing entirely are the two that matter most.
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
 | `outline.md` | the human's own per-section brief/claim/declared queries (#455) | **nowhere** |
 
+Four filled dossiers are committed to read alongside this page:
+`examples/sample-project/content/dossiers/dt-overview/` holds one per
+sample draft, written by real drafting runs. The survey's `evidence.md`
+shows the block shape at its smallest -- one kept citekey, why it was
+kept, the claim the draft rests on it, and (because a quotation was
+intended) the exact span:
+
+```markdown
+## `sample_dt_sync_2023`
+
+relevance: the synchronisation theme's only quantitative comparison
+claim: event-driven synchronisation cut transmitted volume by 71 percent against one-second polling with sub-two-second worst-case staleness, and explicit staleness marking roughly halved operator mistrust incidents
+quote: a twin that knows it is stale must say so on every read
+```
+
+and its `rejected.md` records the other half of the same judgement -- a
+paper retrieval surfaced that the draft declined, with the reason
+(`surfaced for this query but says nothing about staleness; kept for the
+integration theme instead`), which is what a reviser months later reads
+before re-offering the same paper.
+
 **`math.md` and `outline.md` are the two optional files**, and the only
 two whose absence is not a defect. A draft with no mathematics has none
 of the first, and most dossiers have none of the second -- it exists
@@ -123,7 +144,7 @@ revision retrieves the same papers, re-reads them, and re-reaches the
 same judgement, paying the full cost of a decision already made. A
 reviser is required to honour it: a candidate listed here with a reason
 is not retrieved and re-judged. It is also the largest file in the
-dossier, which is why the dossier is seven files rather than one -- a
+dossier, which is why the dossier is several files rather than one -- a
 revision loads only what it needs, and this one is needed only when a
 change reopens a sub-theme for searching.
 
