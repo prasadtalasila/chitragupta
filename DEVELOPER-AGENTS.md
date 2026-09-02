@@ -351,14 +351,25 @@ Before saying so, actually run, in this repo:
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --
-  e.g. if you touch a CLI script, run it for real; if you touch
-  `chitragupta/enrich/*` and the `enrich` Poetry group is installed, run it against
-  the real sentence-transformers/chromadb/bertopic stack, not just
-  `sys.modules`-mocked fakes. Unit tests catch regressions in logic;
-  smoke tests catch wrong assumptions about how the real library actually
-  behaves (this project's test suite has caught real fake-vs-real
-  behavior drift this way before -- see `tests/test_enrich_embed_index.py`
-  and `tests/test_enrich_topic_model.py`'s own comments).
+  e.g. if you touch a CLI script, run it for real. Unit tests catch
+  regressions in logic; smoke tests catch wrong assumptions about how the
+  real library actually behaves (this project's test suite has caught
+  real fake-vs-real behaviour drift this way before -- see
+  `tests/test_enrich_embed_index.py` and `tests/test_enrich_topic_model.py`'s
+  own comments).
+
+  **For `chitragupta/enrich/*` this is now partly automated, and knowing
+  which part matters.** `tests/test_enrich_real_libraries.py` (#514) runs
+  on every leg that has the `enrich` group installed, which is both of
+  CI's: it drives the real `chromadb` through `build_index()`/`search()`,
+  and asks the real `sentence_transformers`/`bertopic` classes whether
+  they still accept what the fakes accept. What it deliberately does
+  **not** do is construct an embedding model or fit a real BERTopic --
+  that would make every CI run depend on a ~420 MB HuggingFace fetch. So
+  the hand-run smoke test still stands for anything touching
+  `model.encode()` or the clustering itself; it no longer stands for the
+  chromadb persistence paths, which the suite now covers better than a
+  hand run would.
 
 Only once all of the above are green does a task count as complete.
 

@@ -44,7 +44,10 @@ What was actually run, not what was intended (see DEVELOPER-AGENTS.md,
       not a pipeline's
 - [ ] `poetry check`
 - [ ] At least one real end-to-end smoke test against real dependencies,
-      not only mocked unit tests -- [name it here]
+      not only mocked unit tests -- [name it here]. For an
+      `chitragupta/enrich/*` change, `tests/test_enrich_real_libraries.py`
+      already covers the chromadb paths; name a hand run only for what it
+      does not reach (a real `model.encode()`, a real BERTopic fit)
 
 ## Checklist
 
