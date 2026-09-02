@@ -2,8 +2,8 @@
 
 Status: **reference for a feature landing in stages.** Written
 2026-09-02. The `topic-graph` enrichment stage, the `corpus discover`
-reader and its precision tier documented here are built; the gold-set
-benchmark and the HTML graph view are G8-G9 in
+reader, its precision tier and the gold-set benchmark documented here
+are built; the HTML graph view is G9 in
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md), with the whole design in
 `plans/g5-topic-discovery.md`.
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
@@ -31,6 +31,7 @@ finding them, and reading them.
 - [The resolution ladder](#-the-resolution-ladder)
 - [The precision tier](#-the-precision-tier)
 - [The overview file](#-the-overview-file---out)
+- [The gold set](#-the-gold-set)
 - [Alternatives considered](#-alternatives-considered)
 - [What lands next](#-what-lands-next)
 - [Sources](#-sources)
@@ -358,6 +359,26 @@ failure class wearing different clothes. When the enrich extra is
 absent the section says snippets cannot be ranked, rather than quietly
 vanishing; when no member has parsed text it says that instead.
 
+## 📏 The gold set
+
+`bench/topic_discovery_eval.py` scores the whole ladder against a gold
+file you write yourself (`content/topic_gold.toml`, template at
+`assets/style/topic_gold.toml.example`): phrases you would actually
+type, each with the topics -- and optionally the citekeys -- it should
+reach. It reports hit@1, recall@5, MRR and NDCG@5 for query->topic and
+member-recall for topic->paper, **overall and per resolution rung**,
+because a floor change moves queries *between* rungs and an overall
+mean would hide exactly that movement.
+
+This is legacy AutoRAG's methodology pointed at one corpus: measure
+every retrieval configuration against a small labelled set, never tune
+by feel. Its LLM-generated QA datasets were deliberately not borrowed --
+hand-writing ~40 queries for a corpus you know is cheaper and more
+trustworthy, and an invented expectation measures nothing. The gold set
+is what turns `[discover].min_similarity`'s "0.35 is a starting point,
+not a measurement" into a measurement; re-run the script after every
+knob change and quote the numbers in the PR that moves the knob.
+
 ## 🚫 Alternatives considered
 
 Recorded so each is not re-proposed as an oversight; the longer
@@ -379,12 +400,10 @@ versions are in `plans/g5-topic-discovery.md`.
 
 ## ▶ What lands next
 
-G8 adds the gold set: hand-labelled queries with expected topics and
-citekeys, reported as Recall@k/MRR/NDCG per rung, which is legacy
-AutoRAG's methodology (measure every retrieval configuration against a
-small gold set; never tune by feel) pointed at one corpus. G9 adds the
-self-contained HTML page over the same JSON. Each updates this document
-as it lands.
+G9 adds the self-contained HTML graph page over the same JSON the CLI
+emits -- both edge families visually distinct, a per-topic ego view,
+and the stored hierarchy as a tree -- and updates this document when it
+lands.
 
 ## 📚 Sources
 
