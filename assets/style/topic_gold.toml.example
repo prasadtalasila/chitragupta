@@ -25,4 +25,6 @@ citekeys = ["kritzinger_digital_2018"]
 
 [[query]]
 phrase = "a subject this corpus does not cover"
-topics = []                      # expected to fall through to search
+topics = []   # an empty list is a real expectation: this phrase should
+              # resolve to NO topic, and scores hit@1 = 1 only when the
+              # ladder falls through to the labelled paper search

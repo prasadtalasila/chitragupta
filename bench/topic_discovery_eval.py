@@ -40,7 +40,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta.discover import _data, _resolve  # noqa: E402
+# chitragupta imports stay inside the functions that resolve queries:
+# importing chitragupta.config resolves PROJECT_ROOT from the cwd, and
+# the metric helpers plus self_check() must work -- and be testable --
+# without a project directory existing at all.
 
 
 def recall_at(ranked: list, expected: set, k: int) -> float:
@@ -69,12 +72,29 @@ def ndcg_at(ranked: list, expected: set, k: int) -> float:
 
 
 def score_query(record: dict, graph: dict, topic_set: dict, terms: dict) -> dict:
+    from chitragupta.discover import _data, _resolve
+
     resolution = _resolve.resolve(record["phrase"], graph, topic_set, terms)
+    return score_resolution(record, resolution.ranked, resolution.via, _data.members_of(topic_set))
+
+
+def score_resolution(record: dict, ranked: list, via: str, members_by_label: dict) -> dict:
+    """One gold row scored. An **empty** expected-topics list is a real
+    expectation -- "this phrase should resolve to *no* topic" -- so it is
+    credited when the ladder fell through to search and debited when a
+    topic was claimed, rather than scoring an unwinnable zero. The
+    ranked metrics are meaningless for it and are omitted (the
+    aggregation skips absent keys)."""
     expected = set(record.get("topics", []))
-    ranked = resolution.ranked
+    if not expected:
+        return {
+            "phrase": record["phrase"],
+            "via": via,
+            "hit_at_1": 1.0 if via == "search" else 0.0,
+        }
     row = {
         "phrase": record["phrase"],
-        "via": resolution.via,
+        "via": via,
         "hit_at_1": 1.0 if ranked and ranked[0] in expected else 0.0,
         "recall_at_5": recall_at(ranked, expected, 5),
         "mrr": mrr(ranked, expected),
@@ -82,7 +102,7 @@ def score_query(record: dict, graph: dict, topic_set: dict, terms: dict) -> dict
     }
     wanted_citekeys = set(record.get("citekeys", []))
     if wanted_citekeys and ranked:
-        members = {m["citekey"] for m in _data.members_of(topic_set).get(ranked[0], [])}
+        members = {m["citekey"] for m in members_by_label.get(ranked[0], [])}
         row["member_recall"] = len(members & wanted_citekeys) / len(wanted_citekeys)
     return row
 
@@ -139,6 +159,13 @@ def self_check() -> None:
         [{"via": "exact", "hit_at_1": 0.0, "recall_at_5": 0.0, "mrr": 0.0, "ndcg_at_5": 0.0}]
     )
     assert good["overall"]["mrr"] > bad["overall"]["mrr"]
+    # An empty expectation must be winnable and losable: a correct
+    # fall-through to search scores, a claimed topic does not.
+    none_expected = {"phrase": "q", "topics": []}
+    fell_through = score_resolution(none_expected, [], "search", {})
+    claimed = score_resolution(none_expected, ["alpha"], "hybrid", {})
+    assert fell_through["hit_at_1"] > claimed["hit_at_1"]
+    assert "mrr" not in fell_through
 
 
 def main() -> int:
@@ -151,6 +178,7 @@ def main() -> int:
     # Imported after self_check() and inside main(), like every bench
     # script: config resolves PROJECT_ROOT from the cwd at import time.
     from chitragupta import config
+    from chitragupta.discover import _data
 
     gold_path = Path(args.gold) if args.gold else config.CONTENT_DIR / "topic_gold.toml"
     if not gold_path.exists():
