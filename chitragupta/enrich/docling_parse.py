@@ -284,7 +284,7 @@ def parse_corpus(docs: list[CorpusDoc]) -> dict[str, str]:
         # unconditionally whatever the parser setting says.
         reason = (
             "skipped: docling is not installed, so this stage cannot run "
-            "-- pip install chitragupta-cli[enrich]"
+            "-- pip install 'chitragupta-cli[enrich]'"
         )
         logging_setup.say(logger, f"  {reason}", level=logging.WARNING)
         return {doc.citekey: reason for doc in docs if doc.pdf_path}

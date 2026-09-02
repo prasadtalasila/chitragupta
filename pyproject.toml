@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.57.0"
+version = "6.57.1"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -94,7 +94,7 @@ bibtexparser = ">=1.4,<2.0"
 # relax this ceiling without rewriting that module against v2's API first.
 
 # Mirrors of the three optional groups below, purely so `pip install
-# chitragupta-cli[enrich|dev|docs]` resolves at all (#265). Poetry groups
+# 'chitragupta-cli[enrich|dev|docs]'` resolves at all (#265). Poetry groups
 # and extras are unrelated mechanisms -- a group dependency never reaches
 # a built wheel's metadata, only `[tool.poetry.dependencies]` marked
 # `optional = true` plus the `[tool.poetry.extras]` table below do, so

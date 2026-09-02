@@ -21,6 +21,8 @@ import pytest
 
 from chitragupta import hook_launchers
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
 
 @pytest.fixture
 def settings(tmp_path):
@@ -452,3 +454,63 @@ class TestTheImportProbeOnlyRunsAgainstAPython:
             )
         )
         assert found == []
+
+
+class TestTheInstallScriptProvidesTheLauncher:
+    """The other half of a launcher fault: who is supposed to *fix* it.
+
+    `.claude/settings.json` names `python`, and docs/HOOKS.md records why
+    that name rather than `python3` -- but on a Debian-family host without
+    `python-is-python3` the name does not exist outside an activated venv,
+    so every hook this repository registers fails in the one way this
+    module exists to notice: silently. `faults()` above can only report
+    it. `scripts/install_full_pipeline.sh` is the only thing in the tree
+    positioned to prevent it, and these cases pin both halves of how it
+    does so.
+
+    Read as text rather than run: `os-deps` needs apt and root, and the
+    package list is a fact about the file, not about this host.
+    """
+
+    def _script(self) -> str:
+        return (REPO_ROOT / "scripts" / "install_full_pipeline.sh").read_text(encoding="utf-8")
+
+    def test_os_deps_installs_the_launcher_name(self):
+        """The direct fix, in the stage that is allowed to touch apt."""
+        assert "python-is-python3" in self._script()
+
+    def test_the_package_is_probed_before_it_is_installed(self):
+        """The `libglib2.0-0t64` precedent, for the same reason it exists
+        there: `apt-get install` takes no alternatives, so naming a
+        package a release does not carry fails the whole stage rather
+        than the one line."""
+        script = self._script()
+        probe = script.index('apt-cache policy "$launcher_pkg"')
+        install = script.index("sudo_if_needed apt-get install")
+        assert probe < install
+
+    def test_python_deps_reports_launcher_faults(self):
+        """The load-bearing half. `os-deps` is apt/root-only and opt-in,
+        so a host that ran only `python-deps` still has the fault and no
+        way to hear about it."""
+        script = self._script()
+        assert "report_launcher_faults" in script
+        assert script.index("report_launcher_faults()") < script.index("install_python_deps()"), (
+            "define the helper before the stage that calls it"
+        )
+
+    def test_the_report_calls_hook_launchers_rather_than_copying_it(self):
+        """`faults()` already answers both halves -- on PATH, and able to
+        import the package. A second copy in shell is a second place for
+        the answer to drift, which is the invariant DEVELOPER-AGENTS.md
+        states for the install script generally."""
+        assert "hook_launchers" in self._script()
+
+    def test_a_launcher_fault_does_not_fail_the_install(self):
+        """It is a warning about the *harness*, not about the install,
+        which by that point has already succeeded. Failing here would
+        make a working venv look like a broken one."""
+        script = self._script()
+        body = script[script.index("report_launcher_faults()") :]
+        body = body[: body.index("\n}\n")]
+        assert "exit 1" not in body

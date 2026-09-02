@@ -6,7 +6,7 @@ itself, without reimplementing the script's logic a second time
 **A subset of the script's stages, not all of them, refused rather than
 silently accepted.** `python-deps`, `dev-deps` and `all` mean "create
 `.venv-full/` and `poetry install`" -- repo-shaped, needing a checkout's
-`poetry.lock`, and exactly what `pip install chitragupta-cli[...]`
+`poetry.lock`, and exactly what `pip install 'chitragupta-cli[...]'`
 already replaces. Accepting them here would run something with a
 different meaning than the argument implies, which is worse than
 refusing by name.
@@ -47,9 +47,9 @@ DESCRIPTION = "Run the install_full_pipeline.sh stage a pip install cannot do it
 # refusal is a repo-shaped stage this environment has no real analogue
 # of, not merely an unimplemented one.
 REFUSED = {
-    "python-deps": "pip install chitragupta-cli[enrich]",
-    "dev-deps": "pip install chitragupta-cli[dev]",
-    "all": "pip install chitragupta-cli[enrich], plus 'chitragupta install "
+    "python-deps": "pip install 'chitragupta-cli[enrich]'",
+    "dev-deps": "pip install 'chitragupta-cli[dev]'",
+    "all": "pip install 'chitragupta-cli[enrich]', plus 'chitragupta install "
     "os-deps' separately -- 'all' means something different here",
 }
 

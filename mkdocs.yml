@@ -150,6 +150,7 @@ nav:
       - Book-scale drafting: docs/BOOKS.md
       - Commands: docs/CLI.md
       - Settings: docs/CONFIG.md
+      - Windows and WSL2: docs/WINDOWS.md
   - Understanding the system:
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
