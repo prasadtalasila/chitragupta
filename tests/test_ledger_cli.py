@@ -12,13 +12,23 @@ two reasons that are both about what a *reader* needs:
     references do.
 """
 
+import sqlite3
 import subprocess
 import sys
+import threading
+import time
 
 import pytest
 
 from chitragupta import config, ledger, ledger_cli
 from tests.conftest import make_reference
+
+
+# How long TestReadOnly's lock test holds a writer's EXCLUSIVE lock.
+# Comfortably inside sqlite's 5s default timeout, so the reader recovers
+# with room to spare, and long enough that half of it is an unambiguous
+# "this call blocked" on a loaded CI runner.
+_HOLD = 0.5
 
 
 def _run(args=(), cwd=None):
@@ -159,6 +169,50 @@ class TestReadOnly:
         before = config.LEDGER_PATH.stat().st_mtime_ns
         assert ledger_cli.main([]) == 0
         assert config.LEDGER_PATH.stat().st_mtime_ns == before
+
+    def test_it_waits_out_a_writers_commit_window(self, corpus):
+        """m-72: nothing here sets `journal_mode = WAL`, so the default
+        rollback journal *does* lock a reader out for the length of a
+        writer's commit -- and `timeout=0` turned that short, certain
+        window into an immediate `SQLITE_BUSY`, i.e. this command failing
+        exactly when its own docstring says it is most worth running.
+
+        A real held lock rather than an assertion about the `timeout`
+        argument, because the argument is not the claim; surviving the
+        window is. `_HOLD` is released well inside sqlite's default
+        timeout, so the reader only has to outlast that much waiting.
+
+        The elapsed assertion is what makes exiting 0 mean anything: a
+        reader that did not reach `main()` until after the rollback would
+        succeed without ever meeting a lock, and pass against the very
+        `timeout=0` this test exists to reject. It cannot have returned
+        before the lock was released, so a run that took an appreciable
+        fraction of `_HOLD` is one that blocked and recovered.
+        """
+        writer = sqlite3.connect(config.LEDGER_PATH, isolation_level=None)
+        writer.execute("BEGIN EXCLUSIVE")
+        entered = threading.Event()
+        result = {}
+
+        def read():
+            entered.set()
+            start = time.monotonic()
+            result["code"] = ledger_cli.main([])
+            result["waited"] = time.monotonic() - start
+
+        reader = threading.Thread(target=read)
+        try:
+            reader.start()
+            assert entered.wait(timeout=30)
+            time.sleep(_HOLD)
+        finally:
+            writer.execute("ROLLBACK")
+            writer.close()
+        reader.join(timeout=30)
+
+        assert not reader.is_alive()
+        assert result["code"] == 0
+        assert result["waited"] >= _HOLD / 2
 
     def test_a_pre_failure_kind_ledger_still_summarises(
         self, isolated_config, ledger_con, tmp_path, capsys

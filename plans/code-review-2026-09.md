@@ -285,6 +285,7 @@ what one coherent PR could close.
 | [#514](https://github.com/prasadtalasila/chitragupta/issues/514) | m-88 |
 | [#515](https://github.com/prasadtalasila/chitragupta/issues/515) | m-89, m-90 |
 | [#516](https://github.com/prasadtalasila/chitragupta/issues/516) | m-53, m-54, m-55, m-79, m-91 |
+| [#550](https://github.com/prasadtalasila/chitragupta/issues/550) | m-71, m-72 |
 | [#551](https://github.com/prasadtalasila/chitragupta/issues/551) | m-67 |
 
 ## ✅ What was reviewed and found sound
