@@ -161,8 +161,10 @@ def _tidy(text: str) -> str:
     back to a reviewer, and the artefacts read as sloppiness in the
     *draft* rather than in this tool.
     """
-    # Narrative first: the two patterns are disjoint, but substituting
-    # into `text` twice rather than chaining would drop one of the results.
+    # Either order would do, which is the thing worth knowing before
+    # anyone reorders these: the two patterns are disjoint, and the
+    # inserted `[...]` carries no `[@` and no `\cite`, so neither
+    # substitution can match the other's output.
     stripped = _PARENTHETICAL_CITE.sub("", _NARRATIVE_CITE.sub("[...]", text))
     # `\s++` (possessive, 3.11+): the backtracking `\s+` re-tries every
     # shorter run of a long whitespace stretch before giving up at each
