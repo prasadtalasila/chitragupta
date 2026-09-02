@@ -152,14 +152,14 @@ other way: it sits beside the two aids it belongs with, not in
 
 ## 📂 The committed sample project is pipeline output, not prose
 
-`examples/sample-project/` is the worked example the user documentation
+`docs/examples/sample-project/` is the worked example the user documentation
 quotes: five synthetic sample papers and every artefact the pipeline
 derives from them -- drafts, dossiers, review reports, renders, a signed
 spec, the topic artefacts. Two rules follow from what it is:
 
 - **Regenerate, never hand-edit.** Every committed artefact there was
-  produced by actually running the pipeline (`examples/README.md` has
-  the map; `examples/sample-project/regenerate.sh` rebuilds the
+  produced by actually running the pipeline (`docs/examples/README.md` has
+  the map; `docs/examples/sample-project/regenerate.sh` rebuilds the
   uncommitted substrate). A change that alters an artefact's format --
   the dossier grammar, a review report's shape, the topic graph's schema
   -- makes the committed samples stale, and the fix is to re-run the
@@ -171,15 +171,18 @@ spec, the topic artefacts. Two rules follow from what it is:
   [the shipping cycle](#-shipping-a-code-change-the-full-cycle)'s step 4
   covers those).
 - **The citekey invariant holds even here.** The sample citekeys
-  (`sample_*`) exist in `examples/sample-project/papers/bibliography.bib`
+  (`sample_*`) exist in `docs/examples/sample-project/papers/bibliography.bib`
   and were synced from real (if synthetic) PDFs; a new sample citation
   goes through the same bib-export-then-sync path, never a typed-in key.
 
-`examples/` is deliberately excluded from the mkdocs site
-(`mkdocs.yml`'s `exclude_docs`) -- documentation refers to it by path in
-backticks, never by link -- and is named in `chitragupta/init.py`'s
-`DELIBERATE_DIFFERENCES`, because `init` must not scaffold someone
-else's sample corpus into a fresh project.
+Living under `docs/`, the sample project is part of the mkdocs site and
+of what `chitragupta init` scaffolds, deliberately: documentation links
+to its artefacts (small snippets are quoted inline; anything larger is a
+hyperlink), and a fresh project gets the worked example as a safe
+playground. The one carve-out is markdownlint -- see the negated glob in
+["The linters, which are enforced"](#-the-linters-which-are-enforced):
+pipeline output is not lint-shaped and may not be hand-edited to become
+so.
 
 ## 🖥 Environment constraints on this host
 
@@ -498,7 +501,7 @@ Before saying so, actually run, in this repo:
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
   ruff check chitragupta scripts .claude/hooks
   ruff format --check chitragupta scripts tests bench .claude/hooks
-  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"
   ```
 
 - `poetry check`.
@@ -576,8 +579,15 @@ to match would only relocate the gap:
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 ruff format --check chitragupta scripts tests bench .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"   # npm i -g markdownlint-cli2
 ```
+
+The one negation is stated in the command for the same
+narrower-glob-is-a-decision reason: `docs/examples/sample-project/` is
+pipeline *output* -- drafts, dossiers, review reports -- which is never
+lint-shaped and may not be hand-edited to become so (see "The committed
+sample project is pipeline output"). `docs/examples/README.md`, the
+hand-written page beside it, stays inside the glob.
 
 **Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
 reports `tail`'s status, so a real finding passes for a clean run. That is
@@ -769,7 +779,8 @@ entirely -- a clean OCR run says nothing about them.
 
 What *does* cover Markdown, so "OCR came back clean" is never read as
 "the standing instructions were reviewed": `markdownlint-cli2 "*.md"
-"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"` (see
+"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
+"!docs/examples/sample-project"` (see
 ["The linters, which are enforced"](#-the-linters-which-are-enforced)) for
 style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
 test, for the one class of factual claim that has a machine-readable

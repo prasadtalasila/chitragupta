@@ -70,8 +70,9 @@ were missing entirely are the two that matter most.
 | `outline.md` | the human's own per-section brief/claim/declared queries (#455) | **nowhere** |
 
 Four filled dossiers are committed to read alongside this page:
-`examples/sample-project/content/dossiers/dt-overview/` holds one per
-sample draft, written by real drafting runs. The survey's `evidence.md`
+`docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
+sample draft, written by real drafting runs. The survey's
+[`evidence.md`](examples/sample-project/content/dossiers/dt-overview/survey/evidence.md)
 shows the block shape at its smallest -- one kept citekey, why it was
 kept, the claim the draft rests on it, and (because a quotation was
 intended) the exact span:
@@ -84,7 +85,9 @@ claim: event-driven synchronisation cut transmitted volume by 71 percent against
 quote: a twin that knows it is stale must say so on every read
 ```
 
-and its `rejected.md` records the other half of the same judgement -- a
+and its
+[`rejected.md`](examples/sample-project/content/dossiers/dt-overview/survey/rejected.md)
+records the other half of the same judgement -- a
 paper retrieval surfaced that the draft declined, with the reason
 (`surfaced for this query but says nothing about staleness; kept for the
 integration theme instead`), which is what a reviser months later reads

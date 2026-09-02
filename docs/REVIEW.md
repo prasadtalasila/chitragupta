@@ -241,9 +241,10 @@ print, and write only under `--write`, because printing is the usual
 use.
 
 The full written set exists to read:
-`examples/sample-project/content/review/dt-overview/` holds every
+`docs/examples/sample-project/content/review/dt-overview/` holds every
 draft-reading aid's `.md` and `.json` for four real drafts -- open
-`survey.agenda.md` there to see what a merged worklist looks like on a
+[`survey.agenda.md`](examples/sample-project/content/review/dt-overview/survey.agenda.md)
+there to see what a merged worklist looks like on a
 draft that mostly passes, which is the common case and the one examples
 rarely show.
 

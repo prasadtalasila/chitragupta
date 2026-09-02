@@ -128,8 +128,9 @@ python -m chitragupta.review provenance content/drafts/<slug>.md
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
 renders of the same report beside it when `pandoc`/`pdflatex` are
 available. It needs no venv.
-(`examples/sample-project/content/review/dt-overview/survey.provenance.md`
-is one such report, written over the committed sample corpus.)
+([`survey.provenance.md`](examples/sample-project/content/review/dt-overview/survey.provenance.md)
+in the committed sample project is one such report, written over the
+sample corpus.)
 
 The report mirrors the draft's own place under `content/drafts/`, the
 same rule `content/rendered/` and `content/dossiers/` follow: a draft at

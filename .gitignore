@@ -127,7 +127,7 @@ bench/results/specter2_paper_cache.json
 config.toml
 # ...except the sample project's, which is a shipped input of the
 # worked examples, not per-host data (committed with `git add -f`).
-!examples/sample-project/config.toml
+!docs/examples/sample-project/config.toml
 
 # Built documentation site (mkdocs.yml -> .github/workflows/docs.yml).
 # Generated from the repository itself; nothing here is a source file.

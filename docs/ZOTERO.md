@@ -33,7 +33,8 @@ general feature):
 5. Re-run `python -m chitragupta.corpus sync`.
 
 **A complete, working example of exactly this shape is committed**:
-`examples/sample-project/papers/bibliography.bib` is a five-entry export
+[`bibliography.bib`](examples/sample-project/papers/bibliography.bib) in
+the sample project is a five-entry export
 with its `files/` folder of PDFs beside it, and every entry's `file`
 field uses the relative form this page describes. If your export's
 entries come up "without a PDF attachment" and you want to compare

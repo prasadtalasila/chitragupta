@@ -137,7 +137,7 @@ Three consecutive scans of an unchanged draft measured 20,172 /
 time**, which is the figure to plan a repair loop against.
 
 A written scan report to read alongside this page:
-`examples/sample-project/content/review/dt-overview/survey.verbatim.md`
+[`survey.verbatim.md`](examples/sample-project/content/review/dt-overview/survey.verbatim.md)
 is a real whole-draft scan over the sample corpus, banner and tier
 report included -- note how it names the tiers that ran, which is the
 "a clean run is not a clean bill of health" rule below made visible.

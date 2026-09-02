@@ -21,8 +21,9 @@ file and that one seem to disagree, that one is the tie-breaker.
 
 Every artefact shape this file names -- a dossier, a review report, a
 gate-passed draft, a signed spec -- exists as a real, committed example
-under `examples/sample-project/`, produced by running the real pipeline
-over five sample papers. `examples/README.md` is the map. When in doubt
+under `docs/examples/sample-project/`, produced by running the real
+pipeline over five sample papers.
+[docs/examples/README.md](docs/examples/README.md) is the map. When in doubt
 about what a file should look like, look there before inventing a shape.
 
 ## 🔑 The hard invariant: never fabricate a citekey
@@ -156,8 +157,8 @@ enrichment layer is optional and nothing above it needs it.
   built the topic graph. Both are read-only and lock-free, so either is
   a legitimate way for a drafting session to orient itself before any
   draft exists; `docs/TOPIC-DISCOVERY.md` has the workflow, and
-  `examples/sample-project/content/discover_digital_twin.txt` is a real
-  transcript of one.
+  [`discover_digital_twin.txt`](docs/examples/sample-project/content/discover_digital_twin.txt)
+  in the sample project is a real transcript of one.
 - **Layer 2, the drafting layer -- generative** (the `.claude/skills/`): invoked
   on
   demand, reviewed by the user. **Read-only over the corpus layer**: they
@@ -171,7 +172,7 @@ enrichment layer is optional and nothing above it needs it.
   (`content/dossiers/<the draft's path minus its suffix>/`, Markdown,
   owned by `chitragupta/dossier/`) holding the reader, scope, glossary, kept
   evidence, **rejected candidates and why**, and the steering the user
-  gave in chat -- `examples/sample-project/content/dossiers/dt-overview/`
+  gave in chat -- `docs/examples/sample-project/content/dossiers/dt-overview/`
   holds four real ones, exactly as drafting filled them. That is what
   makes a draft revisable weeks later:
   `draft-reviser` reads the dossier and edits the affected sections
@@ -253,7 +254,7 @@ enrichment layer is optional and nothing above it needs it.
   `content/review/`, mirroring the draft's path under `content/drafts/`
   the way `content/rendered/` and `content/dossiers/` do, with
   `chitragupta/review/__init__.py` owning that contract --
-  `examples/sample-project/content/review/dt-overview/` shows the full
+  `docs/examples/sample-project/content/review/dt-overview/` shows the full
   set for real drafts.
 
   *Review*, not *verification*: `chitragupta.draft gate` is verification, it lives

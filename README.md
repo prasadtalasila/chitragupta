@@ -51,7 +51,6 @@ out. A gate failure loops back to drafting, not to you.
 
 - [What it is](#-what-it-is)
 - [How it works](#-how-it-works)
-- [See it real: the sample project](#-see-it-real-the-sample-project)
 - [Quickstart](#-quickstart)
 - [The enrichment layer](#-the-enrichment-layer)
 - [Hardware requirements](#-hardware-requirements)
@@ -174,18 +173,9 @@ default) has not been observed to vary. The artifact-by-artifact
 contract and the measured rates are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
-## 🔎 See it real: the sample project
-
-Every artefact this README describes exists, committed, in
-`examples/sample-project/`: five synthetic sample papers synced by a
-real `corpus sync`, four gate-passed drafts (a survey, a verified
-tutorial, a textbook chapter, a thesis `.tex` fragment) each under a
-thousand words, their dossiers exactly as drafting fills them, the
-review layer's reports on each, rendered outputs, a signed book outline
-with one accepted unit, and the corpus's topic map as one offline HTML
-page. `examples/README.md` maps each artefact to the document that
-explains it. When any page below says "a dossier looks like this", the
-sample project is where it is looking.
+Every artefact this README describes exists, committed, as pipeline
+output over a five-paper sample corpus:
+[see examples](docs/examples/README.md).
 
 ## 🚀 Quickstart
 

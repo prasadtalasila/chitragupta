@@ -132,10 +132,6 @@ DELIBERATE_DIFFERENCES = frozenset(
         # an `init`-ed project has no `chitragupta/` or `scripts/` tree
         # whose sizes it could describe. The size hook `.claude/` does
         # scaffold is inert there for the same reason, and says so.
-        # The worked-example sample project. It ships in the release (the
-        # documentation quotes it), but `chitragupta init` scaffolds an
-        # empty project to draft in, not a museum piece beside it.
-        "examples",
         "code-standards-register.toml",
         # The git pre-commit hook and its directory. It ships for the same
         # reason `scripts/` does -- someone unzipping a release to work on

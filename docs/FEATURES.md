@@ -20,8 +20,8 @@ most likely place for it. (How that constraint is enforced is at the
 [foot of this page](#-how-this-document-stays-true).)
 
 Every artefact named below also exists as a real, committed example:
-`examples/sample-project/` (in a git checkout or a release archive; see
-`examples/README.md` there) holds gate-passed drafts of four genres,
+`docs/examples/sample-project/` (see [the examples map](examples/README.md))
+holds gate-passed drafts of four genres,
 their dossiers, the review layer's reports, renders, a signed book
 outline and the topic-discovery artefacts, all produced by running the
 pipeline over five sample papers.
