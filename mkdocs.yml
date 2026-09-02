@@ -142,6 +142,7 @@ nav:
   - Home: README.md
   - Getting started:
       - What it does: docs/FEATURES.md
+      - The working vocabulary: docs/GLOSSARY.md
       - Installing and the CLI surface: docs/PACKAGING.md
       - Getting your library in: docs/ZOTERO.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
