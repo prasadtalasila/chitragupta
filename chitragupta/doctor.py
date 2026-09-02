@@ -19,7 +19,7 @@ Four checks, none of them fatal to run without:
    `chitragupta/hook_launchers.py`).
 3. **Does the installed torch match this host's GPU driver?** The
    regression #265 accepts and only partially fixes: `pip install
-   chitragupta-cli[enrich]` on a CUDA host still lands a CPU-only torch
+   'chitragupta-cli[enrich]'` on a CUDA host still lands a CPU-only torch
    wheel, silently (`scripts/install_full_pipeline.sh`'s `ensure_gpu_torch`
    states why). Detected here; `chitragupta install gpu-torch` is the fix
    this names.
@@ -90,10 +90,12 @@ def _check_enrich_extra() -> str:
     if not missing:
         return "[ok] the enrich extra is importable"
     if len(missing) == len(ENRICH_MODULES):
-        return "[missing] the enrich extra is not installed -- pip install chitragupta-cli[enrich]"
+        return (
+            "[missing] the enrich extra is not installed -- pip install 'chitragupta-cli[enrich]'"
+        )
     return (
         f"[missing] the enrich extra is installed but incomplete: {', '.join(missing)} "
-        "-- pip install chitragupta-cli[enrich]"
+        "-- pip install 'chitragupta-cli[enrich]'"
     )
 
 
