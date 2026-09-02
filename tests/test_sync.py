@@ -609,6 +609,70 @@ class TestRun:
         assert "no-PDF breakdown: 1 PDF path no longer exists on disk" in out
         assert rc == 1
 
+    def test_an_unreadable_pdf_is_not_reported_as_a_missing_one(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """The reason is classified on the exception's type, not on "any
+        `OSError` means gone". A PDF that is present but unreadable -- no
+        permission, a failing device -- reported as "no longer exists on
+        disk" sends the reader after the one remedy that cannot help,
+        since the path is fine. Both still exit 1: both are documents the
+        corpus was promised and did not get."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{unreadable_paper_2024,
+  title = {A Paper This Host Cannot Open},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        def denied(path):
+            raise PermissionError(13, "Permission denied", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", denied)
+
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert "could not be read" in out
+        assert "no longer exists on disk" not in out
+        assert rc == 1
+
+    def test_a_path_component_that_is_not_a_directory_reads_as_gone(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        """`ENOTDIR` rides with the missing-file case: nothing is at that
+        path either, which is what that label claims."""
+        pdf = isolated_config.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            """
+@article{not_a_dir_2024,
+  title = {A Paper Behind A File Pretending To Be A Directory},
+  author = {Smith, Jane},
+  year = {2024},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        def not_a_dir(path):
+            raise NotADirectoryError(20, "Not a directory", path)
+
+        monkeypatch.setattr(ledger_upsert, "_stat_pdf", not_a_dir)
+
+        assert sync.run() == 1
+        assert (
+            "no-pdf  not_a_dir_2024: PDF path no longer exists on disk" in capsys.readouterr().out
+        )
+
     def test_no_pdf_breakdown_omitted_when_everything_resolves(
         self, basic_corpus, monkeypatch, capsys
     ):

@@ -37,6 +37,7 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
             # fsync'd write transactions on the corpus this was measured
             # against, and 646 windows in which the read-only inspector
             # could see a half-written ledger.
+            #
             # `vanished` collects the OSError if the PDF `bib_reader`
             # resolved has gone away since (issue #556). It is per
             # reference, not per run, because it decides this
@@ -46,16 +47,11 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
                 con, ref, force=reparse, commit=False, on_missing_pdf=vanished.append
             )
             # `ref.pdf_resolution` was decided when `bib_reader` read the
-            # bib file, at which point this PDF was still there -- so a
-            # PDF that went away between then and the upsert's stat needs
-            # the reason it *would* have been given had it gone a moment
-            # earlier. That reason already exists: `pdf_path_gone` is the
-            # same condition, and bib_reader's own comment calls it "a
-            # silent data-loss failure, not a 'never had a PDF' one".
-            # Reporting it as that rather than as a new kind is what
-            # keeps one condition from having two names, and needs no new
-            # label, no new counter and no new line of output.
-            resolution = bib_reader.PDF_PATH_GONE if vanished else ref.pdf_resolution
+            # bib file, at which point this PDF was readable -- so one
+            # that stopped being readable between then and the upsert
+            # needs the reason it *would* have been given had it happened
+            # a moment earlier.
+            resolution = _lost_pdf_reason(vanished[0]) if vanished else ref.pdf_resolution
             if vanished or not ref.pdf_path:
                 tally.no_pdf += 1
                 tally.no_pdf_reasons[resolution] += 1
@@ -86,6 +82,35 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
         # measured win for the guarantee docs/DESIGN.md rests on.
         con.commit()
     return to_parse
+
+
+def _lost_pdf_reason(exc: OSError) -> str:
+    """Which no-PDF reason an unreadable `ref.pdf_path` reports as.
+
+    Classified on the exception's type, which is this project's standing
+    rule for a failure cause (DEVELOPER-AGENTS.md: "classify a failure by
+    cause on the exception, not by matching its message").
+
+    A gone file gets the reason `bib_reader` already gives that exact
+    condition when its own bib-read-time check catches it -- the same
+    condition, detected a moment later, so it reports as the same thing
+    rather than as a new kind of thing.
+
+    Every other `OSError` is a different diagnosis and must not borrow
+    that one. A PDF that is present but unreadable -- no permission, a
+    failing disk -- would otherwise be reported as "no longer exists on
+    disk", and the remedy the docs attach to that reason (fix the path,
+    or drop the `file` field) is wrong for it. Both are holes in the
+    corpus and both make the run exit nonzero; they just are not the
+    same hole (issue #556).
+
+    `NotADirectoryError` rides with the missing-file case: `ENOTDIR`
+    means a component of the path is not a directory, so nothing is at
+    that path either, which is what the label claims.
+    """
+    if isinstance(exc, (FileNotFoundError, NotADirectoryError)):
+        return bib_reader.PDF_PATH_GONE
+    return bib_reader.PDF_UNREADABLE
 
 
 def _report_stale(
