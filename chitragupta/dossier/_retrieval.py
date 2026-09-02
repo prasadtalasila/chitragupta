@@ -64,7 +64,8 @@ def log_retrieval(
 
     The query is flattened onto one line before it is written. A pipe
     would split the row into extra cells and a newline would split it
-    into two rows -- and `retrieval_cost` reads rows positionally, so
+    into two rows -- and `retrieval_cost_by_revision` reads rows
+    positionally, so
     either one turns a logged call into a silently miscounted one rather
     than a visible error. Whitespace is collapsed with `split()`, which
     covers newlines, tabs and carriage returns together.
@@ -90,7 +91,7 @@ def log_retrieval(
     What this does *not* promise: that the template is written exactly
     once. Two writers that both find the file empty both write one, so
     the file can carry a duplicate header. That is deliberately the
-    failure left in, because it loses nothing -- `retrieval_cost` skips
+    failure left in, because it loses nothing -- `retrieval_cost_by_revision` skips
     any row whose last cell isn't an integer, which both the header and
     its separator are -- and `_count`'s advisory total is one high.
     Buying exactly-once would need a lock or a link-into-place dance,
@@ -105,7 +106,7 @@ def log_retrieval(
     buffered text I/O can flush at points of its own choosing, closing
     may still issue more than one write, and POSIX does not promise that
     a write to a regular file arrives unsplit. Nothing here depends on
-    any of that. `retrieval_cost` skips
+    any of that. `retrieval_cost_by_revision` skips
     any row it cannot parse, so a torn row costs that one measurement
     and leaves every other row intact -- while a row overwritten at an
     offset would have been silently gone. The guarantee this function
@@ -143,7 +144,7 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     that function's docstring for why), even though nothing calls this one
     concurrently -- one write path is one fewer thing to get right twice.
     A marker with `results` and `chars` both 0 costs nothing towards
-    `retrieval_cost`'s totals; it is real data only to
+    `retrieval_cost_by_revision`'s totals; it is real data only to
     `retrieval_cost_by_revision`, which reads it as a boundary rather than
     a call.
     """
@@ -161,18 +162,6 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     return path
 
 
-def retrieval_cost(dossier: Path) -> tuple[int, int]:
-    """(calls, characters returned) recorded in `retrieval.md`.
-
-    Excludes `mark_revision`'s boundary rows: they record zero retrieval
-    work by construction (`results` and `chars` are always 0), but without
-    filtering them out here each one would still count as a "call" that
-    fetched nothing, inflating this total by one per revision session.
-    """
-    rows = [row for row in _retrieval_rows(dossier) if row[1] != _REVISION_MARKER_MODE]
-    return len(rows), sum(int(row[5]) for row in rows)
-
-
 @dataclass
 class RevisionCost:
     label: str
@@ -181,7 +170,18 @@ class RevisionCost:
 
 
 def retrieval_cost_by_revision(dossier: Path) -> list[RevisionCost]:
-    """`retrieval_cost`, split at each `mark_revision` boundary.
+    """(calls, characters returned) per `mark_revision` segment.
+
+    Boundary rows are excluded from the totals: they record zero
+    retrieval work by construction (`results` and `chars` are always 0),
+    but counted as calls each would be one that fetched nothing,
+    inflating every segment by one.
+
+    There used to be a `retrieval_cost` beside this that answered the
+    same question for the whole file. `_status` computes the lifetime
+    figures as the sum of these segments instead -- parsing `retrieval.md`
+    twice for two views of it was the only thing that function bought --
+    so it was deleted rather than left as surface nothing called (#515).
 
     Rows logged before the first marker -- which is every row on a dossier
     revised before this existed, or one revised without `draft-reviser`'s

@@ -120,9 +120,10 @@ survive contact with a reviewer who remembers that test:
 two BM25 searches internally, but `retrieve search --y-prev ... --log`
 (Task 2) writes exactly **one** `retrieval.md` row -- `query` is the
 original, undecorated query text; `k`/`results`/`chars` describe the
-merged, capped output. `retrieval_cost`'s `calls` therefore counts CLI
-invocations (what actually reached the caller's context, which is what
-`--log`'s docstring says it measures), not the two searches a `--y-prev`
+merged, capped output. The summed `calls` across
+`retrieval_cost_by_revision`'s segments therefore counts CLI invocations
+(what actually reached the caller's context, which is what `--log`'s
+docstring says it measures), not the two searches a `--y-prev`
 call ran underneath. This is a deliberate reading of an existing
 contract, not a side effect discovered later.
 
@@ -487,8 +488,8 @@ DEVELOPER-AGENTS.md's small-increment, test-first convention.
                   "reground",
               ]
           )
-          calls, _ = dossier.retrieval_cost(dossier.dossier_dir(draft))
-          assert calls == 1
+          segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+          assert sum(segment.calls for segment in segments) == 1
   ```
 
 - [ ] Run:

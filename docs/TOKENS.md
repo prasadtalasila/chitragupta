@@ -470,9 +470,9 @@ handle, and the template written only when that open finds the file
 empty, so every byte lands at whatever the end of the file is at the time
 of the write. The residual failure is a *duplicated header* when two
 writers both find it empty -- observed, at 16 concurrent processes -- and
-that is left in on purpose. It loses nothing: `retrieval_cost` skips any
-row whose last cell is not an integer, which the header and its separator
-both are, so all 16 rows still total correctly. Buying exactly-one-header
+that is left in on purpose. It loses nothing: `retrieval_cost_by_revision`
+skips any row whose last cell is not an integer, which the header and its
+separator both are, so all 16 rows still total correctly. Buying exactly-one-header
 would cost a lock or a link-into-place dance, on the cheapest file in the
 system.
 

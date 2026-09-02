@@ -327,6 +327,6 @@ from chitragupta.dossier._citekeys import citekeys_by_section, glossary_terms
 from chitragupta.dossier._create import init
 from chitragupta.dossier._drift import drift, drift_all
 from chitragupta.dossier._language import set_language
-from chitragupta.dossier._retrieval import log_retrieval, retrieval_cost
+from chitragupta.dossier._retrieval import log_retrieval
 from chitragupta.dossier._sections import sections, sections_markdown
 from chitragupta.dossier._cli import main

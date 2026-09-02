@@ -3,7 +3,7 @@ ran, paired with the collection or origin each was scoped to.
 
 Split out of `_retrieval.py` (#467): that module writes `retrieval.md`
 (`log_retrieval`, `mark_revision`) and turns it into cost accounting
-(`retrieval_cost`, `retrieval_cost_by_revision`); this one only reads it
+(`retrieval_cost_by_revision`); this one only reads it
 back as *what was searched for*, which is a distinct question with its
 own three-function family (`recorded_queries` and two siblings). #455's
 origin column pushed `_retrieval.py` back over C2's 250-line ceiling,
