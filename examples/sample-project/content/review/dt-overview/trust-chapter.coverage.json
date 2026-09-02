@@ -1,0 +1,28 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "coverage",
+  "draft": "content/drafts/dt-overview/trust-chapter.tex",
+  "command": "python -m chitragupta.review coverage content/drafts/dt-overview/trust-chapter.tex --query 'operator trust override log authority' --k 5 --write",
+  "version": "6.59.1",
+  "queries": [
+    "operator trust override log authority"
+  ],
+  "k": 5,
+  "coverage_pct": 100.0,
+  "candidates_total": 2,
+  "cited_candidates_total": 2,
+  "findings": [
+    {
+      "id": "f84208ff6fc6",
+      "citekey": "sample_dt_overview_2024",
+      "title": null,
+      "status": "cited_outside_candidates"
+    },
+    {
+      "id": "68ed49c89d9c",
+      "citekey": "sample_ml_anomaly_2023",
+      "title": null,
+      "status": "cited_outside_candidates"
+    }
+  ]
+}

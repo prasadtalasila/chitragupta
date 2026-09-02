@@ -1,0 +1,46 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "quotation",
+  "draft": "content/drafts/dt-overview/trust-chapter.tex",
+  "command": "python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write",
+  "version": "6.59.1",
+  "quotes_total": 4,
+  "found": 0,
+  "absent": 0,
+  "unverifiable": 4,
+  "quotes": [
+    {
+      "id": "96ff258b3e52",
+      "citekey": "sample_dt_sync_2023",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no reading-ordered passages -- only page-level text"
+    },
+    {
+      "id": "83d94ccd0599",
+      "citekey": "sample_dt_factory_2022",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no reading-ordered passages -- only page-level text"
+    },
+    {
+      "id": "7ae990e26064",
+      "citekey": "sample_ml_anomaly_2023",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no reading-ordered passages -- only page-level text"
+    },
+    {
+      "id": "e7b2c4872733",
+      "citekey": "sample_dt_overview_2024",
+      "verdict": "unverifiable",
+      "tier": null,
+      "pages": [],
+      "reason": "no reading-ordered passages -- only page-level text"
+    }
+  ],
+  "findings": []
+}

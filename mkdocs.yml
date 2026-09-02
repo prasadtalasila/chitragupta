@@ -116,6 +116,7 @@ markdown_extensions:
 # machinery, or agent instructions that docs/GENRE.md already summarises
 # for a human reader.
 exclude_docs: |
+  examples/
   .claude/
   .github/
   .venv-full/

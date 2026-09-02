@@ -1,0 +1,71 @@
+{
+  "model": "sentence-transformers/all-mpnet-base-v2",
+  "min_similarity": 0.15,
+  "max_papers": 25,
+  "n_docs": 5,
+  "topics": [
+    {
+      "phrase": "digital twin",
+      "considered": 5,
+      "matches": [
+        {
+          "citekey": "sample_dt_overview_2024",
+          "score": 0.552929
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.377993
+        },
+        {
+          "citekey": "sample_dt_sync_2023",
+          "score": 0.322219
+        },
+        {
+          "citekey": "sample_ml_anomaly_2023",
+          "score": 0.215237
+        },
+        {
+          "citekey": "sample_std_interop_2021",
+          "score": 0.193215
+        }
+      ]
+    },
+    {
+      "phrase": "anomaly detection",
+      "considered": 2,
+      "matches": [
+        {
+          "citekey": "sample_ml_anomaly_2023",
+          "score": 0.486939
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.272542
+        }
+      ]
+    },
+    {
+      "phrase": "interoperability standards",
+      "considered": 4,
+      "matches": [
+        {
+          "citekey": "sample_std_interop_2021",
+          "score": 0.605213
+        },
+        {
+          "citekey": "sample_dt_factory_2022",
+          "score": 0.260582
+        },
+        {
+          "citekey": "sample_dt_overview_2024",
+          "score": 0.252977
+        },
+        {
+          "citekey": "sample_dt_sync_2023",
+          "score": 0.252536
+        }
+      ]
+    }
+  ],
+  "unmatched": []
+}

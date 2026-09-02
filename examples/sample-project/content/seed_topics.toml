@@ -1,0 +1,7 @@
+# Seed topics for the sample corpus -- phrases the sample project's
+# "author" cares about. Each phrase is one topic and is never split.
+topics = [
+    "digital twin",
+    "anomaly detection",
+    "interoperability standards",
+]

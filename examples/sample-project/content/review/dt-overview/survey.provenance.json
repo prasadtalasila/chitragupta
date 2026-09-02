@@ -1,0 +1,290 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "provenance",
+  "draft": "content/drafts/dt-overview/survey.md",
+  "command": "python -m chitragupta.review provenance content/drafts/dt-overview/survey.md",
+  "version": "6.59.1",
+  "unreadable": {},
+  "findings": [
+    {
+      "id": "5bfdc2ab8fe8",
+      "line": 88,
+      "citekey": "sample_ml_anomaly_2023",
+      "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+      "score": 0.12903225806451613,
+      "band": "no support found",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "37c58159f5ce",
+      "line": 89,
+      "citekey": "sample_std_interop_2021",
+      "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+      "score": 0.12903225806451613,
+      "band": "no support found",
+      "passage": {
+        "page": 2,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "390cf7cb63cb",
+      "line": 87,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+      "score": 0.1935483870967742,
+      "band": "no support found",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "71b53d3718e0",
+      "line": 78,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "And the organisational trust mechanisms of the factory study have no counterpart for the anomaly detectors of, whose false positives spend the same trust budget.",
+      "score": 0.21428571428571427,
+      "band": "weak",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "39900b2ed3bc",
+      "line": 86,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+      "score": 0.22580645161290322,
+      "band": "weak",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "3b359a492dc9",
+      "line": 79,
+      "citekey": "sample_ml_anomaly_2023",
+      "claim": "And the organisational trust mechanisms of the factory study have no counterpart for the anomaly detectors of, whose false positives spend the same trust budget.",
+      "score": 0.2857142857142857,
+      "band": "weak",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "c56f48901ff3",
+      "line": 76,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "Fidelity is argued to be purchased \"decision by decision\", yet no paper offers a costing method for that purchase.",
+      "score": 0.3,
+      "band": "weak",
+      "passage": {
+        "page": 2,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "3f3e55c69239",
+      "line": 86,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+      "score": 0.3225806451612903,
+      "band": "weak",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "d4b32047f5f5",
+      "line": 34,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "Marking staleness explicitly -- a twin that knows it is stale must say so on every read -- roughly halved operator mistrust incidents in the same trials.",
+      "score": 0.5882352941176471,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "e9b8d6700614",
+      "line": 52,
+      "citekey": "sample_ml_anomaly_2023",
+      "claim": "For anomaly detection, a layered configuration -- a rolling z-score everywhere, with a learned detector added only where the false-positive cost justifies its upkeep -- matched an autoencoder's precision on point faults while remaining immune to the baseline corruption that made the autoencoder miss the slowest drift entirely.",
+      "score": 0.65625,
+      "band": "supported",
+      "passage": {
+        "page": 2,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "e9b8d6700614",
+      "line": 54,
+      "citekey": "sample_ml_anomaly_2023",
+      "claim": "For anomaly detection, a layered configuration -- a rolling z-score everywhere, with a learned detector added only where the false-positive cost justifies its upkeep -- matched an autoencoder's precision on point faults while remaining immune to the baseline corruption that made the autoencoder miss the slowest drift entirely.",
+      "score": 0.65625,
+      "band": "supported",
+      "passage": {
+        "page": 2,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "ec7a70a7c9ee",
+      "line": 39,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "The eighteen-month factory case study reaches the same conclusion from the organisational side: its twin earned scheduling authority station by station, and the deciding argument was never abstract model accuracy but a published override log showing supervisors agreeing with the twin in over ninety-five percent of cases.",
+      "score": 0.78125,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "ec7a70a7c9ee",
+      "line": 42,
+      "citekey": "sample_dt_factory_2022",
+      "claim": "The eighteen-month factory case study reaches the same conclusion from the organisational side: its twin earned scheduling authority station by station, and the deciding argument was never abstract model accuracy but a published override log showing supervisors agreeing with the twin in over ninety-five percent of cases.",
+      "score": 0.78125,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "7ecdeb125fc6",
+      "line": 26,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "Comparing periodic pull, threshold push and event-driven flows across nine simulated production cells, event-driven synchronisation reduced transmitted volume by 71 percent against one-second polling while holding worst-case staleness under two seconds.",
+      "score": 0.9,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "7ecdeb125fc6",
+      "line": 29,
+      "citekey": "sample_dt_sync_2023",
+      "claim": "Comparing periodic pull, threshold push and event-driven flows across nine simulated production cells, event-driven synchronisation reduced transmitted volume by 71 percent against one-second polling while holding worst-case staleness under two seconds.",
+      "score": 0.9,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "442ec3a62d99",
+      "line": 10,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "A digital model exchanges data with its physical counterpart only through manual steps; a digital shadow adds an automatic flow in one direction; a digital twin closes the loop, with data flowing automatically both ways.",
+      "score": 0.9130434782608695,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "442ec3a62d99",
+      "line": 14,
+      "citekey": "sample_dt_overview_2024",
+      "claim": "A digital model exchanges data with its physical counterpart only through manual steps; a digital shadow adds an automatic flow in one direction; a digital twin closes the loop, with data flowing automatically both ways.",
+      "score": 0.9130434782608695,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "63128f93cc87",
+      "line": 61,
+      "citekey": "sample_std_interop_2021",
+      "claim": "Interoperability requires agreement at three layers -- transport, syntax and semantics -- and only the first two can be bought as mature standards.",
+      "score": 0.9285714285714286,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "63128f93cc87",
+      "line": 65,
+      "citekey": "sample_std_interop_2021",
+      "claim": "Interoperability requires agreement at three layers -- transport, syntax and semantics -- and only the first two can be bought as mature standards.",
+      "score": 0.9285714285714286,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    },
+    {
+      "id": "63128f93cc87",
+      "line": 68,
+      "citekey": "sample_std_interop_2021",
+      "claim": "Interoperability requires agreement at three layers -- transport, syntax and semantics -- and only the first two can be bought as mature standards.",
+      "score": 0.9285714285714286,
+      "band": "supported",
+      "passage": {
+        "page": 1,
+        "quotable": false,
+        "text": null
+      },
+      "note": null
+    }
+  ]
+}

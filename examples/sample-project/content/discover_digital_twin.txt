@@ -1,0 +1,18 @@
+digital twin  (seed, 5 papers)
+
+  [0.55] A. Author and B. Builder, "Digital Twins: Definitions, Distinctions, and a Short Taxonomy," *Synthetic Sample Papers*, vol. 1, pp. 1–5, 2024.
+         also in: topic-1, interoperability standards
+  [0.38] E. Eriksen, "A Digital Twin on the Factory Floor: an Eighteen-Month Case Study," *Synthetic Sample Papers*, vol. 1, pp. 12–17, 2022.
+         also in: topic-0, anomaly detection, interoperability standards
+  [0.32] C. Chen and D. Devi, "State Synchronisation Strategies for Operational Digital Twins," *Synthetic Sample Papers*, vol. 1, pp. 6–11, 2023.
+         also in: topic-0, interoperability standards
+  [0.22] F. Farah and G. Gupta, "Lightweight Anomaly Detection over Digital-Twin State Streams," *Synthetic Sample Papers*, vol. 1, pp. 18–23, 2023.
+         also in: topic-0, anomaly detection
+  [0.19] H. Havel and I. Ismail, "Interoperability Standards for Industrial Asset Models: a Field Guide," *Synthetic Sample Papers*, vol. 1, pp. 24–29, 2021.
+         also in: topic-1, interoperability standards
+
+linked topics:
+  semantically near: anomaly detection  (0.64, bridge: sample_ml_anomaly_2023 <-> sample_ml_anomaly_2023)
+  semantically near: interoperability standards  (0.88, bridge: sample_dt_overview_2024 <-> sample_dt_overview_2024)
+  semantically near: topic-0  (0.76, bridge: sample_ml_anomaly_2023 <-> sample_ml_anomaly_2023)
+  semantically near: topic-1  (0.63, bridge: sample_dt_overview_2024 <-> sample_dt_overview_2024)

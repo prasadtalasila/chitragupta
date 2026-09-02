@@ -1,0 +1,83 @@
+{
+  "summary": {
+    "overall": {
+      "n": 5,
+      "hit_at_1": 0.6,
+      "recall_at_5": 0.75,
+      "mrr": 0.5833333333333334,
+      "ndcg_at_5": 0.625,
+      "member_recall": 1.0
+    },
+    "by_rung": {
+      "exact": {
+        "n": 1,
+        "hit_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0
+      },
+      "fuzzy": {
+        "n": 1,
+        "hit_at_1": 1.0,
+        "recall_at_5": 1.0,
+        "mrr": 1.0,
+        "ndcg_at_5": 1.0
+      },
+      "hybrid": {
+        "n": 1,
+        "hit_at_1": 0.0,
+        "recall_at_5": 1.0,
+        "mrr": 0.3333333333333333,
+        "ndcg_at_5": 0.5,
+        "member_recall": 1.0
+      },
+      "search": {
+        "n": 2,
+        "hit_at_1": 0.5,
+        "recall_at_5": 0.0,
+        "mrr": 0.0,
+        "ndcg_at_5": 0.0
+      }
+    }
+  },
+  "rows": [
+    {
+      "phrase": "digital twin",
+      "via": "exact",
+      "hit_at_1": 1.0,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_5": 1.0
+    },
+    {
+      "phrase": "digitl twin",
+      "via": "fuzzy",
+      "hit_at_1": 1.0,
+      "recall_at_5": 1.0,
+      "mrr": 1.0,
+      "ndcg_at_5": 1.0
+    },
+    {
+      "phrase": "detecting unusual sensor behaviour",
+      "via": "search",
+      "hit_at_1": 0.0,
+      "recall_at_5": 0.0,
+      "mrr": 0.0,
+      "ndcg_at_5": 0.0
+    },
+    {
+      "phrase": "asset model registries and semantics",
+      "via": "hybrid",
+      "hit_at_1": 0.0,
+      "recall_at_5": 1.0,
+      "mrr": 0.3333333333333333,
+      "ndcg_at_5": 0.5,
+      "member_recall": 1.0
+    },
+    {
+      "phrase": "a subject this corpus does not cover",
+      "via": "search",
+      "hit_at_1": 1.0
+    }
+  ]
+}

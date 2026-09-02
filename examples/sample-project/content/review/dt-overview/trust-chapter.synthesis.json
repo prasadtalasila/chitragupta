@@ -1,0 +1,63 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "synthesis",
+  "draft": "content/drafts/dt-overview/trust-chapter.tex",
+  "command": "python -m chitragupta.review synthesis content/drafts/dt-overview/trust-chapter.tex --write",
+  "version": "6.59.1",
+  "genre": "thesis-chapter",
+  "unit": "paragraph",
+  "unit_source": "scope.md",
+  "units_total": 12,
+  "uncited": 8,
+  "single_source": 4,
+  "multi_source": 0,
+  "declared": 0,
+  "undeclared": 4,
+  "single_source_pct": 100.0,
+  "findings": [
+    {
+      "id": "7aa3ff93dfb6",
+      "kind": "single_source",
+      "line": 22,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_dt_sync_2023"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "3f881c153502",
+      "kind": "single_source",
+      "line": 29,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_dt_factory_2022"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "1223c1e92fde",
+      "kind": "single_source",
+      "line": 40,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_ml_anomaly_2023"
+      ],
+      "declared": null,
+      "longest_run": 0
+    },
+    {
+      "id": "97bb4a7abcb2",
+      "kind": "single_source",
+      "line": 52,
+      "unit": "paragraph",
+      "citekeys": [
+        "sample_dt_overview_2024"
+      ],
+      "declared": null,
+      "longest_run": 0
+    }
+  ]
+}

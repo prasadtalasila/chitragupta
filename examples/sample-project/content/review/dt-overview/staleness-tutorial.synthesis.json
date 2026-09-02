@@ -1,0 +1,18 @@
+{
+  "notice": "Review aid, not a gate. This report is evidence for a human judgement, never a verdict. A driver may read it back; no draft is blocked by what it says. See SOUL.md, and docs/ARCHITECTURE.md's \"Layer 4: the review layer\".",
+  "aid": "synthesis",
+  "draft": "content/drafts/dt-overview/staleness-tutorial.md",
+  "command": "python -m chitragupta.review synthesis content/drafts/dt-overview/staleness-tutorial.md --write",
+  "version": "6.59.1",
+  "genre": "tutorial",
+  "unit": "document",
+  "unit_source": "scope.md",
+  "units_total": 1,
+  "uncited": 0,
+  "single_source": 0,
+  "multi_source": 1,
+  "declared": 0,
+  "undeclared": 0,
+  "single_source_pct": 0.0,
+  "findings": []
+}
