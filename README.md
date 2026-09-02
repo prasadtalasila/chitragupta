@@ -32,18 +32,63 @@ against it -- which is what this does to citations.
 
 ## 🔑 The one rule
 
-Fabricated placeholder references have made it into real papers before.
-This pipeline is built to make that impossible rather than unlikely:
+Asked to write a literature review, language models fabricate citations
+at rates measured in the double digits -- and fabricated placeholder
+references have reached real published papers. Most tools answer this
+with retrieval, which makes fabrication *unlikely*. Unlikely is a
+different property from impossible: in a conventional
+retrieval-augmented pipeline the model is *asked* not to invent a
+reference, and nothing stands between a generated citekey and the
+rendered document. Chitragupta puts something there:
 
 > **A citekey may only be used if it appears in your own `.bib` export
 > *and* was picked up into the ledger by a real parse of a real PDF.**
 
+That sentence is enforced by architecture, not by prompt: the
+bibliography you export is the only way a source gets in, and one
+blocking check -- the citation gate -- is the only way a draft gets
+out. A gate failure loops back to drafting, not to you.
+
+- [What it is](#-what-it-is)
 - [How it works](#-how-it-works)
+- [See it real: the sample project](#-see-it-real-the-sample-project)
 - [Quickstart](#-quickstart)
 - [The enrichment layer](#-the-enrichment-layer)
 - [Hardware requirements](#-hardware-requirements)
 - [Documentation](#-documentation)
 - [Acknowledgements](#-acknowledgements)
+
+## ✍ What it is
+
+Chitragupta is a local-first system for **co-authoring scholarly prose
+over a corpus you curated**: a human and a language model write the
+same document by turns, each contributing where it is stronger. You
+curate the library, decide the scope, steer, and edit; the pipeline
+retrieves, drafts grounded sections, verifies every citation
+mechanically, and remembers the judgment behind the draft so that
+changing it months later is an edit, not a re-run.
+
+You contribute in three ways, and each has a mechanical effect rather
+than a rhetorical one:
+
+- **Declare structure before drafting.** An optional outline carries,
+  per section, a brief the draft must obey but never show, your own
+  prose as claims to be grounded, and the exact retrieval queries to
+  run verbatim instead of letting the model invent sub-themes.
+- **Write prose directly.** A section written by hand is a first-class
+  input: the pipeline grounds it against the corpus, and any sentence
+  it cannot ground is dropped *and named back to you* -- this is the
+  opposite of a tool that edits your draft, and it is the point.
+- **Edit what the model produced.** A text fingerprint notices the
+  draft moved, surfaces what went stale, and offers -- never applies --
+  one further retrieval round in which your own new wording *is* the
+  query.
+
+The honest cost of the design, stated up front: the pipeline cannot
+cite a paper you have not catalogued, and *"the corpus does not contain
+this"* is a frequent and deliberate answer. You supply the argument and
+the corpus supplies the warrant; where it cannot, the sentence does not
+ship.
 
 ## 🏗 How it works
 
@@ -61,63 +106,86 @@ nothing reaches phase 5 without passing phase 4.
        width="100%">
 </p>
 
-Two properties of the spine do all the work:
+Two properties of the spine do all the work, and both are structural
+rather than procedural:
 
 - **Phase 1 is the only entrance.** Citekeys come from your reference
-  manager's BibTeX export. The pipeline never fetches a paper, never
-  invents a citekey, and never renames one.
-- **Phase 4 is the only exit.** `chitragupta.draft gate` sits on the single
-  path between a draft and a rendered document. There is no arrow around
-  it, and a `FAIL` is treated like a failing test rather than a lint
-  warning. The loop back goes to *drafting*, not to you.
+  manager's BibTeX export, synced into a small local ledger by a
+  deterministic run -- no LLM, no judgement calls, the same
+  bibliography in yields the same citekeys out. The pipeline never
+  fetches a paper, never invents a citekey, and never renames one.
+- **Phase 4 is the only exit.** `chitragupta draft gate` sits on the
+  single path between a draft and a rendered document. There is no
+  arrow around it, and a `FAIL` is treated like a failing test rather
+  than a lint warning. What the gate proves is that every citekey is
+  *real*; whether each cited paper actually *supports* its sentence is
+  the review layer's business, below.
 
-The two layers beside it are where the pipeline keeps its memory and its
-conscience:
+The two layers beside the spine are where the pipeline keeps its memory
+and its conscience:
 
-- **The dossier** is written as a draft is written -- scope, kept
-  evidence, rejected candidates, a revision log -- and read back to
-  change it. That is why a draft is never revised by re-running the
-  skill that produced it ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is ten advisory aids for a finished draft:
-  provenance, verbatim, coverage, synthesis, figure layout, uncited
-  prose, quotation integrity, claim support, citekey union -- which asks
-  whether assembling a book lost a source a unit stands on -- and agenda,
-  one ranked, deduplicated worklist merged across the eight that read a
-  draft. None of
-  them is a gate -- not even `quotation`, whose answer is binary --
-  which is not the same as borrowed wording being fine to leave once
-  you have found it
-  ([docs/REVIEW.md](docs/REVIEW.md)).
+- **The dossier** is the draft's externalised working memory, written
+  *as* the draft is written -- scope, who the reader is, the evidence
+  kept, the candidates rejected and why, and what you steered in chat
+  that the prose does not show. It is what makes the next revision
+  scoped rather than a re-run, and why "shorten section 3" three weeks
+  later costs an edit instead of a rebuild
+  ([docs/DOSSIER.md](docs/DOSSIER.md)).
+- **The review layer** is ten advisory aids for a finished draft --
+  does the cited paper say this (provenance), how much wording came
+  from the sources (verbatim), what did retrieval surface that you
+  never cited (coverage), and seven more, merged into one ranked
+  worklist (agenda). None of them is a gate, and none may be promoted
+  to one: each is measured against something -- a parse, a retrieval
+  ranking -- that can itself be imperfect, and a check like that must
+  inform you, not block you ([docs/REVIEW.md](docs/REVIEW.md)).
 
 Nine skills sit behind phase 3, all obeying the same grounding rules:
 five that write a draft (survey, thesis chapter, undergraduate textbook
-chapter, tutorial, and a heavier multi-perspective deep-research mode),
-three that change one that already exists, and one that assembles
-accepted units into a book ([docs/GENRE.md](docs/GENRE.md)).
-**Enrichment** is a separate optional pass that deepens the same corpus
-with layout-aware parsing, semantic search and topic clustering; nothing
-above needs it.
+chapter, hands-on tutorial, and a heavier multi-perspective
+deep-research mode), three that change a draft that already exists, and
+one that assembles accepted units into a book
+([docs/GENRE.md](docs/GENRE.md)). Before any draft exists,
+`chitragupta corpus discover` maps what your corpus is actually about
+-- its topics, their papers, and the links between them
+([docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md)).
 
-[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways --
-by depth, by genre, and in time order -- and is where the figure above
-comes from.
+[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways
+-- by depth, by genre, and in time order -- and is where the figure
+above comes from. [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the
+working vocabulary in one page.
 
 ### 🚫 One thing the corpus layer does not promise
 
 The corpus layer is deterministic in the sense that matters most -- no
-LLM, no judgement calls, same bibliography in, same citekeys out -- but it
-is **not** bit-reproducible with every parser. With the default
+LLM, no judgement calls, same bibliography in, same citekeys out -- but
+it is **not** bit-reproducible with every parser. With the default
 `pdftotext` backend it is: parsed text comes back byte-identical, every
 ledger column stable except the `last_synced` timestamp.
 
-With the opt-in `docling` backend *and* a worker pool, it isn't -- and the
-instability reaches the *quotable passage*, so the exact span quoted from
-a source can change between runs. That is Docling's behaviour under load
-rather than something this pipeline adds, and it cannot be switched off;
-serial parsing (`[parser].workers = 1`, the default) has not been observed
-to vary. The artifact-by-artifact contract, the measured rates and how
-little they can pin down are in
+With the opt-in `docling` backend *and* a worker pool, it isn't -- and
+the instability reaches the *quotable passage*, so the exact span
+quoted from a source can change between runs. A snippet is the evidence
+a judgement is recorded against, so an irreproducible snippet means an
+irreproducible rejection -- which is why this is stated here rather
+than buried. It is Docling's behaviour under load rather than something
+this pipeline adds; serial parsing (`[parser].workers = 1`, the
+default) has not been observed to vary. The artifact-by-artifact
+contract and the measured rates are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
+
+## 🔎 See it real: the sample project
+
+Every artefact this README describes exists, committed, in
+`examples/sample-project/`: five synthetic sample papers synced by a
+real `corpus sync`, four gate-passed drafts (a survey, a verified
+tutorial, a textbook chapter, a thesis `.tex` fragment) each under a
+thousand words, their dossiers exactly as drafting fills them, the
+review layer's reports on each, rendered outputs, a signed book outline
+with one accepted unit, and the corpus's topic map as one offline HTML
+page. `examples/README.md` maps each artefact to the document that
+explains it. When any page below says "a dossier looks like this", the
+sample project is where it is looking.
 
 ## 🚀 Quickstart
 
@@ -196,29 +264,29 @@ sequence above and everything that follows it, in order.
 ## 🧠 The enrichment layer
 
 Everything above works without it. The enrichment layer is a second,
-optional pass over the same corpus that buys three things: layout-aware
-parsing that yields quotable passages, semantic search that finds a paper
-arguing your point in different words, and topic clustering over the whole
-corpus.
+optional pass over the same corpus that buys four things: layout-aware
+parsing that yields quotable passages, semantic search that finds a
+paper arguing your point in different words, topic modelling over the
+whole corpus, and the topic graph that `corpus discover` and the
+offline topic map read.
 
 ```bash
-chitragupta enrich --stages docling,embed          # or: python -m chitragupta.enrich --stages docling,embed
+chitragupta enrich --stages docling,embed      # or: python -m chitragupta.enrich --stages docling,embed
+chitragupta enrich                             # all six stages
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in
-tens of minutes, and the enrich dependency group is several gigabytes -- so
-you build it deliberately. **No genre skill builds it for you.** The
-skills read what is already there and fall back to the lightweight default
-when it isn't.
+tens of minutes, and the enrich dependency group is several gigabytes
+-- so you build it deliberately. **No genre skill builds it for you.**
+The skills read what is already there and fall back to the lightweight
+default when it isn't; the same honesty runs through the layer itself,
+where every stage probes its own prerequisites and reports `ok`,
+`skipped` or `missing-binary` rather than assuming. No stage needs an
+LLM API key -- this repository intentionally has none.
 
-Which stage is worth that cost, and what each one actually answers, is in
-[docs/RETRIEVAL.md](docs/RETRIEVAL.md). How the stages fit into the rest
-of the system, including how to call them from your own script or skill,
-is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-layer-3-the-enrichment-layer).
-
-No stage needs an LLM API key -- this repository intentionally has none.
-Every stage probes its own prerequisites and reports `ok`, `skipped` or
-`missing-binary` rather than assuming they are present.
+Which stage is worth the cost is [docs/RETRIEVAL.md](docs/RETRIEVAL.md)'s
+question; what the topic stages produce and how to explore it is
+[docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md)'s.
 
 ## 💻 Hardware requirements
 
