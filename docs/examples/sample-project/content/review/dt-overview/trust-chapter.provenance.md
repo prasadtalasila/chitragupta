@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review provenance content/drafts/dt-overview/trust-chapter.tex`
-- chitragupta 6.61.0
+- chitragupta 6.61.1
 
 ## How to read this
 
@@ -55,13 +55,13 @@ Findings for these show a score of 0 because there was nothing to compare agains
 
 #### Line 31 -- `[@sample_dt_factory_2022]` (0% match)
 
-> The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
+> The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
 
 *Source unavailable: no parsed text with page breaks and no readable PDF*
 
 #### Line 38 -- `[@sample_dt_factory_2022]` (0% match)
 
-> The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
+> The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
 
 *Source unavailable: no parsed text with page breaks and no readable PDF*
 
@@ -73,6 +73,6 @@ Findings for these show a score of 0 because there was nothing to compare agains
 
 #### Line 55 -- `[@sample_dt_overview_2024]` (0% match)
 
-> The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.
+> The vocabulary of [...] sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.
 
 *Source unavailable: no parsed text with page breaks and no readable PDF*

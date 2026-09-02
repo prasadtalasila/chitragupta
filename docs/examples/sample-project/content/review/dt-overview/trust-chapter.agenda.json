@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex",
-  "version": "6.61.0",
+  "version": "6.61.1",
   "sources": {
     "aids": {
       "provenance": {
@@ -73,18 +73,18 @@
       }
     },
     {
-      "id": "d414f7ba40c8",
+      "id": "6ede10a70930",
       "class": "unsupported-claim",
       "section": "The argument",
       "citekey": "sample_dt_factory_2022",
       "line": 31,
       "unattended": false,
-      "summary": "`[@sample_dt_factory_2022]` scores no support found: The packaging line twin of gained scheduling authority station by station, and e",
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: The packaging line twin of [...] gained scheduling authority station by station,",
       "detail": {
         "band": "no support found",
         "score": 0.0,
-        "claim": "The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
-        "provenance_id": "5b6f8760160e"
+        "claim": "The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
+        "provenance_id": "09e4f12bb314"
       }
     },
     {
@@ -109,18 +109,18 @@
       }
     },
     {
-      "id": "9bb0648624a6",
+      "id": "972e8b4ccf59",
       "class": "unsupported-claim",
       "section": "Synthesis",
       "citekey": "sample_dt_overview_2024",
       "line": 55,
       "unattended": false,
-      "summary": "`[@sample_dt_overview_2024]` scores no support found: The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is",
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha",
       "detail": {
         "band": "no support found",
         "score": 0.0,
-        "claim": "The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
-        "provenance_id": "4324aaca7f52"
+        "claim": "The vocabulary of [...] sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
+        "provenance_id": "cf88efe5d1c6"
       }
     },
     {

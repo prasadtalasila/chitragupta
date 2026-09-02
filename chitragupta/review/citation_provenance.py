@@ -104,7 +104,32 @@ def claims(draft_text: str) -> list[tuple[int, str, str]]:
     return out
 
 
-_CITE_MARKUP = re.compile(r"\[@[^\]]+\]|\\cite[tp]?\{[^}]*\}")
+# Parenthetical citation markup, which stands *outside* the sentence's
+# grammar -- an aside the reader could skip -- so the sentence is only
+# grammatical once it is gone.
+_PARENTHETICAL_CITE = re.compile(r"\[@[^\]]+\]|\\citep?\{[^}]*\}")
+
+# Narrative `\citet`, which is the opposite case and used to be swept up
+# by the pattern above (#570): it renders as "Smith et al. (2024)", a
+# noun phrase *inside* the grammar, so deleting it left "The vocabulary
+# of sharpens the claim" -- a dangling "of" quoted back at a reviewer as
+# though the draft had written it.
+#
+# An elision rather than the author-year text it stands for, for a reason
+# specific to this aid. `_claims.INLINE_TABLE_REF` faces the same
+# missing-noun problem and substitutes the word ("Table"), but C1 does
+# not *score* its sentences; this claim is scored by word overlap against
+# the cited paper's own text, which contains its own authors' names. A
+# substituted surname would hand every narrative citation a free hit
+# unrelated to the claim, inflating exactly the band that flags weak
+# support. `[...]` contributes no word to `passages.distinctive`
+# (`[a-z0-9]+`), so the score is unchanged and only the quoted text moves.
+#
+# Only `\citet`, deliberately narrow: `\textcite`, `\citealt`, `\Citet`
+# and pandoc's bare `@key` are narrative too, but the pattern above never
+# matched them, so they leak markup instead -- a pre-existing defect of
+# its enumerated shape, not this one, and not this diff's to fix.
+_NARRATIVE_CITE = re.compile(r"\\citet\{[^}]*\}")
 
 
 def _sentence_around(text: str, citekey: str) -> str:
@@ -128,7 +153,7 @@ def _sentence_around(text: str, citekey: str) -> str:
 
 
 def _tidy(text: str) -> str:
-    """Drop citation markup and close the gap it leaves behind.
+    """Drop parenthetical markup, elide narrative markup, close the gap.
 
     Removing `[@key]` from "processes [@key], or equivalently" otherwise
     leaves "processes , or equivalently" -- a space before the comma and
@@ -136,7 +161,9 @@ def _tidy(text: str) -> str:
     back to a reviewer, and the artefacts read as sloppiness in the
     *draft* rather than in this tool.
     """
-    stripped = _CITE_MARKUP.sub("", text)
+    # Narrative first: the two patterns are disjoint, but substituting
+    # into `text` twice rather than chaining would drop one of the results.
+    stripped = _PARENTHETICAL_CITE.sub("", _NARRATIVE_CITE.sub("[...]", text))
     # `\s++` (possessive, 3.11+): the backtracking `\s+` re-tries every
     # shorter run of a long whitespace stretch before giving up at each
     # scan position, which is quadratic on whitespace-heavy input (Sonar

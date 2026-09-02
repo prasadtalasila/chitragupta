@@ -17,7 +17,7 @@ import pytest
 
 from chitragupta.review import _blocks, _citation_provenance_render
 from chitragupta.review import citation_provenance as cp
-from chitragupta import config, ledger
+from chitragupta import config, ledger, passages
 
 
 def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
@@ -92,6 +92,43 @@ class TestClaims:
         ((_, _, claim),) = cp.claims(draft)
         assert claim == "Systems integrate computation, or so it is claimed."
         assert "  " not in claim
+
+    def test_a_narrative_citet_leaves_a_placeholder_in_the_grammar(self, isolated_config):
+        """#570: `\\citet` is a noun phrase *inside* the sentence, so
+        deleting it wholesale left "The vocabulary of sharpens the
+        claim" -- a dangling "of", quoted back at a reviewer as though
+        the draft had written it."""
+        draft = "The vocabulary of \\citet{a_2024} sharpens the claim.\n"
+        ((_, _, claim),) = cp.claims(draft)
+        assert claim == "The vocabulary of [...] sharpens the claim."
+
+    def test_parenthetical_forms_are_still_removed_entirely(self, isolated_config):
+        """The other half of #570, and the reason the fix is two patterns
+        rather than a different single one: a parenthetical marker stands
+        *outside* the grammar, so the sentence is only grammatical with
+        it gone."""
+        assert cp.claims("The loop closes \\citep{a_2024}, as measured.\n") == [
+            (1, "a_2024", "The loop closes, as measured.")
+        ]
+        assert cp.claims("The loop closes \\cite{a_2024}, as measured.\n") == [
+            (1, "a_2024", "The loop closes, as measured.")
+        ]
+
+    def test_the_placeholder_contributes_no_word_to_the_score(self, isolated_config):
+        """The claim text is scored by overlap against the source's own
+        words, so a placeholder carrying any word of its own would move a
+        narrative citation's support band for a reason that has nothing
+        to do with what the draft claims. This is what rules out
+        substituting the author-year text: a paper's text contains its
+        own authors' names, so every narrative citation would score a
+        free hit.
+
+        Scored off the claim `claims()` actually produced, not off a
+        typed-in `[...]`: asserting on the placeholder this test chose
+        would keep passing if the code started substituting a surname,
+        which is the one thing it exists to prevent."""
+        ((_, _, claim),) = cp.claims("The vocabulary of \\citet{a_2024} sharpens.\n")
+        assert passages.distinctive(claim) == passages.distinctive("The vocabulary of sharpens.")
 
     def test_no_citations_yields_nothing(self, isolated_config):
         assert cp.claims("Plain prose with no citations.\n") == []
