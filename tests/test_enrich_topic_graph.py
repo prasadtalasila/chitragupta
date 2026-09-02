@@ -106,6 +106,16 @@ class TestSemanticEdges:
     def test_a_singleton_corpus_of_topics_has_no_edges(self):
         assert topic_graph.semantic_edges({"a": {"p1": [1.0, 0.0]}}, neighbors=3) == []
 
+    def test_a_zero_vector_scores_zero_instead_of_poisoning_the_json(self):
+        """In a one-document corpus the centred vector is exactly zero;
+        dividing by its norm would spread NaN through every similarity,
+        and json.dumps emits NaN as a bare token no parser accepts."""
+        edges = topic_graph.semantic_edges(
+            {"a": {"p1": [0.0, 0.0]}, "b": {"p2": [1.0, 0.0]}}, neighbors=1
+        )
+        assert edges[0]["similarity"] == 0.0
+        json.dumps(edges)
+
 
 class TestHierarchy:
     def test_the_tree_merges_the_closest_topics_first(self):

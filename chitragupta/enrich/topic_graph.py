@@ -98,7 +98,13 @@ def semantic_edges(vectors: dict, neighbors: int) -> list:
     for label in labels:
         keys = sorted(vectors[label])
         rows = np.asarray([vectors[label][k] for k in keys], dtype=float)
-        rows = rows / np.linalg.norm(rows, axis=1, keepdims=True)
+        # A zero row is real, not hypothetical: in a one-document corpus
+        # the centred vector is exactly zero. Dividing by its norm would
+        # spread NaN through every similarity and json.dumps would emit
+        # them as bare NaN tokens -- invalid JSON. A zero vector instead
+        # scores 0 against everything, which is the honest answer.
+        norms = np.linalg.norm(rows, axis=1, keepdims=True)
+        rows = rows / np.where(norms == 0.0, 1.0, norms)
         normalised[label] = (keys, rows)
 
     scored = {}
