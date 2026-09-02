@@ -11,3 +11,4 @@ content/retrieval_index.json
 content/pipeline.lock.db
 content/pipeline.lock.db.holder
 logs/
+content/overlap/
