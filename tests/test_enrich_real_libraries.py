@@ -47,7 +47,7 @@ import types
 import numpy
 import pytest
 
-from chitragupta import config
+from chitragupta import chroma_paging, config
 from chitragupta.enrich import embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
@@ -176,6 +176,38 @@ class TestBuildIndexAgainstRealChromadb:
         collection = client.get_or_create_collection(embed_index.collection_name())
         assert collection.get(where={"citekey": "b2024"})["ids"] == []
 
+    def test_the_prune_reads_a_collection_that_spans_several_pages(
+        self, real_chromadb, isolated_config, tmp_path, monkeypatch
+    ):
+        """#581, against the real `limit`/`offset`: the prune reads the
+        whole collection, and a single `get` cannot return more rows than
+        SQLite has bound variables for (32766, against a real corpus of
+        41050 chunks).
+
+        A page size of 1 rather than a collection of 32767 chunks: what
+        the fake-backed suite cannot check is whether *chromadb* pages the
+        way `chroma_paging.all_rows` assumes, and three rows over three
+        pages asks that question for the price of three chunks. The size
+        the real limit sits at is not a property of this code, and
+        building a collection past it would put a minute of upserts into
+        every CI run to test SQLite rather than us.
+        """
+        monkeypatch.setattr(chroma_paging, "PAGE_SIZE", 1)
+        kept = doc_with_text(tmp_path, "a2024", " ".join(["twin"] * 40))
+        first = doc_with_text(tmp_path, "b2024", " ".join(["shadow"] * 40))
+        second = doc_with_text(tmp_path, "c2024", " ".join(["ember"] * 40))
+        embed_index.build_index([kept, first, second])
+
+        embed_index.build_index([kept])
+
+        client, _model = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        # Every departed chunk found, including the ones no first page
+        # would have reached -- and the one current document untouched.
+        assert collection.get(where={"citekey": "b2024"})["ids"] == []
+        assert collection.get(where={"citekey": "c2024"})["ids"] == []
+        assert collection.get(where={"citekey": "a2024"})["ids"] == ["a2024::0"]
+
 
 @pytest.mark.skipif(
     not (chromadb_available and sentence_transformers_available and bertopic_available),
@@ -219,7 +251,7 @@ class TestTheFakesStillMatchTheRealApi:
         "method,keywords",
         [
             ("upsert", ("ids", "documents", "embeddings", "metadatas")),
-            ("get", ("where", "include")),
+            ("get", ("where", "include", "limit", "offset")),
             ("update", ("ids", "metadatas")),
             ("delete", ("ids",)),
             ("query", ("query_embeddings", "n_results")),

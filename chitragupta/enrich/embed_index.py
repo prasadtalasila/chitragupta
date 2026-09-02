@@ -24,7 +24,7 @@ import logging
 import re
 from typing import Any
 
-from chitragupta import config, logging_setup
+from chitragupta import chroma_paging, config, logging_setup
 from chitragupta.enrich import _rerank
 from chitragupta.enrich.corpus import CorpusDoc
 from chitragupta.enrich.embed_text import chunk_text, get_text, hash_text, strip_image_refs
@@ -214,10 +214,19 @@ def build_index(docs: list[CorpusDoc]) -> dict[str, int]:
     # An empty `docs` is the maximal partial pass, and gets the same
     # "prune nothing" treatment the interrupt guard above gives a
     # partial one.
+    #
+    # Read in pages, via chitragupta/chroma_paging.py, because a single
+    # `get` cannot return more rows than SQLite has bound variables for
+    # (#581) -- 32766, against a real corpus of 41050 chunks, so the
+    # unpaged read failed on every run once the corpus was big enough,
+    # and failed on the *read*, before any orphan had been identified.
+    # The delete stays whole: chromadb 1.5.9 chunks a `delete` internally
+    # and takes all 41050 ids in one call, and pruning inside the paging
+    # loop would move the rows the loop has not read yet.
     orphaned_ids = []
     if docs:
         current_citekeys = {doc.citekey for doc in docs}
-        everything = collection.get(include=["metadatas"])
+        everything = chroma_paging.all_rows(collection, include=["metadatas"])
         orphaned_ids = [
             chunk_id
             for chunk_id, metadata in zip(everything["ids"], everything["metadatas"])
