@@ -3,7 +3,7 @@
   "aid": "provenance",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review provenance content/drafts/dt-overview/trust-chapter.tex",
-  "version": "6.59.1",
+  "version": "6.60.2",
   "unreadable": {},
   "findings": [
     {

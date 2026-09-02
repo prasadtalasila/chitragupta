@@ -3,7 +3,7 @@
   "aid": "support",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review support content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.59.1",
+  "version": "6.60.2",
   "scored": 0,
   "unscoreable": {
     "sample_dt_factory_2022": "the source's passages carry no readable text to score against (page-level only)",

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/staleness-chapter.md --min-run 8 --gap 1 --write`
-- chitragupta 6.59.1
+- chitragupta 6.60.2
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this

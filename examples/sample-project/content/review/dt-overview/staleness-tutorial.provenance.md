@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review provenance content/drafts/dt-overview/staleness-tutorial.md`
-- chitragupta 6.59.1
+- chitragupta 6.60.2
 
 ## How to read this
 

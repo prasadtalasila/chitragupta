@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review synthesis content/drafts/dt-overview/survey.md --write`
-- chitragupta 6.59.1
+- chitragupta 6.60.2
 
 ## How to read this
 

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write`
-- chitragupta 6.59.1
+- chitragupta 6.60.2
 
 - Quotes checked: 4
 - Confirmed in the cited source: 0

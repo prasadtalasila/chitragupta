@@ -3,7 +3,7 @@
   "aid": "uncited",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review uncited content/drafts/dt-overview/staleness-tutorial.md --write",
-  "version": "6.59.1",
+  "version": "6.60.2",
   "genre": "tutorial",
   "genre_source": "scope.md",
   "standing": "ordinary",

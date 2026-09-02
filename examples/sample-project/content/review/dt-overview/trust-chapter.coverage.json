@@ -3,7 +3,7 @@
   "aid": "coverage",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review coverage content/drafts/dt-overview/trust-chapter.tex --query 'operator trust override log authority' --k 5 --write",
-  "version": "6.59.1",
+  "version": "6.60.2",
   "queries": [
     "operator trust override log authority"
   ],
