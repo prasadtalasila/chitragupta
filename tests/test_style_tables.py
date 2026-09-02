@@ -156,3 +156,24 @@ class TestFindingShape:
             "\\begin{table}\n\\caption{X}\\label{tab:x}\n\\end{table}\n", encoding="utf-8"
         )
         assert style_tables.findings(fragment) == []
+
+
+class TestManyTablesReportTheSameAsFew:
+    """m-77 (#511) was a hoisting change, so what needs pinning is that
+    the *answer* did not move: `text.splitlines()` was called twice inside
+    the per-table loop -- O(document) per table on the 178k-word book this
+    module was tuned against -- and is now called once above it."""
+
+    def test_every_bare_table_in_a_long_draft_is_still_reported_at_its_own_line(self, tmp_path):
+        body = "# S\n\n" + "\n".join(f"{TABLE}\nParagraph {n}.\n" for n in range(20))
+        found = style_tables.findings(draft_with(body, tmp_path))
+        assert rules(found) == ["chitragupta.TableNoCaption"] * 20
+        assert sorted(f["line"] for f in found) == [f["line"] for f in found]
+        assert len({f["line"] for f in found}) == 20
+
+    def test_the_last_table_is_still_bounded_by_the_end_of_the_document(self, tmp_path):
+        """The `len(lines) + 1` sentinel: the final table has no next
+        table, so its caption search runs to the end of the file."""
+        body = f"# S\n\n{TABLE}\nAs <!-- tableref: start-here --> shows.\n\n{TABLE}\n{CAPTION}"
+        found = style_tables.findings(draft_with(body, tmp_path))
+        assert rules(found) == ["chitragupta.TableNoCaption"]

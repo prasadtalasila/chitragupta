@@ -8,6 +8,8 @@ never see the author-name list.
 import json
 
 
+import pytest
+
 from chitragupta import config
 from chitragupta.enrich import topic_labels
 
@@ -160,3 +162,32 @@ class TestCitationNoise:
         corpus's people, the other about every corpus's boilerplate."""
         monkeypatch.setattr(config, "TOPIC_EXCLUDE_AUTHOR_NAMES", False)
         assert "et" in set(topic_labels.stop_words(ledger_con))
+
+
+class TestTheConnectionIsClosedWhenItIsOwned:
+    """m-80 (#511): `con = ledger.connect() if con is None else con`
+    opened a connection this function owned and never closed it, so every
+    call without one passed in leaked a handle."""
+
+    def test_a_connection_opened_here_is_closed_here(self, ledger_con, monkeypatch):
+        from chitragupta import ledger
+
+        opened = []
+        real = ledger.connect
+
+        def tracked():
+            con = real()
+            opened.append(con)
+            return con
+
+        monkeypatch.setattr(ledger, "connect", tracked)
+        topic_labels.author_names()
+        assert len(opened) == 1
+        with pytest.raises(Exception):  # noqa: B017 -- sqlite3.ProgrammingError on a closed handle
+            opened[0].execute("SELECT 1")
+
+    def test_a_connection_passed_in_is_left_open(self, ledger_con):
+        """The caller owns what the caller opened, so this must not close
+        a connection it was handed."""
+        topic_labels.author_names(ledger_con)
+        assert ledger_con.execute("SELECT 1").fetchone() == (1,)

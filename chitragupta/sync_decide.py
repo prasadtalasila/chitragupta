@@ -30,7 +30,12 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
     """
     to_parse = []
     for ref in references:
-        needs_parse = ledger.upsert_reference(con, ref, force=reparse)
+        # One transaction for the whole loop, closed below (#511/m-75).
+        # Committing per reference made a no-op sync 646 fsync'd write
+        # transactions on the corpus this was measured against, and opened
+        # 646 windows in which the read-only inspector could see a
+        # half-written ledger.
+        needs_parse = ledger.upsert_reference(con, ref, force=reparse, commit=False)
         if not ref.pdf_path:
             tally.no_pdf += 1
             tally.no_pdf_reasons[ref.pdf_resolution] += 1
@@ -44,6 +49,7 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
             tally.backend_unavailable += 1
             continue
         to_parse.append(ref)
+    con.commit()
     return to_parse
 
 

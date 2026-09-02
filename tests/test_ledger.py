@@ -1,8 +1,10 @@
 """chitragupta/ledger.py: the sqlite state that makes `sync` incremental."""
 
+import collections
 import json
 import os
 import sqlite3
+import types
 from pathlib import Path
 import time
 
@@ -527,6 +529,29 @@ class TestKnownCitekeysAndAllItems:
         rows = ledger.all_items(ledger_con)
         assert rows[0]["title"] == "Title A"
 
+    def test_all_items_leaves_the_callers_own_row_factory_alone(self, ledger_con):
+        """m-81 (#511): the factory was set on the *connection* and reset
+        to `None` afterwards rather than to whatever was there before, so
+        a caller that had set its own silently lost it."""
+
+        def mine(cursor, row):
+            return {"mine": row[0]}
+
+        ledger_con.row_factory = mine
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024"))
+        ledger.all_items(ledger_con)
+        assert ledger_con.row_factory is mine
+        assert ledger_con.execute("SELECT citekey FROM items").fetchone() == {"mine": "a_2024"}
+
+    def test_a_raising_query_does_not_leave_the_connection_in_row_mode(self, ledger_con):
+        """The other half of m-81: there was no `finally`, so a query that
+        raised left `sqlite3.Row` set on the connection for good."""
+        ledger_con.row_factory = None
+        ledger_con.execute("DROP TABLE items")
+        with pytest.raises(sqlite3.OperationalError):
+            ledger.all_items(ledger_con)
+        assert ledger_con.row_factory is None
+
 
 class TestFindStale:
     """Read-only counterpart to prune_missing -- must never delete."""
@@ -809,3 +834,54 @@ class TestFailureKind:
         con.commit()
         assert ledger.upsert_reference(con, ref) is True
         con.close()
+
+
+class TestUpsertBatching:
+    """m-75 (#511). `last_synced` moves on every row on every run, so a
+    *no-op* sync rewrites all of them -- 646 separate fsync'd write
+    transactions on the corpus this was measured against. That is not
+    only slow: each commit is a window in which the read-only inspector
+    can see a half-written ledger."""
+
+    def test_commit_false_leaves_the_transaction_open(self, ledger_con):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024"), commit=False)
+        assert ledger_con.in_transaction
+        ledger_con.commit()
+        assert not ledger_con.in_transaction
+        assert ledger.known_citekeys(ledger_con) == {"a_2024"}
+
+    def test_the_default_still_commits(self, ledger_con):
+        """Every other caller -- and every test here -- does one upsert
+        and expects it durable, so the default is unchanged."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a_2024"))
+        assert not ledger_con.in_transaction
+
+    def test_sync_commits_once_for_the_whole_reference_list(self, ledger_con):
+        """The whole point: one commit for the loop, not one per row.
+        Counted through a proxy rather than by patching `sqlite3` -- a
+        built-in type's method cannot be monkeypatched."""
+        from chitragupta import sync_decide
+
+        class CountingConnection:
+            def __init__(self, wrapped):
+                self._wrapped = wrapped
+                self.commits = 0
+
+            def commit(self):
+                self.commits += 1
+                self._wrapped.commit()
+
+            def __getattr__(self, name):
+                return getattr(self._wrapped, name)
+
+        counted = CountingConnection(ledger_con)
+        tally = types.SimpleNamespace(
+            no_pdf=0,
+            no_pdf_reasons=collections.Counter(),
+            skipped=0,
+            backend_unavailable=0,
+        )
+        refs = [make_reference(citekey=f"k{n}_2024") for n in range(5)]
+        sync_decide._to_parse(counted, refs, False, True, tally)
+        assert counted.commits == 1
+        assert ledger.known_citekeys(ledger_con) == {f"k{n}_2024" for n in range(5)}

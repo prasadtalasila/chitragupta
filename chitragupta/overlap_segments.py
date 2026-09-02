@@ -25,6 +25,7 @@ Stdlib only, like the two modules it draws on.
 """
 
 import bisect
+import operator
 import re
 from dataclasses import dataclass
 
@@ -119,15 +120,27 @@ def _sentence_text(raw: str) -> str:
     return re.sub(r"\s{2,}", " ", _CITE_MARKER.sub(" ", raw)).strip()
 
 
-def _word_range(word_chars: list[int], start: int, end: int) -> tuple[int, int]:
-    """The half-open word-index range covering the characters `[start,
-    end)`, given each word's own character offset.
+# Each word's first character is ascending -- `_tokenize_draft` walks
+# paragraphs in order and words within each in order -- so this is a pair
+# of binary searches rather than a scan of the draft per sentence.
+#
+# Bisected through `key=` rather than over a separate list of first
+# characters (#511/m-76). That list was rebuilt from `word_spans` on every
+# call, i.e. once per sentence, making this O(words x sentences) before a
+# single embedding had been computed -- and it was the same list every
+# time. Hoisting it to the caller would have worked too, at the cost of a
+# fourth parameter threaded through two functions; not building it at all
+# is cheaper in both senses.
+_FIRST_CHAR = operator.itemgetter(0)
 
-    `word_chars` is ascending -- `_tokenize_draft` walks paragraphs in
-    order and words within each in order -- so this is a pair of binary
-    searches rather than a scan of the draft per sentence.
-    """
-    return bisect.bisect_left(word_chars, start), bisect.bisect_left(word_chars, end)
+
+def _word_range(word_spans: list[tuple[int, int]], start: int, end: int) -> tuple[int, int]:
+    """The half-open word-index range covering the characters `[start,
+    end)`, given each word's `(first, last)` character span."""
+    return (
+        bisect.bisect_left(word_spans, start, key=_FIRST_CHAR),
+        bisect.bisect_left(word_spans, end, key=_FIRST_CHAR),
+    )
 
 
 def draft_sections(
@@ -261,7 +274,7 @@ def _sentences_in(
     That drop is what keeps the masked regions out without this module
     having to know how they were masked: `_tokenize_draft` already
     excluded the References section, fenced code and citation markers
-    from `word_chars`, so a "sentence" sitting entirely inside one covers
+    from the word stream, so a "sentence" sitting entirely inside one covers
     no words and is not a sentence of this draft's prose.
     """
     found = []
@@ -289,8 +302,7 @@ def _one_sentence(
     segment whose `word_start`/`word_end` were counted the other way
     would report a finding at the wrong offset in the draft.
     """
-    word_chars = [span[0] for span in word_spans]
-    word_start, word_end = _word_range(word_chars, start, end)
+    word_start, word_end = _word_range(word_spans, start, end)
     # No empty-body guard: a window runs from one word's first character
     # to another's last, so it always contains at least those words, and
     # `_sentence_text` only ever removes a citation marker -- which

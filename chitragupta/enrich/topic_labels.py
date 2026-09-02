@@ -119,7 +119,17 @@ def author_names(con=None) -> frozenset:
     existed -- and leaves labelling exactly as it was rather than
     degrading it.
     """
-    con = ledger.connect() if con is None else con
+    if con is not None:
+        return _author_names_from(con)
+    # Opened here means owned here, so it is closed here (#511/m-80): the
+    # old `ledger.connect() if con is None else con` leaked a connection
+    # on every call that did not get one passed in. `ledger.connection()`
+    # is the context manager that already pairs connect with close.
+    with ledger.connection() as owned:
+        return _author_names_from(owned)
+
+
+def _author_names_from(con) -> frozenset:
     names = set()
     for (fields,) in con.execute("SELECT bib_fields FROM items WHERE bib_fields IS NOT NULL"):
         try:

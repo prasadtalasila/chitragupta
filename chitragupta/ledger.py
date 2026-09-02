@@ -275,7 +275,16 @@ def prune_missing(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tupl
 
 
 def all_items(con: sqlite3.Connection) -> list[sqlite3.Row]:
-    con.row_factory = sqlite3.Row
-    rows = con.execute("SELECT * FROM items ORDER BY citekey").fetchall()
-    con.row_factory = None
-    return rows
+    """Every ledger row, as `sqlite3.Row`.
+
+    The factory is set on a *cursor*, not on the connection (#511/m-81).
+    Setting `con.row_factory` reached every other user of that connection
+    for the duration, and the reset afterwards wrote `None` rather than
+    whatever was there before -- so a caller that had set its own factory
+    silently lost it. There was no `finally` either, so a raised query
+    left the connection in `sqlite3.Row` mode for good. A cursor-level
+    factory has none of those three problems and needs no restoring.
+    """
+    cursor = con.cursor()
+    cursor.row_factory = sqlite3.Row
+    return cursor.execute("SELECT * FROM items ORDER BY citekey").fetchall()
