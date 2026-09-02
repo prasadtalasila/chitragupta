@@ -13,8 +13,11 @@ from chitragupta import citation_gate, references
 from chitragupta.review.verbatim_check._corpus import WORD
 
 # Straight or curly double-quoted spans, and Markdown blockquote lines --
-# deliberately not cleverer than that (no nesting, no single quotes,
-# which double as apostrophes and would flag most of the draft). Detecting
+# deliberately not cleverer than that about what a quotation *is* (no
+# nesting, no single quotes, which double as apostrophes and would flag
+# most of the draft). The two guards below are not an exception to that:
+# they are about how far an *unpaired* delimiter may reach, which is a
+# different question and one the simple rule got wrong (#516/m-54). Detecting
 # *that* a run touches quote delimiters (`_run_is_quoted`, which reads
 # these spans as overlap rather than containment) is a cheap,
 # deterministic bit attached to a finding; whether that should downgrade

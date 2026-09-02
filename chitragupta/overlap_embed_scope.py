@@ -49,9 +49,11 @@ def unavailable_reason(draft: Path) -> str | None:
     """Why tier 3 cannot run for `draft`, or `None` when it can.
 
     A sentence, not a code -- it is printed to a person mid-review, and
-    the four ways this tier is unavailable want four different fixes
-    (install the enrich group, embed the corpus, parse with Docling, or
-    write the draft's dossier). Reported rather than swallowed: an
+    the five ways this tier is unavailable want five different fixes
+    (install the enrich group, embed the corpus, parse with Docling,
+    write the draft's dossier, or sync the corpus -- the last one added
+    by #516/m-79, which stopped this tier *creating* the ledger it is
+    supposed to be reading). Reported rather than swallowed: an
     unbuilt tier that says nothing and a built tier that found nothing
     look identical in a report, and only one of them means the draft was
     checked.

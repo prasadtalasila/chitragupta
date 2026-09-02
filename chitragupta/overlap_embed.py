@@ -52,9 +52,11 @@ can be deduplicated against each other), the page range and the score.
 thresholds** -- see that function for the measurement saying why a
 threshold cannot work in this corpus.
 
-Needs the optional `enrich` Poetry group and a built `content/chroma/`.
-When any of that is missing -- or the draft has no dossier, or no source
-has a passage sidecar -- `unavailable_reason()` says *which*, and `scan`
+Needs the optional `enrich` Poetry group, a built `content/chroma/` and
+a synced ledger to read source passages from. When any of that is
+missing -- or the draft has no dossier, or no source has a passage
+sidecar -- `unavailable_reason()` (in `chitragupta/overlap_embed_scope.py`
+since #516, re-exported here) says *which*, and `scan`
 prints it: an unbuilt tier that says nothing and a built tier that found
 nothing look identical in a report, and only one means the draft was
 checked.

@@ -281,7 +281,8 @@ advise.
 That produces **three detection tiers**, cumulative rather than a menu
 you pick one option from. This document covers tier 1 in depth. Tier 2's
 own mechanism is documented in `chitragupta/overlap_skipgram.py`'s module
-docstring, and tier 3's in `chitragupta/overlap_embed.py`'s. Their measurements
+docstring, and tier 3's in `chitragupta/overlap_embed.py`'s -- with
+whether it can run at all in `chitragupta/overlap_embed_scope.py`'s. Their measurements
 are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
 2026-08-15 embedding sections:
 
@@ -311,7 +312,8 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    See `bench/RESULTS.md`'s #180 section before trusting a clean `scan`
    on this tier any more than on tier 1.
 3. **Embedding paraphrase tier.** Built (#134/#164, 2026-08-15),
-   `chitragupta/overlap_embed.py` with `chitragupta/overlap_align.py`,
+   `chitragupta/overlap_embed.py` with `chitragupta/overlap_embed_scope.py`
+   (whether the tier can run at all), `chitragupta/overlap_align.py`,
    `chitragupta/overlap_segments.py` and `chitragupta/overlap_chroma.py`;
    findings carry
    `tier: "embedding"` and a `score`. **Not** the k-NN-against-the-whole-
@@ -365,9 +367,9 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    finding is ineligible.
 
    **Unavailable, and says so.** The tier needs the `enrich` Poetry
-   group, a built `content/chroma/`, Docling sidecars, and the draft's
-   dossier. Any of those missing and it reports *which*, rather than
-   contributing nothing silently.
+   group, a built `content/chroma/`, Docling sidecars, a synced ledger,
+   and the draft's dossier. Any of those missing and it reports *which*,
+   rather than contributing nothing silently.
 
    **What it costs, and what is not cached.** The enrichment layer's
    incremental-by-text-hash cache does *not* cover this tier's vectors,
@@ -429,9 +431,10 @@ and all three held up when tier 3 was finally built:
   because a cosine score is not a finding. That was #164, and it changed
   the tier's dependency list from `content/chroma/` alone to chroma plus
   the Docling passage sidecars -- plus, once the tier was scoped to the
-  dossier, the draft's dossier as well. All three are why tier 3 reports
-  itself unavailable rather than running on a checkout that has only
-  some of them.
+  dossier, the draft's dossier as well, and since #516 a synced ledger,
+  which it reads source passages from rather than creating. All of them
+  are why tier 3 reports itself unavailable rather than running on a
+  checkout that has only some.
 
 A **cross-encoder reranker** over tier-1 and tier-2 candidates is the
 obvious fourth option and is deliberately not a tier. It cannot search --

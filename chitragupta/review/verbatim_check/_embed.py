@@ -57,7 +57,7 @@ def _embed_tier_findings(
 
     No `gap` parameter, unlike the other two. Tier 1 and tier 2 merge
     same-diagonal matches with a word-level gap tolerance; the alignment
-    here has its own, in sentences, as `overlap_embed.GAP_PENALTY` --
+    here has its own, in sentences, as `overlap_align.GAP_PENALTY` --
     a *cost* rather than a limit, so there is no equivalent flag for
     `--gap` to set and pretending otherwise would put a word count in
     charge of a sentence-level decision.
