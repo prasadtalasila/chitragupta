@@ -1,4 +1,9 @@
-"""Stage 7: the topic graph -- how the corpus's topics relate.
+"""The topic-graph stage, sixth and last in the enrich pipeline: how
+the corpus's topics relate.
+
+(Unnumbered on purpose: the older stage docstrings carry historic
+numbers with a gap at 2, so "sixth" names the position in STAGE_ORDER
+without extending a numbering that no longer matches the list.)
 
 `content/topic_set.json` answers "which papers is this topic about?".
 Nothing answered "which topics sit near this one?", which is the
@@ -229,13 +234,19 @@ def run_topic_graph(docs) -> dict:
         )
     topic_set = json.loads(config.TOPIC_SET_PATH.read_text(encoding="utf-8"))
     # The vectors below are re-embedded under *today's* config; pairing
-    # them with a topic set built under another model would produce
-    # plausible-looking, meaningless edges -- the same trap converge
-    # documents at its own model check.
-    if topic_set.get("model") != config.EMBEDDING_MODEL:
+    # them with a topic set built under another model *or pooling
+    # method* would produce plausible-looking, meaningless edges -- the
+    # same trap converge documents at its own check. A topic set from
+    # before the method stamp existed fails this too, deliberately:
+    # "re-run converge" is cheap and certain, guessing is neither.
+    if (
+        topic_set.get("model") != config.EMBEDDING_MODEL
+        or topic_set.get("embedding_method") != doc_vectors.EMBED_METHOD
+    ):
         raise ValueError(
             f"{config.TOPIC_SET_PATH} was built under a different embedding model "
-            "than the one configured now. Re-run the converge stage before graphing."
+            "or method than the one configured now. Re-run the converge stage "
+            "before graphing."
         )
     doc_texts = doc_vectors.corpus_texts(docs)
     _client, model = embed_index.get_client_and_model()

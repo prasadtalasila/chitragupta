@@ -135,6 +135,11 @@ def build(memberships: dict, citekeys: list, named: dict, seed_report: dict) -> 
     covered = {member["citekey"] for topic in topics for member in topic["members"]}
     return {
         "model": config.EMBEDDING_MODEL,
+        # Stamped so a later stage can refuse a mismatched space without
+        # re-reading topics.json -- the graph stage's check needs both
+        # halves, and the model alone does not identify the space when
+        # the pooling method changes (#557's review caught the gap).
+        "embedding_method": doc_vectors.EMBED_METHOD,
         "converge_similarity": config.TOPIC_CONVERGE_SIMILARITY,
         "n_docs": len(citekeys),
         "n_seed_named": sum(1 for t in topics if t["provenance"] == "seed"),

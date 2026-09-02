@@ -130,8 +130,8 @@ a query embedding into the same space without loading the embed cache.
 ### Config
 
 `topic_graph_p_value` (default 0.01), `topic_graph_neighbors`
-(default 5), both under the same `[topics]` config section as the
-existing knobs. `scipy` becomes an explicitly declared enrich-group
+(default 5), both under `[enrich]`, the section every existing topic
+knob lives in. `scipy` becomes an explicitly declared enrich-group
 dependency (and mirrored extra) -- it was always installed transitively
 via bertopic; importing it directly means declaring it.
 

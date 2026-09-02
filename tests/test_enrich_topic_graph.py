@@ -227,6 +227,12 @@ class FakeModel:
         raise AssertionError("the graph stage embeds nothing new")
 
 
+def _method() -> str:
+    from chitragupta.enrich import doc_vectors
+
+    return doc_vectors.EMBED_METHOD
+
+
 class TestRunTopicGraph:
     def prepare(self, cfg, monkeypatch, vectors, topic_set=None):
         from chitragupta.enrich import doc_vectors, embed_index
@@ -237,6 +243,7 @@ class TestRunTopicGraph:
                 topic_set
                 or {
                     "model": cfg.EMBEDDING_MODEL,
+                    "embedding_method": _method(),
                     "n_docs": 3,
                     "topics": [
                         {
@@ -286,9 +293,32 @@ class TestRunTopicGraph:
             isolated_config,
             monkeypatch,
             vectors={"p1": [1.0, 0.0]},
-            topic_set={"model": "someone-elses-model", "n_docs": 1, "topics": []},
+            topic_set={
+                "model": "someone-elses-model",
+                "embedding_method": _method(),
+                "n_docs": 1,
+                "topics": [],
+            },
         )
         with pytest.raises(ValueError, match="model"):
+            topic_graph.run_topic_graph([])
+
+    def test_a_different_pooling_method_refuses_too(self, isolated_config, monkeypatch):
+        """The model name alone does not identify the embedding space --
+        a topic set pooled under another method (or from before the
+        stamp existed, which reads the same way) must also refuse."""
+        self.prepare(
+            isolated_config,
+            monkeypatch,
+            vectors={"p1": [1.0, 0.0]},
+            topic_set={
+                "model": isolated_config.EMBEDDING_MODEL,
+                "embedding_method": "someone-elses-pooling",
+                "n_docs": 1,
+                "topics": [],
+            },
+        )
+        with pytest.raises(ValueError, match="method"):
             topic_graph.run_topic_graph([])
 
 
