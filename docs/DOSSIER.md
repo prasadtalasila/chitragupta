@@ -51,7 +51,8 @@ what makes `dossier export <topic> --with-rendered` able to find the
 renders at all: it matches them by their path relative to
 `content/rendered/`.
 
-Seven files, each answering a question the draft itself cannot. The
+Nine files -- seven required, two optional -- each answering a question
+the draft itself cannot. The
 "status before" column is kept because it is the argument for the file
 existing: two were specified but never made durable, and the two that
 were missing entirely are the two that matter most.
@@ -485,7 +486,7 @@ draft since anyone last confirmed it.
 reports `unchanged since last stamp` or `CHANGED since last stamp`. A
 changed digest by itself only says *that* the draft moved -- most edits
 it catches are prose a reviser has no reason to act on. Only once it has
-changed does `status` also check four more specific classes, each
+changed does `status` also check five more specific classes, each
 already derivable from the dossier and the draft:
 
 | Class | What it means |
@@ -515,7 +516,7 @@ A `CHANGED` fingerprint is also ITER-RETGEN's `y_{t-1}` (Shao et al.,
 slot instead of a model: a hand-edited section's own prose can stand
 in for the paper's "previous generation" and drive one extra
 retrieval round for that section, rather than a plain single-round
-search. `draft-reviser` offers this once the four staleness findings
+search. `draft-reviser` offers this once the five staleness findings
 above are settled, and only for a section `outline.md` declares a
 query for -- never applies it unasked, same as every other repair
 this fingerprint gates.
