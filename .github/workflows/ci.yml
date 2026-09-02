@@ -77,13 +77,15 @@ jobs:
         run: cp config.toml.example config.toml
 
       # `poetry.lock` is the key, not `pyproject.toml`: the lock is what
-      # actually determines resolved versions (#275). Restored on every
-      # run, on every branch -- a cache written on the default branch is
-      # readable from any branch, so a PR benefits from `main`'s entry
-      # without ever writing its own. That asymmetry is what keeps this
-      # repository under the 10GB-per-repo cache limit: six open PRs
-      # writing their own ~1-2GB entry would thrash it, one entry per
-      # `poetry.lock` hash does not.
+      # actually determines resolved versions (#275). The restore step
+      # runs on every run and every branch, and a cache written on the
+      # default branch is readable from any branch -- so a PR whose lock
+      # matches `main`'s benefits from that entry without ever writing
+      # its own. A PR that *changes* the lock matches nothing and installs
+      # cold, which is the deliberate consequence of the paragraph below.
+      # The write asymmetry is what keeps this repository under the
+      # 10GB-per-repo cache limit: six open PRs writing their own ~1-2GB
+      # entry would thrash it, one entry per `poetry.lock` hash does not.
       #
       # **No `restore-keys`** (#512/m-87). The prefix fallback restored
       # the newest same-OS entry on a lock-hash miss, which reads like a
@@ -189,7 +191,9 @@ jobs:
       # Saved only from `main`, and only on a miss -- a cache write on
       # every PR branch is exactly the thrash #275 exists to avoid, and
       # re-saving an already-current entry costs upload time for no
-      # benefit. `main`'s entry is what every PR branch restores above.
+      # benefit. `main`'s entry is what a PR branch restores above --
+      # a PR whose `poetry.lock` hashes the same as `main`'s, which since
+      # #512/m-87 is the only kind that restores anything at all.
       - name: Save the .venv-full cache (main only, on a miss)
         if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -480,9 +484,12 @@ jobs:
 
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a
-      # contributor's machine. It is the one binary that script fetches by
-      # hand, and it verifies a pinned sha256 before unpacking -- see
-      # assets/vale/README.md.
+      # contributor's machine. It is one of the two binaries that script
+      # fetches by hand -- actionlint, installed a few steps above, is the
+      # other -- and each verifies a pinned sha256 before unpacking; see
+      # assets/vale/README.md. (#512/m-86 corrected the same "the only
+      # one" sentence inside the script; this is its copy here, and two
+      # files repeating one fact is how it went stale in the first place.)
       - name: Install Vale
         run: bash scripts/install_full_pipeline.sh vale
 
