@@ -56,11 +56,16 @@ def _to_parse(con, references, reparse, parser_available, tally) -> list:
         # whole reason the batching is acceptable. docs/DESIGN.md rejects
         # locking the ledger precisely because it "would force a run into
         # one transaction, discarding the incremental commit points on a
-        # crash" -- and this loop has a live raise path: a PDF moved
-        # between the bib read and `_stat_pdf` raises `OSError`
-        # (plans/code-review-2026-09.md, m-71, still open). Committing on
-        # the way out keeps that guarantee at batch granularity: every
-        # row written is a whole row, so what finished is still on disk.
+        # crash". Committing on the way out keeps that guarantee at batch
+        # granularity: every row written is a whole row, so what finished
+        # is still on disk. The raise path this used to name -- a PDF
+        # moved between the bib read and `_stat_pdf`, m-71 -- is closed
+        # now (`ledger_upsert._pdf_identity` catches the `OSError` and
+        # records the row as no-PDF), so the nearest live one is an
+        # interrupt or a `sqlite3` error from the write itself. The
+        # `finally` is not conditional on which: it is what makes the
+        # batching acceptable at all, and dropping it would trade a
+        # measured win for the guarantee docs/DESIGN.md rests on.
         con.commit()
     return to_parse
 

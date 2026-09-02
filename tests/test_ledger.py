@@ -443,6 +443,81 @@ class TestUpsertReferenceRehashSkip:
         assert row == (st.st_size, st.st_mtime_ns)
 
 
+class TestAPdfThatVanishesMidSync:
+    """m-71: the reference manager moving, renaming or deleting a PDF
+    between `bib_reader`'s read of the bib file and the upsert used to
+    abort the entire run with an uncaught `OSError`, losing every
+    document the loop had not reached yet. The reference is recorded as
+    having no PDF for this run instead, and said so in the log."""
+
+    def test_a_pdf_gone_before_the_stat_lands_as_no_pdf(self, ledger_con, tmp_path, caplog):
+        pdf = tmp_path / "paper.pdf"
+        ref = make_reference(pdf_path=str(pdf))  # never created: gone by the time sync looks
+
+        needs_parse = ledger.upsert_reference(ledger_con, ref)
+
+        assert needs_parse is False  # nothing to parse, and no traceback
+        row = ledger_con.execute(
+            "SELECT status, pdf_path, pdf_hash, pdf_size, pdf_mtime_ns FROM items "
+            "WHERE citekey = ?",
+            (ref.citekey,),
+        ).fetchone()
+        # pdf_path is still recorded, which is the whole of "for this
+        # run": a file that comes back is picked up by the next sync
+        # with no --reparse and no manual repair.
+        assert row == ("no_pdf", str(pdf), None, None, None)
+        assert ref.citekey in caplog.text
+
+    def test_a_pdf_gone_between_the_stat_and_the_hash_lands_the_same_way(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        # The same disappearance one microsecond later surfaces from
+        # `_hash_pdf`'s open rather than `os.stat`. A half-filled answer
+        # -- a size with no hash -- is a state `_next_status` has no
+        # branch for, so the `try` has to span both calls.
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"here for the stat, gone for the hash")
+        ref = make_reference(pdf_path=str(pdf))
+
+        def vanish(path):
+            raise OSError(2, "No such file or directory", path)
+
+        monkeypatch.setattr(ledger_upsert, "_hash_pdf", vanish)
+
+        assert ledger.upsert_reference(ledger_con, ref) is False
+        row = ledger_con.execute(
+            "SELECT status, pdf_hash, pdf_size, pdf_mtime_ns FROM items WHERE citekey = ?",
+            (ref.citekey,),
+        ).fetchone()
+        assert row == ("no_pdf", None, None, None)
+
+    def test_an_already_parsed_row_moves_to_no_pdf_and_recovers(self, ledger_con, tmp_path):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"real content")
+        ref = make_reference(pdf_path=str(pdf))
+        ledger.upsert_reference(ledger_con, ref)
+        parsed = tmp_path / "out.txt"
+        parsed.write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed)
+
+        def status():
+            return ledger_con.execute(
+                "SELECT status FROM items WHERE citekey = ?", (ref.citekey,)
+            ).fetchone()[0]
+
+        pdf.unlink()
+        assert ledger.upsert_reference(ledger_con, ref) is False
+        assert status() == "no_pdf"
+
+        # And the run after the file comes back re-parses it rather than
+        # leaving the document stranded -- the hash recorded for the
+        # vanished run is NULL, so any hash at all is a change. One
+        # re-parse per transient disappearance is the whole cost.
+        pdf.write_bytes(b"real content")
+        assert ledger.upsert_reference(ledger_con, ref) is True
+        assert status() == "discovered"
+
+
 class TestUpsertReferenceParsedPathOnHashChange:
     """#490: a PDF replaced by a new version invalidates the text
     parsed from the old one -- upsert_reference must not leave
@@ -891,10 +966,14 @@ class TestBatchingKeepsFinishedRowsOnACrash:
     """The guarantee `docs/DESIGN.md`'s rejected-alternatives paragraph
     turns on, and the reason m-75's batching is acceptable at all: one
     transaction for the loop must not discard finished rows when the loop
-    raises. It has a live raise path -- a PDF moved between the bib read
-    and `_stat_pdf` raises `OSError` (m-71, still open) -- so the commit
-    is in a `finally`. Every row written is a whole row, so committing on
-    the way out is safe."""
+    raises. The commit is therefore in a `finally`; every row written is
+    a whole row, so committing on the way out is safe. The raise path
+    this used to name -- a PDF moved between the bib read and
+    `_stat_pdf` raising `OSError`, m-71 -- is closed now, so the
+    `OSError` below is a stand-in for whatever raises next (an
+    interrupt, a `sqlite3` error from the write) rather than a live
+    reproduction of that bug. `TestAPdfThatVanishesMidSync` is what
+    covers the closed one."""
 
     def test_a_raise_mid_loop_still_commits_what_finished(self, ledger_con, monkeypatch):
         from chitragupta import ledger_upsert, sync_decide

@@ -413,10 +413,12 @@ has moved, and the command names the citekeys that appear nowhere in the
 dossier -- neither kept nor rejected -- so a reviser can see what was
 never considered rather than just that a number changed.
 
-The ledger is opened read-only with `timeout=0`, exactly as
-`python -m chitragupta.corpus ledger` does. This is an inspection: it must not
-take a write lock, run a migration, or block behind a sync that is
-mid-run.
+The ledger is opened read-only with `timeout=0`. This is an inspection:
+it must not take a write lock or run a migration. `python -m
+chitragupta.corpus ledger` opens it read-only for the same reason but no
+longer with the same `timeout` -- it waits out a writer's commit window
+rather than giving up on the spot, and whether this path should do the
+same is [issue #552](https://github.com/prasadtalasila/chitragupta/issues/552).
 
 **Drift is not itself a reason to redraft.** It is a reason to re-search
 if, and only if, the change being made touches a sub-theme the new papers
