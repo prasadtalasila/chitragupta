@@ -639,8 +639,9 @@ topic, when a phrase resolves nowhere and even the fallback finds
 nothing -- and when an `--out` file cannot be written. That last one is
 raised *after* the topic view has already printed, so it is the one
 `discover` failure where the command both answered the question and
-returned nonzero; a script driving `--out` has to read the code rather
-than infer it from empty output.
+returned nonzero. A script driving `--out` therefore has to check the
+exit code: stdout carries the topic view either way, and the failure
+says so only on stderr and in the status.
 
 ### ✅ `chitragupta draft gate`
 
@@ -2600,7 +2601,7 @@ unattended.
 | Exit code | Meaning | What an unattended caller should do |
 | --- | --- | --- |
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
-| `1` | **The corpus has a hole in it** -- any of the five conditions [`corpus sync`](#-chitragupta-corpus-sync) enumerates, deliberately not restated here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why. The five have different remedies -- a bad export, a stale `file` path, a missing parse backend -- so read the breakdown rather than acting on the code alone |
+| `1` | **The corpus has a hole in it** -- any of the conditions [`corpus sync`](#-chitragupta-corpus-sync) enumerates, deliberately neither restated nor counted here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why. They have different remedies -- a bad export, a stale `file` path, a missing parse backend -- so read the breakdown rather than acting on the code alone |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That

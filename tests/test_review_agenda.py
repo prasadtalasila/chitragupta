@@ -105,9 +105,8 @@ class TestAidNames:
         order". Not cosmetic -- `_render._SOURCE_LABELS` restates that
         order a third time, and the assertion below pins the two
         together."""
-        assert _sources.AID_NAMES == tuple(
-            aid for aid in review.AIDS if aid in set(_sources.AID_NAMES)
-        )
+        read = set(_sources.AID_NAMES)
+        assert _sources.AID_NAMES == tuple(aid for aid in review.AIDS if aid in read)
 
     def test_render_s_source_labels_are_the_registry_s_own(self):
         """`_render._SOURCE_LABELS` is a third hand-maintained copy of
