@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review provenance content/drafts/dt-overview/staleness-chapter.md`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 
@@ -32,32 +32,39 @@ the band as a rough reading order rather than a measurement.
 
 ## Summary
 
-- 4 weak
+- 4 no support found
+
+## Sources that could not be read
+
+- `sample_dt_factory_2022`: no parsed text with page breaks and no readable PDF
+- `sample_dt_sync_2023`: no parsed text with page breaks and no readable PDF
+
+Findings for these show a score of 0 because there was nothing to compare against, not because the claim is unsupported.
 
 ## Findings
 
-### Weak
+### No support found
 
-#### Line 83 -- `[@sample_dt_sync_2023]` (21% match)
-
-> Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.
-
-Best match is on **page 2** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
-
-#### Line 18 -- `[@sample_dt_factory_2022]` (25% match)
+#### Line 18 -- `[@sample_dt_factory_2022]` (0% match)
 
 > Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.
 
-Best match is on **page 2** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
+*Source unavailable: no parsed text with page breaks and no readable PDF*
 
-#### Line 20 -- `[@sample_dt_sync_2023]` (25% match)
+#### Line 20 -- `[@sample_dt_sync_2023]` (0% match)
 
 > Field studies report that the costly failures are precisely the quiet ones, where the representation and the asset part company without anyone being told, and that making the twin announce its own uncertainty measurably improves how far operators trust it.
 
-Best match is on **page 1** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
+*Source unavailable: no parsed text with page breaks and no readable PDF*
 
-#### Line 83 -- `[@sample_dt_factory_2022]` (25% match)
+#### Line 83 -- `[@sample_dt_sync_2023]` (0% match)
 
 > Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.
 
-Best match is on **page 2** of the source. The text for this citekey has no reading order (see chitragupta/passages.py), so the page is reported without quoting from it.
+*Source unavailable: no parsed text with page breaks and no readable PDF*
+
+#### Line 83 -- `[@sample_dt_factory_2022]` (0% match)
+
+> Staleness is the age of a value at the moment it is used; a budget turns a decision's tolerance into a test; and a twin that serves marked values converts silent failure into visible degradation -- the property the operational literature identifies as what trust is actually built on.
+
+*Source unavailable: no parsed text with page breaks and no readable PDF*

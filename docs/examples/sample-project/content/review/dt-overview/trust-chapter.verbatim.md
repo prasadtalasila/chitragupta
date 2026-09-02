@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review verbatim scan content/drafts/dt-overview/trust-chapter.tex --min-run 8 --gap 1 --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 - Allowlist: none configured (`content/verbatim_allowlist.toml` not found)
 
 ## How to read this

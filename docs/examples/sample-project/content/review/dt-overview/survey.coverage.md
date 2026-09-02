@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review coverage content/drafts/dt-overview/survey.md --query 'digital twin synchronisation staleness' --query 'anomaly detection state stream' --k 5 --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 
@@ -27,4 +27,10 @@ Top 5 results per query.
 
 ## Coverage
 
-**100%** -- 5 of 5 retrieved candidates are cited.
+**100%** -- 4 of 4 retrieved candidates are cited.
+
+### Cited but not surfaced by these queries
+
+Not necessarily a problem -- see above.
+
+- `sample_std_interop_2021`

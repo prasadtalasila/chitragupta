@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/staleness-chapter.md --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 - Quotes checked: 2
 - Confirmed in the cited source: 0
@@ -19,6 +19,6 @@ Every checked quote was found in its cited source.
 
 ## Not checkable from this parse
 
-- `sample_dt_factory_2022` -- no reading-ordered passages -- only page-level text
-- `sample_dt_sync_2023` -- no reading-ordered passages -- only page-level text
+- `sample_dt_factory_2022` -- no parsed text with page breaks and no readable PDF
+- `sample_dt_sync_2023` -- no parsed text with page breaks and no readable PDF
 

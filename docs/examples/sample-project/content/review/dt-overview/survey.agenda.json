@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/survey.md",
-  "version": "6.60.2",
+  "version": "6.60.3",
   "sources": {
     "aids": {
       "provenance": {
@@ -49,218 +49,96 @@
     }
   },
   "pass_bound": 3,
-  "objective_class_count": 11,
+  "objective_class_count": 0,
   "items": [
     {
-      "id": "6bdcbebedc51",
-      "class": "verbatim-run",
-      "section": "1. Introduction",
-      "citekey": "sample_dt_overview_2024",
-      "line": 7,
-      "unattended": true,
-      "summary": "13-word verbatim run citing `sample_dt_overview_2024`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "de3edb3b5268"
-      }
-    },
-    {
-      "id": "84cebc824e5b",
-      "class": "verbatim-run",
-      "section": "1. Introduction",
-      "citekey": "sample_dt_overview_2024",
-      "line": 12,
-      "unattended": true,
-      "summary": "6-word verbatim run citing `sample_dt_overview_2024`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "37ecd99c7d48",
-        "also_flagged": [
-          {
-            "id": "a5c3ae10b25d",
-            "class": "verbatim-run"
-          }
-        ]
-      }
-    },
-    {
-      "id": "a5c3ae10b25d",
-      "class": "verbatim-run",
-      "section": "1. Introduction",
-      "citekey": "sample_dt_overview_2024",
-      "line": 12,
-      "unattended": true,
-      "summary": "13-word verbatim run citing `sample_dt_overview_2024`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "f9001d22a26e",
-        "also_flagged": [
-          {
-            "id": "84cebc824e5b",
-            "class": "verbatim-run"
-          }
-        ]
-      }
-    },
-    {
-      "id": "15443321c043",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_sync_2023",
-      "line": 22,
-      "unattended": true,
-      "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "f07bdf0e3a83",
-        "also_flagged": [
-          {
-            "id": "89452ab2d5ad",
-            "class": "uncited-claim"
-          }
-        ]
-      }
-    },
-    {
-      "id": "3e716e1cee1c",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_sync_2023",
-      "line": 23,
-      "unattended": true,
-      "summary": "8-word verbatim run citing `sample_dt_sync_2023`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "ac105de4520f"
-      }
-    },
-    {
-      "id": "b0c514d34af4",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_sync_2023",
-      "line": 24,
-      "unattended": true,
-      "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "cbd3cfe1eeee"
-      }
-    },
-    {
-      "id": "539fac477a87",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_sync_2023",
-      "line": 28,
-      "unattended": true,
-      "summary": "9-word verbatim run citing `sample_dt_sync_2023`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "82d5eb989c57"
-      }
-    },
-    {
-      "id": "dc32161a46ac",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_sync_2023",
-      "line": 32,
-      "unattended": true,
-      "summary": "13-word verbatim run citing `sample_dt_sync_2023`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "f2d6acf4335f"
-      }
-    },
-    {
-      "id": "91bce1eac368",
-      "class": "verbatim-run",
-      "section": "2. Keeping the twin true",
-      "citekey": "sample_dt_factory_2022",
-      "line": 37,
-      "unattended": true,
-      "summary": "5-word verbatim run citing `sample_dt_factory_2022`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "3eaf8415fcc3"
-      }
-    },
-    {
-      "id": "3acc4d59f0b1",
-      "class": "verbatim-run",
-      "section": "4. Integrating with everything else",
-      "citekey": "sample_std_interop_2021",
-      "line": 58,
-      "unattended": true,
-      "summary": "11-word verbatim run citing `sample_std_interop_2021`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "2b6e1c3df59d",
-        "also_flagged": [
-          {
-            "id": "bb027cc3f4cf",
-            "class": "uncited-claim"
-          }
-        ]
-      }
-    },
-    {
-      "id": "1561cffaa101",
-      "class": "verbatim-run",
-      "section": "4. Integrating with everything else",
-      "citekey": "sample_std_interop_2021",
-      "line": 63,
-      "unattended": true,
-      "summary": "10-word verbatim run citing `sample_std_interop_2021`",
-      "detail": {
-        "severity": "short",
-        "verbatim_id": "d2b7f41e1f5e"
-      }
-    },
-    {
-      "id": "401e348db58b",
+      "id": "8762e2b6d77a",
       "class": "unsupported-claim",
-      "section": "6. Conclusion",
-      "citekey": "sample_dt_factory_2022",
-      "line": 87,
+      "section": "1. Introduction",
+      "citekey": "sample_dt_overview_2024",
+      "line": 10,
       "unattended": false,
-      "summary": "`[@sample_dt_factory_2022]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: A digital model exchanges data with its physical counterpart only through manual",
       "detail": {
         "band": "no support found",
-        "score": 0.1935483870967742,
-        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
-        "provenance_id": "390cf7cb63cb"
+        "score": 0.0,
+        "claim": "A digital model exchanges data with its physical counterpart only through manual steps; a digital shadow adds an automatic flow in one direction; a digital twin closes the loop, with data flowing automatically both ways.",
+        "provenance_id": "442ec3a62d99"
       }
     },
     {
-      "id": "e7b94c624d1f",
+      "id": "8f4bd322b80d",
       "class": "unsupported-claim",
-      "section": "6. Conclusion",
+      "section": "2. Keeping the twin true",
+      "citekey": "sample_dt_sync_2023",
+      "line": 26,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Comparing periodic pull, threshold push and event-driven flows across nine simul",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Comparing periodic pull, threshold push and event-driven flows across nine simulated production cells, event-driven synchronisation reduced transmitted volume by 71 percent against one-second polling while holding worst-case staleness under two seconds.",
+        "provenance_id": "7ecdeb125fc6"
+      }
+    },
+    {
+      "id": "7d54c28aa463",
+      "class": "unsupported-claim",
+      "section": "2. Keeping the twin true",
+      "citekey": "sample_dt_sync_2023",
+      "line": 34,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Marking staleness explicitly -- a twin that knows it is stale must say so on eve",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Marking staleness explicitly -- a twin that knows it is stale must say so on every read -- roughly halved operator mistrust incidents in the same trials.",
+        "provenance_id": "d4b32047f5f5"
+      }
+    },
+    {
+      "id": "1b44ba9aa6a9",
+      "class": "unsupported-claim",
+      "section": "2. Keeping the twin true",
+      "citekey": "sample_dt_factory_2022",
+      "line": 39,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: The eighteen-month factory case study reaches the same conclusion from the organ",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "The eighteen-month factory case study reaches the same conclusion from the organisational side: its twin earned scheduling authority station by station, and the deciding argument was never abstract model accuracy but a published override log showing supervisors agreeing with the twin in over ninety-five percent of cases.",
+        "provenance_id": "ec7a70a7c9ee"
+      }
+    },
+    {
+      "id": "ba61ff9fddf3",
+      "class": "unsupported-claim",
+      "section": "3. Using the state stream",
       "citekey": "sample_ml_anomaly_2023",
-      "line": 88,
+      "line": 52,
       "unattended": false,
-      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: For anomaly detection, a layered configuration -- a rolling z-score everywhere, ",
       "detail": {
         "band": "no support found",
-        "score": 0.12903225806451613,
-        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
-        "provenance_id": "5bfdc2ab8fe8"
+        "score": 0.0,
+        "claim": "For anomaly detection, a layered configuration -- a rolling z-score everywhere, with a learned detector added only where the false-positive cost justifies its upkeep -- matched an autoencoder's precision on point faults while remaining immune to the baseline corruption that made the autoencoder miss the slowest drift entirely.",
+        "provenance_id": "e9b8d6700614"
       }
     },
     {
-      "id": "8fdd2ee4868e",
+      "id": "9b13ef1d4b3c",
       "class": "unsupported-claim",
-      "section": "6. Conclusion",
+      "section": "4. Integrating with everything else",
       "citekey": "sample_std_interop_2021",
-      "line": 89,
+      "line": 61,
       "unattended": false,
-      "summary": "`[@sample_std_interop_2021]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "summary": "`[@sample_std_interop_2021]` scores no support found: Interoperability requires agreement at three layers -- transport, syntax and sem",
       "detail": {
         "band": "no support found",
-        "score": 0.12903225806451613,
-        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
-        "provenance_id": "37c58159f5ce"
+        "score": 0.0,
+        "claim": "Interoperability requires agreement at three layers -- transport, syntax and semantics -- and only the first two can be bought as mature standards.",
+        "provenance_id": "63128f93cc87"
       }
     },
     {
@@ -270,10 +148,10 @@
       "citekey": "sample_dt_overview_2024",
       "line": 76,
       "unattended": false,
-      "summary": "`[@sample_dt_overview_2024]` scores weak: Fidelity is argued to be purchased \"decision by decision\", yet no paper offers a",
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: Fidelity is argued to be purchased \"decision by decision\", yet no paper offers a",
       "detail": {
-        "band": "weak",
-        "score": 0.3,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "Fidelity is argued to be purchased \"decision by decision\", yet no paper offers a costing method for that purchase.",
         "provenance_id": "c56f48901ff3"
       }
@@ -285,10 +163,10 @@
       "citekey": "sample_dt_factory_2022",
       "line": 78,
       "unattended": false,
-      "summary": "`[@sample_dt_factory_2022]` scores weak: And the organisational trust mechanisms of the factory study have no counterpart",
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: And the organisational trust mechanisms of the factory study have no counterpart",
       "detail": {
-        "band": "weak",
-        "score": 0.21428571428571427,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "And the organisational trust mechanisms of the factory study have no counterpart for the anomaly detectors of, whose false positives spend the same trust budget.",
         "provenance_id": "71b53d3718e0"
       }
@@ -300,10 +178,10 @@
       "citekey": "sample_ml_anomaly_2023",
       "line": 79,
       "unattended": false,
-      "summary": "`[@sample_ml_anomaly_2023]` scores weak: And the organisational trust mechanisms of the factory study have no counterpart",
+      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: And the organisational trust mechanisms of the factory study have no counterpart",
       "detail": {
-        "band": "weak",
-        "score": 0.2857142857142857,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "And the organisational trust mechanisms of the factory study have no counterpart for the anomaly detectors of, whose false positives spend the same trust budget.",
         "provenance_id": "3b359a492dc9"
       }
@@ -315,10 +193,10 @@
       "citekey": "sample_dt_overview_2024",
       "line": 86,
       "unattended": false,
-      "summary": "`[@sample_dt_overview_2024]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
-        "band": "weak",
-        "score": 0.22580645161290322,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
         "provenance_id": "39900b2ed3bc",
         "also_flagged": [
@@ -336,10 +214,10 @@
       "citekey": "sample_dt_sync_2023",
       "line": 86,
       "unattended": false,
-      "summary": "`[@sample_dt_sync_2023]` scores weak: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
       "detail": {
-        "band": "weak",
-        "score": 0.3225806451612903,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
         "provenance_id": "3f3e55c69239",
         "also_flagged": [
@@ -348,6 +226,51 @@
             "class": "unsupported-claim"
           }
         ]
+      }
+    },
+    {
+      "id": "401e348db58b",
+      "class": "unsupported-claim",
+      "section": "6. Conclusion",
+      "citekey": "sample_dt_factory_2022",
+      "line": 87,
+      "unattended": false,
+      "summary": "`[@sample_dt_factory_2022]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+        "provenance_id": "390cf7cb63cb"
+      }
+    },
+    {
+      "id": "e7b94c624d1f",
+      "class": "unsupported-claim",
+      "section": "6. Conclusion",
+      "citekey": "sample_ml_anomaly_2023",
+      "line": 88,
+      "unattended": false,
+      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+        "provenance_id": "5bfdc2ab8fe8"
+      }
+    },
+    {
+      "id": "8fdd2ee4868e",
+      "class": "unsupported-claim",
+      "section": "6. Conclusion",
+      "citekey": "sample_std_interop_2021",
+      "line": 89,
+      "unattended": false,
+      "summary": "`[@sample_std_interop_2021]` scores no support found: Across the sample corpus, the recurring finding is that twins succeed on honesty",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Across the sample corpus, the recurring finding is that twins succeed on honesty rather than sophistication: strict vocabulary, marked staleness, published override logs, incorruptible baselines and owned semantics are all instances of one design value -- never let the representation be confidently wrong.",
+        "provenance_id": "37c58159f5ce"
       }
     },
     {
@@ -386,13 +309,7 @@
       "summary": "A twin is only as trustworthy as its last synchronisation.",
       "detail": {
         "block_cites": true,
-        "uncited_id": "841d1fb8bc75",
-        "also_flagged": [
-          {
-            "id": "15443321c043",
-            "class": "verbatim-run"
-          }
-        ]
+        "uncited_id": "841d1fb8bc75"
       }
     },
     {
@@ -431,13 +348,7 @@
       "summary": "Twin pilots rarely die of modelling problems; they die of integration.",
       "detail": {
         "block_cites": true,
-        "uncited_id": "562a15a8c78d",
-        "also_flagged": [
-          {
-            "id": "3acc4d59f0b1",
-            "class": "verbatim-run"
-          }
-        ]
+        "uncited_id": "562a15a8c78d"
       }
     },
     {

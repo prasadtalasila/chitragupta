@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review support content/drafts/dt-overview/staleness-tutorial.md --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 
@@ -34,15 +34,15 @@ and found wanting".
 
 ### Not scored
 
-- `sample_dt_factory_2022`: the source's passages carry no readable text to score against (page-level only)
-- `sample_dt_overview_2024`: the source's passages carry no readable text to score against (page-level only)
-- `sample_dt_sync_2023`: the source's passages carry no readable text to score against (page-level only)
+- `sample_dt_factory_2022`: no parsed text with page breaks and no readable PDF
+- `sample_dt_overview_2024`: no parsed text with page breaks and no readable PDF
+- `sample_dt_sync_2023`: no parsed text with page breaks and no readable PDF
 
 ## Findings
 
-- **line 107** `[@sample_dt_sync_2023]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`a2f8f98703b5`)
+- **line 107** `[@sample_dt_sync_2023]` (not scored -- no parsed text with page breaks and no readable PDF) (`a2f8f98703b5`)
   > Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.
-- **line 109** `[@sample_dt_factory_2022]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`09fb4da73bdb`)
+- **line 109** `[@sample_dt_factory_2022]` (not scored -- no parsed text with page breaks and no readable PDF) (`09fb4da73bdb`)
   > Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.
-- **line 111** `[@sample_dt_overview_2024]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`0fab0f944cc3`)
+- **line 111** `[@sample_dt_overview_2024]` (not scored -- no parsed text with page breaks and no readable PDF) (`0fab0f944cc3`)
   > For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.

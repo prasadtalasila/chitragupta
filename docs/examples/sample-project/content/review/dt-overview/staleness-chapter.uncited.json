@@ -3,7 +3,7 @@
   "aid": "uncited",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review uncited content/drafts/dt-overview/staleness-chapter.md --write",
-  "version": "6.60.2",
+  "version": "6.60.3",
   "genre": "textbook-chapter",
   "genre_source": "scope.md",
   "standing": "ordinary",

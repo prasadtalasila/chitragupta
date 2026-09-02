@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review coverage content/drafts/dt-overview/staleness-tutorial.md --query 'staleness marking operator trust' --k 5 --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 
@@ -26,10 +26,12 @@ Top 5 results per query.
 
 ## Coverage
 
-**100%** -- 2 of 2 retrieved candidates are cited.
+No candidates found for any query -- nothing to compare against.
 
 ### Cited but not surfaced by these queries
 
 Not necessarily a problem -- see above.
 
+- `sample_dt_factory_2022`
 - `sample_dt_overview_2024`
+- `sample_dt_sync_2023`

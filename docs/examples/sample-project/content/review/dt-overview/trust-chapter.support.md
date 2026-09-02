@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review support content/drafts/dt-overview/trust-chapter.tex --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 
@@ -34,20 +34,20 @@ and found wanting".
 
 ### Not scored
 
-- `sample_dt_factory_2022`: the source's passages carry no readable text to score against (page-level only)
-- `sample_dt_overview_2024`: the source's passages carry no readable text to score against (page-level only)
-- `sample_dt_sync_2023`: the source's passages carry no readable text to score against (page-level only)
-- `sample_ml_anomaly_2023`: the source's passages carry no readable text to score against (page-level only)
+- `sample_dt_factory_2022`: no parsed text with page breaks and no readable PDF
+- `sample_dt_overview_2024`: no parsed text with page breaks and no readable PDF
+- `sample_dt_sync_2023`: no parsed text with page breaks and no readable PDF
+- `sample_ml_anomaly_2023`: no parsed text with page breaks and no readable PDF
 
 ## Findings
 
-- **line 26** `[@sample_dt_sync_2023]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`08929896014b`)
+- **line 26** `[@sample_dt_sync_2023]` (not scored -- no parsed text with page breaks and no readable PDF) (`08929896014b`)
   > In comparative trials, explicit staleness marking -- returning every value with its age, so a twin that has stopped tracking reality says so -- roughly halved operator mistrust incidents without any change to the underlying model.
-- **line 31** `[@sample_dt_factory_2022]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`5b6f8760160e`)
+- **line 31** `[@sample_dt_factory_2022]` (not scored -- no parsed text with page breaks and no readable PDF) (`5b6f8760160e`)
   > The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
-- **line 38** `[@sample_dt_factory_2022]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`5b6f8760160e`)
+- **line 38** `[@sample_dt_factory_2022]` (not scored -- no parsed text with page breaks and no readable PDF) (`5b6f8760160e`)
   > The packaging line twin of gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.
-- **line 45** `[@sample_ml_anomaly_2023]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`b615334a17de`)
+- **line 45** `[@sample_ml_anomaly_2023]` (not scored -- no parsed text with page breaks and no readable PDF) (`b615334a17de`)
   > Comparing anomaly detectors over twin state streams, the learned model with the best mean precision was also the one whose failure was invisible: it absorbed a slow drift into its own retraining baseline and missed it entirely, while an incorruptible statistical baseline flagged it.
-- **line 55** `[@sample_dt_overview_2024]` (not scored -- the source's passages carry no readable text to score against (page-level only)) (`4324aaca7f52`)
+- **line 55** `[@sample_dt_overview_2024]` (not scored -- no parsed text with page breaks and no readable PDF) (`4324aaca7f52`)
   > The vocabulary of sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.

@@ -3,13 +3,26 @@
   "aid": "coverage",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review coverage content/drafts/dt-overview/staleness-chapter.md --query 'operator trust staleness silent divergence' --k 5 --write",
-  "version": "6.60.2",
+  "version": "6.60.3",
   "queries": [
     "operator trust staleness silent divergence"
   ],
   "k": 5,
-  "coverage_pct": 100.0,
-  "candidates_total": 2,
-  "cited_candidates_total": 2,
-  "findings": []
+  "coverage_pct": null,
+  "candidates_total": 0,
+  "cited_candidates_total": 0,
+  "findings": [
+    {
+      "id": "8b0a087f86ac",
+      "citekey": "sample_dt_factory_2022",
+      "title": null,
+      "status": "cited_outside_candidates"
+    },
+    {
+      "id": "9e4133d0473a",
+      "citekey": "sample_dt_sync_2023",
+      "title": null,
+      "status": "cited_outside_candidates"
+    }
+  ]
 }

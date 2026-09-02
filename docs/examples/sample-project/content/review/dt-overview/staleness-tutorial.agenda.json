@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/staleness-tutorial.md",
-  "version": "6.60.2",
+  "version": "6.60.3",
   "sources": {
     "aids": {
       "provenance": {
@@ -80,6 +80,21 @@
       }
     },
     {
+      "id": "f07a256b30b1",
+      "class": "unsupported-claim",
+      "section": "Where to go next",
+      "citekey": "sample_dt_sync_2023",
+      "line": 107,
+      "unattended": false,
+      "summary": "`[@sample_dt_sync_2023]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
+      "detail": {
+        "band": "no support found",
+        "score": 0.0,
+        "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
+        "provenance_id": "a2f8f98703b5"
+      }
+    },
+    {
       "id": "dc34bfbaf303",
       "class": "unsupported-claim",
       "section": "Where to go next",
@@ -89,24 +104,9 @@
       "summary": "`[@sample_dt_factory_2022]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
       "detail": {
         "band": "no support found",
-        "score": 0.18518518518518517,
+        "score": 0.0,
         "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
         "provenance_id": "09fb4da73bdb"
-      }
-    },
-    {
-      "id": "f07a256b30b1",
-      "class": "unsupported-claim",
-      "section": "Where to go next",
-      "citekey": "sample_dt_sync_2023",
-      "line": 107,
-      "unattended": false,
-      "summary": "`[@sample_dt_sync_2023]` scores weak: Explicit staleness marking roughly halved operator mistrust incidents in a compa",
-      "detail": {
-        "band": "weak",
-        "score": 0.37037037037037035,
-        "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
-        "provenance_id": "a2f8f98703b5"
       }
     },
     {
@@ -116,10 +116,10 @@
       "citekey": "sample_dt_overview_2024",
       "line": 111,
       "unattended": false,
-      "summary": "`[@sample_dt_overview_2024]` scores weak: For the vocabulary of what you just built -- and why it is a shadow, not yet a t",
+      "summary": "`[@sample_dt_overview_2024]` scores no support found: For the vocabulary of what you just built -- and why it is a shadow, not yet a t",
       "detail": {
-        "band": "weak",
-        "score": 0.4,
+        "band": "no support found",
+        "score": 0.0,
         "claim": "For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.",
         "provenance_id": "0fab0f944cc3"
       }

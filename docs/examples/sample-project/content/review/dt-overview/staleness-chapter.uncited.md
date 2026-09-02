@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review uncited content/drafts/dt-overview/staleness-chapter.md --write`
-- chitragupta 6.60.2
+- chitragupta 6.60.3
 
 ## How to read this
 

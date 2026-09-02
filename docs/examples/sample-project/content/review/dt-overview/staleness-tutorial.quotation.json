@@ -3,7 +3,7 @@
   "aid": "quotation",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review quotation content/drafts/dt-overview/staleness-tutorial.md --write",
-  "version": "6.60.2",
+  "version": "6.60.3",
   "quotes_total": 3,
   "found": 0,
   "absent": 0,
@@ -15,7 +15,7 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no parsed text with page breaks and no readable PDF"
     },
     {
       "id": "83d94ccd0599",
@@ -23,7 +23,7 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no parsed text with page breaks and no readable PDF"
     },
     {
       "id": "e7b2c4872733",
@@ -31,7 +31,7 @@
       "verdict": "unverifiable",
       "tier": null,
       "pages": [],
-      "reason": "no reading-ordered passages -- only page-level text"
+      "reason": "no parsed text with page breaks and no readable PDF"
     }
   ],
   "findings": []
