@@ -3,7 +3,7 @@
   "aid": "coverage",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review coverage content/drafts/dt-overview/survey.md --query 'digital twin synchronisation staleness' --query 'anomaly detection state stream' --k 5 --write",
-  "version": "6.61.5",
+  "version": "6.61.7",
   "queries": [
     "digital twin synchronisation staleness",
     "anomaly detection state stream"

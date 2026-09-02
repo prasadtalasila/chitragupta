@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review provenance content/drafts/dt-overview/trust-chapter.tex`
-- chitragupta 6.61.5
+- chitragupta 6.61.7
 
 ## How to read this
 

@@ -3,7 +3,7 @@
   "aid": "coverage",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review coverage content/drafts/dt-overview/staleness-chapter.md --query 'operator trust staleness silent divergence' --k 5 --write",
-  "version": "6.61.5",
+  "version": "6.61.7",
   "queries": [
     "operator trust staleness silent divergence"
   ],

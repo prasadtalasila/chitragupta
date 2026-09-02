@@ -3,7 +3,7 @@
   "aid": "support",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review support content/drafts/dt-overview/staleness-tutorial.md --write",
-  "version": "6.61.5",
+  "version": "6.61.7",
   "scored": 0,
   "unscoreable": {
     "sample_dt_factory_2022": "the source's passages carry no readable text to score against (page-level only)",

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/survey.md --write`
-- chitragupta 6.61.5
+- chitragupta 6.61.7
 
 - Quotes checked: 5
 - Confirmed in the cited source: 0

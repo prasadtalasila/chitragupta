@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex",
-  "version": "6.61.5",
+  "version": "6.61.7",
   "sources": {
     "aids": {
       "provenance": {

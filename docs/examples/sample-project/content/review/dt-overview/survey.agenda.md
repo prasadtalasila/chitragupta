@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/survey.md`
-- chitragupta 6.61.5
+- chitragupta 6.61.7
 
 ## How to read this
 
