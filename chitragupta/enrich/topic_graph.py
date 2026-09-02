@@ -80,7 +80,10 @@ def _best_match(rows_a, rows_b) -> "tuple[float, int, int]":
     cosines = rows_a @ rows_b.T
     forward = cosines.max(axis=1).mean()
     backward = cosines.max(axis=0).mean()
-    i, j = np.unravel_index(int(cosines.argmax()), cosines.shape)
+    # divmod on the flat argmax, not np.unravel_index: identical result
+    # for a 2-D array, and pylint cannot misread a stdlib divmod the way
+    # it misreads unravel_index's tuple with numpy set as ignored.
+    i, j = divmod(int(cosines.argmax()), cosines.shape[1])
     return float((forward + backward) / 2), int(i), int(j)
 
 
@@ -119,7 +122,11 @@ def semantic_edges(vectors: dict, neighbors: int) -> list:
     ranked = {
         label: sorted(
             (other for other in labels if other != label),
-            key=lambda other: -scored[tuple(sorted((label, other)))][0],
+            # `this=label` binds per iteration; a bare closure over
+            # `label` would be pylint's cell-var-from-loop, and although
+            # each key is consumed inside its own iteration here, the
+            # explicit binding costs nothing and cannot rot into the bug.
+            key=lambda other, this=label: -scored[tuple(sorted((this, other)))][0],
         )[:neighbors]
         for label in labels
     }
