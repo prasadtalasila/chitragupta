@@ -18,7 +18,9 @@
 #                prints that command, rather than running it a second way).
 #   os-deps      -- apt-get the system packages the full pipeline needs
 #                (TeX Live, Pandoc, poppler-utils, Poetry itself,
-#                git/curl/unzip, and OpenCV's runtime libraries). Needs
+#                git/curl/unzip, OpenCV's runtime libraries, and
+#                python-is-python3 -- the name `python`, which the
+#                Claude Code hooks are launched by). Needs
 #                root; auto-sudo's if not already root. Opt-in -- not
 #                everyone wants this script touching apt. Also reachable
 #                as `chitragupta install os-deps` (#265), unmodified.
@@ -83,7 +85,8 @@ sudo_if_needed() {
 }
 
 install_os_deps() {
-    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry) ..."
+    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry,"
+    echo "the python-is-python3 launcher name) ..."
     sudo_if_needed apt-get update
     # GLib's package was renamed in the 64-bit-time_t transition
     # (libglib2.0-0 -> libglib2.0-0t64 in Ubuntu 24.04 / Debian 13), and

@@ -79,7 +79,8 @@ def _run_os_deps() -> int:
     if not (shutil.which("apt-get") and shutil.which("bash")):
         print(
             "os-deps is Debian/Ubuntu and bash only. Install by hand: TeX Live, "
-            "Pandoc, poppler-utils, git/curl/unzip, libgl1/libglib2.0.",
+            "Pandoc, poppler-utils, git/curl/unzip, libgl1/libglib2.0 -- and make "
+            "sure the name `python` resolves, which is what the hooks launch.",
             file=sys.stderr,
         )
         return 1
