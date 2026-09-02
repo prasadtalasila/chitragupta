@@ -19,6 +19,11 @@ from typing import Any
 from chitragupta import config
 
 
+class EntailmentLabelError(RuntimeError):
+    """A configured NLI checkpoint whose `id2label` names no entailment
+    label, so there is no column to read a probability out of."""
+
+
 def optional_stack() -> Any | None:
     """The `CrossEncoder` class, or `None` if sentence_transformers is
     not installed. Same probe shape as overlap_chroma.optional_stack."""
@@ -27,6 +32,42 @@ def optional_stack() -> Any | None:
     except ImportError:
         return None
     return CrossEncoder
+
+
+def _entailment_index(id2label: dict) -> int:
+    """Which column of a row of logits carries the entailment score.
+
+    Matched case-insensitively (m-67). This module's own docstring
+    records that the mapping was confirmed against exactly one
+    checkpoint, `cross-encoder/nli-deberta-v3-small`, which spells the
+    label `entailment` -- so any other checkpoint is precisely the path
+    an exact `== "entailment"` could not read, and `ENTAILMENT` and
+    `Entailment` are both common on HuggingFace NLI models.
+
+    A checkpoint whose labels are `LABEL_0`/`LABEL_1`/`LABEL_2` --
+    equally common, and what a model card omits when nobody filled the
+    mapping in -- deliberately falls through to the raise instead of
+    being guessed at. Which logit is entailment is not recoverable from
+    an index, and picking one would decide whether a claim reads as
+    supported on a coin flip. Refusing by name, in a message carrying
+    the setting and the labels the checkpoint actually reports, is the
+    only useful answer here; the bare `StopIteration` this replaces
+    named neither.
+    """
+    for index, label in id2label.items():
+        if str(label).lower() == "entailment":
+            return index
+    raise EntailmentLabelError(
+        "the NLI checkpoint configured as [enrich].entailment_model, "
+        f"{config.ENTAILMENT_MODEL}, reports the labels "
+        f"{sorted(str(label) for label in id2label.values())} -- none of them "
+        "an entailment label. Claim-support scoring reads the entailment "
+        "probability out of the model's own id2label mapping and will not "
+        "guess which column that is. Point [enrich].entailment_model (or "
+        "ENTAILMENT_MODEL) at a checkpoint whose id2label includes an "
+        "entailment class, spelled any way -- an NLI model, in other words, "
+        "e.g. cross-encoder/nli-deberta-v3-small."
+    )
 
 
 def _softmax(logits: list[float]) -> list[float]:
@@ -70,8 +111,7 @@ class Entailer:
     def score(self, pairs: list[tuple[str, str]]) -> list[float]:
         if not pairs:
             return []
-        id2label = self.model.model.config.id2label
-        index = next(i for i, label in id2label.items() if label == "entailment")
+        index = _entailment_index(self.model.model.config.id2label)
         raw = self.model.predict(list(pairs))
         return [_softmax(list(row))[index] for row in raw]
 

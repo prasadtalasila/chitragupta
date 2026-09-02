@@ -91,6 +91,48 @@ def test_score_handles_several_pairs_in_one_call():
     assert scores[1] == pytest.approx(1.0, abs=1e-3)
 
 
+@pytest.mark.parametrize("spelling", ["ENTAILMENT", "Entailment", "entailment"])
+def test_score_matches_the_entailment_label_whatever_its_case(spelling):
+    """m-67: the lookup was case-sensitive against the one spelling
+    `cross-encoder/nli-deberta-v3-small` happens to use, and
+    `ENTAILMENT`/`Entailment` are both common on HuggingFace NLI
+    checkpoints. Any of the three has to reach the same column."""
+    fake = FakeCrossEncoder(
+        logits={("premise", "claim"): [-10.0, 10.0, -10.0]},
+        id2label={0: "CONTRADICTION", 1: spelling, 2: "NEUTRAL"},
+    )
+    scores = entailment.Entailer(model=fake).score([("premise", "claim")])
+    assert scores[0] == pytest.approx(1.0, abs=1e-3)
+
+
+def test_score_raises_a_named_error_when_no_label_is_an_entailment_label(monkeypatch):
+    """`LABEL_0`/`LABEL_1`/`LABEL_2` is the other common shape, and it
+    used to raise a bare `StopIteration` out of `next()` -- no message,
+    no model name, nothing pointing at the setting that caused it.
+    Deliberately still a refusal rather than a guess: which logit is
+    entailment is not recoverable from `LABEL_2`, and picking one would
+    decide whether a claim looks supported on a coin flip.
+
+    The configured id is monkeypatched to a distinctive sentinel rather
+    than read from `config`: an `in` assertion against whatever this
+    host's `config.toml` happens to hold is vacuously true if that value
+    is the empty string, which `config._get` returns unchanged, and a
+    test that passes on a substring nobody set is not testing anything.
+    """
+    monkeypatch.setattr(config, "ENTAILMENT_MODEL", "some-org/not-an-nli-model")
+    fake = FakeCrossEncoder(
+        logits={("premise", "claim"): [-10.0, 10.0, -10.0]},
+        id2label={0: "LABEL_0", 1: "LABEL_1", 2: "LABEL_2"},
+    )
+    with pytest.raises(entailment.EntailmentLabelError) as excinfo:
+        entailment.Entailer(model=fake).score([("premise", "claim")])
+    message = str(excinfo.value)
+    assert "some-org/not-an-nli-model" in message  # the model it resolved to
+    assert "entailment_model" in message  # and the setting that named it
+    for reported in ("LABEL_0", "LABEL_1", "LABEL_2"):
+        assert reported in message  # and what the checkpoint actually reports
+
+
 def test_score_of_no_pairs_is_no_scores_and_touches_no_model():
     """An empty batch must not even reach `.model` -- the property
     would otherwise try to load the real model for zero work."""
