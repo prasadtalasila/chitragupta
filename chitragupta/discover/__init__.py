@@ -86,13 +86,20 @@ def _search_view(args, phrase: str, note, topic_set) -> int:
 
 
 def main(argv=None) -> int:
+    """Parse, dispatch, and translate every MissingArtefact -- absent
+    graph, absent ledger, a topic member a later sync removed -- into
+    the printed refusal and exit 1, wherever in a view it surfaces."""
     args = build_parser().parse_args(argv)
     try:
-        graph = _data.load_graph()
-        topic_set = _data.load_topic_set()
+        return _run(args)
     except _data.MissingArtefact as missing:
         print(missing)
         return 1
+
+
+def _run(args) -> int:
+    graph = _data.load_graph()
+    topic_set = _data.load_topic_set()
     terms = _data.top_terms(topic_set)
 
     if args.paper:

@@ -12,10 +12,10 @@ paraphrased.
 """
 
 import re
-import sqlite3
 from typing import Any
 
 from chitragupta import config
+from chitragupta.discover import _data
 
 # How many verbatim sentences the overview quotes, and the length band a
 # candidate sentence must fall in -- below it fragments and page furniture
@@ -35,7 +35,7 @@ def _load_model() -> "Any":
 
 
 def _parsed_texts(citekeys: list) -> dict:
-    con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    con = _data.read_only_connection()
     try:
         placeholders = ",".join("?" * len(citekeys))
         rows = con.execute(
@@ -79,14 +79,10 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
     except ImportError:
         return None
     vectors = model.encode([sentence for _, sentence in candidates], show_progress_bar=False)
-    mean = graph["corpus_mean"]
-    c_norm = sum(v * v for v in centroid) ** 0.5 or 1.0
-    scored = []
-    for (citekey, sentence), vector in zip(candidates, vectors):
-        centred = [float(v) - m for v, m in zip(vector, mean)]
-        norm = sum(v * v for v in centred) ** 0.5 or 1.0
-        cosine = sum(a * b for a, b in zip(centred, centroid)) / (norm * c_norm)
-        scored.append((cosine, citekey, sentence))
+    scored = [
+        (_data.centred_cosine(vector, graph["corpus_mean"], centroid), citekey, sentence)
+        for (citekey, sentence), vector in zip(candidates, vectors)
+    ]
     scored.sort(key=lambda row: (-row[0], row[1], row[2]))
     return [
         {"citekey": citekey, "sentence": sentence, "score": cosine}

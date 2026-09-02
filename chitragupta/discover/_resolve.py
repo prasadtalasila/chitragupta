@@ -26,6 +26,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from chitragupta import config, retrieval
+from chitragupta.discover import _data
 
 # Cormack et al. (2009)'s constant. Rank-based fusion: each ranking
 # contributes 1/(k + rank), so agreement between the two rankers
@@ -106,16 +107,11 @@ def semantic_ranking(phrase: str, graph: dict) -> list:
     `corpus_mean` is what moves the query there without the embed cache."""
     model = _load_model()
     vector = model.encode(phrase, show_progress_bar=False)
-    query = [float(v) - m for v, m in zip(vector, graph["corpus_mean"])]
-    norm = sum(v * v for v in query) ** 0.5 or 1.0
-    scored = []
-    for topic in graph["topics"]:
-        centroid = topic.get("centroid") or []
-        if not centroid:
-            continue
-        c_norm = sum(v * v for v in centroid) ** 0.5 or 1.0
-        cosine = sum(q * c for q, c in zip(query, centroid)) / (norm * c_norm)
-        scored.append((topic["label"], cosine))
+    scored = [
+        (topic["label"], _data.centred_cosine(vector, graph["corpus_mean"], topic["centroid"]))
+        for topic in graph["topics"]
+        if topic.get("centroid")
+    ]
     return sorted(scored, key=lambda pair: (-pair[1], pair[0]))
 
 

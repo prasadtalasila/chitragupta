@@ -252,6 +252,19 @@ class TestDataLoading:
         with pytest.raises(_data.MissingArtefact, match="corpus sync"):
             _data.entries_for(["p1"])
 
+    def test_a_stale_artefact_citekey_refuses_instead_of_crashing(self, isolated_config):
+        """A sync that removed a paper leaves the topic artefacts naming
+        a citekey the ledger no longer holds; the reader must refuse with
+        the re-run instruction, not hand the user a KeyError traceback."""
+        make_ledger(isolated_config, ["p1"])
+        with pytest.raises(_data.MissingArtefact, match="no longer"):
+            _data.entries_for(["p1", "vanished2020"])
+
+    def test_the_missing_ledger_refusal_reaches_the_cli(self, isolated_config, capsys):
+        write_artefacts(isolated_config, graph=GRAPH, topic_set=TOPIC_SET)
+        assert discover.main(["digital twin"]) == 1
+        assert "corpus sync" in capsys.readouterr().out
+
     def test_topics_of_inverts_the_membership(self, isolated_config):
         assert [t["label"] for t in _data.topics_of(TOPIC_SET)["p2"]] == [
             "digital twin",

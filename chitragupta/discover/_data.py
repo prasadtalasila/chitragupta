@@ -75,20 +75,47 @@ def topics_of(topic_set: dict) -> dict:
     return inverted
 
 
-def entries_for(citekeys: list) -> dict:
-    """citekey -> formatted IEEE entry, via the one formatter this
-    project has (`references.entries`). Opened read-only for the same
-    reason `corpus ledger` does: inspecting must keep working during a
-    sync, and `ledger.connect()` would run migrations under a write
-    lock."""
-    if not citekeys:
-        return {}
+def read_only_connection() -> sqlite3.Connection:
+    """The ledger, opened read-only for the same reason `corpus ledger`
+    does: inspecting must keep working during a sync, and
+    `ledger.connect()` would run migrations under a write lock."""
     if not config.LEDGER_PATH.exists():
         raise MissingArtefact(
             f"No ledger at {config.LEDGER_PATH}. Run `python -m chitragupta.corpus sync`."
         )
-    con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    return sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+
+
+def centred_cosine(vector: list, mean: list, centroid: list) -> float:
+    """Cosine between a raw vector moved into centred space (by the
+    graph artefact's stored corpus mean) and a stored centroid. The one
+    piece of geometry the reader performs, written once: the resolution
+    ladder scores query-vs-topic with it and the overview scores
+    sentence-vs-topic with it, and two spellings would drift."""
+    centred = [float(v) - m for v, m in zip(vector, mean)]
+    norm = sum(v * v for v in centred) ** 0.5 or 1.0
+    c_norm = sum(v * v for v in centroid) ** 0.5 or 1.0
+    return sum(a * b for a, b in zip(centred, centroid)) / (norm * c_norm)
+
+
+def entries_for(citekeys: list) -> dict:
+    """citekey -> formatted IEEE entry, via the one formatter this
+    project has (`references.entries`).
+
+    A member citekey missing from the ledger is re-raised as this
+    module's refusal: the topic artefacts were derived from an older
+    sync, and "re-run the pipeline" is the fix, not a stack trace.
+    """
+    if not citekeys:
+        return {}
+    con = read_only_connection()
     try:
         return references.entries(list(citekeys), con)
+    except references.MissingCitekey as missing:
+        raise MissingArtefact(
+            f"{missing} -- the topic artefacts name papers this ledger no longer "
+            "holds; re-run `python -m chitragupta.corpus sync` and the enrich "
+            "topic stages."
+        ) from missing
     finally:
         con.close()
