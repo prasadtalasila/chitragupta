@@ -99,13 +99,14 @@ def _pdf_identity(ref: Reference, row, on_missing_pdf) -> tuple[int | None, int 
     # changed every call site (250-odd, nearly all of them tests) to
     # carry a value one caller wants.
     #
-    # It is handed the exception, not just a signal: this catches every
-    # `OSError`, so the cause may be a permission or an I/O error rather
-    # than a missing file, and `sync` files all of them in the one
-    # `pdf_path_gone` bucket. That bucket is approximate by choice --
-    # the `logger.warning` below is the record that carries the real
-    # errno, and inventing a reason per errno would multiply the
-    # breakdown line for cases nobody has hit.
+    # It is handed the exception, not just a signal, and that is
+    # load-bearing rather than a courtesy: this catches every `OSError`,
+    # so the cause may be a permission or an I/O error rather than a
+    # missing file, and those are different diagnoses with different
+    # remedies. `sync_decide._lost_pdf_reason` is what tells them apart,
+    # off the exception's type -- so a signal alone would have forced
+    # every cause into one reason and one piece of wrong advice. Which
+    # is what the first version of this did, until review caught it.
     try:
         pdf_size, pdf_mtime_ns = _stat_pdf(ref.pdf_path)
         stat_unchanged = (
