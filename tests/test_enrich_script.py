@@ -24,6 +24,7 @@ from chitragupta.enrich import (
     docling_parse,
     embed_index,
     topic_converge,
+    topic_graph,
     topic_model,
     topic_seeding,
 )
@@ -155,7 +156,7 @@ class TestParseArgs:
         # terminal width, so the sentence is split across lines at a
         # column this test has no business predicting.
         out = re.sub(r"\s+", " ", capsys.readouterr().out)
-        assert "default: all five, or docling alone with --for-" in out
+        assert "default: all six, or docling alone with --for-" in out
 
 
 class TestMain:
@@ -710,3 +711,19 @@ class TestStageConverge:
         )
         assert enrich_script.stage_converge([], make_args()) == {"status": "ok"}
         assert seen["phrases"] == ("digital twin",)
+
+
+class TestStageTopicGraph:
+    """The graph stage's wrapper. Like converge's, it decides nothing --
+    the skip/ok vocabulary belongs to topic_graph.run_stage -- so what
+    this pins is that the wrapper hands the docs through unchanged."""
+
+    def test_it_passes_the_docs_through(self, monkeypatch):
+        seen = {}
+        monkeypatch.setattr(
+            topic_graph,
+            "run_stage",
+            lambda docs: seen.update(docs=docs) or {"status": "ok"},
+        )
+        assert enrich_script.stage_topic_graph(["doc"], make_args()) == {"status": "ok"}
+        assert seen["docs"] == ["doc"]

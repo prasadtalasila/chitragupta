@@ -856,6 +856,30 @@ TOPIC_CONVERGE_SIMILARITY = _get_float(
     "topic_converge_similarity",
     default=0.45,
 )
+# The topic graph: relations between the topics topic_set.json already
+# holds. Written by the `topic-graph` stage; read by `corpus discover`.
+TOPIC_GRAPH_PATH = CONTENT_DIR / "topic_graph.json"
+# How surprising a shared-member count must be for two topics to get an
+# overlap edge. A significance level rather than a weight floor: "more
+# shared papers than chance, given both sizes and the corpus size" needs
+# no per-corpus tuning, where any fixed Jaccard cutoff does -- and it
+# refuses the edge two large topics would otherwise get merely for both
+# being large.
+TOPIC_GRAPH_P_VALUE = _get_float(
+    "TOPIC_GRAPH_P_VALUE",
+    "enrich",
+    "topic_graph_p_value",
+    default=0.01,
+)
+# Semantic edges are kept only between mutual top-k neighbours. Mutual,
+# because a global similarity floor either floods the dense region of
+# the topic space or starves the sparse one; k-nearest adapts to both.
+TOPIC_GRAPH_NEIGHBORS = _get_int(
+    "TOPIC_GRAPH_NEIGHBORS",
+    "enrich",
+    "topic_graph_neighbors",
+    default=5,
+)
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

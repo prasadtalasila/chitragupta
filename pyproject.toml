@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.53.50"
+version = "6.54.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -108,13 +108,17 @@ chromadb = {version = ">=1.5,<2.0", optional = true}
 bertopic = {version = ">=0.17,<0.18", optional = true}
 docling = {version = ">=2.115,<3.0", optional = true}
 adapters = {version = ">=1.2,<2.0", optional = true}
+# scipy was always installed transitively (bertopic -> hdbscan/umap);
+# chitragupta/enrich/topic_graph.py imports it directly (hypergeom,
+# linkage), and a direct import deserves a declared version.
+scipy = {version = ">=1.10,<2.0", optional = true}
 pytest = {version = ">=8.0,<9.0", optional = true}
 pytest-cov = {version = ">=5.0,<7.0", optional = true}
 mkdocs-material = {version = ">=9.5,<10.0", optional = true}
 mkdocs-same-dir = {version = ">=0.1.5,<0.2", optional = true}
 
 [tool.poetry.extras]
-enrich = ["sentence-transformers", "chromadb", "bertopic", "docling", "adapters"]
+enrich = ["sentence-transformers", "chromadb", "bertopic", "docling", "adapters", "scipy"]
 dev = ["pytest", "pytest-cov"]
 docs = ["mkdocs-material", "mkdocs-same-dir"]
 
@@ -164,6 +168,9 @@ sentence-transformers = ">=5.6,<6.0"
 chromadb = ">=1.5,<2.0"
 bertopic = ">=0.17,<0.18"
 docling = ">=2.115,<3.0"
+# Direct import in topic_graph.py -- see the mirrored optional entry
+# above for why this is declared despite arriving transitively anyway.
+scipy = ">=1.10,<2.0"
 
 # adapters is SPECTER2-only -- allenai/specter2_base loads its
 # task-specific adapter weights (proximity/classification/etc.) through

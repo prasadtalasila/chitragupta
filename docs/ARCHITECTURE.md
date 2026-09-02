@@ -251,8 +251,9 @@ ever reads what it produced.
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
 | `seed-topics` | `content/topic_seeds.json` -- every citekey matching one of the author's own topic phrases, many-to-many | refused |
 | `converge` | `content/topic_set.json` -- `bertopic`'s emergent clusters and `seed-topics`' author-named ones, joined into one topic set | refused |
+| `topic-graph` | `content/topic_graph.json` -- how the converged topics relate: shared-member edges, semantic edges, centroids and a merge tree ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)) | refused |
 
-**Five stages, and no more than five.** A review report and a draft
+**Six stages, and no more than six.** A review report and a draft
 render are deliberately *not* among them, though both would be three-line
 wrappers around `python -m chitragupta.review provenance` and
 `python -m chitragupta.draft render`. They are conveniences rather than

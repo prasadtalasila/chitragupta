@@ -248,6 +248,11 @@ class TestRunTopicConverge:
         result = topic_converge.run_topic_converge([], ("digital twin",))
         assert isolated_config.TOPIC_SET_PATH.exists()
         assert json.loads(isolated_config.TOPIC_SET_PATH.read_text(encoding="utf-8")) == result
+        # The space stamp the graph stage refuses without: model alone
+        # does not identify the space when the pooling method changes.
+        from chitragupta.enrich import doc_vectors
+
+        assert result["embedding_method"] == doc_vectors.EMBED_METHOD
 
     def test_with_no_seeds_every_topic_stays_emergent(self, isolated_config, monkeypatch):
         self.prepare(
