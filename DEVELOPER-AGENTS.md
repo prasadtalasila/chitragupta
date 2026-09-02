@@ -1008,10 +1008,11 @@ succeeded -- not merely started:
      ground that it "would force a run into one transaction, discarding
      the incremental commit points on a crash", and the first version of
      the fix for issue #511 batched `sync`'s commits into exactly that
-     -- with a live raise path in the loop, so a real run would have
-     discarded every row written. The sweep is what caught it; no test
-     would have. Grep the documentation for the **claim** your change
-     touches, not for the files in your diff.
+     -- with a raise path that was live in that loop at the time (a PDF
+     moved mid-sync, m-71, closed since in #553), so a real run would
+     have discarded every row written. The sweep is what caught it; no
+     test would have. Grep the documentation for the **claim** your
+     change touches, not for the files in your diff.
 
    That last point is the whole method, and the run that produced these
    three searches kept paying for it: in PR #547 a commit fixed a
