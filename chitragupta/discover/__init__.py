@@ -20,7 +20,7 @@ import argparse
 import json as json_module
 
 from chitragupta import retrieval
-from chitragupta.discover import _data, _overview, _render, _resolve
+from chitragupta.discover import _data, _overview, _render, _resolve, _walk
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -60,9 +60,19 @@ def _emit(args, data: dict, prose: str) -> None:
     print(json_module.dumps(data, indent=2) if args.json else prose)
 
 
-def _topic_view(args, label: str, via: str, graph, topic_set, terms) -> int:
+def _topic_view(args, resolution, graph, topic_set, terms) -> int:
+    label = resolution.label
     data = _render.build_topic(label, graph, topic_set, terms)
-    data["resolved_via"] = via
+    data["resolved_via"] = resolution.via
+    # A plural hybrid resolution gets its neighbourhood ranked by
+    # topology (personalised PageRank seeded from every candidate) --
+    # a singular one does not, because the linked-topics lists above
+    # already answer "what is next to this one".
+    if resolution.via == "hybrid" and len(resolution.ranked) > 1:
+        data["neighbourhood"] = [
+            {"label": node, "score": score}
+            for node, score in _walk.personalised_pagerank(graph, resolution.ranked)
+        ]
     _emit(args, data, _render.render_topic(data))
     if args.out:
         quoted = _overview.snippets(_data.members_of(topic_set)[label], graph, label)
@@ -131,4 +141,4 @@ def _run(args) -> int:
         print(f"note: {resolution.note}")
     if resolution.label is None:
         return _search_view(args, phrase, resolution.note, topic_set)
-    return _topic_view(args, resolution.label, resolution.via, graph, topic_set, terms)
+    return _topic_view(args, resolution, graph, topic_set, terms)
