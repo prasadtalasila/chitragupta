@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-chapter.md`
 - Command: `python -m chitragupta.review coverage content/drafts/dt-overview/staleness-chapter.md --query 'operator trust staleness silent divergence' --k 5 --write`
-- chitragupta 6.61.0
+- chitragupta 6.61.4
 
 ## How to read this
 
@@ -26,11 +26,4 @@ Top 5 results per query.
 
 ## Coverage
 
-No candidates found for any query -- nothing to compare against.
-
-### Cited but not surfaced by these queries
-
-Not necessarily a problem -- see above.
-
-- `sample_dt_factory_2022`
-- `sample_dt_sync_2023`
+**100%** -- 2 of 2 retrieved candidates are cited.

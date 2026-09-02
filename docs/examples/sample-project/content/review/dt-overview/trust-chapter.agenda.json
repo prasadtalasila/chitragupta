@@ -3,7 +3,7 @@
   "aid": "agenda",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review agenda content/drafts/dt-overview/trust-chapter.tex",
-  "version": "6.61.1",
+  "version": "6.61.4",
   "sources": {
     "aids": {
       "provenance": {
@@ -58,51 +58,15 @@
       "citekey": "sample_dt_sync_2023",
       "line": 26,
       "unattended": false,
-      "summary": "`[@sample_dt_sync_2023]` scores no support found: In comparative trials, explicit staleness marking -- returning every value with ",
+      "summary": "`[@sample_dt_sync_2023]` scores weak: In comparative trials, explicit staleness marking -- returning every value with ",
       "detail": {
-        "band": "no support found",
-        "score": 0.0,
+        "band": "weak",
+        "score": 0.4583333333333333,
         "claim": "In comparative trials, explicit staleness marking -- returning every value with its age, so a twin that has stopped tracking reality says so -- roughly halved operator mistrust incidents without any change to the underlying model.",
         "provenance_id": "08929896014b",
         "also_flagged": [
           {
             "id": "03a10e02f0d6",
-            "class": "uncited-claim"
-          }
-        ]
-      }
-    },
-    {
-      "id": "6ede10a70930",
-      "class": "unsupported-claim",
-      "section": "The argument",
-      "citekey": "sample_dt_factory_2022",
-      "line": 31,
-      "unattended": false,
-      "summary": "`[@sample_dt_factory_2022]` scores no support found: The packaging line twin of [...] gained scheduling authority station by station,",
-      "detail": {
-        "band": "no support found",
-        "score": 0.0,
-        "claim": "The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
-        "provenance_id": "09e4f12bb314"
-      }
-    },
-    {
-      "id": "59e95473b6bd",
-      "class": "unsupported-claim",
-      "section": "The argument",
-      "citekey": "sample_ml_anomaly_2023",
-      "line": 45,
-      "unattended": false,
-      "summary": "`[@sample_ml_anomaly_2023]` scores no support found: Comparing anomaly detectors over twin state streams, the learned model with the ",
-      "detail": {
-        "band": "no support found",
-        "score": 0.0,
-        "claim": "Comparing anomaly detectors over twin state streams, the learned model with the best mean precision was also the one whose failure was invisible: it absorbed a slow drift into its own retraining baseline and missed it entirely, while an incorruptible statistical baseline flagged it.",
-        "provenance_id": "b615334a17de",
-        "also_flagged": [
-          {
-            "id": "902e6461ea7c",
             "class": "uncited-claim"
           }
         ]
@@ -115,10 +79,10 @@
       "citekey": "sample_dt_overview_2024",
       "line": 55,
       "unattended": false,
-      "summary": "`[@sample_dt_overview_2024]` scores no support found: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha",
+      "summary": "`[@sample_dt_overview_2024]` scores weak: The vocabulary of [...] sharpens the claim: what distinguishes a twin from a sha",
       "detail": {
-        "band": "no support found",
-        "score": 0.0,
+        "band": "weak",
+        "score": 0.42105263157894735,
         "claim": "The vocabulary of [...] sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
         "provenance_id": "cf88efe5d1c6"
       }
@@ -308,13 +272,7 @@
       "summary": "The recommended layered configuration buys accuracy where it is cheap but anchor",
       "detail": {
         "block_cites": true,
-        "uncited_id": "99a871315851",
-        "also_flagged": [
-          {
-            "id": "59e95473b6bd",
-            "class": "unsupported-claim"
-          }
-        ]
+        "uncited_id": "99a871315851"
       }
     },
     {

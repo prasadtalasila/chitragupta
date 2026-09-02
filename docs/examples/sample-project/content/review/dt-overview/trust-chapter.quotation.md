@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write`
-- chitragupta 6.61.0
+- chitragupta 6.61.4
 
 - Quotes checked: 4
 - Confirmed in the cited source: 0
@@ -19,8 +19,8 @@ Every checked quote was found in its cited source.
 
 ## Not checkable from this parse
 
-- `sample_dt_sync_2023` -- no parsed text with page breaks and no readable PDF
-- `sample_dt_factory_2022` -- no parsed text with page breaks and no readable PDF
-- `sample_ml_anomaly_2023` -- no parsed text with page breaks and no readable PDF
-- `sample_dt_overview_2024` -- no parsed text with page breaks and no readable PDF
+- `sample_dt_sync_2023` -- no reading-ordered passages -- only page-level text
+- `sample_dt_factory_2022` -- no reading-ordered passages -- only page-level text
+- `sample_ml_anomaly_2023` -- no reading-ordered passages -- only page-level text
+- `sample_dt_overview_2024` -- no reading-ordered passages -- only page-level text
 

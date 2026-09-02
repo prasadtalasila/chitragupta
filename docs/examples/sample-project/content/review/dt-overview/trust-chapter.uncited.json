@@ -3,7 +3,7 @@
   "aid": "uncited",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review uncited content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.61.0",
+  "version": "6.61.4",
   "genre": "thesis-chapter",
   "genre_source": "scope.md",
   "standing": "exceptional",

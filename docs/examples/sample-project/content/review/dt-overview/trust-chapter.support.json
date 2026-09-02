@@ -3,13 +3,13 @@
   "aid": "support",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review support content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.61.1",
+  "version": "6.61.4",
   "scored": 0,
   "unscoreable": {
-    "sample_dt_factory_2022": "no parsed text with page breaks and no readable PDF",
-    "sample_dt_overview_2024": "no parsed text with page breaks and no readable PDF",
-    "sample_dt_sync_2023": "no parsed text with page breaks and no readable PDF",
-    "sample_ml_anomaly_2023": "no parsed text with page breaks and no readable PDF"
+    "sample_dt_factory_2022": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_dt_overview_2024": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_dt_sync_2023": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_ml_anomaly_2023": "the source's passages carry no readable text to score against (page-level only)"
   },
   "findings": [
     {
@@ -18,7 +18,7 @@
       "citekey": "sample_dt_sync_2023",
       "claim": "In comparative trials, explicit staleness marking -- returning every value with its age, so a twin that has stopped tracking reality says so -- roughly halved operator mistrust incidents without any change to the underlying model.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "09e4f12bb314",
@@ -26,7 +26,7 @@
       "citekey": "sample_dt_factory_2022",
       "claim": "The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "09e4f12bb314",
@@ -34,7 +34,7 @@
       "citekey": "sample_dt_factory_2022",
       "claim": "The packaging line twin of [...] gained scheduling authority station by station, and each extension was argued from a published override log -- supervisors observed agreeing with the twin in over ninety-five percent of cases -- not from validation statistics.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "b615334a17de",
@@ -42,7 +42,7 @@
       "citekey": "sample_ml_anomaly_2023",
       "claim": "Comparing anomaly detectors over twin state streams, the learned model with the best mean precision was also the one whose failure was invisible: it absorbed a slow drift into its own retraining baseline and missed it entirely, while an incorruptible statistical baseline flagged it.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "cf88efe5d1c6",
@@ -50,7 +50,7 @@
       "citekey": "sample_dt_overview_2024",
       "claim": "The vocabulary of [...] sharpens the claim: what distinguishes a twin from a shadow is a closed actuation loop, and closing that loop is precisely the step organisations refuse until the audit trail exists.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     }
   ]
 }

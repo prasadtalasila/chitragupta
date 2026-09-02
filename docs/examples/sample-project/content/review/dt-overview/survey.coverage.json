@@ -3,21 +3,14 @@
   "aid": "coverage",
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review coverage content/drafts/dt-overview/survey.md --query 'digital twin synchronisation staleness' --query 'anomaly detection state stream' --k 5 --write",
-  "version": "6.61.0",
+  "version": "6.61.4",
   "queries": [
     "digital twin synchronisation staleness",
     "anomaly detection state stream"
   ],
   "k": 5,
   "coverage_pct": 100.0,
-  "candidates_total": 4,
-  "cited_candidates_total": 4,
-  "findings": [
-    {
-      "id": "c3b3bbfa44a2",
-      "citekey": "sample_std_interop_2021",
-      "title": null,
-      "status": "cited_outside_candidates"
-    }
-  ]
+  "candidates_total": 5,
+  "cited_candidates_total": 5,
+  "findings": []
 }

@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review agenda content/drafts/dt-overview/staleness-tutorial.md`
-- chitragupta 6.61.0
+- chitragupta 6.61.4
 
 ## How to read this
 
@@ -40,6 +40,6 @@ person to decide.
 - `3f97e7ce6b6d` [unattended] (Where to go next): chitragupta.Just: 'just' (1x)
 ### unsupported-claim
 
-- `f07a256b30b1` [surfaced] (Where to go next): `[@sample_dt_sync_2023]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa
 - `dc34bfbaf303` [surfaced] (Where to go next): `[@sample_dt_factory_2022]` scores no support found: Explicit staleness marking roughly halved operator mistrust incidents in a compa
-- `c8114fcf4d83` [surfaced] (Where to go next): `[@sample_dt_overview_2024]` scores no support found: For the vocabulary of what you just built -- and why it is a shadow, not yet a t
+- `f07a256b30b1` [surfaced] (Where to go next): `[@sample_dt_sync_2023]` scores weak: Explicit staleness marking roughly halved operator mistrust incidents in a compa
+- `c8114fcf4d83` [surfaced] (Where to go next): `[@sample_dt_overview_2024]` scores weak: For the vocabulary of what you just built -- and why it is a shadow, not yet a t

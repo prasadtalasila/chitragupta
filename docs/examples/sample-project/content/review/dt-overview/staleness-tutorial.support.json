@@ -3,12 +3,12 @@
   "aid": "support",
   "draft": "content/drafts/dt-overview/staleness-tutorial.md",
   "command": "python -m chitragupta.review support content/drafts/dt-overview/staleness-tutorial.md --write",
-  "version": "6.61.0",
+  "version": "6.61.4",
   "scored": 0,
   "unscoreable": {
-    "sample_dt_factory_2022": "no parsed text with page breaks and no readable PDF",
-    "sample_dt_overview_2024": "no parsed text with page breaks and no readable PDF",
-    "sample_dt_sync_2023": "no parsed text with page breaks and no readable PDF"
+    "sample_dt_factory_2022": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_dt_overview_2024": "the source's passages carry no readable text to score against (page-level only)",
+    "sample_dt_sync_2023": "the source's passages carry no readable text to score against (page-level only)"
   },
   "findings": [
     {
@@ -17,7 +17,7 @@
       "citekey": "sample_dt_sync_2023",
       "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "09fb4da73bdb",
@@ -25,7 +25,7 @@
       "citekey": "sample_dt_factory_2022",
       "claim": "Explicit staleness marking roughly halved operator mistrust incidents in a comparative study of synchronisation strategies, and the factory case study shows what silent staleness costs when it is not marked: both of its recorded failures were divergences nobody was told about.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     },
     {
       "id": "0fab0f944cc3",
@@ -33,7 +33,7 @@
       "citekey": "sample_dt_overview_2024",
       "claim": "For the vocabulary of what you just built -- and why it is a shadow, not yet a twin -- see.",
       "score": 0.0,
-      "note": "no parsed text with page breaks and no readable PDF"
+      "note": "the source's passages carry no readable text to score against (page-level only)"
     }
   ]
 }
