@@ -49,10 +49,14 @@ HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "citation_gate_hook.py"
 
 
 def run_hook(
-    stdin_text: str, env: dict | None = None, cwd: Path | None = None, hook: Path | None = None
+    stdin_text: str,
+    env: dict | None = None,
+    cwd: Path | None = None,
+    hook: Path | None = None,
+    python: str | None = None,
 ):
     return subprocess.run(
-        [sys.executable, str(hook or HOOK_PATH)],
+        [python or sys.executable, str(hook or HOOK_PATH)],
         input=stdin_text,
         cwd=str(cwd or REPO_ROOT),
         capture_output=True,
@@ -124,8 +128,14 @@ class HookRepo:
     def draft(self, suffix: str = ".md") -> Path:
         return self.drafts / f"hook_test_{uuid.uuid4().hex}{suffix}"
 
-    def run(self, file_path, cwd: Path | None = None):
-        return run_hook(payload(file_path), env=self.env, cwd=cwd or self.root, hook=self.hook)
+    def run(self, file_path, cwd: Path | None = None, env: dict | None = None, python=None):
+        return run_hook(
+            payload(file_path),
+            env=env or self.env,
+            cwd=cwd or self.root,
+            hook=self.hook,
+            python=python,
+        )
 
 
 @pytest.fixture
@@ -287,3 +297,50 @@ class TestGateEnforcement:
         response = json.loads(result.stdout)
         assert response["decision"] == "block"
         assert "totally_fabricated_key_2026" in response["reason"]
+
+
+class TestEnvironmentFaultDistinctFromCitekeyFault:
+    """#563: a non-zero gate exit means two different things, and the hook
+    used to report only one of them. `hook_repo`'s interpreter always has
+    `chitragupta` importable (PYTHONPATH points at this checkout), so this
+    class removes that -- `system_python` plus an env with no PYTHONPATH is
+    an interpreter that cannot import `chitragupta` at all, exactly like an
+    init-ed project's harness started from a shell that never activated the
+    venv. That must be reported as an environment fault, not blamed on the
+    draft's citekeys, and must still block (fail closed)."""
+
+    def test_interpreter_that_cannot_import_chitragupta_is_named_as_the_fault(
+        self, hook_repo, system_python
+    ):
+        env = {**hook_repo.env}
+        del env["PYTHONPATH"]
+        # `system_python` is only guaranteed to lack bibtexparser (see its
+        # own docstring in conftest.py) -- a host with chitragupta-cli
+        # installed into the system interpreter would make this probe
+        # succeed, and the test below would then fail for the wrong
+        # reason (a real citekey check, not an environment fault). cwd is
+        # hook_repo.root, not this checkout: `-c` puts an empty-string cwd
+        # entry on sys.path, and this checkout's own root would find
+        # chitragupta/ that way regardless of PYTHONPATH -- exactly the
+        # confound this probe exists to rule out.
+        probe = subprocess.run(
+            [system_python, "-c", "import chitragupta"],
+            env=env,
+            cwd=hook_repo.root,
+            capture_output=True,
+        )
+        if probe.returncode == 0:
+            pytest.skip("system_python can import chitragupta on this host")
+
+        path = hook_repo.draft()
+        path.write_text("A claim [@some_key].\n")
+
+        result = hook_repo.run(path, env=env, python=system_python)
+
+        assert result.returncode == 0
+        response = json.loads(result.stdout)
+        assert response["decision"] == "block"  # still fails closed
+        assert "could not run" in response["reason"].lower()
+        assert "chitragupta" in response["reason"]
+        assert "some_key" not in response["reason"]  # not blamed on the citekey
+        assert "Citation gate FAILED" not in response["reason"]
