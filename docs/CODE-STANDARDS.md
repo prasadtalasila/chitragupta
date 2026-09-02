@@ -236,8 +236,12 @@ met rather than declaring one that is not. C2 does not cover the tests
 because a test module here is one-per-source-module by convention, and
 its length tracks the surface of the module under test rather than a count
 of responsibilities; `tests/test_pdf_text.py` at 1806 code lines is
-thorough, not overloaded. Capping it would push tests into new files for
-no reason other than the cap.
+thorough, not overloaded. (`tests/test_enrich_real_libraries.py` is the
+one exception to the convention rather than to the rule: it is a second
+module against `chitragupta/enrich/embed_index.py`, split out because it
+runs against the real libraries where the first mocks them -- #514.)
+Capping it would push tests into new files for no reason other than the
+cap.
 
 **`bench/` is out of scope for both.** It is the parser measurement
 harness, it is one of the four trees `scripts/release.py` deliberately

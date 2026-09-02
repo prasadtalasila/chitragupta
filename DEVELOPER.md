@@ -37,11 +37,24 @@ deterministic unit tests, so the
 `dev-deps` group alone is *not* enough on its own: the `enrich` group
 (`python-deps`, step 1 of Quickstart) must already be installed too, since
 `tests/test_bib_reader.py` needs `bibtexparser` and the `chitragupta/enrich/` test
-modules need docling/chromadb/bertopic/sentence-transformers. A handful of tests
-(`tests/test_feature_workflows.py`, the `TestRenderReal`/`TestExtractTextReal`
-classes elsewhere) run the real `pdftotext`/`pandoc`/`pdflatex` binaries
-end to end rather than mocking them, and skip automatically if those
-aren't on `PATH`.
+modules need docling/chromadb/bertopic/sentence-transformers.
+
+**One module is the deliberate exception.**
+`tests/test_enrich_real_libraries.py` drives the *real* `chromadb` through
+`build_index()`/`search()`, and asks the real
+`sentence_transformers`/`bertopic` classes whether they still accept the
+keywords the fakes accept (#514). The fakes are faithful enough that the
+expensive failure is the day they quietly stop being; that module is what
+notices. It does not download an embedding model -- its own docstring has
+why -- so it stays as fast and as offline as the rest.
+
+A handful of tests run real dependencies end to end rather than mocking
+them, and skip automatically when the dependency is absent:
+`tests/test_feature_workflows.py` and the `TestRenderReal`/
+`TestExtractTextReal` classes elsewhere probe for the
+`pdftotext`/`pandoc`/`pdflatex` binaries on `PATH`;
+`tests/test_enrich_real_libraries.py` probes for an importable library
+instead, which is the same idiom against a different kind of absence.
 
 ## ⚡ Benchmarking the parser
 
