@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from chitragupta import config, ledger, ledger_upsert, passages
+from chitragupta import config, ledger, ledger_bib_fields, ledger_upsert, passages
 
 from tests.conftest import make_reference
 
@@ -210,7 +210,7 @@ class TestBibFields:
         # as a ledger change.
         a = make_reference(citekey="doe2024", fields={"author": "Doe, Jane", "journal": "J"})
         b = make_reference(citekey="doe2024", fields={"journal": "J", "author": "Doe, Jane"})
-        assert ledger_upsert._bib_fields_json(a) == ledger_upsert._bib_fields_json(b)
+        assert ledger_bib_fields.bib_fields_json(a) == ledger_bib_fields.bib_fields_json(b)
 
 
 class TestUpsertReference:
