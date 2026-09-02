@@ -179,13 +179,18 @@ def all_dossiers() -> list[Path]:
 def _corpus_rows() -> list[sqlite3.Row] | None:
     """Every ledger item, or None if there is no readable ledger.
 
-    Opened read-only and with `timeout=0`, exactly as `chitragupta.ledger`'s own
-    CLI does and for the same reason: this is an inspection, and it must
-    not take a write lock, run a migration, or block behind a sync that
-    happens to be mid-run. `chitragupta.ledger.connect()` would do all three --
+    Opened read-only, for the same reason `chitragupta.ledger`'s own CLI
+    does: this is an inspection, and it must not take a write lock or run
+    a migration. `chitragupta.ledger.connect()` would do all three --
     it mkdirs `content/`, executes the schema and runs migrations -- so
     nothing here goes through it, and `chitragupta.retrieval.search()`, which
     does, is off limits for the same reason (see `_ephemeral_index`).
+
+    `timeout=0` is deliberately *not* what that CLI now does, and the
+    difference is not an improvement here: since m-72 the CLI waits out a
+    writer's commit window, where this path still gives up on the spot
+    and returns `None`, which the caller reads as "no readable ledger"
+    rather than "a sync was committing". See issue #552.
 
     Five columns rather than one because the drift scan needs the same
     fields `chitragupta.retrieval` indexes on plus the one `bib_collections`
