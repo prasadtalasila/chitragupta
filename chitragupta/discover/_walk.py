@@ -49,7 +49,10 @@ def personalised_pagerank(graph: dict, seeds: list) -> list:
     nodes = sorted(adjacency)
     if not nodes:
         return []
-    seed_set = [seed for seed in seeds if seed in adjacency] or nodes
+    # dict.fromkeys, not a list comprehension: a duplicated seed would
+    # inflate the divisor while its node still collects one teleport
+    # share, quietly breaking the scores-sum-to-1 contract.
+    seed_set = list(dict.fromkeys(seed for seed in seeds if seed in adjacency)) or nodes
     teleport = {node: (1.0 / len(seed_set) if node in seed_set else 0.0) for node in nodes}
     rank = dict(teleport)
     for _ in range(_ITERATIONS):

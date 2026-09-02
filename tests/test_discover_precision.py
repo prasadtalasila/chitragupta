@@ -114,6 +114,15 @@ class TestPersonalisedPageRank:
         ranking = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a"])
         assert sum(score for _, score in ranking) == pytest.approx(1.0)
 
+    def test_a_duplicated_seed_changes_nothing(self):
+        """A duplicate must not inflate the teleport divisor: the walk
+        seeded ["a", "a"] is the walk seeded ["a"], and both still sum
+        to 1."""
+        once = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a"])
+        twice = _walk.personalised_pagerank(self.GRAPH_3, seeds=["a", "a"])
+        assert once == twice
+        assert sum(score for _, score in twice) == pytest.approx(1.0)
+
 
 class TestNeighbourhoodInTheView:
     def test_a_plural_resolution_carries_a_ppr_neighbourhood(
