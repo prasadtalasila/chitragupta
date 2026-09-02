@@ -1,0 +1,28 @@
+# Gold queries for `bench/topic_discovery_eval.py`: phrases you would
+# actually type, with the topics (and optionally the papers) they should
+# reach. Copy to content/topic_gold.toml and write your own -- the
+# labels must be real topic labels from `chitragupta corpus discover`,
+# and the citekeys real ledger citekeys; the benchmark scores resolution
+# against them, so an invented expectation measures nothing.
+#
+# Aim for ~40 queries covering every rung you care about: exact labels,
+# typos, paraphrases that only the semantic rung can place, and a few
+# phrases the corpus genuinely does not cover (expected to fall through
+# to search -- give those an empty topics list).
+
+[[query]]
+phrase = "digital twin"
+topics = ["digital twin"]
+
+[[query]]
+phrase = "digitl twin"          # a typo the fuzzy rung should absorb
+topics = ["digital twin"]
+
+[[query]]
+phrase = "virtual replica synchronised with a physical asset"
+topics = ["digital twin"]
+citekeys = ["kritzinger_digital_2018"]
+
+[[query]]
+phrase = "a subject this corpus does not cover"
+topics = []                      # expected to fall through to search
