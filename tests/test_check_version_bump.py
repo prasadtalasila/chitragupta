@@ -439,6 +439,79 @@ class TestTheTestsStayOffTheNetwork:
         assert check.urllib.request.urlopen.__name__ == "tripwire"
 
 
+class TestBlocksAMerge:
+    """`blocks_a_merge`: the same rules, re-run at merge time (#560).
+
+    The bug it exists for is the one this module's own docstring calls
+    the opposite of a conflict -- and the part CI structurally cannot
+    reach. `ci.yml` evaluates these rules against the merge commit
+    GitHub built at `pull_request` time; another PR can merge, or push a
+    tag, between that run and the merge. On #560 the colliding PR merged
+    and tagged 17 seconds ahead, so `main` landed on a version already
+    released against different content.
+    """
+
+    def test_it_fetches_before_it_reads_and_blocks_on_a_problem(self, check, monkeypatch, capsys):
+        """The fetch has to come *first*, and that ordering is the whole
+        fix: the rules read `origin/main` and the tags out of local git,
+        so an unfetched read looks at a snapshot from before the merge
+        or tag that causes the collision."""
+        order = []
+        monkeypatch.setattr(check.subprocess, "run", lambda *a, **k: order.append(("fetch", a[0])))
+        monkeypatch.setattr(check, "main", lambda argv: order.append(("check", argv)) or 1)
+
+        assert check.blocks_a_merge() is True
+        assert [step for step, _ in order] == ["fetch", "check"]
+        assert order[0][1][:2] == ["git", "fetch"]
+        assert "--tags" in order[0][1]
+        assert order[1][1] == ["--offline"]
+        # stderr, not stdout: merge_pr.py's stdout is the composed
+        # commit body, and a refusal is not part of that artefact.
+        captured = capsys.readouterr()
+        assert "Refusing to merge" in captured.err
+        assert "Refusing to merge" not in captured.out
+
+    def test_a_sound_bump_does_not_block_and_says_nothing_extra(self, check, monkeypatch, capsys):
+        monkeypatch.setattr(check.subprocess, "run", lambda *a, **k: None)
+        monkeypatch.setattr(check, "main", lambda argv: 0)
+
+        assert check.blocks_a_merge() is False
+        assert "Refusing" not in capsys.readouterr().err
+
+    def test_an_unreadable_base_ref_blocks_too(self, check, monkeypatch, capsys):
+        """`main()` exits 1 for a base ref it cannot read as well as for
+        a real collision, and both block. Deliberately: a merge is
+        itself a network operation, so a state where this cannot tell is
+        one where `gh pr merge` was not going to work either."""
+        monkeypatch.setattr(check.subprocess, "run", lambda *a, **k: None)
+        monkeypatch.setattr(check, "main", lambda argv: 1)
+
+        assert check.blocks_a_merge() is True
+        assert "Refusing to merge" in capsys.readouterr().err
+
+    def test_any_other_exit_code_proceeds(self, check, monkeypatch):
+        """Only 1 means "do not merge". A 2 (argparse usage) or anything
+        else is not a verdict about the version, so it must not be read
+        as one."""
+        monkeypatch.setattr(check.subprocess, "run", lambda *a, **k: None)
+        monkeypatch.setattr(check, "main", lambda argv: 2)
+        assert check.blocks_a_merge() is False
+
+    def test_a_failed_fetch_does_not_raise(self, check, monkeypatch):
+        """`check=False` on the fetch, deliberately: no network, or no
+        `origin`, must not turn a merge into a traceback."""
+        calls = []
+
+        def failing_run(*args, **kwargs):
+            calls.append(kwargs.get("check"))
+            return None
+
+        monkeypatch.setattr(check.subprocess, "run", failing_run)
+        monkeypatch.setattr(check, "main", lambda argv: 0)
+        check.blocks_a_merge()
+        assert calls == [False]
+
+
 class TestFetchJson:
     """`_fetch_json` alone, with urlopen stubbed.
 

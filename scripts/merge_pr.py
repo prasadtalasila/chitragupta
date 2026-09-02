@@ -51,6 +51,7 @@ sanctioned command is a heavier answer than the gap it closes.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
 import subprocess
 from pathlib import Path
@@ -275,6 +276,21 @@ def _merge(pr_number: int, body: str) -> None:
         )
 
 
+def _version_rules():
+    """`scripts/check_version_bump.py`, loaded by path -- the two ways
+    this file runs put different directories on `sys.path`, so no plain
+    `import` works in both. Inside a function so importing this module
+    never mutates `sys.path`: a stray entry shadowing the stdlib has
+    cost this repository once (`pdf_text.drop_stdlib_shadowing_path_entries`).
+    """
+    spec = importlib.util.spec_from_file_location(
+        "check_version_bump", REPO_ROOT / "scripts" / "check_version_bump.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def main(argv: "list[str] | None" = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python scripts/merge_pr.py",
@@ -299,6 +315,12 @@ def main(argv: "list[str] | None" = None) -> int:
             "close that issue on merge. Remove the backticks, or close it "
             "by hand afterwards."
         )
+    # Last, and immediately before the merge: the value of the check is
+    # that nothing happens between it and `gh pr merge`. `--dry-run`
+    # reports it too, since that is where a person looks first and a
+    # composed body for a merge that would be refused is misleading.
+    if _version_rules().blocks_a_merge():
+        return 1
     if args.dry_run:
         return 0
     _merge(args.pr_number, text)

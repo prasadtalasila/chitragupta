@@ -834,6 +834,62 @@ bullets at all), prints what it composed, and calls
 `--dry-run` prints the composed body without merging, for a look before
 committing to it.
 
+### 🚦 It refuses a merge that would lose the version bump
+
+Immediately before calling `gh pr merge`, and after composing the body,
+it runs `git fetch origin --tags` and then
+`scripts/check_version_bump.py --offline` -- **the same script `ci.yml`
+runs, unchanged**. If that exits 1, it prints why and **exits 1 without
+merging**. `--dry-run` reports the same verdict, since that is where a
+person looks first.
+
+**The `git fetch` is the whole of what is new**, and it is the fix. That
+script reads `origin/main` and the tag list out of local git, so without
+a fetch it compares against whatever this checkout last saw -- and the
+merge or tag that causes a collision lands *inside* the window being
+checked. Verified by deleting `v6.59.0` and the local `origin/main` ref
+and re-running: the check still refused, and the tag was back
+afterwards. No new rules were written; reusing that script is what keeps
+the merge-time check from drifting away from the pull-request-time one.
+
+**This is not a duplicate of the CI check, and step 8 above cannot
+replace it.** `ci.yml` runs that check against the merge commit GitHub
+built at `pull_request` time; another PR can merge, or push a tag,
+between that run and your merge. Two branches picking the same version
+produce a *byte-identical* `version =` line, so git merges it with no
+conflict and `mergeable_state` stays `clean` -- nothing else looks. And
+step 8's "has `main` moved?" is a check a person performs *before*
+merging, so the gap is between that check and the merge call itself.
+Measured on #560: the check passed, and #564 merged and tagged the same
+6.58.0 **17 seconds** later, so `main` landed on a version already
+released against different content and #560's work needed a follow-up
+bump (#565) to reach a release at all.
+
+Three consequences worth knowing:
+
+- **There is no `--force`.** A refusal's remedy is to bump the version,
+  which you have to do regardless, so an override would only let you
+  merge a branch you would then have to fix on `main`.
+- **Exit 1 blocks whatever caused it**, a base ref that cannot be read
+  included -- that script exits 1 for that too. Deliberately, and note
+  it is the *opposite* of the caution `check_version_bump.on_pypi`
+  needs: a merge is itself a network operation, so a state where this
+  cannot tell is one where `gh pr merge` was not going to work either,
+  and stopping costs nothing.
+- **It reads this worktree's `pyproject.toml`**, so run the command from
+  the branch being merged. That is how the cycle above already has you
+  running it, and reading the PR head's file through the API instead
+  would be a second way to ask what that script already answers.
+
+**It still does not remove the habit of checking after the merge.** The
+refusal closes the window before `gh pr merge` returns; nothing can close
+the one *after* it, so re-read `main`'s version before pushing a tag:
+
+```bash
+git fetch origin -q --tags
+git show origin/main:pyproject.toml | grep -m1 '^version'   # must be yours
+```
+
 **No `--subject`, and no `(#N)`.** `squash_merge_commit_title` is
 `PR_TITLE`, so GitHub composes the title from the PR and appends the
 number itself. Passing `--subject` takes your string verbatim instead,
@@ -1058,9 +1114,14 @@ succeeded -- not merely started:
    `scripts/check_version_bump.py` now fails CI on that, but it can only
    fail on a run that actually happened.
 9. Squash-merge the PR: `python scripts/merge_pr.py <N>` (see "Merging"
-   above).
-10. Tag `v<version>` (matching what's now in `main`'s `pyproject.toml`) and
-   push the tag.
+   above). It re-checks the version against `main` and the tags at the
+   last possible moment and refuses rather than merging a collision --
+   which is what catches the case step 8 structurally cannot, a PR that
+   merges in the seconds after your check.
+10. Tag `v<version>` -- and **read `main`'s `pyproject.toml` again first**
+   rather than trusting the number you bumped to. The merge closes the
+   window before it; nothing closes the one after it, and a tag pushed
+   on a collided version names somebody else's content.
 11. Confirm `.github/workflows/release.yml` completed and the resulting
    GitHub Release has its `chitragupta-<version>.zip` asset
    attached -- this is the actual deliverable, not the tag or the merge

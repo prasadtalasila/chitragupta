@@ -22,6 +22,7 @@ to already be in the target shape.
 
 import importlib.util
 import subprocess
+import types
 from pathlib import Path
 
 import pytest
@@ -352,10 +353,39 @@ class TestInertClosingKeywords:
         ]
 
 
+class TestVersionRules:
+    def test_it_loads_the_real_check_by_path(self, merge_pr):
+        """The rules are reused, not restated: this has to be the same
+        module `ci.yml` runs, or the merge-time check can drift from the
+        pull-request-time one. Loaded by path because the two ways
+        `merge_pr.py` runs put different directories on `sys.path`."""
+        rules = merge_pr._version_rules()
+        assert callable(rules.blocks_a_merge)
+        assert callable(rules.problems)
+        assert rules.parse("6.10.0") > rules.parse("6.9.0")  # the real module, not a stub
+
+    def test_loading_it_does_not_touch_sys_path(self, merge_pr):
+        """The reason the load is by path rather than by a `sys.path`
+        insert: a stray entry shadowing the stdlib has cost this
+        repository once already."""
+        import sys
+
+        before = list(sys.path)
+        merge_pr._version_rules()
+        assert sys.path == before
+
+
 class TestMain:
-    def _stub(self, merge_pr, monkeypatch, body, subjects, merged=None):
+    def _stub(self, merge_pr, monkeypatch, body, subjects, blocks=False):
         monkeypatch.setattr(merge_pr, "_pr_body", lambda n: body)
         monkeypatch.setattr(merge_pr, "_pr_commit_subjects", lambda n: subjects)
+        # Stubbed for every test here, not only the ones about it:
+        # unstubbed, the merge-time version check runs a real `git
+        # fetch` and reads this worktree, so a body-composition test
+        # would depend on the state of the checkout it runs in.
+        monkeypatch.setattr(
+            merge_pr, "_version_rules", lambda: types.SimpleNamespace(blocks_a_merge=lambda: blocks)
+        )
         calls = []
         monkeypatch.setattr(merge_pr, "_merge", lambda n, text: calls.append((n, text)))
         return calls
@@ -407,6 +437,40 @@ class TestMain:
         )
         merge_pr.main(["42", "--dry-run"])
         assert "will not close" not in capsys.readouterr().out
+
+    def test_a_lost_version_bump_refuses_instead_of_merging(self, merge_pr, monkeypatch, capsys):
+        """The #560 failure, at the point it is still preventable: the
+        composed body is printed, and then the merge does not happen."""
+        calls = self._stub(
+            merge_pr, monkeypatch, "## Description\n\n- Fix it.\n", ["Fix it"], blocks=True
+        )
+        assert merge_pr.main(["42"]) == 1
+        assert calls == []
+        assert "- Fix it." in capsys.readouterr().out
+
+    def test_dry_run_reports_the_same_refusal(self, merge_pr, monkeypatch):
+        """`--dry-run` is where a person looks first, so it must report
+        what a real run would do rather than a body that would not have
+        been merged."""
+        self._stub(merge_pr, monkeypatch, "## Description\n\n- Fix it.\n", ["Fix it"], blocks=True)
+        assert merge_pr.main(["42", "--dry-run"]) == 1
+
+    def test_the_check_runs_after_the_body_is_composed(self, merge_pr, monkeypatch, capsys):
+        """Ordering that matters for readability rather than
+        correctness: the body first, so a refusal is read against the
+        change it refused."""
+        order = []
+        monkeypatch.setattr(merge_pr, "_pr_body", lambda n: "## Description\n\n- Fix it.\n")
+        monkeypatch.setattr(merge_pr, "_pr_commit_subjects", lambda n: ["Fix it"])
+        monkeypatch.setattr(merge_pr, "_merge", lambda n, text: order.append("merge"))
+        monkeypatch.setattr(
+            merge_pr,
+            "_version_rules",
+            lambda: types.SimpleNamespace(blocks_a_merge=lambda: order.append("check") or False),
+        )
+        merge_pr.main(["42"])
+        assert order == ["check", "merge"]
+        assert "- Fix it." in capsys.readouterr().out
 
     def test_the_warning_does_not_stop_the_merge(self, merge_pr, monkeypatch, capsys):
         """Advisory, like every other check this project added to a

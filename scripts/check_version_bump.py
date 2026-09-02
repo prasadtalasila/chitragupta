@@ -265,5 +265,52 @@ def main(argv: "list[str] | None" = None, fetch=_fetch_json) -> int:
     return 1 if found else 0
 
 
+def blocks_a_merge() -> bool:
+    """Whether a merge must not proceed, re-checked against a freshly
+    fetched `main`. Called by `scripts/merge_pr.py` immediately before
+    `gh pr merge`.
+
+    Nothing new is checked here -- it is `main()` above, the same rules
+    `ci.yml` runs, and the `git fetch` is the whole of what this adds.
+    Those rules read `origin/main` and the tag list out of local git,
+    and the collision they catch is caused by a merge or a tag landing
+    *inside* the window between a branch's last CI run and its merge --
+    so an unfetched read looks at a snapshot from before the thing it is
+    looking for. On #560 the colliding tag was created 18 seconds before
+    the merge ran and was not in the local list.
+
+    `--offline` skips only the PyPI rule, which is not what this is for
+    and would put a network round-trip in front of every merge.
+
+    **Exit 1 blocks, whatever produced it** -- including a base ref that
+    cannot be read at all, which `main()` also exits 1 for. That is the
+    right way round here, unlike the caution `on_pypi` needs: a merge is
+    itself a network operation, so a state where this cannot tell is one
+    where `gh pr merge` was not going to work either, and stopping costs
+    nothing. Anything that is not 1 proceeds.
+
+    It reads the caller's own `pyproject.toml`, so `merge_pr.py` has to
+    be run from the branch being merged.
+
+    DEVELOPER-AGENTS.md's "Merging" section owns the rest -- why this is
+    not a duplicate of the CI run, why the cycle's step 8 cannot close
+    the window, and why there is no override.
+    """
+    subprocess.run(["git", "fetch", "origin", "--tags", "--quiet"], check=False, cwd=REPO_ROOT)
+    if main(["--offline"]) != 1:
+        return False
+    # stderr, like the `::error::` lines `main()` just emitted and
+    # unlike everything else `merge_pr.py` prints: its stdout is the
+    # composed commit body, which someone may well be piping or reading
+    # as the artefact it is, and a refusal is not part of that.
+    print(
+        "Refusing to merge: the version bump is no longer sound against "
+        "main. Raise pyproject.toml's version, push, and re-run -- there "
+        "is deliberately no override, since bumping is the fix either way.",
+        file=sys.stderr,
+    )
+    return True
+
+
 if __name__ == "__main__":
     raise SystemExit(main())
