@@ -456,7 +456,7 @@ unattended caller has.** `sync` exits 1 when this run had a parse
 failure, when a previous run left a deterministic one (not retried, so
 it stays nonzero until you deal with it), when the parse backend was
 unavailable, when the bib file yielded no references against a
-non-empty ledger -- and, since 6.56.0, **when a PDF the bib file points
+non-empty ledger -- and, since 6.57.0, **when a PDF the bib file points
 at cannot be read**, whether because it is not on disk or because this
 host cannot open it.
 
