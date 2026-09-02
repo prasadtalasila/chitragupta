@@ -127,10 +127,11 @@ binary rather than failing obscurely, and the corresponding tests
 self-skip. The citation gate, `corpus sync`, every genre skill and eight
 of the ten review aids need no OS package at all.
 
-**The tenth is `figure`, and it is the one to watch**, because it
-neither refuses nor reports a missing binary: five of its eight checks
-need `pdflatex`, so without TeX it runs and reports the other three,
-naming what it skipped. Both of the checks a reader would call the point
+**The second exception is `figure`, and it is the one to watch**,
+because unlike `verbatim` it neither refuses nor reports a missing
+binary: five of its eight checks need `pdflatex`, so without TeX it runs
+and reports the other three, naming what it skipped. Both of the checks
+a reader would call the point
 of a layout check -- node overlap and content protrusion -- are in the
 five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s own "Needs
 `pdflatex`" column for the split. A green `figure` report on a host

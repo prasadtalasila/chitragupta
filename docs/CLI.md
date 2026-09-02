@@ -640,8 +640,11 @@ nothing -- and when an `--out` file cannot be written. That last one is
 raised *after* the topic view has already printed, so it is the one
 `discover` failure where the command both answered the question and
 returned nonzero. A script driving `--out` therefore has to check the
-exit code: stdout carries the topic view either way, and the failure
-says so only on stderr and in the status.
+exit status: stdout carries the topic view either way, followed by a
+plain-text line naming the path and the OS error. On stdout rather than
+stderr, which is why `--json --out` and a failing write together produce
+a stream that is no longer valid JSON -- issue #580, not the behaviour
+to rely on.
 
 ### ✅ `chitragupta draft gate`
 
