@@ -1,7 +1,7 @@
 # ✨ Features
 
 Status: **reference.** Written 2026-08-22. Updated 2026-09-02,
-describing the pipeline as it stands at 6.58.
+describing the pipeline as it stands at 6.60.
 
 **Written for** you -- someone who writes technical documents (a
 survey, a thesis chapter, a textbook, a report) and is deciding whether
