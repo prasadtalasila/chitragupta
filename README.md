@@ -133,7 +133,7 @@ python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
 chitragupta init                      # config.toml, .claude/, papers/, content/, prose docs
 chitragupta install os-deps           # TeX Live, Pandoc, poppler. Debian/Ubuntu, needs root
-pip install chitragupta-cli[enrich]   # optional, several GB -- only step 4 uses it
+pip install 'chitragupta-cli[enrich]'   # optional, several GB -- only step 4 uses it
 ```
 
 ```bash

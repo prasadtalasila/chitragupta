@@ -12,13 +12,15 @@
 #                every host needs regardless of which OS packages are
 #                present. Poetry is a dependency/lockfile manager here,
 #                for a checkout, Docker and CI -- `pip install
-#                chitragupta-cli[enrich]` is the equivalent for someone
+#                'chitragupta-cli[enrich]'` is the equivalent for someone
 #                who installed the package rather than cloned it (#265;
 #                `chitragupta install` refuses this stage by name and
 #                prints that command, rather than running it a second way).
 #   os-deps      -- apt-get the system packages the full pipeline needs
 #                (TeX Live, Pandoc, poppler-utils, Poetry itself,
-#                git/curl/unzip, and OpenCV's runtime libraries). Needs
+#                git/curl/unzip, OpenCV's runtime libraries, and
+#                python-is-python3 -- the name `python`, which the
+#                Claude Code hooks are launched by). Needs
 #                root; auto-sudo's if not already root. Opt-in -- not
 #                everyone wants this script touching apt. Also reachable
 #                as `chitragupta install os-deps` (#265), unmodified.
@@ -82,34 +84,73 @@ sudo_if_needed() {
     fi
 }
 
+# Can this release actually install PKG? Two callers in install_os_deps
+# need it -- the GLib 64-bit-time_t rename picks between two names, and
+# python-is-python3 is dropped entirely where it does not exist -- and
+# both exist because `apt-get install` takes no alternatives on the
+# command line: one absent name fails the whole stage, TeX Live and
+# Pandoc with it.
+#
+# `policy` rather than `show`: after a rename the old name survives in the
+# index as a record with no installation candidate, so `show` succeeds on
+# a name `install` then refuses. The candidate line is the thing that
+# actually answers "can this be installed here" -- measured on Debian 13,
+# where libglib2.0-0 reports "Candidate: (none)" and libglib2.0-0t64
+# reports a version.
+#
+# Captured into a variable rather than piped into grep, because this
+# script runs under `set -o pipefail` and `grep -q` exits at its first
+# match: apt-cache then takes SIGPIPE, the pipeline reports failure, and
+# the caller's fallback fires on the release where the probe just
+# *succeeded*. Caught by testing the branch rather than by reading it --
+# it selects the wrong name every time.
+apt_has_candidate() {
+    local policy
+    policy="$(apt-cache policy "$1" 2>/dev/null || true)"
+    case "$policy" in
+        ""|*"Candidate: (none)"*) return 1 ;;
+    esac
+    return 0
+}
+
 install_os_deps() {
-    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry) ..."
+    echo "Installing OS packages (TeX Live, Pandoc, poppler-utils, OpenCV runtime, Poetry,"
+    echo "the python-is-python3 launcher name) ..."
     sudo_if_needed apt-get update
     # GLib's package was renamed in the 64-bit-time_t transition
     # (libglib2.0-0 -> libglib2.0-0t64 in Ubuntu 24.04 / Debian 13), and
     # apt-get takes no alternatives on the command line -- so pick
     # whichever name this release actually has rather than hardcoding one
     # and breaking every host on the other side of the rename.
-    # `policy` rather than `show`: after the rename the old name survives
-    # in the index as a record with no installation candidate, so `show`
-    # succeeds on a name `install` then refuses. The candidate line is
-    # the thing that actually answers "can this be installed here" --
-    # measured on Debian 13, where libglib2.0-0 reports
-    # "Candidate: (none)" and libglib2.0-0t64 reports a version.
-    #
-    # Captured into a variable rather than piped into grep, because this
-    # script runs under `set -o pipefail` and `grep -q` exits at its
-    # first match: apt-cache then takes SIGPIPE, the pipeline reports
-    # failure, and the fallback fires on the release where the probe
-    # just *succeeded*. Caught by testing the branch rather than by
-    # reading it -- it selects the wrong name every time.
     glib_pkg="libglib2.0-0t64"
-    glib_policy="$(apt-cache policy "$glib_pkg" 2>/dev/null || true)"
-    case "$glib_policy" in
-        ""|*"Candidate: (none)"*) glib_pkg="libglib2.0-0" ;;
-    esac
+    apt_has_candidate "$glib_pkg" || glib_pkg="libglib2.0-0"
+    # `python-is-python3` is what puts the *name* `python` on PATH. It is
+    # here rather than in a doc because nothing else can put it there:
+    # `.claude/settings.json` launches every hook this repository
+    # registers as `python` (docs/HOOKS.md records why that name and not
+    # `python3` -- a venv guarantees `python` on every platform and
+    # `python3` only on POSIX), and on Debian and Ubuntu that name does
+    # not exist outside an activated venv. A launcher that does not
+    # resolve produces *nothing at all* -- no error, no log line, measured
+    # on 2026-08-15 and recorded in chitragupta/hook_launchers.py -- so the
+    # citation gate stops running while settings.json still lists it and
+    # every test still passes. Drafts then land ungated, which is the one
+    # failure CLAUDE.md's binding rule exists to prevent.
+    #
+    # Probed rather than named outright, for the reason apt_has_candidate
+    # states: a release that does not carry this package would otherwise
+    # fail the whole stage -- TeX Live and Pandoc included -- over one
+    # convenience symlink. Emptied rather than left set, so the expansion
+    # below contributes no argument at all on such a host.
+    launcher_pkg="python-is-python3"
+    if ! apt_has_candidate "$launcher_pkg"; then
+        echo "Note: $launcher_pkg is unavailable on this release -- skipping." >&2
+        echo "If \`python\` is not on your PATH, Claude Code's hooks cannot" >&2
+        echo "start (docs/HOOKS.md); symlink it to python3 by hand." >&2
+        launcher_pkg=""
+    fi
     sudo_if_needed apt-get install -y --no-install-recommends \
-        python3 python3-venv python3-pip \
+        python3 python3-venv python3-pip ${launcher_pkg:+"$launcher_pkg"} \
         python3-poetry \
         poppler-utils \
         git curl ca-certificates unzip zip \
@@ -369,6 +410,90 @@ resolve_venv_dir() {
     export VIRTUAL_ENV="$VENV_DIR"
 }
 
+# Can the *harness's* hook launchers start on this host? Not a question
+# about the venv this script just built -- `.claude/settings.json` names
+# `python`, and Claude Code starts it from the shell the user launched the
+# session in, not from here.
+#
+# `os-deps` above installs the package that fixes the Debian case, but it
+# needs apt and root and is opt-in, so a host that ran `python-deps` alone
+# still has the fault and -- because a dead launcher is silent -- no way
+# to find out. That asymmetry is why this report exists at all: it is the
+# half that reaches every host.
+#
+# The check is chitragupta/hook_launchers.py's own `faults()`, called rather
+# than reimplemented in shell. It already answers both halves of the
+# question (is the name on PATH, and can that interpreter import the
+# package), it is standard-library-only and imports no other chitragupta
+# module, and a second copy here would be a second place for the answer to
+# drift -- the invariant DEVELOPER-AGENTS.md states for this script
+# generally. The settings path is passed explicitly rather than left to
+# that module's own cwd walk, because this script may be run from
+# anywhere.
+#
+# Run through the venv's interpreter, which is the one that can import the
+# package; what it *measures* is this script's own un-activated PATH,
+# which is the closest thing available to the harness's view.
+report_launcher_faults() {
+    local python_bin="$1"
+    local faults fault
+    # `|| true` and a discarded stderr: this is a courtesy report at the
+    # end of a *successful* install. A probe that itself fails -- an
+    # interpreter too old, a settings file mid-edit -- must not turn a
+    # working venv into a failed run, which `set -e` would otherwise do.
+    # Spelled as `if !` rather than `... || true`, which is what this was:
+    # rule SC2015 rejects `A && B || C`, because C also runs when A
+    # succeeds and B fails, and CI holds this file at a zero-findings bar.
+    # The explicit form says the intended thing anyway -- a probe that
+    # cannot run reports nothing and the install still succeeds.
+    #
+    # (Note for whoever edits this comment: a line whose first word after
+    # `#` is the linter's own name parses as a *directive*, not a comment,
+    # and fails the file with SC1073. Hence the circumlocution above.)
+    #
+    # `cd "$REPO_ROOT"` is load-bearing twice over, and both halves were
+    # found by running this rather than reading it. `python -` takes its
+    # script on stdin and puts the *current directory* on `sys.path`, and
+    # `poetry install` above does not put this package into the venv's
+    # site-packages -- so from any other directory the import below fails,
+    # `|| true` swallows it, and the report silently finds nothing. That
+    # is the exact failure mode this function exists to warn about, which
+    # would have made it a courtesy that never fires. It also fixes what
+    # the *child* probe sees: `faults()` spawns `<launcher> -c "import
+    # chitragupta"`, which inherits this directory, so in a checkout the
+    # bare interpreter resolves the package the same way tier 1 does
+    # (docs/CLI.md) instead of reporting a fault a real hook would not hit.
+    # `-c` with a quoted variable rather than a here-document. The
+    # heredoc-inside-`$( )` form this started as parses under `bash -n`
+    # and then fails at *run* time ("syntax error near unexpected token
+    # `||'"), because bash defers parsing a command substitution's body --
+    # so the syntax check every other line here is covered by does not
+    # cover that one. Found by running the function, not by reading it.
+    local probe='import sys
+from pathlib import Path
+
+from chitragupta import hook_launchers
+
+sys.stdout.write("\n".join(hook_launchers.faults(Path(sys.argv[1]))))'
+    if ! faults="$(cd "$REPO_ROOT" \
+        && "$python_bin" -c "$probe" "$REPO_ROOT/.claude/settings.json" 2>/dev/null)"; then
+        return 0
+    fi
+    [[ -n "$faults" ]] || return 0
+    echo >&2
+    echo "Warning: Claude Code's hooks cannot start on this host as launched:" >&2
+    # Read line by line rather than `printf '  - %s\n' "$faults"`: a
+    # multi-line variable is still *one* argument, so that form bullets
+    # the first fault and leaves the rest flush left, which reads as one
+    # long sentence instead of a list. `faults()` can return two.
+    while IFS= read -r fault; do
+        echo "  - $fault" >&2
+    done <<< "$faults"
+    echo "The install itself succeeded. This is about the shell you start" >&2
+    echo "Claude Code from -- see docs/HOOKS.md. The citation gate is one of" >&2
+    echo "those hooks, and a launcher that does not resolve fails silently." >&2
+}
+
 install_python_deps() {
     check_poetry
     resolve_venv_dir
@@ -392,6 +517,8 @@ install_python_deps() {
     echo "Installed. Run pipeline scripts via:"
     echo "  $bin_dir/python -m chitragupta.corpus sync"
     echo "  $bin_dir/python -m chitragupta.enrich"
+
+    report_launcher_faults "$bin_dir/python"
 }
 
 # pip's default torch wheel is built against whatever CUDA major version

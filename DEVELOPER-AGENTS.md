@@ -181,14 +181,14 @@ doors** onto it (#265) -- `install_full_pipeline.sh` for those three, and
 reaching the *same script's* `os-deps` stage and the *same*
 `ensure_gpu_torch` function rather than a reimplementation of either.
 `chitragupta install python-deps|dev-deps|all` refuse by name instead,
-each naming the `pip install chitragupta-cli[...]` extra that already
+each naming the `pip install 'chitragupta-cli[...]'` extra that already
 replaces it (below) -- accepting them would run something with a
 different meaning than the argument implies, which is worse than
 refusing. Two front doors, one source of truth, still no second place to
 write a version down.
 
 **Extras mirror the three optional Poetry groups below**, so `pip
-install chitragupta-cli[enrich]` resolves the same versions `poetry
+install 'chitragupta-cli[enrich]'` resolves the same versions `poetry
 install --with enrich` does. The two declarations are unrelated Poetry
 mechanisms that happen to need the same facts -- a group dependency never
 reaches a built wheel's metadata, so an extra needs its own, duplicate
@@ -196,7 +196,7 @@ entry under `[tool.poetry.dependencies]` (`optional = true`) -- and
 `tests/test_pyproject_extras.py` is what keeps the two from drifting
 apart silently. The one thing pip cannot do that `poetry install
 --with enrich` does: match torch to this host's GPU driver
-(`ensure_gpu_torch`, above) -- `pip install chitragupta-cli[enrich]` on a
+(`ensure_gpu_torch`, above) -- `pip install 'chitragupta-cli[enrich]'` on a
 CUDA host still lands a CPU-only wheel, silently, exactly as a bare
 `pip install torch` would. `chitragupta doctor` detects that mismatch and
 names `chitragupta install gpu-torch` as the fix; nothing makes it

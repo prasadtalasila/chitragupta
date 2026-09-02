@@ -46,7 +46,7 @@ class TestCheckEnrichExtra:
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: None)
         result = doctor._check_enrich_extra()
         assert "[missing]" in result
-        assert "chitragupta-cli[enrich]" in result
+        assert "'chitragupta-cli[enrich]'" in result
         assert "incomplete" not in result
 
     def test_a_partial_install_is_reported_and_names_what_is_missing(self, monkeypatch):

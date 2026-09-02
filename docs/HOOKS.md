@@ -421,6 +421,17 @@ The launcher does not have to be the venv's interpreter, which is what
 makes the choice this narrow: the gate is [tier 1](CLI.md#-which-interpreter)
 and runs under a bare interpreter with no venv, measured.
 
+**The losing host is now also a fixed host.** `install_full_pipeline.sh`'s
+`os-deps` stage installs `python-is-python3`, which is what actually puts
+the name `python` on `PATH` on a Debian-family machine -- so the case this
+paragraph accepts as a tolerable loss is one the documented install no
+longer leaves behind. `os-deps` needs apt and root and is opt-in, so
+`python-deps` additionally *reports* what
+`chitragupta/hook_launchers.py` finds when it finishes, rather than
+leaving a host that skipped `os-deps` with a silent fault and no way to
+hear about it. [WINDOWS.md](WINDOWS.md) has the other platform's version
+of the same question.
+
 **A dead launcher is silent, so something else has to say so.** A hook
 whose `command` does not resolve produces nothing at all -- no error to the
 model, nothing in a log (see [the trials](#-what-is-measured-and-what-is-merely-documented)).

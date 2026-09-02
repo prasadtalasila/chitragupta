@@ -1751,7 +1751,7 @@ class TestDoclingNotInstalledIsSkippedNotPartial:
         assert len(set(status.values())) == 1
         reason = status["a2024"]
         assert reason.startswith("skipped:")
-        assert "pip install chitragupta-cli[enrich]" in reason
+        assert "pip install 'chitragupta-cli[enrich]'" in reason
 
     def test_the_stage_reports_skipped_and_surfaces_the_install_step(
         self, isolated_config, tmp_path, monkeypatch
@@ -1769,4 +1769,4 @@ class TestDoclingNotInstalledIsSkippedNotPartial:
             [CorpusDoc(citekey="a2024", title="A", pdf_path=str(pdf))], None
         )
         assert result["status"] == "skipped"
-        assert "pip install chitragupta-cli[enrich]" in result["detail"]
+        assert "pip install 'chitragupta-cli[enrich]'" in result["detail"]

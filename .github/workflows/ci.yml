@@ -340,6 +340,64 @@ jobs:
           export VIRTUAL_ENV="$PWD/.venv-full"
           poetry check
 
+  # Can the hooks this repository registers actually start? The gate
+  # class has exactly one member -- `citation_gate_hook.py`, the only
+  # automatic enforcement of CLAUDE.md's binding rule -- and its failure
+  # mode is silence: a launcher whose `command` does not resolve produces
+  # no error and no log line, so settings.json still lists the gate, the
+  # suite still passes, and drafts land ungated (docs/HOOKS.md).
+  #
+  # Its own job, and deliberately not a step in `test`: this must be able
+  # to answer on a host that installed *nothing*. `chitragupta/hook_launchers.py`
+  # is standard-library-only and imports no other chitragupta module by
+  # design, and `chitragupta/__init__.py` is empty -- so this needs no
+  # venv, no poetry, no `os-deps` and no config.toml, and finishes in
+  # seconds rather than paying for the ~6GB install the test matrix
+  # needs. Folding it into `test` would make the cheapest check in the
+  # repository the slowest.
+  #
+  # Both platforms, unlike `lint`: this checks behaviour on a host rather
+  # than the source, and the two halves it can catch are platform-split.
+  # A missing interpreter name is the Debian-family case
+  # (`python-is-python3`, which `scripts/install_full_pipeline.sh`'s
+  # os-deps stage installs); an unbraced `$CLAUDE_PROJECT_DIR` is the
+  # Windows one, where the shell is PowerShell without Git Bash and that
+  # syntax expands to nothing.
+  launchers:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # No `actions/setup-python`, on purpose. That step prepends a
+      # tool-cache interpreter to PATH under both names, which would
+      # manufacture the very `python` whose presence is the question --
+      # a green run that proves nothing about a real host. The probe
+      # interpreter is therefore whichever of the two the runner image
+      # already ships; what it *measures* is the name settings.json
+      # names, resolved by `faults()` against this PATH.
+      - name: Report any registered hook launcher that cannot start
+        shell: bash
+        run: |
+          py=python3
+          command -v "$py" >/dev/null 2>&1 || py=python
+          # One logical line, and it has to be. A readable indented
+          # block is not available here: a `run: |` scalar ends the
+          # moment a line's indentation drops below the block's, so
+          # flush-left Python breaks the *YAML*, while Python indented to
+          # match the YAML reaches the interpreter with a leading indent
+          # and dies on IndentationError. Hence statements separated by
+          # `;` and no compound block -- `.claude/hooks/` is where
+          # readable versions of this kind of code live.
+          #
+          # `-c` puts the current directory on sys.path, and the checkout
+          # is the current directory, so `chitragupta` imports with
+          # nothing installed.
+          "$py" -c "import sys; from pathlib import Path; from chitragupta import hook_launchers; faults = hook_launchers.faults(Path('.claude/settings.json')); print('\n'.join('::error::' + f for f in faults)); sys.exit(1 if faults else 0)"
+
   # Both linters at a binary zero-messages bar, never a fail-under score:
   # AUTO-IMPROVEMENT.md's R3 rules out driving a number, and a score can
   # improve while the thing you cared about gets worse. They ride in one

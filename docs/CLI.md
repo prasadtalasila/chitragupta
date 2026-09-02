@@ -54,6 +54,12 @@ short path; this is the full set.
 
 ## 🔧 Installing
 
+**On Windows or WSL2, read [WINDOWS.md](WINDOWS.md) first.** Both work,
+and CI runs a blocking `windows-latest` leg -- but native Windows needs
+a POSIX shell for the command below and installs three OS binaries by
+hand, and WSL2 has one filesystem-layout trap worth knowing before you
+clone. Everything else on this page applies unchanged.
+
 Two paths, both landing in a venv named `.venv-full`, and everything
 below this section is identical either way:
 
@@ -103,15 +109,15 @@ argument implies; run these directly instead of the refused stage, once
 
 ```bash
 # chitragupta install python-deps refuses, naming this:
-pip install chitragupta-cli[enrich]   # tier 3 -- chitragupta enrich (docling, embeddings, topic clustering)
+pip install 'chitragupta-cli[enrich]'   # tier 3 -- chitragupta enrich (docling, embeddings, topic clustering)
 
 # chitragupta install dev-deps refuses, naming this. There is no
 # pip-installed equivalent of tests/ to run pytest against, though --
 # only a checkout ships the test suite itself, so this extra is not
 # useful outside one.
-pip install chitragupta-cli[dev]
+pip install 'chitragupta-cli[dev]'
 
-# chitragupta install all refuses, naming pip install chitragupta-cli[enrich]
+# chitragupta install all refuses, naming pip install 'chitragupta-cli[enrich]'
 # (above) plus this, run separately -- os-deps is the one stage that
 # actually runs (Debian/Ubuntu + root; `chitragupta doctor` reports what
 # it's missing on any other host):
@@ -166,7 +172,7 @@ console script included, and `chitragupta/hook_launchers.py` is what
 checks that it still can (#264). So: a bare `pip install chitragupta-cli`
 covers tiers 1 and 2 (`bibtexparser` is a main, non-optional dependency
 -- `chitragupta corpus sync` needs nothing extra); only tier 3
-(`chitragupta enrich`) needs `pip install chitragupta-cli[enrich]`, the
+(`chitragupta enrich`) needs `pip install 'chitragupta-cli[enrich]'`, the
 same as `python-deps` needing the enrich group from a checkout.
 `chitragupta doctor` reports which you have. Use whichever form you like
 by hand, but don't change what a hook or a skill invokes.
@@ -405,7 +411,7 @@ package now ships as a runnable command instead.
 | Old (git checkout) | New (`pip install chitragupta-cli`) |
 | --- | --- |
 | `cp config.toml.example config.toml`, then create `.claude/`, `papers/`, `content/` by hand or by cloning | `chitragupta init DIR` -- writes all of it at once (#263) |
-| `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install chitragupta-cli[enrich]` |
+| `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install 'chitragupta-cli[enrich]'` |
 | `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way (#265) |
 | `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
 | Checking pandoc/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
@@ -2443,9 +2449,9 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[enrich]` (#265) |
-| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, and OpenCV's runtime libraries -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
-| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install chitragupta-cli[dev]` |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[enrich]'` (#265) |
+| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries, and `python-is-python3` -- which is what puts the name `python` on `PATH`, the name every Claude Code hook is launched by ([HOOKS.md](HOOKS.md#-the-launcher-contract)) -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
+| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[dev]'` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all` -- it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
 | `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON` rather than this script's own venv -- what `chitragupta install gpu-torch` (#265) reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
 | `vale` | Installs Vale alone, without the TeX Live and poppler `os-deps` also brings -- what CI's `lint` job and a bare `python-deps` run (which needs no `poetry`) both want |
