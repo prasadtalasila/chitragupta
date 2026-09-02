@@ -16,9 +16,14 @@ import types
 
 import pytest
 
-from chitragupta import config
+from chitragupta import chroma_paging, config
 from chitragupta.enrich import _rerank, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
+
+
+# SQLite's SQLITE_MAX_VARIABLE_NUMBER on 3.32+, and so the ceiling on
+# how many rows one Chroma `get` may return -- see FakeCollection.get.
+SQLITE_VARIABLE_LIMIT = 32766
 
 
 class FakeArray(list):
@@ -41,7 +46,19 @@ class FakeSentenceTransformer:
 class FakeCollection:
     """Models enough of a real chromadb.Collection's get/upsert/delete
     persistence semantics for build_index()'s incremental skip logic to
-    exercise for real, not just record calls."""
+    exercise for real, not just record calls.
+
+    Including the one limit that only shows up on a real corpus (#581):
+    Chroma's SQLite backend resolves a `get` by re-fetching the matching
+    rows with an `IN (?, ?, ...)` list, one bound variable per *returned*
+    row, so a `get` whose result set passes SQLITE_VARIABLE_LIMIT is
+    rejected by SQLite rather than truncated. Measured against the real
+    chromadb 1.5.9 / SQLite 3.46.1 before being modelled here: 32766 rows
+    come back, 32767 raise `chromadb.errors.InternalError: ... too many
+    SQL variables`. The message is reproduced; the exception type is not,
+    because importing chromadb's real error class here would defeat the
+    point of a fake, and nothing in the shipped code catches it.
+    """
 
     def __init__(self):
         self.upserted = []
@@ -61,11 +78,19 @@ class FakeCollection:
         for i, doc, emb, meta in zip(ids, documents, embeddings, metadatas):
             self._store[i] = {"document": doc, "embedding": emb, "metadata": meta}
 
-    def get(self, where=None, include=None):
+    def get(self, where=None, include=None, limit=None, offset=None):
         items = list(self._store.items())
         if where:
             key, value = next(iter(where.items()))
             items = [(i, v) for i, v in items if v["metadata"].get(key) == value]
+        items = items[offset or 0 :]
+        if limit is not None:
+            items = items[:limit]
+        if len(items) > SQLITE_VARIABLE_LIMIT:
+            raise RuntimeError(
+                "Error executing plan: Internal error: error returned from "
+                "database: (code: 1) too many SQL variables"
+            )
         return {
             "ids": [i for i, _ in items],
             "documents": [v["document"] for _, v in items],
@@ -429,6 +454,70 @@ class TestBuildIndexPrunesDepartedCitekeys:
         embed_index.build_index([])
 
         assert len(collection.get(where={"citekey": "a2024"})["ids"]) == 1
+
+
+class TestBuildIndexPrunesPastTheSqliteVariableLimit:
+    """#581: the prune above read the whole collection in one `get`, and
+    Chroma's SQLite backend cannot return more than
+    `SQLITE_VARIABLE_LIMIT` rows from one call -- so every `corpus
+    enrich` run on a corpus past that size died at the prune, after all
+    the embedding work was already done.
+
+    Note where the failure sat: on the *read*, before a single orphan had
+    been identified, which is why the run that reported it failed
+    identically with zero departed citekeys to remove. The delete is not
+    the problem -- the real chromadb 1.5.9 takes 41050 ids in one
+    `delete` call without complaint -- so a test that only counted
+    deletions would have gone green on the unfixed code.
+    """
+
+    def make_doc(self, tmp_path, text, citekey="a2024"):
+        parsed = tmp_path / f"{citekey}.txt"
+        parsed.write_text(text)
+        return CorpusDoc(citekey=citekey, title="A", pdf_path=None, text_path=str(parsed))
+
+    def seed_departed_chunks(self, collection, count):
+        """`count` chunks of a citekey no corpus will claim, written
+        straight into the collection rather than embedded: this test
+        needs a collection larger than the variable limit, and reaching
+        that through build_index() would mean chunking 32767 chunks of
+        real text for a size check."""
+        collection.upsert(
+            ids=[f"departed_2024::{i}" for i in range(count)],
+            documents=["word" for _ in range(count)],
+            embeddings=[[1.0] for _ in range(count)],
+            metadatas=[{"citekey": "departed_2024", "title": "D"} for _ in range(count)],
+        )
+
+    def test_a_collection_past_the_limit_is_still_read_and_pruned(
+        self, isolated_config, fake_enrich_deps, tmp_path
+    ):
+        staying = self.make_doc(tmp_path, "word " * 10, citekey="staying_2024")
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        self.seed_departed_chunks(collection, SQLITE_VARIABLE_LIMIT + 1)
+
+        embed_index.build_index([staying])
+
+        assert collection.get(where={"citekey": "departed_2024"}, limit=1)["ids"] == []
+        assert len(collection.get(where={"citekey": "staying_2024"})["ids"]) == 1
+
+    def test_a_chunk_past_the_first_page_is_not_missed(
+        self, isolated_config, fake_enrich_deps, tmp_path, monkeypatch
+    ):
+        """The page size is what decides which orphans are seen, so it is
+        tested at a size the test controls rather than only at the real
+        one -- a paging loop that stopped after its first page would pass
+        the test above only because 32767 happens to exceed one page."""
+        monkeypatch.setattr(chroma_paging, "PAGE_SIZE", 2)
+        staying = self.make_doc(tmp_path, "word " * 10, citekey="staying_2024")
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        self.seed_departed_chunks(collection, 5)
+
+        embed_index.build_index([staying])
+
+        assert collection.get(where={"citekey": "departed_2024"})["ids"] == []
 
 
 class TestBuildIndexRefreshesStaleTitle:

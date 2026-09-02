@@ -3029,12 +3029,17 @@ def tier3(monkeypatch, ledger_con):
             def query(self, query_embeddings, n_results, where):
                 return {"metadatas": [[]], "distances": [[]]}
 
-            def get(self, where, include=None):
+            def get(self, where, include=None, limit=None, offset=None):
                 # Every cited citekey is "embedded" by default -- a test
                 # that wants #499's stale-collection reason opts in with
                 # `missing`, so every other test here stays a clean run.
+                #
+                # One page holds all of it, so `offset` past the first
+                # call returns the empty page that ends
+                # `chroma_paging.all_rows`'s loop (#581).
                 wanted = where["citekey"]["$in"]
-                return {"metadatas": [{"citekey": k} for k in wanted if k not in missing]}
+                rows = [{"citekey": k} for k in wanted if k not in missing][offset or 0 :]
+                return {"ids": [f"row{i}" for i in range(len(rows))], "metadatas": rows}
 
         scope = overlap_embed.Scope(
             sections if sections is not None else {"Section": ["source_2024"]},

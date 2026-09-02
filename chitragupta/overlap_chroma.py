@@ -33,7 +33,7 @@ Three things live here:
 
 from typing import Any
 
-from chitragupta import config
+from chitragupta import chroma_paging, config
 
 
 def optional_stack() -> tuple[Any, Any] | None:
@@ -223,6 +223,13 @@ def absent_citekeys(collection, citekeys) -> set[str]:
     # iteration order is not insertion order and is not stable across
     # runs, and a query built from it would make `collection.gets` and
     # any log of what was asked for order-dependent for no reason.
-    hits = collection.get(where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"])
+    # Paged, though the `$in` list is one entry per cited source and so is
+    # never long: what SQLite counts is the rows coming *back*, which is
+    # every chunk those sources own, and a draft citing enough of a
+    # well-chunked corpus reaches the limit on a query that looks small
+    # (#581, and see chitragupta/chroma_paging.py).
+    hits = chroma_paging.all_rows(
+        collection, where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"]
+    )
     present = {m.get("citekey") for m in hits["metadatas"]}
     return set(citekeys) - present
