@@ -336,21 +336,43 @@ passes on good input proves nothing. Feed it the real pre-fix artefact
 -- the actual `docs.yml` block, the actual malformed row -- and confirm
 the test is red before the fix, or the guard's whole value is untested.
 
-### 🧷 Baseline the suite before you edit
+### 🧷 Finish the checkout, then baseline the suite
 
-Run the full suite once in a fresh checkout or worktree and **write the
-counts down before touching anything.** A worktree carries no
-`config.toml` -- it is gitignored, so it is per-checkout -- and roughly
-17 tests fail on that alone, with a few more if the version on the
-branch has already been released. That number is a property of the
-checkout, not of your change.
+**A `git worktree` is a fresh checkout, and needs the same one-line
+setup a fresh clone does:**
 
-From then on, "did I break something?" is answered by diffing pass and
-fail counts against that record, and by name where the counts moved --
-never by reading raw red, which on this repository always contains
-failures you did not cause. The same holds for a lint finding your
-commit did not make true: name it in the PR rather than fixing it here
-(the surgical-changes rule above, and step 4 of the shipping cycle).
+```bash
+cp config.toml.example config.toml   # gitignored per-host data; a
+                                     # checkout of any kind never has it
+```
+
+`config.toml` is deliberately not in git, and `chitragupta/config.py`
+refuses to import without it rather than falling back silently, so its
+absence fails tests that have nothing to do with configuration --
+`.claude/hooks/`'s launchers, the CSL resolver, the citation-gate hook.
+`.github/workflows/ci.yml` runs exactly this `cp` in both the `test` and
+the `build` job for that reason, and the session-start hook tells a new
+clone to. Nobody had told a *worktree*, and the cost of not knowing was
+16 of the 17 failures that a whole release run then carried as a
+constant: **17 failed / 4490 passed without the file, 1 failed / 4503
+passed with it**, measured on `origin/main` at 6.53.46.
+
+**Then baseline what is left, and write the counts down before touching
+anything.** After that `cp`, a red test is nearly always yours -- but
+not always: the residue is toolchain, not configuration. On a host with
+no `os-deps` installed, `pdftotext` is absent and
+`tests/test_sync.py`'s forkserver case fails in *every* checkout,
+including the one you would have called clean, and the render and PDF
+tests self-skip (which is why a local run wants
+`--cov-fail-under=0`; see the coverage note below). A version already
+released moves the count again.
+
+So "did I break something?" is answered by diffing pass and fail counts
+against that record, and by name where they moved -- not by reading raw
+red, and not by assuming the residue is zero. The same holds for a lint
+finding your commit did not make true: name it in the PR rather than
+fixing it here (the surgical-changes rule above, and step 4 of the
+shipping cycle).
 
 Run it from the venv whose pin matches `pyproject.toml` -- the
 `.venv-full/bin/python` the command below already names. A second venv
