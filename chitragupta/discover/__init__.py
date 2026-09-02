@@ -18,6 +18,7 @@ views in `_render`, the overview file in `_overview`.
 
 import argparse
 import json as json_module
+import sys
 
 from chitragupta import retrieval
 from chitragupta.discover import _data, _overview, _page, _render, _resolve, _walk
@@ -88,7 +89,16 @@ def _topic_view(args, resolution, graph, topic_set, terms) -> int:
             # The view above already printed; only the file write failed,
             # and "exit 1 naming the path" beats a traceback that buries
             # the topic view the user asked for.
-            print(f"Could not write the overview to {args.out}: {failure}")
+            #
+            # On stderr unconditionally, and that is the difference from
+            # review's print_written, whose stream= is conditional on
+            # --json: "wrote X" is legitimate human output when the run
+            # is not emitting a payload, so it belongs on stdout there.
+            # A failure line is never part of the payload in either mode,
+            # and under --json _emit has already written the JSON document
+            # to stdout by the time this runs -- so prose on that stream
+            # hands the caller a parse error about a *file write*.
+            print(f"Could not write the overview to {args.out}: {failure}", file=sys.stderr)
             return 1
     return 0
 
