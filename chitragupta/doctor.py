@@ -72,6 +72,7 @@ ENRICH_MODULES = (
     "bertopic",
     "docling",
     "adapters",
+    "scipy",
 )
 
 
