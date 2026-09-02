@@ -9,12 +9,20 @@ alignment itself is exercised with a fake embedder that returns a
 hand-written matrix -- no model, no vectors, no numpy."""
 
 import json
+import sqlite3
 import sys
 import types
 
 import pytest
 
-from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_segments
+from chitragupta import (
+    config,
+    ledger,
+    overlap_chroma,
+    overlap_embed,
+    overlap_embed_scope,
+    overlap_segments,
+)
 from tests.conftest import make_reference
 
 
@@ -382,7 +390,10 @@ class TestOpenScope:
         assert scope is None
         assert "python -m chitragupta.enrich" in reason
 
-    def test_everything_present_opens_a_scope(self, isolated_config, monkeypatch):
+    def test_everything_present_opens_a_scope(self, isolated_config, ledger_con, monkeypatch):
+        """`ledger_con` is a fixture request, not decoration: since
+        #516/m-79 this tier connects **read-only**, so a ledger that does
+        not exist is a reason rather than something it creates."""
         draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
         collection = FakeCollection()
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
@@ -391,7 +402,64 @@ class TestOpenScope:
         assert reason is None
         assert scope.citekeys_by_section == {"T": ["smith_2024"]}
         assert scope.collection is collection
-        scope.connection.close()
+        scope.close()
+
+    def test_an_absent_ledger_is_a_reason_not_a_ledger_this_tier_creates(
+        self, isolated_config, monkeypatch
+    ):
+        """m-79 (#516). `ledger.connect()` runs the schema, the migrations
+        and a commit -- a *writer*, opened inside a review aid whose whole
+        contract is that it never takes the write lock. On a fresh
+        checkout it created the ledger it was supposed to be reading."""
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
+        monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
+        monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
+        assert not config.LEDGER_PATH.exists()
+
+        scope, reason = overlap_embed.open_scope(draft)
+
+        assert scope is None
+        assert "corpus sync" in reason
+        assert not config.LEDGER_PATH.exists()
+
+    def test_the_connection_this_tier_opens_cannot_write(
+        self, isolated_config, ledger_con, monkeypatch
+    ):
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
+        monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
+        monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
+        scope, _reason = overlap_embed.open_scope(draft)
+        try:
+            with pytest.raises(sqlite3.OperationalError, match="readonly"):
+                scope.connection.execute("DELETE FROM items")
+        finally:
+            scope.close()
+
+    def test_unavailable_reason_does_not_leak_the_scope_it_opened(
+        self, isolated_config, ledger_con, monkeypatch
+    ):
+        """It opens a scope purely to read the *reason* and used to drop
+        the rest on the floor -- one connection per call, and it is called
+        once per draft per report."""
+        draft = write_draft(config, "# T\n\nprose\n", dossier_rows=[("T", "`smith_2024`")])
+        monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
+        monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
+        opened = []
+        real = overlap_embed_scope._ledger_connect_ro
+
+        def tracked():
+            con = real()
+            opened.append(con)
+            return con
+
+        # Patched on `overlap_embed_scope`, not on `overlap_embed`: the
+        # name is bound at import there, and `overlap_embed` only
+        # re-exports the three public names around it.
+        monkeypatch.setattr(overlap_embed_scope, "_ledger_connect_ro", tracked)
+        assert overlap_embed.unavailable_reason(draft) is None
+        assert len(opened) == 1
+        with pytest.raises(sqlite3.ProgrammingError):
+            opened[0].execute("SELECT 1")
 
     def test_unavailable_reason_is_the_same_answer_without_the_scope(
         self, isolated_config, tmp_path

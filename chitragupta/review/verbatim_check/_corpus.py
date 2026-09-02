@@ -82,24 +82,41 @@ def pdf_path(citekey: str) -> Path | None:
     return None
 
 
+def _parsed_pages(citekey: str) -> list[str]:
+    """The already-parsed text, split on form feeds, or `[]`."""
+    parsed = PARSED_DIR / f"{citekey}.txt"
+    if not parsed.exists():
+        return []
+    # pdftotext leaves stray NUL/control bytes in some files, which
+    # makes grep treat them as binary and report nothing. Strip them
+    # so a false "no match" can't be mistaken for a real absence.
+    raw = parsed.read_text(encoding="utf-8", errors="replace")
+    return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
+
+
 def pages(citekey: str) -> list[str]:
-    """Return list of page texts, 1-indexed by position+1 (PDF page order)."""
+    """Return list of page texts, 1-indexed by position+1 (PDF page order).
+
+    The PDF is preferred and `content/parsed/` is the fallback -- for a
+    citekey with no PDF, and, since #516, for a PDF that cannot be read.
+    `pdftotext` was run with `check=True` and no handler, so a
+    poppler-less host or one corrupt file gave `verbatim locate` a
+    traceback where the identical fallback was already sitting one branch
+    above. A page-level answer from the parsed text is worse than one
+    from the PDF and far better than a stack trace.
+    """
     p = pdf_path(citekey)
     if p is None:
-        parsed = PARSED_DIR / f"{citekey}.txt"
-        if not parsed.exists():
-            return []
-        # pdftotext leaves stray NUL/control bytes in some files, which
-        # makes grep treat them as binary and report nothing. Strip them
-        # so a false "no match" can't be mistaken for a real absence.
-        raw = parsed.read_text(encoding="utf-8", errors="replace")
-        return re.sub(r"[\x00-\x08\x0e-\x1f]", " ", raw).split("\f")
-    out = subprocess.run(  # pragma: no cover-windows
-        ["pdftotext", "-layout", str(p), "-"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+        return _parsed_pages(citekey)
+    try:  # pragma: no cover-windows
+        out = subprocess.run(
+            ["pdftotext", "-layout", str(p), "-"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError):  # pragma: no cover-windows
+        return _parsed_pages(citekey)
     return out.stdout.split("\f")  # pragma: no cover-windows
 
 

@@ -8,6 +8,7 @@ be testing a copy) and the source side through a written passage
 sidecar."""
 
 import json
+import re
 
 import pytest
 
@@ -291,3 +292,37 @@ class TestTheWordIndexIsNotRebuiltPerSentence:
     def test_a_range_covering_nothing_is_empty(self):
         spans = [(0, 3), (10, 13)]
         assert overlap_segments._word_range(spans, 20, 30) == (2, 2)
+
+
+class TestAHeadingOnTheFinalLine:
+    """m-55 (#516). `_line_starts` records a start per newline, so a
+    heading on the draft's last line with no trailing newline has
+    `section.start == len(line_starts)` -- and `line_starts[section.start]`
+    raised `IndexError`, taking down the whole scan. `end` was already
+    guarded; `start` was not."""
+
+    def test_a_final_heading_without_a_trailing_newline_does_not_raise(self):
+        text = "# Title\n\nSome prose about twins.\n\n## Final heading"
+        found, unmatched = overlap_segments.draft_sections(
+            text, [(0, 4)], {"Final heading": ["a_2024"]}
+        )
+        assert found == []
+        assert unmatched == 0
+
+    def test_a_final_heading_with_a_trailing_newline_is_unchanged(self):
+        """The guard must not change the ordinary case: with the newline
+        there, the heading's span is empty for the same reason -- there is
+        no body under it -- and it was already dropped without raising."""
+        text = "# Title\n\nSome prose about twins.\n\n## Final heading\n"
+        found, _unmatched = overlap_segments.draft_sections(
+            text, [(0, 4)], {"Final heading": ["a_2024"]}
+        )
+        assert found == []
+
+    def test_a_final_heading_that_does_have_a_body_is_still_scanned(self):
+        text = "# Title\n\n## Final heading\n\nReal prose under the final heading."
+        spans = [(m.start(), m.end()) for m in re.finditer(r"[A-Za-z]+", text)]
+        found, _unmatched = overlap_segments.draft_sections(
+            text, spans, {"Final heading": ["a_2024"]}
+        )
+        assert [section.title for section in found] == ["Final heading"]

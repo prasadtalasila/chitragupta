@@ -65,7 +65,43 @@ def _embed_tier_findings(
     scope, reason = overlap_embed.open_scope(Path(draft))
     if scope is None:
         return [], 0, [{"reason": reason, "partial": False}]
+    try:
+        return _findings_within(
+            scope,
+            words,
+            word_strs,
+            paragraph_citekeys,
+            newlines,
+            text,
+            min_run,
+            allowlist,
+            lexical_findings,
+        )
+    finally:
+        # This function opened the scope, so it closes it -- on every
+        # path, including the two mid-function returns below (#516/m-79).
+        # The body moved into `_findings_within` rather than growing a
+        # `try` around forty lines: the release belongs to whoever
+        # acquired, and that is here.
+        scope.close()
 
+
+def _findings_within(
+    scope,
+    words: list[_DraftWord],
+    word_strs: list[str],
+    paragraph_citekeys: list[set[str]],
+    newlines: list[int],
+    text: str,
+    min_run: int,
+    allowlist: list[tuple[str, ...]],
+    lexical_findings: list[dict],
+) -> tuple[list[dict], int, list[dict]]:
+    """`findings`'s body, once tier 3 is known to be runnable.
+
+    Split only so the caller above can own the scope's lifetime; every
+    comment about *what* this does is on the caller's docstring.
+    """
     sections, unmatched = overlap_segments.draft_sections(
         text, [(w.char, w.char_end) for w in words], scope.citekeys_by_section
     )

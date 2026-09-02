@@ -56,7 +56,13 @@ def cmd_overlap(draft: str | Path, citekey: str, n: int = 8) -> None:
     grams = overlap_index.grams_for_citekey(citekey, pdf_hash, parsed_path, n)
     hits = []
     for s in sentences_citing(draft, citekey):
-        w = norm(re.sub(r"\[@[^\]]+\]", "", s))
+        # A space, not "" (#516/m-53). Deleting the marker welds the
+        # tokens either side of it into one -- "twins[@a_2024]are" becomes
+        # the single token "twinsare" -- so a run at the n-gram floor
+        # loses a word and drops below it, silently, in the one mode that
+        # exists to find such runs. `_tokenize_draft`'s docstring records
+        # fixing exactly this for `scan`; it was still live here.
+        w = norm(re.sub(r"\[@[^\]]+\]", " ", s))
         draft_hashes = overlap_index.gram_hashes(w, n)
         for r in _gram_hit_runs(draft_hashes, grams):
             start = r[0][0]
