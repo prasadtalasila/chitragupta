@@ -7,8 +7,8 @@ and the draft's own dossier are all present. Written 2026-08-10. Updated
 2026-08-27 with measured scan costs; tier 2 added 2026-08-13 (#133),
 tier 3 added 2026-08-15 (#134/#164).
 
-**Written for** someone deciding whether `chitragupta/review/verbatim_check/`'s
-`overlap`/`scan` modes are enough review before presenting a draft, or
+**Written for** someone deciding whether the verbatim `overlap` and
+`scan` checks are enough review before presenting a draft, or
 tuning `--min-run`/`--gap`, or choosing `[parser].backend`. **Assumed:**
 a synced corpus (`python -m chitragupta.corpus sync`) and a citekey-verified draft
 (`python -m chitragupta.draft gate`).

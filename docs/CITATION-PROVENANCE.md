@@ -7,6 +7,15 @@ do about a low-scoring claim. **Assumed:** a drafted, gated document.
 **Not covered here:** the scoring internals a change to them would need,
 which are in the module's own docstrings.
 
+**If that is you -- you have a report open and want to know what to do
+-- start at the [worked example](#-worked-example) and read on through
+[the calibration caveat](#-a-calibration-caveat-found-by-running-it):
+those two sections are the whole answer.** Everything between here and
+there is the build record -- the problem, the design decisions, the
+costs, and what the build got wrong first -- kept because the decisions
+would otherwise be re-litigated, and aimed at whoever changes this
+feature rather than at you.
+
 ## 💡 Background: what this repository does
 
 Skip this section if you already know the codebase.

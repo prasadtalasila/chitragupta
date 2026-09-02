@@ -2,10 +2,11 @@
 
 Status: **implemented.** Written 2026-08-06. Updated 2026-08-31.
 
-**Written for** someone changing the drafting layer or the dossier
-format -- and the reasoning behind the command surface
-[WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft)'s Phase
-3 walks a user through. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)
+**If you are here to change a draft you wrote weeks ago, you want
+[WRITING-PROCESS.md](WRITING-PROCESS.md#-phase-3-revise-a-draft)'s
+Phase 3 -- the walkthrough -- not this page.** **Written for** someone
+changing the drafting layer or the dossier format: this is the
+reasoning behind the command surface that walkthrough uses. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)
 for the layers and [TOKENS.md](TOKENS.md) for the two cost pools. **Not
 covered here:** how to *use* a dossier day to day, which is
 [CLI.md](CLI.md)'s `dossier` section.

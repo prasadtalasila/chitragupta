@@ -98,7 +98,7 @@ accepted units into a book ([docs/GENRE.md](docs/GENRE.md)).
 with layout-aware parsing, semantic search and topic clustering; nothing
 above needs it.
 
-[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow eleven ways --
+[docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways --
 by depth, by genre, and in time order -- and is where the figure above
 comes from.
 
@@ -283,6 +283,7 @@ one-screen router for exactly that.
 | Document | Answers |
 | --- | --- |
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
+| [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits -- from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
@@ -296,12 +297,9 @@ one-screen router for exactly that.
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
 | [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What actually runs, what does each part write, which parts are optional, and why do some commands need the venv? |
-| [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation actually resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn eleven ways -- six by depth, three by genre, two in an appendix. Pick the one that matches what you already know |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn thirteen ways -- six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
 | [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models -- which one answers my question, and which is worth building? |
-| [docs/REJECTION.md](docs/REJECTION.md) | Why is turning a source *down* the judgment this pipeline is most careful about? The reasoning behind a retrieval change that was built and then withdrawn, and what was kept from it |
-| [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens actually go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model actually contain, layer by layer -- for a single-context genre skill and for the multi-agent `deep-research` skill -- and why don't the two look the same? |
 
@@ -324,6 +322,9 @@ one-screen router for exactly that.
 
 | Document | Answers |
 | --- | --- |
+| [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation actually resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
+| [docs/REJECTION.md](docs/REJECTION.md) | Why is turning a source *down* the judgment this pipeline is most careful about? The reasoning behind a retrieval change that was built and then withdrawn, and what was kept from it |
+| [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens actually go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how does the closed- and open-source landscape stack up against that bar, and where does this pipeline stand against its own requirement set -- what's built, what was measured and declined, and what's left? |
 | [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse actually work, what is each component for, and what is planned next? |
