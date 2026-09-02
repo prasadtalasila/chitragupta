@@ -22,6 +22,7 @@ came from.
 - [Code standards](#-code-standards)
 - [Harness engineering](#-harness-engineering)
 - [The feature roadmap](#-the-feature-roadmap)
+- [Topic discovery](#-topic-discovery)
 - [The rule on borrowing](#-the-rule-on-borrowing)
 
 ## ✍ The drafting layer's method
@@ -257,6 +258,78 @@ it.
   fabricating data, which is the failure this project exists to prevent.
   Its style guide's content is also raster-oriented and does not survive
   translation to TikZ.
+
+## 🕸 Topic discovery
+
+Seven upstreams behind [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)'s
+design (G5-G9; `plans/g5-topic-discovery.md`). As everywhere in this
+file: ideas taken, no text or code copied, and the refusals are as
+load-bearing as the borrowings.
+
+- **[HKUDS/MiniRAG](https://github.com/HKUDS/MiniRAG)** (MIT; Fan,
+  Wang, Ren and Huang, arXiv:2501.06713) -- the heterogeneous graph:
+  documents and concepts in one structure, so a single traversal
+  answers "which papers" and "which topics relate" together, plus
+  topology-based scoring (personalised PageRank from resolved seed
+  topics, G7) in place of LLM reasoning at query time. *Not taken:*
+  its (S)LM entity extraction at index time -- BERTopic and c-TF-IDF
+  already supply the concept layer statistically -- its LLM
+  answer-type prediction at query time, and its Neo4j/PostgreSQL
+  backends, all scale or generative machinery a 500-paper corpus does
+  not want.
+- **[AkariAsai/OpenScholar](https://github.com/AkariAsai/OpenScholar)**
+  (Apache-2.0; arXiv:2411.14199), a second borrowing from a repository
+  the roadmap section above already credits -- this time its
+  *retrieval* half: the bi-encoder-recall-then-cross-encoder-precision
+  cascade (G7's rerank tier), candidate-pool union with one scorer as
+  the common scale, and capping passages per paper so one long source
+  cannot dominate. *Not taken:* its LLM self-feedback loop and post-hoc
+  citation attribution (citekeys are structurally guaranteed here, so
+  the subsystem solves a problem this project defined away), its
+  45M-paper serving infrastructure, and its citation-count prior, which
+  needs a live API against a corpus that is deliberately closed.
+- **[Marker-Inc-Korea/AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG)**
+  (Apache-2.0), the *archived 1.x tool only* -- the evaluation
+  methodology behind G8: a small hand-labelled gold set
+  (query -> expected ids), node-wise greedy sweeps, and Recall@k/MRR/
+  NDCG per pipeline stage, so every knob change is a measured decision.
+  *Not taken:* AutoRAG 2.x entirely (an LLM agent at query time), its
+  LLM-generated QA datasets (hand-writing ~40 gold queries is more
+  trustworthy at this scale), and the framework itself.
+- **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
+  (MIT) -- the fusion-retriever pattern (lexical and dense rankings
+  fused by Reciprocal Rank Fusion; Cormack, Clarke and Büttcher, SIGIR
+  2009) and the property-graph data model persisted as one JSON store.
+  *Not taken:* the framework as a dependency -- at this scale RRF and
+  the graph store are each a page of code -- and every LLM-driven
+  retriever beside the borrowed one (synonym expansion, text-to-Cypher,
+  multi-query generation).
+- **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT;
+  arXiv:2405.13576) -- the component taxonomy (retriever / reranker /
+  refiner as swappable seams) and, chiefly, the **extractive refiner**:
+  compress by *selecting* the most relevant sentences rather than
+  generating a summary, which is what `--out`'s verbatim snippets are.
+  *Not taken:* every generator, the abstractive and
+  perplexity-based refiners, and the iterative LLM pipelines
+  (Self-RAG, FLARE, IRCoT).
+- **[PrithivirajDamodaran/FlashRank](https://github.com/PrithivirajDamodaran/FlashRank)**
+  (Apache-2.0) -- the licence, so to speak, for G7's precision tier:
+  tiny CPU cross-encoders are a legitimate last-mile scorer with no
+  generative model and no GPU, and capping the scored pair length is
+  the latency lever. *Not taken:* its 7B generative listwise reranker,
+  and the package itself -- `sentence_transformers.CrossEncoder` is
+  already in the enrich group, so borrowing the idea costs zero
+  dependencies.
+- **[NovaSearch-Team/RAG-Retrieval](https://github.com/NovaSearch-Team/RAG-Retrieval)**
+  (MIT) -- the uniform `score(query, candidates)` seam over
+  heterogeneous scorers, and max-score splitting for documents longer
+  than an encoder's window (score chunks, pool the best) rather than
+  first-512-token truncation -- a trap the enrich layer had already
+  measured and fixed independently
+  ([TOPIC-MODELLING.md](TOPIC-MODELLING.md) §4), which is why this
+  entry corroborates rather than introduces it. *Not taken:* the whole
+  training/distillation stack -- there is no labelled relevance data in
+  a personal corpus, and fine-tuning is out of scope.
 
 ## 🔑 The rule on borrowing
 

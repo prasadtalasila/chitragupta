@@ -1,0 +1,38 @@
+---
+title: Topic discovery — the resolution ladder
+---
+flowchart TB
+
+  Q(["a phrase<br/><small><code>chitragupta corpus discover 'cyber replica'</code></small>"])
+  E{"<b>1 · exact</b><br/><small>case-insensitive label match</small>"}
+  F{"<b>2 · fuzzy</b><br/><small>difflib ≥ 0.75 — typos and near-forms only</small>"}
+
+  subgraph H["<b>3 · hybrid</b> — two rankers, fused by rank"]
+    direction TB
+    BM["<b>BM25 over each topic's own vocabulary</b><br/><small>label + c-TF-IDF terms, one small document per topic —<br/>the same tokenizer and arithmetic as chitragupta/retrieval.py</small>"]
+    SEM["<b>cosine vs the stored topic centroids</b><br/><small>query embedded, moved into centred space by the artefact's<br/>corpus_mean · needs the enrich extra — skipped with a note without it</small>"]
+    RRF["<b>Reciprocal Rank Fusion</b><br/><small>score = Σ 1/(60 + rank) — Cormack et al. 2009<br/>rank-based, so the two scales never need calibrating</small>"]
+    BM --> RRF
+    SEM --> RRF
+  end
+
+  S["<b>4 · search fallback</b><br/><small>retrieval.search() over papers — labelled a search result, never<br/>a topic membership; each hit still annotated with its topics</small>"]
+  T(["<b>the topic view</b><br/><small>members with ledger detail · each paper's other topics ·<br/>linked topics from both edge families · --out writes the overview</small>"])
+
+  Q --> E
+  E -- "hit" --> T
+  E -- "miss" --> F
+  F -- "hit" --> T
+  F -- "miss" --> H
+  RRF -- "cosine ≥ floor, or a<br/>lexical vocabulary hit" --> T
+  RRF -- "below the floor" --> S
+
+  classDef q fill:#fff7ed,stroke:#c2410c,color:#431407
+  classDef rung fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
+  classDef good fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#052e16
+  classDef fall fill:#fefce8,stroke:#a16207,color:#422006
+
+  class Q q
+  class E,F,BM,SEM,RRF rung
+  class T good
+  class S fall

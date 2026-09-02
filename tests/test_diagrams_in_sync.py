@@ -51,6 +51,8 @@ NAMES = [
     "g3-thesis",
     "extra-sequence",
     "extra-ledger-state",
+    "t1-discovery-ladder",
+    "t2-topic-graphs",
 ]
 
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
