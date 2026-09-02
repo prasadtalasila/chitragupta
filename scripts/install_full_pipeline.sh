@@ -175,8 +175,9 @@ install_os_deps() {
 
 # Vale, the prose linter `python -m chitragupta.draft style` shells out to. Not in
 # the Debian/Ubuntu archives, so this is a release tarball rather than an
-# apt package -- the one binary this script fetches by hand, and the
-# reason it verifies a checksum before unpacking anything.
+# apt package -- one of the two binaries this script fetches by hand
+# (`install_actionlint` below is the other), and the reason it verifies a
+# checksum before unpacking anything.
 #
 # Pinned, not "latest", for the reason assets/vale/README.md gives: a Vale
 # release can change how a format is scoped, which silently moves the
@@ -218,8 +219,10 @@ install_vale() {
         rm -rf "$vale_tmp"
         return 0
     fi
-    # Verified before it is unpacked, not after: this is the only file
-    # this script takes from outside the distribution's archives.
+    # Verified before it is unpacked, not after: this and the actionlint
+    # tarball are the two files this script takes from outside the
+    # distribution's archives (#512/m-86 -- this said "the only file"
+    # until actionlint became the second).
     if ! echo "${VALE_SHA256}  ${vale_tmp}/vale.tar.gz" | sha256sum -c --status; then
         echo "ERROR: Vale checksum mismatch -- refusing to install." >&2
         echo "       expected ${VALE_SHA256}" >&2
@@ -245,12 +248,17 @@ install_actionlint() {
     # hook, never a reason to fail the install of everything else. The
     # one exception is a checksum mismatch, which stays fatal.
     #
-    # `install_vale` has no such guard and does not need one: it is only
-    # ever reached through the `vale` stage on the Linux lint job. Adding
-    # this function to `dev-deps` is what put it on Windows, and the
-    # first CI run said so -- `install -m 0755 ... /usr/local/bin` needs
-    # root, Git Bash has no sudo, and the whole step failed before pytest
-    # ran.
+    # `install_vale` has no such guard, and the reason is *not* that it
+    # runs somewhere harmless -- it is reached from `install_os_deps` as
+    # well as from the `vale` stage, so on the Linux leg a checksum
+    # mismatch there fails `os-deps` and takes the whole test job with it,
+    # not just the lint job (#512/m-86, correcting a comment that said
+    # otherwise). That is the intended severity for a tampered download.
+    # What this function must not do is fail on a host where it cannot
+    # install at all: adding it to `dev-deps` is what put it on Windows,
+    # and the first CI run said so -- `install -m 0755 ... /usr/local/bin`
+    # needs root, Git Bash has no sudo, and the whole step failed before
+    # pytest ran.
     if [[ "$(uname -s)" != "Linux" ]]; then
         echo "NOTE: only a Linux actionlint build is pinned here; skipping on $(uname -s)." >&2
         echo "      git-hooks/pre-commit will report it as missing, and CI still checks workflows." >&2
@@ -463,9 +471,23 @@ ensure_gpu_torch() {
     # left unsilenced (unlike the rest of this script's pip calls aren't
     # either) -- an install failure here needs to be as debuggable as any
     # other, not swallowed just because it's a fallback path.
+    # Pinned to what is already installed, exactly as `ensure_cpu_torch`
+    # pins (#512/m-85). Unpinned, this resolves whatever the CUDA index
+    # currently offers, so the GPU swap could quietly land a *different*
+    # torch version from the one `poetry.lock` resolved -- the same drift
+    # its documented mirror pins against, and harder to notice here
+    # because the swap is a fallback path nobody watches. Falls back to
+    # unpinned only when the version cannot be read, which means torch is
+    # not installed and there is nothing to preserve.
+    local torch_ver tv_ver torch_spec torchvision_spec
+    torch_ver="$("$pip" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    tv_ver="$("$pip" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    torch_spec="torch${torch_ver:+==${torch_ver}}"
+    torchvision_spec="torchvision${tv_ver:+==${tv_ver}}"
+
     if "$pip" install --force-reinstall \
         --index-url "https://download.pytorch.org/whl/${best_tag}" \
-        "torch" "torchvision" \
+        "$torch_spec" "$torchvision_spec" \
         && "$python_bin" -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
         echo "torch now sees the GPU via the ${best_tag} wheel."
         return

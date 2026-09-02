@@ -1,13 +1,28 @@
 # pylint configuration, adopted from DTaaS (INTO-CPS-Association/DTaaS),
 # the same source docs/CODE-STANDARDS.md takes this project's code
-# standards from. Kept byte-identical to upstream below this header so
-# the deviation is visible in a diff.
+# standards from. Everything below this header is upstream's, verbatim,
+# **except** the two settings named here -- so a diff against upstream
+# shows this project's deviations and nothing else:
 #
-# NOT ENFORCED YET. No CI job runs this -- see DEVELOPER-AGENTS.md's
-# "The linters, which are configured but not yet enforced", and
-# docs/TECHNICAL-DEBT.md's 5.2 for the measured baseline (9.50/10, 44
-# real findings once the deliberate categories are disabled) and the
-# order of adoption.
+#   disable=            ([MESSAGES CONTROL]) -- this project's own list,
+#                       each entry carrying its reason beside it.
+#   py-version=3.12     ([MASTER]) -- see the note at that setting.
+#
+# The rule is "no silent deviation", not "no deviation": a setting
+# changed here has to be listed here, or the byte-identical claim above
+# becomes the kind of stale comment #512 was about.
+#
+# ENFORCED. `.github/workflows/ci.yml`'s `lint` job runs
+# `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a
+# binary zero-messages bar, and a finding fails the build -- see
+# DEVELOPER-AGENTS.md's "The linters, which are enforced" and
+# docs/TECHNICAL-DEBT.md's 5.1, which records the measured baseline this
+# was adopted from (9.50/10, 44 real findings once the deliberate
+# categories below were disabled) and the order they were cleared in.
+#
+# Read the exit code, not the score: pylint prints "rated at 10.00/10"
+# and still exits non-zero on a message it emitted, so a grep for the
+# rating line reports a clean run on a red build.
 #
 # TWO SETTINGS BELOW ARE NOT THIS PROJECT'S SIZE LIMITS, and must not be
 # read as them:
@@ -87,7 +102,13 @@ persistent=yes
 
 # Minimum Python version to use for version dependent checks. Will default to
 # the version used to run pylint.
-py-version=3.10
+#
+# 3.12, matching `pyproject.toml`'s `python = "^3.12"` (#512/m-83). At
+# 3.10 the version-dependent checks were answering for an interpreter
+# this project does not support, which suppresses findings rather than
+# adding them -- the direction that leaves a build green on code that is
+# wrong for the interpreter it actually runs on.
+py-version=3.12
 
 # Discover python modules and packages in the file system subtree.
 recursive=no

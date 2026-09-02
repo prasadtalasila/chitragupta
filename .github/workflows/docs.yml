@@ -12,11 +12,17 @@ name: Docs
 # so a broken link or a nav entry pointing at a file that moved fails
 # review rather than the site.
 
+# `branches` alone, with no `tags-ignore` (#512/m-84). Under a
+# `branches:`-filtered push trigger a tag push already matches nothing, so
+# the `tags-ignore: ['v*']` that used to sit here was not narrowing the
+# trigger -- it was *widening* it, re-enabling a docs build for every tag
+# that is not a release tag. ci.yml's own header documents the rule this
+# rests on: a `push` trigger carrying only tag filters stops running on
+# branch pushes entirely, and the two filters interact rather than
+# compose.
 on:
   push:
     branches: [main]
-    tags-ignore:
-      - 'v*'
   pull_request:
     branches: [main]
   workflow_dispatch:
