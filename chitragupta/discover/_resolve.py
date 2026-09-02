@@ -101,6 +101,34 @@ def _load_model() -> "Any":
     return SentenceTransformer(config.EMBEDDING_MODEL)
 
 
+def _load_reranker() -> "Any":
+    """The same cross-encoder loader the embed index reranks with --
+    one model, one cache, one config key (`[enrich].rerank_model`)."""
+    from chitragupta.enrich import _rerank  # pylint: disable=import-outside-toplevel
+
+    return _rerank._load_reranker(config.RERANK_MODEL)
+
+
+def _rescored(phrase: str, fused: list, vocab: dict) -> list:
+    """The fused candidate labels, reordered by a cross-encoder over
+    (phrase, topic-vocabulary) pairs -- OpenScholar's recall-then-
+    precision cascade, sized for a topic list rather than 45M papers.
+
+    Reordering only: the scorer sees exactly the candidates the ladder
+    fused and can promote or demote but never add. Without the enrich
+    extra the fused order stands -- the same degradation the semantic
+    rung already practises, and no second knob to explain.
+    """
+    try:
+        reranker = _load_reranker()
+    except ImportError:
+        return fused
+    scores = reranker.predict([(phrase, vocab.get(label, label)) for label in fused])
+    # Stable: equal scores keep the fused order, so an indifferent
+    # scorer changes nothing.
+    return [label for _score, label in sorted(zip(scores, fused), key=lambda pair: -pair[0])]
+
+
 def semantic_ranking(phrase: str, graph: dict) -> list:
     """`[(label, cosine), ...]` against the stored centroids, in the
     same mean-centred space the graph stage used -- the stored
@@ -145,7 +173,8 @@ def resolve(
     if found:
         return Resolution(found, "fuzzy", [found])
 
-    lexical = bm25_ranking(phrase, topic_vocabulary(topic_set, terms))
+    vocab = topic_vocabulary(topic_set, terms)
+    lexical = bm25_ranking(phrase, vocab)
     note = None
     try:
         semantic = semantic_ranking(phrase, graph)
@@ -168,6 +197,5 @@ def resolve(
     fused = rrf_fuse(
         [[label for label, _ in ranking] for ranking in (lexical, semantic) if ranking]
     )
-    return Resolution(
-        fused[0][0], "hybrid", [label for label, _ in fused], score=best_cosine, note=note
-    )
+    ordered = _rescored(phrase, [label for label, _ in fused], vocab)
+    return Resolution(ordered[0], "hybrid", ordered, score=best_cosine, note=note)
