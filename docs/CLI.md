@@ -163,19 +163,40 @@ the tiers collapse to a different distinction: which commands need the
 `enrich` extra and which don't. `chitragupta <layer> <verb>` -- the
 console script -- reaches every command below exactly as
 `python -m chitragupta.<layer> <verb>` does, because both resolve to the
-same installed package; the difference tier 1 protects against (a
-missing or broken venv) still cannot happen to it. That is *why* the
-module form is kept working at all rather than replaced -- the hooks and
-every genre skill invoke `python -m chitragupta.draft gate` specifically
-because it is the one command that must survive a broken environment,
-console script included, and `chitragupta/hook_launchers.py` is what
-checks that it still can (#264). So: a bare `pip install chitragupta-cli`
-covers tiers 1 and 2 (`bibtexparser` is a main, non-optional dependency
--- `chitragupta corpus sync` needs nothing extra); only tier 3
-(`chitragupta enrich`) needs `pip install 'chitragupta-cli[enrich]'`, the
-same as `python-deps` needing the enrich group from a checkout.
-`chitragupta doctor` reports which you have. Use whichever form you like
-by hand, but don't change what a hook or a skill invokes.
+same installed package *once that interpreter is the venv's own*. That is
+*why* the module form is kept working at all rather than replaced -- the
+hooks and every genre skill invoke `python -m chitragupta.draft gate`
+specifically because it is the one command that must survive a broken
+environment, console script included, and `chitragupta/hook_launchers.py`
+is what checks that it still can (#264). So: a bare `pip install
+chitragupta-cli` covers tiers 1 and 2 (`bibtexparser` is a main,
+non-optional dependency -- `chitragupta corpus sync` needs nothing
+extra); only tier 3 (`chitragupta enrich`) needs `pip install
+'chitragupta-cli[enrich]'`, the same as `python-deps` needing the enrich
+group from a checkout. `chitragupta doctor` reports which you have. Use
+whichever form you like by hand, but don't change what a hook or a skill
+invokes.
+
+**What tier 1's "stdlib only" promise does and does not cover here.**
+"Cannot be blocked by a broken venv" is true of the *code* -- the gate
+chain imports nothing outside the standard library once it is running.
+It is not true of *finding the right interpreter to run it with*, and
+those are different failures (#563). In a checkout, `-m` puts `cwd` on
+`sys.path`, so any `python`/`python3` on `PATH` reaches `chitragupta/`
+regardless of which interpreter it is -- that is where "cannot happen"
+used to hold. An `init`-ed project has no `chitragupta/` beside it to
+find that way; the package exists only in the venv that installed it, so
+`python -m chitragupta.draft gate` needs the venv's own `bin/` on `PATH`
+(activated, or a session started from a shell that already had it) --
+without that, a bare `python` there is some other interpreter that
+happens to resolve, and it cannot import `chitragupta` at all. Measured
+by building the wheel, installing it into a throwaway venv, and running
+the hooks both ways: with the venv's `bin/` on `PATH`, all three behave
+correctly with no extra configuration; with a bare system `python3` and
+no activation, `python -m chitragupta.draft gate` fails exactly as
+described, and `citation_gate_hook.py` now reports that as an
+environment fault distinct from a bad citekey rather than blaming the
+draft.
 
 Two commands look like they belong in a higher tier and don't:
 

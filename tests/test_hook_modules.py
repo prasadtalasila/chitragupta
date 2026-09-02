@@ -161,18 +161,110 @@ class TestCitationGateHookModule:
         assert hook.main() == 0
         assert emitted(capsys) is None
 
+    @staticmethod
+    def gate_and_probe(gate_result, probe_result=None, probe_error=None):
+        """A `subprocess.run` stand-in that tells the gate call (`-m
+        chitragupta.draft gate ...`) apart from `_environment_is_broken`'s
+        probe (`-c "import chitragupta"`) by inspecting argv -- the two
+        calls need independent results to exercise the two branches #563
+        added, and a single lambda answering both the same way cannot."""
+
+        def run(args, **kwargs):
+            if "-c" in args:
+                if probe_error is not None:
+                    raise probe_error
+                return probe_result
+            return gate_result
+
+        return run
+
     def test_a_failing_gate_blocks_with_the_reason(self, rooted, monkeypatch, capsys):
         hook, root = rooted
         draft = root / "content" / "drafts" / "bad.md"
         draft.write_text("A claim [@nope_2026].\n")
         monkeypatch.setattr(
-            hook.subprocess, "run", lambda *a, **k: completed(1, stdout="FAIL @nope_2026")
+            hook.subprocess,
+            "run",
+            self.gate_and_probe(completed(1, stdout="FAIL @nope_2026"), probe_result=completed(0)),
         )
         self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
         assert hook.main() == 0  # the hook process itself always exits 0
         response = emitted(capsys)
         assert response["decision"] == "block"
+        assert "Citation gate FAILED" in response["reason"]
         assert "@nope_2026" in response["reason"]
+
+    def test_an_interpreter_that_cannot_import_chitragupta_is_named_not_blamed_on_the_citekey(
+        self, rooted, monkeypatch, capsys
+    ):
+        """#563: a `ModuleNotFoundError` from a wrong/unactivated interpreter
+        also makes the gate exit non-zero, and must not be reported as a bad
+        citekey -- nothing was actually checked."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "bad.md"
+        draft.write_text("A claim [@nope_2026].\n")
+        monkeypatch.setattr(
+            hook.subprocess,
+            "run",
+            self.gate_and_probe(
+                completed(1, stderr="ModuleNotFoundError: No module named 'chitragupta'"),
+                probe_result=completed(1),
+            ),
+        )
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        response = emitted(capsys)
+        assert response["decision"] == "block"  # still fails closed
+        assert "could not run" in response["reason"].lower()
+        assert "@nope_2026" not in response["reason"]
+        assert "Citation gate FAILED" not in response["reason"]
+
+    def test_a_hung_import_probe_is_treated_as_a_broken_environment(
+        self, rooted, monkeypatch, capsys
+    ):
+        """A probe that never returns is not a working interpreter either --
+        `_environment_is_broken` must not raise `TimeoutExpired` uncaught,
+        which would crash the hook process instead of blocking."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "bad.md"
+        draft.write_text("A claim [@nope_2026].\n")
+        monkeypatch.setattr(
+            hook.subprocess,
+            "run",
+            self.gate_and_probe(
+                completed(1, stdout="FAIL"),
+                probe_error=hook.subprocess.TimeoutExpired(cmd="python", timeout=5.0),
+            ),
+        )
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        response = emitted(capsys)
+        assert response["decision"] == "block"  # still fails closed
+        assert "could not run" in response["reason"].lower()
+        assert "Citation gate FAILED" not in response["reason"]
+
+    def test_the_import_probe_uses_the_gate_calls_own_cwd(self, rooted, monkeypatch, capsys):
+        """Found by Copilot review on #563's PR: `python -c` also puts an
+        empty-string cwd entry on `sys.path`, so a probe launched without
+        `cwd=draft_target.REPO_ROOT` -- unlike the gate call right above it
+        -- would say the environment is broken in a checkout whose only
+        route to `chitragupta` is that same cwd trick, misreporting a real
+        citekey failure as an environment fault."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "bad.md"
+        draft.write_text("A claim [@nope_2026].\n")
+        seen_cwd = []
+
+        def run(args, **kwargs):
+            if "-c" in args:
+                seen_cwd.append(kwargs.get("cwd"))
+                return completed(0)
+            return completed(1, stdout="FAIL @nope_2026")
+
+        monkeypatch.setattr(hook.subprocess, "run", run)
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        assert seen_cwd == [root]  # same root the gate call above it uses
 
 
 class TestLauncherFaults:
