@@ -861,18 +861,15 @@ this.
 | A reader | `chitragupta corpus topics`, tier 1: no venv, no GPU. Ends with the papers no seed matched |
 | A converged topic set | `content/topic_set.json` joins seed and emergent topics into one artefact -- an emergent topic within `topic_converge_similarity` of a seed phrase is renamed by it rather than listed beside it, with the closest match winning each side of the collision ([#299](https://github.com/prasadtalasila/chitragupta/issues/299)) |
 
-### 🕸 G7-G9: topic discovery -- what remains after the reader shipped
+### 🕸 G8-G9: topic discovery -- what remains after the reader shipped
 
 One design, one plan (`plans/g5-topic-discovery.md`, which governs --
 these entries are the tickets, not a second specification). G5 (the
-`topic-graph` stage) and G6 (`corpus discover`, the reader) have
-shipped and left this document per the rule above; what they became is
-in [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md). Three PRs remain:
+`topic-graph` stage), G6 (`corpus discover`, the reader) and G7 (its
+precision tier) have shipped and left this document per the rule above;
+what they became is in [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md). Two
+PRs remain:
 
-- **G7, precision tier**: cross-encoder rescoring of the hybrid rung's
-  fused candidates (no new dependency -- `sentence_transformers.CrossEncoder`
-  is already in the enrich group) and personalised-PageRank ranking of
-  the neighbourhood when a query resolves to several topics. Size S.
 - **G8, gold set**: a hand-authored query->expected-topics/citekeys
   file plus a bench script reporting Recall@k/MRR/NDCG per resolution
   rung, so every knob change is a measured decision -- the same posture
@@ -906,12 +903,11 @@ is for.
 
 | # | PR | Theme | Size | Depends on |
 | --- | --- | --- | --- | --- |
-| 1 | [G7](#-g7-g9-topic-discovery----what-remains-after-the-reader-shipped) precision tier | G | S | G6 (shipped) |
-| 2 | [G8](#-g7-g9-topic-discovery----what-remains-after-the-reader-shipped) gold-set benchmark | G | S | G6 (shipped) |
-| 3 | [G9](#-g7-g9-topic-discovery----what-remains-after-the-reader-shipped) HTML graph view | G | M | G6 (shipped) |
-| 4 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+| 1 | [G8](#-g8-g9-topic-discovery----what-remains-after-the-reader-shipped) gold-set benchmark | G | S | G6 (shipped) |
+| 2 | [G9](#-g8-g9-topic-discovery----what-remains-after-the-reader-shipped) HTML graph view | G | M | G6 (shipped) |
+| 3 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
 
-G7-G9 lead not because D5 lost value but because they are one design
+G8-G9 lead not because D5 lost value but because they are one design
 already governed by a written plan, and interleaving an unrelated PR
 into the sequence buys nothing.
 
@@ -941,7 +937,7 @@ argument.** Check a new proposal against both before costing it.
 
 **Some items have written plans, and the entry says so where one
 exists.** `plans/` holds the implementation plan for a roadmap item whose
-design is genuinely underdetermined: G7-G9 share
+design is genuinely underdetermined: G8-G9 share
 `plans/g5-topic-discovery.md`, which governs them. **D5 alone has
 none**, which is a statement about it rather than a gap: its entry
 already names its files, its size and its dependencies, and for a
@@ -968,7 +964,7 @@ B5's entry said so explicitly for as long as it was here, and
 `plans/b5-pregate-self-feedback.md` is the worked example.
 
 **Neither the leading PR nor any other item here needs a decision or a
-new dependency.** G7-G9's design questions are settled in their plan,
+new dependency.** G8-G9's design questions are settled in their plan,
 and their heaviest ingredient (`sentence_transformers.CrossEncoder`) is
 already in the enrich group. D5 is two arithmetic checks over TikZ
 source `review figure` already parses -- a node's final point size, and

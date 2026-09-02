@@ -1,11 +1,11 @@
 # 🕸 Topic discovery: from a phrase to the papers, the graph, and an overview
 
 Status: **reference for a feature landing in stages.** Written
-2026-09-02. The `topic-graph` enrichment stage and the
-`corpus discover` reader documented here are built; the cross-encoder
-precision tier, the gold-set benchmark and the HTML graph view are
-G7-G9 in [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md), with the whole
-design in `plans/g5-topic-discovery.md`.
+2026-09-02. The `topic-graph` enrichment stage, the `corpus discover`
+reader and its precision tier documented here are built; the gold-set
+benchmark and the HTML graph view are G8-G9 in
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md), with the whole design in
+`plans/g5-topic-discovery.md`.
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
 exist at all; this document covers what happens next -- relating them,
 finding them, and reading them.
@@ -29,6 +29,7 @@ finding them, and reading them.
 - [The hierarchy](#-the-hierarchy)
 - [The reader: corpus discover](#-the-reader-corpus-discover)
 - [The resolution ladder](#-the-resolution-ladder)
+- [The precision tier](#-the-precision-tier)
 - [The overview file](#-the-overview-file---out)
 - [Alternatives considered](#-alternatives-considered)
 - [What lands next](#-what-lands-next)
@@ -41,8 +42,8 @@ topic's papers with their bibliographic details, walk to the linked
 topics, and take away an extractive overview grounded enough to seed a
 draft. Scripted (`--json` everywhere) and interactive (successive
 invocations; G9 adds a graph page), and with no generative model
-anywhere: embeddings, BM25, classic statistics and (in G7) a
-cross-encoder scorer. Every citekey shown comes from the ledger via the
+anywhere: embeddings, BM25, classic statistics and a cross-encoder
+scorer. Every citekey shown comes from the ledger via the
 topic artefacts -- the same rule that binds every other part of this
 project.
 
@@ -285,15 +286,40 @@ LlamaIndex, minus its optional LLM query expansion -- with `num_queries`
 set to one, that whole path is LLM-free, which is what made it
 borrowable. OpenScholar (Asai et al., 2024) fuses differently --
 it *unions* candidate pools and lets one trained cross-encoder be the
-sole common scale -- and that is exactly the shape G7 adds on top of
-this rung: RRF orders the candidates, the cross-encoder rescores the
-top of the fused list.
+sole common scale -- and that is exactly the shape the precision tier
+below adds on top of this rung: RRF orders the candidates, the
+cross-encoder rescores the fused list.
 
 Without the enrich extra the semantic half is skipped with a one-line
 note and the rung degrades to BM25 alone -- the same honest-degradation
 posture every enrich stage's self-probe takes, never a silent
 substitution. An unresolvable phrase whose fallback also returns
 nothing exits 1 naming the known topics.
+
+## 🎯 The precision tier
+
+Two additions sit on top of the hybrid rung, both enrich-tier and both
+degrading exactly as the semantic rung does -- silently reordering
+nothing, saying nothing false:
+
+- **Cross-encoder rescoring.** The fused candidates are rescored by
+  the same cross-encoder the embed index reranks with (one model, one
+  cache, one config key: `[enrich].rerank_model`), over
+  (phrase, topic-vocabulary) pairs. A cross-encoder reads the query and
+  the candidate *jointly*, so it catches term-overlap-without-relevance
+  failures a bi-encoder's two separate vectors cannot -- OpenScholar's
+  recall-then-precision cascade (110M-parameter retriever, 340M
+  reranker) sized down to a topic list, where scoring every candidate
+  costs milliseconds. It reorders only: the scorer sees exactly what
+  the ladder fused and can promote or demote but never add a candidate.
+- **A topology-ranked neighbourhood.** When the hybrid rung places a
+  phrase near *several* topics, the view carries a `neighbourhood`
+  ranking: personalised PageRank over the topic graph, seeded from
+  every matched candidate, with each edge weighing the stronger of its
+  overlap and semantic readings. This is MiniRAG's topology-based
+  scoring with its LLM step deleted. A singular resolution gets no
+  walk -- the linked-topics lists already answer "what is next to this
+  one", and a one-seed walk would restate them.
 
 ## 📝 The overview file (`--out`)
 
@@ -353,18 +379,12 @@ versions are in `plans/g5-topic-discovery.md`.
 
 ## ▶ What lands next
 
-G7 adds the precision tier: a small cross-encoder
-(`sentence_transformers.CrossEncoder`, already installed with the
-enrich group) rescoring the hybrid rung's fused top candidates --
-the bi-encoder-recall-then-cross-encoder-precision cascade OpenScholar
-runs at 45-million-paper scale, affordable here over a whole candidate
-list -- plus personalised-PageRank neighbourhood ranking when a query
-resolves to several topics. G8 adds the gold set: hand-labelled
-queries with expected topics and citekeys, reported as Recall@k/MRR/
-NDCG per rung, which is legacy AutoRAG's methodology (measure every
-retrieval configuration against a small gold set; never tune by
-feel) pointed at one corpus. G9 adds the self-contained HTML page over
-the same JSON. Each updates this document as it lands.
+G8 adds the gold set: hand-labelled queries with expected topics and
+citekeys, reported as Recall@k/MRR/NDCG per rung, which is legacy
+AutoRAG's methodology (measure every retrieval configuration against a
+small gold set; never tune by feel) pointed at one corpus. G9 adds the
+self-contained HTML page over the same JSON. Each updates this document
+as it lands.
 
 ## 📚 Sources
 

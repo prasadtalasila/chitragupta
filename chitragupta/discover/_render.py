@@ -133,6 +133,10 @@ def render_topic(data: dict) -> str:
         )
     if not data["linked"]["overlap"] and not data["linked"]["semantic"]:
         lines.append("  none above the graph's floors")
+    if data.get("neighbourhood"):
+        lines += ["", "neighbourhood, ranked by topology (the phrase matched several topics):"]
+        for node in data["neighbourhood"]:
+            lines.append(f"  [{node['score']:.2f}] {node['label']}")
     return "\n".join(lines)
 
 
