@@ -197,7 +197,7 @@ says where each comes from.
 | **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor #128's allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
 | **R2** | Every finding carries an identity stable across runs. |
 | **R3** | An unattended item's check is **binary**. No continuous score is ever the thing being optimised. |
-| **R4** | After each accepted edit, every aid re-runs and the total objective-class count must not rise, else the edit reverts. |
+| **R4** | After each accepted edit, every aid re-runs and the result is compared by R2's finding identity rather than by a total: the repaired item appears in `resolved`, and no objective-class finding appears in `new`. A count that holds level because one objective finding was swapped for another is a failed edit, not a neutral one. Otherwise the edit reverts. |
 | **R5** | Reverting one item leaves every earlier accepted item intact. |
 | **R6** | Every attempt is logged with its outcome, refusals included, and no machine outcome is ever written to `rejected.md`. |
 | **R7** | Two attempts per item, one pass per invocation, then hand back. |
@@ -270,6 +270,12 @@ Do the free thing first, and pay only for what it could not decide --
 2. **A single-shot edit** where the fix is local and the re-check binary:
    a dialect slip, a defect marker, an acronym. No subagent, no
    retrieval, no dossier read -- the finding already names the span.
+   The span bounds the *edit*, not its consequences: a repair inside one
+   sentence can falsify a claim elsewhere in the same draft ("the three
+   approaches below", a count, a forward reference), and no aid detects
+   that. An item whose wording another passage refers to is rung 3 work,
+   and a rung-2 repair that changes a quantity, an enumeration or a name
+   is re-read against the passages that cite it before it is accepted.
 3. **A dispatched reviser**, only for items needing the surrounding
    argument in context. The expensive rung, and the short list.
 

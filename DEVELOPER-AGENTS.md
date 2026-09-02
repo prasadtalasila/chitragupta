@@ -87,6 +87,26 @@ Read it before a non-trivial change. In brief:
   review / not-applicable. [docs/INSPIRATION.md](docs/INSPIRATION.md) has
   the provenance.
 
+**Measure the headroom before you choose the fix's shape, not after.**
+The 250-line ceiling is a ratchet, so a module already at 244, 248, 249
+or 250 code lines constrains what may be added to it -- and all four of
+those were hit in one release run. Writing the obvious fix first and
+discovering it lands at 267 costs the fix twice: once written, once
+rewritten. Two consequences worth knowing before you start:
+
+- **A split the fix *forces* belongs in the same PR; a split you
+  *chose* does not.** This is not an exception to the surgical-changes
+  rule but its other half -- the changed lines still trace to the task,
+  because without them the task cannot land. Split at a boundary the
+  module already had (a section comment, a docstring that names two
+  jobs), say in the PR body which of the two kinds it was, and delist
+  the module if the split takes it off the register.
+- **Rationale can move from a docstring into a `#` comment**, since
+  docstrings count toward the ceiling and comments do not. That is the
+  standard's own sanction rather than a loophole, and the same move
+  four times in one run is a pattern to state once in a PR body, not a
+  thing to re-argue per commit.
+
 ## 🧩 Module boundaries
 
 `chitragupta/references.py` formats an IEEE bibliography entry (authors, venue,
@@ -297,6 +317,45 @@ This applies to bug fixes as much as features: "fix the bug" becomes
 something you can't first demonstrate is broken. Exception: exploratory
 spikes to understand a problem before committing to an approach don't
 need up-front tests, but the resulting real change does.
+
+**A reported prescription is a hypothesis, not a specification.** An
+issue, a review comment or a code report usually names both a symptom
+and the fix it thinks closes it, and the two are checked separately: the
+failing test reproduces the *symptom*, and only then does the prescribed
+fix get to prove it turns that test green. Twice in the 6.53.35--6.53.46
+run the prescription did not survive that: issue #506 asked the code to
+accept a citekey "exactly equal to a known ledger citekey", which cannot
+close a report about citekeys that have *left* the ledger, and the drift
+guard written for issue #512 passed silently on three reformats of the
+file it was reading. Both were found by the test, not by re-reading the
+issue.
+
+**A guard is tested against the exact shape it was blind to.** For a
+check that reports "clean" the failure is silent, so a test asserting it
+passes on good input proves nothing. Feed it the real pre-fix artefact
+-- the actual `docs.yml` block, the actual malformed row -- and confirm
+the test is red before the fix, or the guard's whole value is untested.
+
+### 🧷 Baseline the suite before you edit
+
+Run the full suite once in a fresh checkout or worktree and **write the
+counts down before touching anything.** A worktree carries no
+`config.toml` -- it is gitignored, so it is per-checkout -- and roughly
+17 tests fail on that alone, with a few more if the version on the
+branch has already been released. That number is a property of the
+checkout, not of your change.
+
+From then on, "did I break something?" is answered by diffing pass and
+fail counts against that record, and by name where the counts moved --
+never by reading raw red, which on this repository always contains
+failures you did not cause. The same holds for a lint finding your
+commit did not make true: name it in the PR rather than fixing it here
+(the surgical-changes rule above, and step 4 of the shipping cycle).
+
+Run it from the venv whose pin matches `pyproject.toml` -- the
+`.venv-full/bin/python` the command below already names. A second venv
+built against a different pin will disagree with CI in both directions,
+which makes its red *and* its green worthless as evidence.
 
 ### 🗺 Recording a plan before you build
 
@@ -881,7 +940,7 @@ succeeded -- not merely started:
    what you find.** OCR does not reach Markdown (["What the plugin does
    and does not reach"](#-what-the-plugin-does-and-does-not-reach)
    above) -- for docs, this step *is* the review, not an optional extra
-   on top of it. Two different searches, not one:
+   on top of it. Three different searches, not one:
    - **The docs your diff already edited.** Read them for internal
      consistency -- a table whose row count no longer matches its own
      prose, a diagram whose exported `.mmd`/`.svg` drifted from the
@@ -905,6 +964,27 @@ succeeded -- not merely started:
      an *existing* aid's code actually reads, when the code hadn't
      been touched at all -- the fix there is reverting the doc, not
      changing the code to match a claim nobody verified.
+   - **What the documentation already decided, which your change may
+     have just contradicted.** The first two searches look for prose
+     your change falsified; this one looks for prose that falsifies
+     *your change*. A rationale for **rejecting** a design is the
+     dangerous shape, because it reads as history and is actually a
+     constraint: `docs/DESIGN.md` turns down locking the ledger on the
+     ground that it "would force a run into one transaction, discarding
+     the incremental commit points on a crash", and the first version of
+     the fix for issue #511 batched `sync`'s commits into exactly that
+     -- with a live raise path in the loop, so a real run would have
+     discarded every row written. The sweep is what caught it; no test
+     would have. Grep the documentation for the **claim** your change
+     touches, not for the files in your diff.
+
+   That last point is the whole method, and the run that produced these
+   three searches kept paying for it: in PR #547 a commit fixed a
+   duplicated sentence in four places and the sweep found three more
+   verbatim copies still false, and in PR #548 a six-line code change
+   that added a fifth precondition to a tier whose four were enumerated
+   by count moved 13 prose sites. The size of a diff predicts nothing
+   about the size of its sweep.
 
    A doc that was already stale *before* your change touched
    anything -- traceable with `git log -1 -L<line>,<line>:<path>` to a
