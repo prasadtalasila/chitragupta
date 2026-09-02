@@ -13,6 +13,7 @@ paraphrased.
 
 import re
 import sqlite3
+from typing import Any
 
 from chitragupta import config
 
@@ -25,7 +26,7 @@ _SENTENCE_BOUNDS = (40, 400)
 _SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
-def _load_model():
+def _load_model() -> "Any":
     """Isolated so tests fake it; the import is paid only when an
     overview is actually written."""
     from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
@@ -93,6 +94,22 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
     ]
 
 
+def _linked_lines(linked: dict) -> list:
+    """The linked-topics section's bullet lines, both families with
+    their evidence, or the explicit "none" a reader can trust."""
+    lines = [
+        f"- {edge['label']} -- shared members "
+        f"(jaccard {edge['jaccard']:.2f}, overlap {edge['overlap_coeff']:.2f}, "
+        f"via {', '.join(edge['shared'])})"
+        for edge in linked["overlap"]
+    ] + [
+        f"- {edge['label']} -- semantically near "
+        f"({edge['similarity']:.2f}, bridge {edge['bridge'][0]} <-> {edge['bridge'][1]})"
+        for edge in linked["semantic"]
+    ]
+    return lines or ["- none above the graph's floors"]
+
+
 def build_markdown(data: dict, quoted: "list | None") -> str:
     """The overview file: the topic view's own data plus the verbatim
     snippets, in Markdown a genre skill (or a human) can quarry."""
@@ -109,20 +126,7 @@ def build_markdown(data: dict, quoted: "list | None") -> str:
         lines.append(f"- [{member['score']:.2f}] {member['entry']}")
         if member["topics"]:
             lines.append(f"  - also in: {', '.join(member['topics'])}")
-    lines += ["", "## Linked topics", ""]
-    for edge in data["linked"]["overlap"]:
-        lines.append(
-            f"- {edge['label']} -- shared members "
-            f"(jaccard {edge['jaccard']:.2f}, overlap {edge['overlap_coeff']:.2f}, "
-            f"via {', '.join(edge['shared'])})"
-        )
-    for edge in data["linked"]["semantic"]:
-        lines.append(
-            f"- {edge['label']} -- semantically near "
-            f"({edge['similarity']:.2f}, bridge {edge['bridge'][0]} <-> {edge['bridge'][1]})"
-        )
-    if not data["linked"]["overlap"] and not data["linked"]["semantic"]:
-        lines.append("- none above the graph's floors")
+    lines += ["", "## Linked topics", "", *_linked_lines(data["linked"])]
     lines += ["", "## Representative snippets", ""]
     if quoted is None:
         lines.append(

@@ -23,6 +23,7 @@ self-probe takes, never a silent substitution.
 
 import difflib
 from dataclasses import dataclass
+from typing import Any
 
 from chitragupta import config, retrieval
 
@@ -91,7 +92,7 @@ def _freqs(text: str) -> dict:
     return freqs
 
 
-def _load_model():
+def _load_model() -> "Any":
     """Isolated so tests fake it and so the import cost is paid only
     when the ladder actually reaches the semantic rung."""
     from sentence_transformers import SentenceTransformer  # pylint: disable=import-outside-toplevel
