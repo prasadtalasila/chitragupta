@@ -456,9 +456,12 @@ unattended caller has.** `sync` exits 1 when this run had a parse
 failure, when a previous run left a deterministic one (not retried, so
 it stays nonzero until you deal with it), when the parse backend was
 unavailable, when the bib file yielded no references against a
-non-empty ledger -- and, since 6.57.0, **when a PDF the bib file points
-at cannot be read**, whether because it is not on disk or because this
-host cannot open it.
+non-empty ledger -- and **when a PDF the bib file points at cannot be
+read**, whether because it is not on disk or because this host cannot
+open it. That last one is the newest, and the GitHub Release that
+introduced it says which version; this page deliberately does not,
+because a "since x.y.z" here is a second place the number has to be
+right and the release notes are the first.
 
 Those last two used to exit 0, reported only in the summary's `no-PDF
 breakdown` line, which made them invisible to precisely the caller that
