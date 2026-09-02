@@ -64,7 +64,7 @@ REVIEW_FLAT_AIDS = {
     "union",
 }
 
-CORPUS_VERBS = {"sync", "ledger", "topics"}
+CORPUS_VERBS = {"sync", "ledger", "topics", "discover"}
 
 
 # The two arithmetic breakdowns docs/PACKAGING.md states alongside its

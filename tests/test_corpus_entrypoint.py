@@ -43,6 +43,7 @@ BACKING_MODULES = {
     "sync": "sync",
     "ledger": "ledger_cli",
     "topics": "seed_topics",
+    "discover": "discover",
 }
 
 # The backing modules that keep the silent-no-op trap docs/ARCHITECTURE.md

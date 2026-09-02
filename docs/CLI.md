@@ -24,6 +24,7 @@ short path; this is the full set.
   - [When `sync` re-parses a document it already parsed](#-when-sync-re-parses-a-document-it-already-parsed)
   - [`chitragupta corpus ledger`](#-chitragupta-corpus-ledger)
   - [`chitragupta corpus topics`](#-chitragupta-corpus-topics)
+  - [`chitragupta corpus discover`](#-chitragupta-corpus-discover)
   - [`chitragupta draft gate`](#-chitragupta-draft-gate)
   - [`chitragupta draft references`](#-chitragupta-draft-references)
   - [`chitragupta draft evidence`](#-chitragupta-draft-evidence)
@@ -139,7 +140,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.review` (all nine aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all nine aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -530,6 +531,46 @@ document exactly one topic id. The papers that matched no topic at all
 are listed too; that list is the point of the report when you are
 deciding what to draft next. See
 [CONFIG.md](CONFIG.md#-seed-topics-organising-the-corpus-by-phrases-you-wrote).
+
+### 🕸 `chitragupta corpus discover`
+
+Resolve any phrase to a topic the corpus actually has, list a topic's
+papers with their bibliographic entries and the *other* topics each
+paper belongs to, walk to the linked topics, or invert the question
+with `--paper`. **Takes no lock.** The topic-topic relations come from
+`content/topic_graph.json`, written by `chitragupta enrich --stages
+topic-graph`; this command derives none of them itself.
+[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) is the reference for how each
+relation and each resolution rung is computed.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `PHRASE ...` | -- | A topic to look up: a known label, a near-miss, or any free phrase. Omitted, every topic is listed |
+| `--paper CITEKEY` | -- | Show this paper's topics instead of resolving a phrase |
+| `--json` | off | Machine-readable output |
+| `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
+| `--k N` | `5` | Results to show when falling back to paper search |
+
+```bash
+chitragupta corpus discover
+# chitragupta corpus discover "digital twin"
+# chitragupta corpus discover "cyber replica" --json
+# chitragupta corpus discover "digital twin" --out overview.md
+# chitragupta corpus discover --paper kritzinger_digital_2018
+```
+
+A free phrase resolves through a ladder -- exact label, fuzzy label,
+then a hybrid of BM25 over each topic's own vocabulary fused with
+cosine against the stored topic centroids -- and the output names which
+rung answered (`resolved_via`). A phrase no topic claims falls back to
+`retrieval.search()` over papers, clearly labelled a search result
+rather than a topic membership. Without the `enrich` extra installed
+the semantic rung is skipped with a one-line note and resolution
+degrades to the lexical rungs. Exits `1` when the graph artefact is
+missing (naming the stage to run), when `--paper` names a citekey in no
+topic, or when a phrase resolves nowhere and even the fallback finds
+nothing.
 
 ### ✅ `chitragupta draft gate`
 
