@@ -3,7 +3,7 @@
   "aid": "provenance",
   "draft": "content/drafts/dt-overview/staleness-chapter.md",
   "command": "python -m chitragupta.review provenance content/drafts/dt-overview/staleness-chapter.md",
-  "version": "6.61.4",
+  "version": "6.61.5",
   "unreadable": {},
   "findings": [
     {
