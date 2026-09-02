@@ -19,7 +19,20 @@ from chitragupta import dossier, review, style_check
 from chitragupta.dossier._drift import Drift
 
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
-# of `review.AIDS`: only `agenda` itself is excluded. `support`'s
+# of `review.AIDS`: `agenda` itself is excluded, and so is `union`.
+#
+# `union` reads an *assembled book* rather than a draft, and this is a
+# per-draft worklist: there is no draft path to key its `.json` off, and
+# a citekey dropped between a unit and the assembly is a fact about the
+# assembly, not about any one unit's prose. docs/PERFORMANCE.md leaves
+# it out of the draft-review cost figures on the same ground. This
+# comment said "only `agenda` itself is excluded" through the release
+# that made `union` the tenth aid, which is what #573 was: the sentence
+# that pins the invariant down was the one thing nothing checked.
+# `TestAidNames` now asserts the relationship, so an eleventh aid has to
+# decide rather than inherit this silently.
+#
+# `support`'s
 # findings carry no `band`, so `unsupported_claim_items`
 # (`_items_findings.py`) cannot treat it as a second source for
 # `unsupported-claim` -- but `claim_support_items` reads it as its own
@@ -41,7 +54,7 @@ AID_NAMES = (
 
 @dataclass
 class AidSource:
-    """One of the seven aids' `.json`, as `agenda` sees it.
+    """One of the eight aids' `.json`, as `agenda` sees it.
 
     `stale` is a caveat on the report, never a merge signal: a finding
     from a report older than the draft may still be true, so staleness

@@ -635,8 +635,12 @@ rather than a topic membership. Without the `enrich` extra installed
 the semantic rung is skipped with a one-line note and resolution
 degrades to the lexical rungs. Exits `1` when the graph artefact is
 missing (naming the stage to run), when `--paper` names a citekey in no
-topic, or when a phrase resolves nowhere and even the fallback finds
-nothing.
+topic, when a phrase resolves nowhere and even the fallback finds
+nothing -- and when an `--out` file cannot be written. That last one is
+raised *after* the topic view has already printed, so it is the one
+`discover` failure where the command both answered the question and
+returned nonzero; a script driving `--out` has to read the code rather
+than infer it from empty output.
 
 ### ✅ `chitragupta draft gate`
 
@@ -1149,7 +1153,7 @@ with the written-files summary moving to stderr in that case.
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate** -- it exits 0 whatever it finds -- and like
-the other eight aids nothing it reports can block a draft.
+the other nine aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
@@ -1672,7 +1676,7 @@ technique and its literature sources.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other eight review aids. `0` on every
+**Exit codes**, shared with the other nine review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
 That includes `recheck` -- a draft that got worse still exits 0.
 
@@ -1826,7 +1830,8 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All nine review aids emit one now (#309, #341, #314, #311, #416, #381, #386) --
+All ten review aids emit one now
+(#309, #341, #314, #311, #416, #381, #386, #484) --
 `provenance` and `coverage` follow the same envelope, above.
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s `agenda` aid treats each other
 aid's JSON as optional rather than required, though: not every draft has
@@ -2595,7 +2600,7 @@ unattended.
 | Exit code | Meaning | What an unattended caller should do |
 | --- | --- | --- |
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
-| `1` | At least one document failed, a prior deterministic failure is still unresolved, or the bib file yielded 0 references against a non-empty ledger (printed as `SUSPICIOUS`) | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why, or fix the bib export/`BIB_FILE` |
+| `1` | **The corpus has a hole in it** -- any of the five conditions [`corpus sync`](#-chitragupta-corpus-sync) enumerates, deliberately not restated here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why. The five have different remedies -- a bad export, a stale `file` path, a missing parse backend -- so read the breakdown rather than acting on the code alone |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
