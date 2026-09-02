@@ -83,6 +83,10 @@ VERBS = {
         "chitragupta.seed_topics",
         "read-only view of which papers each seed topic matched -- takes no lock",
     ),
+    "discover": (
+        "chitragupta.discover",
+        "resolve a phrase to a topic and walk its papers and neighbours -- takes no lock",
+    ),
 }
 
 # What `--help` prints, deliberately *not* this module's docstring (#152).

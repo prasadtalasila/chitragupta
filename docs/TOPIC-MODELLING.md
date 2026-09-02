@@ -5,7 +5,17 @@ Status: **discussion, not a specification.** Written 2026-08-21. Updated
 stage's current shape came from -- which published findings argued for
 it, which measurements on this project's own corpus confirmed or
 contradicted them, and which decisions are still open. `docs/CONFIG.md`
-is the reference for the settings themselves.
+is the reference for the settings themselves;
+[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) covers what happens after the
+model runs -- the topic graph and the discovery feature reading it.
+The discovery half borrows from a different set of sources than the
+modelling half below (OpenScholar's retrieval cascade, MiniRAG's
+heterogeneous graph, Reciprocal Rank Fusion, FlashRAG's extractive
+refiner, legacy AutoRAG's gold-set methodology); those are quoted where
+each mechanism is described in TOPIC-DISCOVERY.md and itemised --
+borrowings and refusals both -- in
+[INSPIRATION.md](INSPIRATION.md#-topic-discovery), so this document's
+own reference list stays what it was: the evidence behind the *model*.
 
 > **On the references below.** The four sources here are *not* in
 > `content/ledger.sqlite` and therefore have no citekeys, so they are

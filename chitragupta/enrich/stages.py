@@ -21,6 +21,7 @@ from chitragupta.enrich import (
     docling_parse,
     embed_index,
     topic_converge,
+    topic_graph,
     topic_model,
     topic_seeding,
 )
@@ -65,11 +66,17 @@ def stage_seed_topics(docs, args) -> dict:
     return topic_seeding.run_stage(docs, seed_topics.load())
 
 
-# Last, and it must stay last: it joins what the two stages above wrote
-# and computes nothing itself. Running it earlier reads a stale
-# content/topics.json, or none.
+# It joins what the two stages above wrote and computes nothing itself.
+# Running it earlier reads a stale content/topics.json, or none.
 def stage_converge(docs, args) -> dict:
     return topic_converge.run_stage(docs, seed_topics.load())
+
+
+# Last, and it must stay last: it derives relations between the topics
+# converge just joined, so running it earlier graphs a stale
+# content/topic_set.json, or none.
+def stage_topic_graph(docs, args) -> dict:
+    return topic_graph.run_stage(docs)
 
 
 STAGE_FUNCS = {
@@ -78,4 +85,5 @@ STAGE_FUNCS = {
     "bertopic": stage_bertopic,
     "seed-topics": stage_seed_topics,
     "converge": stage_converge,
+    "topic-graph": stage_topic_graph,
 }

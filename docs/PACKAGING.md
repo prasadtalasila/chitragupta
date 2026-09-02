@@ -112,6 +112,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
+| `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k` |
 
 ### ✍ `draft` -- work on one draft
 
@@ -146,12 +147,12 @@ command already has -- this is a front door, not a redesign.
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
-| Command              | Flags                                                                                                                                         |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
+| Command              | Flags                                                                                                                                                     |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge,topic-graph`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
-That is 4 layers and 25 verbs and aids (3 + 11 + 10 + 1), plus 3
-package-level commands, giving **54 invocable leaf commands**: 3 + 3 +
+That is 4 layers and 26 verbs and aids (4 + 11 + 10 + 1), plus 3
+package-level commands, giving **55 invocable leaf commands**: 3 + 4 +
 (5 + 29) + (9 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; #267 pins them with a test that
 walks the live parsers, so a verb added without a row here fails the

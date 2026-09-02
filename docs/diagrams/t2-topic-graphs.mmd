@@ -1,0 +1,35 @@
+---
+title: Topic discovery — the two graphs
+---
+flowchart TB
+
+  subgraph TP["<b>topic → papers</b> · content/topic_set.json<br/><small>written by the converge stage; discover displays it with ledger detail</small>"]
+    direction TB
+    DT1(("digital twin"))
+    ML1(("machine learning"))
+    P1["p1"]
+    P2["p2"]
+    P3["p3"]
+    P4["p4"]
+    DT1 --- P1
+    DT1 --- P2
+    ML1 --- P2
+    ML1 --- P3
+    ML1 --- P4
+  end
+
+  subgraph TT["<b>topic ↔ topic</b> · content/topic_graph.json<br/><small>written by the topic-graph stage; every edge is explainable by naming papers</small>"]
+    direction TB
+    DT2(("digital twin"))
+    ML2(("machine learning"))
+    DT2 ---|"<b>overlap</b><br/><small>shared members · jaccard + overlap coefficient ·<br/>kept only when hypergeometrically surprising · via: p2</small>"| ML2
+    DT2 -.-|"<b>semantic</b><br/><small>average best-match cosine, centred space ·<br/>mutual top-k · bridge: p2 ↔ p3</small>"| ML2
+  end
+
+  TP -- "shared members are set arithmetic<br/>on the membership above" --> TT
+
+  classDef topic fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
+  classDef paper fill:#f0fdf4,stroke:#16a34a,color:#052e16
+
+  class DT1,ML1,DT2,ML2 topic
+  class P1,P2,P3,P4 paper

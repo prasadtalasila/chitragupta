@@ -115,6 +115,7 @@ def isolated_config(tmp_path, monkeypatch):
         "SEED_TOPICS_PATH": "seed_topics.toml",
         "TOPIC_SEEDS_PATH": "topic_seeds.json",
         "TOPIC_SET_PATH": "topic_set.json",
+        "TOPIC_GRAPH_PATH": "topic_graph.json",
         "RENDERED_DIR": "rendered",
     }
     for name, relative in under_content.items():

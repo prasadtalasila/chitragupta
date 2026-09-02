@@ -856,6 +856,43 @@ TOPIC_CONVERGE_SIMILARITY = _get_float(
     "topic_converge_similarity",
     default=0.45,
 )
+# The topic graph: relations between the topics topic_set.json already
+# holds. Written by the `topic-graph` stage; read by `corpus discover`.
+TOPIC_GRAPH_PATH = CONTENT_DIR / "topic_graph.json"
+# How surprising a shared-member count must be for two topics to get an
+# overlap edge. A significance level rather than a weight floor: "more
+# shared papers than chance, given both sizes and the corpus size" needs
+# no per-corpus tuning, where any fixed Jaccard cutoff does -- and it
+# refuses the edge two large topics would otherwise get merely for both
+# being large.
+TOPIC_GRAPH_P_VALUE = _get_float(
+    "TOPIC_GRAPH_P_VALUE",
+    "enrich",
+    "topic_graph_p_value",
+    default=0.01,
+)
+# Semantic edges are kept only between mutual top-k neighbours. Mutual,
+# because a global similarity floor either floods the dense region of
+# the topic space or starves the sparse one; k-nearest adapts to both.
+TOPIC_GRAPH_NEIGHBORS = _get_int(
+    "TOPIC_GRAPH_NEIGHBORS",
+    "enrich",
+    "topic_graph_neighbors",
+    default=5,
+)
+# How semantically close the best topic centroid must be before the
+# discover ladder's hybrid rung claims a free phrase resolved to a topic
+# rather than falling back to paper search. Gates only the semantic
+# evidence -- a BM25 hit on the topic's own vocabulary is direct evidence
+# regardless of geometry. 0.35 is a starting point, not a measurement;
+# the G8 gold set is what will tune it, and recording that here is what
+# stops the number acquiring false authority.
+DISCOVER_MIN_SIMILARITY = _get_float(
+    "DISCOVER_MIN_SIMILARITY",
+    "discover",
+    "min_similarity",
+    default=0.35,
+)
 RENDERED_DIR = CONTENT_DIR / "rendered"
 
 # The CSL style pandoc's --citeproc formats citations and the bibliography

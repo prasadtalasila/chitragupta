@@ -1,8 +1,8 @@
-# 📐 The workflow, drawn eleven ways
+# 📐 The workflow, drawn thirteen ways
 
-Status: **reference.** Written 2026-08-06. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-06. Updated 2026-09-02.
 
-Every diagram here describes the same pipeline. They come in three groups:
+Every diagram here describes the same pipeline. They come in four groups:
 
 - **[The ladder](#-the-ladder)** -- six views of the whole workflow, ordered
   by how much you already know, from one that assumes nothing to one that
@@ -13,10 +13,13 @@ Every diagram here describes the same pipeline. They come in three groups:
   running.
 - **[Appendix](#-appendix)** -- the same workflow in time order, and the
   ledger's state machine for one citekey.
+- **[Topic discovery](#-topic-discovery)** -- two views of the corpus's
+  topic structure and the reader over it, the one group here that lives
+  *before* any draft exists ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)).
 
 Read the one that matches your question and ignore the rest.
 
-One property holds in all eleven: **a genre skill loops on the citation
+One property holds in the eleven workflow views: **a genre skill loops on the citation
 gate until it exits 0, and shows you nothing before that.** All five
 SKILL.md files in `.claude/skills/` carry that instruction, four of them
 in the same words: *"Fix and re-run until `OK`. Never present a draft
@@ -25,7 +28,7 @@ see.
 
 The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
-diagram land in the same diff. `docs/diagrams/` carries the same eleven as
+diagram land in the same diff. `docs/diagrams/` carries the same thirteen as
 standalone `.mmd` sources and `.svg` exports, for slides, a paper, or a
 viewer that doesn't render Mermaid -- see [Editing these](#-editing-these)
 at the end.
@@ -287,7 +290,8 @@ flowchart TB
     H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
     H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
     H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
-    H1 --> H2 --> H3 --> H4 --> H5
+    H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
+    H1 --> H2 --> H3 --> H4 --> H5 --> H6
   end
 
   %% ─────────────── AIDS (side branch) ───────────────
@@ -390,6 +394,7 @@ flowchart TB
       TOP[/"content/topics.json"/]
       SED[/"content/topic_seeds.json"/]
       CVG[/"content/topic_set.json"/]
+      TGR[/"content/topic_graph.json"/]
     end
 
     subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
@@ -424,6 +429,7 @@ flowchart TB
   TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
   TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
   SED --> CVG
+  CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
 
   TXT -- "chitragupta/retrieval_cache.py" --> RIX
 
@@ -445,7 +451,7 @@ flowchart TB
 
   class BIB,PDF,CFG mine
   class LED,TXT,CPS corpus
-  class DOC,CHR,TOP,SED,CVG heavy
+  class DOC,CHR,TOP,SED,CVG,TGR heavy
   class RIX,DCA,TCA cache
   class DRF,REN,RVW draft
   class LCK lock
@@ -759,7 +765,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -825,7 +831,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 
@@ -1008,13 +1014,107 @@ stateDiagram-v2
 
 ---
 
+## 🕸 Topic discovery
+
+Two views of the discovery feature
+([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)), the one group here that
+lives before any draft exists: how a free phrase becomes a topic that
+actually exists in the corpus, and what the two topic graphs are.
+
+### 🪜 12. The resolution ladder
+
+Which rung answered is part of the answer -- the output's
+`resolved_via` field names it, because a topic membership and a
+plausible guess must never look alike.
+
+```mermaid
+flowchart TB
+
+  Q(["a phrase<br/><small><code>chitragupta corpus discover 'cyber replica'</code></small>"])
+  E{"<b>1 · exact</b><br/><small>case-insensitive label match</small>"}
+  F{"<b>2 · fuzzy</b><br/><small>difflib ≥ 0.75 — typos and near-forms only</small>"}
+
+  subgraph H["<b>3 · hybrid</b> — two rankers, fused by rank"]
+    direction TB
+    BM["<b>BM25 over each topic's own vocabulary</b><br/><small>label + c-TF-IDF terms, one small document per topic —<br/>the same tokenizer and arithmetic as chitragupta/retrieval.py</small>"]
+    SEM["<b>cosine vs the stored topic centroids</b><br/><small>query embedded, moved into centred space by the artefact's<br/>corpus_mean · needs the enrich extra — skipped with a note without it</small>"]
+    RRF["<b>Reciprocal Rank Fusion</b><br/><small>score = Σ 1/(60 + rank) — Cormack et al. 2009<br/>rank-based, so the two scales never need calibrating</small>"]
+    BM --> RRF
+    SEM --> RRF
+  end
+
+  S["<b>4 · search fallback</b><br/><small>retrieval.search() over papers — labelled a search result, never<br/>a topic membership; each hit still annotated with its topics</small>"]
+  T(["<b>the topic view</b><br/><small>members with ledger detail · each paper's other topics ·<br/>linked topics from both edge families · --out writes the overview</small>"])
+
+  Q --> E
+  E -- "hit" --> T
+  E -- "miss" --> F
+  F -- "hit" --> T
+  F -- "miss" --> H
+  RRF -- "cosine ≥ floor, or a<br/>lexical vocabulary hit" --> T
+  RRF -- "below the floor" --> S
+
+  classDef q fill:#fff7ed,stroke:#c2410c,color:#431407
+  classDef rung fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
+  classDef good fill:#f0fdf4,stroke:#16a34a,stroke-width:2px,color:#052e16
+  classDef fall fill:#fefce8,stroke:#a16207,color:#422006
+
+  class Q q
+  class E,F,BM,SEM,RRF rung
+  class T good
+  class S fall
+```
+
+### 🕸 13. The two graphs
+
+Two relations, two files, and the edge families are never merged into
+one score -- their disagreement (many shared papers but different
+subjects, or the same subject with none) is itself a discovery cue.
+
+```mermaid
+flowchart TB
+
+  subgraph TP["<b>topic → papers</b> · content/topic_set.json<br/><small>written by the converge stage; discover displays it with ledger detail</small>"]
+    direction TB
+    DT1(("digital twin"))
+    ML1(("machine learning"))
+    P1["p1"]
+    P2["p2"]
+    P3["p3"]
+    P4["p4"]
+    DT1 --- P1
+    DT1 --- P2
+    ML1 --- P2
+    ML1 --- P3
+    ML1 --- P4
+  end
+
+  subgraph TT["<b>topic ↔ topic</b> · content/topic_graph.json<br/><small>written by the topic-graph stage; every edge is explainable by naming papers</small>"]
+    direction TB
+    DT2(("digital twin"))
+    ML2(("machine learning"))
+    DT2 ---|"<b>overlap</b><br/><small>shared members · jaccard + overlap coefficient ·<br/>kept only when hypergeometrically surprising · via: p2</small>"| ML2
+    DT2 -.-|"<b>semantic</b><br/><small>average best-match cosine, centred space ·<br/>mutual top-k · bridge: p2 ↔ p3</small>"| ML2
+  end
+
+  TP -- "shared members are set arithmetic<br/>on the membership above" --> TT
+
+  classDef topic fill:#eef2ff,stroke:#4f46e5,stroke-width:1.5px,color:#1e1b4b
+  classDef paper fill:#f0fdf4,stroke:#16a34a,color:#052e16
+
+  class DT1,ML1,DT2,ML2 topic
+  class P1,P2,P3,P4 paper
+```
+
+---
+
 ## ✏ Editing these
 
 Each diagram is plain Mermaid in a fenced block above. GitHub renders
 them, and so does any Mermaid-aware editor. **That block is the source of
 truth.**
 
-The same eleven are also checked in as standalone files, so you can drop
+The same thirteen are also checked in as standalone files, so you can drop
 one into a slide deck or a paper without copying it out of this document:
 
 | Path | What it is |
@@ -1035,6 +1135,8 @@ one into a slide deck or a paper without copying it out of this document:
 | Genre C: LaTeX-native | `g3-thesis` |
 | Appendix: one draft, in time order | `extra-sequence` |
 | Appendix: the life of a single citekey | `extra-ledger-state` |
+| Topic discovery: the resolution ladder | `t1-discovery-ladder` |
+| Topic discovery: the two graphs | `t2-topic-graphs` |
 
 Those are exports, not a second source. Edit the fenced block first, then
 re-render, or the two drift apart:

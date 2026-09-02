@@ -73,6 +73,7 @@ from chitragupta.enrich.stages import (  # noqa: F401
     stage_docling,
     stage_embed,
     stage_seed_topics,
+    stage_topic_graph,
 )
 
 # pylint: enable=unused-import
@@ -86,7 +87,7 @@ from chitragupta.progname import prog_for
 # here would reach the log file and be silently dropped from the console.
 logger = logging.getLogger("chitragupta.enrich")
 
-STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge"]
+STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge", "topic-graph"]
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
@@ -118,7 +119,7 @@ def parse_args() -> argparse.Namespace:
         "--stages",
         default=None,
         help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
-        "(default: all five, or docling alone with --for-draft)",
+        "(default: all six, or docling alone with --for-draft)",
     )
     parser.add_argument(
         "--for-draft",
