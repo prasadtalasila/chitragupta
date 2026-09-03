@@ -150,6 +150,73 @@ class TestStageSeedTopics:
         assert result["detail"] == {"n_docs": 3, "matched": {"digital twin": 2}, "unmatched": 1}
 
 
+class TestSeedPhraseUnion:
+    """#605: the phrases reaching seed-topics and converge are the
+    author's own list unioned with the extracted keywords -- both loaded
+    through seed_topics.load(), deduplicated case-insensitively with the
+    author's spelling winning, order preserved."""
+
+    def _capture(self, monkeypatch, module, func_name):
+        seen = {}
+        monkeypatch.setattr(
+            module,
+            func_name,
+            lambda docs, phrases: (
+                seen.update(phrases=phrases) or {"n_docs": 0, "topics": [], "unmatched": []}
+            ),
+        )
+        return seen
+
+    def test_seed_topics_reads_both_files(self, isolated_config, monkeypatch):
+        isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.SEED_TOPICS_PATH.write_text(
+            'topics = ["Digital Twin", "IoT"]', encoding="utf-8"
+        )
+        isolated_config.KEYWORDS_PATH.write_text(
+            'topics = ["digital twin", "edge computing"]', encoding="utf-8"
+        )
+        seen = self._capture(monkeypatch, topic_seeding, "run_topic_seeding")
+        result = enrich_script.stage_seed_topics([], make_args())
+        assert result["status"] == "ok"
+        # "Digital Twin" survives in the author's spelling; the extracted
+        # duplicate is dropped, the extracted novelty is appended.
+        assert seen["phrases"] == ("Digital Twin", "IoT", "edge computing")
+
+    def test_extracted_keywords_alone_run_the_stage(self, isolated_config, monkeypatch):
+        """A corpus with no hand-written seed file but a populated
+        keywords.toml still seeds -- that is the whole point of #605."""
+        isolated_config.KEYWORDS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.KEYWORDS_PATH.write_text(
+            'topics = ["federated learning"]', encoding="utf-8"
+        )
+        seen = self._capture(monkeypatch, topic_seeding, "run_topic_seeding")
+        result = enrich_script.stage_seed_topics([], make_args())
+        assert result["status"] == "ok"
+        assert seen["phrases"] == ("federated learning",)
+
+    def test_converge_reads_the_same_union(self, isolated_config, monkeypatch):
+        isolated_config.SEED_TOPICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.SEED_TOPICS_PATH.write_text('topics = ["Digital Twin"]', encoding="utf-8")
+        isolated_config.KEYWORDS_PATH.write_text('topics = ["edge computing"]', encoding="utf-8")
+        seen = {}
+        monkeypatch.setattr(
+            topic_converge,
+            "run_stage",
+            lambda docs, phrases: seen.update(phrases=phrases) or {"status": "ok", "detail": {}},
+        )
+        enrich_script.stage_converge([], make_args())
+        assert seen["phrases"] == ("Digital Twin", "edge computing")
+
+    def test_skip_message_names_both_sources(self, isolated_config):
+        """Neither file exists: the reason must not claim the author's
+        seed file is the only place phrases could have come from."""
+        result = enrich_script.stage_seed_topics([], make_args())
+        assert result["status"] == "skipped"
+        reason = result["detail"]["reason"]
+        assert str(isolated_config.SEED_TOPICS_PATH) in reason
+        assert str(isolated_config.KEYWORDS_PATH) in reason
+
+
 class TestParseArgs:
     def test_defaults(self, monkeypatch):
         """`--stages` parses as None rather than the joined list, so

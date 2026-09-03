@@ -989,6 +989,25 @@ which is why this file is written by hand rather than generated. That is
 [HOUSE-STYLE.md](HOUSE-STYLE.md)'s "it proposes; the human accepts",
 applied to the one decision a heuristic would get wrong.
 
+### 🔀 Two files feed the matching, and only one is yours to edit
+
+Since #605 the `seed-topics` and `converge` stages read the union of two
+files: `content/seed_topics.toml` -- yours to write, everything above --
+and `content/keywords.toml`, the `extract-keywords` stage's own output
+(the phrases the corpus's papers themselves declared; see that key in
+the `[enrich]` table). The union is deduplicated case-insensitively with
+your spelling winning, so a phrase in both files appears once, as you
+wrote it. Measured on this project's own 497-document corpus, the
+hand-written list alone reached 69.4% seed-topic coverage and the two
+together 98.6% (`bench/RESULTS.md`, 2026-09-03c).
+
+The split is the point: `seed_topics.toml` is hand-curated and never
+overwritten; `keywords.toml` is machine output, regenerated fresh on
+every `extract-keywords` run. To keep an extracted phrase permanently --
+or to keep it after deleting `keywords.toml` -- promote it into your own
+`seed_topics.toml`. With neither file present the stage reports itself
+skipped, naming both.
+
 ### ▶ Running it, and reading the result
 
 ```bash

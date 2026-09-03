@@ -66,7 +66,7 @@ flowchart TB
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
     H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
     H3K["<b>extract-keywords</b><br/><small>content/keywords.toml — the papers' own declared keywords, aggregated; regenerated each run</small>"]
-    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
+    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — seed phrases, yours unioned with extracted keywords, many-to-many</small>"]
     H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
     H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
     H1 --> H2 --> H3 --> H3K --> H4 --> H5 --> H6

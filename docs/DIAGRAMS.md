@@ -289,7 +289,7 @@ flowchart TB
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
     H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
     H3K["<b>extract-keywords</b><br/><small>content/keywords.toml — the papers' own declared keywords, aggregated; regenerated each run</small>"]
-    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
+    H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — seed phrases, yours unioned with extracted keywords, many-to-many</small>"]
     H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
     H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
     H1 --> H2 --> H3 --> H3K --> H4 --> H5 --> H6
@@ -427,7 +427,7 @@ flowchart TB
   CPS -. "<b>chitragupta/enrich/_docling_reuse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
   DOC --> CHR
   TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
-  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
+  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the seed phrases, hand-written and extracted,<br/>matched against the same embeddings</small>" --> SED
   TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
   SED --> CVG
   CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
