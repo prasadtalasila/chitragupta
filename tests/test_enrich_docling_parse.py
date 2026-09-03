@@ -275,6 +275,21 @@ class TestImageExtraction:
         docling_parse.parse_doc(self._doc(tmp_path))
         assert FakeDocumentConverter.last_format_options["pdf"].pipeline_options.do_ocr is True
 
+    def test_formula_enrichment_is_off_by_default(self, isolated_config, fake_docling, tmp_path):
+        """Off unless asked for: the formula model is an extra download
+        and an extra pass per page, the same economics as OCR."""
+        docling_parse.parse_doc(self._doc(tmp_path))
+        opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
+        assert opts.do_formula_enrichment is False
+
+    def test_formula_enrichment_can_be_turned_on(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        monkeypatch.setattr(isolated_config, "DOCLING_FORMULAS", True)
+        docling_parse.parse_doc(self._doc(tmp_path))
+        opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
+        assert opts.do_formula_enrichment is True
+
     def test_images_on_never_asks_docling_for_the_bitmaps(
         self, images_on, fake_docling, tmp_path, monkeypatch
     ):
@@ -972,6 +987,7 @@ class TestCacheLoading:
             "images": isolated_config.DOCLING_IMAGES,
             "ocr": isolated_config.PARSER_OCR,
             "image_scale": isolated_config.DOCLING_IMAGE_SCALE,
+            "formulas": isolated_config.DOCLING_FORMULAS,
             "items": items,
         }
         payload.update(overrides)
@@ -1028,6 +1044,19 @@ class TestCacheLoading:
         assert _docling_cache._load_cache() == {"good2024": [123, 456]}
 
         monkeypatch.setattr(isolated_config, "PARSER_OCR", not isolated_config.PARSER_OCR)
+        assert _docling_cache._load_cache() == {}
+
+    def test_toggling_formulas_invalidates_whole_cache(self, isolated_config, monkeypatch):
+        """Same trap as DOCLING_IMAGES, on a fourth axis (#627): formula
+        enrichment changes what every .md and passage sidecar should
+        contain -- decoded LaTeX against `formula-not-decoded` markers --
+        while the (size, mtime_ns) fingerprint still only sees the PDF."""
+        self._write_cache(isolated_config, {"good2024": [123, 456]})
+        assert _docling_cache._load_cache() == {"good2024": [123, 456]}
+
+        monkeypatch.setattr(
+            isolated_config, "DOCLING_FORMULAS", not isolated_config.DOCLING_FORMULAS
+        )
         assert _docling_cache._load_cache() == {}
 
     def test_toggling_image_scale_invalidates_whole_cache(self, isolated_config, monkeypatch):

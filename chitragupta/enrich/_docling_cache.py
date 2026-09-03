@@ -33,7 +33,9 @@ logger = logging.getLogger("chitragupta.enrich.docling_parse")
 # 2: added <stem>.passages.json, so a cache written by version 1 has
 # no sidecar for citation_provenance to read even though its .md is
 # current.
-_CACHE_VERSION = 2
+# 3: passage sidecars now carry table and formula records (#627), so a
+# version-2 sidecar is missing units even though its .md is current.
+_CACHE_VERSION = 3
 
 
 def _load_cache() -> dict:
@@ -63,6 +65,7 @@ def _load_cache() -> dict:
         or data.get("images") != config.DOCLING_IMAGES
         or data.get("ocr") != config.PARSER_OCR
         or data.get("image_scale") != config.DOCLING_IMAGE_SCALE
+        or data.get("formulas") != config.DOCLING_FORMULAS
     ):
         return {}
     items = data.get("items")
@@ -95,6 +98,7 @@ def _save_cache(cache: dict) -> None:
             "images": config.DOCLING_IMAGES,
             "ocr": config.PARSER_OCR,
             "image_scale": config.DOCLING_IMAGE_SCALE,
+            "formulas": config.DOCLING_FORMULAS,
             "items": cache,
         }
         tmp_path.write_text(json.dumps(payload), encoding="utf-8")

@@ -37,13 +37,14 @@ So the guarantee is structural rather than advisory: a page-level
 nothing to quote. `quotable` reports that fact; it does not gate a field
 that is sitting there anyway.
 
-`passage_records()` lives here rather than beside either writer for the
-same reason the ladder does: this module is stdlib-only and is already
-the sidecar's reader, so both producers -- `chitragupta/pdf_text.py` in the
-corpus layer and `chitragupta/enrich/docling_parse.py` in the enrichment layer --
-share one definition of what a passage is. It takes a Docling document by
-duck-typing (`getattr` only, no import), which is what lets a module with
-no venv dependency describe a document only a venv can build.
+`passage_records()` is re-exported here rather than defined here since
+#627 pushed this module past the 250-line ceiling -- it lives in
+`chitragupta/_passage_records.py`, still stdlib-only, still the one
+definition both producers share (`chitragupta/pdf_text.py` in the corpus
+layer and `chitragupta/enrich/docling_parse.py` in the enrichment
+layer). The reason it is reachable *through this module* is unchanged:
+this module is the sidecar's reader, and writer and reader drift apart
+the moment they stop being found in one place.
 
 Extracted from chitragupta/review/citation_provenance.py, which owned this ladder when
 it was the only consumer, and kept as its own seam for a second one that
@@ -67,9 +68,12 @@ from typing import Any
 
 from chitragupta import config
 
-# Re-exported so `passages.distinctive` keeps resolving for every existing
-# caller -- see chitragupta/_passage_words.py for why the vocabulary moved
-# out. `__all__` names it so the import is not read as unused.
+# Re-exported so `passages.distinctive`, `passages.passage_records` and
+# `passages.PASSAGE_LABELS` keep resolving for every existing caller --
+# see chitragupta/_passage_words.py and chitragupta/_passage_records.py
+# for why each moved out. `__all__` names them so the imports are not
+# read as unused.
+from chitragupta._passage_records import PASSAGE_LABELS, passage_records
 from chitragupta._passage_words import distinctive
 
 __all__ = [
@@ -98,53 +102,6 @@ class Passage:
     @property
     def quotable(self) -> bool:
         return self.text is not None
-
-
-# Docling labels each text item. Running heads, page numbers and figure
-# captions are not prose a claim can be supported by, so they are left
-# out of the passage sidecar -- keeping them would let a claim "match"
-# a journal name repeated on all 17 pages.
-PASSAGE_LABELS = frozenset({"text", "list_item", "section_header", "title"})
-
-
-def passage_records(dl_doc) -> list[dict]:
-    """One record per prose text item: what it says and where it sits.
-
-    This is what makes a *quotable* passage possible. `pdftotext -layout`
-    preserves a page's visual arrangement rather than its reading order,
-    so on a two-column paper each output line splices together two
-    unrelated columns (82%-89% of long lines, measured over this
-    project's own sample). Any excerpt drawn from that text is a
-    two-argument collage. Docling resolves reading order, so an item here
-    is a real paragraph that can be shown to a reviewer verbatim.
-
-    The bounding box rides along because Docling already has it, and it
-    is what a future click-through highlight would need; nothing in this
-    repo consumes it yet.
-
-    `dl_doc` is a Docling `DoclingDocument`, read entirely through
-    `getattr` so that this module -- which must import under a bare
-    `python` -- never names the library. Both writers pass one in: the
-    corpus layer's `pdf_text._extract_docling` and the enrichment layer's
-    `docling_parse.parse_doc`.
-    """
-    records = []
-    for item in getattr(dl_doc, "texts", []):
-        label = str(getattr(item, "label", "")).rsplit(".", maxsplit=1)[-1].lower()
-        text = (getattr(item, "text", "") or "").strip()
-        if label not in PASSAGE_LABELS or not text:
-            continue
-        prov = item.prov[0] if getattr(item, "prov", None) else None
-        record = {
-            "text": text,
-            "label": label,
-            "page": getattr(prov, "page_no", None) if prov else None,
-        }
-        bbox = getattr(prov, "bbox", None) if prov else None
-        if bbox is not None:
-            record["bbox"] = [getattr(bbox, side, None) for side in ("l", "t", "r", "b")]
-        records.append(record)
-    return records
 
 
 def sidecar_path(citekey: str) -> Path:

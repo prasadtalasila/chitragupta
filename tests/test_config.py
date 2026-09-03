@@ -483,6 +483,16 @@ class TestModuleReloadWithEnvOverrides:
         importlib.reload(config)
         assert config.EMBEDDING_MODEL == "sentence-transformers/other-model"
 
+    def test_docling_formulas_defaults_off(self, monkeypatch, _empty_config_toml):
+        monkeypatch.delenv("DOCLING_FORMULAS", raising=False)
+        importlib.reload(config)
+        assert config.DOCLING_FORMULAS is False
+
+    def test_docling_formulas_env_override(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("DOCLING_FORMULAS", "true")
+        importlib.reload(config)
+        assert config.DOCLING_FORMULAS is True
+
     def test_keyword_extraction_defaults(self, monkeypatch, _empty_config_toml):
         """The documented defaults (#604): the values the exploratory run
         used to produce the list that was read by hand and judged useful."""

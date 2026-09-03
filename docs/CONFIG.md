@@ -372,6 +372,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `entailment_model` | `ENTAILMENT_MODEL` | a `sentence_transformers.CrossEncoder` model id | `cross-encoder/nli-deberta-v3-small` | `cross-encoder/nli-deberta-v3-base` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
+| `docling_formulas` | `DOCLING_FORMULAS` | boolean | `false` | `false` |
 | `keywords_path` | `KEYWORDS_PATH` | a path, resolved under `content/` unless absolute | `keywords.toml` | `keywords.toml` |
 | `keyword_top_n` | `KEYWORD_TOP_N` | integer | `40` | `40` |
 | `keyword_min_df` | `KEYWORD_MIN_DF` | integer | `2` | `2` |
