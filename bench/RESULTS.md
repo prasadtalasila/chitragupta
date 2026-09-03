@@ -4341,3 +4341,170 @@ crop is released before the next is rendered, and
 `tests/test_enrich_real_libraries.py` checks the crop geometry against
 the real pypdfium2 and a real docling `BoundingBox`, so the fake cannot
 drift from the library unnoticed.
+
+## 2026-09-03: do corpus-extracted keywords help `content/topics.toml` seeding find more of the corpus?
+
+`content/topics.toml` is this corpus's hand-written seed list (28
+phrases: "digital twin", "structural health monitoring", and the like).
+`bench/extract_keywords.py` asks the corpus instead: TF-IDF over every
+parsed document's full text, ranked by summed weight, top 40 kept after
+dropping anything already in `content/topics.toml` and a small
+reference-list noise set (`refhub`, `elsevier`, bare years -- see the
+script's own docstring for what ranked there before the filter existed).
+`bench/bench_keyword_seed_topics.py` then runs
+`chitragupta/enrich/topic_seeding.py`'s own `assign()` three times over
+the same 497 document embeddings -- topics.toml alone, keywords.toml
+alone, and both combined -- and reports coverage (share of the corpus at
+least one phrase reaches), redundancy (mean pairwise Jaccard of match
+sets, phrases with zero matches excluded), and, for the combined arm,
+what share of the corpus a keyword phrase reaches that no topics.toml
+phrase in that same run also reaches.
+
+| arm | phrases | coverage | redundancy |
+|---|---|---|---|
+| topics only | 28 | 69.4% | 0.041 |
+| keywords only | 40 | 73.4% | 0.046 |
+| combined | 68 | **88.9%** | 0.042 |
+
+**Combining gains 19.5 points of coverage, and it is genuinely new
+territory, not overlap counted twice**: the keyword-only-reached share
+of the combined run is also 19.5%, i.e. every point of the gain is a
+paper no topics.toml phrase would have surfaced on its own. Redundancy
+barely moves (0.041 -> 0.042), so the keyword phrases are not simply
+restating the hand-written ones at a finer grain -- they are naming
+things the author's list did not, mostly implementation/method
+vocabulary the corpus's own prose uses that a person curating a seed
+list by hand does not reliably think to write down: `mqtt`, `devops`,
+`aas` (asset administration shell), `cps`, `dt`/`dts`/`pt` (this
+corpus's own digital/physical-twin shorthand), `predictive`, `testing`,
+`validation`.
+
+**What this does not show**: whether the *matches* under a keyword
+phrase are individually good (no human read a sample), whether the
+gain holds at a different `top` cut than 40, and whether the noise
+filter generalizes past this corpus's own reference-manager artefacts
+-- `REFERENCE_LIST_NOISE` was built the same empirically-measured way
+`chitragupta/enrich/topic_labels.py`'s `CITATION_NOISE` was, by reading
+what ranked before the filter existed, and a different corpus's PDF
+extraction may leave different junk in the top 40.
+
+Reproduce (needs the "enrich" Poetry group and a synced corpus with
+parsed text). `extract_keywords.py` only lists to the terminal unless
+`--write` is passed, so a `--top` sweep (below) never clobbers a real
+`content/keywords.toml`:
+
+```sh
+CONTENT_DIR=/path/to/content .venv-full/bin/python \
+    bench/extract_keywords.py --top 40
+CONTENT_DIR=/path/to/content .venv-full/bin/python \
+    bench/extract_keywords.py --top 40 --write
+CONTENT_DIR=/path/to/content .venv-full/bin/python \
+    bench/bench_keyword_seed_topics.py --tag <date>-keywords
+```
+
+### 2026-09-03b: does coverage keep climbing past `--top 40`, or plateau?
+
+Same corpus, same `topics.toml`, `--top` swept from 10 to 260 (each
+value's `keywords.toml` written to a scratch path, never to
+`content/keywords.toml`):
+
+| `--top` | keywords | combined coverage | gain over topics-only | redundancy |
+|---|---|---|---|---|
+| 10 | 10 | 79.9% | +10.5 | 0.038 |
+| 20 | 20 | 82.9% | +13.5 | 0.039 |
+| 30 | 30 | 86.1% | +16.7 | 0.040 |
+| 40 | 40 | 88.9% | +19.5 | 0.042 |
+| 60 | 60 | 93.4% | +23.9 | 0.042 |
+| 80 | 80 | 95.2% | +25.8 | 0.042 |
+| 120 | 120 | 97.2% | +27.8 | 0.043 |
+| 160 | 160 | 97.4% | +28.0 | 0.045 |
+| 200 | 200 | 98.2% | +28.8 | 0.046 |
+| 260 | 260 | 98.4% | +29.0 | 0.047 |
+
+**It plateaus, around `--top 80`-`120`.** Marginal gain per added
+keyword falls steadily -- 1.05 points of coverage per phrase at
+`--top 10`, 0.40 at `--top 40`, 0.05 at `--top 120`, 0.01 at `--top
+260` -- and the last 140 keywords (120 -> 260) buy 1.2 more points of
+coverage for nearly triple the phrase count, while redundancy (flat
+through `--top 80`) creeps up alongside them. `--top 40`, the value the
+section above used, sits well before the knee: it is a conservative
+choice on this corpus, not a tuned one, and `--top 80`-`120` is where
+this measurement would put the knob if coverage were the only
+criterion. **Not measured here**: whether the extra keywords past the
+knee are individually meaningful or just increasingly marginal
+long-tail terms -- the plateau is a coverage/redundancy fact, not a
+quality judgment.
+
+### 2026-09-03c: TF-IDF over the whole paper, versus the paper's own declared "Keywords:"/"Index Terms" line
+
+Most papers in this corpus declare their own keywords near the abstract
+(IEEE's `Index Terms -X, Y, Z`, Elsevier's `Keywords: X · Y · Z`,
+Springer sometimes with no punctuation at all between phrases). A small
+throwaway extractor (not committed -- see "Reproducing" below) finds
+that line by regex, splits it on whatever separator the paper's own
+formatting uses, and keeps a phrase only if at least 2 papers declare
+it. Compared against `bench/extract_keywords.py`'s TF-IDF-over-full-text
+approach, both alone and combined with `content/topics.toml`:
+
+| arm | phrases | coverage | redundancy |
+|---|---|---|---|
+| topics only | 28 | 69.4% | 0.041 |
+| declared-keywords only | 156 | 97.6% | 0.040 |
+| TF-IDF only (`--top 120`) | 120 | 96.0% | 0.045 |
+| topics + declared-keywords | 184 | **98.6%** | 0.040 |
+| topics + TF-IDF | 148 | 97.2% | 0.043 |
+| topics + declared-keywords + TF-IDF | 285 | **99.8%** | 0.040 |
+
+**Author-declared keywords beat TF-IDF on every axis measured here**:
+higher coverage from fewer phrases (156 vs 120), and lower redundancy
+(0.040 vs 0.045) -- despite a detectable declaration existing in only
+262 of 497 papers (52.7%). That last number is itself the finding:
+phrases sourced from half the corpus still generalize, via embedding
+similarity, to match papers that never declared them at all. Stacking
+all three sources reaches 99.8% coverage, the highest of any arm in
+either this entry or the 2026-09-03/b entries above.
+
+**Why TF-IDF still earns its place instead of being replaced outright**:
+
+- **It runs on 100% of papers**, not the 52.7% with a detectable
+  declaration -- a corpus of preprints or grey literature without a
+  formal keywords section would leave the declared-keywords source
+  with nothing at all.
+- **The declared-keywords extractor is measurably more fragile.** Of the
+  262 detected lines, 191 (73%) split cleanly on a real separator (a
+  middle dot, semicolon or comma); the remaining 71 (27%) had no
+  separator between phrases at all -- Docling had flattened
+  "Digital Twin Internet of Things Augmented Reality" into one run of
+  words -- and the fallback (split at a lowercase-to-uppercase word
+  boundary) breaks real multi-word phrases apart (`"Digital"` /
+  `"Twin"` rather than `"Digital Twin"`) as often as it gets them right.
+  A second, sharper failure mode this entry's first draft actually hit:
+  Docling occasionally flattens an entire PDF column into one line, so
+  a real 6-word declaration was followed immediately by author
+  affiliations and the full abstract with no line break -- reachable
+  only by truncating the line to 300 characters and capping any single
+  phrase at 60 before accepting it, both applied here.
+- **The two sources are not measuring the same thing.** Declared
+  keywords are the author's own summary and read better to a human
+  browsing the graph; TF-IDF finds terms the corpus uses often but no
+  author necessarily foregrounded, including exactly the
+  implementation/method vocabulary the 2026-09-03 entry above singled
+  out (`mqtt`, `devops`, `aas`). Neither subsumes the other, which is
+  what the combined arm's coverage over either alone shows.
+
+**What this does not show**: whether declared keywords, being sparser,
+skew toward a different part of the corpus than TF-IDF does (a
+topic-level breakdown, not just an aggregate coverage number, would be
+needed to check that), and whether the 300-character/60-character
+truncation constants generalize past this corpus's own observed PDF
+flattening pattern.
+
+Reproducing needs a throwaway line-splitting script (regex for
+`^(?:index terms|keywords)`, then split on `·`/`|`/`;`/`,` in that
+priority order, falling back to a lower-to-upper word-boundary split) --
+not committed to `bench/`, since half its logic is a workaround for one
+corpus's PDF-flattening quirks rather than a general measurement. If
+this direction is pursued further, productionizing it as a `bench/`
+script (or as a documented alternative source in the `extract-keywords`
+enrich stage this section's 2026-09-03/b entries propose) is tracked as
+follow-up work, not yet filed as an issue.
