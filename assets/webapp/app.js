@@ -116,7 +116,6 @@
       } },
       { selector: ".highlighted", style: { "opacity": 1, "line-color": "#e53935" } },
     ],
-    wheelSensitivity: 0.2,
   });
 
   function visibleLabels() {
