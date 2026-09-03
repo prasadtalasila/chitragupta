@@ -1,6 +1,12 @@
 # Multimodal ingest: tables and formulae as retrievable units (#627)
 
-Status: **in progress.** Written 2026-09-03.
+Status: **done.** Written 2026-09-03. Landed in PR #632 (6.67.0). What
+changed on the way: real docling's `export_to_markdown()` turned out to
+include the caption itself, so the prepend is conditional on the export
+not already opening with it (found by the real-PDF smoke run, not the
+unit tests); and the table/record half of `passages.py` moved to a new
+`chitragupta/_passage_records.py` when the addition crossed the 250-line
+ceiling, re-exported so no caller changed.
 
 **Written for** the implementer of issue #627 (roadmap key H11): an
 author grounding a quantitative claim in a table should be able to
