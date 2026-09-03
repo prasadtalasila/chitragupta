@@ -64,9 +64,9 @@ The numbers are introduction order, not a dependency rank.
 
 **Stage.** One step within a layer, with its own name and its own status.
 The enrichment layer is the only one that literally enumerates them
-(`--stages docling,embed,bertopic,seed-topics,converge,topic-graph`,
+(`--stages docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph`,
 each reporting `ok`, `partial`,
-`skipped` or `error`). There are six, and every one
+`skipped` or `error`). There are seven, and every one
 of them writes a corpus artefact -- which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.
@@ -219,7 +219,7 @@ Every command above and the flags it takes are in
 Worth stating plainly, because the natural assumption is the expensive
 one and it is wrong. **By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
-for one of the six stages. The rest of this section is its reach.
+for one of the seven stages. The rest of this section is its reach.
 
 `chitragupta/enrich/__main__.py` calls `corpus.build_corpus()`, which returns
 **every row in the ledger, and nothing else.** `ledger.all_items()` is a
@@ -278,10 +278,11 @@ is fewer than it sounds:
 | `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
 | `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
 | `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
+| `extract-keywords` | **refused** | Overwrites `content/keywords.toml` whole. A keywords list extracted from one draft's papers would silently replace the corpus-wide one, and nothing that reads it could tell |
 | `seed-topics`, `converge`, `topic-graph` | **refused** | The same shape as `bertopic`, downstream of it: each overwrites one whole-corpus artefact (`content/topic_seeds.json`, `content/topic_set.json`, `content/topic_graph.json`), derived from the whole topic model above it |
 
-So the filter changes the behaviour of exactly one stage of the six,
-and the other five are deliberately out of reach.
+So the filter changes the behaviour of exactly one stage of the seven,
+and the other six are deliberately out of reach.
 
 The refusals are a **tier**, not a ladder, in this page's vocabulary,
 and they are the reason the flag is safe to offer at all. Asked to scope

@@ -3,6 +3,7 @@ pure helpers (_get/_get_float) that implement the override precedence."""
 
 import importlib
 import os
+from pathlib import Path
 
 import pytest
 
@@ -482,6 +483,32 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.setenv("EMBEDDING_MODEL", "sentence-transformers/other-model")
         importlib.reload(config)
         assert config.EMBEDDING_MODEL == "sentence-transformers/other-model"
+
+    def test_keyword_extraction_defaults(self, monkeypatch, _empty_config_toml):
+        """The documented defaults (#604): the values the exploratory run
+        used to produce the list that was read by hand and judged useful."""
+        for var in ("KEYWORD_TOP_N", "KEYWORD_MIN_DF", "KEYWORDS_PATH"):
+            monkeypatch.delenv(var, raising=False)
+        importlib.reload(config)
+        assert config.KEYWORD_TOP_N == 40
+        assert config.KEYWORD_MIN_DF == 2
+        assert config.KEYWORDS_PATH == config.CONTENT_DIR / "keywords.toml"
+
+    def test_keyword_extraction_env_overrides(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("KEYWORD_TOP_N", "7")
+        monkeypatch.setenv("KEYWORD_MIN_DF", "3")
+        monkeypatch.setenv("KEYWORDS_PATH", "elsewhere/kw.toml")
+        importlib.reload(config)
+        assert config.KEYWORD_TOP_N == 7
+        assert config.KEYWORD_MIN_DF == 3
+        assert config.KEYWORDS_PATH == config.CONTENT_DIR / "elsewhere/kw.toml"
+
+    def test_keywords_path_absolute_stays_absolute(self, monkeypatch, _empty_config_toml):
+        """The same resolution rule CONTENT_DIR itself uses: pathlib's
+        `/` yields the right-hand side unchanged when it is absolute."""
+        monkeypatch.setenv("KEYWORDS_PATH", "/tmp/kw.toml")
+        importlib.reload(config)
+        assert config.KEYWORDS_PATH == Path("/tmp/kw.toml")
 
     def test_missing_config_file_names_the_fix(self, monkeypatch, tmp_path):
         """config.toml is gitignored per-host data, so "it isn't there"

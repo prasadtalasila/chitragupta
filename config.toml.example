@@ -509,6 +509,33 @@ seed_topic_max_papers = 25
 #                                                           Default: 0.15
 seed_topic_min_similarity = 0.15
 
+# --- Declared keywords -------------------------------------------------
+# `--stages extract-keywords` reads each parsed paper's own declared
+# "Keywords:"/"Index Terms" line and aggregates the phrases corpus-wide
+# into keywords_path. That file is a GENERATED artifact, regenerated
+# fresh on every run -- unlike seed_topics.toml it is never hand-edited,
+# and a phrase you want to keep permanently belongs in your own
+# seed_topics.toml instead. A paper with no detectable declaration
+# contributes nothing; the stage's report counts how many had one.
+
+# Where the extracted list is written, resolved under content/ unless
+# given as an absolute path.
+#                                                Default: "keywords.toml"
+keywords_path = "keywords.toml"
+
+# How many extracted phrases survive, most-widely-declared first (ties
+# alphabetical). 40 is the value the exploratory run behind this feature
+# used to produce a list that read as meaningful topic vocabulary
+# (bench/RESULTS.md, 2026-09-03c).
+#                                                             Default: 40
+keyword_top_n = 40
+
+# The floor under a phrase's distinct-document count. 2 drops a phrase
+# declared by only one paper -- one author's idiosyncratic term rather
+# than corpus vocabulary.
+#                                                              Default: 2
+keyword_min_df = 2
+
 # Note there is no setting for how many seed topics you may write, and
 # no reason for one. Seeds never steer the clustering: they are matched
 # against the same document vectors afterwards, so a hundred seed phrases

@@ -147,9 +147,9 @@ command already has -- this is a front door, not a redesign.
 
 ### 🧠 `enrich` -- optional, whole-corpus
 
-| Command              | Flags                                                                                                                                                     |
-|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `chitragupta enrich` | `--stages docling,embed,bertopic,seed-topics,converge,topic-graph`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
+| Command              | Flags                                                                                                                                                                      |
+|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `chitragupta enrich` | `--stages docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph`, `--for-draft PATH`, `--target host\|docker` (informational only -- the probes decide) |
 
 That is 4 layers and 26 verbs and aids (4 + 11 + 10 + 1), plus 3
 package-level commands, giving **55 invocable leaf commands**: 3 + 4 +

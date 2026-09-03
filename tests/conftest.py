@@ -113,6 +113,7 @@ def isolated_config(tmp_path, monkeypatch):
         "TOPICS_PATH": "topics.json",
         "TOPIC_EMBED_CACHE_PATH": "topic_embed_cache.json",
         "SEED_TOPICS_PATH": "seed_topics.toml",
+        "KEYWORDS_PATH": "keywords.toml",
         "TOPIC_SEEDS_PATH": "topic_seeds.json",
         "TOPIC_SET_PATH": "topic_set.json",
         "TOPIC_GRAPH_PATH": "topic_graph.json",
@@ -137,6 +138,12 @@ def isolated_config(tmp_path, monkeypatch):
     # near-orthogonal pair to do it.
     monkeypatch.setattr(config, "SEED_TOPIC_MIN_SIMILARITY", 0.5)
     monkeypatch.setattr(config, "SEED_TOPIC_MAX_PAPERS", 25)
+    # Pinned for the same reason as the two above: these decide which
+    # extracted phrases reach content/keywords.toml, so a test asserting
+    # the min-df or top-n arithmetic must not inherit a developer's own
+    # config.toml tuning.
+    monkeypatch.setattr(config, "KEYWORD_TOP_N", 40)
+    monkeypatch.setattr(config, "KEYWORD_MIN_DF", 2)
     # Pinned so a developer's own config.toml can't change how many
     # chunks embed_index.search() admits per citekey out from under a
     # test that is asserting the cap's arithmetic, not its default.

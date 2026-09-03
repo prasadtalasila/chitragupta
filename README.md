@@ -262,7 +262,7 @@ offline topic map read.
 
 ```bash
 chitragupta enrich --stages docling,embed      # or: python -m chitragupta.enrich --stages docling,embed
-chitragupta enrich                             # all six stages
+chitragupta enrich                             # all seven stages
 ```
 
 It costs real time and disk -- a first full-corpus parse is measured in

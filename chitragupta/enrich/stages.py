@@ -26,6 +26,7 @@ from chitragupta import seed_topics
 from chitragupta.enrich import (
     docling_parse,
     embed_index,
+    keyword_extract,
     topic_converge,
     topic_graph,
     topic_model,
@@ -70,6 +71,14 @@ def stage_bertopic(docs, args) -> dict:
     }
 
 
+# Its ok/skipped shaping lives in keyword_extract.run_stage(), for the
+# same ceiling reason stage_seed_topics states below. Before seed-topics
+# in the order, because the extracted phrases exist to be unioned into
+# that stage's seed list (#605).
+def stage_extract_keywords(docs, args) -> dict:
+    return keyword_extract.run_stage(docs)
+
+
 # Unlike the three above, this stage's ok/skipped shaping lives in
 # topic_seeding.run_stage() rather than here. Not a style break for its
 # own sake: this module is four code lines under docs/CODE-STANDARDS.md's
@@ -99,6 +108,7 @@ STAGE_FUNCS = {
     "docling": stage_docling,
     "embed": stage_embed,
     "bertopic": stage_bertopic,
+    "extract-keywords": stage_extract_keywords,
     "seed-topics": stage_seed_topics,
     "converge": stage_converge,
     "topic-graph": stage_topic_graph,

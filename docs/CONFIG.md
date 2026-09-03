@@ -372,6 +372,9 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `entailment_model` | `ENTAILMENT_MODEL` | a `sentence_transformers.CrossEncoder` model id | `cross-encoder/nli-deberta-v3-small` | `cross-encoder/nli-deberta-v3-base` |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
+| `keywords_path` | `KEYWORDS_PATH` | a path, resolved under `content/` unless absolute | `keywords.toml` | `keywords.toml` |
+| `keyword_top_n` | `KEYWORD_TOP_N` | integer | `40` | `40` |
+| `keyword_min_df` | `KEYWORD_MIN_DF` | integer | `2` | `2` |
 | `seed_topic_max_papers` | `SEED_TOPIC_MAX_PAPERS` | integer | `25` | `25` |
 | `seed_topic_min_similarity` | `SEED_TOPIC_MIN_SIMILARITY` | number, cosine similarity | `0.15` | `0.15` |
 | `topic_distribution` | `TOPIC_DISTRIBUTION` | boolean | `true` | `true` |
@@ -384,6 +387,13 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `5` | `5` |
 | `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
 | `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `8` | `8` |
+
+**`keywords_path` names a generated artifact, not a file you write.**
+The `extract-keywords` stage regenerates it fresh on every run from the
+papers' own declared `Keywords:`/`Index Terms` lines, so a hand-edit
+there is silently overwritten by the next run. A phrase worth keeping
+permanently is promoted into `content/seed_topics.toml`, the
+hand-written list ([Seed topics](#-seed-topics-organising-the-corpus-by-phrases-you-wrote)).
 
 **The two `embedding_model` columns differ on purpose, and the
 distinction matters.** The code's fallback is the smaller, faster
