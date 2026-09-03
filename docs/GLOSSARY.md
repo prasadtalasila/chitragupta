@@ -90,7 +90,9 @@ book without needing them; they matter when you read the deeper pages.
   draws them.
 - **Stage** -- one step of the enrichment layer (`docling`, `embed`,
   `bertopic`, `seed-topics`, `converge`, `topic-graph`), each reporting
-  its own honest status -- `ok`, `skipped`, or what is missing.
+  its own honest status -- `ok`, `partial`, `skipped` or `error`.
+  [LADDERS.md](LADDERS.md) states which of the four changes the run's
+  exit code.
 - **Artefact** -- a file a stage or a sync writes under `content/`,
   which later commands read. The layers never call each other; they
   leave files for each other, which is why you can run any piece alone.
