@@ -1286,21 +1286,30 @@ class TestParseCorpusParallelBrokenPool:
         every future already handed to the executor -- real, in-flight
         work thrown away for the same reason this whole PR exists.
         Submitting biggest-first, d3 and d2 must be submitted (and
-        therefore still collected) before d1's submit() blows up."""
+        therefore still collected) before d1's submit() blows up.
+
+        d0 was the other half of this: it sat *behind* d1 in the submit
+        loop, so the break meant it was never handed to a worker at all
+        -- and it used to be reported a parse failure regardless. Since
+        #584 the pool is rebuilt and d0 is parsed, which is the whole
+        point of that issue; the stub therefore builds a fresh
+        ThreadPoolExecutor per pool, as `_executor_for` does, rather than
+        sharing one that the first shutdown would close."""
         from concurrent.futures import ThreadPoolExecutor
         from concurrent.futures.process import BrokenProcessPool
 
-        real_executor = ThreadPoolExecutor(max_workers=4)
-
         class PartiallyDeadExecutor:
+            def __init__(self):
+                self.real_executor = ThreadPoolExecutor(max_workers=4)
+
             def submit(self, fn, job):
                 doc, _threads = job
                 if doc.citekey == "d1":
                     raise BrokenProcessPool("died mid-submission")
-                return real_executor.submit(fn, job)
+                return self.real_executor.submit(fn, job)
 
             def shutdown(self, *args, **kwargs):
-                real_executor.shutdown(*args, **kwargs)
+                self.real_executor.shutdown(*args, **kwargs)
 
         monkeypatch.setattr(_docling_pool, "_executor_for", lambda workers: PartiallyDeadExecutor())
         status = docling_parse.parse_corpus(self._docs(tmp_path))
@@ -1308,7 +1317,254 @@ class TestParseCorpusParallelBrokenPool:
         assert status["d3"].startswith("ok:")
         assert status["d2"].startswith("ok:")
         assert status["d1"].startswith("error:")
-        assert status["d0"].startswith("error:")
+        assert status["d0"].startswith("ok:")
+
+
+class TestABrokenPoolIsRebuiltRatherThanAbandoned:
+    """#584. `_parse_with_pool` drained one executor and then wrote
+    `error: parse worker died before this document was parsed` for every
+    job without a result -- including the jobs still queued, and the ones
+    never submitted at all because `_submit_jobs` broke out of its loop.
+    One OOM-killed worker therefore cost the rest of the corpus: 460 of
+    642 documents on the run that surfaced this, the great majority of
+    them never given to a worker.
+
+    #501 is what keeps those documents *recoverable* -- the cache is
+    saved per landed document, so a re-run picks them up -- but it did
+    not make them attempted in the run that dropped them. That is this
+    class.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _pool(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(config, "PARSER", "docling")
+        monkeypatch.setattr(config, "PARSER_WORKERS", 4)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+
+    def _docs(self, tmp_path, n=6):
+        """One poison document, deliberately the largest so the
+        biggest-file-first schedule submits it first, plus n ordinary
+        ones. That order is the whole difficulty: the document that kills
+        the pool is also the one every rebuild reaches first."""
+        poison = tmp_path / "poison.pdf"
+        poison.write_bytes(b"%PDF" + b"x" * 10_000)
+        docs = [CorpusDoc(citekey="poison", title="t", pdf_path=str(poison))]
+        for i in range(n):
+            pdf = tmp_path / f"p{i}.pdf"
+            pdf.write_bytes(b"%PDF" + b"x" * (10 * i))
+            docs.append(CorpusDoc(citekey=f"d{i}", title="t", pdf_path=str(pdf)))
+        return docs
+
+    @staticmethod
+    def _dying_pool(deaths, builds=None):
+        """An executor factory whose pools die like a real one, rather
+        than like a single failing future.
+
+        A `BrokenProcessPool` is not one document's failure: the pool is
+        gone, so every outstanding future raises it and every later
+        `submit()` raises too. That is what leaves a batch unparsed, and
+        a ThreadPoolExecutor cannot express it -- its other futures
+        happily keep succeeding, which would make this whole class pass
+        against the unfixed code.
+
+        Jobs run synchronously inside `submit`, so the schedule is
+        deterministic: no thread timing decides how much of the batch
+        lands before the death. `deaths` is how many times the poison
+        document kills its pool before parsing normally; pass a large
+        number for a document that always does. `builds`, when given,
+        collects the worker count each pool was built with.
+        """
+        from concurrent.futures.process import BrokenProcessPool
+
+        real_parse_one = _docling_pool.parse_one
+        died = []
+
+        class _DyingPool:
+            def __init__(self):
+                self.dead = False
+
+            def submit(self, fn, job):
+                if self.dead:
+                    raise BrokenProcessPool("pool was already dead")
+                doc, _threads = job
+                future = Future()
+                if doc.citekey == "poison" and len(died) < deaths:
+                    died.append(doc.citekey)
+                    self.dead = True
+                    future.set_exception(BrokenProcessPool("a worker died"))
+                    return future
+                future.set_result(real_parse_one(job))
+                return future
+
+            def shutdown(self, *args, **kwargs):
+                pass
+
+        def factory(workers):
+            if builds is not None:
+                builds.append(workers)
+            return _DyingPool()
+
+        return factory
+
+    def test_documents_the_dead_pool_never_reached_are_parsed_on_a_rebuild(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The defect itself: the pool dies on the first document, and
+        under a single drain every other document in the batch was
+        reported a failure without ever having been opened."""
+        monkeypatch.setattr(_docling_pool, "_executor_for", self._dying_pool(deaths=1))
+
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert all(status[f"d{i}"].startswith("ok:") for i in range(6))
+        assert status["poison"].startswith("ok:")
+
+    def test_a_document_that_kills_every_pool_still_costs_only_itself(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """Which document killed the worker is not knowable from a
+        `BrokenProcessPool`, so a poison one reaches every rebuilt pool
+        and dies again -- *first* every time, under the biggest-first
+        schedule, which is why a rebuild alone rescues nothing and the
+        retry has to reverse the order it hands over. The batch must
+        survive it, and the run must still end."""
+        monkeypatch.setattr(_docling_pool, "_executor_for", self._dying_pool(deaths=99))
+
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert all(status[f"d{i}"].startswith("ok:") for i in range(6))
+        assert status["poison"] == "error: parse worker died before this document was parsed"
+
+    def test_the_rebuilds_are_bounded_and_narrow_the_pool_each_time(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """A `while` here never terminates on a poison PDF, so the count
+        is bounded. Each rebuild also halves the width: memory pressure
+        is the realistic cause of a worker death, and retrying at the
+        same width reproduces it -- the same fix the module's own warning
+        already asks a human to make by hand.
+
+        The last width is 1, where there is nothing left to halve. That
+        is not a gap: at one worker the recovery is the fresh process and
+        the reversed order, and `parse_corpus` only takes this path when
+        the resolved count is above 1, so 1 is reachable only as the
+        floor of the halving."""
+        builds = []
+        monkeypatch.setattr(
+            _docling_pool, "_executor_for", self._dying_pool(deaths=99, builds=builds)
+        )
+
+        docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert len(builds) == _docling_pool._MAX_POOL_REBUILDS + 1
+        assert builds == [4, 2, 1]
+
+    def test_a_rebuild_that_lands_nothing_is_not_tried_again(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The case the bound alone does not cover: a pool that lands
+        nothing at all will land nothing next time either, so the second
+        such round ends the run rather than spending a third pool build
+        -- and its model loads per worker -- to learn the same thing.
+
+        Deliberately not checked on the *first* round, which can
+        legitimately land nothing: the biggest document is submitted
+        first, so a pool that dies on it lands nothing at all, and that
+        is exactly the run this whole class exists to rescue."""
+        from concurrent.futures.process import BrokenProcessPool
+
+        builds = []
+
+        class DeadPool:
+            def submit(self, *args, **kwargs):
+                raise BrokenProcessPool("pool was already dead")
+
+            def shutdown(self, *args, **kwargs):
+                pass
+
+        def factory(workers):
+            builds.append(workers)
+            return DeadPool()
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", factory)
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert builds == [4, 2]
+        assert all(v.startswith("error:") for v in status.values())
+
+    def test_a_healthy_run_builds_exactly_one_pool(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The loop must not cost a second executor when nothing broke --
+        each pool build reloads docling's models in every worker."""
+        builds = []
+        monkeypatch.setattr(
+            _docling_pool, "_executor_for", self._dying_pool(deaths=0, builds=builds)
+        )
+
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert builds == [4]
+        assert all(v.startswith("ok:") for v in status.values())
+
+    def test_the_stage_errors_when_a_document_was_abandoned_so_cron_hears_about_it(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The other half of #584, from the issue's own measurement: the
+        run exited 0. `_summarise` returns nonzero only for a stage whose
+        status is `error`, and a dead pool's failures folded into
+        `partial` -- so an unattended run that abandoned 460 of 642
+        documents reported itself to cron exactly as a clean run does.
+
+        A pool that kept dying is the one case the rebuilds above cannot
+        rescue, which is precisely when the caller needs to be told."""
+        from chitragupta.enrich import stages
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", self._dying_pool(deaths=99))
+
+        result = stages.stage_docling(self._docs(tmp_path), None)
+
+        assert result["status"] == "error"
+        assert result["detail"]["poison"] == docling_parse.POOL_DEATH_ERROR
+
+    def test_an_ordinary_parse_failure_is_still_only_partial(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The escalation must be to abandoned work, not to any failure.
+        A PDF the backend read and could not parse is a deterministic,
+        per-document result: reported, batch continues, stage `partial`,
+        exit 0. Widening that to `error` would fail a nightly run over
+        one bad file."""
+        from chitragupta.enrich import stages
+
+        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        (tmp_path / "explode.pdf").write_bytes(b"%PDF explode")
+        docs = self._docs(tmp_path)
+        docs.append(CorpusDoc(citekey="bad", title="t", pdf_path=str(tmp_path / "explode.pdf")))
+
+        result = stages.stage_docling(docs, None)
+
+        assert result["status"] == "partial"
+        assert result["detail"]["bad"].startswith("error:")
+
+    def test_with_the_bound_at_zero_the_behaviour_is_the_old_one(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """_MAX_POOL_REBUILDS is the only knob, and at 0 it turns the
+        loop back into the single drain this issue is about: one pool,
+        and everything it did not reach reported failed. Worth pinning
+        because it is also the path where the loop ends by running out of
+        attempts rather than by deciding to stop."""
+        builds = []
+        monkeypatch.setattr(_docling_pool, "_MAX_POOL_REBUILDS", 0)
+        monkeypatch.setattr(
+            _docling_pool, "_executor_for", self._dying_pool(deaths=99, builds=builds)
+        )
+
+        status = docling_parse.parse_corpus(self._docs(tmp_path))
+
+        assert builds == [4]
+        assert all(v == docling_parse.POOL_DEATH_ERROR for v in status.values())
 
 
 class TestParseOneFingerprint:

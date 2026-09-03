@@ -254,8 +254,17 @@ def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> 
     return broken
 
 
+# How many times a broken pool is rebuilt before the run gives up on
+# what is left. Three builds in total, because a rebuild is not free: it
+# reloads docling's layout, table and OCR models in every worker. Bounded
+# rather than a `while`, because a BrokenProcessPool does not say which
+# document killed the worker -- retrying until the batch empties feeds a
+# deterministically fatal PDF to a fresh pool forever (#584).
+_MAX_POOL_REBUILDS = 2
+
+
 def _account_for_unfinished(jobs: list[tuple], status: dict[str, str], broken) -> None:
-    """Fill in a failure for every job _drain didn't land a result for.
+    """Fill in a failure for every job no pool landed a result for.
 
     A worker killed outright (the OOM killer is the realistic cause)
     takes the whole pool with it, and every future still in flight --
@@ -264,17 +273,28 @@ def _account_for_unfinished(jobs: list[tuple], status: dict[str, str], broken) -
     silently vanish from `status` (#509 is what a silent drop like that
     would be).
     """
+    from chitragupta.enrich.docling_parse import POOL_DEATH_ERROR
+
     if broken is not None:
+        # "is rebuilt up to", not "was rebuilt N times": this states the
+        # policy, which is always true, rather than a count of what this
+        # run actually spent -- which would need threading the attempt
+        # number down here to say honestly.
         logging_setup.say(
             logger,
-            f"WARNING a parse worker died ({broken}) -- the documents it "
-            "had not finished are reported as failures below. A lower "
-            "[parser].workers is the usual fix.",
+            f"WARNING a parse worker died ({broken}) -- the pool is rebuilt up to "
+            f"{_MAX_POOL_REBUILDS} more time(s), narrower and smallest-first; what "
+            "still did not parse is below. A lower [parser].workers is the usual fix.",
             level=logging.WARNING,
         )
+    # `jobs` is what is left after _parse_with_pool's last rebuild, not
+    # the whole batch: everything else has been parsed by then, and
+    # before #584 that distinction was 460 documents wide. So no
+    # `citekey not in status` guard -- that filtering is the caller's,
+    # done once per rebuild, and repeating it here would be a branch no
+    # run can take.
     for doc, _threads in jobs:
-        if doc.citekey not in status:
-            status[doc.citekey] = "error: parse worker died before this document was parsed"
+        status[doc.citekey] = POOL_DEATH_ERROR
 
 
 def _parse_with_pool(
@@ -294,6 +314,34 @@ def _parse_with_pool(
     # wall clock all by itself if it were picked up last.
     jobs = [(d, threads) for d in sorted(pending, key=lambda d: -_pdf_size(d.pdf_path))]
     _adopt_cached(docs, pending, cache, status)
-    executor = _executor_for(workers)
-    broken = _drain(executor, jobs, cache, status)
-    _account_for_unfinished(jobs, status, broken)
+    remaining = jobs
+    for attempt in range(_MAX_POOL_REBUILDS + 1):
+        landed_before = len(status)
+        broken = _drain(_executor_for(workers), remaining, cache, status)
+        remaining = [job for job in remaining if job[0].citekey not in status]
+        # `attempt and` deliberately exempts the first round, which can
+        # legitimately land nothing: the largest document is submitted
+        # first, so a pool that dies on *it* has no results at all -- the
+        # exact run this loop exists to rescue. A *rebuilt* pool that
+        # lands nothing will land nothing again, so that is where the
+        # third build (and its model load per worker) is not spent.
+        if broken is None or not remaining or (attempt and len(status) == landed_before):
+            break
+        # Smallest-first from here. The suspect cannot be identified from
+        # a BrokenProcessPool, but it is disproportionately the one
+        # submitted first, which biggest-first makes the largest
+        # document -- hand it over last so the rebuilt pool banks every
+        # other document before it can die again. Without this the
+        # rebuild rescues nothing on a deterministically fatal PDF.
+        remaining.reverse()
+        # Narrower, not merely fresh: memory pressure is the realistic
+        # cause, and this is the fix the warning above already asks a
+        # human to make. Bottoms out at 1, where there is nothing left to
+        # halve and the fresh process plus the order above is the whole
+        # recovery -- reachable only as this floor, since parse_corpus
+        # runs the serial path when the resolved count is 1. `threads`
+        # stays as the widest round computed it: too few threads per
+        # worker under-uses the CPU, too many oversubscribe it, and
+        # [parser].workers sizing is #585's business, not this loop's.
+        workers = max(1, workers // 2)
+    _account_for_unfinished(remaining, status, broken)

@@ -191,11 +191,18 @@ guarantees it starts all of them.
 
 Five distinct failure modes, each handled where it can be:
 
-- **A dead worker.** `BrokenProcessPool` is caught and the unfinished
-  documents are reported as failures rather than the run being aborted.
-  Results are collected with `as_completed`, not `map`, so a pool that
-  dies while the largest document is still running keeps the smaller ones
-  that already finished.
+- **A dead worker.** `BrokenProcessPool` is caught rather than the run
+  being aborted. Results are collected with `as_completed`, not `map`, so
+  a pool that dies while the largest document is still running keeps the
+  smaller ones that already finished. In the enrichment pool the run then
+  **rebuilds the pool and hands the unfinished documents back to it**, up
+  to twice, narrower each time and smallest-document-first -- a dead
+  worker costs the document it was holding rather than the rest of the
+  corpus (#584; one death used to fail 460 of 642 documents, most of
+  which had never been opened). Only what no pool landed is reported a
+  failure. `chitragupta/sync_pool.py` does not rebuild: there an
+  unfinished document is marked *transient* and retried on the next run,
+  which costs seconds rather than the minutes a docling parse costs.
 - **A hung pool.** A stall watchdog gives up when *no* document completes
   for `[parser].stall_timeout`. Deliberately not a per-document deadline:
   no single threshold separates a hung worker from the legitimate 246s

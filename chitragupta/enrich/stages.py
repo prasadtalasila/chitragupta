@@ -39,6 +39,16 @@ def stage_docling(docs, args) -> dict:
     if status and all(value.startswith("skipped") for value in status.values()):
         return {"status": "skipped", "detail": next(iter(status.values()))}
     errors = {k: v for k, v in status.items() if v.startswith("error")}
+    # `error`, not `partial`, when a document was abandoned by a pool
+    # that kept dying (#584). `__main__._summarise` returns nonzero only
+    # for `error`, so folding this into `partial` exited 0 -- and a run
+    # that abandoned 460 of 642 documents then reported itself to cron,
+    # the consumer that cannot read the summary, exactly as a clean run
+    # does. Deliberately narrow: an ordinary parse failure is a
+    # deterministic per-document result and stays `partial`, or one
+    # unreadable PDF would fail every nightly run.
+    if docling_parse.POOL_DEATH_ERROR in errors.values():
+        return {"status": "error", "detail": status}
     return {"status": "ok" if not errors else "partial", "detail": status}
 
 

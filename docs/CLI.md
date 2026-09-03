@@ -2427,6 +2427,15 @@ therefore a correct answer rather than a bug.
 | `--stages STAGES` | all six, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge,topic-graph` |
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics`, `converge` or `topic-graph` |
 
+**Exit code**, which is all a schedule can read: `1` when any stage
+reports `error`, `0` otherwise -- including `partial`, which is what an
+ordinary unparseable PDF produces, and `skipped`, which is what a stage
+whose prerequisite is absent produces. One case is worth naming because
+it used to be silent: since #584, a `docling` run that gave up on
+documents it could not get through a repeatedly-dying worker pool reports
+`error` rather than `partial`, so it exits `1`. Before that, a run that
+abandoned 460 of 642 documents exited `0`, exactly like a clean one.
+
 ```bash
 chitragupta enrich
 # chitragupta enrich --stages docling

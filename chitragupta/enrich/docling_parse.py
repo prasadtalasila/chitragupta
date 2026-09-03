@@ -93,6 +93,16 @@ logger = logging.getLogger("chitragupta.enrich.docling_parse")
 # correction #509 made for a missing docling install, one level down.
 NO_PDF_SKIP = "skipped: no PDF to parse -- a URL-only bibliography entry"
 
+# What a document abandoned by a worker pool that kept dying is reported
+# as. Here rather than in `_docling_pool.py`, which is the module that
+# writes it, for the same reason NO_PDF_SKIP is: `stages.stage_docling`
+# reads it to escalate the whole stage to `error` (#584), and a stage
+# wrapper should not have to reach into a private sibling for a status
+# `parse_corpus` returns. `_docling_pool` imports it back the way it
+# imports everything from here -- inside the function, see that module's
+# docstring for why.
+POOL_DEATH_ERROR = "error: parse worker died before this document was parsed"
+
 
 def _failure_status(doc: CorpusDoc, exc: Exception) -> str:
     """The status a batch records for a document that did not parse."""
