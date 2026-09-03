@@ -452,6 +452,55 @@ Two costs, both worth knowing before turning it on:
   `docling_image_scale = 2.0` is roughly 144 DPI, enough to read a figure
   back without storing print-resolution files.
 
+### 🧠 What it no longer costs: memory
+
+Until #600 it also cost memory in proportion to *how many figures a
+document has*, because docling retains every crop it produces -- as a PIL
+bitmap **and** as a base64 `data:` URI, so roughly 2.3x the PNG bytes per
+picture -- and writes them only when `save_as_markdown` runs on the last
+line of the parse. The pipeline no longer asks docling for the bitmaps at
+all: it takes the bounding boxes docling reports anyway, and
+`chitragupta/enrich/_docling_crops.py` renders each one from the PDF with
+pypdfium2, writes it, and releases it before the next.
+
+Measured on the worst document in this corpus -- a 99-page slide deck of
+2880x1620pt pages, 280 figures -- and on the longest, the 675-page OMG
+SysML specification. Peak RSS, one document per process, polled from
+`/proc/<pid>/status`:
+
+| Document | `docling_images` | Peak RSS | Figure term | Wall |
+| --- | --- | --- | --- | --- |
+| 99-page deck | `false` | 4.12 GiB | -- | 104.6 s |
+| 99-page deck | `true`, **before** | 13.07 GiB | **+8.95 GiB** | 270.0 s |
+| 99-page deck | `true`, **now** | 4.14 GiB | **+0.02 GiB** | **158.9 s** |
+| 675-page spec | `false` | 4.20 GiB | -- | 82.6 s |
+| 675-page spec | `true`, **before** | 9.13 GiB | +4.93 GiB | 114.1 s |
+| 675-page spec | `true`, **now** | 4.24 GiB | +0.04 GiB | 93.8 s |
+
+So **450x less memory for figure extraction on the deck, at 1.70x the
+speed**, for the same 280 files (160.1 MiB of PNG against docling's
+163.3 MiB). It is faster because docling renders a whole page at
+`images_scale` in order to crop from it, and rendering only the box skips
+that.
+
+Two consequences worth stating separately:
+
+- **`docling_image_scale` stopped being dangerous.** At 6.0 the old path
+  reached **74.31 GiB over 17 minutes and then failed** on docling_core's
+  own `max_image_decoded_size` guard (exactly 20 MiB per *decoded*
+  image), so the document could not be produced at all. The same document
+  at the same scale now costs 4.18 GiB and completes in 439 s. High
+  scales cost CPU, not RAM: 2.0 -> 6.0 moves the figure term from
+  +0.02 GiB to +0.06 GiB and the wall clock from 159 s to 439 s.
+- **The figure term no longer depends on the corpus.** It is independent
+  of document length (99 vs 675 pages), page geometry (4.67 vs
+  0.48 Mpt²), scale, and accelerator (4.14 GiB on CPU, 4.08 GiB on
+  `cuda:0`). That is what lets `[parser].workers` be sized from CPUs
+  alone -- see `docs/PARALLELISM.md`'s "How the worker count is decided".
+
+`bench/RESULTS.md`'s 2026-09-03 entry has the full arm-by-arm table,
+including the page-windowed alternative that was measured and rejected.
+
 ## 🗑 `[source_pdfs] dir` -- retired
 
 Nothing left to measure: the enrichment corpus is now the bibliography

@@ -4193,3 +4193,151 @@ returned 0 differences on every comparison. **That is another
 underpowered null and is not evidence that large documents are stable**
 -- at 0.33%, 36 documents predicts 0.12 differences. It is reported
 because it was run, not because it shows anything.
+
+## 2026-09-03: where docling's figure-extraction memory goes, and what bounds it (#600, #585)
+
+Not a `bench/` script: a purpose-built harness, because the quantity
+under test is peak RSS of one document's parse and nothing in `bench/`
+measures that. One document per process, peak RSS polled from
+`/proc/<pid>/status` every 250 ms with a 120 GiB watchdog, docling
+2.117.0, `do_ocr = false` (this host's real `config.toml`), 96 allowed
+CPUs, 251 GB RAM, 6 CUDA devices.
+
+`#585` proposed a memory ceiling on `[parser].workers`, sized off a
+per-worker estimate. This exists because that fix could not be
+sufficient -- the ceiling floors at one worker, and one worker parsing a
+large enough figure-heavy document exceeds RAM at any width -- so the
+question became where the memory actually goes.
+
+### Arms
+
+| arm | what it does |
+| --- | --- |
+| `off` | `generate_picture_images = False` -- the base cost of parsing at all |
+| `native` | the behaviour before #600: docling extracts and holds every crop |
+| `pdfium` | parse with images off, then render each picture's bbox with pypdfium2 one at a time, write it, release it |
+| `window` | images on, converted in 8-page windows via `convert(page_range=...)` |
+
+### Documents
+
+| label | document | pages | max page | Σ page area × scale² @2.0 |
+| --- | --- | --- | --- | --- |
+| `small` | Zambrano et al. 2023 | 9 | 0.48 Mpt² | 0.1 GiB |
+| `deck` | Omniverse Platform for OpenUSD -- the document in #585 | 99 | **4.67 Mpt²** | 5.2 GiB |
+| `spec` | OMG SysML Specification 1.4 | 675 | 0.48 Mpt² | 3.7 GiB |
+
+### Results
+
+| doc | arm | scale | peak RSS | figure term | wall | figures | PNG out | curve |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| small | off | 2.0 | 1.75 GiB | -- | 10.0 s | 0 | -- | flat |
+| small | native | 2.0 | 1.86 GiB | +0.11 | 10.5 s | 6 | 0.7 MiB | flat |
+| small | pdfium | 2.0 | 1.79 GiB | +0.04 | 9.5 s | 6 | 0.7 MiB | flat |
+| small | window | 2.0 | 1.79 GiB | +0.04 | 10.0 s | 6 | 0.7 MiB | flat |
+| deck | off | 2.0 | 4.12 GiB | -- | 104.6 s | 0 | -- | peak @52%, 1.1x |
+| deck | **native** | 2.0 | **13.07 GiB** | **+8.95** | 270.0 s | 280 | 163.3 MiB | **peak @99%, 2.5x** |
+| deck | **pdfium** | 2.0 | **4.14 GiB** | **+0.02** | **158.9 s** | 280 | 160.1 MiB | peak @31%, 1.0x |
+| deck | window | 2.0 | 6.66 GiB | +2.54 | 273.6 s | 280 | 163.3 MiB | peak @89%, 1.4x |
+| deck | pdfium | 6.0 | 4.18 GiB | +0.06 | 439.5 s | 280 | 695.3 MiB | peak @79%, 1.1x |
+| deck | **native** | 6.0 | **74.31 GiB** | +70.19 | 1019.3 s | **FAILED** | -- | **peak @100%, 3.7x** |
+| deck | native (`cuda:0`) | 2.0 | 12.77 GiB | -- | 271.5 s | 280 | 163.3 MiB | peak @100%, 2.4x |
+| deck | pdfium (`cuda:0`) | 2.0 | 4.08 GiB | -- | 158.7 s | 280 | 160.1 MiB | peak @31%, 1.0x |
+| spec | off | 2.0 | 4.20 GiB | -- | 82.6 s | 0 | -- | peak @66%, 1.4x |
+| spec | native | 2.0 | 9.13 GiB | +4.93 | 114.1 s | 126 | 13.6 MiB | peak @92%, 2.2x |
+| spec | pdfium | 2.0 | 4.24 GiB | +0.04 | 93.8 s | 126 | 11.5 MiB | peak @62%, 1.3x |
+
+`curve` is where in the run the peak landed, and mean RSS of the last
+third over the first third -- both measured *after* the model-load ramp,
+which every arm pays and which otherwise reports itself rather than the
+parse.
+
+### It is accumulation, and the curve is how you know
+
+`page_batch_size = 4`, so page bitmaps in flight are ~224 MB at scale
+2.0 -- nowhere near 9 GiB, which rules out the obvious explanation
+before any arm is run. Every `native` run instead peaks at its **last
+sample** (@99%, @100%, @92%): that is `save_as_markdown` writing out what
+was held all along. The `pdfium` arm peaks a third of the way in and is
+flat (1.0x). #585 reported "climbed with no plateau", and a no-plateau
+curve is what an accumulator looks like where a bounded working set
+flattens.
+
+`chitragupta/enrich/_docling_figures.py`'s own comment already recorded the
+mechanism, before this was measured: `pic.image.uri` is a `data:` URI
+carrying the whole PNG base64-encoded, so each picture is retained twice
+over -- PIL bitmap plus a string ~1.33x the PNG bytes.
+
+### The numbers that decided the fix
+
+- **450x less memory on the deck, 123x on the spec**, for the figure
+  term: +8.95 GiB -> +0.02 GiB, and +4.93 GiB -> +0.04 GiB.
+- **1.70x faster on the deck** (270.0 s -> 158.9 s), 1.21x on the spec.
+  Docling renders a whole page at `images_scale` to crop from; rendering
+  only the box skips it.
+- **Bounded independently of the corpus**: document length (99 vs 675
+  pages), page geometry (4.67 vs 0.48 Mpt²), scale (2.0 -> 6.0 moves the
+  term +0.02 -> +0.06 GiB), accelerator (4.14 CPU / 4.08 `cuda:0`).
+- **The images-off base plateaus with page count** -- 1.79 GiB at 9
+  pages, 4.12 at 99, 4.20 at 675 -- so this bounds long documents too,
+  not only image-dense ones.
+- **Output is equivalent**: 160.1 MiB of PNG against 163.3 MiB, same 280
+  files, mean absolute channel difference 4.41/255 (1.7%) across paired
+  figures, sizes within 2 px, aspect ratios within 0.4%. That residual is
+  anti-aliasing and crop-inset rounding.
+
+### `docling_image_scale = 6.0` fails today, expensively
+
+The `native` 6.0 arm spent 17 minutes and 74.31 GiB and then raised
+
+```text
+ValueError: Decoded image exceeds size limit of 20971520 bytes.
+```
+
+from `docling_core`'s `settings.max_image_decoded_size` (exactly 20 MiB,
+per *decoded* image, via `ImageRef.pil_image`). It is reached by page
+area x scale², which is why a 2880x1620pt slide trips it at 6.0 and an
+A4 page never does. Raising the setting would be the wrong fix: the
+74 GiB is spent *before* the guard fires, so it buys a successful parse
+at 74 GiB rather than a cheap one. The `pdfium` arm never asks
+`docling_core` to decode anything and completed the same document at the
+same scale in 439 s at 4.18 GiB.
+
+### Windowing was measured and rejected
+
+`convert(page_range=...)` plus `DoclingDocument.concatenate()` is real,
+and it does bound memory: 6.66 GiB against `native`'s 13.07. It was
+rejected on two grounds, the first measured and the second structural:
+
+- **It costs the full `native` wall time** (273.6 s vs `pdfium`'s
+  158.9 s), because layout, table and OCR detection re-run per window.
+- **Merging renumbers pages.** `<stem>.passages.json` carries page
+  numbers into `chitragupta/review/citation_provenance.py` and the verbatim
+  checker, so a mislocated quote on exactly the documents that were
+  windowed would be invisible to `draft gate`.
+
+It remains the only option that keeps full-fidelity figures on a
+document whose *individual* crops exceed the decoded-size guard, which
+is why it is recorded rather than merely dismissed.
+
+### What did not reproduce
+
+#585 reports ~29 GB per worker for the deck at scale 2.0. The closest
+arm here measures **13.07 GiB** (14.0 GB), and the GPU is ruled out
+(12.77 GiB on `cuda:0`). Two candidates are untested: the issue replayed
+`_docling_pool.parse_one`, which also writes `passages.json` and
+`figures.json`; and it sampled while 24 workers ran, where RSS counts
+shared model pages in full per process. This changes the direction of
+nothing above, but **#585's 29 GB is not a calibrated per-worker
+number** and should not be used to size anything.
+
+### Reproducing
+
+The harness is not committed -- it is four throwaway scripts (`arm.py`,
+`drive.py`, `fidelity.py`, `report.py`) and every number above is a
+peak-RSS measurement of stock library behaviour, reproducible from the
+description at the top of this entry. What *is* committed is the
+regression protection: `tests/test_enrich_docling_crops.py` asserts each
+crop is released before the next is rendered, and
+`tests/test_enrich_real_libraries.py` checks the crop geometry against
+the real pypdfium2 and a real docling `BoundingBox`, so the fake cannot
+drift from the library unnoticed.

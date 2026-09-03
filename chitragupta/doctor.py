@@ -76,6 +76,7 @@ ENRICH_MODULES = (
     "docling",
     "adapters",
     "scipy",
+    "pypdfium2",
 )
 
 

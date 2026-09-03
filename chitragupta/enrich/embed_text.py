@@ -31,8 +31,12 @@ def strip_image_refs(markdown: str) -> str:
     """Drop Docling's image markers from text on its way to the embedder.
 
     Two forms, depending on config.DOCLING_IMAGES: a bare `<!-- image -->`
-    placeholder, or a real `![Image](<stem>_artifacts/image_000000_<64 hex
-    chars>.png)` reference. Neither carries meaning an embedding can use,
+    placeholder, or a real `![Image](<stem>_artifacts/picture_000000.png)`
+    reference. Both forms can appear in *one* document since #600 -- a
+    picture whose crop could not be rendered keeps its placeholder while
+    its neighbours get references -- and a corpus parsed across that
+    change also carries docling's older `image_<index>_<64 hex>.png`
+    names. Neither carries meaning an embedding can use,
     and the second is worse than the first: chunk_text() splits on
     whitespace, so a ~100-character path hashes down to a single "word"
     that displaces real text from a 200-word chunk.

@@ -285,7 +285,7 @@ flowchart TB
   %% ─────────────── ENRICHMENT (side branch) ───────────────
   subgraph SH["<b>OPTIONAL · ENRICHMENT LAYER</b><br/><code>chitragupta enrich --stages …</code> · same run lock"]
     direction TB
-    H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, written by Docling<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
+    H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, rendered one at a time<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
     H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
     H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]

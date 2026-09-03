@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.61.12"
+version = "6.62.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -112,13 +112,28 @@ adapters = {version = ">=1.2,<2.0", optional = true}
 # chitragupta/enrich/topic_graph.py imports it directly (hypergeom,
 # linkage), and a direct import deserves a declared version.
 scipy = {version = ">=1.10,<2.0", optional = true}
+# Same story as scipy: it arrived transitively with docling (which uses
+# it as one of its own PDF backends), and chitragupta/enrich/_docling_crops.py
+# now imports it directly to render one figure crop at a time instead of
+# letting docling hold every bitmap to the end of the parse (#600).
+# Pillow is *not* declared alongside it despite `bitmap.to_pil()`: docling
+# depends on Pillow directly, so it cannot be absent wherever this is.
+pypdfium2 = {version = ">=5.12,<6.0", optional = true}
 pytest = {version = ">=8.0,<9.0", optional = true}
 pytest-cov = {version = ">=5.0,<7.0", optional = true}
 mkdocs-material = {version = ">=9.5,<10.0", optional = true}
 mkdocs-same-dir = {version = ">=0.1.5,<0.2", optional = true}
 
 [tool.poetry.extras]
-enrich = ["sentence-transformers", "chromadb", "bertopic", "docling", "adapters", "scipy"]
+enrich = [
+    "sentence-transformers",
+    "chromadb",
+    "bertopic",
+    "docling",
+    "adapters",
+    "scipy",
+    "pypdfium2",
+]
 dev = ["pytest", "pytest-cov"]
 docs = ["mkdocs-material", "mkdocs-same-dir"]
 
@@ -171,6 +186,8 @@ docling = ">=2.115,<3.0"
 # Direct import in topic_graph.py -- see the mirrored optional entry
 # above for why this is declared despite arriving transitively anyway.
 scipy = ">=1.10,<2.0"
+# Direct import in _docling_crops.py, same reasoning (#600).
+pypdfium2 = ">=5.12,<6.0"
 
 # adapters is SPECTER2-only -- allenai/specter2_base loads its
 # task-specific adapter weights (proximity/classification/etc.) through

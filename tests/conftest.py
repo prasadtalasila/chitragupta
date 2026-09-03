@@ -368,3 +368,100 @@ def read_under_a_held_write_lock(read, hold=WRITE_LOCK_HOLD):
     if "error" in outcome:
         raise outcome["error"]
     return outcome["result"], outcome["waited"]
+
+
+class FakePdfiumImage:
+    """The PIL view `to_pil()` hands back, plus the `close()` that
+    releases pdfium's buffer behind it."""
+
+    def __init__(self, size, log):
+        self.size = size
+        self._log = log
+
+    def save(self, path):
+        Path(path).write_bytes(b"\x89PNG fake")
+
+    def close(self):
+        self._log.append("image.close")
+
+
+class FakePdfiumBitmap:
+    def __init__(self, size, log):
+        self._size = size
+        self._log = log
+
+    def to_pil(self):
+        return FakePdfiumImage(self._size, self._log)
+
+    def close(self):
+        self._log.append("bitmap.close")
+
+
+class FakePdfiumPage:
+    def __init__(self, index, log, size=(100.0, 100.0)):
+        self._index = index
+        self._log = log
+        self._size = size
+
+    def get_size(self):
+        return self._size
+
+    def render(self, scale=1.0, crop=(0, 0, 0, 0)):
+        self._log.append(f"render page={self._index} scale={scale} crop={crop}")
+        return FakePdfiumBitmap(
+            (
+                round((self._size[0] - crop[0] - crop[2]) * scale),
+                round((self._size[1] - crop[1] - crop[3]) * scale),
+            ),
+            self._log,
+        )
+
+    def close(self):
+        self._log.append(f"page.close page={self._index}")
+
+
+class FakePdfiumDocument:
+    def __init__(self, path, log, pages=8):
+        self.path = path
+        self._log = log
+        self._pages = pages
+
+    def __len__(self):
+        return self._pages
+
+    def __getitem__(self, index):
+        self._log.append(f"page.open page={index}")
+        return FakePdfiumPage(index, self._log)
+
+    def close(self):
+        self._log.append("pdf.close")
+
+
+@pytest.fixture
+def fake_pdfium(monkeypatch):
+    """A recording pypdfium2 in `sys.modules`, yielding its call log.
+
+    Faked rather than real for the same reason docling is: `_docling_crops`
+    imports it lazily so the enrich extra stays optional, and a unit test
+    must not need a real PDF on disk to render from.
+
+    The log is the point. What `_docling_crops` has to get right is *when
+    things are released* -- a version that produced every crop correctly
+    and freed none of them would satisfy any output-only assertion while
+    reproducing the bug it exists to fix (#600). Ordering is only
+    checkable against a record of the calls.
+
+    `test_enrich_real_libraries.py` pins the same surface against the
+    pypdfium2 CI installs, so this cannot drift from the library
+    unnoticed.
+    """
+    import importlib.machinery
+    import sys
+    import types
+
+    log: list[str] = []
+    module = types.ModuleType("pypdfium2")
+    module.PdfDocument = lambda path: FakePdfiumDocument(path, log)
+    module.__spec__ = importlib.machinery.ModuleSpec("pypdfium2", loader=None)
+    monkeypatch.setitem(sys.modules, "pypdfium2", module)
+    return log

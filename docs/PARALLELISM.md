@@ -339,6 +339,45 @@ Each backend gets the concurrency it can use:
 | `docling` | `ProcessPoolExecutor` | in-process, holds the GIL |
 | `pdftotext` | `ThreadPoolExecutor` | external subprocess, releases the GIL |
 
+### 🧠 Why there is no memory term
+
+Those three ceilings are CPU and workload; **RAM is not one of them**,
+and that is now a decision rather than an omission. #585 reported the
+gap: `"auto"` resolves to 24 workers on a 96-CPU host whatever the
+machine's memory, and a docling worker extracting figures was measured in
+the tens of GB, so the resolved width's worst case exceeded RAM by an
+order of magnitude.
+
+A memory ceiling was the obvious fix and is not the right one, because it
+**cannot** be sufficient: the ceiling floors at one worker, and a single
+worker parsing a large enough figure-heavy document exceeds RAM at any
+width. Capping the pool would have made the failure rarer without making
+it impossible.
+
+The cause was per-document, not per-pool. Docling held every figure crop
+until the end of the parse, so peak RSS scaled with a document's figure
+count -- +8.95 GiB on one 99-page deck, and a 74.31 GiB failure at
+`docling_image_scale = 6.0`. `chitragupta/enrich/_docling_crops.py` renders
+each crop and releases it instead, which takes that term to +0.02 GiB and
+makes it independent of document length, page size, image scale and
+accelerator (`docs/PERFORMANCE.md` has the table; #600 has the
+measurements).
+
+With the per-document cost bounded at ~4.2 GiB, the arithmetic the issue
+objected to comes out fine on the host that raised it: 24 workers is
+~101 GiB against 251 GB. Under the old path the same 24 workers was
+~313 GiB, which did not fit. So the width was a symptom, and no
+`available_bytes // per_worker_estimate` term exists -- deliberately. Any
+such term would need a per-worker byte estimate, which could only be
+fitted from one corpus on one machine, and would then serialise runs on
+smaller hosts that were never at risk. The same reasoning that keeps
+`_CPUS_PER_DOCLING_WORKER` at 4 (see the roadmap below) applies to a
+number nobody has measured across machines.
+
+What remains true, and is not covered: a cgroup CPU *quota*
+(`docker --cpus=2`) still throttles without narrowing the affinity mask,
+so an explicit `[parser].workers` is still the answer there.
+
 ## 🐛 Failure and interruption
 
 | Event | Behaviour |

@@ -610,6 +610,13 @@ DOCLING_CACHE_PATH = CONTENT_DIR / "docling_cache.json"
 DOCLING_IMAGES = _get_bool("DOCLING_IMAGES", "enrich", "docling_images", default=False)
 # Render scale for those bitmaps; 2.0 is ~144 DPI, legible for reading a
 # figure back while checking a draft without storing print-resolution PNGs.
+#
+# Not validated or clamped, and since #600 it no longer needs to be: a
+# high scale costs CPU rather than RAM, because _docling_crops renders one
+# crop at a time. At 6.0 the old path reached 74.31 GiB and then failed
+# outright on docling_core's 20 MiB decoded-image guard; the same document
+# now costs +0.06 GiB over the images-off base and 439s instead of 159s.
+# docs/PERFORMANCE.md has the measurements.
 DOCLING_IMAGE_SCALE = _get_float(
     "DOCLING_IMAGE_SCALE", "enrich", "docling_image_scale", default=2.0
 )

@@ -305,3 +305,91 @@ class TestTheFakesStillMatchTheRealApi:
         parameters = list(inspect.signature(BERTopic.fit_transform).parameters)
         assert parameters[:3] == ["self", "documents", "embeddings"]
         assert hasattr(BERTopic, "get_topic_info")
+
+
+class TestCropsAgainstTheRealRenderer:
+    """`_docling_crops` against real pypdfium2 and a real docling
+    `BoundingBox`, not the doubles in
+    `tests/conftest.py` and `tests/test_enrich_docling_crops.py`.
+
+    Those doubles carry more than a signature: `FakePdfiumPage.render`
+    reimplements pdfium's crop arithmetic, and `FakeBBox` reimplements
+    docling's origin conversion. Both would keep a green suite while
+    producing crops of the wrong region on a host with the real
+    libraries -- the exact failure mode #600's own benchmark had to rule
+    out by eye, and the one this class automates.
+
+    Cheap and flake-free: pdfium builds its own blank PDF in a tmp dir,
+    so there is no fixture file and no network.
+    """
+
+    @staticmethod
+    def _blank_pdf(path, width=200, height=100, pages=2):
+        pdfium = pytest.importorskip("pypdfium2")
+        pdf = pdfium.PdfDocument.new()
+        for _ in range(pages):
+            pdf.new_page(width, height)
+        pdf.save(str(path))
+        return path
+
+    def test_real_crop_arithmetic_matches_what_the_fake_models(self, tmp_path):
+        """`render(scale=, crop=)` insets shrink the page from each edge,
+        then scale multiplies -- which is what `FakePdfiumPage.render`
+        computes. If pdfium ever redefines `crop`, every crop this
+        pipeline writes silently shifts."""
+        pdfium = pytest.importorskip("pypdfium2")
+        pdf = pdfium.PdfDocument(str(self._blank_pdf(tmp_path / "blank.pdf")))
+        page = pdf[0]
+
+        bitmap = page.render(scale=2.0, crop=(10, 20, 30, 40))
+
+        assert bitmap.to_pil().size == (round((200 - 10 - 30) * 2), round((100 - 20 - 40) * 2))
+
+    @pytest.mark.parametrize(
+        "origin,top,bottom",
+        [
+            # Both describe the *same* region on a 100pt-high page -- a
+            # box 10 down from the top and 40 up from the bottom -- once
+            # measured from the bottom edge and once from the top. So
+            # both must yield the same insets, and an implementation that
+            # ignored `coord_origin` would get exactly one of them right.
+            ("BOTTOMLEFT", 90, 40),
+            ("TOPLEFT", 10, 60),
+        ],
+    )
+    def test_crop_insets_against_a_real_bounding_box(self, origin, top, bottom):
+        doc_types = pytest.importorskip("docling_core.types.doc")
+        from chitragupta.enrich import _docling_crops
+
+        box = doc_types.BoundingBox(
+            l=10, t=top, r=60, b=bottom, coord_origin=getattr(doc_types.CoordOrigin, origin)
+        )
+
+        assert _docling_crops.crop_insets(box, 200.0, 100.0) == (10.0, 40.0, 140.0, 10.0)
+
+    def test_write_picture_crops_end_to_end(self, tmp_path):
+        """The whole unit against both real libraries: a real bbox, a real
+        PDF, a real render, a real PNG on disk at the size the geometry
+        implies."""
+        pytest.importorskip("pypdfium2")
+        doc_types = pytest.importorskip("docling_core.types.doc")
+        from PIL import Image
+
+        from chitragupta.enrich import _docling_crops
+
+        pdf_path = self._blank_pdf(tmp_path / "paper.pdf")
+        box = doc_types.BoundingBox(
+            l=10, t=90, r=60, b=40, coord_origin=doc_types.CoordOrigin.BOTTOMLEFT
+        )
+        dl_doc = types.SimpleNamespace(
+            pictures=[types.SimpleNamespace(prov=[types.SimpleNamespace(page_no=1, bbox=box)])]
+        )
+        art = tmp_path / "paper_artifacts"
+
+        names = _docling_crops.write_picture_crops(pdf_path, dl_doc, art, 2.0)
+
+        assert names == ["paper_artifacts/picture_000000.png"]
+        written = art / "picture_000000.png"
+        assert written.exists()
+        # 50pt wide (60-10) and 50pt tall (90-40), at scale 2.
+        assert Image.open(written).size == (100, 100)
