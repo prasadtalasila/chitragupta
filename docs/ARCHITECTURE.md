@@ -252,7 +252,7 @@ ever reads what it produced.
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
 | `extract-keywords` | `content/keywords.toml` -- phrases the papers' own declared `Keywords:`/`Index Terms` lines carry, aggregated corpus-wide; a generated artifact, regenerated fresh each run | refused |
-| `seed-topics` | `content/topic_seeds.json` -- every citekey matching one of the author's own topic phrases, many-to-many | refused |
+| `seed-topics` | `content/topic_seeds.json` -- every citekey matching one of the seed phrases -- the author's own list unioned with the extracted keywords -- many-to-many | refused |
 | `converge` | `content/topic_set.json` -- `bertopic`'s emergent clusters and `seed-topics`' author-named ones, joined into one topic set | refused |
 | `topic-graph` | `content/topic_graph.json` -- how the converged topics relate: shared-member edges, semantic edges, centroids and a merge tree ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)) | refused |
 

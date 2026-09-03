@@ -59,7 +59,7 @@ flowchart TB
   CPS -. "<b>chitragupta/enrich/_docling_reuse.py</b><br/><small>adopts the corpus layer's parse<br/>instead of repeating it</small>" .-> DOC
   DOC --> CHR
   TXT -- "chitragupta/enrich/topic_model.py<br/><small>whole-doc embeddings — its own cache,<br/>not the Chroma collection</small>" --> TOP
-  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the author's own topic phrases,<br/>matched against the same embeddings</small>" --> SED
+  TXT -- "chitragupta/enrich/topic_seeding.py<br/><small>the seed phrases, hand-written and extracted,<br/>matched against the same embeddings</small>" --> SED
   TOP -- "chitragupta/enrich/topic_converge.py<br/><small>emergent clusters and named phrases, joined</small>" --> CVG
   SED --> CVG
   CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR

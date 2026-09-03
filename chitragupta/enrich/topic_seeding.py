@@ -1,4 +1,6 @@
-"""Stage 5: match the author's own topic phrases against the corpus.
+"""Stage: match the run's seed phrases against the corpus -- the
+author's own topic list unioned with the extracted keywords (#605;
+chitragupta/enrich/stages.py owns the union).
 
 The other half of seeding, and the half that keeps the relation the
 author actually asserted. `topic_model.py` runs BERTopic, which returns
@@ -197,9 +199,15 @@ def run_stage(docs: list[CorpusDoc], seed_phrases: tuple) -> dict:
     docling stage reports for a binary that is not installed.
     """
     if not seed_phrases:
+        # Both sources by name (#605): the phrase list is the union of the
+        # author's own file and the extracted keywords, so blaming only
+        # the first would send someone with an empty keywords.toml to the
+        # wrong file.
         return {
             "status": "skipped",
-            "detail": {"reason": f"no seed topics in {config.SEED_TOPICS_PATH}"},
+            "detail": {
+                "reason": f"no seed topics in {config.SEED_TOPICS_PATH} or {config.KEYWORDS_PATH}"
+            },
         }
     result = run_topic_seeding(docs, seed_phrases)
     # Counts, not the matches: this is the one-line-per-stage run report,

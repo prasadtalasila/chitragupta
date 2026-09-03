@@ -400,7 +400,7 @@ gets to make.
 | `embed` | a semantic index for retrieval and the verbatim embedding tier |
 | `bertopic` | topic clustering over the corpus |
 | `extract-keywords` | the papers' own declared keywords, aggregated into `content/keywords.toml` |
-| `seed-topics` | your own seed topics, folded into that clustering |
+| `seed-topics` | your own seed topics, unioned with the extracted keywords, folded into that clustering |
 | `converge` | seed and emergent topics, joined into one topic set |
 | `topic-graph` | the topic graph: how topics relate, by shared papers and by meaning |
 

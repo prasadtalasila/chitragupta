@@ -22,7 +22,7 @@ that contract; `stage_docling` below is the one case that has met it.
 
 import logging
 
-from chitragupta import seed_topics
+from chitragupta import config, seed_topics
 from chitragupta.enrich import (
     docling_parse,
     embed_index,
@@ -79,6 +79,24 @@ def stage_extract_keywords(docs, args) -> dict:
     return keyword_extract.run_stage(docs)
 
 
+# The union lives here, at the call sites, rather than inside
+# seed_topics.load() (#605): that module is documented end-to-end as "the
+# author's own list", and folding a machine-extracted file into it would
+# blur what a phrase returned from load() means for every other caller.
+# "Which phrases flow into this run" is already this file's decision.
+# The author's file loads first, so their spelling wins the
+# case-insensitive dedup -- the same rule load() applies within one file.
+def _seed_phrases() -> tuple:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for phrase in (*seed_topics.load(), *seed_topics.load(config.KEYWORDS_PATH)):
+        if phrase.casefold() in seen:
+            continue
+        seen.add(phrase.casefold())
+        merged.append(phrase)
+    return tuple(merged)
+
+
 # Unlike the three above, this stage's ok/skipped shaping lives in
 # topic_seeding.run_stage() rather than here. Not a style break for its
 # own sake: this module is four code lines under docs/CODE-STANDARDS.md's
@@ -88,13 +106,13 @@ def stage_extract_keywords(docs, args) -> dict:
 # "is there a seed file" is the question that decides whether the stage
 # runs at all, and that is this file's decision to make.
 def stage_seed_topics(docs, args) -> dict:
-    return topic_seeding.run_stage(docs, seed_topics.load())
+    return topic_seeding.run_stage(docs, _seed_phrases())
 
 
 # It joins what the two stages above wrote and computes nothing itself.
 # Running it earlier reads a stale content/topics.json, or none.
 def stage_converge(docs, args) -> dict:
-    return topic_converge.run_stage(docs, seed_topics.load())
+    return topic_converge.run_stage(docs, _seed_phrases())
 
 
 # Last, and it must stay last: it derives relations between the topics
