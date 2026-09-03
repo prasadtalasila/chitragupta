@@ -1,6 +1,14 @@
 # Declared-keyword extraction and seeding (#604, #605, #606)
 
-Status: **in progress.** Written 2026-09-03.
+Status: **done.** Written 2026-09-03. Issue #604 landed in PR #629
+(6.65.0), issue #605 in PR #630 (6.66.0), and issue #606's verification
+-- recorded as
+`bench/RESULTS.md`'s 2026-09-03e entry -- in the PR that carries this
+line (6.66.1). What changed on the way: the shipped extractor detects
+253 of 497 declarations against the scratch script's 262 and keeps a
+slightly different phrase tail (34 of 40 shared at the defaults); the
+benchmarked coverage figures reproduced exactly for the topics-only and
+keywords-only arms and 0.4pp lower for the combined one.
 
 **Written for** the implementer of issues #604 (an `extract-keywords`
 enrichment stage sourcing each paper's own declared
