@@ -179,6 +179,8 @@ being tested.
 | `bench_collection_scope.py` | What a `--collection` filter costs and buys across a real two-arm drafting run: retrieval payload from each dossier's `retrieval.md`, surfaced/selected/rejected by replaying each arm's own logged queries at its own `--k` (with and without the filter), index cost by md5 across three checkpoints, tokens windowed from the session transcript by those same checkpoints, and both arms' verbatim scans. Parameterised (`--topic`/`--arm-f`/`--arm-c`/`--collection`) so one script serves every run of the design -- the first run's copy hard-coded its paths and was never committed |
 | `bench_topic_depth.py` | Sweeps `n_neighbors`/`n_components`/`min_cluster_size`/`min_samples` over the real corpus and reports topic count, outlier share, median topic size and topics-per-document. The measurement behind `[enrich].topic_min_cluster_size` and behind the finding that its hardcoded predecessor was a ceiling rather than a default |
 | `bench_topic_membership.py` | Compares `approximate_distribution`, centroid cosine in two spaces, a Gaussian mixture and HDBSCAN's own soft clustering. Reports **agreement** -- whether a document's assigned topic appears in the memberships the mechanism gives it -- because a membership set that disagrees with the assignment printed beside it is describing a different clustering |
+| `extract_keywords.py` | Writes `content/keywords.toml`: the corpus's own top TF-IDF terms, ranked by summed weight across every parsed document, with `content/topics.toml`'s phrases excluded so it never just echoes the hand-written list back |
+| `bench_keyword_seed_topics.py` | Runs `topic_seeding.assign()` once per phrase set -- `content/topics.toml` alone, `content/keywords.toml` alone, both combined -- and reports coverage, phrase redundancy (mean pairwise Jaccard of match sets) and how much of the corpus a keyword phrase alone reaches that no hand-written phrase does |
 | `embed_models.py` | The SPECTER2 encoder seam: `embed_paper()` (title+abstract, proximity adapter, disk-cached per citekey) and `embed_query()` (adhoc_query adapter) -- SPECTER2 never sees a passage chunk, unlike the three drop-in models |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
@@ -203,8 +205,9 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_rerank_position.py`, `bench_rerank_cost.py`, `embed_models.py`,
 `bench_collection_scope.py`, `bench_overlap.py`,
 `bench_topic_depth.py`, `bench_topic_membership.py`,
-`topic_discovery_eval.py`, `estimate.py` and
-`run_parallel.py` each have one -- 24 of the 26 scripts here. The
+`topic_discovery_eval.py`, `estimate.py`,
+`run_parallel.py`, `extract_keywords.py` and
+`bench_keyword_seed_topics.py` each have one -- 26 of the 28 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

@@ -1,0 +1,21 @@
+{
+  "n_docs": 497,
+  "arms": {
+    "topics_only": {
+      "phrases": 28,
+      "coverage": 0.6941649899396378,
+      "redundancy": 0.041244282874675235
+    },
+    "keywords_only": {
+      "phrases": 80,
+      "coverage": 0.8933601609657947,
+      "redundancy": 0.0444119617869872
+    },
+    "combined": {
+      "phrases": 108,
+      "coverage": 0.9517102615694165,
+      "redundancy": 0.042047424149989646,
+      "keyword_only_coverage": 0.2575452716297787
+    }
+  }
+}
