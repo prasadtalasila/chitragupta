@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<!--
+  The interactive topic-graph app, written by
+  `python -m chitragupta.corpus discover --app DIR`.
+
+  Self-contained by construction: every reference below is relative to
+  this directory (data.js is the corpus payload, vendor/cytoscape.min.js
+  is the pinned graph library), so the whole directory can be downloaded
+  and opened from file:// with no network and no server. Data ships as a
+  JS assignment rather than a JSON file because fetch() of a local file
+  is blocked under file://.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Topic graph</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<header>
+  <h1>Topic graph</h1>
+  <div id="search-wrap">
+    <div id="chips"></div>
+    <input id="search" type="text" autocomplete="off" spellcheck="false"
+           placeholder="Type a topic or keyword&hellip; (Enter adds it, Esc clears)">
+    <ul id="suggestions" hidden></ul>
+  </div>
+  <div id="legend">
+    <span class="swatch seed"></span>seed
+    <span class="swatch keyword"></span>keyword
+    <span class="swatch both"></span>seed+keyword
+    <span class="swatch emergent"></span>emergent
+    <span class="edge-key solid"></span>shares papers
+    <span class="edge-key dashed"></span>semantically near
+  </div>
+</header>
+<main>
+  <div id="cy"></div>
+  <aside id="panel">
+    <p id="hint">Click a topic to see its papers, or an edge to see what
+    links two topics. Type in the search box to filter the graph to the
+    topics you pick and everything related to them.</p>
+    <div id="detail"></div>
+    <details id="hierarchy">
+      <summary>Merge hierarchy</summary>
+      <div id="hierarchy-body"></div>
+    </details>
+  </aside>
+</main>
+<script src="./data.js"></script>
+<script src="./vendor/cytoscape.min.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
