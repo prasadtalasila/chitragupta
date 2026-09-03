@@ -140,6 +140,12 @@ def _build_converter(threads: int | None = None) -> Any:
 
     opts = PdfPipelineOptions()
     opts.do_ocr = config.PARSER_OCR
+    # Explicit like do_ocr, so a docling default change can't flip it:
+    # with this off a formula reaches the .md and the sidecar as a
+    # `formula-not-decoded` marker, i.e. not at all; with it on, the
+    # recognition model writes the LaTeX into the item's text and
+    # passages.passage_records carries it as a `formula` unit (#627).
+    opts.do_formula_enrichment = config.DOCLING_FORMULAS
     opts.document_timeout = config.PARSER_DOCUMENT_TIMEOUT
     # Under parse_corpus's worker pool each process has claimed its own
     # GPU (pdf_text.init_worker) and been given a share of the host's

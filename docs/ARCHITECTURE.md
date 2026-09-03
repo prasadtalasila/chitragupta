@@ -248,7 +248,7 @@ ever reads what it produced.
 
 | Stage | What it produces | `--for-draft` |
 | --- | --- | --- |
-| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | scoped |
+| `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages -- prose, tables with their page anchors, and (under `[enrich].docling_formulas`) decoded formulae -- and figure bitmaps under `[enrich].docling_images` | scoped |
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
 | `extract-keywords` | `content/keywords.toml` -- phrases the papers' own declared `Keywords:`/`Index Terms` lines carry, aggregated corpus-wide; a generated artifact, regenerated fresh each run | refused |

@@ -191,6 +191,87 @@ class TestPassageRecords:
         assert passages.passage_records(types.SimpleNamespace()) == []
 
 
+class TestTableAndFormulaRecords:
+    """#627: a table is a retrievable unit with its own page anchor, not
+    just the caption the prose loop already dropped. Same duck-typed
+    fakes as above -- passages.py never imports docling."""
+
+    @staticmethod
+    def _table(markdown, caption="", page=2, bbox=None):
+        prov = types.SimpleNamespace(page_no=page, bbox=bbox)
+        return types.SimpleNamespace(
+            export_to_markdown=lambda doc: markdown,
+            caption_text=lambda doc: caption,
+            prov=[prov],
+        )
+
+    def test_a_table_becomes_a_record_with_its_page(self, isolated_config):
+        doc = types.SimpleNamespace(
+            texts=[],
+            tables=[self._table("| a | b |\n| 1 | 2 |", caption="Table 1. Results.", page=5)],
+        )
+        assert passages.passage_records(doc) == [
+            {"text": "Table 1. Results.\n| a | b |\n| 1 | 2 |", "label": "table", "page": 5}
+        ]
+
+    def test_a_caption_already_in_the_export_is_not_repeated(self, isolated_config):
+        """Real docling includes the caption in export_to_markdown()'s
+        own output (measured on a real IEEE paper); prepending it again
+        produced 'TABLE I: ...' twice on every table."""
+        doc = types.SimpleNamespace(
+            texts=[],
+            tables=[self._table("Table 1. Results.\n| a | b |", caption="Table 1. Results.")],
+        )
+        assert [r["text"] for r in passages.passage_records(doc)] == [
+            "Table 1. Results.\n| a | b |"
+        ]
+
+    def test_a_captionless_table_is_just_its_cells(self, isolated_config):
+        doc = types.SimpleNamespace(texts=[], tables=[self._table("| a |", caption="")])
+        assert [r["text"] for r in passages.passage_records(doc)] == ["| a |"]
+
+    def test_an_empty_table_export_contributes_nothing(self, isolated_config):
+        doc = types.SimpleNamespace(texts=[], tables=[self._table("   ")])
+        assert passages.passage_records(doc) == []
+
+    def test_a_table_carries_its_bounding_box(self, isolated_config):
+        bbox = types.SimpleNamespace(l=1.0, t=2.0, r=3.0, b=4.0)
+        doc = types.SimpleNamespace(texts=[], tables=[self._table("| a |", bbox=bbox)])
+        assert passages.passage_records(doc)[0]["bbox"] == [1.0, 2.0, 3.0, 4.0]
+
+    def test_a_document_without_tables_attr_is_fine(self, isolated_config):
+        doc = types.SimpleNamespace(texts=[TestPassageRecords._item("Prose.")])
+        assert [r["label"] for r in passages.passage_records(doc)] == ["text"]
+
+    def test_a_decoded_formula_is_kept(self, isolated_config):
+        """Docling's formula-enrichment model writes the LaTeX into the
+        item's text; with content there, the formula is exactly the kind
+        of thing a quantitative claim rests on."""
+        doc = types.SimpleNamespace(
+            texts=[TestPassageRecords._item("T(t) = T_0 e^{-kt}", label="formula", page=3)]
+        )
+        assert passages.passage_records(doc) == [
+            {"text": "T(t) = T_0 e^{-kt}", "label": "formula", "page": 3}
+        ]
+
+    def test_an_undecoded_formula_contributes_nothing(self, isolated_config):
+        """Without the enrichment model, Docling leaves the formula
+        item's text empty -- the existing empty-text guard covers it."""
+        doc = types.SimpleNamespace(texts=[TestPassageRecords._item("", label="formula")])
+        assert passages.passage_records(doc) == []
+
+    def test_a_table_record_reads_back_as_a_quotable_passage(self, isolated_config):
+        _sidecar("smith_2024", [{"text": "| a | b |", "label": "table", "page": 9}])
+        _add_item("smith_2024", parsed_text="page one\fpage two")
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "smith_2024")
+        finally:
+            con.close()
+        assert reason is None
+        assert [(p.page, p.label, p.quotable) for p in found] == [(9, "table", True)]
+
+
 class TestCorpusLayerSidecar:
     """Rung 2: the sidecar the corpus layer writes beside its parsed text."""
 

@@ -620,6 +620,14 @@ DOCLING_IMAGES = _get_bool("DOCLING_IMAGES", "enrich", "docling_images", default
 DOCLING_IMAGE_SCALE = _get_float(
     "DOCLING_IMAGE_SCALE", "enrich", "docling_image_scale", default=2.0
 )
+# Whether the enrichment layer's Docling parse also runs the formula
+# recognition model, so a paper's equations land in the .md and the
+# passage sidecar as decoded LaTeX instead of `formula-not-decoded`
+# markers (#627). Off by default for the same economics as OCR: an
+# extra model download and an extra pass per page. Changing this
+# invalidates the whole Docling cache, like DOCLING_IMAGES -- it changes
+# what every .md and sidecar should contain.
+DOCLING_FORMULAS = _get_bool("DOCLING_FORMULAS", "enrich", "docling_formulas", default=False)
 CHROMA_DIR = CONTENT_DIR / "chroma"
 
 TOPICS_PATH = CONTENT_DIR / "topics.json"

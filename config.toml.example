@@ -484,6 +484,15 @@ docling_images = false
 #                                                            Default: 2.0
 docling_image_scale = 2.0
 
+# Whether the docling stage also runs Docling's formula-recognition
+# model, so equations reach content/docling/<doc>.md and the passage
+# sidecar as decoded LaTeX instead of "formula-not-decoded" markers.
+# Off by default for the same economics as OCR: an extra model download
+# and an extra pass per page. Changing this invalidates the whole
+# Docling cache -- it changes what every .md and sidecar should contain.
+#                                                          Default: false
+docling_formulas = false
+
 # --- Seed topics -------------------------------------------------------
 # Seed topics are phrases you write yourself in content/seed_topics.toml
 # (start from assets/style/topics.toml.example). `--stages seed-topics`

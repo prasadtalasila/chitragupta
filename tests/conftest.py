@@ -128,8 +128,15 @@ def isolated_config(tmp_path, monkeypatch):
     # participates in the Docling cache key, so a test asserting a
     # cache hit would otherwise pass or fail based on the repo's
     # current setting. Tests that care set it explicitly.
-    monkeypatch.setattr(config, "DOCLING_IMAGES", False)
-    monkeypatch.setattr(config, "DOCLING_IMAGE_SCALE", 2.0)
+    # A table for the same statement-budget reason as `under_content`
+    # above: all three participate in the Docling cache key, so a
+    # cache-hit assertion must not depend on the repo's current setting.
+    for name, value in {
+        "DOCLING_IMAGES": False,
+        "DOCLING_IMAGE_SCALE": 2.0,
+        "DOCLING_FORMULAS": False,
+    }.items():
+        monkeypatch.setattr(config, name, value)
     # Pinned for the same reason: these decide which documents land under
     # a seed phrase and under a discovered topic, so a test asserting a
     # match would otherwise pass or fail on the developer's own
