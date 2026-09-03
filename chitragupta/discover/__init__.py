@@ -158,19 +158,23 @@ def _paper_view(args, topic_set) -> int:
     return 0
 
 
+def _app_view(args) -> int:
+    try:
+        written = _app.write_app(args.app)
+    except OSError as failure:
+        # Stderr in both modes, for the reason _run's --html clause
+        # gives: a failure line is never part of the payload.
+        print(f"Could not write the app to {args.app}: {failure}", file=sys.stderr)
+        return 1
+    # One more pure renderer of the artefacts --json reads, so it
+    # honours the flag exactly as --html does.
+    _emit(args, {"written": written}, f"written: {written}")
+    return 0
+
+
 def _run(args) -> int:
     if args.app:
-        try:
-            written = _app.write_app(args.app)
-        except OSError as failure:
-            # Stderr in both modes, for the reason the --html clause
-            # below gives: a failure line is never part of the payload.
-            print(f"Could not write the app to {args.app}: {failure}", file=sys.stderr)
-            return 1
-        # One more pure renderer of the artefacts --json reads, so it
-        # honours the flag exactly as --html does.
-        _emit(args, {"written": written}, f"written: {written}")
-        return 0
+        return _app_view(args)
 
     if args.html:
         try:

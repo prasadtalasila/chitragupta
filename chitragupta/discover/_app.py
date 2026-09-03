@@ -80,9 +80,7 @@ def write_app(path: str) -> str:
     target = Path(path)
     (target / "vendor").mkdir(parents=True, exist_ok=True)
     for name in APP_FILES:
-        shutil.copyfile(
-            config.shipped("assets", "webapp", *name.split("/")), target / name
-        )
+        shutil.copyfile(config.shipped("assets", "webapp", *name.split("/")), target / name)
     # `<` escaped in the embedded JSON so no title or label can close
     # the script tag early -- the same one injection route, and the same
     # fix, as `_page.build_html`'s JSON island.

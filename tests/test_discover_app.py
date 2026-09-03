@@ -38,7 +38,7 @@ def payload_of(app_dir) -> dict:
     prefix = "window.CHITRAGUPTA_TOPICS = "
     assert text.startswith(prefix)
     assert text.rstrip().endswith(";")
-    return json.loads(text[len(prefix):].rstrip().removesuffix(";"))
+    return json.loads(text[len(prefix) :].rstrip().removesuffix(";"))
 
 
 class TestOrigins:
@@ -60,9 +60,7 @@ class TestOrigins:
         """Case-insensitively, matching `_seed_phrases()`'s dedup rule:
         the hand-written spelling won the union, so the label in the
         artefacts may differ in case from the keywords.toml entry."""
-        origins = self.origin(
-            isolated_config, hand=("digital twin",), extracted=("Digital TWIN",)
-        )
+        origins = self.origin(isolated_config, hand=("digital twin",), extracted=("Digital TWIN",))
         assert origins["digital twin"] == "both"
 
     def test_emergent_stays_emergent_whatever_the_files_say(self, isolated_config):
@@ -129,9 +127,7 @@ class TestWriteApp:
 
 
 class TestCli:
-    def test_app_flag_writes_the_directory_and_reports_it(
-        self, isolated_config, tmp_path, capsys
-    ):
+    def test_app_flag_writes_the_directory_and_reports_it(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
         app_dir = tmp_path / "app"
         assert discover.main(["--app", str(app_dir)]) == 0
