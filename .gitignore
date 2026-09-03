@@ -141,3 +141,12 @@ config.toml
 # Built documentation site (mkdocs.yml -> .github/workflows/docs.yml).
 # Generated from the repository itself; nothing here is a source file.
 site/
+
+# docker/.env, the per-host compose settings: absolute paths to a
+# workspace and a corpus, a container name, and a uid/gid that are
+# properties of one machine's account rather than of this project.
+# docker/.env.example is the tracked documentation of what
+# docker/docker-compose.yml reads, and stays in git -- the negation
+# below is what keeps the pair from collapsing into one ignored file.
+.env
+!docker/.env.example

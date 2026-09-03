@@ -1,0 +1,196 @@
+# A thin container for *driving* this pipeline with Claude Code, as
+# opposed to `docker/Dockerfile` beside it, which builds the heavy
+# TeX Live/Pandoc/torch toolchain from the checkout. The two are not
+# variants of one image and neither replaces the other:
+#
+#   docker/Dockerfile         the toolchain, built from this repo's own
+#                             scripts/install_full_pipeline.sh. 4.38GB
+#                             (cpu) / 11.6GB (gpu). Mount the checkout,
+#                             get a shell with everything resolved.
+#   docker/Dockerfile.claude  this file. Node + Claude Code + a venv
+#                             install of the *published* chitragupta-cli
+#                             package, ~2.5GB, no checkout required. The
+#                             toolchain is not baked in; `chitragupta
+#                             install os-deps` fetches it at runtime,
+#                             which is what the sudoers rule below is
+#                             for.
+#
+# So this image trades build time for first-run time, and it is the pip
+# path (docs/PACKAGING.md) rather than the git-checkout path: nothing
+# here COPYs the repository in. That is deliberate -- an image that
+# builds from a checkout has to be rebuilt to follow a release, and this
+# one only has to be restarted.
+#
+# Not exercised by CI, and *unlike* docker/Dockerfile in this respect:
+# ci.yml's `docker-build` job builds that one on every push, and nothing
+# builds this one. So a break here is caught by hand or not at all.
+# Re-verify with the build and the checks in DOCKER.md's "Verify the
+# container" after changing this file or entrypoint.sh -- shellcheck
+# docker/*.sh in the lint job reaches entrypoint.sh and nothing else.
+#
+# Build (a temporary tag, so an existing :latest survives a failed try):
+#   docker build -t chitragupta-claude:tmp -f docker/Dockerfile.claude docker/
+# Run (from docker/, so compose resolves its own relative defaults):
+#   cd docker && cp .env.example .env   # then edit it
+#   docker compose --profile cpu up -d  # or --profile gpu
+
+# Pinned rather than floating on `node:26`. This image's whole job is to
+# host a long-lived `claude remote-control` session, and a base bump is
+# a thing to take deliberately after checking Claude Code still runs on
+# it, not something a rebuild should pick up silently. Debian trixie,
+# note -- not the Ubuntu LTS docker/Dockerfile uses -- because it is
+# what the official Node image ships; nothing here depends on the
+# difference, but PEP 668 applies on both, see the venv step below.
+FROM node:26.6.0
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# The account this image runs as, and every part of it is a build arg
+# because none of it is a property of the project. An earlier version of
+# this file hardcoded one operator's login name, which then had to be
+# spelled the same way in the compose file, in the volume path for the
+# agent's home, and in every doc example -- four places to get wrong,
+# for a value nothing here actually cares about.
+#
+# CG_UID/CG_GID default to 1001, and that is not arbitrary twice over:
+# the base image has already taken 1000 for its own `node` account, so
+# reusing it would make two accounts fight over one numeric owner on a
+# bind mount; and the *right* value is whatever your host account is
+# (`id -u`), because that is what decides who owns a file the container
+# writes into a mounted workspace. Override both when yours differ --
+# docker/.env.example says so where you would be setting them.
+ARG CG_USER=chitragupta
+ARG CG_UID=1001
+ARG CG_GID=1001
+
+# tmux is load-bearing, not a convenience: entrypoint.sh runs the agent
+# inside a detached tmux session so `docker attach` is not the only way
+# back to it, and a dropped connection doesn't kill the run. sudo is
+# here for `chitragupta install os-deps` (see the sudoers rule below).
+# python3-venv is what answers PEP 668, as the install step explains.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        tmux \
+        git \
+        openssh-client \
+        python3-pip \
+        python3-venv \
+        python-is-python3 \
+        zsh \
+        sudo \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN groupadd -g "${CG_GID}" "${CG_USER}" && \
+    useradd -u "${CG_UID}" -g "${CG_GID}" -m -s /bin/bash "${CG_USER}"
+
+# NOPASSWD, and that is a considered position rather than laziness: the
+# image exists to run an agent with `--permission-mode
+# bypassPermissions` (entrypoint.sh) inside a container whose isolation
+# *is* the security boundary. A password prompt here would only block
+# `chitragupta install os-deps`, which is the one command this image
+# expects a user to run first and cannot run without apt. 0440 because
+# sudo refuses a group- or world-writable file in /etc/sudoers.d and
+# says nothing useful when it does.
+RUN mkdir -p /etc/sudoers.d && \
+    echo "${CG_USER} ALL=(ALL) NOPASSWD:ALL" > "/etc/sudoers.d/${CG_USER}" && \
+    chmod 0440 "/etc/sudoers.d/${CG_USER}"
+
+RUN mkdir -p /workspace && chown -R "${CG_USER}:${CG_USER}" /workspace
+
+# Claude Code lands *after* the account above exists, and the ordering
+# is the fix for a real failure rather than tidiness. `npm install -g`
+# writes the CLI into /usr/local, which is root-owned and fine -- but
+# the first run then wants a writable home for its config, cache and
+# self-update, and `claude` resolves that from $HOME at exec time. Built
+# with this line above `useradd`, the install still succeeds and the
+# image still passes a smoke test as root, then fails for the
+# unprivileged account on first launch. Nothing about the npm layer
+# records which order it ran in, so this comment is the only place that
+# ordering is stated.
+RUN npm install -g @anthropic-ai/claude-code
+
+# /usr/local/bin, not the account's home directory: the entrypoint's
+# path is baked into ENTRYPOINT below, and a path under /home/<user>
+# would make it depend on CG_USER -- exactly the coupling the build args
+# above exist to remove.
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+# 0755 explicitly, not `chmod +x`: COPY preserves the host file's mode,
+# so a repo checkout with a group-writable umask would put a
+# group-writable PID 1 in the image.
+RUN chmod 0755 /usr/local/bin/entrypoint.sh
+
+
+# One venv on PATH, the same shape docker/Dockerfile uses for /opt/venv,
+# and **not** pipx -- which this file did use, until the container was
+# actually driven and the citation gate blocked every write in it.
+#
+# Debian trixie marks its Python externally-managed (PEP 668), so a bare
+# `pip install` refuses; that much is true of any of these approaches
+# and is what AGENTS.md's "Environment constraints" records for the host
+# too. pipx answers it by giving the CLI a *private* venv and exposing
+# only the two entry points, which is right for a CLI and wrong here:
+#
+#   `.claude/settings.json` -- the one `chitragupta init` scaffolds --
+#   launches every hook as `command: "python"`. That resolves to the
+#   system interpreter, which cannot import a package hidden inside
+#   pipx's venv. The citation gate then returns `{"decision": "block",
+#   "reason": "The citation gate could not run -- this is an environment
+#   fault, not a bad citekey ..."}` on every draft write. Measured, not
+#   reasoned about: the hook is careful and fails loudly rather than
+#   passing a draft it could not check, so the container came up looking
+#   healthy and refused to let anything be drafted in it.
+#
+# A venv first on PATH makes `python`, `python3`, `pip`, `chitragupta`
+# and `cg` all the same environment, so the hooks resolve the package
+# that the CLI is. VIRTUAL_ENV is set for the same reason
+# docker/Dockerfile sets it: Poetry and pip then install into this venv
+# rather than creating another.
+#
+# Owned by the unprivileged account, so `pip install
+# 'chitragupta-cli[enrich]'` later needs no sudo.
+#
+# Unpinned, deliberately. This image follows the published release, and
+# `docker compose build --pull` is how you move it; pinning here would
+# put the version in two places (this file and the tag you built) and
+# guarantee they disagree.
+#
+# So what this installs is the newest **PATCH-free** release, not
+# whatever `pyproject.toml` says: release.yml's publish-pypi job skips a
+# tag not ending `.0` (docs/PACKAGING.md), so PyPI holds x.Y.0 only and
+# "latest on PyPI" trails the checkout by design. Stated as the rule
+# rather than as two example numbers on purpose -- an earlier draft of
+# this comment named a specific pair, and PyPI moved past them while
+# this file was still being written.
+#
+# The `enrich` extra is *not* installed: it is torch, and it would take
+# this image from ~2.5GB past 6GB for a dependency many sessions never
+# touch. DOCKER.md's "First run" has the one-liner that adds it.
+ENV VIRTUAL_ENV=/opt/venv
+ENV PATH="/opt/venv/bin:${PATH}"
+RUN python3 -m venv "${VIRTUAL_ENV}" && \
+    "${VIRTUAL_ENV}/bin/pip" install --no-cache-dir --upgrade pip && \
+    "${VIRTUAL_ENV}/bin/pip" install --no-cache-dir chitragupta-cli
+
+RUN chown -R "${CG_USER}:${CG_USER}" "${VIRTUAL_ENV}"
+
+# ENV PATH above is not enough on its own, and this was measured rather
+# than anticipated: a **login** shell (`bash -l`, which is what `docker
+# exec -it <c> bash -lc ...` and most `docker compose exec` examples
+# get) sources /etc/profile, which rebuilds PATH from scratch and
+# discards what ENV set. The venv then vanishes and `python` is
+# /usr/bin/python again -- i.e. exactly the broken-hook state the venv
+# exists to prevent, in the one shell a human is most likely to use.
+#
+# Note the trap this hid: the pipx version appeared to survive a login
+# shell only because Debian's default ~/.profile re-adds
+# $HOME/.local/bin, which is where pipx happened to put its shims. That
+# is luck, not design, and it does not extend to /opt/venv.
+RUN printf '%s\n%s\n' \
+        'export VIRTUAL_ENV=/opt/venv' \
+        'export PATH="/opt/venv/bin:$PATH"' \
+        > /etc/profile.d/chitragupta-venv.sh && \
+    chmod 0644 /etc/profile.d/chitragupta-venv.sh
+
+USER ${CG_USER}
+WORKDIR /workspace
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

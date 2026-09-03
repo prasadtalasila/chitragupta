@@ -504,7 +504,7 @@ Before saying so, actually run, in this repo:
   pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
   ruff check chitragupta scripts .claude/hooks
   ruff format --check chitragupta scripts tests bench .claude/hooks
-  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"
+  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
   ```
 
 - `poetry check`.
@@ -582,15 +582,30 @@ to match would only relocate the gap:
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 ruff format --check chitragupta scripts tests bench .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"   # npm i -g markdownlint-cli2
 ```
 
-The one negation is stated in the command for the same
-narrower-glob-is-a-decision reason: `docs/examples/sample-project/` is
+Both negations are stated in the command for the same
+narrower-glob-is-a-decision reason. `docs/examples/sample-project/` is
 pipeline *output* -- drafts, dossiers, review reports -- which is never
 lint-shaped and may not be hand-edited to become so (see "The committed
 sample project is pipeline output"). `docs/examples/README.md`, the
 hand-written page beside it, stays inside the glob.
+
+`.claude/worktrees/` is the second, and it is a *local*-only problem
+that CI structurally cannot see. It holds throwaway checkouts of this
+same repository, so `.claude/**/*.md` reaches entire nested copies of
+the tree -- copies of `docs/examples/sample-project/` among them, which
+the first negation does **not** exclude, because that pattern is
+anchored at the repo root and the nested copy sits several directories
+down. Measured on 2026-09-03: 40,026 findings across 1,250 files, every
+one of them inside `.claude/worktrees/`, against 0 in the tracked tree.
+CI stayed green throughout -- it lints a fresh checkout, which has no
+worktrees -- so the entire cost fell on the local run this section calls
+non-optional, and 40,000 lines of noise is indistinguishable from a
+check nobody runs. The negation is in `ci.yml` too, where it is inert,
+rather than only here: one command that a contributor and CI both run
+is the property the glob comment upstream of it is protecting.
 
 **Read the linter's own exit code, not a pipeline's.** `pylint … | tail`
 reports `tail`'s status, so a real finding passes for a clean run. That is
@@ -783,7 +798,7 @@ entirely -- a clean OCR run says nothing about them.
 What *does* cover Markdown, so "OCR came back clean" is never read as
 "the standing instructions were reviewed": `markdownlint-cli2 "*.md"
 "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
-"!docs/examples/sample-project"` (see
+"!docs/examples/sample-project" "!.claude/worktrees"` (see
 ["The linters, which are enforced"](#-the-linters-which-are-enforced)) for
 style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
 test, for the one class of factual claim that has a machine-readable
