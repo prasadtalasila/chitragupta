@@ -9,9 +9,15 @@ by one wrapper every time a stage was added, which is the shape of a
 module holding two jobs.
 
 Each wrapper is deliberately thin. The work belongs to the stage modules;
-what these decide is only the `ok`/`skipped`/`partial` vocabulary the run
-report speaks, and which parts of a stage's result are worth printing
-against which are better read from the artefact it wrote.
+what these decide is only the `ok`/`skipped`/`partial`/`error` vocabulary
+the run report speaks, and which parts of a stage's result are worth
+printing against which are better read from the artefact it wrote.
+
+`error` is the one of the four that changes the run's exit code, which
+is the whole of what an unattended caller gets, so a wrapper escalates
+to it only for work the stage abandoned rather than attempted -- an
+ordinary per-document failure stays `partial`. docs/LADDERS.md owns
+that contract; `stage_docling` below is the one case that has met it.
 """
 
 import logging
