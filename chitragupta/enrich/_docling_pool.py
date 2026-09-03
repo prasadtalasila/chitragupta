@@ -79,12 +79,17 @@ def _worker_converter(threads: int | None) -> Any:
     global _WORKER_CONVERTER, _WORKER_CONVERTER_KEY
     from chitragupta.enrich.docling_parse import _build_converter
 
+    # Everything here changes what `_build_converter` builds.
+    # config.DOCLING_IMAGES and DOCLING_IMAGE_SCALE used to be in this
+    # key and no longer are: since #600 the converter never generates
+    # picture bitmaps, so neither setting reaches it -- the scale is
+    # applied by `_docling_crops` per crop, well after the converter has
+    # done its work. `_docling_cache` still records both, because they do
+    # change what the *outputs* should contain.
     key = (
         threads,
         pdf_text.worker_device(),
         config.PARSER_OCR,
-        config.DOCLING_IMAGES,
-        config.DOCLING_IMAGE_SCALE,
         config.PARSER_DOCUMENT_TIMEOUT,
     )
     if _WORKER_CONVERTER is None or _WORKER_CONVERTER_KEY != key:

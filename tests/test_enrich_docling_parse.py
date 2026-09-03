@@ -29,10 +29,11 @@ from chitragupta.enrich import (
 from chitragupta.enrich.corpus import CorpusDoc
 
 
-# Docling names artifacts image_<index>_<sha256>.png. The digest is
-# irrelevant to these tests, so a constant stand-in keeps the expected
-# filename readable in both the fake and the assertions.
-FAKE_IMAGE_NAME = "image_{i:06d}_" + "a" * 64 + ".png"
+# What `_docling_crops` writes: the picture's index in
+# `dl_doc.pictures`, zero-padded. Not docling's
+# `image_<index>_<sha256>.png` -- that digest was of bitmap bytes docling
+# held all at once and this pipeline no longer has (#600).
+FAKE_IMAGE_NAME = "picture_{i:06d}.png"
 
 
 class FakePicture:
@@ -48,7 +49,8 @@ class FakePicture:
 
     def __init__(self, caption="", page=1):
         self._caption = caption
-        self.prov = [types.SimpleNamespace(page_no=page)] if page is not None else []
+        bbox = types.SimpleNamespace(l=10.0, t=90.0, r=60.0, b=40.0)
+        self.prov = [types.SimpleNamespace(page_no=page, bbox=bbox)] if page is not None else []
         self.image = types.SimpleNamespace(
             uri=types.SimpleNamespace(path="image/png;base64,iVBORw0KGgoAAAANSUhEUg" + "A" * 200)
         )
@@ -79,23 +81,33 @@ class FakeDocument:
         self.texts = texts if texts is not None else []
 
     def export_to_markdown(self):
-        return self._markdown
+        """One `<!-- image -->` per picture, as real docling emits when it
+        was never asked to generate the bitmaps (#600).
+
+        Those placeholders are what `_inject_image_refs` rewrites into
+        references to the files `_docling_crops` wrote, so a fake without
+        them would leave that whole step unexercised.
+        """
+        body = self._markdown
+        for _ in self.pictures:
+            body += "\n\n<!-- image -->"
+        return body
 
     def save_as_markdown(self, path, image_mode=None):
-        """Mirrors the real behaviour: writes ABSOLUTE artifact paths."""
+        """Kept only to catch its return: nothing in `chitragupta/` may call
+        this any more.
+
+        It is what makes docling materialise every bitmap it holds, which
+        is the bug in #600 -- and it re-reads and re-decodes any file an
+        ImageRef points at, so it cannot be used even to write references
+        to crops already on disk.
+        """
         FakeDocument.last_image_mode = image_mode
-        out = Path(path)
-        artifacts = out.parent / f"{out.stem}_artifacts"
-        body = self._markdown
-        for i in range(len(self.pictures)):
-            # Built in two steps rather than as a nested f-string: PEP 701
-            # makes the nested form legal on this project's Python (^3.12),
-            # but it reads badly and is a syntax error on 3.11 and older.
-            filename = FAKE_IMAGE_NAME.format(i=i)
-            body += f"\n\n![Image]({artifacts / filename})"
-        # NB: on Windows that join yields backslashes, which is exactly
-        # the real behaviour the relativiser has to normalise.
-        out.write_text(body)
+        raise AssertionError(
+            "save_as_markdown must not be called -- it materialises every "
+            "held bitmap (#600); export_to_markdown + _inject_image_refs "
+            "is the path."
+        )
 
 
 class FakeConversionResult:
@@ -215,7 +227,15 @@ class TestParseDoc:
 
 class TestImageExtraction:
     @pytest.fixture
-    def images_on(self, isolated_config, monkeypatch):
+    def images_on(self, isolated_config, monkeypatch, fake_pdfium):
+        """Figures on, with the pypdfium2 that now renders them faked.
+
+        `fake_pdfium` is a fixture dependency rather than a per-test
+        argument because since #600 *every* images-on parse goes through
+        pdfium: docling is no longer asked for the bitmaps, so a test on
+        this path without the fake would fail on the import rather than
+        on anything it meant to assert.
+        """
         monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", True)
         return isolated_config
 
@@ -255,18 +275,31 @@ class TestImageExtraction:
         docling_parse.parse_doc(self._doc(tmp_path))
         assert FakeDocumentConverter.last_format_options["pdf"].pipeline_options.do_ocr is True
 
-    def test_images_on_requests_bitmaps_and_referenced_mode(
+    def test_images_on_never_asks_docling_for_the_bitmaps(
         self, images_on, fake_docling, tmp_path, monkeypatch
     ):
+        """The fix for #600, at the point where it is decided.
+
+        Docling retains every crop it generates until save_as_markdown --
+        +8.95 GiB on one 99-page deck, and a 74.31 GiB failure at
+        docling_image_scale = 6.0. So the pipeline stopped asking: the
+        boxes come from docling, the bitmaps from pdfium, one at a time.
+        `generate_picture_images` must stay unset even with figures
+        *enabled*, which is the case that used to set it.
+        """
         monkeypatch.setattr(
             FakeDocumentConverter, "pictures", [FakePicture("Figure 1. A plot", page=3)]
         )
         docling_parse.parse_doc(self._doc(tmp_path))
 
         opts = FakeDocumentConverter.last_format_options["pdf"].pipeline_options
-        assert opts.generate_picture_images is True
-        assert opts.images_scale == images_on.DOCLING_IMAGE_SCALE
-        assert FakeDocument.last_image_mode == "referenced"
+        assert opts.generate_picture_images is False
+        # ...and the figures still arrive, from the other renderer.
+        assert (images_on.DOCLING_DIR / "richstein_characterizing_2024.figures.json").exists()
+        # save_as_markdown is what materialises the held bitmaps, so it
+        # must never run -- the fake raises if it does, and this pins the
+        # absence directly rather than trusting that.
+        assert FakeDocument.last_image_mode is None
 
     def test_figure_index_cites_by_the_papers_own_number(
         self, images_on, fake_docling, tmp_path, monkeypatch
@@ -386,40 +419,75 @@ class TestImageExtraction:
         assert all(not r.startswith("/") for r in refs), refs
         assert all(r.startswith("richstein_characterizing_2024_artifacts/") for r in refs), refs
 
-    def test_already_relative_ref_is_passed_through_unchanged(self, images_on, tmp_path):
+    def test_placeholders_are_pointed_at_the_written_crops(self, images_on, tmp_path):
+        """`export_to_markdown` leaves a marker per picture; this is what
+        turns each one into a reference to the file rendered for it."""
         md = tmp_path / "doc.md"
-        md.write_text("text\n\n![Image](doc_artifacts/img.png)\n")
+        md.write_text("text\n\n<!-- image -->\n\nmore\n\n<!-- image -->\n")
 
-        names = _docling_figures._relativise_image_refs(md)
+        names = _docling_figures._inject_image_refs(
+            md, ["doc_artifacts/picture_000000.png", "doc_artifacts/picture_000001.png"]
+        )
 
-        assert names == ["doc_artifacts/img.png"]
-        assert "![Image](doc_artifacts/img.png)" in md.read_text()
+        assert names == ["doc_artifacts/picture_000000.png", "doc_artifacts/picture_000001.png"]
+        body = md.read_text()
+        assert "![Image](doc_artifacts/picture_000000.png)" in body
+        assert "![Image](doc_artifacts/picture_000001.png)" in body
+        assert "<!-- image -->" not in body
+        assert "text" in body and "more" in body
 
-    def test_relative_refs_use_forward_slashes_on_every_platform(self, images_on, tmp_path):
-        """A Markdown image reference is URL-ish and must use forward
-        slashes. Path.relative_to() renders backslashes on Windows, which
-        would make content/docling/ readable only on the box that wrote
-        it -- caught by this repo's windows-latest CI leg."""
+    def test_refs_are_relative_and_use_forward_slashes(self, images_on, tmp_path):
+        """A Markdown image reference is URL-ish, and `content/docling/`
+        has to stay movable as a unit -- generated in a container and read
+        elsewhere, say. Absolute paths would bake this host's layout into
+        every .md, and backslashes would make it readable only on the box
+        that wrote it (this repo has a windows-latest CI leg).
+
+        Now a property of `write_picture_crops`, which builds the names
+        with an explicit "/" rather than a Path join, instead of something
+        a relativiser had to repair after docling wrote absolute paths.
+        """
         md = tmp_path / "doc.md"
-        nested = md.parent / "doc_artifacts" / "sub" / "img.png"
-        md.write_text(f"text\n\n![Image]({nested})\n")
+        md.write_text("<!-- image -->\n")
 
-        names = _docling_figures._relativise_image_refs(md)
+        names = _docling_figures._inject_image_refs(md, ["doc_artifacts/sub/picture_000000.png"])
 
-        assert names == ["doc_artifacts/sub/img.png"]
+        assert names == ["doc_artifacts/sub/picture_000000.png"]
         assert "\\" not in md.read_text()
+        assert not md.read_text().startswith("![Image](/")
 
-    def test_image_ref_outside_the_md_tree_is_left_alone(self, images_on, tmp_path):
-        """An absolute path pointing somewhere else entirely stays put,
-        rather than becoming a fragile chain of `../`."""
+    def test_a_picture_with_no_crop_keeps_its_placeholder(self, images_on, tmp_path):
+        """`None` means no file was written -- a picture docling gave no
+        provenance for, or one whose render failed. The marker stays, and
+        `embed_text.strip_image_refs` removes either form on the way to
+        the embedder."""
         md = tmp_path / "doc.md"
-        outside = tmp_path.parent / "elsewhere" / "img.png"
-        md.write_text(f"text\n\n![Image]({outside})\n")
+        md.write_text("<!-- image -->\n\n<!-- image -->\n")
 
-        names = _docling_figures._relativise_image_refs(md)
+        names = _docling_figures._inject_image_refs(md, [None, "art/picture_000001.png"])
 
-        assert names == [str(outside)]
-        assert str(outside) in md.read_text()
+        assert names == [None, "art/picture_000001.png"]
+        body = md.read_text()
+        assert body.count("<!-- image -->") == 1
+        assert "![Image](art/picture_000001.png)" in body
+
+    def test_a_placeholder_count_mismatch_drops_every_name(self, images_on, tmp_path, caplog):
+        """Rather than shift every reference onto its neighbour's image.
+
+        The two counts come from different docling surfaces --
+        `len(dl_doc.pictures)` and the markers `export_to_markdown()`
+        emitted -- so their agreeing is an assumption about the library,
+        not an invariant of this code. Same trade `_figure_records` makes
+        on the same suspicion.
+        """
+        md = tmp_path / "doc.md"
+        md.write_text("<!-- image -->\n")
+
+        names = _docling_figures._inject_image_refs(md, ["a.png", "b.png"])
+
+        assert names == [None, None]
+        assert "<!-- image -->" in md.read_text(), "markdown left alone"
+        assert "1 image placeholder(s) for 2 picture(s)" in caplog.text
 
     def test_image_is_dropped_when_ref_count_disagrees_with_picture_count(
         self, images_on, fake_docling, tmp_path
@@ -1831,11 +1899,33 @@ class TestWorkerConverterReuse:
         _docling_pool.parse_one((self._doc(tmp_path, "b"), 4))
         assert FakeDocumentConverter.build_count == 2
 
-    def test_a_changed_image_setting_rebuilds_it(
-        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    def test_a_changed_image_setting_no_longer_rebuilds_it(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path, fake_pdfium
     ):
+        """The inverse of what this asserted before #600, and for a
+        reason rather than as a concession.
+
+        The image settings used to change what `_build_converter` built,
+        so they belonged in the reuse key. They no longer reach it at all
+        -- the converter never generates bitmaps, and the scale is
+        applied per crop by `_docling_crops`, long after the converter
+        has finished. Keeping them in the key would pay a full reload of
+        docling's layout, table and OCR models per worker for a setting
+        the converter cannot see.
+        """
         _docling_pool.parse_one((self._doc(tmp_path, "a"), 4))
         monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", True)
+        _docling_pool.parse_one((self._doc(tmp_path, "b"), 4))
+        assert FakeDocumentConverter.build_count == 1
+
+    def test_a_changed_ocr_setting_still_rebuilds_it(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The control for the test above: a setting that *does* reach the
+        converter must still invalidate the key, or that test would pass
+        just as well against a key that had stopped working."""
+        _docling_pool.parse_one((self._doc(tmp_path, "a"), 4))
+        monkeypatch.setattr(isolated_config, "PARSER_OCR", True)
         _docling_pool.parse_one((self._doc(tmp_path, "b"), 4))
         assert FakeDocumentConverter.build_count == 2
 

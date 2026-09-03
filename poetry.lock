@@ -6718,9 +6718,9 @@ propcache = ">=0.2.1"
 [extras]
 dev = ["pytest", "pytest-cov"]
 docs = ["mkdocs-material", "mkdocs-same-dir"]
-enrich = ["adapters", "bertopic", "chromadb", "docling", "scipy", "sentence-transformers"]
+enrich = ["adapters", "bertopic", "chromadb", "docling", "pypdfium2", "scipy", "sentence-transformers"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "20ff02ba3915d199f79225980b4364a7b76e3dfc76e9c6ba4107eeb77a9c8996"
+content-hash = "09c387c844fe2345611ea58a09d886650474c10e2b30daec6d552b04490dbeb9"

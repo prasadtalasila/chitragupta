@@ -287,11 +287,13 @@ BERTopic -> seeded topics -> converged topic set -> topic graph -- one
 script for both host and Docker. Each stage
 self-probes its own prerequisites (docling importable, an upstream
 artefact present) and
-reports honestly (`skipped`/`partial`) rather than assuming the
-target implies availability -- don't "fix" a skip by hardcoding
-target-specific behavior; fix the probe if it's wrong. `--target
-host|docker` is **informational only** for exactly that reason: the
-probes decide, not the flag, so nothing branches on it.
+reports honestly (`ok`/`partial`/`skipped`/`error`) rather than assuming
+the target implies availability -- don't "fix" a skip by hardcoding
+target-specific behavior; fix the probe if it's wrong. Which of the four
+words changes the run's exit code is
+[docs/LADDERS.md](docs/LADDERS.md)'s to state, not this file's.
+`--target host|docker` is **informational only** for exactly that
+reason: the probes decide, not the flag, so nothing branches on it.
 
 `chitragupta/enrich/embed_index.py`, `chitragupta/enrich/topic_model.py`, and
 `chitragupta/enrich/docling_parse.py` are all incremental, mirroring

@@ -23,8 +23,10 @@ possible (see `pdf_text.docling_process_pool`'s docstring for the same
 rule applied to imports: this module builds its process pool through
 that shared helper rather than importing chitragupta.sync's).
 
-With config.DOCLING_IMAGES on, each doc also gets its figure bitmaps
-(in `<stem>_artifacts/`, written by Docling itself) and a
+With config.DOCLING_IMAGES on, each doc also gets its figure bitmaps (in
+`<stem>_artifacts/`, rendered one at a time by `_docling_crops` from the
+boxes Docling reports -- not by Docling, which holds every crop until
+the end of the parse and cost +8.95 GiB on one deck, #600) and a
 `<stem>.figures.json` index giving each figure's page, caption, and the
 string to cite it by. Those images are a reading aid for checking a
 draft against its sources -- never draft content, since citing a paper
@@ -66,7 +68,7 @@ from typing import Any
 
 from chitragupta import config, logging_setup, passages, pdf_text
 from chitragupta.enrich._docling_cache import _load_cache, _save_cache
-from chitragupta.enrich._docling_figures import _figure_records, _relativise_image_refs
+from chitragupta.enrich._docling_figures import write_figure_outputs
 from chitragupta.enrich._docling_pool import _LazyConverter, _parse_with_pool
 from chitragupta.enrich._docling_reuse import (
     _corpus_parse_available,
@@ -119,8 +121,9 @@ def _build_converter(threads: int | None = None) -> Any:
     """Always configured, never bare: `do_ocr` has to be set explicitly
     because Docling's own default is True and this project's is False
     (see config.toml's [parser].ocr for the measurement behind that).
-    Picture bitmaps stay off unless config.DOCLING_IMAGES asks for them --
-    they're what costs the extra decode time and the artifacts directory.
+    Picture bitmaps stay off *always*, whatever config.DOCLING_IMAGES
+    says -- see the comment on the return statement, and `_docling_crops`
+    for what produces them instead.
 
     Callers should build one of these per *corpus*, not per document:
     DocumentConverter keeps its `initialized_pipelines` cache on the
@@ -152,9 +155,12 @@ def _build_converter(threads: int | None = None) -> Any:
         if device is not None:
             kwargs["device"] = device
         opts.accelerator_options = AcceleratorOptions(**kwargs)
-    if config.DOCLING_IMAGES:
-        opts.generate_picture_images = True
-        opts.images_scale = config.DOCLING_IMAGE_SCALE
+    # `generate_picture_images` is deliberately never set, whatever
+    # config.DOCLING_IMAGES says. Docling retains every crop it produces
+    # until save_as_markdown runs -- +8.95 GiB on one 99-page deck, and a
+    # 74.31 GiB failure at docling_image_scale = 6.0 (#600). It still
+    # reports each picture's page and bbox with the bitmaps off, which is
+    # all _docling_crops needs to render them one at a time instead.
     return DocumentConverter(
         format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=opts)}
     )
@@ -208,22 +214,13 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
     """The post-parse rewrite: the .md (plus figures.json with images on),
     and the passages.json sidecar every doc gets regardless.
     """
+    out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
     if config.DOCLING_IMAGES:
-        from docling_core.types.doc import ImageRefMode
-
-        # save_as_markdown (not export_to_markdown) so Docling writes the
-        # PNGs itself, into <stem>_artifacts/ beside the .md, and points
-        # each reference at them. It writes those references as absolute
-        # paths, so _relativise_image_refs rewrites them afterwards --
-        # see its docstring.
-        dl_doc.save_as_markdown(out_path, image_mode=ImageRefMode.REFERENCED)
-        image_names = _relativise_image_refs(out_path)
-        figures_path = config.DOCLING_DIR / f"{stem}.figures.json"
-        figures_path.write_text(
-            json.dumps(_figure_records(doc, dl_doc, image_names), indent=2), encoding="utf-8"
-        )
-    else:
-        out_path.write_text(dl_doc.export_to_markdown(), encoding="utf-8")
+        # The .md above is already the whole text, placeholders included,
+        # whichever branch we are in -- so figures are purely additive
+        # now, where the old save_as_markdown path had to write the
+        # markdown itself. `_docling_figures` owns the rest.
+        write_figure_outputs(doc, dl_doc, out_path, config.DOCLING_DIR / f"{stem}.figures.json")
 
     # Written for every doc, images on or off: chitragupta/review/citation_provenance.py
     # reads it to quote a real passage rather than a window sliced out of

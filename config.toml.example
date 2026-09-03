@@ -474,6 +474,13 @@ docling_images = false
 
 # Render scale for those bitmaps -- 2.0 is roughly 144 DPI, enough to
 # read a figure back without storing print-resolution files.
+#
+# Not clamped, and it no longer needs to be: raising it costs CPU and
+# disk, not memory, because each crop is rendered and released one at a
+# time. The 99-page slide deck in this project's corpus goes from 159s
+# and 160 MiB of PNG at 2.0 to 439s and 695 MiB at 6.0, with peak memory
+# unchanged (+0.02 GiB against +0.06 GiB over the images-off base).
+# Before #600 that same document at 6.0 reached 74 GiB and then failed.
 #                                                            Default: 2.0
 docling_image_scale = 2.0
 
