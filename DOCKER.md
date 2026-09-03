@@ -1,18 +1,42 @@
 # 🐳 Running with Docker
 
-`docker/Dockerfile` builds the same TeX Live/Pandoc/Poetry stack inside
-a container, for hosts where the user doesn't hold root permissions.
-There's nothing Docker-exclusive about any individual piece --
-`scripts/install_full_pipeline.sh` is the single install path for both
-the host and this image.
+Two images, for two different jobs. Neither is a variant of the other
+and neither replaces the other:
 
-**Built and verified manually** (`docker build`, both `TORCH_VARIANT`
-values below, each image's `/opt/venv` confirmed to import
+| File | What it is | Size | Needs a checkout |
+| --- | --- | --- | --- |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Mount your checkout, get a shell with everything resolved. | 4.38GB (cpu) / 11.6GB (gpu) | Yes -- it is the checkout you mount and work in |
+| `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No -- it installs from PyPI |
+
+`docker/Dockerfile` is documented first, then the agent image under
+["The agent container"](#-the-agent-container-dockerdockerfileclaude).
+
+There's nothing Docker-exclusive about any individual piece of the
+toolchain image -- `scripts/install_full_pipeline.sh` is the single
+install path for both the host and it.
+
+**What CI does and does not build**, since the two images differ here
+and it decides how much a green run tells you:
+
+| Image | Built by CI | Run by CI |
+| --- | --- | --- |
+| `docker/Dockerfile` | **Yes** -- `ci.yml`'s `docker-build` job runs `docker build --build-arg TORCH_VARIANT=cpu` on every push and PR (#302) | No. It builds and is thrown away; nothing execs into it |
+| `docker/Dockerfile.claude` | No -- no workflow builds it | No |
+
+So a break in the toolchain image's *build* is caught automatically; a
+break in anything it does at runtime is not, and nothing about the agent
+image is. `shellcheck docker/*.sh` in the `lint` job is the only other
+automated check that reaches this directory, and it sees `entrypoint.sh`
+alone.
+
+The toolchain image is additionally **verified by hand** (`docker
+build`, both `TORCH_VARIANT` values below, each image's `/opt/venv`
+confirmed to import
 `sentence_transformers`/`chromadb`/`bertopic`/`docling`/`torch`
-correctly). Not exercised by CI -- no workflow under `.github/` builds
-this image, so a break here won't be caught automatically; re-verify by
-hand after changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`,
-or `poetry.lock`.
+correctly), since CI only builds the `cpu` variant. Re-verify after
+changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`, or
+`poetry.lock`; the agent image has its own checks under ["Verify the
+container"](#-verify-the-container).
 
 ## 🔧 Build
 
@@ -95,6 +119,204 @@ dependencies actually resolved:
 ```bash
 command -v latexmk pandoc pdftotext
 python -c "import sentence_transformers, chromadb, bertopic, docling; print('enrich group OK')"
+```
+
+## 🤖 The agent container (`docker/Dockerfile.claude`)
+
+A second, much thinner image whose job is to host **one long-lived
+`claude remote-control` session** with this pipeline installed, rather
+than to build the toolchain. It installs the *published*
+`chitragupta-cli` package from PyPI into `/opt/venv` and copies no part of
+this repository in, which is the whole difference: an image built from a
+checkout has to be rebuilt to follow a release, and this one only has to
+be restarted.
+
+What that buys, and what it costs: the build is seconds rather than
+tens of minutes and the image is ~2.5GB rather than 4.38GB, because
+TeX Live, Pandoc and torch are **not** in it. You add whatever the work
+actually needs on first run, with `chitragupta install` -- which is why
+the image gives its user passwordless `sudo` (see below).
+
+### 🧩 One environment, and why it is not `pipx`
+
+`chitragupta-cli` goes into a venv at `/opt/venv` which is first on
+`PATH` -- the same arrangement `docker/Dockerfile` uses -- so `python`,
+`python3`, `pip`, `chitragupta` and `cg` are all the same environment.
+
+That is not a style preference. `.claude/settings.json`, the one
+`chitragupta init` scaffolds, launches every hook as `command:
+"python"`. Install the package into a *private* venv, as `pipx` does,
+and that `python` is the system interpreter, which cannot import it --
+so the citation gate returns
+
+```text
+{"decision": "block", "reason": "The citation gate could not run --
+this is an environment fault, not a bad citekey ..."}
+```
+
+on **every draft write**. This image was built with `pipx` first and
+that is exactly what happened: a container that came up looking healthy
+and refused to let anything be drafted in it. The gate is right to
+block — it will not pass a draft it could not check — which is why the
+fix belongs here rather than in the hook.
+
+A `/etc/profile.d/` snippet carries the same `PATH` for **login**
+shells, which source `/etc/profile` and rebuild `PATH` from scratch,
+discarding what `ENV PATH` set. Worth knowing that the `pipx` version
+appeared to survive a login shell only because Debian's `~/.profile`
+re-adds `$HOME/.local/bin`, where pipx's shims happen to live -- luck,
+not design.
+
+### 🔧 Build and run
+
+Build with a **temporary tag** while you are changing anything here, so
+an existing `:latest` that other containers are running survives a
+failed attempt:
+
+```bash
+docker build -t chitragupta-claude:tmp -f docker/Dockerfile.claude docker/
+```
+
+Note the build context is `docker/`, not the repository root -- nothing
+outside that directory is needed, and a root context would send the
+whole tree (worktrees included) to the daemon.
+
+Then run it through compose, from inside `docker/` so its relative
+defaults and its `.env` resolve:
+
+```bash
+cd docker
+cp .env.example .env          # then edit CHITRAGUPTA_WORKSPACE
+mkdir -p "$CHITRAGUPTA_WORKSPACE/papers"
+docker compose up -d          # .env's COMPOSE_PROFILES picks cpu or gpu
+docker exec -it chitragupta-claude bash
+```
+
+`docker/.env.example` is the tracked documentation of every variable
+the compose file reads; `docker/.env` is gitignored. Nothing has to be
+edited but `CHITRAGUPTA_WORKSPACE`.
+
+That `mkdir` is not optional politeness. The Docker daemon creates a
+missing bind-mount source itself, owned by `root:root` -- and for the
+read-only papers mount the result is a directory nobody can put a PDF
+in: read-only inside the container, root-owned outside it, silently.
+Create both directories first and they stay yours.
+
+### 🎛 Two profiles: `cpu` and `gpu`
+
+**Neither service starts without a profile**, on purpose. `docker
+compose up` with none selected prints `no service selected` and exits
+having done nothing:
+
+```bash
+docker compose --profile cpu up -d   # no GPU handed to the container
+docker compose --profile gpu up -d   # every GPU on the host
+```
+
+or set `COMPOSE_PROFILES` in `.env` (the example ships `cpu`) and plain
+`docker compose up -d` works.
+
+The two services are identical apart from a `deploy:` reservation, and
+they share the YAML anchor that says so, so they cannot drift. They also
+share a container name, since only one runs at a time.
+
+Why a profile rather than one service that adapts: a reservation naming
+the `nvidia` driver makes `up` **fail outright** on a host without the
+NVIDIA Container Toolkit -- `could not select device driver` -- rather
+than starting without a GPU. Compose has no conditional for a volume or
+a reservation, so two services under two profiles is the only shape that
+lets one file serve both machines. Verified both ways on a host with the
+toolkit: `--profile gpu` reaches all three A40s and `nvidia-smi` inside
+the container, `--profile cpu` shows no `/dev/nvidia*` at all.
+
+### ⚙ What compose reads from the environment
+
+Every path and name is a variable. The first version of this file
+carried one developer's home directory and a release number in its own
+filename, which made it unusable to anyone else and stale on the next
+release. Set these in `docker/.env` or in the environment:
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `CHITRAGUPTA_WORKSPACE` | **required** | Host directory mounted at `/workspace` -- where `chitragupta init` scaffolds and where drafts land. Compose refuses to start without it rather than mounting something arbitrary |
+| `CHITRAGUPTA_CONTAINER_NAME` | `chitragupta-claude` | The container's name, so `docker exec -it <name> bash` works. Also becomes the container hostname and the agent's name in the remote-control UI |
+| `CHITRAGUPTA_PROJECT_NAME` | `chitragupta` | Compose's project name, which prefixes the network. Set it per workspace to run two of these side by side |
+| `CHITRAGUPTA_IMAGE_TAG` | `latest` | Which tag to run. This is how you point one workspace at a `:tmp` build without disturbing the `:latest` everything else uses |
+| `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/prasad/.claude`. This is what persists the login, so a restart is not a re-authentication |
+| `CHITRAGUPTA_PAPERS` | `$CHITRAGUPTA_WORKSPACE/papers` | Host directory of PDFs, mounted **read-only** at `/workspace/papers`. Point it elsewhere to share one corpus across workspaces |
+| `COMPOSE_PROFILES` | none | `cpu` or `gpu` -- see below. Compose's own variable, not one of ours |
+| `CHITRAGUPTA_USER` | `chitragupta` | The unprivileged account inside the image. A **build** arg as well as a runtime setting, so changing it needs `docker compose build`, not just a restart |
+| `CHITRAGUPTA_UID` / `CHITRAGUPTA_GID` | `1001` | That account's numeric ids. Set them to your own (`id -u`, `id -g`): they decide who owns a file the container writes into the workspace. 1001 rather than 1000 because the Node base image has already taken 1000 for its own `node` account |
+
+Nothing in the image hardcodes an account name. `CHITRAGUPTA_USER`
+reaches the `useradd`, the `/etc/sudoers.d/<user>` file, `$HOME`, the
+`PATH` entry the venv installs into, and the mount point for
+`CHITRAGUPTA_CLAUDE_HOME` -- one variable, so those five cannot
+disagree. The entrypoint lives at `/usr/local/bin/entrypoint.sh` rather
+than in the home directory for the same reason.
+
+### 🚀 First run
+
+The container starts before it can do anything useful, deliberately, and
+in this order:
+
+```bash
+docker exec -it chitragupta-claude claude   # then /login
+docker compose restart                      # the agent picks up the login
+docker exec -it chitragupta-claude bash
+chitragupta install os-deps                 # TeX Live, Pandoc, poppler, Vale
+chitragupta init                            # scaffold /workspace
+chitragupta doctor                          # what is still missing
+```
+
+`chitragupta install os-deps` is what the passwordless `sudo` in this
+image exists for: it `apt-get install`s the toolchain that the image
+does not ship. `chitragupta install` refuses `all`, `dev-deps` and
+`python-deps` by name and prints the `pip` command that reaches them
+instead -- including the enrichment stack, which is a separate step
+because it is torch and would take the image past 6GB:
+
+```bash
+pip install 'chitragupta-cli[enrich]'   # /opt/venv, no sudo needed
+```
+
+### ✅ Verify the container
+
+```bash
+docker exec chitragupta-claude bash -lc '
+  whoami                          # $CHITRAGUPTA_USER, uid $CHITRAGUPTA_UID
+  sudo -n true && echo "sudo ok"  # what `chitragupta install os-deps` needs
+  claude --version                # must work as this account, not just root
+  chitragupta --version
+  tmux ls                         # the "claude" session, with the agent in it
+'
+```
+
+### 🔍 When the agent is not there
+
+The container can report `Up` with no agent running in it, and the
+common cause is the first-run one: `claude remote-control` exits
+immediately if the mounted `.claude` carries no login. `entrypoint.sh`
+reports that in `docker logs` rather than leaving it silent:
+
+```text
+entrypoint: WARNING -- the agent exited immediately. Its output was:
+entrypoint:   Remote Control is only available with claude.ai subscriptions.
+entrypoint:   Pane is dead (status 1, ...)
+entrypoint: the container stays up so you can fix this in place:
+entrypoint:   docker exec -it chitragupta-claude claude   # then /login, then restart
+```
+
+It reports rather than exiting non-zero on purpose: the fix needs a
+running container to `docker exec` into, and a crash loop would take
+that away. `docker logs <name>` is therefore the first thing to read
+when the remote-control UI does not list your agent -- not `docker ps`,
+which will say `Up` either way.
+
+Attach to the live session with:
+
+```bash
+docker exec -it chitragupta-claude tmux attach -t claude
 ```
 
 ## ⌨ Running pipeline commands inside the container

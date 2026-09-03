@@ -1,0 +1,102 @@
+# Runs docker/Dockerfile.claude as a long-lived agent host: a detached
+# `claude remote-control` session inside tmux (entrypoint.sh), with the
+# workspace bind-mounted from the host so the drafts it writes survive
+# the container.
+#
+# Nothing here is host-specific -- every path, name and id that was once
+# hardcoded is a variable, because the first version of this file
+# carried one developer's home directory, their login name and a release
+# number in its own filename, which made it unusable to anyone else and
+# stale on the next release. Copy `.env.example` to `.env` beside this
+# file (gitignored) and edit that; every variable is documented there
+# rather than twice.
+#
+# **Pick a profile.** Neither service starts without one:
+#
+#   docker compose --profile cpu up -d   # no GPU, or you don't want one
+#   docker compose --profile gpu up -d   # every GPU on the host
+#
+# or set COMPOSE_PROFILES in `.env` and plain `docker compose up -d`
+# works. The two services are otherwise identical -- see the anchor
+# below, which is what keeps them from drifting -- and only one runs at
+# a time, so they deliberately share a container name.
+#
+# Why a profile rather than one service that adapts: a `deploy`
+# reservation naming the nvidia driver makes `up` fail outright ("could
+# not select device driver") on a host without the NVIDIA Container
+# Toolkit. It does not degrade to running without a GPU, and compose has
+# no conditional for it. Two services under two profiles is the only
+# shape that lets one file serve both machines.
+name: ${CHITRAGUPTA_PROJECT_NAME:-chitragupta}
+
+# Everything both services share. Anchored rather than repeated: the gpu
+# service differs by exactly the `deploy:` block, and a copy-paste of
+# the other 20 lines is a thing that goes stale on the first edit.
+x-claude: &claude
+  build:
+    context: .
+    dockerfile: Dockerfile.claude
+    # Passed to the ARGs of the same meaning in Dockerfile.claude, so
+    # the account inside the image and the `user:` below cannot disagree
+    # -- they read one variable.
+    args:
+      CG_USER: ${CHITRAGUPTA_USER:-chitragupta}
+      CG_UID: ${CHITRAGUPTA_UID:-1001}
+      CG_GID: ${CHITRAGUPTA_GID:-1001}
+  image: chitragupta-claude:${CHITRAGUPTA_IMAGE_TAG:-latest}
+  container_name: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
+
+  # Matches the account the image creates, so a file written into the
+  # bind mounts below is owned by the human outside the container rather
+  # than by root.
+  user: ${CHITRAGUPTA_USER:-chitragupta}
+
+  # Both of these, and neither is redundant. CLAUDE_AGENT_NAME is what
+  # entrypoint.sh registers the agent under, i.e. what you pick from in
+  # the remote-control UI; `hostname` is what a shell prompt and
+  # `docker exec -it $(hostname) ...` show inside the container. Without
+  # them the agent's name falls back to the container's short id --
+  # measured: it registered as `05f401525853`, which is unique and
+  # useless when you have two of these running.
+  hostname: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
+  environment:
+    CLAUDE_AGENT_NAME: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
+
+  volumes:
+    # `:?` rather than a default: a missing workspace is a mistake to
+    # stop on, not one to paper over by mounting the compose directory
+    # and scaffolding a project into the git checkout.
+    - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount at /workspace}:/workspace
+    - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER:-chitragupta}/.claude
+    # Read-only on purpose: `corpus sync` only ever reads these, and an
+    # agent running with bypassPermissions has no business rewriting the
+    # human's source PDFs. Add papers from the host side. See
+    # `.env.example` -- this source must exist before the first `up`.
+    - ${CHITRAGUPTA_PAPERS:-${CHITRAGUPTA_WORKSPACE}/papers}:/workspace/papers:ro
+
+  # The agent is meant to outlive a reboot; entrypoint.sh ends in a
+  # `tail -f /dev/null`, so the container only exits on a real failure
+  # or an explicit `docker compose down`.
+  restart: unless-stopped
+
+services:
+  # For a host with no NVIDIA stack, or one where you simply don't want
+  # the GPUs handed to this container. Everything in the image works
+  # here; the enrich stages just run on the CPU torch wheel, slower.
+  claude:
+    <<: *claude
+    profiles: ["cpu"]
+
+  # Identical, plus every GPU on the host. Needs the NVIDIA Container
+  # Toolkit installed outside the container; without it this service
+  # fails to start and the `cpu` profile is the answer.
+  claude-gpu:
+    <<: *claude
+    profiles: ["gpu"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

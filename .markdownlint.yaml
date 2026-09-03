@@ -8,7 +8,16 @@
 # two linters were adopted in.
 #
 # Run it with:
-#   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
+#   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" \
+#     "!docs/examples/sample-project" "!.claude/worktrees"
+#
+# Both negations matter locally. The first is pipeline output (see
+# DEVELOPER-AGENTS.md's "The linters, which are enforced"); the second
+# excludes throwaway checkouts of this same repository, which
+# `.claude/**/*.md` otherwise pulls in wholesale -- 40,026 findings from
+# worktree copies against 0 in the tracked tree, measured 2026-09-03.
+# CI never sees it (a fresh checkout has no worktrees), so leaving it out
+# costs only the local run, which is the run that is not optional.
 default: true
 
 # Inline HTML. This repository's README uses a <picture>/<source srcset>

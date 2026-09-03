@@ -163,7 +163,7 @@ AGENTS.md                 instructions for agents drafting *with* the pipeline -
 DEVELOPER-AGENTS.md       instructions for agents changing *this repo* -- install notes, dev
                           process, commit/PR/release conventions
 DEVELOPER.md              this file -- test running, repo layout, open questions
-DOCKER.md                 running this repo in a container (docker/Dockerfile)
+DOCKER.md                 running this repo in a container -- the toolchain image and the agent image
 .github/                  CI/release workflows, plus the issue and PR templates GitHub picks up
                           automatically and RELEASE_TEMPLATE.md (copied by hand)
 docs/                     reference docs that ship in the release zip -- everything except the
@@ -361,7 +361,9 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           is the shared "which file did this tool call touch" helper both PostToolUse
                           hooks use
 .claude/settings.json     wires the three hooks above into PostToolUse/SessionStart
-docker/                   Dockerfile (TeX Live/Pandoc/Poetry) -- unverified end-to-end, see DOCKER.md
+docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
+                          entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)
+                          -- neither image is built by CI, see DOCKER.md
 ```
 
 ## 📐 Figures and copyright

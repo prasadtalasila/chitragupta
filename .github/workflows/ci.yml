@@ -504,8 +504,15 @@ jobs:
       # developer's git runs on every commit, so it holds the same bar
       # scripts/*.sh does -- and it is not under scripts/, so the glob
       # above does not reach it.
+      # docker/*.sh is here on the same reasoning, one step further out:
+      # docker/entrypoint.sh is PID 1 in the container
+      # docker/Dockerfile.claude builds, so a syntax error in it does not
+      # fail a build -- it fails every `docker compose up` afterwards,
+      # and nothing else in CI opens the file. Neither Dockerfile is
+      # built by any workflow (see DOCKER.md), so this is the only
+      # automated check that reaches the container path at all.
       - name: shellcheck
-        run: shellcheck scripts/*.sh git-hooks/pre-commit
+        run: shellcheck scripts/*.sh git-hooks/pre-commit docker/*.sh
 
       # The same linter git-hooks/pre-commit runs locally. Required in
       # both places deliberately: the hook catches it at the commit, and
@@ -538,7 +545,7 @@ jobs:
       # because the two fence rules that dominate the baseline there are
       # the same ones that reached docs/ unnoticed.
       - name: markdownlint
-        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project"
+        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a

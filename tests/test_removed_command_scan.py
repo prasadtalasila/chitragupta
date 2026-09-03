@@ -106,13 +106,22 @@ def _scanned_files(root=REPO_ROOT):
             found.update((root / sub).glob(f"**/{pattern}"))
     for pattern in patterns:
         found.update(root.glob(pattern))
-    # Two files anyone runs commands out of that no suffix glob reaches:
-    # `config.toml.example` is what you copy to `config.toml` and is read
-    # as documentation, and `docker/Dockerfile` has no extension at all.
+    # Four files anyone runs commands out of that no suffix glob
+    # reaches: `config.toml.example` is what you copy to `config.toml`
+    # and is read as documentation, `docker/.env.example` is the same
+    # shape for the container's compose settings,
+    # `docker/Dockerfile` has no extension
+    # at all, and `docker/Dockerfile.claude`'s extension is `.claude`,
+    # which is not one of the patterns above and is not going to become
+    # one -- a suffix that means "a Dockerfile for the agent image" here
+    # and "a settings directory" everywhere else in this tree.
     # #151 names Docker among the places #150 rewrote command strings, so
-    # leaving it out would exempt one of the sites this exists for.
+    # leaving any of them out would exempt one of the sites this exists
+    # for.
     found.add(root / "config.toml.example")
     found.add(root / "docker" / "Dockerfile")
+    found.add(root / "docker" / "Dockerfile.claude")
+    found.add(root / "docker" / ".env.example")
     excluded = [root / d for d in _EXCLUDED_DIRS]
     return sorted(
         path for path in found if path.is_file() and not any(d in path.parents for d in excluded)
@@ -158,6 +167,13 @@ class TestNothingInvokesTheRemovedCommand:
             # Extensionless, so no suffix glob reaches it, and named by #151
             # among the places #150 rewrote command strings.
             "docker/Dockerfile",
+            # Same problem, different cause: `.claude` is an extension,
+            # just not one this scan globs for.
+            "docker/Dockerfile.claude",
+            # The compose file's documented settings, which carry the
+            # `chitragupta` command examples for the container -- and a
+            # dotfile whose `.example` suffix no glob here reaches.
+            "docker/.env.example",
             # The file a user copies to config.toml, and reads as docs.
             "config.toml.example",
             # The install path, whose header comment lists commands.
