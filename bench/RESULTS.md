@@ -4508,3 +4508,47 @@ this direction is pursued further, productionizing it as a `bench/`
 script (or as a documented alternative source in the `extract-keywords`
 enrich stage this section's 2026-09-03/b entries propose) is tracked as
 follow-up work, not yet filed as an issue.
+
+### 2026-09-03d: how much do the two keyword sources actually overlap?
+
+The entry above measures each source's coverage of the corpus, which
+says nothing about whether they cover it with the *same* vocabulary.
+Exact-phrase Jaccard overlap between the 156-phrase declared-keywords
+set and TF-IDF at each swept `--top` threshold:
+
+| `--top` | TF-IDF phrases | shared phrases | Jaccard | % of TF-IDF | % of declared |
+|---|---|---|---|---|---|
+| 10 | 10 | 2 | 0.012 | 20.0% | 1.3% |
+| 40 | 40 | 5 | 0.026 | 12.5% | 3.2% |
+| 80 | 80 | 11 | 0.049 | 13.8% | 7.1% |
+| 120 | 120 | 19 | **0.074** | 15.8% | 12.2% |
+| 200 | 200 | 23 | 0.069 | 11.5% | 14.7% |
+| 260 | 260 | 25 | 0.064 | 9.6% | 16.0% |
+
+**Overlap is small everywhere and peaks around `--top 120`, then falls
+as TF-IDF's added terms move further into its own long tail.** Checked
+against a hyphen/whitespace-normalized comparison to rule out a
+string-matching artefact (`"cyber-physical systems"` vs
+`"cyber physical systems"`): normalizing barely moves the number (0.074
+-> 0.078 at `--top 120`), so the low overlap is a real vocabulary
+difference, not a formatting one.
+
+**This is what the 2026-09-03/2026-09-03c entries' coverage numbers were
+already implying, made explicit**: the two sources are largely
+**complementary, not redundant**. What little they do agree on, at
+`--top 120`, is almost entirely hard technology nouns a human author and
+a frequency count would both independently flag: `aas`, `devops`,
+`mqtt`, `docker`, `kubernetes`, `microservice(s)`, `containers`,
+`testing`, `bim`, `standards`. Everywhere outside that intersection, each
+source is naming something the other does not -- which is the mechanism
+behind the 2026-09-03c entry's 99.8% three-source-combined coverage: it
+is not the same finding counted three times, it is three mostly-disjoint
+vocabularies whose union is close to complete.
+
+**What this does not show**: whether the small overlap is stable across
+a different corpus, or specific to how heavily this one skews toward
+IEEE/Elsevier venues that both declare keywords formally and use
+consistent technical nomenclature. Reproducing needs the same
+not-committed line-splitting script the 2026-09-03c entry describes,
+plus a plain set-Jaccard over its output against each
+`bench/extract_keywords.py --top N` run.
