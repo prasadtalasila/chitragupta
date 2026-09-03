@@ -206,7 +206,7 @@ durable rule is the probe:
   any of them.
 - **When they're absent:** don't hang, stack-trace, or silently skip
   without saying so. Every `chitragupta/enrich/*` stage already self-probes its
-  own prerequisites and reports honestly (`ok`/`skipped`/`missing-binary`)
+  own prerequisites and reports honestly (`ok`/`partial`/`skipped`/`error`)
   via `chitragupta/enrich/__main__.py` rather than assuming the target implies
   availability -- keep any new stage consistent with that pattern instead
   of inventing a new fallback policy.
@@ -283,10 +283,11 @@ artifact.
 ## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
 Implements six stages -- Docling -> sentence-transformers/Chroma ->
-BERTopic -> seeded topics -> converged topic set -> topic graph -- plus
-the Pandoc/LaTeX render path, one script for both host and Docker. Each stage
-self-probes its own prerequisites (pandoc/pdflatex on PATH) and
-reports honestly (`skipped`/`missing-binary`) rather than assuming the
+BERTopic -> seeded topics -> converged topic set -> topic graph -- one
+script for both host and Docker. Each stage
+self-probes its own prerequisites (docling importable, an upstream
+artefact present) and
+reports honestly (`skipped`/`partial`) rather than assuming the
 target implies availability -- don't "fix" a skip by hardcoding
 target-specific behavior; fix the probe if it's wrong. `--target
 host|docker` is **informational only** for exactly that reason: the

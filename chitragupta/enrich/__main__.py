@@ -11,11 +11,13 @@ to run them, and docs/ARCHITECTURE.md states the invariant.
 
 One entry point for both the host and the Docker target
 (docker/Dockerfile) -- the two don't need separate implementations. Each stage probes its own
-prerequisites (pandoc/pdflatex on PATH) and reports a real per-stage
-status instead of assuming the target implies availability. On a plain
-host that's missing TeX Live, some stages report
-skipped/missing-binary -- that is a correct, honest result, not a
-bug in this script.
+prerequisites (docling importable, the upstream artefact written) and
+reports a real per-stage status instead of assuming the target implies
+availability. On a host without the enrich extra, some stages report
+skipped, and one that parsed only part of the corpus reports partial --
+both are correct, honest results, not a bug in this script. No stage
+here shells out to a binary; the render path that once did was moved out
+of this layer, as the paragraph below says.
 
 Needs the venv populated by `poetry install --with enrich` (see
 pyproject.toml, and .venv-full/ on the host this was developed on). The

@@ -2,7 +2,10 @@
 
 An aid, not a gate (SOUL.md, docs/HOOKS.md): it never installs anything
 and always exits 0, in the same shape `chitragupta/enrich/__main__.py`'s
-per-stage probes already use (`ok`/`skipped`/`missing-binary`) -- "probe
+per-stage probes already use -- a status word and a detail. The word
+differs because the probe does: that layer reports `ok`/`skipped` for a
+Python package, and only a probe for a binary on `PATH`, which is this
+module's job and not that layer's, can report `missing-binary`. "Probe
 for a toolchain; never assume one, in either direction"
 (DEVELOPER-AGENTS.md).
 

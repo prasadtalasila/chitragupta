@@ -1,5 +1,5 @@
 """chitragupta/enrich/__main__.py: the orchestrator -- Docling -> embed -> BERTopic.
-Each stage_* wrapper's ok/partial/skipped/missing-binary shaping is
+Each stage_* wrapper's ok/partial/skipped/error shaping is
 tested directly against mocked underlying module calls; main()'s
 stage-selection and per-stage exception isolation are tested against a
 fully mocked STAGE_FUNCS/corpus.

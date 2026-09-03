@@ -271,7 +271,7 @@ tens of minutes, and the enrich dependency group is several gigabytes
 The skills read what is already there and fall back to the lightweight
 default when it isn't; the same honesty runs through the layer itself,
 where every stage probes its own prerequisites and reports `ok`,
-`skipped` or `missing-binary` rather than assuming. No stage needs an
+`partial`, `skipped` or `error` rather than assuming. No stage needs an
 LLM API key -- this repository intentionally has none.
 
 Which stage is worth the cost is [docs/RETRIEVAL.md](docs/RETRIEVAL.md)'s

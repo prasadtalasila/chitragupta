@@ -125,7 +125,7 @@ class TestCli:
         self, isolated_config, tmp_path, capsys
     ):
         assert discover.main(["--html", str(tmp_path / "t.html")]) == 1
-        assert "topic-graph" in capsys.readouterr().out
+        assert "topic-graph" in capsys.readouterr().err
 
     def test_an_unwritable_target_exits_one(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
