@@ -612,6 +612,7 @@ relation and each resolution rung is computed.
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
 | `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit. Composes with `--json`, which reports the write as `{"written": FILE}` rather than as a sentence |
+| `--app DIR` | -- | Write the topic graph as an interactive app directory -- cytoscape.js canvas, type-ahead multi-topic search, provenance-coloured nodes, paper panel -- openable from `file://` with no server (docs/TOPIC-DISCOVERY.md has the tour). Composes with `--json` exactly as `--html` does |
 
 ```bash
 chitragupta corpus discover
@@ -621,6 +622,7 @@ chitragupta corpus discover
 # chitragupta corpus discover --paper kritzinger_digital_2018
 # chitragupta corpus discover --html topics.html
 # chitragupta corpus discover --html topics.html --json
+# chitragupta corpus discover --app topicapp/
 ```
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,
@@ -637,7 +639,8 @@ the semantic rung is skipped with a one-line note and resolution
 degrades to the lexical rungs. Exits `1` when the graph artefact is
 missing (naming the stage to run), when `--paper` names a citekey in no
 topic, when a phrase resolves nowhere and even the fallback finds
-nothing -- and when an `--out` or `--html` file cannot be written. The
+nothing -- and when an `--out`, `--html` or `--app` target cannot be
+written. The
 `--out` one is raised *after* the topic view has already printed, so it
 is the one `discover` failure where the command both answered the
 question and returned nonzero. A script driving `--out` therefore has to
@@ -653,6 +656,9 @@ printed view is nothing at all before the write, so a failed
 `discover --html FILE --json > out.json` leaves `out.json` empty and the
 exit status is the only thing to read. The success line is the half that
 does depend on the flag, because under `--json` it *is* the payload.
+`--app` follows `--html`'s contract on every point above: nothing on
+stdout before the write, the failure line on stderr naming the
+directory, and the success report shaped by `--json`.
 
 ### ✅ `chitragupta draft gate`
 
