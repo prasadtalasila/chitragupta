@@ -71,6 +71,20 @@ of them writes a corpus artefact -- which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.
 
+Those four words are also the run's exit code, which is the whole of what
+an unattended caller gets: **`error` in any stage exits `1`, and every
+other combination exits `0`** -- `partial` and `skipped` included. That is
+deliberate rather than an oversight in the mapping. `skipped` is the
+honest answer on a host without the enrich extra, and `partial` is the
+honest steady state of a corpus holding two PDFs that will never parse; a
+nightly job that failed forever over either would teach its reader to
+ignore the exit code. What is *not* left inside `partial` is work the
+stage abandoned rather than attempted: `docling` escalates to `error`
+when a repeatedly-dying worker pool made it give up on documents it never
+tried (#584/#591). The vocabulary is this page's; the contract's edge
+cases and the run that exposed them belong to
+[CLI.md's `enrich` section](CLI.md#-chitragupta-enrich).
+
 **Artefact.** A file a stage writes, under `content/`. Artefacts are how
 the layers communicate: no layer calls into another, they read each
 other's files, and a layer that hasn't run leaves the file absent rather
