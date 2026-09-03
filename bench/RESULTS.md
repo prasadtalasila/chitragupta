@@ -4437,6 +4437,13 @@ quality judgment.
 
 ### 2026-09-03c: TF-IDF over the whole paper, versus the paper's own declared "Keywords:"/"Index Terms" line
 
+> **Confirmed against the shipped pipeline** -- see the 2026-09-03e
+> entry below: the topics-only and declared-keywords-only coverage
+> figures reproduce exactly through the real `extract-keywords` stage
+> (#604/#605), the combined figure lands 0.4pp lower, and the shipped
+> extractor's phrase tail differs from the scratch script's, as recorded
+> there.
+
 Most papers in this corpus declare their own keywords near the abstract
 (IEEE's `Index Terms -X, Y, Z`, Elsevier's `Keywords: X · Y · Z`,
 Springer sometimes with no punctuation at all between phrases). A small
@@ -4511,6 +4518,12 @@ follow-up work, not yet filed as an issue.
 
 ### 2026-09-03d: how much do the two keyword sources actually overlap?
 
+> The declared-keywords side of this comparison is the scratch script's
+> 156-phrase set; the shipped `extract-keywords` stage keeps 168 at the
+> same `min_df` (2026-09-03e below). The overlap conclusion --
+> complementary vocabularies, not redundant ones -- is unaffected; the
+> exact Jaccard values are pinned to the scratch set.
+
 The entry above measures each source's coverage of the corpus, which
 says nothing about whether they cover it with the *same* vocabulary.
 Exact-phrase Jaccard overlap between the 156-phrase declared-keywords
@@ -4552,3 +4565,56 @@ consistent technical nomenclature. Reproducing needs the same
 not-committed line-splitting script the 2026-09-03c entry describes,
 plus a plain set-Jaccard over its output against each
 `bench/extract_keywords.py --top N` run.
+
+### 2026-09-03e: the shipped `extract-keywords` pipeline, verified against the 2026-09-03c numbers
+
+The 2026-09-03c/d entries were measured with a throwaway, not-committed
+line-splitting script feeding `topic_seeding.assign()` directly. #604
+and #605 have since shipped that design as the real `extract-keywords`
+stage plus the seed-union in `stages.py`, so this entry re-runs the
+comparison through `chitragupta enrich` itself -- the same 497
+parsed documents (the 2026-09-01 content snapshot), the same
+`content/topics.toml` 28-phrase hand list, coverage read off
+`content/topic_seeds.json`'s own `unmatched` list (the identical
+`assign()` defaults the bench arms used).
+
+| arm (real pipeline) | phrases | coverage | 2026-09-03c benched |
+|---|---|---|---|
+| topics only | 28 | **69.4%** | 69.4% |
+| declared keywords only, `keyword_top_n` uncapped | 168 | **97.6%** | 97.6% (156 phrases) |
+| topics + keywords, uncapped | 184 | **98.2%** | 98.6% |
+| topics + keywords, shipped defaults (`keyword_top_n = 40`) | 62 | **88.7%** | not benched |
+
+**Confirmation, with two honest deviations to record.**
+
+- **Detection and phrase-set tail differ from the scratch script.** The
+  shipped stage detects a declaration in 253 of 497 documents against
+  the scratch script's 262, and keeps 168 phrases at `min_df = 2`
+  uncapped against 156. At `keyword_top_n = 40` the shipped output
+  shares 34 of `content/topic_keywords.toml`'s 40 phrases; the shipped
+  side of the difference (`digital twin`, `iot`, `cyber-physical
+  systems`, `federation`, `simulation`, `structural health monitoring`)
+  reads at least as well as the scratch side it displaced
+  (`optimization`, `predictive maintenance`, `software architecture`,
+  `survey`, `task offloading`, `twins` -- the last a fallback-split
+  fragment). The scratch script was never committed, so the regex-level
+  cause cannot be diffed; the shipped marker rule (line-opening match,
+  Markdown decoration allowed) is the one under test from here on.
+- **Combined coverage lands at 98.2%, not 98.6%** -- two documents. The
+  keywords-only and topics-only arms both reproduce exactly, so the gap
+  sits in which phrases survive the union's dedup plus the tail
+  difference above, not in the union mechanism (which
+  `tests/test_enrich_script.py` pins directly).
+
+The full sequence also closes #605's converge criterion on this corpus:
+after a `bertopic` re-fit, `converge` reports 62 seed-named and 69
+emergent topics with `uncovered: 0`, so `content/topic_set.json` -- and
+therefore the topic graph, which reads only that file -- reflects the
+union with no change to `topic_graph.py`.
+
+Reproducing: run `chitragupta enrich --stages extract-keywords` (with
+`KEYWORD_TOP_N` unset for the capped arm, `KEYWORD_TOP_N=100000` for the
+uncapped one), toggle `content/seed_topics.toml` / `content/keywords.toml`
+per arm, run `--stages seed-topics`, and read coverage as
+`(n_docs - len(unmatched)) / n_docs` from `content/topic_seeds.json`.
+No scratch script is needed any more, which was the point.

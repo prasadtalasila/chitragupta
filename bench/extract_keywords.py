@@ -1,4 +1,17 @@
-"""Corpus-wide keyword phrases, extracted from the papers' own parsed
+"""Corpus-wide keyword phrases via TF-IDF -- the measured alternative,
+NOT what the shipped `extract-keywords` stage runs.
+
+`chitragupta enrich --stages extract-keywords`
+(`chitragupta/enrich/keyword_extract.py`, #604) extracts from each
+paper's own declared `Keywords:`/`Index Terms` line instead: both
+sources were built and compared side by side (bench/RESULTS.md,
+2026-09-03c) and the declared-keywords source won on coverage,
+redundancy and read-by-hand quality. This script stays committed as the
+record of the TF-IDF alternative that was tried, measured and rejected
+-- do not read it as the implementation of that stage.
+
+The original framing, for the measurements this script produced:
+corpus-wide keyword phrases, extracted from the papers' own parsed
 text rather than written by hand -- the other half of a seed list.
 
 `content/topics.toml`/`content/seed_topics.toml` holds phrases an author
