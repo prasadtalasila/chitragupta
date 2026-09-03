@@ -288,10 +288,11 @@ flowchart TB
     H1["<b>docling</b> — <i>reads the PDF itself, not content/parsed/</i><br/><small><b>content/docling/&lt;doc&gt;.md</b> — layout-aware text<br/><b>&lt;doc&gt;.passages.json</b> — the quotable-passage sidecar<br/><b>&lt;doc&gt;_artifacts/</b> — figure bitmaps, rendered one at a time<br/><b>&lt;doc&gt;.figures.json</b> — page, caption, cite string per figure<br/>the last two only when <code>[enrich].docling_images</code> is on</small>"]
     H2["<b>embed</b><br/><small>content/chroma/ — drop-in search(q,k)</small>"]
     H3["<b>bertopic</b><br/><small>content/topics.json — emergent clusters</small>"]
+    H3K["<b>extract-keywords</b><br/><small>content/keywords.toml — the papers' own declared keywords, aggregated; regenerated each run</small>"]
     H4["<b>seed-topics</b><br/><small>content/topic_seeds.json — the author's own topic phrases, many-to-many</small>"]
     H5["<b>converge</b><br/><small>content/topic_set.json — bertopic's clusters and seed-topics' phrases, joined</small>"]
     H6["<b>topic-graph</b><br/><small>content/topic_graph.json — how the topics relate: shared-member and semantic edges</small>"]
-    H1 --> H2 --> H3 --> H4 --> H5 --> H6
+    H1 --> H2 --> H3 --> H3K --> H4 --> H5 --> H6
   end
 
   %% ─────────────── AIDS (side branch) ───────────────
@@ -765,7 +766,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>extract-keywords</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>Neither SKILL.md mentions <code>embed_index</code>.<br/>Both use <code>chitragupta.retrieval.search()</code> — <b>BM25, stdlib</b> —<br/>and building a semantic index to place four<br/>citations is effort spent in the wrong place.</small><br/><br/><b>render</b> is the drafting layer's own publish step<br/><small><code>chitragupta draft render</code> — it was never<br/>enrichment work, and is deliberately not a stage</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>mostly original content</i><br/><br/><b>tutorial-writer</b> — one path, keyboard-first,<br/>verified to actually run. Citations are<br/><b>banned mid-lesson</b>; they live only in<br/>a closing “Where to go next”.<br/><br/><b>textbook-chapter-writer</b> — objectives,<br/>worked examples, exercises. Cites for<br/><b>motivation and background only</b>.<br/><br/><b>content/drafts/&lt;slug&gt;.md</b>"]
 
@@ -831,7 +832,7 @@ flowchart LR
 
   P1["<b>2 · SYNC</b><br/><i>deterministic</i><br/><br/><code>chitragupta corpus sync</code><br/><br/><b>content/ledger.sqlite</b><br/><b>content/parsed/*.txt</b>"]
 
-  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
+  HEAVY["<b>ENRICHMENT — not worth it here</b><br/><br/><s>docling</s> · <s>embed</s> · <s>bertopic</s> · <s>extract-keywords</s> · <s>seed-topics</s> · <s>converge</s> · <s>topic-graph</s><br/><small>SKILL.md names <code>chitragupta/retrieval.py</code> alone —<br/><b>BM25, <code>k=15</code>, then filter by hand</b></small><br/><br/><b>render</b> is <i>not</i> an enrichment stage<br/><small>it is the drafting layer's own publish step, and here<br/>even that is disposable: <code>--format md</code>/<code>--format pdf</code><br/>to <i>look</i> at the chapter. The artifact that matters<br/>is the .tex you <code>\\input</code>. “A rendering failure<br/>never blocks presenting the draft.”</small>"]
 
   P2["<b>3 · DRAFT</b><br/><i>RQ-driven narrative</i><br/><br/>A standalone <b>.tex fragment</b> —<br/><code>\\citep</code> / <code>\\citet</code>, <b>no preamble</b>,<br/>meant to be <code>\\input</code> by your own<br/>thesis document.<br/><br/><b>content/drafts/&lt;slug&gt;.tex</b>"]
 

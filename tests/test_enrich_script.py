@@ -23,6 +23,7 @@ from chitragupta import config
 from chitragupta.enrich import (
     docling_parse,
     embed_index,
+    keyword_extract,
     topic_converge,
     topic_graph,
     topic_model,
@@ -93,6 +94,30 @@ class TestStageBertopic:
         assert seen["kw"] == {}
 
 
+class TestStageExtractKeywords:
+    def test_delegates_to_keyword_extract(self, monkeypatch):
+        """The wrapper is one line by design -- the status shaping lives
+        in keyword_extract.run_stage(), like topic_seeding's does."""
+        monkeypatch.setattr(
+            keyword_extract, "run_stage", lambda docs: {"status": "ok", "detail": {"phrases": 3}}
+        )
+        result = enrich_script.stage_extract_keywords([], make_args())
+        assert result == {"status": "ok", "detail": {"phrases": 3}}
+
+    def test_runs_after_bertopic_and_before_seed_topics(self):
+        """The issue's contract (#604): extraction feeds the seeding
+        union (#605), so it must already have run when seed-topics does."""
+        order = enrich_script.STAGE_ORDER
+        assert order.index("bertopic") < order.index("extract-keywords")
+        assert order.index("extract-keywords") < order.index("seed-topics")
+
+    def test_refused_with_a_draft_scope(self):
+        """Whole-corpus artifact with no partial form, same bucket as
+        bertopic: a keywords.toml extracted from one draft's papers would
+        silently replace the corpus-wide one."""
+        assert "extract-keywords" in enrich_script.SCOPE_REFUSED
+
+
 class TestStageSeedTopics:
     def test_skipped_when_the_author_wrote_no_seed_file(self, isolated_config):
         """The ordinary state of this stage, not a failure: most libraries
@@ -156,7 +181,7 @@ class TestParseArgs:
         # terminal width, so the sentence is split across lines at a
         # column this test has no business predicting.
         out = re.sub(r"\s+", " ", capsys.readouterr().out)
-        assert "default: all six, or docling alone with --for-" in out
+        assert "default: all seven, or docling alone with --for-" in out
 
 
 class TestMain:

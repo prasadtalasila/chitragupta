@@ -44,7 +44,14 @@ from chitragupta import citation_gate, config
 # run stops and names what it cannot give you, rather than quietly
 # substituting the whole corpus (an hour of work nobody asked for) or a
 # fraction of it (an index that lies about its coverage).
-SCOPE_REFUSED = ("embed", "bertopic", "seed-topics", "converge", "topic-graph")
+SCOPE_REFUSED = (
+    "embed",
+    "bertopic",
+    "extract-keywords",
+    "seed-topics",
+    "converge",
+    "topic-graph",
+)
 
 # The stages that read the corpus at all -- every stage there is, since
 # 4.0.0 removed the two per-draft passthroughs. Kept as its own name
@@ -52,7 +59,15 @@ SCOPE_REFUSED = ("embed", "bertopic", "seed-topics", "converge", "topic-graph")
 # question: an empty scope is only a reason to stop if some stage was
 # going to use it, and SCOPE_REFUSED says which stages refuse to have a
 # scope narrowed rather than which read one.
-CORPUS_STAGES = ("docling", "embed", "bertopic", "seed-topics", "converge", "topic-graph")
+CORPUS_STAGES = (
+    "docling",
+    "embed",
+    "bertopic",
+    "extract-keywords",
+    "seed-topics",
+    "converge",
+    "topic-graph",
+)
 
 # 3, not 2: argparse already exits 2 for a usage error it detects
 # itself, and runlock.EXIT_ALREADY_RUNNING is 2 as well. A wrapper needs

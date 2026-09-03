@@ -1,6 +1,7 @@
 """Orchestrates the full enrichment layer:
 
-    Docling -> sentence-transformers/Chroma -> BERTopic -> seed topics
+    Docling -> sentence-transformers/Chroma -> BERTopic -> declared
+    keywords -> seed topics
 
 The enrichment layer's single entry point, one level deep like every
 other layer's: `python -m chitragupta.enrich`, as the corpus layer has
@@ -74,6 +75,7 @@ from chitragupta.enrich.stages import (  # noqa: F401
     stage_converge,
     stage_docling,
     stage_embed,
+    stage_extract_keywords,
     stage_seed_topics,
     stage_topic_graph,
 )
@@ -89,7 +91,15 @@ from chitragupta.progname import prog_for
 # here would reach the log file and be silently dropped from the console.
 logger = logging.getLogger("chitragupta.enrich")
 
-STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge", "topic-graph"]
+STAGE_ORDER = [
+    "docling",
+    "embed",
+    "bertopic",
+    "extract-keywords",
+    "seed-topics",
+    "converge",
+    "topic-graph",
+]
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)
@@ -97,7 +107,7 @@ STAGE_ORDER = ["docling", "embed", "bertopic", "seed-topics", "converge", "topic
 # at every entry point in this project.
 DESCRIPTION = (
     "The enrichment layer: Docling -> embeddings/Chroma -> BERTopic -> "
-    "seeded topics -> converged topic set -> topic graph. "
+    "keywords -> seeded topics -> converged topic set -> topic graph. "
     "Each stage probes its own prerequisites and reports honestly."
 )
 
@@ -122,7 +132,7 @@ def parse_args() -> argparse.Namespace:
         "--stages",
         default=None,
         help=f"Comma-separated subset of: {','.join(STAGE_ORDER)} "
-        "(default: all six, or docling alone with --for-draft)",
+        "(default: all seven, or docling alone with --for-draft)",
     )
     parser.add_argument(
         "--for-draft",

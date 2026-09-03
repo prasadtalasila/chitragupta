@@ -89,7 +89,8 @@ book without needing them; they matter when you read the deeper pages.
   review (advisory reports). [FEATURES.md](FEATURES.md#-the-four-layers)
   draws them.
 - **Stage** -- one step of the enrichment layer (`docling`, `embed`,
-  `bertopic`, `seed-topics`, `converge`, `topic-graph`), each reporting
+  `bertopic`, `extract-keywords`, `seed-topics`, `converge`,
+  `topic-graph`), each reporting
   its own honest status -- `ok`, `partial`, `skipped` or `error`.
   [LADDERS.md](LADDERS.md) states which of the four changes the run's
   exit code.

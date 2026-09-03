@@ -251,11 +251,12 @@ ever reads what it produced.
 | `docling` | `content/docling/<doc>.md` plus a `<doc>.passages.json` sidecar of quotable, reading-ordered passages (and figure bitmaps under `[enrich].docling_images`) | scoped |
 | `embed` | `content/chroma/` -- sentence-transformers vectors per 200-word chunk | refused |
 | `bertopic` | `content/topics.json` -- one cluster assignment per document | refused |
+| `extract-keywords` | `content/keywords.toml` -- phrases the papers' own declared `Keywords:`/`Index Terms` lines carry, aggregated corpus-wide; a generated artifact, regenerated fresh each run | refused |
 | `seed-topics` | `content/topic_seeds.json` -- every citekey matching one of the author's own topic phrases, many-to-many | refused |
 | `converge` | `content/topic_set.json` -- `bertopic`'s emergent clusters and `seed-topics`' author-named ones, joined into one topic set | refused |
 | `topic-graph` | `content/topic_graph.json` -- how the converged topics relate: shared-member edges, semantic edges, centroids and a merge tree ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)) | refused |
 
-**Six stages, and no more than six.** A review report and a draft
+**Seven stages, and no more than seven.** A review report and a draft
 render are deliberately *not* among them, though both would be three-line
 wrappers around `python -m chitragupta.review provenance` and
 `python -m chitragupta.draft render`. They are conveniences rather than

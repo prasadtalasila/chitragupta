@@ -700,6 +700,26 @@ SEED_TOPIC_MAX_PAPERS = _get_int(
     "seed_topic_max_papers",
     default=25,
 )
+# The extract-keywords stage's output: phrases the corpus's own papers
+# declared on their Keywords:/Index Terms lines, in the same
+# `topics = [...]` shape as SEED_TOPICS_PATH so seed_topics.load() reads
+# either. A *generated* artifact, regenerated fresh on every run --
+# unlike seed_topics.toml it is never hand-edited, and a phrase worth
+# keeping permanently is promoted into seed_topics.toml instead.
+# Resolved under CONTENT_DIR unless given absolute, the same rule
+# CONTENT_DIR itself follows for PROJECT_ROOT.
+KEYWORDS_PATH = CONTENT_DIR / _get(
+    "KEYWORDS_PATH", "enrich", "keywords_path", default="keywords.toml"
+)
+# How many extracted phrases survive the cap, most-declared first (ties
+# alphabetical). 40 is the value this feature's own exploratory run used
+# to produce the list that was read by hand and judged useful --
+# bench/RESULTS.md's 2026-09-03c entry.
+KEYWORD_TOP_N = _get_int("KEYWORD_TOP_N", "enrich", "keyword_top_n", default=40)
+# The floor under a phrase's distinct-document count. 2 drops a phrase
+# declared by only one paper -- one author's idiosyncratic term, not
+# corpus vocabulary -- matching the same exploratory run.
+KEYWORD_MIN_DF = _get_int("KEYWORD_MIN_DF", "enrich", "keyword_min_df", default=2)
 # Whether the words a topic is *named* by exclude the corpus's own
 # authors. Names, not clusters: this never touches how documents are
 # grouped, only how the resulting group is described.

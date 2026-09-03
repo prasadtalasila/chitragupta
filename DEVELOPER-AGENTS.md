@@ -282,8 +282,9 @@ artifact.
 
 ## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
-Implements six stages -- Docling -> sentence-transformers/Chroma ->
-BERTopic -> seeded topics -> converged topic set -> topic graph -- one
+Implements seven stages -- Docling -> sentence-transformers/Chroma ->
+BERTopic -> declared keywords -> seeded topics -> converged topic set ->
+topic graph -- one
 script for both host and Docker. Each stage
 self-probes its own prerequisites (docling importable, an upstream
 artefact present) and

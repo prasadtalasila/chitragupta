@@ -2414,8 +2414,8 @@ stays in this drafting-layer sidecar rather than the corpus plane, and
 ### 🧠 `chitragupta enrich`
 
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
-BERTopic -> seed topics -> converge -> topic graph. **Needs the
-venv.** Each stage probes
+BERTopic -> declared keywords -> seed topics -> converge -> topic
+graph. **Needs the venv.** Each stage probes
 its own prerequisites and reports a real per-stage status --
 `ok`, `partial`, `skipped` or `error`. A `skipped` result on a machine
 without the enrich extra is therefore a correct answer rather than a
@@ -2426,8 +2426,8 @@ bug. No stage here shells out to a binary, so none of them can report
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `--target {host,docker}` | `host` | **Informational only** -- stages self-probe regardless |
-| `--stages STAGES` | all six, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,seed-topics,converge,topic-graph` |
-| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `seed-topics`, `converge` or `topic-graph` |
+| `--stages STAGES` | all seven, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph` |
+| `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `extract-keywords`, `seed-topics`, `converge` or `topic-graph` |
 
 **Exit code**, which is all a schedule can read: `1` when any stage
 reports `error`, `0` otherwise -- including `partial`, which is what an
@@ -2442,6 +2442,7 @@ abandoned 460 of 642 documents exited `0`, exactly like a clean one.
 chitragupta enrich
 # chitragupta enrich --stages docling
 # chitragupta enrich --stages embed,bertopic
+# chitragupta enrich --stages extract-keywords   # writes content/keywords.toml
 # chitragupta enrich --stages seed-topics   # skipped with no content/seed_topics.toml
 # chitragupta enrich --for-draft content/drafts/digital-twins.md
 
