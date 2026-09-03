@@ -66,7 +66,7 @@ The numbers are introduction order, not a dependency rank.
 The enrichment layer is the only one that literally enumerates them
 (`--stages docling,embed,bertopic,seed-topics,converge,topic-graph`,
 each reporting `ok`, `partial`,
-`skipped`, `missing-binary` or `error`). There are six, and every one
+`skipped` or `error`). There are six, and every one
 of them writes a corpus artefact -- which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.

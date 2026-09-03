@@ -263,7 +263,7 @@ class TestDataLoading:
     def test_the_missing_ledger_refusal_reaches_the_cli(self, isolated_config, capsys):
         write_artefacts(isolated_config, graph=GRAPH, topic_set=TOPIC_SET)
         assert discover.main(["digital twin"]) == 1
-        assert "corpus sync" in capsys.readouterr().out
+        assert "corpus sync" in capsys.readouterr().err
 
     def test_topics_of_inverts_the_membership(self, isolated_config):
         assert [t["label"] for t in _data.topics_of(TOPIC_SET)["p2"]] == [
@@ -288,7 +288,16 @@ class TestListView:
 
     def test_a_missing_artefact_exits_one_and_names_the_fix(self, isolated_config, capsys):
         assert discover.main([]) == 1
-        assert "topic-graph" in capsys.readouterr().out
+        assert "topic-graph" in capsys.readouterr().err
+
+    def test_a_missing_artefact_under_json_leaves_stdout_empty(self, isolated_config, capsys):
+        """The refusal is diagnostics, not a payload: a `--json` caller
+        gets an empty document and a nonzero exit, never a sentence on
+        the stream it opened expecting one."""
+        assert discover.main(["--json"]) == 1
+        streams = capsys.readouterr()
+        assert streams.out == ""
+        assert "topic-graph" in streams.err
 
 
 class TestTopicView:
@@ -350,7 +359,27 @@ class TestTopicView:
         monkeypatch.setattr(_resolve, "_load_model", refuse)
         monkeypatch.setattr(retrieval, "search", lambda query, k=5: [])
         assert discover.main(["zzz qqq"]) == 1
-        assert "digital twin" in capsys.readouterr().out
+        assert "digital twin" in capsys.readouterr().err
+
+    def test_an_unanswerable_phrase_under_json_leaves_stdout_empty(
+        self, isolated_config, capsys, monkeypatch
+    ):
+        """The near-miss list is a refusal like any other, so `--json`
+        gets it on stderr rather than two sentences where a document
+        was asked for."""
+        from chitragupta import retrieval
+
+        prepare(isolated_config)
+
+        def refuse():
+            raise ImportError("no")
+
+        monkeypatch.setattr(_resolve, "_load_model", refuse)
+        monkeypatch.setattr(retrieval, "search", lambda query, k=5: [])
+        assert discover.main(["zzz qqq", "--json"]) == 1
+        streams = capsys.readouterr()
+        assert streams.out == ""
+        assert "digital twin" in streams.err
 
 
 class TestRenderEdgeCases:
@@ -429,7 +458,14 @@ class TestPaperView:
     def test_an_unknown_citekey_exits_one(self, isolated_config, capsys):
         prepare(isolated_config)
         assert discover.main(["--paper", "nope2020"]) == 1
-        assert "nope2020" in capsys.readouterr().out
+        assert "nope2020" in capsys.readouterr().err
+
+    def test_an_unknown_citekey_under_json_leaves_stdout_empty(self, isolated_config, capsys):
+        prepare(isolated_config)
+        assert discover.main(["--paper", "nope2020", "--json"]) == 1
+        streams = capsys.readouterr()
+        assert streams.out == ""
+        assert "nope2020" in streams.err
 
     def test_json_shape(self, isolated_config, capsys):
         prepare(isolated_config)
@@ -559,7 +595,7 @@ class TestOverviewFile:
         write_artefacts(isolated_config, graph=graph, topic_set=TOPIC_SET, topics=TOPICS_JSON)
         make_ledger(isolated_config, ["p1", "p2", "p3", "p4"])
         assert discover.main(["digital twin"]) == 1
-        assert "topic-graph" in capsys.readouterr().out
+        assert "topic-graph" in capsys.readouterr().err
 
     def test_snippets_with_no_members_touch_no_sql(self, isolated_config):
         from chitragupta.discover import _overview

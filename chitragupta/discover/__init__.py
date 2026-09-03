@@ -107,8 +107,13 @@ def _search_view(args, phrase: str, note, topic_set) -> int:
     results = retrieval.search(phrase, k=args.k)
     if not results:
         labels = ", ".join(t["label"] for t in topic_set["topics"])
-        print(f"No topic matched {phrase!r} and paper search returned nothing.")
-        print(f"Known topics: {labels}")
+        # Stderr in both modes, by the same rule the --out and --html
+        # write failures below follow: a line the caller cannot parse is
+        # never part of the payload. Nothing has reached stdout on this
+        # path, so a --json caller reads an empty document and a nonzero
+        # exit rather than two English sentences.
+        print(f"No topic matched {phrase!r} and paper search returned nothing.", file=sys.stderr)
+        print(f"Known topics: {labels}", file=sys.stderr)
         return 1
     data = _render.build_search(phrase, results, topic_set)
     if note:
@@ -119,13 +124,16 @@ def _search_view(args, phrase: str, note, topic_set) -> int:
 
 def main(argv=None) -> int:
     """Parse, dispatch, and translate every MissingArtefact -- absent
-    graph, absent ledger, a topic member a later sync removed -- into
-    the printed refusal and exit 1, wherever in a view it surfaces."""
+    graph, absent ledger, a topic member a later sync removed -- into a
+    refusal on stderr and exit 1, wherever in a view it surfaces."""
     args = build_parser().parse_args(argv)
     try:
         return _run(args)
     except _data.MissingArtefact as missing:
-        print(missing)
+        # One clause for every invocation, --json included, which is why
+        # it cannot consult args: the refusal goes to stderr in both
+        # modes so that stdout carries a payload or nothing at all.
+        print(missing, file=sys.stderr)
         return 1
 
 
@@ -134,7 +142,8 @@ def _paper_view(args, topic_set) -> int:
     if data is None:
         print(
             f"{args.paper} is in no topic -- is the citekey right, "
-            "and has the enrich pipeline run since it was synced?"
+            "and has the enrich pipeline run since it was synced?",
+            file=sys.stderr,
         )
         return 1
     _emit(args, data, _render.render_paper(data))

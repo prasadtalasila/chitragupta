@@ -319,7 +319,10 @@ Without the enrich extra the semantic half is skipped with a one-line
 note and the rung degrades to BM25 alone -- the same honest-degradation
 posture every enrich stage's self-probe takes, never a silent
 substitution. An unresolvable phrase whose fallback also returns
-nothing exits 1 naming the known topics.
+nothing exits 1 naming the known topics -- on **stderr**, like every
+other refusal this verb raises (an absent artefact, a citekey in no
+topic). A refusal is diagnostics, not a payload, so stdout carries a
+document or nothing at all and `--json` never has to parse English.
 
 ## 🎯 The precision tier
 

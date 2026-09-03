@@ -2416,9 +2416,11 @@ stays in this drafting-layer sidecar rather than the corpus plane, and
 Orchestrates the enrichment layer: docling -> embeddings/Chroma ->
 BERTopic -> seed topics -> converge -> topic graph. **Needs the
 venv.** Each stage probes
-its own prerequisites and reports a real per-stage status. A
-`skipped/missing-binary` result on a machine without TeX Live is
-therefore a correct answer rather than a bug.
+its own prerequisites and reports a real per-stage status --
+`ok`, `partial`, `skipped` or `error`. A `skipped` result on a machine
+without the enrich extra is therefore a correct answer rather than a
+bug. No stage here shells out to a binary, so none of them can report
+`missing-binary`; that status belongs to the render and style paths.
 
 | Flag | Default | What it does |
 | --- | --- | --- |

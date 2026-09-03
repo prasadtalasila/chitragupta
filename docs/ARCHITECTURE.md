@@ -276,8 +276,11 @@ they are refused rather than scoped.
 and [CLI.md](CLI.md#-enriching-one-drafts-papers) the flags.
 
 Each stage probes its own prerequisites and reports `ok`, `partial`,
-`skipped`, `missing-binary` or `error`, so a missing dependency is a
-correct answer rather than a crash. No stage needs an LLM API key -- this
+`skipped` or `error`, so a missing dependency is a correct answer rather
+than a crash -- `skipped` is the one that carries it here (docling not
+installed, or a topic stage with nothing to work from); no stage in this
+layer shells out to a binary, so none of them reports `missing-binary`.
+No stage needs an LLM API key -- this
 repository intentionally has none. (An earlier revision had PaperQA2 and
 STORM stages that required `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`; they
 were removed to keep it key-free. LLM-backed synthesis happens only in the
