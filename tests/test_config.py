@@ -3,7 +3,6 @@ pure helpers (_get/_get_float) that implement the override precedence."""
 
 import importlib
 import os
-from pathlib import Path
 
 import pytest
 
@@ -503,12 +502,16 @@ class TestModuleReloadWithEnvOverrides:
         assert config.KEYWORD_MIN_DF == 3
         assert config.KEYWORDS_PATH == config.CONTENT_DIR / "elsewhere/kw.toml"
 
-    def test_keywords_path_absolute_stays_absolute(self, monkeypatch, _empty_config_toml):
+    def test_keywords_path_absolute_stays_absolute(self, monkeypatch, tmp_path, _empty_config_toml):
         """The same resolution rule CONTENT_DIR itself uses: pathlib's
-        `/` yields the right-hand side unchanged when it is absolute."""
-        monkeypatch.setenv("KEYWORDS_PATH", "/tmp/kw.toml")
+        `/` yields the right-hand side unchanged when it is absolute.
+        tmp_path rather than a literal `/tmp/...`, because a rooted,
+        driveless path is not absolute on Windows and joins onto
+        CONTENT_DIR's drive instead of surviving unchanged."""
+        absolute = tmp_path / "kw.toml"
+        monkeypatch.setenv("KEYWORDS_PATH", str(absolute))
         importlib.reload(config)
-        assert config.KEYWORDS_PATH == Path("/tmp/kw.toml")
+        assert config.KEYWORDS_PATH == absolute
 
     def test_missing_config_file_names_the_fix(self, monkeypatch, tmp_path):
         """config.toml is gitignored per-host data, so "it isn't there"
