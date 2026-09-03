@@ -1,5 +1,5 @@
 # Optional heavier toolchain for the research pipeline, per the original
-# design (Ubuntu 24.04 + Claude Code with full permissions in an isolated
+# design (Ubuntu LTS + Claude Code with full permissions in an isolated
 # container). Unlocks TeX Live (compiling generated .tex chapters to
 # PDF), Pandoc, and the embeddings/clustering stack
 # (sentence-transformers + Chroma + BERTopic)
@@ -8,11 +8,32 @@
 # of root, though -- see AGENTS.md's "Environment constraints" section for
 # what is and isn't conditional on root access.
 #
+# **There are two images in this directory, and this is the heavy one.**
+# `docker/Dockerfile.claude` beside it hosts a `claude remote-control`
+# agent instead: it installs the *published* chitragupta-cli from PyPI
+# rather than building this stack from the checkout, so it is ~2.5GB and
+# builds in seconds, and it leaves TeX Live/Pandoc/torch to
+# `chitragupta install os-deps` at runtime. Neither replaces the other
+# -- this one is what you want when you need the whole toolchain
+# resolved up front, or when you are working on a checkout rather than
+# on a release. DOCKER.md leads with a table of the two.
+#
+# One thing worth carrying across if you edit either: both put their
+# venv first on PATH (here /opt/venv, there the same path) precisely so
+# that the bare `python` in `.claude/settings.json`'s hook commands can
+# import chitragupta. A private, hidden venv breaks the citation gate --
+# see Dockerfile.claude's own comment on the pipx attempt that proved it.
+#
 # Built and verified manually (docker build, both TORCH_VARIANT values,
 # both produced a working /opt/venv) -- see DOCKER.md's build-arg table
-# for the two variants and their measured sizes. Not exercised by CI: no
-# workflow under .github/ builds this image, so a break here still won't
-# be caught automatically.
+# for the two variants and their measured sizes.
+#
+# CI *does* build this image -- ci.yml's `docker-build` job, on the cpu
+# variant, added in #302 -- so a break in the build is caught. Nothing
+# execs into it, though: the image is built and discarded, so anything
+# it does at runtime is still hand-verified only. (This comment said
+# "not exercised by CI" until #302 made that false and did not update
+# it; corrected here while the header was being edited anyway.)
 #
 # Build (GPU-capable torch, the default -- see TORCH_VARIANT below):
 #   docker build -t chitragupta -f docker/Dockerfile .
@@ -22,6 +43,29 @@
 #     -v chitragupta-content:/workspace/chitragupta/content \
 #     chitragupta
 
+# Pinned to an LTS rather than `ubuntu:latest`: this image's package set
+# (TeX Live, Pandoc, poppler, python3-poetry, OpenCV's runtime libs) is
+# resolved by apt from whatever the base ships, and the base also
+# decides the Python version the venv below is built with -- so a base
+# bump is a thing to take deliberately and re-verify, not to pick up
+# silently on a rebuild.
+#
+# **26.04 was tried and does not build. Do not bump this line on its
+# own.** Ubuntu 26.04 LTS ships Python 3.14, and poetry.lock pins torch
+# 2.7.1 / torchvision / triton 3.3.1, none of which publish cp314
+# wheels. `poetry install` gets all the way through the rest of the
+# dependency set and then fails per package with "Unable to find
+# installation candidates for triton (3.3.1) ... 6 wheel(s) were
+# skipped as your project's environment does not support the identified
+# abi tags" -- measured on a --no-cache build, 2026-09-03.
+#
+# What unblocks it, if someone wants 26.04: torch publishes cp314 wheels
+# from 2.9.0 onward (checked against PyPI: 2.9.0, 2.9.1, 2.12.x, 2.13.0,
+# 2.14.0), so the base bump needs a torch/torchvision/triton
+# re-resolution in poetry.lock first. That is a dependency change
+# affecting both CI legs and every enrich test, not a Dockerfile change,
+# and belongs in its own PR with its own test run -- tracked in issue
+# #607, which carries the measured failure and the shape of the fix.
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
