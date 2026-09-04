@@ -225,6 +225,76 @@ class TestWritePictureCrops:
         assert names == [None, "art/picture_000001.png"]
         assert "could not open page 1" in caplog.text
 
+    def test_clears_a_stale_crop_from_a_previous_run(self, fake_pdfium, tmp_path):
+        """#661: an index this run does not reuse must not survive it.
+
+        `picture_000005.png` stands for a picture a previous parse
+        reported at index 5 -- one #653's junk filter or a
+        `[parser].formulas` change means this run never reaches, so
+        nothing this run writes would ever overwrite it.
+        """
+        art = tmp_path / "art"
+        art.mkdir()
+        (art / "picture_000005.png").write_bytes(b"stale")
+        dl_doc = types.SimpleNamespace(pictures=[FakePicture(page=1)])
+
+        names = _docling_crops.write_picture_crops("p.pdf", dl_doc, art, 2.0)
+
+        assert names == ["art/picture_000000.png"]
+        assert sorted(p.name for p in art.iterdir()) == ["picture_000000.png"]
+
+    def test_clearing_is_scoped_to_this_documents_own_directory(self, fake_pdfium, tmp_path):
+        """A sibling document's `_artifacts/` must survive this call.
+
+        Each document gets its own per-stem directory; nothing here
+        should reach past the one it was given, so a run that stops
+        partway through the corpus does not strip documents it never
+        got to.
+        """
+        art = tmp_path / "a2024_artifacts"
+        art.mkdir()
+        other = tmp_path / "b2024_artifacts"
+        other.mkdir()
+        (other / "picture_000000.png").write_bytes(b"someone else's figure")
+        dl_doc = types.SimpleNamespace(pictures=[FakePicture(page=1)])
+
+        _docling_crops.write_picture_crops("p.pdf", dl_doc, art, 2.0)
+
+        assert (other / "picture_000000.png").read_bytes() == b"someone else's figure"
+
+    def test_a_clear_failure_other_than_missing_is_not_swallowed(self, monkeypatch, tmp_path):
+        """Only "nothing to clear" is unremarkable, per `clear_sidecar`'s
+        own `missing_ok=True` precedent -- a permission or IO error
+        clearing a directory that does exist must surface rather than be
+        swallowed into silently keeping the stale crops it failed to
+        remove."""
+
+        def explode(_path):
+            raise PermissionError("no")
+
+        monkeypatch.setattr(_docling_crops.shutil, "rmtree", explode)
+        art = tmp_path / "art"
+        art.mkdir()
+
+        with pytest.raises(PermissionError):
+            _docling_crops.write_picture_crops(
+                "p.pdf", types.SimpleNamespace(pictures=[]), art, 2.0
+            )
+
+    def test_a_run_that_keeps_zero_pictures_still_clears_the_directory(self, fake_pdfium, tmp_path):
+        """Every picture now junk (or none reporting provenance) must not
+        leave last run's figures behind forever -- the early return for
+        an empty `grouped` sits after the clear, not before it."""
+        art = tmp_path / "art"
+        art.mkdir()
+        (art / "picture_000000.png").write_bytes(b"stale")
+        dl_doc = types.SimpleNamespace(pictures=[FakePicture.without_provenance()])
+
+        names = _docling_crops.write_picture_crops("p.pdf", dl_doc, art, 2.0)
+
+        assert names == [None]
+        assert not art.exists()
+
     def test_a_pdf_pdfium_cannot_open_keeps_the_text_parse(self, tmp_path, caplog):
         """docling and pdfium are different parsers, and only here does
         that matter.

@@ -30,6 +30,7 @@ instead.
 """
 
 import logging
+import shutil
 from pathlib import Path
 
 from chitragupta import logging_setup
@@ -111,6 +112,64 @@ def _pictures_by_page(dl_doc, junk: "set | None" = None) -> dict:
     return grouped
 
 
+def _clear_artifacts_dir(artifacts_dir: Path) -> None:
+    """Drop a document's previous crops before writing this run's.
+
+    Mirrors `passages.clear_sidecar`'s up-front timing and reasoning: a
+    crop names itself by picture *index*, not content, so a re-parse
+    that reports a different number of pictures -- a tighter
+    `[parser].formulas` setting, or #653's junk filter -- overwrites the
+    indices it happens to reuse and abandons the rest, exactly the way a
+    stale sidecar quotes the PDF as it stood at a previous parse. Clearing
+    the whole directory up front, rather than diffing it against this
+    run's output, is also what makes a re-parse that keeps zero pictures
+    (every one now filtered as junk) land on "no artifacts" instead of
+    leaving last run's figure set behind forever.
+
+    Scoped to this document's own `<stem>_artifacts/`, so a run that
+    stops partway through the corpus leaves every other document's crops
+    untouched.
+
+    `FileNotFoundError` only, matching `clear_sidecar`'s
+    `missing_ok=True` -- a document with no previous crops is the common
+    case, not a fault. A permission or IO error clearing a directory that
+    does exist is left to propagate rather than swallowed with
+    `ignore_errors=True`, since silently keeping a stale crop set is
+    exactly the failure this function exists to prevent.
+    """
+    try:
+        shutil.rmtree(artifacts_dir)
+    except FileNotFoundError:
+        pass
+
+
+def _open_pdf(pdf_path, num_pictures: int) -> "object | None":
+    """The pdfium handle to crop from, or None with a warning logged.
+
+    Split out of `write_picture_crops` so the caller stays under
+    docs/CODE-STANDARDS.md's 25-statement ceiling -- one `if pdf is None`
+    check there, instead of the whole try/except.
+    """
+    import pypdfium2
+
+    try:
+        return pypdfium2.PdfDocument(str(pdf_path))
+    except Exception as exc:  # noqa: BLE001 -- the figures, not the parse
+        # docling and pdfium are different parsers, and this is the one
+        # point where that matters: docling has already read this file
+        # successfully, so a `PdfiumError` here means the two disagree
+        # about it, not that the document is bad. The text and passages
+        # are written by now and are worth keeping.
+        logging_setup.say(
+            logger,
+            f"  WARNING pypdfium2 could not open {pdf_path} to crop "
+            f"{num_pictures} figure(s) from ({exc}) -- the parse itself "
+            "succeeded and its text is kept; the figures are indexed without images.",
+            level=logging.WARNING,
+        )
+        return None
+
+
 def write_picture_crops(
     pdf_path, dl_doc, artifacts_dir: Path, scale: float, junk: "set | None" = None
 ) -> list:
@@ -139,27 +198,13 @@ def write_picture_crops(
     end.
     """
     names: list = [None] * len(dl_doc.pictures)
+    _clear_artifacts_dir(artifacts_dir)
     grouped = _pictures_by_page(dl_doc, junk)
     if not grouped:
         return names
 
-    import pypdfium2
-
-    try:
-        pdf = pypdfium2.PdfDocument(str(pdf_path))
-    except Exception as exc:  # noqa: BLE001 -- the figures, not the parse
-        # docling and pdfium are different parsers, and this is the one
-        # point where that matters: docling has already read this file
-        # successfully, so a `PdfiumError` here means the two disagree
-        # about it, not that the document is bad. The text and passages
-        # are written by now and are worth keeping.
-        logging_setup.say(
-            logger,
-            f"  WARNING pypdfium2 could not open {pdf_path} to crop "
-            f"{len(dl_doc.pictures)} figure(s) from ({exc}) -- the parse itself "
-            "succeeded and its text is kept; the figures are indexed without images.",
-            level=logging.WARNING,
-        )
+    pdf = _open_pdf(pdf_path, len(dl_doc.pictures))
+    if pdf is None:
         return names
 
     artifacts_dir.mkdir(parents=True, exist_ok=True)
