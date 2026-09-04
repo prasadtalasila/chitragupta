@@ -280,32 +280,36 @@ def fake_interpreter(tmp_path):
     return make
 
 
+def entry_for(program: str) -> dict:
+    """One PostToolUse settings payload naming `program` as its launcher."""
+    return {
+        "hooks": {
+            "PostToolUse": [
+                {"hooks": [{"command": program, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}]}
+            ]
+        }
+    }
+
+
 @pytest.mark.skipif(
     sys.platform == "win32", reason="a shebang script is not directly executable on Windows"
 )
 class TestImportProbeThroughFaults:
     """`faults()`'s new check, end to end through a settings file: once a
-    launcher resolves on PATH, can it import `chitragupta`?"""
+    launcher resolves on PATH, can it import `chitragupta`?
+
+    Every case reaches its stand-in interpreter by putting its directory
+    first on PATH and naming it bare, never by path -- since #637 that is
+    the only route the probe will take (see
+    TestTheImportProbeOnlyRunsAgainstABareName), so a path-qualified
+    stand-in would make these pass vacuously."""
 
     def test_an_interpreter_that_cannot_import_the_package_is_a_fault(
-        self, settings, fake_interpreter
+        self, settings, fake_interpreter, monkeypatch
     ):
         program = fake_interpreter(code=1)
-        found = hook_launchers.faults(
-            settings(
-                {
-                    "hooks": {
-                        "PostToolUse": [
-                            {
-                                "hooks": [
-                                    {"command": program, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
-                                ]
-                            }
-                        ]
-                    }
-                }
-            )
-        )
+        monkeypatch.setenv("PATH", str(Path(program).parent), prepend=":")
+        found = hook_launchers.faults(settings(entry_for("python3")))
         assert "cannot import chitragupta" in found[0]
 
     def test_a_timeout_is_reported_as_a_fault_never_as_clean(
@@ -313,43 +317,67 @@ class TestImportProbeThroughFaults:
     ):
         monkeypatch.setattr(hook_launchers, "IMPORT_PROBE_TIMEOUT", 0.05)
         program = fake_interpreter(code=0, sleep=1)
-        found = hook_launchers.faults(
-            settings(
-                {
-                    "hooks": {
-                        "PostToolUse": [
-                            {
-                                "hooks": [
-                                    {"command": program, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
-                                ]
-                            }
-                        ]
-                    }
-                }
-            )
-        )
+        monkeypatch.setenv("PATH", str(Path(program).parent), prepend=":")
+        found = hook_launchers.faults(settings(entry_for("python3")))
         assert "did not respond" in found[0]
 
-    def test_a_working_interpreter_adds_no_fault(self, settings):
-        found = hook_launchers.faults(
-            settings(
-                {
-                    "hooks": {
-                        "PostToolUse": [
-                            {
-                                "hooks": [
-                                    {
-                                        "command": sys.executable,
-                                        "args": ["${CLAUDE_PROJECT_DIR}/x.py"],
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                }
-            )
-        )
+    def test_a_working_interpreter_adds_no_fault(self, settings, tmp_path, monkeypatch):
+        # A bare-named shim onto the suite's own interpreter: the probe
+        # only takes bare names now, and this interpreter is the one
+        # guaranteed to import chitragupta.
+        shim = tmp_path / "python3"
+        shim.write_text(f'#!/bin/sh\nexec "{sys.executable}" "$@"\n', encoding="utf-8")
+        shim.chmod(shim.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        monkeypatch.setenv("PATH", str(tmp_path), prepend=":")
+        found = hook_launchers.faults(settings(entry_for("python3")))
         assert found == []
+
+
+class TestTheImportProbeOnlyRunsAgainstABareName:
+    """#637. The probe executes whatever program the settings file names,
+    and that file was found by walking cwd's ancestors for a config.toml
+    -- so inside an untrusted tree (a cloned project, /tmp), a planted
+    settings.json naming `/that/tree/python3` handed an attacker's binary
+    to subprocess.run with the user's privileges:
+    `_is_python_interpreter` checks only the basename, and `shutil.which`
+    resolves a path-qualified program as-is rather than via PATH. Only a
+    bare name -- resolved against PATH, the user's own environment, which
+    the walked-to directory cannot rewrite -- may be probed."""
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="a shebang script is not directly executable on Windows"
+    )
+    def test_a_path_qualified_interpreter_is_never_executed(self, settings, tmp_path):
+        marker = tmp_path / "ran"
+        planted = tmp_path / "python3"
+        planted.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 1\n', encoding="utf-8")
+        planted.chmod(planted.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        found = hook_launchers.faults(settings(entry_for(str(planted))))
+        assert not marker.exists(), "the planted binary was executed"
+        # It resolves and is not probed, so it contributes no fault at
+        # all -- reporting less is the accepted price of not executing a
+        # file merely because a directory we walked into named it.
+        assert found == []
+
+    def test_a_bare_name_resolved_from_path_is_still_probed(self, settings, monkeypatch):
+        calls = []
+        monkeypatch.setattr(
+            hook_launchers, "_import_fault", lambda program: calls.append(program) or None
+        )
+        monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
+        hook_launchers.faults(settings(entry_for("python3")))
+        assert calls == ["python3"]
+
+    @pytest.mark.parametrize(
+        "program",
+        ["/usr/bin/python3", "./python3", "venv/bin/python", "C:/Py/python.exe", "..\\python.exe"],
+    )
+    def test_a_path_qualified_name_is_not_bare(self, program):
+        assert not hook_launchers._is_bare_command(program)
+
+    @pytest.mark.parametrize("program", ["python", "python3", "python3.12", "python.exe", "py"])
+    def test_a_bare_name_is_bare(self, program):
+        assert hook_launchers._is_bare_command(program)
 
 
 class TestImportProbeIsPerDistinctProgram:
@@ -362,13 +390,15 @@ class TestImportProbeIsPerDistinctProgram:
         monkeypatch.setattr(
             hook_launchers, "_import_fault", lambda program: calls.append(program) or None
         )
-        same = {"command": sys.executable, "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
+        monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
+        # Bare-named, since #637 made that the only shape the probe takes.
+        same = {"command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
         hook_launchers.faults(
             settings(
                 {"hooks": {"PostToolUse": [{"hooks": [same]}], "SessionStart": [{"hooks": [same]}]}}
             )
         )
-        assert calls == [sys.executable]
+        assert calls == ["python3"]
 
     def test_never_runs_for_a_program_not_on_path(self, settings, monkeypatch):
         calls = []

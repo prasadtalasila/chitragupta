@@ -199,7 +199,7 @@ It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
 | --- | --- | --- |
-| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher **whose basename names a Python interpreter** | fault |
+| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher **whose bare name (no path separators) names a Python interpreter** | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
@@ -221,8 +221,9 @@ That distinction is what lets the hook run this early at all. Both fault
 checks are corpus-independent by construction:
 
 - The launcher check reads a config file, calls `shutil.which`, and -- for
-  each distinct launcher that resolves *and is Python-shaped* -- spawns it
-  once to ask whether it can import `chitragupta`. No corpus either way.
+  each distinct launcher that resolves *and is a bare, Python-shaped
+  name* -- spawns it once to ask whether it can import `chitragupta`. No
+  corpus either way.
 
   The interpreter condition is not fussiness (#509/m-38): the probe is
   `<program> -c "import chitragupta"`, which is a Python invocation and
@@ -235,6 +236,19 @@ checks are corpus-independent by construction:
   and would have produced that false fault with nothing pointing at the
   cause. An unrecognised launcher is simply not spawned, and reports
   nothing rather than something wrong.
+
+  The bare-name condition is a security boundary, not fussiness either
+  (#637): the settings file being read was found by walking the working
+  directory's ancestors for a `config.toml`, so inside an untrusted tree
+  a planted settings file could name `/that/tree/python3` -- a
+  Python-shaped basename on an attacker's binary, which `shutil.which`
+  accepts as-is -- and the probe would execute it with the user's
+  privileges. A bare name resolves against `PATH`, the user's own
+  environment, which the walked-to directory cannot rewrite. A
+  path-qualified launcher keeps the existence check and silently forgoes
+  the import probe: reporting less is the accepted price of never
+  executing a file merely because a directory this process walked into
+  named it.
 - **A fabricated citekey is absent from an empty ledger and a full one
   alike.** Measured before it was relied on: with no `ledger.sqlite`
   present at all, `chitragupta.draft gate` exits 0 on a citation-free draft and
