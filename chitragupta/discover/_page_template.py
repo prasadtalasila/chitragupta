@@ -59,7 +59,10 @@ const NS = "http://www.w3.org/2000/svg";
 const box = svg.getBoundingClientRect();
 const cx = box.width / 2, cy = box.height / 2;
 const radius = Math.max(80, Math.min(cx, cy) - 120);
-const pos = {};
+/* Null prototype: a topic literally labelled "__proto__" on a plain
+   object reads back Object.prototype and garbles every later lookup
+   (#636); same hardening as app.js's label-keyed tables. */
+const pos = Object.create(null);
 DATA.topics.forEach((t, i) => {
   const angle = (2 * Math.PI * i) / DATA.topics.length - Math.PI / 2;
   pos[t.label] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };

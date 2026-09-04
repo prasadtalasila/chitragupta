@@ -7,25 +7,30 @@
 
 (function () {
   var DATA = window.CHITRAGUPTA_TOPICS;
-  var ORIGIN_COLORS = {
+  /* Null prototypes on every table keyed by data-derived strings
+     (topic labels, origins): on a plain object a topic literally
+     labelled "__proto__" reads back Object.prototype -- truthy, so it
+     slips past `||` fallbacks and has no .add -- which crashed the
+     whole render (#636). */
+  var ORIGIN_COLORS = Object.assign(Object.create(null), {
     seed: "#2e7d32",
     keyword: "#b8860b",
     both: "#00695c",
     emergent: "#1565c0",
-  };
-  var ORIGIN_LABELS = {
+  });
+  var ORIGIN_LABELS = Object.assign(Object.create(null), {
     seed: "seed topic",
     keyword: "keyword topic",
     both: "seed + keyword topic",
     emergent: "emergent topic",
-  };
+  });
 
-  var topicsByLabel = {};
+  var topicsByLabel = Object.create(null);
   DATA.topics.forEach(function (t) { topicsByLabel[t.label] = t; });
 
   // Direct neighbours over both edge families, precomputed once: the
   // filter's "related" set is exactly this adjacency.
-  var neighbours = {};
+  var neighbours = Object.create(null);
   function addNeighbour(a, b) {
     (neighbours[a] = neighbours[a] || new Set()).add(b);
     (neighbours[b] = neighbours[b] || new Set()).add(a);
@@ -147,10 +152,19 @@
   var detail = document.getElementById("detail");
   var hint = document.getElementById("hint");
 
+  /* An explicit five-character replace, not the textContent/innerHTML
+     trick: serializing a text node escapes & < > but never quotes, and
+     this function's output also lands inside double-quoted attributes
+     (data-goto, data-label below) -- a label containing `"` closed the
+     attribute and injected event-handler attributes, a stored XSS in
+     the exported page (#636). */
   function escapeHtml(text) {
-    var div = document.createElement("div");
-    div.textContent = text == null ? "" : String(text);
-    return div.innerHTML;
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   function paperCard(member) {
@@ -191,7 +205,7 @@
       "<h2>" + escapeHtml(topic.label) + "</h2>" +
       '<span class="origin-tag" style="background:' +
       (ORIGIN_COLORS[topic.origin] || ORIGIN_COLORS.emergent) + '">' +
-      (ORIGIN_LABELS[topic.origin] || topic.origin) + "</span>" +
+      escapeHtml(ORIGIN_LABELS[topic.origin] || topic.origin) + "</span>" +
       (topic.terms.length
         ? '<p class="terms">' + escapeHtml(topic.terms.join(" · ")) + "</p>" : "") +
       "<h3>Papers (" + topic.members.length + ")</h3>" +

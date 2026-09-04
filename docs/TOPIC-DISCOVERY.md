@@ -476,7 +476,12 @@ the terminal views. Interaction happens entirely in the browser over
 the embedded payload; nothing is recomputed and nothing is fetched.
 `<` is escaped in the payload exactly as the `--html` page escapes its
 JSON island, so no topic label or paper title can close the data script
-early.
+early. On the rendering side `app.js` escapes all five HTML-significant
+characters -- quotes included, because labels are also interpolated into
+attributes -- and keeps its label-keyed lookup tables on null
+prototypes, so a hostile phrase that rode in through a PDF's extracted
+keywords (a topic label is only semi-trusted data) can neither script
+the exported page nor crash it.
 
 ## 🚫 Alternatives considered
 
