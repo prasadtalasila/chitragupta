@@ -59,7 +59,19 @@ from chitragupta import config, hook_launchers, ledger
 # positive that would push the PostToolUse hook to block on invented
 # grounds. A single optional newline can never span a whole blanked
 # block, so the bridge is closed while `\citep\n{key}` keeps working.
-_WS = r"[ \t]*\n?[ \t]*"
+#
+# The *shape* of _WS is load-bearing too (#635): the earlier
+# `[ \t]*\n?[ \t]*` was ambiguous -- a run of spaces could split between
+# its two `[ \t]*` atoms every possible way -- and with _WS chained
+# before the star, each option group and the key group, a `\cite`
+# followed by N whitespace-separated `[...]` groups and no `{...}` made
+# the engine explore ~2^N partitions before failing: ~160 bytes of text
+# hung the gate past the hook's 30 s timeout, and a timed-out
+# PostToolUse hook does not block, so a fabricated citekey elsewhere in
+# the same file would have landed ungated. This form matches the same
+# language (any [ \t] run with at most one newline inside) but admits
+# exactly one parse of any input, so failure is linear.
+_WS = r"[ \t]*(?:\n[ \t]*)?"
 # Group 1 is the whole run of {key} groups, not one group's content:
 # biblatex's multicite commands (\cites, \parencites, \footcites, ...)
 # take one {keys} group *per citation*, optionally preceded by its own
@@ -72,9 +84,17 @@ _WS = r"[ \t]*\n?[ \t]*"
 # is a citation followed by an ordinary prose brace group, and
 # swallowing it would invent a citekey and block a sound draft.
 # _CITE_KEYS_RE then walks the captured run group by group.
+#
+# Each _WS below sits between mandatory characters (command letters, `*`,
+# `[`, `]`, `{`) and the star's _WS is inside its own optional group, so
+# no two _WS atoms are ever adjacent: together with _WS's own
+# single-parse shape that is what keeps matching linear (#635). It also
+# makes the documented single-newline cap real -- the old chain of three
+# adjacent _WS atoms accidentally accepted `\citep\n\n\n{key}`, which is
+# a TeX paragraph break and not a citation.
 _LATEX_CITE_RE = re.compile(
     r"\\[A-Za-z]*[Cc]ite[A-Za-z]*"
-    rf"{_WS}\*?(?:{_WS}\[[^\]]*\])*{_WS}"
+    rf"(?:{_WS}\*)?(?:{_WS}\[[^\]]*\])*{_WS}"
     r"(\{[^}]+\}(?:(?:\[[^\]]*\]){0,2}\{[^}]+\})*)"
 )
 # The bracket alternative matches first, so a note between two groups
