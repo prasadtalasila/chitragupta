@@ -636,9 +636,18 @@ ensure_gpu_torch() {
         echo "but at least back to a known, lockfile-tracked state) ..." >&2
         (cd "$REPO_ROOT" && poetry install --with enrich)
     else
-        echo "Via '$pip install --force-reinstall torch torchvision' (CPU-only" >&2
-        echo "on this driver; no checkout/poetry.lock here to pin against) ..." >&2
-        "$pip" install --force-reinstall torch torchvision
+        # Reuse the specs read back at the top of this function: the
+        # restore should land the version that was installed before the
+        # swap, not whatever PyPI currently serves (#641) -- an unpinned
+        # restore on this rarely-exercised path was the one place the
+        # torch version could silently drift from everything the rest of
+        # this script pins. Unpinned only if the version could not be
+        # read, which means torch was not installed and there is nothing
+        # to preserve.
+        echo "Via '$pip install --force-reinstall $torch_spec $torchvision_spec'" >&2
+        echo "(CPU-only on this driver; no checkout/poetry.lock here, so pinned" >&2
+        echo "to the previously installed version read back above) ..." >&2
+        "$pip" install --force-reinstall "$torch_spec" "$torchvision_spec"
     fi
 }
 
