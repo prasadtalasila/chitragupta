@@ -201,6 +201,18 @@ class TestPages:
         vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         assert vc.pages("smith_2024") == []
 
+    def test_a_traversal_citekey_reads_nothing_outside_parsed_dir(self, fixture_repo):
+        """#638: `pages()` takes citekeys the review CLIs extracted from a
+        draft, and the LaTeX regex accepts nearly anything inside
+        `\\cite{...}` -- so `\\citep{../secret}` used to read and echo
+        `<parsed's parent>/secret.txt`, page excerpts of a file the review
+        had no business opening."""
+        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        parsed_dir = fixture_repo / "content" / "parsed"
+        parsed_dir.mkdir(parents=True)
+        (fixture_repo / "content" / "secret.txt").write_text("must stay unread", encoding="utf-8")
+        assert vc.pages("../secret") == []
+
     def test_parsed_fallback_respects_parsed_dir_override(self, tmp_path, monkeypatch):
         # Regression: the parsed-text fallback must look wherever
         # config.PARSED_DIR actually points (a CONTENT_DIR override) --

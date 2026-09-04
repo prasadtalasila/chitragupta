@@ -96,6 +96,27 @@ class TestSourcePassages:
             "makes any excerpt a two-argument collage"
         )
 
+    def test_a_traversal_citekey_never_reaches_the_filesystem(self, isolated_config):
+        """#638: a caller-supplied citekey (the review layer extracts them
+        from a draft, and the LaTeX regex accepts nearly anything inside
+        `\\cite{...}`) was used as a path stem unvalidated, so
+        `../escape` read files outside the content tree -- the exact
+        traversal `bib_reader.citekey_problem` exists to stop, enforced
+        until now only on the bib-sync side."""
+        outside = (config.DOCLING_DIR / ".." / ".." / "private.passages.json").resolve()
+        outside.parent.mkdir(parents=True, exist_ok=True)
+        outside.write_text(
+            json.dumps([{"text": "Contents that must stay unread.", "label": "text", "page": 1}]),
+            encoding="utf-8",
+        )
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "../../private")
+        finally:
+            con.close()
+        assert found == []
+        assert "unsafe" in reason
+
     def test_unknown_citekey_reports_why(self, isolated_config):
         con = ledger.connect()
         try:

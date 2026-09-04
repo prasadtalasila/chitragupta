@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 from chitragupta import citation_gate, config
+from chitragupta.citekey_safety import citekey_problem
 
 BIB = config.BIB_FILE_PATH
 PARSED_DIR = config.PARSED_DIR
@@ -83,7 +84,17 @@ def pdf_path(citekey: str) -> Path | None:
 
 
 def _parsed_pages(citekey: str) -> list[str]:
-    """The already-parsed text, split on form feeds, or `[]`."""
+    """The already-parsed text, split on form feeds, or `[]`.
+
+    The citekey was extracted from a draft, and the LaTeX regex accepts
+    nearly anything inside `\\cite{...}` -- validate before it becomes a
+    path, or `\\citep{../secret}` reads (and the report then echoes)
+    files outside the parsed directory (#638). An unsafe key cannot have
+    a parse on disk anyway: the sync side has always refused to write
+    one.
+    """
+    if citekey_problem(citekey):
+        return []
     parsed = PARSED_DIR / f"{citekey}.txt"
     if not parsed.exists():
         return []

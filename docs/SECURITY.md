@@ -89,7 +89,11 @@ not generate, rename, or fetch citekeys.
 
 Before sync creates derived filenames, `chitragupta/bib_reader.py`
 rejects citekeys unsafe for filesystem use. An unsafe entry is skipped
-with a warning rather than silently rewritten.
+with a warning rather than silently rewritten. The same validator
+(`chitragupta/citekey_safety.py`) also guards the review layer's reads:
+citekeys there are extracted from a draft, not the bib file, so a draft
+citing `\citep{../../secret}` must -- and does -- resolve to no source
+text rather than to a file outside the content tree.
 
 The drafting skills run the gate before presenting a draft. A Claude Code
 PostToolUse hook also runs it after writes under `content/drafts/`.
