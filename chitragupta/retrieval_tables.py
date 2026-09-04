@@ -29,6 +29,22 @@ them should be able to tell this module exists.
 The cleaner is passed in rather than imported back, so `retrieval.py`
 keeps owning what a window's text is allowed to contain (its citation
 marker stripping in particular) and there is no import cycle.
+
+**Three other places in this repository look at a line starting with
+`|`, and none of them answers this question** -- said here because "a
+second way of doing something the codebase already does" is the finding
+docs/CODE-STANDARDS.md rates highest, and this is close enough to it to
+be worth ruling out by name rather than by silence.
+`chitragupta/style_tables.py` matches a table's *head* -- a row plus the
+separator under it -- to ask whether a table in a **draft** carries a
+caption; it never needs the block's extent. `dossier/_citekeys.py` and
+`dossier/_status.py` read rows out of the **dossier's own**
+`retrieval.md`, a file this project writes to a known shape. This module
+asks a third thing over a fourth artefact: given a character offset into
+a **parsed source document**, what are the bounds of the pipe-table block
+containing it. Sharing an implementation between them would couple a
+draft-side style rule and a dossier log format to how a corpus document
+is windowed, which is three layers.
 """
 
 # Two lines, because a single piped line is prose -- a shell pipeline, a
