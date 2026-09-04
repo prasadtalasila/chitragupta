@@ -343,6 +343,26 @@ citekey's parsed text, so `show` reports a summary stale rather than
 silently describing a paper that has since been re-parsed.
 `corpus ledger` is untouched: the summary is LLM output, so it stays in
 the drafting layer's own sidecar rather than the corpus plane.
+
+### 🖼 Per-citekey figures
+
+`draft figures <citekey>` lists one paper's figures -- caption, page, the
+exact string to cite each by, and the path to the crop of it -- so a
+drafting session can **look at** a figure while grounding a claim about
+what a paper shows, or while drawing a diagram of its own.
+
+It is the only route figures have to the drafting stage, and it had to be
+a route rather than a widening: prose, table cell text and decoded
+equations all arrive through `content/parsed/<citekey>.txt`, which is the
+one artefact retrieval indexes, and a bitmap cannot live in a text file.
+
+**Consider, never replicate.** The crops are a reading aid; having a
+paper in your library grants no right to reproduce its figures, and no
+source image is ever placed in a draft. It reads the enrichment layer's
+`content/docling/` index as a path rather than importing that layer, so
+an ordinary drafting run pulls in none of its optional dependencies --
+and it distinguishes a paper with no figures from one the docling stage
+has not reached, because only the second is something you can act on.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
 proposal parked at #401.
 

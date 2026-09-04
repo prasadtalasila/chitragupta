@@ -221,6 +221,33 @@ enrichment layer is optional and nothing above it needs it.
   paper that has since been re-parsed. The tool never generates the
   summary itself -- a person or a skill composes it -- and
   `python -m chitragupta.corpus ledger` is untouched.
+
+  **A source paper's figures are a thing you may look at, and never a
+  thing you may reproduce.** `python -m chitragupta.draft figures
+  <citekey>` lists one paper's figures -- caption, page, the exact string
+  to cite each by, and the path to a crop of it. Two moments make it
+  worth running, and both are about *your* prose:
+
+  - You are about to write a claim about what a paper's figure shows. Its
+    caption is already retrievable as ordinary text; the figure itself is
+    not, and a caption routinely says less than the picture. Look before
+    you assert.
+  - You are drawing a figure of your own. Seeing how the literature
+    already draws this is legitimate input to a diagram you then draw
+    yourself, in TikZ, as your own work.
+
+  **What it is never for.** Do not put a source image in a draft, do not
+  copy a figure's layout stroke for stroke, and do not cite a figure you
+  did not look at. A figure's copyright is not the paper's citekey to
+  grant, and the `cite` string -- "Figure 3 of [@smith2024], p.7" -- is
+  the part that belongs in your prose. This is the same boundary the
+  `quote:` field draws for wording, one modality along.
+
+  It lists figures, not every picture: an uncaptioned scrap smaller than
+  about 12mm is a publisher logo, not a figure, and is not indexed. If it
+  reports **no figure index** for a citekey, the optional enrichment
+  layer has not reached that paper -- say so and move on; that is a run
+  for the human to make, never one a skill starts.
 - **Layer 3, the enrichment layer -- optional** (`python -m chitragupta.enrich`):
   Docling, embeddings and topic modelling over the same corpus, ending
   in the topic graph that `corpus discover` reads. It extends

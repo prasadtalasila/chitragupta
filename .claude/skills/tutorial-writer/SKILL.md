@@ -379,6 +379,15 @@ the lesson design is the part worth keeping either way.
    still don't need one: if nothing in the path is clearer as a diagram
    than as text, move on.
 
+   **You may look at how the literature draws it first.**
+   `python -m chitragupta.draft figures <citekey>` lists a synced paper's
+   figures and gives you the path to a crop of each, for any citekey the
+   tutorial already leans on. Seeing how a concept is conventionally
+   drawn is legitimate input to a diagram you then draw yourself. It is
+   not a licence to reproduce one: the source image never enters the
+   draft, and the layout you produce is your own. AGENTS.md states the
+   boundary in full.
+
    A figure that does earn its place is a **pair of files**, and §10 is
    the contract. This genre carries no inline form of either -- the
    draft names the figure in a marker line of its own, with nothing

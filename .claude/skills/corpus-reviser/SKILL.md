@@ -166,7 +166,11 @@ turn a wide pass into the re-run this skill exists to avoid.
   carries over unchanged: a figure exists as a TikZ picture and as a
   plain-ASCII diagram, nothing can check that the two still depict the
   same thing, and a wide pass is the one most likely to edit a figure
-  in passing while re-reading a section for something else.
+  in passing while re-reading a section for something else. So does its
+  **consult a source figure before redrawing one** rule: a wide pass
+  re-reads every cited paper anyway, and `python -m chitragupta.draft
+  figures <citekey>` is the one way to see what a paper's figure actually
+  shows rather than what its caption claims. Look, never reproduce.
 - **A numbered equation's id survives a rewrite; the number does not
   need to.** Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md`
   §12's `<!-- equation: id -->` marker renumbers itself, so only the id
