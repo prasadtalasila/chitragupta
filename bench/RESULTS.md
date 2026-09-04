@@ -4618,3 +4618,98 @@ uncapped one), toggle `content/seed_topics.toml` / `content/keywords.toml`
 per arm, run `--stages seed-topics`, and read coverage as
 `(n_docs - len(unmatched)) / n_docs` from `content/topic_seeds.json`.
 No scratch script is needed any more, which was the point.
+
+## 2026-09-04: does fusing BM25 with dense retrieval beat BM25 alone? (B5, #610; decides #617)
+
+`bench/bench_retrieval_fusion.py` (new). Issue #617 asks whether reciprocal-
+rank fusion (RRF) or a convex score combination of BM25 +
+`sentence-transformers/all-MiniLM-L6-v2` beats BM25 alone, "built as an
+opt-in route only if it wins somewhere." Both routes are collapsed to one
+ranked *citekey* per route (`collapse_to_citekeys`, over a pool
+`chitragupta.enrich.embed_index.search()` already caps per source) before
+fusion, so #617's "per-source cap and cross-query deduplication hold after
+fusion" holds by construction -- see the script's module docstring for why
+that granularity, not chunk-level, is the only one either scoring metric
+here reads. RRF reuses `chitragupta.discover._resolve.rrf_fuse`/`RRF_K`
+directly rather than reimplementing the topic-discovery ladder's own
+fusion. Swept at k in {3, 5, 10}; every row below is a percentage-point
+change against the same row's BM25 baseline, one arm at a time (Ni et
+al.'s protocol).
+
+### Self-retrieval (256 keyword-query pairs)
+
+| k | arm | n | recall | Δpp | nDCG | Δpp |
+|---|---|---|---|---|---|---|
+| 3 | BM25 | 256 | 0.7695 | -- | 0.7179 | -- |
+| 3 | +RRF | 256 | 0.7148 | -5.47 | 0.6535 | -6.44 |
+| 3 | +convex | 256 | 0.6680 | -10.15 | 0.5764 | -14.15 |
+| 5 | BM25 | 256 | 0.8047 | -- | 0.7321 | -- |
+| 5 | +RRF | 256 | 0.7500 | -5.47 | 0.6678 | -6.43 |
+| 5 | +convex | 256 | 0.7383 | -6.64 | 0.6055 | -12.66 |
+| 10 | BM25 | 256 | 0.8516 | -- | 0.7479 | -- |
+| 10 | +RRF | 256 | 0.8164 | -3.52 | 0.6891 | -5.88 |
+| 10 | +convex | 256 | 0.8242 | -2.74 | 0.6334 | -11.45 |
+
+### Live-logged (96 real drafting-session queries, chapter-level relevant sets)
+
+| k | arm | n | recall | Δpp | nDCG | Δpp |
+|---|---|---|---|---|---|---|
+| 3 | BM25 | 96 | 0.8438 | -- | 0.5385 | -- |
+| 3 | +RRF | 96 | 0.8125 | -3.13 | 0.4891 | -4.94 |
+| 3 | +convex | 96 | 0.6771 | -16.67 | 0.3907 | -14.78 |
+| 5 | BM25 | 96 | 0.8646 | -- | 0.4729 | -- |
+| 5 | +RRF | 96 | 0.8438 | -2.08 | 0.4241 | -4.88 |
+| 5 | +convex | 96 | 0.8958 | +3.12 | 0.3698 | -10.31 |
+| 10 | BM25 | 96 | 0.9479 | -- | 0.4058 | -- |
+| 10 | +RRF | 96 | 0.9479 | 0.0 | 0.3628 | -4.30 |
+| 10 | +convex | 96 | 0.9479 | 0.0 | 0.3422 | -6.36 |
+
+**Decision: decline.** On both ground truths, at every k, RRF and convex
+either lose to BM25 alone or -- at best -- tie it on recall (10/10 on
+live-logged, both arms) while still losing on nDCG every single time.
+Convex's one positive recall row (+3.12pp, live-logged k=5) does not
+survive its own nDCG at the same k (-10.31pp): the fused ordering finds
+the same or fewer relevant citekeys and ranks them worse when it does.
+Neither arm wins anywhere on either ground truth, on either metric, at any
+k -- not a small gain confined to one ground truth (the honest expectation
+issue #617 itself states going in), a clean loss on both. No opt-in fusion
+route is built; issue #617 closes as declined against this entry, joining
+the overlap gate, reranking-BM25 and paper-level-cascade declines this
+convention was built to record.
+
+**The drafting-pair ground truth (48 claim/citekey pairs) could not be
+run.** `bench_retrieval_ground_truth.py`'s `labels.json` judgments were
+made against a book state no snapshot currently on disk reproduces: the
+only `content/backup/` snapshot available (`20260901-content`) resolves
+only 7 of 48 rows against a fresh extraction, and the script refuses a
+partial ground truth by design (silently scoring against a subset would
+misreport as clean). This is a gap in what content survives on this host
+between benchmark runs, not a fusion result -- recorded here rather than
+worked around, so a future run with a matching snapshot can fill it in
+without re-deriving why it was missing.
+
+**Query-shape addendum (part of B5, independent of fusion).** Added one
+assertion-form template ("this paper's contribution is {keywords}") to
+`bench_retrieval_keyword_selfretrieval.py`'s `forms` query-shape sweep,
+re-measured on the same 256-row ground truth: recall@5 0.7148 / nDCG@5
+0.6499, against the keyword baseline's 0.8047 / 0.7321 -- a real drop, not
+a null result. The wrapping words ("this paper's contribution is") are not
+fully absorbed by `_query_terms`' stopword filter the way "what is" is,
+so BM25 scores against extra terms the correct document does not
+necessarily contain. Recorded as a genuine finding about assertion-shaped
+declared queries, not folded into the fusion decision above.
+
+Reproducing:
+
+```
+cp /workspace/config.toml .   # worktree only; gitignored per-host data
+CONTENT_DIR=/workspace/content BIB_FILE=/workspace/papers/bibliography-groups.bib \
+  .venv-full/bin/python bench/bench_retrieval_fusion.py \
+  --only self-retrieval --tag <tag>
+CONTENT_DIR=/workspace/content BIB_FILE=/workspace/papers/bibliography-groups.bib \
+  .venv-full/bin/python bench/bench_retrieval_fusion.py \
+  --only live-logged --tag <tag>
+```
+
+Records: `bench/results/2026-09-04-retrieval-fusion-self/fusion.json`,
+`bench/results/2026-09-04-retrieval-fusion-live/fusion.json`.
