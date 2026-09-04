@@ -106,7 +106,17 @@ RUN mkdir -p /workspace && chown -R "${CG_USER}:${CG_USER}" /workspace
 # unprivileged account on first launch. Nothing about the npm layer
 # records which order it ran in, so this comment is the only place that
 # ordering is stated.
-RUN npm install -g @anthropic-ai/claude-code
+#
+# Version-pinned (#641), overridable at build time: unpinned, whatever
+# npm serves at build moment lands in the image as root -- a compromised
+# release reaches PID 1's parent unnoticed, and two builds of the same
+# Dockerfile diverge silently. The pin is a build arg rather than a
+# literal so moving it is a `--build-arg`, and bumping the default here
+# is the deliberate act the pin exists to require. The CLI self-updates
+# inside a running container regardless, so the pin governs what the
+# *image* carries, not what a long-lived container ends up running.
+ARG CLAUDE_CODE_VERSION=2.1.260
+RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
 # /usr/local/bin, not the account's home directory: the entrypoint's
 # path is baked into ENTRYPOINT below, and a path under /home/<user>
