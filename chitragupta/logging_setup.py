@@ -125,6 +125,27 @@ def _already_attached(path) -> bool:
     )
 
 
+class _OneLineFormatter(logging.Formatter):
+    """The file's one-record-one-line shape, enforced at the handler.
+
+    `say()` collapses newlines in what it mirrors, but a direct
+    `logger.warning(...)` interpolating an untrusted string -- a bib
+    title, a parser's error text -- had no such guard, so a value
+    carrying `\\n2026-... ERROR ...` wrote what reads as a second,
+    forged record into logs/pipeline.log (#640): the file the bug-report
+    template asks users to paste, split into lines only the first of
+    which is real. Collapsing here, once, covers every call site instead
+    of trusting each to remember; `say()`'s own collapse stays, since it
+    also shapes what the *terminal* mirror logs. No caller logs
+    `exc_info` tracebacks (they would be the one legitimate multi-line
+    record), so nothing is lost to the collapse.
+    """
+
+    def format(self, record: logging.LogRecord) -> str:
+        line = super().format(record)
+        return " ".join(line.split("\n")) if "\n" in line else line
+
+
 def _not_file_only(record: logging.LogRecord) -> bool:
     """False for a record logged with extra={"file_only": True} -- the
     summary line, which is already printed to stdout and would otherwise
@@ -273,7 +294,7 @@ def configure() -> None:
         backupCount=5,
         encoding="utf-8",
     )
-    file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
+    file_handler.setFormatter(_OneLineFormatter("%(asctime)s %(levelname)s %(name)s: %(message)s"))
     file_handler.setLevel(config.LOGGING_LEVEL)
 
     console_handler = logging.StreamHandler(sys.stderr)
