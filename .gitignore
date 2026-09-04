@@ -109,6 +109,13 @@ bench/results/*/pairs.json
 bench/results/*/ground_truth.json
 bench/results/*/candidates.md
 
+# bench_figure_similarity.py's corpus embedding cache is a multi-MB
+# per-encoder float array with no invalidation key beyond crop count --
+# a dev-iteration speedup (re-run to change a TikZ fixture without
+# re-embedding 6,500+ crops), not evidence; the per-encoder JSON record
+# already carries every number derived from it.
+bench/results/*/embeddings_*.npy
+
 # bench_retrieval_compare.py's own subprocess-worker payloads
 # (_dense_worker_<model>.json, _cascade_worker.json) are scratch --
 # comparison.json already carries every number they fed into it -- and

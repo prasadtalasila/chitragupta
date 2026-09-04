@@ -92,6 +92,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What does scoping a draft's retrieval to a curated Zotero collection (`--collection`, #195) actually buy? | **`bench_collection_scope.py`** -- two arms of the same chapter, whole corpus vs one shelf, from the same pre-registered queries; replays each dossier's own logged queries to reconstruct what each arm surfaced. Stdlib only, no GPU, but it scores a *drafting run*, so it needs two real drafts and their dossiers to already exist |
 | Does a cross-encoder rerank help, and does it matter whether it runs before or after the per-citekey cap (#380)? | **`bench_rerank_position.py`** -- needs the `enrich` group and a built `content/chroma/`; reuses `bench_retrieval_keyword_selfretrieval.py`'s 256 pairs and `bench_retrieval_compare.py`'s scoring, and measures at the **shipped** shape (chunks, cap 3, pool 20) rather than the citekey-collapsed one those rows use. Reports `distinct@5`, which is the metric #380's own motivating claim is about |
 | What does cross-encoding the over-fetched passages *cost*, per `search()` call? | **`bench_rerank_cost.py`** -- needs the `enrich` group and a built `content/chroma/`; times the rerank stage against the shipped `embed_index.search()` measured in the same process, across model x device x pool depth. Reports a **slowdown ratio**, not a duration, because that is what decides affordability |
+| Would a figure-similarity tier (#659) catch a draft figure redrawn from a source's, and can it tell that apart from same-field organic noise? | **`bench_figure_similarity.py`** -- needs the `enrich` group's `docling_images` crops, `sentence-transformers`/`transformers`/`torch`, and a working `pdflatex` + `pypdfium2`; measures an identity control, a cross-paper floor, recall on four graded planted TikZ fixtures against two encoders, and cost. **2026-09-04: a narrowly-scoped ship, SigLIP only, catching a label-preserving redraw and nothing past it** -- see `RESULTS.md` |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -182,6 +183,7 @@ being tested.
 | `extract_keywords.py` | Writes `content/keywords.toml`: the corpus's own top TF-IDF terms, ranked by summed weight across every parsed document, with `content/topics.toml`'s phrases excluded so it never just echoes the hand-written list back |
 | `bench_keyword_seed_topics.py` | Runs `topic_seeding.assign()` once per phrase set -- `content/topics.toml` alone, `content/keywords.toml` alone, both combined -- and reports coverage, phrase redundancy (mean pairwise Jaccard of match sets) and how much of the corpus a keyword phrase alone reaches that no hand-written phrase does |
 | `embed_models.py` | The SPECTER2 encoder seam: `embed_paper()` (title+abstract, proximity adapter, disk-cached per citekey) and `embed_query()` (adhoc_query adapter) -- SPECTER2 never sees a passage chunk, unlike the three drop-in models |
+| `bench_figure_similarity.py` | Whether a figure-similarity review tier (#659) could catch a draft figure redrawn from a source's: identity control, cross-paper false-positive floor (masked by paper *and* by exact byte content -- a shared book chapter or a mis-extracted publisher logo is not "independent similarity"), recall on a graded planted TikZ redraw against CLIP and SigLIP, an 8x8 average-hash prescreen, and per-crop cost. Not a threshold sweep -- this tier ranks rather than thresholds, same as tier 3 of the overlap scan |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
 `repro_check.py` is the odd one out here, and deliberately so: every other
@@ -208,7 +210,8 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_topic_depth.py`, `bench_topic_membership.py`,
 `topic_discovery_eval.py`, `estimate.py`,
 `run_parallel.py`, `extract_keywords.py` and
-`bench_keyword_seed_topics.py` each have one -- 27 of the 29 scripts here. The
+`bench_keyword_seed_topics.py` and `bench_figure_similarity.py` each have
+one -- 28 of the 30 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

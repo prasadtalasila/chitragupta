@@ -1,0 +1,34 @@
+% Traced redraw of karabey_aksakalli_deployment_2021, Fig. 1 ("Conceptual
+% model for microservices"): same boxes, same labels, same edges, same
+% cardinality text -- a TikZ box-and-arrow rendering of a UML class
+% diagram this project's own corpus already contains. This is the
+% planted positive case bench_figure_similarity.py measures recall on.
+% It carries no citekey, per every genre skill's figure rule.
+\begin{tikzpicture}[
+    box/.style={draw, rectangle, minimum width=3.2cm, minimum height=0.9cm, align=center, font=\small},
+    >=Stealth
+  ]
+  \node[box] (app) at (0, 6) {MicroserviceApplication};
+  \node[box] (infra) at (0, 3) {InfrastructureElement};
+  \node[box] (inst) at (5, 3) {MicroserviceInstance};
+  \node[box] (bare) at (-4.8, 0) {BareMetal};
+  \node[box] (vm) at (-1.6, 0) {VirtualMachine};
+  \node[box] (cont) at (1.6, 0) {Container};
+  \node[box] (orch) at (4.8, 0) {OrchestrationPlatform};
+  \node[box] (cross) at (9.5, 5.5) {CrossCuttingFunctionality};
+  \node[box] (reg) at (9.5, 3) {ServiceRegistry};
+  \node[box] (ext) at (9.5, 0.6) {ExternalSystem};
+  \node[box] (comm) at (5, -3) {ServiceCommunicationEndPoint};
+
+  \draw[<->] (app) -- node[right, font=\tiny] {[1..*] microserviceInstance} (inst);
+  \draw[->] (app) -- node[left, font=\tiny] {[1..*] infrastructureElement} (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] deployedTo} (infra);
+  \draw[->] (bare) -- (infra);
+  \draw[->] (vm) -- (infra);
+  \draw[->] (cont) -- (infra);
+  \draw[->] (orch) -- (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] utilizes} (cross);
+  \draw[->] (inst) -- node[right, font=\tiny] {[1..*] registeredTo} (reg);
+  \draw[->] (inst) -- node[right, font=\tiny] {[0..*] integratesWith} (ext);
+  \draw[->] (inst) -- node[below, font=\tiny] {[1..*] communicatesWith} (comm);
+\end{tikzpicture}

@@ -1,0 +1,23 @@
+% A different, legitimately original box-and-arrow diagram in the same
+% genre (UML-flavoured boxes, straight arrows) but with different
+% topology and content: a linear pipeline, not a hub-and-spoke class
+% diagram. This is the negative control for the planted case -- an
+% author's own original figure that happens to share a drawing style
+% with corpus figures, and must not be flagged as similar to any of
+% them.
+\begin{tikzpicture}[
+    box/.style={draw, rectangle, minimum width=3.2cm, minimum height=0.9cm, align=center, font=\small},
+    >=Stealth
+  ]
+  \node[box] (src) at (0, 0) {RawSensorFeed};
+  \node[box] (clean) at (4, 0) {Preprocessor};
+  \node[box] (model) at (8, 0) {ForecastModel};
+  \node[box] (eval) at (12, 0) {DriftEvaluator};
+  \node[box] (report) at (16, 0) {OperatorReport};
+
+  \draw[->] (src) -- node[above, font=\tiny] {stream} (clean);
+  \draw[->] (clean) -- node[above, font=\tiny] {window} (model);
+  \draw[->] (model) -- node[above, font=\tiny] {forecast} (eval);
+  \draw[->] (eval) -- node[above, font=\tiny] {alert} (report);
+  \draw[->] (eval) to[bend left=40] node[below, font=\tiny] {retrain} (model);
+\end{tikzpicture}

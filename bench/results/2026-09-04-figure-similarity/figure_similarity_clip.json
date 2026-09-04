@@ -1,0 +1,164 @@
+{
+  "encoder": "clip",
+  "device": "cuda",
+  "num_crops": 6541,
+  "embed_dim": 512,
+  "encode_seconds": 239.54844188690186,
+  "per_crop_ms": 36.62260233708941,
+  "identity_control": {
+    "self_cosine": 0.9999993443489075,
+    "self_rank": 1
+  },
+  "cross_paper_floor_cosine": {
+    "median": 0.8654274940490723,
+    "p90": 0.9896548986434937,
+    "p95": 0.998896598815918,
+    "p99": 0.9999999403953552,
+    "max": 1.000000238418579
+  },
+  "cross_paper_floor_hash_similarity_out_of_64": {
+    "median": 53.0,
+    "p90": 64.0,
+    "p95": 64.0,
+    "p99": 64.0,
+    "max": 64.0
+  },
+  "planted": [
+    {
+      "fixture": "faithful_trace",
+      "top5": [
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000081.png",
+          "score": 0.9013473391532898
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000086.png",
+          "score": 0.8971765041351318
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000108.png",
+          "score": 0.8967479467391968
+        },
+        {
+          "citekey": "noauthor_asset_nodate",
+          "image": "noauthor_asset_nodate_artifacts/picture_000006.png",
+          "score": 0.8950993418693542
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000078.png",
+          "score": 0.8947120904922485
+        }
+      ],
+      "source_score": 0.860243558883667,
+      "source_rank": 133,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "original_diagram",
+      "top5": [
+        {
+          "citekey": "richstein_characterizing_2024",
+          "image": "richstein_characterizing_2024_artifacts/picture_000006.png",
+          "score": 0.7979745268821716
+        },
+        {
+          "citekey": "chacon_digital_2024",
+          "image": "chacon_digital_2024_artifacts/picture_000044.png",
+          "score": 0.7946416139602661
+        },
+        {
+          "citekey": "delhibabu_synthesis_2023",
+          "image": "delhibabu_synthesis_2023_artifacts/picture_000026.png",
+          "score": 0.7922670841217041
+        },
+        {
+          "citekey": "chacon_digital_2024",
+          "image": "chacon_digital_2024_artifacts/picture_000041.png",
+          "score": 0.7909712195396423
+        },
+        {
+          "citekey": "jensen_modelardb_2023",
+          "image": "jensen_modelardb_2023_artifacts/picture_000006.png",
+          "score": 0.7892336845397949
+        }
+      ],
+      "source_score": 0.6853253841400146,
+      "source_rank": 1128,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "relabelled_redraw",
+      "top5": [
+        {
+          "citekey": "zech_proposal_2024",
+          "image": "zech_proposal_2024_artifacts/picture_000006.png",
+          "score": 0.9002225399017334
+        },
+        {
+          "citekey": "lienhardt_product_2024",
+          "image": "lienhardt_product_2024_artifacts/picture_000006.png",
+          "score": 0.8988924026489258
+        },
+        {
+          "citekey": "aissat_devops_2025",
+          "image": "aissat_devops_2025_artifacts/picture_000022.png",
+          "score": 0.8960261344909668
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000084.png",
+          "score": 0.8948464393615723
+        },
+        {
+          "citekey": "aissat_devops_2025",
+          "image": "aissat_devops_2025_artifacts/picture_000026.png",
+          "score": 0.8919165730476379
+        }
+      ],
+      "source_score": 0.8295514583587646,
+      "source_rank": 264,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "traced_redraw",
+      "top5": [
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000078.png",
+          "score": 0.8927522301673889
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000086.png",
+          "score": 0.8899720907211304
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000120.png",
+          "score": 0.8879997730255127
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000103.png",
+          "score": 0.8855031728744507
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000081.png",
+          "score": 0.8848686218261719
+        }
+      ],
+      "source_score": 0.8215470314025879,
+      "source_rank": 182,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    }
+  ]
+}
