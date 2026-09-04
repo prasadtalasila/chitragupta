@@ -119,7 +119,7 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
                 if program and program not in programs:
                     programs.append(program)
     for program in programs:
-        if _is_python_interpreter(program) and shutil.which(program):
+        if _is_python_interpreter(program) and _is_bare_command(program) and shutil.which(program):
             fault = _import_fault(program)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
@@ -184,6 +184,38 @@ def _program_name(hook: dict) -> str | None:
     if not isinstance(command, str) or not command.split():
         return None
     return command if "args" in hook else command.split()[0]
+
+
+def _is_bare_command(program: str) -> bool:
+    """Is `program` a bare name, resolvable only via PATH?
+
+    The import probe *executes* the program, and the settings file that
+    named it was found by walking cwd's ancestors for a `config.toml`
+    (#637) -- so inside an untrusted tree (a cloned project, a directory
+    under /tmp), a planted settings file could name `/that/tree/python3`
+    and this module would run an attacker's binary with the user's
+    privileges: `_is_python_interpreter` below checks only the basename,
+    and `shutil.which` resolves a path-qualified program as-is rather
+    than via PATH. A bare name is resolved against PATH -- the user's own
+    environment, which the walked-to directory cannot rewrite -- so only
+    bare names are probed. Every launcher this repository ships is one.
+
+    A path-qualified launcher (an `init`-ed project naming its venv's
+    python by path) still gets `_launcher_fault`'s existence check; it
+    forgoes the import probe, and silently -- emitting a "not probed"
+    sentence every session would be a fault about the probe, not the
+    hook, the exact false-positive class #509/m-38 removed. Reporting
+    less is the accepted price of never executing a file merely because
+    a directory this process walked into named it.
+
+    Separators are checked as characters, not through PurePath: on a
+    POSIX host `PurePath(r"..\\python.exe").name` is the whole string
+    (backslash is not a separator there), yet the same settings file
+    carried to a Windows host would resolve it as a path. `:` covers
+    both a Windows drive prefix and there being no legitimate bare
+    launcher name containing one.
+    """
+    return not any(sep in program for sep in ("/", "\\", ":"))
 
 
 def _is_python_interpreter(program: str) -> bool:
