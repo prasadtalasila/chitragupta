@@ -239,6 +239,25 @@ class TestConfigure:
         log_text = (config.LOGS_DIR / "pipeline.log").read_text(encoding="utf-8")
         assert "Wüllnerstraße αβγ" in log_text
 
+    def test_a_direct_log_call_cannot_forge_a_second_record(
+        self, isolated_config, monkeypatch, src_logger
+    ):
+        """#640: say() collapses newlines, but nothing guarded the direct
+        `logger.warning(...)` calls that interpolate untrusted strings --
+        bib titles, parser error text -- so a value containing
+        `\\n2026-... ERROR ...` wrote what reads as a second, forged
+        record into pipeline.log, the file the bug-report template asks
+        users to paste. The guard belongs on the file handler's
+        formatter, once, not at every call site."""
+        monkeypatch.setattr(config, "LOGGING_LEVEL", "INFO")
+        logging_setup.configure()
+        src_logger.warning(
+            "skipping %s", "Weird Title\n2026-01-01 00:00:00 ERROR chitragupta.sync: forged"
+        )
+        log_lines = (config.LOGS_DIR / "pipeline.log").read_text().strip().splitlines()
+        assert len(log_lines) == 1
+        assert "forged" in log_lines[0]  # content kept, line structure not
+
     def test_importing_the_module_creates_no_logs_directory(self, isolated_config):
         """The entrypoint-only invariant, from the other side: importing
         this module (every test in this suite does, transitively) must
