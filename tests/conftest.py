@@ -41,6 +41,12 @@ def _pin_parser_settings(monkeypatch):
     """
     monkeypatch.setattr(config, "PARSER", "pdftotext")
     monkeypatch.setattr(config, "PARSER_OCR", False)
+    # Pinned for the same reason as PARSER_OCR above, and it was missed
+    # when [parser].formulas arrived in #651: without it, a test that
+    # asserts the *default* is off passes or fails according to whether
+    # the host running it happens to have turned the key on in its own
+    # config.toml. CI copies config.toml.example and so never saw it.
+    monkeypatch.setattr(config, "PARSER_FORMULAS", False)
     monkeypatch.setattr(config, "PARSER_WORKERS", 1)
 
 

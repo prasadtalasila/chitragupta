@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli
+from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli, retrieval_tables
 from chitragupta.dossier import _retrieval
 
 from tests.conftest import make_reference
@@ -510,6 +510,108 @@ class TestWindows:
         assert "[Figure 2]" in windows[0]
 
 
+# One row of a real table in this corpus measures ~450 characters, against
+# a 500-character default window -- so a hit inside a table returned a
+# fragment cut through the middle of one row, without the header row that
+# says what the columns are. That header is most of why the table was
+# worth retrieving.
+class TestWindowsExpandPipeTables:
+    TABLE = (
+        "Some prose before the table that mentions calibration.\n"
+        "\n"
+        "| Formalism | State form | Model behaviour |\n"
+        "|---|---|---|\n"
+        "| Difference Equations | discrete | deterministic |\n"
+        "| Stochastic Differential | continuous | stochastic |\n"
+        "\n"
+        "Some prose after the table.\n"
+    )
+
+    def test_a_hit_inside_a_table_returns_the_whole_block(self):
+        (window,) = retrieval._windows(self.TABLE, {"stochastic"}, 40, 1)
+        assert "| Formalism | State form | Model behaviour |" in window
+        assert "| Difference Equations | discrete | deterministic |" in window
+
+    def test_the_block_keeps_its_row_structure(self):
+        """`_clean_window` normalises whitespace, which for a pipe table
+        means collapsing every row onto one line -- a table with no rows
+        is not a table. Expanding the window without this does nothing
+        useful."""
+        (window,) = retrieval._windows(self.TABLE, {"stochastic"}, 40, 1)
+        rows = [line for line in window.split("\n") if line.startswith("|")]
+        assert len(rows) == 4
+
+    def test_a_hit_outside_a_table_is_untouched(self):
+        """The whole change has to be invisible to the callers it does not
+        serve, which is most of them."""
+        text = "the result shows a clear trend in the data here"
+        assert retrieval._windows(text, {"result", "trend"}, 50, 1) == [
+            "the result shows a clear trend in the data here"
+        ]
+
+    def test_a_table_over_the_cap_keeps_its_header_row(self):
+        """Truncating is fine; truncating back to a mid-row cut with no
+        header would put us where we started."""
+        wide = "| Name | Value |\n|---|---|\n" + "".join(
+            f"| row{i} | needle |\n" for i in range(4000)
+        )
+        (window,) = retrieval._windows(wide, {"needle"}, 40, 1)
+        assert window.startswith("| Name | Value |\n|---|---|")
+        assert len(window) <= retrieval_tables._TABLE_BLOCK_MAX_CHARS
+
+    def test_a_table_that_ends_the_document_is_still_a_block(self):
+        """The block is closed by the line that follows it -- so a table
+        with nothing after it is closed by running out of text instead,
+        which is a separate path and the one a paper ending in an
+        appendix table takes."""
+        text = "some prose beforehand\n\n| Name | Value |\n|---|---|\n| a | needle |"
+        (window,) = retrieval._windows(text, {"needle"}, 20, 1)
+        assert window.startswith("| Name | Value |")
+        assert "| a | needle |" in window
+
+    def test_a_hit_away_from_a_table_in_the_same_document_is_untouched(self):
+        """A document having a table somewhere must not change how a
+        window elsewhere in it is rendered."""
+        text = (
+            "| Name | Value |\n|---|---|\n| a | b |\n\n"
+            + "x " * 400
+            + "the conclusion mentions calibration drift plainly"
+        )
+        (window,) = retrieval._windows(text, {"calibration", "drift"}, 60, 1)
+        assert "\n" not in window
+        assert "|" not in window
+
+    def test_a_table_and_a_prose_hit_come_back_side_by_side(self):
+        """Each window is rendered on its own terms: the table keeps its
+        rows, the prose beside it is flattened exactly as before."""
+        text = (
+            "| Name | Value |\n|---|---|\n| a | needle |\n\n"
+            + "x " * 400
+            + "the conclusion returns to the needle question"
+        )
+        table, prose = retrieval._windows(text, {"needle"}, 60, 2)
+        assert table.startswith("| Name | Value |\n|---|---|")
+        assert "\n" not in prose
+
+    def test_two_hits_in_one_table_collapse_to_a_single_block(self):
+        """The caller de-overlaps its spans before this runs, so two
+        windows catching different corners of one table are not
+        overlapping when it picks them -- and become the same block once
+        widened. Returning both would print one table twice and spend the
+        caller's result budget doing it."""
+        rows = "".join(f"| row{i} | needle |\n" for i in range(30))
+        text = "| Name | Value |\n|---|---|\n" + rows
+        windows = retrieval._windows(text, {"needle"}, 60, 2)
+        assert len(windows) == 1
+
+    def test_a_lone_pipe_line_is_not_treated_as_a_table(self):
+        """A single piped line is prose (a shell command, a maths
+        alternation), not a block worth preserving newlines for."""
+        text = "run the command | grep needle | sort and read the output"
+        (window,) = retrieval._windows(text, {"needle"}, 60, 1)
+        assert "\n" not in window
+
+
 class TestEvidence:
     def _seed(self, con, tmp_path, text, citekey="a2024"):
         parsed = tmp_path / f"{citekey}.txt"
@@ -905,6 +1007,13 @@ class TestDocsQuoteTheActualDefaults:
         assert (
             f"{retrieval_cli.EVIDENCE_WINDOWS} x {retrieval_cli.EVIDENCE_CHARS} characters" in retr
         )
+        # Same reason as the rest of this class: RETRIEVAL.md states the
+        # table cap in prose, and a cap that moves without the sentence
+        # moving is exactly the drift the docstring above records twice.
+        # Whitespace-normalised, so the assertion survives the prose being
+        # rewrapped -- it is the number that must not drift, not the
+        # column the line happens to break at.
+        assert f"{retrieval_tables._TABLE_BLOCK_MAX_CHARS} characters" in " ".join(retr.split())
 
     def test_y_prev_bound_is_pinned_in_cli_md(self):
         from chitragupta import retrieval_iterative

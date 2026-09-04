@@ -123,6 +123,37 @@ removed, in which a short window was the sole basis for *rejecting* a
 source. An irreproducible snippet there meant an irreproducible
 rejection.
 
+### 📊 A window that lands in a table keeps the whole table
+
+Docling serialises tables as Markdown pipe tables, and 274 of 497 parsed
+texts in the corpus this was measured against contain one -- so BM25 has
+always indexed their cell text. What it could not do was hand one back
+usefully. A real row here measures **~450 characters** against a
+500-character default window, so a hit inside a table returned a fragment
+cut through the middle of a single row, and the header row naming the
+columns -- most of why the table was worth retrieving -- was in a
+different window or absent entirely.
+
+A chosen window that touches a run of two or more consecutive lines
+beginning with `|` therefore widens to that whole block, and the block is
+rendered **line by line** rather than through the usual whitespace
+normalisation, which would otherwise collapse every row onto one line. A
+window that touches no such block is byte-identical to what it was
+before; this is invisible to the callers it does not serve, which is most
+of them. `chitragupta/retrieval_tables.py` owns it.
+
+Two consequences worth knowing:
+
+- **A table hit can exceed the requested width**, capped at 4000
+  characters. Over the cap, whole rows are dropped from the end rather
+  than the block being cut mid-row -- the header row is first, so it is
+  the last thing to go.
+- **Fewer windows may come back than were asked for.** Two windows that
+  each caught a different corner of the same table are not overlapping
+  when the chooser de-overlaps them, and become the identical block once
+  widened; the duplicate is dropped rather than spending a caller's
+  result budget printing one table twice.
+
 ### 🔍 `evidence` -- zooming in on one document
 
 ```bash
@@ -131,7 +162,9 @@ python -m chitragupta.draft retrieve evidence "<query>" --citekey <key>
 
 Returns the passages of that one document which bear on the query --
 2 x 600 characters by default, more text than a snippet and chosen for
-the query rather than for where a term first appeared.
+the query rather than for where a term first appeared. A passage that
+lands inside a table is widened to the whole table, so it can exceed that
+width -- see [above](#-a-window-that-lands-in-a-table-keeps-the-whole-table).
 
 **It is a lookup, not a stage.** Nothing is obliged to call it; a caller
 satisfied by a `search` snippet is done. Use it when a snippet is not
