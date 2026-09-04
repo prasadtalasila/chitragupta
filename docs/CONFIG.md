@@ -779,8 +779,21 @@ changing it.
 ### 🖼 `docling_images`
 
 Extracts figure bitmaps into `content/docling/<doc>_artifacts/`, plus a
-`<doc>.figures.json` giving each figure's page, caption, and the exact
-string to cite it by.
+`<doc>.figures.json` giving each figure's page, caption, bounding box and
+the exact string to cite it by. The box is in **page points**, which is
+exact and independent of the render scale; a crop's size in pixels is
+that box times `docling_image_scale`.
+
+**It indexes figures, not every picture on the page.** A picture that is
+both caption-less and smaller than 33 points (about 12mm) on either side
+gets neither a record nor a PNG: those are publisher logos, ORCID icons,
+journal badges and inline glyphs, and they were **38.5% of the 8,769
+crops** measured across 497 real papers. The two tests are applied
+together because neither discriminates alone -- 6.4% of those crops are
+small figures a paper captioned, and 11.8% are real figures whose caption
+docling did not pair to them, so either test on its own would throw away
+figures. The floor is in page points rather than rendered pixels, so
+changing `docling_image_scale` does not silently reclassify the corpus.
 
 Those images are a **reading aid** for checking a draft against its
 sources. They are never inserted into a draft: a figure's copyright is
