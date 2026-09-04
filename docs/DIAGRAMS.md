@@ -363,8 +363,10 @@ needs to contain.
 
 With `[enrich].docling_images` on, `docling` also writes each document's
 figure bitmaps into `<doc>_artifacts/` and an index of them in
-`<doc>.figures.json` -- page, caption, and the string to cite each figure
-by. Those are a reading aid for checking a draft against its sources.
+`<doc>.figures.json` -- page, caption, bounding box and
+the string to cite each figure by, for each picture that is actually a
+figure ([CONFIG.md](CONFIG.md#-docling_images) has what that excludes and
+why). Those are a reading aid for checking a draft against its sources.
 Having a paper in your library grants no right to reproduce its figures;
 see DEVELOPER.md's "Figures and copyright".
 

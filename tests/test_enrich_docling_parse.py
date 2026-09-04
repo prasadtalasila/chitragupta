@@ -47,9 +47,13 @@ class FakePicture:
     one real corpus instead of naming the files.
     """
 
-    def __init__(self, caption="", page=1):
+    def __init__(self, caption="", page=1, width=50.0, height=50.0):
         self._caption = caption
-        bbox = types.SimpleNamespace(l=10.0, t=90.0, r=60.0, b=40.0)
+        # 50x50 points by default, comfortably over the junk filter's
+        # floor -- so every case written before #653 keeps meaning what it
+        # meant. `width`/`height` exist for the cases that are about that
+        # floor.
+        bbox = types.SimpleNamespace(l=10.0, t=40.0 + height, r=10.0 + width, b=40.0)
         self.prov = [types.SimpleNamespace(page_no=page, bbox=bbox)] if page is not None else []
         self.image = types.SimpleNamespace(
             uri=types.SimpleNamespace(path="image/png;base64,iVBORw0KGgoAAAANSUhEUg" + "A" * 200)
@@ -528,6 +532,142 @@ class TestImageExtraction:
         )
         assert records[0]["cite"] == "the figure on p.1 of [@richstein_characterizing_2024]"
         assert records[0]["caption"] is None
+
+
+class TestFigureJunkFilter:
+    """#653. Measured over 8,769 crops from 497 real papers: 38.5% were
+    both under the size floor and caption-less -- ORCID icons, publisher
+    marks, journal badges, inline glyphs -- each with a record in
+    figures.json and a PNG on disk. Neither test discriminates alone:
+    6.4% are small *and* captioned, 11.8% are large *and* caption-less.
+    """
+
+    @pytest.fixture
+    def images_on(self, isolated_config, monkeypatch, fake_pdfium):
+        monkeypatch.setattr(isolated_config, "DOCLING_IMAGES", True)
+        return isolated_config
+
+    def _doc(self, tmp_path, citekey="richstein_characterizing_2024"):
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        return CorpusDoc(citekey=citekey, title="t", pdf_path=str(pdf))
+
+    def _records(self, images_on, tmp_path):
+        docling_parse.parse_doc(self._doc(tmp_path))
+        return json.loads(
+            (images_on.DOCLING_DIR / "richstein_characterizing_2024.figures.json").read_text()
+        )
+
+    def test_a_small_captionless_picture_gets_no_record(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("", page=1, width=4.0, height=5.0)]
+        )
+        assert self._records(images_on, tmp_path) == []
+
+    def test_a_small_captioned_picture_is_kept(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """A caption is a paper saying "this is a figure". Size alone
+        would throw away 558 of the crops measured."""
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [FakePicture("Figure 1. Small but real", page=1, width=4.0, height=5.0)],
+        )
+        assert len(self._records(images_on, tmp_path)) == 1
+
+    def test_a_large_captionless_picture_is_kept(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """1,039 of the crops measured -- a real figure whose caption
+        docling did not pair to it. Dropping these would lose figures."""
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("", page=1, width=300.0, height=200.0)]
+        )
+        assert len(self._records(images_on, tmp_path)) == 1
+
+    def test_a_dropped_picture_does_not_shift_its_successors(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """The trap this filter could walk into. `write_picture_crops`
+        returns a list positionally paired with `dl_doc.pictures`, and
+        `_inject_image_refs` pairs that against the markdown's
+        placeholders by index -- so a filter that *shortens* the list
+        points every later figure at its neighbour's image, silently.
+        The junk picture keeps its slot and contributes no record.
+        """
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [
+                FakePicture("", page=1, width=4.0, height=5.0),  # junk, first
+                FakePicture("Figure 1. Real", page=2),
+                FakePicture("Figure 2. Also real", page=3),
+            ],
+        )
+        records = self._records(images_on, tmp_path)
+        assert [r["caption"] for r in records] == ["Figure 1. Real", "Figure 2. Also real"]
+        # Picture 1 and 2, never 0 and 1 -- the index is the crop's name.
+        assert [Path(r["image"]).stem for r in records] == ["picture_000001", "picture_000002"]
+
+    def test_no_crop_is_rendered_for_a_dropped_picture(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """Half the point is the 788 MB on disk, so the PNG must not be
+        written either -- not merely omitted from the index."""
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [FakePicture("", page=1, width=4.0, height=5.0), FakePicture("Figure 1.", page=2)],
+        )
+        self._records(images_on, tmp_path)
+        artifacts = images_on.DOCLING_DIR / "richstein_characterizing_2024_artifacts"
+        assert sorted(p.name for p in artifacts.glob("*.png")) == ["picture_000001.png"]
+
+    def test_the_floor_is_in_page_points_not_rendered_pixels(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """Whether a picture is a logo is a property of the picture, not
+        of the scale someone rendered it at. A pixel floor would reclassify
+        the whole corpus on a docling_image_scale edit."""
+        monkeypatch.setattr(
+            FakeDocumentConverter, "pictures", [FakePicture("", page=1, width=4.0, height=5.0)]
+        )
+        monkeypatch.setattr(images_on, "DOCLING_IMAGE_SCALE", 60.0)
+        assert self._records(images_on, tmp_path) == []
+
+    def test_a_record_carries_its_bbox_in_page_points(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """So a caller can judge a figure before opening the PNG.
+
+        Points, and deliberately not also pixels: pdfium sizes a crop
+        from page-edge insets, which is not float-equal to the box's own
+        extent times the scale -- a first cut recorded both and disagreed
+        with the written PNG by 1-2px on 7 of one real paper's 17
+        figures. The box is exact and scale-independent; pixels are it
+        times docling_image_scale.
+        """
+        monkeypatch.setattr(
+            FakeDocumentConverter,
+            "pictures",
+            [FakePicture("Figure 1.", page=1, width=120.0, height=80.0)],
+        )
+        (record,) = self._records(images_on, tmp_path)
+        assert record["bbox"] == [10.0, 120.0, 130.0, 40.0]
+        assert "dimensions" not in record
+
+    def test_a_picture_with_no_provenance_is_kept_and_unmeasured(
+        self, images_on, fake_docling, tmp_path, monkeypatch
+    ):
+        """No bbox means no way to size it, so it cannot be judged junk --
+        and `_figure_cite`'s "unplaced figure" case is still reachable."""
+        monkeypatch.setattr(FakeDocumentConverter, "pictures", [FakePicture("", page=None)])
+        (record,) = self._records(images_on, tmp_path)
+        assert record["bbox"] is None
+        assert record["cite"] == "an unplaced figure in [@richstein_characterizing_2024]"
 
 
 class TestReusingTheCorpusLayersParse:

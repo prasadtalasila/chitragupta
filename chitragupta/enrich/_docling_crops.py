@@ -89,28 +89,42 @@ def _render_one(page, bbox, scale: float, target: Path) -> None:
         bitmap.close()
 
 
-def _pictures_by_page(dl_doc) -> dict:
+def _pictures_by_page(dl_doc, junk: "set | None" = None) -> dict:
     """{page_no: [(index, bbox), ...]} for every picture that has
     provenance, keyed so each page is opened once however many pictures
     sit on it -- a slide routinely carries tens.
+
+    `junk` (from `_docling_figures.junk_picture_indices`) is filtered out
+    here rather than in the caller, for two reasons. The caller sits at
+    docs/CODE-STANDARDS.md's 25-statement ceiling exactly, so it has no
+    room for a branch; and dropping a picture *before* the grouping means
+    a page carrying nothing but logos is never opened at all, where
+    filtering later would still pay to open and close it.
     """
     grouped: dict = {}
     for index, picture in enumerate(dl_doc.pictures):
+        if junk and index in junk:
+            continue
         if picture.prov:
             prov = picture.prov[0]
             grouped.setdefault(prov.page_no, []).append((index, prov.bbox))
     return grouped
 
 
-def write_picture_crops(pdf_path, dl_doc, artifacts_dir: Path, scale: float) -> list:
+def write_picture_crops(
+    pdf_path, dl_doc, artifacts_dir: Path, scale: float, junk: "set | None" = None
+) -> list:
     """Write one PNG per picture and return their names, in picture order.
 
     The returned list is always as long as `dl_doc.pictures`, with `None`
     wherever no image was written -- a picture docling gave no provenance
-    for, or one whose render failed. That positional correspondence is
-    load-bearing: `_figure_records` pairs these against `dl_doc.pictures`
-    by index, so a shortened list would point every later figure at its
-    neighbour's image.
+    for, one whose render failed, or (since #653) one `junk` names as not
+    a figure at all. That positional correspondence is load-bearing:
+    `_figure_records` pairs these against `dl_doc.pictures` by index, so a
+    shortened list would point every later figure at its neighbour's
+    image. A junk picture therefore keeps its slot and simply has no file
+    in it, exactly like the other two cases -- the record is dropped where
+    records are emitted, not here.
 
     Names are relative to the .md's own directory (`<stem>_artifacts/x.png`),
     which is what keeps `content/docling/` movable as a unit -- the same
@@ -125,7 +139,7 @@ def write_picture_crops(pdf_path, dl_doc, artifacts_dir: Path, scale: float) -> 
     end.
     """
     names: list = [None] * len(dl_doc.pictures)
-    grouped = _pictures_by_page(dl_doc)
+    grouped = _pictures_by_page(dl_doc, junk)
     if not grouped:
         return names
 
