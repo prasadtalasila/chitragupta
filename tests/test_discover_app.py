@@ -159,13 +159,15 @@ class TestShippedAppScriptHardening:
         # be created with a null prototype.
         assert self.app_js().count("Object.create(null)") >= 4
 
-    def test_page_template_position_table_is_null_prototype(self):
-        # Same __proto__ hazard in the --html page's inline script.
+    def test_page_template_label_keyed_tables_are_null_prototype(self):
+        # Same __proto__ hazard in the --html page's inline script: both
+        # the position table and the hierarchy's children table are keyed
+        # by free-text labels.
         import inspect
 
         from chitragupta.discover import _page_template
 
-        assert "Object.create(null)" in inspect.getsource(_page_template)
+        assert inspect.getsource(_page_template).count("Object.create(null)") >= 2
 
 
 class TestCli:

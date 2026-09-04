@@ -128,7 +128,7 @@ DATA.topics.forEach((t, index) => {
     document.getElementById("treebox").style.display = "none";
     return;
   }
-  const children = {};
+  const children = Object.create(null); /* label-keyed: see pos above (#636) */
   const merged = new Set();
   DATA.hierarchy.forEach(m => {
     children[m.id] = [m.a, m.b];
