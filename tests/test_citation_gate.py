@@ -4,6 +4,7 @@ important module in the repo to test thoroughly."""
 
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -129,6 +130,36 @@ class TestExtractLatexCitations:
     )
     def test_whitespace_between_command_and_arguments(self, text):
         assert citation_gate.extract_citekeys_from_line(text) == ["smith2024"]
+
+
+class TestLatexCiteRegexBacktracking:
+    """The gate must survive attacker-shaped input in linear time (#635).
+
+    The pre-fix _WS (`[ \\t]*\\n?[ \\t]*`) was internally ambiguous -- a
+    space run could split between its two `[ \\t]*` atoms every possible
+    way -- and _LATEX_CITE_RE chained it around the star and each option
+    group, so a `\\cite` followed by whitespace-separated `[...]` groups
+    and *no* `{...}` made the engine explore ~2^N partitions before
+    failing. ~160 bytes hung the gate past the hook's 30 s timeout, and a
+    timed-out PostToolUse hook does not block -- the one way a fabricated
+    citekey could land ungated."""
+
+    def test_bracket_run_without_a_key_group_completes_fast(self):
+        # 64 units took effectively forever pre-fix (22 already took ~5 s);
+        # linear matching clears it in well under a second even on a slow
+        # host, so the bound is a regression tripwire, not a benchmark.
+        text = "\\cite" + " [a]" * 64 + " x"
+        start = time.perf_counter()
+        assert citation_gate.extract_citekeys(text) == []
+        assert time.perf_counter() - start < 2.0
+
+    def test_paragraph_break_between_command_and_key_is_not_a_citation(self):
+        # The module comment promises at most a single newline between a
+        # command and its argument (a blank line is a TeX paragraph break,
+        # which ends the command). The ambiguous _WS chain accidentally
+        # accepted up to three; the unambiguous form makes the documented
+        # boundary real, so pin it.
+        assert citation_gate.extract_citekeys("\\citep\n\n{smith2024}\n") == []
 
 
 class TestExtractPandocCitations:
