@@ -1,0 +1,164 @@
+{
+  "encoder": "siglip",
+  "device": "cuda",
+  "num_crops": 6541,
+  "embed_dim": 768,
+  "encode_seconds": 250.91472053527832,
+  "per_crop_ms": 38.36029973020614,
+  "identity_control": {
+    "self_cosine": 0.9999995827674866,
+    "self_rank": 1
+  },
+  "cross_paper_floor_cosine": {
+    "median": 0.8091762661933899,
+    "p90": 0.9860807657241821,
+    "p95": 0.9976508617401123,
+    "p99": 0.9999999403953552,
+    "max": 1.000000238418579
+  },
+  "cross_paper_floor_hash_similarity_out_of_64": {
+    "median": 53.0,
+    "p90": 64.0,
+    "p95": 64.0,
+    "p99": 64.0,
+    "max": 64.0
+  },
+  "planted": [
+    {
+      "fixture": "faithful_trace",
+      "top5": [
+        {
+          "citekey": "karabey_aksakalli_deployment_2021",
+          "image": "karabey_aksakalli_deployment_2021_artifacts/picture_000004.png",
+          "score": 0.8644605875015259
+        },
+        {
+          "citekey": "lugaresi_digital_2025",
+          "image": "lugaresi_digital_2025_artifacts/picture_000002.png",
+          "score": 0.8293731212615967
+        },
+        {
+          "citekey": "goos_traits_2003",
+          "image": "goos_traits_2003_artifacts/picture_000006.png",
+          "score": 0.8231138586997986
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000125.png",
+          "score": 0.8169574737548828
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000124.png",
+          "score": 0.8152618408203125
+        }
+      ],
+      "source_score": 0.8644605875015259,
+      "source_rank": 1,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "original_diagram",
+      "top5": [
+        {
+          "citekey": "noauthor_case_nodate",
+          "image": "noauthor_case_nodate_artifacts/picture_000125.png",
+          "score": 0.8770934343338013
+        },
+        {
+          "citekey": "callisto_de_donato_design_2024",
+          "image": "callisto_de_donato_design_2024_artifacts/picture_000004.png",
+          "score": 0.8603793978691101
+        },
+        {
+          "citekey": "noauthor_case_nodate",
+          "image": "noauthor_case_nodate_artifacts/picture_000117.png",
+          "score": 0.8523228168487549
+        },
+        {
+          "citekey": "ricci_web_2022",
+          "image": "ricci_web_2022_artifacts/picture_000014.png",
+          "score": 0.8478696942329407
+        },
+        {
+          "citekey": "noauthor_case_nodate",
+          "image": "noauthor_case_nodate_artifacts/picture_000124.png",
+          "score": 0.8363837003707886
+        }
+      ],
+      "source_score": 0.716117262840271,
+      "source_rank": 576,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "relabelled_redraw",
+      "top5": [
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000114.png",
+          "score": 0.8260858058929443
+        },
+        {
+          "citekey": "lienhardt_product_2024",
+          "image": "lienhardt_product_2024_artifacts/picture_000006.png",
+          "score": 0.8217869997024536
+        },
+        {
+          "citekey": "alam_c2ps_2017",
+          "image": "alam_c2ps_2017_artifacts/picture_000024.png",
+          "score": 0.8155583143234253
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000084.png",
+          "score": 0.8095441460609436
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000125.png",
+          "score": 0.8088200688362122
+        }
+      ],
+      "source_score": 0.7087990641593933,
+      "source_rank": 447,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    },
+    {
+      "fixture": "traced_redraw",
+      "top5": [
+        {
+          "citekey": "lienhardt_product_2024",
+          "image": "lienhardt_product_2024_artifacts/picture_000006.png",
+          "score": 0.8271750211715698
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000069.png",
+          "score": 0.8186004161834717
+        },
+        {
+          "citekey": "noauthor_about_nodate",
+          "image": "noauthor_about_nodate_artifacts/picture_000089.png",
+          "score": 0.8174527883529663
+        },
+        {
+          "citekey": "ye_advancing_2024",
+          "image": "ye_advancing_2024_artifacts/picture_000004.png",
+          "score": 0.8172494173049927
+        },
+        {
+          "citekey": "karabey_aksakalli_deployment_2021",
+          "image": "karabey_aksakalli_deployment_2021_artifacts/picture_000004.png",
+          "score": 0.8170639276504517
+        }
+      ],
+      "source_score": 0.8170639276504517,
+      "source_rank": 5,
+      "chance_rank": 3271.0,
+      "better_than_chance": true
+    }
+  ]
+}

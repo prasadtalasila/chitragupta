@@ -44,6 +44,7 @@ if it is obvious which is which, so:
 | [The shipped embedding model is no longer the best-recall one](#the-shipped-embedding-model-is-no-longer-the-best-recall-one) | **Current, and it overturns a ranking above** | Organic recall is 14/15/16 of 22 for MiniLM-L6 / mpnet-base / multi-qa-mpnet, against the 2026-08-16 section's 11-13 with the **shipped default ahead**. The shipped default is now second. All three still catch 4/4 graded rungs. **Not a recommendation to change the default** -- one run, partly-resolving labels, and the winner also returns the most findings, with no precision measurement for any of them |
 | [The corpus moved under every hand-authored label](#the-corpus-moved-under-every-hand-authored-label) | **Current, and it invalidates arms above** | Finding ids are built from parsed-passage offsets, and a re-parse moved them. Every arm scored against a committed `labels.json` is now scoring against a partial ground truth -- 4 stale in `overlap_gate`, 176 unlabelled in `overlap_df`, 18 stale in `skipgram`, and **41 of 48** in `retrieval_ground_truth`, which refuses to run rather than build a partial set. Arm B of #194 cannot be re-measured until a human re-judges its pairs |
 | [Reproducibility: confirmed at power, and the rates reproduce](#reproducibility-confirmed-at-power-and-the-rates-reproduce) | **Current** | The n=50 arm returned 0 differences and was discarded as underpowered, per this file's own ["Power, stated plainly"](#power-stated-plainly). Re-run at **n=300**, the instability reappears and reaches the passage **text**: 0.33% same-config multi-GPU against a recorded ~0.3%, 0.67% across-config against ~1.0%, and 0/300 on one GPU. docs/ARCHITECTURE.md's contract is confirmed, not merely unchallenged |
+| [2026-09-04: would a figure-similarity tier (#659) catch a draft figure redrawn from a source's?](#2026-09-04-would-a-figure-similarity-tier-659-catch-a-draft-figure-redrawn-from-a-sources) | **Current** | The whole corpus's 6,541 indexed figure crops, two encoders (CLIP, SigLIP), four graded TikZ fixtures. A first pass's numbers were **retracted mid-benchmark** by a page-clipping bug in the TikZ-to-PNG renderer (see "A rendering bug retracted the first numbers" below) -- the figures quoted here are the corrected re-run. Pipeline is sound (identity control passes both encoders). **SigLIP** ranks a style-matched trace of a real corpus figure **1st of 6,541** and a differently-styled same-label redraw **5th**, both inside a realistic top-10 review list; **CLIP** is markedly weaker on the same fixtures (133rd, 182nd). Both encoders lose almost all of that signal once the redraw's labels are genericized (rank ~450, indistinguishable from the unrelated negative control) -- the signal is substantially anchored to preserved text content, not pure geometry. **Recommendation: a narrowly-scoped ship, SigLIP only, explicitly described as catching a label-preserving redraw and nothing past it** |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -4713,3 +4714,191 @@ CONTENT_DIR=/workspace/content BIB_FILE=/workspace/papers/bibliography-groups.bi
 
 Records: `bench/results/2026-09-04-retrieval-fusion-self/fusion.json`,
 `bench/results/2026-09-04-retrieval-fusion-live/fusion.json`.
+
+### 2026-09-04: would a figure-similarity tier (#659) catch a draft figure redrawn from a source's?
+
+`bench/bench_figure_similarity.py`. Host: 1x NVIDIA A40 46GB (of 6 on
+the box), CUDA 13.2, driver 595.58.03; `transformers` 4.57.6 (the floor
+of the `>=4.57.6,<4.58.0` window `adapters` pins in `pyproject.toml`).
+Corpus: `content/docling/*.figures.json`, 497 files, **6,541** indexed
+figure crops on disk -- not the 8,769 the issue's own measurement of
+`content/docling/` PNGs quoted; that count is every extracted picture,
+this one is only those a real `.figures.json` still names (globbing
+PNGs directly would also pick up whatever fell under the enrichment
+layer's own junk floor and was never indexed, and would have no route to
+the paper's own figure number -- #659's own checklist requires that
+over a docling picture ordinal).
+
+**Method, in the order a broken pipeline would be found first:**
+
+1. **Identity control.** A real crop, decoded fresh a second time, must
+   be its own nearest neighbour among all 6,541. **Passed for both
+   encoders**: self-cosine 0.99999-1.0, self-rank 1. The pipeline itself
+   is sound; anything below is a property of the signal, not a bug.
+2. **The cross-paper false-positive floor**, masked two ways found
+   necessary only by running the first draft of this script:
+   - By **paper**, not citekey -- the ledger's own `title`, since 55 of
+     642 ledger items (2026-09-04) share a title with another citekey
+     (the same PDF attached to a bib entry twice, e.g.
+     `abbiati_modelling_2024`/`-1`/`-2`).
+   - By **exact byte content** as well. A first run at `--sample 200`
+     pinned the floor's p90-p99 at cosine 1.0 even with paper-masking
+     on; the cause was **95 groups of byte-identical crops that span
+     different paper titles**, so both are now excluded
+     (`_assign_content_groups`), alongside the paper mask.
+   - **Even after both exclusions, the floor's tail still sits at
+     cosine ~1.0** for both encoders (CLIP p95 0.9989, p99 1.0; SigLIP
+     p95 0.9977, p99 1.0). Inspecting the actual top pairs behind that
+     tail (not just their score) found the dominant cause is **the
+     corpus itself double-counting one document**, not two authors
+     independently drawing the same standard diagram: `fitzgerald_
+     engineering_2024-1` is the whole edited book "Engineering Digital
+     Twins", and `kulik_security_2024`, `frasheri_system_2024` and
+     `esterle_autonomous_2024` (each with its own `-1` duplicate, see
+     point 2's bullet above) are chapters *of that same book*, catalogued
+     separately in `papers/bibliography.bib` with their own titles. Their
+     shared figures carry byte-identical captions ("Fig. 13.4: Denial of
+     Service attacks within a DT-enabled system" on both sides, for
+     instance) but are not byte-identical PNGs -- rendered from two
+     different source PDFs (the standalone chapter vs. the compiled
+     book) at slightly different geometry, so `_assign_content_groups`'s
+     exact-hash mask cannot catch it, and it reads as "two independent
+     papers, cosine 1.0". **This is a corpus-cataloguing confound, not
+     evidence about how similarly independent authors draw a diagram**,
+     and this benchmark has no general way to detect "this citekey is a
+     chapter reprint of that citekey" from title text alone -- so the
+     honest position is that **the floor's true tail, with book/chapter
+     duplication removed, is not established here**; treat the reported
+     percentiles as an upper bound on the noise, not a clean measurement
+     of it.
+3. **Recall on a graded planted case.** Four citekey-free TikZ fixtures
+   under `bench/fixtures/figure_similarity/`, redrawing
+   `karabey_aksakalli_deployment_2021`'s Fig. 1 ("Conceptual model for
+   microservices", a UML box-and-arrow class diagram -- chosen because
+   it redraws simply, not because it is representative of every figure
+   this corpus has). `source_rank` is on the fixture's own scale (rank
+   among all 6,541 crops for that one query) and is **not comparable to
+   the floor above** -- a rasterised TikZ figure and a PDF-rendered crop
+   occupy different similarity bands regardless of content, confirmed by
+   every fixture's own top-1 score sitting below the floor's p90. The
+   comparable baseline is **chance**: with 6,541 crops, a uniformly
+   random score lands at a median rank of ~3,271.
+
+   | fixture | CLIP: source score / rank (of 6,541) | SigLIP: source score / rank |
+   |---|---|---|
+   | `faithful_trace.tex` (same boxes/labels/edges, source's own rounded pale-yellow UML style) | 0.860 / 133rd | 0.864 / **1st** |
+   | `traced_redraw.tex` (same boxes/labels/edges, plain white-rectangle style) | 0.822 / 182nd | 0.817 / **5th** |
+   | `relabelled_redraw.tex` (same topology, generic labels) | 0.830 / 264th | 0.709 / 447th |
+   | `original_diagram.tex` (unrelated, same genre -- negative control) | 0.685 / 1,128th | 0.716 / 576th |
+   | *(chance)* | -- / ~3,271 | -- / ~3,271 |
+
+   **A rendering bug retracted the first numbers.** The TikZ-to-PNG
+   wrapper originally used bare `\documentclass{article}`; a figure wider
+   than that page's default text width does not just spill into the
+   margin -- pdfium rasterises exactly the PDF's own MediaBox, so content
+   past the page edge is **silently absent from the PNG**, not merely
+   crowded. The first run's `traced_redraw`/`relabelled_redraw` fixtures
+   (both ~16cm wide) were being scored with their three rightmost boxes
+   missing borders and text, and reported CLIP/SigLIP ranks of
+   127th/16th and 185th/397th -- numbers that looked like a measurement
+   and were actually of a different, truncated figure. Fixed by wrapping
+   every fixture in a fixed 40x30cm page (`_TEX_WRAP`) before rasterising,
+   confirmed by re-rendering all four fixtures and checking every node
+   is present. **The table above is the corrected re-run**; the retracted
+   numbers are not reproducible and should not be quoted.
+   `faithful_trace.tex` is new in this re-run, added because the first
+   fixture set never tested a redraw matching the source's actual visual
+   idiom (rounded corners, pale-yellow fill) rather than a generic plain
+   rectangle.
+
+   **This is the decision-relevant number, and it now points the other
+   way.** SigLIP puts the style-matched trace **1st of 6,541** -- ahead
+   of every other crop in the corpus, by a real margin (0.864 vs. the
+   next-best 0.829, wider than the gap between any other two ranks in
+   its own top-5) -- and the differently-styled-but-same-label
+   `traced_redraw` **5th**, both comfortably inside a top-10 review list
+   and far above chance (~3,271). CLIP is markedly weaker on the
+   identical fixtures (133rd, 182nd) -- real signal, well above chance,
+   but not inside any list a reviewer would actually work through.
+   Genericizing the labels collapses SigLIP's signal almost to the
+   negative control's level (447th vs. 576th, against 1st/5th for the
+   label-preserving fixtures) -- most of what SigLIP is keying on is the
+   source's own label content (or the ink volume it puts on the page;
+   the two are not separated by this fixture design), not pure geometric
+   structure. That is a real limitation, not a null result: it means
+   this tier would catch the common case of a redraw that keeps the
+   original's text (the "box-ified copy-paste" TIKZ-STYLE.md's own
+   "Literal copying" bullet describes), and would not catch a redraw
+   that also invents new labels.
+4. **Encoder choice.** Both a CLIP-class (`clip-ViT-B-32` via
+   `sentence-transformers`) and a SigLIP-class encoder
+   (`google/siglip-base-patch16-224`, vision tower only -- see the bench
+   script's own docstring for why `AutoProcessor` cannot be used
+   directly under this project's dependency set) load and encode under
+   the `transformers` pin. **SigLIP is the clear choice** on these
+   fixtures -- 1st/5th against CLIP's 133rd/182nd on the two
+   label-preserving cases -- though this is still two fixtures on one
+   source figure, not a general encoder benchmark.
+5. **The perceptual-hash prescreen** (8x8 average-hash, no new
+   dependency) **cannot function as a screen at this resolution**: its
+   cross-paper floor saturates at the maximum possible score (64/64) by
+   the 90th percentile, for both encoders' crop sets alike (the hash
+   does not depend on the encoder) -- meaning at least 10% of this
+   corpus's crops have a bitwise-identical-or-near average-hash match to
+   some unrelated paper's crop, purely from 64 bits being too coarse a
+   fingerprint for line-art diagrams that are mostly white background.
+6. **Cost.** Decoding all 6,541 crops: ~250-260s. Encoding: 239.5s (CLIP,
+   36.6ms/crop) / 250.9s (SigLIP, 38.4ms/crop) on one A40. A one-time
+   corpus index build costs under 9 minutes wall clock; a single
+   draft-figure query against a built index is one encode call
+   (~20-40ms) plus one matmul against ~6,500 vectors -- not the cost
+   axis that would decide this.
+
+**What this does not measure**, beyond what the bench script's own
+docstring already says: it is two label-preserving fixtures on one
+source figure, chosen because it redraws simply as boxes and arrows --
+this corpus is mostly photographic and plot-heavy figures, which may
+embed very differently and were not tested here. Whether "reacts to
+label text" versus "reacts to ink volume" can be told apart needs a
+fixture that varies one without the other, which none of the four here
+do. The negative control is also not aspect-matched to the other three
+-- `original_diagram` rasterises to a ~11:1 strip (a linear pipeline
+layout), against ~1.8:1 for the other three (a hub-and-spoke layout);
+both encoders resize to a square, so its low rank is partly an artefact
+of that shape mismatch, not only of its unrelated content. This does not
+weaken the headline finding -- SigLIP's rank-1 result is an absolute
+statement (highest cosine of any of the 6,541 crops, by a real margin
+over the next-best) that does not depend on the negative control at all
+-- but the *ratio* between the positive and negative ranks should not be
+read as a clean effect size.
+
+**Recommendation: a narrowly-scoped ship.** Build the tier on SigLIP,
+not CLIP, and describe it in `docs/PLAGIARISM.md`/`docs/TIKZ-STYLE.md`
+for exactly what it was measured to do: surface, inside a realistic
+top-10, a redrawn figure that keeps the source's own text labels --
+common enough to be worth catching, and the literal case
+TIKZ-STYLE.md's "Literal copying" bullet already names. It does **not**
+extend to a redraw that also relabels its boxes; that case is
+indistinguishable from organic same-genre noise here (rank ~450 of
+6,541, the same neighbourhood as the unrelated negative control) and
+remains entirely a human-judgement matter, exactly as it is today. Ship
+it ranked and unbanded, per #659's own design and
+[docs/PLAGIARISM-DESIGN.md](../docs/PLAGIARISM-DESIGN.md)'s precedent --
+nothing measured here argues for a threshold, and the floor's true tail
+(point 2 above) is not clean enough to tune one against regardless.
+Before implementation: (a) re-verify the floor with a same-book/chapter
+detection this benchmark did not attempt, since the current tail is
+contaminated by corpus duplication and may be tighter than reported once
+that is excluded; (b) test on a photographic or plot-style figure before
+claiming the tier generalises past box-and-arrow diagrams.
+[plans/659-figure-similarity-tier.md](../plans/659-figure-similarity-tier.md)
+carries the file-structure plan for this, and its Outcome section
+records this paragraph as the decision.
+
+Reproducing: `.venv-full/bin/python bench/bench_figure_similarity.py
+--tag <tag> --encoders clip,siglip` needs
+`content/docling/*.figures.json` + crops on disk (the `enrich`
+Poetry group's `docling_images` stage) and a working `pdflatex` +
+`pypdfium2`; raw per-encoder records are in
+`results/2026-09-04-figure-similarity/` (the `embeddings_*.npy` cache
+beside them is gitignored dev-iteration state, not evidence).

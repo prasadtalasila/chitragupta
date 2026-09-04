@@ -1,0 +1,41 @@
+% A style-faithful trace of karabey_aksakalli_deployment_2021, Fig. 1 --
+% same topology, labels and edges as traced_redraw.tex, but matching the
+% source's actual visual idiom rather than a generic plain rectangle:
+% pale-yellow fill, rounded corners, a small class-icon glyph in the
+% top-left corner, and a compartment rule under the title, all of which
+% a real UML tool (the source figure was drawn in one) renders by
+% default. traced_redraw.tex is a *structural* copy in a *different*
+% visual idiom (plain white rectangles); this is the closer trace the
+% first bench run did not test, added because the encoder may be
+% sensitive to fill colour and box style as much as to topology.
+\begin{tikzpicture}[
+    box/.style={
+      draw, rectangle, rounded corners=1pt, fill=yellow!15,
+      minimum width=3.2cm, minimum height=1.1cm, align=center, font=\small
+    },
+    >=Stealth
+  ]
+  \node[box] (app) at (0, 6) {MicroserviceApplication\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (infra) at (0, 3) {InfrastructureElement\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (inst) at (5, 3) {MicroserviceInstance\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (bare) at (-4.8, 0) {BareMetal\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (vm) at (-1.6, 0) {VirtualMachine\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (cont) at (1.6, 0) {Container\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (orch) at (4.8, 0) {OrchestrationPlatform\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (cross) at (9.5, 5.5) {CrossCuttingFunctionality\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (reg) at (9.5, 3) {ServiceRegistry\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (ext) at (9.5, 0.6) {ExternalSystem\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+  \node[box] (comm) at (5, -3) {ServiceCommunicationEndPoint\\[2pt]\rule{2.8cm}{0.3pt}\\[2pt]\phantom{x}};
+
+  \draw[<->] (app) -- node[right, font=\tiny] {[1..*] microserviceInstance} (inst);
+  \draw[->] (app) -- node[left, font=\tiny] {[1..*] infrastructureElement} (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] deployedTo} (infra);
+  \draw[->] (bare) -- (infra);
+  \draw[->] (vm) -- (infra);
+  \draw[->] (cont) -- (infra);
+  \draw[->] (orch) -- (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] utilizes} (cross);
+  \draw[->] (inst) -- node[right, font=\tiny] {[1..*] registeredTo} (reg);
+  \draw[->] (inst) -- node[right, font=\tiny] {[0..*] integratesWith} (ext);
+  \draw[->] (inst) -- node[below, font=\tiny] {[1..*] communicatesWith} (comm);
+\end{tikzpicture}

@@ -1,0 +1,34 @@
+% Same topology and edge structure as traced_redraw.tex -- same box
+% positions, same arrows, same cardinality shape -- but every label
+% renamed to a generic placeholder. Tests whether the tier's similarity
+% survives when the wording that gave the trace away is gone, i.e.
+% whether it is catching the *drawing* and not just OCR-adjacent text
+% matching a caption.
+\begin{tikzpicture}[
+    box/.style={draw, rectangle, minimum width=3.2cm, minimum height=0.9cm, align=center, font=\small},
+    >=Stealth
+  ]
+  \node[box] (app) at (0, 6) {NodeA};
+  \node[box] (infra) at (0, 3) {NodeB};
+  \node[box] (inst) at (5, 3) {NodeC};
+  \node[box] (bare) at (-4.8, 0) {NodeD1};
+  \node[box] (vm) at (-1.6, 0) {NodeD2};
+  \node[box] (cont) at (1.6, 0) {NodeD3};
+  \node[box] (orch) at (4.8, 0) {NodeD4};
+  \node[box] (cross) at (9.5, 5.5) {NodeE};
+  \node[box] (reg) at (9.5, 3) {NodeF};
+  \node[box] (ext) at (9.5, 0.6) {NodeG};
+  \node[box] (comm) at (5, -3) {NodeH};
+
+  \draw[<->] (app) -- node[right, font=\tiny] {[1..*] r1} (inst);
+  \draw[->] (app) -- node[left, font=\tiny] {[1..*] r2} (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] r3} (infra);
+  \draw[->] (bare) -- (infra);
+  \draw[->] (vm) -- (infra);
+  \draw[->] (cont) -- (infra);
+  \draw[->] (orch) -- (infra);
+  \draw[->] (inst) -- node[above, font=\tiny] {[0..*] r4} (cross);
+  \draw[->] (inst) -- node[right, font=\tiny] {[1..*] r5} (reg);
+  \draw[->] (inst) -- node[right, font=\tiny] {[0..*] r6} (ext);
+  \draw[->] (inst) -- node[below, font=\tiny] {[1..*] r7} (comm);
+\end{tikzpicture}
