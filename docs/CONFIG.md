@@ -261,6 +261,7 @@ five genre-writing skills at drafting time (`docs/GENRE.md`), not by
 | --- | --- | --- | --- |
 | `backend` | `PARSER` | `"pdftotext"` \| `"docling"` | `"pdftotext"` |
 | `ocr` | `PARSER_OCR` | boolean | `false` |
+| `formulas` | `PARSER_FORMULAS` | boolean | `false` |
 | `workers` | `PARSER_WORKERS` | positive integer, or `"auto"` | `1` |
 | `start_method` | `PARSER_START_METHOD` | `"auto"` \| `"forkserver"` \| `"spawn"` | `"auto"` |
 | `document_timeout` | `PARSER_DOCUMENT_TIMEOUT` | positive number of seconds, or `"off"` | `"off"` |
@@ -276,6 +277,10 @@ The values in full:
   Any other value is rejected, naming the valid ones. See
   [notes](#-backend-pdftotext-or-docling).
 - **`ocr`** -- only `docling` has an OCR stage; `pdftotext` ignores this.
+- **`formulas`** -- only `docling` recognises formulae; `pdftotext`
+  ignores this. Off, an equation reaches `content/parsed/<citekey>.txt`
+  as the marker `<!-- formula-not-decoded -->`; on, as LaTeX. See
+  [notes](#-formulas-and-why-it-is-not-the-enrich-key).
 - **`workers`** -- `1` takes a strictly serial path: no pool, no
   subprocesses, nothing about a run changes. An integer above 1, or
   `"auto"`, opts into a worker pool. The resolved count is **clamped**
@@ -388,6 +393,14 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `topic_neighbors` | `TOPIC_NEIGHBORS` | integer | `5` | `5` |
 | `topic_membership_ratio` | `TOPIC_MEMBERSHIP_RATIO` | number, 0-1 | `0.5` | `0.5` |
 | `topic_membership_max` | `TOPIC_MEMBERSHIP_MAX` | integer | `8` | `8` |
+
+**`docling_formulas` is not the only formula switch, and it is probably
+not the one you want first.** It configures the *enrichment* layer's
+parse, which writes `content/docling/`. The corpus layer's parse -- the
+one whose output `chitragupta/retrieval.py` indexes, and therefore the
+one a drafting skill reads -- has its own
+[`[parser].formulas`](#-formulas-and-why-it-is-not-the-enrich-key). The
+two are independent; set both to decode formulae in both places.
 
 **`keywords_path` names a generated artifact, not a file you write.**
 The `extract-keywords` stage regenerates it fresh on every run from the
@@ -720,6 +733,48 @@ It is **a warning, never a failure** -- the text is still usable, and an
 unusual corpus could trip it legitimately. It will not catch a bad `ocr`
 choice: it looks for run-together words, not for content that never
 arrived.
+
+### 🧮 `formulas`, and why it is not the `[enrich]` key
+
+Docling drops an equation's content unless its formula-recognition model
+runs. Without it the `.txt` a parse writes carries the literal string
+`<!-- formula-not-decoded -->` where the mathematics was, so a paragraph
+reads:
+
+```
+…we define the Network Overhead (NO) metric as… More formally:
+
+<!-- formula-not-decoded -->
+
+We clarify that the NO(tk) metric above quantifies…
+```
+
+The prose leads into nothing. Measured across a 497-document corpus
+before this key existed: 148 documents carried the marker, and none
+carried any decoded LaTeX.
+
+That matters more than a missing-content bug usually would, because
+`chitragupta/retrieval.py` indexes `content/parsed/*.txt` and **nothing
+else** -- so with this off, an equation is absent from the only artefact
+a drafting skill can read. With it on, the equation is LaTeX, which is
+text, which that index already handles. No other setting has to change.
+
+**Why this is not `[enrich].docling_formulas.`** The two keys set the
+same docling option on **two different parses**: this one configures the
+corpus layer's parse, which writes `content/parsed/`; the `[enrich]` one
+configures the enrichment layer's independent second parse, which writes
+`content/docling/`. They are deliberately separate rather than one key
+read twice -- the corpus parse is meaningful to someone who never
+installs the enrichment group at all, and having `chitragupta/pdf_text/`
+read an `[enrich]` setting would cross the layer boundary
+[ARCHITECTURE.md](ARCHITECTURE.md) draws. Set both if you want decoded
+formulae in both places.
+
+Off by default for the same economics as `ocr` above: an extra model
+download and an extra pass per page. Turning it on does not
+retro-fit anything -- `content/parsed/*.txt` is only rewritten by a
+re-parse, so run `python -m chitragupta.corpus sync --reparse` after
+changing it.
 
 ### 🖼 `docling_images`
 

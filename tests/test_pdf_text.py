@@ -203,7 +203,10 @@ def fake_docling(monkeypatch):
     base_models.InputFormat = types.SimpleNamespace(PDF="pdf")
     pipeline_options = types.ModuleType("docling.datamodel.pipeline_options")
     pipeline_options.PdfPipelineOptions = lambda: types.SimpleNamespace(
-        do_ocr=True, accelerator_options=None, document_timeout=None
+        do_ocr=True,
+        do_formula_enrichment=False,
+        accelerator_options=None,
+        document_timeout=None,
     )
     accelerator = types.ModuleType("docling.datamodel.accelerator_options")
     accelerator.AcceleratorOptions = lambda num_threads=None, device=None: types.SimpleNamespace(
@@ -239,6 +242,27 @@ class TestDoclingOcrSetting:
         assert fake_docling.pipeline_options().do_ocr is True
 
 
+class TestDoclingFormulaSetting:
+    def test_formula_enrichment_is_off_by_default(self, isolated_config, fake_docling, tmp_path):
+        """Same economics as OCR: an extra model download and an extra
+        pass per page, so a corpus that never cites an equation should
+        not pay for one."""
+        pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert fake_docling.pipeline_options().do_formula_enrichment is False
+
+    def test_formula_enrichment_can_be_turned_on(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """Off, a formula reaches content/parsed/*.txt as the literal
+        string `<!-- formula-not-decoded -->` -- 148 of 497 documents on
+        the corpus this was measured against -- so the prose leading into
+        it ("More formally:") dangles into nothing. On, it is LaTeX, which
+        is text, which is what chitragupta/retrieval.py already indexes."""
+        monkeypatch.setattr(config, "PARSER_FORMULAS", True)
+        pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert fake_docling.pipeline_options().do_formula_enrichment is True
+
+
 class TestDoclingConverterReuse:
     def test_converter_is_built_once_across_calls(self, isolated_config, fake_docling, tmp_path):
         """DocumentConverter.initialized_pipelines is an *instance*
@@ -260,6 +284,22 @@ class TestDoclingConverterReuse:
         pdf_text.extract_text(str(tmp_path / "b.pdf"), "b")
         assert fake_docling.build_count == 2
         assert fake_docling.pipeline_options().do_ocr is True
+
+    def test_changing_the_formula_setting_rebuilds_the_converter(
+        self, isolated_config, fake_docling, monkeypatch, tmp_path
+    ):
+        """The same trap the OCR case above documents, one setting along:
+        a toggle that changes what every parse produces but is absent
+        from the cache key serves the converter built under the old
+        value, so flipping it in config.toml mid-session silently
+        changes nothing."""
+        pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
+        assert fake_docling.build_count == 1
+
+        monkeypatch.setattr(config, "PARSER_FORMULAS", True)
+        pdf_text.extract_text(str(tmp_path / "b.pdf"), "b")
+        assert fake_docling.build_count == 2
+        assert fake_docling.pipeline_options().do_formula_enrichment is True
 
     def test_a_failed_convert_does_not_discard_the_converter(
         self, isolated_config, fake_docling, tmp_path
