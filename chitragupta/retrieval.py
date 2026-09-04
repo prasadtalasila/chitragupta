@@ -59,7 +59,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from chitragupta import bib_collections, ledger, retrieval_cache
+from chitragupta import bib_collections, ledger, retrieval_cache, retrieval_tables
 from chitragupta._passage_words import _CORE_STOPWORDS as _STOPWORDS
 
 # Question words and question-forming auxiliaries -- rare in academic
@@ -197,7 +197,7 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
         chosen.append((begin, end))
         if len(chosen) == count:
             break
-    return [_clean_window(text[begin:end]) for begin, end in sorted(chosen)]
+    return retrieval_tables.render_windows(text, chosen, _clean_window)
 
 
 def _snippet(text: str, terms: set[str], window: int = 500) -> str:
