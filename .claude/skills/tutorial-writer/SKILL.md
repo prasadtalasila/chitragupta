@@ -375,9 +375,14 @@ the lesson design is the part worth keeping either way.
    (step 3), or how data moves through a command beside that step
    (step 4) -- rather than appending a new section here.
    `docs/WRITING-STANDARDS.md` §10's original ASCII diagrams fit this
-   genre more naturally than any other in this pipeline. Most tutorials
-   still don't need one: if nothing in the path is clearer as a diagram
-   than as text, move on.
+   genre more naturally than any other in this pipeline, and this is the
+   genre most free to use them: a hands-on lesson can legitimately carry
+   a lot of figures -- what the learner is about to build, how data moves,
+   what the screen should look like at a checkpoint -- and a heavily
+   illustrated tutorial is a good tutorial, not an overgrown one. The
+   test is per figure and never a budget: does *this* step read more
+   clearly as a diagram than as text? Draw every one that passes, and
+   none that doesn't.
 
    **You may look at how the literature draws it first.**
    `python -m chitragupta.draft figures <citekey>` lists a synced paper's

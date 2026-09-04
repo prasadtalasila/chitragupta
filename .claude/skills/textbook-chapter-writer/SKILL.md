@@ -337,6 +337,16 @@ candidate for the chapter.
    dropped is a `rejected.md` row, the same as an abandoned worked
    example.
 
+   **You may look at how the literature draws it first.**
+   `python -m chitragupta.draft figures <citekey>` lists a synced paper's
+   figures and hands back the path to a crop of each, for any citekey
+   this chapter already cites for motivation or background. Seeing how a
+   concept is conventionally drawn is legitimate input to a diagram you
+   then draw yourself. It is not a licence to reproduce one: the source
+   image never enters the draft, and `docs/WRITING-STANDARDS.md` §10 is
+   explicit that closely redrawing one from memory is the same violation
+   in different pixels. AGENTS.md states the boundary in full.
+
    A figure that stays is a **pair of files**, and §10 is the contract.
    This genre carries no inline form of either -- the draft names the
    figure in a marker line of its own, with nothing beside it:

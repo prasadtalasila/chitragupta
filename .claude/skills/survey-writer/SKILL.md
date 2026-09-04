@@ -405,6 +405,16 @@ collapse them for the sake of a cleaner narrative.
    comparison table already carries that structural work. Absence is
    the default, not an oversight.
 
+   **On that rare occasion, look at how the surveyed papers draw it
+   first.** `python -m chitragupta.draft figures <citekey>` lists a
+   synced paper's figures and hands back a crop of each, for any citekey
+   already in the survey. A taxonomy is exactly the kind of figure the
+   literature has usually drawn some version of, and seeing several is
+   the point -- you are synthesising across them, not copying one. The
+   source image never enters the draft and a close redraw of any single
+   one is the same violation, per `docs/WRITING-STANDARDS.md` §10.
+   AGENTS.md states the boundary in full.
+
    On the rare occasion one is warranted, it is a **pair of files**, and
    §10 is the contract. This genre carries no inline form of either --
    the draft names the figure in a marker line of its own, with nothing
