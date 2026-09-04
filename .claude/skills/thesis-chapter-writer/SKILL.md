@@ -323,6 +323,15 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `docs/WRITING-STANDARDS.md` §10's figures are occasional here, not
    routine. Default to no figure.
 
+   **When one is earned, you may look at how the cited work draws it
+   first.** `python -m chitragupta.draft figures <citekey>` lists a
+   synced paper's figures and hands back a crop of each, for any citekey
+   the chapter already cites -- useful precisely because a figure is
+   earned here so rarely that the one you do draw carries weight. Look,
+   then draw your own: the source image never enters the chapter, and
+   `docs/WRITING-STANDARDS.md` §10 counts a close redraw as the same
+   violation. AGENTS.md states the boundary in full.
+
    When one is earned, it is a **pair of files**, and §10 is the
    contract. This genre's native form is the TikZ picture -- vector art
    that sets at the thesis's own font and line width, which is the whole
