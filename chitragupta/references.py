@@ -172,12 +172,10 @@ def entries(citekeys: list[str], con) -> dict[str, str]:
     A missing row is a hard error (AGENTS.md's citekey invariant), never
     a silently dropped entry.
     """
-    placeholders = ",".join("?" * len(citekeys))
     rows = {
         citekey: (title, year, bib_fields)
-        for citekey, title, year, bib_fields in con.execute(
-            f"SELECT citekey, title, year, bib_fields FROM items WHERE citekey IN ({placeholders})",
-            citekeys,
+        for citekey, title, year, bib_fields in ledger.rows_for_citekeys(
+            con, "citekey, title, year, bib_fields", citekeys
         )
     }
     missing = [k for k in citekeys if k not in rows]

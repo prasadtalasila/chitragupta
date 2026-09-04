@@ -14,7 +14,7 @@ paraphrased.
 import re
 from typing import Any
 
-from chitragupta import config
+from chitragupta import config, ledger
 from chitragupta.discover import _data
 
 # How many verbatim sentences the overview quotes, and the length band a
@@ -41,11 +41,7 @@ def _parsed_texts(citekeys: list) -> dict:
         return {}
     con = _data.read_only_connection()
     try:
-        placeholders = ",".join("?" * len(citekeys))
-        rows = con.execute(
-            f"SELECT citekey, parsed_path FROM items WHERE citekey IN ({placeholders})",
-            citekeys,
-        ).fetchall()
+        rows = ledger.rows_for_citekeys(con, "citekey, parsed_path", citekeys)
     finally:
         con.close()
     texts = {}
