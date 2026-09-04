@@ -741,7 +741,7 @@ runs. Without it the `.txt` a parse writes carries the literal string
 `<!-- formula-not-decoded -->` where the mathematics was, so a paragraph
 reads:
 
-```
+```text
 …we define the Network Overhead (NO) metric as… More formally:
 
 <!-- formula-not-decoded -->

@@ -201,8 +201,8 @@ copyright is not the paper's citekey to grant. This implements that
 stance rather than revisiting it, and the skill text states the boundary
 where an author will actually read it.
 
-#627 rejected vision captioning because it would write generated text
-into the *corpus* layer. That rejection does not bind a drafting-time
+Issue #627 rejected vision captioning because it would write generated
+text into the *corpus* layer. That rejection does not bind a drafting-time
 *reader* that writes nothing back: the agent looks at the PNG, and only
 the draft changes.
 
