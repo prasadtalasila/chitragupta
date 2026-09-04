@@ -32,7 +32,7 @@ per-document progress and warnings that stdout does not.
 
 ## Application Environment
 
-- OS: [e.g. Ubuntu 24.04]
+- OS: [e.g. Ubuntu 26.04]
 - Python version: [`python3 --version`]
 - chitragupta version: [`pyproject.toml`'s `[tool.poetry].version`, e.g. 3.5.0]
 - Parser backend: [`pdftotext` (default) or `docling`, per `config.toml`]

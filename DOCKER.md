@@ -5,7 +5,7 @@ and neither replaces the other:
 
 | File | What it is | Size | Needs a checkout |
 | --- | --- | --- | --- |
-| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Mount your checkout, get a shell with everything resolved. | 4.38GB (cpu) / 11.6GB (gpu) | Yes -- it is the checkout you mount and work in |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14. Mount your checkout, get a shell with everything resolved. | 4.75GB (cpu) / 11.6GB (gpu, unmeasured since the base bump) | Yes -- it is the checkout you mount and work in |
 | `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No -- it installs from PyPI |
 
 `docker/Dockerfile` is documented first, then the agent image under
@@ -33,7 +33,16 @@ The toolchain image is additionally **verified by hand** (`docker
 build`, both `TORCH_VARIANT` values below, each image's `/opt/venv`
 confirmed to import
 `sentence_transformers`/`chromadb`/`bertopic`/`docling`/`torch`
-correctly), since CI only builds the `cpu` variant. Re-verify after
+correctly), since CI only builds the `cpu` variant.
+
+Since the base moved to **Ubuntu 26.04 LTS / Python 3.14**, that
+`docker-build` job does more than check the Dockerfile parses: it is the
+only automated check that installs `poetry.lock` under Python 3.14 at
+all. The test matrix runs 3.12 and 3.13. A re-lock that drifts back
+below the cp314 wheel line -- the failure mode issue #607 documents, and
+one that leaves CI otherwise green -- fails there. `pyproject.toml`'s
+comment on the `python` range explains why that drift is possible in the
+first place. Re-verify after
 changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`, or
 `poetry.lock`; the agent image has its own checks under ["Verify the
 container"](#-verify-the-container).
@@ -71,7 +80,7 @@ one you get:
 | `TORCH_VARIANT` | Build command | Measured image size | When to use it |
 | --- | --- | --- | --- |
 | `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB | `docker run --gpus` deployments -- the bundled CUDA runtime is enough on its own, no host CUDA toolkit needed, only a matching driver |
-| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 4.38GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
+| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 4.75GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 
 The `cpu` variant reinstalls `torch`/`torchvision` from PyTorch's own
 CPU-only wheel index, at the exact version `poetry.lock` resolved (read

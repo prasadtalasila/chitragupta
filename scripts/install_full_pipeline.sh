@@ -508,7 +508,19 @@ install_python_deps() {
     # hash-pinned in poetry.lock, so the archive whose setup script runs
     # is byte-exact the one that was locked, not whatever the index
     # serves that day.
-    (cd "$REPO_ROOT" && poetry install --with enrich)
+    # NO_ROOT=1 adds --no-root, and docker/Dockerfile sets it. That image
+    # deliberately does not COPY the source in -- it mounts the checkout
+    # at runtime -- so there is no package for Poetry to install, and
+    # Ubuntu 26.04's Poetry refuses with "<path>/chitragupta does not
+    # contain any element" where 24.04's older Poetry tolerated it. The
+    # flag states what was already true there rather than changing it.
+    # Unset on a host, where the root project *should* be installed --
+    # note the gpu-torch fallback below deliberately does not honour it.
+    if [ "${NO_ROOT:-}" = "1" ]; then
+        (cd "$REPO_ROOT" && poetry install --with enrich --no-root)
+    else
+        (cd "$REPO_ROOT" && poetry install --with enrich)
+    fi
     local bin_dir
     bin_dir="$(venv_bin_dir "$VENV_DIR")"
     ensure_gpu_torch "$bin_dir/pip" "$bin_dir/python"

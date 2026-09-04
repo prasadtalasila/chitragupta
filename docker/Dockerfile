@@ -50,23 +50,26 @@
 # bump is a thing to take deliberately and re-verify, not to pick up
 # silently on a rebuild.
 #
-# **26.04 was tried and does not build. Do not bump this line on its
-# own.** Ubuntu 26.04 LTS ships Python 3.14, and poetry.lock pins torch
-# 2.7.1 / torchvision / triton 3.3.1, none of which publish cp314
-# wheels. `poetry install` gets all the way through the rest of the
-# dependency set and then fails per package with "Unable to find
-# installation candidates for triton (3.3.1) ... 6 wheel(s) were
-# skipped as your project's environment does not support the identified
-# abi tags" -- measured on a --no-cache build, 2026-09-03.
+# 26.04 ships **Python 3.14**, and moving to it needed three changes
+# beyond this line, none of them obvious (issue #607):
 #
-# What unblocks it, if someone wants 26.04: torch publishes cp314 wheels
-# from 2.9.0 onward (checked against PyPI: 2.9.0, 2.9.1, 2.12.x, 2.13.0,
-# 2.14.0), so the base bump needs a torch/torchvision/triton
-# re-resolution in poetry.lock first. That is a dependency change
-# affecting both CI legs and every enrich test, not a Dockerfile change,
-# and belongs in its own PR with its own test run -- tracked in issue
-# #607, which carries the measured failure and the shape of the fix.
-FROM ubuntu:24.04
+#   1. pyproject.toml's `python` range. `^3.12` (<4.0) made Poetry
+#      unable to select triton 3.8.0 (`requires_python <3.15`), so it
+#      fell back to torch 2.7.1, which has no cp314 wheels. That file's
+#      comment on the range is the durable part of this fix -- it is
+#      what keeps every *future* re-lock installable here.
+#   2. README.md in the COPY below: `poetry install` validates the
+#      `readme` path, and 26.04's Poetry errors where 24.04's did not.
+#   3. NO_ROOT=1 on the install: this image mounts the checkout rather
+#      than baking it in, so there is no package to install, and 26.04's
+#      Poetry refuses ("does not contain any element") where the older
+#      one tolerated it.
+#
+# Verified by hand on 2026-09-04: `--no-cache` build, then the full
+# suite inside the image -- 4907 passed, 1 skipped -- plus latexmk,
+# pandoc, pdftotext, and torch 2.14.0+cpu / torchvision 0.29.0+cpu /
+# numba 0.67.0 / scipy 1.18.1 all importing under Python 3.14.4.
+FROM ubuntu:26.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -97,7 +100,14 @@ RUN scripts/install_full_pipeline.sh os-deps && rm -rf /var/lib/apt/lists/*
 RUN python3 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:${PATH}"
 ENV VIRTUAL_ENV=/opt/venv
-COPY pyproject.toml poetry.lock poetry.toml ./
+# README.md rides along because `poetry install --with enrich` installs
+# the root project (no --no-root), and pyproject.toml declares
+# `readme = "README.md"`. Ubuntu 26.04's Poetry validates that path and
+# refuses -- `Readme path /workspace/chitragupta/README.md does not
+# exist` -- where 24.04's older Poetry did not. The cost is that editing
+# README.md now invalidates the python-deps layer below; that is the
+# cheaper of the two, against a build that does not run at all.
+COPY pyproject.toml poetry.lock poetry.toml README.md ./
 
 # torch itself isn't pinned in pyproject.toml (see its own comment on
 # why) -- poetry.lock resolves whatever plain PyPI's default Linux wheel
@@ -125,7 +135,7 @@ COPY pyproject.toml poetry.lock poetry.toml ./
 # later-layer uninstall left the image *larger* than doing nothing,
 # because the deleted files' layer is still stored.
 ARG TORCH_VARIANT=gpu
-RUN SKIP_VENV=1 scripts/install_full_pipeline.sh python-deps && \
+RUN SKIP_VENV=1 NO_ROOT=1 scripts/install_full_pipeline.sh python-deps && \
     if [ "$TORCH_VARIANT" = "cpu" ]; then \
         SKIP_VENV=1 scripts/install_full_pipeline.sh cpu-torch; \
     fi && \

@@ -70,6 +70,8 @@ def _check_binaries() -> list[str]:
 # a partial install actually breaks -- `sentence-transformers` imports as
 # `sentence_transformers`.
 ENRICH_MODULES = (
+    "torch",
+    "torchvision",
     "sentence_transformers",
     "chromadb",
     "bertopic",
