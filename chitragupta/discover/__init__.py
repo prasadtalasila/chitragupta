@@ -21,7 +21,7 @@ import json as json_module
 import sys
 
 from chitragupta import retrieval
-from chitragupta.discover import _data, _overview, _page, _render, _resolve, _walk
+from chitragupta.discover import _app, _data, _overview, _page, _render, _resolve, _walk
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -58,6 +58,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--html",
         metavar="FILE",
         help="write the whole topic graph as one self-contained HTML page and exit",
+    )
+    parser.add_argument(
+        "--app",
+        metavar="DIR",
+        help=(
+            "write the topic graph as an interactive app directory "
+            "(open its index.html from file://) and exit"
+        ),
     )
     return parser
 
@@ -150,7 +158,24 @@ def _paper_view(args, topic_set) -> int:
     return 0
 
 
+def _app_view(args) -> int:
+    try:
+        written = _app.write_app(args.app)
+    except OSError as failure:
+        # Stderr in both modes, for the reason _run's --html clause
+        # gives: a failure line is never part of the payload.
+        print(f"Could not write the app to {args.app}: {failure}", file=sys.stderr)
+        return 1
+    # One more pure renderer of the artefacts --json reads, so it
+    # honours the flag exactly as --html does.
+    _emit(args, {"written": written}, f"written: {written}")
+    return 0
+
+
 def _run(args) -> int:
+    if args.app:
+        return _app_view(args)
+
     if args.html:
         try:
             written = _page.write_page(args.html)

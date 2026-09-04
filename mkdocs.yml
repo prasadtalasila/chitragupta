@@ -122,6 +122,7 @@ exclude_docs: |
   /.venv/
   /assets/csl/
   /assets/vale/
+  /assets/webapp/
   /bench/
   /content/
   /docker/

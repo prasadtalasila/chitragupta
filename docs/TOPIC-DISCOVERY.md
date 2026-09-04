@@ -433,6 +433,51 @@ One deviation from the plan, recorded there too: the plan named a
 free phrase, and a reserved word would shadow any topic literally
 labelled "graph" -- so it shipped as the `--html` flag.
 
+## 🕸 The interactive app
+
+`chitragupta corpus discover --app topicapp/` writes the graph as a
+**directory** rather than one file: `index.html`, the interaction code
+(`app.js`, `style.css`), a vendored [cytoscape.js](https://js.cytoscape.org/)
+(pinned; `assets/webapp/vendor/README.md` records the version and why it
+is committed rather than fetched), and `data.js` -- the same joined
+payload the `--html` page embeds, shipped as a JavaScript assignment
+because `fetch()` of a local JSON file is blocked under `file://`. The
+whole directory can be handed to a reader as a download; opening
+`index.html` needs no server, no install and no network, forever.
+
+What the page adds over the static `--html` circle:
+
+- **Type-ahead search, multiple topics.** Typing shows candidate topics
+  as you type -- matched on labels and on each topic's own top terms --
+  and Enter (or a click) pins the topic as a removable chip. Several
+  chips compose.
+- **The graph adjusts to the selection.** With topics pinned, only the
+  selected topics and the topics related to them (over both edge
+  families: shared members and semantic nearness) stay on the canvas,
+  and the layout re-runs on that subgraph. No selection shows
+  everything.
+- **Provenance is visible.** Node colour distinguishes a hand-written
+  seed phrase, a machine-extracted keyword phrase
+  (`content/keywords.toml`), a phrase both files name, and an emergent
+  cluster. The graph artefact alone cannot make that distinction --
+  the union happens before the stages run, so `topic_set.json` records
+  every phrase as provenance "seed" -- which is why the builder reads
+  the two TOML files and annotates each topic with an `origin`.
+- **Papers, in place.** Clicking a topic lists its papers as cards --
+  ledger title, citekey, match-score bar. Clicking a solid edge lists
+  the shared papers with their evidence; a dashed edge names the
+  bridging pair and the similarity. Node size tracks member count, edge
+  width tracks overlap strength or similarity.
+
+It is still a pure renderer: `_app.build_app_payload` is
+`_page.build_payload` (the same join, the same drift refusal) plus the
+`origin` annotation, so the app cannot disagree with `--json` or with
+the terminal views. Interaction happens entirely in the browser over
+the embedded payload; nothing is recomputed and nothing is fetched.
+`<` is escaped in the payload exactly as the `--html` page escapes its
+JSON island, so no topic label or paper title can close the data script
+early.
+
 ## 🚫 Alternatives considered
 
 Recorded so each is not re-proposed as an oversight; the longer

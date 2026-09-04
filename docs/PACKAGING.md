@@ -112,7 +112,7 @@ command already has -- this is a front door, not a redesign.
 | `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
-| `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k`, `--html FILE` |
+| `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k`, `--html FILE`, `--app DIR` |
 
 ### ✍ `draft` -- work on one draft
 

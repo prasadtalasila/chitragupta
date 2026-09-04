@@ -1,0 +1,203 @@
+/* Styles for the topic-graph app (see index.html for the contract:
+   everything local, nothing fetched). Colour vocabulary is fixed here
+   and mirrored in app.js's ORIGIN_COLORS -- change both together. */
+
+:root {
+  --seed: #2e7d32;
+  --keyword: #b8860b;
+  --both: #00695c;
+  --emergent: #1565c0;
+  --ink: #1c2733;
+  --muted: #5c6b7a;
+  --line: #d7dee6;
+  --bg: #f6f8fa;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  padding: 10px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
+
+#search-wrap {
+  position: relative;
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: #fff;
+}
+
+#search {
+  flex: 1 1 140px;
+  border: 0;
+  outline: none;
+  font: inherit;
+  padding: 4px 2px;
+  min-width: 120px;
+}
+
+#chips { display: contents; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  cursor: default;
+}
+.chip button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+#suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(28, 39, 51, 0.12);
+  max-height: 280px;
+  overflow-y: auto;
+}
+#suggestions li {
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#suggestions li.active, #suggestions li:hover { background: #eef3f8; }
+#suggestions .why { color: var(--muted); font-size: 12px; }
+
+#legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.swatch {
+  width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+}
+.swatch.seed { background: var(--seed); }
+.swatch.keyword { background: var(--keyword); }
+.swatch.both { background: var(--both); }
+.swatch.emergent { background: var(--emergent); }
+.edge-key { width: 22px; height: 0; display: inline-block; }
+.edge-key.solid { border-top: 2px solid #5c6bc0; }
+.edge-key.dashed { border-top: 2px dashed #8e24aa; }
+
+main { flex: 1; display: flex; min-height: 0; }
+
+#cy { flex: 1; min-width: 0; background: #fff; }
+
+#panel {
+  width: 380px;
+  max-width: 45vw;
+  overflow-y: auto;
+  border-left: 1px solid var(--line);
+  background: #fff;
+  padding: 14px 16px;
+}
+
+#hint { color: var(--muted); font-size: 13.5px; }
+
+#detail h2 { font-size: 16px; margin: 4px 0 2px; }
+#detail .origin-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+#detail .terms { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+#detail h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  margin: 14px 0 6px;
+}
+
+.paper {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+.paper .title { font-size: 14px; margin: 0 0 4px; }
+.paper .meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.paper code {
+  background: #eef3f8;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 12px;
+}
+.scorebar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: #e8edf2;
+  overflow: hidden;
+}
+.scorebar span { display: block; height: 100%; background: var(--emergent); }
+
+.linked-topic {
+  padding: 5px 0;
+  border-bottom: 1px dotted var(--line);
+  font-size: 13.5px;
+}
+.linked-topic a { color: var(--emergent); cursor: pointer; text-decoration: none; }
+.linked-topic a:hover { text-decoration: underline; }
+.linked-topic .why { color: var(--muted); font-size: 12px; }
+
+#hierarchy { margin-top: 18px; font-size: 13px; color: var(--muted); }
+#hierarchy summary { cursor: pointer; }
+#hierarchy-body div { padding: 2px 0 2px 12px; }
