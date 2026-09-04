@@ -31,6 +31,7 @@ from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
 from chitragupta import bib_collections, bib_names, config
+from chitragupta.citekey_safety import citekey_problem
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
 # Previously sync.py only ever saw a bare pdf_path of None and reported
@@ -233,56 +234,13 @@ def _count_raw_entries(text: str) -> int:
 # A citekey is not just an identifier here -- it is a *filename stem*.
 # `content/parsed/<citekey>.txt`, its `.passages.json` sidecar, and the
 # enrichment layer's `content/docling/<citekey>.md` are all built by
-# interpolating it straight into a path, and nothing downstream sanitises
-# it (deliberately: this project never rewrites a citekey, since the bib
-# file is the source of truth for them).
-#
-# bibtexparser will hand back whatever sits between `{` and `,`, which
-# includes `smith/2024` and `../escape2024`. The first writes into a
-# subdirectory that doesn't exist; the second escapes the content
-# directory entirely. Neither is hypothetical -- both parse today.
-#
-# So the rules below are the union of what POSIX and Windows need, not
-# just this host's: a bib file that works on Linux must not quietly
-# produce unwritable paths on the Windows CI leg, and the failure would
-# otherwise surface as a confusing OSError from deep inside a parse
-# rather than as a problem with the bib file.
-_CITEKEY_ILLEGAL_RE = re.compile(r'[/\\:*?"<>|\x00-\x1f]')
-
-# Reserved on Windows whatever the extension: `CON.txt` is still CON.
-_WINDOWS_RESERVED = {
-    "CON",
-    "PRN",
-    "AUX",
-    "NUL",
-    *(f"COM{i}" for i in range(1, 10)),
-    *(f"LPT{i}" for i in range(1, 10)),
-}
-
-
-def citekey_problem(citekey: str) -> str | None:
-    """Why `citekey` is unsafe as a filename stem, or None if it is fine.
-
-    Returns a reason rather than a bool so the caller can name the actual
-    problem: "rename it" is only actionable if you say what is wrong with
-    it.
-    """
-    if not citekey or not citekey.strip():
-        return "it is empty"
-    if citekey in (".", ".."):
-        return "it is a path component with a reserved meaning"
-    match = _CITEKEY_ILLEGAL_RE.search(citekey)
-    if match:
-        char = match.group()
-        shown = repr(char) if char.isprintable() else f"a control character (0x{ord(char):02x})"
-        return f"it contains {shown}, which cannot appear in a filename"
-    # Windows silently strips a trailing dot or space, so two citekeys
-    # differing only by one would collide on disk there and not here.
-    if citekey != citekey.rstrip(". "):
-        return "it ends in a dot or a space, which Windows strips from a filename"
-    if citekey.split(".")[0].upper() in _WINDOWS_RESERVED:
-        return f"'{citekey.split('.')[0]}' is a reserved device name on Windows"
-    return None
+# interpolating it straight into a path, and nothing downstream rewrites
+# it (deliberately: the bib file is the source of truth for citekeys).
+# The validator itself lives in `chitragupta/citekey_safety.py` since
+# #638 -- the review layer needs the same check on citekeys extracted
+# from a *draft*, and cannot import this module's bibtexparser
+# dependency -- re-exported from the imports at the top unchanged, so
+# this stays the natural place to find it from the sync side.
 
 
 def read_library() -> list[Reference]:

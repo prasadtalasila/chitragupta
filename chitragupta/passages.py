@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config
+from chitragupta.citekey_safety import citekey_problem
 
 # Re-exported so `passages.distinctive`, `passages.passage_records` and
 # `passages.PASSAGE_LABELS` keep resolving for every existing caller --
@@ -223,6 +224,14 @@ def _from_pages(raw: str) -> list[Passage]:
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     """Best available passages for `citekey`, plus a reason if there are
     none."""
+    # Callers hand this citekeys extracted from a *draft*, not only from
+    # the ledger, and the LaTeX regex accepts nearly anything inside
+    # `\cite{...}` -- so the stem must be validated before it becomes a
+    # path, or `\citep{../../secret}` reads files outside the content
+    # tree (#638). Same validator the bib-sync side has always enforced.
+    problem = citekey_problem(citekey)
+    if problem:
+        return [], f"citekey is unsafe as a filename stem: {problem}"
     # Rung 1 before rung 2: both hold the same kind of record, but the
     # enrichment layer's is a second, independent parse of the PDF under
     # its own OCR and figure settings, so it is the richer of the two

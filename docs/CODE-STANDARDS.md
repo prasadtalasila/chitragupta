@@ -393,7 +393,7 @@ inversion is the probe pattern.
 | Be consistent | Review, and the highest-value one in this list. A second way of doing something already done is the most common finding here |
 | Use explanatory variables | Review |
 | Encapsulate boundary conditions | Already here, as a whole module: `chitragupta/passages.py` is the single place that decides which span of a source may be shown, so no caller re-derives it |
-| Prefer dedicated value objects to primitive types | **Mostly N/A.** A citekey is deliberately a bare `str`, because it is also a filename stem and a ledger key; the invariant is enforced at the one entrance (`bib_reader.citekey_problem()`) rather than by a wrapper type |
+| Prefer dedicated value objects to primitive types | **Mostly N/A.** A citekey is deliberately a bare `str`, because it is also a filename stem and a ledger key; the invariant is enforced by one shared validator (`chitragupta/citekey_safety.py`, re-exported as `bib_reader.citekey_problem()`) at each entrance where a citekey becomes a path, rather than by a wrapper type |
 | Avoid logical dependency | Review |
 | Avoid negative conditionals | Review |
 
