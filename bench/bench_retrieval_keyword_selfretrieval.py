@@ -175,6 +175,13 @@ def wrapped_and_stripped_rows(ground_truth):
         "wrapped as a question": lambda q: retrieval._tokenize(f"what is {q}"),
         "question, interrogatives stripped": lambda q: retrieval._query_terms(f"what is {q}"),
         "keywords, interrogatives stripped": lambda q: retrieval._query_terms(q),
+        # B5 (issue #610): a declared query need not be a question -- an
+        # author stating a claim they want grounded is an assertion, not
+        # an interrogative, so this form has no "wrapped" variant above
+        # to strip: there is nothing interrogative in it to begin with.
+        "wrapped as an assertion": lambda q: retrieval._query_terms(
+            f"this paper's contribution is {q}"
+        ),
     }
     rows = []
     for label, terms_for in forms.items():
