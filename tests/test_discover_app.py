@@ -126,6 +126,50 @@ class TestWriteApp:
             _app.write_app(str(tmp_path / "app"))
 
 
+class TestShippedAppScriptHardening:
+    """Source tripwires on the shipped assets/webapp/app.js (#636).
+
+    The app has no JS test runner, so these pin the two properties a
+    hostile topic label (a PDF-controlled keyword phrase survives
+    `keyword_extract._clean()` with quotes intact and can become a
+    seeded topic label) must not regress, at the source level -- the
+    same way other non-Python artefacts in this repo are pinned.
+    """
+
+    @staticmethod
+    def app_js() -> str:
+        return config.shipped("assets", "webapp", "app.js").read_text(encoding="utf-8")
+
+    def test_escape_html_covers_attribute_contexts(self):
+        # The old div.textContent -> div.innerHTML trick never escapes
+        # quotes, and escapeHtml's output lands inside double-quoted
+        # data-goto/data-label attributes: a label containing `"` closed
+        # the attribute and injected event-handler attributes (stored
+        # XSS in the exported page). The explicit replace chain must
+        # cover all five significant characters.
+        src = self.app_js()
+        for entity in ("&amp;", "&lt;", "&gt;", "&quot;", "&#39;"):
+            assert entity in src, f"escapeHtml no longer escapes {entity}"
+        assert "div.innerHTML" not in src, "the quote-blind textContent trick is back"
+
+    def test_label_keyed_tables_are_null_prototype(self):
+        # A topic literally labelled __proto__ made `neighbours[label]`
+        # return Object.prototype (truthy, no .add) and crashed the app;
+        # every table keyed by a free-text label or an origin string must
+        # be created with a null prototype.
+        assert self.app_js().count("Object.create(null)") >= 4
+
+    def test_page_template_label_keyed_tables_are_null_prototype(self):
+        # Same __proto__ hazard in the --html page's inline script: both
+        # the position table and the hierarchy's children table are keyed
+        # by free-text labels.
+        import inspect
+
+        from chitragupta.discover import _page_template
+
+        assert inspect.getsource(_page_template).count("Object.create(null)") >= 2
+
+
 class TestCli:
     def test_app_flag_writes_the_directory_and_reports_it(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
