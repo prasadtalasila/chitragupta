@@ -194,6 +194,7 @@ nav:
       - TikZ figure style: docs/TIKZ-STYLE.md
   - Working on it:
       - Feature roadmap: docs/FEATURE-ROADMAP.md
+      - Figure roadmap: docs/FIGURE-ROADMAP.md
       - Design constraints: docs/DESIGN.md
       - Rendering flow: docs/RENDERING-FLOW.md
       - Tokens: docs/TOKENS.md
