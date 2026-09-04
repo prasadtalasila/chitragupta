@@ -16,6 +16,7 @@ contract than a flag.
 
 import json
 
+from chitragupta import ledger
 from chitragupta.discover import _data, _page_template
 
 
@@ -70,13 +71,7 @@ def _titles(topic_set: dict) -> dict:
         return {}
     con = _data.read_only_connection()
     try:
-        placeholders = ",".join("?" * len(citekeys))
-        return dict(
-            con.execute(
-                f"SELECT citekey, title FROM items WHERE citekey IN ({placeholders})",
-                citekeys,
-            ).fetchall()
-        )
+        return dict(ledger.rows_for_citekeys(con, "citekey, title", citekeys))
     finally:
         con.close()
 

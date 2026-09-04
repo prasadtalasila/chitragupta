@@ -36,6 +36,55 @@ class TestConnect:
             con2.close()
 
 
+class TestRowsForCitekeys:
+    """#639: the direct-SQLite `WHERE citekey IN (...)` reads must chunk
+    under SQLITE_MAX_VARIABLE_NUMBER (32766), the same ceiling
+    `chroma_paging.py` already pages the Chroma side past -- one
+    placeholder per citekey, so a large enough corpus broke the statement
+    with "too many SQL variables"."""
+
+    @staticmethod
+    def _seed(con, keys):
+        for key in keys:
+            con.execute(
+                "INSERT INTO items (citekey, title, status, last_synced)"
+                " VALUES (?, ?, 'parsed', '2026-01-01')",
+                (key, f"T {key}"),
+            )
+        con.commit()
+
+    def test_more_citekeys_than_the_variable_ceiling_still_answers(self, isolated_config):
+        # 33_000 keys is over the real 32766 ceiling: unchunked, sqlite
+        # raises OperationalError before looking at the data at all.
+        con = ledger.connect()
+        try:
+            self._seed(con, ["a_2024", "b_2024"])
+            keys = ["a_2024", "b_2024", *(f"ghost{i}" for i in range(33_000))]
+            rows = ledger.rows_for_citekeys(con, "citekey, title", keys)
+        finally:
+            con.close()
+        assert sorted(rows) == [("a_2024", "T a_2024"), ("b_2024", "T b_2024")]
+
+    def test_chunks_are_unioned_not_truncated(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(ledger, "CITEKEY_CHUNK", 2)
+        con = ledger.connect()
+        try:
+            self._seed(con, ["a_2024", "b_2024", "c_2024", "d_2024", "e_2024"])
+            rows = ledger.rows_for_citekeys(
+                con, "citekey", ["a_2024", "b_2024", "c_2024", "d_2024", "e_2024"]
+            )
+        finally:
+            con.close()
+        assert sorted(rows) == [("a_2024",), ("b_2024",), ("c_2024",), ("d_2024",), ("e_2024",)]
+
+    def test_an_empty_list_runs_no_query_and_returns_nothing(self, isolated_config):
+        con = ledger.connect()
+        try:
+            assert ledger.rows_for_citekeys(con, "citekey", []) == []
+        finally:
+            con.close()
+
+
 class TestSchemaMigration:
     def test_fresh_database_is_at_current_schema_version(self, isolated_config):
         con = ledger.connect()

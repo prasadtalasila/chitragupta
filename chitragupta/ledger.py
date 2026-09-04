@@ -202,6 +202,42 @@ def known_citekeys(con: sqlite3.Connection) -> set[str]:
     return {row[0] for row in con.execute("SELECT citekey FROM items")}
 
 
+# Comfortably under SQLite's SQLITE_MAX_VARIABLE_NUMBER (32766 since
+# 3.32) rather than at it, mirroring chroma_paging.PAGE_SIZE's reasoning
+# on the Chroma side: the ceiling is measured in bound variables, and one
+# citekey costs exactly one here.
+CITEKEY_CHUNK = 30_000
+
+
+def rows_for_citekeys(con: sqlite3.Connection, columns: str, citekeys: list[str]) -> list:
+    """`SELECT <columns> FROM items` for every row whose citekey is in
+    `citekeys`, chunked under the variable ceiling.
+
+    The one place an items read binds a placeholder per citekey (#639):
+    unchunked `IN (?,...,?)` lists broke with "too many SQL variables"
+    past 32766 keys -- the same failure class chroma_paging.all_rows
+    pages the Chroma side past -- and every caller that fixed it locally
+    would be a second copy of this loop. `columns` is a literal written
+    by this package's own callers, never external input, the same
+    standing as the PRAGMA interpolation in `_migrate` above; citekey
+    values are all bound.
+
+    An empty list runs no query at all: `IN ()` is a sqlite syntax
+    error, not an empty match.
+    """
+    rows: list = []
+    for start in range(0, len(citekeys), CITEKEY_CHUNK):
+        chunk = citekeys[start : start + CITEKEY_CHUNK]
+        placeholders = ",".join("?" * len(chunk))
+        rows.extend(
+            con.execute(
+                f"SELECT {columns} FROM items WHERE citekey IN ({placeholders})",
+                chunk,
+            )
+        )
+    return rows
+
+
 def find_stale(con: sqlite3.Connection, seen_citekeys: set[str]) -> list[tuple[str, str | None]]:
     """Read-only: ledger rows whose citekey is no longer in the bib file.
 
