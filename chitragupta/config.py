@@ -415,6 +415,24 @@ PARSER = _get("PARSER", "parser", "backend", default="pdftotext")
 # "OCR: off by default" section, before changing it either way. (The full
 # write-up is bench/RESULTS.md, which is developer-only and not shipped.)
 PARSER_OCR = _get_bool("PARSER_OCR", "parser", "ocr", default=False)
+# Whether the docling backend also runs its formula recognition model,
+# so a paper's equations reach content/parsed/*.txt as decoded LaTeX
+# rather than the literal marker `<!-- formula-not-decoded -->` (#651).
+#
+# The corpus layer's own toggle, deliberately separate from
+# [enrich].docling_formulas (DOCLING_FORMULAS below) even though both
+# set the same docling option: they configure two independent parses,
+# and this one is meaningful to a user who never runs the enrichment
+# layer at all. Reading the [enrich] key from here would cross the layer
+# boundary docs/ARCHITECTURE.md draws.
+#
+# Off by default for the same economics as OCR above -- an extra model
+# download and an extra pass per page. It matters more than that ratio
+# suggests, though: retrieval.py indexes only content/parsed/*.txt, so
+# with this off a formula is absent from the one artefact a drafting
+# skill can read. Measured before #651: 148 of 497 documents carried the
+# marker and none carried decoded LaTeX.
+PARSER_FORMULAS = _get_bool("PARSER_FORMULAS", "parser", "formulas", default=False)
 
 
 def _get_workers(env_var: str, *toml_path: str, default: int) -> "int | str":

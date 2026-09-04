@@ -191,6 +191,7 @@ docling behaviours, and a replacement has to supply all of them:
 | `export_to_markdown()` | `content/docling/<citekey>.md`, the artefact downstream stages read |
 | `AcceleratorOptions(device="cuda:N", num_threads=...)` set **per worker process** | `init_worker`, one GPU claimed round-robin |
 | A togglable OCR flag, default off | `[parser].ocr` |
+| A togglable formula-recognition flag, default off -- without one, an equation reaches `content/parsed/` as a `formula-not-decoded` marker rather than as LaTeX | `[parser].formulas` |
 
 ### ⚖ Comparison
 

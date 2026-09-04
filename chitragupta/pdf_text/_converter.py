@@ -49,7 +49,13 @@ def _docling_converter(threads: int | None = None) -> Any:
     global _DOCLING_CONVERTER, _DOCLING_CONVERTER_KEY
 
     device = worker_device()
-    key = (config.PARSER_OCR, threads, device, config.PARSER_DOCUMENT_TIMEOUT)
+    key = (
+        config.PARSER_OCR,
+        config.PARSER_FORMULAS,
+        threads,
+        device,
+        config.PARSER_DOCUMENT_TIMEOUT,
+    )
     if _DOCLING_CONVERTER is not None and _DOCLING_CONVERTER_KEY == key:
         return _DOCLING_CONVERTER
 
@@ -62,6 +68,13 @@ def _docling_converter(threads: int | None = None) -> Any:
 
     opts = PdfPipelineOptions()
     opts.do_ocr = config.PARSER_OCR
+    # Without this, docling writes `<!-- formula-not-decoded -->` where
+    # the equation was, and that marker is what lands in
+    # content/parsed/*.txt -- the one artefact chitragupta/retrieval.py
+    # indexes, and so the only thing a drafting skill can see. The
+    # enrichment layer sets the same option from its own key; these are
+    # two parses with two settings, not one setting read twice.
+    opts.do_formula_enrichment = config.PARSER_FORMULAS
     # Docling checks this between pipeline stages, so it bounds a
     # pathologically slow document but will not interrupt a hard hang
     # inside one stage. On expiry it returns PARTIAL_SUCCESS rather than

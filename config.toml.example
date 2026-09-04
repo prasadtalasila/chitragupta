@@ -182,6 +182,31 @@ backend = "pdftotext"
 #                                                          Default: false
 ocr = false
 
+# Whether the docling backend also runs its formula recognition model.
+# Ignored by the pdftotext backend.
+#
+# Off, docling writes the literal marker `<!-- formula-not-decoded -->`
+# where an equation was, and that is what lands in
+# content/parsed/<citekey>.txt -- so a paragraph reads "More formally:"
+# and then nothing. Measured over a 497-document corpus: 148 carried the
+# marker and none carried any decoded LaTeX.
+#
+# It costs an extra model download and an extra pass per page, the same
+# trade as `ocr` above. What makes it worth more than that ratio
+# suggests: chitragupta/retrieval.py indexes content/parsed/*.txt and
+# nothing else, so with this off an equation is invisible to a drafting
+# skill, and with it on the equation is LaTeX -- text, which that index
+# already handles, with no other setting to change.
+#
+# This is the *corpus* parse's setting. [enrich].docling_formulas below
+# is the separate enrichment parse's, and setting one does not set the
+# other; docs/CONFIG.md's "formulas, and why it is not the [enrich] key"
+# has the reasoning. Changing this only affects documents parsed after
+# it: run `python -m chitragupta.corpus sync --reparse` to apply it to a
+# corpus already on disk.
+#                                                          Default: false
+formulas = false
+
 # How many documents `python -m chitragupta.corpus sync` parses at once.
 #
 #   1        default, and the historical behaviour: one document at a
