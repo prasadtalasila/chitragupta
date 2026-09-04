@@ -46,6 +46,7 @@ short path; this is the full set.
   - [`chitragupta draft unit`](#-chitragupta-draft-unit)
   - [`chitragupta draft registry`](#-chitragupta-draft-registry)
   - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
+  - [`chitragupta draft figures`](#-chitragupta-draft-figures)
   - [`chitragupta enrich`](#-chitragupta-enrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
@@ -2416,6 +2417,41 @@ chitragupta draft tldr show smith2024 --json
 Never touches `content/ledger.sqlite`: the summary is LLM output, so it
 stays in this drafting-layer sidecar rather than the corpus plane, and
 `chitragupta corpus ledger` is unchanged.
+
+### 🖼 `chitragupta draft figures`
+
+One paper's figures: caption, page, the exact string to cite each by, and
+the path to the crop, so a drafting session can **look at** a figure
+while grounding a claim about what a paper shows, or while drawing a
+diagram of its own.
+
+```bash
+chitragupta draft figures smith2024
+chitragupta draft figures smith2024 --json
+```
+
+| Command | Does | Exit |
+| --- | --- | --- |
+| `<citekey> [--json]` | list that paper's figures | 1 only if the citekey isn't in the ledger; **0** otherwise |
+
+**Consider, never replicate.** The crops are a reading aid for checking a
+draft against its sources. Having a paper in your library grants no right
+to reproduce its figures, and nothing here puts a source image in a
+draft -- the `cite` string is what belongs in one.
+
+Three answers, kept distinct because only one of them is actionable:
+
+| What you see | Means |
+| --- | --- |
+| a list of figures | that paper's figures, from its docling parse |
+| `no figures recorded in its docling parse` | the paper genuinely has none |
+| `no figure index for <citekey> …` | the docling stage has not run for it -- run `chitragupta enrich --stages docling`, with `[enrich].docling_images` on |
+
+Reads the enrichment layer's `content/docling/<citekey>.figures.json` as
+a path, never by importing that layer, so an ordinary drafting run needs
+none of its optional dependencies. The index lists figures rather than
+every picture on the page -- see
+[CONFIG.md](CONFIG.md#-docling_images) for what that excludes and why.
 
 ### 🧠 `chitragupta enrich`
 

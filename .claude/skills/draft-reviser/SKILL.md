@@ -56,6 +56,17 @@ break:
   or `deep-research`) says how freely that genre calibrates
   `docs/WRITING-STANDARDS.md` §10's figures, from most (`tutorial`) to
   least (`survey`) to none at all (`deep-research`).
+- **You may consult a source figure before redrawing one of your own.**
+  `python -m chitragupta.draft figures <citekey>` lists a synced paper's
+  figures -- caption, page, the string to cite each by, and the path to a
+  crop -- for any citekey the section already cites. Worth running twice
+  over: before revising a sentence that asserts what a paper's figure
+  *shows* (the caption is retrievable as text and routinely says less
+  than the picture), and before reworking a diagram of the draft's own.
+  The source image never enters the draft and its layout is not yours to
+  copy; the `cite` string is the part that belongs in prose. AGENTS.md
+  has the boundary in full, and it is the same one `quote:` draws for
+  wording.
 - **Touch a figure, touch both forms.** Every figure exists twice -- as
   a TikZ picture in `figures/<name>.tex`, and as the plain-ASCII diagram
   in `figures/<name>.txt`, the same pair of files in every genre. Find

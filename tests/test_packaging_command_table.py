@@ -49,7 +49,7 @@ DRAFT_SUBCOMMANDS = {
     "registry": {"build", "check", "excerpt"},
     "tldr": {"write", "show"},
 }
-DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style"}
+DRAFT_FLAT_VERBS = {"gate", "references", "evidence", "render", "style", "figures"}
 
 REVIEW_SUBCOMMANDS = {"verbatim": {"overlap", "scan", "recheck", "locate"}}
 REVIEW_FLAT_AIDS = {

@@ -1,6 +1,45 @@
 # 🖼 Reaching the drafting stage with tables, equations and figures
 
-Status: **plan.** Written 2026-09-04, for issues
+Status: **done.** Written 2026-09-04; shipped the same day in PR
+[#655](https://github.com/prasadtalasila/chitragupta/pull/655) (#651),
+[#656](https://github.com/prasadtalasila/chitragupta/pull/656) (#652),
+[#657](https://github.com/prasadtalasila/chitragupta/pull/657) (#653) and
+[#658](https://github.com/prasadtalasila/chitragupta/pull/658) (#654), in
+the order this file predicted.
+
+**What changed on the way**, since a plan that no longer matches what
+shipped is worse than no plan:
+
+- **Figures carry `bbox` only, not also pixel `dimensions`.** The record
+  shape below promised both. The real-PDF smoke run showed the pixel
+  figure disagreeing with the written PNG by 1-2px on 7 of one paper's 17
+  figures: pdfium sizes a crop from page-edge insets,
+  `round((page_w - left - right) * scale)`, which is not float-equal to
+  `round((r - l) * scale)`. Matching it exactly would have meant
+  threading page geometry from the render path into the record path to
+  publish a number the caller can derive. The box is exact and
+  scale-independent; pixels are it times `docling_image_scale`.
+- **The junk floor is in page points, not pixels.** Stated below as
+  "tiny (<200px on a side)", which was how it was measured but not how it
+  could be implemented: a pixel floor reclassifies the whole corpus when
+  someone edits `docling_image_scale`. It ships as 33pt -- that same
+  200px divided by the 6.0 it was measured at.
+- **The table fix needed a second half nobody predicted.** Widening the
+  window was not enough: `_clean_window` normalises whitespace, which
+  collapses every row of a table onto one line. `retrieval_tables.py`
+  renders a block line by line for that reason, and exists as its own
+  module because `retrieval.py` was at 249 of the 250 code-line ceiling.
+- **#651 shipped with a hole that #652 closed.** `isolated_config` pins
+  `PARSER_OCR` and the new `PARSER_FORMULAS` was not added beside it, so
+  a test asserting the default passed or failed by whether the host had
+  turned the key on. CI copies `config.toml.example` and could not have
+  caught it.
+- **The rung-1 masking resolved itself, as predicted.** The corpus
+  re-parse took `formula-not-decoded` from 148 documents to **0**, put
+  `$$` math in **151**, and took corpus-layer sidecars carrying `formula`
+  records from 0 to **156** (`table` records held, 324 -> 330).
+
+Written 2026-09-04, for issues
 [#651](https://github.com/prasadtalasila/chitragupta/issues/651),
 [#652](https://github.com/prasadtalasila/chitragupta/issues/652),
 [#653](https://github.com/prasadtalasila/chitragupta/issues/653) and

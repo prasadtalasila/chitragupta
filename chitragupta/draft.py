@@ -1,6 +1,6 @@
 """The drafting layer's single entry point: `python -m chitragupta.draft <verb>`.
 
-Eleven commands, run by hand or by a genre skill over one draft:
+Twelve commands, run by hand or by a genre skill over one draft:
 
     python -m chitragupta.draft gate <file> [<file> ...]
         verify every citekey in a draft against the ledger -- this
@@ -47,6 +47,11 @@ Eleven commands, run by hand or by a genre skill over one draft:
         text -- a browsing aid, never read by `corpus ledger`
         (docs/FEATURES.md).
 
+    python -m chitragupta.draft figures <citekey>
+        one paper's figures -- caption, page, the string to cite each by,
+        and the crop to look at while drafting. A reading aid; a source
+        figure is never reproduced in a draft (AGENTS.md).
+
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer and `python -m chitragupta.review <aid>` for the review layer. None
 of the modules beside this one carries a `__main__` block any more,
@@ -89,6 +94,7 @@ import sys
 from chitragupta import (
     citation_gate,
     dossier,
+    draft_figures,
     evidence_appendix,
     references,
     registry,
@@ -129,6 +135,10 @@ VERBS = {
     "tldr": (
         tldr,
         "a one-paragraph summary per citekey, cached beside a fingerprint of its parsed text",
+    ),
+    "figures": (
+        draft_figures,
+        "one paper's figures to look at while drafting -- never to reproduce",
     ),
 }
 
