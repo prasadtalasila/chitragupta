@@ -425,3 +425,64 @@ directory and clobber each other. Swapping to headless would have to be
 post-install surgery -- uninstall one, install the other, after the enrich
 group -- in the style of `ensure_gpu_torch`, and was not worth it against
 two apt packages.
+
+## 🐛 docling silently empties every formula on a GPU host
+
+Diagnosed 2026-09-05. Fixed in the `os-deps` stage, like the OpenCV entry
+above -- but recorded at more length, because this one does not fail the
+run, fail the document, or leave anything in the corpus text that looks
+wrong. It only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
+turned on, which is not the default.
+
+**What it looks like.** A `sync` that keeps going, with one line per
+affected document buried in a log that is already full of docling's own
+table-recovery warnings:
+
+```text
+[vaillant_towards_2022] Error processing code/formula batch: Command '['/usr/bin/gcc',
+  '.../triton/backends/nvidia/driver.c', ...]' returned non-zero exit status 1.
+[5/497] vaillant_towards_2022
+```
+
+and, further up, the compile that actually failed:
+
+```text
+.../triton/backends/nvidia/driver.c:9:10: fatal error: Python.h: No such file or directory
+```
+
+**The cause.** torch's default Linux wheel bundles triton. With a GPU
+visible, triton compiles a small C shim (`backends/nvidia/driver.c`) the
+first time a CUDA kernel is launched -- a real `gcc` invocation, at
+runtime, that `#include`s `Python.h`. A host with no CPython development
+headers fails it. Nothing in this project asks for triton, and nothing
+asks gcc to run; both arrive with torch and fire only under `--gpus`,
+which is why a CPU-only host never sees this.
+
+**Why it is worse than a crash.** docling catches the failure per batch
+(`docling/models/stages/code_formula/code_formula_vlm_model.py`), logs the
+line above, and substitutes `""` for every element in the batch. So each
+affected formula becomes an *empty string* -- not the
+`<!-- formula-not-decoded -->` marker you get with formula enrichment
+switched off, which at least says a formula was there. The document then
+converts successfully and the ledger records it as parsed.
+
+**Re-running `sync` does not repair it.** `sync_decide._to_parse` skips a
+reference on `ledger.upsert_reference`'s `(size, mtime)` fingerprint of the
+*PDF*, which has not changed. Fixing the host and re-syncing therefore
+leaves every already-parsed document exactly as it was. Recovery is:
+
+```console
+sudo apt-get install -y python3-dev gcc     # or re-run the os-deps stage
+python -m chitragupta.corpus sync --reparse
+```
+
+**The fix.** `python3-dev` and `gcc` are in the `os-deps` package list, so
+`bash scripts/install_full_pipeline.sh os-deps` (equivalently `chitragupta
+install os-deps`) covers it. Hosts provisioned before 2026-09-05, including
+any long-running container built from `docker/Dockerfile.claude`, need the
+apt line above by hand.
+
+**If you do not want formula recognition,** the cheaper answer is to leave
+`[parser].formulas = false`. docling then writes
+`<!-- formula-not-decoded -->` and never loads the model that needs
+triton at all.
