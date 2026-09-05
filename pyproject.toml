@@ -175,7 +175,7 @@ scipy = {version = ">=1.18,<2.0", optional = true}
 # depends on Pillow directly, so it cannot be absent wherever this is.
 pypdfium2 = {version = ">=5.13,<6.0", optional = true}
 pytest = {version = ">=9.0,<10.0", optional = true}
-pytest-cov = {version = ">=7.0,<8.0", optional = true}
+pytest-cov = {version = ">=6.0,<7.0", optional = true}
 mkdocs-material = {version = ">=9.7,<10.0", optional = true}
 mkdocs-same-dir = {version = "0.1.5", optional = true}
 
@@ -271,7 +271,19 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=9.0,<10.0"
-pytest-cov = ">=7.0,<8.0"
+# **<7 is load-bearing, not staleness.** pytest-cov 6.x ships a
+# `pytest-cov.pth` that turns on coverage in *subprocesses*; 7.0 removed
+# it. Six modules here are measured only that way -- the `main()` and
+# `__main__` paths that `.claude/hooks` and the hook tests reach by
+# spawning a process -- so on 7.1.0 the total drops from 100% to 99.70%
+# and `fail_under = 100` fails the build. Not a hypothetical: this was
+# the bump, and the CI run that caught it.
+#
+# coverage's own `patch = ["subprocess"]` is the documented replacement
+# and was tried first; it did not restore those six. Lift the cap when
+# something demonstrably does, checking `scripts/code_standards.py`
+# specifically -- it is 16 of the 34 statements at stake.
+pytest-cov = ">=6.0,<7.0"
 
 # Optional group (`poetry install --only docs`): builds the documentation
 # site at https://prasad.talasila.in/chitragupta/ from mkdocs.yml. Nothing
