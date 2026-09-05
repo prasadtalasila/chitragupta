@@ -186,10 +186,13 @@ install_os_deps() {
     #
     # Measured on docker/Dockerfile.claude's Debian trixie base with a
     # GPU attached, where gcc was already present and the headers were
-    # the whole gap. gcc is named here for docker/Dockerfile's
-    # ubuntu:24.04 base instead, which is installed
-    # --no-install-recommends and so carries no compiler at all; that
-    # half is the same mechanism rather than a second measurement.
+    # the whole gap. gcc is named here for docker/Dockerfile's Ubuntu
+    # base instead, which is installed --no-install-recommends and so
+    # carries no compiler at all; that half is the same mechanism rather
+    # than a second measurement. The base moved 24.04 -> 26.04 after this
+    # was written and the fix is unaffected: python3-dev there resolves
+    # to python3.14-dev, which is the version /opt/venv is built from,
+    # so the headers triton compiles against are still the matching ones.
     #
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
@@ -229,7 +232,7 @@ install_os_deps() {
     # cv2.abi3.so vendors Qt but *not* libGL.so.1, libglib-2.0.so.0 or the
     # X libraries libgl1 pulls in -- ldd resolves those to the system, and
     # a base image installed with --no-install-recommends
-    # (docker/Dockerfile's ubuntu:24.04, and any host provisioned only by
+    # (docker/Dockerfile's ubuntu:26.04, and any host provisioned only by
     # this stage) has none of them, so `import cv2` fails.
     # That error is never the one you see. chitragupta/pdf_text.py's forkserver
     # preloads docling, `forkserver.main()` catches ImportError and

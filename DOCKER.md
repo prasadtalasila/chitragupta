@@ -5,7 +5,7 @@ and neither replaces the other:
 
 | File | What it is | Size | Needs a checkout |
 | --- | --- | --- | --- |
-| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14. Mount your checkout, get a shell with everything resolved. | 4.75GB (cpu) / 11.6GB (gpu, unmeasured since the base bump) | Yes -- it is the checkout you mount and work in |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against (#668). Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, unmeasured since the base bump) | Yes -- it is the checkout you mount and work in |
 | `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No -- it installs from PyPI |
 
 `docker/Dockerfile` is documented first, then the agent image under
@@ -65,7 +65,7 @@ one you get:
 | `TORCH_VARIANT` | Build command | Measured image size | When to use it |
 | --- | --- | --- | --- |
 | `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB | `docker run --gpus` deployments -- the bundled CUDA runtime is enough on its own, no host CUDA toolkit needed, only a matching driver |
-| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 4.75GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
+| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 5.09GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 
 The `cpu` variant reinstalls `torch`/`torchvision` from PyTorch's own
 CPU-only wheel index, at the exact version `poetry.lock` resolved (read
@@ -126,7 +126,7 @@ checkout has to be rebuilt to follow a release, and this one only has to
 be restarted.
 
 What that buys, and what it costs: the build is seconds rather than
-tens of minutes and the image is ~2.5GB rather than 4.75GB, because
+tens of minutes and the image is ~2.5GB rather than 5.09GB, because
 TeX Live, Pandoc and torch are **not** in it. You add whatever the work
 actually needs on first run, with `chitragupta install` -- which is why
 the image gives its user passwordless `sudo` (see below).
