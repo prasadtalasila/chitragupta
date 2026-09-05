@@ -48,8 +48,17 @@
     </details>
   </aside>
 </main>
+<!--
+  Classic scripts, and this order matters: data.js assigns the payload,
+  graph.js and panel.js publish window.CHITRAGUPTA_APP (panel.js reads
+  graph.js's origin vocabulary), and app.js wires them to the canvas.
+  Not ES modules -- `import` from file:// is a blocked cross-origin
+  request, and this directory has to open with no server.
+-->
 <script src="./data.js"></script>
 <script src="./vendor/cytoscape.min.js"></script>
+<script src="./graph.js"></script>
+<script src="./panel.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

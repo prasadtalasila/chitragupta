@@ -547,6 +547,16 @@ jobs:
       - name: markdownlint
         run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 
+      # The interaction code shipped in assets/webapp/ is JavaScript, so
+      # pytest reaches none of it and the coverage bar says nothing about
+      # it. graph.js and panel.js are written to run without a DOM and
+      # without cytoscape precisely so this step can exercise them; it
+      # rides in the lint job because node is already installed here and
+      # a second setup-node in the test matrix would cost both legs.
+      # Node's runner takes files, not a directory, hence the glob.
+      - name: Test the webapp modules
+        run: node --test tests/webapp/*.test.js
+
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a
       # contributor's machine. It is one of the two binaries that script

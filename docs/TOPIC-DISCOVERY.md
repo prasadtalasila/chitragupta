@@ -437,7 +437,8 @@ labelled "graph" -- so it shipped as the `--html` flag.
 
 `chitragupta corpus discover --app topicapp/` writes the graph as a
 **directory** rather than one file: `index.html`, the interaction code
-(`app.js`, `style.css`), a vendored [cytoscape.js](https://js.cytoscape.org/)
+(`graph.js`, `panel.js`, `app.js`, `style.css`), a vendored
+[cytoscape.js](https://js.cytoscape.org/)
 (pinned; `assets/webapp/vendor/README.md` records the version and why it
 is committed rather than fetched), and `data.js` -- the same joined
 payload the `--html` page embeds, shipped as a JavaScript assignment
@@ -476,12 +477,22 @@ the terminal views. Interaction happens entirely in the browser over
 the embedded payload; nothing is recomputed and nothing is fetched.
 `<` is escaped in the payload exactly as the `--html` page escapes its
 JSON island, so no topic label or paper title can close the data script
-early. On the rendering side `app.js` escapes all five HTML-significant
+early. On the rendering side `panel.js` escapes all five HTML-significant
 characters -- quotes included, because labels are also interpolated into
 attributes -- and keeps its label-keyed lookup tables on null
 prototypes, so a hostile phrase that rode in through a PDF's extracted
 keywords (a topic label is only semi-trusted data) can neither script
-the exported page nor crash it.
+the exported page nor crash it. The null-prototype tables are `graph.js`'s.
+
+The interaction code is three files rather than one so that two of them
+can be tested: `graph.js` (payload to what is visible and what cytoscape
+is handed) and `panel.js` (data to HTML) run without a DOM and without
+cytoscape, and `tests/webapp/*.test.js` exercises them under
+`node --test`, which CI runs in the lint job. `app.js` is what is left --
+the cytoscape instance, the DOM events and the selection state they
+mutate. They are classic scripts loaded in that order, not ES modules:
+`import` from `file://` is a blocked cross-origin request, and this
+directory has to open with no server, forever.
 
 ## 🚫 Alternatives considered
 
