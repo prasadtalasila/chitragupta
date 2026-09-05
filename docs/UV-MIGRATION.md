@@ -175,19 +175,33 @@ run an experiment before deciding.
 ## ✅ Recommendation
 
 **Do not migrate to fix the lockfile.** That is a multi-pull-request
-change deployed against a problem a script solves in about two and a half
-minutes:
+change deployed against a problem a script solves in under two minutes.
+`scripts/relock.py` is that script:
 
-1. Resolve with `uv pip compile` (seconds).
-2. Write those exact versions into `pyproject.toml` as temporary pins.
-3. `poetry lock` -- about 90 seconds, since nothing is left to search.
-4. Restore the normal ranges.
-5. `poetry lock` again with the fresh lock present -- about 40 seconds.
+```bash
+python3 scripts/relock.py            # regenerate poetry.lock
+python3 scripts/relock.py --check    # resolve and report, write nothing
+```
 
-That is the route that produced the current lock, by hand. As a script it
-turns "cannot regenerate" into one command, changes nothing about how the
-project is built or installed, and keeps
-`pip install 'chitragupta-cli[enrich]'` working exactly as it does now.
+What it does, and why each step is there:
+
+1. Resolve the declared constraints with `uv pip compile`.
+2. Write those exact versions back into `pyproject.toml` as temporary
+   `==` pins.
+3. `poetry lock` -- fast, because nothing is left to search.
+4. Restore the original `pyproject.toml`.
+5. `poetry lock` again. Not decoration: step 3's lock is correct but its
+   `content-hash` belongs to the pinned file about to be discarded, so
+   this re-locks against the real one, keeping the versions step 3 found
+   because a lock is now present.
+
+Measured on a full run: **uv 1.4s, pinned lock 63s, restoring lock 40s
+-- 103 seconds in total**, against a `poetry lock --regenerate` that does
+not finish. It changes nothing about how the project is built or
+installed, and keeps `pip install 'chitragupta-cli[enrich]'` working
+exactly as it does now. On any failure -- including `Ctrl-C` -- it puts
+`pyproject.toml` and `poetry.lock` back as it found them, because a
+half-pinned `pyproject.toml` left behind looks like a hand edit later.
 
 **Separately, move `adapters` out of the shipped dependency set.** It has
 zero imports under `chitragupta/` and one under `bench/`, and
@@ -213,8 +227,9 @@ the documentation.
 
 Stated so nobody mistakes this document for a completed evaluation:
 
-- The relock procedure above has been measured **step by step**, not yet
-  run end to end as a single script.
+- ~~The relock procedure has not been run end to end.~~ It has:
+  `scripts/relock.py` regenerated this repository's own lock in 103
+  seconds, and the lock it produced is the one this project ships.
 - uv's torch index handling has **not** been tried on a GPU host, so
   whether it could replace `ensure_gpu_torch` is unknown.
 - Whether the built wheel is **metadata-equivalent** after a PEP 621

@@ -68,6 +68,57 @@ class TestOsDeps:
         assert install.main(["os-deps"]) == 1
 
 
+class TestEnrich:
+    """`chitragupta install enrich` -- the one stage that is not a
+    `scripts/install_full_pipeline.sh` stage.
+
+    It exists for `docker/Dockerfile.claude`, which ships the CLI and
+    nothing else and deliberately leaves the enrich extra out of the
+    image because it is torch. Without this, that container's user had
+    to know a pip incantation the tool would not run for them.
+    """
+
+    def test_pip_installs_the_extra_at_the_running_version(self, monkeypatch, capsys):
+        """Pinned to what is installed, not left open.
+
+        An unpinned `pip install chitragupta-cli[enrich]` is free to
+        upgrade chitragupta itself, so asking for an extra would swap
+        the tool underneath the command that asked -- which is not what
+        "install the enrich extra" means.
+        """
+        monkeypatch.setattr(install.importlib.metadata, "version", lambda _dist: "6.75.1")
+        monkeypatch.setattr(install.sys, "executable", "/venv/bin/python")
+        recorded = RecordedRun()
+        monkeypatch.setattr(install.subprocess, "run", recorded)
+        assert install.main(["enrich"]) == 0
+        ((command, _kwargs),) = recorded.calls
+        assert command == [
+            "/venv/bin/python",
+            "-m",
+            "pip",
+            "install",
+            "chitragupta-cli[enrich]==6.75.1",
+        ]
+        assert "About to run" in capsys.readouterr().out
+
+    def test_a_failing_pip_is_reported_not_swallowed(self, monkeypatch):
+        monkeypatch.setattr(install.importlib.metadata, "version", lambda _dist: "6.75.1")
+        monkeypatch.setattr(install.subprocess, "run", RecordedRun(returncode=1))
+        assert install.main(["enrich"]) == 1
+
+    def test_a_checkout_is_refused_with_the_poetry_equivalent(self, monkeypatch, capsys):
+        """There is no `chitragupta-cli` on an index to add an extra to
+        when running from a source tree, and `poetry install --with
+        enrich` is what the operation means there."""
+
+        def not_installed(_dist):
+            raise install.importlib.metadata.PackageNotFoundError
+
+        monkeypatch.setattr(install.importlib.metadata, "version", not_installed)
+        assert install.main(["enrich"]) == 1
+        assert "poetry install --with enrich" in capsys.readouterr().err
+
+
 class TestGpuTorch:
     def test_targets_the_running_interpreters_own_venv(self, monkeypatch, tmp_path):
         # tmp_path, not a hardcoded POSIX string: a resolved path on

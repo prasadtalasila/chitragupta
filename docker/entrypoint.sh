@@ -38,6 +38,13 @@ AGENT_NAME="${CLAUDE_AGENT_NAME:-$(hostname)}"
 # under `set -e` that took PID 1 with it -- an entrypoint that failed on
 # every start, turning a silent problem into a restart loop. A server
 # reads this file when it starts, however it was started.
+#
+# It is `-g` only for as long as it takes to create the agent's session,
+# and the narrowing below is not tidiness -- left global it breaks every
+# *other* pane in the container. A person who runs `tmux` inside here
+# and types `exit` gets "Pane is dead" and a session that will not close,
+# which is a worse bug than the silent one this option exists to fix,
+# and it was reported from real use.
 mkdir -p "$HOME/.config/tmux"
 echo "set -g remain-on-exit on" > "$HOME/.config/tmux/tmux.conf"
 
@@ -58,6 +65,20 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" \
     "claude remote-control --permission-mode bypassPermissions --name ${AGENT_NAME}"
 fi
+
+# The option has done its job the moment the session exists, so put it
+# back: `off` globally, `on` for this one session, which no longer races
+# anything because the session is already there. Any interactive `tmux`
+# a person starts in this container from here on behaves normally --
+# `exit` closes the pane and ends the session.
+#
+# The config file goes too. If the agent's session is ever killed and
+# the tmux server exits with it, the next `tmux` starts a fresh server,
+# and a fresh server re-reads that file -- reintroducing the global
+# setting for an interactive user long after this script ran.
+tmux set-option -g remain-on-exit off
+tmux set-option -t "$SESSION" remain-on-exit on
+rm -f "$HOME/.config/tmux/tmux.conf"
 
 # Then say whether it actually came up, because this failure is silent
 # and it is the state every *first* start is in: `claude remote-control`

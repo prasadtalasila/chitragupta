@@ -118,10 +118,18 @@ pip install 'chitragupta-cli[enrich]'   # tier 3 -- chitragupta enrich (docling,
 # useful outside one.
 pip install 'chitragupta-cli[dev]'
 
-# chitragupta install all refuses, naming pip install 'chitragupta-cli[enrich]'
-# (above) plus this, run separately -- os-deps is the one stage that
-# actually runs (Debian/Ubuntu + root; `chitragupta doctor` reports what
-# it's missing on any other host):
+# The enrich extra, installed by the CLI rather than by hand: pip
+# install 'chitragupta-cli[enrich]' does the same thing, but this pins
+# the version to the chitragupta already running, so asking for an extra
+# cannot upgrade the tool underneath the command that asked. It is what
+# docker/Dockerfile.claude's user reaches for -- that image ships the
+# CLI and deliberately leaves torch out.
+chitragupta install enrich
+
+# chitragupta install all refuses, naming `chitragupta install enrich`
+# (above) plus this, run separately -- os-deps and gpu-torch are the
+# stages that actually run (Debian/Ubuntu + root; `chitragupta doctor`
+# reports what it's missing on any other host):
 chitragupta install os-deps
 ```
 
@@ -172,9 +180,10 @@ environment, console script included, and `chitragupta/hook_launchers.py`
 is what checks that it still can (#264). So: a bare `pip install
 chitragupta-cli` covers tiers 1 and 2 (`bibtexparser` is a main,
 non-optional dependency -- `chitragupta corpus sync` needs nothing
-extra); only tier 3 (`chitragupta enrich`) needs `pip install
-'chitragupta-cli[enrich]'`, the same as `python-deps` needing the enrich
-group from a checkout. `chitragupta doctor` reports which you have. Use
+extra); only tier 3 (`chitragupta enrich`) needs the enrich extra --
+`chitragupta install enrich`, or `pip install 'chitragupta-cli[enrich]'`
+by hand -- the same as `python-deps` needing the enrich group from a
+checkout. `chitragupta doctor` reports which you have. Use
 whichever form you like by hand, but don't change what a hook or a skill
 invokes.
 

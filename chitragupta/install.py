@@ -17,6 +17,16 @@ is (`apt-get install`), so this is a promise made explicit at the one
 new surface that makes it a shipped command rather than something only a
 checkout runs.
 
+**`enrich` installs this package's own extra**, into the environment
+`chitragupta` is already running from, at the version already installed.
+It is the one stage that is not a `scripts/install_full_pipeline.sh`
+stage at all: it is `pip install 'chitragupta-cli[enrich]'` with the
+version pinned to what is running, which is exactly what a user would
+otherwise have to type. Added because `docker/Dockerfile.claude` ships
+the CLI and nothing else, and told its user to reach for `pip` for the
+one dependency set that image exists to make reachable -- the extra is
+deliberately not baked in, since it is torch.
+
 **`gpu-torch` targets the environment `chitragupta` is installed into**,
 not `.venv-full` -- `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON`, derived from
 `sys.executable`, are what tell the shipped script's `gpu-torch` stage
@@ -26,7 +36,9 @@ change).
 """
 
 import argparse
+import importlib.metadata
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -43,17 +55,22 @@ SCRIPT = SOURCE_ROOT / "scripts" / "install_full_pipeline.sh"
 
 DESCRIPTION = "Run the install_full_pipeline.sh stage a pip install cannot do itself."
 
+# The extra `enrich` installs. Named once, and not spelled inline --
+# see _run_enrich's comment on why the bare bracketed form is kept out
+# of this file's text.
+EXTRA = "enrich"
+
 # What this refuses, and the pip equivalent each one names -- every
 # refusal is a repo-shaped stage this environment has no real analogue
 # of, not merely an unimplemented one.
 REFUSED = {
-    "python-deps": "pip install 'chitragupta-cli[enrich]'",
+    "python-deps": "chitragupta install enrich",
     "dev-deps": "pip install 'chitragupta-cli[dev]'",
-    "all": "pip install 'chitragupta-cli[enrich]', plus 'chitragupta install "
+    "all": "'chitragupta install enrich', plus 'chitragupta install "
     "os-deps' separately -- 'all' means something different here",
 }
 
-STAGES = ("os-deps", "gpu-torch", *REFUSED)
+STAGES = ("os-deps", "gpu-torch", "enrich", *REFUSED)
 
 # Derived, not restated: choices= alone gives --help no way to show which
 # of the five actually run something (#369 -- a reader who tried
@@ -86,6 +103,43 @@ def _run_os_deps() -> int:
         return 1
     command = ["bash", str(SCRIPT), "os-deps"]
     print(f"About to run (needs root): {' '.join(command)}")
+    return subprocess.run(command, check=False).returncode
+
+
+def _run_enrich() -> int:
+    """`pip install 'chitragupta-cli[enrich]=='<what is running>`.
+
+    Version-pinned to the running distribution rather than left open,
+    because an unpinned install of the *same* package is free to upgrade
+    it: a user asking for an extra would get a different chitragupta
+    than the one they invoked, mid-command, which is not what "install
+    the enrich extra" means.
+
+    Refused outside an installed distribution -- a checkout has no
+    `chitragupta-cli` on any index to add an extra to, and
+    `poetry install --with enrich` is the operation that means this
+    there.
+    """
+    try:
+        version = importlib.metadata.version("chitragupta-cli")
+    except importlib.metadata.PackageNotFoundError:
+        print(
+            "enrich needs chitragupta-cli installed as a package. In a git "
+            "checkout the equivalent is: poetry install --with enrich",
+            file=sys.stderr,
+        )
+        return 1
+    # The extra's name is a variable and the echo goes through
+    # shlex.join for the same single reason: square brackets are a glob
+    # in zsh, so the bracketed extra printed bare is a line that fails
+    # in the shell of anyone who copies it
+    # (tests/test_pyproject_extras.py has the full reckoning). argv
+    # itself must stay unquoted -- pip receives it directly, never
+    # through a shell -- so the quoting belongs in the echo, and the
+    # name is split out so the bare spelling appears in neither.
+    requirement = f"chitragupta-cli[{EXTRA}]=={version}"
+    command = [sys.executable, "-m", "pip", "install", requirement]
+    print(f"About to run: {shlex.join(command)}")
     return subprocess.run(command, check=False).returncode
 
 
@@ -123,6 +177,8 @@ def main(argv=None) -> int:
         return _refuse(args.stage)
     if args.stage == "os-deps":
         return _run_os_deps()
+    if args.stage == "enrich":
+        return _run_enrich()
     return _run_gpu_torch()
 
 

@@ -42,11 +42,16 @@ class TestCheckEnrichExtra:
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: object())
         assert "[ok]" in doctor._check_enrich_extra()
 
-    def test_not_importable_names_the_extra(self, monkeypatch):
+    def test_not_importable_names_the_command_that_fixes_it(self, monkeypatch):
+        """Names `chitragupta install enrich`, not the pip line it used
+        to print. `doctor` is most often read inside
+        docker/Dockerfile.claude, where the CLI is all there is and the
+        pip incantation was the one thing a user had to know that the
+        tool would not do for them."""
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: None)
         result = doctor._check_enrich_extra()
         assert "[missing]" in result
-        assert "'chitragupta-cli[enrich]'" in result
+        assert "chitragupta install enrich" in result
         assert "incomplete" not in result
 
     def test_a_partial_install_is_reported_and_names_what_is_missing(self, monkeypatch):
