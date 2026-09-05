@@ -466,14 +466,26 @@ affected formula becomes an *empty string* -- not the
 switched off, which at least says a formula was there. The document then
 converts successfully and the ledger records it as parsed.
 
-**Re-running `sync` does not repair it.** `sync_decide._to_parse` skips a
-reference on `ledger.upsert_reference`'s `(size, mtime)` fingerprint of the
-*PDF*, which has not changed. Fixing the host and re-syncing therefore
-leaves every already-parsed document exactly as it was. Recovery is:
+**Re-running does not repair it, and the two settings recover
+differently.** Both caches key on the *input* PDF, which has not changed,
+so fixing the host and re-running leaves every already-parsed document
+exactly as it was. Which lever clears it depends on which parse produced
+the damage:
 
 ```console
 sudo apt-get install -y python3-dev gcc     # or re-run the os-deps stage
+
+# [parser].formulas -- the corpus parse. Skips on
+# ledger.upsert_reference's (size, mtime) of the PDF; --reparse overrides it.
 python -m chitragupta.corpus sync --reparse
+
+# [enrich].docling_formulas -- the enrichment parse. `--reparse` is a
+# `corpus sync` flag and does not reach this stage. Its cache does record
+# the formulas setting (chitragupta/enrich/_docling_cache.py), but that
+# setting has not changed either, so the entries still match. Delete the
+# cache file, which invalidates every entry at once:
+rm content/docling_cache.json
+python -m chitragupta.enrich --stages docling
 ```
 
 **The fix.** `python3-dev` and `gcc` are in the `os-deps` package list, so
