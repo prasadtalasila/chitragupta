@@ -198,6 +198,15 @@ ocr = false
 # skill, and with it on the equation is LaTeX -- text, which that index
 # already handles, with no other setting to change.
 #
+# On a host with a GPU this needs CPython headers and a C compiler
+# present (`python3-dev` and `gcc`, both in the `os-deps` stage): torch's
+# bundled triton compiles a shim at runtime, and without them the
+# recognition model fails per batch and you get the `false` output
+# above -- markers, no LaTeX -- on a run that reports success and
+# records every document as parsed. See docs/PDF-PARSER.md's "docling
+# silently empties every formula on a GPU host" for how to tell and how
+# to recover.
+#
 # This is the *corpus* parse's setting. [enrich].docling_formulas below
 # is the separate enrichment parse's, and setting one does not set the
 # other; docs/CONFIG.md's "formulas, and why it is not the [enrich] key"

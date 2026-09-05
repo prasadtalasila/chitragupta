@@ -425,3 +425,109 @@ directory and clobber each other. Swapping to headless would have to be
 post-install surgery -- uninstall one, install the other, after the enrich
 group -- in the style of `ensure_gpu_torch`, and was not worth it against
 two apt packages.
+
+## 🐛 docling silently empties every formula on a GPU host
+
+Diagnosed 2026-09-05. Fixed in the `os-deps` stage, like the OpenCV entry
+above -- but recorded at more length, because this one does not fail the
+run, does not fail the document, and produces output that is
+byte-for-byte what you would get from the setting you did not choose. It
+only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
+turned on, which is not the default.
+
+**What it looks like.** A `sync` that keeps going, with one line per
+affected document buried in a log that is already full of docling's own
+table-recovery warnings:
+
+```text
+[vaillant_towards_2022] Error processing code/formula batch: Command '['/usr/bin/gcc',
+  '.../triton/backends/nvidia/driver.c', ...]' returned non-zero exit status 1.
+[5/497] vaillant_towards_2022
+```
+
+and, further up, the compile that actually failed:
+
+```text
+.../triton/backends/nvidia/driver.c:9:10: fatal error: Python.h: No such file or directory
+```
+
+**The cause.** torch's default Linux wheel bundles triton. With a GPU
+visible, triton compiles a small C shim (`backends/nvidia/driver.c`) the
+first time a CUDA kernel is launched -- a real `gcc` invocation, at
+runtime, that `#include`s `Python.h`. A host with no CPython development
+headers fails it. Nothing in this project asks for triton, and nothing
+asks gcc to run; both arrive with torch and fire only under `--gpus`,
+which is why a CPU-only host never sees this.
+
+**Why it does not look like a failure.** docling catches the exception per
+batch (`docling/models/stages/code_formula/code_formula_vlm_model.py`),
+logs the line above, and assigns `""` to every element in the batch. The
+document then converts successfully and the ledger records it as parsed.
+
+What reaches the corpus text is the `formulas = false` behaviour, exactly.
+`docling_core`'s Markdown serializer -- which both parses go through,
+`pdf_text/_backends.py`'s `export_to_markdown()` and
+`enrich/docling_parse.py`'s alike -- writes
+`<!-- formula-not-decoded -->` for a `FormulaItem` whose `text` is empty
+but whose `orig` is not, and the failure clears only `text`. So the
+marker stays. You are not left wondering whether a formula was there;
+you are left with a run that reported success, paid for the model
+download and the extra pass per page, and produced the output you would
+have got for free with the key switched off.
+
+**How to tell, if you no longer have the log.** The two states are cleanly
+separable, because a successful recognition writes LaTeX between `$$`
+delimiters and leaves no marker at all:
+
+```console
+grep -l 'formula-not-decoded' content/parsed/*.txt | wc -l   # 0 when healthy
+grep -l '\$\$' content/parsed/*.txt | wc -l                  # 0 is the tell
+```
+
+Measured on this project's own 497-document corpus, both states:
+
+| `[parser].formulas` | Docs with a marker | Docs with `$$` LaTeX |
+| --- | --- | --- |
+| `false` | 148 | 0 |
+| `true`, model ran | 0 | 151 |
+| `true`, this failure | as `false` | 0 |
+
+So one marker *while the key is on* is the whole diagnosis: the two
+never coexist, and a healthy `true` run produces none. The `false` row is
+the measurement
+[CONFIG.md](CONFIG.md#-formulas-and-why-it-is-not-the-enrich-key) records;
+the `true` row was measured on the same corpus after this key was turned
+on.
+
+**Re-running does not repair it, and the two settings recover
+differently.** Both caches key on the *input* PDF, which has not changed,
+so fixing the host and re-running leaves every already-parsed document
+exactly as it was. Which lever clears it depends on which parse produced
+the damage:
+
+```console
+sudo apt-get install -y python3-dev gcc     # or re-run the os-deps stage
+
+# [parser].formulas -- the corpus parse. Skips on
+# ledger.upsert_reference's (size, mtime) of the PDF; --reparse overrides it.
+python -m chitragupta.corpus sync --reparse
+
+# [enrich].docling_formulas -- the enrichment parse. `--reparse` is a
+# `corpus sync` flag and does not reach this stage. Its cache does record
+# the formulas setting (chitragupta/enrich/_docling_cache.py), but that
+# setting has not changed either, so the entries still match. Delete the
+# cache file, which invalidates every entry at once:
+rm content/docling_cache.json
+python -m chitragupta.enrich --stages docling
+```
+
+**The fix.** `python3-dev` and `gcc` are in the `os-deps` package list, so
+`bash scripts/install_full_pipeline.sh os-deps` (equivalently `chitragupta
+install os-deps`) covers it. Hosts provisioned before 2026-09-05, including
+any long-running container built from `docker/Dockerfile.claude`, need the
+apt line above by hand.
+
+**If you do not want formula recognition,** the cheaper answer is to leave
+`[parser].formulas = false`. docling then writes
+`<!-- formula-not-decoded -->` and never loads the model that needs
+triton at all.

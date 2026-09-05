@@ -150,7 +150,7 @@ install_os_deps() {
         launcher_pkg=""
     fi
     sudo_if_needed apt-get install -y --no-install-recommends \
-        python3 python3-venv python3-pip ${launcher_pkg:+"$launcher_pkg"} \
+        python3 python3-venv python3-pip python3-dev gcc ${launcher_pkg:+"$launcher_pkg"} \
         python3-poetry \
         poppler-utils \
         git curl ca-certificates unzip zip \
@@ -159,6 +159,38 @@ install_os_deps() {
         lmodern texlive-pictures \
         texlive-binaries texlive-publishers \
         libgl1 "$glib_pkg"
+    # python3-dev + gcc are for triton, which nothing here asks for
+    # either: torch's default Linux wheel bundles it, and on a host with
+    # a GPU visible triton compiles a small C shim of its own
+    # (backends/nvidia/driver.c) the first time a CUDA kernel is
+    # launched. That is a real gcc invocation at *runtime*, against
+    # `#include <Python.h>` and `-I/usr/include/pythonX.Y` -- so a host
+    # with no CPython headers fails it. Neither package is needed on a
+    # CPU-only host, and neither costs much: python3-dev pulls libc6-dev
+    # (which gcc needs anyway) and the pair is tens of MB against this
+    # list's TeX Live.
+    #
+    # As with libgl1 above, the error you see is never the one that
+    # matters. docling's formula-recognition model catches the failed
+    # compile per batch, logs `Error processing code/formula batch`, and
+    # sets every formula in that batch to the empty string
+    # (docling/models/stages/code_formula/code_formula_vlm_model.py) --
+    # so the document *converts*, the ledger records it parsed, and the
+    # run continues. What lands is the `formulas = false` output, marker
+    # and all, on a run that charged for the model and reported success;
+    # and re-running sync will not notice, because
+    # `sync_decide._to_parse` skips on the PDF's (size, mtime), which has
+    # not changed. Recovering needs `--reparse` on the corpus side and a
+    # deleted docling_cache.json on the enrich side. See
+    # docs/PDF-PARSER.md's troubleshooting entry for both.
+    #
+    # Measured on docker/Dockerfile.claude's Debian trixie base with a
+    # GPU attached, where gcc was already present and the headers were
+    # the whole gap. gcc is named here for docker/Dockerfile's
+    # ubuntu:24.04 base instead, which is installed
+    # --no-install-recommends and so carries no compiler at all; that
+    # half is the same mechanism rather than a second measurement.
+    #
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
     # itself the thing python-deps below shells out to -- it can't
