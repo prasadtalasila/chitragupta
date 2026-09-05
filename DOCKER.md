@@ -16,16 +16,21 @@ toolchain image -- `scripts/install_full_pipeline.sh` is the single
 install path for both the host and it.
 
 **Getting `docker/` without a checkout.** `chitragupta init` doesn't
-scaffold `docker/` (it has nothing to mount into a toolchain image built
-from a pip install), and a `pip install chitragupta-cli` doesn't carry
-it either. Every tagged [GitHub
+scaffold `docker/`, and a `pip install chitragupta-cli` doesn't carry it
+either. Every tagged [GitHub
 Release](https://github.com/prasadtalasila/chitragupta/releases) attaches
 a standalone `chitragupta-docker-<version>.zip` -- `docker/` plus this
-page -- for exactly that case: unzip it and the commands below work with
-no other part of the repository present. `DOCKER-DEVELOPER.md` at the
-repository root is this project's own record of how these two images
-are verified before a release, not something a Docker user needs to
-read.
+page -- for exactly that case. That's enough on its own for the **agent
+image**: `Dockerfile.claude`'s build context is `docker/` alone (see
+["Build and run"](#-build-and-run) below) and it installs from PyPI, so
+the commands under ["The agent container"](#-the-agent-container-dockerdockerfileclaude)
+work with nothing else present. The **toolchain image** still needs a
+checkout regardless of how you got `docker/` -- the table above already
+says so -- because its `Dockerfile` `COPY`s `scripts/install_full_pipeline.sh`
+and its `Run` section mounts your own working copy for `config.toml` to
+resolve from. `DOCKER-DEVELOPER.md` at the repository root is this
+project's own record of how these two images are verified before a
+release, not something a Docker user needs to read.
 
 ## 🔧 Build
 
