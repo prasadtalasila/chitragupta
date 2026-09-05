@@ -31,6 +31,13 @@ already handled) except:
   (content.dir, bib.path's parent) still resolve to something that exists
   before a first `sync` run populates them.
 
+Also builds release/chitragupta-docker-<version>.zip: just `docker/` and
+`DOCKER.md`, git-tracked only, for someone who wants the Dockerfiles
+without the whole checkout -- both already ship inside the main zip
+above too, since neither is in EXCLUDE_TOP_LEVEL. Not
+`DOCKER-DEVELOPER.md`: that file is this repo's own build/CI
+verification record, not something a Docker user needs.
+
 Also generates README.pypi.md -- README.md with every relative link and
 image rewritten to an absolute GitHub URL, pinned to this release's tag.
 README.md itself stays relative-link-friendly on purpose: GitHub and the
@@ -173,6 +180,36 @@ def build_release() -> tuple[Path, int]:
     return zip_path, len(paths)
 
 
+def build_docker_release() -> tuple[Path, int]:
+    """Builds release/chitragupta-docker-<version>.zip: just docker/ and
+    DOCKER.md, git-tracked only. The full archive above already contains
+    both (neither is in EXCLUDE_TOP_LEVEL), but that means downloading
+    the whole checkout just to run the toolchain or agent image -- this
+    is the standalone asset for that. Not DOCKER-DEVELOPER.md: that file
+    is this repo's own build/CI verification record, not something a
+    Docker user needs (see its own header)."""
+    version = get_version()
+    name = f"chitragupta-docker-{version}"
+    release_dir = REPO_ROOT / "release"
+    release_dir.mkdir(parents=True, exist_ok=True)
+
+    result = subprocess.run(
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", "docker", "DOCKER.md"],
+        capture_output=True,
+        check=True,
+    )
+    paths = [p for p in result.stdout.decode().split("\0") if p]
+
+    zip_path = release_dir / f"{name}.zip"
+    if zip_path.exists():
+        zip_path.unlink()
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for rel_path in sorted(paths):
+            zf.write(REPO_ROOT / rel_path, f"{name}/{rel_path}")
+
+    return zip_path, len(paths)
+
+
 def render_pypi_readme(version: str) -> str:
     """README.md, with every relative link and image rewritten to an
     absolute GitHub URL pinned to `v<version>` -- see the module
@@ -205,6 +242,8 @@ def main() -> int:
     version = get_version()
     zip_path, n_files = build_release()
     print(f"Release archive: {zip_path} ({n_files} files)")
+    docker_zip_path, n_docker_files = build_docker_release()
+    print(f"Docker archive: {docker_zip_path} ({n_docker_files} files)")
     pypi_readme = REPO_ROOT / "README.pypi.md"
     pypi_readme.write_text(render_pypi_readme(version), encoding="utf-8")
     print(f"PyPI readme: {pypi_readme}")

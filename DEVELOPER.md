@@ -3,7 +3,9 @@
 Material for working on this repository itself, as opposed to using it to
 draft content -- test running, the full source layout, and known gaps.
 See [README.md](README.md) for the user-facing Quickstart/Configuration/
-Architecture docs and [DOCKER.md](DOCKER.md) for the container build.
+Architecture docs and [DOCKER.md](DOCKER.md) for running a container;
+[DOCKER-DEVELOPER.md](DOCKER-DEVELOPER.md) here is this repo's own
+record of how the two images are built and verified.
 
 ## 🧭 Table of contents
 
@@ -163,7 +165,8 @@ AGENTS.md                 instructions for agents drafting *with* the pipeline -
 DEVELOPER-AGENTS.md       instructions for agents changing *this repo* -- install notes, dev
                           process, commit/PR/release conventions
 DEVELOPER.md              this file -- test running, repo layout, open questions
-DOCKER.md                 running this repo in a container -- the toolchain image and the agent image
+DOCKER.md                 how do I run this in a container -- the toolchain image and the agent image
+DOCKER-DEVELOPER.md       how the toolchain and agent images are built and verified before a release
 .github/                  CI/release workflows, plus the issue and PR templates GitHub picks up
                           automatically and RELEASE_TEMPLATE.md (copied by hand)
 docs/                     reference docs that ship in the release zip -- everything except the
@@ -363,7 +366,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
 .claude/settings.json     wires the three hooks above into PostToolUse/SessionStart
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
                           entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)
-                          -- neither image is built by CI, see DOCKER.md
+                          -- neither image is built by CI, see DOCKER-DEVELOPER.md
 ```
 
 ## 📐 Figures and copyright

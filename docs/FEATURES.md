@@ -439,7 +439,7 @@ the last stage derives and the discovery feature being built on it;
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
 | Config in one file | `config.toml`, every key overridable by environment variable | [CONFIG.md](CONFIG.md) |
 | Hooks | the citation gate enforced on every draft write | [HOOKS.md](HOOKS.md) |
-| Docker | two images: one that installs the Pandoc/TeX toolchain when you lack root, one that hosts a Claude Code agent with the published package | `DOCKER.md` (git checkout only) |
+| Docker | two images: one that installs the Pandoc/TeX toolchain when you lack root, one that hosts a Claude Code agent with the published package | [DOCKER.md](../DOCKER.md) |
 | Graceful degradation | every optional dependency has a documented fallback, and says which one it took | [LADDERS.md](LADDERS.md) |
 | Parallelism and locking | a worker pool for parsing, one write lock for the corpus | [PARALLELISM.md](PARALLELISM.md) |
 

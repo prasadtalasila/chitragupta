@@ -27,7 +27,7 @@
 
 [[c1]]
 name = "tests/test_release.py::make_repo"
-statements = 32
+statements = 37
 
 [[c1]]
 name = "chitragupta/retrieval.py::_windows"

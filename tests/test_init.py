@@ -40,6 +40,7 @@ def make_source(tmp_path: Path) -> Path:
     (src / "CLAUDE.md").write_text("router", encoding="utf-8")
     (src / "SOUL.md").write_text("why", encoding="utf-8")
     (src / "README.md").write_text("readme", encoding="utf-8")
+    (src / "DOCKER.md").write_text("running with docker", encoding="utf-8")
     (src / "config.toml.example").write_text(
         '[bib]\npath = "papers/bibliography.bib"\n', encoding="utf-8"
     )
@@ -202,15 +203,16 @@ class TestManifestAgreesWithTheReleaseZip:
 
 
 class TestScaffoldedDocLinksResolve:
-    """#352: `init` copies `docs/`, `AGENTS.md`, `CLAUDE.md`, `SOUL.md` and
-    `README.md` verbatim, and those documents cross-reference each other
-    by relative Markdown link. Four targets in `DELIBERATE_DIFFERENCES` --
-    `DEVELOPER-AGENTS.md`, `DEVELOPER.md`, `DOCKER.md`, `plans/` -- are
-    deliberately not copied, so a link to any of them from something that
-    *is* copied dangles in a scaffolded project even though it resolves
-    fine in this checkout. Reads the real `SOURCE_ROOT` rather than the
-    `source` fixture's tiny tree, because a synthetic fixture would not
-    contain the prose this exists to check."""
+    """#352: `init` copies `docs/`, `AGENTS.md`, `CLAUDE.md`, `SOUL.md`,
+    `README.md` and `DOCKER.md` verbatim, and those documents
+    cross-reference each other by relative Markdown link. Four targets
+    in `DELIBERATE_DIFFERENCES` -- `DEVELOPER-AGENTS.md`, `DEVELOPER.md`,
+    `DOCKER-DEVELOPER.md`, `plans/` -- are deliberately not copied, so a
+    link to any of them from something that *is* copied dangles in a
+    scaffolded project even though it resolves fine in this checkout.
+    Reads the real `SOURCE_ROOT` rather than the `source` fixture's tiny
+    tree, because a synthetic fixture would not contain the prose this
+    exists to check."""
 
     # Same shape as scripts/release.py's own `_rewrite_link` pattern.
     LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")

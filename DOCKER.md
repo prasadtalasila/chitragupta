@@ -15,28 +15,22 @@ There's nothing Docker-exclusive about any individual piece of the
 toolchain image -- `scripts/install_full_pipeline.sh` is the single
 install path for both the host and it.
 
-**What CI does and does not build**, since the two images differ here
-and it decides how much a green run tells you:
-
-| Image | Built by CI | Run by CI |
-| --- | --- | --- |
-| `docker/Dockerfile` | **Yes** -- `ci.yml`'s `docker-build` job runs `docker build --build-arg TORCH_VARIANT=cpu` on every push and PR (#302) | No. It builds and is thrown away; nothing execs into it |
-| `docker/Dockerfile.claude` | No -- no workflow builds it | No |
-
-So a break in the toolchain image's *build* is caught automatically; a
-break in anything it does at runtime is not, and nothing about the agent
-image is. `shellcheck docker/*.sh` in the `lint` job is the only other
-automated check that reaches this directory, and it sees `entrypoint.sh`
-alone.
-
-The toolchain image is additionally **verified by hand** (`docker
-build`, both `TORCH_VARIANT` values below, each image's `/opt/venv`
-confirmed to import
-`sentence_transformers`/`chromadb`/`bertopic`/`docling`/`torch`
-correctly), since CI only builds the `cpu` variant. Re-verify after
-changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`, or
-`poetry.lock`; the agent image has its own checks under ["Verify the
-container"](#-verify-the-container).
+**Getting `docker/` without a checkout.** `chitragupta init` doesn't
+scaffold `docker/`, and a `pip install chitragupta-cli` doesn't carry it
+either. Every tagged [GitHub
+Release](https://github.com/prasadtalasila/chitragupta/releases) attaches
+a standalone `chitragupta-docker-<version>.zip` -- `docker/` plus this
+page -- for exactly that case. That's enough on its own for the **agent
+image**: `Dockerfile.claude`'s build context is `docker/` alone (see
+["Build and run"](#-build-and-run) below) and it installs from PyPI, so
+the commands under ["The agent container"](#-the-agent-container-dockerdockerfileclaude)
+work with nothing else present. The **toolchain image** still needs a
+checkout regardless of how you got `docker/` -- the table above already
+says so -- because its `Dockerfile` `COPY`s `scripts/install_full_pipeline.sh`
+and its `Run` section mounts your own working copy for `config.toml` to
+resolve from. `DOCKER-DEVELOPER.md` at the repository root is this
+project's own record of how these two images are verified before a
+release, not something a Docker user needs to read.
 
 ## 🔧 Build
 
@@ -330,11 +324,4 @@ inside the container:
 python -m chitragupta.corpus sync
 python -m chitragupta.enrich --stages embed,bertopic
 python -m chitragupta.draft gate content/drafts/<slug>.md
-```
-
-To run the test suite inside the container, add the `dev` group:
-
-```bash
-SKIP_VENV=1 bash scripts/install_full_pipeline.sh dev-deps
-python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing
 ```
