@@ -29,7 +29,7 @@ packages = [{ include = "chitragupta" }]
 # exactly where `chitragupta/config.py`'s `shipped()` already looks
 # (`PACKAGE_ROOT.parent`), so that function needs no change once these
 # ship (#263). `chitragupta init` (#263) reads `.claude/`, `docs/` and
-# the four root `.md` files from the same sibling location.
+# the five root `.md` files from the same sibling location.
 include = [
     { path = "assets", format = ["sdist", "wheel"] },
     { path = ".claude", format = ["sdist", "wheel"] },
@@ -38,6 +38,7 @@ include = [
     { path = "CLAUDE.md", format = ["sdist", "wheel"] },
     { path = "SOUL.md", format = ["sdist", "wheel"] },
     { path = "README.md", format = ["sdist", "wheel"] },
+    { path = "DOCKER.md", format = ["sdist", "wheel"] },
     { path = "config.toml.example", format = ["sdist", "wheel"] },
     # `chitragupta install` (#265) reads this one file, always invoked as
     # `bash <path> <stage>` rather than executed directly -- so the

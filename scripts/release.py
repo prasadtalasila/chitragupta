@@ -32,9 +32,11 @@ already handled) except:
   before a first `sync` run populates them.
 
 Also builds release/chitragupta-docker-<version>.zip: just `docker/` and
-`docs/RUNNING-WITH-DOCKER.md`, git-tracked only, for someone who wants
-the Dockerfiles without the whole checkout -- both already ship inside
-the main zip above too, since neither is in EXCLUDE_TOP_LEVEL.
+`DOCKER.md`, git-tracked only, for someone who wants the Dockerfiles
+without the whole checkout -- both already ship inside the main zip
+above too, since neither is in EXCLUDE_TOP_LEVEL. Not
+`DOCKER-DEVELOPER.md`: that file is this repo's own build/CI
+verification record, not something a Docker user needs.
 
 Also generates README.pypi.md -- README.md with every relative link and
 image rewritten to an absolute GitHub URL, pinned to this release's tag.
@@ -180,19 +182,19 @@ def build_release() -> tuple[Path, int]:
 
 def build_docker_release() -> tuple[Path, int]:
     """Builds release/chitragupta-docker-<version>.zip: just docker/ and
-    docs/RUNNING-WITH-DOCKER.md, git-tracked only. The full archive above
-    already contains both (neither is in EXCLUDE_TOP_LEVEL), but that
-    means downloading the whole checkout just to run the toolchain or
-    agent image -- this is the standalone asset for that. Not DOCKER.md:
-    that file is this repo's own build/CI verification record, not
-    something a Docker user needs (see its own header)."""
+    DOCKER.md, git-tracked only. The full archive above already contains
+    both (neither is in EXCLUDE_TOP_LEVEL), but that means downloading
+    the whole checkout just to run the toolchain or agent image -- this
+    is the standalone asset for that. Not DOCKER-DEVELOPER.md: that file
+    is this repo's own build/CI verification record, not something a
+    Docker user needs (see its own header)."""
     version = get_version()
     name = f"chitragupta-docker-{version}"
     release_dir = REPO_ROOT / "release"
     release_dir.mkdir(parents=True, exist_ok=True)
 
     result = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", "docker", "docs/RUNNING-WITH-DOCKER.md"],
+        ["git", "-C", str(REPO_ROOT), "ls-files", "-z", "docker", "DOCKER.md"],
         capture_output=True,
         check=True,
     )

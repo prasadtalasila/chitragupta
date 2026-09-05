@@ -57,9 +57,8 @@ def make_repo(tmp_path):
     (repo / "docker").mkdir()
     (repo / "docker" / "Dockerfile").write_text("FROM scratch")
     (repo / "docker" / ".env.example").write_text("FOO=bar")
-    (repo / "DOCKER.md").write_text("# Docker build verification")
-    (repo / "docs").mkdir()
-    (repo / "docs" / "RUNNING-WITH-DOCKER.md").write_text("# Running with Docker")
+    (repo / "DOCKER.md").write_text("# Running with Docker")
+    (repo / "DOCKER-DEVELOPER.md").write_text("# Docker build verification")
 
     subprocess.run(["git", "add", "-A", "-f"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
@@ -200,8 +199,8 @@ class TestBuildRelease:
         assert n_files == 12  # README.md, SOUL.md, AGENTS.md, DEVELOPER-AGENTS.md,
         #                      DEVELOPER.md, pyproject.toml, chitragupta/foo.py,
         #                      .claude/skills/survey-writer/SKILL.md, DOCKER.md,
-        #                      docker/Dockerfile, docker/.env.example,
-        #                      docs/RUNNING-WITH-DOCKER.md
+        #                      DOCKER-DEVELOPER.md, docker/Dockerfile,
+        #                      docker/.env.example
 
         with zipfile.ZipFile(zip_path) as zf:
             names = set(zf.namelist())
@@ -267,9 +266,9 @@ class TestBuildRelease:
 
 
 class TestBuildDockerRelease:
-    """release/chitragupta-docker-<version>.zip: docker/ and
-    docs/RUNNING-WITH-DOCKER.md only, for someone who wants to run the
-    images without downloading the whole checkout."""
+    """release/chitragupta-docker-<version>.zip: docker/ and DOCKER.md
+    only, for someone who wants to run the images without downloading
+    the whole checkout."""
 
     def test_zip_contains_only_docker_and_the_docker_doc(self, repo):
         import zipfile
@@ -278,26 +277,25 @@ class TestBuildDockerRelease:
 
         assert zip_path == repo / "release" / "chitragupta-docker-9.9.9.zip"
         assert zip_path.exists()
-        assert n_files == 3  # docker/Dockerfile, docker/.env.example,
-        #                      docs/RUNNING-WITH-DOCKER.md
+        assert n_files == 3  # docker/Dockerfile, docker/.env.example, DOCKER.md
 
         with zipfile.ZipFile(zip_path) as zf:
             names = set(zf.namelist())
         assert "chitragupta-docker-9.9.9/docker/Dockerfile" in names
         assert "chitragupta-docker-9.9.9/docker/.env.example" in names
-        assert "chitragupta-docker-9.9.9/docs/RUNNING-WITH-DOCKER.md" in names
+        assert "chitragupta-docker-9.9.9/DOCKER.md" in names
 
-    def test_zip_excludes_docker_md(self, repo):
-        """DOCKER.md is this repo's own build/CI verification record, not
-        something a Docker user needs -- see build_docker_release's own
-        docstring."""
+    def test_zip_excludes_docker_developer_md(self, repo):
+        """DOCKER-DEVELOPER.md is this repo's own build/CI verification
+        record, not something a Docker user needs -- see
+        build_docker_release's own docstring."""
         import zipfile
 
         zip_path, _ = release.build_docker_release()
 
         with zipfile.ZipFile(zip_path) as zf:
             names = zf.namelist()
-        assert not any(n.endswith("/DOCKER.md") for n in names)
+        assert not any(n.endswith("/DOCKER-DEVELOPER.md") for n in names)
         assert not any("README.md" in n for n in names)
 
     def test_rerunning_overwrites_stale_archive(self, repo):

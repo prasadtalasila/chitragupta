@@ -247,9 +247,8 @@ GROBID runs as a long-lived service, not an in-process import:
 docker run --rm -p 8070:8070 grobid/grobid:0.9.0
 ```
 
-That fits the existing container story
-([RUNNING-WITH-DOCKER.md](RUNNING-WITH-DOCKER.md)) as a sidecar.
-Invocation would extend `--stages`:
+That fits the existing container story ([DOCKER.md](../DOCKER.md)) as a
+sidecar. Invocation would extend `--stages`:
 
 ```bash
 .venv-full/bin/python -m chitragupta.enrich --stages grobid,citation_graph

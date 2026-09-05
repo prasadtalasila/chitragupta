@@ -64,8 +64,20 @@ SOURCE_ROOT = PACKAGE_ROOT.parent
 # citekey invariant. assets/ is the one exception to "has to be present":
 # the pipeline's own defaults resolve it from the installed package
 # regardless (see the module docstring), so this copy is for the user to
-# find and edit, not something anything here reads.
-COPY_VERBATIM = (".claude", "docs", "assets", "AGENTS.md", "CLAUDE.md", "SOUL.md", "README.md")
+# find and edit, not something anything here reads. DOCKER.md is a
+# second: `docker/` itself is deliberately not scaffolded (see
+# DELIBERATE_DIFFERENCES), but the doc that says "how do I run this in a
+# container" still has to reach someone who only ever ran `pip install`.
+COPY_VERBATIM = (
+    ".claude",
+    "docs",
+    "assets",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "SOUL.md",
+    "README.md",
+    "DOCKER.md",
+)
 
 
 class ScaffoldSourceMissing(Exception):
@@ -145,7 +157,7 @@ DELIBERATE_DIFFERENCES = frozenset(
         # CLAUDE.md's routing table the "no src/ to change" row this implies.
         "DEVELOPER-AGENTS.md",
         "DEVELOPER.md",
-        "DOCKER.md",
+        "DOCKER-DEVELOPER.md",
         # About the chitragupta *software itself*, not the user's own project.
         "LICENSE",
         "CITATION.cff",

@@ -509,7 +509,7 @@ jobs:
       # docker/Dockerfile.claude builds, so a syntax error in it does not
       # fail a build -- it fails every `docker compose up` afterwards,
       # and nothing else in CI opens the file. Neither Dockerfile is
-      # built by any workflow (see DOCKER.md), so this is the only
+      # built by any workflow (see DOCKER-DEVELOPER.md), so this is the only
       # automated check that reaches the container path at all.
       - name: shellcheck
         run: shellcheck scripts/*.sh git-hooks/pre-commit docker/*.sh

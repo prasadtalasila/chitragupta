@@ -2,8 +2,9 @@
 #
 # `docs_dir: .` is the whole design, and it is load-bearing rather than
 # a convenience. This repository's prose is split across two levels --
-# README.md, SOUL.md, AGENTS.md, DEVELOPER.md, DEVELOPER-AGENTS.md and
-# DOCKER.md at the root, everything else under docs/ -- and the two
+# README.md, SOUL.md, AGENTS.md, DEVELOPER.md, DEVELOPER-AGENTS.md,
+# DOCKER.md and DOCKER-DEVELOPER.md at the root, everything else under
+# docs/ -- and the two
 # levels link to each other 47 times, plus 6 more from
 # .claude/skills/*/SKILL.md. Staging the files into one flat tree would
 # change every one of those relative paths, so the build would have to
@@ -159,17 +160,17 @@ nav:
   - Home: README.md
   - Getting started:
       - What it does: docs/FEATURES.md
-      - The working vocabulary: docs/GLOSSARY.md
+      - Glossary: docs/GLOSSARY.md
       - Installing and the CLI surface: docs/PACKAGING.md
-      - Getting your library in: docs/ZOTERO.md
-      - Iterating on a draft: docs/DRAFT-ITERATION.md
-      - Commands: docs/CLI.md
-      - Settings: docs/CONFIG.md
+      - Docker install: DOCKER.md
       - Windows and WSL2: docs/WINDOWS.md
-      - Running with Docker: docs/RUNNING-WITH-DOCKER.md
+      - Import library: docs/ZOTERO.md
+      - Commands: docs/CLI.md
+      - Configuration: docs/CONFIG.md
   - Writing:
       - Which genre skill: docs/GENRE.md
       - The writing process, start to finish: docs/WRITING-PROCESS.md
+      - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Book-scale drafting: docs/BOOKS.md
       - Drafting with it: AGENTS.md
       - The dossier (machine-facing): docs/DOSSIER.md
@@ -210,7 +211,7 @@ nav:
       - House style: docs/HOUSE-STYLE.md
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
       - Developing: DEVELOPER.md
-      - Docker build verification: DOCKER.md
+      - Docker build verification: DOCKER-DEVELOPER.md
       - Changing this repo: DEVELOPER-AGENTS.md
       - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md

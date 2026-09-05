@@ -48,7 +48,7 @@ jobs:
       # Three archives, three different questions. The full zip is the
       # whole project directory -- docs, .claude/ skills, hooks, config
       # example -- for someone who wants to work in a checkout. The
-      # docker-only zip is docker/ and docs/RUNNING-WITH-DOCKER.md alone,
+      # docker-only zip is docker/ and DOCKER.md alone,
       # for someone who wants to run a container without the rest of the
       # repository. The wheel installs the code and the CLI, and is what
       # `publish-pypi` below hands to PyPI.
