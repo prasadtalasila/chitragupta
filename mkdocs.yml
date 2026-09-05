@@ -216,5 +216,6 @@ nav:
       - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md
       - Technical debt: docs/TECHNICAL-DEBT.md
+      - Poetry, uv and the lockfile: docs/UV-MIGRATION.md
       - Inspiration and credits: docs/INSPIRATION.md
   - The name: docs/NAME.md
