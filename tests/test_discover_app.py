@@ -12,6 +12,7 @@ exactly as the --html page escapes it.
 """
 
 import json
+import re
 
 import pytest
 
@@ -88,11 +89,33 @@ class TestWriteApp:
         app_dir = tmp_path / "app"
         written = _app.write_app(str(app_dir))
         assert written == str(app_dir)
-        for name in ("index.html", "style.css", "app.js", "data.js"):
+        for name in _app.APP_FILES + ("data.js",):
             assert (app_dir / name).is_file(), name
         copied = app_dir / "vendor" / "cytoscape.min.js"
         source = config.shipped("assets", "webapp", "vendor", "cytoscape.min.js")
         assert copied.read_bytes() == source.read_bytes()
+
+    def test_every_script_the_page_loads_is_a_file_the_builder_copies(self):
+        """The interaction code is several files, so the copy list and
+        the page's <script> tags are now two places that must agree. A
+        module added to one and not the other is a directory that opens
+        to a blank canvas -- and, under file://, to a silent 404 rather
+        than an error anyone would see."""
+        page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
+        loaded = set(re.findall(r'<script src="\./([^"]+)"></script>', page))
+        # data.js is written per corpus rather than copied, so it is the
+        # one script the page loads that APP_FILES does not name.
+        assert loaded - {"data.js"} <= set(_app.APP_FILES)
+        assert {"graph.js", "panel.js", "app.js"} <= loaded
+
+    def test_the_page_loads_the_modules_before_the_wiring_that_uses_them(self):
+        """app.js reads window.CHITRAGUPTA_APP at once, and panel.js
+        reads graph.js's origin vocabulary at load: classic scripts run
+        in document order, so the order in the file is the contract."""
+        page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
+        order = re.findall(r'<script src="\./([^"]+)"></script>', page)
+        assert order.index("graph.js") < order.index("panel.js") < order.index("app.js")
+        assert order.index("data.js") < order.index("app.js")
 
     def test_the_data_script_round_trips_and_escapes(self, isolated_config, tmp_path):
         """`<` must not survive raw: a title like `</script><script>`
@@ -127,18 +150,30 @@ class TestWriteApp:
 
 
 class TestShippedAppScriptHardening:
-    """Source tripwires on the shipped assets/webapp/app.js (#636).
+    """Source tripwires on the shipped interaction code (#636).
 
-    The app has no JS test runner, so these pin the two properties a
-    hostile topic label (a PDF-controlled keyword phrase survives
+    `tests/webapp/*.test.js` now exercises the two properties below on
+    the real functions under `node --test`, which is the better test --
+    but it runs on a host that has node, and this suite is what CI's
+    coverage leg and every developer runs unconditionally. These stay as
+    the source-level tripwire, the same way other non-Python artefacts
+    in this repo are pinned, and they read *all* the shipped scripts:
+    the escaping lives in panel.js and the null-prototype tables in
+    graph.js, and a tripwire naming one file would have been silently
+    satisfied by the module split that moved them.
+
+    The hazard, unchanged: a PDF-controlled keyword phrase survives
     `keyword_extract._clean()` with quotes intact and can become a
-    seeded topic label) must not regress, at the source level -- the
-    same way other non-Python artefacts in this repo are pinned.
+    seeded topic label.
     """
 
     @staticmethod
     def app_js() -> str:
-        return config.shipped("assets", "webapp", "app.js").read_text(encoding="utf-8")
+        scripts = [name for name in _app.APP_FILES if name.endswith(".js") and "/" not in name]
+        assert scripts, "no interaction scripts left to pin"
+        return "\n".join(
+            config.shipped("assets", "webapp", name).read_text(encoding="utf-8") for name in scripts
+        )
 
     def test_escape_html_covers_attribute_contexts(self):
         # The old div.textContent -> div.innerHTML trick never escapes

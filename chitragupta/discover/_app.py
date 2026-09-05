@@ -26,9 +26,16 @@ from pathlib import Path
 from chitragupta import config, seed_topics
 from chitragupta.discover import _data, _page
 
+# Order is not load order (index.html decides that); this is just the
+# copy list. The interaction code is three files rather than one so the
+# payload logic (graph.js) and the panel's HTML (panel.js) can be tested
+# without a browser -- `node --test tests/webapp/*.test.js` -- leaving
+# app.js as the cytoscape and DOM wiring around them.
 APP_FILES = (
     "index.html",
     "style.css",
+    "graph.js",
+    "panel.js",
     "app.js",
     "vendor/cytoscape.min.js",
     "vendor/README.md",

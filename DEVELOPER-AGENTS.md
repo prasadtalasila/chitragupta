@@ -508,6 +508,21 @@ Before saying so, actually run, in this repo:
   markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
   ```
 
+- **The webapp's own tests, if you touched `assets/webapp/`**:
+
+  ```bash
+  node --test tests/webapp/*.test.js
+  ```
+
+  `pytest` reaches none of that directory -- it is JavaScript, so the
+  100% coverage bar says nothing about it, and `tests/test_discover_app.py`
+  can only pin source-level tripwires over the shipped text.
+  `graph.js` and `panel.js` are written to run without a DOM and without
+  cytoscape so that this command can exercise the real functions. CI runs
+  it in the `lint` job, where node is already installed for
+  `markdownlint`. Node's runner takes files rather than a directory, so
+  the glob is not decoration.
+
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual
   change against real dependencies, not only its mocked unit tests --

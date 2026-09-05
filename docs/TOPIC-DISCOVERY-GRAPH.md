@@ -10,9 +10,10 @@ static `--html` page), written against the design recorded in
 
 From the documentation, the interactive app currently:
 
-- ships as a directory: `index.html`, `app.js`, `style.css`, a vendored and
-  pinned cytoscape.js, and `data.js` carrying the payload as a JavaScript
-  assignment (because `fetch()` of local JSON is blocked under `file://`);
+- ships as a directory: `index.html`, the interaction code (`graph.js`,
+  `panel.js`, `app.js`, `style.css`), a vendored and pinned cytoscape.js, and
+  `data.js` carrying the payload as a JavaScript assignment (because `fetch()`
+  of local JSON is blocked under `file://`);
 - offers type-ahead search over topic labels and each topic's top terms, with
   matches pinned as removable chips that compose;
 - filters on selection: with topics pinned, only the selected topics and those
@@ -49,7 +50,40 @@ quietly violate that posture.
 
 ---
 
-## 2. The architectural decision to make first
+## 2. The architectural decision, and how it was decided
+
+> **Decided (2026-09-05, issue #670): compute in the browser, freely,
+> with no artefact change.** The app is purely for exploration and
+> discovery. Whatever a reader wants to bring back into the corpus, they
+> bring back themselves by editing their topics and clusters; the app
+> never writes and never claims. Read the rest of this section as the
+> reasoning that led there, not as an open question -- the split below
+> is real, but only its right-hand column was taken.
+>
+> Two consequences run through everything after this section. **The
+> stored half is not being built**: `analysis`, `communities`, `xy`,
+> `edges_withheld` and `layout_params` (section 3, and their rows in
+> section 12) are new fields in `topic_graph.json` and are therefore out
+> of scope. And **the renderer-contract objection dissolves**: the
+> reason clustering, centrality and brokerage were pushed into the
+> builder is that, computed in the browser, they would be a new claim
+> about the corpus that `--json` could not confirm. An app that is
+> explicitly exploratory, and that hands every decision back to the
+> person, makes no such claim -- so those analytics come back as
+> **view-derived** numbers, labelled in the UI as computed-in-view
+> rather than read-from-artefact.
+>
+> One recommendation is out for a harder reason than policy. Section 6.1
+> wants classical MDS over the topic centroids as a seed layout, but
+> `_page.build_payload` constructs a fresh topic dict of
+> `label`/`provenance`/`terms`/`members`/`linked`: `centroid` is in
+> `topic_graph.json` and is *not forwarded*, so the browser cannot do
+> that arithmetic on what it receives. The stage's `p_value` threshold
+> and `neighbors` are not forwarded either, so a parameter footer
+> (the last paragraph of this section) would need the same plumbing.
+>
+> Issue #670 carries the ranked ten features this filter left, and
+> #671--#679 are the first nine of them.
 
 Cytoscape.js ships a substantial algorithms library in core, all of it available
 without a single extra byte of vendored code:
@@ -103,6 +137,11 @@ be reproduced from the page alone.
 ---
 
 ## 3. Proposed `topic_graph.json` additions
+
+> **Not being built.** Section 2's decision keeps the artefact as it
+> is; this schema diff stays as the record of what a stored version
+> would have looked like, and section 7.7 explains how the browser
+> reaches the same answer as `edges_withheld` without it.
 
 A schema diff, so the builder and the app can be changed in one pass. Everything
 here is derived from data the stage already computes; nothing needs a new model
@@ -663,6 +702,10 @@ all**.
 
 ## 11. Suggested order of work
 
+> The order below still holds for the recommendations section 2's
+> decision kept; issue #670 has the ranked list as it now stands, and
+> #671--#679 are the nine being built.
+
 1. **Dendrogram-ordered circle** on the static `--html` page. One function, no
    new data, immediate legibility win, and it validates the ordering before
    anything depends on it.
@@ -684,6 +727,12 @@ all**.
 ---
 
 ## 12. Summary table
+
+> The **builder** rows are the ones section 2's decision did not take.
+> Of them, only "withheld-edge explanation" survives, recomputed in
+> the browser (section 7.7); brokerage and the MCL partitions survive
+> as view-derived numbers; MDS seed coordinates do not survive at all,
+> because `centroid` is not forwarded into the app payload.
 
 | Technique | Where it runs | New dependency | Answers |
 | --- | --- | --- | --- |
