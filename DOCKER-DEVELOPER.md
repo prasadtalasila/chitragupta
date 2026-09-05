@@ -32,6 +32,17 @@ changing `docker/Dockerfile`, `scripts/install_full_pipeline.sh`, or
 `poetry.lock`; the agent image has its own hand-run checks, under
 ["Verify the container"](DOCKER.md#-verify-the-container) in that file.
 
+Since the base moved to **Ubuntu 26.04 LTS / Python 3.14**, that
+`docker-build` job does more than check the Dockerfile parses: it is the
+only automated check that installs `poetry.lock` under Python 3.14 at
+all. The test matrix runs 3.12 and 3.13. A re-lock that drifts back
+below the cp314 wheel line -- the failure mode issue #607 documents, and
+one that leaves CI otherwise green -- fails there rather than on a
+user's machine. `pyproject.toml`'s comment on the `python` range
+explains why that drift is possible in the first place, and
+[docs/UV-MIGRATION.md](docs/UV-MIGRATION.md) has the measurements
+behind it.
+
 ## 🧪 Running the test suite inside the toolchain container
 
 Not part of running the pipeline -- for verifying a change to

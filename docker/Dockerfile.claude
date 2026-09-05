@@ -52,24 +52,39 @@ ENV DEBIAN_FRONTEND=noninteractive
 # agent's home, and in every doc example -- four places to get wrong,
 # for a value nothing here actually cares about.
 #
-# CG_UID/CG_GID default to 1001, and that is not arbitrary twice over:
-# the base image has already taken 1000 for its own `node` account, so
-# reusing it would make two accounts fight over one numeric owner on a
-# bind mount; and the *right* value is whatever your host account is
-# (`id -u`), because that is what decides who owns a file the container
-# writes into a mounted workspace. Override both when yours differ --
-# docker/.env.example says so where you would be setting them.
-ARG CG_USER=chitragupta
-ARG CG_UID=1001
-ARG CG_GID=1001
+# Set CG_UID/CG_GID to whatever your host account is (`id -u`, `id -g`):
+# that is what decides who owns a file the container writes into a
+# mounted workspace. Note the base image has already taken uid 1000 for
+# its own `node` account, so 1000 is the one value to avoid -- two
+# accounts fighting over one numeric owner on a bind mount.
+# docker/.env.example says all of this where you would be setting them.
+# **No defaults on purpose.** These used to default to
+# `chitragupta`/1001/1001, which made the account name look like a
+# property of the project when it is a property of *your machine* -- and
+# a default that is wrong for almost everyone is worse than no default,
+# because it works just well enough to ship files owned by the wrong uid
+# into a mounted workspace. docker/.env is the single place they are
+# configured; docker-compose.yml passes them through and refuses to
+# start without them, and the guard below refuses a bare `docker build`
+# that forgets them rather than creating an account called "".
+ARG CG_USER
+ARG CG_UID
+ARG CG_GID
+RUN : "${CG_USER:?required: set CHITRAGUPTA_USER in docker/.env, or pass --build-arg CG_USER=<name>}" && \
+    : "${CG_UID:?required: set CHITRAGUPTA_UID in docker/.env (your `id -u`), or pass --build-arg CG_UID=<uid>}" && \
+    : "${CG_GID:?required: set CHITRAGUPTA_GID in docker/.env (your `id -g`), or pass --build-arg CG_GID=<gid>}"
 
 # tmux is load-bearing, not a convenience: entrypoint.sh runs the agent
 # inside a detached tmux session so `docker attach` is not the only way
 # back to it, and a dropped connection doesn't kill the run. sudo is
 # here for `chitragupta install os-deps` (see the sudoers rule below).
 # python3-venv is what answers PEP 668, as the install step explains.
+# neovim is the one plain convenience in this list, and it earns its
+# ~30MB: this image is where a person lands to fix a config by hand
+# after `docker exec`, and the base image ships no editor at all.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         tmux \
+        neovim \
         git \
         openssh-client \
         python3-pip \
@@ -80,7 +95,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -g "${CG_GID}" "${CG_USER}" && \
-    useradd -u "${CG_UID}" -g "${CG_GID}" -m -s /bin/bash "${CG_USER}"
+    useradd -u "${CG_UID}" -g "${CG_GID}" -m -s /bin/zsh "${CG_USER}"
 
 # NOPASSWD, and that is a considered position rather than laziness: the
 # image exists to run an agent with `--permission-mode
@@ -200,7 +215,38 @@ RUN printf '%s\n%s\n' \
         > /etc/profile.d/chitragupta-venv.sh && \
     chmod 0644 /etc/profile.d/chitragupta-venv.sh
 
+# And again for zsh, which is this image's login shell and does not read
+# /etc/profile.d at all -- Debian's /etc/zsh/zprofile is comments, it
+# does not source /etc/profile. Without this the venv is missing from
+# every interactive zsh, `python` is /usr/bin/python again, and the
+# citation gate blocks every draft write for exactly the reason the
+# pipx attempt did. /etc/zsh/zshenv rather than zshrc because zshenv is
+# read by *every* zsh -- login, interactive or not -- so a script run
+# with `zsh -c` gets the same environment a person does.
+RUN printf '%s\n%s\n' \
+        'export VIRTUAL_ENV=/opt/venv' \
+        'export PATH="/opt/venv/bin:$PATH"' \
+        >> /etc/zsh/zshenv
+
 USER ${CG_USER}
 WORKDIR /workspace
+
+# Oh My Zsh, cloned at a pinned commit rather than the usual
+# `curl ... install.sh | sh`. Same reasoning as the Claude Code pin
+# above and as scripts/install_full_pipeline.sh's actionlint/vale
+# fetches: piping an unpinned installer from the network into a shell
+# puts whatever upstream served at build time into the image, and two
+# builds of this Dockerfile then differ silently.
+#
+# --depth 1 on a single commit keeps this at ~15MB rather than the full
+# history. The shipped template is used verbatim as ~/.zshrc; the venv
+# is already on PATH from /etc/zsh/zshenv above, so nothing has to be
+# appended to it here.
+ARG OHMYZSH_COMMIT=421d95782d369f266b8087a0eae11eac2f6a6041
+RUN git clone --quiet --no-checkout https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh" && \
+    git -C "$HOME/.oh-my-zsh" fetch --quiet --depth 1 origin "${OHMYZSH_COMMIT}" && \
+    git -C "$HOME/.oh-my-zsh" checkout --quiet "${OHMYZSH_COMMIT}" && \
+    rm -rf "$HOME/.oh-my-zsh/.git" && \
+    cp "$HOME/.oh-my-zsh/templates/zshrc.zsh-template" "$HOME/.zshrc"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

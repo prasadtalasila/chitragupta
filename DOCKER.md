@@ -5,7 +5,7 @@ and neither replaces the other:
 
 | File | What it is | Size | Needs a checkout |
 | --- | --- | --- | --- |
-| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Mount your checkout, get a shell with everything resolved. | 4.38GB (cpu) / 11.6GB (gpu) | Yes -- it is the checkout you mount and work in |
+| `docker/Dockerfile` | The **toolchain image**. Builds the full TeX Live/Pandoc/Poetry/torch stack from this repository's own `scripts/install_full_pipeline.sh`, for hosts where you don't hold root. Ubuntu 26.04 LTS / Python 3.14, with the C headers and compiler triton JITs against (#668). Mount your checkout, get a shell with everything resolved. | 5.09GB (cpu) / 11.6GB (gpu, unmeasured since the base bump) | Yes -- it is the checkout you mount and work in |
 | `docker/Dockerfile.claude` | The **agent image**. Node, Claude Code, and a `/opt/venv` install of the published `chitragupta-cli` package, driven by `docker/docker-compose.yml` as a long-lived `claude remote-control` host. The toolchain is *not* baked in; you add what you need at runtime with `chitragupta install`. | ~2.5GB | No -- it installs from PyPI |
 
 `docker/Dockerfile` is documented first, then the agent image under
@@ -65,7 +65,7 @@ one you get:
 | `TORCH_VARIANT` | Build command | Measured image size | When to use it |
 | --- | --- | --- | --- |
 | `gpu` (default) | `docker build -t chitragupta -f docker/Dockerfile .` | 11.6GB | `docker run --gpus` deployments -- the bundled CUDA runtime is enough on its own, no host CUDA toolkit needed, only a matching driver |
-| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 4.38GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
+| `cpu` | `docker build -t chitragupta -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .` | 5.09GB | Everything else -- embeddings/clustering/rendering all run fine on CPU, and this is what you want for build-verification or a host with no GPU at all |
 
 The `cpu` variant reinstalls `torch`/`torchvision` from PyTorch's own
 CPU-only wheel index, at the exact version `poetry.lock` resolved (read
@@ -126,10 +126,17 @@ checkout has to be rebuilt to follow a release, and this one only has to
 be restarted.
 
 What that buys, and what it costs: the build is seconds rather than
-tens of minutes and the image is ~2.5GB rather than 4.38GB, because
+tens of minutes and the image is ~2.5GB rather than 5.09GB, because
 TeX Live, Pandoc and torch are **not** in it. You add whatever the work
 actually needs on first run, with `chitragupta install` -- which is why
 the image gives its user passwordless `sudo` (see below).
+
+The shell you land in is **zsh with Oh My Zsh**, pinned to a commit
+rather than installed by piping an unpinned script from the network, and
+`neovim` is there for the config you inevitably want to fix by hand. The
+venv reaches zsh through `/etc/zsh/zshenv`, not `/etc/profile.d` --
+Debian's zsh does not read the latter, and getting that wrong brings
+back the failure the next section is about.
 
 ### 🧩 One environment, and why it is not `pipx`
 
@@ -239,15 +246,30 @@ release. Set these in `docker/.env` or in the environment:
 | `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/prasad/.claude`. This is what persists the login, so a restart is not a re-authentication |
 | `CHITRAGUPTA_PAPERS` | `$CHITRAGUPTA_WORKSPACE/papers` | Host directory of PDFs, mounted **read-only** at `/workspace/papers`. Point it elsewhere to share one corpus across workspaces |
 | `COMPOSE_PROFILES` | none | `cpu` or `gpu` -- see below. Compose's own variable, not one of ours |
-| `CHITRAGUPTA_USER` | `chitragupta` | The unprivileged account inside the image. A **build** arg as well as a runtime setting, so changing it needs `docker compose build`, not just a restart |
-| `CHITRAGUPTA_UID` / `CHITRAGUPTA_GID` | `1001` | That account's numeric ids. Set them to your own (`id -u`, `id -g`): they decide who owns a file the container writes into the workspace. 1001 rather than 1000 because the Node base image has already taken 1000 for its own `node` account |
+| `CHITRAGUPTA_USER` | **required** | The unprivileged account inside the image -- your own login name (`id -un`). A **build** arg as well as a runtime setting, so changing it needs `docker compose build`, not just a restart |
+| `CHITRAGUPTA_UID` / `CHITRAGUPTA_GID` | **required** | That account's numeric ids -- your own (`id -u`, `id -g`). They decide who owns a file the container writes into the workspace. Avoid 1000: the Node base image has already taken it for its own `node` account |
 
-Nothing in the image hardcodes an account name. `CHITRAGUPTA_USER`
-reaches the `useradd`, the `/etc/sudoers.d/<user>` file, `$HOME`, the
-`PATH` entry the venv installs into, and the mount point for
-`CHITRAGUPTA_CLAUDE_HOME` -- one variable, so those five cannot
-disagree. The entrypoint lives at `/usr/local/bin/entrypoint.sh` rather
-than in the home directory for the same reason.
+Nothing in the image hardcodes an account name, and the three account
+settings have **no defaults anywhere** -- not in `docker-compose.yml`
+and not in `Dockerfile.claude`. `docker compose` refuses to start
+without them, naming the variable and the file; a bare `docker build`
+that forgets the matching `--build-arg` fails on an explicit guard
+rather than creating an account called `""`.
+
+That is deliberate. The account belongs to *your machine*, not to this
+project, and a default that is wrong for almost everyone is worse than
+no default at all: it works just well enough to write files owned by the
+wrong uid into your workspace, which you then cannot edit from outside
+the container. Copy `.env.example` to `.env` and fill in the three
+values it shows you how to read off your own account.
+
+One variable does the whole job: `CHITRAGUPTA_USER` reaches the
+`useradd`, the `/etc/sudoers.d/<user>` file, `$HOME`, the `PATH` entry
+the venv installs into, and the mount point for
+`CHITRAGUPTA_CLAUDE_HOME` -- five places that cannot disagree because
+they read one value. The entrypoint lives at
+`/usr/local/bin/entrypoint.sh` rather than in the home directory for the
+same reason.
 
 ### 🚀 First run
 
@@ -265,14 +287,26 @@ chitragupta doctor                          # what is still missing
 
 `chitragupta install os-deps` is what the passwordless `sudo` in this
 image exists for: it `apt-get install`s the toolchain that the image
-does not ship. `chitragupta install` refuses `all`, `dev-deps` and
-`python-deps` by name and prints the `pip` command that reaches them
-instead -- including the enrichment stack, which is a separate step
-because it is torch and would take the image past 6GB:
+does not ship. (`chitragupta install` still refuses `all`, `dev-deps`
+and `python-deps` by name, naming what reaches them instead -- those are
+checkout-shaped stages with no analogue here.)
+
+The enrichment stack is its own step rather than part of the image,
+because it is torch and would take this from ~2.5GB past 6GB:
 
 ```bash
-pip install 'chitragupta-cli[enrich]'   # /opt/venv, no sudo needed
+chitragupta install enrich   # into /opt/venv, no sudo needed
 ```
+
+That is the CLI doing it, not a pip incantation you have to know: it
+resolves `'chitragupta-cli[enrich]'` pinned to the version already
+running, so adding the extra cannot quietly upgrade the tool.
+
+**`chitragupta install enrich` needs 6.76.0 or newer**, and this image
+installs whatever PyPI serves -- so an image built from an older release
+will not have the verb yet and `chitragupta install --help` will not
+list it. `pip install 'chitragupta-cli[enrich]'` is the equivalent
+there, and still works everywhere.
 
 ### ✅ Verify the container
 

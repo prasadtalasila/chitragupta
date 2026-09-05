@@ -186,10 +186,13 @@ install_os_deps() {
     #
     # Measured on docker/Dockerfile.claude's Debian trixie base with a
     # GPU attached, where gcc was already present and the headers were
-    # the whole gap. gcc is named here for docker/Dockerfile's
-    # ubuntu:24.04 base instead, which is installed
-    # --no-install-recommends and so carries no compiler at all; that
-    # half is the same mechanism rather than a second measurement.
+    # the whole gap. gcc is named here for docker/Dockerfile's Ubuntu
+    # base instead, which is installed --no-install-recommends and so
+    # carries no compiler at all; that half is the same mechanism rather
+    # than a second measurement. The base moved 24.04 -> 26.04 after this
+    # was written and the fix is unaffected: python3-dev there resolves
+    # to python3.14-dev, which is the version /opt/venv is built from,
+    # so the headers triton compiles against are still the matching ones.
     #
     # python3-poetry (apt), not `pip install poetry`: PEP 668 blocks bare
     # pip on this host regardless of root (see AGENTS.md), and Poetry is
@@ -229,7 +232,7 @@ install_os_deps() {
     # cv2.abi3.so vendors Qt but *not* libGL.so.1, libglib-2.0.so.0 or the
     # X libraries libgl1 pulls in -- ldd resolves those to the system, and
     # a base image installed with --no-install-recommends
-    # (docker/Dockerfile's ubuntu:24.04, and any host provisioned only by
+    # (docker/Dockerfile's ubuntu:26.04, and any host provisioned only by
     # this stage) has none of them, so `import cv2` fails.
     # That error is never the one you see. chitragupta/pdf_text.py's forkserver
     # preloads docling, `forkserver.main()` catches ImportError and
@@ -540,7 +543,19 @@ install_python_deps() {
     # hash-pinned in poetry.lock, so the archive whose setup script runs
     # is byte-exact the one that was locked, not whatever the index
     # serves that day.
-    (cd "$REPO_ROOT" && poetry install --with enrich)
+    # NO_ROOT=1 adds --no-root, and docker/Dockerfile sets it. That image
+    # deliberately does not COPY the source in -- it mounts the checkout
+    # at runtime -- so there is no package for Poetry to install, and
+    # Ubuntu 26.04's Poetry refuses with "<path>/chitragupta does not
+    # contain any element" where 24.04's older Poetry tolerated it. The
+    # flag states what was already true there rather than changing it.
+    # Unset on a host, where the root project *should* be installed --
+    # note the gpu-torch fallback below deliberately does not honour it.
+    if [ "${NO_ROOT:-}" = "1" ]; then
+        (cd "$REPO_ROOT" && poetry install --with enrich --no-root)
+    else
+        (cd "$REPO_ROOT" && poetry install --with enrich)
+    fi
     local bin_dir
     bin_dir="$(venv_bin_dir "$VENV_DIR")"
     ensure_gpu_torch "$bin_dir/pip" "$bin_dir/python"

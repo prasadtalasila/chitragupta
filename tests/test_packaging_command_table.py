@@ -209,7 +209,12 @@ class TestInstall:
     def test_the_refused_stages_are_real_choices_not_invented(self):
         import chitragupta.install as install
 
-        assert _choices(_help("install")) == {"os-deps", "gpu-torch", *install.REFUSED}
+        assert _choices(_help("install")) == {
+            "os-deps",
+            "gpu-torch",
+            "enrich",
+            *install.REFUSED,
+        }
 
 
 class TestStatedCounts:

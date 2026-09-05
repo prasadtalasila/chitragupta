@@ -40,16 +40,20 @@ x-claude: &claude
     # the account inside the image and the `user:` below cannot disagree
     # -- they read one variable.
     args:
-      CG_USER: ${CHITRAGUPTA_USER:-chitragupta}
-      CG_UID: ${CHITRAGUPTA_UID:-1001}
-      CG_GID: ${CHITRAGUPTA_GID:-1001}
+      CG_USER: ${CHITRAGUPTA_USER:?set CHITRAGUPTA_USER in docker/.env -- see .env.example}
+      CG_UID: ${CHITRAGUPTA_UID:?set CHITRAGUPTA_UID in docker/.env to your `id -u`}
+      CG_GID: ${CHITRAGUPTA_GID:?set CHITRAGUPTA_GID in docker/.env to your `id -g`}
   image: chitragupta-claude:${CHITRAGUPTA_IMAGE_TAG:-latest}
   container_name: ${CHITRAGUPTA_CONTAINER_NAME:-chitragupta-claude}
 
   # Matches the account the image creates, so a file written into the
-  # bind mounts below is owned by the human outside the container rather
-  # than by root.
-  user: ${CHITRAGUPTA_USER:-chitragupta}
+  # bind mounts below is owned by the human outside the container
+  # rather than by root. Required rather than defaulted, here and in
+  # the build args above: the account is a property of your machine,
+  # not of this project, and a default that is wrong for almost
+  # everyone still *works* -- it just writes files owned by the wrong
+  # uid into your workspace. docker/.env is the one place it is set.
+  user: ${CHITRAGUPTA_USER:?set CHITRAGUPTA_USER in docker/.env -- see .env.example}
 
   # Both of these, and neither is redundant. CLAUDE_AGENT_NAME is what
   # entrypoint.sh registers the agent under, i.e. what you pick from in
@@ -67,7 +71,7 @@ x-claude: &claude
     # stop on, not one to paper over by mounting the compose directory
     # and scaffolding a project into the git checkout.
     - ${CHITRAGUPTA_WORKSPACE:?set CHITRAGUPTA_WORKSPACE to the host directory to mount at /workspace}:/workspace
-    - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER:-chitragupta}/.claude
+    - ${CHITRAGUPTA_CLAUDE_HOME:-./claude}:/home/${CHITRAGUPTA_USER}/.claude
     # Read-only on purpose: `corpus sync` only ever reads these, and an
     # agent running with bypassPermissions has no business rewriting the
     # human's source PDFs. Add papers from the host side. See

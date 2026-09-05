@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.75.1"
+version = "6.76.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -81,7 +81,52 @@ chitragupta = "chitragupta.__main__:main"
 cg = "chitragupta.__main__:main"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+# This range is the thing that keeps every FUTURE re-lock installable on
+# the container this project ships, and it matters more than any
+# particular poetry.lock does. The lock churns; docker/Dockerfile's
+# ubuntu:26.04 and the Python 3.14 it ships do not.
+#
+# Was `^3.12` -- i.e. >=3.12,<4.0 -- and that upper bound is what broke
+# 26.04. Poetry has to satisfy the *whole* declared range, `triton`
+# (torch's Linux dependency) declares `requires_python = "<3.15,>=3.10"`,
+# and nothing can cover 3.15-3.99. So Poetry fell back to the newest
+# triton with no upper bound at all -- 3.3.1, from 2025 -- which pinned
+# torch to 2.7.1, which publishes no cp314 wheels. The result was a lock
+# that resolved cleanly, passed CI on 3.12, and could not be installed on
+# 26.04 at all. Left as `^3.12`, every re-lock reproduces that silently.
+#
+# The `!= 3.14.1` hole is not ours either: torchvision 0.29.0 declares
+# `requires_python = "!=3.14.1,>=3.10"`, and without the hole Poetry
+# splits the resolution by marker and hands Python 3.14 *torchvision
+# 0.12.0* (2022, no cp314 wheels) while giving <3.14 the good one --
+# measured, and worth knowing because the lock looks fine until you read
+# the markers. Poetry itself suggests this spelling. Both bounds can be
+# widened again when the upstream metadata allows; neither is a
+# preference.
+#
+# What guards it: `ci.yml`'s `docker-build` job builds docker/Dockerfile
+# on every push, and that image now installs this lock under Python 3.14.
+# A re-lock that drifts back below the cp314 line fails there rather than
+# on someone's machine. See issue #607.
+#
+# **How to change a dependency here, because one route works and one
+# does not.** Measured on 2026-09-04, this graph, this host:
+#
+#   poetry lock                (after editing one constraint)   ~40s
+#   poetry update --lock <pkg> (one package)                    ~43s
+#   poetry update --lock       (everything)          >500s, killed
+#   poetry lock --regenerate   (from no lock)         >600s, killed
+#
+# So: add, remove and bump packages **one at a time**, always with
+# poetry.lock present. A wholesale re-resolution is not merely slow --
+# an unbounded one ran 22 hours here without terminating (#607) -- and
+# the narrowed `python` range above reduces that but does not fix it.
+# If a from-scratch lock is ever genuinely needed, that is what
+# `scripts/relock.py` is for -- it resolves with `uv`, pins those exact
+# versions here temporarily, locks, restores this file and locks again,
+# in about 103 seconds measured. Do not hand-roll it; the restore path
+# on failure is the part worth having.
+python = ">=3.12,<3.14.1 || >3.14.1,<3.15"
 # The one dependency the otherwise-stdlib core pipeline needs
 # (chitragupta/bib_reader.py, used by `python -m chitragupta.corpus sync`): hand-rolling a
 # correct BibTeX parser (nested braces, LaTeX escapes, multi-line
@@ -104,29 +149,40 @@ bibtexparser = ">=1.4,<2.0"
 # Two lists that must agree will drift -- `tests/test_pyproject_extras.py`
 # asserts these match the corresponding group's names and versions
 # exactly, name for name, constraint for constraint.
-sentence-transformers = {version = ">=5.6,<6.0", optional = true}
+# torch and torchvision are declared here as well as in the enrich
+# group, for the reason the whole mirrored block exists (see
+# tests/test_pyproject_extras.py): a group dependency never reaches a
+# built wheel's metadata, so `pip install 'chitragupta-cli[enrich]'`
+# would otherwise resolve them itself and is free to pick a version
+# with no wheels for the running Python -- which is the failure this
+# pair was pinned to fix.
+torch = {version = ">=2.14,<3.0", optional = true}
+torchvision = {version = ">=0.29,<1.0", optional = true}
+sentence-transformers = {version = ">=5.7,<6.0", optional = true}
 chromadb = {version = ">=1.5,<2.0", optional = true}
 bertopic = {version = ">=0.17,<0.18", optional = true}
-docling = {version = ">=2.115,<3.0", optional = true}
-adapters = {version = ">=1.2,<2.0", optional = true}
+docling = {version = ">=2.125,<3.0", optional = true}
+adapters = {version = ">=1.3,<2.0", optional = true}
 # scipy was always installed transitively (bertopic -> hdbscan/umap);
 # chitragupta/enrich/topic_graph.py imports it directly (hypergeom,
 # linkage), and a direct import deserves a declared version.
-scipy = {version = ">=1.10,<2.0", optional = true}
+scipy = {version = ">=1.18,<2.0", optional = true}
 # Same story as scipy: it arrived transitively with docling (which uses
 # it as one of its own PDF backends), and chitragupta/enrich/_docling_crops.py
 # now imports it directly to render one figure crop at a time instead of
 # letting docling hold every bitmap to the end of the parse (#600).
 # Pillow is *not* declared alongside it despite `bitmap.to_pil()`: docling
 # depends on Pillow directly, so it cannot be absent wherever this is.
-pypdfium2 = {version = ">=5.12,<6.0", optional = true}
-pytest = {version = ">=8.0,<9.0", optional = true}
-pytest-cov = {version = ">=5.0,<7.0", optional = true}
-mkdocs-material = {version = ">=9.5,<10.0", optional = true}
-mkdocs-same-dir = {version = ">=0.1.5,<0.2", optional = true}
+pypdfium2 = {version = ">=5.13,<6.0", optional = true}
+pytest = {version = ">=9.0,<10.0", optional = true}
+pytest-cov = {version = ">=6.0,<7.0", optional = true}
+mkdocs-material = {version = ">=9.7,<10.0", optional = true}
+mkdocs-same-dir = {version = "0.1.5", optional = true}
 
 [tool.poetry.extras]
 enrich = [
+    "torch",
+    "torchvision",
     "sentence-transformers",
     "chromadb",
     "bertopic",
@@ -180,15 +236,17 @@ docs = ["mkdocs-material", "mkdocs-same-dir"]
 optional = true
 
 [tool.poetry.group.enrich.dependencies]
-sentence-transformers = ">=5.6,<6.0"
+torch = ">=2.14,<3.0"
+torchvision = ">=0.29,<1.0"
+sentence-transformers = ">=5.7,<6.0"
 chromadb = ">=1.5,<2.0"
 bertopic = ">=0.17,<0.18"
-docling = ">=2.115,<3.0"
+docling = ">=2.125,<3.0"
 # Direct import in topic_graph.py -- see the mirrored optional entry
 # above for why this is declared despite arriving transitively anyway.
-scipy = ">=1.10,<2.0"
+scipy = ">=1.18,<2.0"
 # Direct import in _docling_crops.py, same reasoning (#600).
-pypdfium2 = ">=5.12,<6.0"
+pypdfium2 = ">=5.13,<6.0"
 
 # adapters is SPECTER2-only -- allenai/specter2_base loads its
 # task-specific adapter weights (proximity/classification/etc.) through
@@ -199,7 +257,7 @@ pypdfium2 = ">=5.12,<6.0"
 # 1.3.0 and import-verified (`from adapters import AutoAdapterModel`) in
 # .venv-full on 2026-08-16 -- see the note above this dependency block
 # about the transformers downgrade this pin forces.
-adapters = ">=1.2,<2.0"
+adapters = ">=1.3,<2.0"
 
 # Optional group (`poetry install --with dev`): pytest/pytest-cov are
 # dev-time tooling, not needed to run the pipeline itself -- but the test
@@ -212,8 +270,20 @@ adapters = ">=1.2,<2.0"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=8.0,<9.0"
-pytest-cov = ">=5.0,<7.0"
+pytest = ">=9.0,<10.0"
+# **<7 is load-bearing, not staleness.** pytest-cov 6.x ships a
+# `pytest-cov.pth` that turns on coverage in *subprocesses*; 7.0 removed
+# it. Six modules here are measured only that way -- the `main()` and
+# `__main__` paths that `.claude/hooks` and the hook tests reach by
+# spawning a process -- so on 7.1.0 the total drops from 100% to 99.70%
+# and `fail_under = 100` fails the build. Not a hypothetical: this was
+# the bump, and the CI run that caught it.
+#
+# coverage's own `patch = ["subprocess"]` is the documented replacement
+# and was tried first; it did not restore those six. Lift the cap when
+# something demonstrably does, checking `scripts/code_standards.py`
+# specifically -- it is 16 of the 34 statements at stake.
+pytest-cov = ">=6.0,<7.0"
 
 # Optional group (`poetry install --only docs`): builds the documentation
 # site at https://prasad.talasila.in/chitragupta/ from mkdocs.yml. Nothing
@@ -232,8 +302,8 @@ pytest-cov = ">=5.0,<7.0"
 optional = true
 
 [tool.poetry.group.docs.dependencies]
-mkdocs-material = ">=9.5,<10.0"
-mkdocs-same-dir = ">=0.1.5,<0.2"
+mkdocs-material = ">=9.7,<10.0"
+mkdocs-same-dir = "0.1.5"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -70,6 +70,8 @@ def _check_binaries() -> list[str]:
 # a partial install actually breaks -- `sentence-transformers` imports as
 # `sentence_transformers`.
 ENRICH_MODULES = (
+    "torch",
+    "torchvision",
     "sentence_transformers",
     "chromadb",
     "bertopic",
@@ -94,12 +96,10 @@ def _check_enrich_extra() -> str:
     if not missing:
         return "[ok] the enrich extra is importable"
     if len(missing) == len(ENRICH_MODULES):
-        return (
-            "[missing] the enrich extra is not installed -- pip install 'chitragupta-cli[enrich]'"
-        )
+        return "[missing] the enrich extra is not installed -- chitragupta install enrich"
     return (
         f"[missing] the enrich extra is installed but incomplete: {', '.join(missing)} "
-        "-- pip install 'chitragupta-cli[enrich]'"
+        "-- chitragupta install enrich"
     )
 
 
