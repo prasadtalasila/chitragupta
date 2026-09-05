@@ -348,6 +348,7 @@ one-screen router for exactly that.
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
+| [docs/RUNNING-WITH-DOCKER.md](docs/RUNNING-WITH-DOCKER.md) | How do I run this in a container? |
 
 #### 🔭 Understanding the system
 
@@ -394,7 +395,7 @@ one-screen router for exactly that.
 | [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Discussion notes, nothing implemented.** Where figure quality stands today, the gap between the six current layout metaphors and what a CS/SE textbook actually needs, and a build order for closing it |
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
 | `DEVELOPER.md` (git checkout only -- `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
-| `DOCKER.md` (git checkout only) | How do I run this in a container? |
+| `DOCKER.md` (git checkout only) | How are the Docker images themselves built and verified before a release? |
 | `DEVELOPER-AGENTS.md` (git checkout only) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
 | [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
 | [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |

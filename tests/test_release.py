@@ -54,6 +54,12 @@ def make_repo(tmp_path):
     (repo / "content" / "drafts" / "example-tutorial.md").write_text("# Example")
     (repo / "papers" / "pdfs").mkdir(parents=True)
     (repo / "papers" / "pdfs" / "manifest.json").write_text("{}")
+    (repo / "docker").mkdir()
+    (repo / "docker" / "Dockerfile").write_text("FROM scratch")
+    (repo / "docker" / ".env.example").write_text("FOO=bar")
+    (repo / "DOCKER.md").write_text("# Docker build verification")
+    (repo / "docs").mkdir()
+    (repo / "docs" / "RUNNING-WITH-DOCKER.md").write_text("# Running with Docker")
 
     subprocess.run(["git", "add", "-A", "-f"], cwd=repo, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=repo, check=True)
@@ -123,6 +129,9 @@ class TestTrackedFiles:
         # Every prose doc ships. What stays behind is this repo's own
         # machinery -- tests/, bench/, .github/ and .gitignore.
         assert "DEVELOPER.md" in paths
+        # docker/ isn't in EXCLUDE_TOP_LEVEL -- it ships in the full zip
+        # too, alongside the standalone docker-only one.
+        assert "docker/Dockerfile" in paths
 
     def test_excludes_github_and_gitignore(self, repo):
         paths = release.tracked_files()
@@ -188,9 +197,11 @@ class TestBuildRelease:
 
         assert zip_path == repo / "release" / "chitragupta-9.9.9.zip"
         assert zip_path.exists()
-        assert n_files == 8  # README.md, SOUL.md, AGENTS.md, DEVELOPER-AGENTS.md,
+        assert n_files == 12  # README.md, SOUL.md, AGENTS.md, DEVELOPER-AGENTS.md,
         #                      DEVELOPER.md, pyproject.toml, chitragupta/foo.py,
-        #                      .claude/skills/survey-writer/SKILL.md
+        #                      .claude/skills/survey-writer/SKILL.md, DOCKER.md,
+        #                      docker/Dockerfile, docker/.env.example,
+        #                      docs/RUNNING-WITH-DOCKER.md
 
         with zipfile.ZipFile(zip_path) as zf:
             names = set(zf.namelist())
@@ -251,8 +262,48 @@ class TestBuildRelease:
 
         zip_path, n_files = release.build_release()
 
-        assert n_files == 8
+        assert n_files == 12
         assert not stale_staging.exists()
+
+
+class TestBuildDockerRelease:
+    """release/chitragupta-docker-<version>.zip: docker/ and
+    docs/RUNNING-WITH-DOCKER.md only, for someone who wants to run the
+    images without downloading the whole checkout."""
+
+    def test_zip_contains_only_docker_and_the_docker_doc(self, repo):
+        import zipfile
+
+        zip_path, n_files = release.build_docker_release()
+
+        assert zip_path == repo / "release" / "chitragupta-docker-9.9.9.zip"
+        assert zip_path.exists()
+        assert n_files == 3  # docker/Dockerfile, docker/.env.example,
+        #                      docs/RUNNING-WITH-DOCKER.md
+
+        with zipfile.ZipFile(zip_path) as zf:
+            names = set(zf.namelist())
+        assert "chitragupta-docker-9.9.9/docker/Dockerfile" in names
+        assert "chitragupta-docker-9.9.9/docker/.env.example" in names
+        assert "chitragupta-docker-9.9.9/docs/RUNNING-WITH-DOCKER.md" in names
+
+    def test_zip_excludes_docker_md(self, repo):
+        """DOCKER.md is this repo's own build/CI verification record, not
+        something a Docker user needs -- see build_docker_release's own
+        docstring."""
+        import zipfile
+
+        zip_path, _ = release.build_docker_release()
+
+        with zipfile.ZipFile(zip_path) as zf:
+            names = zf.namelist()
+        assert not any(n.endswith("/DOCKER.md") for n in names)
+        assert not any("README.md" in n for n in names)
+
+    def test_rerunning_overwrites_stale_archive(self, repo):
+        release.build_docker_release()
+        zip_path, _ = release.build_docker_release()
+        assert zip_path.exists()
 
 
 class TestMain:
@@ -261,6 +312,7 @@ class TestMain:
         assert rc == 0
         out = capsys.readouterr().out
         assert "chitragupta-9.9.9.zip" in out
+        assert "chitragupta-docker-9.9.9.zip" in out
 
     def test_main_also_writes_the_pypi_readme(self, repo, capsys):
         release.main()

@@ -39,14 +39,18 @@ jobs:
 
       # scripts/release.py is stdlib-only (tomllib/zipfile/shutil) and
       # only needs `git` on PATH (already true after actions/checkout) --
-      # no poetry/enrich-group install needed just to build the archive.
-      - name: Build release archive
+      # no poetry/enrich-group install needed just to build the archives.
+      # Builds both release/chitragupta-<version>.zip and
+      # release/chitragupta-docker-<version>.zip in one run.
+      - name: Build release archives
         run: python3 scripts/release.py
 
-      # The zip and the wheel answer different questions and both ship.
-      # The zip is the whole project directory -- docs, .claude/ skills,
-      # hooks, config example -- for someone who wants to work in a
-      # checkout. The wheel installs the code and the CLI, and is what
+      # Three archives, three different questions. The full zip is the
+      # whole project directory -- docs, .claude/ skills, hooks, config
+      # example -- for someone who wants to work in a checkout. The
+      # docker-only zip is docker/ and docs/RUNNING-WITH-DOCKER.md alone,
+      # for someone who wants to run a container without the rest of the
+      # repository. The wheel installs the code and the CLI, and is what
       # `publish-pypi` below hands to PyPI.
       - name: Install Poetry
         run: pipx install poetry==2.4.1
@@ -68,6 +72,8 @@ jobs:
       # Named with an underscore, not a hyphen: a distribution name
       # normalises that way in a wheel filename, so `chitragupta-cli-*`
       # would silently match nothing and attach no artefact.
+      # `release/chitragupta-*.zip` matches both the full and docker-only
+      # archives -- their names share the `chitragupta-` prefix.
       - name: Show what will be attached
         run: ls -l release/chitragupta-*.zip dist/chitragupta_cli-*
 
