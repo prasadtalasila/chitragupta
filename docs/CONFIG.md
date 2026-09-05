@@ -781,13 +781,15 @@ machine with a GPU visible, the model this key enables goes down a torch
 path that makes the bundled triton compile a C shim at runtime, so
 CPython headers and a compiler have to be present -- `python3-dev` and
 `gcc`, both installed by the `os-deps` stage since 6.75.1. Without them
-docling substitutes an **empty string** for each formula rather than the
-marker above, and the document still records as parsed, so the loss
-leaves nothing in the `.txt` to notice. A host provisioned earlier needs
-those two packages and then a re-parse:
+the model fails per batch and every formula comes out empty, which
+serializes as the marker above: you get the `false` output on a run that
+downloaded the model, paid the extra pass per page, and reported success.
+Markers everywhere and no `$$` LaTeX anywhere, with this key **on**, is
+the fingerprint. A host provisioned earlier needs those two packages and
+then a re-parse:
 [PDF-PARSER.md](PDF-PARSER.md#-docling-silently-empties-every-formula-on-a-gpu-host)
-has the diagnosis and the recovery for both this key and the `[enrich]`
-one, which do not recover the same way.
+has the diagnosis, the detection check and the recovery for both this key
+and the `[enrich]` one, which do not recover the same way.
 
 ### 🖼 `docling_images`
 

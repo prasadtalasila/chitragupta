@@ -430,8 +430,9 @@ two apt packages.
 
 Diagnosed 2026-09-05. Fixed in the `os-deps` stage, like the OpenCV entry
 above -- but recorded at more length, because this one does not fail the
-run, fail the document, or leave anything in the corpus text that looks
-wrong. It only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
+run, does not fail the document, and produces output that is
+byte-for-byte what you would get from the setting you did not choose. It
+only happens with `[parser].formulas` (or `[enrich].docling_formulas`)
 turned on, which is not the default.
 
 **What it looks like.** A `sync` that keeps going, with one line per
@@ -458,13 +459,45 @@ headers fails it. Nothing in this project asks for triton, and nothing
 asks gcc to run; both arrive with torch and fire only under `--gpus`,
 which is why a CPU-only host never sees this.
 
-**Why it is worse than a crash.** docling catches the failure per batch
-(`docling/models/stages/code_formula/code_formula_vlm_model.py`), logs the
-line above, and substitutes `""` for every element in the batch. So each
-affected formula becomes an *empty string* -- not the
-`<!-- formula-not-decoded -->` marker you get with formula enrichment
-switched off, which at least says a formula was there. The document then
-converts successfully and the ledger records it as parsed.
+**Why it does not look like a failure.** docling catches the exception per
+batch (`docling/models/stages/code_formula/code_formula_vlm_model.py`),
+logs the line above, and assigns `""` to every element in the batch. The
+document then converts successfully and the ledger records it as parsed.
+
+What reaches the corpus text is the `formulas = false` behaviour, exactly.
+`docling_core`'s Markdown serializer -- which both parses go through,
+`pdf_text/_backends.py`'s `export_to_markdown()` and
+`enrich/docling_parse.py`'s alike -- writes
+`<!-- formula-not-decoded -->` for a `FormulaItem` whose `text` is empty
+but whose `orig` is not, and the failure clears only `text`. So the
+marker stays. You are not left wondering whether a formula was there;
+you are left with a run that reported success, paid for the model
+download and the extra pass per page, and produced the output you would
+have got for free with the key switched off.
+
+**How to tell, if you no longer have the log.** The two states are cleanly
+separable, because a successful recognition writes LaTeX between `$$`
+delimiters and leaves no marker at all:
+
+```console
+grep -l 'formula-not-decoded' content/parsed/*.txt | wc -l   # 0 when healthy
+grep -l '\$\$' content/parsed/*.txt | wc -l                  # 0 is the tell
+```
+
+Measured on this project's own 497-document corpus, both states:
+
+| `[parser].formulas` | Docs with a marker | Docs with `$$` LaTeX |
+| --- | --- | --- |
+| `false` | 148 | 0 |
+| `true`, model ran | 0 | 151 |
+| `true`, this failure | as `false` | 0 |
+
+So one marker *while the key is on* is the whole diagnosis: the two
+never coexist, and a healthy `true` run produces none. The `false` row is
+the measurement
+[CONFIG.md](CONFIG.md#-formulas-and-why-it-is-not-the-enrich-key) records;
+the `true` row was measured on the same corpus after this key was turned
+on.
 
 **Re-running does not repair it, and the two settings recover
 differently.** Both caches key on the *input* PDF, which has not changed,

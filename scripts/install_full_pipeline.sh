@@ -176,10 +176,13 @@ install_os_deps() {
     # sets every formula in that batch to the empty string
     # (docling/models/stages/code_formula/code_formula_vlm_model.py) --
     # so the document *converts*, the ledger records it parsed, and the
-    # run continues. The formulas are simply gone, and re-running sync
-    # will not notice: `sync_decide._to_parse` skips on the PDF's (size,
-    # mtime), which has not changed. Recovering needs `--reparse`. See
-    # docs/PDF-PARSER.md's troubleshooting entry.
+    # run continues. What lands is the `formulas = false` output, marker
+    # and all, on a run that charged for the model and reported success;
+    # and re-running sync will not notice, because
+    # `sync_decide._to_parse` skips on the PDF's (size, mtime), which has
+    # not changed. Recovering needs `--reparse` on the corpus side and a
+    # deleted docling_cache.json on the enrich side. See
+    # docs/PDF-PARSER.md's troubleshooting entry for both.
     #
     # Measured on docker/Dockerfile.claude's Debian trixie base with a
     # GPU attached, where gcc was already present and the headers were
