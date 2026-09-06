@@ -484,6 +484,11 @@ rings.
 
 ### 7.1 Surface what is already stored but invisible
 
+> **Shipped** (#678): `p_value` is edge opacity on the overlap family
+> only, the containment reading is named in words rather than left as
+> two numbers, and the bridge pair is on hover as well as on click --
+> through a positioned div, not `cytoscape-popper`.
+
 - **`p_value` on overlap edges.** Every overlap edge carries the significance
   that let it exist, and nothing shows it. Map it to edge **opacity**: more
   surprising overlap, more solid edge. Width stays strength. The hypergeometric
@@ -586,6 +591,15 @@ const path = d.pathTo(cy.$id(b));
 ```
 
 ### 7.7 Explain an absence
+
+> **Shipped** (#675), without the `edges_withheld` field this section
+> proposes: each topic's `members` and `n_docs` are already in the
+> payload, which is every input the hypergeometric takes, so the browser
+> recomputes the tail for the pair the reader pinned.
+> `tests/webapp/hypergeometric_cases.js` is the contract that keeps it
+> agreeing with `enrich/topic_graph.py` -- scipy's own answers, checked
+> from both runtimes. The faint dotted layer of withheld pairs is not
+> built.
 
 The most instructive moment in the documented worked session is the
 hypergeometric gate computing p = 1.0 and withholding an edge between two topics

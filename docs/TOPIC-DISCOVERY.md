@@ -517,6 +517,26 @@ What the page adds over the static `--html` circle:
   the union happens before the stages run, so `topic_set.json` records
   every phrase as provenance "seed" -- which is why the builder reads
   the two TOML files and annotates each topic with an `origin`.
+- **It explains an absence.** Pin two topics with no edge between them
+  and the app says why. If they share no papers, it says that plainly.
+  If they *do* share papers, it recomputes the same hypergeometric the
+  `topic-graph` stage used and reports the result in the reader's own
+  terms: *"These share `dt2022`, but sharing 1 paper between topics of
+  size 2 and 3 in a 4-paper corpus is what chance predicts (p = 1.00),
+  so no edge was drawn."* Nothing new is stored: each topic's members
+  and `n_docs` are already in the payload, which is every input the
+  test takes. Where the arithmetic says the overlap *was* surprising
+  and the graph still carries no edge, the page says so without blaming
+  the gate -- the stage's threshold is not in the payload, and a run
+  with a stricter cut-off is exactly what that looks like.
+- **The gate is visible on the edges that survived it.** Edge width has
+  always meant strength; edge *opacity* now means surprise, so a more
+  improbable overlap draws more solidly. Only on the solid family:
+  semantic edges never ran that test and are not given a borrowed
+  value. And where one topic sits almost entirely inside another --
+  high overlap coefficient, low Jaccard, the documented sub-topic
+  reading -- the panel names it instead of leaving two decimals side by
+  side.
 - **Papers, in place.** Clicking a topic lists its papers as cards --
   ledger title, citekey, match-score bar. Clicking a solid edge lists
   the shared papers with their evidence; a dashed edge names the

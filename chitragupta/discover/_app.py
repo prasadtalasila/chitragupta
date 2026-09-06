@@ -34,6 +34,7 @@ from chitragupta.discover import _data, _page
 APP_FILES = (
     "index.html",
     "style.css",
+    "absence.js",
     "graph.js",
     "ego.js",
     "panel.js",

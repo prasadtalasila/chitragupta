@@ -14,13 +14,15 @@
 "use strict";
 
 (function (root, factory) {
-  var api = factory();
+  var api = typeof module === "object" && module.exports
+    ? factory(require("./absence.js"))
+    : factory(root.CHITRAGUPTA_APP);
   if (typeof module === "object" && module.exports) {
     module.exports = api;
   } else {
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (absence) {
   /* Null prototypes on every table keyed by data-derived strings
      (topic labels, origins): on a plain object a topic literally
      labelled "__proto__" reads back Object.prototype -- truthy, so it
@@ -215,7 +217,7 @@
   function bundleEdges(data, drawnAs, collapsedIds) {
     var bundles = Object.create(null);
     var order = [];
-    function fold(family, i, a, b, width) {
+    function fold(family, i, a, b, width, surprise) {
       var source = drawnAs[a], target = drawnAs[b];
       if (!source || !target || source === target) { return; }
       var key = family + " " + source + " " + target;
@@ -232,13 +234,20 @@
       }
       bundle.data.count += 1;
       bundle.data.width = Math.max(bundle.data.width, width);
+      // Most surprising wins, as width takes the strongest: a bundle
+      // drawn at the average hides the link worth looking at.
+      if (surprise !== null) {
+        bundle.data.surprise = Math.max(bundle.data.surprise || 0, surprise);
+      }
       bundle.data.pairs.push({ family: family, index: i });
     }
     data.edges_overlap.forEach(function (e, i) {
-      fold("overlap", i, e.a, e.b, 1.5 + 6 * e.overlap_coeff);
+      fold("overlap", i, e.a, e.b, 1.5 + 6 * e.overlap_coeff, absence.surpriseOpacity(e.p_value));
     });
     data.edges_semantic.forEach(function (e, i) {
-      fold("semantic", i, e.a, e.b, 1 + 3 * e.similarity);
+      // No p-value on this family, and none is borrowed: opacity means
+      // "how surprising" only where the gate actually ran.
+      fold("semantic", i, e.a, e.b, 1 + 3 * e.similarity, null);
     });
     // An edge between two topics that are both drawn as themselves is
     // not a bundle: hand it back in its plain form, so nothing changes
@@ -249,7 +258,7 @@
         return bundle;
       }
       var pair = bundle.data.pairs[0];
-      return {
+      var plain = {
         group: "edges",
         data: {
           id: (pair.family === "overlap" ? "ov-" : "se-") + pair.index,
@@ -257,6 +266,8 @@
           family: pair.family, width: bundle.data.width, index: pair.index,
         },
       };
+      if (bundle.data.surprise !== undefined) { plain.data.surprise = bundle.data.surprise; }
+      return plain;
     });
   }
 
