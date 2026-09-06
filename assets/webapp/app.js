@@ -62,11 +62,15 @@
         "border-width": 4,
         "border-color": "#1c2733",
       } },
+      /* Width is strength; opacity is *surprise*, the hypergeometric
+         that let the edge exist at all and that nothing has ever shown.
+         Only on this family -- semantic edges never ran that test and
+         are not given a borrowed value. */
       { selector: "edge[family = 'overlap']", style: {
         "width": "data(width)",
         "line-color": "#5c6bc0",
         "curve-style": "bezier",
-        "opacity": 0.75,
+        "opacity": "data(surprise)",
       } },
       { selector: "edge[family = 'semantic']", style: {
         "width": "data(width)",
@@ -225,6 +229,48 @@
     hint.hidden = true;
     detail.innerHTML = app.bundleHtml(DATA, pairs);
   }
+
+  /* Two pinned topics with no edge between them: the reader gets the
+     gate's own reasoning rather than an empty canvas between two chips.
+     Exactly two, because the sentence is about a pair -- with three
+     pinned there are three pairs and no obvious one to answer. */
+  function showPair(a, b) {
+    var verdict = app.explain(DATA, a, b);
+    if (!verdict || verdict.drawn) { return false; }
+    hint.hidden = true;
+    detail.innerHTML = app.absenceHtml(a, b, verdict);
+    return true;
+  }
+
+  // A DOM tooltip rather than a vendored positioning library: the
+  // bridge pair is the fastest answer to "why is this edge here", and
+  // it should not cost a click.
+  var tip = document.getElementById("tip");
+
+  function showTip(event, text) {
+    tip.textContent = text;
+    tip.hidden = false;
+    tip.style.left = event.renderedPosition.x + 14 + "px";
+    tip.style.top = event.renderedPosition.y + 14 + "px";
+  }
+
+  cy.on("mouseover", "edge", function (event) {
+    var edge = event.target;
+    if (edge.data("bundled")) {
+      showTip(event, edge.data("count") + " links bundled — click to see them");
+      return;
+    }
+    if (edge.data("family") === "semantic") {
+      var e = DATA.edges_semantic[edge.data("index")];
+      showTip(event, "bridged by " + e.bridge.join(" and ") +
+        " (similarity " + e.similarity.toFixed(2) + ")");
+      return;
+    }
+    var overlap = DATA.edges_overlap[edge.data("index")];
+    showTip(event, "shares " + overlap.shared.length + " paper" +
+      (overlap.shared.length === 1 ? "" : "s") + ": " + overlap.shared.join(", "));
+  });
+  cy.on("mouseout", "edge", function () { tip.hidden = true; });
 
   cy.on("tap", "node", function (event) {
     var node = event.target;
@@ -433,6 +479,7 @@
     suggestions.hidden = true;
     showControlsForSelection();
     redraw();
+    if (selected.length === 2 && showPair(selected[0], selected[1])) { return; }
     showTopic(label);
   }
 

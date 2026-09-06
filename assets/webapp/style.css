@@ -127,6 +127,7 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 .edge-key { width: 22px; height: 0; display: inline-block; }
 .edge-key.solid { border-top: 2px solid #5c6bc0; }
 .edge-key.dashed { border-top: 2px dashed #8e24aa; }
+.edge-key.faint { border-top: 2px solid #5c6bc0; opacity: 0.35; }
 
 main { flex: 1; display: flex; min-height: 0; }
 
@@ -264,3 +265,24 @@ main { flex: 1; display: flex; min-height: 0; }
 .ego-stats dt { color: var(--muted); font-size: 12px; }
 .ego-stats dd { margin: 0; font-variant-numeric: tabular-nums; }
 .ego-stats p { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+
+/* The edge tooltip. An absolutely-positioned div, not a vendored
+   popper: every file under assets/webapp/vendor/ has to be justified,
+   and this is one rule and four lines of JavaScript. */
+#tip {
+  position: absolute;
+  z-index: 5;
+  max-width: 280px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  color: var(--ink);
+  pointer-events: none;
+  box-shadow: 0 1px 4px rgb(28 39 51 / 18%);
+}
+
+/* The tooltip is placed against `main`, which is what cytoscape's
+   renderedPosition is measured from. */
+main { position: relative; }

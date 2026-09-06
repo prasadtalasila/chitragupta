@@ -7,19 +7,20 @@
    from the ledger -- so escaping is not incidental to this module, it
    is most of what it is for.
 
-   Depends on graph.js for the origin vocabulary and the member lookup;
-   index.html loads that file first. */
+   Depends on graph.js for the origin vocabulary and the member lookup,
+   and on absence.js for the containment reading and the withheld-edge
+   arithmetic; index.html loads both before this file. */
 "use strict";
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./graph.js"));
+    module.exports = factory(require("./graph.js"), require("./absence.js"));
   } else {
     root.CHITRAGUPTA_APP = Object.assign(
-      root.CHITRAGUPTA_APP || {}, factory(root.CHITRAGUPTA_APP)
+      root.CHITRAGUPTA_APP || {}, factory(root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP)
     );
   }
-})(typeof self !== "undefined" ? self : this, function (graph) {
+})(typeof self !== "undefined" ? self : this, function (graph, absence) {
   /* An explicit five-character replace, not the textContent/innerHTML
      trick: serializing a text node escapes & < > but never quotes, and
      this function's output also lands inside double-quoted attributes
@@ -85,6 +86,13 @@
       why = "These topics share " + papers.length + " paper" +
         (papers.length === 1 ? "" : "s") + " (jaccard " + e.jaccard.toFixed(2) +
         ", p = " + e.p_value.toExponential(1) + ").";
+      // Both coefficients travel on every overlap edge for a reason;
+      // naming the reading is the point, not printing two decimals.
+      if (absence.containment(e)) {
+        why += " Contained: nearly all of the smaller topic's papers are " +
+          "inside the larger one (overlap " + e.overlap_coeff.toFixed(2) +
+          ", Jaccard " + e.jaccard.toFixed(2) + ") — it reads as a sub-topic.";
+      }
     } else {
       e = data.edges_semantic[index];
       papers = e.bridge;
@@ -149,6 +157,44 @@
       '<div class="why">' + escapeHtml(why) + "</div></div>";
   }
 
+  /* Why there is no edge between two pinned topics.
+
+     The most instructive moment in this pipeline's own worked session
+     is the gate computing p = 1.0 and withholding an edge between two
+     topics that *do* share a paper, and no view has ever shown that
+     reasoning. Three sentences, because there are three different
+     answers and running them together would teach the wrong one:
+     nothing shared at all; shared but unsurprising, which is the gate
+     doing its job; and shared, surprising, and still unjoined -- which
+     the page must *not* blame on the gate, because the stage's
+     threshold is not carried in the payload and a stricter run is
+     exactly what this looks like. */
+  function absenceHtml(a, b, verdict) {
+    var heading = "<h2>" + escapeHtml(a) + " — " + escapeHtml(b) + "</h2>";
+    if (!verdict.shared.length) {
+      return heading + '<p class="terms">These topics share no papers at all, ' +
+        "so the overlap test had nothing to weigh. Any relation between them " +
+        "would have to come from the semantic family.</p>";
+    }
+    var citekeys = verdict.shared.map(function (citekey) {
+      return "<code>" + escapeHtml(citekey) + "</code>";
+    }).join(", ");
+    var count = verdict.shared.length + " paper" + (verdict.shared.length === 1 ? "" : "s");
+    return heading + '<p class="terms">' +
+      (verdict.p >= 0.01
+        ? "These share " + citekeys + ", but sharing " + count +
+          " between topics of size " + verdict.sizes.a + " and " + verdict.sizes.b +
+          " in a " + verdict.docs + "-paper corpus is what chance predicts (p = " +
+          verdict.p.toFixed(2) + "), so no edge was drawn."
+        : "These share " + citekeys + " — " + count + " between topics of size " +
+          verdict.sizes.a + " and " + verdict.sizes.b + " in a " + verdict.docs +
+          "-paper corpus, which chance does not readily explain (p = " +
+          verdict.p.toExponential(1) + "). This graph still carries no edge " +
+          "between them, so the run that built it used a stricter cut-off than " +
+          "this page can see: the threshold is not in the payload.") +
+      "</p>";
+  }
+
   /* The shape of a topic's neighbourhood, per edge family, side by
      side. Unlike everything else in this panel these numbers are
      computed here and now from the current view -- `--json` will not
@@ -207,6 +253,7 @@
     edgeHtml: edgeHtml,
     groupHtml: groupHtml,
     egoHtml: egoHtml,
+    absenceHtml: absenceHtml,
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,
