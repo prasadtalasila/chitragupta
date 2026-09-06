@@ -26,6 +26,16 @@
            placeholder="Type a topic or keyword&hellip; (Enter adds it, Esc clears)">
     <ul id="suggestions" hidden></ul>
   </div>
+  <div id="resolution">
+    <label for="cut">Resolution</label>
+    <input id="cut" type="range" step="1" value="0"
+           aria-describedby="cut-readout">
+    <span id="cut-readout"></span>
+    <button id="collapse-all" type="button">collapse all</button>
+    <button id="expand-all" type="button">expand all</button>
+    <span class="note">grouped in your browser by cutting the stored merge
+    tree &mdash; a view, not a corpus claim</span>
+  </div>
   <div id="legend">
     <span class="swatch seed"></span>seed
     <span class="swatch keyword"></span>keyword
@@ -33,14 +43,19 @@
     <span class="swatch emergent"></span>emergent
     <span class="edge-key solid"></span>shares papers
     <span class="edge-key dashed"></span>semantically near
+    <span class="swatch group"></span>group (your cut of the merge tree)
   </div>
 </header>
 <main>
   <div id="cy"></div>
   <aside id="panel">
-    <p id="hint">Click a topic to see its papers, or an edge to see what
-    links two topics. Type in the search box to filter the graph to the
-    topics you pick and everything related to them.</p>
+    <p id="hint">The graph opens grouped: each grey box stands for a
+    group of topics that merge closely in the stored hierarchy. Click one
+    to see what is in it, double-click to open it in place, and drag the
+    resolution slider for coarser or finer groups. Click a topic to see
+    its papers, or an edge to see what links two topics. Type in the
+    search box to filter the graph to the topics you pick and everything
+    related to them.</p>
     <div id="detail"></div>
     <details id="hierarchy">
       <summary>Merge hierarchy</summary>

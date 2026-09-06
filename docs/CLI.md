@@ -622,7 +622,7 @@ relation and each resolution rung is computed.
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
 | `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit. Composes with `--json`, which reports the write as `{"written": FILE}` rather than as a sentence |
-| `--app DIR` | -- | Write the topic graph as an interactive app directory -- cytoscape.js canvas, type-ahead multi-topic search, provenance-coloured nodes, paper panel -- openable from `file://` with no server (docs/TOPIC-DISCOVERY.md has the tour). Composes with `--json` exactly as `--html` does |
+| `--app DIR` | -- | Write the topic graph as an interactive app directory -- cytoscape.js canvas grouped by a slidable cut of the stored merge tree, type-ahead multi-topic search, provenance-coloured nodes, paper panel -- openable from `file://` with no server (docs/TOPIC-DISCOVERY.md has the tour). Composes with `--json` exactly as `--html` does |
 
 ```bash
 chitragupta corpus discover
