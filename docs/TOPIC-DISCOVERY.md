@@ -477,11 +477,39 @@ What the page adds over the static `--html` circle:
   as you type -- matched on labels and on each topic's own top terms --
   and Enter (or a click) pins the topic as a removable chip. Several
   chips compose.
-- **The graph adjusts to the selection.** With topics pinned, only the
-  selected topics and the topics related to them (over both edge
-  families: shared members and semantic nearness) stay on the canvas,
-  and the layout re-runs on that subgraph. No selection shows
-  everything.
+- **The graph focuses on the selection without deleting the rest.**
+  With topics pinned, the whole corpus stays drawn and everything
+  outside the neighbourhood is dimmed to background -- removing it
+  costs the reader their sense of how much of the corpus their
+  selection *is*, which on 131 topics is most of the picture. A "hide
+  the rest of the corpus" toggle restores the old hard filter.
+  Grouping is suspended while anything is pinned: browsing the corpus
+  and reading one neighbourhood are two different jobs, and one canvas
+  does one of them at a time.
+- **The neighbourhood is drawn as concentric rings by hop distance**,
+  the pinned topics at the centre, and a "show 1 hop / 2 hops /
+  everything reachable" control that moves what is emphasised and what
+  is drawn together. On the first ring the neighbours are separated by
+  which family reached them -- shared papers on one arc, semantic
+  nearness on another, both in between, each arc as wide as its share
+  of the ring. What the app will not do is put them on one ring whose
+  angle or radius averages the two: that is the fusion the design
+  refuses, and doing it in geometry would be the same claim more
+  quietly.
+- **Hovering a topic lights its own neighbourhood** and pushes the rest
+  back, which is the one interaction people expect from a graph.
+  Layout changes animate rather than teleport, so a node stays findable
+  across a selection change.
+- **The panel says whether a topic is a theme or a bridge.** Under its
+  papers, each topic carries its ego density and Burt's effective size
+  and constraint -- per edge family, side by side, never pooled. A
+  dense neighbourhood is a coherent theme; one whose members do not
+  touch each other is a broker, and a broker is where a survey section
+  earns its keep. A topic that brokers over shared papers but not over
+  vocabulary is a methods topic; the reverse is usually a terminology
+  split worth naming in the draft. These are the app's own arithmetic
+  over the current view, computed in the browser and labelled as such;
+  `--json` reports none of them.
 - **Provenance is visible.** Node colour distinguishes a hand-written
   seed phrase, a machine-extracted keyword phrase
   (`content/keywords.toml`), a phrase both files name, and an emergent

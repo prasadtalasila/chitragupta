@@ -45,30 +45,6 @@
     return index;
   }
 
-  // Direct neighbours over both edge families, precomputed once: the
-  // filter's "related" set is exactly this adjacency.
-  function adjacency(data) {
-    var neighbours = Object.create(null);
-    function add(a, b) {
-      (neighbours[a] = neighbours[a] || new Set()).add(b);
-      (neighbours[b] = neighbours[b] || new Set()).add(a);
-    }
-    data.edges_overlap.forEach(function (e) { add(e.a, e.b); });
-    data.edges_semantic.forEach(function (e) { add(e.a, e.b); });
-    return neighbours;
-  }
-
-  function visibleLabels(data, selected, neighbours) {
-    if (!selected.length) {
-      return new Set(data.topics.map(function (t) { return t.label; }));
-    }
-    var visible = new Set(selected);
-    selected.forEach(function (label) {
-      (neighbours[label] || new Set()).forEach(function (n) { visible.add(n); });
-    });
-    return visible;
-  }
-
   function nodeSize(topic) {
     return 22 + 9 * Math.sqrt(topic.members.length);
   }
@@ -399,8 +375,24 @@
     };
   }
 
+  /* `visible` is the reader's focus -- the pinned topics and what
+     relates to them. With `view.context === "dim"` it stops being a
+     filter and becomes an *emphasis* set: everything in `view.all`
+     stays on the canvas and the rest is drawn faint, so the reader
+     keeps their sense of how much of the corpus they are looking at.
+     "hide" is the old hard filter, kept as a toggle. */
   function elementsFor(data, visible, selected, view) {
-    var resolved = resolveView(data, visible, view);
+    var pinned = selected.length > 0;
+    var dimming = pinned && view && view.context === "dim" && Boolean(view.all);
+    var universe = dimming ? view.all : visible;
+    function dim(label) { return dimming && !visible.has(label) ? 1 : 0; }
+
+    /* One layout regime at a time. Grouping is for browsing the whole
+       corpus; the ego view is for reading one neighbourhood, and it
+       needs the topics themselves, not the boxes they happen to sit in.
+       Suspending the cut here rather than in the wiring means the rule
+       is testable, and means a caller cannot half-apply it. */
+    var resolved = resolveView(data, universe, pinned ? null : view);
     var els = groupNodes(resolved.groups, resolved.collapsedIds);
     var parentOf = Object.create(null);
     resolved.groups.forEach(function (entry) {
@@ -408,11 +400,21 @@
       entry.members.forEach(function (label) { parentOf[label] = entry.group.id; });
     });
     data.topics.forEach(function (t) {
-      if (!visible.has(t.label)) { return; }
+      if (!universe.has(t.label)) { return; }
       if (resolved.drawnAs[t.label] !== t.label) { return; }
-      els.push(topicNode(t, selected, parentOf[t.label]));
+      var node = topicNode(t, selected, parentOf[t.label]);
+      if (dimming) { node.data.dim = dim(t.label); }
+      els.push(node);
     });
-    return els.concat(bundleEdges(data, resolved.drawnAs, resolved.collapsedIds));
+    var edges = bundleEdges(data, resolved.drawnAs, resolved.collapsedIds);
+    if (dimming) {
+      // An edge is only as bright as its dimmer end: a line running out
+      // of the focus into the context has to read as leaving it.
+      edges.forEach(function (edge) {
+        edge.data.dim = Math.max(dim(edge.data.source), dim(edge.data.target));
+      });
+    }
+    return els.concat(edges);
   }
 
   function candidatesFor(data, selected, query) {
@@ -447,8 +449,6 @@
     ORIGIN_COLORS: ORIGIN_COLORS,
     ORIGIN_LABELS: ORIGIN_LABELS,
     byLabel: byLabel,
-    adjacency: adjacency,
-    visibleLabels: visibleLabels,
     nodeSize: nodeSize,
     elementsFor: elementsFor,
     cutTree: cutTree,

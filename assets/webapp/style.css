@@ -232,3 +232,35 @@ main { flex: 1; display: flex; min-height: 0; }
 
 #resolution button:hover { border-color: var(--muted); }
 #resolution .note { font-style: italic; flex: 1 1 100%; }
+
+/* The focus controls, shown only while something is pinned -- there is
+   nothing to be egocentric about otherwise. Same shape as #resolution,
+   which it replaces on screen rather than sitting beside. */
+#focus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* `display: flex` on these two beats the user agent's `[hidden] {
+   display: none }`, so hiding one from JavaScript has no visible effect
+   without this line -- the DOM said hidden and the screenshot showed
+   both control rows at once. */
+#resolution[hidden], #focus[hidden] { display: none; }
+
+#focus label { color: var(--ink); }
+#focus select { font: inherit; }
+#focus .note { font-style: italic; flex: 1 1 100%; }
+
+/* The two edge families side by side in the panel: they are read
+   against each other, so they have to be next to each other. */
+.ego-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+.ego-stats > div { flex: 1 1 160px; }
+.ego-stats h4 { margin: 12px 0 4px; font-size: 13px; }
+.ego-stats dl { display: grid; grid-template-columns: auto auto; gap: 1px 8px; margin: 0; }
+.ego-stats dt { color: var(--muted); font-size: 12px; }
+.ego-stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.ego-stats p { font-size: 12px; color: var(--muted); margin: 6px 0 0; }

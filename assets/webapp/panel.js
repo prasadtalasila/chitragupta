@@ -149,6 +149,40 @@
       '<div class="why">' + escapeHtml(why) + "</div></div>";
   }
 
+  /* The shape of a topic's neighbourhood, per edge family, side by
+     side. Unlike everything else in this panel these numbers are
+     computed here and now from the current view -- `--json` will not
+     confirm them -- so the panel says so, and says what they mean: a
+     dense neighbourhood is a theme, a sparse one is a bridge, and a
+     topic that brokers over shared papers but not over vocabulary is a
+     different animal from one that does the reverse. */
+  function egoHtml(label, stats) {
+    return "<h3>Neighbourhood of " + escapeHtml(label) + "</h3>" +
+      '<p class="terms">How this topic sits among its neighbours, worked out ' +
+      "in your browser from the current view. Not a corpus claim: " +
+      "<code>--json</code> reports none of it.</p>" +
+      '<div class="ego-stats">' +
+      statsColumn("Over shared papers", stats.overlap) +
+      statsColumn("Over semantic nearness", stats.semantic) +
+      "</div>";
+  }
+
+  function statsColumn(title, stats) {
+    if (!stats.alters) {
+      return "<div><h4>" + title + "</h4><p>no neighbours in this family</p></div>";
+    }
+    var reading = stats.density === null ? "one neighbour"
+      : stats.density >= 0.5 ? "reads as a theme: its neighbours mostly connect"
+        : "reads as a bridge: its neighbours mostly do not connect";
+    return "<div><h4>" + title + "</h4>" +
+      "<dl><dt>neighbours</dt><dd>" + stats.alters + "</dd>" +
+      "<dt>ego density</dt><dd>" +
+      (stats.density === null ? "&mdash;" : stats.density.toFixed(2)) + "</dd>" +
+      "<dt>effective size</dt><dd>" + stats.effectiveSize.toFixed(2) + "</dd>" +
+      "<dt>constraint</dt><dd>" + stats.constraint.toFixed(2) + "</dd></dl>" +
+      "<p>" + reading + "</p></div>";
+  }
+
   function suggestionsHtml(candidates, activeIndex) {
     return candidates.map(function (c, i) {
       return '<li data-label="' + escapeHtml(c.label) + '"' +
@@ -172,6 +206,7 @@
     topicHtml: topicHtml,
     edgeHtml: edgeHtml,
     groupHtml: groupHtml,
+    egoHtml: egoHtml,
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,

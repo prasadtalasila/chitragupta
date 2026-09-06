@@ -35,6 +35,7 @@ APP_FILES = (
     "index.html",
     "style.css",
     "graph.js",
+    "ego.js",
     "panel.js",
     "app.js",
     "vendor/cytoscape.min.js",
