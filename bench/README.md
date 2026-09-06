@@ -102,6 +102,13 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | Does a cross-encoder rerank help, and does it matter whether it runs before or after the per-citekey cap (#380)? | **`bench_rerank_position.py`** -- needs the `enrich` group and a built `content/chroma/`; reuses `bench_retrieval_keyword_selfretrieval.py`'s 256 pairs and `bench_retrieval_compare.py`'s scoring, and measures at the **shipped** shape (chunks, cap 3, pool 20) rather than the citekey-collapsed one those rows use. Reports `distinct@5`, which is the metric #380's own motivating claim is about |
 | What does cross-encoding the over-fetched passages *cost*, per `search()` call? | **`bench_rerank_cost.py`** -- needs the `enrich` group and a built `content/chroma/`; times the rerank stage against the shipped `embed_index.search()` measured in the same process, across model x device x pool depth. Reports a **slowdown ratio**, not a duration, because that is what decides affordability |
 | Would a figure-similarity tier (#659) catch a draft figure redrawn from a source's, and can it tell that apart from same-field organic noise? | **`bench_figure_similarity.py`** -- needs the `enrich` group's `docling_images` crops, `sentence-transformers`/`transformers`/`torch`, and a working `pdflatex` + `pypdfium2`; measures an identity control, a cross-paper floor, recall on four graded planted TikZ fixtures against two encoders, and cost. **2026-09-04: a narrowly-scoped ship, SigLIP only, catching a label-preserving redraw and nothing past it** -- see `RESULTS.md` |
+| What does surviving a dead parse worker cost, and does the narrowing pool terminate? | **`bench_pool_rebuild.py`** (#610 B3) -- SIGKILLs a real pool worker mid-parse and hands a FIFO to the stall watchdog, both in throwaway content directories. Reports a wall-clock **ratio**, the documents lost, and the pool widths as it narrowed. **Did not complete on this host** -- see `RESULTS.md`'s B3 section |
+| Does the *converged* topic set reproduce, or only the emergent clustering underneath it? | **`bench_topic_converged_stability.py`** (#610 B4) -- bootstrap ARI over both, from one run of the real stages per resample. Read the **multi-membership share** first: the converged arm's partition is constructed, and the number means what it looks like only where few documents had a choice |
+| How many edges does the topic graph have at other thresholds, and does the edge set survive a resample? | **`bench_topic_graph_shape.py`** (#610 B7) -- a p-value x neighbours grid, edge-set Jaccard under document bootstrap, and the two graph metrics (average degree, average clustering coefficient) the stage deliberately does not publish |
+| What does a whole-file rewrite cost against a section-scoped edit, and what does the dispatch pointer really save? | **`bench_prompt_economics.py`** (#610 B8) -- characters at the documented four-per-token conversion, over every draft with a dossier. Classifies each section's zero rather than summing it, which is what separates "nothing to paste" from "nothing transcribed" |
+| The instrument for rating claim support: stratified, blinded, three raters | **`bench_claim_support_labelling.py`** (#610 B9) -- builds the sheet and the key and **computes no statistic** until three humans have filled it in. `--score` then reports Fleiss' kappa, pairwise Cohen's kappa, Spearman rho and the separation medians |
+| What do all **ten** review aids cost now, `union` included? | **`bench_review_cost.py`** (#610 B11) -- the same five drafts docs/PERFORMANCE.md's 2026-08-27 table used, re-timed through the real CLI, median of `--repeats`. A refused aid reports its exit status, never a fast time |
+| Does the shipped keyword pipeline still reach the corpus it reached on the last snapshot? | **`bench_keyword_pipeline.py`** (#610 B14) -- the 2026-09-03e entry's four arms as one command, coverage read off the stage's own `topic_seeds.json`. Regenerates `content/keywords.toml` per arm rather than scoring whatever is on disk |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
 one.** A per-page extrapolation from a 16-PDF sample understated a
@@ -220,9 +227,12 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_topic_depth.py`, `bench_topic_membership.py`,
 `topic_discovery_eval.py`, `estimate.py`,
 `run_parallel.py`, `extract_keywords.py` and
-`bench_keyword_seed_topics.py`, `bench_figure_similarity.py` and
-`topic_cluster_eval.py` each have
-one -- 29 of the 31 scripts here. The
+`bench_keyword_seed_topics.py`, `bench_figure_similarity.py`,
+`topic_cluster_eval.py`, `bench_topic_graph_shape.py`,
+`bench_pool_rebuild.py`, `bench_review_cost.py`,
+`bench_prompt_economics.py`, `bench_topic_converged_stability.py`,
+`bench_keyword_pipeline.py` and `bench_claim_support_labelling.py` each have
+one -- 36 of the 38 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that
