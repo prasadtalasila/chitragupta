@@ -1,0 +1,319 @@
+{
+  "repeats": 3,
+  "drafts": [
+    {
+      "draft": "drafts/digital-twins-for-software-engineers/deep-research.md",
+      "words": 1258,
+      "dossier": false,
+      "aids": {
+        "provenance": {
+          "aid": "provenance",
+          "ms": 199.9,
+          "runs": 3,
+          "failures": []
+        },
+        "verbatim": {
+          "aid": "verbatim",
+          "ms": 464.5,
+          "runs": 3,
+          "failures": []
+        },
+        "coverage": {
+          "aid": "coverage",
+          "ms": 328.3,
+          "runs": 3,
+          "failures": []
+        },
+        "synthesis": {
+          "aid": "synthesis",
+          "ms": 112.4,
+          "runs": 3,
+          "failures": []
+        },
+        "figure": {
+          "aid": "figure",
+          "ms": 108.3,
+          "runs": 3,
+          "failures": []
+        },
+        "uncited": {
+          "aid": "uncited",
+          "ms": 110.9,
+          "runs": 3,
+          "failures": []
+        },
+        "quotation": {
+          "aid": "quotation",
+          "ms": 109.0,
+          "runs": 3,
+          "failures": []
+        },
+        "agenda": {
+          "aid": "agenda",
+          "ms": 278.1,
+          "runs": 3,
+          "failures": []
+        },
+        "support": {
+          "aid": "support",
+          "ms": 61759.0,
+          "runs": 3,
+          "failures": []
+        }
+      }
+    },
+    {
+      "draft": "drafts/digital-twins-for-software-engineers/survey.md",
+      "words": 2448,
+      "dossier": false,
+      "aids": {
+        "provenance": {
+          "aid": "provenance",
+          "ms": 380.9,
+          "runs": 3,
+          "failures": []
+        },
+        "verbatim": {
+          "aid": "verbatim",
+          "ms": 520.5,
+          "runs": 3,
+          "failures": []
+        },
+        "coverage": {
+          "aid": "coverage",
+          "ms": 329.2,
+          "runs": 3,
+          "failures": []
+        },
+        "synthesis": {
+          "aid": "synthesis",
+          "ms": 113.7,
+          "runs": 3,
+          "failures": []
+        },
+        "figure": {
+          "aid": "figure",
+          "ms": 114.4,
+          "runs": 3,
+          "failures": []
+        },
+        "uncited": {
+          "aid": "uncited",
+          "ms": 109.9,
+          "runs": 3,
+          "failures": []
+        },
+        "quotation": {
+          "aid": "quotation",
+          "ms": 106.0,
+          "runs": 3,
+          "failures": []
+        },
+        "agenda": {
+          "aid": "agenda",
+          "ms": 288.5,
+          "runs": 3,
+          "failures": []
+        },
+        "support": {
+          "aid": "support",
+          "ms": 74406.4,
+          "runs": 3,
+          "failures": []
+        }
+      }
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms.md",
+      "words": 5723,
+      "dossier": true,
+      "aids": {
+        "provenance": {
+          "aid": "provenance",
+          "ms": 159.5,
+          "runs": 3,
+          "failures": []
+        },
+        "verbatim": {
+          "aid": "verbatim",
+          "ms": 21375.7,
+          "runs": 3,
+          "failures": []
+        },
+        "coverage": {
+          "aid": "coverage",
+          "ms": 339.0,
+          "runs": 3,
+          "failures": []
+        },
+        "synthesis": {
+          "aid": "synthesis",
+          "ms": 110.1,
+          "runs": 3,
+          "failures": []
+        },
+        "figure": {
+          "aid": "figure",
+          "ms": 494.5,
+          "runs": 3,
+          "failures": []
+        },
+        "uncited": {
+          "aid": "uncited",
+          "ms": 118.6,
+          "runs": 3,
+          "failures": []
+        },
+        "quotation": {
+          "aid": "quotation",
+          "ms": 107.3,
+          "runs": 3,
+          "failures": []
+        },
+        "agenda": {
+          "aid": "agenda",
+          "ms": 557.7,
+          "runs": 3,
+          "failures": []
+        },
+        "support": {
+          "aid": "support",
+          "ms": 34968.3,
+          "runs": 3,
+          "failures": []
+        }
+      }
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/03-anatomy-of-a-twin.md",
+      "words": 10003,
+      "dossier": true,
+      "aids": {
+        "provenance": {
+          "aid": "provenance",
+          "ms": 366.6,
+          "runs": 3,
+          "failures": []
+        },
+        "verbatim": {
+          "aid": "verbatim",
+          "ms": 48384.3,
+          "runs": 3,
+          "failures": []
+        },
+        "coverage": {
+          "aid": "coverage",
+          "ms": 331.6,
+          "runs": 3,
+          "failures": []
+        },
+        "synthesis": {
+          "aid": "synthesis",
+          "ms": 114.7,
+          "runs": 3,
+          "failures": []
+        },
+        "figure": {
+          "aid": "figure",
+          "ms": 838.1,
+          "runs": 3,
+          "failures": []
+        },
+        "uncited": {
+          "aid": "uncited",
+          "ms": 133.6,
+          "runs": 3,
+          "failures": []
+        },
+        "quotation": {
+          "aid": "quotation",
+          "ms": 111.6,
+          "runs": 3,
+          "failures": []
+        },
+        "agenda": {
+          "aid": "agenda",
+          "ms": 585.7,
+          "runs": 3,
+          "failures": []
+        },
+        "support": {
+          "aid": "support",
+          "ms": 121274.6,
+          "runs": 3,
+          "failures": []
+        }
+      }
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/07-should-you-trust-the-twin.md",
+      "words": 18061,
+      "dossier": true,
+      "aids": {
+        "provenance": {
+          "aid": "provenance",
+          "ms": 310.2,
+          "runs": 3,
+          "failures": []
+        },
+        "verbatim": {
+          "aid": "verbatim",
+          "ms": 42088.8,
+          "runs": 3,
+          "failures": []
+        },
+        "coverage": {
+          "aid": "coverage",
+          "ms": 333.2,
+          "runs": 3,
+          "failures": []
+        },
+        "synthesis": {
+          "aid": "synthesis",
+          "ms": 113.1,
+          "runs": 3,
+          "failures": []
+        },
+        "figure": {
+          "aid": "figure",
+          "ms": 644.5,
+          "runs": 3,
+          "failures": []
+        },
+        "uncited": {
+          "aid": "uncited",
+          "ms": 146.8,
+          "runs": 3,
+          "failures": []
+        },
+        "quotation": {
+          "aid": "quotation",
+          "ms": 110.5,
+          "runs": 3,
+          "failures": []
+        },
+        "agenda": {
+          "aid": "agenda",
+          "ms": 642.5,
+          "runs": 3,
+          "failures": []
+        },
+        "support": {
+          "aid": "support",
+          "ms": 88107.2,
+          "runs": 3,
+          "failures": []
+        }
+      }
+    }
+  ],
+  "union": [
+    {
+      "assembly": "drafts/books/digital-twins-for-software-engineers/book.tex",
+      "aid": "union",
+      "ms": 135.2,
+      "runs": 3,
+      "failures": []
+    }
+  ]
+}

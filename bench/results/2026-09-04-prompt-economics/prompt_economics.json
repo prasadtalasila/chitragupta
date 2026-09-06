@@ -1,0 +1,522 @@
+{
+  "chars_per_token": 4,
+  "rewrite": [
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-corpus-revised.md",
+      "words": 14819,
+      "sections": 52,
+      "whole_file_chars": 95227,
+      "whole_file_tokens": 23807,
+      "median_section_chars": 1595,
+      "median_section_tokens": 399,
+      "largest_section_chars": 9404,
+      "ratio_whole_to_median_section": 59.68
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-full-corpus.md",
+      "words": 13154,
+      "sections": 51,
+      "whole_file_chars": 86947,
+      "whole_file_tokens": 21737,
+      "median_section_chars": 1135,
+      "median_section_tokens": 284,
+      "largest_section_chars": 12291,
+      "ratio_whole_to_median_section": 76.61
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations.md",
+      "words": 14017,
+      "sections": 52,
+      "whole_file_chars": 90070,
+      "whole_file_tokens": 22518,
+      "median_section_chars": 1513,
+      "median_section_tokens": 378,
+      "largest_section_chars": 9404,
+      "ratio_whole_to_median_section": 59.51
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms-full-corpus.md",
+      "words": 5375,
+      "sections": 14,
+      "whole_file_chars": 35641,
+      "whole_file_tokens": 8910,
+      "median_section_chars": 2539,
+      "median_section_tokens": 635,
+      "largest_section_chars": 4235,
+      "ratio_whole_to_median_section": 14.03
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms.md",
+      "words": 5723,
+      "sections": 14,
+      "whole_file_chars": 38374,
+      "whole_file_tokens": 9594,
+      "median_section_chars": 2686,
+      "median_section_tokens": 672,
+      "largest_section_chars": 4784,
+      "ratio_whole_to_median_section": 14.29
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/01-why-anyone-pays-for-a-digital-twin.md",
+      "words": 10758,
+      "sections": 42,
+      "whole_file_chars": 70786,
+      "whole_file_tokens": 17696,
+      "median_section_chars": 1258,
+      "median_section_tokens": 315,
+      "largest_section_chars": 10298,
+      "ratio_whole_to_median_section": 56.25
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/02-twin-shadow-model-simulation.md",
+      "words": 11135,
+      "sections": 40,
+      "whole_file_chars": 70544,
+      "whole_file_tokens": 17636,
+      "median_section_chars": 1183,
+      "median_section_tokens": 296,
+      "largest_section_chars": 10043,
+      "ratio_whole_to_median_section": 59.63
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/03-anatomy-of-a-twin.md",
+      "words": 10003,
+      "sections": 41,
+      "whole_file_chars": 64053,
+      "whole_file_tokens": 16013,
+      "median_section_chars": 1168,
+      "median_section_tokens": 292,
+      "largest_section_chars": 8408,
+      "ratio_whole_to_median_section": 54.84
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/04-just-enough-modeling.md",
+      "words": 10250,
+      "sections": 38,
+      "whole_file_chars": 64239,
+      "whole_file_tokens": 16060,
+      "median_section_chars": 1283,
+      "median_section_tokens": 321,
+      "largest_section_chars": 7301,
+      "ratio_whole_to_median_section": 50.05
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/05-just-enough-simulation.md",
+      "words": 9701,
+      "sections": 37,
+      "whole_file_chars": 58569,
+      "whole_file_tokens": 14642,
+      "median_section_chars": 1245,
+      "median_section_tokens": 311,
+      "largest_section_chars": 5591,
+      "ratio_whole_to_median_section": 47.04
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/06-simulators.md",
+      "words": 11481,
+      "sections": 48,
+      "whole_file_chars": 73398,
+      "whole_file_tokens": 18350,
+      "median_section_chars": 1100,
+      "median_section_tokens": 275,
+      "largest_section_chars": 8867,
+      "ratio_whole_to_median_section": 66.7
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/07-should-you-trust-the-twin.md",
+      "words": 18061,
+      "sections": 58,
+      "whole_file_chars": 107593,
+      "whole_file_tokens": 26898,
+      "median_section_chars": 1508,
+      "median_section_tokens": 377,
+      "largest_section_chars": 6595,
+      "ratio_whole_to_median_section": 71.35
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/08-where-ai-fits.md",
+      "words": 13834,
+      "sections": 46,
+      "whole_file_chars": 85569,
+      "whole_file_tokens": 21392,
+      "median_section_chars": 1449,
+      "median_section_tokens": 362,
+      "largest_section_chars": 6671,
+      "ratio_whole_to_median_section": 59.05
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/09-connecting-the-physical.md",
+      "words": 14888,
+      "sections": 54,
+      "whole_file_chars": 90658,
+      "whole_file_tokens": 22664,
+      "median_section_chars": 1409,
+      "median_section_tokens": 352,
+      "largest_section_chars": 7554,
+      "ratio_whole_to_median_section": 64.32
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/10-data-engineering-for-twins.md",
+      "words": 13546,
+      "sections": 51,
+      "whole_file_chars": 84491,
+      "whole_file_tokens": 21123,
+      "median_section_chars": 1283,
+      "median_section_tokens": 321,
+      "largest_section_chars": 6880,
+      "ratio_whole_to_median_section": 65.85
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/11-twin-services.md",
+      "words": 12746,
+      "sections": 57,
+      "whole_file_chars": 78439,
+      "whole_file_tokens": 19610,
+      "median_section_chars": 995,
+      "median_section_tokens": 249,
+      "largest_section_chars": 5957,
+      "ratio_whole_to_median_section": 78.83
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/12-platforms-and-composability.md",
+      "words": 10738,
+      "sections": 42,
+      "whole_file_chars": 65652,
+      "whole_file_tokens": 16413,
+      "median_section_chars": 1129,
+      "median_section_tokens": 282,
+      "largest_section_chars": 6204,
+      "ratio_whole_to_median_section": 58.12
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/13-standards-and-open-source.md",
+      "words": 11468,
+      "sections": 43,
+      "whole_file_chars": 72785,
+      "whole_file_tokens": 18196,
+      "median_section_chars": 1262,
+      "median_section_tokens": 316,
+      "largest_section_chars": 9063,
+      "ratio_whole_to_median_section": 57.67
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/14-running-twins-in-production.md",
+      "words": 11970,
+      "sections": 47,
+      "whole_file_chars": 73539,
+      "whole_file_tokens": 18385,
+      "median_section_chars": 1344,
+      "median_section_tokens": 336,
+      "largest_section_chars": 6808,
+      "ratio_whole_to_median_section": 54.72
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/15-twins-at-scale.md",
+      "words": 10810,
+      "sections": 43,
+      "whole_file_chars": 68592,
+      "whole_file_tokens": 17148,
+      "median_section_chars": 1233,
+      "median_section_tokens": 308,
+      "largest_section_chars": 6476,
+      "ratio_whole_to_median_section": 55.63
+    },
+    {
+      "draft": "drafts/da/anvendelser-af-digitale-tvillinger.md",
+      "words": 7613,
+      "sections": 29,
+      "whole_file_chars": 50291,
+      "whole_file_tokens": 12573,
+      "median_section_chars": 1164,
+      "median_section_tokens": 291,
+      "largest_section_chars": 8645,
+      "ratio_whole_to_median_section": 43.21
+    }
+  ],
+  "dispatch": [
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-corpus-revised.md",
+      "sections": 52,
+      "section_outcomes": {
+        "uncited": 28,
+        "cited-no-block": 24
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 14183,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3546,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations-full-corpus.md",
+      "sections": 51,
+      "section_outcomes": {
+        "uncited": 29,
+        "cited-no-block": 22
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 13758,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3440,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-life-cycle-considerations/digital-twin-life-cycle-considerations.md",
+      "sections": 52,
+      "section_outcomes": {
+        "uncited": 28,
+        "cited-no-block": 24
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 13403,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3351,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms-full-corpus.md",
+      "sections": 14,
+      "section_outcomes": {
+        "uncited": 6,
+        "cited-no-block": 8
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 3229,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 807,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms.md",
+      "sections": 14,
+      "section_outcomes": {
+        "uncited": 4,
+        "cited-no-block": 9,
+        "no-such-section": 1
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 3057,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 764,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/01-why-anyone-pays-for-a-digital-twin.md",
+      "sections": 42,
+      "section_outcomes": {
+        "uncited": 17,
+        "cited-no-block": 10,
+        "cited-and-resolved": 15
+      },
+      "pasted_chars": 10896,
+      "dispatch_chars": 10290,
+      "pasted_tokens": 2724,
+      "dispatch_tokens": 2572,
+      "ratio": 1.06
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/02-twin-shadow-model-simulation.md",
+      "sections": 40,
+      "section_outcomes": {
+        "uncited": 21,
+        "cited-no-block": 14,
+        "cited-and-resolved": 5
+      },
+      "pasted_chars": 4880,
+      "dispatch_chars": 9414,
+      "pasted_tokens": 1220,
+      "dispatch_tokens": 2354,
+      "ratio": 0.52
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/03-anatomy-of-a-twin.md",
+      "sections": 41,
+      "section_outcomes": {
+        "uncited": 27,
+        "cited-no-block": 14
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 8895,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2224,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/04-just-enough-modeling.md",
+      "sections": 38,
+      "section_outcomes": {
+        "uncited": 26,
+        "cited-no-block": 12
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 8573,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2143,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/05-just-enough-simulation.md",
+      "sections": 37,
+      "section_outcomes": {
+        "uncited": 23,
+        "cited-no-block": 14
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 8505,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2126,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/06-simulators.md",
+      "sections": 48,
+      "section_outcomes": {
+        "uncited": 26,
+        "cited-no-block": 22
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 10425,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2606,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/07-should-you-trust-the-twin.md",
+      "sections": 58,
+      "section_outcomes": {
+        "uncited": 36,
+        "cited-no-block": 20,
+        "no-such-section": 2
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 13949,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3487,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/08-where-ai-fits.md",
+      "sections": 46,
+      "section_outcomes": {
+        "uncited": 32,
+        "cited-no-block": 14
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 10349,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2587,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/09-connecting-the-physical.md",
+      "sections": 54,
+      "section_outcomes": {
+        "uncited": 40,
+        "cited-no-block": 12,
+        "no-such-section": 2
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 12832,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3208,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/10-data-engineering-for-twins.md",
+      "sections": 51,
+      "section_outcomes": {
+        "uncited": 42,
+        "cited-no-block": 9
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 12102,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3026,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/11-twin-services.md",
+      "sections": 57,
+      "section_outcomes": {
+        "uncited": 49,
+        "cited-no-block": 8
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 12820,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 3205,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/12-platforms-and-composability.md",
+      "sections": 42,
+      "section_outcomes": {
+        "uncited": 31,
+        "cited-no-block": 11
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 10081,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2520,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/13-standards-and-open-source.md",
+      "sections": 43,
+      "section_outcomes": {
+        "uncited": 25,
+        "cited-no-block": 17,
+        "no-such-section": 1
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 10419,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2605,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/14-running-twins-in-production.md",
+      "sections": 47,
+      "section_outcomes": {
+        "uncited": 40,
+        "cited-no-block": 7
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 11317,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2829,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/books/digital-twins-for-software-engineers/15-twins-at-scale.md",
+      "sections": 43,
+      "section_outcomes": {
+        "uncited": 34,
+        "cited-no-block": 9
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 9516,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 2379,
+      "ratio": 0.0
+    },
+    {
+      "draft": "drafts/da/anvendelser-af-digitale-tvillinger.md",
+      "sections": 29,
+      "section_outcomes": {
+        "uncited": 5,
+        "cited-no-block": 24
+      },
+      "pasted_chars": 0,
+      "dispatch_chars": 5566,
+      "pasted_tokens": 0,
+      "dispatch_tokens": 1392,
+      "ratio": 0.0
+    }
+  ],
+  "dispatch_totals": {
+    "pasted_chars": 15776,
+    "dispatch_chars": 212683,
+    "ratio": 0.07
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "arms": [
+    {
+      "arm": "topics only",
+      "keyword_top_n": null,
+      "phrases": 28,
+      "n_docs": 497,
+      "unmatched": 152,
+      "coverage_pct": 69.4,
+      "recorded_2026_09_03e": 69.4
+    },
+    {
+      "arm": "declared keywords only, uncapped",
+      "keyword_top_n": 100000,
+      "phrases": 168,
+      "n_docs": 497,
+      "unmatched": 9,
+      "coverage_pct": 98.2,
+      "recorded_2026_09_03e": 97.6
+    },
+    {
+      "arm": "topics + keywords, uncapped",
+      "keyword_top_n": 100000,
+      "phrases": 184,
+      "n_docs": 497,
+      "unmatched": 6,
+      "coverage_pct": 98.8,
+      "recorded_2026_09_03e": 98.2
+    },
+    {
+      "arm": "topics + keywords, shipped defaults",
+      "keyword_top_n": 40,
+      "phrases": 62,
+      "n_docs": 497,
+      "unmatched": 56,
+      "coverage_pct": 88.7,
+      "recorded_2026_09_03e": null
+    }
+  ],
+  "shipped_keyword_top_n": 40
+}

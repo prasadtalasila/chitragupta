@@ -1,0 +1,34 @@
+{
+ "source_words": 28,
+ "n": 5,
+ "strides": [
+  {
+   "stride": 2,
+   "caught": true
+  },
+  {
+   "stride": 4,
+   "caught": true
+  },
+  {
+   "stride": 6,
+   "caught": true
+  },
+  {
+   "stride": 8,
+   "caught": true
+  },
+  {
+   "stride": 10,
+   "caught": true
+  },
+  {
+   "stride": 12,
+   "caught": true
+  },
+  {
+   "stride": 14,
+   "caught": true
+  }
+ ]
+}

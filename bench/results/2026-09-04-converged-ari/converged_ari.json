@@ -1,0 +1,93 @@
+{
+  "summary": {
+    "repeats": 10,
+    "holdout": 0.1,
+    "emergent_ari_mean": 0.4404,
+    "converged_ari_mean": 0.4066,
+    "baseline_multi_membership_share": 0.9839,
+    "baseline_n_topics_emergent": 81,
+    "baseline_n_topics_converged": 127
+  },
+  "repeats": [
+    {
+      "repeat": 0,
+      "emergent_ari": 0.4673,
+      "converged_ari": 0.3851,
+      "n_topics_emergent": 71,
+      "n_topics_converged": 121,
+      "multi_membership_share": 0.9821
+    },
+    {
+      "repeat": 1,
+      "emergent_ari": 0.4191,
+      "converged_ari": 0.3843,
+      "n_topics_emergent": 72,
+      "n_topics_converged": 119,
+      "multi_membership_share": 0.982
+    },
+    {
+      "repeat": 2,
+      "emergent_ari": 0.4778,
+      "converged_ari": 0.3441,
+      "n_topics_emergent": 74,
+      "n_topics_converged": 122,
+      "multi_membership_share": 0.9841
+    },
+    {
+      "repeat": 3,
+      "emergent_ari": 0.4637,
+      "converged_ari": 0.4105,
+      "n_topics_emergent": 74,
+      "n_topics_converged": 121,
+      "multi_membership_share": 0.9867
+    },
+    {
+      "repeat": 4,
+      "emergent_ari": 0.4759,
+      "converged_ari": 0.5489,
+      "n_topics_emergent": 80,
+      "n_topics_converged": 128,
+      "multi_membership_share": 0.9823
+    },
+    {
+      "repeat": 5,
+      "emergent_ari": 0.4705,
+      "converged_ari": 0.4121,
+      "n_topics_emergent": 71,
+      "n_topics_converged": 119,
+      "multi_membership_share": 0.9865
+    },
+    {
+      "repeat": 6,
+      "emergent_ari": 0.4007,
+      "converged_ari": 0.4565,
+      "n_topics_emergent": 70,
+      "n_topics_converged": 119,
+      "multi_membership_share": 0.9823
+    },
+    {
+      "repeat": 7,
+      "emergent_ari": 0.3867,
+      "converged_ari": 0.411,
+      "n_topics_emergent": 74,
+      "n_topics_converged": 123,
+      "multi_membership_share": 0.9844
+    },
+    {
+      "repeat": 8,
+      "emergent_ari": 0.3766,
+      "converged_ari": 0.3247,
+      "n_topics_emergent": 72,
+      "n_topics_converged": 120,
+      "multi_membership_share": 0.9773
+    },
+    {
+      "repeat": 9,
+      "emergent_ari": 0.4656,
+      "converged_ari": 0.3889,
+      "n_topics_emergent": 78,
+      "n_topics_converged": 125,
+      "multi_membership_share": 0.9866
+    }
+  ]
+}

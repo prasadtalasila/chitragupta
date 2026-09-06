@@ -43,8 +43,19 @@ if it is obvious which is which, so:
 | [2026-08-30: a full-suite re-run, and the three figures it moved](#2026-08-30-a-full-suite-re-run-and-the-three-figures-it-moved) | **Current** | Every script here re-run on 96 allowed CPUs against a 497-PDF corpus, so **no figure in it is like-for-like with the sections above**. Supersedes three: the 55m 30s serial baseline (now **42m 49s**), `scan`'s 26.8s cold corpus index (now **~62s**, because `scan` gained tiers 2 and 3 after that figure was taken), and the 16.5s converter cold start (now **free to rebuild per PDF**). The parallel efficiency curve is **unchanged**. Also finds the **OCR stage 33% slower** per corpus -- visible only serially, because at 12/24 workers the extra CPUs hide it |
 | [The shipped embedding model is no longer the best-recall one](#the-shipped-embedding-model-is-no-longer-the-best-recall-one) | **Current, and it overturns a ranking above** | Organic recall is 14/15/16 of 22 for MiniLM-L6 / mpnet-base / multi-qa-mpnet, against the 2026-08-16 section's 11-13 with the **shipped default ahead**. The shipped default is now second. All three still catch 4/4 graded rungs. **Not a recommendation to change the default** -- one run, partly-resolving labels, and the winner also returns the most findings, with no precision measurement for any of them |
 | [The corpus moved under every hand-authored label](#the-corpus-moved-under-every-hand-authored-label) | **Current, and it invalidates arms above** | Finding ids are built from parsed-passage offsets, and a re-parse moved them. Every arm scored against a committed `labels.json` is now scoring against a partial ground truth -- 4 stale in `overlap_gate`, 176 unlabelled in `overlap_df`, 18 stale in `skipgram`, and **41 of 48** in `retrieval_ground_truth`, which refuses to run rather than build a partial set. Arm B of #194 cannot be re-measured until a human re-judges its pairs |
-| [Reproducibility: confirmed at power, and the rates reproduce](#reproducibility-confirmed-at-power-and-the-rates-reproduce) | **Current** | The n=50 arm returned 0 differences and was discarded as underpowered, per this file's own ["Power, stated plainly"](#power-stated-plainly). Re-run at **n=300**, the instability reappears and reaches the passage **text**: 0.33% same-config multi-GPU against a recorded ~0.3%, 0.67% across-config against ~1.0%, and 0/300 on one GPU. docs/ARCHITECTURE.md's contract is confirmed, not merely unchallenged |
+| [Reproducibility: confirmed at power, and the rates reproduce](#reproducibility-confirmed-at-power-and-the-rates-reproduce) | **Superseded 2026-09-04** -- see the B2 row below, which re-ran the same three arms and found the multi-GPU rates roughly five-fold higher | The n=50 arm returned 0 differences and was discarded as underpowered, per this file's own ["Power, stated plainly"](#power-stated-plainly). Re-run at **n=300**, the instability reappears and reaches the passage **text**: 0.33% same-config multi-GPU against a recorded ~0.3%, 0.67% across-config against ~1.0%, and 0/300 on one GPU. docs/ARCHITECTURE.md's contract is confirmed, not merely unchallenged |
 | [2026-09-04: would a figure-similarity tier (#659) catch a draft figure redrawn from a source's?](#2026-09-04-would-a-figure-similarity-tier-659-catch-a-draft-figure-redrawn-from-a-sources) | **Current** | The whole corpus's 6,541 indexed figure crops, two encoders (CLIP, SigLIP), four graded TikZ fixtures. A first pass's numbers were **retracted mid-benchmark** by a page-clipping bug in the TikZ-to-PNG renderer (see "A rendering bug retracted the first numbers" below) -- the figures quoted here are the corrected re-run. Pipeline is sound (identity control passes both encoders). **SigLIP** ranks a style-matched trace of a real corpus figure **1st of 6,541** and a differently-styled same-label redraw **5th**, both inside a realistic top-10 review list; **CLIP** is markedly weaker on the same fixtures (133rd, 182nd). Both encoders lose almost all of that signal once the redraw's labels are genericized (rank ~450, indistinguishable from the unrelated negative control) -- the signal is substantially anchored to preserved text content, not pure geometry. **Recommendation: a narrowly-scoped ship, SigLIP only, explicitly described as catching a label-preserving redraw and nothing past it** |
+| [2026-09-04: the #610 benchmark run (B1-B14)](#2026-09-04-the-610-benchmark-run-b1-b14) | **Current** | Fourteen measurements the paper's Evaluation section needs, ten of them run. **Six A40s, not four**, and a parse that gained tables and formulae (#632), so no parallel or GPU figure in it is like-for-like with anything above |
+| [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
+| [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
+| [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
+| [2026-09-04 (B4): the converged topic set's stability](#2026-09-04-b4-the-converged-topic-sets-stability-and-where-the-instability-actually-lives) | **Current, and it reframes every stability number above** | Like-for-like emergent ARI is **0.73** (recorded 0.80); refitting UMAP too drops it to **0.44**, so **most of the instability is UMAP's, not HDBSCAN's**. The converged arm's 0.41 must not be quoted -- 98.4% of documents are in more than one topic, so its partition is constructed |
+| [2026-09-04 (B7): what shape the topic graph is](#2026-09-04-b7-what-shape-the-topic-graph-is) | **Current** | Closes B7. Edge counts are threshold-sensitive (1,039/759/551 across p) but **average clustering barely moves** (0.44-0.48). Edge sets survive a 10% document bootstrap at Jaccard **0.88 / 0.83** |
+| [2026-09-04 (B10): the reuse tiers](#2026-09-04-b10-the-reuse-tiers) | **Current** | **Closes the 13-vs-15 discrepancy: both were right.** Tier 3 fires on **15 of 22**; 13 is where it is the only tier firing. Tier 3 still has **no precision number** (182 findings, all unlabelled). Tier 2's population fell 27 -> 12 after #548, but its precision cannot be quoted -- 18 labels match no current finding |
+| [2026-09-04 (B11): all ten aids, and `union` priced at last](#2026-09-04-b11-all-ten-aids-and-union-priced-at-last) | **Current, and it supersedes the 2026-08-27 costs** | **`union`: 135 ms**, closing its "has not been measured" caveat and confirming it sits in `uncited`'s class. **`support` has roughly doubled** (+65% to +95%) while `verbatim` moved +4-18%, so it is not a corpus-size effect |
+| [2026-09-04 (B9): the claim-support rating instrument](#2026-09-04-b9-the-claim-support-rating-instrument-built-and-unlabelled) | **Built, deliberately unlabelled** | The blinded 150-item instrument is committed and **no statistic is computed**. Found the four example reports hold only 71 scored findings -- fewer than one stratum needs -- so B9 must draw from a book |
+| [2026-09-04 (B14): the keyword pipeline reproduces](#2026-09-04-b14-the-keyword-pipeline-reproduces-on-a-fresh-corpus) | **Current** | Closes B14/#606. Two arms reproduce **exactly** (69.4%, 88.7%) and two are +0.6 pp, on a re-parsed corpus with the keyword file regenerated. The paper may quote them |
+| [2026-09-04: B6 and B12 were not run, and why](#2026-09-04-b6-and-b12-were-not-run-and-why) | **Not run** | Both need hand-authored ground truth that #610 itself declines to have generated by a model. Neither is blocked on code |
 
 The user-facing summary of everything still standing is
 [docs/PERFORMANCE.md](../docs/PERFORMANCE.md); the reproducibility
@@ -4902,3 +4913,390 @@ Poetry group's `docling_images` stage) and a working `pdflatex` +
 `pypdfium2`; raw per-encoder records are in
 `results/2026-09-04-figure-similarity/` (the `embeddings_*.npy` cache
 beside them is gitignored dev-iteration state, not evidence).
+
+## 2026-09-04: the #610 benchmark run (B1-B14)
+
+Everything below was measured in one run on **2026-09-04**, at version
+**6.68.0**, against a corpus synced fresh from `papers/bibliography-groups.bib`
+in a clean worktree. It exists to answer
+[#610](https://github.com/prasadtalasila/chitragupta/issues/610), which
+lists fourteen measurements the paper's Evaluation section needs and does
+not have.
+
+**Read these three caveats before quoting any number in it.**
+
+- **Six A40s, not four, and a newer driver.** Every section above this
+  one was measured on `4x NVIDIA A40, driver 555.42.02`. This host has
+  **six**, on driver **595.58.03**. Allowed CPUs are 96, the same as the
+  2026-08-30 run and twice what everything before it used. Any parse,
+  parallelism or GPU figure here is therefore **not like-for-like** with
+  anything above.
+- **A different parse.** [#632](https://github.com/prasadtalasila/chitragupta/issues/632)
+  landed tables and decoded formulae as anchored passage units after the
+  2026-08-30 run. Passage offsets moved again, which matters for every
+  arm scored against a committed `labels.json` -- see the standing note
+  the 2026-08-30 section already carries about that.
+**B5 is not in this run.** It was measured independently while this run
+was in flight and landed in #660 -- see
+["does fusing BM25 with dense retrieval beat BM25 alone?"](#2026-09-04-does-fusing-bm25-with-dense-retrieval-beat-bm25-alone-b5-610-decides-617)
+above, which declines the fusion route. This run reached the same
+decline against the *shipped* embedding model rather than MiniLM-L6, and
+that corroboration is recorded here rather than as a second script and a
+second set of numbers saying the same thing.
+
+- **The corpus.** 642 ledger items, **497 parsed** (13,230 pages), 145
+  without a PDF attachment (50 no file field, 1 path gone, 94 non-PDF
+  attachment). docling 2.117.0, torch 2.7.1+cu126, Python 3.13.5. The
+  sync itself: **640.9s at 24 workers with OCR on**, 20.64 pages/s, 0
+  failed.
+
+### 2026-09-04 (B8): prompt economics, measured over 21 drafts instead of estimated over one
+
+Two claims this project makes, both previously resting on a single
+example, re-measured by `bench/bench_prompt_economics.py` over **every
+draft that has a dossier** -- 21 of them, 5,375 to 18,061 words.
+Characters throughout, converted at the four-characters-per-token
+figure `docs/TOKENS.md` uses.
+
+**The rewrite arm replaces an estimate with a measurement, and the
+estimate was low.**
+
+| words | sections | whole-file tokens | median section | ratio |
+| ---: | ---: | ---: | ---: | ---: |
+| 5,375 | 14 | 8,910 | 635 | 14.0x |
+| 5,723 | 14 | 9,594 | 672 | 14.3x |
+| 11,468 | 43 | 18,196 | 316 | 57.7x |
+| 14,888 | 54 | 22,664 | 352 | 64.3x |
+| 18,061 | 58 | 26,898 | 377 | 71.4x |
+
+Across all 21: whole-file rewrite **median 18,196 tokens** (8,910 to
+26,898), median section **316 tokens**, ratio **14.0x to 78.8x, median
+58.1x**. The paper's "an estimated 4.6k-token whole-file rewrite" is
+about **4x low** at the median of this set, and low against *every*
+draft in it -- the estimate was taken on material shorter than anything
+measured here.
+
+**The dispatch arm does not reproduce, and the reason is not the
+mechanism.** `docs/TOKENS.md` reports 15,660 characters of pasted
+evidence against 901 characters of dispatch line -- **17.4x** -- from one
+report, with a dossier "built from its own citations" for the
+measurement. Over the 21 real dossiers:
+
+| | |
+| --- | --- |
+| Sections examined | 899 |
+| Sections that resolved to an evidence payload | **20** |
+| Sections that cite sources with **no block in `evidence.md`** | **304** |
+| Sections citing nothing (an honest zero on both sides) | 569 |
+| Draft headings that are not a `sections.md` row | 6 |
+| Drafts producing any payload at all | **2 of 21** |
+
+On the two drafts that produce one, the ratio is **1.06x and 0.52x** --
+that is, pasting is *cheaper* than the pointer on one of them. The
+aggregate over all 21 is 15,776 characters pasted against 212,683
+dispatched, **0.07x**.
+
+**What this does and does not say.** It does *not* contradict the 17.4x:
+that figure is reproducible on a dossier whose `evidence.md` carries a
+block per citekey, and `chitragupta.draft dossier brief` does exactly
+what it claims when one exists. What it says is that **no real dossier in
+this project carries those blocks** -- 304 sections cite sources the
+dossier never transcribed -- so the saving the dispatch pointer was
+designed to deliver is, on this project's own material, unrealised. That
+is a fact about how the dossiers were written, not a defect in
+`brief`, and it is filed as its own issue rather than fixed here.
+
+The zeros are classified rather than summed for exactly this reason: a
+script that reported "0 characters pasted" without separating
+*nothing to paste* from *nothing transcribed* would have read as a 100%
+saving.
+
+### 2026-09-04 (B1): parse throughput, like-for-like at last
+
+`bench/sweep_sync.py`, whole corpus from an empty ledger per point, 6
+GPUs, OCR off unless stated. 497 PDFs, 13,308 pages.
+
+| workers | wall | speedup | efficiency | host CPU |
+| ---: | ---: | ---: | ---: | ---: |
+| 1 | **2,533.2s** (42m 13s) | 1.00x | 100% | 3.2% |
+| 4 | 630.6s | 4.02x | 100% | 8.1% |
+| 8 | 338.6s | 7.48x | 94% | 15.6% |
+| 12 | **240.5s** (4m 01s) | 10.53x | 88% | 21.1% |
+
+**The serial baseline reproduces.** 2,533s here against the 2026-08-30
+run's 2,569s (42m 49s) -- 1.4% apart, on a different GPU count and a
+parse that gained tables and formulae in between. The B1 gap #610 names
+("no like-for-like re-run exists") is closed: the 55m 30s and 42m 49s
+rows were different configurations, and this run confirms the later one
+is the current cost.
+
+**The efficiency curve is unchanged** -- 100%/94%/88% at 4/8/12, the same
+shape every sweep since 2026-08-04 has found.
+
+OCR on against off, at two worker counts:
+
+| workers | OCR on | OCR off | ratio |
+| ---: | ---: | ---: | ---: |
+| 12 | 749.2s | 242.3s | **3.09x** |
+| 24 | 636.8s | 167.7s | **3.80x** |
+
+Going 12 -> 24 workers buys 1.18x with OCR on and 1.44x with it off: the
+OCR stage is CPU-bound, so it is what stops the extra workers paying for
+themselves.
+
+Per-document, over the 16-PDF page-stratified sample (942 pages, images
+on, converter reused):
+
+| device | total | s/page |
+| --- | ---: | ---: |
+| 1 process, GPU | 372.8s | **0.396** |
+| 1 process, CPU only | 987.3s | **1.048** |
+
+CPU-only is **2.65x** the GPU cost per page here, against the 3.2x the
+2026-08-02 sample reported -- the gap has narrowed, but the ordering and
+the order of magnitude both hold.
+
+**One thing to chase, not a throughput finding.** Every `sweep_sync.py`
+row exited **rc=1 with `failed=0`**. That is the suspicious-sync guard
+firing on the two documents whose word boundaries the parser lost
+(`noauthor_about_nodate`, `noauthor_asset_nodate`), which the main sync
+also warned about. A clean 497-of-497 parse that exits nonzero is
+defensible as designed, but it means **no sweep row can be distinguished
+from a failed one by exit code alone**, which is worth an issue.
+
+### 2026-09-04 (B2): reproducibility at n = 300, and it got worse
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,6 --repeat 2`.
+300 documents, 5,025 pages, 36 page-count outliers excluded by the
+Tukey fence, as the recorded run did.
+
+| arm | documents differing (of 300) | rate | 2026-08-30 |
+| --- | ---: | ---: | ---: |
+| same configuration, 1 GPU | **0** | 0% | 0 of 300 |
+| same configuration, 6 GPUs | **5** | **1.67%** | 0.33% |
+| across configuration (1 vs 6 GPUs) | **7** | **2.33%** | 0.67% |
+
+**Single-GPU determinism holds; multi-GPU non-determinism is up roughly
+five-fold.** The qualitative contract in `docs/ARCHITECTURE.md` is
+unchanged and still correct -- same configuration on one GPU reproduces
+exactly, more than one GPU does not -- but the *rate* is no longer the
+one the paper quotes. Two things changed together and this run cannot
+separate them: the host went from 4 GPUs to 6, and #632 added tables and
+decoded formulae as passage units, which are new material for a
+floating-point difference to land in. Both the `.txt` and the passage
+spans move, so this is not confined to the sidecar.
+
+The wall clock either side: 1 GPU 196.9s/193.3s, 6 GPUs 111.8s/109.5s.
+
+### 2026-09-04 (B3): attempted, and not obtained
+
+`bench/bench_pool_rebuild.py` is written, self-checks, and is committed.
+It did not produce a measurement on this host: the **uninterrupted**
+baseline arm -- the one that parses 12 documents with no worker kill
+injected at all -- deadlocked in the process pool, sitting in `ep_poll`
+at 0% CPU with its workers idle, and was killed after ten hours.
+
+Recorded as a failure rather than dropped, because the shape matters: the
+arm that hung is the *control*, so whatever this is, it is not the
+injected kill and not the rebuild logic. The likely suspects are the
+nested arrangement this script uses -- a `ProcessPoolExecutor` driven
+from inside a `subprocess.run` child, against a throwaway `CONTENT_DIR`
+-- rather than `_docling_pool.py` itself, which the real sync exercised
+497 times in this same run without incident. **No claim about
+pool-rebuild cost should be drawn from this section.** B3 remains open.
+
+### 2026-09-04 (B4): the converged topic set's stability, and where the instability actually lives
+
+`bench/bench_topic_converged_stability.py`, 10 resamples dropping 10% of
+documents, re-running the **real** stages (`run_topic_model` ->
+`topic_seeding` -> `topic_converge`) per resample with their three
+artefacts redirected to a throwaway directory.
+
+| arm | mean ARI | range |
+| --- | ---: | --- |
+| emergent, whole pipeline refit | **0.4404** | 0.377 - 0.478 |
+| converged, whole pipeline refit | **0.4066** | 0.325 - 0.549 |
+| emergent, UMAP held fixed (`bench_topic_depth.py --repeats 10`) | **0.73** | -- |
+
+**Read the third row against the historical 0.80 and the first row
+against nothing.** `bench_topic_depth.py` fits UMAP once and refits only
+HDBSCAN on each resample; this script refits *everything*, because that
+is what the shipped stage does. On today's corpus the like-for-like
+number is **0.73** against the recorded 0.80 -- a small decline on a
+corpus that grew. The whole-pipeline number is **0.44**.
+
+The difference between 0.73 and 0.44 is the finding: **most of the
+instability is UMAP's, not HDBSCAN's.** A stability figure that holds the
+dimensionality reduction fixed is measuring the easier half of the
+question, and every stability number this project has published so far
+does exactly that.
+
+**The converged row needs its caveat read first.** `topic_set.json` is
+multi-membership, so a partition has to be constructed before ARI is
+defined, and this script takes each document's first listed topic. On
+this corpus **98.4% of documents belong to more than one topic**, so that
+partition is almost entirely constructed rather than observed. The 0.4066
+is reported for completeness and **should not be quoted as the converged
+set's stability**; the emergent rows are the ones with a real partition
+underneath them. Baseline: 81 emergent topics, 127 converged.
+
+### 2026-09-04 (B7): what shape the topic graph is
+
+`bench/bench_topic_graph_shape.py`, over the 127-topic converged set.
+
+| p | overlap edges | avg degree | avg clustering |
+| ---: | ---: | ---: | ---: |
+| 0.05 | 1,039 | 16.36 | 0.469 |
+| 0.01 (shipped) | **759** | 11.95 | 0.460 |
+| 0.001 | 551 | 8.68 | 0.478 |
+
+| neighbours | semantic edges | avg degree | avg clustering |
+| ---: | ---: | ---: | ---: |
+| 3 | 105 | 1.65 | 0.456 |
+| 5 (shipped) | **186** | 2.93 | 0.444 |
+| 8 | 327 | 5.15 | 0.445 |
+
+The shipped cell reproduces the stage's own output exactly (759 overlap,
+186 semantic), which is the cross-check that says this script and the
+stage agree about what an edge is.
+
+**Average clustering barely moves** -- 0.44 to 0.48 across a p-value
+sweep spanning two orders of magnitude and a neighbour count that triples
+the semantic edge set. Edge *counts* are threshold-sensitive; the graph's
+*shape* is not. These are the two metrics Xiang et al. report and this
+repository did not have.
+
+**The edge set survives a resample**, 20 bootstraps dropping 10% of
+documents at the shipped setting:
+
+| family | mean edge-set Jaccard | min |
+| --- | ---: | ---: |
+| overlap | **0.877** | 0.828 |
+| semantic | **0.835** | 0.789 |
+
+No edge family is an artefact of a handful of documents.
+
+### 2026-09-04 (B10): the reuse tiers
+
+**(i) The 13-vs-15 discrepancy is closed, and both numbers were right.**
+`bench_paraphrase_hunt.py --crosscheck` with `--embed-record` attached,
+over the 22 hand-judged close-paraphrase pairs:
+
+| caught by | pairs |
+| --- | ---: |
+| embedding alone | 13 |
+| embedding + exact | 2 |
+| exact + skip-gram | 1 |
+| **nothing** | **6** |
+
+Tier 3 fires on **15 of 22**; 13 is the count where tier 3 is the *only*
+tier that fires. The two recorded figures were answering different
+questions. Quote **15/22** for "does tier 3 see it" and 13/22 for "does
+tier 3 see what nothing else does".
+
+**(ii) Tier 3 still has no precision number.** The precision arm returned
+**182 findings, all 182 unlabelled**. The capability arm caught all four
+graded rungs (verbatim by the exact tier, the other three by embedding),
+so the tier works; what is missing is labels, and B9's instrument below
+is what would supply them.
+
+**(iii) Tier 2 after #548, and it is worse than recorded.** 12 skip-gram
+findings over the 15-chapter book; 9 carry a label and **all 9 are false
+positives -- precision 0.0**, against the 2/27 recorded on 2026-08-14.
+**Do not quote 0.0 as tier 2's precision.** 18 of the committed labels
+now match no current finding, so this is precision over the 9 that
+happened to survive a re-parse, not over the tier's output. What can be
+said without the labels: the finding *population* fell from 27 to 12,
+which is consistent with #548's welded-word and stray-quote fixes
+removing mechanical noise.
+
+### 2026-09-04 (B11): all ten aids, and `union` priced at last
+
+`bench/bench_review_cost.py`, the same five drafts as the 2026-08-27
+table, median of 3 runs each through the real CLI at `--formats md`.
+Milliseconds:
+
+| words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | support | all nine |
+| ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1,258 | no | 199 | 464 | 328 | 112 | 108 | 110 | 109 | 278 | 61,759 | **63,470** |
+| 2,448 | no | 380 | 520 | 329 | 113 | 114 | 109 | 106 | 288 | 74,406 | **76,369** |
+| 5,723 | yes | 159 | 21,375 | 339 | 110 | 494 | 118 | 107 | 557 | 34,968 | **58,230** |
+| 10,003 | yes | 366 | 48,384 | 331 | 114 | 838 | 133 | 111 | 585 | 121,274 | **172,140** |
+| 18,061 | yes | 310 | 42,088 | 333 | 113 | 644 | 146 | 110 | 642 | 88,107 | **132,496** |
+
+**`union`: 135.2 ms** over the real 15-chapter `book.tex`, 3 clean runs.
+That closes `docs/PERFORMANCE.md`'s "has not been measured" and confirms
+the prediction it made: `union` is in `uncited`'s class, not
+`verbatim`'s. It is the cheapest aid in the layer by two orders of
+magnitude.
+
+**`support` has roughly doubled**, on every draft, against 2026-08-27:
+
+| words | support then | now | change |
+| ---: | ---: | ---: | ---: |
+| 1,258 | 33,464 | 61,759 | **+85%** |
+| 2,448 | 40,832 | 74,406 | **+82%** |
+| 5,723 | 21,160 | 34,968 | **+65%** |
+| 10,003 | 62,292 | 121,274 | **+95%** |
+| 18,061 | 45,902 | 88,107 | **+92%** |
+
+`verbatim` moved only +4% to +18% over the same period, so this is not a
+corpus-size effect reaching every aid. A review pass over the largest
+draft now costs **2m 52s** against 1m 24s. Filed as its own issue.
+
+Two columns are not comparable to the 2026-08-27 table by construction:
+`coverage` requires a query and was run here with one fixed query
+(`digital twin`) for every row, and `verbatim` is the `scan` mode.
+
+### 2026-09-04 (B9): the claim-support rating instrument, built and unlabelled
+
+`bench/bench_claim_support_labelling.py` builds B9's protocol -- five
+score quintiles, 30 per stratum, three raters, order randomised across
+strata, scores and strata withheld from the sheet -- and **computes no
+statistic**, because no human has rated anything yet.
+
+Building it surfaced a protocol problem worth recording: over the four
+example reports the whole scored population is **71 findings**, fewer
+than a *single* stratum needs. Drawing from the 15-chapter book instead
+gives a pool of **862** and the full 30 x 5 = 150 item sample. Anyone
+running B9 should draw from a book, not from the example reports.
+
+Committed: `sheet.md` (rater-facing, blinded), `key.json` (the join
+back), and one empty `ratings-<rater>.json` per rater. `--score` reports
+Fleiss' kappa, pairwise Cohen's kappa, Spearman rho and the separation
+medians once all three are filled; until then it names what is missing
+and exits nonzero.
+
+### 2026-09-04 (B14): the keyword pipeline reproduces on a fresh corpus
+
+`bench/bench_keyword_pipeline.py`, the 2026-09-03e entry's four arms as
+one command, coverage read off the stage's own `topic_seeds.json`.
+
+| arm | phrases | coverage | 2026-09-03e | change |
+| --- | ---: | ---: | ---: | ---: |
+| topics only | 28 | **69.4%** | 69.4% | **0.0** |
+| declared keywords only, uncapped | 168 | 98.2% | 97.6% | +0.6 pp |
+| topics + keywords, uncapped | 184 | 98.8% | 98.2% | +0.6 pp |
+| topics + keywords, shipped defaults | 62 | **88.7%** | 88.7% | **0.0** |
+
+Two arms reproduce **exactly** and two are 0.6 pp higher, on a corpus
+re-parsed under #632 with a keyword file the stage regenerated rather
+than one carried over. #606's criterion is met: the shipped pipeline
+reproduces the benchmarked coverage, so the paper may quote these.
+
+### 2026-09-04: B6 and B12 were not run, and why
+
+Both need a hand-authored ground truth that this run deliberately did not
+generate:
+
+- **B6** wants ~40 `(phrase, expected topic)` pairs stratified over the
+  resolution ladder. `content/topic_gold.toml` holds the 5-phrase
+  example. #610's own "Alternatives considered" declines generating that
+  set with a model, and `docs/TOPIC-DISCOVERY.md` declines it separately;
+  generating it here would inherit the corpus's vocabulary and measure
+  the ladder against its own phrasing.
+- **B12** wants >= 50 queries whose answer is provably outside the corpus
+  and >= 50 whose answer is inside. Deciding "provably outside" for a
+  646-entry library is the judgement the measurement rests on.
+
+Both remain open, and neither is blocked on code.
