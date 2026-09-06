@@ -383,3 +383,15 @@ test("a lone node is placed rather than left at the origin with everything else"
   const seen = new Set(Object.keys(at).map((id) => at[id].x + "," + at[id].y));
   assert.equal(seen.size, LABELS.length);
 });
+
+test("a group with nothing placed under it has no centre to report", () => {
+  // Every member collapsed away, or filtered out by the selection:
+  // there is no box on the canvas, and NaN coordinates would satisfy
+  // any inequality a test asked about them.
+  const cut = groupsAt(0.4);
+  const gid = cut.groupOf["digital twin"];
+  const els = graph.elementsFor(DATA, new Set(LABELS), [], {
+    cut: cut, collapsed: new Set([gid]),
+  });
+  assert.equal(graph.groupCentre(els, graph.positionsFor(els), gid), null);
+});

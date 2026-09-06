@@ -376,15 +376,21 @@
     return at;
   }
 
-  /* Where a group ended up, and how much room it takes: the panel and
-     the tests both need to talk about a group's place on the canvas,
-     and a compound parent has no position of its own -- cytoscape
-     derives its box from its children. */
+  /* Where an expanded group ended up, and how much room it takes.
+
+     A compound parent has no position of its own -- cytoscape derives
+     its box from its children -- so this is the only way to ask where a
+     group is. It exists for the tests, deliberately: asserting that a
+     group's topics land inside it, and that two groups do not overlap,
+     otherwise means re-deriving this radius arithmetic in the test,
+     which would then agree with a broken layout as readily as a working
+     one. Null for a group with nothing placed under it. */
   function groupCentre(elements, at, id) {
     var kids = elements.filter(function (el) {
       return el.group === "nodes" && el.data.parent === id;
     });
     var placed = kids.map(function (kid) { return at[kid.data.id]; });
+    if (!placed.length) { return null; }
     var cx = placed.reduce(function (sum, p) { return sum + p.x; }, 0) / placed.length;
     var cy = placed.reduce(function (sum, p) { return sum + p.y; }, 0) / placed.length;
     return {
