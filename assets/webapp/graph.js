@@ -392,6 +392,96 @@
      stays on the canvas and the rest is drawn faint, so the reader
      keeps their sense of how much of the corpus they are looking at.
      "hide" is the old hard filter, kept as a toggle. */
+  /* ---------- papers as nodes ----------
+
+     Membership is the pipeline's most concrete fact and the app has
+     always shown it as a list. Expanded onto the canvas, a paper in
+     three topics *is* a shape rather than a citekey repeated in three
+     panels.
+
+     A paper node is a third kind of node and its lines a third kind of
+     edge. Neither is overlap and neither is semantic: those are claims
+     about a pair of topics, and membership says nothing about either.
+     Ids are prefixed because nodes share one namespace and a topic
+     label is only semi-trusted -- a topic literally called
+     "paper:dt2022" must not become the same node as the paper. */
+
+  /* The prefix has to be one no topic label carries, because a topic
+     labelled "paper:dt2022" would otherwise *be* the node for the paper
+     dt2022 -- and a topic label is only semi-trusted data that can
+     arrive from a PDF's extracted keywords. So it is computed from the
+     payload rather than fixed: lengthen it until nothing collides. It
+     terminates because the label set is finite. */
+  function paperPrefix(topics) {
+    var prefix = "paper:";
+    while (topics.some(function (t) { return t.label.indexOf(prefix) === 0; })) {
+      prefix = "paper:" + prefix;
+    }
+    return prefix;
+  }
+
+  function paperId(data, citekey) {
+    return paperPrefix(data.topics) + citekey;
+  }
+
+  function citekeyOf(data, id) {
+    var prefix = paperPrefix(data.topics);
+    return id.indexOf(prefix) === 0 ? id.slice(prefix.length) : null;
+  }
+  // Opt-in and bounded: 131 topics fully expanded is several hundred
+  // nodes and thousands of lines. The UI quotes this number rather than
+  // silently drawing less than was asked for.
+  var EXPANSION_CAP = 3;
+
+  function paperElements(data, visible, expanded) {
+    var open = data.topics
+      .filter(function (t) { return visible.has(t.label) && expanded.has(t.label); })
+      .slice(0, EXPANSION_CAP);
+    if (!open.length) { return []; }
+    var holders = Object.create(null);
+    data.topics.forEach(function (t) {
+      t.members.forEach(function (m) {
+        (holders[m.citekey] = holders[m.citekey] || []).push(t.label);
+      });
+    });
+    var prefix = paperPrefix(data.topics);
+    var nodes = Object.create(null);
+    var edges = [];
+    open.forEach(function (t) {
+      t.members.forEach(function (m) {
+        var id = prefix + m.citekey;
+        nodes[id] = nodes[id] || {
+          group: "nodes",
+          data: {
+            id: id,
+            kind: "paper",
+            label: m.citekey,
+            title: m.title,
+            score: Math.max(0, Math.min(1, m.score)),
+            topics: (holders[m.citekey] || []).length,
+            // Bridging is about what is *on the canvas*. On a real
+            // corpus almost every paper belongs to several topics, so
+            // colouring by the corpus-wide count paints everything the
+            // same and says nothing; what the reader can see is a
+            // paper joined to more than one of the topics they opened.
+            drawn: 0,
+          },
+        };
+        nodes[id].data.drawn += 1;
+        edges.push({
+          group: "edges",
+          data: {
+            id: "mb-" + t.label + "-" + m.citekey,
+            source: t.label,
+            target: id,
+            family: "member",
+          },
+        });
+      });
+    });
+    return Object.keys(nodes).map(function (id) { return nodes[id]; }).concat(edges);
+  }
+
   function elementsFor(data, visible, selected, view) {
     var pinned = selected.length > 0;
     var dimming = pinned && view && view.context === "dim" && Boolean(view.all);
@@ -425,7 +515,8 @@
         edge.data.dim = Math.max(dim(edge.data.source), dim(edge.data.target));
       });
     }
-    return els.concat(edges);
+    var expanded = (view && view.expanded) || new Set();
+    return els.concat(edges, paperElements(data, universe, expanded));
   }
 
   function candidatesFor(data, selected, query) {
@@ -462,6 +553,9 @@
     byLabel: byLabel,
     nodeSize: nodeSize,
     elementsFor: elementsFor,
+    EXPANSION_CAP: EXPANSION_CAP,
+    paperId: paperId,
+    citekeyOf: citekeyOf,
     cutTree: cutTree,
     positionsFor: positionsFor,
     groupCentre: groupCentre,

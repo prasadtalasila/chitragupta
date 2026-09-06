@@ -108,13 +108,17 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 #suggestions li.active, #suggestions li:hover { background: #eef3f8; }
 #suggestions .why { color: var(--muted); font-size: 12px; }
 
+/* The legend grew with the features and now has to wrap: `nowrap` on
+   a flex row pushes the last entries off the page and puts a
+   horizontal scrollbar under the whole app. Each entry still holds
+   together -- the wrapping is between entries, not inside one. */
 #legend {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   font-size: 12.5px;
   color: var(--muted);
-  white-space: nowrap;
 }
 .swatch {
   width: 12px; height: 12px; border-radius: 50%; display: inline-block;
@@ -124,6 +128,8 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 .swatch.both { background: var(--both); }
 .swatch.emergent { background: var(--emergent); }
 .swatch.group { background: #8a97a8; border-radius: 3px; }
+.swatch.paper { background: #455a64; border-radius: 0; transform: rotate(45deg); }
+.swatch.bridge { background: #c2185b; border-radius: 0; transform: rotate(45deg); }
 .edge-key { width: 22px; height: 0; display: inline-block; }
 .edge-key.solid { border-top: 2px solid #5c6bc0; }
 .edge-key.dashed { border-top: 2px dashed #8e24aa; }
