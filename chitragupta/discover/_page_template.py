@@ -11,6 +11,10 @@ whole point of a static export.
 The layout is a circle, not a force simulation, on purpose: at tens of
 topics a circle with curved chords is legible, renders identically
 every time (diffable screenshots), and costs no physics code to debug.
+The order round that circle is `_page.dendrogram_order`'s, so a
+position is a weak but real encoding rather than a non-choice -- which
+is why the template places topics in the order it receives them and
+computes no ordering of its own.
 `__PAYLOAD__` is replaced by `_page.py` with JSON whose `<` is escaped,
 so a title containing `</script>` cannot break out of the script tag.
 """
@@ -63,6 +67,10 @@ const radius = Math.max(80, Math.min(cx, cy) - 120);
    object reads back Object.prototype and garbles every later lookup
    (#636); same hardening as app.js's label-keyed tables. */
 const pos = Object.create(null);
+/* Angular position is the order the payload arrives in, which is the
+   merge tree's leaf order (`_page.dendrogram_order`): adjacent topics
+   are similar, so the chords come out short and clustered instead of
+   sweeping across the whole circle. */
 DATA.topics.forEach((t, i) => {
   const angle = (2 * Math.PI * i) / DATA.topics.length - Math.PI / 2;
   pos[t.label] = { x: cx + radius * Math.cos(angle), y: cy + radius * Math.sin(angle) };

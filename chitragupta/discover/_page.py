@@ -84,11 +84,61 @@ def _linked(graph: dict, label: str) -> dict:
     return _render._linked(graph, label)
 
 
+def dendrogram_order(hierarchy: list, labels: list) -> list:
+    """The stored merge tree's leaf order: a depth-first walk of the
+    roots (the merges nothing else merged), closest merges nested
+    deepest, so adjacent positions in the result hold similar topics.
+
+    Labels the tree does not mention keep their payload order and follow
+    the leaves. That is not a fallback for a state that cannot occur:
+    `topic_graph.hierarchy` is built over the topics that had a vector,
+    and is empty entirely for a corpus with fewer than two of them.
+
+    A name that is a known topic label is a leaf before it is anything
+    else. Merge ids are `node-N` and a topic label is free text, so the
+    two can collide -- the same class of hazard as #636's `__proto__`,
+    and consulting the tree first would swallow the real topic.
+
+    The template's `tree()` walks the same merge tree, and that is a
+    deliberate second walk rather than an oversight: it builds the
+    panel's collapsible DOM, which belongs in the page, while this
+    returns an order, which has to be in Python because nothing executes
+    the template's inline script and the coverage bar is 100%.
+    """
+    children = {merge["id"]: (merge["a"], merge["b"]) for merge in hierarchy}
+    known = set(labels)
+    merged = {end for merge in hierarchy for end in (merge["a"], merge["b"])}
+    ordered: list = []
+    seen: set = set()
+    stack = [merge["id"] for merge in reversed(hierarchy) if merge["id"] not in merged]
+    while stack:
+        name = stack.pop()
+        if name in known:
+            if name not in seen:
+                seen.add(name)
+                ordered.append(name)
+        elif name in children:
+            stack.extend(reversed(children[name]))
+    ordered.extend(label for label in labels if label not in seen)
+    return ordered
+
+
 def build_html(payload: dict) -> str:
     """The finished page. `<` is escaped in the embedded JSON so no
     title or label can close the script tag early -- the one injection
-    route a static JSON island has."""
-    embedded = json.dumps(payload).replace("<", "\\u003c")
+    route a static JSON island has.
+
+    The topics are embedded in dendrogram leaf order, because the
+    template lays them round the circle in the order it receives them.
+    Ordered here rather than in `build_payload` so the order stays the
+    page's own: `_app.build_app_payload` shares that join, and the app
+    draws its own layouts (#688). Non-destructive for the same reason --
+    a caller's payload is not the page's to reorder.
+    """
+    ordered = dendrogram_order(payload["hierarchy"], [t["label"] for t in payload["topics"]])
+    by_label = {topic["label"]: topic for topic in payload["topics"]}
+    page = {**payload, "topics": [by_label[label] for label in ordered]}
+    embedded = json.dumps(page).replace("<", "\\u003c")
     return _page_template.TEMPLATE.replace("__PAYLOAD__", embedded)
 
 

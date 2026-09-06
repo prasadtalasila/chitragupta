@@ -463,6 +463,13 @@ whatever the force simulation settled into.
 
 ### 6.2 Order the circle by dendrogram leaf order
 
+> **Shipped** (#688), on the static `--html` page only, as
+> `_page.dendrogram_order`. The walk is Python rather than the
+> template's inline script, which nothing executes: in the template it
+> would have been an untested branch against a 100% coverage bar. A
+> topic the tree does not mention keeps its artefact order and follows
+> the leaves, and the `--app` payload is untouched.
+
 Even for the existing static `--html` circle, this is free. The merge tree gives
 a deterministic 1-D leaf ordering in which adjacent leaves are similar. Ordering
 the circle by it makes chords short and clustered instead of arbitrary, and
@@ -738,11 +745,13 @@ all**.
 
 > The order below still holds for the recommendations section 2's
 > decision kept; issue #670 has the ranked list as it now stands, and
-> #671--#679 are the nine being built.
+> #671--#679 are the nine being built. Item 1 below is not among them:
+> it improves the static page rather than the app, so #670 excludes it
+> and #688 tracks it instead.
 
 1. **Dendrogram-ordered circle** on the static `--html` page. One function, no
    new data, immediate legibility win, and it validates the ordering before
-   anything depends on it.
+   anything depends on it. *(#688, shipped -- §6.2.)*
 2. **Dim-not-remove plus concentric ego rings plus hover neighbourhoods** in the
    app. Core cytoscape only; this is the biggest interaction improvement per
    line of code.

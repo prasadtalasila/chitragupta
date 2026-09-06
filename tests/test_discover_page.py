@@ -62,6 +62,98 @@ class TestPayload:
         assert payload["topics"] == []
 
 
+class TestCircleOrder:
+    """The circle's angular position is the page's strongest channel and
+    used to encode nothing: topics sat in whatever order the artefact
+    listed them. Ordering by the stored merge tree's leaf order makes
+    adjacent positions hold similar topics, which is what shortens the
+    chords -- and it is free, since the tree is already in the payload.
+    """
+
+    TREE = [
+        {"id": "node-0", "a": "b", "b": "c", "distance": 0.1},
+        {"id": "node-1", "a": "node-0", "b": "a", "distance": 0.4},
+    ]
+
+    def test_leaves_come_out_in_merge_tree_order(self):
+        order = _page.dendrogram_order(self.TREE, ["a", "b", "c"])
+        assert order == ["b", "c", "a"]
+
+    def test_a_topic_the_tree_never_merged_is_kept(self):
+        """`topic_graph.hierarchy` covers only the topics that had a
+        centroid, so a topic can be missing from the tree entirely. It
+        still has to be drawn, once, rather than silently dropped."""
+        assert _page.dendrogram_order(self.TREE, ["a", "b", "c", "d"]) == ["b", "c", "a", "d"]
+
+    def test_no_tree_leaves_the_payload_order_alone(self):
+        """A corpus with fewer than two topics with vectors stores an
+        empty hierarchy; the page degrades to the arbitrary-but-complete
+        circle it drew before, not to an empty one."""
+        assert _page.dendrogram_order([], ["a", "b"]) == ["a", "b"]
+
+    def test_a_topic_labelled_like_a_merge_id_stays_a_leaf(self):
+        """Merge ids are `node-N` and topic labels are free text, so a
+        label can collide with one -- the same hazard as #636's
+        `__proto__`. A known label is a leaf whatever the tree calls its
+        internal nodes, or the collision would swallow the real topic."""
+        tree = [{"id": "node-0", "a": "node-0", "b": "z", "distance": 0.2}]
+        assert _page.dendrogram_order(tree, ["node-0", "z"]) == ["node-0", "z"]
+
+    def test_a_tree_naming_one_topic_twice_still_draws_it_once(self):
+        """The tree and the topic list are separate artefacts, and
+        `build_payload` already refuses one kind of disagreement between
+        two of them (a graph node the topic set does not know). Average
+        linkage never names a leaf twice, so this is drift rather than
+        arithmetic -- and a topic drawn on the circle twice would be a
+        page that disagrees with `--json` about how many topics exist."""
+        tree = [
+            {"id": "node-0", "a": "a", "b": "b", "distance": 0.1},
+            {"id": "node-1", "a": "a", "b": "c", "distance": 0.2},
+        ]
+        assert _page.dendrogram_order(tree, ["a", "b", "c"]) == ["a", "b", "c"]
+
+    def test_a_merge_naming_nothing_that_exists_is_skipped(self):
+        """The other direction of the same drift: a merge referring to an
+        id that is neither a topic nor another merge. Walking into it
+        would raise, and the ordering is a rendering nicety -- losing the
+        page over it would be the wrong trade."""
+        tree = [{"id": "node-1", "a": "node-0", "b": "a", "distance": 0.3}]
+        assert _page.dendrogram_order(tree, ["a", "b"]) == ["a", "b"]
+
+    def test_the_page_embeds_the_topics_in_that_order(self, isolated_config):
+        """The template needs no change to benefit: `dot-N` ids, the
+        label placement and the panel all index the embedded list, so
+        ordering the list is what orders the circle."""
+        prepare(isolated_config)
+        graph = json.loads(json.dumps(GRAPH))
+        graph["hierarchy"] = [
+            {"id": "node-0", "a": "machine learning", "b": "digital twin", "distance": 0.3}
+        ]
+        html = _page.build_html(_page.build_payload(graph, TOPIC_SET, {}))
+        embedded = re.search(
+            r'<script id="data" type="application/json">(.*?)</script>', html, re.S
+        ).group(1)
+        assert [t["label"] for t in json.loads(embedded)["topics"]] == [
+            "machine learning",
+            "digital twin",
+        ]
+
+    def test_the_payload_the_app_shares_is_not_reordered(self, isolated_config):
+        """Ordering is the page's rendering decision, taken at the page
+        boundary. `_app.build_app_payload` is `build_payload` plus
+        `origin`, and the app has its own layouts -- so reordering in the
+        join would have changed the app's payload too, which #670's
+        decision puts out of scope."""
+        prepare(isolated_config)
+        graph = json.loads(json.dumps(GRAPH))
+        graph["hierarchy"] = [
+            {"id": "node-0", "a": "machine learning", "b": "digital twin", "distance": 0.3}
+        ]
+        payload = _page.build_payload(graph, TOPIC_SET, {})
+        _page.build_html(payload)
+        assert [t["label"] for t in payload["topics"]] == ["digital twin", "machine learning"]
+
+
 class TestHtml:
     def payload(self, cfg) -> dict:
         prepare(cfg)
