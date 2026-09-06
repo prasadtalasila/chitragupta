@@ -517,8 +517,9 @@ Before saying so, actually run, in this repo:
   `pytest` reaches none of that directory -- it is JavaScript, so the
   100% coverage bar says nothing about it, and `tests/test_discover_app.py`
   can only pin source-level tripwires over the shipped text.
-  `graph.js` and `panel.js` are written to run without a DOM and without
-  cytoscape so that this command can exercise the real functions. CI runs
+  Every module in that directory except `app.js` is written to run
+  without a DOM and without cytoscape so that this command can exercise
+  the real functions; `app.js` is the wiring left over. CI runs
   it in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration.

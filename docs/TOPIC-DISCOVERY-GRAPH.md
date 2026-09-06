@@ -10,10 +10,11 @@ static `--html` page), written against the design recorded in
 
 From the documentation, the interactive app currently:
 
-- ships as a directory: `index.html`, the interaction code (`graph.js`,
-  `panel.js`, `app.js`, `style.css`), a vendored and pinned cytoscape.js, and
-  `data.js` carrying the payload as a JavaScript assignment (because `fetch()`
-  of local JSON is blocked under `file://`);
+- ships as a directory: `index.html`, the interaction code (`absence.js`,
+  `graph.js`, `ego.js`, `families.js`, `panel.js`, `app.js`, `style.css`), a
+  vendored and pinned cytoscape.js, and `data.js` carrying the payload as a
+  JavaScript assignment (because `fetch()` of local JSON is blocked under
+  `file://`);
 - offers type-ahead search over topic labels and each topic's top terms, with
   matches pinned as removable chips that compose;
 - focuses on selection: with topics pinned, the whole graph stays drawn with
