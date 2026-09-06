@@ -1,4 +1,11 @@
-# Gold queries for `bench/topic_discovery_eval.py`: phrases you would
+# The gold set for the topic layer. Two kinds of record, read by two
+# scripts: `[[query]]` (phrases and what they should reach) scores the
+# resolution ladder in `bench/topic_discovery_eval.py`, and `[[group]]`
+# (topics that belong together) scores the app's MCL inflation in
+# `bench/topic_cluster_eval.py`. Write either, or both; neither script
+# reads the other's records.
+#
+# Gold queries: phrases you would
 # actually type, with the topics (and optionally the papers) they should
 # reach. Copy to content/topic_gold.toml and write your own -- the
 # labels must be real topic labels from `chitragupta corpus discover`,
@@ -28,3 +35,44 @@ phrase = "a subject this corpus does not cover"
 topics = []   # an empty list is a real expectation: this phrase should
               # resolve to NO topic, and scores hit@1 = 1 only when the
               # ladder falls through to the labelled paper search
+
+# ---------------------------------------------------------------------
+# Gold groupings for `bench/topic_cluster_eval.py`: sets of topics you
+# would put in one section of a survey. Topic labels only -- no
+# citekeys, and the same rule as above, that the labels must be real
+# ones from `chitragupta corpus discover`.
+#
+# A handful is enough, and partial is the point: the benchmark scores
+# only the pairs among the topics you name here and stays silent about
+# the rest of the graph, so you are never asked to partition a whole
+# corpus. A topic may appear in at most one group -- two would be a
+# gold file contradicting itself, and the script refuses rather than
+# scoring it.
+#
+# The best inflation is usually *different for the two edge families*,
+# which is the measurement talking: paper-sharing and vocabulary
+# nearness are different graphs, and the app never fuses them.
+
+[[group]]
+name = "the digital twin, named several ways"
+topics = ["digital twin", "digital twins", "digital twin (dt)"]
+
+[[group]]
+name = "iot and its spellings"
+topics = ["iot", "internet of things", "internet of", "things"]
+
+[[group]]
+name = "distributed compute tiers"
+topics = ["cloud", "cloud computing", "edge", "edge computing", "fog computing"]
+
+[[group]]
+name = "service-oriented decomposition"
+topics = ["microservice", "microservices"]
+
+[[group]]
+name = "the industrial context"
+topics = ["industry 4.0", "industry 5.0", "smart manufacturing", "manufacturing"]
+
+[[group]]
+name = "learning methods"
+topics = ["machine learning", "artificial intelligence", "federated learning"]

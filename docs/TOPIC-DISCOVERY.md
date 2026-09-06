@@ -397,6 +397,28 @@ member-recall for topic->paper, **overall and per resolution rung**,
 because a floor change moves queries *between* rungs and an overall
 mean would hide exactly that movement.
 
+The same file carries a second kind of record, read by a second script.
+`[[group]]` records name **topics that belong together** -- the sets you
+would put in one section of a survey, topic labels only -- and
+`bench/topic_cluster_eval.py` scores the app's Markov clustering against
+them, once per edge family across the inflation slider's own range, so
+the default the slider opens at is a measurement rather than a feel.
+
+Two things about that score are deliberate. It is **pairwise over the
+gold-covered topics only**: grouping gold is partial by design -- a
+handful of groupings, silent about the rest of the graph -- so you are
+never asked to partition a whole corpus, and a metric like adjusted Rand
+that wants a complete reference partition would be the wrong tool. And
+the partition it scores is **`assets/webapp/families.js`'s own**, driven
+through `node`, not a Python re-implementation: a second version of the
+numbers the browser shows would be free to disagree with it.
+
+On the real 131-topic corpus, with 21 topics named across six groupings,
+the two families do not agree about the best inflation -- paper-sharing
+peaks well above the shipped 2.0, semantic nearness at 2.0 itself. That
+disagreement is the per-family design talking, and it is exactly why the
+app never fuses the two.
+
 This is legacy AutoRAG's methodology pointed at one corpus: measure
 every retrieval configuration against a small labelled set, never tune
 by feel. Its LLM-generated QA datasets were deliberately not borrowed --
