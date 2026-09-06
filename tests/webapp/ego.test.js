@@ -486,3 +486,21 @@ test("a lopsided ring gives each kind of neighbour room in proportion", () => {
   assert.ok(Math.min(...gaps) > 0.01, "two neighbours share an angle");
   assert.ok(biggest < 1.2, "the ring has a hole of " + biggest.toFixed(2) + " radians");
 });
+
+test("hiding the context suspends the grouping too, not just dimming it", () => {
+  /* The gap this pins: the cut was suspended on the dim path only, so
+     "hide the rest of the corpus" with a cut in force emitted group
+     boxes that the ring layout had no positions for -- every one of
+     them stacked at the origin. */
+  const cut = graph.cutTree(
+    [{ id: "node-0", a: "A", b: "B", distance: 0.1 }],
+    EGO.topics,
+    0.5
+  );
+  const els = graph.elementsFor(EGO, new Set(["E", "A", "B", "C"]), ["E"], {
+    context: "hide", all: new Set(["E", "A", "B", "C", "D"]),
+    cut: cut, collapsed: new Set(cut.groups.map((g) => g.id)),
+  });
+  assert.equal(els.filter((e) => e.data.isGroup || e.data.collapsed).length, 0);
+  assert.equal(els.filter((e) => e.group === "nodes").length, 4);
+});

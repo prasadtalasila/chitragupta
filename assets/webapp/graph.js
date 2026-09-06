@@ -382,7 +382,8 @@
      keeps their sense of how much of the corpus they are looking at.
      "hide" is the old hard filter, kept as a toggle. */
   function elementsFor(data, visible, selected, view) {
-    var dimming = view && view.context === "dim" && view.all && selected.length > 0;
+    var pinned = selected.length > 0;
+    var dimming = pinned && view && view.context === "dim" && Boolean(view.all);
     var universe = dimming ? view.all : visible;
     function dim(label) { return dimming && !visible.has(label) ? 1 : 0; }
 
@@ -391,7 +392,7 @@
        needs the topics themselves, not the boxes they happen to sit in.
        Suspending the cut here rather than in the wiring means the rule
        is testable, and means a caller cannot half-apply it. */
-    var resolved = resolveView(data, universe, dimming ? null : view);
+    var resolved = resolveView(data, universe, pinned ? null : view);
     var els = groupNodes(resolved.groups, resolved.collapsedIds);
     var parentOf = Object.create(null);
     resolved.groups.forEach(function (entry) {
