@@ -36,6 +36,18 @@
     <span class="note">grouped in your browser by cutting the stored merge
     tree &mdash; a view, not a corpus claim</span>
   </div>
+  <div id="focus" hidden>
+    <label for="hops">Show</label>
+    <select id="hops">
+      <option value="1">1 hop</option>
+      <option value="2" selected>2 hops</option>
+      <option value="99">everything reachable</option>
+    </select>
+    <label><input id="hide-context" type="checkbox"> hide the rest of the
+    corpus</label>
+    <span class="note">pinned topics are laid out in rings by hop distance;
+    grouping is suspended while anything is pinned</span>
+  </div>
   <div id="legend">
     <span class="swatch seed"></span>seed
     <span class="swatch keyword"></span>keyword
@@ -73,6 +85,7 @@
 <script src="./data.js"></script>
 <script src="./vendor/cytoscape.min.js"></script>
 <script src="./graph.js"></script>
+<script src="./ego.js"></script>
 <script src="./panel.js"></script>
 <script src="./app.js"></script>
 </body>

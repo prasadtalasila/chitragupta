@@ -16,9 +16,9 @@ From the documentation, the interactive app currently:
   of local JSON is blocked under `file://`);
 - offers type-ahead search over topic labels and each topic's top terms, with
   matches pinned as removable chips that compose;
-- filters on selection: with topics pinned, only the selected topics and those
-  related to them over both edge families stay on the canvas, and the layout
-  re-runs on that subgraph;
+- focuses on selection: with topics pinned, the whole graph stays drawn with
+  everything outside the neighbourhood dimmed, and the neighbourhood is laid
+  out as concentric rings by hop distance (§4 below, shipped);
 - encodes provenance as node colour (hand-written seed phrase, machine-extracted
   keyword, both, emergent cluster), member count as node size, and overlap
   strength or similarity as edge width, with overlap edges solid and semantic

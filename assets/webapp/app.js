@@ -17,7 +17,6 @@
   var app = window.CHITRAGUPTA_APP;
 
   var topicsByLabel = app.byLabel(DATA.topics);
-  var neighbours = app.adjacency(DATA);
   var selected = []; // chip order preserved
 
   /* Grouping state. The app opens at a cut of the stored merge tree
@@ -29,6 +28,16 @@
   var cut = null;
   var collapsed = new Set();
   var groupsById = Object.create(null);
+
+  /* Ego state. With topics pinned the context stays on the canvas,
+     dimmed, rather than being deleted -- removing it costs the reader
+     their sense of where they are in a corpus this size. `maxHops`
+     bounds the ring view: one hop answers "what is next to this", two
+     answers "what would a chapter around this have to cover". */
+  var ALL_LABELS = new Set(DATA.topics.map(function (t) { return t.label; }));
+  var FAMILIES = ["overlap", "semantic"];
+  var context = "dim";
+  var maxHops = 2;
 
   // ---------- cytoscape ----------
 
@@ -98,26 +107,68 @@
       } },
       { selector: "edge[bundled = 1]", style: { "line-style": "solid", "opacity": 0.85 } },
       { selector: "edge[bundled = 1][family = 'semantic']", style: { "line-style": "dashed" } },
+      /* Focus plus context. The context is pushed back rather than
+         deleted, and `events: no` keeps it from taking clicks or
+         stealing hover -- a dimmed node that still answers the mouse
+         reads as a bug, not as background. */
+      { selector: "node[dim = 1]", style: {
+        "opacity": 0.12, "text-opacity": 0, "events": "no",
+      } },
+      { selector: "edge[dim = 1]", style: { "opacity": 0.06, "events": "no" } },
+      /* Hover is a separate channel from selection dimming, so the two
+         compose instead of clobbering each other: `.faded` is what the
+         mouse is doing right now, `dim` is what the chips are doing. */
+      { selector: ".faded", style: { "opacity": 0.15, "text-opacity": 0.15 } },
+      { selector: ".hovered", style: {
+        "border-width": 3, "border-color": "#e53935", "text-opacity": 1,
+      } },
     ],
   });
 
   function view() {
-    return { cut: cut, collapsed: collapsed };
+    return { cut: cut, collapsed: collapsed, context: context, all: ALL_LABELS };
   }
 
   function redraw() {
-    var visible = app.visibleLabels(DATA, selected, neighbours);
+    // One notion of "near the selection", used for both what is
+    // emphasised and where it is drawn: the hop control moves them
+    // together, so nothing is ever placed on a ring and dimmed to
+    // background at the same time.
+    var hops = selected.length ? app.hopsFrom(DATA, selected, FAMILIES) : null;
+    var visible = hops ? app.withinHops(hops, maxHops) : ALL_LABELS;
     var elements = app.elementsFor(DATA, visible, selected, view());
     cy.batch(function () {
       cy.elements().remove();
       cy.add(elements);
     });
+    if (hops) {
+      // Rings by hop distance from what is pinned: deterministic, and
+      // an extension of the "a circle is legible" argument rather than
+      // a contradiction of it. elementsFor has already suspended the
+      // cut, so there are no boxes to lay out here.
+      var at = app.ringPositions(DATA, selected, hops, maxHops);
+      var outside = app.contextRing(
+        cy.nodes().map(function (n) { return n.id(); }), hops, maxHops
+      );
+      cy.layout({
+        name: "preset",
+        positions: function (n) { return at[n.id()] || outside[n.id()]; },
+        // Object constancy: a node that teleports when the selection
+        // changes makes the reader re-parse the whole picture.
+        animate: true, animationDuration: 350,
+        fit: true, padding: 40,
+      }).run();
+      return;
+    }
     if (cut) {
       // Groups round one circle, each group's topics round a smaller
       // one inside it. Deterministic, and cose is bad at compounds --
       // graph.js's own comment has the reasoning.
-      var at = app.positionsFor(elements);
-      cy.layout({ name: "preset", positions: function (n) { return at[n.id()]; } }).run();
+      var grouped = app.positionsFor(elements);
+      cy.layout({
+        name: "preset", positions: function (n) { return grouped[n.id()]; },
+        animate: true, animationDuration: 350,
+      }).run();
       cy.fit(undefined, 40);
       return;
     }
@@ -144,7 +195,19 @@
     var topic = topicsByLabel[label];
     if (!topic) { return; }
     hint.hidden = true;
-    detail.innerHTML = app.topicHtml(DATA, topic);
+    detail.innerHTML = app.topicHtml(DATA, topic) + egoSection(label);
+  }
+
+  /* The brokerage reading, under the papers rather than instead of
+     them: "is this topic a theme or a bridge" is the survey-scoping
+     question, and it is answered per edge family because a topic that
+     brokers over shared papers but not over vocabulary is a different
+     animal from one that does the reverse. */
+  function egoSection(label) {
+    return app.egoHtml(label, {
+      overlap: app.egoStats(DATA, label, "overlap"),
+      semantic: app.egoStats(DATA, label, "semantic"),
+    });
   }
 
   function showEdge(family, index) {
@@ -170,6 +233,21 @@
     } else {
       showTopic(node.id());
     }
+  });
+
+  /* Hovering a node lights its own neighbourhood and pushes the rest
+     back -- the one interaction people expect from a graph, and the
+     app had none of it. Cheap enough to do on every mouse move because
+     it is class toggles inside one batch, not a re-layout. */
+  cy.on("mouseover", "node", function (event) {
+    var near = event.target.closedNeighborhood();
+    cy.batch(function () {
+      cy.elements().not(near).addClass("faded");
+      event.target.addClass("hovered");
+    });
+  });
+  cy.on("mouseout", "node", function () {
+    cy.batch(function () { cy.elements().removeClass("faded hovered"); });
   });
   cy.on("tap", "edge", function (event) {
     var edge = event.target;
@@ -276,6 +354,32 @@
     applyCut(Number(cutControl.value), false);
   })();
 
+  // ---------- focus: rings, hops, and the dimmed context ----------
+
+  /* The two controls swap: with nothing pinned the reader is browsing
+     the whole corpus and wants the resolution slider; with something
+     pinned the cut is suspended (one layout regime at a time) and what
+     matters is how far out to read and whether to keep the context. */
+  var focusControls = document.getElementById("focus");
+  var hopsControl = document.getElementById("hops");
+  var hideContext = document.getElementById("hide-context");
+
+  function showControlsForSelection() {
+    var pinned = selected.length > 0;
+    focusControls.hidden = !pinned;
+    var resolution = document.getElementById("resolution");
+    if (resolution) { resolution.hidden = pinned || !DATA.hierarchy.length; }
+  }
+
+  hopsControl.addEventListener("change", function () {
+    maxHops = Number(hopsControl.value);
+    redraw();
+  });
+  hideContext.addEventListener("change", function () {
+    context = hideContext.checked ? "hide" : "dim";
+    redraw();
+  });
+
   // ---------- hierarchy ----------
 
   (function renderHierarchy() {
@@ -317,6 +421,9 @@
     close.addEventListener("click", function () {
       selected = selected.filter(function (s) { return s !== label; });
       chip.remove();
+      // Removing the last chip hands the canvas back to the grouped
+      // view, which is where it started.
+      showControlsForSelection();
       redraw();
     });
     chip.appendChild(close);
@@ -324,6 +431,7 @@
     searchInput.value = "";
     activeIndex = -1;
     suggestions.hidden = true;
+    showControlsForSelection();
     redraw();
     showTopic(label);
   }
@@ -366,5 +474,6 @@
     }
   });
 
+  showControlsForSelection();
   redraw();
 })();

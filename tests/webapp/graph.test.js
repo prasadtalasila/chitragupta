@@ -26,37 +26,6 @@ test("byLabel indexes every topic, on a null prototype", () => {
   assert.equal(index['__proto__ <"hostile">'].origin, "both");
 });
 
-test("adjacency unions both edge families, in both directions", () => {
-  const near = graph.adjacency(DATA);
-  assert.deepEqual([...near["digital twin"]], ["machine learning"]);
-  assert.deepEqual([...near["machine learning"]].sort(), ["digital twin", "topic-7"]);
-  assert.deepEqual([...near["topic-7"]], ["machine learning"]);
-  assert.equal(Object.getPrototypeOf(near), null);
-});
-
-test("a topic on no edge has no adjacency entry", () => {
-  const near = graph.adjacency(DATA);
-  assert.equal(near['__proto__ <"hostile">'], undefined);
-});
-
-test("no selection shows every topic", () => {
-  const near = graph.adjacency(DATA);
-  const visible = graph.visibleLabels(DATA, [], near);
-  assert.equal(visible.size, DATA.topics.length);
-});
-
-test("a selection shows itself and its neighbours over both families", () => {
-  const near = graph.adjacency(DATA);
-  const visible = graph.visibleLabels(DATA, ["machine learning"], near);
-  assert.deepEqual([...visible].sort(), ["digital twin", "machine learning", "topic-7"]);
-});
-
-test("selecting a topic with no edges shows only itself", () => {
-  const near = graph.adjacency(DATA);
-  const visible = graph.visibleLabels(DATA, ['__proto__ <"hostile">'], near);
-  assert.deepEqual([...visible], ['__proto__ <"hostile">']);
-});
-
 test("elementsFor emits only nodes inside the visible set", () => {
   const els = graph.elementsFor(DATA, new Set(["digital twin"]), []);
   assert.deepEqual(els.map((e) => e.data.id), ["digital twin"]);
