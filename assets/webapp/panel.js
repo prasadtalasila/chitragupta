@@ -103,6 +103,52 @@
       cards.join("");
   }
 
+  /* A collapsed group, or a compound parent, on click. The grouping is
+     a cut of the stored merge tree made in this browser -- the panel
+     says so, because `--json` reports no such grouping and a reader who
+     quoted one as a corpus fact would be quoting the app's view state.
+     The members are real topic labels and link straight through. */
+  function groupHtml(group) {
+    return "<h2>" + escapeHtml(group.label) + "</h2>" +
+      '<p class="terms">' + group.members.length + " topic" +
+      (group.members.length === 1 ? "" : "s") + ", grouped in your browser " +
+      "by cutting the stored merge tree. Not a corpus claim: nothing is " +
+      "written back, and <code>--json</code> reports no grouping.</p>" +
+      "<h3>Topics in this group</h3>" +
+      group.members.map(function (label) {
+        return '<div class="linked-topic"><a data-goto="' + escapeHtml(label) + '">' +
+          escapeHtml(label) + "</a></div>";
+      }).join("");
+  }
+
+  /* A bundled edge on click: every link it stands for, named. The two
+     families are counted separately and never totalled -- a single
+     number over both would be the fusion the design refuses. */
+  function bundleHtml(data, pairs) {
+    var overlap = pairs.filter(function (p) { return p.family === "overlap"; });
+    var semantic = pairs.filter(function (p) { return p.family === "semantic"; });
+    var rows = overlap.map(function (p) {
+      var e = data.edges_overlap[p.index];
+      return bundleRow(p, e, "shares " + e.shared.length + " paper" +
+        (e.shared.length === 1 ? "" : "s") + ": " + e.shared.join(", "));
+    }).concat(semantic.map(function (p) {
+      var e = data.edges_semantic[p.index];
+      return bundleRow(p, e, "semantically near (" + e.similarity.toFixed(2) +
+        "), bridged by " + e.bridge.join(" and "));
+    }));
+    return "<h2>" + pairs.length + " link" + (pairs.length === 1 ? "" : "s") +
+      ", bundled</h2>" +
+      '<p class="terms">' + overlap.length + " over shared papers, " +
+      semantic.length + " over semantic nearness. Counted apart because " +
+      "they answer different questions.</p>" + rows.join("");
+  }
+
+  function bundleRow(pair, e, why) {
+    return '<div class="linked-topic"><a data-edge="' + pair.family + ":" + pair.index +
+      '">' + escapeHtml(e.a) + " — " + escapeHtml(e.b) + "</a>" +
+      '<div class="why">' + escapeHtml(why) + "</div></div>";
+  }
+
   function suggestionsHtml(candidates, activeIndex) {
     return candidates.map(function (c, i) {
       return '<li data-label="' + escapeHtml(c.label) + '"' +
@@ -125,6 +171,8 @@
     linkedRows: linkedRows,
     topicHtml: topicHtml,
     edgeHtml: edgeHtml,
+    groupHtml: groupHtml,
+    bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,
   };

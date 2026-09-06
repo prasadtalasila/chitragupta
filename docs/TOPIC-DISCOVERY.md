@@ -448,6 +448,31 @@ whole directory can be handed to a reader as a download; opening
 
 What the page adds over the static `--html` circle:
 
+- **It opens grouped, not as a hairball.** A real corpus is 131 topics
+  and 800-odd overlap edges; drawn loose that is a picture nobody can
+  read. The app therefore opens at a **cut of the stored merge tree**
+  yielding roughly eight groups, each drawn collapsed as one meta-node
+  carrying its member count, with the edges between groups bundled --
+  one bundle per group pair *per edge family*, never fused across the
+  two. A **resolution slider** walks the cut from one group to no
+  grouping at all, "collapse all" / "expand all" do what they say, and
+  double-clicking a group opens just that one in place. Clicking a
+  group lists its topics; clicking a bundle names every link it stands
+  for, counted per family.
+
+  Two things this is not. It is not a clustering: the merge tree is
+  already in `topic_graph.json` and already in `--json`, and cutting it
+  at a distance is deterministic, so the same slider position always
+  gives the same groups. And it is not a corpus claim: the grouping is
+  computed in the reader's browser, the panel says so, nothing is
+  written back, and `--json` reports no grouping. A reader who wants a
+  group to become real edits `content/seed_topics.toml` themselves.
+
+  The grouped view is laid out as a deterministic nested circle --
+  groups round one circle, each group's topics round a smaller one
+  inside it -- rather than by a force layout: it renders identically
+  every run, and cose treats a compound parent as one body and its
+  children as another system, which piles an expanded group on itself.
 - **Type-ahead search, multiple topics.** Typing shows candidate topics
   as you type -- matched on labels and on each topic's own top terms --
   and Enter (or a click) pins the topic as a removable chip. Several
@@ -470,11 +495,16 @@ What the page adds over the static `--html` circle:
   bridging pair and the similarity. Node size tracks member count, edge
   width tracks overlap strength or similarity.
 
-It is still a pure renderer: `_app.build_app_payload` is
+It is still a pure renderer of the corpus: `_app.build_app_payload` is
 `_page.build_payload` (the same join, the same drift refusal) plus the
-`origin` annotation, so the app cannot disagree with `--json` or with
-the terminal views. Interaction happens entirely in the browser over
-the embedded payload; nothing is recomputed and nothing is fetched.
+`origin` annotation, so no edge, membership or score in the app can
+disagree with `--json` or with the terminal views. What the browser
+does compute -- the grouping above, and the view-derived numbers the
+features after it add -- is view state, labelled as such in the UI,
+never written back, and never something `--json` will confirm. That
+split is the decision recorded in `docs/TOPIC-DISCOVERY-GRAPH.md` §2:
+compute in the browser, freely, with no artefact change. Nothing is
+fetched, ever.
 `<` is escaped in the payload exactly as the `--html` page escapes its
 JSON island, so no topic label or paper title can close the data script
 early. On the rendering side `panel.js` escapes all five HTML-significant

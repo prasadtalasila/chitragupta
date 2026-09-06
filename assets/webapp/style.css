@@ -123,6 +123,7 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 .swatch.keyword { background: var(--keyword); }
 .swatch.both { background: var(--both); }
 .swatch.emergent { background: var(--emergent); }
+.swatch.group { background: #8a97a8; border-radius: 3px; }
 .edge-key { width: 22px; height: 0; display: inline-block; }
 .edge-key.solid { border-top: 2px solid #5c6bc0; }
 .edge-key.dashed { border-top: 2px dashed #8e24aa; }
@@ -201,3 +202,33 @@ main { flex: 1; display: flex; min-height: 0; }
 #hierarchy { margin-top: 18px; font-size: 13px; color: var(--muted); }
 #hierarchy summary { cursor: pointer; }
 #hierarchy-body div { padding: 2px 0 2px 12px; }
+
+/* The resolution control: cutting the stored merge tree into groups.
+   The note is not decoration -- the grouping is computed in this
+   browser and `--json` reports none, so the reader is told where the
+   number they are looking at came from. */
+#resolution {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+#resolution label { color: var(--ink); }
+#resolution input[type="range"] { width: 160px; }
+#cut-readout { min-width: 15em; }
+
+#resolution button {
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+#resolution button:hover { border-color: var(--muted); }
+#resolution .note { font-style: italic; flex: 1 1 100%; }
