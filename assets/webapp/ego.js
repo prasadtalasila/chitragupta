@@ -24,6 +24,7 @@
   }
 })(typeof self !== "undefined" ? self : this, function () {
   var RING_GAP = 240;
+  var NODE_SPACING = 110;
   var ROOT_RADIUS = 70;
   function edgesOf(data, family) {
     return family === "overlap" ? data.edges_overlap : data.edges_semantic;
@@ -197,17 +198,34 @@
       (rings[depth] = rings[depth] || []).push(label);
     });
     var at = Object.create(null);
-    Object.keys(rings).forEach(function (depth) {
-      var members = rings[depth].slice().sort();
-      if (Number(depth) === 0) {
-        placeRoots(members, at);
-      } else if (Number(depth) === 1) {
-        placeTyped(members, via, RING_GAP, at);
-      } else {
-        placeArc(members, { from: 0, to: 360 }, Number(depth) * RING_GAP, at);
-      }
-    });
+    var previous = 0;
+    Object.keys(rings)
+      .map(Number)
+      .sort(function (x, y) { return x - y; })
+      .forEach(function (depth) {
+        var members = rings[depth].slice().sort();
+        if (depth === 0) {
+          placeRoots(members, at);
+          return;
+        }
+        var radius = ringRadius(depth, members.length, previous);
+        previous = radius;
+        if (depth === 1) {
+          placeTyped(members, via, radius, at);
+        } else {
+          placeArc(members, { from: 0, to: 360 }, radius, at);
+        }
+      });
     return at;
+  }
+
+  /* A ring wide enough for what is on it. A fixed radius per hop is
+     what the first version did, and twenty-two neighbours on a
+     240-pixel circle overlap: the arc each one gets is 68 pixels and a
+     node with its label is wider than that. The ring grows with its
+     population, and never shrinks below the one inside it. */
+  function ringRadius(depth, count, inner) {
+    return Math.max(depth * RING_GAP, (NODE_SPACING * count) / (2 * Math.PI), inner + RING_GAP);
   }
 
   /* Where the dimmed context goes: everything the ego view does not
@@ -221,7 +239,8 @@
       return hops[label] === undefined || hops[label] > maxHops;
     }).sort();
     var at = Object.create(null);
-    placeArc(outside, { from: 0, to: 360 }, (maxHops + 1.6) * RING_GAP, at);
+    placeArc(outside, { from: 0, to: 360 },
+      ringRadius(maxHops + 2, outside.length, (maxHops + 1) * RING_GAP), at);
     return at;
   }
 

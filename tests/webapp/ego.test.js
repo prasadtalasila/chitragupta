@@ -504,3 +504,38 @@ test("hiding the context suspends the grouping too, not just dimming it", () => 
   assert.equal(els.filter((e) => e.data.isGroup || e.data.collapsed).length, 0);
   assert.equal(els.filter((e) => e.group === "nodes").length, 4);
 });
+
+test("a ring grows with what is on it, and never shrinks inside the one before", () => {
+  /* Twenty-two neighbours on a fixed 240-pixel ring get 68 pixels of
+     arc each, and a node with its label is wider than that -- the real
+     corpus drew them touching. */
+  const crowd = {
+    topics: [{ label: "E", origin: "seed", terms: [], members: [] }].concat(
+      Array.from({ length: 30 }, (_, i) => ({
+        label: "n" + i, origin: "seed", terms: [], members: [],
+      }))
+    ),
+    edges_overlap: Array.from({ length: 30 }, (_, i) => ({
+      a: "E", b: "n" + i, jaccard: 0.5, overlap_coeff: 1, p_value: 0.01, shared: ["x"],
+    })),
+    edges_semantic: [],
+  };
+  const at = ego.ringPositions(crowd, ["E"], ego.hopsFrom(crowd, ["E"], BOTH), 1);
+  const placed = Object.keys(at).filter((k) => k !== "E");
+  const gaps = placed.map((k) => at[k]).map((p, i, all) => {
+    const next = all[(i + 1) % all.length];
+    return Math.hypot(p.x - next.x, p.y - next.y);
+  });
+  assert.ok(Math.min(...gaps) > 80, "neighbours are " + Math.min(...gaps).toFixed(0) + "px apart");
+});
+
+test("an outer ring stays outside the ring it follows, however crowded that is", () => {
+  // A hop-1 ring big enough to swallow a fixed-radius hop-2 ring: the
+  // outer one has to be pushed out, not drawn through the inner.
+  const hops = { E: 0, D: 2 };
+  Array.from({ length: 40 }, (_, i) => { hops["m" + i] = 1; });
+  const at = ego.ringPositions(EGO, ["E"], hops, 2);
+  const inner = Math.hypot(at["m0"].x, at["m0"].y);
+  assert.ok(inner > 2 * 240, "the crowded inner ring did not grow");
+  assert.ok(Math.hypot(at["D"].x, at["D"].y) > inner, "hop 2 fell inside hop 1");
+});
