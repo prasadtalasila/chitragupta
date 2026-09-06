@@ -440,8 +440,11 @@
     highlightPath(result);
   }
 
-  // The path on the canvas as well as in the panel: the panel is the
-  // accessible representation, the highlight is the quick read.
+  /* The path on the canvas as well as in the panel: the panel is the
+     accessible representation, the highlight is the quick read. A hop
+     through a topic the reader has hidden ("hide the rest of the
+     corpus") has no element to light up -- the panel still names it,
+     which is the copy that matters. */
   function highlightPath(result) {
     cy.batch(function () {
       cy.elements().removeClass("on-path");
