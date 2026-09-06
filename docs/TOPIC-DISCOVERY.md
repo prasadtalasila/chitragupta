@@ -415,8 +415,16 @@ tag early), and no reference to the network anywhere -- the page keeps
 working from `file://` after the corpus that produced it has moved on.
 Topics sit on a circle (a deliberate non-choice of force layout: at
 tens of topics a circle is legible, renders identically every run, and
-costs no physics code), overlap edges drawn solid and semantic edges
-dashed, seed topics green and emergent blue; clicking a topic opens its
+costs no physics code) **in the stored merge tree's leaf order**, so
+that neighbouring positions hold similar topics and the chords come out
+short and clustered rather than sweeping across the whole diagram --
+the circle is a weak but real encoding, not an arbitrary one, and it
+stays deterministic because the tree is read from the artefact rather
+than settled by a simulation. A topic the tree does not mention (it had
+no vector, or the corpus has fewer than two topics that did) keeps its
+artefact order and follows the leaves. Overlap edges are drawn solid
+and semantic edges dashed, seed topics green and emergent blue;
+clicking a topic opens its
 papers, both linked-topic lists with their evidence, and the stored
 hierarchy is a collapsible tree. It is a pure renderer of the same
 artefacts `--json` reads, so the page cannot disagree with the
