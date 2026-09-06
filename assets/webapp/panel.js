@@ -297,6 +297,30 @@
       }).join("");
   }
 
+  /* A paper node on click: the paper itself, and every topic that holds
+     it. A paper in more than one topic is *named* a bridge, because
+     that is the reading a survey wants and the count alone does not say
+     it. Null for a citekey the payload does not know -- there is no
+     such thing as a paper this app can describe but not find. */
+  function paperHtml(data, citekey) {
+    var member = graph.findMember(data, citekey);
+    if (!member) { return null; }
+    var holders = data.topics.filter(function (t) {
+      return t.members.some(function (m) { return m.citekey === citekey; });
+    });
+    return "<h2>" + escapeHtml(member.title || citekey) + "</h2>" +
+      paperCard(member) +
+      "<h3>In " + holders.length + " topic" + (holders.length === 1 ? "" : "s") + "</h3>" +
+      (holders.length > 1
+        ? '<p class="terms">This paper bridges them: it is a member of every ' +
+          "one, which is why it is drawn once with a line to each.</p>"
+        : "") +
+      holders.map(function (t) {
+        return '<div class="linked-topic"><a data-goto="' + escapeHtml(t.label) + '">' +
+          escapeHtml(t.label) + "</a></div>";
+      }).join("");
+  }
+
   function suggestionsHtml(candidates, activeIndex) {
     return candidates.map(function (c, i) {
       return '<li data-label="' + escapeHtml(c.label) + '"' +
@@ -324,6 +348,7 @@
     absenceHtml: absenceHtml,
     disagreementHtml: disagreementHtml,
     pathHtml: pathHtml,
+    paperHtml: paperHtml,
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,

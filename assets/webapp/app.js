@@ -38,12 +38,21 @@
   var FAMILIES = ["overlap", "semantic"];
   var context = "dim";
   var maxHops = 2;
+  /* Papers on the canvas, opt-in and capped: a paper in three topics is
+     visibly a bridge, and 131 topics fully expanded is several hundred
+     nodes and thousands of lines. */
+  var expanded = new Set();
 
   // ---------- cytoscape ----------
 
   var cy = cytoscape({
     container: document.getElementById("cy"),
     elements: [],
+    /* Only worth having once papers can join the graph: a few hundred
+       nodes and thousands of lines. Costless before that. */
+    hideEdgesOnViewport: true,
+    textureOnViewport: true,
+    pixelRatio: 1,
     style: [
       { selector: "node", style: {
         "background-color": "data(color)",
@@ -123,6 +132,31 @@
          compose instead of clobbering each other: `.faded` is what the
          mouse is doing right now, `dim` is what the chips are doing. */
       { selector: ".faded", style: { "opacity": 0.15, "text-opacity": 0.15 } },
+      /* A paper is a different *kind* of thing, so it gets the one
+         channel nothing else uses: shape. Its line to a topic is
+         membership -- neither of the two families -- and is drawn thin
+         and grey so it cannot be mistaken for either. */
+      { selector: "node[kind = 'paper']", style: {
+        "shape": "diamond",
+        "background-color": "#455a64",
+        "width": "mapData(score, 0, 1, 16, 34)",
+        "height": "mapData(score, 0, 1, 16, 34)",
+        "label": "data(label)",
+        "font-size": 9,
+        "color": "#455a64",
+      } },
+      { selector: "node[kind = 'paper'][drawn > 1]", style: {
+        "background-color": "#c2185b",
+        "border-width": 2,
+        "border-color": "#880e4f",
+      } },
+      { selector: "edge[family = 'member']", style: {
+        "width": 1,
+        "line-color": "#90a4ae",
+        "line-style": "dotted",
+        "curve-style": "haystack",
+        "opacity": 0.7,
+      } },
       { selector: ".on-path", style: {
         "line-color": "#e53935", "target-arrow-color": "#e53935",
         "border-width": 3, "border-color": "#e53935",
@@ -135,7 +169,10 @@
   });
 
   function view() {
-    return { cut: cut, collapsed: collapsed, context: context, all: ALL_LABELS };
+    return {
+      cut: cut, collapsed: collapsed, context: context,
+      all: ALL_LABELS, expanded: expanded,
+    };
   }
 
   /* One layout at a time. Two redraws in the same turn -- removing two
@@ -245,6 +282,13 @@
     detail.innerHTML = app.groupHtml(groupsById[id]);
   }
 
+  function showPaper(citekey) {
+    var html = citekey && app.paperHtml(DATA, citekey);
+    if (!html) { return; }
+    hint.hidden = true;
+    detail.innerHTML = html;
+  }
+
   function showBundle(pairs) {
     hint.hidden = true;
     detail.innerHTML = app.bundleHtml(DATA, pairs);
@@ -294,11 +338,36 @@
 
   cy.on("tap", "node", function (event) {
     var node = event.target;
-    if (node.data("isGroup") || node.data("collapsed")) {
+    if (node.data("kind") === "paper") {
+      showPaper(app.citekeyOf(DATA, node.id()));
+    } else if (node.data("isGroup") || node.data("collapsed")) {
       showGroup(node.id());
     } else {
       showTopic(node.id());
     }
+  });
+
+  // Double-click a topic to put its papers on the canvas, and again to
+  // take them off. The same gesture that opens a group, on the other
+  // kind of node.
+  cy.on("dbltap", "node", function (event) {
+    var node = event.target;
+    if (node.data("isGroup") || node.data("collapsed") || node.data("kind") === "paper") {
+      return;
+    }
+    if (expanded.has(node.id())) {
+      expanded.delete(node.id());
+    } else if (expanded.size >= app.EXPANSION_CAP) {
+      // Say what happened rather than quietly drawing nothing.
+      hint.hidden = false;
+      hint.textContent = "At most " + app.EXPANSION_CAP + " topics can show " +
+        "their papers at once — double-click one of the open ones to close it.";
+      return;
+    } else {
+      expanded.add(node.id());
+    }
+    redraw();
+    showTopic(node.id());
   });
 
   /* Hovering a node lights its own neighbourhood and pushes the rest

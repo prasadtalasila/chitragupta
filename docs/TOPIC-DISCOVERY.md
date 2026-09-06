@@ -517,6 +517,20 @@ What the page adds over the static `--html` circle:
   the union happens before the stages run, so `topic_set.json` records
   every phrase as provenance "seed" -- which is why the builder reads
   the two TOML files and annotates each topic with an `origin`.
+- **Papers can join the graph.** Double-click a topic and its member
+  papers are drawn as diamonds around it, labelled with the citekey and
+  carrying the ledger title on hover. A paper held by more than one of
+  the *opened* topics is drawn once with a line to each and highlighted:
+  the bridge becomes a shape instead of a citekey repeated in two
+  panels. Bridging is judged on what is on the canvas, not on the whole
+  corpus -- almost every paper belongs to several topics, so the
+  corpus-wide count would paint every paper the same and say nothing.
+
+  A paper node is a third kind of node and its lines a third kind of
+  edge: membership is neither of the two families, is never counted or
+  styled as one, and says nothing about a topic pair. Expansion is
+  opt-in and capped at three topics at a time, and the app says so when
+  you ask for a fourth rather than quietly drawing nothing.
 - **It shows where the two families disagree.** Both edge families are
   clustered separately in the browser -- Markov clustering, at an
   inflation the reader can move and that the panel always names -- and

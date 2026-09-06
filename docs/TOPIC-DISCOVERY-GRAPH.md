@@ -567,6 +567,14 @@ Cheap, and it is the interaction people expect from a graph.
 
 ### 7.5 Papers as nodes, on demand
 
+> **Shipped** (#676). Two departures from the sketch below, both
+> deliberate: a paper's id is prefixed with a string computed from the
+> payload rather than a fixed one, because node ids share a namespace
+> and a topic labelled `paper:dt2022` would otherwise *be* the node for
+> that paper; and the bridge highlight counts the topics on the canvas,
+> not the topics in the corpus, since on a real corpus nearly every
+> paper is in several and the corpus-wide count highlights everything.
+
 Expanding a topic into its member papers as leaf nodes makes a paper belonging to
 three topics *visibly* a bridge instead of a line of text repeated in three
 panels. This is the heterogeneous single-graph shape the design takes from
