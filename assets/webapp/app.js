@@ -189,6 +189,11 @@
   }
 
   function redraw() {
+    /* The tooltip belongs to an element that is about to be removed. A
+       redraw with the pointer over an edge -- expanding a group, moving
+       the slider -- takes that edge away without a `mouseout`, and the
+       tooltip stays on screen describing something no longer drawn. */
+    hideTip();
     // One notion of "near the selection", used for both what is
     // emphasised and where it is drawn: the hop control moves them
     // together, so nothing is ever placed on a ring and dimmed to
@@ -327,10 +332,17 @@
   var tip = document.getElementById("tip");
 
   function showTip(event, text) {
-    tip.textContent = text;
-    tip.hidden = false;
+    // Position first, then reveal: showing it before placing it leaves a
+    // tooltip stuck at the last position if anything about the event is
+    // not what was expected.
     tip.style.left = event.renderedPosition.x + 14 + "px";
     tip.style.top = event.renderedPosition.y + 14 + "px";
+    tip.textContent = text;
+    tip.hidden = false;
+  }
+
+  function hideTip() {
+    tip.hidden = true;
   }
 
   cy.on("mouseover", "edge", function (event) {
@@ -349,7 +361,7 @@
     showTip(event, "shares " + overlap.shared.length + " paper" +
       (overlap.shared.length === 1 ? "" : "s") + ": " + overlap.shared.join(", "));
   });
-  cy.on("mouseout", "edge", function () { tip.hidden = true; });
+  cy.on("mouseout", "edge", hideTip);
 
   cy.on("tap", "node", function (event) {
     var node = event.target;
