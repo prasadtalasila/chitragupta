@@ -58,5 +58,21 @@ name = "the digital twin, named several ways"
 topics = ["digital twin", "digital twins", "digital twin (dt)"]
 
 [[group]]
+name = "iot and its spellings"
+topics = ["iot", "internet of things", "internet of", "things"]
+
+[[group]]
 name = "distributed compute tiers"
-topics = ["cloud computing", "edge computing", "fog computing"]
+topics = ["cloud", "cloud computing", "edge", "edge computing", "fog computing"]
+
+[[group]]
+name = "service-oriented decomposition"
+topics = ["microservice", "microservices"]
+
+[[group]]
+name = "the industrial context"
+topics = ["industry 4.0", "industry 5.0", "smart manufacturing", "manufacturing"]
+
+[[group]]
+name = "learning methods"
+topics = ["machine learning", "artificial intelligence", "federated learning"]
