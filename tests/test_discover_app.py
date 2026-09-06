@@ -109,13 +109,47 @@ class TestWriteApp:
         assert {"graph.js", "panel.js", "app.js"} <= loaded
 
     def test_the_page_loads_the_modules_before_the_wiring_that_uses_them(self):
-        """app.js reads window.CHITRAGUPTA_APP at once, and panel.js
-        reads graph.js's origin vocabulary at load: classic scripts run
-        in document order, so the order in the file is the contract."""
+        """app.js reads window.CHITRAGUPTA_APP at once, and data.js has
+        to have assigned the payload by then: classic scripts run in
+        document order, so the order in the file is the contract."""
+        order = self.script_order()
+        assert order.index("data.js") < order.index("app.js")
+        assert order.index("app.js") == len(order) - 1, "the wiring must load last"
+
+    def test_the_page_loads_each_module_after_the_ones_it_requires(self):
+        """The same contract for the modules themselves, derived from
+        their own `require()` calls rather than listed here.
+
+        Each module publishes into one shared global and reads its
+        dependencies out of that global at load, so a module loaded
+        before something it requires gets `undefined` and the exported
+        directory opens to a blank canvas. Listing the pairs by hand is
+        what let this test fall behind: it pinned graph -> panel while
+        two later modules quietly added dependencies of their own, and
+        reordering the page would have broken the app with nothing red.
+        """
+        order = self.script_order()
+        checked = 0
+        for name in order:
+            if name == "data.js":  # written per corpus, not shipped
+                continue
+            source = config.shipped("assets", "webapp", name).read_text(encoding="utf-8")
+            for required in re.findall(r'require\("\./([^"]+)"\)', source):
+                assert required in order, f"{name} requires unshipped {required}"
+                assert order.index(required) < order.index(name), (
+                    f"{name} loads before {required}, which it requires"
+                )
+                checked += 1
+        # Non-vacuity: a regex that matched nothing would pass over an
+        # empty set of dependencies.
+        assert checked >= 3, f"only {checked} module dependencies found"
+
+    @staticmethod
+    def script_order() -> list:
         page = config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
         order = re.findall(r'<script src="\./([^"]+)"></script>', page)
-        assert order.index("graph.js") < order.index("panel.js") < order.index("app.js")
-        assert order.index("data.js") < order.index("app.js")
+        assert order, "index.html loads no scripts at all"
+        return order
 
     def test_the_data_script_round_trips_and_escapes(self, isolated_config, tmp_path):
         """`<` must not survive raw: a title like `</script><script>`

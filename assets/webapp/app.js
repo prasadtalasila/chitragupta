@@ -251,11 +251,26 @@
 
   var detail = document.getElementById("detail");
   var hint = document.getElementById("hint");
+  /* The hint is the standing help text, and it is also where a
+     transient message goes -- so the original has to be kept and put
+     back. Without this, asking for one expansion too many replaced the
+     help paragraph permanently, and nothing ever restored it. */
+  var HELP = hint.textContent;
+
+  function clearHint() {
+    hint.hidden = true;
+    hint.textContent = HELP;
+  }
+
+  function say(message) {
+    hint.textContent = message;
+    hint.hidden = false;
+  }
 
   function showTopic(label) {
     var topic = topicsByLabel[label];
     if (!topic) { return; }
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = app.topicHtml(DATA, topic) + egoSection(label);
   }
 
@@ -272,25 +287,25 @@
   }
 
   function showEdge(family, index) {
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = app.edgeHtml(DATA, family, index);
   }
 
   function showGroup(id) {
     if (!groupsById[id]) { return; }
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = app.groupHtml(groupsById[id]);
   }
 
   function showPaper(citekey) {
     var html = citekey && app.paperHtml(DATA, citekey);
     if (!html) { return; }
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = html;
   }
 
   function showBundle(pairs) {
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = app.bundleHtml(DATA, pairs);
   }
 
@@ -301,7 +316,7 @@
   function showPair(a, b) {
     var verdict = app.explain(DATA, a, b);
     if (!verdict || verdict.drawn) { return false; }
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = app.absenceHtml(a, b, verdict);
     return true;
   }
@@ -359,9 +374,8 @@
       expanded.delete(node.id());
     } else if (expanded.size >= app.EXPANSION_CAP) {
       // Say what happened rather than quietly drawing nothing.
-      hint.hidden = false;
-      hint.textContent = "At most " + app.EXPANSION_CAP + " topics can show " +
-        "their papers at once — double-click one of the open ones to close it.";
+      say("At most " + app.EXPANSION_CAP + " topics can show their papers at " +
+        "once — double-click one of the open ones to close it.");
       return;
     } else {
       expanded.add(node.id());
@@ -503,7 +517,7 @@
   function showPath(family) {
     var result = app.path(DATA, family, selected[0], selected[1]);
     if (!result) { return; }
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = "<h2>" + app.escapeHtml(selected[0]) + " — " +
       app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result);
     highlightPath(result);
@@ -544,7 +558,7 @@
     inflationReadout.textContent = inflation().toFixed(1);
   });
   document.getElementById("disagreement").addEventListener("click", function () {
-    hint.hidden = true;
+    clearHint();
     detail.innerHTML = "<p>clustering both families…</p>";
     // Yield once so the message paints before the matrices run.
     window.setTimeout(function () {
