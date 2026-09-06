@@ -34,6 +34,14 @@ it re-runs `chitragupta.retrieval.search()` only to reconstruct what those
 sessions already saw -- which is sound only while the ledger has not
 moved since, so `--hashes` checks that and reports `replay_sound`.
 
+`topic_cluster_eval.py` is stdlib-only and needs no GPU as well, and it
+is the one script here with a requirement outside Python entirely:
+**`node` on PATH**, because the partition it scores is the one
+`assets/webapp/families.js` computes in the reader's browser. It needs a
+built `content/topic_graph.json` and a gold file with `[[group]]`
+records, and reports a missing `node`, artefact or gold file by name
+rather than as a zero.
+
 `bench_overlap_gate.py` and `bench_overlap_df.py` are stdlib-only too,
 but unlike those two they need a **synced corpus** and a real draft to
 scan: both read `content/ledger.sqlite`, `content/parsed/` and the shared
@@ -88,6 +96,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | Does the same nine-row comparison hold with a ground truth no retrieval method built (the two above both score against citekeys BM25 itself surfaced)? | **`bench_retrieval_keyword_selfretrieval.py`** -- 256 real bib entries' own author-assigned `keywords`, query = the keywords, correct answer = the entry itself; needs no restored book, only `bibliography.bib` and the synced ledger |
 | Does a topic set *reproduce*, or does it look settled by luck? | **`bench_topic_depth.py --repeats N`** -- adjusted Rand index between a fit and refits on 90% resamples. The values hardcoded until 6.9.0 score **0.14** |
 | How many topics does this corpus divide into, at each clustering setting -- and what does the coarse setting cost? | **`bench_topic_depth.py`** -- needs the `enrich` group and a synced corpus; reuses `content/topic_embed_cache.json`, so a warm cache makes it minutes. The **outlier** column is the one to read: it *falls* as topics get finer |
+| Is the topic app's MCL **inflation** default of 2.0 the right one, and what does moving it cost? | **`topic_cluster_eval.py`** -- sweeps the slider's own range and scores each partition, per edge family, against `[[group]]` records in `content/topic_gold.toml`. Needs `node` (it drives the shipped `assets/webapp/families.js` rather than re-implementing MCL) and a built `content/topic_graph.json`; no GPU, no synced ledger. The two families do not agree on a best inflation, which is the per-family design talking |
 | Which mechanism can honestly say a paper belongs to more than one *emergent* topic? | **`bench_topic_membership.py`** -- scores five candidates on shape **and on agreement with the clustering they claim to describe**, which is what disqualifies three of them |
 | What does scoping a draft's retrieval to a curated Zotero collection (`--collection`, #195) actually buy? | **`bench_collection_scope.py`** -- two arms of the same chapter, whole corpus vs one shelf, from the same pre-registered queries; replays each dossier's own logged queries to reconstruct what each arm surfaced. Stdlib only, no GPU, but it scores a *drafting run*, so it needs two real drafts and their dossiers to already exist |
 | Does a cross-encoder rerank help, and does it matter whether it runs before or after the per-citekey cap (#380)? | **`bench_rerank_position.py`** -- needs the `enrich` group and a built `content/chroma/`; reuses `bench_retrieval_keyword_selfretrieval.py`'s 256 pairs and `bench_retrieval_compare.py`'s scoring, and measures at the **shipped** shape (chunks, cap 3, pool 20) rather than the citekey-collapsed one those rows use. Reports `distinct@5`, which is the metric #380's own motivating claim is about |
@@ -184,6 +193,7 @@ being tested.
 | `bench_keyword_seed_topics.py` | Runs `topic_seeding.assign()` once per phrase set -- `content/topics.toml` alone, `content/keywords.toml` alone, both combined -- and reports coverage, phrase redundancy (mean pairwise Jaccard of match sets) and how much of the corpus a keyword phrase alone reaches that no hand-written phrase does |
 | `embed_models.py` | The SPECTER2 encoder seam: `embed_paper()` (title+abstract, proximity adapter, disk-cached per citekey) and `embed_query()` (adhoc_query adapter) -- SPECTER2 never sees a passage chunk, unlike the three drop-in models |
 | `bench_figure_similarity.py` | Whether a figure-similarity review tier (#659) could catch a draft figure redrawn from a source's: identity control, cross-paper false-positive floor (masked by paper *and* by exact byte content -- a shared book chapter or a mis-extracted publisher logo is not "independent similarity"), recall on a graded planted TikZ redraw against CLIP and SigLIP, an 8x8 average-hash prescreen, and per-crop cost. Not a threshold sweep -- this tier ranks rather than thresholds, same as tier 3 of the overlap scan |
+| `topic_cluster_eval.py` | Scores the app's MCL partition against hand-written `[[group]]` records, pairwise over the gold-covered topics only, once per family per inflation across the slider's own range. The one script here that shells out to `node`: the partition scored has to be the one `assets/webapp/families.js` shows the reader, and a Python MCL beside it would be a second version of the same numbers, free to disagree |
 | `results/` | Committed raw timings -- the evidence behind `RESULTS.md` |
 
 `repro_check.py` is the odd one out here, and deliberately so: every other
@@ -210,8 +220,9 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_topic_depth.py`, `bench_topic_membership.py`,
 `topic_discovery_eval.py`, `estimate.py`,
 `run_parallel.py`, `extract_keywords.py` and
-`bench_keyword_seed_topics.py` and `bench_figure_similarity.py` each have
-one -- 28 of the 30 scripts here. The
+`bench_keyword_seed_topics.py`, `bench_figure_similarity.py` and
+`topic_cluster_eval.py` each have
+one -- 29 of the 31 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

@@ -708,6 +708,13 @@ join the graph (500+ nodes, several thousand edges).
   "these topics belong together" groupings to `content/topic_gold.toml` turns
   the MCL inflation factor and the default hierarchy cut from a feel into a
   measurement, exactly as the gold set did for `[discover].min_similarity`.
+
+  > **The inflation half is shipped** (#689): `[[group]]` records in the
+  > same gold file, scored by `bench/topic_cluster_eval.py`, which drives
+  > `assets/webapp/families.js` through `node` rather than
+  > re-implementing MCL beside it. Pairwise over the gold-covered topics
+  > only, since grouping gold is partial by design. The **hierarchy cut**
+  > is not scored yet -- same gold file, different control.
 - **Escaping, again, on every new surface.** Tooltips, cluster labels, path
   panels, set-comparison lists and hash-parsed state all interpolate
   semi-trusted topic labels, which may have ridden in through a PDF's extracted
@@ -763,7 +770,8 @@ all**.
 5. **`analysis` and `xy` in the artefact**, with `preset` as the default layout
    and brokerage statistics in the panel.
 6. **MCL communities per family, plus the disagreement grid**, with gold-set
-   numbers to defend the inflation default.
+   numbers to defend the inflation default. *(#677 for the clustering and
+   the grid; #689 for the numbers -- §9.)*
 7. **`cise`**, papers-as-nodes, and typed path finding, in whichever order the
    corpus's own questions demand.
 
