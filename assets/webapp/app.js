@@ -123,6 +123,11 @@
          compose instead of clobbering each other: `.faded` is what the
          mouse is doing right now, `dim` is what the chips are doing. */
       { selector: ".faded", style: { "opacity": 0.15, "text-opacity": 0.15 } },
+      { selector: ".on-path", style: {
+        "line-color": "#e53935", "target-arrow-color": "#e53935",
+        "border-width": 3, "border-color": "#e53935",
+        "opacity": 1, "z-index": 10,
+      } },
       { selector: ".hovered", style: {
         "border-width": 3, "border-color": "#e53935", "text-opacity": 1,
       } },
@@ -131,6 +136,19 @@
 
   function view() {
     return { cut: cut, collapsed: collapsed, context: context, all: ALL_LABELS };
+  }
+
+  /* One layout at a time. Two redraws in the same turn -- removing two
+     chips at once does exactly that -- leave the first layout's
+     viewport tween running after its elements are gone, and it lands on
+     top of the second layout's fit: the canvas ends up framed for a
+     graph that no longer exists. */
+  var running = null;
+
+  function run(options) {
+    if (running) { running.stop(); }
+    running = cy.layout(options);
+    running.run();
   }
 
   function redraw() {
@@ -154,14 +172,14 @@
       var outside = app.contextRing(
         cy.nodes().map(function (n) { return n.id(); }), hops, maxHops
       );
-      cy.layout({
+      run({
         name: "preset",
         positions: function (n) { return at[n.id()] || outside[n.id()]; },
         // Object constancy: a node that teleports when the selection
         // changes makes the reader re-parse the whole picture.
         animate: true, animationDuration: 350,
         fit: true, padding: 40,
-      }).run();
+      });
       return;
     }
     if (cut) {
@@ -169,22 +187,24 @@
       // one inside it. Deterministic, and cose is bad at compounds --
       // graph.js's own comment has the reasoning.
       var grouped = app.positionsFor(elements);
-      cy.layout({
+      // `fit` inside the layout, not a `cy.fit()` after `.run()`: with
+      // `animate` on, run() returns before the nodes have moved, and
+      // fitting there frames the positions they are leaving.
+      run({
         name: "preset", positions: function (n) { return grouped[n.id()]; },
-        animate: true, animationDuration: 350,
-      }).run();
-      cy.fit(undefined, 40);
+        animate: true, animationDuration: 350, fit: true, padding: 40,
+      });
       return;
     }
     // Ungrouped: a deterministic circle first, then cose refines from
     // it without re-randomising -- the same graph always lands in the
     // same place.
-    cy.layout({ name: "circle" }).run();
+    run({ name: "circle" });
     if (cy.nodes().length > 2) {
-      cy.layout({
+      run({
         name: "cose", randomize: false, animate: false, padding: 40,
         stop: function () { cy.fit(undefined, 40); },
-      }).run();
+      });
     } else {
       cy.fit(undefined, 40);
     }
@@ -400,6 +420,69 @@
     applyCut(Number(cutControl.value), false);
   })();
 
+  // ---------- the two families: clusters, and paths ----------
+
+  /* Two buttons, never one. A single path over a fused weight would be
+     a distance nobody can interpret, and the design refuses it -- so
+     the reader asks the question of one family at a time, and each hop
+     comes back with the citekeys or the bridging pair under it. */
+  var pathButtons = {
+    overlap: document.getElementById("path-overlap"),
+    semantic: document.getElementById("path-semantic"),
+  };
+
+  function showPath(family) {
+    var result = app.path(DATA, family, selected[0], selected[1]);
+    if (!result) { return; }
+    hint.hidden = true;
+    detail.innerHTML = "<h2>" + app.escapeHtml(selected[0]) + " — " +
+      app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result);
+    highlightPath(result);
+  }
+
+  /* The path on the canvas as well as in the panel: the panel is the
+     accessible representation, the highlight is the quick read. A hop
+     through a topic the reader has hidden ("hide the rest of the
+     corpus") has no element to light up -- the panel still names it,
+     which is the copy that matters. */
+  function highlightPath(result) {
+    cy.batch(function () {
+      cy.elements().removeClass("on-path");
+      result.hops.forEach(function (hop) {
+        var id = (hop.family === "overlap" ? "ov-" : "se-") + hop.index;
+        cy.$id(id).addClass("on-path");
+      });
+      (result.labels || []).forEach(function (label) { cy.$id(label).addClass("on-path"); });
+    });
+  }
+
+  Object.keys(pathButtons).forEach(function (family) {
+    pathButtons[family].addEventListener("click", function () { showPath(family); });
+  });
+
+  /* Markov clustering over each family, and the grid of where the two
+     disagree. Run on demand rather than on load: it is a matrix
+     multiplication per iteration over every topic, and the reader who
+     never opens the grid should not pay for it. */
+  var inflationControl = document.getElementById("inflation");
+  var inflationReadout = document.getElementById("inflation-readout");
+
+  function inflation() {
+    return Number(inflationControl.value) / 10;
+  }
+
+  inflationControl.addEventListener("input", function () {
+    inflationReadout.textContent = inflation().toFixed(1);
+  });
+  document.getElementById("disagreement").addEventListener("click", function () {
+    hint.hidden = true;
+    detail.innerHTML = "<p>clustering both families…</p>";
+    // Yield once so the message paints before the matrices run.
+    window.setTimeout(function () {
+      detail.innerHTML = app.disagreementHtml(app.disagreement(DATA, inflation()));
+    }, 0);
+  });
+
   // ---------- focus: rings, hops, and the dimmed context ----------
 
   /* The two controls swap: with nothing pinned the reader is browsing
@@ -415,6 +498,11 @@
     focusControls.hidden = !pinned;
     var resolution = document.getElementById("resolution");
     if (resolution) { resolution.hidden = pinned || !DATA.hierarchy.length; }
+    // A path is a question about a pair, so the buttons appear at two
+    // pinned topics and go again at one or three.
+    Object.keys(pathButtons).forEach(function (family) {
+      pathButtons[family].hidden = selected.length !== 2;
+    });
   }
 
   hopsControl.addEventListener("change", function () {
