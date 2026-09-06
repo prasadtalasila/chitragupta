@@ -33,6 +33,10 @@
     <span id="cut-readout"></span>
     <button id="collapse-all" type="button">collapse all</button>
     <button id="expand-all" type="button">expand all</button>
+    <button id="disagreement" type="button">where the families disagree</button>
+    <label for="inflation">inflation</label>
+    <input id="inflation" type="range" min="12" max="40" step="1" value="20">
+    <span id="inflation-readout">2.0</span>
     <span class="note">grouped in your browser by cutting the stored merge
     tree &mdash; a view, not a corpus claim</span>
   </div>
@@ -45,6 +49,8 @@
     </select>
     <label><input id="hide-context" type="checkbox"> hide the rest of the
     corpus</label>
+    <button id="path-overlap" type="button" hidden>path over shared papers</button>
+    <button id="path-semantic" type="button" hidden>path over semantic nearness</button>
     <span class="note">pinned topics are laid out in rings by hop distance;
     grouping is suspended while anything is pinned</span>
   </div>
@@ -90,6 +96,7 @@
 <script src="./absence.js"></script>
 <script src="./graph.js"></script>
 <script src="./ego.js"></script>
+<script src="./families.js"></script>
 <script src="./panel.js"></script>
 <script src="./app.js"></script>
 </body>

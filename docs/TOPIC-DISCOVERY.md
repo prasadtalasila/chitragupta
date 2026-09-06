@@ -517,6 +517,30 @@ What the page adds over the static `--html` circle:
   the union happens before the stages run, so `topic_set.json` records
   every phrase as provenance "seed" -- which is why the builder reads
   the two TOML files and annotates each topic with an `origin`.
+- **It shows where the two families disagree.** Both edge families are
+  clustered separately in the browser -- Markov clustering, at an
+  inflation the reader can move and that the panel always names -- and
+  the panel lists the pairs the two partitions split on. Two topics in
+  one *semantic* cluster that share no papers at all are a literature
+  that has not met itself, which is the observation a survey wants to
+  open with; two that share papers and land in different semantic
+  clusters are usually a terminology split worth naming in a draft. On
+  the real corpus this takes about 140 ms over 131 topics and finds 16
+  paper-sharing clusters against 39 semantic ones.
+
+  Never one clustering over a merged graph: fusing the families
+  destroys the disagreement that is the whole point. And never stored --
+  a partition is exactly the kind of claim `docs/TOPIC-DISCOVERY-GRAPH.md`
+  §2 keeps out of the artefact, which is why it is computed in the
+  browser, labelled as the view's own, and written back nowhere.
+- **It walks each family between two pinned topics.** Two buttons --
+  "path over shared papers" and "path over semantic nearness" -- never
+  one fused weight, because a single distance over both families is a
+  number nobody can interpret. Each hop arrives with its shared
+  citekeys or its bridging pair, so the whole chain is explainable by
+  naming real papers, and the strong route is preferred to the short one
+  (Dijkstra over `1 - strength`). "No path over semantic nearness" is a
+  real answer, and often the interesting one.
 - **It explains an absence.** Pin two topics with no edge between them
   and the app says why. If they share no papers, it says that plainly.
   If they *do* share papers, it recomputes the same hypergeometric the

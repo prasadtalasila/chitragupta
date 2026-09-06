@@ -229,6 +229,74 @@
       "<p>" + reading + "</p></div>";
   }
 
+  /* The co-membership grid: where clustering over shared papers and
+     clustering over vocabulary disagree. Two lists, never one score,
+     because the two disagreements read differently -- topics that talk
+     alike and share nothing are a literature that has not met itself,
+     and topics that share papers but split semantically are usually a
+     terminology difference worth naming. */
+  function disagreementHtml(grid) {
+    var nothing = !grid.semanticOnly.length && !grid.overlapOnly.length;
+    return "<h2>Where the two families disagree</h2>" +
+      '<p class="terms">Both edge families clustered in your browser at ' +
+      "inflation " + grid.inflation + ", and compared. Not a corpus claim: " +
+      "<code>--json</code> reports no clusters, and nothing is written back.</p>" +
+      (nothing
+        ? "<p>At this inflation the two families agree about every pair: " +
+          "no topic is grouped by one and split by the other.</p>"
+        : disagreementList(
+          "Talk alike, do not share papers", grid.semanticOnly,
+          "one semantic cluster, different paper-sharing clusters"
+        ) + disagreementList(
+          "Share papers, talk differently", grid.overlapOnly,
+          "one paper-sharing cluster, different semantic clusters"
+        )) +
+      (grid.dropped
+        ? '<p class="terms">' + grid.dropped + " more pair" +
+          (grid.dropped === 1 ? " is" : "s are") + " not listed; the lists are " +
+          "capped so a large cluster cannot fill the panel.</p>"
+        : "");
+  }
+
+  function disagreementList(title, pairs, why) {
+    if (!pairs.length) { return ""; }
+    return "<h3>" + title + "</h3>" + '<p class="terms">' + why + "</p>" +
+      pairs.map(function (pair) {
+        return '<div class="linked-topic"><a data-goto="' + escapeHtml(pair.a) + '">' +
+          escapeHtml(pair.a) + "</a> — <a data-goto=\"" + escapeHtml(pair.b) + '">' +
+          escapeHtml(pair.b) + "</a>" + '<div class="why">' +
+          (pair.shared
+            ? pair.shared + " shared paper" + (pair.shared === 1 ? "" : "s")
+            : "no shared papers at all") + "</div></div>";
+      }).join("");
+  }
+
+  /* One family's path between two pinned topics, hop by hop, each with
+     the citekeys or the bridging pair that justify it. No total: a
+     single distance over a family is uninterpretable, and one over both
+     would be the fusion the design refuses. */
+  function pathHtml(data, result) {
+    var family = result.family === "overlap" ? "shared papers" : "semantic nearness";
+    if (!result.labels) {
+      return "<h3>No path over " + family + "</h3>" +
+        '<p class="terms">Nothing links these two over this family. That is an ' +
+        "answer, not a failure -- try the other one.</p>";
+    }
+    if (!result.hops.length) {
+      return "<h3>Over " + family + "</h3><p>Same topic.</p>";
+    }
+    return "<h3>Over " + family + ", " + result.hops.length + " hop" +
+      (result.hops.length === 1 ? "" : "s") + "</h3>" +
+      result.hops.map(function (hop) {
+        return '<div class="linked-topic"><a data-goto="' + escapeHtml(hop.b) + '">' +
+          escapeHtml(hop.a) + " → " + escapeHtml(hop.b) + "</a>" +
+          '<div class="why">' + hop.strength.toFixed(2) + " · " +
+          hop.evidence.map(function (citekey) {
+            return "<code>" + escapeHtml(citekey) + "</code>";
+          }).join(", ") + "</div></div>";
+      }).join("");
+  }
+
   function suggestionsHtml(candidates, activeIndex) {
     return candidates.map(function (c, i) {
       return '<li data-label="' + escapeHtml(c.label) + '"' +
@@ -254,6 +322,8 @@
     groupHtml: groupHtml,
     egoHtml: egoHtml,
     absenceHtml: absenceHtml,
+    disagreementHtml: disagreementHtml,
+    pathHtml: pathHtml,
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,

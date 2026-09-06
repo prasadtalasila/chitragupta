@@ -370,6 +370,13 @@ continuously, using data that is already on disk.
 
 ### 5.2 MCL over each edge family, separately
 
+> **Shipped** (#677), in the browser rather than the builder, which
+> section 2's decision is what allows: the partitions are labelled as
+> the view's own, the inflation is a visible control, and nothing is
+> written back. Written out rather than taken from cytoscape's
+> `markovClustering`, whose call needs a live canvas -- this way the
+> clustering runs in a test with no browser at all.
+
 Markov clustering is a good fit for this graph: weighted, undirected, no
 target-`k` to guess, and deterministic given the same input and inflation.
 
@@ -572,6 +579,10 @@ MiniRAG, and the app is the natural place for it.
   play, and wrap every mutation in `cy.batch()`.
 
 ### 7.6 Path between two pinned topics
+
+> **Shipped** (#679): two buttons, one per family, each hop carrying
+> its citekeys or its bridging pair. No fused weight and no total
+> distance anywhere.
 
 `dijkstra` with weight `1 - strength` answers "what connects digital twins to
 runtime verification in my corpus", and every hop arrives with either shared

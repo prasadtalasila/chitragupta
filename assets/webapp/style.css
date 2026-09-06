@@ -221,7 +221,10 @@ main { flex: 1; display: flex; min-height: 0; }
 #resolution input[type="range"] { width: 160px; }
 #cut-readout { min-width: 15em; }
 
-#resolution button {
+#resolution input[type="range"]#inflation { width: 90px; }
+#inflation-readout { min-width: 2.5em; font-variant-numeric: tabular-nums; }
+
+#resolution button, #focus button {
   font: inherit;
   color: var(--ink);
   background: #fff;
@@ -231,7 +234,7 @@ main { flex: 1; display: flex; min-height: 0; }
   cursor: pointer;
 }
 
-#resolution button:hover { border-color: var(--muted); }
+#resolution button:hover, #focus button:hover { border-color: var(--muted); }
 #resolution .note { font-style: italic; flex: 1 1 100%; }
 
 /* The focus controls, shown only while something is pinned -- there is

@@ -37,6 +37,7 @@ APP_FILES = (
     "absence.js",
     "graph.js",
     "ego.js",
+    "families.js",
     "panel.js",
     "app.js",
     "vendor/cytoscape.min.js",
