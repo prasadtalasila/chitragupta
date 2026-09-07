@@ -159,3 +159,11 @@ test("the hierarchy lists every merge with its distance", () => {
   const html = panel.hierarchyHtml(DATA.hierarchy);
   assert.match(html, /digital twin \+ machine learning \(distance 0\.31\)/);
 });
+
+test("uncovered seeds are listed, escaped, and joined in payload order", () => {
+  const html = panel.uncoveredHtml(['quantum <"twins">', "swarm robotics"]);
+  assert.match(html, /quantum &lt;&quot;twins&quot;&gt;/);
+  assert.match(html, /<div>swarm robotics<\/div>/);
+  assert.ok(html.indexOf("quantum") < html.indexOf("swarm"));
+  assert.equal(panel.uncoveredHtml([]), "");
+});

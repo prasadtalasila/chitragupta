@@ -48,6 +48,10 @@ what is in it; double-click to open just that one in place.
 topic map (every topic, its provenance and size), and `--groups 8`
 prints this very cut.
 
+The sidebar's collapsed "Uncovered seeds" panel lists the seed phrases
+no topic covers -- the same `uncovered` list the terminal's topic map
+reports -- and hides itself when every seed found a home.
+
 ## 🎚 The resolution slider
 
 ![The same corpus cut finer: twenty-five groups, singleton topics

@@ -330,6 +330,16 @@
     }).join("");
   }
 
+  /* The seed phrases no topic covers -- the terminal's `uncovered`
+     list, shown rather than dropped (#717): a reader exploring the app
+     deserves to learn that a seed came back empty, which is itself the
+     "literature that has not met itself" observation. */
+  function uncoveredHtml(uncovered) {
+    return uncovered.map(function (phrase) {
+      return "<div>" + escapeHtml(phrase) + "</div>";
+    }).join("");
+  }
+
   function hierarchyHtml(hierarchy) {
     return hierarchy.map(function (merge) {
       return "<div>" + escapeHtml(merge.a) + " + " + escapeHtml(merge.b) +
@@ -352,5 +362,6 @@
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,
+    uncoveredHtml: uncoveredHtml,
   };
 });
