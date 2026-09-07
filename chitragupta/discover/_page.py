@@ -80,6 +80,11 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
         # slider inflation per family; empty for an older artefact and
         # the app then clusters in the browser as before.
         "communities": graph.get("communities", {}),
+        # The stored next-hop matrices (#714): indices into the edge
+        # lists above, so a path in either surface is a walk, not a
+        # search; empty for an older artefact and the app then runs its
+        # own Dijkstra as before.
+        "paths": graph.get("paths", {}),
     }
 
 

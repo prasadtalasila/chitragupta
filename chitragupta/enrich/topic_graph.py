@@ -43,6 +43,7 @@ from chitragupta import config
 from chitragupta.enrich import doc_vectors, embed_index
 from chitragupta.enrich.topic_brokerage import brokerage
 from chitragupta.enrich.topic_mcl import communities
+from chitragupta.enrich.topic_paths import next_hop_matrices
 
 
 def _overlap_scan(members: dict, n_docs: int, p_value: float) -> "tuple[list, list]":
@@ -245,6 +246,7 @@ def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dic
         ),
         "hierarchy": hierarchy(labels_with_vectors, centroids),
         "communities": communities([n["label"] for n in nodes], edges_overlap, edges_sem),
+        "paths": next_hop_matrices([n["label"] for n in nodes], edges_overlap, edges_sem),
     }
 
 
