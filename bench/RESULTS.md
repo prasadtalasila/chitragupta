@@ -52,6 +52,7 @@ if it is obvious which is which, so:
 | [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Current, and it supersedes the row above** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. The watchdog arm still hangs and is now off by default, so cancellation latency stays unmeasured and #698 stays open |
 | [2026-09-04 (B4): the converged topic set's stability](#2026-09-04-b4-the-converged-topic-sets-stability-and-where-the-instability-actually-lives) | **Current, and it reframes every stability number above** | Like-for-like emergent ARI is **0.73** (recorded 0.80); refitting UMAP too drops it to **0.44**, so **most of the instability is UMAP's, not HDBSCAN's**. The converged arm's 0.41 must not be quoted -- 98.4% of documents are in more than one topic, so its partition is constructed |
 | [2026-09-07 (B4b): both stability arms](#2026-09-07-b4b-both-stability-arms-and-the-improvement-that-mostly-is-not-one) | **Current** | Every grid setting loses about half its apparent stability when UMAP is refitted as the stage does: `hdb` 0.56--0.82 against `full` 0.35--0.51. The recorded 0.14 -> 0.80 improvement is **0.35 -> 0.37** like-for-like -- no measured difference. And the shipped defaults are not the most stable setting: `(5, 5, 5, 3)` scores 0.51 against their 0.37 |
+| [2026-09-07 (B4c): the converged set gets an honest number](#2026-09-07-b4c-the-converged-set-gets-an-honest-number-and-it-is-better-than-the-one-being-retracted) | **Current** | The converged topic set scores **omega 0.60** over 10 resamples. The retracted partition-ARI of 0.41 was *understating* it, not flattering it. Emergent whole-pipeline ARI is 0.4405, inside B4b's independent 0.35--0.51 range |
 | [2026-09-04 (B7): what shape the topic graph is](#2026-09-04-b7-what-shape-the-topic-graph-is) | **Current** | Closes B7. Edge counts are threshold-sensitive (1,039/759/551 across p) but **average clustering barely moves** (0.44-0.48). Edge sets survive a 10% document bootstrap at Jaccard **0.88 / 0.83** |
 | [2026-09-04 (B10): the reuse tiers](#2026-09-04-b10-the-reuse-tiers) | **Current** | **Closes the 13-vs-15 discrepancy: both were right.** Tier 3 fires on **15 of 22**; 13 is where it is the only tier firing. Tier 3 still has **no precision number** (182 findings, all unlabelled). Tier 2's population fell 27 -> 12 after #548, but its precision cannot be quoted -- 18 labels match no current finding |
 | [2026-09-04 (B11): all ten aids, and `union` priced at last](#2026-09-04-b11-all-ten-aids-and-union-priced-at-last) | **Current, and it supersedes the 2026-08-27 costs** | **`union`: 135 ms**, closing its "has not been measured" caveat and confirming it sits in `uncited`'s class. **`support` has roughly doubled** (+65% to +95%) while `verbatim` moved +4-18%. Diagnosed 2026-09-07 as a corpus *re-segmentation* effect, not a code regression and not a larger corpus: `support` scores one entailment pair per quotable passage, `verbatim` one fetch per source |
@@ -5113,6 +5114,44 @@ the control. See the 2026-09-07 (B3) section below: every arm was
 running over *zero documents*, because the throwaway `CONTENT_DIR` has
 no ledger for `build_corpus()` to read. The rebuild arms work once that
 is fixed. The watchdog arm hangs for a different, still-unfound reason.
+
+### 2026-09-07 (B4c): the converged set gets an honest number, and it is better than the one being retracted
+
+`bench/bench_topic_converged_stability.py --repeats 10`, dropping 10% of
+documents per resample and running the real stages each time. Baseline:
+83 emergent topics, 129 converged, **98.0%** of documents in more than
+one.
+
+| arm | statistic | value |
+| --- | --- | ---: |
+| emergent, whole pipeline refit | adjusted Rand index | 0.4405 |
+| converged | **omega index** | **0.6003** |
+| converged | ARI over a constructed partition | 0.4021 *(do not quote)* |
+
+**The retracted number was understating the converged set, not
+flattering it.** Issue #697 says the 0.41 "should not be quoted" because
+its partition is an artefact of a first-listed-topic rule at 98%
+multi-membership -- correct, and the reason still holds. But the honest
+statistic comes out at **0.60**, half again as high. The construction
+rule was discarding real agreement: two runs that place a document in
+overlapping-but-differently-ordered topic sets look like a disagreement
+to a partition and like the agreement they are to omega.
+
+**Why omega.** It is the standard generalisation of ARI to overlapping
+clusterings: for each *pair* of documents it compares how many topics
+the two share, chance-corrected the same way ARI is. It needs no
+partition, and -- the property that matters as much here -- it is
+label-free, so it survives topics being renamed between runs without a
+matching step that would be one more arbitrary rule.
+`bench_topic_converged_stability.py`'s self-check pins exactly that: on
+two assignments differing only in their overlap, the partition ARI
+scores 1.0 and omega scores 0.4.
+
+**A cross-check worth noting.** The emergent arm here (0.4405, whole
+pipeline refit) lands inside the 0.35--0.51 range B4b measures for the
+same question on a different harness and a different document set (642
+ledger items here against 497 with parsed text there). Two independent
+implementations agreeing is the strongest evidence in either entry.
 
 ### 2026-09-07 (B4b): both stability arms, and the improvement that mostly is not one
 

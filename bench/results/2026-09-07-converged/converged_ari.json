@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "repeats": 10,
+    "holdout": 0.1,
+    "emergent_ari_mean": 0.4405,
+    "converged_ari_mean": 0.4021,
+    "converged_omega_mean": 0.6003,
+    "baseline_multi_membership_share": 0.9799,
+    "baseline_n_topics_emergent": 83,
+    "baseline_n_topics_converged": 129
+  },
+  "repeats": [
+    {
+      "repeat": 0,
+      "emergent_ari": 0.4951,
+      "converged_ari": 0.4533,
+      "converged_omega": 0.6234,
+      "n_topics_emergent": 74,
+      "n_topics_converged": 122,
+      "multi_membership_share": 0.9799
+    },
+    {
+      "repeat": 1,
+      "emergent_ari": 0.4077,
+      "converged_ari": 0.4071,
+      "converged_omega": 0.5944,
+      "n_topics_emergent": 72,
+      "n_topics_converged": 120,
+      "multi_membership_share": 0.9798
+    },
+    {
+      "repeat": 2,
+      "emergent_ari": 0.491,
+      "converged_ari": 0.3425,
+      "converged_omega": 0.6051,
+      "n_topics_emergent": 76,
+      "n_topics_converged": 122,
+      "multi_membership_share": 0.9751
+    },
+    {
+      "repeat": 3,
+      "emergent_ari": 0.4324,
+      "converged_ari": 0.5053,
+      "converged_omega": 0.5922,
+      "n_topics_emergent": 74,
+      "n_topics_converged": 121,
+      "multi_membership_share": 0.98
+    },
+    {
+      "repeat": 4,
+      "emergent_ari": 0.3939,
+      "converged_ari": 0.3962,
+      "converged_omega": 0.6095,
+      "n_topics_emergent": 80,
+      "n_topics_converged": 128,
+      "multi_membership_share": 0.9823
+    },
+    {
+      "repeat": 5,
+      "emergent_ari": 0.4092,
+      "converged_ari": 0.4058,
+      "converged_omega": 0.593,
+      "n_topics_emergent": 73,
+      "n_topics_converged": 125,
+      "multi_membership_share": 0.9865
+    },
+    {
+      "repeat": 6,
+      "emergent_ari": 0.4452,
+      "converged_ari": 0.3698,
+      "converged_omega": 0.6115,
+      "n_topics_emergent": 73,
+      "n_topics_converged": 122,
+      "multi_membership_share": 0.9779
+    },
+    {
+      "repeat": 7,
+      "emergent_ari": 0.4154,
+      "converged_ari": 0.3634,
+      "converged_omega": 0.5835,
+      "n_topics_emergent": 75,
+      "n_topics_converged": 124,
+      "multi_membership_share": 0.9733
+    },
+    {
+      "repeat": 8,
+      "emergent_ari": 0.45,
+      "converged_ari": 0.4042,
+      "converged_omega": 0.5945,
+      "n_topics_emergent": 72,
+      "n_topics_converged": 120,
+      "multi_membership_share": 0.9864
+    },
+    {
+      "repeat": 9,
+      "emergent_ari": 0.4656,
+      "converged_ari": 0.3737,
+      "converged_omega": 0.5964,
+      "n_topics_emergent": 78,
+      "n_topics_converged": 125,
+      "multi_membership_share": 0.9821
+    }
+  ]
+}
