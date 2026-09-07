@@ -57,6 +57,11 @@ class TestPathCli:
         assert discover.main(["--path", "A", "Z"]) == 2
         assert "never one fused weight" in capsys.readouterr().err
 
+    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
+        prepare(isolated_config)
+        assert discover.main(["--path", "quantum blockchain", "Z", "--family", "overlap"]) == 1
+        assert "quantum blockchain" in capsys.readouterr().err
+
     def test_the_same_topic_twice_refuses(self, isolated_config, capsys):
         prepare(isolated_config)
         assert discover.main(["--path", "A", "A", "--family", "overlap"]) == 1
