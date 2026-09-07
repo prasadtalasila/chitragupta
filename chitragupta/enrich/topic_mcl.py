@@ -16,6 +16,11 @@ artefact's own topic order -- compact, and the reader rebuilds the
 member lists from data it already holds.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # the runtime import stays lazy, inside cluster()
+    import numpy as np
+
 MAX_ITERATIONS = 40
 EPSILON = 1e-6
 # The slider's own steps: `#inflation` is min=12 max=40 step=1, read as
