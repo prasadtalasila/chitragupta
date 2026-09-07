@@ -57,6 +57,113 @@ def _draft(config_dir, text):
     return draft
 
 
+class TestSectionHeadingsAreNotPremises:
+    """Issue #719. `_score_claim` returns `max()` over everything it is
+    given, so a heading that scores well is *reported* as the claim's
+    best supporting passage -- a wrong answer, not a weak one."""
+
+    def test_a_heading_never_reaches_the_entailer(self, isolated_config):
+        """Asserted on the entailer's own call log rather than on the
+        winner: a test that only checked which passage won would still
+        pass if the heading were scored and merely lost, which is not
+        what this change claims."""
+        _add_item("heading_2024")
+        _sidecar(
+            "heading_2024",
+            [
+                {"text": "3. Closing the loop", "page": 1, "label": "section_header"},
+                {"text": "Twins close the control loop.", "page": 1, "label": "text"},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop [@heading_2024].\n")
+        fake = FakeEntailer(
+            {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
+        )
+        report = claim_support.build_report(draft, fake)
+
+        premises = [premise for call in fake.calls for premise, _claim in call]
+        assert "3. Closing the loop" not in premises, premises
+        assert report.findings[0].passage.text == "Twins close the control loop."
+
+    def test_a_heading_that_would_have_won_does_not(self, isolated_config):
+        """The heading is deliberately the higher-scoring pair, so a
+        filter that is not actually applied fails this by reporting the
+        heading as the claim's support."""
+        _add_item("winner_2024")
+        _sidecar(
+            "winner_2024",
+            [
+                {"text": "Digital twins close the loop", "page": 1, "label": "section_header"},
+                {"text": "The plant was instrumented in 2019.", "page": 2, "label": "text"},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop [@winner_2024].\n")
+        fake = FakeEntailer(
+            {
+                ("Digital twins close the loop", "Digital twins close the loop."): 0.99,
+                ("The plant was instrumented in 2019.", "Digital twins close the loop."): 0.05,
+            }
+        )
+        report = claim_support.build_report(draft, fake)
+
+        assert report.findings[0].passage.text == "The plant was instrumented in 2019."
+        assert report.findings[0].score == pytest.approx(0.05)
+
+    def test_an_unlabelled_passage_is_still_a_premise(self, isolated_config):
+        """`passages._from_sidecar` leaves `label` None for any record
+        without one -- every sidecar written before labelling. Dropping
+        those would empty the premise set for those sources and move
+        their citations from `scored` to `unscoreable`."""
+        _add_item("unlabelled_2024")
+        _sidecar("unlabelled_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@unlabelled_2024].\n")
+        fake = FakeEntailer(
+            {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
+        )
+        report = claim_support.build_report(draft, fake)
+
+        assert report.unscoreable == {}
+        assert report.findings[0].score == pytest.approx(0.91)
+
+    def test_list_items_tables_and_formulae_stay(self, isolated_config):
+        """Only `section_header` is filtered. A bulleted line carries a
+        real assertion, and a table cell can support a numeric claim --
+        dropping either would lose genuine support with no measurement
+        saying it does not."""
+        _add_item("kept_2024")
+        _sidecar(
+            "kept_2024",
+            [
+                {"text": "The loop closes in 40 ms.", "page": 1, "label": "list_item"},
+                {"text": "latency | 40 ms", "page": 1, "label": "table"},
+                {"text": "t = 40", "page": 1, "label": "formula"},
+            ],
+        )
+        draft = _draft(config, "The loop closes in 40 ms [@kept_2024].\n")
+        fake = FakeEntailer({("The loop closes in 40 ms.", "The loop closes in 40 ms"): 0.88})
+        report = claim_support.build_report(draft, fake)
+
+        premises = {premise for call in fake.calls for premise, _claim in call}
+        assert premises == {"The loop closes in 40 ms.", "latency | 40 ms", "t = 40"}
+        assert report.unscoreable == {}
+
+    def test_a_source_that_is_all_headings_says_so(self, isolated_config):
+        """The pre-existing "page-level only" reason would be false here:
+        the source has readable text, it just has no premise in it."""
+        _add_item("allheadings_2024")
+        _sidecar(
+            "allheadings_2024",
+            [{"text": "1. Introduction", "page": 1, "label": "section_header"}],
+        )
+        draft = _draft(config, "Digital twins close the loop [@allheadings_2024].\n")
+        fake = FakeEntailer({})
+        report = claim_support.build_report(draft, fake)
+
+        assert fake.calls == [], "a source with no premise still called the model"
+        assert "section headings" in report.unscoreable["allheadings_2024"]
+        assert "page-level only" not in report.unscoreable["allheadings_2024"]
+
+
 class TestBuildReport:
     def test_scores_a_claim_against_its_citekeys_best_passage(self, isolated_config):
         _add_item("good_2024")

@@ -65,7 +65,8 @@ quietly violate that posture.
 > stored half is not being built**: `analysis`, `communities`, `xy`,
 > `edges_withheld` and `layout_params` (section 3, and their rows in
 > section 12) are new fields in `topic_graph.json` and are therefore out
-> of scope. And **the renderer-contract objection dissolves**: the
+> of scope (the #707 amendment in the next box reopens this, under
+> conditions). And **the renderer-contract objection dissolves**: the
 > reason clustering, centrality and brokerage were pushed into the
 > builder is that, computed in the browser, they would be a new claim
 > about the corpus that `--json` could not confirm. An app that is
@@ -85,6 +86,48 @@ quietly violate that posture.
 >
 > Issue #670 carries the ranked ten features this filter left, and
 > #671--#679 are the first nine of them.
+
+Two decisions, two days apart, in one section -- the second box amends
+the first rather than replacing it:
+
+> **Amended (2026-09-07, issue #707): stored analysis fields are
+> allowed, under three conditions.** Section 13 records what shipping
+> the #670 features did to this decision's premise: the bench scores
+> the browser's partitions against gold data, the app/terminal gap grew
+> a whole analytical layer, and the panel's own numbers are exactly the
+> ones a survey introduction quotes. Section 13.5's sentence is now the
+> contract: the pure-renderer clause promises *agreement between
+> surfaces*, not silence from one of them -- any number either view
+> presents must be derivable by the other from the same artefact,
+> pinned by shared test vectors.
+>
+> A field may therefore be stored in `topic_graph.json` when all three
+> hold:
+>
+> 1. it is a **deterministic function of data already in the artefact**
+>    (edges, members, hierarchy) -- no new corpus reading, no model;
+> 2. the **parameters used are recorded beside it**, section 3's
+>    `analysis`/`layout_params` shape, so the number is reproducible
+>    from the artefact alone;
+> 3. a **shared case file pins every runtime that computes or consumes
+>    it** to the same answers, the `hypergeometric_cases.js` /
+>    `cut_cases.json` pattern.
+>
+> New fields take section 3's already-designed names (`analysis`,
+> `communities`, `edges_withheld`, `layout_params`, `xy`) rather than
+> inventing others. Two placement decisions travel with this amendment:
+> the precompute lives in **`chitragupta/enrich/topic_graph.py`** (the
+> discover layer computes nothing about topics -- `_data.py`'s boundary
+> is load-bearing and stands); and if `networkx` is used it is declared
+> **explicitly under the `enrich` extra** in `pyproject.toml`, where it
+> today arrives only transitively -- section 14's verdict that
+> numpy/scipy suffice also stands, so declaring it is a choice each
+> implementing PR argues, not a default. Section 3's "not being built"
+> banner and section 12's builder rows are partially reopened by
+> exactly this amendment; the browser-side captions ("computed in your
+> browser", "not a corpus claim") change only in the PRs that actually
+> store each field, to "read from the artefact, parameters alongside"
+> wording.
 
 Cytoscape.js ships a substantial algorithms library in core, all of it available
 without a single extra byte of vendored code:
@@ -139,10 +182,11 @@ be reproduced from the page alone.
 
 ## 3. Proposed `topic_graph.json` additions
 
-> **Not being built.** Section 2's decision keeps the artefact as it
-> is; this schema diff stays as the record of what a stored version
-> would have looked like, and section 7.7 explains how the browser
-> reaches the same answer as `edges_withheld` without it.
+> **Partially reopened by #707's amendment to section 2.** These fields
+> may now be built, one PR at a time, under the amendment's three
+> conditions; until a given field's PR lands, section 7.7's
+> browser-side recomputation remains how the app reaches the
+> `edges_withheld` answer without it.
 
 A schema diff, so the builder and the app can be changed in one pass. Everything
 here is derived from data the stage already computes; nothing needs a new model
