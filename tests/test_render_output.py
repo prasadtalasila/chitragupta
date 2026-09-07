@@ -910,10 +910,9 @@ class TestWideTableCaptionRenderReal:
     emitted LaTeX can see, because the `\\caption{}` is identical either
     way."""
 
-    # One long caption and nothing else, so every wide line pdftotext
-    # reports belongs to it. At 12pt, 4in holds roughly 55 characters and
-    # `\textwidth` roughly 86, so the bar below sits between the two by a
-    # wide enough margin to survive a different font metric.
+    # At 12pt, 4in holds roughly 55 characters and `\textwidth` roughly
+    # 86, so the bar below sits between the two by a wide enough margin
+    # to survive a different font metric.
     _CAPTION = (
         "A rather long caption that should really span the whole width of the "
         "text block on the page, not merely the four inches longtable defaults to."
@@ -951,8 +950,17 @@ class TestWideTableCaptionRenderReal:
             text=True,
             check=True,
         ).stdout
-        widest = max(len(line.strip()) for line in text.splitlines())
-        assert widest > 70, text
+        # Only the caption's own lines, not the widest line on the page:
+        # the table body beneath it is also laid out in columns, and
+        # measuring the whole page would let a wide *row* carry this
+        # assertion and keep it green with the fix reverted. `-layout`
+        # emits the caption as the run of non-blank lines starting at the
+        # number LaTeX gave it.
+        lines = [line.strip() for line in text.splitlines()]
+        numbered = next(line for line in lines if line.startswith("Table 1:"))
+        rest = lines[lines.index(numbered) :]
+        caption = rest[: rest.index("")]
+        assert max(len(line) for line in caption) > 70, caption
 
 
 class TestCaptionedFigureRenderReal:
