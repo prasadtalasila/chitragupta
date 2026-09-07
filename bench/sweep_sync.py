@@ -56,6 +56,13 @@ PROGRESS_RE = re.compile(r"^\s*\[\d+/\d+\]\s")
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BENCH_DIR = REPO_ROOT / "bench"
 
+# `chitragupta/sync.py`'s EXIT_BIB_INTEGRITY, copied rather than imported
+# for the reason `self_check`'s docstring gives about every other constant
+# in this file. "The bibliography promises a document this host cannot
+# produce" -- a real finding, but not a parse failure and not a sweep
+# failure.
+EXIT_BIB_INTEGRITY = 3
+
 
 def allowed_cpus() -> int:
     getaffinity = getattr(os, "sched_getaffinity", None)
@@ -268,6 +275,21 @@ def self_check() -> None:
 
     runs = [{"seconds": 30.0}, {"seconds": 10.0}, {"seconds": 20.0}]
     assert _median_run(runs)["seconds"] == 20.0, "_median_run reports the best run"
+
+    # The status column, which is the number issue #696 was about: a
+    # bibliography finding on an otherwise complete parse must not wear
+    # the same `!!` a lost document does, and a lost document must not
+    # stop wearing it.
+    row = {"workers_resolved": 12, "startup_s": None}
+    assert "!!" not in _run_status({**row, "returncode": EXIT_BIB_INTEGRITY, "failed": 0}), (
+        "a 497-of-497 parse with one stale bib path still reads as a failed sweep row"
+    )
+    assert "!!" in _run_status({**row, "returncode": 1, "failed": 1}), (
+        "a run that lost a document no longer reads as a failure"
+    )
+    assert _run_status({**row, "returncode": 0, "failed": 0}) == "", (
+        "a wholly clean run has picked up a status note"
+    )
 
 
 def one_run(workers: int, gpus: int, ocr: bool, python: str, keep_output: bool = False) -> dict:
@@ -488,15 +510,38 @@ def _run_plan(plan, repeat, python, out_path):
     return records
 
 
+def _run_status(rec) -> str:
+    """The `!!`-or-not note beside one swept row.
+
+    Split out of `_print_run_line` so `self_check` can assert on it: a
+    number this harness publishes has to be provably visible, and the
+    distinction below is exactly the one that was invisible before.
+
+    `EXIT_BIB_INTEGRITY` is not a sweep failure, and reading it as one is
+    what issue #696 was filed for: every row of a 497-of-497 clean parse
+    wore `!! rc=1 failed=0` because one bib entry pointed at a PDF that
+    had moved. The parse timing this sweep measures is unaffected by
+    that, so the row is reported as timed-and-clean with the
+    bibliography note beside it rather than flagged.
+
+    A literal, not an import: this file deliberately does not import
+    `chitragupta.sync` (see `self_check`'s docstring -- doing so would
+    tie the harness to the stack being importable in *its* interpreter
+    rather than in `--python`'s). Same trade as the copied output
+    patterns above, and the same obligation to re-check by hand.
+    """
+    if rec["returncode"] == EXIT_BIB_INTEGRITY and rec["failed"] == 0:
+        return "  (bib integrity: see the run's no-PDF breakdown)"
+    if rec["returncode"] == 0 and rec["failed"] == 0:
+        return ""
+    return f"  !! rc={rec['returncode']} failed={rec['failed']}"
+
+
 def _print_run_line(w, g, o, rec):
     clamp = ""
     if rec["workers_resolved"] and rec["workers_resolved"] != w:
         clamp = f"  !! CLAMPED to {rec['workers_resolved']} -- see worker_ceiling()"
-    status = (
-        ""
-        if rec["returncode"] == 0 and rec["failed"] == 0
-        else f"  !! rc={rec['returncode']} failed={rec['failed']}"
-    )
+    status = _run_status(rec)
     extra = ""
     if rec.get("startup_s") is not None:
         extra = (
