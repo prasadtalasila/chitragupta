@@ -803,6 +803,162 @@ all**.
 
 ---
 
+## 13. The app and the terminal: the capability gap, and two ways to close it
+
+Written 2026-09-07, after the nine #670 features landed. Everything above
+still holds; this section records what shipping them *did* to the
+renderer contract, in plainer language than the sections that argued for
+them.
+
+### 13.1 The gap, stated plainly
+
+`corpus discover` and the `--app` page read the same artefact, and the
+contract says the app "cannot disagree with `--json` or with the
+terminal views". Since section 2's decision, that sentence is true only
+because the terminal is silent: the app now computes a whole analytical
+layer -- the merge-tree grouping, the MCL partitions and their
+disagreement grid, ego density and Burt brokerage, typed shortest paths,
+the withheld-edge explanation -- and the terminal can produce none of
+it. You cannot disagree with someone who says nothing. A scripted
+consumer, which in this project includes every drafting skill, cannot
+reach any answer the panel shows.
+
+| The app answers | The terminal's answer |
+| --- | --- |
+| what are the broad areas (resolution cut) | the raw `hierarchy` array in `--json`, uncut |
+| candidate survey sections (MCL per family) | nothing |
+| where the families disagree | nothing |
+| is this topic a theme or a bridge | nothing |
+| what connects A to B, via which papers | nothing |
+| why is there *no* edge here | nothing |
+| set comparison across pinned topics | nothing |
+
+The terminal's own exclusives -- the resolution ladder, the
+cross-encoder rescoring, the plural-match PageRank `neighbourhood` --
+are all about *resolving a phrase*, not about exploring the graph. The
+gap is one-directional.
+
+### 13.2 Why "view-derived, not a corpus claim" is fraying
+
+Three developments since the decision undercut its central premise:
+
+1. **The bench treats the browser's numbers as corpus claims.**
+   `bench/topic_cluster_eval.py` drives `families.js` through `node`,
+   scores its partitions against `content/topic_gold.toml`, and the
+   measured inflation default is quoted in PRs. A number defended
+   against gold data in a PR is a claim about the corpus, whatever the
+   panel's caption says.
+2. **Section 2's own screenshot rule condemns the placement.** Ego
+   density, a community partition, "these two semantic clusters share
+   no papers" -- these are exactly the numbers a survey introduction
+   quotes, and this document says so itself (section 5.2).
+3. **The drift problem is solved but used once.**
+   `tests/webapp/hypergeometric_cases.js` pins the browser's absence
+   arithmetic to scipy's answers from both runtimes. That pattern is
+   the general answer to "two implementations would disagree", and it
+   currently protects only the absence feature.
+
+### 13.3 Path A: terminal twins, no artefact change
+
+Keep section 2's decision intact and give the reader-side verbs the
+same view-derived answers, labelled the same way: `discover
+--clusters [--inflation X]`, `discover <topic> --brokerage`,
+`discover --path A B --family overlap|semantic`, `discover --why A B`.
+Each is computed on the fly from the artefact, written back nowhere,
+and pinned to the JavaScript by a shared case file asserted from both
+runtimes -- the `hypergeometric_cases.js` shape, once per twinned
+computation. `--why` costs almost nothing: `absence.js`'s inputs
+(`members`, `n_docs`) are already read by the Python side. As a bonus,
+`bench/topic_cluster_eval.py` could shed its `node` dependency, or keep
+it as a third cross-check.
+
+This is the recommended path: it restores parity without reopening the
+artefact schema, and the maintenance cost -- one case file per twin --
+is the cost the project has already accepted once.
+
+### 13.4 Path B: reopen section 3's stored half, partially
+
+Store only the quotable, selection-independent subset -- `communities`
+at the gold-measured inflations, per-family `analysis` -- and let both
+surfaces render it. The stronger fix for the screenshot rule, but it
+means builder work, schema migration, and the configuration knobs
+below. Worth reopening if path A's twin maintenance ever bites; the
+gold set (#689) has already produced exactly the evidence section 5.2
+said a stored default would need.
+
+What path B needs in `config.toml`, and nothing more:
+
+- **Two MCL inflations, one per family** (`[enrich]`
+  `topic_graph_mcl_inflation_overlap` / `_semantic`). Two because the
+  gold measurement already shows the families peak at different values
+  -- paper-sharing well above 2.0, semantic at 2.0 -- and one shared
+  knob would fuse what the design refuses to fuse.
+- **A default hierarchy cut** (target group count, ~8) -- only if the
+  artefact records a canonical partition rather than leaving the cut to
+  the slider. Prerequisite: extend `bench/topic_cluster_eval.py` to
+  score cuts, which section 9 already lists as unscored.
+- **PageRank damping** for `analysis.pagerank` -- a named constant
+  (0.85) more than a knob, but section 2 requires it recorded and
+  visible.
+
+Deliberately knob-free: `edges_withheld` needs no cap (it is already
+bounded to pairs sharing a paper); the MDS variant and dimensions and
+the Burt formulas have no defensible alternative values (payload
+entries, not knobs); and there is no master on/off switch -- the
+honest-degradation pattern (fields absent, controls hidden with a note)
+already produces that behaviour without a second mechanism.
+
+### 13.5 Either way, one sentence of contract changes
+
+The pure-renderer clause should promise *agreement between surfaces*,
+not silence from one of them: any number either view presents must be
+derivable by the other from the same artefact, pinned by shared test
+vectors.
+
+---
+
+## 14. Could networkx replace cytoscape.js?
+
+Asked when weighing path B, since consolidating the analytics into the
+builder makes Python the place they run. The answer splits cleanly
+along the computation/rendering line, and the app's own code has
+already drawn it.
+
+**Computation: yes, trivially -- because nothing uses cytoscape's
+algorithms today.** Despite section 2's inventory of the library,
+`families.js`, `ego.js` and `absence.js` ship their own MCL, Dijkstra,
+BFS and hypergeometric tail, written out precisely so they run under
+`node --test` with no canvas. Cytoscape.js is used purely as the
+interactive renderer. So a builder-side consolidation takes nothing
+away from the app that the app actually uses. On the Python side:
+
+- `networkx` covers PageRank, betweenness, and -- directly -- Burt's
+  `effective_size` and `constraint`, plus ego-subgraph density.
+- **MCL is not in networkx.** The options are a short scipy
+  implementation over the sparse adjacency matrix (section 3 already
+  notes numpy/scipy suffice for everything), a port of `families.js`'s
+  own loop pinned by a shared case file, or continuing to drive the
+  JavaScript through `node` as the bench does. What must not happen is
+  an unpinned second implementation free to disagree with the one the
+  browser shows.
+- Classical MDS is scipy (one eigendecomposition), and the hierarchy
+  is already `scipy.cluster.hierarchy`.
+
+So networkx is a convenience, not a requirement -- section 3's verdict
+("no new dependency is required, and adding `networkx` is a reasonable
+alternative if the code-size ratchet prefers it") stands, with the MCL
+caveat now explicit.
+
+**Rendering: no.** networkx draws static matplotlib figures; the
+offline, interactive, `file://`-forever canvas -- compound nodes,
+expand/collapse, hover, chips -- is exactly the part cytoscape.js
+exists for, and the static `--html` circle does not use cytoscape at
+all. Consolidation would empty cytoscape's algorithms role, which is
+already empty, and leave its rendering role, which nothing in Python
+replaces.
+
+---
+
 ## Sources consulted
 
 - `docs/TOPIC-DISCOVERY.md` (the `topic-graph` stage, the `corpus discover`
