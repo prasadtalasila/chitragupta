@@ -553,6 +553,16 @@ Measured 2026-08-27 on this host, across five real drafts spanning
 1,258 to 18,061 words, with and without a dossier, at `--formats md`.
 Milliseconds:
 
+**Read `support`'s column as conditional on the corpus's passage
+granularity, not just on the draft.** A re-timing on 2026-09-04
+(`bench/RESULTS.md`, B11) put the same five drafts at +65% to +95%, and
+the cause is not a change in this layer's code: `support` scores one
+entailment pair per *quotable passage of each cited source*, so a
+re-parse that segments the same PDFs more finely multiplies its work
+without changing a single draft or a single citation. The two tables
+price different passage universes and are not comparable row by row.
+"What `support`'s cost actually tracks", below, has the measurement.
+
 | words | dossier | prov | verbatim | cover | synth | figure | uncited | quote | agenda | support | all nine |
 | ---: | :---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | 1,258 | no | 180 | 447 | 303 | 90 | 87 | 88 | 89 | 575 | 33,464 | **35,323** |
@@ -593,13 +603,50 @@ distinct citekey**
 ([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)) -- each source is
 embedded once per scanned draft, and this is that mechanism seen from
 outside. `support` scores every *citation*, not every source -- two
-citations of the same paper are two entailment calls, not one -- so it
-tracks citation count instead: **835--962 ms per citation** on the four
-larger drafts, rising to 1.5 s on the smallest (11 citekeys, 23
-citations), where a largely fixed model-load cost is spread over the
-fewest calls. **Estimate `verbatim`/`provenance` from the citekey
-count and `support` from the citation count -- not from either's word
-count.**
+citations of the same paper are two entailment calls, not one -- and on
+2026-08-27 that came to **835--962 ms per citation** on the four larger
+drafts, rising to 1.5 s on the smallest (11 citekeys, 23 citations),
+where a largely fixed model-load cost is spread over the fewest calls.
+**Estimate `verbatim`/`provenance` from the citekey count -- not from
+the word count.** `support` needs a second factor, below: the
+per-citation figure above held only for the corpus it was measured on.
+
+### 🧮 What `support`'s cost actually tracks
+
+Not the citation count on its own. `chitragupta/review/claim_support.py`'s
+`_score_claim` scores **one entailment pair per quotable passage of the
+cited source**, for every (citation, claim) -- so the model work is
+
+```text
+sum over citations of |quotable passages of that citation's source|
+```
+
+and the second factor is set by how finely the parse segmented the
+corpus, which no draft controls. Measured 2026-09-07 over the two
+2026-08-27 drafts that still exist:
+
+| draft | words | citations | entailment pairs | pairs per citation |
+| --- | ---: | ---: | ---: | ---: |
+| deep-research.md | 1,258 | 23 | 20,402 | **887** |
+| survey.md | 2,448 | 43 | 29,738 | **725** |
+
+Against `content/backup/20260901-content/`, the passage sidecars as they
+stood before the 2026-09-04 re-parse, the pair count grew **1.67x** and
+**1.49x** on those same two drafts -- with the corpus unchanged at 497
+parsed documents and 145 without a PDF on both dates, and with the same
+drafts citing the same sources. That is a re-segmentation effect, not a
+larger corpus and not a change in this layer.
+
+It is also why `verbatim` barely moved over the same period while
+`support` nearly doubled: `verbatim` fetches each *source* once, so
+finer segmentation leaves its count alone, whereas `support` iterates
+the passages themselves. A benchmark that reads the two columns as
+evidence for or against "a corpus effect" has to say which count it
+means.
+
+**So estimate `support` from the pair count**, and treat any
+milliseconds-per-citation figure as valid only for the passage universe
+it was measured against.
 
 Everything besides those two is flat and nearly free. `coverage` holds
 ~305 ms at every size, because its work is a corpus query rather than a
