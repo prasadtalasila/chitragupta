@@ -1908,6 +1908,22 @@ class TestTerminateWorkers:
         """The pdftotext backend uses threads; there are no processes."""
         pdf_text.terminate_workers(types.SimpleNamespace())
 
+    def test_an_already_shut_down_pool_has_nothing_to_terminate(self):
+        """`ProcessPoolExecutor.shutdown()` sets `_processes = None`
+        (CPython `concurrent/futures/process.py`, the block that drops
+        references "to reduce the risk of opening too many files"), so
+        the attribute is *present and None* rather than absent -- which
+        the `getattr` default above does not cover.
+
+        This is the state the stall watchdog's own recovery path meets:
+        `sync_pool._as_they_land` calls `terminate_workers` when the
+        watchdog fires, and the executor may already be tearing down. It
+        raised `AttributeError: 'NoneType' object has no attribute
+        'values'` there, so the mechanism meant to rescue a stalled sync
+        crashed instead of rescuing it (issue #726).
+        """
+        pdf_text.terminate_workers(types.SimpleNamespace(_processes=None))
+
 
 class TestInterruptGuard:
     def test_it_installs_and_restores_the_handler(self):
