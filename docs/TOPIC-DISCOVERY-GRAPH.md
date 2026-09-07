@@ -87,6 +87,9 @@ quietly violate that posture.
 > Issue #670 carries the ranked ten features this filter left, and
 > #671--#679 are the first nine of them.
 
+Two decisions, two days apart, in one section -- the second box amends
+the first rather than replacing it:
+
 > **Amended (2026-09-07, issue #707): stored analysis fields are
 > allowed, under three conditions.** Section 13 records what shipping
 > the #670 features did to this decision's premise: the bench scores
