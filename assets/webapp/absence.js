@@ -8,11 +8,11 @@
    unsurprising".
 
    `docs/TOPIC-DISCOVERY-GRAPH.md` §7.7 answers it with a stored
-   `edges_withheld` list. Under #670's decision that field is out of
-   scope -- and unnecessary, because the payload already carries every
-   input the test needs: each topic's `members`, and `n_docs`. So the
-   browser recomputes the same tail the stage computed, on the same
-   numbers, for the pair the reader asked about.
+   `edges_withheld` list. #670 first kept that field out of scope; the
+   §2 amendment (#707) reopened it, and #710 stores it -- so `explain`
+   now prefers the stage's own stored p for a withheld pair, and only
+   recomputes the tail for a payload from an older run, which the
+   payload can always feed: each topic's `members`, and `n_docs`.
 
    The arithmetic has to agree with `chitragupta/enrich/topic_graph.py`,
    which calls `scipy.stats.hypergeom.sf(k - 1, n_docs, |A|, |B|)`. A
@@ -96,9 +96,18 @@
       .filter(function (citekey) { return mine.has(citekey); })
       .sort();
     var sizes = { a: topics[a].members.length, b: topics[b].members.length };
+    /* The stage's own number when the payload carries it (#710 stored
+       §7.7's `edges_withheld`): reading it beats recomputing it, since
+       the stored p is by definition the one the gate weighed. The
+       recomputation stays as the fallback for a payload from an older
+       run, still pinned to scipy by hypergeometric_cases.js. */
+    var stored = (data.edges_withheld || []).filter(function (e) {
+      return (e.a === a && e.b === b) || (e.a === b && e.b === a);
+    })[0];
     return {
       shared: shared,
-      p: shared.length ? survival(shared.length, data.n_docs, sizes.a, sizes.b) : null,
+      p: stored ? stored.p_value
+        : shared.length ? survival(shared.length, data.n_docs, sizes.a, sizes.b) : null,
       sizes: sizes,
       docs: data.n_docs,
       drawn: data.edges_overlap.some(function (e) {
