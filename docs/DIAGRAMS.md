@@ -776,7 +776,7 @@ flowchart LR
 
   FIX["<b>DISCARD DRAFT</b><br/><small>drop the claim; the lesson<br/>rarely needed it in the first place</small>"]
 
-  P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta draft references</code><br/><small><b>tutorial-writer</b> passes<br/><code>--heading &quot;Further reading&quot;</code>,<br/>which then survives into the render<br/>instead of being stripped</small><br/><br/><code>chitragupta draft render --format pdf</code>"]
+  P4["<b>5 · PUBLISH</b><br/><br/><code>chitragupta draft references</code><br/><small><b>tutorial-writer</b> keeps the default<br/><code>References</code> heading, which the<br/>render swaps for citeproc's<br/>single bibliography</small><br/><br/><code>chitragupta draft render --format pdf</code>"]
 
   RISK["<b>the real failure mode here isn't a bad citekey</b><br/><small>It is writing the wrong genre: a tutorial that explains<br/>instead of instructing, or a chapter that instructs instead<br/>of explaining. Both SKILL.md files open by warning about<br/>exactly that — and no gate in this repository can catch it.<br/><b>You are the check.</b></small>"]
 

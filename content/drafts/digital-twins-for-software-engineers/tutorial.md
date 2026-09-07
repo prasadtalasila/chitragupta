@@ -239,6 +239,6 @@ place to cover wiring up an actual moisture probe and pump, since that
 involves choices -- which board, which protocol -- that a first tutorial
 deliberately avoids.
 
-## Further reading
+## References
 
 [1] H. Feng, C. Gomes, and P. G. Larsen, *Model-Based Monitoring and State Estimation for Digital Twins: The Kalman Filter*, arXiv, 2023. `feng_model-based_2023`

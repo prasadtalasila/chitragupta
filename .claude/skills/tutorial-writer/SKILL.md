@@ -634,23 +634,21 @@ the lesson design is the part worth keeping either way.
 14. **Build the References section**, only if the draft cites anything:
 
     ```bash
-    python -m chitragupta.draft references content/drafts/<slug>.md --heading "Further reading"
+    python -m chitragupta.draft references content/drafts/<slug>.md
     ```
 
     Stdlib-only, bare `python`, no venv. Entries are numbered IEEE-style;
     leave the inline citations as `[@citekey]` rather than hand-numbering
-    them. `--heading "Further reading"` suits this genre better than the
-    bare `## References` default; use whatever heading the draft's own
-    "Where to go next" section flows into. Skip entirely if there are no
-    citations.
+    them. Skip entirely if there are no citations.
 
-    One consequence of a non-default heading: `render_output` only strips
-    a section headed `References` before handing the draft to pandoc, so a
-    `Further reading` list stays in the rendered `.tex`/`.pdf` *and*
-    citeproc appends its own numbered bibliography below it. That is
-    usually fine here -- the curated list is the point of the section, and
-    the tutorial genre cites lightly. Pass the default heading instead if
-    a single bibliography matters more for a given tutorial.
+    Keep the default `## References` heading -- the same contract as
+    `textbook-chapter-writer` (#699). `render_output` recognises the
+    section only by a heading whose text is `References`, bare or
+    number-prefixed, and swaps its entries for citeproc's own
+    bibliography; any other heading (an earlier draft of this skill said
+    `Further reading`) leaves the manual list in the rendered
+    `.tex`/`.pdf` *and* citeproc's bibliography below it, so every
+    reference appears twice.
 
 15. **Render tex, pdf, and numbered md.**
 

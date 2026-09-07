@@ -1,14 +1,12 @@
 % Options for packages loaded elsewhere
 \PassOptionsToPackage{unicode}{hyperref}
 \PassOptionsToPackage{hyphens}{url}
+%
 \documentclass[
   12pt,
   a4paper,
 ]{article}
-\usepackage{xcolor}
-\usepackage[margin=1in]{geometry}
 \usepackage{amsmath,amssymb}
-\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T1]{fontenc}
@@ -39,6 +37,8 @@
 }{% if KOMA class
   \KOMAoptions{parskip=half}}
 \makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
 \usepackage{color}
 \usepackage{fancyvrb}
 \newcommand{\VerbBar}{|}
@@ -77,6 +77,10 @@
 \newcommand{\VariableTok}[1]{\textcolor[rgb]{0.10,0.09,0.49}{#1}}
 \newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.25,0.44,0.63}{#1}}
 \newcommand{\WarningTok}[1]{\textcolor[rgb]{0.38,0.63,0.69}{\textbf{\textit{#1}}}}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
 % definitions for citeproc citations
 \NewDocumentCommand\citeproctext{}{}
 \NewDocumentCommand\citeproc{mm}{%
@@ -110,9 +114,10 @@
 \newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{\strut#1\strut}}
 \newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{\strut#1\strut}}
 \newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
-\setlength{\emergencystretch}{3em} % prevent overfull lines
-\providecommand{\tightlist}{%
-  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{fvextra}\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
 \usepackage{bookmark}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same}
@@ -193,10 +198,10 @@ one. Create \texttt{twin.py} with this content:
 
 \texttt{tick()} is one hour passing: the soil loses a random amount of
 moisture, the way real soil does under evaporation.
-\texttt{read\_sensor()} is what a real capacitive soil-moisture probe
-gives you -- the true value, plus a little sensor noise.
-\texttt{random.seed(7)} pins that randomness so your output matches this
-tutorial's exactly.
+\texttt{read\_}\penalty0\texttt{sensor()} is what a real capacitive
+soil-moisture probe gives you -- the true value, plus a little sensor
+noise. \texttt{random.seed(7)} pins that randomness so your output
+matches this tutorial's exactly.
 
 Check that it works before moving on:
 
@@ -226,8 +231,9 @@ twin}\label{step-3-write-the-digital-twin}
 
 The twin is a second, separate class. Critically, it never touches
 \texttt{Pot} directly -- it only ever sees numbers arriving from
-\texttt{read\_sensor()}, the same way a real twin only sees whatever its
-sensor's network connection delivers. Append this to \texttt{twin.py}:
+\texttt{read\_}\penalty0\texttt{sensor()}, the same way a real twin only
+sees whatever its sensor's network connection delivers. Append this to
+\texttt{twin.py}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -259,13 +265,14 @@ sensor's network connection delivers. Append this to \texttt{twin.py}:
 
 \texttt{ingest()} is the twin's half of the data connection: each new
 reading gets appended, and only the last three are kept, since only the
-recent trend matters for what comes next. \texttt{predict\_next()} is
-the twin's model -- deliberately the simplest one that works: extend the
-line between the last two readings one more hour forward.
-\texttt{decide()} is the twin's algorithm: if that predicted value would
-be too dry, it's time to water. This is exactly the three-part shape
-every digital twin shares -- data in, a model to interpret it, an
-algorithm to act on it -- just small enough here to read in one sitting.
+recent trend matters for what comes next.
+\texttt{predict\_}\penalty0\texttt{next()} is the twin's model --
+deliberately the simplest one that works: extend the line between the
+last two readings one more hour forward. \texttt{decide()} is the twin's
+algorithm: if that predicted value would be too dry, it's time to water.
+This is exactly the three-part shape every digital twin shares -- data
+in, a model to interpret it, an algorithm to act on it -- just small
+enough here to read in one sitting.
 
 \subsection{Step 4: Close the loop}\label{step-4-close-the-loop}
 
@@ -347,8 +354,9 @@ to:
 \end{Highlighting}
 \end{Shaded}
 
-Save the file and run \texttt{python3\ twin.py} again. Watering now
-happens at hour 8 instead of hour 12, and a second time at hour 21:
+Save the file and run \texttt{python3}\penalty0\texttt{\ twin.py} again.
+Watering now happens at hour 8 instead of hour 12, and a second time at
+hour 21:
 
 \begin{verbatim}
 hour  8  sensor= 45.2  predicted_next= 42.3  WATERED
@@ -377,21 +385,17 @@ way.
 
 \texttt{PlantTwin}'s ``extend the last two points'' model is
 deliberately the crudest thing that could work. A real deployment would
-replace \texttt{predict\_next} with a Kalman filter, which blends the
-model's prediction against each new noisy reading instead of trusting
-the latest one alone {[}1{]}, and would read real sensor data over MQTT
-rather than calling a Python method directly. A how-to guide would be
-the right place to cover wiring up an actual moisture probe and pump,
-since that involves choices -- which board, which protocol -- that a
-first tutorial deliberately avoids.
+replace \texttt{predict\_}\penalty0\texttt{next} with a Kalman filter,
+which blends the model's prediction against each new noisy reading
+instead of trusting the latest one alone {[}1{]}, and would read real
+sensor data over MQTT rather than calling a Python method directly. A
+how-to guide would be the right place to cover wiring up an actual
+moisture probe and pump, since that involves choices -- which board,
+which protocol -- that a first tutorial deliberately avoids.
 
-\subsection{Further reading}\label{further-reading}
+\subsection{References}\label{references}
 
-{[}1{]} H. Feng, C. Gomes, and P. G. Larsen, \emph{Model-Based
-Monitoring and State Estimation for Digital Twins: The Kalman Filter},
-arXiv, 2023. \texttt{feng\_model-based\_2023}
-
-\protect\phantomsection\label{refs}
+\phantomsection\label{refs}
 \begin{CSLReferences}{0}{0}
 \bibitem[\citeproctext]{ref-feng_model-based_2023}
 \CSLLeftMargin{{[}1{]} }%
