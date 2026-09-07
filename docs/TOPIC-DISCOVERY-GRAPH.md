@@ -884,7 +884,7 @@ reach the other answers the panel shows.
 | what are the broad areas (resolution cut) | `discover --groups N` (#709) -- the same cut, pinned by `tests/webapp/cut_cases.json` |
 | candidate survey sections (MCL per family) | nothing |
 | where the families disagree | nothing |
-| is this topic a theme or a bridge | nothing |
+| is this topic a theme or a bridge | the topic view's brokerage section (#713), read from the stored `analysis` |
 | what connects A to B, via which papers | nothing |
 | why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |
 | set comparison across pinned topics | `discover --compare A B [C ...]` (#715) -- pairwise shared papers, bridges with ledger entries, mutual edges |
