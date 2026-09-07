@@ -18,11 +18,17 @@ comparable:
   converged arm has something attributable to sit beside.
 - **converged**, the assignment `content/topic_set.json` induces. This
   one is *not* a partition: a document may be a member of several
-  topics, so a partition has to be chosen before ARI can be computed at
-  all. This script takes each document's first listed topic and
-  **reports the multi-membership share first**, because an ARI over a
-  constructed partition means what it looks like only when few
-  documents had a choice to construct.
+  topics, so ARI cannot be computed over it without first choosing one.
+  Scored with the **omega index** instead, the standard generalisation
+  of ARI to overlapping clusterings -- pair-based, so it needs neither a
+  partition nor a topic-matching step between runs.
+
+  The first-listed-topic ARI is still computed and still reported, but
+  **must not be quoted**: on this corpus 98.4% of documents belong to
+  more than one topic, so that partition is almost entirely an artefact
+  of the construction rule and the number scores the rule as much as the
+  pipeline. It is kept only so the retraction in issue #697 can be read
+  against the figure it retracts.
 
 The real stages do the work -- `run_topic_model`, `topic_seeding.run_stage`,
 `topic_converge.run_stage` -- so this measures the shipped pipeline and
@@ -122,6 +128,75 @@ def ari(baseline: dict, resampled: dict) -> "float | None":
     )
 
 
+def membership_sets(topic_set: dict) -> dict:
+    """`{citekey: frozenset(labels)}` -- the whole multi-membership, not
+    a partition of it. What `primary_topics` throws away."""
+    sets: dict = {}
+    for topic in topic_set["topics"]:
+        for member in topic["members"]:
+            sets.setdefault(member["citekey"], set()).add(topic["label"])
+    return {key: frozenset(value) for key, value in sets.items()}
+
+
+def omega(baseline: dict, resampled: dict) -> "float | None":
+    """Omega index between two **multi-membership** assignments.
+
+    Why this and not ARI. `topic_set.json` lets a document belong to
+    several topics, and ARI needs a partition -- so every ARI figure this
+    harness reported was computed over `primary_topics()`, a
+    first-listed-topic rule. On this corpus 98.4% of documents belong to
+    more than one topic, so that partition is almost entirely an artefact
+    of the rule and the number scores the rule as much as the pipeline
+    (issue #697). Omega is the standard generalisation of ARI to
+    overlapping clusterings and needs no partition.
+
+    It is also **label-free**, which matters here for a second reason:
+    topics are relabelled between runs, so any statistic needing topic
+    correspondence would need a matching step, and the matching would
+    become another arbitrary rule. Omega asks only, for each *pair* of
+    documents, in how many topics the two co-occur -- a question whose
+    answer does not depend on what the topics are called.
+
+    Observed agreement is the share of pairs whose co-occurrence counts
+    agree; expected agreement is what that share would be if the two
+    clusterings' count distributions were independent; omega is the
+    chance-corrected ratio, exactly as ARI is.
+    """
+    import numpy as np
+
+    shared = sorted(set(baseline) & set(resampled))
+    if len(shared) < 2:
+        return None
+
+    def cooccurrence(assignment):
+        # Documents x topics indicator, so co-occurrence counts are one
+        # matrix product rather than a pair loop -- at ~500 documents the
+        # naive form is ~125,000 set intersections per comparison.
+        labels = sorted({label for key in shared for label in assignment[key]})
+        index = {label: i for i, label in enumerate(labels)}
+        matrix = np.zeros((len(shared), len(labels)), dtype=np.int32)
+        for row, key in enumerate(shared):
+            for label in assignment[key]:
+                matrix[row, index[label]] = 1
+        return matrix @ matrix.T
+
+    left, right = cooccurrence(baseline), cooccurrence(resampled)
+    pairs = np.triu_indices(len(shared), k=1)
+    a, b = left[pairs], right[pairs]
+    total = len(a)
+    observed = float((a == b).sum()) / total
+    expected = sum(
+        (float((a == j).sum()) / total) * (float((b == j).sum()) / total)
+        for j in range(int(max(a.max(), b.max())) + 1)
+    )
+    if expected >= 1.0:
+        # Both clusterings put every pair in the same number of topics,
+        # so agreement is certain and chance correction is undefined.
+        # 1.0 rather than a division by zero: they do agree completely.
+        return 1.0
+    return round((observed - expected) / (1 - expected), 4)
+
+
 def run_pipeline(docs: list) -> dict:
     """One full emergent-plus-converged run over `docs`, through the real
     stages, with its artefacts redirected. Returns both assignments."""
@@ -134,6 +209,11 @@ def run_pipeline(docs: list) -> dict:
     return {
         "emergent": {k: str(v) for k, v in emergent["assignments"].items()},
         "converged": primary_topics(topic_set),
+        # Carried alongside the constructed partition, not instead of it:
+        # the ARI over `converged` is retained so the retraction in #697
+        # can be read against the number it retracts, and omega over this
+        # is the figure that may actually be quoted.
+        "converged_sets": membership_sets(topic_set),
         "n_topics_emergent": len({v for v in emergent["assignments"].values() if v != -1}),
         "n_topics_converged": len(topic_set["topics"]),
         "multi_membership_share": multi_membership_share(topic_set),
@@ -167,6 +247,35 @@ def self_check() -> None:
     assert ari(same, split) < 0.5, ari(same, split)
     assert ari({"a": "x"}, {"a": "x"}) is None, "one document compares nothing"
 
+    # Omega, and the one arm that justifies replacing ARI at all: two
+    # multi-membership assignments that a first-listed-topic partition
+    # cannot tell apart. Both put `a` and `b` in "x" first, so
+    # `primary_topics` produces the *same* partition for both and ARI
+    # scores them 1.0 -- while they disagree about whether a and b also
+    # share a second topic, which is a real difference in the clustering.
+    # If omega does not see it, this statistic buys nothing over ARI and
+    # the retraction in #697 has no replacement.
+    overlapping = {"a": frozenset({"x", "y"}), "b": frozenset({"x", "y"}), "c": frozenset({"z"})}
+    disjointed = {"a": frozenset({"x"}), "b": frozenset({"x"}), "c": frozenset({"z"})}
+    as_partition_l = {k: sorted(v)[0] for k, v in overlapping.items()}
+    as_partition_r = {k: sorted(v)[0] for k, v in disjointed.items()}
+    assert ari(as_partition_l, as_partition_r) == 1.0, (
+        "the fixture is wrong: ARI must be blind to this difference for the "
+        "comparison below to mean anything"
+    )
+    assert omega(overlapping, disjointed) < 1.0, (
+        f"omega scores {omega(overlapping, disjointed)} on two assignments that "
+        "differ in their overlap, so it is no better than the ARI it replaces"
+    )
+    assert omega(overlapping, overlapping) == 1.0, "an assignment must agree with itself"
+    # Label-free: renaming every topic must not move the number, since
+    # topics are relabelled between runs and no matching step exists.
+    renamed = {k: frozenset(f"{label}!" for label in v) for k, v in overlapping.items()}
+    assert omega(overlapping, renamed) == 1.0, "omega is reading topic names, not co-membership"
+    assert omega({"a": frozenset({"x"})}, {"a": frozenset({"x"})}) is None, (
+        "one document compares nothing"
+    )
+
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
@@ -198,6 +307,7 @@ def main(argv=None):
             "repeat": i,
             "emergent_ari": ari(baseline["emergent"], got["emergent"]),
             "converged_ari": ari(baseline["converged"], got["converged"]),
+            "converged_omega": omega(baseline["converged_sets"], got["converged_sets"]),
             "n_topics_emergent": got["n_topics_emergent"],
             "n_topics_converged": got["n_topics_converged"],
             "multi_membership_share": got["multi_membership_share"],
@@ -205,7 +315,8 @@ def main(argv=None):
         rows.append(row)
         print(
             f"  repeat {i}: emergent ARI {row['emergent_ari']}, "
-            f"converged ARI {row['converged_ari']} "
+            f"converged omega {row['converged_omega']} "
+            f"(ARI {row['converged_ari']}, not quotable) "
             f"({row['n_topics_emergent']}/{row['n_topics_converged']} topics)",
             flush=True,
         )
@@ -219,14 +330,18 @@ def main(argv=None):
         "holdout": HOLDOUT,
         "emergent_ari_mean": mean("emergent_ari"),
         "converged_ari_mean": mean("converged_ari"),
+        "converged_omega_mean": mean("converged_omega"),
         "baseline_multi_membership_share": baseline["multi_membership_share"],
         "baseline_n_topics_emergent": baseline["n_topics_emergent"],
         "baseline_n_topics_converged": baseline["n_topics_converged"],
     }
     print(
-        f"\nmean ARI over {args.repeats} resamples dropping {HOLDOUT:.0%}: "
-        f"emergent {summary['emergent_ari_mean']}, "
-        f"converged {summary['converged_ari_mean']}"
+        f"\nover {args.repeats} resamples dropping {HOLDOUT:.0%}: "
+        f"emergent ARI {summary['emergent_ari_mean']}, "
+        f"converged omega {summary['converged_omega_mean']} "
+        f"(converged ARI {summary['converged_ari_mean']} is over a constructed "
+        f"partition at {summary['baseline_multi_membership_share']:.1%} "
+        f"multi-membership -- do not quote it)"
     )
 
     out_dir = REPO / "bench" / "results" / args.tag

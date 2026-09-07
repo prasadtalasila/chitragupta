@@ -209,6 +209,24 @@ bootstrap resamples and scores agreement with the full fit by adjusted
 Rand index. The old hardcoded defaults (`n_neighbors=15`,
 `min_cluster_size=10`) scored **0.14** -- barely more stable than
 chance; the shipped defaults (`5`/`3`/`2`) score **0.80**.
+
+**Both of those figures hold UMAP fixed, which the shipped stage does
+not** (issue #697). They refit HDBSCAN on each resample over a reduction
+fitted once, so they measure the stability of the clustering given a
+reduction rather than of the whole pipeline. `bench_topic_depth.py` now
+reports both arms as separate columns, and the gap is large: measured
+2026-09-07 over the full grid, the UMAP-fixed arm spans 0.56--0.82 and
+the full-refit arm spans **0.35--0.51**. Roughly half the apparent
+stability belongs to the dimensionality reduction.
+
+**Read the 0.14 -> 0.80 improvement with that in mind.** On the
+full-refit arm the old settings score 0.35 and the shipped defaults
+0.37 -- with ten resamples and no error bars, no measured difference.
+What the parameter change demonstrably bought was granularity (6 topics
+against 79) and a lower outlier share, not stability. The 0.14 itself is
+also not comparable to anything measured today: the corpus has changed
+since, and the same settings now score 0.68 on the UMAP-fixed arm.
+`bench/RESULTS.md`'s 2026-09-07 (B4b) entry has the grid.
 `chitragupta/enrich/topic_model.py`'s own docstring still admits topic
 ids are not stable *between* runs -- membership has to be read by label
 or citekey, not id -- but which *settings* reproduce is now measured

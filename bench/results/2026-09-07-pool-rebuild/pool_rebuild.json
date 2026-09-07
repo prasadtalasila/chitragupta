@@ -1,0 +1,34 @@
+{
+  "baseline": {
+    "arm": "uninterrupted",
+    "documents": 6,
+    "workers_requested": 3,
+    "seconds": 15.78,
+    "pools_built": 1,
+    "worker_counts_per_build": [
+      3
+    ],
+    "killed_pid": null,
+    "parsed": 6,
+    "lost": 0,
+    "lost_citekeys": []
+  },
+  "injected": {
+    "arm": "worker-killed",
+    "documents": 6,
+    "workers_requested": 3,
+    "seconds": 30.02,
+    "pools_built": 2,
+    "worker_counts_per_build": [
+      3,
+      1
+    ],
+    "killed_pid": 396976,
+    "parsed": 6,
+    "lost": 0,
+    "lost_citekeys": []
+  },
+  "overhead_ratio": 1.9024,
+  "stall": null,
+  "stall_measured": false
+}

@@ -20,6 +20,20 @@ which ones do.
 Each arm runs in a subprocess against a **throwaway CONTENT_DIR**, so a
 parse this benchmark drives never writes into the corpus it reads.
 
+**The watchdog arm is off by default and its figures are unmeasured.**
+`arm_stall` does not terminate: given real documents and a working
+`terminate_workers`, it still sits in `futex_wait_queue` for hours after
+the healthy documents are done. That is issue #698 and it is *not*
+fixed -- what was fixed is the reason every arm previously measured
+nothing (an empty throwaway ledger, so `build_corpus()` returned no
+rows). The two rebuild arms work and are what this script now reports.
+Pass `--with-stall-arm` to reproduce the hang; the code is kept rather
+than deleted so whoever picks #698 up has the reproduction to hand.
+
+So of #610's B3 questions, this answers rebuild wall-clock overhead,
+documents lost and pool-narrowing convergence, and leaves the stall
+watchdog's cancellation latency unanswered.
+
 Needs the "enrich" Poetry group and a synced corpus (it parses real PDFs
 named in the ledger).
 
@@ -30,6 +44,7 @@ named in the ledger).
 import argparse
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -94,6 +109,14 @@ def _sample_docs(limit: int) -> list:
     from chitragupta.enrich import corpus
 
     docs = [d for d in corpus.build_corpus() if d.pdf_path and Path(d.pdf_path).exists()]
+    # An empty sample is the #698 failure mode and must not be a quiet
+    # one: two arms then report "0 documents" as though that were a
+    # measurement, and the third never returns at all.
+    if not docs:
+        raise SystemExit(
+            "No parsable documents in the corpus this arm was pointed at -- every "
+            "measurement would be over zero documents (issue #698)."
+        )
     docs.sort(key=lambda d: Path(d.pdf_path).stat().st_size)
     return docs[:limit]
 
@@ -197,15 +220,60 @@ def arm_stall(limit: int, timeout: float, workers: int) -> dict:
     }
 
 
+def _seeded_content_dir() -> Path:
+    """A throwaway CONTENT_DIR that nonetheless has documents in it.
+
+    The ledger is copied in, and it is the only thing copied. `corpus
+    .build_corpus()` reads nothing else, and the `pdf_path` it hands back
+    points under `papers/`, outside CONTENT_DIR entirely -- so the arms
+    read the real PDFs and write every parse artefact into this tempdir.
+    The "a parse this benchmark drives never writes into the corpus it
+    reads" guarantee is unchanged; what changes is that there is now
+    something to parse.
+
+    Without this the directory is empty, `build_corpus()` returns no
+    rows, and every arm runs over **zero** documents -- which is why B3
+    produced no measurement (issue #698). The `uninterrupted` and
+    `worker-killed` arms then return in under a second having parsed
+    nothing, and the `stall` arm hangs forever: its FIFO worker blocks by
+    design, and with no healthy document to finish first, the gap the
+    watchdog measures never opens.
+    """
+    from chitragupta import config
+
+    # Refused rather than skipped. A missing ledger is precisely the
+    # state that produced #698: the arms run, report zero documents, and
+    # the watchdog arm then blocks forever -- a ten-hour silence that
+    # looked like a deadlock in the pool. Copying "if it exists" would
+    # rebuild that trapdoor.
+    if not config.LEDGER_PATH.exists():
+        raise SystemExit(
+            f"No ledger at {config.LEDGER_PATH}, so every arm would run over zero "
+            "documents and the watchdog arm would never terminate (issue #698). "
+            "Run `python -m chitragupta.corpus sync` first, or point "
+            "CHITRAGUPTA_PROJECT at a synced project."
+        )
+    content_dir = Path(tempfile.mkdtemp(prefix="bench-pool-content-"))
+    shutil.copy2(config.LEDGER_PATH, content_dir / config.LEDGER_PATH.name)
+    return content_dir
+
+
 def _run_arm_in_subprocess(arm: str, args) -> dict:
     """One arm, in its own process against a throwaway CONTENT_DIR.
 
     A subprocess rather than an in-process tempdir because `config`
     reads CONTENT_DIR once at import: the only honest way to point a
     parse somewhere else is to start a process that imports it fresh.
+
+    Streamed to this process's own stderr rather than captured. Three
+    arms each print nothing until they return, and `main` prints its
+    table only after all three, so a captured run shows an empty
+    terminal whether it is working or wedged -- which is exactly how
+    #698's hang came to be attributed to the first arm when it was the
+    third. Only the one `BENCH_RESULT` line is captured, off stdout.
     """
-    content_dir = Path(tempfile.mkdtemp(prefix="bench-pool-content-"))
-    env = {**os.environ, "CONTENT_DIR": str(content_dir)}
+    env = {**os.environ, "CONTENT_DIR": str(_seeded_content_dir())}
+    print(f"  running {arm} ...", flush=True)
     completed = subprocess.run(
         [
             sys.executable,
@@ -222,7 +290,7 @@ def _run_arm_in_subprocess(arm: str, args) -> dict:
             args.tag,
         ],
         env=env,
-        capture_output=True,
+        stdout=subprocess.PIPE,
         text=True,
         check=False,
     )
@@ -231,7 +299,8 @@ def _run_arm_in_subprocess(arm: str, args) -> dict:
             return json.loads(line[len(RESULT_MARKER) :])
     raise SystemExit(
         f"arm {arm} produced no result (exit {completed.returncode}).\n"
-        f"stdout tail:\n{completed.stdout[-2000:]}\n\nstderr tail:\n{completed.stderr[-2000:]}"
+        f"stdout tail:\n{completed.stdout[-2000:]}\n\n"
+        "stderr went to this terminal as it happened, above."
     )
 
 
@@ -242,6 +311,11 @@ def main(argv=None):
     parser.add_argument("--workers", type=int, default=4, help="pool workers (default: 4)")
     parser.add_argument(
         "--stall-timeout", type=float, default=60.0, help="seconds for the watchdog arm"
+    )
+    parser.add_argument(
+        "--with-stall-arm",
+        action="store_true",
+        help="run the watchdog arm, which is known to hang -- see issue #698",
     )
     parser.add_argument("--arm", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -261,7 +335,10 @@ def main(argv=None):
 
     baseline = _run_arm_in_subprocess("uninterrupted", args)
     injected = _run_arm_in_subprocess("worker-killed", args)
-    stall = _run_arm_in_subprocess("stall", args)
+    # Off by default: the watchdog arm does not terminate. See this
+    # module's docstring -- it is opt-in rather than deleted so whoever
+    # picks up #698 has the reproduction to hand.
+    stall = _run_arm_in_subprocess("stall", args) if args.with_stall_arm else None
     ratio = overhead(baseline["seconds"], injected["seconds"])
 
     print(f"\n{'arm':>16}  {'docs':>4} {'parsed':>6} {'lost':>4} {'pools':>5} {'seconds':>8}")
@@ -273,11 +350,17 @@ def main(argv=None):
     print(f"\nrebuild overhead: {ratio}x wall clock")
     print(f"pool widths as it narrowed: {injected['worker_counts_per_build']}")
     print(f"documents lost to the kill: {injected['lost']} {injected['lost_citekeys']}")
-    print(
-        f"\nstall watchdog at {stall['stall_timeout']}s: returned in {stall['seconds']}s, "
-        f"gave up on {len(stall['gave_up_on'])} document(s), "
-        f"{stall['healthy_documents_parsed']} healthy parsed"
-    )
+    if stall is None:
+        print(
+            "\nstall watchdog: NOT MEASURED -- the arm does not terminate (issue "
+            "#698). Pass --with-stall-arm to reproduce it."
+        )
+    else:
+        print(
+            f"\nstall watchdog at {stall['stall_timeout']}s: returned in {stall['seconds']}s, "
+            f"gave up on {len(stall['gave_up_on'])} document(s), "
+            f"{stall['healthy_documents_parsed']} healthy parsed"
+        )
 
     out_dir = REPO / "bench" / "results" / args.tag
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -285,7 +368,10 @@ def main(argv=None):
         "baseline": baseline,
         "injected": injected,
         "overhead_ratio": ratio,
+        # null, not a zero-shaped record: "the watchdog cancels in 0s" and
+        # "the watchdog arm was not run" must never read the same.
         "stall": stall,
+        "stall_measured": stall is not None,
     }
     (out_dir / "pool_rebuild.json").write_text(json.dumps(payload, indent=2), "utf-8")
     print(f"\nwrote {out_dir / 'pool_rebuild.json'}")
