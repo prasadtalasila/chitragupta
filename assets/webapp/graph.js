@@ -31,15 +31,88 @@
   var ORIGIN_COLORS = Object.assign(Object.create(null), {
     seed: "#2e7d32",
     keyword: "#b8860b",
-    both: "#00695c",
+    corroborated: "#00695c",
     emergent: "#1565c0",
   });
   var ORIGIN_LABELS = Object.assign(Object.create(null), {
     seed: "seed topic",
     keyword: "keyword topic",
-    both: "seed + keyword topic",
+    corroborated: "corroborated topic",
     emergent: "emergent topic",
   });
+  /* The reader's order, not the machine's: how much of a human is in
+     the topic, most first. The checkbox row, the legend and the CLI's
+     --origins help all follow it. */
+  var ORIGIN_CLASSES = ["seed", "keyword", "corroborated", "emergent"];
+
+  /* Which classes this export could contain (#742): `--origins` filters
+     what ships, so a class the flag left out is not merely absent from
+     this corpus. An older data.js predates the field, and "all four"
+     is the honest reading of a payload that does not say.
+
+     Sets and lookups below are all null-prototype or Array#indexOf for
+     the #636 reason above: `origin` is data-derived. */
+  function shippedOrigins(data) {
+    return data.origins && data.origins.length ? data.origins : ORIGIN_CLASSES;
+  }
+
+  function originOf(topic) {
+    // A topic with no annotation still belongs on the canvas: silently
+    // absent is worse than in the wrong colour.
+    return ORIGIN_CLASSES.indexOf(topic.origin) >= 0 ? topic.origin : "emergent";
+  }
+
+  function labelsWithOrigins(data, active) {
+    var labels = new Set();
+    data.topics.forEach(function (t) {
+      if (active.has(originOf(t))) { labels.add(t.label); }
+    });
+    return labels;
+  }
+
+  /* The hop rings are walked over the whole payload, so a neighbour two
+     hops out can be a topic the origin filter has taken off the canvas.
+     Intersecting here keeps one universe: what is drawn, what is dimmed
+     and what the type-ahead offers all answer to the same set. */
+  function restrictTo(labels, universe) {
+    var kept = new Set();
+    labels.forEach(function (label) {
+      if (universe.has(label)) { kept.add(label); }
+    });
+    return kept;
+  }
+
+  /* One row per class for the header: its colour, its human name, how
+     many topics it holds here, whether it shipped at all, and whether
+     it is ticked. */
+  function originControls(data, active) {
+    var shipped = shippedOrigins(data);
+    var counts = Object.create(null);
+    (data.topics || []).forEach(function (t) {
+      var origin = originOf(t);
+      counts[origin] = (counts[origin] || 0) + 1;
+    });
+    return ORIGIN_CLASSES.map(function (origin) {
+      return {
+        origin: origin,
+        name: ORIGIN_LABELS[origin],
+        color: ORIGIN_COLORS[origin],
+        count: counts[origin] || 0,
+        shipped: shipped.indexOf(origin) >= 0,
+        checked: active.has(origin),
+      };
+    });
+  }
+
+  /* The selection after a checkbox moves, or null when it would empty
+     the canvas -- an empty graph reads as an empty corpus, so the last
+     class cannot be unticked. Non-destructive: the caller still holds
+     the old selection to restore the checkbox from. */
+  function nextOrigins(active, origin, on) {
+    var next = new Set(active);
+    if (on) { next.add(origin); } else { next.delete(origin); }
+    return next.size ? next : null;
+  }
 
   function byLabel(topics) {
     var index = Object.create(null);
@@ -181,7 +254,18 @@
     cut.groups.forEach(function (group) {
       var members = group.members.filter(function (label) { return visible.has(label); });
       if (members.length < 2) { return; }
-      shown.push({ group: group, members: members });
+      /* Relabelled from the members that survived, not from the ones the
+         cut put in the group: with an origin class filtered out (#742) a
+         box could otherwise lead with the name of a topic no longer on
+         the canvas, and count "+29" others the reader cannot find. The
+         cut itself is untouched -- the tree is still the stage's. */
+      shown.push({
+        group: group,
+        members: members,
+        label: members.length === group.members.length
+          ? group.label
+          : groupLabel(members, data.topics),
+      });
       if (collapsed.has(group.id)) {
         collapsedIds.add(group.id);
         members.forEach(function (label) { drawnAs[label] = group.id; });
@@ -197,7 +281,7 @@
         group: "nodes",
         data: {
           id: entry.group.id,
-          label: entry.group.label,
+          label: entry.label || entry.group.label,
           isGroup: isCollapsed ? 0 : 1,
           collapsed: isCollapsed ? 1 : 0,
           count: entry.members.length,
@@ -519,12 +603,17 @@
     return els.concat(edges, paperElements(data, universe, expanded));
   }
 
-  function candidatesFor(data, selected, query) {
+  /* `active` is the origin filter (#742), and omitting it means every
+     class: the type-ahead must not offer a topic the canvas is not
+     showing, because pinning one puts the app in a state elementsFor
+     never sees. */
+  function candidatesFor(data, selected, query, active) {
     var needle = query.trim().toLowerCase();
     if (!needle) { return []; }
     var out = [];
     data.topics.forEach(function (t) {
       if (selected.indexOf(t.label) >= 0) { return; }
+      if (active && !active.has(originOf(t))) { return; }
       if (t.label.toLowerCase().indexOf(needle) >= 0) {
         out.push({ label: t.label, why: ORIGIN_LABELS[t.origin] || t.origin });
         return;
@@ -550,6 +639,12 @@
   return {
     ORIGIN_COLORS: ORIGIN_COLORS,
     ORIGIN_LABELS: ORIGIN_LABELS,
+    ORIGIN_CLASSES: ORIGIN_CLASSES,
+    shippedOrigins: shippedOrigins,
+    labelsWithOrigins: labelsWithOrigins,
+    restrictTo: restrictTo,
+    originControls: originControls,
+    nextOrigins: nextOrigins,
     byLabel: byLabel,
     nodeSize: nodeSize,
     elementsFor: elementsFor,

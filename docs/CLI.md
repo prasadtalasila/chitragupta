@@ -642,6 +642,7 @@ relation and each resolution rung is computed.
 | `--family F` | -- | Which edge family `--path` walks: `overlap` or `semantic` -- required, never one fused weight |
 | `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict -- the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
 | `--hops N` | -- | With a phrase: print the topic's neighbourhood as rings by hop distance instead of the flat topic view -- ring one typed by which family reached each neighbour, deeper rings by distance alone, and an honest count of what the topic cannot reach. `N` is a positive count, or `all` for everything reachable |
+| `--origins LIST` | every class | Show only topics of these origins, comma-separated: `seed` (you wrote the phrase in `content/seed_topics.toml`), `keyword` (the extractor proposed it into `content/keywords.toml`), `corroborated` (both files name it -- two independent sources agree), `emergent` (the topic model found it on its own). Filters the artefacts every view reads, so it composes with all of them: the list, `--json`, `--html` and `--app`. **`seed` and `keyword` each include the corroborated topics** -- a topic you named must not be hidden from you because the extractor agreed -- so `corroborated` is how you ask for that intersection alone. Exits `1` on an unknown class or a selection that names none |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
@@ -662,7 +663,29 @@ chitragupta corpus discover
 # chitragupta corpus discover --html topics.html
 # chitragupta corpus discover --html topics.html --json
 # chitragupta corpus discover --app topicapp/
+# chitragupta corpus discover --origins seed,corroborated
+# chitragupta corpus discover --app topicapp/ --origins emergent
 ```
+
+Two stored fields are *positional*, so the filter has to deal with them
+rather than pass them through. `communities` (one cluster id per topic)
+is filtered in step, so `--clusters --origins ...` reports each surviving
+topic's own stored cluster. `paths` cannot be: it holds next-hop indices
+into the edge lists and a stored route may run through a topic the filter
+removed, so `--path` **does not compose with a narrowing `--origins`**
+and says so, exiting `2` like every other refused view combination. The
+field is dropped from a filtered `--app` export for the same reason, and
+the app then walks the graph in the browser as it does for any older
+artefact.
+
+`--origins` filters what the command *reads*, not what one view prints:
+a phrase naming a filtered-out topic falls through the resolution ladder
+like any unknown phrase, and an exported page or app directory contains
+only the classes asked for rather than hiding them on screen. The app
+opens showing exactly what shipped, with a checkbox per class for
+narrowing further; a class this export left out is shown disabled and
+says which `--origins` run excluded it, so "filtered out at export" stays
+distinguishable from "this corpus has none".
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,
 then a hybrid of BM25 over each topic's own vocabulary fused with

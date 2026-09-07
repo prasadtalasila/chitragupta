@@ -21,7 +21,9 @@ From the documentation, the interactive app currently:
   everything outside the neighbourhood dimmed, and the neighbourhood is laid
   out as concentric rings by hop distance (§4 below, shipped);
 - encodes provenance as node colour (hand-written seed phrase, machine-extracted
-  keyword, both, emergent cluster), member count as node size, and overlap
+  keyword, corroborated -- both files name it -- and emergent cluster), and is
+  filterable by that class in the app and from `discover --origins` (#742);
+  member count as node size, and overlap
   strength or similarity as edge width, with overlap edges solid and semantic
   edges dashed;
 - lists a topic's papers as cards on click, the shared papers on a solid edge,
@@ -482,8 +484,8 @@ glance. Once clusters exist, the reader is scanning for cluster membership, so:
 
 - **fill** → cluster / hierarchy branch
 - **border style** → origin: solid for a hand-written seed phrase, dotted for a
-  machine-extracted keyword, double for a phrase both files name, none for an
-  emergent cluster
+  machine-extracted keyword, double for a corroborated phrase (both files name
+  it), none for an emergent cluster
 - **size** → member count (unchanged)
 - **shape** → reserved for node *type* if papers ever join the graph (7.5)
 

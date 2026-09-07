@@ -23,7 +23,7 @@ test("byLabel indexes every topic, on a null prototype", () => {
   // The #636 crash: on a plain object this reads Object.prototype --
   // truthy, so it slips past a `||` fallback and has no .add.
   assert.equal(Object.getPrototypeOf(index), null);
-  assert.equal(index['__proto__ <"hostile">'].origin, "both");
+  assert.equal(index['__proto__ <"hostile">'].origin, "corroborated");
 });
 
 test("elementsFor emits only nodes inside the visible set", () => {

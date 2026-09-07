@@ -197,6 +197,49 @@ paper's topics; `--compare "A" "B"` for the bridges between named
 topics, with their full ledger entries, which the app payload cannot
 even carry.
 
+## 🏷 Filtering by where a topic came from
+
+![The header's checkbox row with seed, keyword and corroborated ticked
+and emergent unticked; the canvas shows only the groups that
+survive](images/discovery/origins.png)
+
+*Real corpus, emergent unticked.* Four classes, one checkbox each:
+**seed** (you wrote the phrase in `content/seed_topics.toml`),
+**keyword** (the extractor proposed it into `content/keywords.toml`),
+**corroborated** (both files name it -- two independent sources agree),
+and **emergent** (the topic model found it on its own). Ticking classes
+off is how you ask "show me only the literature I went looking for", or
+only what the corpus proposed back.
+
+The filter moves the whole view together: the type-ahead stops offering
+what is not drawn, a pinned topic whose class goes out is un-pinned, a
+merge row naming a hidden topic leaves the hierarchy panel, and a group
+box is re-labelled from the members still on the canvas rather than
+leading with a topic you filtered away. What it never touches is the
+corpus's own arithmetic -- the stored merge tree is not recut, and the
+absence verdict and withheld-edge counts stay corpus-wide, because they
+are statements about the corpus and not about your current view.
+Unticking the last class is refused: an empty canvas reads as an empty
+corpus.
+
+The two views computed from corpus-wide stored analysis stay corpus-wide
+and say so: the disagreement grid keeps the pipeline's partitions and
+lists only the pairs whose topics are both on the canvas, and a typed
+path still names every hop -- hiding one would make the chain
+unexplainable -- with a line saying the route left the filter when it
+did.
+
+**Terminal:** `chitragupta corpus discover --origins seed,corroborated`
+takes the same four class names and filters the artefacts every view
+reads, so it composes with the topic map, `--json`, `--html` and
+`--app`. `seed` and `keyword` each include the corroborated topics -- a
+topic you named must not be hidden from you because the extractor
+agreed -- and `corroborated` alone asks for that intersection. Under
+`--app` the flag decides what ships: the app opens showing exactly what
+the same flag showed in the terminal, and a class the export left out is
+a disabled checkbox naming the run that excluded it, so "filtered out at
+export" never looks like "this corpus has none".
+
 ## 📷 How the screenshots were made
 
 Each view was exported by `corpus discover --app`, opened from

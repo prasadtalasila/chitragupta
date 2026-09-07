@@ -255,6 +255,14 @@
       : '<p class="terms">Both edge families clustered in your browser at ' +
         "inflation " + grid.inflation + ", and compared. Not a corpus claim: " +
         "<code>--json</code> reports no clusters, and nothing is written back.</p>";
+    // Under an origin filter the two halves of this panel answer to
+    // different sets, and saying so is cheaper than a reader wondering
+    // why a cluster count exceeds what they can see.
+    if (grid.filtered) {
+      caption += '<p class="terms">The clusters are the corpus\'s, over every ' +
+        "topic; the pairs listed are those with both topics on the canvas under " +
+        "your origin filter.</p>";
+    }
     return "<h2>Where the two families disagree</h2>" + caption +
       (nothing
         ? "<p>At this inflation the two families agree about every pair: " +
@@ -290,7 +298,13 @@
      the citekeys or the bridging pair that justify it. No total: a
      single distance over a family is uninterpretable, and one over both
      would be the fusion the design refuses. */
-  function pathHtml(data, result) {
+  /* `visible` is the origin filter's label set (#742). A stored route is
+     free to run through a topic the filter hides, and the panel names
+     it either way -- the walk is the corpus's, and hiding a hop would
+     make the chain unexplainable -- but it says that it left the
+     filter, so a topic that is named here and absent from the canvas
+     reads as the route's doing rather than as a missing node. */
+  function pathHtml(data, result, visible) {
     var family = result.family === "overlap" ? "shared papers" : "semantic nearness";
     if (!result.labels) {
       return "<h3>No path over " + family + "</h3>" +
@@ -300,8 +314,16 @@
     if (!result.hops.length) {
       return "<h3>Over " + family + "</h3><p>Same topic.</p>";
     }
+    var offCanvas = visible
+      ? result.labels.filter(function (label) { return !visible.has(label); })
+      : [];
     return "<h3>Over " + family + ", " + result.hops.length + " hop" +
       (result.hops.length === 1 ? "" : "s") + "</h3>" +
+      (offCanvas.length
+        ? '<p class="terms">This route leaves your origin filter: ' +
+          offCanvas.map(escapeHtml).join(", ") +
+          (offCanvas.length === 1 ? " is" : " are") + " named here but not drawn.</p>"
+        : "") +
       result.hops.map(function (hop) {
         return '<div class="linked-topic"><a data-goto="' + escapeHtml(hop.b) + '">' +
           escapeHtml(hop.a) + " → " + escapeHtml(hop.b) + "</a>" +
@@ -355,10 +377,42 @@
     }).join("");
   }
 
-  function hierarchyHtml(hierarchy) {
-    return hierarchy.map(function (merge) {
+  /* `visible` is the origin filter's label set (#742), and omitting it
+     shows the tree whole. A merge is listed only while every topic it
+     names is on the canvas: the stored tree itself is never recut --
+     that would invent a grouping no stage computed -- but a row naming
+     a topic the reader has filtered away is a row about nothing they
+     can see. An end that is another merge's id is structure, not a
+     topic, and is not looked up. */
+  function hierarchyHtml(hierarchy, visible) {
+    var ids = new Set(hierarchy.map(function (merge) { return merge.id; }));
+    function drawn(end) { return ids.has(end) || !visible || visible.has(end); }
+    return hierarchy.filter(function (merge) {
+      return drawn(merge.a) && drawn(merge.b);
+    }).map(function (merge) {
       return "<div>" + escapeHtml(merge.a) + " + " + escapeHtml(merge.b) +
         " (distance " + merge.distance.toFixed(2) + ")</div>";
+    }).join("");
+  }
+
+  /* The origin filter's checkbox row. A class this export left out
+     (`--origins`, #742) is disabled and says so: "filtered out at
+     export" and "this corpus has none" are different facts, and a
+     checkbox that merely does nothing when clicked tells the reader
+     neither. */
+  function originsHtml(controls, data) {
+    var flag = "--origins " + (data.origins || []).join(",");
+    return controls.map(function (control) {
+      var why = control.shipped
+        ? control.count + " topics"
+        : "not in this export (" + flag + ")";
+      return '<label class="origin-toggle' + (control.shipped ? "" : " excluded") + '"' +
+        ' title="' + escapeHtml(why) + '">' +
+        '<input type="checkbox" data-origin="' + escapeHtml(control.origin) + '"' +
+        (control.checked && control.shipped ? " checked" : "") +
+        (control.shipped ? "" : " disabled") + ">" +
+        '<span class="swatch" style="background:' + control.color + '"></span>' +
+        escapeHtml(control.origin) + "</label>";
     }).join("");
   }
 
@@ -377,6 +431,7 @@
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,
+    originsHtml: originsHtml,
     uncoveredHtml: uncoveredHtml,
   };
 });

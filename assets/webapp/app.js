@@ -34,7 +34,12 @@
      their sense of where they are in a corpus this size. `maxHops`
      bounds the ring view: one hop answers "what is next to this", two
      answers "what would a chapter around this have to cover". */
-  var ALL_LABELS = new Set(DATA.topics.map(function (t) { return t.label; }));
+  /* The origin filter (#742). `activeOrigins` opens as whatever the
+     export shipped, so the app's first frame is exactly what the same
+     `--origins` run showed in the terminal; ALL_LABELS is derived from
+     it and re-derived whenever a checkbox moves. */
+  var activeOrigins = new Set(app.shippedOrigins(DATA));
+  var ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
   var FAMILIES = ["overlap", "semantic"];
   var context = "dim";
   var maxHops = 2;
@@ -199,7 +204,11 @@
     // together, so nothing is ever placed on a ring and dimmed to
     // background at the same time.
     var hops = selected.length ? app.hopsFrom(DATA, selected, FAMILIES) : null;
-    var visible = hops ? app.withinHops(hops, maxHops) : ALL_LABELS;
+    // The rings are walked over the whole payload, so a neighbour can be
+    // a topic the origin filter has taken off the canvas.
+    var visible = hops
+      ? app.restrictTo(app.withinHops(hops, maxHops), ALL_LABELS)
+      : ALL_LABELS;
     var elements = app.elementsFor(DATA, visible, selected, view());
     cy.batch(function () {
       cy.elements().remove();
@@ -539,7 +548,7 @@
     if (!result) { return; }
     clearHint();
     detail.innerHTML = "<h2>" + app.escapeHtml(selected[0]) + " — " +
-      app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result);
+      app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result, ALL_LABELS);
     highlightPath(result);
   }
 
@@ -579,7 +588,9 @@
     detail.innerHTML = "<p>clustering both families…</p>";
     // Yield once so the message paints before the matrices run.
     window.setTimeout(function () {
-      detail.innerHTML = app.disagreementHtml(app.disagreement(DATA, inflation()));
+      detail.innerHTML = app.disagreementHtml(
+        app.disagreement(DATA, inflation(), ALL_LABELS)
+      );
       disagreementShown = true;
     }, 0);
   }
@@ -628,14 +639,16 @@
 
   // ---------- hierarchy ----------
 
-  (function renderHierarchy() {
-    if (!DATA.hierarchy.length) {
-      document.getElementById("hierarchy").hidden = true;
-      return;
-    }
-    document.getElementById("hierarchy-body").innerHTML =
-      app.hierarchyHtml(DATA.hierarchy);
-  })();
+  /* Re-rendered when the origin filter moves: a merge naming a topic
+     the reader has filtered away is a row about nothing they can see.
+     The stored tree itself is never recut -- that would invent a
+     grouping no stage computed. */
+  function renderHierarchy() {
+    var body = app.hierarchyHtml(DATA.hierarchy, ALL_LABELS);
+    document.getElementById("hierarchy").hidden = !body;
+    document.getElementById("hierarchy-body").innerHTML = body;
+  }
+  renderHierarchy();
 
   // ---------- uncovered seeds ----------
 
@@ -659,7 +672,7 @@
   var activeIndex = -1;
 
   function renderSuggestions() {
-    var found = app.candidatesFor(DATA, selected, searchInput.value);
+    var found = app.candidatesFor(DATA, selected, searchInput.value, activeOrigins);
     suggestions.innerHTML = app.suggestionsHtml(found, activeIndex);
     suggestions.hidden = !found.length;
     return found;
@@ -702,7 +715,7 @@
     renderSuggestions();
   });
   searchInput.addEventListener("keydown", function (event) {
-    var found = app.candidatesFor(DATA, selected, searchInput.value);
+    var found = app.candidatesFor(DATA, selected, searchInput.value, activeOrigins);
     if (event.key === "ArrowDown") {
       activeIndex = Math.min(activeIndex + 1, found.length - 1);
       renderSuggestions();
@@ -735,6 +748,49 @@
     }
   });
 
+  // ---------- origin filter ----------
+
+  /* One checkbox per origin class, all ticked on open. The filter is
+     the reader's, not the corpus's: it changes which topics are on the
+     canvas, never what any stage computed -- the absence verdict and
+     the withheld-edge count stay corpus-wide for that reason. */
+  var originsRow = document.getElementById("origins");
+
+  function renderOrigins() {
+    originsRow.innerHTML = app.originsHtml(app.originControls(DATA, activeOrigins), DATA);
+  }
+
+  /* A pinned topic whose class has just gone out cannot stay pinned:
+     the chip would name a node no longer on the canvas, and the ego
+     view would be laid out around nothing. Removing the chip through
+     its own close button keeps one code path for un-pinning. */
+  function pruneChips() {
+    Array.prototype.forEach.call(chips.querySelectorAll(".chip"), function (chip) {
+      if (ALL_LABELS.has(chip.dataset.label)) { return; }
+      var close = chip.querySelector("button");
+      if (close) { close.click(); }
+    });
+  }
+
+  originsRow.addEventListener("change", function (event) {
+    var box = event.target.closest("input[data-origin]");
+    if (!box) { return; }
+    var next = app.nextOrigins(activeOrigins, box.dataset.origin, box.checked);
+    if (!next) {
+      // The last class. An empty canvas reads as an empty corpus, so
+      // the box goes back rather than the graph going away.
+      box.checked = true;
+      return;
+    }
+    activeOrigins = next;
+    ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
+    pruneChips();
+    renderHierarchy();
+    renderOrigins();
+    redraw();
+  });
+
+  renderOrigins();
   showControlsForSelection();
   redraw();
 })();
