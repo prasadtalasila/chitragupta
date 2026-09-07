@@ -209,8 +209,8 @@ That keeps what the rule is *for* -- decay is not permitted -- while
 keeping diffs reviewable. Concretely: noticing that a module is on the
 register while fixing something unrelated in it is a reason to say so in
 the PR, not a licence to refactor it there. `chitragupta/dossier.py` was
-this example until #219 gave it its own PR and delisted it, and
-`chitragupta/review/verbatim_check.py` was this example until #361 did
+this example until a dedicated PR split it and delisted it, and
+`chitragupta/review/verbatim_check.py` was this example until another did
 the same -- the ratchet doing exactly what it's for.
 
 The one case where the rule applies to your own edit unchanged is the
@@ -239,7 +239,7 @@ of responsibilities; `tests/test_pdf_text.py` at 1806 code lines is
 thorough, not overloaded. (`tests/test_enrich_real_libraries.py` is the
 one exception to the convention rather than to the rule: it is a second
 module against `chitragupta/enrich/embed_index.py`, split out because it
-runs against the real libraries where the first mocks them -- #514.)
+runs against the real libraries where the first mocks them.)
 Capping it would push tests into new files for no reason other than the
 cap.
 
@@ -492,7 +492,7 @@ different shape than proposed here -- see their own notes.
    `ruff`. It still subsumes what this rung was for: the Names rules,
    unused imports (`unused-import`), and `too-many-*` overlapping C1 from
    a different angle. `ruff` itself landed after, in two more rounds --
-   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; #362 as the formatter,
+   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; a later change as the formatter,
    `ruff format --check` over `chitragupta`/`scripts`/`tests`/`bench`/
    `.claude/hooks` (wider than either linter's roots -- see
    `docs/TECHNICAL-DEBT.md`'s ruff-format subsection for why). Line
@@ -512,7 +512,7 @@ different shape than proposed here -- see their own notes.
    (`chitragupta/pdf_text/_backends.py`'s re-raising `except` -- BLE001's own
    definition exempts a block that ends in `raise`) and was removed;
    the rest were confirmed live, not assumed so.
-3. ~~**Type annotations and a checker.**~~ **Annotated in full, in #355 --
+3. ~~**Type annotations and a checker.**~~ **Annotated in full --
    and the checker declined, not deferred.** Every `def` under
    `chitragupta/` now carries a return annotation, and
    `tests/test_annotation_scan.py` ratchets it the way C1/C2 are
@@ -523,7 +523,7 @@ different shape than proposed here -- see their own notes.
    is still its own project, not a step in this one, which is the same
    call this item made when it was written rather than a reopened
    question.
-4. **A doc-drift detector.** **Half built, in #239** -- and the half
+4. **A doc-drift detector.** **Half built** -- and the half
    that is worth naming is the half that was left, because it is not a
    matter of effort.
 
@@ -535,7 +535,8 @@ different shape than proposed here -- see their own notes.
    as currently-open C1/C2 debt that the register no longer lists. Both
    incidents on record are caught by it, checked against the real
    historical files: the C1/C2 counts that read 26/13 against a real
-   10/11 until #228, and `chitragupta/sync.py::run`, delisted in #178 and still
+   10/11 until the drift was repaired, and `chitragupta/sync.py::run`,
+   delisted and still
    named as the second-highest-priority open item four days later.
 
    **Not built, and not a backlog item:** `docs/DESIGN.md`'s "Three

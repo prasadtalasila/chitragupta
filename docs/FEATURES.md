@@ -173,6 +173,12 @@ real citekey.
 | `corpus discover "digital twin"` | that topic's papers with full references, the *other* topics each paper belongs to, and the linked topics -- with the shared papers that link them named |
 | `corpus discover "cyber replica"` (any phrasing) | the nearest real topic, found by meaning as well as wording -- and the output tells you *how* it matched (`resolved_via`) |
 | `corpus discover --paper smith2021` | which topics one paper belongs to |
+| `... --groups 8` | the corpus's broad areas: the stored merge tree cut into about eight named groups |
+| `... --clusters` | where clustering by shared papers and clustering by meaning disagree -- the pairs one groups and the other splits |
+| `... --why "A" "B"` | why two topics have *no* edge: the shared papers, the statistics the gate weighed, and its verdict |
+| `... --path "A" "B" --family overlap` | the strongest chain between two topics over one relation, every hop named by its papers |
+| `... --compare "A" "B"` | two to six topics side by side: shared papers, bridges with full references, and the edges among them |
+| `... "digital twin" --hops 2` | a topic's neighbourhood as rings by distance, ring one labelled by which relation reached each neighbour |
 | `... --out overview.md` | a topic overview file -- papers, related topics, and representative sentences quoted verbatim from the papers themselves -- ready to seed a new draft |
 | `... --html topics.html` | your whole topic landscape as one clickable page that works offline, forever |
 | `... --app topicapp/` | the same landscape as an interactive app -- opens grouped at a readable handful of groups (a cut of the stored merge tree you can slide), type-ahead topic search, the neighbourhood of what you picked drawn as rings with the rest of the corpus dimmed rather than deleted, papers on click -- a directory you can hand to anyone, opened from `file://` |
@@ -191,7 +197,9 @@ Three properties worth knowing before you rely on it:
 - **You can measure it on your own corpus.** A small file of questions
   you write yourself, with the topics they should reach, scores the
   whole lookup so a settings change is a measured decision
-  ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) has the how).
+  ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) has the how;
+  [EXPLORE-CLI.md](EXPLORE-CLI.md) and [EXPLORE-WEB.md](EXPLORE-WEB.md)
+  are the worked tours of the terminal and the app).
 
 The relations come from the optional enrichment layer's topic stages;
 the lookup itself is instant and works wherever the corpus does.
@@ -281,7 +289,7 @@ draft itself since `stamp` last ran -- see [DOSSIER.md](DOSSIER.md)'s
 "The draft fingerprint".
 
 **A human can declare the structure before drafting, instead of a genre
-skill inventing sub-themes from the topic (#455).** `dossier init
+skill inventing sub-themes from the topic.** `dossier init
 --outline` creates an eighth, opt-in file, `outline.md`: per section, a
 `brief:` and/or `claim:` block plus optional declared `queries:`, which
 the genre skill then runs verbatim. `dossier status` reports whether the
@@ -290,7 +298,7 @@ column -- "did this draft follow its outline?" becomes decidable rather
 than trusted.
 
 **A hand-edited section's own prose can re-run its own retrieval
-(#456).** Once `dossier status` reports the draft fingerprint
+.** Once `dossier status` reports the draft fingerprint
 `CHANGED`, `draft-reviser` can offer one extra retrieval round for the
 section that changed, using the section's new wording as ITER-RETGEN's
 `y_{t-1}` (Shao et al., *Findings of EMNLP 2023*) -- a human in the
@@ -364,7 +372,7 @@ an ordinary drafting run pulls in none of its optional dependencies --
 and it distinguishes a paper with no figures from one the docling stage
 has not reached, because only the second is something you can act on.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
-proposal parked at #401.
+proposal parked in the issue tracker.
 
 ## 🔍 Review layer: ten advisory aids
 
@@ -481,7 +489,7 @@ decision rather than a gap:
 For the maintainers rather than for you: a features catalogue is where
 doc drift happens first, and this repository has repaired exactly that
 twice -- a review-layer section that still claimed three aids when
-there were six (#345), and a command-count sentence whose arithmetic
-nothing checked (#348). So every list and count here is pinned to the
+there were six, and a command-count sentence whose arithmetic
+nothing checked. So every list and count here is pinned to the
 code by `tests/test_features_doc.py`: add a review aid or a genre skill
 without updating this file, and that test fails.

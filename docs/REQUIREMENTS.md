@@ -359,7 +359,7 @@ built around and the one it has never measured --
 skipped by evidence: on a corpus of 642 papers about one subject, a
 negative query set cannot be built by subtraction, and no retrieval
 call this project has logged has ever come back short. The behaviour is
-reported per draft since #480/#481 -- a declared query that returned
+now reported per draft -- a declared query that returned
 nothing is named, and the sentences resting on it are cut rather than
 cited -- but reporting it is not measuring the rate. The third is a
 defence of retrieval that does not depend on context length: Gao §VII-A
@@ -667,19 +667,19 @@ shipped it; §5 has the full status table.
 ### 🔍 4.3 Overlap detection (the plagiarism layer) — built
 
 1. **Whole-draft x whole-corpus verbatim scan** (`python -m chitragupta.review
-   verbatim scan`, #110/#127/#128/#131): every parsed source is
+   verbatim scan`): every parsed source is
    fingerprinted once into a disk-cached, ledger-keyed index; the whole
    draft -- not just citing paragraphs -- is scanned against it; findings
    report run length, source, page, fragment and draft context, bucketed
    by severity with a per-phrase boilerplate allowlist.
-2. **Paraphrase tiers** (#133, #134): a deterministic stemmed-skip-gram
+2. **Paraphrase tiers**: a deterministic stemmed-skip-gram
    tier, and an embedding tier (SBERT-style, over the existing
    enrichment-layer index) flagging high-semantic-similarity /
    low-lexical-overlap sentence pairs. Both advisory, cumulative with
    tier 1, never blocking -- see §5.1 for why the embedding tier
    specifically cannot be anything else in this pipeline's kind of
    corpus.
-3. **Gating policy** (#130): measured, not assumed. `bench/RESULTS.md`
+3. **Gating policy**: measured, not assumed. `bench/RESULTS.md`
    and `docs/PLAGIARISM-DESIGN.md` record the finding: on this project's
    own 178,000-word book, no span-length threshold separated the one
    genuine planted violation from the false positives (correctly quoted,
@@ -717,11 +717,11 @@ shipped it; §5 has the full status table.
     gate.
 2. **Multi-language plumbing was scoped and then explicitly
     deprioritized**, not left undiscovered: `render_output` language
-    metadata / non-English hyphenation and CSL (#105), locale-aware
-    reference connectives such as "and" vs. "und" vs. "et" (#106), and
-    non-English retrieval -- tokenizer, embeddings, OCR language (#108) --
-    were each designed in full in their issue before being closed "not a
-    priority." None of the three is built: verified directly, there is no
+    metadata / non-English hyphenation and CSL, locale-aware
+    reference connectives such as "and" vs. "und" vs. "et", and
+    non-English retrieval -- tokenizer, embeddings, OCR language --
+    were each designed in full in their own issue before being closed
+    "not a priority." None of the three is built: verified directly, there is no
     babel/polyglossia or other language-metadata plumbing anywhere in
     `chitragupta/render_output/`. A draft in a language other than English today
     gets nothing automatic -- pandoc renders it with English hyphenation
@@ -730,27 +730,26 @@ shipped it; §5 has the full status table.
     retrieval assumes an ASCII-ish, English-tuned index. The one
     exception is manual, not automatic: the References section's own
     heading text can be overridden per invocation with `--heading` (e.g.
-    `--heading "Bibliographie"`), which #106 itself calls "already
-    soft-solved" -- everything else in that paragraph is what #106
-    would have built and didn't.
+    `--heading "Bibliographie"`), which the reference-connectives issue
+    itself calls "already soft-solved" -- everything else in that
+    paragraph is what that issue would have built and didn't.
 
-### 📕 4.6 Scaling to books — built (#135-#139, see §5.2 and BOOKS.md)
+### 📕 4.6 Scaling to books — built (see §5.2 and BOOKS.md)
 
-1. **Spec/outline artifact** with human sign-off before any prose
-   (#136).
+1. **Spec/outline artifact** with human sign-off before any prose.
 2. **Unit decomposition**: generation contract at section granularity;
-   sections independently regenerable and parallelizable (#137).
+   sections independently regenerable and parallelizable.
 3. **Consistency registries** (terminology/notation, claim register,
    cross-reference graph) written by a deterministic post-pass over
    accepted units and injected (as relevant excerpts) into subsequent
    unit generations; a global consistency pass runs after chapter-level
-   parallel generation (#138).
+   parallel generation.
 4. **Global checks**: cross-reference resolution, notation-registry
    conformance, and a claim register across chapters -- all
    deterministic (`python -m chitragupta.draft registry check`), and all advisory,
-   not blocking: it always exits 0, a review aid rather than a gate (#138).
-5. **LaTeX book assembly** as a genre skill -- data, not code, per §3.7
-   (#139).
+   not blocking: it always exits 0, a review aid rather than a gate.
+5. **LaTeX book assembly** as a genre skill -- data, not code, per
+   §3.7.
 
 ### 🧪 4.7 Testing and operations — built, and structural to the repo
 
@@ -776,20 +775,20 @@ production, not just designed. As of v5.29.0:
 | Principle | Status |
 | --- | --- |
 | Two-plane separation (deterministic parse-and-ledger corpus layer, LLM-free) | Built |
-| Closed-world gate (`chitragupta.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per #130 below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
+| Closed-world gate (`chitragupta.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built -- and, per the declined `overlap_gate` row below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
 | Bibliography as sole source-admission point | Built |
 | Local-first, auditable, open source | Built, by construction |
 | Genre conventions as data (skills) | Built -- nine skills, five of which draft ([GENRE.md](GENRE.md)) |
-| Content-hash caching / "second run costs nothing" | Built, and load-bearing for the overlap index (#110) specifically |
-| Verbatim overlap checking, exact tier | Built (#110, #127, #128, #131): corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
-| Overlap remediation loop | Built (#129): the `agenda-reviser` skill -- rewrite, re-scan, re-gate, log |
-| Paraphrase detection, deterministic tier | Built (#133): stemmed skip-grams, advisory |
-| Paraphrase detection, embedding tier | Built (#134), but **narrower than §1.3 asks for**: SBERT-style local alignment, advisory, and only where the optional enrichment layer, Docling passage sidecars, a synced ledger and the draft's own dossier are all present. Per `docs/PLAGIARISM.md`, it compares a section only against the sources *that section already cites* -- a restatement of a source the draft never cited at all is still tiers 1 and 2's business alone, invisible to this tier by design, not just by the weak-discriminator argument below. And per `docs/PLAGIARISM-DESIGN.md`, even within that scope it is a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
-| Blocking `overlap_gate` | **Declined** (#130): measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
-| Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built (#104, #107, #182-#186): `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
-| Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent (#105, #106, #108: each fully designed, then closed "not a priority") |
-| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built (#135-#139) -- see [BOOKS.md](BOOKS.md) |
-| Topic discovery: topic graph, phrase-to-topic resolution with a cross-encoder precision tier, extractive overviews, gold-set benchmark, offline HTML map | Built (#557-#559 and the two PRs after them) -- LLM-free end to end, every relation explainable by naming citekeys; see [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) and §"Five more" above for what the landscape contributed and what was refused |
+| Content-hash caching / "second run costs nothing" | Built, and load-bearing for the overlap index specifically |
+| Verbatim overlap checking, exact tier | Built: corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
+| Overlap remediation loop | Built: the `agenda-reviser` skill -- rewrite, re-scan, re-gate, log |
+| Paraphrase detection, deterministic tier | Built: stemmed skip-grams, advisory |
+| Paraphrase detection, embedding tier | Built, but **narrower than §1.3 asks for**: SBERT-style local alignment, advisory, and only where the optional enrichment layer, Docling passage sidecars, a synced ledger and the draft's own dossier are all present. Per `docs/PLAGIARISM.md`, it compares a section only against the sources *that section already cites* -- a restatement of a source the draft never cited at all is still tiers 1 and 2's business alone, invisible to this tier by design, not just by the weak-discriminator argument below. And per `docs/PLAGIARISM-DESIGN.md`, even within that scope it is a weak discriminator specifically *because* this pipeline's retrieval step already selects a draft's grounding by semantic similarity, so "similar because copied" and "similar because correctly grounded" are hard to separate by cosine distance alone in a single-field corpus |
+| Blocking `overlap_gate` | **Declined**: measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
+| Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built: `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
+| Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent: each of the three was fully designed in its own issue, then closed "not a priority" |
+| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built -- see [BOOKS.md](BOOKS.md) |
+| Topic discovery: topic graph, phrase-to-topic resolution with a cross-encoder precision tier, extractive overviews, gold-set benchmark, offline HTML map | Built -- LLM-free end to end, every relation explainable by naming citekeys; see [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) and §"Five more" above for what the landscape contributed and what was refused |
 
 Competitive position in one sentence: **commercial tools (Paperguide,
 SciSpace, Jenni, ThesisAI, ...) remain feature supersets as products, but
@@ -803,36 +802,31 @@ enough to even ask about.
 ### 📕 5.2 Book scale
 
 What raises the ceiling from chapter/report scale to book scale is
-built, tracked under
-[#135](https://github.com/prasadtalasila/chitragupta/issues/135) and
+built, tracked under one umbrella issue and
 described in full in [BOOKS.md](BOOKS.md). It depended on none of the
 tracks above, but benefits from all of them, since every gate and every
 review aid built there applies per-unit at book scale, which is what
 makes a 300-page grounded document tractable at all. In the order it was
 built:
 
-1. **[#136](https://github.com/prasadtalasila/chitragupta/issues/136) --
-   a spec/outline artifact with human sign-off before any prose.** The
+1. **A spec/outline artifact with human sign-off before any prose.** The
    smallest piece, and independently useful at chapter scale today: an
    on-disk outline (book -> part -> chapter -> section), approved by a
    human before generation starts, living beside the dossier under the
    same path-mirroring convention as `content/dossiers/`.
-2. **[#137](https://github.com/prasadtalasila/chitragupta/issues/137) --
-   section-sized generation units with explicit input/output
+2. **Section-sized generation units with explicit input/output
    contracts.** Fixes the unit of generation at the section rather than
    the chapter, small enough that retrieval + genre instructions + local
    context fit the budget with room to spare; makes units independently
    regenerable, which is what enables chapter-level parallelism and
    cheap iteration; every existing gate applies per-unit.
-3. **[#138](https://github.com/prasadtalasila/chitragupta/issues/138) --
-   consistency registries.** The genuinely hard part: a
+3. **Consistency registries.** The genuinely hard part: a
    terminology/notation registry, a claim register, and a
    cross-reference graph, each written by a deterministic post-pass over
    accepted units (never by an LLM writing to the corpus plane) and
    enforced by deterministic, blocking global checks after chapter-level
    parallel generation completes.
-4. **[#139](https://github.com/prasadtalasila/chitragupta/issues/139) --
-   LaTeX book assembly as a genre skill.** Deliberately the smallest
+4. **LaTeX book assembly as a genre skill.** Deliberately the smallest
    step of the four: parts/chapters/front-and-back-matter assembly of
    already gate-passed units, as data-not-code per §3.7, touching no
    enforcement machinery because everything it assembles has already

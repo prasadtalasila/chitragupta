@@ -330,7 +330,8 @@ run**, so finishing the list is not a clean bill of health. See
 [PLAGIARISM.md](PLAGIARISM.md).
 
 **What it may do without asking is decided by the report, not by the
-model.** #128's severity buckets are the line. A `short` run is reworded
+model.** The scan's severity buckets are the line. A `short` run is
+reworded
 unattended. A `long` one stops and asks the human whether to paraphrase
 or to quote. A run that is both quoted and cited is reported as already
 correct and left alone.
@@ -448,7 +449,8 @@ python -m chitragupta.review verbatim scan content/drafts/<path>
 
 That reports wording the draft shares with *any* parsed source, cited or
 not. **It cannot block a draft, and no skill treats it as a condition of
-presenting** -- what changed in #312 is who may invoke a review aid, not
+presenting** -- what changed when the scan became a standing step is who
+may invoke a review aid, not
 what one may do to a draft. `python -m chitragupta.draft gate` is still
 the only gate.
 
@@ -485,7 +487,8 @@ whatever it finds; [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why
 it may never become a gate.
 
 **Both are run, and neither writes without being asked.** The scan was
-offered rather than run until #312, on the reasoning that it can be read
+offered rather than run until that change, on the reasoning that it can
+be read
 as an accusation and `--write` files a report. What that reasoning missed
 is that the only defence against verbatim reuse was then post-hoc *and*
 optional, so a draft could be presented having never been checked. Both

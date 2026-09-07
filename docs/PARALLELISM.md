@@ -93,7 +93,7 @@ rather than reading `config.PARSER` themselves: `chitragupta/sync.py` passes
 `config.PARSER == "docling"`, `chitragupta/enrich/` always passes `True`. A
 version of this that read `config.PARSER` directly made every GPU on a
 `pdftotext`-configured host (the shipped default) invisible to enrichment's
-own pool — see #502.
+own pool; a recorded issue holds that history.
 
 ## 🔄 The parse path, end to end
 
@@ -342,8 +342,8 @@ Each backend gets the concurrency it can use:
 ### 🧠 Why there is no memory term
 
 Those three ceilings are CPU and workload; **RAM is not one of them**,
-and that is now a decision rather than an omission. #585 reported the
-gap: `"auto"` resolves to 24 workers on a 96-CPU host whatever the
+and that is now a decision rather than an omission. A recorded issue
+reported the gap: `"auto"` resolves to 24 workers on a 96-CPU host whatever the
 machine's memory, and a docling worker extracting figures was measured in
 the tens of GB, so the resolved width's worst case exceeded RAM by an
 order of magnitude.
@@ -360,8 +360,8 @@ count -- +8.95 GiB on one 99-page deck, and a 74.31 GiB failure at
 `docling_image_scale = 6.0`. `chitragupta/enrich/_docling_crops.py` renders
 each crop and releases it instead, which takes that term to +0.02 GiB and
 makes it independent of document length, page size, image scale and
-accelerator (`docs/PERFORMANCE.md` has the table; #600 has the
-measurements).
+accelerator (`docs/PERFORMANCE.md` has the table and the change that
+shipped it holds the measurements).
 
 With the per-document cost bounded at ~4.2 GiB, the arithmetic the issue
 objected to comes out fine on the host that raised it: 24 workers is
@@ -389,7 +389,7 @@ so an explicit `[parser].workers` is still the answer there.
 | Ctrl+C | `interrupt_guard` terminates workers (SIGTERM, grace period, then kill) and `os._exit`s |
 
 **The enrichment pool answers a dead worker differently, and the rows
-above are the corpus layer's.** Since #584,
+above are the corpus layer's.**
 `chitragupta/enrich/_docling_pool.py` rebuilds the pool and hands the
 unfinished jobs back to it, up to `_MAX_POOL_REBUILDS` (2) more times --
 halving `workers` each time, because memory pressure is the realistic

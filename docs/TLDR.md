@@ -4,11 +4,11 @@ Status: **reference, plus a parked proposal.** Written 2026-08-24.
 
 What `chitragupta draft tldr` does today -- a one-paragraph,
 human-authored summary per citekey, cached beside a fingerprint of its
-parsed text -- and the unattended-generation design from
-[#401](https://github.com/prasadtalasila/chitragupta/issues/401), parked
-rather than built.
+parsed text -- and the
+[unattended-generation design](https://github.com/prasadtalasila/chitragupta/issues/401),
+parked rather than built.
 
-**Written for** someone deciding whether to build #401, or wondering why
+**Written for** someone deciding whether to build that generator, or wondering why
 `tldr write` still reads from stdin instead of summarising a paper
 itself. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)'s four layers and
 the citekey invariant ([SOUL.md](../SOUL.md)). **Not covered here:** every
@@ -19,7 +19,7 @@ reference; this is the design.
 
 - [What's built: a cache, not a generator](#-whats-built-a-cache-not-a-generator)
 - [Why it lives where it lives](#-why-it-lives-where-it-lives)
-- [#401: generating it unattended](#-401-generating-it-unattended)
+- [The parked proposal: generating it unattended](#-the-parked-proposal-generating-it-unattended)
   - [The shape: two paths, split on whether the paper has an abstract](#-the-shape-two-paths-split-on-whether-the-paper-has-an-abstract)
   - [Measured: the abstract is detectable more often than a heading scan suggests](#-measured-the-abstract-is-detectable-more-often-than-a-heading-scan-suggests)
   - [Measured: the papers without abstracts are the long ones](#-measured-the-papers-without-abstracts-are-the-long-ones)
@@ -31,7 +31,7 @@ reference; this is the design.
 
 ## 📦 What's built: a cache, not a generator
 
-`chitragupta/tldr.py` (#398) is deliberately small: a `write`/`show` pair
+`chitragupta/tldr.py` is deliberately small: a `write`/`show` pair
 over a JSON sidecar at `content/tldr/<citekey>.json`, keyed to a
 `sha256` of that citekey's *current parsed text*
 (`content/parsed/<citekey>.txt`), not a stat of the PDF. That distinction
@@ -76,11 +76,11 @@ constraint 1 ("no LLM output may reach the corpus plane") names this
 placement as the whole design decision behind the module; nothing below
 changes that.
 
-## 🔭 #401: generating it unattended
+## 🔭 The parked proposal: generating it unattended
 
 Everything in this section is **proposed, not built**, and is tracked as
-parked on the issue tracker
-([#401](https://github.com/prasadtalasila/chitragupta/issues/401)).
+parked on
+[the issue tracker](https://github.com/prasadtalasila/chitragupta/issues/401).
 `tldr.py`'s own docstring already anticipates a generator -- "someone
 else composed" the summary, "a person, or a skill in the current Claude
 Code session" -- and this is a design for who that someone else is when
@@ -254,8 +254,9 @@ it is not acceptable as output.
   the regex *matched*, not what it matched *correctly*. Until someone
   reads a sample, path A's headline benefit is unproven and the
   false-positive risk above is unquantified.
-- **It is a schema change to a sidecar that just landed.** #398 merged
-  days before #401 was filed. `source` and `accepted` are the right
+- **It is a schema change to a sidecar that just landed.** The cache
+  module merged days before this generator was proposed. `source` and
+  `accepted` are the right
   fields, but adding them before the current format has been used in
   anger is guessing at requirements.
 - **The acceptance workflow has no home.** [SOUL.md](../SOUL.md)

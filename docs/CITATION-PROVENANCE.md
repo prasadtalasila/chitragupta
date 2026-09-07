@@ -497,7 +497,7 @@ sentences with an abbreviation-aware splitter (so `Fig. 1` and `e.g.`
 don't create the same problem one level down). The same draft went from
 5 spurious "no support found" to 0.
 
-### 🐛 Too wide: the whole table (issue #19)
+### 🐛 Too wide: the whole table
 
 Widening the unit from a line to a blank-line paragraph had no upper
 bound, and a markdown table has no blank lines in it. A citation in a
@@ -551,7 +551,7 @@ The general lesson, since it is the second instance: the claim unit has a
 *correct size*, and both failures came from choosing that size by
 document syntax the code did not actually model.
 
-### 🐛 Narrative citations deleted wholesale (issue #570)
+### 🐛 Narrative citations deleted wholesale
 
 Both fixes above are about a claim's *extent*. This one is about what
 survives inside it. Citation markup is removed before scoring, so the
@@ -576,7 +576,8 @@ the band that flags weak support, silently and in the direction that
 hides a problem. `[...]` contributes no word to `distinctive()`, so the
 score is unchanged and only the quoted text moves.
 
-Found by a Copilot review of #569, which is to say by the committed
+Found by a Copilot review of the PR that committed the sample project,
+which is to say by the committed
 sample project rather than by a test. `thesis-chapter-writer` has always
 been documented as emitting `\citep`/`\citet`
 ([GENRE.md](GENRE.md)), so the narrative form was never exotic --

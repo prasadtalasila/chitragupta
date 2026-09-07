@@ -198,7 +198,7 @@ Five distinct failure modes, each handled where it can be:
   **rebuilds the pool and hands the unfinished documents back to it**, up
   to twice, narrower each time and smallest-document-first -- a dead
   worker costs the document it was holding rather than the rest of the
-  corpus (#584; one death used to fail 460 of 642 documents, most of
+  corpus (one death used to fail 460 of 642 documents, most of
   which had never been opened). Only what no pool landed is reported a
   failure. `chitragupta/sync_pool.py` does not rebuild: there an
   unfinished document is marked *transient* and retried on the next run,
@@ -274,7 +274,7 @@ one transaction, discarding the incremental commit points on a crash.
 There are six of those -- four in `chitragupta/ledger.py`, one in
 `chitragupta/ledger_upsert.py`, and one in `chitragupta/sync_decide.py`
 that closes the whole bibliography-upsert loop in a single transaction
-(#511/m-75, which is what stopped a no-op sync being 646 fsync'd
+(the change that stopped a no-op sync being 646 fsync'd
 writes). That last one is a *batch*, not a run, and it commits in a
 `finally`, so the guarantee this paragraph turns on still holds: what
 finished is on disk. A row is written whole or not at all, and the parse
@@ -371,7 +371,7 @@ None of this is built. The proposal is
 
 This document describes what the pipeline does and why. **Proposals for
 what it should do next are tracked in
-[issue #54](https://github.com/prasadtalasila/chitragupta/issues/54)**,
+[a standing issue](https://github.com/prasadtalasila/chitragupta/issues/54)**,
 not here -- a design document that also carries a wish list stops being
 readable as a statement of current behaviour, and the wish list goes
 stale faster than the design does.

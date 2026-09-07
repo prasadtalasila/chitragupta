@@ -129,7 +129,7 @@ Two properties carry the safety argument, and both are visible above:
 One entry point, `python -m chitragupta.corpus`, with two verbs: `sync` does the
 work and `ledger` reads back what it did. Until 5.2.0 this section said
 "one command" and meant it — `chitragupta.ledger` sat outside as a second bare
-command, which is the gap issue #143 closed.
+command, which is the gap that release closed.
 
 `sync` reads `papers/bibliography.bib`, updates one ledger row per
 citekey, resolves each PDF from the entry's `file` field, and extracts
@@ -658,8 +658,8 @@ by the person who typed it, in the second after they typed it.
 Running `chitragupta/sync.py` as a module is the exception. It was the corpus
 layer's entry point until 5.2.0, and it is the one spelling here that
 plausibly sits in a crontab or a systemd unit, where "exited 0" is all
-anyone ever reads. It ran that way for a release. Issue #151 found the
-cost in this repository's own `bench/`, where two measurement harnesses
+anyone ever reads. It ran that way for a release, until a recorded
+issue found the cost in this repository's own `bench/`, where two measurement harnesses
 timed a sync that never happened and recorded the result -- wrong data,
 not missing data.
 
@@ -667,7 +667,8 @@ So that module carries a `__main__` block that prints
 `python -m chitragupta.corpus sync` and exits **64**. That is deliberately none
 of the four codes [CLI.md](CLI.md#-running-sync-on-a-schedule) publishes
 as `sync`'s API, since a scheduler reads `2` there as "expected, do
-nothing". #153 removed the old spelling from the documentation.
+nothing". A follow-up change removed the old spelling from the
+documentation.
 
 It is not a second way in: it parses no arguments, offers no `--help`,
 takes no lock and syncs nothing. There is still exactly one `--help` per
@@ -675,8 +676,9 @@ layer, which is what this invariant is about.
 
 `tests/test_removed_command_scan.py` keeps the old spelling out of the
 tree. It matches the *invocation*: the `-m` flag and the module together,
-in prose and in the quoted argument-list form that got past #150's hand
-sweep. It deliberately does not match the module path, which is
+in prose and in the quoted argument-list form that got past the
+original removal's hand sweep. It deliberately does not match the module
+path, which is
 legitimate and common -- `chitragupta.sync` is also the pinned logger name in
 every `logs/pipeline.log` line.
 
@@ -699,7 +701,8 @@ that keeping `provenance` and `render` out of the stage list prevents.
 
 `chitragupta.retrieval` is additionally a documented *Python API* across the
 skills. Such a move would rename it for no gain, to a command surface
-that is already one level deep. Issue #147 has that argument in full.
+that is already one level deep. The issue tracker has that argument in
+full.
 
 The corpus layer is flat for the same reason: `chitragupta/corpus.py` beside
 `sync.py` and `ledger.py`, rather than a `chitragupta/corpus/` package that would
@@ -729,7 +732,7 @@ code that only `sync` touches. All four layers import it as a library --
 `review/citation_provenance` -- so it is closer to shared infrastructure
 than to a command `sync` owns. What sits under `chitragupta.corpus` is its
 *command*, which is a claim about where a reader should look for it, not
-about who owns the module. Issue #143 has the full argument.
+about who owns the module. The issue tracker holds the full argument.
 
 The two-level form was tried once, as `chitragupta.heavy.render_output`, and was
 reverted with the directory that held it.

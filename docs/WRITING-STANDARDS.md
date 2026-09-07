@@ -670,7 +670,7 @@ govern the mapping's LaTeX column, which is the only place LaTeX appears.
   marker plus fence above, or `$$…$$`; a *symbol legend* is a list, with
   each symbol set as math like every other mention of it. **A fence
   inside a blockquote is still a fence**, which is where the occurrence
-  that prompted this was hiding (#406): one relation, set three ways in
+  that prompted this was hiding: one relation, set three ways in
   one chapter, and the fenced one was the odd one out.
 - **A text subscript is upright.** `$k_\mathrm{day}$`, not `$k_{day}$` --
   the latter sets *d*, *a*, *y* as three italic variables multiplied

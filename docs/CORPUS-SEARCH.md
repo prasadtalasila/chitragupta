@@ -155,8 +155,8 @@ under `[enrich]`, all three are validated at load, and
 single thoroughly-matched paper can otherwise occupy every one of the
 `k` slots. Fetching `k × 4` gives the cap something to promote *from* --
 see the next section. At a multiplier of `1` the cap can only ever
-shorten the result, never improve it, which is the failure #305 existed
-to fix.
+shorten the result, never improve it, which is the failure the
+over-fetch existed to fix.
 
 **Why the cap is keyed on citekey, not title.** Two untitled or
 same-titled documents are still different papers, and bucketing them
@@ -416,7 +416,7 @@ Work down this list instead:
 
 `chitragupta/retrieval.py::search()` has the same
 `search(query, k, snippet_chars)` shape and none of these four stages.
-It is **one result per citekey by construction** (#305) -- it scores
+It is **one result per citekey by construction** -- it scores
 whole documents, so no cap is needed and none exists.
 
 That also means it has **no cap-position question**, and no

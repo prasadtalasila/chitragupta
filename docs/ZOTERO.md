@@ -45,7 +45,7 @@ against one that syncs cleanly, that is the file to open.
 Zotero organises a library into collections and subcollections, and that
 tree is a judgement you have already made -- *these are the modelling
 papers*. This pipeline can use it to scope a draft's retrieval to the
-subset you curated for it, rather than to the whole library (#195):
+subset you curated for it, rather than to the whole library:
 
 ```bash
 python -m chitragupta.corpus ledger --collections               # what exists

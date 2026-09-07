@@ -435,7 +435,7 @@ names a `k` still win. BM25's `chitragupta.retrieval.search()` takes its
 own `k` and is not governed by this key.
 
 **`embed_max_passages_per_source`** caps how many chunks of one citekey
-may appear among those `k` (#305) -- BM25's search is already
+may appear among those `k` -- BM25's search is already
 one-per-citekey by construction and has no matching key. Raise it for a
 corpus where a single, unusually thorough paper legitimately deserves
 more of the result than three chunks; lower it to `1` to force maximal
@@ -446,8 +446,9 @@ papers in a result is bounded by the cap.
 **`embed_overfetch_multiplier`** is how much deeper than `k` Chroma is
 asked, so that dropping a dominant paper's excess chunks *promotes*
 another paper's chunk into the window rather than merely shortening the
-list. At `1` the cap can only shorten, which is the failure #305 existed
-to fix. Raise it when the right paper never comes back at all -- no
+list. At `1` the cap can only shorten, which is the failure the
+overfetch existed to fix. Raise it when the right paper never comes back
+at all -- no
 amount of reranking can reorder a passage that was never fetched. It is
 also the expensive knob when `rerank` is on, since the reranker scores
 the whole pool.
@@ -459,7 +460,7 @@ nonsense value fails *quietly* otherwise -- `embed_top_k = 0` returns no
 results at all, which reads like an empty corpus rather than a typo.
 
 **`rerank`** turns on a cross-encoder that reorders the over-fetched
-passages **before** that cap is applied (#380). Off by default, and that
+passages **before** that cap is applied. Off by default, and that
 is measured rather than cautious: on this project's corpus it leaves
 recall@5 unchanged (156 of 256 either way), does not change source
 diversity at all, and costs 2.5x a search call on a GPU and 5.75x on a
@@ -914,7 +915,7 @@ are prepared to rebuild the index.
 `(premise, hypothesis)` pairs -- a citing sentence's claim against a
 retrieved passage from the cited source, excluding passages labelled
 `section_header`, which assert nothing and so cannot be a premise
-(issue #719) -- and reads off the
+(a gap found and fixed after release) -- and reads off the
 `"entailment"` probability by looking up `"entailment"` in the model's own
 `id2label` mapping, not by a fixed column index. That lookup-by-label,
 rather than lookup-by-position, is what makes every candidate below a
@@ -1077,7 +1078,7 @@ applied to the one decision a heuristic would get wrong.
 
 ### 🔀 Two files feed the matching, and only one is yours to edit
 
-Since #605 the `seed-topics` and `converge` stages read the union of two
+The `seed-topics` and `converge` stages read the union of two
 files: `content/seed_topics.toml` -- yours to write, everything above --
 and `content/keywords.toml`, the `extract-keywords` stage's own output
 (the phrases the corpus's papers themselves declared; see that key in
@@ -1104,8 +1105,8 @@ chitragupta corpus topics --topic "digital twin"
 
 The match report is written to `content/topic_seeds.json` and read back
 by `chitragupta corpus topics`, which needs neither the venv nor a GPU --
-the same split [#204](https://github.com/prasadtalasila/chitragupta/issues/204)
-made for collections, where matching is expensive and reading what it
+the same split already made for collections, where matching is expensive
+and reading what it
 decided is not.
 
 **A paper appears under every topic it matched, not just its closest

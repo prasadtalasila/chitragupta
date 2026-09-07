@@ -146,8 +146,8 @@ packets through Phases 3, 4, 5, 6 and 7 -- the contradiction map, the
 outline, the section writers, the polish pass and the peer-review
 reconciliation all read them. An estimated ~1k tokens per packet is ~6k
 tokens resident across the longest stretch of the run. This is the
-subject of
-[#74](https://github.com/prasadtalasila/chitragupta/issues/74), and
+subject of [the fan-out cost
+issue](https://github.com/prasadtalasila/chitragupta/issues/74), and
 ["What the dossier actually recovers"](#-what-the-dossier-actually-recovers)
 below is careful about which part of it a dossier can and cannot remove.
 The half that could be removed now has been: Phase 5 dispatches through
@@ -236,9 +236,9 @@ resident pool:
   as *output*. Four writers x ~800 tokens of packet-derived material is
   3.2k output = **16k equivalents**.
 
-That last row is the one #74 could actually collect, and it is why the
-answer is a file rather than better summarising. **Implemented**: the
-pasted material is now the one line
+That last row is the one the fan-out cost issue could actually collect,
+and it is why the answer is a file rather than better summarising.
+**Implemented**: the pasted material is now the one line
 `python -m chitragupta.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 
@@ -308,7 +308,7 @@ it is recommended, and it is deliberately not taken: `brief` only
 
 ## 💡 Why deep-research has no lever left
 
-The claim in [#74](https://github.com/prasadtalasila/chitragupta/issues/74)
+The claim in [the fan-out cost issue](https://github.com/prasadtalasila/chitragupta/issues/74)
 -- that the fan-out payload was the only remaining way to cut
 `deep-research`'s token cost -- was reached by elimination, and the
 eliminations are each recorded elsewhere:
@@ -333,8 +333,8 @@ skill, and the guardrails already say to point users there.
 
 The dependency the issue records is also stale, in the direction of being
 already satisfied. It lists itself as blocked by
-[#81](https://github.com/prasadtalasila/chitragupta/issues/81), which is
-closed -- the dossier wiring landed in `c4fbd9a`, and
+[an issue that has since closed](https://github.com/prasadtalasila/chitragupta/issues/81)
+-- the dossier wiring landed in `c4fbd9a`, and
 `.claude/skills/deep-research/SKILL.md` has required the Phase 2
 transcription since. That was the write half; 3.10.0 is the
 dispatch-prompt half, and the two only work together. A run that skips
@@ -391,8 +391,8 @@ reason.
 *Asserted*, in the sense of ["Measured, derived, and
 asserted"](#-measured-derived-and-asserted) below: the resolution order and
 the `inherit` default are properties of the harness, and the size of the
-saving is unmeasured until
-[#76](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
+saving is unmeasured until [the planned
+measurement](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
 
 ## ✍ Who writes a packet down, and when
 
@@ -488,9 +488,9 @@ else.
 
 ## 📊 Measuring this without writing a survey
 
-Every figure above is derived. Turning them into numbers is
-[#76](https://github.com/prasadtalasila/chitragupta/issues/76), and the
-obvious way to do it -- run a full `standard`-depth `deep-research` on a
+Every figure above is derived. Turning them into numbers is [a planned
+measurement](https://github.com/prasadtalasila/chitragupta/issues/76), and
+the obvious way to do it -- run a full `standard`-depth `deep-research` on a
 real topic, before and after -- is also the most expensive experiment
 available and the least controlled, since two runs on the same topic do
 not take the same number of turns. Four cheaper routes, in increasing
@@ -586,7 +586,7 @@ unrelated engineering sessions rather than a `deep-research` or
 skill's own boundary saving. [The dispatch payload, measured on real
 material](#-the-dispatch-payload-measured-on-real-material) below is the
 number that answers that question, for the one boundary it was measured
-on; the rest is [#76](https://github.com/prasadtalasila/chitragupta/issues/76).
+on; the rest is [the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76).
 
 ### 🧪 Cheap: a stub corpus
 
@@ -679,9 +679,9 @@ drafting run.
 What it does **not** measure: any effect on residency (there is none --
 see [what the dossier actually recovers](#-what-the-dossier-actually-recovers)),
 and the turn counts either side of the change. Those still want the
-before/after run in [#76](https://github.com/prasadtalasila/chitragupta/issues/76).
+before/after run in [the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76).
 
-**What A2 (#306) changes here.** This measurement predates the
+**What A2 changes here.** This measurement predates the
 `claim:`/`quote:` split and was built from a `support:`-only dossier --
 each block a raw 600-character retrieval window
 ([DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)),
@@ -803,10 +803,10 @@ the raw-payload row above already *is* that arm's cost, measured rather
 than run twice. What a second run would add is confirming the turn count
 doesn't itself change with the boundary removed (plausible, since
 `survey-writer`'s numbered steps are unchanged either way, but unmeasured
-here) -- the last piece [#76](https://github.com/prasadtalasila/chitragupta/issues/76)
+here) -- the last piece [the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76)
 still owns.
 
-**What A2 (#306) changed here, before it was remeasured.** Like the Phase
+**What A2 changed here, before it was remeasured.** Like the Phase
 5 measurement above, the run this section originally reported judged
 evidence into `relevance:`/`support:` blocks, before the `claim:`/`quote:`
 split. The judged-packet character counts are the subagent boundary's own
@@ -814,9 +814,9 @@ measurement and are unaffected by which fields the packet's blocks use;
 what moves under the new contract is the *content* of `support:`'s
 replacement, not the boundary this section measures.
 
-### 📊 The step 2a boundary, remeasured under `claim:`/`quote:` (A3, #307)
+### 📊 The step 2a boundary, remeasured under `claim:`/`quote:` (A3)
 
-The "after" number A3 (shipped, #327) asked for -- but as a **controlled**
+The "after" number A3 (shipped) asked for -- but as a **controlled**
 rebuild rather than a second independent
 run, because two different judges on the same 45 candidates would confound
 the field contract with keep-rate and prose-length choices that have
@@ -938,7 +938,7 @@ of the step 2a boundary under `relevance:`/`support:`, from a real
 by hand: also a payload size, not a run -- and the one figure here that
 corrects an earlier derived estimate (Example 1's implied ~61% saving)
 rather than only confirming one. And the pair
-[8,383 against 30,300 characters](#-the-step-2a-boundary-remeasured-under-claimquote-a3-307)
+[8,383 against 30,300 characters](#-the-step-2a-boundary-remeasured-under-claimquote-a3)
 -- the same 23 kept judgments from the same judge, serialized once as
 `claim:`/`quote:` and once as `support:` at its documented default -- which
 is this document's one *controlled* payload comparison: `claim:`/`quote:`

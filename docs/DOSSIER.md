@@ -67,7 +67,7 @@ were missing entirely are the two that matter most.
 | `revisions.md` | append-only log of what changed and why | **nowhere** |
 | `retrieval.md` | every retrieval call and the size of what it returned | **nowhere** |
 | `math.md` | ASCII in the draft -> the LaTeX it renders as ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §12) | **nowhere** |
-| `outline.md` | the human's own per-section brief/claim/declared queries (#455) | **nowhere** |
+| `outline.md` | the human's own per-section brief/claim/declared queries | **nowhere** |
 
 Four filled dossiers are committed to read alongside this page:
 `docs/examples/sample-project/content/dossiers/dt-overview/` holds one per
@@ -127,7 +127,7 @@ asked to leave out.
 **`evidence.md` -- what was kept, and why.** One block per kept citekey
 -- and where a later pass or a hand edit has written two under the same
 citekey, the **first** is the block every reader gets, with the rest
-reported by `check-evidence` (#506). Keeping the last was the earlier
+reported by `check-evidence`. Keeping the last was the earlier
 behaviour and was silent, so a second block displaced the evidence a
 drafting run had already been handed with nothing anywhere saying so.
 Each block carries `relevance:` (why this source bears on the
@@ -189,7 +189,7 @@ turns themselves cost. Enough to compare two runs; not enough to price a
 whole draft.
 
 **`outline.md` -- the human's own structure, declared rather than
-guessed (#455).** Per section: a `##`-or-deeper heading (a level-1 line
+guessed.** Per section: a `##`-or-deeper heading (a level-1 line
 is the file's own title, and is passed over rather than becoming a
 section with nothing under it), a `brief:` (steering, consumed
 once, never appears in the draft) and/or one or more `claim:` blocks
@@ -205,7 +205,7 @@ is all this file does on its own -- deciding what's kept and writing
 from the record rather than from trust.
 
 **A declared query that came back empty is not a declared query
-answered (#480).** `status` reads the `results` column too, and reports
+answered.** `status` reads the `results` column too, and reports
 a query it issued that returned nothing separately from the ones that
 returned candidates -- counted in the same "run" figure, since the call
 did happen, and named underneath:
@@ -236,8 +236,8 @@ an invented token would be reported as a broken citation that is not one.
 It also made a whole family of real citekeys invisible. `Doe2024` and
 `Lamport94` -- the default style of several reference managers -- carry
 no separator at all, so a dossier written that way contributed nothing to
-any parse, and a paper it cited leaving the corpus was **never** reported
-(#506). A false negative there is the worse failure of the two, since the
+any parse, and a paper it cited leaving the corpus was **never**
+reported. A false negative there is the worse failure of the two, since the
 draft goes on citing a source the ledger no longer holds.
 
 Both halves are kept by admitting a separator-free token only when it is
@@ -268,7 +268,7 @@ A malformed dossier makes the next revision less efficient. It cannot
 make a draft wrong, because the citation gate still stands between any
 draft and the user.
 
-## 📖 `evidence.md`'s `claim:`/`quote:` contract (A2, #306)
+## 📖 `evidence.md`'s `claim:`/`quote:` contract (A2)
 
 One `## \`citekey\`` block carries three possible fields:
 
@@ -444,8 +444,8 @@ take a write lock or run a migration.
 
 **It does wait for a writer's commit, though, and that is not a
 contradiction.** The ledger uses SQLite's default rollback journal, under
-which a reader is locked out for the length of a commit. Until issue #552
-this path used a zero busy-timeout and swallowed the resulting
+which a reader is locked out for the length of a commit. Until it was
+fixed, this path used a zero busy-timeout and swallowed the resulting
 `SQLITE_BUSY` into "there is no readable ledger" -- so a `dossier status`
 that happened to overlap a sync's commit reported a drift scan against no
 corpus at all, indistinguishable from a machine that has none. Waiting
@@ -467,7 +467,7 @@ command -- the only thing that rewrites it is a re-grounding pass, which
 re-stamps it as the record that the draft was brought back into line with
 that corpus.
 
-## 🧭 The draft fingerprint (#454, FEATURE-ROADMAP.md's E3)
+## 🧭 The draft fingerprint (FEATURE-ROADMAP.md's E3)
 
 The corpus fingerprint above answers "has the corpus moved since this
 draft was written?" Nothing answered the same question about the draft
@@ -533,7 +533,7 @@ sha256[:12] of the text) -- not `dossier.digest`, the corpus
 fingerprint's function, which is order-independent over a *set of
 citekeys* and would not move at all for a reworded sentence.
 
-### 🔁 The fingerprint as a retrieval trigger (#456, FEATURE-ROADMAP.md's E4)
+### 🔁 The fingerprint as a retrieval trigger (FEATURE-ROADMAP.md's E4)
 
 A `CHANGED` fingerprint is also ITER-RETGEN's `y_{t-1}` (Shao et al.,
 *Findings of EMNLP 2023*, docs/RAG.md) with a person in the generation

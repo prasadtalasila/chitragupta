@@ -125,7 +125,7 @@ has why that inversion is still the cheap path.
 removes a paper your draft cites, or -- once you've hand-edited a
 section -- when you want that section's own new wording to drive one
 extra retrieval round (ITER-RETGEN with you standing in for the model,
-[DOSSIER.md](DOSSIER.md#-the-fingerprint-as-a-retrieval-trigger-456-feature-roadmapmds-e4)).
+[DOSSIER.md](DOSSIER.md#-the-fingerprint-as-a-retrieval-trigger-feature-roadmapmds-e4)).
 
 ### ✏ Handing a hand-edited draft back for the next iteration
 
@@ -134,7 +134,7 @@ You don't have to route a change through a skill at all. Open
 the same path -- there is no `dossier rename`, so saving it under a
 different path orphans its dossier, and every equation in the draft
 silently reverts to typewriter text on the next render
-([DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-454-feature-roadmapmds-e3)).
+([DOSSIER.md](DOSSIER.md#-the-draft-fingerprint-feature-roadmapmds-e3)).
 
 Nothing runs automatically when you save, and you don't have to tell the
 pipeline you edited it. The next time you ask for a revision -- or run

@@ -147,7 +147,9 @@ one that assembles accepted units into a book
 ([docs/GENRE.md](docs/GENRE.md)). Before any draft exists,
 `chitragupta corpus discover` maps what your corpus is actually about
 -- its topics, their papers, and the links between them
-([docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md)).
+([docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md); worked tours in
+[docs/EXPLORE-CLI.md](docs/EXPLORE-CLI.md) and
+[docs/EXPLORE-WEB.md](docs/EXPLORE-WEB.md)).
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways
 -- by depth, by genre, and in time order -- and is where the figure

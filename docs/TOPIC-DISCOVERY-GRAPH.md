@@ -758,19 +758,21 @@ still holds; this section records what shipping them *did* to the
 renderer contract, in plainer language than the sections that argued for
 them.
 
-### 13.1 The gap, stated plainly
+### 13.1 The gap as it stood, and the twins that closed it
 
 `corpus discover` and the `--app` page read the same artefact, and the
 contract says the app "cannot disagree with `--json` or with the
-terminal views". Since section 2's decision, that sentence is true only
-because the terminal is silent: the app now computes a whole analytical
-layer -- the merge-tree grouping, the MCL partitions and their
-disagreement grid, ego density and Burt brokerage, typed shortest paths,
-the withheld-edge explanation -- and the terminal can produce almost
-none of it (`--why`, the withheld-edge row, is the exception since
-2026-09-07). You cannot disagree with someone who says nothing. A scripted
-consumer, which in this project includes every drafting skill, cannot
-reach the other answers the panel shows.
+terminal views". For two days after section 2's decision, that sentence
+was true only because the terminal was silent: the app computed a whole
+analytical layer -- the merge-tree grouping, the MCL partitions and
+their disagreement grid, ego density and Burt brokerage, typed shortest
+paths, the withheld-edge explanation -- and the terminal could produce
+none of it. You cannot disagree with someone who says nothing, and a
+scripted consumer, which in this project includes every drafting skill,
+could not reach any answer the panel showed. Closing that, one twin per
+day's work on 2026-09-07, is what the table below records -- every row
+now names a shipped command, each pinned to the app's own arithmetic by
+a shared case file under `tests/webapp/`.
 
 | The app answers | The terminal's answer |
 | --- | --- |
@@ -787,9 +789,10 @@ cross-encoder rescoring, the plural-match PageRank `neighbourhood` --
 are all about *resolving a phrase*, not about exploring the graph. The
 gap is one-directional.
 
-### 13.2 Why "view-derived, not a corpus claim" is fraying
+### 13.2 Why "view-derived, not a corpus claim" frayed
 
-Three developments since the decision undercut its central premise:
+Three developments in the two days after the decision undercut its
+central premise, and are what motivated the amendment in section 2:
 
 1. **The bench treats the browser's numbers as corpus claims.**
    `bench/topic_cluster_eval.py` drives `families.js` through `node`,
