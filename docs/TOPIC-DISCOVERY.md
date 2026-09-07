@@ -632,14 +632,16 @@ What the page adds over the static `--html` circle:
   paper-sharing clusters against 39 semantic ones.
 
   Never one clustering over a merged graph: fusing the families
-  destroys the disagreement that is the whole point. And not stored
-  today -- a partition is the kind of claim `docs/TOPIC-DISCOVERY-GRAPH.md`
-  §2 originally kept out of the artefact wholesale, which is why it is
-  computed in the browser, labelled as the view's own, and written back
-  nowhere. §2's #707 amendment now permits storing it, under conditions
-  (deterministic over stored data, parameters recorded, every runtime
-  pinned by shared test vectors); until the PR that does so lands, the
-  in-browser computation above is what ships.
+  destroys the disagreement that is the whole point. Since #712 the
+  partitions are stored: the builder runs the same MCL at every value
+  the slider can take (1.2 to 4.0 by 0.1) and records one cluster index
+  per topic per inflation in `communities`, under §2's #707 amendment
+  (deterministic over stored data, parameters recorded, both runtimes
+  pinned by `tests/webapp/mcl_cases.json`). The app reads the stored
+  partition for the slider's value -- its caption says so -- and
+  clusters in the browser only for an export from an older artefact.
+  The terminal reads the same partitions with `discover --clusters
+  [--inflation X]`, so the grid is finally an answer `--json` confirms.
 - **It walks each family between two pinned topics.** Two buttons --
   "path over shared papers" and "path over semantic nearness" -- never
   one fused weight, because a single distance over both families is a

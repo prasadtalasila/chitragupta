@@ -78,6 +78,20 @@ def build_parser() -> argparse.ArgumentParser:
             "distance (a count, or 'all' for everything reachable)"
         ),
     )
+    parser.add_argument(
+        "--clusters",
+        action="store_true",
+        help=(
+            "the stored MCL partitions of both edge families and where "
+            "they disagree -- the app's disagreement grid, as a view"
+        ),
+    )
+    parser.add_argument(
+        "--inflation",
+        type=float,
+        default=2.0,
+        help="which stored inflation --clusters reads (default: 2.0)",
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--out",
