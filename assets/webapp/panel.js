@@ -245,10 +245,17 @@
      terminology difference worth naming. */
   function disagreementHtml(grid) {
     var nothing = !grid.semanticOnly.length && !grid.overlapOnly.length;
-    return "<h2>Where the two families disagree</h2>" +
-      '<p class="terms">Both edge families clustered in your browser at ' +
-      "inflation " + grid.inflation + ", and compared. Not a corpus claim: " +
-      "<code>--json</code> reports no clusters, and nothing is written back.</p>" +
+    // Stored partitions (#712) are the corpus's own, confirmed by
+    // --json; the in-browser clustering stays only for an export from
+    // an older artefact, and keeps the original caption.
+    var caption = grid.stored
+      ? '<p class="terms">Both edge families clustered by the pipeline at ' +
+        "inflation " + grid.inflation + " and read from the artefact -- " +
+        "the same partitions <code>--json</code> reports.</p>"
+      : '<p class="terms">Both edge families clustered in your browser at ' +
+        "inflation " + grid.inflation + ", and compared. Not a corpus claim: " +
+        "<code>--json</code> reports no clusters, and nothing is written back.</p>";
+    return "<h2>Where the two families disagree</h2>" + caption +
       (nothing
         ? "<p>At this inflation the two families agree about every pair: " +
           "no topic is grouped by one and split by the other.</p>"

@@ -76,6 +76,10 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
         # honesty); .get because an artefact from an older converge run
         # may predate the field.
         "uncovered": topic_set.get("uncovered", []),
+        # The stored MCL partitions (#712), one assignment array per
+        # slider inflation per family; empty for an older artefact and
+        # the app then clusters in the browser as before.
+        "communities": graph.get("communities", {}),
     }
 
 
