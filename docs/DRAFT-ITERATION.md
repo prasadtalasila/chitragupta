@@ -115,8 +115,7 @@ Everything below assumes that format and does not restate it.
 The dossier was built to be read by the *next* session. `brief` is the
 part that is read by the *current* one -- specifically by a subagent, and
 specifically instead of the orchestrator pasting the same text into its
-prompt. It closes
-[#74](https://github.com/prasadtalasila/chitragupta/issues/74).
+prompt. It closes a long-recorded issue.
 
 **The problem, in one phase.** `deep-research` Phase 5 dispatches one
 writer per section, and each needs the kept claims its section stands on.
@@ -276,8 +275,8 @@ reports on:
   `content/`, executes the schema and runs migrations. That is a write
   connection, and the whole point of `status` opening the ledger
   `mode=ro` is that an inspection must not take a write lock or run a
-  migration. (It *does* wait out a writer's commit window, since issue
-  #552 -- waiting takes no lock, and the alternative was reporting an
+  migration. (It *does* wait out a writer's commit window, a deliberate
+  later addition -- waiting takes no lock, and the alternative was reporting an
   empty corpus. See [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)
 - `search()` builds its index through `retrieval._load_index`, which
   calls `_save_cache()` whenever any document's fingerprint has moved.
@@ -353,7 +352,7 @@ loop:
 
 1. `python -m chitragupta.draft dossier status <draft>` -- what is on disk,
    has the corpus moved, and has the *draft* moved since the last
-   `dossier stamp` (#454, FEATURE-ROADMAP.md's E3 -- "The draft
+   `dossier stamp` (FEATURE-ROADMAP.md's E3 -- "The draft
    fingerprint" in [docs/DOSSIER.md](DOSSIER.md))? A changed draft
    fingerprint surfaces up to four findings, offered to the user one at a
    time rather than applied. Then `python -m chitragupta.draft dossier

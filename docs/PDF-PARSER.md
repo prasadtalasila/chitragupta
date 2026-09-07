@@ -171,8 +171,7 @@ layered backend strategy.
 
 ## 🧪 Four newer backends, evaluated and not adopted
 
-Surveyed 2026-08-05 (originally in
-[issue #22](https://github.com/prasadtalasila/chitragupta/issues/22)) from
+Surveyed 2026-08-05 (originally on the issue tracker) from
 each project's own documentation rather than from a trial run: **marker**,
 **surya**, **xberg** and **unstructured**, all against docling as the
 incumbent. Nothing was adopted. This is recorded so the next person asking

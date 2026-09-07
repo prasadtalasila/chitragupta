@@ -4,8 +4,9 @@ Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-27. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`, the first three sharing
 one `draft_target.py`, all launching in exec form, as `python`. The launcher
-hazards are closed: the placeholder is braced, the interpreter name is settled below, and
-a launcher that cannot start is now reported from two sides rather than one.
+hazards are closed: the placeholder is braced, the interpreter name is
+settled below, and a launcher that cannot start is now reported from two
+sides rather than one.
 
 **The fourth hook is the first that is not about a draft** (issue 431).
 Every row of the registry was keyed on a write under `content/drafts/`
@@ -113,9 +114,9 @@ can be wrong, stale, or deliberately overridden. Blocking on the second
 kind refuses a *correct* draft on a *bad target* -- a failure the gate
 cannot have by construction.
 
-The operating formula from that decision: **invocation is enforced, conformance is
-not.** A hook guarantees the findings reach the agent. Only the gate
-guarantees anything about what the agent then does.
+The operating formula from that decision: **invocation is enforced,
+conformance is not.** A hook guarantees the findings reach the agent.
+Only the gate guarantees anything about what the agent then does.
 
 ## 🪢 A second mechanism: git's own hooks
 
@@ -488,9 +489,9 @@ model. Both facts are measured; see the next section.
 **An advisory hook never emits a blocking decision.** For the gate that
 shape is `{"decision": "block", "reason": ...}` on stdout, printed by
 `citation_gate_hook.py`. For everything else it is forbidden twice over --
-once because the settled rule says conformance may not block, and once because a hook
-that prints anything other than its own single JSON object has already
-destroyed its own delivery.
+once because the settled rule says conformance may not block, and once
+because a hook that prints anything other than its own single JSON object
+has already destroyed its own delivery.
 
 **Fail open on malformed stdin.** Three shapes, all of which have been hit:
 invalid JSON, valid JSON that is not an object, and a `tool_input` that is
@@ -780,9 +781,10 @@ whoever is changing a hook and wants the sources.
 ## ❓ Open questions
 
 1. **Whether `python` really starts a hook on a bare Windows clone.**
-   The name is [settled](#-the-launcher-contract) and the launcher issue is closed, but
-   the Windows half of the reasoning is read off CPython's `venv` module
-   and the harness documentation -- no Windows host without Git Bash was
+   The name is [settled](#-the-launcher-contract) and the launcher issue
+   is closed, but the Windows half of the reasoning is read off CPython's
+   `venv` module and the harness documentation -- no Windows host without
+   Git Bash was
    available to try it on. The Linux half is measured. If the answer there
    is ever *no*, the failure is at least audible now: `python -m chitragupta.draft
    gate` says so.

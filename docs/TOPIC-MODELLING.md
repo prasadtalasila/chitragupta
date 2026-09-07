@@ -101,7 +101,8 @@ extracts domain-specific terms first and then chooses each topic's label
 from the recognised terms by C-Value scoring, and Silvello et al. (2016),
 which ranks candidates by both corpus-level and document-level TF-IDF.
 
-**Built**, as `chitragupta/enrich/topic_labels.py`. It fixed two things at once: the
+**Built**, as `chitragupta/enrich/topic_labels.py`. It fixed two things
+at once: the
 author-name labels above, and BERTopic's own topic names, which on this
 corpus were stopwords (`0_the_and_of_to`) because no
 `CountVectorizer(stop_words=...)` was configured. A person's name is not

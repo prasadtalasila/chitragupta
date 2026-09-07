@@ -1,15 +1,15 @@
 # 🗺 The auto-improvement loop: what would be built
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-26;
-step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, step 4 in #381, and
-step 5 built narrow (verbatim runs only) in 5.7.0 -- see
+step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, step 4 in its own PR,
+and step 5 built narrow (verbatim runs only) in 5.7.0 -- see
 [Build order](#-build-order).
 
-`python -m chitragupta.review agenda <draft>` is a command now (#381), though
+`python -m chitragupta.review agenda <draft>` is a command now, though
 no skill consumes it yet -- that is step 5's widening, still open. Of the
-review aids, all seven now emit JSON: `verbatim scan` as of 5.4.0 (#127),
-`provenance` and `coverage` as of 6.16.0 (#309), `synthesis` and `uncited`
-from the day each landed (#341, #311), and `agenda` itself from #381.
+review aids, all seven now emit JSON: `verbatim scan` as of 5.4.0,
+`provenance` and `coverage` as of 6.16.0, `synthesis` and `uncited`
+from the day each landed, and `agenda` itself from the day it landed.
 This document states *what* would be built and *what it must satisfy*, in
 the order it would be built.
 
@@ -72,15 +72,16 @@ Markdown, at `content/review/<topic>/<stem>.<aid>.json`.
   authoritative.
 - No timestamp, per the layer's existing rule: two runs over an unchanged
   draft and corpus produce byte-identical JSON.
-- This is #127's change applied to the layer rather than to
+- This is the verbatim scan's `--json` change applied to the layer rather
+  than to
   `verbatim_check` alone, so the report contract does not fork.
 
-What 5.4.0 built, per #127's scope: the layer-level plumbing --
+What 5.4.0 built, per that change's scope: the layer-level plumbing --
 `review.envelope()` (the payload's provenance, and the not-a-verdict
 notice, as data) and `review.write_json()` -- plus `verbatim scan
 --json`, which prints the payload and files it under `--write`.
 
-What 6.16.0 added, per #309's scope: `provenance --json` and
+What 6.16.0 added: `provenance --json` and
 `coverage --json`, reusing that same plumbing. `provenance` files its
 `.json` unconditionally, matching the `.md`'s own always-write policy;
 `coverage` files its `.json` only under `--write`, matching the `.md`'s.
@@ -114,7 +115,8 @@ one item. This cross-signal merge is the work no individual aid can do.
 anchor, citekey, hash of the matched span)` or equivalent -- so that "this
 finding is gone" and cross-aid dedup are both decidable across runs.
 
-**Order:** class order as the table below lists it, then #128's severity
+**Order:** class order as the table below lists it, then the verbatim
+scan's severity
 bucket within a class, then position in the draft.
 
 ### 🏷 Item classes
@@ -122,8 +124,8 @@ bucket within a class, then position in the draft.
 | Class | Source | Kind | Unattended? |
 | --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs #129 reserves for the human. Built: `agenda-reviser` |
-| `prose` | `style_check` (#107), `steering.md` | no evidence delta | **yes**, for the whole class -- decided in #421. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human. Built: `agenda-reviser` |
+| `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the whole class -- a recorded decision. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `claim-support` | support | judgement | no -- surfaced. Unfiltered by design -- a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)) -- so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
 | `uncited-source` | coverage | judgement | no -- surfaced |
@@ -136,15 +138,15 @@ does the source support this claim? -- but was never wired in as a
 second source for `unsupported-claim`: its score is ranked, never
 banded, by design ([REVIEW.md](REVIEW.md)), and that class's extractor
 (`unsupported_claim_items`) decides membership by a `band`, a field
-this aid deliberately does not emit. #427 gave it its own class instead,
+this aid deliberately does not emit. A later change gave it its own class instead,
 `claim-support`, ranked-but-unfiltered rather than thresholded -- a
 percentile cutoff would claim the same false precision a band would.
 Findings the entailer could not score at all (`note` set, no quotable
 passage) are excluded, since there is no score there to rank or act on.
 
 The `prose` class had no producer when this was written. It has both a
-producer and a consumer now: #107 shipped the detector in 5.13.0 and
-its automatic invocation (#183) landed in 5.19.0, and `chitragupta/style_check.py`
+producer and a consumer now: the detector shipped in 5.13.0 and
+its automatic invocation landed in 5.19.0, and `chitragupta/style_check.py`
 emits `--json` -- so build-order step 6 below is **done**, and this class
 is live rather than an empty list.
 
@@ -194,7 +196,7 @@ says where each comes from.
 
 | | Requirement |
 | --- | --- |
-| **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor #128's allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
+| **R1** | The skill's write-set is exactly the draft and `revisions.md`. It may *execute* an aid, the gate and `style_check`; it may not edit them, nor the boilerplate allowlist, `rejected.md`, `scope.md`, or anything under the corpus layer. |
 | **R2** | Every finding carries an identity stable across runs. |
 | **R3** | An unattended item's check is **binary**. No continuous score is ever the thing being optimised. |
 | **R4** | After each accepted edit, every aid re-runs and the result is compared by R2's finding identity rather than by a total: the repaired item appears in `resolved`, and no objective-class finding appears in `new`. A count that holds level because one objective finding was swapped for another is a failed edit, not a neutral one. Otherwise the edit reverts. |
@@ -279,8 +281,9 @@ Do the free thing first, and pay only for what it could not decide --
 3. **A dispatched reviser**, only for items needing the surrounding
    argument in context. The expensive rung, and the short list.
 
-Model tiering is the fourth rung. #75 settled the policy and #76 the
-measurement behind it, both closed; what is left is applying that policy
+Model tiering is the fourth rung. Two closed issues settled the policy
+and the
+measurement behind it; what is left is applying that policy
 to whatever mechanical stages this loop adds, which is a question for the
 build rather than a blocker on it.
 
@@ -292,11 +295,11 @@ of it is built, and none of it is read today.
 - **Which retrieval queries paid.** `retrieval.md` logs every call;
   `evidence.md` and `rejected.md` record what was kept and turned down.
   Across drafts, that is which query shapes yield kept evidence -- the
-  evidence #63's parked evaluation harness would otherwise have to
+  evidence the parked evaluation harness would otherwise have to
   synthesise.
 - **Which item classes the human accepts.** Accepted and reverted items
   per class, across drafts, is a labelled record of the loop's own
-  reliability. #130 requires the gating threshold to be tuned against
+  reliability. The gating decision requires its threshold to be tuned against
   real reports rather than guessed; this is those reports.
 - **Where the tokens went.** `dossier status` already totals retrieval
   cost per revision. Across drafts, that is the measurement
@@ -307,31 +310,34 @@ allowlist -- is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 ## 🗺 Build order
 
-Issue #126 already fixes this order; the change is to its scope, not its
-sequence.
+A standing issue already fixes this order; the change is to its scope,
+not its sequence.
 
 1. **Settle the amendment.** Not a coding task --
    [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs).
-   *Approved by the user on 2026-08-21 and applied in 6.20.1 by #312,
-   which needed it to make the verbatim scan a required step in the genre
+   *Approved by the user on 2026-08-21 and applied in 6.20.1 by the
+   change that
+   needed it to make the verbatim scan a required step in the genre
    skills. The surviving invariant is advisory-versus-blocking: a review
    finding may be read, may be invoked by a driver, and may never block a
    draft.*
-2. **#127, widened** to every aid. Hard prerequisite for everything
+2. **`--json`, widened** to every aid. Hard prerequisite for everything
    below. *Done: `verbatim scan` in 5.4.0, then `provenance` and
-   `coverage` in 6.16.0 (#309), and `synthesis`/`uncited` from the day
-   each landed (#341, #311) -- all six aids now emit JSON on the same
+   `coverage` in 6.16.0, and `synthesis`/`uncited` from the day
+   each landed -- all six aids now emit JSON on the same
    layer-level plumbing.*
-3. **#128** -- severity buckets and the boilerplate allowlist. *Done in
+3. **Severity buckets and the boilerplate allowlist.** *Done in
    5.5.0 -- the allowlist shipped as per-host, gitignored data (like
    `config.toml`), not version-controlled as first framed in
    [HOUSE-STYLE.md](HOUSE-STYLE.md); the constraints above (read-only to
    the loop, etc.) hold either way.*
-4. **`agenda`, one aid further.** *Done in #381 -- useful on its own,
+4. **`agenda`, one aid further.** *Done -- useful on its own,
    independently of whether step 5 follows.*
-5. **#129, widened** -- the `agenda-reviser` skill, over all defect
+5. **The remediation skill, widened** -- the `agenda-reviser` skill, over
+   all defect
    classes rather than verbatim runs alone. *Built narrow first, in
-   5.7.0: `overlap-reviser` (renamed `agenda-reviser` in #435) is #129
+   5.7.0: `overlap-reviser` (since renamed `agenda-reviser`) is the
+   remediation issue
    as filed, over the `verbatim-run` class alone, consuming `verbatim
    scan --json` directly rather than an agenda. It did not wait for
    steps 2 and 4 because it did not need to
@@ -346,13 +352,13 @@ sequence.
    for the `verbatim-run` class) and `verbatim recheck`, which is R3's
    binary check and R4's did-anything-else-break count made
    deterministic. `agenda` should reuse both rather than restate them.
-6. **#103 and #107** -- the copy-edit branch and `style_check.py`, giving
+6. **The copy-edit branch and `style_check.py`**, giving
    the `prose` class a producer and a consumer.
-7. **#130** -- the gating decision, last, tuned against real reports from
+7. **The gating decision**, last, tuned against real reports from
    step 5.
 
 Step 5's widening is the only work left live. Steps 1, 2, 3, 4 and 6
-are shipped, and step 7 (#130) is a closed, declined decision rather
+are shipped, and step 7 is a closed, declined decision rather
 than an open issue -- see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
 
 ## 🚧 B5 is a separate mechanism, not a widening of this one
@@ -378,7 +384,7 @@ cover B5:
   own later steps already call. It never calls `review agenda`, so there
   is no overlap with this track's own machinery to exempt it from.
 - Its termination condition is the **declared query list**, not a round
-  count (#481): `outline.md`'s list is finite, so "every declared query
+  count: `outline.md`'s list is finite, so "every declared query
   ran and none came back empty" is decidable. That is a report the step
   prints, never a bound on how much it may edit and never a condition of
   presenting -- the three-repair cap is what bounds the editing, and R3
@@ -386,7 +392,8 @@ cover B5:
 
 ## 🚫 What this does not change
 
-- **No new gate.** `chitragupta.draft gate` remains the only one. #130 remains
+- **No new gate.** `chitragupta.draft gate` remains the only one. The
+  gating-decision issue remains
   the only place that decision is taken.
 - **No corpus growth.** The loop never fetches, never writes the ledger,
   and never proposes a paper that is not already in it.

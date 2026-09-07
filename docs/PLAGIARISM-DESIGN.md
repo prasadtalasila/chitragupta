@@ -69,9 +69,10 @@ second.
 
 ## 📊 Measured: what a blocking overlap gate would block
 
-[The overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order) asks whether a long verbatim run
-should block a draft the way the citation gate blocks an unresolvable
-citekey, and forbids guessing the threshold. `bench/bench_overlap_gate.py`
+[The overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order) asks whether
+a long verbatim run should block a draft the way the citation gate blocks
+an unresolvable citekey, and forbids guessing the threshold.
+`bench/bench_overlap_gate.py`
 measured it against this project's own 15-chapter book
 (178,077 words) and the same 497-document corpus the book was written
 from -- organic prose with no planted reuse, which is what makes a

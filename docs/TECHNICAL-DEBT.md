@@ -13,7 +13,8 @@ document's own prose has to keep up with too: three items had been closed
 without ever being marked done, and `bench/` and the test suite were both
 re-measured, having grown substantially.
 
-**Compacted in its own pull request.** Thirteen closed items each kept a full section --
+**Compacted in its own pull request.** Thirteen closed items each kept a
+full section --
 four fifths of this document was history, and this file is loaded to
 answer "what is owed", not "what was". They are gone, and the record of
 each is the pull request that closed it. Nothing was re-opened, and every
@@ -532,7 +533,8 @@ reading a document changes what a server-side default produces. See
 [Process debt](#-process-debt-the-formats-that-are-not-adhered-to). A
 shorter `DEVELOPER-AGENTS.md` would not have moved that number by one.
 
-There is a sharper version of this, which the settings change has since shown: the rule
+There is a sharper version of this, which the settings change has since
+shown: the rule
 is not reachable by *configuration* either, since no value of that
 setting produces a commit body from a PR description. It is reachable
 only by a step at merge time, which is what point 3 below actually asks
@@ -575,7 +577,8 @@ Measured over the **last 30 commits on `main`**:
 | Title in imperative mood | 1 noun phrase | Authoring |
 
 **Resolved by a settings change and a merge command** (settings applied
-2026-08-18; the merge command in a later PR). The table above is the measurement as taken on
+2026-08-18; the merge command in a later PR). The table above is the
+measurement as taken on
 2026-08-13 and is kept as the baseline for the three title-side rows
 still open in it; what follows is what every cause -- title and body
 alike -- turned into. Two rows from that original measurement are not in

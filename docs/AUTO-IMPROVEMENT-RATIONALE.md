@@ -81,8 +81,8 @@ machine-readable output in the whole quality surface; 5.4.0 added the
 second, on `verbatim scan`, and 6.16.0 the other two, on
 `provenance` and `coverage`. Four of the five signals above are
 machine-readable now. And **prose quality still has no signal at all**:
-`draft-reviser` is section-and-evidence-shaped, and a recorded issue notes that a
-copy-edit touching no evidence has no sanctioned path through it.
+`draft-reviser` is section-and-evidence-shaped, and a recorded issue notes
+that a copy-edit touching no evidence has no sanctioned path through it.
 
 ## 🔄 Where the loop sits, and the cycle that decides it
 

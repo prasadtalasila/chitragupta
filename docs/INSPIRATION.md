@@ -157,12 +157,13 @@ came from.
   The gap that list makes most obvious is **evals**: this project has
   review aids and a gate, and no benchmark suite measuring whether the
   drafting layer is getting better. [PERFORMANCE.md](PERFORMANCE.md)
-  measures the deterministic half only, and #63's parked evaluation
-  harness is the open thread.
+  measures the deterministic half only, and a parked evaluation-harness
+  proposal is the open thread.
 
 - **Four public hook collections**, read together when working out what a
-  second `PostToolUse` hook should look like (#185) and why the existing
-  launcher is not portable (#197). What each contributed, and what was
+  second `PostToolUse` hook should look like and why the existing
+  launcher is not portable, both recorded issues. What each contributed,
+  and what was
   refused, is set out in [HOOKS.md](HOOKS.md); in brief:
 
   | Upstream | Taken | Not taken |

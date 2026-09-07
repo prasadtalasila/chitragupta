@@ -447,7 +447,8 @@ papers in a result is bounded by the cap.
 asked, so that dropping a dominant paper's excess chunks *promotes*
 another paper's chunk into the window rather than merely shortening the
 list. At `1` the cap can only shorten, which is the failure the
-overfetch existed to fix. Raise it when the right paper never comes back at all -- no
+overfetch existed to fix. Raise it when the right paper never comes back
+at all -- no
 amount of reranking can reorder a passage that was never fetched. It is
 also the expensive knob when `rerank` is on, since the reranker scores
 the whole pool.
@@ -1104,7 +1105,8 @@ chitragupta corpus topics --topic "digital twin"
 
 The match report is written to `content/topic_seeds.json` and read back
 by `chitragupta corpus topics`, which needs neither the venv nor a GPU --
-the same split already made for collections, where matching is expensive and reading what it
+the same split already made for collections, where matching is expensive
+and reading what it
 decided is not.
 
 **A paper appears under every topic it matched, not just its closest

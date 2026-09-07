@@ -49,17 +49,17 @@ The figure system got a lot of attention between 2026-08-25 and
 it, and because a proposal that duplicates one of these is not worth
 filing.
 
-| PR | What it added |
+| Shipped change | What it added |
 | --- | --- |
-| #403 | Six known-good TikZ scaffolds in `assets/tikz/`, one per layout metaphor. `tests/test_tikz_scaffolds.py` keeps them passing the layout aid and cross-checks the metaphor table in `docs/TIKZ-STYLE.md`, so a table row with no file fails |
-| #408 | The layout aid reports when it measured **nothing**. A picture with no explicitly named nodes previously reported zero findings, indistinguishable from a clean figure. Also caught the stranded arrowhead (two colinear `->` draws meeting at a bare coordinate) |
-| #409 | Panel lettering `(a)`, `(b)`… in both the TikZ and ASCII forms, any panel count, with a row-wrapping rule |
-| #417 | Figures got the numbering contract tables already had: the renderer assigns the number, prose points via `<!-- figureref: name -->`, authors never write "Figure 3" |
-| #430 | A figure with no caption is reported |
-| #439 | The house palette: five Okabe-Ito colours (`cgInk`, `cgFlow`, `cgAccent`, `cgAlt`, `cgAux`) whose `\definecolor` block travels **inside** the figure file, so a fragment `\input` into a foreign thesis still compiles |
-| #459, #464 | Equations numbered like figures and tables, with a reference-in-prose check; nine skills taught the marker vocabulary |
-| #535, #533, #537 | Captions kept pandoc-visible rather than raw-interpolated into `\caption{}`; swallowed pandoc diagnostics fixed; five review aids stopped crashing or silently under-reporting, the figure layout aid among them |
-| #600, #602 | Source-PDF figure crops extracted and, later, rendered one at a time rather than held in memory |
+| The scaffolds | Six known-good TikZ scaffolds in `assets/tikz/`, one per layout metaphor. `tests/test_tikz_scaffolds.py` keeps them passing the layout aid and cross-checks the metaphor table in `docs/TIKZ-STYLE.md`, so a table row with no file fails |
+| The measured-nothing rule | The layout aid reports when it measured **nothing**. A picture with no explicitly named nodes previously reported zero findings, indistinguishable from a clean figure. Also caught the stranded arrowhead (two colinear `->` draws meeting at a bare coordinate) |
+| Panel lettering | Panel lettering `(a)`, `(b)`… in both the TikZ and ASCII forms, any panel count, with a row-wrapping rule |
+| The figure numbering contract | Figures got the numbering contract tables already had: the renderer assigns the number, prose points via `<!-- figureref: name -->`, authors never write "Figure 3" |
+| The caption-presence check | A figure with no caption is reported |
+| The house palette | Five Okabe-Ito colours (`cgInk`, `cgFlow`, `cgAccent`, `cgAlt`, `cgAux`) whose `\definecolor` block travels **inside** the figure file, so a fragment `\input` into a foreign thesis still compiles |
+| Equation numbering | Equations numbered like figures and tables, with a reference-in-prose check; nine skills taught the marker vocabulary |
+| Caption visibility and aid repairs | Captions kept pandoc-visible rather than raw-interpolated into `\caption{}`; swallowed pandoc diagnostics fixed; five review aids stopped crashing or silently under-reporting, the figure layout aid among them |
+| Source-figure crops | Source-PDF figure crops extracted and, later, rendered one at a time rather than held in memory |
 
 **What that leaves in place.** Three properties are worth naming because
 the roadmap has to preserve all three:
@@ -82,7 +82,7 @@ the roadmap has to preserve all three:
   `equationref` (11), `tableref` (9). There is no listing or algorithm
   class.
 - The renderer adds `\usepackage{tikz}` and nothing else, conditionally,
-  via `header-includes` in `render_output/_pandoc.py` (#222). `fvextra`
+  via `header-includes` in `render_output/_pandoc.py`. `fvextra`
   is added by the same mechanism for a draft with a code block.
 - `\usetikzlibrary` is legal in the document body, so figure files carry
   their own library loads. `\usepackage` is not, which makes any new
@@ -154,7 +154,8 @@ verbatim line wraps rather than running into the margin. But a listing
 cannot be **numbered or referenced**. In a technical book, "Listing 4.2
 shows the retry loop" is as frequent as "Figure 4.2 shows". With no
 class, an author either hand-numbers it, which is precisely the failure
-issues #417 and #459 existed to eliminate, or writes "the code above",
+the figure and equation numbering contracts existed to eliminate, or
+writes "the code above",
 which breaks the moment a page splits or a section is reordered.
 
 The same argument holds for a pseudocode algorithm, which in this
@@ -174,13 +175,14 @@ with the identical contract:
   `<!-- algorithmref: name -->`.
 - A reference-in-prose check reports an artefact nothing points at, and a
   marker pointing at nothing.
-- Every genre skill learns the vocabulary, the way #464 taught nine
+- Every genre skill learns the vocabulary, the way the equation-numbering
+  change taught nine
   skills the equation markers.
 
 ### Details worth pinning down before filing
 
 - **Caption or title?** A listing conventionally carries a title above
-  it, not a caption below. Decide whether #430's caption-presence check
+  it, not a caption below. Decide whether the caption-presence check
   applies, and whether the ASCII/`md` route can express the distinction
   at all.
 - **What is an algorithm's second form?** A figure has a TikZ form and an
@@ -214,7 +216,7 @@ Common requirements for all of them:
   coordinates (see [Rules that will have to bend](#-rules-that-will-have-to-bend)
   for the one exception this roadmap proposes).
 - Every node carries an explicit `(name)`, or the aid measures nothing
-  and says so (#408).
+  and says so (the measured-nothing rule).
 - The `\usetikzlibrary` load sits at the top of the figure file, above
   the `tikzpicture`, because the renderer will not supply it.
 - The scaffold ships with its ASCII twin, and the twin is part of what
@@ -251,7 +253,7 @@ ships means rewriting every metaphor's prose out of a merged document.
 most common figure in the algorithms literature and the highest-value
 addition on this roadmap.
 
-**Why it is not just panels.** #409 letters panels as siblings. A
+**Why it is not just panels.** Panel lettering letters panels as siblings. A
 snapshot is not a sibling: it has an ordinal, a predecessor, and a
 delta from it. The figure's whole meaning is the difference between
 adjacent frames, and a reader needs to see which nodes changed.
@@ -497,7 +499,8 @@ this before the first derivation ships.
 - **Determinism is the whole point.** A derivation must not call an LLM.
   If a step needs judgement — which cluster to collapse, which node is
   focal — that judgement belongs in the ladder as a fixed rule, or in the
-  author's hands, not in a model. This is the same argument #627 made one
+  author's hands, not in a model. This is the same argument the
+  parse-time captioning rejection made one
   layer down.
 - **Output is a real figure file.** The derivation writes
   `figures/<n>.tex` and its twin, which then go through the existing
@@ -552,11 +555,11 @@ second catches a figure that has fallen behind the text.
   paraphrases. See
   [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)'s "The
   threshold is not a discriminating variable" for why guessing a cutoff
-  here would be a mistake, and #428's claim-support output for the shape
+  here would be a mistake, and the claim-support aid's output for the shape
   to copy.
 - **Measures nothing, says so.** A figure with no named nodes, or a
   section with no code, yields no comparison and must report that rather
-  than reporting clean (#408's lesson).
+  than reporting clean (the measured-nothing lesson).
 - **Not a gate.**
 
 ### Details to settle before filing
@@ -660,7 +663,8 @@ existing figures more than any single new metaphor.
 
 ### VI.1 Make the caption carry the load
 
-Issue #430 checks that a caption **exists**. A good technical caption is
+The caption-presence check asks only that a caption **exists**. A good
+technical caption is
 self-contained and states the takeaway, not just the subject: "the
 write path, showing where the fsync barrier falls" rather than "the write
 path". Captions currently escape `HOUSE-STYLE.md`'s objective function
@@ -798,7 +802,8 @@ written.
   metaphor? Does every node carry an explicit `(name)`? Does the twin
   carry the same information, not the same picture? Does the caption
   state a takeaway? Is the accent colour doing one job or five? The
-  delivery mechanism already exists: #464 taught nine skills the equation
+  delivery mechanism already exists: the equation-numbering change taught
+  nine skills the equation
   markers.
 - **A named anti-pattern table** in `TIKZ-STYLE.md` and, after II.0, in
   each metaphor's own doc. Failure mode in one column, why it fails in
@@ -840,7 +845,8 @@ which is enough to keep it on the roadmap but not enough to put it first.
 - **This is a renderer change.** `\usetikzlibrary` is body-legal so
   figure files carry their own libraries, but `\usepackage{pgfplots}` is
   not. It needs a conditional `header-includes` in `_pandoc.py`, which is
-  architecturally identical to what #222 did for tikz and what already
+  architecturally identical to what the tikz header-includes change did
+  and what already
   exists for `fvextra`. Precedented and small.
 - **Data lives beside the figure** as `figures/<n>.dat`, drawn with
   `\addplot table`. The numbers become diffable and auditable, which is
@@ -883,7 +889,7 @@ way.
 ### Vision-critique mechanism
 
 - `pypdfium2` is already a declared dependency of the `enrich` extra
-  (added for the crop work in #600/#602), so rasterising the probe's
+  (added for the crop work), so rasterising the probe's
   compiled PDF needs no new package. VI.5 may want the same rasterisation
   for its clearance findings, so the two should agree on one path.
 - Serve the model **out of process** — a local vLLM endpoint or an API —
@@ -897,7 +903,7 @@ way.
 
 ### Where it does not belong
 
-Captioning source-PDF figures at parse time. #627 measured and rejected
+Captioning source-PDF figures at parse time. A measured decision rejected
 that on the grounds that it puts generated text in the corpus layer,
 which may not call an LLM (`docs/ARCHITECTURE.md`: "LAYER 1 · CORPUS —
 deterministic, no LLM, safe unattended"). That rejection stands.
@@ -915,13 +921,13 @@ layer boundary:
 
 - Surface the crops at the **drafting** layer, where a model is already
   in the loop, as "the figure anchored at this passage" alongside
-  retrieved text. #632's passage anchoring is the mechanism.
+  retrieved text. The passage-anchoring work is the mechanism.
 - Retrieve by page image rather than parsed text, which sidesteps the
   fact that `retrieval.search()` reads exactly one artefact,
   `content/parsed/<citekey>.txt`. `colpali-engine` is the mature option.
 
 Both are separate features from anything in Parts I–VII and should be
-filed against #651 rather than here.
+filed against the multimodal-drafting-access issue rather than here.
 
 ---
 
@@ -947,7 +953,8 @@ captures.
 **Ranked, never banded.** `PLAGIARISM-DESIGN.md` measured 16 long runs
 across a 178,077-word book, found all 14 actionable ones to be false
 positives at 15–29 words, and found the only genuine planted lift at 18
-words, inside that range. No threshold separated them, and #130 forbids
+words, inside that range. No threshold separated them, and the declined
+overlap-gate decision forbids
 guessing one. There is no reason image similarity behaves better.
 
 **Domain-specific warning, and this is new.** In CS and SE the canonical
@@ -959,7 +966,7 @@ biology framing implied, and that expectation should be written into
 afterwards. An outcome where the floor swallows the planted case is a
 valid result and should close the issue, the way `bench_overlap_gate.py`
 killed a proposed gate on its own numbers and the way C4 and C6 left the
-roadmap (#485, #483).
+roadmap.
 
 **A self-inflicted floor this roadmap now creates.** The `pic` library
 (V.1) means every figure using the shared memory-cell `pic` shares
@@ -1108,7 +1115,8 @@ itself checkable.
   plain Markdown image syntax gets no number, no marker, no caption
   check. So this cannot be "insert an image tag": the rendered image must
   flow through the same `figureref` machinery, with the renderer still
-  assigning the number and the caption still pandoc-visible per #535.
+  assigning the number and the caption still pandoc-visible per the
+  caption-visibility fix.
   That is the real work here, and it is larger than the rendering step.
 - **Review-pass cost**, per `PERFORMANCE.md`. Hash-keyed caching should
   make this negligible after a first pass, but that needs measuring
@@ -1262,9 +1270,9 @@ Recorded with the argument, so nobody re-derives it.
 | **Generated raster illustration** | Non-deterministic, non-diffable, non-editable, and factually unreliable in exactly the domain where a mislabelled figure is worse than no figure. Fails the properties `SOUL.md` is built on. The narrower "generate a base plate and trace it" version reintroduces the originality problem of Part IX and still needs an illustrator |
 | **Bezier organic form, gradients, translucency** | Illustrator craft. Reachable in TikZ in principle, but a cell membrane's curve requires hand-placed control points and this domain has no organic objects to draw. Dropped entirely |
 | **`detikzify` or image-to-TikZ synthesis** | The inverse of Part IX: it automates producing the artefact that check exists to catch |
-| **Vision captioning of source figures at parse time** | Rejected in #627. Puts generated text in the corpus layer, which may not call an LLM |
+| **Vision captioning of source figures at parse time** | Rejected on measurement. Puts generated text in the corpus layer, which may not call an LLM |
 | **Nature-style data density as the benchmark** | Wrong target for tutorials and textbook chapters. A teaching figure is explanatory, not evidential. Tufte and the algorithms literature are the better references. Part VII keeps the quantitative capability for the thesis genre without making density the goal |
-| **A figure-similarity gate** | See Part IX. Advisory and ranked only. #130 forbids guessing a threshold and the measured evidence says none exists |
+| **A figure-similarity gate** | See Part IX. Advisory and ranked only. The declined overlap-gate decision forbids guessing a threshold and the measured evidence says none exists |
 | **Adopting `diagram-design` as a dependency or an invoked skill** | See [Borrowed, with attribution](#-borrowed-with-attribution). Wrong output substrate, wrong palette model, and an LLM in a path Part III needs to be deterministic. The design reasoning was worth taking; nothing else was |
 | **A hard complexity budget with numeric caps** | Correct for editorial diagrams, wrong for a textbook. A forty-cell DP trace is not over budget, it is a DP trace. VI.3 reports the count against a per-metaphor reference range instead, and nothing gates on it |
 

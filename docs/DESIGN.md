@@ -371,7 +371,7 @@ None of this is built. The proposal is
 
 This document describes what the pipeline does and why. **Proposals for
 what it should do next are tracked in
-[issue #54](https://github.com/prasadtalasila/chitragupta/issues/54)**,
+[a standing issue](https://github.com/prasadtalasila/chitragupta/issues/54)**,
 not here -- a design document that also carries a wish list stops being
 readable as a statement of current behaviour, and the wish list goes
 stale faster than the design does.

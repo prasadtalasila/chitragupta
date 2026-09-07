@@ -156,8 +156,8 @@ a bad flag, a missing argument -- exits 2, which is ordinary CLI-usage
 error handling rather than a verdict on the draft.
 
 Whether long verbatim runs should gate is a later and deliberately
-separate decision, recorded as the exact tier's own Phase 2. These tools only produce the
-findings that decision would be tuned against.
+separate decision, recorded as the exact tier's own Phase 2. These tools
+only produce the findings that decision would be tuned against.
 
 ## ⚙ How it works
 
@@ -418,7 +418,8 @@ for someone under *what you will not do*.
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
-should ever join it is [the overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order)'s question;
+should ever join it is
+[the overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order)'s question;
 it has now been measured rather than guessed, and
 [the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block)
 is what the measurement found.

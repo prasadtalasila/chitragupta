@@ -677,7 +677,8 @@ layer, which is what this invariant is about.
 `tests/test_removed_command_scan.py` keeps the old spelling out of the
 tree. It matches the *invocation*: the `-m` flag and the module together,
 in prose and in the quoted argument-list form that got past the
-original removal's hand sweep. It deliberately does not match the module path, which is
+original removal's hand sweep. It deliberately does not match the module
+path, which is
 legitimate and common -- `chitragupta.sync` is also the pinned logger name in
 every `logs/pipeline.log` line.
 

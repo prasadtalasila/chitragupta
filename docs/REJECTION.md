@@ -242,7 +242,8 @@ an option nobody tests, its presence would keep inviting the
 "light/thorough" toggle that
 [the configuration section](#-should-any-of-this-be-configurable) argues
 against, and it is cheap to reinstate from this document if that still-open
-measurement issue ever finds a case for it. `search()` plus the subagent boundary is the
+measurement issue ever finds a case for it. `search()` plus the subagent
+boundary is the
 drafting path.
 
 Two smaller things also came out of building it, which are worth stating

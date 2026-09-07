@@ -1,8 +1,8 @@
 # ✍ Book-scale drafting: the outline, the units, and the registries
 
 Status: **built.** Written 2026-08-18. Updated 2026-08-23. All four pieces of
-the track are here -- the outline (#136), the generation unit (#137), the three
-registries (#138) and the assembly skill (#139). Each section below describes
+the track are here -- the outline, the generation unit, the three
+registries and the assembly skill. Each section below describes
 something that exists; nothing here is a plan.
 
 **Written for** someone drafting a document larger than a chapter with
@@ -138,7 +138,7 @@ before the first heading belongs to nothing and is never handed to a
 generator; it is the preamble for whoever opens the file.
 
 **A chapter is one authored document, and its sections are the headings
-inside it** (#472). The outline stops at the sections of a chapter; the
+inside it.** The outline stops at the sections of a chapter; the
 sub-headings an author writes underneath are theirs, not the spec's.
 [Why the chapter and not the section](#-why-a-chapter-is-the-authored-document)
 -- it is what lets `spec align` mean anything.
@@ -349,7 +349,7 @@ the draft. It refuses five ways, each for a stated reason:
    holding the first unit until the whole chapter exists would make it
    impossible to accept.
 3. **There is no draft** -- generate the unit from its contract first.
-4. **A `--source` is not in the ledger** (#506). `--source` names the
+4. **A `--source` is not in the ledger.** `--source` names the
    papers this unit claims to be grounded in, and the acceptance record
    keeps that claim permanently, so it is checked against the ledger
    before anything is written. A record asserting grounding in a citekey
@@ -365,7 +365,7 @@ the draft. It refuses five ways, each for a stated reason:
    identically. Reading once is the point: `accept` used to gate the
    *path* and then re-read the file to hash and record it, so a write
    landing between the two calls produced a permanent record for prose
-   the gate had never seen (#506/m-69). A unit nobody may cite from is
+   the gate had never seen. A unit nobody may cite from is
    not a unit a book may assemble from, and this is the existing gate
    doing its existing job -- not a second one.
 
@@ -517,7 +517,7 @@ was tried and read too tight for print, so the setting is that doubled.
 Markdown, hyperlinking the chapter files alongside it, for anyone who is
 not building LaTeX.
 
-**Where #138's "blocking" actually lives.** The skill must run
+**Where the registry proposal's "blocking" actually lives.** The skill must run
 `registry check` and print every finding, in full, before composing --
 which is the guaranteed *invocation* ARCHITECTURE.md permits, in place of
 the conformance it does not. `tests/test_skill_book_assembly.py` pins
@@ -661,7 +661,7 @@ approved is not a question any check asks; *what* was approved is.
 each taken over that chapter's `###` heading and everything under it.
 
 The whole-file digest alone cannot answer the question `accept` asks.
-Measured on a fifteen-chapter book (#465): editing a single character in
+Measured on a fifteen-chapter book: editing a single character in
 one chapter's brief moved the file's digest, so **every one of the 672
 sections that outline declared, across all fifteen chapters**, reported
 `signed_off: False`, and `accept` refused across the entire book while one
@@ -688,8 +688,8 @@ person's decision may never do. Re-run `spec sign` to opt in.
 ## 💡 Why a chapter is the authored document
 
 A chapter is one file; its sections are the headings inside it. An earlier
-revision of this document said one file per *section*, and #472 changed
-it.
+revision of this document said one file per *section*; that has since
+been changed.
 
 **The change is what makes `spec align` mean anything.** Under one file
 per section, every file *is* a section by construction -- there is no way
@@ -803,15 +803,16 @@ deliberately: DEVELOPER-AGENTS.md bars promoting a new check into a gate
 outright rather than leaving it to an argument about how precise the
 check is.
 
-What #138 calls a "blocking global check" is therefore delivered as
-guaranteed invocation in step 6, ahead of the human sign-off in step 8.
+What the registry proposal calls a "blocking global check" is therefore
+delivered as guaranteed invocation in step 6, ahead of the human sign-off
+in step 8.
 That is a stronger reading of the requirement than an exit code would be,
 not a weaker one -- an exit code can be ignored by a caller; a sign-off
 cannot be given by one.
 
 ## 🚫 What the registries cannot see
 
-**Contradiction.** #138 asks for "duplicate and contradicting claims
+**Contradiction.** The registry proposal asks for "duplicate and contradicting claims
 across chapters flagged". Duplicates are decidable and are flagged; two
 chapters asserting opposite things are not, and nothing here pretends
 otherwise. Naming what a check cannot see is this project's house style

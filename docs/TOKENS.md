@@ -146,8 +146,8 @@ packets through Phases 3, 4, 5, 6 and 7 -- the contradiction map, the
 outline, the section writers, the polish pass and the peer-review
 reconciliation all read them. An estimated ~1k tokens per packet is ~6k
 tokens resident across the longest stretch of the run. This is the
-subject of
-[the fan-out cost issue](https://github.com/prasadtalasila/chitragupta/issues/74), and
+subject of [the fan-out cost
+issue](https://github.com/prasadtalasila/chitragupta/issues/74), and
 ["What the dossier actually recovers"](#-what-the-dossier-actually-recovers)
 below is careful about which part of it a dossier can and cannot remove.
 The half that could be removed now has been: Phase 5 dispatches through
@@ -236,9 +236,9 @@ resident pool:
   as *output*. Four writers x ~800 tokens of packet-derived material is
   3.2k output = **16k equivalents**.
 
-That last row is the one the fan-out cost issue could actually collect, and it is why the
-answer is a file rather than better summarising. **Implemented**: the
-pasted material is now the one line
+That last row is the one the fan-out cost issue could actually collect,
+and it is why the answer is a file rather than better summarising.
+**Implemented**: the pasted material is now the one line
 `python -m chitragupta.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 
@@ -391,8 +391,8 @@ reason.
 *Asserted*, in the sense of ["Measured, derived, and
 asserted"](#-measured-derived-and-asserted) below: the resolution order and
 the `inherit` default are properties of the harness, and the size of the
-saving is unmeasured until
-[the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
+saving is unmeasured until [the planned
+measurement](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
 
 ## ✍ Who writes a packet down, and when
 
@@ -488,9 +488,9 @@ else.
 
 ## 📊 Measuring this without writing a survey
 
-Every figure above is derived. Turning them into numbers is
-[a planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76), and the
-obvious way to do it -- run a full `standard`-depth `deep-research` on a
+Every figure above is derived. Turning them into numbers is [a planned
+measurement](https://github.com/prasadtalasila/chitragupta/issues/76), and
+the obvious way to do it -- run a full `standard`-depth `deep-research` on a
 real topic, before and after -- is also the most expensive experiment
 available and the least controlled, since two runs on the same topic do
 not take the same number of turns. Four cheaper routes, in increasing

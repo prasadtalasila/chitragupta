@@ -108,7 +108,8 @@ and the bottom is a review aid's output for a human.
 
 The apparatus around it, and none of it needs a model:
 
-- **The recorded dialect, shipped.** The draft's dialect is a `language:` line in the
+- **The recorded dialect, shipped.** The draft's dialect is a
+  `language:` line in the
   dossier's `scope.md` (BCP-47: `en-GB`, `en-IN`, `en-US`), so the target
   is on disk rather than restated in chat each session. That is the
   *recorded target* an unattended pass needs, and it needed no new
@@ -116,12 +117,14 @@ The apparatus around it, and none of it needs a model:
 - **The copy-edit mode, shipped.** `draft-reviser` has a copy-edit branch -- the
   sanctioned path for a whole-document edit that touches no evidence,
   which the skill had no shape for.
-- **The detector, open when this list was written.** `python -m chitragupta.draft style` -- dialect consistency
+- **The detector, open when this list was written.**
+  `python -m chitragupta.draft style` -- dialect consistency
   against that line, plus §2's banned words -- stdlib-only, exit 0 always,
   a review aid and explicitly never a gate. That is the *detector* and the
   *re-check*. (Re-homed from the `scripts/style_check.py` this document
   first named; `scripts/` holds dev tooling and no layer entry point.)
-- **Automatic invocation, open when this list was written.** What invokes the detector once it exists, so a prose
+- **Automatic invocation, open when this list was written.** What
+  invokes the detector once it exists, so a prose
   finding arrives without a human remembering to ask for it.
 
 Detector, recorded target, re-check, and a sanctioned edit path -- the
@@ -130,7 +133,8 @@ also why the language half sits on the cheap rungs of
 [the cost ladder](AUTO-IMPROVEMENT.md#-the-cost-ladder), and therefore why
 it is the half worth building first.
 
-**One caution the dialect issue already records.** §2's list is English literals and
+**One caution the dialect issue already records.** §2's list is English
+literals and
 §4's voice rules are an Anglophone convention. A non-English draft needs
 them adapted, not transliterated -- so none of this generalises to the
 multilingual track for free.
@@ -165,7 +169,8 @@ thesis chapter, a textbook chapter, tutorials -- and today each one starts
 from a blank slate on everything except the corpus. Their house style is
 re-derived, or re-stated in chat, every time.
 
-The relevant precedent is the dialect issue's framing: a preference "had nowhere on disk
+The relevant precedent is the dialect issue's framing: a preference "had
+nowhere on disk
 to live", so it silently reverted to the model's default. Four more
 preferences have the same shape, and all four already have a per-draft
 artefact that nothing reconciles across drafts:
@@ -249,7 +254,8 @@ without a binary check the prose class of
 The automatic-invocation issue takes that reading and moves the detector
 ahead of the two render-language items.
 
-**One thing the automatic-invocation issue settled that this document left open**: the check is
+**One thing the automatic-invocation issue settled that this document
+left open**: the check is
 decidable, so the question of gating it was live. It is not gateable, and
 the reason is narrower than "prose is soft" -- the gate is measured
 against the ledger, which is ground truth, and a dialect check is measured

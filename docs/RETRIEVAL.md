@@ -97,7 +97,7 @@ Term-frequency statistics are cached to `content/retrieval_index.json`,
 keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 `status`, and the parsed file's size and mtime -- not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
-status moved off `parsed` (#490).
+status moved off `parsed`.
 
 ### 🪟 One window chooser, shared and deterministic
 
@@ -200,12 +200,12 @@ caps each citekey at `[enrich].embed_max_passages_per_source` (default
 3) chunks among the top `k`, applied to the over-fetched ranked list
 before it is truncated -- so dropping a dominant paper's excess chunks
 promotes another paper's chunk into the result, rather than merely
-shortening it (#305, [CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
+shortening it ([CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
 BM25's `search` needs no such cap: it is already one-per-citekey by
 construction.
 
-**A cross-encoder can reorder the over-fetched passages before that cap
-(#380), and is off by default.** It improves ordering rather than recall
+**A cross-encoder can reorder the over-fetched passages before that
+cap, and is off by default.** It improves ordering rather than recall
 and cannot improve source diversity at all, and it makes a search call
 2.5x dearer on a GPU. The stage order, the measurements behind that
 default, and how to choose a `rerank_model` are in

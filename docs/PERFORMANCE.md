@@ -454,7 +454,7 @@ Two costs, both worth knowing before turning it on:
 
 ### 🧠 What it no longer costs: memory
 
-Until #600 it also cost memory in proportion to *how many figures a
+It also used to cost memory in proportion to *how many figures a
 document has*, because docling retains every crop it produces -- as a PIL
 bitmap **and** as a base64 `data:` URI, so roughly 2.3x the PNG bytes per
 picture -- and writes them only when `save_as_markdown` runs on the last

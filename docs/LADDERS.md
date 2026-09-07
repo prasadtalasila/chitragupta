@@ -81,7 +81,7 @@ nightly job that failed forever over either would teach its reader to
 ignore the exit code. What is *not* left inside `partial` is work the
 stage abandoned rather than attempted: `docling` escalates to `error`
 when a repeatedly-dying worker pool made it give up on documents it never
-tried (#584/#591). The vocabulary is this page's; the contract's edge
+tried. The vocabulary is this page's; the contract's edge
 cases and the run that exposed them belong to
 [CLI.md's `enrich` section](CLI.md#-chitragupta-enrich).
 
