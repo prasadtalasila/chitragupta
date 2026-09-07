@@ -26,10 +26,12 @@ $ chitragupta corpus discover
   ...
 ```
 
-*Real corpus, trimmed.* Every topic with its provenance (seed,
-keyword, both, emergent), size
-and top terms -- plus the seed phrases no topic covers, which is the
-"literature that has not met itself" observation worth noticing first.
+*Real corpus, trimmed.* Every topic with its provenance (`seed` or
+`emergent`, which is all the artefact records -- `--origins` is what
+tells a hand-written seed from an extracted keyword and from a
+corroborated phrase both files name), size and top terms -- plus the
+seed phrases no topic covers, which is the "literature that has not met
+itself" observation worth noticing first.
 
 ## 🔍 One topic
 
