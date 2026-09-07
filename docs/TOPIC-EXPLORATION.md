@@ -45,8 +45,8 @@ papers, dashed for semantic nearness, never fused. Click a box to list
 what is in it; double-click to open just that one in place.
 
 **Terminal:** `chitragupta corpus discover` prints the same corpus as a
-topic map (every topic, its provenance and size). The cut itself has no
-terminal form -- the `hierarchy` array travels raw in `--json`.
+topic map (every topic, its provenance and size), and `--groups 8`
+prints this very cut.
 
 ## 🎚 The resolution slider
 
@@ -60,8 +60,9 @@ groups. This is a table of contents you can zoom continuously: start
 at eight chapters, slide until the section you care about becomes its
 own box, then open it.
 
-**Terminal:** none. The tree is in `--json`; cutting it is yours to
-script.
+**Terminal:** `chitragupta corpus discover --groups N` -- the same cut,
+the same union-find, the same labels, and the same honesty about a
+target the tree cannot reach.
 
 ## 🞋 Pinning topics: the ego view
 

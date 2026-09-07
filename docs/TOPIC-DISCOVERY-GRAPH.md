@@ -826,7 +826,7 @@ reach the other answers the panel shows.
 
 | The app answers | The terminal's answer |
 | --- | --- |
-| what are the broad areas (resolution cut) | the raw `hierarchy` array in `--json`, uncut |
+| what are the broad areas (resolution cut) | `discover --groups N` (#709) -- the same cut, pinned by `tests/webapp/cut_cases.json` |
 | candidate survey sections (MCL per family) | nothing |
 | where the families disagree | nothing |
 | is this topic a theme or a bridge | nothing |

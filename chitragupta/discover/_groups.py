@@ -16,6 +16,8 @@ graph artefact stores the count as `size` -- so the functions here read
 synthesizes members arrays of that length).
 """
 
+from collections.abc import Callable
+
 
 def group_label(members: list, sizes: dict) -> str:
     """The topic carrying the most papers leads and the rest are
@@ -27,13 +29,12 @@ def group_label(members: list, sizes: dict) -> str:
     return f"{lead} +{len(members) - 1}"
 
 
-def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
+def _join_below(hierarchy: list, labels: list, threshold: float) -> Callable[[str], str]:
     """Union-find over the merges at or below `threshold`, internal ids
-    resolved back to the leaves underneath them. A topic could be
-    labelled "node-3" and collide with an internal id, so a name that
-    is a known topic label is always a leaf -- the same hardening
-    graph.js carries."""
-    labels = [t["label"] for t in topics]
+    resolved back to the leaves underneath them; returns the find
+    function. A topic could be labelled "node-3" and collide with an
+    internal id, so a name that is a known topic label is always a
+    leaf -- the same hardening graph.js carries."""
     is_leaf = set(labels)
     parent = {label: label for label in labels}
 
@@ -56,7 +57,13 @@ def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
                 a, b = find(members[0]), find(label)
                 if a != b:
                     parent[b] = a
+    return find
 
+
+def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
+    """The cut: which group each topic lands in, with the app's own
+    group ids (payload order) and labels."""
+    find = _join_below(hierarchy, [t["label"] for t in topics], threshold)
     by_root: dict = {}
     group_of: dict = {}
     groups: list = []

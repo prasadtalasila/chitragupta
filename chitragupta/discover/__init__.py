@@ -21,7 +21,17 @@ import json as json_module
 import sys
 
 from chitragupta import retrieval
-from chitragupta.discover import _absence, _app, _data, _overview, _page, _render, _resolve, _walk
+from chitragupta.discover import (
+    _absence,
+    _app,
+    _data,
+    _groups,
+    _overview,
+    _page,
+    _render,
+    _resolve,
+    _walk,
+)
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -49,6 +59,15 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "why is there no overlap edge between these two topics? "
             "shared papers, the hypergeometric tail, and the gate's verdict"
+        ),
+    )
+    parser.add_argument(
+        "--groups",
+        type=int,
+        metavar="N",
+        help=(
+            "cut the stored merge tree into as close to N groups as it "
+            "allows -- the app's resolution slider, as a view"
         ),
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
@@ -200,6 +219,35 @@ def _html_view(args) -> int:
     return 0
 
 
+def _groups_view(args, graph) -> int:
+    """The resolution slider as a view: cut the stored tree at the
+    distance nearest the target. Its refusals are its own -- a count is
+    not a phrase, so nothing here resolves or falls back."""
+    if args.phrase or args.paper or args.why:
+        # Exit 2, argparse's own code for a usage error, which is what
+        # combining views is.
+        print(
+            "--groups is its own view: give it a target count and nothing else.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.groups < 1:
+        print("--groups needs a target of at least one group.", file=sys.stderr)
+        return 2
+    if not graph["hierarchy"]:
+        # The same honest degradation the app shows by hiding the
+        # slider: no stored hierarchy, no tree to cut.
+        print(
+            "The artefact stores no merge hierarchy, so there is no tree to "
+            "cut -- re-run `chitragupta enrich --stages topic-graph`.",
+            file=sys.stderr,
+        )
+        return 1
+    data = _groups.build_groups(graph, args.groups)
+    _emit(args, data, _groups.render_groups(data))
+    return 0
+
+
 def _why_view(args, graph, topic_set, terms) -> int:
     """Resolve both phrases through the same ladder every view uses,
     then hand the pair to `_absence` -- the terminal twin of the app's
@@ -249,6 +297,9 @@ def _run(args) -> int:
     graph = _data.load_graph()
     topic_set = _data.load_topic_set()
     terms = _data.top_terms(topic_set)
+
+    if args.groups is not None:
+        return _groups_view(args, graph)
 
     if args.why:
         return _why_view(args, graph, topic_set, terms)
