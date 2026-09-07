@@ -884,7 +884,7 @@ reach the other answers the panel shows.
 | is this topic a theme or a bridge | nothing |
 | what connects A to B, via which papers | nothing |
 | why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |
-| set comparison across pinned topics | nothing |
+| set comparison across pinned topics | `discover --compare A B [C ...]` (#715) -- pairwise shared papers, bridges with ledger entries, mutual edges |
 
 The terminal's own exclusives -- the resolution ladder, the
 cross-encoder rescoring, the plural-match PageRank `neighbourhood` --

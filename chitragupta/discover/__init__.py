@@ -17,21 +17,11 @@ views in `_render`, the overview file in `_overview`.
 """
 
 import argparse
-import json as json_module
 import sys
 
 from chitragupta import retrieval
-from chitragupta.discover import (
-    _absence,
-    _app,
-    _data,
-    _groups,
-    _overview,
-    _page,
-    _render,
-    _resolve,
-    _walk,
-)
+from chitragupta.discover import _app, _data, _overview, _page, _render, _resolve, _walk
+from chitragupta.discover._views import emit as _emit, own_view
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -70,6 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
             "allows -- the app's resolution slider, as a view"
         ),
     )
+    parser.add_argument(
+        "--compare",
+        nargs="+",
+        metavar="TOPIC",
+        help=(
+            "compare two or more topics: pairwise shared papers, the "
+            "papers held by all, the bridges held by several, and the "
+            "edges among them"
+        ),
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--out",
@@ -96,10 +96,6 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     return parser
-
-
-def _emit(args, data: dict, prose: str) -> None:
-    print(json_module.dumps(data, indent=2) if args.json else prose)
 
 
 def _topic_view(args, resolution, graph, topic_set, terms) -> int:
@@ -219,74 +215,6 @@ def _html_view(args) -> int:
     return 0
 
 
-def _groups_view(args, graph) -> int:
-    """The resolution slider as a view: cut the stored tree at the
-    distance nearest the target. Its refusals are its own -- a count is
-    not a phrase, so nothing here resolves or falls back."""
-    if args.phrase or args.paper or args.why:
-        # Exit 2, argparse's own code for a usage error, which is what
-        # combining views is.
-        print(
-            "--groups is its own view: give it a target count and nothing else.",
-            file=sys.stderr,
-        )
-        return 2
-    if args.groups < 1:
-        print("--groups needs a target of at least one group.", file=sys.stderr)
-        return 2
-    if not graph["hierarchy"]:
-        # The same honest degradation the app shows by hiding the
-        # slider: no stored hierarchy, no tree to cut.
-        print(
-            "The artefact stores no merge hierarchy, so there is no tree to "
-            "cut -- re-run `chitragupta enrich --stages topic-graph`.",
-            file=sys.stderr,
-        )
-        return 1
-    data = _groups.build_groups(graph, args.groups)
-    _emit(args, data, _groups.render_groups(data))
-    return 0
-
-
-def _why_view(args, graph, topic_set, terms) -> int:
-    """Resolve both phrases through the same ladder every view uses,
-    then hand the pair to `_absence` -- the terminal twin of the app's
-    absence verdict, so the refusals have to be its own: a pair question
-    cannot fall back to paper search the way a single phrase does."""
-    if args.phrase or args.paper:
-        # Exit 2, argparse's own code for a usage error, which is what
-        # combining views is.
-        print(
-            "--why is its own view: give it two topics and nothing else.",
-            file=sys.stderr,
-        )
-        return 2
-    labels, vias = [], []
-    for phrase in args.why:
-        resolution = _resolve.resolve(phrase, graph, topic_set, terms)
-        if resolution.note and not args.json:
-            print(f"note: {resolution.note}")
-        if resolution.label is None:
-            print(
-                f"No topic matched {phrase!r} -- --why needs two topics that exist.",
-                file=sys.stderr,
-            )
-            return 1
-        labels.append(resolution.label)
-        vias.append(resolution.via)
-    if labels[0] == labels[1]:
-        print(
-            f"Both phrases resolve to the same topic ({labels[0]}) -- "
-            "--why compares two different ones.",
-            file=sys.stderr,
-        )
-        return 1
-    data = _absence.explain(graph, topic_set, labels[0], labels[1])
-    data["resolved_via"] = {"a": vias[0], "b": vias[1]}
-    _emit(args, data, _absence.render(data))
-    return 0
-
-
 def _run(args) -> int:
     if args.app:
         return _app_view(args)
@@ -298,11 +226,9 @@ def _run(args) -> int:
     topic_set = _data.load_topic_set()
     terms = _data.top_terms(topic_set)
 
-    if args.groups is not None:
-        return _groups_view(args, graph)
-
-    if args.why:
-        return _why_view(args, graph, topic_set, terms)
+    own = own_view(args, graph, topic_set, terms)
+    if own is not None:
+        return own
 
     if args.paper:
         return _paper_view(args, topic_set)
