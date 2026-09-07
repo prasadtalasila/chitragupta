@@ -209,10 +209,17 @@
 
      Sorted so the sharpest disagreement is first, and capped, with what
      was dropped reported rather than silently cut. */
-  function disagreement(data, inflation) {
+  /* `visible` is the origin filter's label set (#742), and omitting it
+     lists every pair. The clustering itself is left alone -- a partition
+     is over the whole corpus, and re-clustering a subset would answer a
+     question nobody asked -- but a pair whose topics are not both on the
+     canvas is a row about something the reader cannot see, which is the
+     rule the hierarchy panel already follows. */
+  function disagreement(data, inflation, visible) {
     var overlap = cluster(data, "overlap", inflation);
     var semantic = cluster(data, "semantic", inflation);
-    var labels = data.topics.map(function (t) { return t.label; });
+    var labels = data.topics.map(function (t) { return t.label; })
+      .filter(function (label) { return !visible || visible.has(label); });
     var sets = memberSets(data);
     var semanticOnly = [];
     var overlapOnly = [];
@@ -230,6 +237,10 @@
     return {
       inflation: inflation,
       stored: !!(overlap.stored && semantic.stored),
+      // So the caption can say the clusters are the corpus's while the
+      // pairs are the canvas's, rather than leaving the reader to guess
+      // which of the two a filtered grid is.
+      filtered: !!visible && visible.size < data.topics.length,
       overlap: overlap,
       semantic: semantic,
       semanticOnly: semanticOnly.slice(0, MAX_PAIRS),

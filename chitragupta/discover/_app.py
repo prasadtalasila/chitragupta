@@ -11,20 +11,19 @@ fetch() of a local JSON file is blocked under file://.
 Like `_page`, this is a pure renderer of the artefacts the terminal
 views read -- `_page.build_payload` does the join, so the app can never
 disagree with `--json`. The one thing added on top is `origin`: which
-file each seed phrase came from (`content/seed_topics.toml`, the
-extracted `content/keywords.toml`, or both), so the app can colour a
-hand-written topic apart from a machine-suggested one. The graph
-artefact cannot answer that -- `_seed_phrases()` unions the two files
-before the stages run, so `topic_set.json` records them all as
-provenance "seed" -- and the two TOML files are the only record left.
+file each seed phrase came from, so the app can colour a hand-written
+topic apart from a machine-suggested one. That annotation lives in
+`_origin`, which explains why the graph artefact cannot answer the
+question and which the `--origins` filter and the terminal views read
+too -- one definition, four callers.
 """
 
 import json
 import shutil
 from pathlib import Path
 
-from chitragupta import config, seed_topics
-from chitragupta.discover import _data, _page
+from chitragupta import config
+from chitragupta.discover import _data, _origin, _page
 
 # Order is not load order (index.html decides that); this is just the
 # copy list. The interaction code is several files rather than one so
@@ -47,45 +46,34 @@ APP_FILES = (
 DATA_PREFIX = "window.CHITRAGUPTA_TOPICS = "
 
 
-def _origin(topic: dict, hand: set, extracted: set) -> str:
-    """Where this topic's phrase came from. Emergent topics keep their
-    provenance whatever the files say -- a BERTopic label colliding with
-    a keyword is a coincidence, not a seeding. A seed topic in neither
-    file (the files moved after the stages ran) degrades to "seed": the
-    artefact's own provenance is still true, and refusing would make the
-    app stricter than every other view of the same data."""
-    if topic["provenance"] != "seed":
-        return "emergent"
-    key = topic["label"].casefold()
-    if key in hand:
-        return "both" if key in extracted else "seed"
-    if key in extracted:
-        return "keyword"
-    return "seed"
-
-
 def build_app_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
     """`_page.build_payload` (the join, and its drift refusal) with each
-    topic annotated by `origin`: seed | keyword | both | emergent."""
+    topic annotated by `origin`: seed | keyword | corroborated |
+    emergent. The annotation itself lives in `_origin`, because the
+    terminal views and the `--origins` filter read the same one (#742)."""
     payload = _page.build_payload(graph, topic_set, terms)
-    hand = {phrase.casefold() for phrase in seed_topics.load()}
-    extracted = {phrase.casefold() for phrase in seed_topics.load(config.KEYWORDS_PATH)}
-    for topic in payload["topics"]:
-        topic["origin"] = _origin(topic, hand, extracted)
+    _origin.annotate(payload["topics"])
     return payload
 
 
-def write_app(path: str) -> str:
+def write_app(path: str, origins: "set | None" = None) -> str:
     """Build the payload from the artefacts on disk and write the app
     directory: the static files copied verbatim from assets/webapp/,
     plus data.js. Raises `_data.MissingArtefact` exactly like the
     terminal views, so the CLI boundary translates it the same way;
     OSError (an unwritable target) is the caller's to translate, the
-    same split `_page.write_page` has with the --html clause."""
-    graph = _data.load_graph()
-    topic_set = _data.load_topic_set()
+    same split `_page.write_page` has with the --html clause.
+
+    `origins` is the `--origins` selection, and it filters what ships
+    rather than what is drawn: the directory then contains what it says
+    it contains. The payload records the classes that *can* appear under
+    it, so the app can disable a checkbox for a class this export left
+    out and say why, instead of doing nothing when it is clicked."""
+    origins = origins or set(_origin.CLASSES)
+    graph, topic_set = _origin.keep(_data.load_graph(), _data.load_topic_set(), origins)
     terms = _data.top_terms(topic_set)
     payload = build_app_payload(graph, topic_set, terms)
+    payload["origins"] = [name for name in _origin.CLASSES if name in _origin.selected(origins)]
 
     target = Path(path)
     (target / "vendor").mkdir(parents=True, exist_ok=True)

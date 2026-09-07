@@ -17,7 +17,7 @@ contract than a flag.
 import json
 
 from chitragupta import ledger
-from chitragupta.discover import _data, _page_template
+from chitragupta.discover import _data, _origin, _page_template
 
 
 def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
@@ -165,12 +165,17 @@ def build_html(payload: dict) -> str:
     return _page_template.TEMPLATE.replace("__PAYLOAD__", embedded)
 
 
-def write_page(path: str) -> str:
+def write_page(path: str, origins: "set | None" = None) -> str:
     """Build the payload from the artefacts on disk and write the page.
     Raises `_data.MissingArtefact` for every absent input, exactly like
-    the terminal views, so the CLI boundary translates it the same way."""
-    graph = _data.load_graph()
-    topic_set = _data.load_topic_set()
+    the terminal views, so the CLI boundary translates it the same way.
+
+    `origins` is the `--origins` selection (#742). It filters the
+    artefacts before the join rather than hiding topics in the template,
+    so a page that ships is honest about what is in it."""
+    graph, topic_set = _origin.keep(
+        _data.load_graph(), _data.load_topic_set(), origins or set(_origin.CLASSES)
+    )
     terms = _data.top_terms(topic_set)
     html = build_html(build_payload(graph, topic_set, terms))
     with open(path, "w", encoding="utf-8") as handle:

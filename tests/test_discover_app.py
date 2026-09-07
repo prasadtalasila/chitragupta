@@ -6,7 +6,8 @@ artefacts every other view reads (it derives no edge and no membership),
 the written directory is self-contained (static files copied verbatim
 from assets/webapp/, data as a JS assignment because fetch() is blocked
 under file://), each topic is annotated with where its phrase came from
-(hand-written seed file, extracted keywords file, both, or neither), and
+(hand-written seed file, extracted keywords file, both -- `corroborated`
+-- or neither, the definition living in `_origin`), and
 a hostile label cannot break out of the data script -- `<` is escaped
 exactly as the --html page escapes it.
 """
@@ -60,9 +61,13 @@ class TestOrigins:
     def test_a_phrase_in_both_files_says_so(self, isolated_config):
         """Case-insensitively, matching `_seed_phrases()`'s dedup rule:
         the hand-written spelling won the union, so the label in the
-        artefacts may differ in case from the keywords.toml entry."""
+        artefacts may differ in case from the keywords.toml entry.
+
+        `corroborated` rather than `both` (#742): the reader is looking
+        at two independent sources agreeing on a topic, not at a set
+        operation over two files."""
         origins = self.origin(isolated_config, hand=("digital twin",), extracted=("Digital TWIN",))
-        assert origins["digital twin"] == "both"
+        assert origins["digital twin"] == "corroborated"
 
     def test_emergent_stays_emergent_whatever_the_files_say(self, isolated_config):
         origins = self.origin(isolated_config, extracted=("machine learning",))

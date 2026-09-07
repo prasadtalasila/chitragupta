@@ -191,6 +191,7 @@ of what the app then shows.
 | several topics side by side | `chitragupta corpus discover --compare "A" "B" ["C" ...]` |
 | a topic's neighbourhood as rings | `chitragupta corpus discover "PHRASE" --hops 2` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
+| only the topics you named, or only the emergent ones | `chitragupta corpus discover --origins seed,corroborated` |
 | the static one-file page | `chitragupta corpus discover --html topics.html` |
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |

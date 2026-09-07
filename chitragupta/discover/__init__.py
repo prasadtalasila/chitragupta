@@ -27,7 +27,15 @@ import argparse
 import sys
 
 from chitragupta import retrieval
-from chitragupta.discover import _app, _data, _overview, _page, _render, _resolve, _walk
+from chitragupta.discover import (
+    _data,
+    _export,
+    _origin,
+    _overview,
+    _render,
+    _resolve,
+    _walk,
+)
 from chitragupta.discover._views import emit as _emit, hops_view, own_view
 from chitragupta.progname import prog_for
 
@@ -134,6 +142,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="write the whole topic graph as one self-contained HTML page and exit",
     )
     parser.add_argument(
+        "--origins",
+        metavar="LIST",
+        help=(
+            "show only topics of these origins, comma-separated: "
+            f"{', '.join(_origin.CLASSES)} (a corroborated topic -- named by hand "
+            "and extracted from the corpus -- is shown by seed and by keyword too)"
+        ),
+    )
+    parser.add_argument(
         "--app",
         metavar="DIR",
         help=(
@@ -206,7 +223,29 @@ def main(argv=None) -> int:
     refusal on stderr and exit 1, wherever in a view it surfaces."""
     args = build_parser().parse_args(argv)
     try:
-        return _run(args)
+        origins = _origin.parse(args.origins)
+    except ValueError as bad:
+        # Stderr in both modes, and before any view runs: nothing has
+        # reached stdout, so a --json caller reads an empty document and
+        # a nonzero exit rather than a sentence in the stream they
+        # opened expecting one.
+        print(bad, file=sys.stderr)
+        return 1
+    if args.path and origins != set(_origin.CLASSES):
+        # Exit 2, argparse's own usage code, like every other view that
+        # refuses a combination. --path walks the stored next-hop
+        # matrices, whose indices are positions in the *whole* graph and
+        # whose routes may run through a topic the filter removed; there
+        # is no honest way to answer over a subset without recomputing,
+        # and the reader recomputes nothing.
+        print(
+            "--path walks the stored next-hop matrices, which are indexed over the "
+            "whole graph -- it does not compose with --origins.",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        return _run(args, origins)
     except _data.MissingArtefact as missing:
         # One clause for every invocation, --json included, which is why
         # it cannot consult args: the refusal goes to stderr in both
@@ -218,58 +257,32 @@ def main(argv=None) -> int:
 def _paper_view(args, topic_set) -> int:
     data = _render.build_paper(args.paper, topic_set)
     if data is None:
-        print(
-            f"{args.paper} is in no topic -- is the citekey right, "
-            "and has the enrich pipeline run since it was synced?",
-            file=sys.stderr,
+        # With --origins narrowing the graph, "in no topic" is usually
+        # the filter's doing rather than the corpus's, and sending the
+        # reader to re-run enrich would be a wild goose chase.
+        why = (
+            f"none of its topics are of the origins you asked for ({args.origins})"
+            if args.origins
+            else "is the citekey right, and has the enrich pipeline run since it was synced?"
         )
+        print(f"{args.paper} is in no topic -- {why}", file=sys.stderr)
         return 1
     _emit(args, data, _render.render_paper(data))
     return 0
 
 
-def _app_view(args) -> int:
-    try:
-        written = _app.write_app(args.app)
-    except OSError as failure:
-        # Stderr in both modes, for the reason _run's --html clause
-        # gives: a failure line is never part of the payload.
-        print(f"Could not write the app to {args.app}: {failure}", file=sys.stderr)
-        return 1
-    # One more pure renderer of the artefacts --json reads, so it
-    # honours the flag exactly as --html does.
-    _emit(args, {"written": written}, f"written: {written}")
-    return 0
-
-
-def _html_view(args) -> int:
-    try:
-        written = _page.write_page(args.html)
-    except OSError as failure:
-        # Stderr in both modes, unlike the success line below: a
-        # failure line is never part of the payload, which is the
-        # rule _topic_view's --out write already follows. Under
-        # --json nothing has reached stdout yet, so the caller reads
-        # an empty document and a nonzero exit rather than a
-        # sentence in the stream they opened expecting one.
-        print(f"Could not write the page to {args.html}: {failure}", file=sys.stderr)
-        return 1
-    # The page is a pure renderer of the artefacts --json reads
-    # (docs/TOPIC-DISCOVERY.md), so --html is one more view and
-    # honours the flag like every other one rather than ignoring it.
-    _emit(args, {"written": written}, f"written: {written}")
-    return 0
-
-
-def _run(args) -> int:
+def _run(args, origins: set) -> int:
     if args.app:
-        return _app_view(args)
+        return _export.app_view(args, origins)
 
     if args.html:
-        return _html_view(args)
+        return _export.html_view(args, origins)
 
-    graph = _data.load_graph()
-    topic_set = _data.load_topic_set()
+    # The filter applies to the artefacts, not to one view: everything
+    # below then reads a graph with only the selected origins in it, and
+    # a phrase naming a filtered-out topic falls through the resolution
+    # ladder exactly as an unknown phrase does.
+    graph, topic_set = _origin.keep(_data.load_graph(), _data.load_topic_set(), origins)
     terms = _data.top_terms(topic_set)
 
     own = own_view(args, graph, topic_set, terms)

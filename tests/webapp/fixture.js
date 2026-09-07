@@ -51,7 +51,7 @@ const DATA = {
     {
       label: '__proto__ <"hostile">',
       provenance: "seed",
-      origin: "both",
+      origin: "corroborated",
       terms: ["hostile"],
       members: [{ citekey: "x2017", title: "Odd <one>", score: 0.1 }],
       linked: [],
@@ -76,6 +76,10 @@ const DATA = {
     },
   ],
   hierarchy: [{ id: "node-0", a: "digital twin", b: "machine learning", distance: 0.31 }],
+  // Which origin classes this export could contain (#742). Every real
+  // payload records it; a test that wants the older, fieldless shape
+  // builds its own.
+  origins: ["seed", "keyword", "corroborated", "emergent"],
 };
 
 module.exports = { DATA };
