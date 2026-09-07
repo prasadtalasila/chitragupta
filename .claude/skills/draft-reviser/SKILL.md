@@ -395,14 +395,18 @@ python -m chitragupta.draft dossier stamp content/drafts/<path>
 Two things the genre decides, which a reviser has to look up rather than
 assume:
 
-- **`--heading`, if the draft's references section isn't called
-  "References".** `chitragupta.draft references` finds the existing section by heading
-  and replaces it; miss it and you append a second one. A tutorial calls
-  it `## Further reading` (pass `--heading "Further reading"`), and a
-  numbered textbook chapter calls it `## N. References` (pass
-  `--heading "N. References"`, or the numbering is silently dropped).
-  Look at the draft's own heading before running this. Skip the command
-  entirely for a `.tex` fragment, which manages its own bibliography.
+- **`--heading`, if the draft's references section is number-prefixed.**
+  `chitragupta.draft references` finds the existing section by heading
+  and replaces it; miss it and you append a second one. A numbered
+  textbook chapter calls it `## N. References` (pass
+  `--heading "N. References"`, or the numbering is silently dropped);
+  every other genre, tutorials included, uses the bare `## References`
+  default (#699 aligned the tutorial genre, whose earlier drafts say
+  `## Further reading` -- rename that heading to `## References` before
+  running this, or the command appends a second section and the render
+  carries two bibliographies). Look at the draft's own heading before
+  running this. Skip the command entirely for a `.tex` fragment, which
+  manages its own bibliography.
 - **A tutorial must still run.** `tutorial-writer`'s governing rule is
   that a tutorial which doesn't work is worse than none, because a
   learner who follows it exactly and hits an error concludes they are the
