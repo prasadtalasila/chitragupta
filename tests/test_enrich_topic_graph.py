@@ -254,6 +254,18 @@ class TestBuild:
         assert [w["shared"] for w in strict["edges_withheld"]] == [["p2"]]
         assert strict["edges_withheld"][0]["p_value"] == loose["edges_overlap"][0]["p_value"]
 
+    def test_every_topic_gets_a_per_family_analysis(self, isolated_config):
+        """#713: alpha and beta share p2 and are mutual semantic
+        neighbours, so both families report one alter each."""
+        topic_set, vectors = self.prepare()
+        result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
+        for topic in result["topics"]:
+            for family in ("overlap", "semantic"):
+                stats = topic["analysis"][family]
+                assert set(stats) == {"degree", "ego_density", "effective_size", "constraint"}
+                assert stats["degree"] == 1
+                assert stats["effective_size"] == 1.0
+
     def test_the_stamps_travel_with_the_artefact(self, isolated_config):
         topic_set, vectors = self.prepare()
         result = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)

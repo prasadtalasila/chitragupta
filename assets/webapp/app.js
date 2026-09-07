@@ -292,9 +292,10 @@
      brokers over shared papers but not over vocabulary is a different
      animal from one that does the reverse. */
   function egoSection(label) {
+    var topic = topicsByLabel[label];
     return app.egoHtml(label, {
-      overlap: app.egoStats(DATA, label, "overlap"),
-      semantic: app.egoStats(DATA, label, "semantic"),
+      overlap: app.statsFor(DATA, topic, "overlap"),
+      semantic: app.statsFor(DATA, topic, "semantic"),
     });
   }
 

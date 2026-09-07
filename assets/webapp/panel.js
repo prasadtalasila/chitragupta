@@ -203,10 +203,18 @@
      topic that brokers over shared papers but not over vocabulary is a
      different animal from one that does the reverse. */
   function egoHtml(label, stats) {
+    // Stored numbers (#713) are the corpus's own, confirmed by --json;
+    // the in-browser fallback for an older payload keeps the original
+    // caption, because the distinction is exactly what it states.
+    var caption = stats.overlap.stored
+      ? "How this topic sits among its neighbours, read from the " +
+        "artefact -- the same numbers <code>--json</code> reports, " +
+        "parameters alongside."
+      : "How this topic sits among its neighbours, worked out " +
+        "in your browser from the current view. Not a corpus claim: " +
+        "<code>--json</code> reports none of it.";
     return "<h3>Neighbourhood of " + escapeHtml(label) + "</h3>" +
-      '<p class="terms">How this topic sits among its neighbours, worked out ' +
-      "in your browser from the current view. Not a corpus claim: " +
-      "<code>--json</code> reports none of it.</p>" +
+      '<p class="terms">' + caption + "</p>" +
       '<div class="ego-stats">' +
       statsColumn("Over shared papers", stats.overlap) +
       statsColumn("Over semantic nearness", stats.semantic) +
