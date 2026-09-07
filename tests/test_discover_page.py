@@ -75,6 +75,7 @@ class TestPayload:
         prepare(isolated_config)
         topic_set = {k: v for k, v in json.loads(json.dumps(TOPIC_SET)).items() if k != "uncovered"}
         assert _page.build_payload(GRAPH, topic_set, {})["uncovered"] == []
+
     def test_stored_analysis_travels_per_topic(self, isolated_config):
         """#713: the brokerage block rides on each topic, and an older
         artefact simply has none."""
