@@ -134,8 +134,10 @@ chance explains. The app recomputes the same tail the pipeline
 computed, on the same numbers, and says so in words. Nothing else in
 any view shows the gate's reasoning.
 
-**Terminal:** none yet -- and this one is nearly free to add, since
-the arithmetic's inputs are already on the Python side.
+**Terminal:** `chitragupta corpus discover --why "model-driven
+engineering" "physical twin"` -- the same shared citekeys, the same
+tail, the same verdict, from the same artefacts, plus the one number
+the app cannot show: the gate's stored threshold.
 
 ## 💠 Papers as nodes
 
@@ -164,12 +166,13 @@ map in one place:
 | the topic map | `chitragupta corpus discover` |
 | one topic's papers and neighbours | `chitragupta corpus discover "PHRASE"` |
 | one paper's topics | `chitragupta corpus discover --paper CITEKEY` |
+| why two topics have no overlap edge | `chitragupta corpus discover --why "A" "B"` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
 | the static one-file page | `chitragupta corpus discover --html topics.html` |
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |
 
-The clustering, brokerage, path and absence views have no terminal
+The clustering, brokerage and path views have no terminal
 equivalent today;
 [TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
 is the record of that gap and of the two candidate ways to close it.
