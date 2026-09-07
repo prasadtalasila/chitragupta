@@ -38,6 +38,7 @@ below is the part to read first.
 - [The precision tier](#-the-precision-tier)
 - [The overview file](#-the-overview-file---out)
 - [The gold set](#-the-gold-set)
+- [In plain terms: the two families and the inflation dial](#-in-plain-terms-the-two-families-and-the-inflation-dial)
 - [The graph page](#-the-graph-page)
 - [Alternatives considered](#-alternatives-considered)
 - [Sources](#-sources)
@@ -427,6 +428,52 @@ trustworthy, and an invented expectation measures nothing. The gold set
 is what turns `[discover].min_similarity`'s "0.35 is a starting point,
 not a measurement" into a measurement; re-run the script after every
 knob change and quote the numbers in the PR that moves the knob.
+
+## 🗣 In plain terms: the two families and the inflation dial
+
+Everything above carries its full reasoning; this section is the
+sixty-second version, for the reader who met "MCL inflation" in the
+app's toolbar and wants to know what they are moving.
+
+**The two kinds of line.** The graph draws two different kinds of
+connection between topics, and never mixes them:
+
+- An **overlap** edge (drawn solid) means two topics *share actual
+  papers* -- three of your PDFs belong to both. Its evidence is a list
+  of citekeys.
+- A **semantic** edge (drawn dashed) means two topics *talk about
+  similar things*, even if no paper belongs to both -- a topic of
+  review articles and a topic of case studies can use nearly the same
+  vocabulary while sharing nothing. Its evidence is the closest pair
+  of papers across the gap.
+
+They answer different questions -- "which literatures actually meet?"
+against "which literatures sound alike?" -- and the mismatch between
+them is the interesting part: two topics that sound alike but share no
+papers are a literature that has not met itself yet.
+
+**MCL, the grouping method.** Markov CLustering finds the natural
+clumps in a network. The intuition: drop a random walker onto the
+graph and let it step along edges, preferring strong ones. The walker
+gets *trapped* inside densely connected regions -- easy to wander
+within a clump, rare to escape it. MCL simulates that flow and calls
+each trap a cluster. Its appeal here: no cluster count to guess in
+advance, and the same input always gives the same answer.
+
+**Inflation, MCL's one dial.** During the simulation MCL repeatedly
+*sharpens* the flow -- strong routes boosted, weak ones suppressed --
+and inflation is how aggressively. High inflation shatters the network
+into many small, tight clusters; low inflation leaves fewer, bigger,
+looser ones. It is a granularity dial: 131 topics sorted into ten
+broad areas, or forty fine-grained ones.
+
+**Why the app clusters twice, at one dial.** The clustering runs once
+per edge family -- never on a merged graph, for the mismatch reason
+above -- and the gold measurement (previous section) found the two
+families do not even agree about the best inflation: paper-sharing
+clusters score best well above 2.0, semantic clusters at 2.0 itself.
+That disagreement is the per-family design talking, and it is why any
+stored default would need one value per family, not one value.
 
 ## 🖼 The graph page
 

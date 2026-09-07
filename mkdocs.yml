@@ -180,6 +180,10 @@ nav:
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md
       - TikZ figure style: docs/TIKZ-STYLE.md
+  - Discovery:
+      - Topic discovery: docs/TOPIC-DISCOVERY.md
+      - Exploring the graph, view by view: docs/TOPIC-EXPLORATION.md
+      - Topic graph, improving it: docs/TOPIC-DISCOVERY-GRAPH.md
   - Understanding the system:
       - Why this exists: SOUL.md
       - Which guide applies: CLAUDE.md
@@ -191,8 +195,6 @@ nav:
       - Corpus search, stage by stage: docs/CORPUS-SEARCH.md
       - RAG stage by stage, and six other systems: docs/RAG.md
       - Topic modelling, the evidence: docs/TOPIC-MODELLING.md
-      - Topic discovery: docs/TOPIC-DISCOVERY.md
-      - Topic graph, improving it: docs/TOPIC-DISCOVERY-GRAPH.md
   - Choosing settings:
       - Performance: docs/PERFORMANCE.md
       - PDF parser: docs/PDF-PARSER.md
