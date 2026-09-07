@@ -71,11 +71,42 @@ class Report:
     unscoreable: dict[str, str] = field(default_factory=dict)
 
 
+# Passage labels that cannot be a premise. A section heading is a few
+# words naming what follows; it asserts nothing, so it cannot support a
+# claim -- and `_score_claim` takes `max()` over whatever it is given, so
+# a heading that happens to score well is *reported* as the claim's best
+# supporting passage. That is a wrong answer rather than a weak one,
+# which is why this is a filter and not a ranking penalty (issue #719).
+#
+# Deliberately only `section_header`, though it is 6.9% of the corpus's
+# passage units and `list_item` is another 15.9%: a bulleted line
+# routinely carries a real assertion, and dropping those would lose
+# genuine support with no measurement saying it does not. `table` and
+# `formula` (0.7% each) stay for the same reason -- #632 added them on
+# purpose, and a table cell can support a numeric claim.
+#
+# A passage whose `label` is None is *kept*. `passages._from_sidecar`
+# leaves it None whenever the record has no `label` key, which is every
+# passage from a sidecar written before labelling; dropping those would
+# empty the premise set for those sources and silently move their
+# citations from `scored` to `unscoreable`.
+_NOT_A_PREMISE = frozenset({"section_header"})
+
+
 def _quotable(passages: list[Passage]) -> list[Passage]:
-    """Only passages with real text -- an entailment model needs an
-    actual premise, unlike provenance's lexical scorer, which can
-    still compare against a page-level bag of words."""
-    return [p for p in passages if p.quotable]
+    """Only passages that can serve as an entailment premise: real text,
+    and not one of the labels `_NOT_A_PREMISE` names.
+
+    Unlike provenance's lexical scorer, which can still compare against a
+    page-level bag of words, an entailment model needs an actual premise.
+
+    Both of this module's call sites go through here -- `build_report`'s
+    "is there anything to score" gate and `_score_claim`'s own selection
+    -- so the two cannot disagree about what the premise set is. That is
+    what keeps `_score_claim`'s documented no-empty-result invariant true
+    after the label filter was added.
+    """
+    return [p for p in passages if p.quotable and p.label not in _NOT_A_PREMISE]
 
 
 def _score_claim(entailer, claim: str, passages: list[Passage]) -> tuple[float, Passage]:
@@ -107,8 +138,15 @@ def build_report(draft_path: Path, entailer) -> Report:
                 cache[citekey] = source_passages(con, citekey)
             passages, reason = cache[citekey]
             if not _quotable(passages):
+                # Two different absences, and saying "page-level only"
+                # for the second would be false: a source can have real
+                # readable text and still offer no premise, if every
+                # readable passage it has is a heading.
                 report.unscoreable[citekey] = reason or (
-                    "the source's passages carry no readable text to score "
+                    "the source's only readable passages are section headings, "
+                    "which assert nothing to score a claim against"
+                    if any(p.quotable for p in passages)
+                    else "the source's passages carry no readable text to score "
                     "against (page-level only)"
                 )
                 score, passage, note = 0.0, None, report.unscoreable[citekey]

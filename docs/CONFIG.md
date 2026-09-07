@@ -912,7 +912,9 @@ are prepared to rebuild the index.
 `chitragupta/entailment.py`'s `Entailer.score()` calls
 `CrossEncoder(config.ENTAILMENT_MODEL).predict(pairs)` on
 `(premise, hypothesis)` pairs -- a citing sentence's claim against a
-retrieved passage from the cited source -- and reads off the
+retrieved passage from the cited source, excluding passages labelled
+`section_header`, which assert nothing and so cannot be a premise
+(issue #719) -- and reads off the
 `"entailment"` probability by looking up `"entailment"` in the model's own
 `id2label` mapping, not by a fixed column index. That lookup-by-label,
 rather than lookup-by-position, is what makes every candidate below a
