@@ -262,9 +262,16 @@
      help paragraph permanently, and nothing ever restored it. */
   var HELP = hint.textContent;
 
+  /* Whether the disagreement grid is what the panel currently shows.
+     Every other panel writer goes through clearHint first, so resetting
+     here is what keeps the inflation slider from re-clustering into a
+     panel the reader has since pointed elsewhere. */
+  var disagreementShown = false;
+
   function clearHint() {
     hint.hidden = true;
     hint.textContent = HELP;
+    disagreementShown = false;
   }
 
   function say(message) {
@@ -566,17 +573,26 @@
     return Number(inflationControl.value) / 10;
   }
 
-  inflationControl.addEventListener("input", function () {
-    inflationReadout.textContent = inflation().toFixed(1);
-  });
-  document.getElementById("disagreement").addEventListener("click", function () {
+  function renderDisagreement() {
     clearHint();
     detail.innerHTML = "<p>clustering both families…</p>";
     // Yield once so the message paints before the matrices run.
     window.setTimeout(function () {
       detail.innerHTML = app.disagreementHtml(app.disagreement(DATA, inflation()));
+      disagreementShown = true;
     }, 0);
+  }
+
+  inflationControl.addEventListener("input", function () {
+    inflationReadout.textContent = inflation().toFixed(1);
   });
+  /* Re-cluster on release ("change"), not per tick ("input"): MCL is a
+     matrix multiplication per iteration over every topic, and the grid
+     must never name an inflation the slider no longer shows (#703). */
+  inflationControl.addEventListener("change", function () {
+    if (disagreementShown) { renderDisagreement(); }
+  });
+  document.getElementById("disagreement").addEventListener("click", renderDisagreement);
 
   // ---------- focus: rings, hops, and the dimmed context ----------
 
