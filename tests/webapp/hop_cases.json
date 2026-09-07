@@ -1,0 +1,39 @@
+{
+  "comment": [
+    "The contract between two runtimes walking one neighbourhood.",
+    "assets/webapp/ego.js (hopsFrom, reachedVia) lays out the app's ego",
+    "rings; chitragupta/discover/_hops.py is the terminal twin behind",
+    "`discover TOPIC --hops N` (#716). Node asserts ego.js reproduces",
+    "every row (tests/webapp/ego.test.js), pytest asserts the port does",
+    "(tests/test_discover_hops.py), so neither can drift alone."
+  ],
+  "cases": [
+    {
+      "name": "a chain is ringed by distance and ring one is typed",
+      "edges_overlap": [
+        { "a": "E", "b": "a", "overlap_coeff": 0.9, "jaccard": 0.4, "p_value": 0.001, "shared": ["p1"] }
+      ],
+      "edges_semantic": [
+        { "a": "E", "b": "b", "similarity": 0.8, "bridge": ["p1", "p2"] },
+        { "a": "a", "b": "b", "similarity": 0.7, "bridge": ["p1", "p3"] },
+        { "a": "b", "b": "c", "similarity": 0.6, "bridge": ["p2", "p4"] }
+      ],
+      "roots": ["E"],
+      "expected_hops": { "E": 0, "a": 1, "b": 1, "c": 2 },
+      "expected_via": { "a": "overlap", "b": "semantic" }
+    },
+    {
+      "name": "a neighbour reached by both families is typed both, and an island is absent",
+      "edges_overlap": [
+        { "a": "E", "b": "a", "overlap_coeff": 0.5, "jaccard": 0.2, "p_value": 0.004, "shared": ["p1"] },
+        { "a": "x", "b": "y", "overlap_coeff": 0.9, "jaccard": 0.6, "p_value": 0.002, "shared": ["p9"] }
+      ],
+      "edges_semantic": [
+        { "a": "a", "b": "E", "similarity": 0.9, "bridge": ["p1", "p2"] }
+      ],
+      "roots": ["E"],
+      "expected_hops": { "E": 0, "a": 1 },
+      "expected_via": { "a": "both" }
+    }
+  ]
+}

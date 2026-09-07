@@ -21,7 +21,7 @@ import sys
 
 from chitragupta import retrieval
 from chitragupta.discover import _app, _data, _overview, _page, _render, _resolve, _walk
-from chitragupta.discover._views import emit as _emit, own_view
+from chitragupta.discover._views import emit as _emit, hops_view, own_view
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -68,6 +68,14 @@ def build_parser() -> argparse.ArgumentParser:
             "compare two or more topics: pairwise shared papers, the "
             "papers held by all, the bridges held by several, and the "
             "edges among them"
+        ),
+    )
+    parser.add_argument(
+        "--hops",
+        metavar="N",
+        help=(
+            "with a phrase: the topic's neighbourhood as rings by hop "
+            "distance (a count, or 'all' for everything reachable)"
         ),
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
@@ -244,4 +252,6 @@ def _run(args) -> int:
         print(f"note: {resolution.note}")
     if resolution.label is None:
         return _search_view(args, phrase, resolution.note, topic_set)
+    if args.hops:
+        return hops_view(args, resolution, graph)
     return _topic_view(args, resolution, graph, topic_set, terms)

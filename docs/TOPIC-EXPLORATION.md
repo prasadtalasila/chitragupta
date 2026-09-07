@@ -84,8 +84,10 @@ two answers "what would a chapter around this have to cover". The
 panel lists the pinned topic's papers with their ledger detail.
 
 **Terminal:** `chitragupta corpus discover "digital twin"` -- the same
-papers, the same one-hop linked-topic lists with their evidence. The
-two-hop ring and the dimmed context are the app's own.
+papers, the same one-hop linked-topic lists with their evidence -- and
+`--hops 2` (or `--hops all`) prints the rings themselves, ring one
+typed by the family that reached each neighbour, with an honest count
+of what the topic cannot reach. The dimmed context is the app's own.
 
 ## 🤝 Where the two families disagree
 
@@ -175,6 +177,7 @@ map in one place:
 | one topic's papers and neighbours | `chitragupta corpus discover "PHRASE"` |
 | one paper's topics | `chitragupta corpus discover --paper CITEKEY` |
 | several topics side by side | `chitragupta corpus discover --compare "A" "B" ["C" ...]` |
+| a topic's neighbourhood as rings | `chitragupta corpus discover "PHRASE" --hops 2` |
 | why two topics have no overlap edge | `chitragupta corpus discover --why "A" "B"` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
 | the static one-file page | `chitragupta corpus discover --html topics.html` |
