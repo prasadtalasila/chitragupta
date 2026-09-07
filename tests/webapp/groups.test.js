@@ -126,6 +126,41 @@ test("an empty tree cuts to one group per topic and needs no threshold", () => {
   assert.equal(graph.thresholdForGroups([], TOPICS, 8), 0);
 });
 
+// ---------- the cross-runtime contract (#709) ----------
+
+/* `discover --groups` ports cutTree/groupLabel/thresholdForGroups to
+   Python (chitragupta/discover/_groups.py), and cut_cases.json is the
+   table both suites assert -- this block holds the app to it,
+   tests/test_discover_groups.py holds the port to it. The rows carry
+   `size` (the artefact's field); the payload's equivalent is a members
+   array of that length, synthesized here. */
+const CUT_CASES = require("./cut_cases.json").cases;
+
+function caseTopics(row) {
+  return row.topics.map((t) => ({
+    label: t.label,
+    members: Array.from({ length: t.size }, (_, i) => ({ citekey: t.label + "-" + i })),
+  }));
+}
+
+test("every shared cut case matches the app's own cut", () => {
+  assert.ok(CUT_CASES.length >= 5, "the table is read at all");
+  CUT_CASES.forEach((row) => {
+    const cut = graph.cutTree(row.hierarchy, caseTopics(row), row.threshold);
+    const got = cut.groups.map((g) => ({ label: g.label, members: g.members }));
+    assert.deepEqual(got, row.expected_groups, row.name);
+  });
+});
+
+test("every shared target case matches the app's own threshold search", () => {
+  const targeted = CUT_CASES.filter((row) => row.target !== undefined);
+  assert.ok(targeted.length >= 3, "the table is read at all");
+  targeted.forEach((row) => {
+    const got = graph.thresholdForGroups(row.hierarchy, caseTopics(row), row.target);
+    assert.equal(got, row.expected_threshold, row.name);
+  });
+});
+
 // ---------- drawing the cut ----------
 
 test("an expanded group draws its topics inside a compound parent", () => {

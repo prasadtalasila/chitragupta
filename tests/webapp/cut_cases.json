@@ -1,0 +1,114 @@
+{
+  "comment": [
+    "The contract between two runtimes cutting one stored merge tree.",
+    "assets/webapp/graph.js (cutTree, groupLabel, thresholdForGroups)",
+    "computes the app's grouped view; chitragupta/discover/_groups.py is",
+    "the terminal twin behind `discover --groups` (#709). Both suites",
+    "assert every row here -- tests/webapp/groups.test.js from node,",
+    "tests/test_discover_groups.py from pytest -- so neither",
+    "implementation can drift without one of them going red.",
+    "`sizes` stands in for each topic's member count: the node side",
+    "synthesizes a members array of that length, because groupLabel",
+    "reads t.members.length in the app payload while the graph artefact",
+    "stores the count as `size`."
+  ],
+  "cases": [
+    {
+      "name": "a cut below every merge leaves each topic alone",
+      "topics": [
+        { "label": "digital twin", "size": 5 },
+        { "label": "machine learning", "size": 3 },
+        { "label": "runtime verification", "size": 2 },
+        { "label": "odd one", "size": 1 }
+      ],
+      "hierarchy": [
+        { "id": "node-0", "a": "digital twin", "b": "machine learning", "distance": 0.31 },
+        { "id": "node-1", "a": "runtime verification", "b": "node-0", "distance": 0.52 }
+      ],
+      "threshold": 0,
+      "expected_groups": [
+        { "label": "digital twin", "members": ["digital twin"] },
+        { "label": "machine learning", "members": ["machine learning"] },
+        { "label": "runtime verification", "members": ["runtime verification"] },
+        { "label": "odd one", "members": ["odd one"] }
+      ]
+    },
+    {
+      "name": "a cut above one merge joins exactly that pair, biggest member leading",
+      "topics": [
+        { "label": "digital twin", "size": 5 },
+        { "label": "machine learning", "size": 3 },
+        { "label": "runtime verification", "size": 2 },
+        { "label": "odd one", "size": 1 }
+      ],
+      "hierarchy": [
+        { "id": "node-0", "a": "digital twin", "b": "machine learning", "distance": 0.31 },
+        { "id": "node-1", "a": "runtime verification", "b": "node-0", "distance": 0.52 }
+      ],
+      "threshold": 0.4,
+      "expected_groups": [
+        { "label": "digital twin +1", "members": ["digital twin", "machine learning"] },
+        { "label": "runtime verification", "members": ["runtime verification"] },
+        { "label": "odd one", "members": ["odd one"] }
+      ],
+      "target": 3,
+      "expected_threshold": 0.31
+    },
+    {
+      "name": "a merge naming an earlier merge resolves to its leaves",
+      "topics": [
+        { "label": "digital twin", "size": 5 },
+        { "label": "machine learning", "size": 3 },
+        { "label": "runtime verification", "size": 2 },
+        { "label": "odd one", "size": 1 }
+      ],
+      "hierarchy": [
+        { "id": "node-0", "a": "digital twin", "b": "machine learning", "distance": 0.31 },
+        { "id": "node-1", "a": "runtime verification", "b": "node-0", "distance": 0.52 }
+      ],
+      "threshold": 0.6,
+      "expected_groups": [
+        { "label": "digital twin +2", "members": ["digital twin", "machine learning", "runtime verification"] },
+        { "label": "odd one", "members": ["odd one"] }
+      ],
+      "target": 2,
+      "expected_threshold": 0.52
+    },
+    {
+      "name": "a topic labelled like an internal id is always a leaf",
+      "topics": [
+        { "label": "x", "size": 2 },
+        { "label": "node-0", "size": 1 },
+        { "label": "y", "size": 3 }
+      ],
+      "hierarchy": [
+        { "id": "node-0", "a": "x", "b": "node-0", "distance": 0.2 },
+        { "id": "node-1", "a": "node-0", "b": "y", "distance": 0.5 }
+      ],
+      "threshold": 0.5,
+      "expected_groups": [
+        { "label": "y +2", "members": ["x", "node-0", "y"] }
+      ],
+      "target": 1,
+      "expected_threshold": 0.5
+    },
+    {
+      "name": "an unreachable target returns the nearest cut rather than pretending",
+      "topics": [
+        { "label": "a", "size": 1 },
+        { "label": "b", "size": 1 },
+        { "label": "hostile", "size": 1 }
+      ],
+      "hierarchy": [
+        { "id": "node-0", "a": "a", "b": "b", "distance": 0.3 }
+      ],
+      "threshold": 0.3,
+      "expected_groups": [
+        { "label": "a +1", "members": ["a", "b"] },
+        { "label": "hostile", "members": ["hostile"] }
+      ],
+      "target": 1,
+      "expected_threshold": 0.3
+    }
+  ]
+}
