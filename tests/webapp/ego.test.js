@@ -539,3 +539,25 @@ test("an outer ring stays outside the ring it follows, however crowded that is",
   assert.ok(inner > 2 * 240, "the crowded inner ring did not grow");
   assert.ok(Math.hypot(at["D"].x, at["D"].y) > inner, "hop 2 fell inside hop 1");
 });
+
+// ---------- the cross-runtime hop contract (#716) ----------
+
+/* hop_cases.json holds hopsFrom/reachedVia and the terminal port
+   (chitragupta/discover/_hops.py) to the same answers: this block
+   asserts the browser side, tests/test_discover_hops.py the Python
+   side. */
+const HOP_CASES = require("./hop_cases.json").cases;
+
+test("every shared hop case matches the browser's own walk", () => {
+  assert.ok(HOP_CASES.length >= 2, "the table is read at all");
+  HOP_CASES.forEach((row) => {
+    const data = {
+      edges_overlap: row.edges_overlap,
+      edges_semantic: row.edges_semantic,
+    };
+    const hops = ego.hopsFrom(data, row.roots, ["overlap", "semantic"]);
+    assert.deepEqual({ ...hops }, row.expected_hops, row.name);
+    const via = ego.reachedVia(data, row.roots);
+    assert.deepEqual({ ...via }, row.expected_via, row.name);
+  });
+});

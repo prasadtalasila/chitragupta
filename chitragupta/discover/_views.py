@@ -10,7 +10,7 @@ the parser and the dispatch; this module owns what each view does.
 import json as json_module
 import sys
 
-from chitragupta.discover import _absence, _compare, _groups, _resolve
+from chitragupta.discover import _absence, _compare, _groups, _hops, _resolve
 
 
 def emit(args, data: dict, prose: str) -> None:
@@ -96,6 +96,23 @@ def groups_view(args, graph) -> int:
         return 1
     data = _groups.build_groups(graph, args.groups)
     emit(args, data, _groups.render_groups(data))
+    return 0
+
+
+def hops_view(args, resolution, graph) -> int:
+    """The ego view's rings as text (#716). Unlike the views above this
+    one rides on a resolved phrase -- it replaces the flat topic view
+    the way the app's rings replace the flat canvas."""
+    if args.hops == "all":
+        bound = None
+    elif args.hops.isdigit() and int(args.hops) >= 1:
+        bound = int(args.hops)
+    else:
+        print("--hops takes a positive hop count, or 'all'.", file=sys.stderr)
+        return 2
+    data = _hops.build_hops(graph, resolution.label, bound)
+    data["resolved_via"] = resolution.via
+    emit(args, data, _hops.render_hops(data))
     return 0
 
 
