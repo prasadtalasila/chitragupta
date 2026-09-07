@@ -28,8 +28,19 @@ def terminate_workers(executor) -> None:
     `_processes`. Guarded with getattr because it is private and because
     a ThreadPoolExecutor (the pdftotext backend, and the tests) has no
     such attribute and needs no killing.
+
+    `or {}` as well as the getattr default, because the attribute has
+    two empty states and only one of them is absence:
+    `ProcessPoolExecutor.shutdown()` sets `_processes = None` outright
+    (CPython `concurrent/futures/process.py`, the block dropping
+    references "to reduce the risk of opening too many files"). A
+    getattr default never fires for that, so a shut-down pool reached
+    `None.values()` -- on the stall watchdog's own recovery path, where
+    `sync_pool._as_they_land` calls this exactly when the executor may
+    already be tearing down, so the mechanism meant to rescue a stalled
+    sync raised `AttributeError` instead (issue #726).
     """
-    processes = list(getattr(executor, "_processes", {}).values())
+    processes = list((getattr(executor, "_processes", None) or {}).values())
     for process in processes:
         try:
             process.terminate()
