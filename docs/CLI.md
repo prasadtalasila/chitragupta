@@ -1403,9 +1403,18 @@ chitragupta review support content/drafts/survey.md
 deliberately different units, not a second inconsistency: `scored`
 counts *findings* -- one per citation the entailer actually scored
 (`note` is `null`) -- while `unscoreable` counts *citekeys* -- one per
-source whose passages carried no readable text to score against. A
-citekey cited twice that turns out unscoreable is one `unscoreable`
-entry but zero of its two findings count as scored.
+source that offered no passage to score against. A citekey cited twice
+that turns out unscoreable is one `unscoreable` entry but zero of its
+two findings count as scored.
+
+A source can be unscoreable for either of two reasons, and the `note`
+says which: its passages carry no readable text at all (page-level
+only), or every readable passage it has is a **section heading**.
+Headings are excluded from the premise set deliberately -- a heading
+asserts nothing, and the aid picks the highest-scoring premise, so
+leaving them in let a heading be reported as a claim's best supporting
+passage (issue #719). List items, tables and formulae are *not*
+excluded.
 
 ### 🧾 `chitragupta review union`
 
