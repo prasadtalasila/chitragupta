@@ -104,6 +104,10 @@ def build_topic(label: str, graph: dict, topic_set: dict, terms: dict) -> dict:
             for m in members
         ],
         "linked": _linked(graph, label),
+        # Stored brokerage (#713): the same four numbers the app panel
+        # shows, read from the artefact. Absent for an older artefact,
+        # and then absent here too -- this view recomputes nothing.
+        **({"brokerage": node["analysis"]} if "analysis" in node else {}),
     }
 
 

@@ -44,6 +44,10 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
             {
                 "label": node["label"],
                 "provenance": node["provenance"],
+                # Stored brokerage (#713), forwarded so the panel can read
+                # the artefact; an older artefact simply has none and the
+                # app computes in the browser as before.
+                **({"analysis": node["analysis"]} if "analysis" in node else {}),
                 "terms": terms.get(node["label"], []),
                 "members": [
                     {
