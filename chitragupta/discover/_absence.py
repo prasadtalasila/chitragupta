@@ -48,7 +48,7 @@ def survival(k: int, docs: int, a: int, b: int) -> float:
     return min(1.0, total)
 
 
-def _stored_edge(graph: dict, a: str, b: str):
+def _stored_edge(graph: dict, a: str, b: str) -> dict | None:
     for edge in graph["edges_overlap"]:
         if {edge["a"], edge["b"]} == {a, b}:
             return edge
