@@ -92,6 +92,20 @@ def build_parser() -> argparse.ArgumentParser:
         default=2.0,
         help="which stored inflation --clusters reads (default: 2.0)",
     )
+    parser.add_argument(
+        "--path",
+        nargs=2,
+        metavar=("TOPIC", "TOPIC"),
+        help=(
+            "the strongest chain between two topics over one family "
+            "(--family required), each hop with its evidence"
+        ),
+    )
+    parser.add_argument(
+        "--family",
+        choices=("overlap", "semantic"),
+        help="which edge family --path walks -- never one fused weight",
+    )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(
         "--out",

@@ -124,7 +124,10 @@ arrives with its evidence (shared citekeys, or the bridging pair), so
 the whole chain is explainable by naming real papers. "No path over
 semantic nearness" is a real answer, and often the interesting one.
 
-**Terminal:** none yet -- same section as above.
+**Terminal:** `chitragupta corpus discover --path "A" "B" --family
+overlap|semantic` -- the same chain, walked from the same stored
+matrices the app walks, every hop carrying its evidence, and "no path
+over this family" as a real answer.
 
 ## 🚫 Why is there *no* edge here?
 
@@ -179,6 +182,7 @@ map in one place:
 | one paper's topics | `chitragupta corpus discover --paper CITEKEY` |
 | several topics side by side | `chitragupta corpus discover --compare "A" "B" ["C" ...]` |
 | where the families disagree | `chitragupta corpus discover --clusters [--inflation X]` |
+| the path between two topics | `chitragupta corpus discover --path "A" "B" --family F` |
 | a topic's neighbourhood as rings | `chitragupta corpus discover "PHRASE" --hops 2` |
 | why two topics have no overlap edge | `chitragupta corpus discover --why "A" "B"` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
@@ -186,10 +190,9 @@ map in one place:
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |
 
-The path view has no terminal
-equivalent today;
+Every view now has a terminal twin;
 [TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
-is the record of that gap and of the two candidate ways to close it.
+is the record of the gap this closed and how each twin is pinned.
 
 ## 📷 How the screenshots were made
 
