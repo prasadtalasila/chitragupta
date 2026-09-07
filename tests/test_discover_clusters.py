@@ -70,9 +70,7 @@ def test_shared_counts_sort_the_lists():
 def test_an_agreeing_inflation_says_so():
     plain = graph()
     # One family's partitions copied over the other: agreement everywhere.
-    plain["communities"]["semantic"] = json.loads(
-        json.dumps(plain["communities"]["overlap"])
-    )
+    plain["communities"]["semantic"] = json.loads(json.dumps(plain["communities"]["overlap"]))
     data = _clusters.build_clusters(plain, topic_set(), 2.0)
     assert data["semantic_only"] == [] and data["overlap_only"] == []
     assert "agree about every pair" in _clusters.render_clusters(data)
