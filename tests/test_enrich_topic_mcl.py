@@ -61,3 +61,32 @@ def test_the_slider_steps_are_the_stored_steps():
 def test_no_topics_cluster_to_nothing():
     result = topic_mcl.cluster([], [], "overlap_coeff", 2.0)
     assert result == {"clusters": [], "cluster_of": {}}
+
+
+def test_an_edge_naming_an_unknown_label_is_skipped():
+    """Artefact drift tolerance, same as families.js: an edge end the
+    topic list does not know places nothing."""
+    result = topic_mcl.cluster(
+        ["a", "b"], [{"a": "a", "b": "ghost", "overlap_coeff": 0.9}], "overlap_coeff", 2.0
+    )
+    assert result["cluster_of"] == {"a": "mcl-0", "b": "mcl-1"}
+
+
+def test_a_capped_iteration_count_still_reads_clusters(monkeypatch):
+    """The loop can exhaust MAX_ITERATIONS without converging; the read
+    still partitions every topic exactly once."""
+    monkeypatch.setattr(topic_mcl, "MAX_ITERATIONS", 1)
+    row = cases()[0]
+    result = topic_mcl.cluster(row["topics"], row["edges_overlap"], "overlap_coeff", 2.0)
+    assert sorted(result["cluster_of"]) == sorted(row["topics"])
+
+
+def test_an_unclaimed_column_stands_alone():
+    """MCL does not promise a partition: a column no attractor holds
+    still lands somewhere, alone -- families.js's own tail rule."""
+    import numpy as np
+
+    matrix = np.array([[1.0, 0.0], [0.0, 0.0]])
+    result = topic_mcl._read_clusters(matrix, ["kept", "orphan"])
+    assert result["cluster_of"] == {"kept": "mcl-0", "orphan": "mcl-1"}
+    assert result["clusters"][1]["members"] == ["orphan"]
