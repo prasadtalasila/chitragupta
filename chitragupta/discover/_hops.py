@@ -41,6 +41,7 @@ def hops_from(graph: dict, roots: list) -> dict:
         frontier = nxt
     return depth
 
+
 def reached_via(graph: dict, roots: list) -> dict:
     """Which family reaches each direct neighbour: overlap, semantic,
     or both -- ego.js's reachedVia."""
@@ -52,7 +53,8 @@ def reached_via(graph: dict, roots: list) -> dict:
             return
         via[label] = "both" if via.get(label) not in (None, family) else family
 
-    for family, edges in (("overlap", graph["edges_overlap"]), ("semantic", graph["edges_semantic"])):
+    families = (("overlap", graph["edges_overlap"]), ("semantic", graph["edges_semantic"]))
+    for family, edges in families:
         for edge in edges:
             if edge["a"] in pinned:
                 mark(edge["b"], family)
