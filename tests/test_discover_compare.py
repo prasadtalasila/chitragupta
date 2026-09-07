@@ -39,6 +39,28 @@ class TestBuild:
         # The stored ml-fm overlap edge is among the named topics.
         assert [e["shared"] for e in data["edges"]["overlap"]] == [["p4"]]
 
+    def test_mutual_edges_render_with_their_evidence(self, isolated_config):
+        """Both families' edge lines, in prose: the stored ml-fm overlap
+        edge, and a semantic edge added among the named topics."""
+        prepare_three(isolated_config)
+        graph = json.loads(json.dumps(WHY_GRAPH))
+        graph["edges_semantic"] = [
+            {
+                "a": "machine learning",
+                "b": "digital twin",
+                "similarity": 0.7,
+                "bridge": ["p2", "p3"],
+            }
+        ]
+        data = _compare.build_compare(
+            ["digital twin", "machine learning", "formal methods"], graph, WHY_TOPIC_SET
+        )
+        prose = _compare.render_compare(data)
+        assert "shared members: machine learning & formal methods  (overlap 0.40, via: p4)" in prose
+        assert (
+            "semantically near: machine learning & digital twin  (0.70, bridge: p2 <-> p3)" in prose
+        )
+
     def test_edges_outside_the_named_set_stay_out(self, isolated_config):
         prepare_three(isolated_config)
         data = _compare.build_compare(["digital twin", "formal methods"], WHY_GRAPH, WHY_TOPIC_SET)
@@ -79,6 +101,12 @@ class TestCompareCli:
         prepare_three(isolated_config)
         assert discover.main(["--compare", "a", "b", "--why", "c", "d"]) == 2
         assert discover.main(["--compare", "a", "b", "--groups", "2"]) == 2
+        # A stray positional phrase reaches compare_view's own guard --
+        # it has to come first, or argparse's greedy nargs="+" folds it
+        # into the --compare list -- since neither --why nor --groups
+        # intercepts.
+        assert discover.main(["stray phrase", "--compare", "a", "b"]) == 2
+        assert "--compare is its own view" in capsys.readouterr().err
 
     def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
         prepare_three(isolated_config)
