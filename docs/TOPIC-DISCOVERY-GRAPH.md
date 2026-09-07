@@ -188,69 +188,31 @@ be reproduced from the page alone.
 > browser-side recomputation remains how the app reaches the
 > `edges_withheld` answer without it.
 
-A schema diff, so the builder and the app can be changed in one pass. Everything
-here is derived from data the stage already computes; nothing needs a new model
-download and nothing needs an LLM.
+Designed as one schema change, so the builder and the app can move in one
+pass. Everything here is derived from data the stage already computes;
+nothing needs a new model download and nothing needs an LLM. Beside the
+artefact's existing top-level fields (the model id, the corpus and topic
+counts, the gate's `p_value`, the semantic `neighbors`, the corpus mean,
+the `topics` list, both edge families and the merge `hierarchy`), the
+proposal added five:
 
-```jsonc
-{
-  "model": "...",
-  "n_docs": 497, "n_topics": 53,
-  "p_value": 0.01, "neighbors": 5,
-  "corpus_mean": [0.0],
-
-  // --- existing ---
-  "topics": [{
-    "label": "digital twin", "provenance": "seed",
-    "size": 12, "centroid": [0.0],
-
-    // --- NEW: per-topic analysis, keyed by edge family ---
-    "analysis": {
-      "overlap": {
-        "degree": 4,
-        "pagerank": 0.031,
-        "betweenness": 0.12,          // normalised
-        "ego_density": 0.33,          // edges among alters / possible
-        "effective_size": 2.7,        // Burt
-        "constraint": 0.41            // Burt
-      },
-      "semantic": { "...": "same shape" }
-    },
-
-    // --- NEW: deterministic seed coordinates (classical MDS, centred space) ---
-    "xy": [0.42, -0.17]               // unit square; the app scales
-  }],
-
-  // --- existing ---
-  "edges_overlap": [{
-    "a": "...", "b": "...", "jaccard": 0.21, "overlap_coeff": 0.83,
-    "p_value": 0.0004, "shared": ["citekey1", "citekey2"]
-  }],
-  "edges_semantic": [{
-    "a": "...", "b": "...", "similarity": 0.74,
-    "bridge": ["citekeyA", "citekeyB"]
-  }],
-  "hierarchy": [{ "id": "node-0", "a": "...", "b": "...", "distance": 0.31 }],
-
-  // --- NEW: pairs that were tested and refused, with the reason ---
-  "edges_withheld": [{
-    "a": "digital twin", "b": "machine learning",
-    "shared": ["dt2022"], "jaccard": 0.25, "overlap_coeff": 0.50,
-    "p_value": 1.0, "reason": "hypergeometric"
-  }],
-
-  // --- NEW: communities, one partition per family, never fused ---
-  "communities": {
-    "overlap":  { "method": "mcl", "inflation": 2.0,
-                  "members": { "cluster-0": ["label", "..."] } },
-    "semantic": { "method": "mcl", "inflation": 2.0,
-                  "members": { "cluster-0": ["label", "..."] } }
-  },
-
-  // --- NEW: what the app used to draw, for the footer and for reproduction ---
-  "layout_params": { "seed_positions": "classical-mds", "mds_dims": 2 }
-}
-```
+- **`analysis`**, on each topic and keyed by edge family: degree,
+  PageRank, normalised betweenness, ego density (edges among the alters
+  over the pairs they could form), and Burt's effective size and
+  constraint -- the same shape for `overlap` and `semantic`, never
+  pooled.
+- **`xy`**, on each topic: deterministic seed coordinates in the unit
+  square (classical MDS over the centred centroids was the sketch; the
+  app scales).
+- **`edges_withheld`**, top-level: the pairs the gate tested and
+  refused, each with its shared citekeys, both overlap coefficients,
+  the p it was refused at, and the reason.
+- **`communities`**, top-level and keyed by family: the clustering
+  method, the inflation used, and each cluster's member labels -- one
+  partition per family, never fused.
+- **`layout_params`**, top-level: whatever drew the stored coordinates
+  (algorithm and its parameters), for the page footer and for
+  reproduction.
 
 Notes on the additions:
 
