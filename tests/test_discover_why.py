@@ -185,6 +185,34 @@ class TestWhyCli:
         assert discover.main(["--why", "digital twni", "machine learning"]) == 0
         assert "digital twin" in capsys.readouterr().out
 
+    def test_a_degradation_note_reaches_the_terminal(self, isolated_config, capsys, monkeypatch):
+        """The ladder's own note (here: the semantic rung skipped without
+        the enrich extra) prints before the verdict, exactly as the
+        topic view does -- and only in prose mode."""
+        from chitragupta.discover import _resolve
+
+        def refuse() -> None:
+            raise ImportError("no sentence_transformers")
+
+        monkeypatch.setattr(_resolve, "_load_model", refuse)
+        write_artefacts(
+            isolated_config,
+            graph=WHY_GRAPH,
+            topic_set=WHY_TOPIC_SET,
+            topics={
+                "topic_info": [
+                    {"Topic": 0, "Representation": ["twin", "simulation"]},
+                    {"Topic": 1, "Representation": ["learning", "models"]},
+                    {"Topic": 2, "Representation": ["formal", "verification"]},
+                ]
+            },
+        )
+        assert discover.main(["--why", "simulation twin", "machine learning"]) == 0
+        out = capsys.readouterr().out
+        assert "note:" in out
+        assert discover.main(["--json", "--why", "simulation twin", "machine learning"]) == 0
+        assert "note:" not in capsys.readouterr().out
+
     def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
         self.prepare_why(isolated_config)
         assert discover.main(["--why", "quantum blockchain", "machine learning"]) == 1
