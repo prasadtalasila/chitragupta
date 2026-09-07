@@ -177,7 +177,7 @@ same installed package *once that interpreter is the venv's own*. That is
 hooks and every genre skill invoke `python -m chitragupta.draft gate`
 specifically because it is the one command that must survive a broken
 environment, console script included, and `chitragupta/hook_launchers.py`
-is what checks that it still can (#264). So: a bare `pip install
+is what checks that it still can. So: a bare `pip install
 chitragupta-cli` covers tiers 1 and 2 (`bibtexparser` is a main,
 non-optional dependency -- `chitragupta corpus sync` needs nothing
 extra); only tier 3 (`chitragupta enrich`) needs the enrich extra --
@@ -191,7 +191,7 @@ invokes.
 "Cannot be blocked by a broken venv" is true of the *code* -- the gate
 chain imports nothing outside the standard library once it is running.
 It is not true of *finding the right interpreter to run it with*, and
-those are different failures (#563). In a checkout, `-m` puts `cwd` on
+those are different failures. In a checkout, `-m` puts `cwd` on
 `sys.path`, so any `python`/`python3` on `PATH` reaches `chitragupta/`
 regardless of which interpreter it is -- that is where "cannot happen"
 used to hold. An `init`-ed project has no `chitragupta/` beside it to
@@ -441,9 +441,9 @@ package now ships as a runnable command instead.
 
 | Old (git checkout) | New (`pip install chitragupta-cli`) |
 | --- | --- |
-| `cp config.toml.example config.toml`, then create `.claude/`, `papers/`, `content/` by hand or by cloning | `chitragupta init DIR` -- writes all of it at once (#263) |
+| `cp config.toml.example config.toml`, then create `.claude/`, `papers/`, `content/` by hand or by cloning | `chitragupta init DIR` -- writes all of it at once |
 | `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install 'chitragupta-cli[enrich]'` |
-| `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way (#265) |
+| `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps` -- the same script, reached a different way |
 | `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
 | Checking pandoc/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
 | `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>` -- the module form still works too, and is what hooks and skills keep using ([Which interpreter](#-which-interpreter)) |
@@ -509,7 +509,7 @@ both hold, since a lost document is the more actionable of the two. A
 caller that only wants "did anything go wrong" still reads `!= 0` and
 needs no change.
 
-The split is new (issue #696) and the GitHub Release that introduced it
+The split is new and the GitHub Release that introduced it
 says which version; this page deliberately does not, because a "since
 x.y.z" here is a second place the number has to be right and the release
 notes are the first. Before it, both classes exited **1** -- which meant
@@ -518,7 +518,7 @@ notes are the first. Before it, both classes exited **1** -- which meant
 
 The PDF reasons used to exit 0, reported only in the summary's `no-PDF
 breakdown` line, which made them invisible to precisely the caller that
-cannot read a summary (issue #556). They are the only no-PDF reasons
+cannot read a summary. They are the only no-PDF reasons
 that gate the code:
 
 | `no-PDF breakdown` reason | Exit | Why |
@@ -646,7 +646,7 @@ relation and each resolution rung is computed.
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
 | `--html FILE` | -- | Write the whole topic graph as one self-contained HTML page (inline data, script and styles; works from `file://`) and exit. Composes with `--json`, which reports the write as `{"written": FILE}` rather than as a sentence |
-| `--app DIR` | -- | Write the topic graph as an interactive app directory -- cytoscape.js canvas grouped by a slidable cut of the stored merge tree, type-ahead multi-topic search, provenance-coloured nodes, paper panel -- openable from `file://` with no server (docs/TOPIC-DISCOVERY.md has the tour). Composes with `--json` exactly as `--html` does |
+| `--app DIR` | -- | Write the topic graph as an interactive app directory -- cytoscape.js canvas grouped by a slidable cut of the stored merge tree, type-ahead multi-topic search, provenance-coloured nodes, paper panel -- openable from `file://` with no server (docs/EXPLORE-WEB.md has the tour). Composes with `--json` exactly as `--html` does |
 
 ```bash
 chitragupta corpus discover
@@ -656,9 +656,6 @@ chitragupta corpus discover
 # chitragupta corpus discover --paper kritzinger_digital_2018
 # chitragupta corpus discover --why "digital twin" "physical twin"
 # chitragupta corpus discover --groups 8
-# chitragupta corpus discover --compare "digital twin" "physical twin" "application"
-# chitragupta corpus discover --clusters --inflation 2.0
-# chitragupta corpus discover --path "digital twin" "devops" --family overlap
 # chitragupta corpus discover --compare "digital twin" "physical twin" "application"
 # chitragupta corpus discover --clusters --inflation 2.0
 # chitragupta corpus discover --path "digital twin" "devops" --family overlap
@@ -973,18 +970,18 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | Subcommand | What it does |
 | --- | --- |
 | `init <draft> --genre G` | Create the skeleton. Only ever adds missing files -- safe to re-run |
-| `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since. With an `outline.md`, also which declared queries ran, which returned nothing (`no evidence`, #480), and which were never issued |
+| `status <draft>` | What each file holds, the draft's section count, and whether the corpus moved since. With an `outline.md`, also which declared queries ran, which returned nothing (`no evidence`), and which were never issued |
 | `status --all` | Corpus drift over every dossier: broken citations and new candidates. Always exits 0 |
 | `sections <draft>` | Heading -> line range, for reading and editing one section instead of the file |
 | `sections <draft> --citekeys` | The dossier's `sections.md` table, derived from the draft: each heading with the citekeys cited under it. `--write` puts it in the dossier |
 | `outline <draft>` | Read and validate `outline.md` -- the human's own per-section brief/claim/declared queries. A section is a `##`-or-deeper heading; a level-1 line is the file's own title and is passed over. **Exits 1** if there's no `outline.md`, or if a section has neither a `brief:` nor a `claim:` block |
 | `mark-revision <draft>` | Record a revision-session boundary in `retrieval.md`, so `status` can total retrieval cost per revision instead of only as one lifetime figure |
-| `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit (#454). Run after `gate` passes, never before |
+| `stamp <draft>` | Record the draft's current text digest in `scope.md`, so `status` can report `CHANGED since last stamp` on a later hand edit. Run after `gate` passes, never before |
 | `set-language <draft> <language>` | Record the draft's dialect (a BCP-47 tag: `en-GB`, `en-US`, `en-IN`) in `scope.md`, so `chitragupta.draft style` can check it |
 | `acronyms-suggest <draft>` | Acronyms this draft's glossary or prose defines that aren't in `[style].acronyms` yet. Prints only -- writes nothing |
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
-| `check-evidence <draft>` | Advisory, two checks over `evidence.md`. First, any citekey carrying **more than one block** -- the first is the one every reader gets, so the rest are text nothing will read (#506). Then: does any `claim:` read like its own `quote:` with the words moved? Never blocks a draft from being read -- exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
+| `check-evidence <draft>` | Advisory, two checks over `evidence.md`. First, any citekey carrying **more than one block** -- the first is the one every reader gets, so the rest are text nothing will read. Then: does any `claim:` read like its own `quote:` with the words moved? Never blocks a draft from being read -- exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
@@ -1067,7 +1064,7 @@ venv. [RETRIEVAL.md](RETRIEVAL.md) has the ranking details.
 | `evidence "<query>" --citekey KEY` | The passages of that one document that bear on the query (`--windows`, 2 by default) |
 
 `search` also takes `--collection NAME`, which restricts the ranking to a
-Zotero collection or one beneath it -- the curated-subset case from #195,
+Zotero collection or one beneath it -- the curated-subset case,
 where a chapter on modelling retrieves only from the modelling shelf.
 Scoring stays corpus-wide, so a filtered result carries the same score it
 would unfiltered; only the candidate set narrows. Needs the export
@@ -1445,7 +1442,7 @@ only), or every readable passage it has is a **section heading**.
 Headings are excluded from the premise set deliberately -- a heading
 asserts nothing, and the aid picks the highest-scoring premise, so
 leaving them in let a heading be reported as a claim's best supporting
-passage (issue #719). List items, tables and formulae are *not*
+passage. List items, tables and formulae are *not*
 excluded.
 
 ### 🧾 `chitragupta review union`
@@ -1725,7 +1722,7 @@ a re-scan compared against a recorded one, and page location for a
 phrase. Stdlib-only -- but `locate` shells out to the `pdftotext` binary when
 the source has a PDF, so poppler-utils on `PATH` gets it page numbers
 from the PDF itself. Without it, `locate` falls back to
-`content/parsed/` rather than failing (#516) -- page-level rather than
+`content/parsed/` rather than failing -- page-level rather than
 layout-accurate, and the same fallback a source with no PDF already
 took. `overlap`, `scan` and
 `recheck` read already-parsed text via `chitragupta/overlap_index.py`'s cache
@@ -1778,7 +1775,7 @@ The payload carries four things:
   `limit`.
 - How many findings the allowlist suppressed (`suppressed`), what
   coverage gap each `tiers_not_run` entry names, and the Chroma collection
-  name the embedding tier reads or writes right now (`corpus_key`, #500).
+  name the embedding tier reads or writes right now (`corpus_key`).
   All three are described below.
 - One object per finding, with `id`, `citekey`, `page`, `end_page`,
   `tier`, `span_words`, `matched_words`, `start`, `line`, `char_start`,
@@ -1833,10 +1830,10 @@ say the same thing in prose.
 `[enrich].embedding_model` -- recorded even when `tiers_not_run` lists
 `embedding`, since `config.EMBEDDING_MODEL` alone decides it and costs
 nothing to compute. `recheck` reads it, and `tiers_not_run`, off a
-baseline to warn when either has changed since (#500) -- see below.
+baseline to warn when either has changed since -- see below.
 
 `page` and `end_page` are the lowest and highest page an n-gram in the
-run actually *starts* on (#131). They are equal for an ordinary
+run actually *starts* on. They are equal for an ordinary
 single-page run. `end_page > page` means the run spans a source page
 break, and the printed forms render that as `p.N-M` rather than picking
 one side.
@@ -1880,7 +1877,7 @@ revision -- which is precisely what `recheck` below has to decide.
 Two identical runs from the same source page therefore share an `id`, and
 `recheck` understates progress in that case rather than overstating it.
 
-For a run spanning a page break (`end_page > page`, #131), `id` is keyed
+For a run spanning a page break (`end_page > page`), `id` is keyed
 on `page`, the lower of the two, where the run starts. If a later scan
 merges a run differently -- a wider gap-tolerant run absorbing a
 previously-separate one, say -- the merged run's `page` can change, and
@@ -1899,8 +1896,7 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All ten review aids emit one now
-(#309, #341, #314, #311, #416, #381, #386, #484) --
+All ten review aids emit one now --
 `provenance` and `coverage` follow the same envelope, above.
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s `agenda` aid treats each other
 aid's JSON as optional rather than required, though: not every draft has
@@ -1927,7 +1923,7 @@ what catches it: one finding resolved and one appearing leaves
 `objective_delta` at exactly 0, so a caller reading the delta alone
 cannot tell that repair from one that changed nothing.
 
-Every `tier: "embedding"` finding is excluded too (#500). That tier is
+Every `tier: "embedding"` finding is excluded too. That tier is
 advisory only -- its findings move with tier availability and the
 embedding model, not only with an edit -- so counting them would stall
 `agenda-reviser`'s strictly-falling loop for reasons no edit caused: a
@@ -1956,14 +1952,14 @@ naming the remedy:
   `resolved` findings are printed straight out of the baseline and never
   rescanned. So a payload can carry an `id` and still be missing
   something the output line reads, which is exactly what one written
-  between `id` and `end_page` landing does -- and, since #500, one
+  between `id` and `end_page` landing does -- and, likewise, one
   written before `objective_before`/`objective_after` started reading
   `tier` off every finding.
 - one from a **different release series** (`major.minor`). What counts as
-  one finding changes between releases -- #131 made a run that used to
-  report as two merge into one, giving wording nobody touched a different
-  `id` -- so the comparison would report repairs that never happened. A
-  *patch* difference is accepted silently, because
+  one finding changes between releases -- page-keyed run ids made what
+  used to report as two findings merge into one, giving wording nobody
+  touched a different `id` -- so the comparison would report repairs
+  that never happened. A *patch* difference is accepted silently, because
   `DEVELOPER-AGENTS.md`'s versioning rules define
   a patch release as changing nothing about what the pipeline does, so a
   finding-shape change cannot land in one.
@@ -1978,7 +1974,7 @@ anyway, so if it can run at all then `scan --write` can too, and against
 a warm index that is a sub-second re-take. The payload still carries
 `baseline_version` as provenance for the comparison it did make.
 
-One case warns instead of refusing (#500): a baseline whose
+One case warns instead of refusing: a baseline whose
 `tiers_not_run` or `corpus_key` disagree with this rescan's own. Neither
 makes the baseline invalid to compare against -- tiers 1 and 2 are
 unaffected either way, and `objective_before`/`objective_after` already
@@ -2007,10 +2003,10 @@ advisory as every other command here.
 that produced it in `--json` output.
 
 The **exact** tier matches word n-grams, so a single substituted word
-breaks it by construction. The **skip-gram** tier (#133) tolerates that,
+breaks it by construction. The **skip-gram** tier tolerates that,
 catching a synonym swap or inflection change. Neither sees genuine
 restatement -- the same claim in a different sentence structure. The
-**embedding** tier (#134/#164) does, but it runs only where the optional
+**embedding** tier does, but it runs only where the optional
 enrichment layer, the Docling sidecars and the draft's own dossier are
 all present, and it compares a section only against the sources that
 section already cites.
@@ -2059,7 +2055,7 @@ the tier-1 build above. It is paid once. See
 `scan` groups a match by its `(citekey, diagonal)`. The diagonal is the
 source position minus the draft position, which holds constant across a
 run; the source position is global across the whole document rather than
-reset per page (#131). `scan` then merges runs on the same diagonal that
+reset per page. `scan` then merges runs on the same diagonal that
 sit within `--gap` words of each other.
 
 Two things survive that merge as one finding. A single edited word inside
@@ -2373,7 +2369,7 @@ chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 
 Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
 section -- and a **chapter** is one authored document whose sections are
-the headings inside it (#472). Every part, chapter
+the headings inside it. Every part, chapter
 and section needs an explicit `{#id}`, because a derived id changes when
 someone rewords a heading and orphans the units written against it.
 
@@ -2525,7 +2521,7 @@ bug. No stage here shells out to a binary, so none of them can report
 reports `error`, `0` otherwise -- including `partial`, which is what an
 ordinary unparseable PDF produces, and `skipped`, which is what a stage
 whose prerequisite is absent produces. One case is worth naming because
-it used to be silent: since #584, a `docling` run that gave up on
+it used to be silent: a `docling` run that gave up on
 documents it could not get through a repeatedly-dying worker pool reports
 `error` rather than `partial`, so it exits `1`. Before that, a run that
 abandoned 460 of 642 documents exited `0`, exactly like a clean one.
@@ -2626,11 +2622,11 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[enrich]'` (#265) |
-| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries, and `python-is-python3` -- which is what puts the name `python` on `PATH`, the name every Claude Code hook is launched by ([HOOKS.md](HOOKS.md#-the-launcher-contract)) -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps` (#265), unmodified |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[enrich]'` |
+| `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries, and `python-is-python3` -- which is what puts the name `python` on `PATH`, the name every Claude Code hook is launched by ([HOOKS.md](HOOKS.md#-the-launcher-contract)) -- see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in -- not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps`, unmodified |
 | `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[dev]'` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all` -- it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
-| `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON` rather than this script's own venv -- what `chitragupta install gpu-torch` (#265) reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
+| `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON` rather than this script's own venv -- what `chitragupta install gpu-torch` reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
 | `vale` | Installs Vale alone, without the TeX Live and poppler `os-deps` also brings -- what CI's `lint` job and a bare `python-deps` run (which needs no `poetry`) both want |
 | `all` | `os-deps` + `python-deps`. **Does not include `dev-deps`** |
 

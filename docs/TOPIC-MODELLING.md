@@ -30,11 +30,9 @@ own reference list stays what it was: the evidence behind the *model*.
 
 ## ❗ The problem, in one sentence
 
-`content/topics.json` existed for several releases with no consumer
-([#192](https://github.com/prasadtalasila/chitragupta/issues/192)), and
+`content/topics.json` existed for several releases with no consumer, and
 the topic model had no way to know that the corpus's owner had already
-grouped the same papers by hand in Zotero
-([#206](https://github.com/prasadtalasila/chitragupta/issues/206)).
+grouped the same papers by hand in Zotero.
 
 ## 📚 What the sources argued, and what happened when it was tried
 
@@ -95,7 +93,7 @@ the clustering is right and only the *label* is wrong. No amount of
 further preprocessing fixes that without deleting content that belongs to
 the topic. It is a labelling problem, and §3 is its answer.
 
-### 🏷 3. Label topics from recognised domain terms -- [#297](https://github.com/prasadtalasila/chitragupta/issues/297)
+### 🏷 3. Label topics from recognised domain terms
 
 Asta's third best practice: "use domain term recognition as a backbone
 for both topics and labels", citing TLATR (Truica et al., 2021), which
@@ -103,8 +101,7 @@ extracts domain-specific terms first and then chooses each topic's label
 from the recognised terms by C-Value scoring, and Silvello et al. (2016),
 which ranks candidates by both corpus-level and document-level TF-IDF.
 
-**Built**, in [#303](https://github.com/prasadtalasila/chitragupta/pull/303) --
-`chitragupta/enrich/topic_labels.py`. It fixed two things at once: the
+**Built**, as `chitragupta/enrich/topic_labels.py`. It fixed two things at once: the
 author-name labels above, and BERTopic's own topic names, which on this
 corpus were stopwords (`0_the_and_of_to`) because no
 `CountVectorizer(stop_words=...)` was configured. A person's name is not
@@ -170,8 +167,8 @@ regex* rather than by label. Adopting DocBank-grade structure means a
 LayoutLM-class model and Detectron2 -- a real dependency and its own
 piece of work, not a configuration change.
 
-**This was filed as [#301](https://github.com/prasadtalasila/chitragupta/issues/301)
-and is now closed as not planned**, because §3 removed the evidence for
+**This was filed as an issue of its own and is now closed as not
+planned**, because §3 removed the evidence for
 it. The artefact clusters that motivated it -- an author block, a
 publisher's front matter, a run of clause numbers -- all left the top
 twenty once topic *labels* stopped being drawn from author names and
@@ -193,7 +190,7 @@ That proposal is itself unbuilt and argues a case for a *citation graph*,
 with structural extraction a by-product; it is the document to start
 from, not a queued piece of work.
 
-### ✅ 7. Validate stability, not just fit -- [#300](https://github.com/prasadtalasila/chitragupta/issues/300)
+### ✅ 7. Validate stability, not just fit
 
 Asta again: hyperparameter choice in this family is usually driven by
 coherence alone, but "a model that looks good once can still be unstable
@@ -203,15 +200,14 @@ cites work using repeated resampling and model selection (Yengejeh et
 al., 2026, which lands on 83-88 topics for 3,689 forensic-science
 abstracts).
 
-**Built**, in [#304](https://github.com/prasadtalasila/chitragupta/pull/304) --
-`bench/bench_topic_depth.py --repeats` refits each setting on 90%
+**Built** -- `bench/bench_topic_depth.py --repeats` refits each setting on 90%
 bootstrap resamples and scores agreement with the full fit by adjusted
 Rand index. The old hardcoded defaults (`n_neighbors=15`,
 `min_cluster_size=10`) scored **0.14** -- barely more stable than
 chance; the shipped defaults (`5`/`3`/`2`) score **0.80**.
 
 **Both of those figures hold UMAP fixed, which the shipped stage does
-not** (issue #697). They refit HDBSCAN on each resample over a reduction
+not** (a recorded issue). They refit HDBSCAN on each resample over a reduction
 fitted once, so they measure the stability of the clustering given a
 reduction rather than of the whole pipeline. `bench_topic_depth.py` now
 reports both arms as separate columns, and the gap is large: measured

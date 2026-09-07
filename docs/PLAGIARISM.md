@@ -4,8 +4,8 @@ Status: **implemented, three detection tiers of a planned three.** The
 second and third shipped advisory-only. The third runs only where the
 optional enrichment layer, the Docling passage sidecars, a synced ledger
 and the draft's own dossier are all present. Written 2026-08-10. Updated
-2026-08-27 with measured scan costs; tier 2 added 2026-08-13 (#133),
-tier 3 added 2026-08-15 (#134/#164).
+2026-08-27 with measured scan costs; tier 2 added 2026-08-13,
+tier 3 added 2026-08-15.
 
 **Written for** someone deciding whether the verbatim `overlap` and
 `scan` checks are enough review before presenting a draft, or
@@ -55,7 +55,7 @@ answer the second question, mechanically, over what is currently checked
 verbatim word-n-gram reuse.
 
 **Verbatim and light-paraphrase reuse only.** Tier 2's stemmed
-skip-grams (`chitragupta/overlap_skipgram.py`, #133) catch a synonym swapped
+skip-grams (`chitragupta/overlap_skipgram.py`) catch a synonym swapped
 every few words, or an inflection changed. Genuine restatement in new
 sentence structure -- the same claim, said differently -- is invisible to
 both deterministic tiers by construction.
@@ -156,7 +156,7 @@ a bad flag, a missing argument -- exits 2, which is ordinary CLI-usage
 error handling rather than a verdict on the draft.
 
 Whether long verbatim runs should gate is a later and deliberately
-separate decision, issue #110's Phase 2. These tools only produce the
+separate decision, recorded as the exact tier's own Phase 2. These tools only produce the
 findings that decision would be tuned against.
 
 ## ⚙ How it works
@@ -213,7 +213,7 @@ of them are in [CLI.md](CLI.md#-chitragupta-review-verbatim).
 Matches are grouped by `(citekey, diagonal)`, where `diagonal =
 source_position - draft_position`. That `source_position` is a *global*
 token position in the source document, not reset at each page break
-(`chitragupta/overlap_index.py`, #131).
+(`chitragupta/overlap_index.py`).
 
 Two matches on the same diagonal are "in step" with each other even with
 non-matching words between them. So a **gap-tolerant merge** collapses
@@ -243,7 +243,7 @@ Each finding reports five things:
   double quotes, or a Markdown blockquote line. A deterministic bit, not
   a severity judgment.
 
-  Two things bound how far a quoted span may reach, both added in #516
+  Two things bound how far a quoted span may reach, both added
   after a single stray delimiter was found demoting real findings into
   this bucket. A double quote straight after a digit is an inch or
   second mark (`a 6" pipe`) and does not open a span; and no span may
@@ -263,14 +263,14 @@ routinely opens a word or two before the opening mark, in the draft's own
 framing prose. Requiring the *whole* run to sit inside the marks -- the
 original reading -- therefore reported `quoted: false` on correctly quoted,
 correctly credited passages, which is precisely the material the flag
-exists to let a reader skip (#189). Four hand-labelled
+exists to let a reader skip. Four hand-labelled
 `attributed-quotation` findings across tiers 1 and 2 had that shape, two
 of them with the quoted words a minority of the span, so a
 majority-of-span rule does not reach them either.
 
 ## ⚠ Severity buckets, and the boilerplate allowlist
 
-Two additions from issue #128, both aimed at the same goal as any future
+Two additions, both aimed at the same goal as any future
 gate built on top of `scan`: a tolerable false-positive rate.
 
 **Severity buckets, in the written report only.** stdout stays
@@ -356,7 +356,7 @@ being visible from the report's own side.
 ## 🛠 Repairing what the scan found
 
 Detection without remediation leaves the human doing the tedious part.
-Issue #129 adds the other half: the `agenda-reviser` skill
+The other half exists too: the `agenda-reviser` skill
 ([GENRE.md](GENRE.md#-working-the-agenda-agenda-reviser)) works a scan's
 findings one at a time, and `python -m chitragupta.review verbatim recheck`
 decides whether each repair may be kept.
@@ -383,14 +383,14 @@ score as no improvement. So is every `tier: "embedding"` finding: that
 tier is advisory only (see above), and its findings move with tier
 availability and the embedding model as much as with an edit, so
 counting them would stall the agenda-reviser loop -- which continues only
-while the count strictly falls -- for reasons no edit caused (#500).
+while the count strictly falls -- for reasons no edit caused.
 
 It refuses a baseline it cannot compare against:
 
 - another aid's payload;
 - one written under `--limit`, where truncation makes "absent" ambiguous;
 - one missing a field the comparison prints, such as `id`, a locator,
-  `tier`, or `end_page` from a build before #131;
+  `tier`, or `end_page` from a build predating the global-position fix;
 - one from a different release series, since what counts as one finding
   can change between them;
 - one that is unreadable or not JSON.
@@ -403,7 +403,7 @@ the objective count already excludes tier 3, so the baseline is still a
 valid comparison basis. The warning only says that an `embedding` entry
 in `resolved`/`new` may reflect the enrich group being installed or
 removed, or the corpus being rebuilt under a different model, rather than
-an edit. A baseline predating `corpus_key` (before #500) is not treated
+an edit. A baseline predating `corpus_key` is not treated
 as a mismatch -- there is nothing recorded to compare against.
 
 **What may be repaired without asking is decided by the buckets above,
@@ -418,9 +418,9 @@ for someone under *what you will not do*.
 **None of this is a gate.** `recheck` exits 0 whatever it finds, like
 every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
-should ever join it is [#130](AUTO-IMPROVEMENT.md#-build-order)'s question;
+should ever join it is [the overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order)'s question;
 it has now been measured rather than guessed, and
-[the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block-130)
+[the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block)
 is what the measurement found.
 
 And the caveat that governs the whole section: repairing every finding
@@ -493,7 +493,7 @@ of how common it is corpus-wide.
 Reproduce: both fixture chapters are committed at
 `bench/fixtures/recalibration-of-models-for-digital-twins.md` and
 `bench/fixtures/cloud-computing-for-digital-twins.md`. They are the same
-ones `bench/bench_overlap.py` uses for the #110/#111 timing measurements
+ones `bench/bench_overlap.py` uses for the exact tier's timing measurements
 in `bench/RESULTS.md`. The backend-comparison script itself is not
 committed -- a one-off investigation, not a permanent bench tool.
 
@@ -550,5 +550,5 @@ ahead of tuning either flag further.
 - `bench/RESULTS.md` -- wall-clock measurements for `overlap`/`scan`
   against this project's real corpus (separate from the backend
   comparison above, which is about detection quality, not speed), and the
-  two label-scored sections behind #130 and the document-frequency
-  result.
+  two label-scored sections behind the gate measurement and the
+  document-frequency result.

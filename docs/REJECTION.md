@@ -108,8 +108,7 @@ whose benefit rests on discipline, and whose failure mode is silent, is
 fragile.
 
 **It is a constant factor on a cost that was already removed.** The
-original analysis behind [#65](https://github.com/prasadtalasila/chitragupta/pull/65)
-and [#66](https://github.com/prasadtalasila/chitragupta/pull/66) put it
+original analysis behind the two changes that removed it put it
 plainly: fix the *structural* cost first (no revision path at all, so
 changing a paragraph meant re-running the pipeline), and the
 context-trimming second, because it is "a constant factor on a run you'd
@@ -225,7 +224,7 @@ What is valuable regardless of whether retrieval is split in two:
   checking a claim, for a reviser, for a human. It does not need a triage
   stage in front of it.
 - **`--log` and `retrieval.md`.** Measurement is what turns the estimates
-  in this document into numbers ([#76](https://github.com/prasadtalasila/chitragupta/issues/76)).
+  in this document into numbers, and a still-open issue tracks doing so.
   Without it, the break-even claim stays an argument forever.
 
 What is *not* carrying its weight:
@@ -242,9 +241,8 @@ mode was considered and rejected in turn: an option nobody defaults to is
 an option nobody tests, its presence would keep inviting the
 "light/thorough" toggle that
 [the configuration section](#-should-any-of-this-be-configurable) argues
-against, and it is cheap to reinstate from this document if
-[#76](https://github.com/prasadtalasila/chitragupta/issues/76) ever
-measures a case for it. `search()` plus the subagent boundary is the
+against, and it is cheap to reinstate from this document if that still-open
+measurement issue ever finds a case for it. `search()` plus the subagent boundary is the
 drafting path.
 
 Two smaller things also came out of building it, which are worth stating
@@ -343,8 +341,7 @@ high-scoring core -- the homogenisation the multi-perspective design
 exists to prevent.
 
 The right way to cut `deep-research`'s cost is where it actually spends:
-the interview packets held resident across Phases 3-7
-([#74](https://github.com/prasadtalasila/chitragupta/issues/74)), not the
+the interview packets held resident across Phases 3-7, not the
 retrieval inside Phase 2. That has since been done, with one correction to
 the diagnosis worth carrying back here -- the residency itself could not
 be undone from inside a run, so what the fix collects is the *re-emission*
@@ -420,9 +417,8 @@ a cheap run from a cheap setting.
 wanted, add named profiles (`thorough` = one-stage at 500; `frugal` =
 triage/evidence) chosen *per genre by default* and overridable per
 invocation -- and land the stage column first, so a dossier can say which
-regime produced each entry. Revisit once
-[#76](https://github.com/prasadtalasila/chitragupta/issues/76) has
-measured whether the window sizes matter on a real corpus. Tuning knobs
+regime produced each entry. Revisit once the still-open measurement
+issue has established whether the window sizes matter on a real corpus. Tuning knobs
 on unmeasured defaults is premature.
 
 ## ⚖ What was decided
@@ -431,10 +427,9 @@ on unmeasured defaults is premature.
   the durable value here and none of them depends on the split.
 - **`_snippet` and `evidence` share one deterministic chooser**, so the
   rejection decision is reproducible and reads the best-covering passage.
-- **The broad rollout is cancelled.**
-  [#71](https://github.com/prasadtalasila/chitragupta/issues/71) ("wire
+- **The broad rollout is cancelled.** The issue proposing to "wire
   the remaining four genre skills to the dossier *and* two-stage
-  retrieval") is closed as not planned: it bundled a good idea with a bad
+  retrieval" is closed as not planned: it bundled a good idea with a bad
   one. The dossier half survives and needs re-planning on its own, since
   `draft-reviser` is unusable for four of five genres without it.
 - **`triage` is removed**, along with `TRIAGE_CHARS`, its CLI subcommand,

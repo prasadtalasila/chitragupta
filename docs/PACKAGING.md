@@ -14,13 +14,13 @@ exhaustive per-flag reference and stays so. This file is the surface and
 the naming, not the semantics.
 
 > **Status of this document.** The distribution is real as of 6.0.0, and
-> #258's whole series has now landed: the import package is
+> the packaging series has now landed in full: the import package is
 > `chitragupta`, `pyproject.toml` declares a `[build-system]`, and
 > `poetry build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
 > which installs the `chitragupta` and `cg` commands. Every row in the
 > table below is live -- the four layers, and `init`/`doctor`/`install`
 > alike -- and `chitragupta-cli` is published to PyPI via Trusted
-> Publishing (#269), on every major or minor release -- a PATCH release
+> Publishing, on every major or minor release -- a PATCH release
 > still gets a GitHub Release with the wheel attached, but does not also
 > reach PyPI, since a published version can never be reused if one had
 > to be spent again for a documentation or CI-only fix. [CLI.md](CLI.md)
@@ -155,8 +155,8 @@ command already has -- this is a front door, not a redesign.
 That is 4 layers and 27 verbs and aids (4 + 12 + 10 + 1), plus 3
 package-level commands, giving **56 invocable leaf commands**: 3 + 4 +
 (6 + 29) + (9 + 4) + 1. The counts are stated because a table is easy to
-extend and easy to forget to extend; #267 pins them with a test that
-walks the live parsers, so a verb added without a row here fails the
+extend and easy to forget to extend; a test pins them by walking the
+live parsers, so a verb added without a row here fails the
 suite.
 
 One thing is deliberately absent. `chitragupta/sync.py` still carries a
@@ -218,7 +218,7 @@ than as a conclusion, because three of them survive.
 | "Don't add a second install path" | `DEVELOPER-AGENTS.md` (git checkout only) | **Survives as an invariant, not as a mechanism.** The goal was one place a dependency fact can be written. There are now two front doors to one `install_full_pipeline.sh` and one `pyproject.toml` |
 | Tier 1 must not be blockable by a broken venv | [CLI.md](CLI.md#-which-interpreter) | **Retired by keeping the module form** -- see above. The hooks never move to the console script |
 | pip cannot pick a wheel index from the GPU driver | `pyproject.toml`'s torch note | **Survives, reduced.** `pip install …[enrich]` still lands CPU-only torch on a CUDA host. `chitragupta doctor` detects it and `chitragupta install gpu-torch` fixes it -- but neither is automatic |
-| Command names can be renamed freely because nothing external holds them | the PR closing #123 | **Survives, sharpened** -- see [the last section](#-what-a-shipped-command-name-costs) |
+| Command names can be renamed freely because nothing external holds them | the PR that shipped an early rename | **Survives, sharpened** -- see [the last section](#-what-a-shipped-command-name-costs) |
 | The deliverable is the docs and skills, not the code | `scripts/release.py`'s docstring | **Retired by `chitragupta init`.** This was the strongest objection and the reason a bare wheel would have been the wrong shape |
 | Everything is anchored to where the *code* lives | `chitragupta/config.py`'s `REPO_ROOT` | **Retired by splitting it** into a discovered project root and a package-data root |
 

@@ -1,14 +1,21 @@
 """`python -m chitragupta.corpus discover`: read the topic artefacts.
 
-The reader half of topic discovery (docs/TOPIC-DISCOVERY.md): resolve a
-phrase to a topic that exists, show its papers with ledger detail and
+The reader half of topic discovery (docs/TOPIC-DISCOVERY.md): resolve
+a phrase to a topic that exists, show its papers with ledger detail and
 each paper's other topics, list the linked topics from both edge
-families, and -- behind `--out` -- write an extractive Markdown
-overview. Three invocations of one verb:
+families, walk the graph-exploration views over the stored analytics,
+and -- behind `--out` -- write an extractive Markdown overview. One
+verb, many views:
 
     chitragupta corpus discover                     # every topic
     chitragupta corpus discover "digital twin"      # one topic
     chitragupta corpus discover --paper smith2021   # one paper's topics
+    chitragupta corpus discover --groups 8          # the broad areas
+    chitragupta corpus discover --clusters          # family disagreement
+    chitragupta corpus discover --why A B           # why no edge here
+    chitragupta corpus discover --path A B --family overlap   # the chain
+    chitragupta corpus discover --compare A B       # side by side
+    chitragupta corpus discover "A" --hops 2        # rings by distance
 
 This module computes no topic and no edge; `chitragupta enrich` did
 that once, and `_data`'s refusals name the stage to run when an
@@ -26,7 +33,10 @@ from chitragupta.progname import prog_for
 
 DESCRIPTION = (
     "Discover topics in the synced corpus: resolve a phrase to a topic, "
-    "list its papers and linked topics, or show one paper's topics."
+    "list its papers and linked topics, show one paper's topics -- or "
+    "explore the stored graph analytics: the merge-tree cut (--groups), "
+    "family disagreement (--clusters), typed paths (--path), absence "
+    "verdicts (--why), set comparison (--compare) and hop rings (--hops)."
 )
 
 

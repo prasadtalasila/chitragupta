@@ -1,9 +1,11 @@
 # 🕸 Topic discovery: from a phrase to the papers, the graph, and an overview
 
-Status: **reference.** Written 2026-09-02. All five parts documented
-here -- the `topic-graph` enrichment stage, the `corpus discover`
-reader, its precision tier, the gold-set benchmark and the HTML graph
-page -- are built; the design they implement is
+Status: **reference.** Written 2026-09-02. Updated 2026-09-07. All
+parts documented here -- the `topic-graph` enrichment stage and the
+analytics it stores in the artefact, the `corpus discover` reader and
+its graph-exploration views, the precision tier, the gold-set benchmark,
+the HTML graph page and the interactive app -- are built; the design
+they implement is
 `plans/g5-topic-discovery.md` (G5-G9 in
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s numbering).
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
@@ -40,6 +42,7 @@ below is the part to read first.
 - [The gold set](#-the-gold-set)
 - [In plain terms: the two families and the inflation dial](#-in-plain-terms-the-two-families-and-the-inflation-dial)
 - [The graph page](#-the-graph-page)
+- [The interactive app](#-the-interactive-app)
 - [Alternatives considered](#-alternatives-considered)
 - [Sources](#-sources)
 
@@ -268,14 +271,21 @@ here for every topic, seed and emergent alike.
 
 ## 📖 The reader: `corpus discover`
 
-Three invocations of one corpus-layer verb, all with `--json`, all
+One corpus-layer verb with many views, all with `--json`, all
 lock-free -- [CLI.md](CLI.md#-chitragupta-corpus-discover) is the
-per-flag reference:
+per-flag reference and [EXPLORE-CLI.md](EXPLORE-CLI.md) the worked
+tour:
 
 ```console
 chitragupta corpus discover                      # every topic
 chitragupta corpus discover "digital twin"       # one topic
 chitragupta corpus discover --paper smith2021    # one paper's topics
+chitragupta corpus discover --groups 8           # the broad areas
+chitragupta corpus discover --clusters           # where the families disagree
+chitragupta corpus discover --why "A" "B"        # why there is no edge here
+chitragupta corpus discover --path "A" "B" --family overlap   # the chain between two
+chitragupta corpus discover --compare "A" "B"    # topics side by side
+chitragupta corpus discover "A" --hops 2         # the neighbourhood as rings
 ```
 
 The reader computes no topic and no edge. It resolves, joins ledger
@@ -519,198 +529,26 @@ labelled "graph" -- so it shipped as the `--html` flag.
 ## 🕸 The interactive app
 
 `chitragupta corpus discover --app topicapp/` writes the graph as a
-**directory** rather than one file: `index.html`, the interaction code
-(`absence.js`, `graph.js`, `ego.js`, `families.js`, `panel.js`,
-`app.js`, `style.css`), a vendored
-[cytoscape.js](https://js.cytoscape.org/)
-(pinned; `assets/webapp/vendor/README.md` records the version and why it
-is committed rather than fetched), and `data.js` -- the same joined
+self-contained **directory** -- `index.html`, the interaction code, a
+vendored and pinned cytoscape.js, and `data.js`, the same joined
 payload the `--html` page embeds, shipped as a JavaScript assignment
 because `fetch()` of a local JSON file is blocked under `file://`. The
-whole directory can be handed to a reader as a download; opening
-`index.html` needs no server, no install and no network, forever.
+whole directory can be handed to a reader as a download and opened with
+no server, no install and no network.
 
-What the page adds over the static `--html` circle:
-
-- **It opens grouped, not as a hairball.** A real corpus is 131 topics
-  and 800-odd overlap edges; drawn loose that is a picture nobody can
-  read. The app therefore opens at a **cut of the stored merge tree**
-  yielding roughly eight groups, each drawn collapsed as one meta-node
-  carrying its member count, with the edges between groups bundled --
-  one bundle per group pair *per edge family*, never fused across the
-  two. A **resolution slider** walks the cut from one group to no
-  grouping at all, "collapse all" / "expand all" do what they say, and
-  double-clicking a group opens just that one in place. Clicking a
-  group lists its topics; clicking a bundle names every link it stands
-  for, counted per family.
-
-  Two things this is not. It is not a clustering: the merge tree is
-  already in `topic_graph.json` and already in `--json`, and cutting it
-  at a distance is deterministic, so the same slider position always
-  gives the same groups. And it is not a corpus claim: the grouping is
-  computed in the reader's browser, the panel says so, nothing is
-  written back, and `--json` reports no grouping. A reader who wants a
-  group to become real edits `content/seed_topics.toml` themselves.
-
-  The grouped view is laid out as a deterministic nested circle --
-  groups round one circle, each group's topics round a smaller one
-  inside it -- rather than by a force layout: it renders identically
-  every run, and cose treats a compound parent as one body and its
-  children as another system, which piles an expanded group on itself.
-- **Type-ahead search, multiple topics.** Typing shows candidate topics
-  as you type -- matched on labels and on each topic's own top terms --
-  and Enter (or a click) pins the topic as a removable chip. Several
-  chips compose.
-- **The graph focuses on the selection without deleting the rest.**
-  With topics pinned, the whole corpus stays drawn and everything
-  outside the neighbourhood is dimmed to background -- removing it
-  costs the reader their sense of how much of the corpus their
-  selection *is*, which on 131 topics is most of the picture. A "hide
-  the rest of the corpus" toggle restores the old hard filter.
-  Grouping is suspended while anything is pinned: browsing the corpus
-  and reading one neighbourhood are two different jobs, and one canvas
-  does one of them at a time.
-- **The neighbourhood is drawn as concentric rings by hop distance**,
-  the pinned topics at the centre, and a "show 1 hop / 2 hops /
-  everything reachable" control that moves what is emphasised and what
-  is drawn together. On the first ring the neighbours are separated by
-  which family reached them -- shared papers on one arc, semantic
-  nearness on another, both in between, each arc as wide as its share
-  of the ring. What the app will not do is put them on one ring whose
-  angle or radius averages the two: that is the fusion the design
-  refuses, and doing it in geometry would be the same claim more
-  quietly.
-- **Hovering a topic lights its own neighbourhood** and pushes the rest
-  back, which is the one interaction people expect from a graph.
-  Layout changes animate rather than teleport, so a node stays findable
-  across a selection change.
-- **The panel says whether a topic is a theme or a bridge.** Under its
-  papers, each topic carries its ego density and Burt's effective size
-  and constraint -- per edge family, side by side, never pooled. A
-  dense neighbourhood is a coherent theme; one whose members do not
-  touch each other is a broker, and a broker is where a survey section
-  earns its keep. A topic that brokers over shared papers but not over
-  vocabulary is a methods topic; the reverse is usually a terminology
-  split worth naming in the draft. Since #713 these four numbers are
-  computed once in the builder (networkx's weighted `effective_size`
-  and `constraint`, verified equal to the browser's own arithmetic and
-  pinned to it by `tests/webapp/brokerage_cases.json`), stored in each
-  topic's `analysis`, and read by the panel and the terminal topic view
-  alike -- `--json` confirms every number shown. The in-browser
-  arithmetic stays only as the fallback for an export from an older
-  artefact, and the panel's caption says which one it is showing.
-- **Provenance is visible.** Node colour distinguishes a hand-written
-  seed phrase, a machine-extracted keyword phrase
-  (`content/keywords.toml`), a phrase both files name, and an emergent
-  cluster. The graph artefact alone cannot make that distinction --
-  the union happens before the stages run, so `topic_set.json` records
-  every phrase as provenance "seed" -- which is why the builder reads
-  the two TOML files and annotates each topic with an `origin`.
-- **Papers can join the graph.** Double-click a topic and its member
-  papers are drawn as diamonds around it, labelled with the citekey and
-  carrying the ledger title on hover. A paper held by more than one of
-  the *opened* topics is drawn once with a line to each and highlighted:
-  the bridge becomes a shape instead of a citekey repeated in two
-  panels. Bridging is judged on what is on the canvas, not on the whole
-  corpus -- almost every paper belongs to several topics, so the
-  corpus-wide count would paint every paper the same and say nothing.
-
-  A paper node is a third kind of node and its lines a third kind of
-  edge: membership is neither of the two families, is never counted or
-  styled as one, and says nothing about a topic pair. Expansion is
-  opt-in and capped at three topics at a time, and the app says so when
-  you ask for a fourth rather than quietly drawing nothing.
-- **It shows where the two families disagree.** Both edge families are
-  clustered separately in the browser -- Markov clustering, at an
-  inflation the reader can move and that the panel always names -- and
-  the panel lists the pairs the two partitions split on. Two topics in
-  one *semantic* cluster that share no papers at all are a literature
-  that has not met itself, which is the observation a survey wants to
-  open with; two that share papers and land in different semantic
-  clusters are usually a terminology split worth naming in a draft. On
-  the real corpus this takes about 140 ms over 131 topics and finds 16
-  paper-sharing clusters against 39 semantic ones.
-
-  Never one clustering over a merged graph: fusing the families
-  destroys the disagreement that is the whole point. Since #712 the
-  partitions are stored: the builder runs the same MCL at every value
-  the slider can take (1.2 to 4.0 by 0.1) and records one cluster index
-  per topic per inflation in `communities`, under §2's #707 amendment
-  (deterministic over stored data, parameters recorded, both runtimes
-  pinned by `tests/webapp/mcl_cases.json`). The app reads the stored
-  partition for the slider's value -- its caption says so -- and
-  clusters in the browser only for an export from an older artefact.
-  The terminal reads the same partitions with `discover --clusters
-  [--inflation X]`, so the grid is finally an answer `--json` confirms.
-- **It walks each family between two pinned topics.** Two buttons --
-  "path over shared papers" and "path over semantic nearness" -- never
-  one fused weight, because a single distance over both families is a
-  number nobody can interpret. Each hop arrives with its shared
-  citekeys or its bridging pair, so the whole chain is explainable by
-  naming real papers, and the strong route is preferred to the short one
-  (Dijkstra over `1 - strength`). "No path over semantic nearness" is a
-  real answer, and often the interesting one.
-- **It explains an absence.** Pin two topics with no edge between them
-  and the app says why. If they share no papers, it says that plainly.
-  If they *do* share papers, it reads the stage's own refusal -- the
-  artefact stores `edges_withheld` beside the edges it drew (#710) --
-  and reports it in the reader's own terms: *"These share `dt2022`,
-  but sharing 1 paper between topics of size 2 and 3 in a 4-paper
-  corpus is what chance predicts (p = 1.00), so no edge was drawn."*
-  For a payload from an older run, without the field, it recomputes the
-  same hypergeometric from each topic's members and `n_docs`, pinned to
-  the stage by a shared case file. Where the arithmetic says the
-  overlap *was* surprising and the graph still carries no edge, the
-  page says so without blaming the gate -- the stage's threshold is not
-  in the payload, and a run with a stricter cut-off is exactly what
-  that looks like.
-- **The gate is visible on the edges that survived it.** Edge width has
-  always meant strength; edge *opacity* now means surprise, so a more
-  improbable overlap draws more solidly. Only on the solid family:
-  semantic edges never ran that test and are not given a borrowed
-  value. And where one topic sits almost entirely inside another --
-  high overlap coefficient, low Jaccard, the documented sub-topic
-  reading -- the panel names it instead of leaving two decimals side by
-  side.
-- **Papers, in place.** Clicking a topic lists its papers as cards --
-  ledger title, citekey, match-score bar. Clicking a solid edge lists
-  the shared papers with their evidence; a dashed edge names the
-  bridging pair and the similarity. Node size tracks member count, edge
-  width tracks overlap strength or similarity.
-
-It is still a pure renderer of the corpus: `_app.build_app_payload` is
-`_page.build_payload` (the same join, the same drift refusal) plus the
-`origin` annotation, so no edge, membership or score in the app can
-disagree with `--json` or with the terminal views. What the browser
-does compute -- the grouping above, and the view-derived numbers the
-features after it add -- is view state, labelled as such in the UI,
-never written back, and never something `--json` will confirm. That
-split is the decision recorded in `docs/TOPIC-DISCOVERY-GRAPH.md` §2:
-compute in the browser, freely, with no artefact change. Nothing is
-fetched, ever.
-`<` is escaped in the payload exactly as the `--html` page escapes its
-JSON island, so no topic label or paper title can close the data script
-early. On the rendering side `panel.js` escapes all five HTML-significant
-characters -- quotes included, because labels are also interpolated into
-attributes -- and keeps its label-keyed lookup tables on null
-prototypes, so a hostile phrase that rode in through a PDF's extracted
-keywords (a topic label is only semi-trusted data) can neither script
-the exported page nor crash it. The null-prototype tables are `graph.js`'s.
-
-The interaction code is split so that all of it but the wiring can be
-tested: `absence.js` (the withheld-edge arithmetic and the surprise
-encoding), `graph.js` (payload to what is visible and what cytoscape is
-handed), `ego.js` (a selection to a reading of its neighbourhood),
-`families.js` (each edge family clustered and walked) and `panel.js`
-(data to HTML) all run without a DOM and without cytoscape, and
-`tests/webapp/*.test.js` exercises them under `node --test`, which CI
-runs in the lint job. `app.js` is what is left -- the cytoscape
-instance, the DOM events and the selection state they mutate. Each
-module is listed in `_app.APP_FILES` and loaded in dependency order by
-`index.html`, which two tests enforce. They are classic scripts loaded
-in that order, not ES modules: `import` from `file://` is a blocked
-cross-origin request, and this directory has to open with no server,
-forever.
+What each view is for, what it looks like on a real corpus, and which
+terminal command answers the same question is
+[EXPLORE-WEB.md](EXPLORE-WEB.md)'s job -- including
+[which computations run once in the pipeline and which stay in the
+browser](EXPLORE-WEB.md#-what-the-pipeline-computes-and-what-the-app-computes).
+The short version of that split: the analytics a reader could quote --
+the withheld-edge verdicts, per-topic brokerage, the MCL partitions at
+every inflation the slider can take, and the typed path matrices -- are
+computed by the `topic-graph` stage and stored in the artefact, so the
+app and `--json` can never disagree about them; what remains in the
+browser is rendering, interaction, and the layouts that depend on what
+the reader has pinned, cut or expanded, plus honest fallbacks for an
+export made from an older artefact.
 
 ## 🚫 Alternatives considered
 

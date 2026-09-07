@@ -3,8 +3,8 @@
 Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-27. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`, the first three sharing
-one `draft_target.py`, all launching in exec form, as `python`. #197 is
-closed: the placeholder is braced, the interpreter name is settled below, and
+one `draft_target.py`, all launching in exec form, as `python`. The launcher
+hazards are closed: the placeholder is braced, the interpreter name is settled below, and
 a launcher that cannot start is now reported from two sides rather than one.
 
 **The fourth hook is the first that is not about a draft** (issue 431).
@@ -93,7 +93,7 @@ question is already answered:
 
 | | **Gate class** | **Advisory class** |
 | --- | --- | --- |
-| Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py` (#185) |
+| Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py` |
 | What it protects | the citekey invariant | a recorded preference, or the operator's attention |
 | May emit a blocking decision | yes -- the only one that may | never |
 | On its own internal failure | must be detectable | exit 0, say nothing |
@@ -104,8 +104,8 @@ question is already answered:
 Only one hook is ever in the gate class. [SOUL.md](../SOUL.md) -- *"A gate
 `FAIL` is a failing test, not a lint warning"* -- and
 `DEVELOPER-AGENTS.md` both bar promoting any new
-check into a gate beside `chitragupta/citation_gate.py`. #183 records the argument
-in full.
+check into a gate beside `chitragupta/citation_gate.py`. The argument is on
+record in full.
 
 The gate compares a citekey against the ledger, which is ground truth.
 Every other check compares prose against something a human typed, which
@@ -113,7 +113,7 @@ can be wrong, stale, or deliberately overridden. Blocking on the second
 kind refuses a *correct* draft on a *bad target* -- a failure the gate
 cannot have by construction.
 
-The operating formula, from #183: **invocation is enforced, conformance is
+The operating formula from that decision: **invocation is enforced, conformance is
 not.** A hook guarantees the findings reach the agent. Only the gate
 guarantees anything about what the agent then does.
 
@@ -225,7 +225,7 @@ checks are corpus-independent by construction:
   name* -- spawns it once to ask whether it can import `chitragupta`. No
   corpus either way.
 
-  The interpreter condition is not fussiness (#509/m-38): the probe is
+  The interpreter condition is not fussiness: the probe is
   `<program> -c "import chitragupta"`, which is a Python invocation and
   nothing else. Run against a launcher that is not Python -- `bash`, `uv`,
   `node` -- the program either rejects `-c` or runs something unrelated,
@@ -237,8 +237,8 @@ checks are corpus-independent by construction:
   cause. An unrecognised launcher is simply not spawned, and reports
   nothing rather than something wrong.
 
-  The bare-name condition is a security boundary, not fussiness either
-  (#637): the settings file being read was found by walking the working
+  The bare-name condition is a security boundary, not fussiness
+  either: the settings file being read was found by walking the working
   directory's ancestors for a `config.toml`, so inside an untrusted tree
   a planted settings file could name `/that/tree/python3` -- a
   Python-shaped basename on an attacker's binary, which `shutil.which`
@@ -411,7 +411,7 @@ blocking `windows-latest` leg in CI, so that is not a hypothetical host.
 **The interpreter name is `python`.** It has no *portable* answer --
 `python3` is standard on Linux and generally absent on Windows, `python` is
 present on Windows and often absent on Debian-family Linux -- so it was
-the second hazard of #197, and it is decided rather than inherited, on
+the second launcher hazard, and it is decided rather than inherited, on
 three findings:
 
 - **A venv guarantees `python` everywhere and `python3` only on POSIX.**
@@ -488,7 +488,7 @@ model. Both facts are measured; see the next section.
 **An advisory hook never emits a blocking decision.** For the gate that
 shape is `{"decision": "block", "reason": ...}` on stdout, printed by
 `citation_gate_hook.py`. For everything else it is forbidden twice over --
-once because #183 says conformance may not block, and once because a hook
+once because the settled rule says conformance may not block, and once because a hook
 that prints anything other than its own single JSON object has already
 destroyed its own delivery.
 
@@ -536,7 +536,7 @@ it:
 | 3 | `Write` | JSON only | `additionalContext` arrived |
 | 4 | `Write` | *never ran* -- `command` not on PATH | nothing arrived |
 
-Trial 4 is #197's premise, and it was measured the same way rather than
+Trial 4 is the dead-launcher premise, and it was measured the same way rather than
 assumed: a bogus launcher and a working control hook in one entry, one
 `Write`, and the control's payload arrived while the bogus one produced
 nothing whatever -- no error to the model, nothing findable under
@@ -697,7 +697,7 @@ synchronous cost unacceptable, and only then.
 
 **Conditional spawning (`if`) on the gate.** `if` is reported to take
 permission-rule syntax and to suppress the process spawn entirely when it
-does not match, which would make it a genuine answer to #185's accepted
+does not match, which would make it a genuine answer to the style hook's accepted
 cost of re-checking a whole draft on every edit of it. That description
 comes from a third-party survey of the settings schema rather than from
 the official documentation, and has not been tested here. It is also
@@ -741,11 +741,11 @@ antipattern in general, but is the wrong shape here**, for three reasons.
 *"These are not per-skill choices. They are the same rules restated in
 eight `SKILL.md` files, and a skill that broke one would be the bug"* --
 and pins
-them with a text scan over `.claude/skills/`, which is exactly what #186
-proposes for this step. Skills are also matched on *user intent*, and
+them with a text scan over `.claude/skills/`, which is exactly what has been
+proposed for this step. Skills are also matched on *user intent*, and
 "another skill is midway through its own loop" is not user intent; routing
 the step through one would make invocation discretionary again, which is
-the thing #183 exists to end. And the step is a single deterministic
+the thing the invocation rule exists to end. And the step is a single deterministic
 command, so wrapping it costs a tool call and a context load to save
 nothing.
 
@@ -754,7 +754,7 @@ command into a multi-step judgement loop -- read the findings, decide which
 to act on, edit, re-check, log the attempt -- then it *is* a skill, and
 `agenda-reviser` is the proof, since that is precisely its shape for
 verbatim findings. Today the fix path for a prose finding already has a
-home in `draft-reviser`'s copy-edit mode (#103), so the loop does not need
+home in `draft-reviser`'s copy-edit mode, so the loop does not need
 a second one.
 
 ## 📚 Prior art
@@ -780,7 +780,7 @@ whoever is changing a hook and wants the sources.
 ## ❓ Open questions
 
 1. **Whether `python` really starts a hook on a bare Windows clone.**
-   The name is [settled](#-the-launcher-contract) and #197 is closed, but
+   The name is [settled](#-the-launcher-contract) and the launcher issue is closed, but
    the Windows half of the reasoning is read off CPython's `venv` module
    and the harness documentation -- no Windows host without Git Bash was
    available to try it on. The Linux half is measured. If the answer there

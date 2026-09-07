@@ -57,7 +57,7 @@ The claim is narrow: **the pipeline should assemble the worklist, attempt
 the mechanical repairs, and re-verify them -- and the human should still
 decide.**
 
-Issue #129 already scopes exactly this loop for one signal (verbatim
+A recorded issue already scopes exactly this loop for one signal (verbatim
 runs). The proposal is that shape generalised to the other three, plus the
 class of improvement none of them cover.
 
@@ -78,10 +78,10 @@ point.
 Two things stand out. **Most of the surface was text only.** When this
 was written, `--json` on `dossier status --all` was the single
 machine-readable output in the whole quality surface; 5.4.0 added the
-second, on `verbatim scan` (#127), and 6.16.0 the other two, on
-`provenance` and `coverage` (#309). Four of the five signals above are
+second, on `verbatim scan`, and 6.16.0 the other two, on
+`provenance` and `coverage`. Four of the five signals above are
 machine-readable now. And **prose quality still has no signal at all**:
-`draft-reviser` is section-and-evidence-shaped, and #103 records that a
+`draft-reviser` is section-and-evidence-shaped, and a recorded issue notes that a
 copy-edit touching no evidence has no sanctioned path through it.
 
 ## 🔄 Where the loop sits, and the cycle that decides it
@@ -186,7 +186,7 @@ and different enough to be dangerous.
 | autoresearch | Here | Note |
 | --- | --- | --- |
 | `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
-| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the six review aids, `chitragupta.draft gate`, #128's allowlist | The loop may run them and may not edit them |
+| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the six review aids, `chitragupta.draft gate`, the boilerplate allowlist | The loop may run them and may not edit them |
 | `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
 | `val_bpb` -- one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
 | the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
@@ -196,7 +196,7 @@ and different enough to be dangerous.
 
 | Its design choice | Transfers? | Requirement |
 | --- | --- | --- |
-| **The evaluation harness is read-only ground truth** | **Yes, and it is the rule this proposal most needed.** A rewrite that keeps failing the re-scan could otherwise be "fixed" by adding its phrase to #128's allowlist, and a loop that can suppress its own findings is gaming a metric rather than improving a draft | R1 |
+| **The evaluation harness is read-only ground truth** | **Yes, and it is the rule this proposal most needed.** A rewrite that keeps failing the re-scan could otherwise be "fixed" by adding its phrase to the boilerplate allowlist, and a loop that can suppress its own findings is gaming a metric rather than improving a draft | R1 |
 | **Keep / discard / crash, one row per attempt** | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is. Not as a file: `revisions.md` already exists | R6 |
 | **Simplicity as the tie-breaker** | **Yes.** Where a deletion and a rewrite both pass, prefer the smaller diff. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already | R8 |
 | **Baseline first** | **Yes.** The agenda taken before the pass is that baseline | R9 |
@@ -258,11 +258,12 @@ What can improve unattended on that axis is ordering and surfacing --
 which sections are least supported, which citations rest on the thinnest
 passage -- never the fix.
 
-**One reconciliation.** #138 proposes terminology, claim and
-cross-reference registries as "deterministic, **blocking** global checks
-... beside the citation gate". This proposal borrows its *detectors* and
-declines its blocking posture: nothing here becomes a gate, and #130
-remains the only place that decision is taken. If #138 lands as specified,
+**One reconciliation.** A companion proposal puts forward terminology,
+claim and cross-reference registries as "deterministic, **blocking**
+global checks ... beside the citation gate". This proposal borrows its
+*detectors* and declines its blocking posture: nothing here becomes a
+gate, and the overlap-gate proposal
+remains the only place that decision is taken. If the registries land as specified,
 the squaring is that a registry may block a *book assembly* without any
 review aid blocking a *draft*.
 
@@ -276,7 +277,7 @@ other skill may start it (R11). Each half of that has its own reason.
 exits 0. There is no occasion on which running it is a mistake, so there
 is nothing to restrict. That is the bare command; its `--baseline` mode
 re-runs the eight aids before comparing (~21 s, plus `support`'s own
-~21--60 s model-load floor since #427, [REVIEW.md](REVIEW.md) -- and the
+~21--60 s model-load floor, [REVIEW.md](REVIEW.md) -- and the
 other eight aids' `.tex`/`.pdf` go stale against their `.md` until a
 full-format run follows), so for that mode occasion does matter, and
 R11's restriction to a person asking is what covers it.
@@ -321,9 +322,9 @@ the propose-and-accept asymmetry, not about the aid.
 
 **Settled: approved by the user on 2026-08-21**
 (`plans/f-auto-improvement-adoption.md`, a working note not shipped
-outside a git checkout, §"Decision 1"), and applied in 6.20.1 by #312,
-which needed it before the verbatim scan could become a required step in
-the genre skills. The
+outside a git checkout, §"Decision 1"), and applied in 6.20.1 by the
+change that made the verbatim scan a required step in
+the genre skills, which needed it first. The
 argument below is kept because it is why the decision went the way it
 did; the sweep is kept because the next rule-wide sweep will want its
 method rather than its counts.
@@ -337,7 +338,8 @@ grep -rniE "never automatic|never invoked|invokes them automatically|reads it ba
   --include='*.md' --include='*.mmd' --include='*.py' .
 ```
 
-**Do not trust it to be complete, and #312 is why.** It is line-based,
+**Do not trust it to be complete; applying the amendment proved it.**
+It is line-based,
 and every one of these files is hand-wrapped to about 72 columns, so a
 statement of the rule that happens to break across a line -- "never\\n
 automatically" -- is invisible to it. Two real sites were missed exactly
@@ -356,7 +358,7 @@ never automatic" (a **drafting**-layer rule about `acronyms-suggest
 **Twelve** of its matches were real statements of the rule when this was
 written on 2026-08-11. By the time the amendment was applied it was
 **twenty-two**, in two families: the review layer gained three aids in
-between (`synthesis` #341, `figure` #344, `uncited` #347), and each
+between (`synthesis`, `figure`, `uncited`), and each
 arrived carrying its own copy of the sentence. The count is recorded as a
 range rather than a number for that reason -- it tracks how many aids
 exist, so it is stale the day a seventh lands.
@@ -419,8 +421,8 @@ What is missing is an objective signal an unattended agent could act on:
   compare-to-baseline step -- same host, same fixture corpus, a tolerance
   -- would turn performance from something a human notices into something
   a run reports. That is the single highest-value piece, and it is the
-  same "measurement before mechanism" principle #63 already states for
-  retrieval.
+  same "measurement before mechanism" principle the retrieval backlog
+  already states for retrieval.
 - **A backlog groomer that stops at proposing.** A scheduled agent can
   read the open `enhancement, parked` issues plus CI and coverage state
   and propose the next rung with its dependency edges checked. It should
@@ -455,8 +457,8 @@ pipeline layer, and neither should acquire one.
   free**. Without it, deciding whether an edit worked means paying a model
   to grade its own homework, which is worth less than it costs.
 - **The risk is alarm fatigue, not correctness.** An agenda that is mostly
-  boilerplate verbatim hits gets ignored, which is why #128 precedes the
-  aid rather than following it.
+  boilerplate verbatim hits gets ignored, which is why the boilerplate
+  allowlist precedes the aid rather than following it.
 
 ## ❓ Open questions
 
