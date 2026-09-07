@@ -36,9 +36,21 @@ from chitragupta.render_output._tables import _LATEX_BOUND
 # sequence`. `header-includes` is emitted after that package load, which
 # is what makes the guard read the right answer.
 #
+# `\ifdefined` is an e-TeX primitive rather than a plain-TeX one, which
+# matters only for a `tex` output, since that is compiled by the reader's
+# engine and not by the `pdflatex` a `pdf` output pins. Every engine in
+# use for LaTeX today is e-TeX-based, `pdflatex` included.
+#
 # LaTeX-bound formats only: pandoc's HTML template interpolates
 # `header-includes` into `<head>` verbatim, so an unconditional one would
 # put a `\setlength` in an HTML document.
+#
+# A `--fragment` render emits no preamble for this to land in, so it
+# reaches nothing there -- passed anyway, exactly as the `fvextra` load
+# below is, rather than carrying a second `not fragment` condition. The
+# book that `\input`s the unit sets the same length in its own preamble
+# (`.claude/skills/book-assembler/SKILL.md`), where `longtable` is loaded
+# unconditionally and no guard is needed.
 _LONGTABLE_CAPTION_WIDTH = (
     r"header-includes=\ifdefined\LTcapwidth\setlength{\LTcapwidth}{\textwidth}\fi"
 )
