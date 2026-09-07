@@ -75,6 +75,20 @@ class TestPayload:
         prepare(isolated_config)
         topic_set = {k: v for k, v in json.loads(json.dumps(TOPIC_SET)).items() if k != "uncovered"}
         assert _page.build_payload(GRAPH, topic_set, {})["uncovered"] == []
+    def test_stored_analysis_travels_per_topic(self, isolated_config):
+        """#713: the brokerage block rides on each topic, and an older
+        artefact simply has none."""
+        prepare(isolated_config)
+        graph = json.loads(json.dumps(GRAPH))
+        block = {
+            "overlap": {"degree": 1, "ego_density": None, "effective_size": 1.0, "constraint": 1.0}
+        }
+        graph["topics"][0]["analysis"] = block
+        graph["topics"][1]["analysis"] = block
+        payload = _page.build_payload(graph, TOPIC_SET, {})
+        assert payload["topics"][0]["analysis"] == block
+        older = _page.build_payload(GRAPH, TOPIC_SET, {})
+        assert all("analysis" not in t for t in older["topics"])
 
     def test_stored_analysis_travels_per_topic(self, isolated_config):
         """#713: the brokerage block rides on each topic, and an older
