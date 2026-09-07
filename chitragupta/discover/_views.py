@@ -10,7 +10,7 @@ the parser and the dispatch; this module owns what each view does.
 import json as json_module
 import sys
 
-from chitragupta.discover import _absence, _clusters, _compare, _groups, _hops, _resolve
+from chitragupta.discover import _absence, _clusters, _compare, _groups, _hops, _paths, _resolve
 
 
 def emit(args, data: dict, prose: str) -> None:
@@ -47,6 +47,8 @@ def own_view(args, graph, topic_set, terms) -> "int | None":
         return compare_view(args, graph, topic_set, terms)
     if args.clusters:
         return clusters_view(args, graph, topic_set)
+    if args.path:
+        return path_view(args, graph, topic_set, terms)
     return None
 
 
@@ -138,6 +140,47 @@ def clusters_view(args, graph, topic_set) -> int:
         )
         return 1
     emit(args, data, _clusters.render_clusters(data))
+    return 0
+
+
+def path_view(args, graph, topic_set, terms) -> int:
+    """One family's path between two topics (#714), walked from the
+    stored next-hop matrices. The family flag is required, mirroring the
+    app's two buttons: a single fused distance over both families is a
+    number nobody can interpret, and the design refuses it."""
+    if args.phrase or args.paper or args.why or args.groups is not None or args.compare:
+        print(
+            "--path is its own view: give it two topics, --family, and nothing else.",
+            file=sys.stderr,
+        )
+        return 2
+    if args.family is None:
+        print(
+            "--path needs --family overlap or --family semantic -- never one fused weight.",
+            file=sys.stderr,
+        )
+        return 2
+    resolved = _resolve_names(args, args.path, graph, topic_set, terms)
+    if resolved is None:
+        return 1
+    labels, vias = resolved
+    if labels[0] == labels[1]:
+        print(
+            f"Both phrases resolve to the same topic ({labels[0]}) -- "
+            "--path walks between two different ones.",
+            file=sys.stderr,
+        )
+        return 1
+    result = _paths.walk_path(graph, args.family, labels[0], labels[1])
+    if result is None:
+        print(
+            "The artefact stores no path matrices -- it predates them; "
+            "re-run `chitragupta enrich --stages topic-graph`.",
+            file=sys.stderr,
+        )
+        return 1
+    result["resolved_via"] = {"a": vias[0], "b": vias[1]}
+    emit(args, result, _paths.render_path(result))
     return 0
 
 

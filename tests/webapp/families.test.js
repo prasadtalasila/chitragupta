@@ -321,6 +321,59 @@ test("every shared MCL case matches the browser's own clustering", () => {
   });
 });
 
+// ---------- the cross-runtime path contract (#714) ----------
+
+/* path_cases.json holds the browser's Dijkstra and the builder's
+   stored next-hop matrices to the same routes: this block asserts the
+   browser side, tests/test_enrich_topic_paths.py the stored walk. */
+const PATH_CASES = require("./path_cases.json").cases;
+
+test("every shared path case matches the browser's own walk", () => {
+  assert.ok(PATH_CASES.length >= 2, "the table is read at all");
+  PATH_CASES.forEach((row) => {
+    const data = {
+      topics: row.topics.map((label) => ({ label, members: [] })),
+      edges_overlap: row.edges_overlap,
+      edges_semantic: row.edges_semantic,
+    };
+    ["overlap", "semantic"].forEach((family) => {
+      Object.keys(row.expected[family]).forEach((pair) => {
+        const [from, to] = pair.split("->");
+        const got = families.path(data, family, from, to).labels;
+        assert.deepEqual(got, row.expected[family][pair],
+          row.name + " " + family + " " + pair);
+      });
+    });
+  });
+});
+
+test("a stored matrix is walked, not searched, and its -1 is a real no-path", () => {
+  const row = PATH_CASES[0];
+  const data = {
+    topics: row.topics.map((label) => ({ label, members: [] })),
+    edges_overlap: row.edges_overlap,
+    edges_semantic: row.edges_semantic,
+    // A deliberately-wrong stored matrix proves the read: every pair
+    // routed through the weak direct A--Z edge (index 0), which the
+    // computed Dijkstra never picks.
+    paths: {
+      overlap: {
+        weight: "1 - overlap_coeff",
+        next: [
+          [-1, 0, -1, 0],
+          [0, -1, -1, -1],
+          [-1, -1, -1, -1],
+          [0, -1, -1, -1],
+        ],
+      },
+    },
+  };
+  assert.deepEqual(families.path(data, "overlap", "A", "Z").labels, ["A", "Z"]);
+  assert.equal(families.path(data, "overlap", "C", "Z").labels, null);
+  // A family the stored block does not carry falls back to computing.
+  assert.deepEqual(families.path(data, "semantic", "A", "Z").labels, ["A", "Z"]);
+});
+
 test("stored partitions are read, not recomputed, and flagged as stored", () => {
   const row = MCL_CASES[0];
   const data = mclData(row);

@@ -885,7 +885,7 @@ reach the other answers the panel shows.
 | candidate survey sections (MCL per family) | `discover --clusters [--inflation X]` (#712), read from the stored `communities` |
 | where the families disagree | the same `--clusters` view's two disagreement lists |
 | is this topic a theme or a bridge | the topic view's brokerage section (#713), read from the stored `analysis` |
-| what connects A to B, via which papers | nothing |
+| what connects A to B, via which papers | `discover --path A B --family F` (#714), walked from the stored matrices |
 | why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |
 | set comparison across pinned topics | `discover --compare A B [C ...]` (#715) -- pairwise shared papers, bridges with ledger entries, mutual edges |
 

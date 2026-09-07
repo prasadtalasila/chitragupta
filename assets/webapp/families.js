@@ -250,7 +250,7 @@
      both would be a number nobody can interpret, and the design refuses
      it. `labels: null` means no path in *this* family -- which is an
      answer, and often the interesting one. */
-  function path(data, family, from, to) {
+  function computePath(data, family, from, to) {
     var known = new Set(data.topics.map(function (t) { return t.label; }));
     if (!known.has(from) || !known.has(to)) { return null; }
     var near = Object.create(null);
@@ -298,6 +298,42 @@
       labels.unshift(cursor);
     }
     return { labels: labels, hops: hops, family: family };
+  }
+
+  /* Stored path matrices when the artefact carries them (#714): the
+     builder ran the same Dijkstra once per topic and stored next-hop
+     edge indices, so a path here is a walk over data already on hand,
+     not a search. computePath stays as the fallback for a payload from
+     an older run, pinned to the builder by
+     tests/webapp/path_cases.json. */
+  function storedPath(data, family, from, to) {
+    var held = (data.paths || {})[family];
+    if (!held) { return null; }
+    var index = Object.create(null);
+    data.topics.forEach(function (t, i) { index[t.label] = i; });
+    if (index[from] === undefined || index[to] === undefined) { return null; }
+    var edges = edgesOf(data, family);
+    var labels = [from];
+    var hops = [];
+    var cursor = from;
+    while (cursor !== to) {
+      var edgeIndex = held.next[index[cursor]][index[to]];
+      if (edgeIndex === -1) { return { labels: null, hops: [], family: family }; }
+      var edge = edges[edgeIndex];
+      var next = edge.a === cursor ? edge.b : edge.a;
+      hops.push({
+        a: cursor, b: next, family: family,
+        strength: weightOf(family, edge), index: edgeIndex,
+        evidence: evidenceOf(family, edge),
+      });
+      labels.push(next);
+      cursor = next;
+    }
+    return { labels: labels, hops: hops, family: family };
+  }
+
+  function path(data, family, from, to) {
+    return storedPath(data, family, from, to) || computePath(data, family, from, to);
   }
 
   return { cluster: cluster, disagreement: disagreement, path: path };
