@@ -635,6 +635,7 @@ relation and each resolution rung is computed.
 | `PHRASE ...` | -- | A topic to look up: a known label, a near-miss, or any free phrase. Omitted, every topic is listed |
 | `--paper CITEKEY` | -- | Show this paper's topics instead of resolving a phrase |
 | `--groups N` | -- | Cut the stored merge tree into as close to N groups as it allows and list them, each labelled by its biggest member -- the app's resolution slider as a view. Reports the count actually reached (a tree that never joins an outlier cannot reach one group) and the merge distance cut at. Its own view: composes with `--json` only, exits `2` on a target below one, and exits `1` when the artefact stores no hierarchy |
+| `--compare TOPIC TOPIC ...` | -- | Compare two to six topics: pairwise shared citekeys, the papers held by all of them, the bridge papers held by two or more (with their formatted ledger entries), and the edges among the named topics with their evidence. Names resolve through the usual ladder. Its own view: composes with `--json` only; exits `2` past six topics (named, never silently truncated) and `1` when the phrases collapse onto fewer than two distinct topics |
 | `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict -- the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
@@ -650,6 +651,8 @@ chitragupta corpus discover
 # chitragupta corpus discover --paper kritzinger_digital_2018
 # chitragupta corpus discover --why "digital twin" "physical twin"
 # chitragupta corpus discover --groups 8
+# chitragupta corpus discover --compare "digital twin" "physical twin" "application"
+# chitragupta corpus discover --compare "digital twin" "physical twin" "application"
 # chitragupta corpus discover --html topics.html
 # chitragupta corpus discover --html topics.html --json
 # chitragupta corpus discover --app topicapp/

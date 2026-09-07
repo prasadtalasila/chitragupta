@@ -158,7 +158,10 @@ shape instead of a citekey repeated in two panels. Expansion is opt-in
 and capped at three topics at a time.
 
 **Terminal:** `chitragupta corpus discover --paper CITEKEY` answers the
-inverse question -- every topic one paper belongs to, with scores.
+inverse question -- every topic one paper belongs to, with scores --
+and `--compare "A" "B"` names the bridge papers between named topics
+directly, with their full ledger entries, which the app payload cannot
+even carry.
 
 ## ⌨ The command map
 
@@ -171,6 +174,7 @@ map in one place:
 | the topic map | `chitragupta corpus discover` |
 | one topic's papers and neighbours | `chitragupta corpus discover "PHRASE"` |
 | one paper's topics | `chitragupta corpus discover --paper CITEKEY` |
+| several topics side by side | `chitragupta corpus discover --compare "A" "B" ["C" ...]` |
 | why two topics have no overlap edge | `chitragupta corpus discover --why "A" "B"` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
 | the static one-file page | `chitragupta corpus discover --html topics.html` |
