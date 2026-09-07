@@ -636,6 +636,20 @@
       app.hierarchyHtml(DATA.hierarchy);
   })();
 
+  // ---------- uncovered seeds ----------
+
+  /* Hidden entirely when every seed found a home -- an empty admission
+     is noise -- and hidden too for an older payload that predates the
+     field, which is indistinguishable from that and honestly so. */
+  (function renderUncovered() {
+    var uncovered = DATA.uncovered || [];
+    if (!uncovered.length) {
+      document.getElementById("uncovered").hidden = true;
+      return;
+    }
+    document.getElementById("uncovered-body").innerHTML = app.uncoveredHtml(uncovered);
+  })();
+
   // ---------- search: typeahead, chips, filtering ----------
 
   var searchInput = document.getElementById("search");

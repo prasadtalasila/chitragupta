@@ -61,6 +61,21 @@ class TestPayload:
         payload = _page.build_payload(graph, empty, {})
         assert payload["topics"] == []
 
+    def test_uncovered_seeds_travel_to_the_exported_views(self, isolated_config):
+        """The terminal list view has always reported the seed phrases
+        no topic covers; the payload carries the same list so the app
+        and the static page can show it too (#717)."""
+        prepare(isolated_config)
+        topic_set = json.loads(json.dumps(TOPIC_SET))
+        topic_set["uncovered"] = ["swarm robotics"]
+        payload = _page.build_payload(GRAPH, topic_set, {})
+        assert payload["uncovered"] == ["swarm robotics"]
+
+    def test_an_artefact_predating_the_field_defaults_to_none_uncovered(self, isolated_config):
+        prepare(isolated_config)
+        topic_set = {k: v for k, v in json.loads(json.dumps(TOPIC_SET)).items() if k != "uncovered"}
+        assert _page.build_payload(GRAPH, topic_set, {})["uncovered"] == []
+
 
 class TestCircleOrder:
     """The circle's angular position is the page's strongest channel and

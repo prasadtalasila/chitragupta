@@ -62,6 +62,11 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
         "edges_overlap": graph["edges_overlap"],
         "edges_semantic": graph["edges_semantic"],
         "hierarchy": graph["hierarchy"],
+        # The seed phrases no topic covers. The terminal list view has
+        # always reported these (#717 gave the exported views the same
+        # honesty); .get because an artefact from an older converge run
+        # may predate the field.
+        "uncovered": topic_set.get("uncovered", []),
     }
 
 
