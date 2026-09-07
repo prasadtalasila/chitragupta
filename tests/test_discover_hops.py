@@ -71,6 +71,22 @@ class TestBuild:
         prose = _hops.render_hops(_hops.build_hops(self.graph(), "island", 2))
         assert "no topic is reachable from here" in prose
 
+    def test_a_fully_reached_corpus_needs_no_unreached_apology(self):
+        graph = self.graph()
+        graph["topics"] = [t for t in graph["topics"] if t["label"] != "island"]
+        prose = _hops.render_hops(_hops.build_hops(graph, "E", None))
+        assert "unreached" not in prose
+
+    def test_an_edge_between_two_roots_types_neither(self):
+        """ego.js's mark() skips a pinned end; the port must too, or a
+        two-root walk would label a root by the family that reached its
+        sibling."""
+        graph = self.graph()
+        via = _hops.reached_via(graph, ["E", "a"])
+        assert "E" not in via
+        assert "a" not in via
+        assert via["b"] == "semantic"
+
 
 class TestHopsCli:
     def test_the_rings_reach_the_terminal(self, isolated_config, capsys):
