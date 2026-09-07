@@ -634,6 +634,7 @@ relation and each resolution rung is computed.
 | `-h`, `--help` | -- | Show help and exit |
 | `PHRASE ...` | -- | A topic to look up: a known label, a near-miss, or any free phrase. Omitted, every topic is listed |
 | `--paper CITEKEY` | -- | Show this paper's topics instead of resolving a phrase |
+| `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict -- the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
 | `--k N` | `5` | Results to show when falling back to paper search |
@@ -646,6 +647,7 @@ chitragupta corpus discover
 # chitragupta corpus discover "cyber replica" --json
 # chitragupta corpus discover "digital twin" --out overview.md
 # chitragupta corpus discover --paper kritzinger_digital_2018
+# chitragupta corpus discover --why "digital twin" "physical twin"
 # chitragupta corpus discover --html topics.html
 # chitragupta corpus discover --html topics.html --json
 # chitragupta corpus discover --app topicapp/

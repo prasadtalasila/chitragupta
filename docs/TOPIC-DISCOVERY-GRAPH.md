@@ -818,10 +818,11 @@ terminal views". Since section 2's decision, that sentence is true only
 because the terminal is silent: the app now computes a whole analytical
 layer -- the merge-tree grouping, the MCL partitions and their
 disagreement grid, ego density and Burt brokerage, typed shortest paths,
-the withheld-edge explanation -- and the terminal can produce none of
-it. You cannot disagree with someone who says nothing. A scripted
+the withheld-edge explanation -- and the terminal can produce almost
+none of it (`--why`, the withheld-edge row, is the exception since
+issue #708). You cannot disagree with someone who says nothing. A scripted
 consumer, which in this project includes every drafting skill, cannot
-reach any answer the panel shows.
+reach the other answers the panel shows.
 
 | The app answers | The terminal's answer |
 | --- | --- |
@@ -830,7 +831,7 @@ reach any answer the panel shows.
 | where the families disagree | nothing |
 | is this topic a theme or a bridge | nothing |
 | what connects A to B, via which papers | nothing |
-| why is there *no* edge here | nothing |
+| why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |
 | set comparison across pinned topics | nothing |
 
 The terminal's own exclusives -- the resolution ladder, the
@@ -867,8 +868,11 @@ same view-derived answers, labelled the same way: `discover
 Each is computed on the fly from the artefact, written back nowhere,
 and pinned to the JavaScript by a shared case file asserted from both
 runtimes -- the `hypergeometric_cases.js` shape, once per twinned
-computation. `--why` costs almost nothing: `absence.js`'s inputs
-(`members`, `n_docs`) are already read by the Python side. As a bonus,
+computation. `--why` cost almost nothing -- `absence.js`'s inputs
+(`members`, `n_docs`) were already read by the Python side -- and is
+the first twin shipped (#708): `chitragupta/discover/_absence.py`,
+pinned to the same case file from a third runtime by
+`tests/test_discover_why.py`. As a bonus,
 `bench/topic_cluster_eval.py` could shed its `node` dependency, or keep
 it as a third cross-check.
 
