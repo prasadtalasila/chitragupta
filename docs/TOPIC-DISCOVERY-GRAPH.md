@@ -53,7 +53,7 @@ quietly violate that posture.
 
 ## 2. The architectural decision, and how it was decided
 
-> **Decided (2026-09-05, issue #670): compute in the browser, freely,
+> **Decided (2026-09-05): compute in the browser, freely,
 > with no artefact change.** The app is purely for exploration and
 > discovery. Whatever a reader wants to bring back into the corpus, they
 > bring back themselves by editing their topics and clusters; the app
@@ -65,7 +65,7 @@ quietly violate that posture.
 > stored half is not being built**: `analysis`, `communities`, `xy`,
 > `edges_withheld` and `layout_params` (section 3, and their rows in
 > section 12) are new fields in `topic_graph.json` and are therefore out
-> of scope (the #707 amendment in the next box reopens this, under
+> of scope (the 2026-09-07 amendment in the next box reopens this, under
 > conditions). And **the renderer-contract objection dissolves**: the
 > reason clustering, centrality and brokerage were pushed into the
 > builder is that, computed in the browser, they would be a new claim
@@ -84,15 +84,15 @@ quietly violate that posture.
 > and `neighbors` are not forwarded either, so a parameter footer
 > (the last paragraph of this section) would need the same plumbing.
 >
-> Issue #670 carries the ranked ten features this filter left, and
-> #671--#679 are the first nine of them.
+> The issue tracker carries the ranked ten features this filter left;
+> nine of them are built.
 
 Two decisions, two days apart, in one section -- the second box amends
 the first rather than replacing it:
 
-> **Amended (2026-09-07, issue #707): stored analysis fields are
+> **Amended (2026-09-07): stored analysis fields are
 > allowed, under three conditions.** Section 13 records what shipping
-> the #670 features did to this decision's premise: the bench scores
+> the app features did to this decision's premise: the bench scores
 > the browser's partitions against gold data, the app/terminal gap grew
 > a whole analytical layer, and the panel's own numbers are exactly the
 > ones a survey introduction quotes. Section 13.5's sentence is now the
@@ -182,7 +182,7 @@ be reproduced from the page alone.
 
 ## 3. Proposed `topic_graph.json` additions
 
-> **Partially reopened by #707's amendment to section 2.** These fields
+> **Partially reopened by the 2026-09-07 amendment to section 2.** These fields
 > may now be built, one PR at a time, under the amendment's three
 > conditions; until a given field's PR lands, section 7.7's
 > browser-side recomputation remains how the app reaches the
@@ -246,18 +246,9 @@ Removing the unselected topics costs the reader their sense of scale and of wher
 they are in a 53-topic space. The standard focus-plus-context move is to keep
 the whole graph drawn and push the context back:
 
-```css
-node.dimmed { opacity: 0.12; }
-node.dimmed { label: ""; }          /* or: text-opacity: 0 */
-edge.dimmed { opacity: 0.06; }
-```
-
-```js
-cy.batch(() => {
-  cy.elements().addClass('dimmed');
-  ego.removeClass('dimmed');
-});
-```
+The sketch: a `dimmed` class dropping node opacity to about 0.12 (labels
+hidden) and edge opacity to 0.06, applied to everything and removed from
+the ego set inside one `cy.batch`.
 
 Set `events: 'no'` on `.dimmed` so dimmed nodes are not clickable and do not
 steal hover. Keep a "hide context" toggle for the reader who wants today's
@@ -269,26 +260,12 @@ Hop distance from the pinned set maps directly onto concentric rings. It is
 deterministic, needs no physics, and extends rather than contradicts the "a
 circle is legible" argument already made for the static page.
 
-```js
-// hop distance from the pinned set, over the currently enabled edge families
-const ring = new Map();
-cy.elements().bfs({
-  roots: pinned,
-  directed: false,
-  visit: (v, e, u, i, depth) => { ring.set(v.id(), depth); }
-});
-
-const view = cy.nodes().filter(n => (ring.get(n.id()) ?? 99) <= maxHops);
-
-view.union(view.edgesWith(view)).layout({
-  name: 'concentric',
-  concentric: n => -(ring.get(n.id()) ?? 99),   // hop 0 innermost
-  levelWidth: () => 1,
-  minNodeSpacing: 30,
-  animate: 'end',
-  animationDuration: 350
-}).run();
-```
+The sketch: an undirected `bfs` from the pinned set, over the currently
+enabled edge families, recording each node's hop depth in a map; the
+nodes within `maxHops` (and the edges among them) then run the built-in
+`concentric` layout with the negated hop depth as the concentric value
+(so hop 0 sits innermost), one hop per level, about 30px of node
+spacing, and a short (~350ms) `animate: 'end'` transition.
 
 A `maxHops` control (1 / 2 / all) is worth exposing. One hop answers "what is
 next to this"; two hops answers "what would a chapter around this have to
@@ -353,23 +330,11 @@ tree at a distance the reader drags is:
 Render each cut group as a cytoscape **compound parent node**. Start the app at
 a cut yielding roughly 8 groups and let the reader slide toward 53.
 
-```js
-function cutTree(hierarchy, threshold) {
-  // union-find over merges with distance <= threshold
-  const parent = new Map();
-  const find = x => (parent.get(x) === x ? x : (parent.set(x, find(parent.get(x))), parent.get(x)));
-  // ... standard union-find; returns Map<label, clusterId>
-}
-
-function applyCut(threshold) {
-  const groups = cutTree(DATA.hierarchy, threshold);
-  cy.batch(() => {
-    // ensure parent nodes exist, then re-parent
-    cy.nodes('[!isCluster]').forEach(n => n.move({ parent: 'cluster-' + groups.get(n.id()) }));
-  });
-  runLayout();
-}
-```
+The sketch: a `cutTree(hierarchy, threshold)` helper running standard
+union-find over the stored merges whose distance is at or below the
+threshold, returning a label-to-cluster map; applying a cut then means
+ensuring the parent nodes exist, `move`-ing every non-cluster node under
+its group's parent inside one `cy.batch`, and re-running the layout.
 
 This is the single highest-value change on this list: it turns an unreadable
 53-node hairball into a table of contents that the reader can zoom into
@@ -377,7 +342,7 @@ continuously, using data that is already on disk.
 
 ### 5.2 MCL over each edge family, separately
 
-> **Shipped** (#677), in the browser rather than the builder, which
+> **Shipped**, in the browser rather than the builder, which
 > section 2's decision is what allows: the partitions are labelled as
 > the view's own, the inflation is a visible control, and nothing is
 > written back. Written out rather than taken from cytoscape's
@@ -402,14 +367,9 @@ with no shared papers is a literature that has not met itself; that is exactly
 the observation a survey wants to open with.
 
 Per section 2, run this in the builder and store it. If you prefer to prototype
-in the browser first, cytoscape's own call is:
-
-```js
-const clusters = cy.elements().markovClustering({
-  attributes: [e => e.data('overlap_coeff')],
-  inflateFactor: 2.0
-});
-```
+in the browser first, cytoscape's own call is `markovClustering` over the
+elements, with the edge's `overlap_coeff` as the weight attribute and an
+`inflateFactor` of 2.0.
 
 Note that MCL is sensitive to the inflation factor; it belongs in
 `config.toml` under `[enrich]`, with the gold set (section 9) used to argue for
@@ -422,15 +382,9 @@ cluster on its own circle, with inter-cluster edges between them. It is the
 circle argument applied one level down, and it makes overlap communities legible
 in a way a general force layout will not.
 
-```js
-view.layout({
-  name: 'cise',
-  clusters: node => groups.get(node.id()),
-  animate: 'end',
-  randomize: false,
-  nodeSeparation: 12
-}).run();
-```
+The sketch: run the `cise` layout over the view with the cut's
+label-to-cluster map as the `clusters` function, `randomize: false` for
+determinism, a node separation of 12, and an `animate: 'end'` transition.
 
 Vendor `cytoscape-cise` plus `cose-base` and `layout-base`.
 
@@ -456,11 +410,8 @@ documents its one non-reproducible parser corner as a known hazard.
 Compute classical MDS (not UMAP, which the design rejects for distorting global
 distances by construction) over the centroid cosine distances in the same
 mean-centred space the semantic edges use. Write the result as `xy` per topic.
-The app then uses `preset` as its base layout:
-
-```js
-view.layout({ name: 'preset', positions: n => scale(DATA.xy[n.id()]) }).run();
-```
+The app then uses `preset` as its base layout, with each node's position
+taken from the stored `xy` entry, scaled to the viewport.
 
 `fcose` becomes an optional "relax" button with `randomize: false`, seeded from
 those positions. Same page, same machine, same picture, every time, and the
@@ -469,7 +420,7 @@ whatever the force simulation settled into.
 
 ### 6.2 Order the circle by dendrogram leaf order
 
-> **Shipped** (#688), on the static `--html` page only, as
+> **Shipped**, on the static `--html` page only, as
 > `_page.dendrogram_order`. The walk is Python rather than the
 > template's inline script, which nothing executes: in the template it
 > would have been an untested branch against a 100% coverage bar. A
@@ -505,7 +456,7 @@ rings.
 
 ### 7.1 Surface what is already stored but invisible
 
-> **Shipped** (#678): `p_value` is edge opacity on the overlap family
+> **Shipped**: `p_value` is edge opacity on the overlap family
 > only, the containment reading is named in words rather than left as
 > two numbers, and the bridge pair is on hover as well as on click --
 > through a positioned div, not `cytoscape-popper`.
@@ -543,45 +494,28 @@ robust to colour-vision differences, which fill is not.
 
 At 53 nodes labels collide; with papers expanded they are hopeless.
 
-```js
-cy.style()
-  .selector('node')
-    .style({
-      'min-zoomed-font-size': 8,
-      'text-wrap': 'wrap',
-      'text-max-width': '90px',
-      'text-background-color': '#fff',
-      'text-background-opacity': 0.75,
-      'text-background-padding': '2px'
-    });
-
-cy.on('zoom', () => {
-  const z = cy.zoom();
-  cy.batch(() => {
-    cy.nodes('[isCluster]').toggleClass('show-label', z < 0.8);
-    cy.nodes('[!isCluster]').toggleClass('show-label', z >= 0.8);
-  });
-});
-```
+The sketch, in two parts. A node style setting `min-zoomed-font-size: 8`
+(labels vanish rather than shrink into noise), wrapped text capped at
+90px wide, and a mostly-opaque white text background with a little
+padding so labels stay readable over edges. And a `zoom` handler that
+toggles a `show-label` class inside one `cy.batch`: cluster nodes carry
+labels below a zoom of 0.8, individual topics at or above it -- semantic
+zoom with a single crossover point.
 
 Otherwise show labels only for the ego set and the top-N by member count, with
 the full label on hover.
 
 ### 7.4 Hover neighbourhood highlighting
 
-```js
-cy.on('mouseover', 'node', e => {
-  const nb = e.target.closedNeighborhood();
-  cy.elements().not(nb).addClass('faded');
-});
-cy.on('mouseout', 'node', () => cy.elements().removeClass('faded'));
-```
+The sketch: on node `mouseover`, add a `faded` class to every element
+outside the node's `closedNeighborhood()`; on `mouseout`, remove it
+everywhere.
 
 Cheap, and it is the interaction people expect from a graph.
 
 ### 7.5 Papers as nodes, on demand
 
-> **Shipped** (#676). Two departures from the sketch below, both
+> **Shipped**. Two departures from the sketch below, both
 > deliberate: a paper's id is prefixed with a string computed from the
 > payload rather than a fixed one, because node ids share a namespace
 > and a topic labelled `paper:dt2022` would otherwise *be* the node for
@@ -602,7 +536,7 @@ MiniRAG, and the app is the natural place for it.
 
 ### 7.6 Path between two pinned topics
 
-> **Shipped** (#679): two buttons, one per family, each hop carrying
+> **Shipped**: two buttons, one per family, each hop carrying
 > its citekeys or its bridging pair. No fused weight and no total
 > distance anywhere.
 
@@ -615,19 +549,17 @@ nearness" — rather than one fused weight. If a single mixed path is genuinely
 wanted, show each hop's family on the hop itself and never report a single fused
 distance for the path as a whole.
 
-```js
-const d = cy.elements('edge[family = "overlap"]').union(cy.nodes()).dijkstra({
-  root: cy.$id(a),
-  weight: e => 1 - e.data('overlap_coeff')
-});
-const path = d.pathTo(cy.$id(b));
-```
+The sketch: restrict the collection to one family's edges (plus all the
+nodes), run `dijkstra` from the first pinned topic with each edge
+weighted as one minus its strength (`overlap_coeff` or `similarity`),
+and read the result's `pathTo` the second topic.
 
 ### 7.7 Explain an absence
 
-> **Shipped** (#675), originally without the `edges_withheld` field
+> **Shipped**, originally without the `edges_withheld` field
 > this section proposes -- the browser recomputed the tail from each
-> topic's `members` and `n_docs`. #710 then stored the field: the stage
+> topic's `members` and `n_docs`. A later change (2026-09-07) then
+> stored the field: the stage
 > writes its refusals (`{a, b, shared, p_value}`, bounded to pairs
 > sharing a paper) beside the edges it drew, the payload forwards them,
 > and both `absence.js` and `discover --why` prefer the stored p,
@@ -718,7 +650,7 @@ join the graph (500+ nodes, several thousand edges).
   the MCL inflation factor and the default hierarchy cut from a feel into a
   measurement, exactly as the gold set did for `[discover].min_similarity`.
 
-  > **The inflation half is shipped** (#689): `[[group]]` records in the
+  > **The inflation half is shipped**: `[[group]]` records in the
   > same gold file, scored by `bench/topic_cluster_eval.py`, which drives
   > `assets/webapp/families.js` through `node` rather than
   > re-implementing MCL beside it. Pairwise over the gold-covered topics
@@ -760,14 +692,13 @@ all**.
 ## 11. Suggested order of work
 
 > The order below still holds for the recommendations section 2's
-> decision kept; issue #670 has the ranked list as it now stands, and
-> #671--#679 are the nine being built. Item 1 below is not among them:
-> it improves the static page rather than the app, so #670 excludes it
-> and #688 tracks it instead.
+> decision kept; the issue tracker has the ranked list as it now
+> stands. Item 1 below is not among the nine: it improves the static
+> page rather than the app, so it is tracked separately.
 
 1. **Dendrogram-ordered circle** on the static `--html` page. One function, no
    new data, immediate legibility win, and it validates the ordering before
-   anything depends on it. *(#688, shipped -- §6.2.)*
+   anything depends on it. *(shipped -- §6.2.)*
 2. **Dim-not-remove plus concentric ego rings plus hover neighbourhoods** in the
    app. Core cytoscape only; this is the biggest interaction improvement per
    line of code.
@@ -779,8 +710,8 @@ all**.
 5. **`analysis` and `xy` in the artefact**, with `preset` as the default layout
    and brokerage statistics in the panel.
 6. **MCL communities per family, plus the disagreement grid**, with gold-set
-   numbers to defend the inflation default. *(#677 for the clustering and
-   the grid; #689 for the numbers -- §9.)*
+   numbers to defend the inflation default. *(shipped -- §9 has the
+   numbers.)*
 7. **`cise`**, papers-as-nodes, and typed path finding, in whichever order the
    corpus's own questions demand.
 
@@ -822,7 +753,7 @@ all**.
 
 ## 13. The app and the terminal: the capability gap, and two ways to close it
 
-Written 2026-09-07, after the nine #670 features landed. Everything above
+Written 2026-09-07, after the nine app features landed. Everything above
 still holds; this section records what shipping them *did* to the
 renderer contract, in plainer language than the sections that argued for
 them.
@@ -837,19 +768,19 @@ layer -- the merge-tree grouping, the MCL partitions and their
 disagreement grid, ego density and Burt brokerage, typed shortest paths,
 the withheld-edge explanation -- and the terminal can produce almost
 none of it (`--why`, the withheld-edge row, is the exception since
-issue #708). You cannot disagree with someone who says nothing. A scripted
+2026-09-07). You cannot disagree with someone who says nothing. A scripted
 consumer, which in this project includes every drafting skill, cannot
 reach the other answers the panel shows.
 
 | The app answers | The terminal's answer |
 | --- | --- |
-| what are the broad areas (resolution cut) | `discover --groups N` (#709) -- the same cut, pinned by `tests/webapp/cut_cases.json` |
-| candidate survey sections (MCL per family) | `discover --clusters [--inflation X]` (#712), read from the stored `communities` |
+| what are the broad areas (resolution cut) | `discover --groups N` -- the same cut, pinned by `tests/webapp/cut_cases.json` |
+| candidate survey sections (MCL per family) | `discover --clusters [--inflation X]`, read from the stored `communities` |
 | where the families disagree | the same `--clusters` view's two disagreement lists |
-| is this topic a theme or a bridge | the topic view's brokerage section (#713), read from the stored `analysis` |
-| what connects A to B, via which papers | `discover --path A B --family F` (#714), walked from the stored matrices |
-| why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |
-| set comparison across pinned topics | `discover --compare A B [C ...]` (#715) -- pairwise shared papers, bridges with ledger entries, mutual edges |
+| is this topic a theme or a bridge | the topic view's brokerage section, read from the stored `analysis` |
+| what connects A to B, via which papers | `discover --path A B --family F`, walked from the stored matrices |
+| why is there *no* edge here | `discover --why A B` -- the first twin shipped, path A's shape |
+| set comparison across pinned topics | `discover --compare A B [C ...]` -- pairwise shared papers, bridges with ledger entries, mutual edges |
 
 The terminal's own exclusives -- the resolution ladder, the
 cross-encoder rescoring, the plural-match PageRank `neighbourhood` --
@@ -887,7 +818,7 @@ and pinned to the JavaScript by a shared case file asserted from both
 runtimes -- the `hypergeometric_cases.js` shape, once per twinned
 computation. `--why` cost almost nothing -- `absence.js`'s inputs
 (`members`, `n_docs`) were already read by the Python side -- and is
-the first twin shipped (#708): `chitragupta/discover/_absence.py`,
+the first twin shipped: `chitragupta/discover/_absence.py`,
 pinned to the same case file from a third runtime by
 `tests/test_discover_why.py`. As a bonus,
 `bench/topic_cluster_eval.py` could shed its `node` dependency, or keep
@@ -904,7 +835,7 @@ at the gold-measured inflations, per-family `analysis` -- and let both
 surfaces render it. The stronger fix for the screenshot rule, but it
 means builder work, schema migration, and the configuration knobs
 below. Worth reopening if path A's twin maintenance ever bites; the
-gold set (#689) has already produced exactly the evidence section 5.2
+gold set work has already produced exactly the evidence section 5.2
 said a stored default would need.
 
 What path B needs in `config.toml`, and nothing more:
