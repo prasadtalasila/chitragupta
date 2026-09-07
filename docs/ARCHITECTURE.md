@@ -665,7 +665,7 @@ not missing data.
 
 So that module carries a `__main__` block that prints
 `python -m chitragupta.corpus sync` and exits **64**. That is deliberately none
-of the three codes [CLI.md](CLI.md#-running-sync-on-a-schedule) publishes
+of the four codes [CLI.md](CLI.md#-running-sync-on-a-schedule) publishes
 as `sync`'s API, since a scheduler reads `2` there as "expected, do
 nothing". #153 removed the old spelling from the documentation.
 

@@ -484,31 +484,47 @@ chitragupta corpus sync
 # chitragupta corpus sync --remove-stale
 # chitragupta corpus sync --reparse --remove-stale
 
-# Exit codes: 0 = clean, 1 = the corpus has a hole in it,
-#             2 = another run holds the lock.
+# Exit codes: 0 = clean, 1 = documents this host could not parse,
+#             2 = another run holds the lock,
+#             3 = everything parsed, but the bibliography has a hole in it.
 ```
 
-**What "a hole in it" means, since the exit code is the whole API an
-unattended caller has.** `sync` exits 1 when this run had a parse
-failure, when a previous run left a deterministic one (not retried, so
-it stays nonzero until you deal with it), when the parse backend was
-unavailable, when the bib file yielded no references against a
-non-empty ledger -- and **when a PDF the bib file points at cannot be
-read**, whether because it is not on disk or because this host cannot
-open it. That last one is the newest, and the GitHub Release that
-introduced it says which version; this page deliberately does not,
-because a "since x.y.z" here is a second place the number has to be
-right and the release notes are the first.
+**What the two nonzero completion codes mean, since the exit code is
+the whole API an unattended caller has.** They split by *remedy*:
 
-Those last two used to exit 0, reported only in the summary's `no-PDF
+- **1** -- this host could not produce documents it was asked for. A
+  parse failure in this run, a deterministic one left by a previous run
+  (not retried, so it stays nonzero until you deal with it), or the
+  parse backend being unavailable. The remedy is on this machine.
+- **3** -- everything asked for was parsed, but the bibliography
+  promises something that is not there: the bib file yielded no
+  references against a non-empty ledger, or **a PDF the bib file points
+  at cannot be read**, whether because it is not on disk or because
+  this host cannot open it. The remedy is in the bib file or on the
+  disk it points at.
+
+A run reporting **3** is therefore also asserting that nothing failed to
+parse, which is what makes the two worth telling apart. `1` wins when
+both hold, since a lost document is the more actionable of the two. A
+caller that only wants "did anything go wrong" still reads `!= 0` and
+needs no change.
+
+The split is new (issue #696) and the GitHub Release that introduced it
+says which version; this page deliberately does not, because a "since
+x.y.z" here is a second place the number has to be right and the release
+notes are the first. Before it, both classes exited **1** -- which meant
+`bench/sweep_sync.py` reported `rc=1 failed=0` on four rows of a
+497-of-497 clean parse and no caller could tell those from a real loss.
+
+The PDF reasons used to exit 0, reported only in the summary's `no-PDF
 breakdown` line, which made them invisible to precisely the caller that
 cannot read a summary (issue #556). They are the only no-PDF reasons
 that gate the code:
 
 | `no-PDF breakdown` reason | Exit | Why |
 | --- | --- | --- |
-| `PDF path no longer exists on disk` | **1** | The bib file claims a PDF the disk does not have. `chitragupta/bib_reader.py` calls it "a silent data-loss failure". Fix the path, or drop the `file` field |
-| `PDF is on disk but could not be read` | **1** | Permissions, or a failing device. The file is there, so fixing the path is *not* the remedy -- check the mode, the mount, the disk |
+| `PDF path no longer exists on disk` | **3** | The bib file claims a PDF the disk does not have. `chitragupta/bib_reader.py` calls it "a silent data-loss failure". Fix the path, or drop the `file` field |
+| `PDF is on disk but could not be read` | **3** | Permissions, or a failing device. The file is there, so fixing the path is *not* the remedy -- check the mode, the mount, the disk |
 | `no file field in bib entry` | 0 | An item with no attachment saved. An ordinary state of a bibliography |
 | `non-PDF attachment only` | 0 | Typically an HTML snapshot saved instead of the PDF. Invisible to retrieval, but not a hole |
 | `malformed file field` | 0 | This project could not parse the `file` field's `Desc:path:mimetype` shape |
@@ -2677,8 +2693,9 @@ unattended.
 | Exit code | Meaning | What an unattended caller should do |
 | --- | --- | --- |
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
-| `1` | **The corpus has a hole in it** -- any of the conditions [`corpus sync`](#-chitragupta-corpus-sync) enumerates, deliberately neither restated nor counted here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why. They have different remedies -- a bad export, a stale `file` path, a missing parse backend -- so read the breakdown rather than acting on the code alone |
+| `1` | **Documents this host could not parse** -- the conditions [`corpus sync`](#-chitragupta-corpus-sync) lists under code 1, deliberately neither restated nor counted here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
+| `3` | **Everything parsed, but the bibliography has a hole in it** -- a stale `file` path, an unreadable PDF, or an export that yielded no references | Alert, but not at the same urgency: no document was lost by this host. The remedy is in the bib file or on the disk it points at |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
 release moved this command behind `python -m chitragupta.corpus sync` and left
@@ -2687,7 +2704,7 @@ crontab therefore kept reporting success while syncing nothing, for a
 release.
 
 It now prints the line above and exits **64**, deliberately none of the
-three codes in the table: a caller that reads `2` as "expected, do
+four codes in the table: a caller that reads `2` as "expected, do
 nothing" must not read this as that. If a schedule of yours starts
 failing after upgrading, the message names the replacement. That is the
 whole fix.

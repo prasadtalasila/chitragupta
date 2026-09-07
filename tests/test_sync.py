@@ -413,8 +413,10 @@ class TestRun:
         # for an unattended caller, and a bib file that yields 0 references
         # against a non-empty ledger is exactly the SUSPICIOUS state above
         # -- reporting it as "clean" (rc == 0) would let a broken export
-        # sit unnoticed indefinitely.
-        assert rc == 1
+        # sit unnoticed indefinitely. EXIT_BIB_INTEGRITY rather than
+        # EXIT_PARSE_FAILURE because nothing failed to parse: the
+        # bibliography is what is wrong, and that is a different remedy.
+        assert rc == sync.EXIT_BIB_INTEGRITY
         assert "SUSPICIOUS" in out
         assert "3 ledger item(s)" in out
         assert "Review the" not in out
@@ -518,9 +520,10 @@ class TestRun:
         rc = sync.run()
         out = capsys.readouterr().out
 
-        # 1, not 0, since issue #556: one of these four reasons is
-        # `pdf_path_gone`, which now gates the exit code.
-        assert rc == 1
+        # Nonzero, not 0, since issue #556: one of these four reasons is
+        # `pdf_path_gone`, which gates the exit code. EXIT_BIB_INTEGRITY
+        # since #696: everything the run was asked to parse, it parsed.
+        assert rc == sync.EXIT_BIB_INTEGRITY
         assert "4 without a PDF attachment" in out
         assert "no-pdf  no_file_field_2024: no file field in bib entry" in out
         assert "no-pdf  pdf_gone_2024: PDF path no longer exists on disk" in out
@@ -613,7 +616,7 @@ class TestRun:
         assert "1 without a PDF attachment" in out
         assert "no-pdf  vanishing_paper_2024: PDF path no longer exists on disk" in out
         assert "no-PDF breakdown: 1 PDF path no longer exists on disk" in out
-        assert rc == 1
+        assert rc == sync.EXIT_BIB_INTEGRITY
 
     def test_an_unreadable_pdf_is_not_reported_as_a_missing_one(
         self, isolated_config, monkeypatch, capsys
@@ -648,7 +651,7 @@ class TestRun:
 
         assert "could not be read" in out
         assert "no longer exists on disk" not in out
-        assert rc == 1
+        assert rc == sync.EXIT_BIB_INTEGRITY
 
     def test_a_path_component_that_is_not_a_directory_reads_as_gone(
         self, isolated_config, monkeypatch, capsys
@@ -674,7 +677,7 @@ class TestRun:
 
         monkeypatch.setattr(ledger_upsert, "_stat_pdf", not_a_dir)
 
-        assert sync.run() == 1
+        assert sync.run() == sync.EXIT_BIB_INTEGRITY
         assert (
             "no-pdf  not_a_dir_2024: PDF path no longer exists on disk" in capsys.readouterr().out
         )
@@ -797,6 +800,44 @@ class TestLostPdfReason:
         assert returnable == set(bib_reader.PDF_LOST_REASONS)
 
 
+class TestExitCodesAreDistinguishable:
+    """Issue #696: `bench/sweep_sync.py` reported `rc=1 failed=0` on all
+    four rows of a 497-of-497 clean parse, and no caller reading only the
+    exit code could tell that row from one where documents were lost."""
+
+    def test_a_parse_failure_outranks_a_bibliography_problem(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        """Both conditions at once must report the parse failure. A run
+        that lost a document is the more actionable of the two, and
+        reporting EXIT_BIB_INTEGRITY would assert the opposite of what
+        happened -- that everything asked for was parsed."""
+        write_bib(
+            basic_corpus.BIB_FILE_PATH,
+            """
+@article{gone_2024,
+  title = {A paper whose PDF is not there},
+  file = {missing.pdf:missing.pdf:application/pdf},
+}
+@article{boom_2024,
+  title = {A paper whose parse explodes},
+  file = {paper.pdf:paper.pdf:application/pdf},
+}
+""",
+        )
+
+        def explode(job):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(pdf_text, "extract_one", explode)
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert "no longer exists on disk" in out  # the bib problem is real
+        assert "1 failed" in out  # and so is the parse failure
+        assert rc == sync.EXIT_PARSE_FAILURE
+
+
 class TestCliEntrypoint:
     def test_remove_stale_flag_is_registered(self, isolated_config):
         result = subprocess.run(
@@ -838,7 +879,12 @@ class TestTheRemovedDirectInvocation:
         reads. `2` there means "another run holds the lock -- do
         nothing", so a refusal wearing it would be ignored by exactly the
         scheduler this is for."""
-        assert sync.EXIT_COMMAND_REMOVED not in (0, 1, runlock.EXIT_ALREADY_RUNNING)
+        assert sync.EXIT_COMMAND_REMOVED not in (
+            0,
+            sync.EXIT_PARSE_FAILURE,
+            runlock.EXIT_ALREADY_RUNNING,
+            sync.EXIT_BIB_INTEGRITY,
+        )
 
 
 MANY_BIB = "".join(

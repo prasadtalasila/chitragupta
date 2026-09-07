@@ -65,9 +65,26 @@ from chitragupta import (
 logger = logging.getLogger("chitragupta.sync")
 
 # What running this module directly exits with. `EX_USAGE` from BSD's
-# sysexits -- chosen for what it is *not*: none of the three codes
+# sysexits -- chosen for what it is *not*: none of the four codes
 # docs/CLI.md publishes as `sync`'s API. See refuse_direct_invocation.
 EXIT_COMMAND_REMOVED = 64
+
+# The two nonzero codes a completed run can report, split by *remedy* --
+# the same axis docs/CLI.md's no-PDF table already splits on, now carried
+# by the exit code rather than only by the prose beside it.
+#
+# The split exists because the collapsed code could not answer the one
+# question an unattended caller has (issue #696): `bench/sweep_sync.py`
+# reported `rc=1 failed=0` on all four rows of a 497-of-497 clean parse,
+# and no caller reading only the code could tell that row from one where
+# documents were actually lost. Both remain nonzero, so a caller testing
+# `!= 0` is unaffected; only one testing `== 1` on a bibliography problem
+# sees a change, and for that caller the old answer was wrong anyway.
+#
+# 3 rather than 2: `runlock.EXIT_ALREADY_RUNNING` is 2, and 64 is
+# EXIT_COMMAND_REMOVED above.
+EXIT_PARSE_FAILURE = 1
+EXIT_BIB_INTEGRITY = 3
 
 
 @dataclass
@@ -242,36 +259,51 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
         )
     print(f"Ledger:      {config.LEDGER_PATH}")
     print(f"Parsed text: {config.PARSED_DIR}/")
-    # A deterministic failure keeps the run nonzero on *every* run until
-    # it is resolved, not just the run that produced it. It is not
-    # retried, so `failed` (which counts this run's attempts) is zero for
-    # it -- and a corpus with a hole in it must never report success.
-    # `suspicious` (the bib file yielding 0 references against a non-empty
-    # ledger) is included for the same reason: sync's exit code is an
-    # unattended caller's only documented API (docs/CLI.md), so a broken
-    # export must not read as "clean" indefinitely.
-    #
-    # `bib_reader.PDF_LOST_REASONS` joins them for that same reason
-    # (issue #556): a PDF this export claims and this host cannot
-    # produce -- gone, or present and unreadable -- is a document
-    # silently missing from the corpus, and reporting it in the summary
-    # while exiting 0 made it silent to exactly the caller that cannot
-    # read a summary. Gated on those reasons rather than on
-    # `tally.no_pdf`, because the other three describe an item that
-    # never had a PDF here: an ordinary state of a bibliography, not a
-    # hole. That list lives in `bib_reader` beside the reasons
-    # themselves, so adding a reason cannot silently miss this gate.
-    return (
-        1
-        if (
-            tally.failed
-            or tally.backend_unavailable
-            or kinds["deterministic"]
-            or suspicious
-            or any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS)
-        )
-        else 0
-    )
+    return _exit_code(tally, kinds, suspicious)
+
+
+# Split out of `run` rather than left inline: the two-branch decision took
+# `run` to 27 statements against the 25-statement limit, and this is the
+# boundary the change is about anyway -- "what did this run conclude",
+# separate from "what did it do". The rationale below sits in comments
+# rather than in the docstring because docstrings count toward the
+# 250-code-line ceiling and comments do not, which is the standard's own
+# sanction (DEVELOPER-AGENTS.md, "Measure the headroom") and the only
+# reason this module still fits.
+#
+# A deterministic failure keeps the run nonzero on *every* run until it is
+# resolved, not just the run that produced it. It is not retried, so
+# `failed` (which counts this run's attempts) is zero for it -- and a
+# corpus with a hole in it must never report success.
+#
+# `suspicious` (the bib file yielding 0 references against a non-empty
+# ledger) is nonzero for the same reason: sync's exit code is an
+# unattended caller's only documented API (docs/CLI.md), so a broken
+# export must not read as "clean" indefinitely.
+#
+# `bib_reader.PDF_LOST_REASONS` joins it (issue #556): a PDF this export
+# claims and this host cannot produce -- gone, or present and unreadable
+# -- is a document silently missing from the corpus, and reporting it in
+# the summary while exiting 0 made it silent to exactly the caller that
+# cannot read a summary. Gated on those reasons rather than on
+# `tally.no_pdf`, because the other three describe an item that never had
+# a PDF here: an ordinary state of a bibliography, not a hole. That list
+# lives in `bib_reader` beside the reasons themselves, so adding a reason
+# cannot silently miss this gate.
+#
+# Which of the two nonzero codes, and why in this order: a parse failure
+# is the more actionable of the two and the one that means *this host*
+# could not do its job, so it wins when both hold. A run reporting
+# EXIT_BIB_INTEGRITY is therefore also asserting that every document it
+# was asked to parse, it parsed -- which is the whole point of splitting
+# them.
+def _exit_code(tally, kinds, suspicious) -> int:
+    """What a completed run reports, split by remedy (issue #696)."""
+    if tally.failed or tally.backend_unavailable or kinds["deterministic"]:
+        return EXIT_PARSE_FAILURE
+    if suspicious or any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS):
+        return EXIT_BIB_INTEGRITY
+    return 0
 
 
 def main(argv: "list[str] | None" = None) -> int:
