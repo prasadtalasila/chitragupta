@@ -55,6 +55,13 @@ def _stored_edge(graph: dict, a: str, b: str) -> dict | None:
     return None
 
 
+def _stored_withheld(graph: dict, a: str, b: str) -> dict | None:
+    for row in graph.get("edges_withheld", []):
+        if {row["a"], row["b"]} == {a, b}:
+            return row
+    return None
+
+
 def explain(graph: dict, topic_set: dict, a: str, b: str) -> dict:
     """The verdict for one pair, in the shape absence.js's `explain`
     returns (`shared`, `p`, `sizes`, `docs`, `drawn`) plus what only
@@ -75,7 +82,11 @@ def explain(graph: dict, topic_set: dict, a: str, b: str) -> dict:
         p = None
         verdict = "nothing-shared"
     else:
-        p = survival(len(shared), docs, sizes["a"], sizes["b"])
+        # Prefer the stage's own stored number (#710's edges_withheld);
+        # recompute only for an artefact from an older run. Same rule
+        # absence.js follows, so the two surfaces keep reading alike.
+        withheld = _stored_withheld(graph, a, b)
+        p = withheld["p_value"] if withheld else survival(len(shared), docs, sizes["a"], sizes["b"])
         verdict = "withheld-chance" if p >= threshold else "withheld-unexplained"
     return {
         "a": a,

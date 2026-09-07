@@ -137,9 +137,10 @@ The most instructive answer the app gives. These two topics share
 twelve papers and still have no overlap edge -- because sharing twelve
 papers between topics of size 58 and 56 in a 497-paper corpus is what
 chance predicts (p = 0.02), and the hypergeometric gate refuses edges
-chance explains. The app recomputes the same tail the pipeline
-computed, on the same numbers, and says so in words. Nothing else in
-any view shows the gate's reasoning.
+chance explains. The app reads the refusal the pipeline stored
+(`edges_withheld`, beside the edges it drew) and says it in words --
+recomputing the same tail only for an export from an older run.
+Nothing else in any view shows the gate's reasoning.
 
 **Terminal:** `chitragupta corpus discover --why "model-driven
 engineering" "physical twin"` -- the same shared citekeys, the same

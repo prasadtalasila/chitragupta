@@ -76,6 +76,19 @@ class TestPayload:
         topic_set = {k: v for k, v in json.loads(json.dumps(TOPIC_SET)).items() if k != "uncovered"}
         assert _page.build_payload(GRAPH, topic_set, {})["uncovered"] == []
 
+    def test_withheld_edges_travel_to_the_exported_views(self, isolated_config):
+        """#710: the gate's refusals ride beside the edges it drew, and
+        an artefact from an older run defaults to none rather than
+        refusing."""
+        prepare(isolated_config)
+        graph = json.loads(json.dumps(GRAPH))
+        graph["edges_withheld"] = [
+            {"a": "digital twin", "b": "machine learning", "shared": ["p2"], "p_value": 0.83}
+        ]
+        payload = _page.build_payload(graph, TOPIC_SET, {})
+        assert payload["edges_withheld"] == graph["edges_withheld"]
+        assert _page.build_payload(GRAPH, TOPIC_SET, {})["edges_withheld"] == []
+
 
 class TestCircleOrder:
     """The circle's angular position is the page's strongest channel and

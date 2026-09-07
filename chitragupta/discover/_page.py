@@ -60,6 +60,11 @@ def build_payload(graph: dict, topic_set: dict, terms: dict) -> dict:
         "n_docs": graph["n_docs"],
         "topics": topics,
         "edges_overlap": graph["edges_overlap"],
+        # The pairs the gate refused (#710, §7.7): stored beside the
+        # edges it drew, so the app's absence verdict reads the stage's
+        # own number instead of recomputing it. .get because an artefact
+        # from an older run predates the field.
+        "edges_withheld": graph.get("edges_withheld", []),
         "edges_semantic": graph["edges_semantic"],
         "hierarchy": graph["hierarchy"],
         # The seed phrases no topic covers. The terminal list view has

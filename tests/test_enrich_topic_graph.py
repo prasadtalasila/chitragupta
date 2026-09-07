@@ -58,6 +58,35 @@ class TestOverlapEdges:
         assert pairs == sorted(pairs)
 
 
+class TestWithheldEdges:
+    def test_a_gated_pair_lands_in_the_withheld_list_with_its_p(self):
+        """The same pair test_chance_overlap_is_gated_out silences: the
+        gate's refusal is now stored (#710, §7.7), shared citekeys and
+        the p it weighed included, so the reader-side views can quote
+        the stage instead of recomputing it."""
+        members = {"a": {"p1", "p2", "p3"}, "b": {"p3", "p4", "p5"}}
+        withheld = topic_graph.withheld_edges(members, n_docs=5, p_value=0.05)
+        assert len(withheld) == 1
+        assert withheld[0]["a"] == "a"
+        assert withheld[0]["b"] == "b"
+        assert withheld[0]["shared"] == ["p3"]
+        assert withheld[0]["p_value"] >= 0.05
+        # No strength numbers on a non-edge: the gate judged it not an
+        # edge, and jaccard on a refusal would invite reading it as one.
+        assert set(withheld[0]) == {"a", "b", "shared", "p_value"}
+
+    def test_a_drawn_pair_is_not_withheld_and_vice_versa(self):
+        members = {"a": {"p1", "p2", "p3"}, "b": {"p1", "p2", "p3"}}
+        drawn, withheld = topic_graph._overlap_scan(members, n_docs=8, p_value=0.05)
+        assert len(drawn) == 1
+        assert withheld == []
+
+    def test_nothing_shared_is_not_withheld_either(self):
+        """An empty intersection is a different fact from a refused one
+        -- §3 bounds the list to pairs sharing at least one paper."""
+        assert topic_graph.withheld_edges({"a": {"p1"}, "b": {"p2"}}, n_docs=4, p_value=0.5) == []
+
+
 class TestSemanticEdges:
     def test_mutual_neighbours_get_an_edge_with_a_bridge(self):
         vectors = {
@@ -211,6 +240,19 @@ class TestBuild:
             assert "similarity" not in edge
         for edge in result["edges_semantic"]:
             assert "jaccard" not in edge
+
+    def test_the_gate_s_refusals_travel_with_the_artefact(self, isolated_config):
+        """One scan, two lists: at a strict threshold the alpha/beta
+        pair moves from edges_overlap to edges_withheld, same shared
+        citekeys, same p."""
+        topic_set, vectors = self.prepare()
+        loose = topic_graph.build(topic_set, vectors, p_value=0.9, neighbors=2)
+        assert [e["shared"] for e in loose["edges_overlap"]] == [["p2"]]
+        assert loose["edges_withheld"] == []
+        strict = topic_graph.build(topic_set, vectors, p_value=0.05, neighbors=2)
+        assert strict["edges_overlap"] == []
+        assert [w["shared"] for w in strict["edges_withheld"]] == [["p2"]]
+        assert strict["edges_withheld"][0]["p_value"] == loose["edges_overlap"][0]["p_value"]
 
     def test_the_stamps_travel_with_the_artefact(self, isolated_config):
         topic_set, vectors = self.prepare()

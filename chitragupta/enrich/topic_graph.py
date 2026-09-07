@@ -43,16 +43,21 @@ from chitragupta import config
 from chitragupta.enrich import doc_vectors, embed_index
 
 
-def overlap_edges(members: dict, n_docs: int, p_value: float) -> list:
-    """Co-membership edges: `{a, b, jaccard, overlap_coeff, p_value,
-    shared}` for every surprisingly-overlapping pair.
+def _overlap_scan(members: dict, n_docs: int, p_value: float) -> "tuple[list, list]":
+    """One pass over every sharing pair, split by the gate: the drawn
+    edges, and the withheld rows `{a, b, shared, p_value}` -- §7.7's
+    `edges_withheld`, bounded by construction to pairs sharing at least
+    one paper. Withheld rows carry no jaccard or overlap coefficient:
+    the gate judged the pair not an edge, and strength numbers on a
+    non-edge would invite reading it as one.
 
     Pure set arithmetic over `{label: set_of_citekeys}` so it can be
     driven with hand-picked sets; the caller decides what a member is.
     """
     from scipy.stats import hypergeom
 
-    edges = []
+    edges: list = []
+    withheld: list = []
     for a, b in itertools.combinations(sorted(members), 2):
         shared = members[a] & members[b]
         if not shared:
@@ -62,6 +67,7 @@ def overlap_edges(members: dict, n_docs: int, p_value: float) -> list:
         # small means the overlap is affinity, not arithmetic.
         p = float(hypergeom.sf(len(shared) - 1, n_docs, len(members[a]), len(members[b])))
         if p >= p_value:
+            withheld.append({"a": a, "b": b, "shared": sorted(shared), "p_value": p})
             continue
         union = members[a] | members[b]
         edges.append(
@@ -74,7 +80,18 @@ def overlap_edges(members: dict, n_docs: int, p_value: float) -> list:
                 "shared": sorted(shared),
             }
         )
-    return edges
+    return edges, withheld
+
+
+def overlap_edges(members: dict, n_docs: int, p_value: float) -> list:
+    """Co-membership edges: `{a, b, jaccard, overlap_coeff, p_value,
+    shared}` for every surprisingly-overlapping pair."""
+    return _overlap_scan(members, n_docs, p_value)[0]
+
+
+def withheld_edges(members: dict, n_docs: int, p_value: float) -> list:
+    """The pairs the gate refused: sharing papers, unsurprisingly so."""
+    return _overlap_scan(members, n_docs, p_value)[1]
 
 
 def _best_match(rows_a, rows_b) -> "tuple[float, int, int]":
@@ -202,6 +219,7 @@ def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dic
             labels_with_vectors.append(topic["label"])
             centroids.append(centroid)
 
+    edges_overlap, edges_withheld = _overlap_scan(members, topic_set["n_docs"], p_value)
     return {
         "model": config.EMBEDDING_MODEL,
         "n_docs": topic_set["n_docs"],
@@ -210,7 +228,8 @@ def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dic
         "neighbors": neighbors,
         "corpus_mean": corpus_mean.tolist(),
         "topics": nodes,
-        "edges_overlap": overlap_edges(members, topic_set["n_docs"], p_value),
+        "edges_overlap": edges_overlap,
+        "edges_withheld": edges_withheld,
         "edges_semantic": semantic_edges(
             {label: member_vectors[label] for label in member_vectors if member_vectors[label]},
             neighbors,

@@ -93,6 +93,26 @@ test("an unknown label is refused rather than answered with zero", () => {
   assert.equal(absence.explain(DATA, "digital twin", "no such topic"), null);
 });
 
+test("a stored withheld row is preferred over recomputing, in either order", () => {
+  // #710 stores the gate's refusals; a payload that carries the row
+  // hands the stage's own p to the verdict. A deliberately-off value
+  // proves the number is read, not recomputed.
+  const stored = {
+    ...DATA,
+    edges_withheld: [
+      { a: "machine learning", b: "digital twin", shared: ["dt2022"], p_value: 0.42 },
+    ],
+  };
+  assert.equal(absence.explain(stored, "digital twin", "machine learning").p, 0.42);
+  assert.equal(absence.explain(stored, "machine learning", "digital twin").p, 0.42);
+});
+
+test("a payload from an older run still recomputes the tail", () => {
+  const older = { ...DATA };
+  delete older.edges_withheld;
+  assert.equal(absence.explain(older, "digital twin", "machine learning").p, 1);
+});
+
 // ---------- how surprising a drawn edge is ----------
 
 test("a more surprising overlap is drawn more solidly", () => {
