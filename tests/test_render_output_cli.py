@@ -287,10 +287,16 @@ class TestBreakableCodeBlocks:
         return cmd
 
     def _header_includes(self, cmd):
+        # The `\LTcapwidth` one is dropped here rather than counted: it is
+        # unconditional on every LaTeX-bound render, so it is not what any
+        # assertion below is about, and `TestLongtableCaptionWidth` is
+        # where it is pinned instead.
         return [
             cmd[i + 1]
             for i, flag in enumerate(cmd)
-            if flag == "--variable" and cmd[i + 1].startswith("header-includes")
+            if flag == "--variable"
+            and cmd[i + 1].startswith("header-includes")
+            and "LTcapwidth" not in cmd[i + 1]
         ]
 
     def test_a_draft_with_a_code_block_loads_fvextra(self):
@@ -315,6 +321,54 @@ class TestBreakableCodeBlocks:
         assert len(includes) == 2
         assert any(r"\usepackage{tikz}" in inc for inc in includes)
         assert any(r"\usepackage{fvextra}" in inc for inc in includes)
+
+
+class TestLongtableCaptionWidth:
+    """`\\LTcapwidth`, which `longtable.sty` initialises to a hardcoded
+    4in. pandoc writes every Markdown table as a `longtable`, so without
+    this every table caption wrapped inside the middle two-thirds of the
+    line while the prose around it ran the full `\\textwidth`."""
+
+    def _includes(self, output_format):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path(f"out.{output_format}"),
+            Path("in.md"),
+            output_format,
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            False,
+            False,
+        )
+        return [
+            cmd[i + 1]
+            for i, flag in enumerate(cmd)
+            if flag == "--variable" and cmd[i + 1].startswith("header-includes")
+        ]
+
+    @pytest.mark.parametrize("output_format", ["tex", "latex", "pdf"])
+    def test_a_latex_bound_render_widens_the_caption(self, output_format):
+        includes = self._includes(output_format)
+        assert len(includes) == 1
+        assert r"\setlength{\LTcapwidth}{\textwidth}" in includes[0]
+
+    def test_the_setlength_is_guarded(self):
+        # pandoc's template only loads `longtable` for a document that has
+        # a table (`$if(tables)$`), so the register does not exist in a
+        # table-free draft and an unguarded `\setlength` would fail every
+        # such render with an `Undefined control sequence`.
+        assert self._includes("tex")[0].startswith(r"header-includes=\ifdefined\LTcapwidth")
+
+    @pytest.mark.parametrize("output_format", ["html", "docx", "md"])
+    def test_a_non_latex_render_gets_nothing(self, output_format):
+        # pandoc's HTML template interpolates `header-includes` into
+        # `<head>` verbatim, so this is not merely inert there.
+        assert self._includes(output_format) == []
 
 
 class TestHasCodeBlock:

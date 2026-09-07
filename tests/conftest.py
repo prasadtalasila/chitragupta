@@ -287,6 +287,12 @@ tikz_available = (
     shutil.which("kpsewhich") is not None
     and subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False).returncode == 0
 )
+# poppler-utils, which `scripts/install_full_pipeline.sh os-deps` installs
+# beside TeX Live but which is a different package from it. Its own probe
+# for that reason, like tikz above: the one test that reads it measures
+# where a caption actually wrapped on the page, which is a question no
+# assertion over the `.tex` can answer.
+pdftotext_available = shutil.which("pdftotext") is not None
 
 # A figure is two forms -- a TikZ picture and the same diagram in
 # WRITING-STANDARDS.md §10's plain ASCII -- and both are always files.
