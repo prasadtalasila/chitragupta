@@ -59,7 +59,7 @@
      MCL is deterministic given the same input and inflation -- so the
      view is reproducible from the page alone, provided the page shows
      the inflation it used. It does. */
-  function cluster(data, family, inflation) {
+  function computeCluster(data, family, inflation) {
     var labels = data.topics.map(function (t) { return t.label; });
     var n = labels.length;
     var index = Object.create(null);
@@ -147,15 +147,56 @@
     return { clusters: clusters, clusterOf: clusterOf };
   }
 
+  /* Stored partitions when the artefact carries them (#712): the
+     builder ran the same MCL at every inflation the slider can take
+     and stored one cluster index per topic in payload order, so
+     rebuilding the member lists here is a read, not a computation.
+     computeCluster stays as the fallback for a payload from an older
+     run, pinned to the builder's port by tests/webapp/mcl_cases.json. */
+  function storedCluster(data, family, inflation) {
+    var held = (data.communities || {})[family];
+    var assignments = held && held.partitions && held.partitions[inflation.toFixed(1)];
+    if (!assignments) { return null; }
+    var clusterOf = Object.create(null);
+    var byId = Object.create(null);
+    var clusters = [];
+    data.topics.forEach(function (topic, i) {
+      var id = "mcl-" + assignments[i];
+      if (!byId[id]) {
+        byId[id] = { id: id, members: [] };
+        clusters.push(byId[id]);
+      }
+      byId[id].members.push(topic.label);
+      clusterOf[topic.label] = id;
+    });
+    return { clusters: clusters, clusterOf: clusterOf, stored: true };
+  }
+
+  function cluster(data, family, inflation) {
+    return storedCluster(data, family, inflation) ||
+      computeCluster(data, family, inflation);
+  }
+
   /* ---------- where the two partitions disagree ---------- */
 
-  function sharedCount(data, a, b) {
-    var topics = Object.create(null);
-    data.topics.forEach(function (t) { topics[t.label] = t; });
-    var mine = new Set((topics[a].members || []).map(function (m) { return m.citekey; }));
-    return (topics[b].members || []).filter(function (m) {
-      return mine.has(m.citekey);
-    }).length;
+  /* The membership index is built once per grid, not once per pair:
+     at 131 topics the grid asks about thousands of pairs, and
+     rebuilding the index inside each was an O(pairs x topics) load the
+     reader paid on every click (#712 hoisted it). */
+  function memberSets(data) {
+    var sets = Object.create(null);
+    data.topics.forEach(function (t) {
+      sets[t.label] = new Set((t.members || []).map(function (m) { return m.citekey; }));
+    });
+    return sets;
+  }
+
+  function sharedCount(sets, a, b) {
+    var count = 0;
+    sets[a].forEach(function (citekey) {
+      if (sets[b].has(citekey)) { count += 1; }
+    });
+    return count;
   }
 
   /* The co-membership grid, in both directions:
@@ -172,6 +213,7 @@
     var overlap = cluster(data, "overlap", inflation);
     var semantic = cluster(data, "semantic", inflation);
     var labels = data.topics.map(function (t) { return t.label; });
+    var sets = memberSets(data);
     var semanticOnly = [];
     var overlapOnly = [];
     labels.forEach(function (a, i) {
@@ -179,7 +221,7 @@
         var sameOverlap = overlap.clusterOf[a] === overlap.clusterOf[b];
         var sameSemantic = semantic.clusterOf[a] === semantic.clusterOf[b];
         if (sameOverlap === sameSemantic) { return; }
-        var pair = { a: a, b: b, shared: sharedCount(data, a, b) };
+        var pair = { a: a, b: b, shared: sharedCount(sets, a, b) };
         (sameSemantic ? semanticOnly : overlapOnly).push(pair);
       });
     });
@@ -187,6 +229,7 @@
     overlapOnly.sort(function (x, y) { return y.shared - x.shared; });
     return {
       inflation: inflation,
+      stored: !!(overlap.stored && semantic.stored),
       overlap: overlap,
       semantic: semantic,
       semanticOnly: semanticOnly.slice(0, MAX_PAIRS),

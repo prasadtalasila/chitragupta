@@ -182,3 +182,18 @@ test("the brokerage caption says where the numbers came from", () => {
   assert.match(view, /worked out\s+in your browser/);
   assert.match(view, /Not a corpus claim/);
 });
+
+test("the brokerage caption says where the numbers came from", () => {
+  const column = { alters: 2, density: 1, effectiveSize: 1.1, constraint: 0.9 };
+  const stored = panel.egoHtml("digital twin", {
+    overlap: { ...column, stored: true },
+    semantic: { ...column, stored: true },
+  });
+  assert.match(stored, /read from the\s+artefact/);
+  const view = panel.egoHtml("digital twin", {
+    overlap: { ...column, stored: false },
+    semantic: { ...column, stored: false },
+  });
+  assert.match(view, /worked out\s+in your browser/);
+  assert.match(view, /Not a corpus claim/);
+});

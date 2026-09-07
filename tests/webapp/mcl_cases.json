@@ -1,0 +1,169 @@
+{
+  "comment": [
+    "The contract between two runtimes clustering one family.",
+    "assets/webapp/families.js (computeCluster) is the browser's MCL;",
+    "chitragupta/enrich/topic_mcl.py is the builder's numpy port that",
+    "stores partitions at every slider inflation (#712). Node asserts",
+    "the browser reproduces every row (tests/webapp/families.test.js),",
+    "pytest asserts the port does (tests/test_enrich_topic_mcl.py), so",
+    "neither can drift alone. Expected values are one cluster index per",
+    "topic in payload order -- the stored encoding itself. Generated",
+    "from families.js, the implementation the app has always shown."
+  ],
+  "cases": [
+    {
+      "name": "two tight pairs and a bridge topic split at high inflation",
+      "topics": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e"
+      ],
+      "edges_overlap": [
+        {
+          "a": "a",
+          "b": "b",
+          "overlap_coeff": 0.9,
+          "jaccard": 0.5,
+          "p_value": 0.001,
+          "shared": [
+            "p1"
+          ]
+        },
+        {
+          "a": "b",
+          "b": "c",
+          "overlap_coeff": 0.2,
+          "jaccard": 0.1,
+          "p_value": 0.005,
+          "shared": [
+            "p2"
+          ]
+        },
+        {
+          "a": "c",
+          "b": "d",
+          "overlap_coeff": 0.9,
+          "jaccard": 0.5,
+          "p_value": 0.001,
+          "shared": [
+            "p3"
+          ]
+        }
+      ],
+      "edges_semantic": [
+        {
+          "a": "a",
+          "b": "e",
+          "similarity": 0.8,
+          "bridge": [
+            "p1",
+            "p4"
+          ]
+        },
+        {
+          "a": "b",
+          "b": "e",
+          "similarity": 0.7,
+          "bridge": [
+            "p2",
+            "p4"
+          ]
+        }
+      ],
+      "inflations": [
+        1.2,
+        2,
+        4
+      ],
+      "expected": {
+        "overlap": {
+          "1.2": [
+            0,
+            0,
+            0,
+            0,
+            1
+          ],
+          "2.0": [
+            0,
+            0,
+            1,
+            1,
+            2
+          ],
+          "4.0": [
+            0,
+            0,
+            1,
+            1,
+            2
+          ]
+        },
+        "semantic": {
+          "1.2": [
+            2,
+            2,
+            0,
+            1,
+            2
+          ],
+          "2.0": [
+            2,
+            2,
+            0,
+            1,
+            2
+          ],
+          "4.0": [
+            2,
+            2,
+            0,
+            1,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "name": "a family with no edges leaves every topic alone",
+      "topics": [
+        "x",
+        "y",
+        "z"
+      ],
+      "edges_overlap": [],
+      "edges_semantic": [
+        {
+          "a": "x",
+          "b": "y",
+          "similarity": 0.9,
+          "bridge": [
+            "p1",
+            "p2"
+          ]
+        }
+      ],
+      "inflations": [
+        2
+      ],
+      "expected": {
+        "overlap": {
+          "2.0": [
+            0,
+            1,
+            2
+          ]
+        },
+        "semantic": {
+          "2.0": [
+            0,
+            0,
+            1
+          ]
+        }
+      }
+    }
+  ]
+}

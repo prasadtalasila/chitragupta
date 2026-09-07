@@ -636,6 +636,8 @@ relation and each resolution rung is computed.
 | `--paper CITEKEY` | -- | Show this paper's topics instead of resolving a phrase |
 | `--groups N` | -- | Cut the stored merge tree into as close to N groups as it allows and list them, each labelled by its biggest member -- the app's resolution slider as a view. Reports the count actually reached (a tree that never joins an outlier cannot reach one group) and the merge distance cut at. Its own view: composes with `--json` only, exits `2` on a target below one, and exits `1` when the artefact stores no hierarchy |
 | `--compare TOPIC TOPIC ...` | -- | Compare two to six topics: pairwise shared citekeys, the papers held by all of them, the bridge papers held by two or more (with their formatted ledger entries), and the edges among the named topics with their evidence. Names resolve through the usual ladder. Its own view: composes with `--json` only; exits `2` past six topics (named, never silently truncated) and `1` when the phrases collapse onto fewer than two distinct topics |
+| `--clusters` | -- | The stored MCL partitions of both edge families and the two lists where they disagree -- the app's disagreement grid as a view, read from the artefact's `communities` (this side clusters nothing). Its own view: composes with `--inflation` and `--json` only; exits `1` naming the stored range when the inflation has no partition, or naming the enrich stage when the artefact predates the field |
+| `--inflation X` | `2.0` | Which stored inflation `--clusters` reads (the slider's own steps: 1.2 to 4.0 by 0.1) |
 | `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict -- the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
 | `--hops N` | -- | With a phrase: print the topic's neighbourhood as rings by hop distance instead of the flat topic view -- ring one typed by which family reached each neighbour, deeper rings by distance alone, and an honest count of what the topic cannot reach. `N` is a positive count, or `all` for everything reachable |
 | `--json` | off | Machine-readable output |
@@ -653,7 +655,9 @@ chitragupta corpus discover
 # chitragupta corpus discover --why "digital twin" "physical twin"
 # chitragupta corpus discover --groups 8
 # chitragupta corpus discover --compare "digital twin" "physical twin" "application"
+# chitragupta corpus discover --clusters --inflation 2.0
 # chitragupta corpus discover --compare "digital twin" "physical twin" "application"
+# chitragupta corpus discover --clusters --inflation 2.0
 # chitragupta corpus discover --html topics.html
 # chitragupta corpus discover --html topics.html --json
 # chitragupta corpus discover --app topicapp/

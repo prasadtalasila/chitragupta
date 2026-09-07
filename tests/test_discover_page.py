@@ -91,6 +91,21 @@ class TestPayload:
         older = _page.build_payload(GRAPH, TOPIC_SET, {})
         assert all("analysis" not in t for t in older["topics"])
 
+    def test_stored_analysis_travels_per_topic(self, isolated_config):
+        """#713: the brokerage block rides on each topic, and an older
+        artefact simply has none."""
+        prepare(isolated_config)
+        graph = json.loads(json.dumps(GRAPH))
+        block = {
+            "overlap": {"degree": 1, "ego_density": None, "effective_size": 1.0, "constraint": 1.0}
+        }
+        graph["topics"][0]["analysis"] = block
+        graph["topics"][1]["analysis"] = block
+        payload = _page.build_payload(graph, TOPIC_SET, {})
+        assert payload["topics"][0]["analysis"] == block
+        older = _page.build_payload(GRAPH, TOPIC_SET, {})
+        assert all("analysis" not in t for t in older["topics"])
+
     def test_withheld_edges_travel_to_the_exported_views(self, isolated_config):
         """#710: the gate's refusals ride beside the edges it drew, and
         an artefact from an older run defaults to none rather than

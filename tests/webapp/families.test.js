@@ -288,3 +288,52 @@ test("the path panel never reports one distance over both families", () => {
   const html = panel.pathHtml(TWO_WAYS, families.path(TWO_WAYS, "overlap", "A", "Z"));
   assert.ok(!html.match(/total (distance|strength|score)/i));
 });
+
+// ---------- the cross-runtime MCL contract (#712) ----------
+
+/* mcl_cases.json holds the browser's clustering and the builder's
+   stored partitions (chitragupta/enrich/topic_mcl.py) to the same
+   assignments: this block asserts the browser side,
+   tests/test_enrich_topic_mcl.py the Python side. */
+const MCL_CASES = require("./mcl_cases.json").cases;
+
+function mclData(row) {
+  return {
+    topics: row.topics.map((label) => ({ label, members: [] })),
+    edges_overlap: row.edges_overlap,
+    edges_semantic: row.edges_semantic,
+  };
+}
+
+test("every shared MCL case matches the browser's own clustering", () => {
+  assert.ok(MCL_CASES.length >= 2, "the table is read at all");
+  MCL_CASES.forEach((row) => {
+    ["overlap", "semantic"].forEach((family) => {
+      Object.keys(row.expected[family]).forEach((inflation) => {
+        const result = families.cluster(mclData(row), family, Number(inflation));
+        const got = row.topics.map(
+          (label) => Number(result.clusterOf[label].replace("mcl-", ""))
+        );
+        assert.deepEqual(got, row.expected[family][inflation],
+          row.name + " " + family + " @" + inflation);
+      });
+    });
+  });
+});
+
+test("stored partitions are read, not recomputed, and flagged as stored", () => {
+  const row = MCL_CASES[0];
+  const data = mclData(row);
+  // A deliberately-different stored partition proves the read: every
+  // topic in one cluster, which no inflation here computes.
+  data.communities = {
+    overlap: { method: "mcl", partitions: { "2.0": row.topics.map(() => 0) } },
+  };
+  const stored = families.cluster(data, "overlap", 2.0);
+  assert.equal(stored.stored, true);
+  assert.equal(stored.clusters.length, 1);
+  assert.deepEqual(stored.clusters[0].members, row.topics);
+  // A slider value the stored block does not carry falls back honestly.
+  const fallback = families.cluster(data, "overlap", 1.3);
+  assert.ok(!fallback.stored);
+});

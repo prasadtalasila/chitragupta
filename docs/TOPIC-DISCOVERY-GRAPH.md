@@ -882,8 +882,8 @@ reach the other answers the panel shows.
 | The app answers | The terminal's answer |
 | --- | --- |
 | what are the broad areas (resolution cut) | `discover --groups N` (#709) -- the same cut, pinned by `tests/webapp/cut_cases.json` |
-| candidate survey sections (MCL per family) | nothing |
-| where the families disagree | nothing |
+| candidate survey sections (MCL per family) | `discover --clusters [--inflation X]` (#712), read from the stored `communities` |
+| where the families disagree | the same `--clusters` view's two disagreement lists |
 | is this topic a theme or a bridge | the topic view's brokerage section (#713), read from the stored `analysis` |
 | what connects A to B, via which papers | nothing |
 | why is there *no* edge here | `discover --why A B` (#708) -- the first twin shipped, path A's shape |

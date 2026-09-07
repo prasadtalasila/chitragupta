@@ -95,21 +95,21 @@ of what the topic cannot reach. The dimmed context is the app's own.
 papers, and pairs that share papers but split
 semantically](images/discovery/disagreement.png)
 
-*Real corpus.* The button clusters both edge families in your browser
--- Markov clustering, run twice, never on a merged graph -- and lists
-the pairs the two partitions split on. Two topics in one semantic
-cluster that share no papers are a literature that has not met itself:
-the observation a survey wants to open with. The panel names the
-inflation it used; the
+*Real corpus.* The button shows where the two families' stored MCL
+partitions split -- Markov clustering, run once per family in the
+pipeline at every inflation the slider can take, never on a merged
+graph. Two topics in one semantic cluster that share no papers are a
+literature that has not met itself: the observation a survey wants to
+open with. The panel names the inflation it used and says the
+partitions come from the artefact; the
 [plain-terms section](TOPIC-DISCOVERY.md#-in-plain-terms-the-two-families-and-the-inflation-dial)
-explains what moving it means. While the grid is showing, releasing the
-slider re-clusters both families at the new inflation -- on release
-rather than per tick, because MCL is a matrix multiplication per
-iteration over every topic.
+explains what moving it means. While the grid is showing, releasing
+the slider re-reads at the new inflation, and only an export from an
+older artefact still clusters in the browser.
 
-**Terminal:** none yet --
-[TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
-records the gap and the plan for closing it.
+**Terminal:** `chitragupta corpus discover --clusters [--inflation X]`
+-- the same partitions, the same two disagreement lists, read from the
+same artefact.
 
 ## 🛤 The path between two pinned topics
 
@@ -178,6 +178,7 @@ map in one place:
 | one topic's papers and neighbours | `chitragupta corpus discover "PHRASE"` |
 | one paper's topics | `chitragupta corpus discover --paper CITEKEY` |
 | several topics side by side | `chitragupta corpus discover --compare "A" "B" ["C" ...]` |
+| where the families disagree | `chitragupta corpus discover --clusters [--inflation X]` |
 | a topic's neighbourhood as rings | `chitragupta corpus discover "PHRASE" --hops 2` |
 | why two topics have no overlap edge | `chitragupta corpus discover --why "A" "B"` |
 | a Markdown overview to seed a draft | `chitragupta corpus discover "PHRASE" --out overview.md` |
@@ -185,7 +186,7 @@ map in one place:
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |
 
-The clustering and path views have no terminal
+The path view has no terminal
 equivalent today;
 [TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
 is the record of that gap and of the two candidate ways to close it.

@@ -10,7 +10,7 @@ the parser and the dispatch; this module owns what each view does.
 import json as json_module
 import sys
 
-from chitragupta.discover import _absence, _compare, _groups, _hops, _resolve
+from chitragupta.discover import _absence, _clusters, _compare, _groups, _hops, _resolve
 
 
 def emit(args, data: dict, prose: str) -> None:
@@ -45,6 +45,8 @@ def own_view(args, graph, topic_set, terms) -> "int | None":
         return why_view(args, graph, topic_set, terms)
     if args.compare:
         return compare_view(args, graph, topic_set, terms)
+    if args.clusters:
+        return clusters_view(args, graph, topic_set)
     return None
 
 
@@ -113,6 +115,29 @@ def hops_view(args, resolution, graph) -> int:
     data = _hops.build_hops(graph, resolution.label, bound)
     data["resolved_via"] = resolution.via
     emit(args, data, _hops.render_hops(data))
+    return 0
+
+
+def clusters_view(args, graph, topic_set) -> int:
+    """The disagreement grid as a view (#712), read from the stored
+    partitions -- this side clusters nothing, so an artefact without
+    them is refused with the stage to re-run, not silently recomputed."""
+    if args.phrase or args.paper or args.why or args.groups is not None or args.compare:
+        print(
+            "--clusters is its own view: give it an --inflation at most and nothing else.",
+            file=sys.stderr,
+        )
+        return 2
+    data = _clusters.build_clusters(graph, topic_set, args.inflation)
+    if data is None:
+        print(
+            f"The artefact stores no partition at inflation {args.inflation:g}. "
+            "Stored steps run 1.2 to 4.0 by 0.1; an artefact from an older run "
+            "stores none at all -- re-run `chitragupta enrich --stages topic-graph`.",
+            file=sys.stderr,
+        )
+        return 1
+    emit(args, data, _clusters.render_clusters(data))
     return 0
 
 
