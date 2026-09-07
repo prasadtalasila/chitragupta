@@ -49,7 +49,9 @@ if it is obvious which is which, so:
 | [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
 | [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
 | [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
+| [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Current, and it supersedes the row above** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. The watchdog arm still hangs and is now off by default, so cancellation latency stays unmeasured and #698 stays open |
 | [2026-09-04 (B4): the converged topic set's stability](#2026-09-04-b4-the-converged-topic-sets-stability-and-where-the-instability-actually-lives) | **Current, and it reframes every stability number above** | Like-for-like emergent ARI is **0.73** (recorded 0.80); refitting UMAP too drops it to **0.44**, so **most of the instability is UMAP's, not HDBSCAN's**. The converged arm's 0.41 must not be quoted -- 98.4% of documents are in more than one topic, so its partition is constructed |
+| [2026-09-07 (B4b): both stability arms](#2026-09-07-b4b-both-stability-arms-and-the-improvement-that-mostly-is-not-one) | **Current** | Every grid setting loses about half its apparent stability when UMAP is refitted as the stage does: `hdb` 0.56--0.82 against `full` 0.35--0.51. The recorded 0.14 -> 0.80 improvement is **0.35 -> 0.37** like-for-like -- no measured difference. And the shipped defaults are not the most stable setting: `(5, 5, 5, 3)` scores 0.51 against their 0.37 |
 | [2026-09-04 (B7): what shape the topic graph is](#2026-09-04-b7-what-shape-the-topic-graph-is) | **Current** | Closes B7. Edge counts are threshold-sensitive (1,039/759/551 across p) but **average clustering barely moves** (0.44-0.48). Edge sets survive a 10% document bootstrap at Jaccard **0.88 / 0.83** |
 | [2026-09-04 (B10): the reuse tiers](#2026-09-04-b10-the-reuse-tiers) | **Current** | **Closes the 13-vs-15 discrepancy: both were right.** Tier 3 fires on **15 of 22**; 13 is where it is the only tier firing. Tier 3 still has **no precision number** (182 findings, all unlabelled). Tier 2's population fell 27 -> 12 after #548, but its precision cannot be quoted -- 18 labels match no current finding |
 | [2026-09-04 (B11): all ten aids, and `union` priced at last](#2026-09-04-b11-all-ten-aids-and-union-priced-at-last) | **Current, and it supersedes the 2026-08-27 costs** | **`union`: 135 ms**, closing its "has not been measured" caveat and confirming it sits in `uncited`'s class. **`support` has roughly doubled** (+65% to +95%) while `verbatim` moved +4-18%. Diagnosed 2026-09-07 as a corpus *re-segmentation* effect, not a code regression and not a larger corpus: `support` scores one entailment pair per quotable passage, `verbatim` one fetch per source |
@@ -5104,6 +5106,108 @@ from inside a `subprocess.run` child, against a throwaway `CONTENT_DIR`
 -- rather than `_docling_pool.py` itself, which the real sync exercised
 497 times in this same run without incident. **No claim about
 pool-rebuild cost should be drawn from this section.** B3 remains open.
+
+**Superseded 2026-09-07, and the diagnosis above is wrong on both
+counts.** The nesting was not the cause, and the arm that hangs is not
+the control. See the 2026-09-07 (B3) section below: every arm was
+running over *zero documents*, because the throwaway `CONTENT_DIR` has
+no ledger for `build_corpus()` to read. The rebuild arms work once that
+is fixed. The watchdog arm hangs for a different, still-unfound reason.
+
+### 2026-09-07 (B4b): both stability arms, and the improvement that mostly is not one
+
+`bench/bench_topic_depth.py --repeats 10`, 497 documents, the full grid.
+`hdb` re-fits HDBSCAN on each 90% resample over a UMAP reduction fitted
+once -- every stability figure this repository has published. `full`
+re-fits UMAP per resample too, which is what the shipped stage does.
+
+| n_nbr | n_cmp | mcs | ms | topics | outliers | topics/doc | hdb | full |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 15 | 5 | 10 | -- | 6 | 4% | 1.08 | 0.68 | 0.35 |
+| 15 | 5 | 5 | -- | 26 | 32% | 2.05 | 0.76 | 0.39 |
+| 15 | 5 | 3 | -- | 46 | 18% | 1.86 | 0.71 | 0.38 |
+| 10 | 5 | 10 | -- | 13 | 20% | 1.55 | 0.56 | 0.35 |
+| 10 | 5 | 5 | -- | 30 | 20% | 1.81 | 0.71 | 0.40 |
+| 10 | 5 | 3 | -- | 57 | 16% | 1.48 | 0.65 | 0.35 |
+| **10** | **5** | **3** | **2** | **79** | **13%** | **1.53** | **0.78** | **0.37** |
+| 5 | 5 | 5 | 3 | 47 | 11% | 1.38 | 0.80 | **0.51** |
+| 5 | 5 | 3 | 2 | 83 | 9% | 1.37 | 0.77 | 0.44 |
+| 5 | 10 | 3 | 2 | 76 | 8% | 1.32 | 0.82 | 0.48 |
+
+The shipped defaults are the bold row.
+
+**The gap is the result.** `hdb` spans 0.56--0.82 across the grid;
+`full` spans 0.35--0.51. Every setting loses roughly half its apparent
+stability once UMAP is refitted, so most of the instability lives in the
+dimensionality reduction and not in the clustering. That is issue #697's
+claim, now measured across the whole grid rather than at one setting.
+
+**Two things this says that #697 did not anticipate.**
+
+First, **the 0.14 -> 0.80 improvement largely does not survive the
+like-for-like measurement.** The old hardcoded settings score 0.35 on
+`full` and the shipped defaults score 0.37 -- a difference with ten
+resamples and no error bars, which is to say no measured difference at
+all. The parameter change did buy something real, but it was topic
+granularity (6 topics against 79) and outlier share, not stability. Note
+also that the old settings score 0.68 on `hdb` here against the 0.14
+recorded in #300: the corpus has changed since, so the two are not
+comparable row for row -- the same trap the review-cost tables fell into
+(see 2026-09-04 B11 and its 2026-09-07 correction).
+
+Second, **the shipped defaults are not the most stable setting under the
+arm that matches the stage.** `(10, 5, 3, 2)` scores 0.37 while
+`(5, 5, 5, 3)` scores 0.51, `(5, 10, 3, 2)` 0.48 and `(5, 3, 2)` 0.44 --
+all three `n_neighbors=5` rows beat all five `n_neighbors=10/15` rows,
+which is a coherent signal rather than one lucky row: a smaller
+neighbourhood makes UMAP less sensitive to which 10% of documents were
+dropped. `(5, 10, 3, 2)` in particular has the best `hdb` (0.82), the
+second-best `full` (0.48), the lowest outlier share (8%) and 76 topics
+against the shipped 79 -- it is not obviously worse on any column here.
+
+That is a defaults question, not a measurement one, and this entry does
+not settle it: no claim is made about topic *quality*, which these
+columns do not measure and which is the reason a default gets chosen.
+
+### 2026-09-07 (B3): the rebuild arms, measured at last -- and the watchdog arm switched off
+
+`bench/bench_pool_rebuild.py`, 6 documents through the real docling pool
+at 3 workers, one run per arm.
+
+| arm | docs | parsed | lost | pools built | seconds |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| uninterrupted | 6 | 6 | 0 | 1 | 15.78 |
+| worker-killed | 6 | 6 | 0 | 2 | 30.02 |
+
+- **Rebuild overhead: 1.90x wall clock.** A SIGKILLed worker roughly
+  doubles the run on this sample.
+- **Documents lost to the kill: 0.** The rebuild rescued every document;
+  nothing was dropped.
+- **Pool narrowing converged: `[3, 1]`.** The pool was rebuilt once,
+  from 3 workers to 1, and terminated rather than narrowing repeatedly.
+
+**Read the 1.90x as an upper bound, not a corpus figure.** The baseline
+is 15.78s over 6 small documents, so the rebuild's model reload is most
+of what is being measured -- which is deliberate (that is the cost the
+arm exists to price) but means the ratio would fall on a longer run
+where parsing dominates. One run per arm, no repeats: this is a first
+measurement, not a stable one.
+
+**The stall watchdog is not measured, and the arm is now off by
+default.** It does not terminate: given real documents *and* #726's
+`terminate_workers` fix, it sat in `futex_wait_queue` for two hours
+after the healthy documents were done. `--with-stall-arm` reproduces it.
+So of #610's B3 questions this answers rebuild overhead, documents lost
+and pool-narrowing convergence, and leaves cancellation latency open.
+**Issue #698 stays open** for that arm.
+
+What made the difference from the 2026-09-04 attempt: `_sample_docs`
+reads the ledger from `CONTENT_DIR`, which the harness pointed at an
+empty `mkdtemp`, so `build_corpus()` returned no rows and every arm ran
+over zero documents. The throwaway directory is now seeded with the real
+ledger -- and only the ledger, since `pdf_path` points under `papers/`,
+so the arms still write every artefact into the tempdir and never into
+the corpus they read.
 
 ### 2026-09-04 (B4): the converged topic set's stability, and where the instability actually lives
 

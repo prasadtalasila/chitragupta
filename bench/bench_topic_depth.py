@@ -20,6 +20,13 @@ between repeated fits of one setting, over the document-to-topic
 assignment -- 1.0 means the two runs partition the corpus identically,
 0.0 means no more agreement than chance.
 
+It is reported as **two** columns, because until 2026-09-07 only the
+first was measured and it is the easier one (issue #697). `hdb` re-fits
+HDBSCAN on each resample over a UMAP reduction fitted once; `full`
+re-fits UMAP too, which is what the shipped stage does on a changed
+corpus. The gap between them is the share of the instability that
+belongs to the dimensionality reduction rather than the clustering.
+
 The motivating case is in bench/RESULTS.md: one swept setting reported 13
 topics at 27% outliers, then 5 at 12% after an unrelated preprocessing
 change landed, with `random_state=42` throughout. Nothing was random; the
@@ -91,6 +98,14 @@ def stability(reduced, min_cluster_size, min_samples, repeats):
     on a bootstrap resample of the reduced space and scores agreement on
     the documents the two runs have in common, which is the resampling
     Asta's survey describes rather than a re-run of the same arithmetic.
+
+    **This measures the easier half of the question, and that is what it
+    is for.** UMAP is fitted once, outside, and only HDBSCAN is re-fitted
+    per resample -- so this holds the dimensionality reduction fixed and
+    asks how stable the clustering is on top of it. The shipped stage
+    refits both. `stability_full_refit` below is the like-for-like arm;
+    every stability figure this repository published before 2026-09-07
+    was this one (issue #697).
     """
     import numpy as np
     from sklearn.metrics import adjusted_rand_score
@@ -126,14 +141,72 @@ def _summarize_labels(labels: "list[int]") -> dict:
     }
 
 
-def measure(reduced, min_cluster_size, min_samples, repeats=1):
+def _reduce(embeddings, n_neighbors, n_components):
+    """One UMAP fit. Named so both stability arms and the grid loop
+    build the reduction the same way -- an arm that quietly used
+    different UMAP settings from the row it sits in would be comparing
+    two different pipelines and calling the difference instability."""
+    from umap import UMAP
+
+    return UMAP(
+        n_neighbors=n_neighbors,
+        n_components=n_components,
+        min_dist=0.0,
+        metric="cosine",
+        random_state=42,
+    ).fit_transform(embeddings)
+
+
+def stability_full_refit(
+    embeddings, n_neighbors, n_components, min_cluster_size, min_samples, repeats
+):
+    """Mean ARI when **both** stages are re-fitted per resample.
+
+    This is what `chitragupta/enrich/`'s topic stage actually does on a
+    changed corpus: it does not carry a fitted UMAP forward. `stability`
+    above holds the reduction fixed, so the gap between the two is the
+    share of the instability that belongs to the dimensionality
+    reduction rather than to the clustering -- which is the finding
+    issue #697 records, and it is large.
+
+    Both arms are computed and reported, rather than one being selected
+    by a flag: the gap *is* the result, and a flag would hide it behind
+    two runs and a diff.
+    """
+    import numpy as np
+    from sklearn.metrics import adjusted_rand_score
+
+    if repeats < 2:
+        return None
+    rng = np.random.default_rng(42)
+    baseline = fit_labels(
+        _reduce(embeddings, n_neighbors, n_components), min_cluster_size, min_samples
+    )[0]
+    scores = []
+    for _ in range(repeats - 1):
+        keep = rng.choice(len(embeddings), size=int(0.9 * len(embeddings)), replace=False)
+        resampled = fit_labels(
+            _reduce(embeddings[keep], n_neighbors, n_components),
+            min_cluster_size,
+            min_samples,
+        )[0]
+        scores.append(adjusted_rand_score([baseline[i] for i in keep], resampled))
+    return float(np.mean(scores))
+
+
+def measure(reduced, min_cluster_size, min_samples, repeats=1, full_refit=None):
     import numpy as np
     from hdbscan import all_points_membership_vectors
 
     labels, clusterer = fit_labels(reduced, min_cluster_size, min_samples)
     summary = _summarize_labels(labels)
     if summary["topics"] == 0:
-        return {**summary, "topics_per_doc": 0.0, "stability": None}
+        return {
+            **summary,
+            "topics_per_doc": 0.0,
+            "stability_hdbscan_only": None,
+            "stability_full_refit": None,
+        }
 
     soft = np.atleast_2d(np.asarray(all_points_membership_vectors(clusterer)))
     keep = (soft >= 0.5 * soft.max(axis=1, keepdims=True)) & (soft > 0)
@@ -142,7 +215,8 @@ def measure(reduced, min_cluster_size, min_samples, repeats=1):
     return {
         **summary,
         "topics_per_doc": float(live.mean()) if len(live) else 0.0,
-        "stability": stability(reduced, min_cluster_size, min_samples, repeats),
+        "stability_hdbscan_only": stability(reduced, min_cluster_size, min_samples, repeats),
+        "stability_full_refit": full_refit,
     }
 
 
@@ -183,7 +257,6 @@ def main(argv=None):
     self_check()
 
     import numpy as np
-    from umap import UMAP
 
     docs = corpus.build_corpus()
     doc_texts = doc_vectors.corpus_texts(docs)
@@ -206,20 +279,27 @@ def main(argv=None):
     reductions = {}
     print(
         f"\n{'n_nbr':>5} {'n_cmp':>5} {'mcs':>4} {'ms':>4} | {'topics':>6} "
-        f"{'outliers':>9} {'median':>7} {'topics/doc':>10}",
+        f"{'outliers':>9} {'median':>7} {'topics/doc':>10} {'hdb':>6} {'full':>6}",
         flush=True,
     )
     for n_neighbors, n_components, min_cluster_size, min_samples in GRID:
         key = (n_neighbors, n_components)
         if key not in reductions:
-            reductions[key] = UMAP(
-                n_neighbors=n_neighbors,
-                n_components=n_components,
-                min_dist=0.0,
-                metric="cosine",
-                random_state=42,
-            ).fit_transform(embeddings)
-        got = measure(reductions[key], min_cluster_size, min_samples, args.repeats)
+            reductions[key] = _reduce(embeddings, n_neighbors, n_components)
+        got = measure(
+            reductions[key],
+            min_cluster_size,
+            min_samples,
+            args.repeats,
+            full_refit=stability_full_refit(
+                embeddings,
+                n_neighbors,
+                n_components,
+                min_cluster_size,
+                min_samples,
+                args.repeats,
+            ),
+        )
         rows.append(
             dict(
                 n_neighbors=n_neighbors,
@@ -229,12 +309,17 @@ def main(argv=None):
                 **got,
             )
         )
-        stable = "-" if got["stability"] is None else f"{got['stability']:.2f}"
+
+        def _pct(value):
+            return "-" if value is None else f"{value:.2f}"
+
         print(
             f"{n_neighbors:>5} {n_components:>5} {min_cluster_size:>4} "
             f"{str(min_samples or '-'):>4} | {got['topics']:>6} "
             f"{100 * got['outlier_share']:>8.0f}% {got['median_size']:>7} "
-            f"{got['topics_per_doc']:>10.2f} {stable:>10}",
+            f"{got['topics_per_doc']:>10.2f} "
+            f"{_pct(got['stability_hdbscan_only']):>6} "
+            f"{_pct(got['stability_full_refit']):>6}",
             flush=True,
         )
 

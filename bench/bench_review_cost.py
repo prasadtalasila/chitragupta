@@ -94,6 +94,53 @@ def word_count(path: Path) -> int:
     return len(path.read_text(encoding="utf-8", errors="replace").split())
 
 
+def entailment_pairs(draft: Path) -> dict:
+    """How much work `support` will actually do on this draft.
+
+    Not the citation count, which is what `docs/PERFORMANCE.md` used to
+    say to estimate from. `claim_support._score_claim` scores **one
+    (passage, claim) pair per quotable passage of the cited source**, for
+    every citation, so the model work is
+
+        sum over citations of |premise passages of that citation's source|
+
+    and the second factor is set by how finely the parse segmented the
+    corpus, which no draft controls. Recorded here because without it a
+    row that got slower is unattributable: "more citations" and "more
+    work per citation" look identical in a milliseconds column, and that
+    ambiguity is what made issue #693 a diagnosis rather than a reading.
+
+    Reuses `claim_support._quotable`, deliberately, rather than
+    re-deriving which passages count -- the aid's premise filter (which
+    drops section headings, #719) has to move this number when it
+    changes, or the benchmark would report work the aid no longer does.
+    """
+    from chitragupta import ledger
+    from chitragupta.passages import source_passages
+    from chitragupta.review import citation_provenance
+    from chitragupta.review.claim_support import _quotable
+
+    text = draft.read_text(encoding="utf-8", errors="replace")
+    cache: dict = {}
+    citations = pairs = unscoreable = 0
+    with ledger.connection() as con:
+        for _line, citekey, _claim in citation_provenance.claims(text):
+            citations += 1
+            if citekey not in cache:
+                cache[citekey] = len(_quotable(source_passages(con, citekey)[0]))
+            if cache[citekey]:
+                pairs += cache[citekey]
+            else:
+                unscoreable += 1
+    scored = citations - unscoreable
+    return {
+        "citations": citations,
+        "unscoreable_citations": unscoreable,
+        "pairs": pairs,
+        "pairs_per_scored_citation": round(pairs / scored, 1) if scored else None,
+    }
+
+
 def has_dossier(draft: Path) -> bool:
     """Whether this draft has the dossier `verbatim`'s tier 3 needs --
     the column docs/PERFORMANCE.md prints beside the word count, because
@@ -140,6 +187,24 @@ def self_check() -> None:
     assert median_ms([]) is None, "an aid that never ran must report no time at all"
     assert median_ms([None, None]) is None, "refusals are not timings"
 
+    # The pair count is the other number this script now publishes, and
+    # the failure it guards is the one #693 turned on: a row whose cost
+    # doubled while its citation count held still. If the pair column
+    # tracked citations rather than premises, the two would be
+    # indistinguishable again and the column would be decoration.
+    from chitragupta.passages import Passage
+    from chitragupta.review.claim_support import _quotable
+
+    prose = Passage(page=1, words=set(), text="a real sentence")
+    assert _quotable([prose]) == [prose], "a prose passage is not being counted as a premise"
+    heading = Passage(page=1, words=set(), text="1. Introduction", label="section_header")
+    assert _quotable([heading]) == [], (
+        "a section heading counts as a premise here but not in the aid, so this "
+        "column would report work `review support` does not do"
+    )
+    unreadable = Passage(page=1, words=set(), text=None)
+    assert _quotable([unreadable]) == [], "a page-level passage is not a premise"
+
 
 def _print_table(rows: list) -> None:
     header = f"{'words':>6} {'dossier':>7} " + " ".join(f"{a[:9]:>9}" for a in DRAFT_AIDS)
@@ -170,8 +235,16 @@ def main(argv=None):
             "draft": relative,
             "words": word_count(draft),
             "dossier": has_dossier(draft),
+            "support_work": entailment_pairs(draft),
             "aids": {},
         }
+        work = row["support_work"]
+        print(
+            f"  {relative.split('/')[-1]:34} {'support work':11} "
+            f"{work['citations']} citations, {work['pairs']} entailment pairs "
+            f"({work['pairs_per_scored_citation']}/citation)",
+            flush=True,
+        )
         for aid in DRAFT_AIDS:
             row["aids"][aid] = time_aid(aid, draft, args.repeats)
             cell = row["aids"][aid]
