@@ -95,9 +95,10 @@ cluster that share no papers are a literature that has not met itself:
 the observation a survey wants to open with. The panel names the
 inflation it used; the
 [plain-terms section](TOPIC-DISCOVERY.md#-in-plain-terms-the-two-families-and-the-inflation-dial)
-explains what moving it means. Note that the grid recomputes when the
-button is clicked, not live as the slider moves (issue
-[#703](https://github.com/prasadtalasila/chitragupta/issues/703)).
+explains what moving it means. While the grid is showing, releasing the
+slider re-clusters both families at the new inflation -- on release
+rather than per tick, because MCL is a matrix multiplication per
+iteration over every topic.
 
 **Terminal:** none yet --
 [TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
