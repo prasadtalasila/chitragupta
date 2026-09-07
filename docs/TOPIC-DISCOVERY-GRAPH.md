@@ -663,14 +663,17 @@ const path = d.pathTo(cy.$id(b));
 
 ### 7.7 Explain an absence
 
-> **Shipped** (#675), without the `edges_withheld` field this section
-> proposes: each topic's `members` and `n_docs` are already in the
-> payload, which is every input the hypergeometric takes, so the browser
-> recomputes the tail for the pair the reader pinned.
-> `tests/webapp/hypergeometric_cases.js` is the contract that keeps it
-> agreeing with `enrich/topic_graph.py` -- scipy's own answers, checked
-> from both runtimes. The faint dotted layer of withheld pairs is not
-> built.
+> **Shipped** (#675), originally without the `edges_withheld` field
+> this section proposes -- the browser recomputed the tail from each
+> topic's `members` and `n_docs`. #710 then stored the field: the stage
+> writes its refusals (`{a, b, shared, p_value}`, bounded to pairs
+> sharing a paper) beside the edges it drew, the payload forwards them,
+> and both `absence.js` and `discover --why` prefer the stored p,
+> recomputing only for an artefact from an older run.
+> `tests/webapp/hypergeometric_cases.js` remains the contract that
+> keeps that fallback agreeing with `enrich/topic_graph.py` -- scipy's
+> own answers, checked from three runtimes. The faint dotted layer of
+> withheld pairs is not built.
 
 The most instructive moment in the documented worked session is the
 hypergeometric gate computing p = 1.0 and withholding an edge between two topics

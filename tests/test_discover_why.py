@@ -139,6 +139,34 @@ class TestExplain:
         assert "chance does not readily explain" in prose
         assert "disagrees with itself" in prose
 
+    def test_a_stored_withheld_row_is_preferred_over_recomputing(self):
+        """#710 stores the gate's refusals; a deliberately-off p proves
+        the number is read from the artefact, not recomputed -- the same
+        rule absence.js follows."""
+        graph = dict(WHY_GRAPH) | {
+            "edges_withheld": [
+                {
+                    "a": "machine learning",
+                    "b": "digital twin",
+                    "shared": ["p2"],
+                    "p_value": 0.42,
+                }
+            ]
+        }
+        data = _absence.explain(graph, WHY_TOPIC_SET, "digital twin", "machine learning")
+        assert data["p"] == 0.42
+        assert data["verdict"] == "withheld-chance"
+        # A pair the stored list does not name still recomputes: the
+        # only sharing pair here is dt/ml, so give the list a stray row
+        # to walk past and ask about the pair it does not hold.
+        stray = dict(WHY_GRAPH) | {
+            "edges_withheld": [
+                {"a": "formal methods", "b": "machine learning", "shared": ["p9"], "p_value": 0.9}
+            ]
+        }
+        data = _absence.explain(stray, WHY_TOPIC_SET, "digital twin", "machine learning")
+        assert data["p"] == 1.0
+
     def test_the_documented_default_covers_an_artefact_without_a_threshold(self):
         graph = {k: v for k, v in WHY_GRAPH.items() if k != "p_value"}
         data = _absence.explain(graph, WHY_TOPIC_SET, "digital twin", "machine learning")

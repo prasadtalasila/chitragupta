@@ -177,6 +177,8 @@ producing plausible-looking nonsense.
   "edges_overlap": [{"a": "...", "b": "...", "jaccard": 0.21,
                       "overlap_coeff": 0.83, "p_value": 0.0004,
                       "shared": ["citekey1", "citekey2"]}],
+  "edges_withheld": [{"a": "...", "b": "...", "p_value": 0.83,
+                       "shared": ["citekey3"]}],
   "edges_semantic": [{"a": "...", "b": "...", "similarity": 0.74,
                        "bridge": ["citekeyA", "citekeyB"]}],
   "hierarchy": [{"id": "node-0", "a": "...", "b": "...",
@@ -639,16 +641,18 @@ What the page adds over the static `--html` circle:
   real answer, and often the interesting one.
 - **It explains an absence.** Pin two topics with no edge between them
   and the app says why. If they share no papers, it says that plainly.
-  If they *do* share papers, it recomputes the same hypergeometric the
-  `topic-graph` stage used and reports the result in the reader's own
-  terms: *"These share `dt2022`, but sharing 1 paper between topics of
-  size 2 and 3 in a 4-paper corpus is what chance predicts (p = 1.00),
-  so no edge was drawn."* Nothing new is stored: each topic's members
-  and `n_docs` are already in the payload, which is every input the
-  test takes. Where the arithmetic says the overlap *was* surprising
-  and the graph still carries no edge, the page says so without blaming
-  the gate -- the stage's threshold is not in the payload, and a run
-  with a stricter cut-off is exactly what that looks like.
+  If they *do* share papers, it reads the stage's own refusal -- the
+  artefact stores `edges_withheld` beside the edges it drew (#710) --
+  and reports it in the reader's own terms: *"These share `dt2022`,
+  but sharing 1 paper between topics of size 2 and 3 in a 4-paper
+  corpus is what chance predicts (p = 1.00), so no edge was drawn."*
+  For a payload from an older run, without the field, it recomputes the
+  same hypergeometric from each topic's members and `n_docs`, pinned to
+  the stage by a shared case file. Where the arithmetic says the
+  overlap *was* surprising and the graph still carries no edge, the
+  page says so without blaming the gate -- the stage's threshold is not
+  in the payload, and a run with a stricter cut-off is exactly what
+  that looks like.
 - **The gate is visible on the edges that survived it.** Edge width has
   always meant strength; edge *opacity* now means surprise, so a more
   improbable overlap draws more solidly. Only on the solid family:
