@@ -280,14 +280,13 @@ def self_check() -> None:
     # bibliography finding on an otherwise complete parse must not wear
     # the same `!!` a lost document does, and a lost document must not
     # stop wearing it.
-    row = {"workers_resolved": 12, "startup_s": None}
-    assert "!!" not in _run_status({**row, "returncode": EXIT_BIB_INTEGRITY, "failed": 0}), (
+    assert "!!" not in _run_status({"returncode": EXIT_BIB_INTEGRITY, "failed": 0}), (
         "a 497-of-497 parse with one stale bib path still reads as a failed sweep row"
     )
-    assert "!!" in _run_status({**row, "returncode": 1, "failed": 1}), (
+    assert "!!" in _run_status({"returncode": 1, "failed": 1}), (
         "a run that lost a document no longer reads as a failure"
     )
-    assert _run_status({**row, "returncode": 0, "failed": 0}) == "", (
+    assert _run_status({"returncode": 0, "failed": 0}) == "", (
         "a wholly clean run has picked up a status note"
     )
 

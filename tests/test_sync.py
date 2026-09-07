@@ -806,7 +806,7 @@ class TestExitCodesAreDistinguishable:
     exit code could tell that row from one where documents were lost."""
 
     def test_a_parse_failure_outranks_a_bibliography_problem(
-        self, isolated_config, basic_corpus, monkeypatch, capsys
+        self, basic_corpus, monkeypatch, capsys
     ):
         """Both conditions at once must report the parse failure. A run
         that lost a document is the more actionable of the two, and
