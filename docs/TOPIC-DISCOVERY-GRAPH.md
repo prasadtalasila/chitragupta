@@ -779,27 +779,35 @@ all**.
 
 ## 12. Summary table
 
+> This is the *design* table, not a shipped-feature inventory -- filing
+> work from it without checking the app source repeats §11's mistake.
 > The **builder** rows are the ones section 2's decision did not take.
 > Of them, only "withheld-edge explanation" survives, recomputed in
 > the browser (section 7.7); brokerage and the MCL partitions survive
 > as view-derived numbers; MDS seed coordinates do not survive at all,
-> because `centroid` is not forwarded into the app payload.
+> because `centroid` is not forwarded into the app payload. The
+> **Shipped** column is what the app actually does today: collapse is
+> hand-rolled over a `collapsed` Set in `graph.js` (no
+> `cytoscape-expand-collapse` -- `vendor/` holds core cytoscape only),
+> the ungrouped view runs core `cose` rather than `cise`, and no
+> `location`/`hash` reference exists anywhere in `assets/webapp/`, so
+> nothing is shareable or bookmarkable.
 
-| Technique | Where it runs | New dependency | Answers |
-| --- | --- | --- | --- |
-| Concentric ego rings by hop | browser | none | what is next to this topic |
-| Dim-not-remove context | browser | none | where am I in the whole corpus |
-| Ego density, Burt brokerage | builder | none | is this a theme or a bridge |
-| Hierarchy cut slider | browser (stored tree) | none | what are the broad areas |
-| Compound parents + collapse | browser | expand-collapse | legibility at 50+ topics |
-| MCL per edge family | builder | none | candidate survey sections |
-| Overlap vs semantic disagreement | builder + browser | none | where the literature has not met itself |
-| `cise` layout | browser | cise, cose-base | cluster structure at a glance |
-| MDS seed coordinates | builder | none | a reproducible, meaningful layout |
-| Typed shortest path | browser | none | what connects A to B, and via which papers |
-| Withheld-edge explanation | builder + browser | none | why is there *no* edge here |
-| Papers as nodes | browser | none | which papers bridge which topics |
-| Hash-encoded view state | browser | none | shareable, bookmarkable views |
+| Technique | Where it runs | New dependency | Answers | Shipped |
+| --- | --- | --- | --- | --- |
+| Concentric ego rings by hop | browser | none | what is next to this topic | yes |
+| Dim-not-remove context | browser | none | where am I in the whole corpus | yes |
+| Ego density, Burt brokerage | builder | none | is this a theme or a bridge | as view-derived numbers |
+| Hierarchy cut slider | browser (stored tree) | none | what are the broad areas | yes |
+| Compound parents + collapse | browser | expand-collapse | legibility at 50+ topics | yes, hand-rolled, no extension |
+| MCL per edge family | builder | none | candidate survey sections | as view-derived numbers |
+| Overlap vs semantic disagreement | builder + browser | none | where the literature has not met itself | as view-derived numbers |
+| `cise` layout | browser | cise, cose-base | cluster structure at a glance | no -- core `cose` instead |
+| MDS seed coordinates | builder | none | a reproducible, meaningful layout | no |
+| Typed shortest path | browser | none | what connects A to B, and via which papers | yes |
+| Withheld-edge explanation | builder + browser | none | why is there *no* edge here | yes, recomputed in-browser (§7.7) |
+| Papers as nodes | browser | none | which papers bridge which topics | yes |
+| Hash-encoded view state | browser | none | shareable, bookmarkable views | no |
 
 ---
 
@@ -928,13 +936,19 @@ builder makes Python the place they run. The answer splits cleanly
 along the computation/rendering line, and the app's own code has
 already drawn it.
 
-**Computation: yes, trivially -- because nothing uses cytoscape's
-algorithms today.** Despite section 2's inventory of the library,
-`families.js`, `ego.js` and `absence.js` ship their own MCL, Dijkstra,
-BFS and hypergeometric tail, written out precisely so they run under
-`node --test` with no canvas. Cytoscape.js is used purely as the
-interactive renderer. So a builder-side consolidation takes nothing
-away from the app that the app actually uses. On the Python side:
+**Computation: yes, trivially -- because almost nothing uses
+cytoscape's algorithms today.** Despite section 2's inventory of the
+library, `families.js`, `ego.js` and `absence.js` ship their own MCL,
+Dijkstra, BFS and hypergeometric tail, written out precisely so they
+run under `node --test` with no canvas. Exactly two cytoscape
+algorithms are live, both in `app.js`: the `cose` force layout that
+places the ungrouped view (the grouped and ego regimes are `preset`
+over positions `graph.js`/`ego.js` compute), and `closedNeighborhood()`
+for the hover highlight -- which runs over the currently *drawn*
+elements, bundles and paper diamonds included, so it is rendering-side
+by nature and stays. So a builder-side consolidation takes nothing
+away from the app that the app actually uses for analysis. On the
+Python side:
 
 - `networkx` covers PageRank, betweenness, and -- directly -- Burt's
   `effective_size` and `constraint`, plus ego-subgraph density.
@@ -958,8 +972,9 @@ offline, interactive, `file://`-forever canvas -- compound nodes,
 expand/collapse, hover, chips -- is exactly the part cytoscape.js
 exists for, and the static `--html` circle does not use cytoscape at
 all. Consolidation would empty cytoscape's algorithms role, which is
-already empty, and leave its rendering role, which nothing in Python
-replaces.
+already nearly empty (the `cose` layout above is the one removable
+occupant -- precomputed coordinates would retire it), and leave its
+rendering role, which nothing in Python replaces.
 
 ---
 
