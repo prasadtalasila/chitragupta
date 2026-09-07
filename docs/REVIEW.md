@@ -310,10 +310,18 @@ in 35.7 s, the 10,003-word chapter cites 40 and takes 41.0 s, roughly
 **1.0--1.5 s per distinct citekey**
 ([PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md)). `support` scores every
 *citation*, not every source -- two citations of the same paper are two
-entailment calls, not one -- so its cost tracks citation count instead:
-835--962 ms per citation on the four larger drafts, rising to 1.5 s on
-the smallest (11 citekeys, 23 citations), where a largely fixed
+entailment calls, not one -- and on the corpus of 2026-08-27 that came
+to 835--962 ms per citation on the four larger drafts, rising to 1.5 s
+on the smallest (11 citekeys, 23 citations), where a largely fixed
 model-load cost is spread over the fewest calls.
+
+**That per-citation figure does not travel between corpora**, and a
+2026-09-04 re-timing is why: `support` scores one entailment pair per
+quotable passage of the cited source, so a finer re-parse of the same
+PDFs raised its cost by 65--95% with no draft, citation or line of this
+layer changed. Estimate it from the pair count --
+[PERFORMANCE.md](PERFORMANCE.md)'s "What `support`'s cost actually
+tracks" has the measurement.
 
 **Two rows are not what they look like.** `quotation` returns in ~90 ms
 because no dossier on this machine carries a `quote:` line, so its input
