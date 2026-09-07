@@ -185,7 +185,7 @@ map in one place:
 | the interactive app | `chitragupta corpus discover --app topicapp/` |
 | any of the above, machine-readable | add `--json` |
 
-The clustering, brokerage and path views have no terminal
+The clustering and path views have no terminal
 equivalent today;
 [TOPIC-DISCOVERY-GRAPH.md §13](TOPIC-DISCOVERY-GRAPH.md#13-the-app-and-the-terminal-the-capability-gap-and-two-ways-to-close-it)
 is the record of that gap and of the two candidate ways to close it.

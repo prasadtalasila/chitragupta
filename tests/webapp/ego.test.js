@@ -561,3 +561,53 @@ test("every shared hop case matches the browser's own walk", () => {
     assert.deepEqual({ ...via }, row.expected_via, row.name);
   });
 });
+// ---------- the cross-runtime brokerage contract (#713) ----------
+
+/* brokerage_cases.json holds egoStats and the builder's networkx twin
+   (chitragupta/enrich/topic_brokerage.py) to the same answers: this
+   block asserts the browser side, tests/test_enrich_topic_brokerage.py
+   the Python side. */
+const BROKERAGE_CASES = require("./brokerage_cases.json").cases;
+
+function caseData(row) {
+  return {
+    topics: row.labels.map((label) => ({ label, members: [] })),
+    edges_overlap: row.edges.overlap,
+    edges_semantic: row.edges.semantic,
+  };
+}
+
+test("every shared brokerage case matches the browser's own arithmetic", () => {
+  assert.ok(BROKERAGE_CASES.length >= 3, "the table is read at all");
+  BROKERAGE_CASES.forEach((row) => {
+    ["overlap", "semantic"].forEach((family) => {
+      const got = ego.egoStats(caseData(row), row.ego, family);
+      const want = row.expected[family];
+      assert.equal(got.alters, want.degree, row.name + " " + family);
+      assert.equal(got.density, want.ego_density, row.name + " " + family);
+      assert.equal(Number(got.effectiveSize.toFixed(6)), want.effective_size,
+        row.name + " " + family);
+      const constraint = got.constraint === null
+        ? null : Number(got.constraint.toFixed(6));
+      assert.equal(constraint, want.constraint, row.name + " " + family);
+    });
+  });
+});
+
+test("stored analysis is preferred, and its absence falls back with a flag", () => {
+  const row = BROKERAGE_CASES[0];
+  const data = caseData(row);
+  const topic = {
+    label: row.ego,
+    analysis: {
+      overlap: { degree: 9, ego_density: 0.5, effective_size: 4.2, constraint: 0.1 },
+    },
+  };
+  const stored = ego.statsFor(data, topic, "overlap");
+  assert.deepEqual(stored, {
+    alters: 9, density: 0.5, effectiveSize: 4.2, constraint: 0.1, stored: true,
+  });
+  const fallback = ego.statsFor(data, { label: row.ego }, "overlap");
+  assert.equal(fallback.stored, false);
+  assert.equal(fallback.alters, row.expected.overlap.degree);
+});

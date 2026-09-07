@@ -41,6 +41,7 @@ import json
 
 from chitragupta import config
 from chitragupta.enrich import doc_vectors, embed_index
+from chitragupta.enrich.topic_brokerage import brokerage
 
 
 def _overlap_scan(members: dict, n_docs: int, p_value: float) -> "tuple[list, list]":
@@ -220,6 +221,13 @@ def build(topic_set: dict, vectors: dict, p_value: float, neighbors: int) -> dic
             centroids.append(centroid)
 
     edges_overlap, edges_withheld = _overlap_scan(members, topic_set["n_docs"], p_value)
+    edges_sem = semantic_edges(
+        {label: member_vectors[label] for label in member_vectors if member_vectors[label]},
+        neighbors,
+    )
+    analysis = brokerage([n["label"] for n in nodes], edges_overlap, edges_sem)
+    for node in nodes:
+        node["analysis"] = analysis[node["label"]]
     return {
         "model": config.EMBEDDING_MODEL,
         "n_docs": topic_set["n_docs"],

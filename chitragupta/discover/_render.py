@@ -104,6 +104,10 @@ def build_topic(label: str, graph: dict, topic_set: dict, terms: dict) -> dict:
             for m in members
         ],
         "linked": _linked(graph, label),
+        # Stored brokerage (#713): the same four numbers the app panel
+        # shows, read from the artefact. Absent for an older artefact,
+        # and then absent here too -- this view recomputes nothing.
+        **({"brokerage": node["analysis"]} if "analysis" in node else {}),
     }
 
 
@@ -133,11 +137,39 @@ def render_topic(data: dict) -> str:
         )
     if not data["linked"]["overlap"] and not data["linked"]["semantic"]:
         lines.append("  none above the graph's floors")
+    if data.get("brokerage"):
+        lines += ["", "brokerage (from the artefact):"]
+        for family, title in (
+            ("overlap", "over shared papers"),
+            ("semantic", "over semantic nearness"),
+        ):
+            lines.append(f"  {title}: {_brokerage_line(data['brokerage'][family])}")
     if data.get("neighbourhood"):
         lines += ["", "neighbourhood, ranked by topology (the phrase matched several topics):"]
         for node in data["neighbourhood"]:
             lines.append(f"  [{node['score']:.2f}] {node['label']}")
     return "\n".join(lines)
+
+
+def _brokerage_line(stats: dict) -> str:
+    """One family's four numbers with the panel's own reading -- theme,
+    bridge, or too small to say -- so the terminal and the app teach the
+    same interpretation (panel.js statsColumn)."""
+    if not stats["degree"]:
+        return "no neighbours in this family"
+    reading = (
+        "one neighbour"
+        if stats["ego_density"] is None
+        else "reads as a theme: its neighbours mostly connect"
+        if stats["ego_density"] >= 0.5
+        else "reads as a bridge: its neighbours mostly do not connect"
+    )
+    density = "—" if stats["ego_density"] is None else f"{stats['ego_density']:.2f}"
+    return (
+        f"{stats['degree']} neighbours, density {density}, "
+        f"effective size {stats['effective_size']:.2f}, "
+        f"constraint {stats['constraint']:.2f} — {reading}"
+    )
 
 
 def build_paper(citekey: str, topic_set: dict) -> "dict | None":

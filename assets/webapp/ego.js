@@ -180,6 +180,29 @@
     };
   }
 
+  /* Stored brokerage when the artefact carries it (#713): the same
+     four numbers, computed once in the builder and confirmed by
+     `--json`, so the panel quotes the corpus rather than the view.
+     egoStats stays as the in-browser fallback for a payload from an
+     older run -- tests/webapp/brokerage_cases.json holds the two
+     implementations to the same answers. The `stored` flag rides along
+     so the caption can say which one the reader is looking at. */
+  function statsFor(data, topic, family) {
+    var held = (topic.analysis || {})[family];
+    if (held) {
+      return {
+        alters: held.degree,
+        density: held.ego_density,
+        effectiveSize: held.effective_size,
+        constraint: held.constraint,
+        stored: true,
+      };
+    }
+    var stats = egoStats(data, topic.label, family);
+    stats.stored = false;
+    return stats;
+  }
+
   /* Concentric rings by hop distance: the pinned set at the centre,
      hop 1 round it, hop 2 outside that. Deterministic, no physics --
      the extension of the argument the static page already makes for
@@ -299,6 +322,7 @@
     withinHops: withinHops,
     reachedVia: reachedVia,
     egoStats: egoStats,
+    statsFor: statsFor,
     ringPositions: ringPositions,
     contextRing: contextRing,
   };

@@ -173,7 +173,11 @@ producing plausible-looking nonsense.
   "p_value": 0.01, "neighbors": 5,
   "corpus_mean": [0.0],
   "topics": [{"label": "digital twin", "provenance": "seed",
-               "size": 12, "centroid": [0.0]}],
+               "size": 12, "centroid": [0.0],
+               "analysis": {"overlap": {"degree": 4, "ego_density": 0.33,
+                                         "effective_size": 2.7,
+                                         "constraint": 0.41},
+                             "semantic": {"...": "same shape"}}}],
   "edges_overlap": [{"a": "...", "b": "...", "jaccard": 0.21,
                       "overlap_coeff": 0.83, "p_value": 0.0004,
                       "shared": ["citekey1", "citekey2"]}],
@@ -587,9 +591,14 @@ What the page adds over the static `--html` circle:
   touch each other is a broker, and a broker is where a survey section
   earns its keep. A topic that brokers over shared papers but not over
   vocabulary is a methods topic; the reverse is usually a terminology
-  split worth naming in the draft. These are the app's own arithmetic
-  over the current view, computed in the browser and labelled as such;
-  `--json` reports none of them.
+  split worth naming in the draft. Since #713 these four numbers are
+  computed once in the builder (networkx's weighted `effective_size`
+  and `constraint`, verified equal to the browser's own arithmetic and
+  pinned to it by `tests/webapp/brokerage_cases.json`), stored in each
+  topic's `analysis`, and read by the panel and the terminal topic view
+  alike -- `--json` confirms every number shown. The in-browser
+  arithmetic stays only as the fallback for an export from an older
+  artefact, and the panel's caption says which one it is showing.
 - **Provenance is visible.** Node colour distinguishes a hand-written
   seed phrase, a machine-extracted keyword phrase
   (`content/keywords.toml`), a phrase both files name, and an emergent
