@@ -182,7 +182,8 @@ nav:
       - TikZ figure style: docs/TIKZ-STYLE.md
   - Discovery:
       - Topic discovery: docs/TOPIC-DISCOVERY.md
-      - Exploring the graph, view by view: docs/TOPIC-EXPLORATION.md
+      - Explore the graph, CLI: docs/EXPLORE-CLI.md
+      - Explore the graph, Web: docs/EXPLORE-WEB.md
       - Topic graph, improving it: docs/TOPIC-DISCOVERY-GRAPH.md
   - Understanding the system:
       - Why this exists: SOUL.md
