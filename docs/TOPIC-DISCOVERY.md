@@ -621,10 +621,14 @@ What the page adds over the static `--html` circle:
   paper-sharing clusters against 39 semantic ones.
 
   Never one clustering over a merged graph: fusing the families
-  destroys the disagreement that is the whole point. And never stored --
-  a partition is exactly the kind of claim `docs/TOPIC-DISCOVERY-GRAPH.md`
-  §2 keeps out of the artefact, which is why it is computed in the
-  browser, labelled as the view's own, and written back nowhere.
+  destroys the disagreement that is the whole point. And not stored
+  today -- a partition is the kind of claim `docs/TOPIC-DISCOVERY-GRAPH.md`
+  §2 originally kept out of the artefact wholesale, which is why it is
+  computed in the browser, labelled as the view's own, and written back
+  nowhere. §2's #707 amendment now permits storing it, under conditions
+  (deterministic over stored data, parameters recorded, every runtime
+  pinned by shared test vectors); until the PR that does so lands, the
+  in-browser computation above is what ships.
 - **It walks each family between two pinned topics.** Two buttons --
   "path over shared papers" and "path over semantic nearness" -- never
   one fused weight, because a single distance over both families is a
