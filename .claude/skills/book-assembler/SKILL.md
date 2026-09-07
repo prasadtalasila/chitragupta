@@ -55,6 +55,7 @@ The document skeleton, in order:
 \usepackage[T1]{fontenc}\usepackage{lmodern}\usepackage{textcomp}
 \usepackage[a4paper,margin=80pt]{geometry}   % see "Margins" below
 \usepackage{longtable,booktabs,array,calc}   % what the converted units use
+\setlength{\LTcapwidth}{\textwidth}          % see "Table captions" below
 \usepackage{graphicx}
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
@@ -110,6 +111,17 @@ reported as `chitragupta.WideCodeLine`
 ([docs/WRITING-STANDARDS.md](../../../docs/WRITING-STANDARDS.md) §14);
 shortening it avoids the marker, and this load is what stops it
 overflowing when nobody does.
+
+**Table captions: `\LTcapwidth`, for the same `--fragment` reason.**
+`longtable.sty` initialises that register to a hardcoded **4in** rather
+than to anything derived from the page, and pandoc writes every
+Markdown table as a `longtable` -- so a caption wraps inside the middle
+half of a 80pt-margin line while the prose around it runs the full
+`\textwidth`. `draft render` sets it for a standalone draft; a unit
+converted `--fragment` has no preamble for that to land in, so the book
+sets it here. Unguarded, unlike the render's own `\ifdefined` form: the
+line above it loads `longtable` unconditionally, so the register always
+exists by this point.
 
 **The book must supply pandoc's citeproc macros, in their own file.** A
 converted unit uses the `CSLReferences` environment, which `--standalone`

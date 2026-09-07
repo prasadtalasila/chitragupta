@@ -21,7 +21,12 @@ from tests.conftest import (
     MARKED_INPUT,
     figure_pair,
 )
-from tests.conftest import pandoc_available, pdflatex_available, tikz_available
+from tests.conftest import (
+    pandoc_available,
+    pdflatex_available,
+    pdftotext_available,
+    tikz_available,
+)
 
 
 class TestRunPandoc:
@@ -894,6 +899,60 @@ class TestWideCodeBlockRenderReal:
         # a single wide line in an otherwise empty document, so there is
         # nothing else that could report a box.
         assert "Overfull \\hbox" not in compiled.stdout
+
+
+class TestWideTableCaptionRenderReal:
+    """`\\LTcapwidth`, end to end against a real `pdflatex` and measured on
+    the page rather than in the `.tex`. `longtable.sty` initialises that
+    register to a hardcoded 4in, so before this fix a table caption wrapped
+    inside the middle two-thirds of the line while the prose around it ran
+    the full 6.27in `\\textwidth` -- a difference no assertion over the
+    emitted LaTeX can see, because the `\\caption{}` is identical either
+    way."""
+
+    # One long caption and nothing else, so every wide line pdftotext
+    # reports belongs to it. At 12pt, 4in holds roughly 55 characters and
+    # `\textwidth` roughly 86, so the bar below sits between the two by a
+    # wide enough margin to survive a different font metric.
+    _CAPTION = (
+        "A rather long caption that should really span the whole width of the "
+        "text block on the page, not merely the four inches longtable defaults to."
+    )
+    _TABLE = (
+        "| Starting point | Core idea |\n"
+        "|---|---|\n"
+        "| DTaaS | One tenant-facing platform |\n"
+        "\n"
+        f": {_CAPTION}\n"
+        "<!-- table: start-here -->\n"
+    )
+
+    @pytest.mark.skipif(
+        not (pandoc_available and pdflatex_available and pdftotext_available),
+        reason="pandoc/pdflatex/pdftotext not installed",
+    )
+    def test_a_long_table_caption_wraps_at_the_text_width(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft_dir = tmp_path / "content" / "drafts" / "dt"
+        draft_dir.mkdir(parents=True)
+        draft = draft_dir / "survey.md"
+        draft.write_text(f"# Title\n\n{self._TABLE}")
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        monkeypatch.chdir(elsewhere)
+
+        out_path = render_output.render(str(draft), output_format="pdf")
+
+        text = subprocess.run(
+            ["pdftotext", "-layout", str(out_path), "-"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        widest = max(len(line.strip()) for line in text.splitlines())
+        assert widest > 70, text
 
 
 class TestCaptionedFigureRenderReal:

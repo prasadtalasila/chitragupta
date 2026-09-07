@@ -16,6 +16,32 @@ from pathlib import Path
 from chitragupta import config
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._tables import _LATEX_BOUND
+
+# What a table's caption is allowed to be as wide as. pandoc writes every
+# Markdown table as a `longtable`, and `longtable.sty` sets its captions
+# in a `\parbox` of `\LTcapwidth`, which it initialises to a hardcoded
+# **4in** -- not `\textwidth`, and not anything derived from the page. So
+# at this project's own geometry (a4, `margin=1in`, so a 6.27in
+# `\textwidth`) every table caption wrapped inside the middle two-thirds
+# of the line while the prose around it ran the full width. Measured on a
+# real `pdflatex` run, not inferred: one 150-character caption set as
+# three lines before this and two after.
+#
+# Guarded with `\ifdefined` rather than made conditional on the draft
+# having a table, because pandoc's own LaTeX template only loads
+# `longtable` when the document has one (`$if(tables)$`) -- so the
+# register does not exist in a table-free draft, and an unguarded
+# `\setlength` would turn every such render into an `Undefined control
+# sequence`. `header-includes` is emitted after that package load, which
+# is what makes the guard read the right answer.
+#
+# LaTeX-bound formats only: pandoc's HTML template interpolates
+# `header-includes` into `<head>` verbatim, so an unconditional one would
+# put a `\setlength` in an HTML document.
+_LONGTABLE_CAPTION_WIDTH = (
+    r"header-includes=\ifdefined\LTcapwidth\setlength{\LTcapwidth}{\textwidth}\fi"
+)
 
 
 def _render_csl(  # pragma: no cover-windows
@@ -166,6 +192,8 @@ def _pandoc_command(
             r"\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}"
             r"\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}",
         ]
+    if output_format in _LATEX_BOUND:  # pragma: no cover-windows
+        cmd += ["--variable", _LONGTABLE_CAPTION_WIDTH]
     env = None
     if output_format == "pdf":  # pragma: no cover-windows
         cmd += ["--pdf-engine", "pdflatex"]
