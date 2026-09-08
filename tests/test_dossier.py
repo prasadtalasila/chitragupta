@@ -3582,6 +3582,59 @@ class TestDraftStaleness:
         assert report.desynced_math == []
 
 
+class TestRecordedButUncited:
+    """The stamp-independent half of the same question `staleness`'s
+    `orphaned_evidence` answers -- see issue #701. Computed without a
+    baseline, and over `sections.md` as well as `evidence.md`, because
+    the review agenda has to report this on a dossier nobody stamped.
+    """
+
+    def test_an_unstamped_dossier_still_reports(self, draft):
+        """The whole point of the new function: `staleness` returns
+        nothing at all without a prior `dossier stamp`, so a draft
+        written before stamping existed can never answer this."""
+        target = _fill_dossier(draft, evidence=_TWO_BLOCKS)
+        assert _draft_fingerprint.recorded_draft_digest(target) is None
+        assert _draft_fingerprint.staleness(draft).orphaned_evidence == []
+        found = _draft_fingerprint.recorded_but_uncited(draft)
+        assert found == {
+            "ferko_architecting_2022": ["evidence"],
+            "talasila_composable_2025": ["evidence"],
+        }
+
+    def test_a_cited_citekey_is_not_reported(self, draft):
+        _fill_dossier(draft, evidence=_TWO_BLOCKS)
+        draft.write_text(
+            draft.read_text(encoding="utf-8") + "\n[@ferko_architecting_2022]\n",
+            encoding="utf-8",
+        )
+        found = _draft_fingerprint.recorded_but_uncited(draft)
+        assert "ferko_architecting_2022" not in found
+        assert found["talasila_composable_2025"] == ["evidence"]
+
+    def test_a_sections_row_is_reported_too(self, draft):
+        """Sub-defect 1: `staleness` differences `evidence.md` alone, so
+        a citekey surviving only in a `sections.md` row went unreported
+        on every surface."""
+        _fill_dossier(draft, sections_rows="| 1. First | `ferko_architecting_2022` |\n")
+        assert _draft_fingerprint.recorded_but_uncited(draft) == {
+            "ferko_architecting_2022": ["sections"]
+        }
+
+    def test_both_surfaces_are_named_for_one_citekey(self, draft):
+        _fill_dossier(
+            draft,
+            evidence=_TWO_BLOCKS,
+            sections_rows="| 1. First | `ferko_architecting_2022` |\n",
+        )
+        found = _draft_fingerprint.recorded_but_uncited(draft)
+        assert found["ferko_architecting_2022"] == ["evidence", "sections"]
+
+    def test_a_dossier_recording_nothing_reports_nothing(self, draft):
+        dossier.init(draft, "survey")
+        assert _draft_fingerprint.recorded_but_uncited(draft) == {}
+
+
 class TestStatusLines:
     def test_never_recorded(self, draft):
         dossier.init(draft, "survey")
