@@ -101,6 +101,10 @@ it finds.
 - the eight aids' `.json` for this draft -- each optional, and skipped
   with a note when absent;
 - `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys and candidates;
+- `recorded_but_uncited(draft)`, for the citekeys the dossier still
+  records and the draft no longer cites -- read without a `dossier
+  stamp` baseline, deliberately, so an unstamped dossier still reports
+  the state;
 - `rejected.md` -- a candidate already turned down with a reason is never
   re-proposed;
 - `sections.md`, so every item carries a section anchor.
@@ -124,6 +128,7 @@ bucket within a class, then position in the draft.
 | Class | Source | Kind | Unattended? |
 | --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
+| `recorded-but-uncited` | dossier | `missing-citekey` in the other direction -- `evidence.md` or `sections.md` still records a citekey the draft's text no longer cites | no -- surfaced. `recorded - cited` cannot tell a citation the user deleted from a candidate transcribed and never cited, and the two want opposite repairs, so deleting recorded evidence unattended would trade a cosmetic staleness for a real loss. The repair is `dossier prune`, which a person confirms. Computed without a `dossier stamp` baseline, unlike `status`'s own report of the same state |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human. Built: `agenda-reviser` |
 | `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the whole class -- a recorded decision. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |

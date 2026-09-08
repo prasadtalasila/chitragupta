@@ -1,21 +1,23 @@
-"""Reads the ten inputs `agenda` merges, each degrading to "absent"
+"""Reads the eleven inputs `agenda` merges, each degrading to "absent"
 rather than raising -- the same posture every review aid already keeps
 towards an optional input.
 
 Eight are on-disk artefacts: the other aids' own `<stem>.<aid>.json`,
 written by an earlier `--json`/`--write` run and read here, never
-recomputed. Two have no on-disk artefact at all and are computed
+recomputed. Three have no on-disk artefact at all and are computed
 in-process instead: `style_check.check()` (the `prose` class; nothing
 ever calls `review.write_json` for it, since it is a drafting-layer
-command, not a review aid) and `dossier.drift()` (the `missing-citekey`
-and `candidate` classes).
+command, not a review aid), `dossier.drift()` (the `missing-citekey`
+and `candidate` classes) and `recorded_but_uncited()` (the
+`recorded-but-uncited` class).
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import dossier, review, style_check
+from chitragupta.dossier._draft_fingerprint import recorded_but_uncited
 from chitragupta.dossier._drift import Drift
 
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
@@ -106,10 +108,31 @@ class DriftSource:
 
 
 @dataclass
+class RecordedSource:
+    """The dossier's recorded-but-uncited citekeys (#701).
+
+    Separate from `DriftSource` although both come from the dossier,
+    because they answer different questions and one of them needs no
+    ledger: drift asks "has the *corpus* moved under this dossier?",
+    this asks "does the *draft text* still cite what the dossier
+    records?". Folding it into `Drift` would have made a finding about
+    the draft depend on a corpus read it does not need.
+
+    `available=False` covers the same two states `DriftSource`'s does
+    -- not under `content/drafts/`, or no dossier -- and for the same
+    reason: a reduced source set, not a refusal.
+    """
+
+    available: bool = False
+    data: dict[str, list[str]] = field(default_factory=dict)
+
+
+@dataclass
 class Sources:
     aids: dict[str, AidSource]
     style: StyleSource
     drift: DriftSource
+    recorded: RecordedSource
 
 
 def _read_aid_json(draft: Path, aid: str) -> AidSource:
@@ -147,6 +170,16 @@ def _read_drift(draft: Path) -> DriftSource:
     return DriftSource(available=True, corpus_available=report.corpus_available, data=report)
 
 
+def _read_recorded(draft: Path) -> RecordedSource:
+    try:
+        directory = dossier.dossier_dir(draft)
+    except dossier.DossierError:
+        return RecordedSource()
+    if not directory.is_dir():
+        return RecordedSource()
+    return RecordedSource(available=True, data=recorded_but_uncited(draft))
+
+
 def collect(draft: Path) -> Sources:
     """Every input `agenda` reads for `draft`, each degraded rather than
     raised where it is absent."""
@@ -154,4 +187,5 @@ def collect(draft: Path) -> Sources:
         aids={aid: _read_aid_json(draft, aid) for aid in AID_NAMES},
         style=_read_style(draft),
         drift=_read_drift(draft),
+        recorded=_read_recorded(draft),
     )

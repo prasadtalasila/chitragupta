@@ -59,6 +59,16 @@ def _source_notes(agenda) -> list[str]:
         notes.append("- Dossier drift: read, but the corpus ledger is unavailable")
     else:
         notes.append("- Dossier drift: read")
+
+    # Named even when absent, like every source above: the header's job
+    # is to say what this run could and could not see, and a source
+    # silently missing from it reads as one that found nothing.
+    recorded = agenda.sources.recorded
+    notes.append(
+        "- Recorded-but-uncited citekeys: read"
+        if recorded.available
+        else "- Recorded-but-uncited citekeys: not available -- no dossier for this draft"
+    )
     return notes
 
 

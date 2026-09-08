@@ -1,8 +1,9 @@
-"""`Item`, the worklist-entry type, plus the two drift-based extractors
-(`missing-citekey`, `candidate`) and the `all_items` orchestrator. The
-other seven classes' extractors -- reading the other aids' `.json` and
-`style_check`'s findings -- are `_items_findings.py`, split out once the
-two halves together crossed the 250-code-line cap.
+"""`Item`, the worklist-entry type, plus the three dossier-based
+extractors (`missing-citekey`, `recorded-but-uncited`, `candidate`) and
+the `all_items` orchestrator. The other seven classes' extractors --
+reading the other aids' `.json` and `style_check`'s findings -- are
+`_items_findings.py`, split out once the two halves together crossed
+the 250-code-line cap.
 """
 
 from dataclasses import dataclass, field
@@ -10,10 +11,12 @@ from dataclasses import dataclass, field
 from chitragupta.dossier._drift import Drift
 from chitragupta.dossier._sections import Section
 from chitragupta.review.agenda._identity import item_id
+from chitragupta.review.agenda._sources import RecordedSource
 
 # The item-class table's own order (docs/AUTO-IMPROVEMENT.md).
 CLASSES = (
     "missing-citekey",
+    "recorded-but-uncited",
     "verbatim-run",
     "prose",
     "unsupported-claim",
@@ -62,6 +65,46 @@ def missing_citekey_items(drift: Drift | None) -> list[Item]:
     return items
 
 
+def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
+    """One item per citekey the dossier records and the draft no longer
+    cites -- `missing-citekey` read in the other direction (#701).
+
+    **Surfaced, never unattended**, and the reason is a limit on what
+    the data can say rather than caution: `recorded - cited` cannot
+    distinguish "the user deleted this citation" from "a candidate was
+    transcribed into `evidence.md` and never cited in the first place".
+    The first wants the block removed, the second wants it left exactly
+    where it is. Deleting recorded evidence unattended would trade a
+    cosmetic staleness for a real loss, so the repair is
+    `dossier prune`, which a person confirms.
+
+    Sits next to `missing_citekey_items` rather than in
+    `_items_findings.py` because it reads the dossier, not an aid's
+    `.json` -- the same split that module's docstring already draws.
+    """
+    items = []
+    for citekey, surfaces in sorted(source.data.items()):
+        items.append(
+            Item(
+                id=item_id("drift", "recorded-but-uncited", None, citekey, citekey),
+                cls="recorded-but-uncited",
+                section=None,
+                citekey=citekey,
+                line=None,
+                unattended=False,
+                # Suffixed per surface, not once after the join: two
+                # surfaces read "evidence, sections.md" that way, naming
+                # a file that does not exist and implying the first is
+                # something other than a file.
+                summary=f"`{citekey}` is recorded in "
+                f"{', '.join(f'{name}.md' for name in surfaces)} "
+                "but the draft no longer cites it",
+                detail={"surfaces": list(surfaces)},
+            )
+        )
+    return items
+
+
 def candidate_items(drift: Drift | None) -> list[Item]:
     """One item per paper the corpus gained that this draft's own
     recorded queries would surface. `drift.reconsider` never produces an
@@ -96,6 +139,7 @@ def all_items(sources, sections: list[Section]) -> list[Item]:
 
     return [
         *missing_citekey_items(sources.drift.data),
+        *recorded_but_uncited_items(sources.recorded),
         *f.verbatim_run_items(sources.aids["verbatim"], sections),
         *f.prose_items(sources.style, sections),
         *f.unsupported_claim_items(sources.aids["provenance"], sections),

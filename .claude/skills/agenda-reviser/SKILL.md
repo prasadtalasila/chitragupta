@@ -75,6 +75,7 @@ Three classes carry `unattended: true` on this checkout:
 | `verbatim-run`, `quoted` | Touching quote marks **and** citing the source | Already correct. Do not touch it |
 | `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended |
 | `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below |
+| `recorded-but-uncited` | `evidence.md` or `sections.md` still records a citekey the draft no longer cites -- often the residue of *this skill's own* `missing-citekey` repair | Surfaced. Report and do not touch. The repair is `dossier prune`, which a person confirms; pruning it here would delete evidence that may instead be an uncited candidate |
 | Every other class (`unsupported-claim`, `claim-support`, `uncited-source`, `uncited-claim`, `misquoted`, `candidate`) | Judgement calls | Surfaced. Report and do not touch |
 
 **The agenda's own `detail` field is thin by design and is not the repair
@@ -181,6 +182,15 @@ uncited claim becomes an `uncited-claim` item on the next agenda, a
 **surfaced** class, so it is reported rather than silently dropped. Where
 the sentence carries another surviving citation, only the marker for the
 missing one goes, and `evidence.md` keeps that citekey's entry.
+
+If the `evidence.md` entry is left in place -- because dropping it is a
+judgement about evidence rather than a mechanical edit -- the next
+agenda reports it as a `recorded-but-uncited` item, which is the state
+the repair manufactures by construction. That is the intended outcome
+and not a failure of the repair: it is now visible, surfaced for a
+person, and removable with `dossier prune`. Before #701 it was
+reported on no surface at all unless the dossier happened to carry a
+`dossier stamp` baseline.
 
 **Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
 an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or

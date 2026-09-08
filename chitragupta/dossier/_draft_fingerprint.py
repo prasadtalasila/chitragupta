@@ -179,6 +179,49 @@ def staleness(draft: Path) -> Staleness:
     return report
 
 
+def recorded_but_uncited(draft: Path) -> "dict[str, list[str]]":
+    """citekey -> which dossier files still record it, for the citekeys
+    the draft's text no longer cites (#701).
+
+    `Staleness.orphaned_evidence` asks nearly the same question and is
+    the wrong tool for two callers that need it. It is gated on
+    `changed`, so it answers nothing at all until someone has run
+    `dossier stamp` -- and stamping landed 2026-08-30, so every dossier
+    written before then is silently exempt with no backfill path. And
+    it differences `evidence.md` alone, so a citekey surviving only in a
+    `sections.md` row is invisible on every surface.
+
+    This is deliberately ungated: the review agenda reports it as a
+    surfaced finding, and a finding that needs a baseline nobody set is
+    a finding nobody sees. `status`'s own block keeps the gate, because
+    the reason for it there is unchanged -- see the module docstring.
+
+    `rejected.md` is **not** read, and that is the load-bearing
+    omission rather than an oversight. A paper this draft weighed and
+    turned down is recorded precisely so it is not reconsidered;
+    reporting it as "recorded but uncited" would describe every
+    rejection ever made as a defect. `_citekeys.CITED_FILES` draws that
+    same line for `drift()`, and this reads its two members
+    individually rather than through it: the finding has to name *which*
+    file still records the citekey, and `_citekeys_in` merges them into
+    one set.
+    """
+    target = dossier_dir(draft)
+    text = draft.read_text(encoding="utf-8")
+    cited = {
+        key for _, key in citation_gate.extract_citekeys(text, latex=draft.suffix.lower() == ".tex")
+    }
+    surfaces = {
+        "evidence": set(evidence_blocks(target)),
+        "sections": {key for keys in citekeys_by_section(target).values() for key in keys},
+    }
+    found: dict[str, list[str]] = {}
+    for surface, recorded in surfaces.items():
+        for citekey in recorded - cited:
+            found.setdefault(citekey, []).append(surface)
+    return {citekey: sorted(names) for citekey, names in sorted(found.items())}
+
+
 def status_lines(report: Staleness) -> "list[str]":
     """`dossier status`'s draft-fingerprint block, as printable lines.
 

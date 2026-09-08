@@ -36,8 +36,9 @@ def _sources_stub(**overrides) -> _sources.Sources:
     aids.update(overrides.pop("aids", {}))
     style = overrides.pop("style", _sources.StyleSource())
     drift = overrides.pop("drift", _sources.DriftSource())
+    uncited = overrides.pop("recorded", _sources.RecordedSource())
     assert not overrides
-    return _sources.Sources(aids=aids, style=style, drift=drift)
+    return _sources.Sources(aids=aids, style=style, drift=drift, recorded=uncited)
 
 
 # --------------------------------------------------------------------------
@@ -239,6 +240,36 @@ class TestReadDrift:
         assert source.data.missing == {"gone_2024": ["Intro"]}
 
 
+class TestReadRecorded:
+    """The `recorded-but-uncited` source degrades to absent on the same
+    two states `_read_drift` does -- a reduced source set, never a
+    refusal (#701)."""
+
+    def test_draft_outside_drafts_dir_has_no_dossier(self, isolated_config):
+        draft = content_draft(isolated_config, "not-a-draft.md")
+        draft.write_text("# Not a draft\n")
+        assert _sources._read_recorded(draft) == _sources.RecordedSource()
+
+    def test_draft_under_drafts_with_no_dossier_created(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+        assert _sources._read_recorded(draft) == _sources.RecordedSource()
+
+    def test_a_dossier_recording_an_uncited_citekey_reports_it(self, isolated_config):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nNo citations here.\n")
+        directory = dossier.dossier_dir(draft)
+        directory.mkdir(parents=True)
+        (directory / dossier.EVIDENCE_MD).write_text(
+            "## `gone_2024`\n\n- relevance: kept for a section since deleted\n",
+            encoding="utf-8",
+        )
+
+        source = _sources._read_recorded(draft)
+        assert source.available is True
+        assert source.data == {"gone_2024": ["evidence"]}
+
+
 class TestCollect:
     def test_collects_all_eight_inputs(self, isolated_config, monkeypatch):
         draft = content_draft(isolated_config, "drafts/t/survey.md")
@@ -299,6 +330,44 @@ class TestCandidateItems:
         assert item.section is None
         assert item.unattended is False
         assert item.detail == {"queries": ["query one"]}
+
+
+class TestRecordedButUncitedItems:
+    """Issue #701's new class: the mirror image of `missing-citekey`,
+    and surfaced rather than unattended because the dossier cannot tell
+    a citation the user cut from a candidate never cited at all."""
+
+    def test_no_source_gives_no_items(self):
+        assert _items.recorded_but_uncited_items(_sources.RecordedSource()) == []
+
+    def test_one_item_per_citekey(self):
+        source = _sources.RecordedSource(available=True, data={"a2024": ["evidence"]})
+        items = _items.recorded_but_uncited_items(source)
+        assert len(items) == 1
+        item = items[0]
+        assert item.cls == "recorded-but-uncited"
+        assert item.citekey == "a2024"
+        assert item.line is None
+        assert item.section is None
+        assert item.unattended is False
+        assert item.detail == {"surfaces": ["evidence"]}
+
+    def test_the_summary_names_every_surface_as_a_real_filename(self):
+        """Each surface carries its own `.md`. Joining first and
+        suffixing once reads "evidence, sections.md", which names a file
+        that does not exist -- and a test asserting only that both words
+        appear passes on it."""
+        source = _sources.RecordedSource(available=True, data={"a2024": ["evidence", "sections"]})
+        summary = _items.recorded_but_uncited_items(source)[0].summary
+        assert "evidence.md, sections.md" in summary
+        assert "evidence, sections.md" not in summary
+
+    def test_items_are_ordered_by_citekey(self):
+        source = _sources.RecordedSource(
+            available=True, data={"b2024": ["evidence"], "a2024": ["evidence"]}
+        )
+        items = _items.recorded_but_uncited_items(source)
+        assert [item.citekey for item in items] == ["a2024", "b2024"]
 
 
 class TestVerbatimRunItems:
@@ -613,6 +682,21 @@ class TestAllItems:
         )
         items = _items.all_items(sources, [])
         assert [item.cls for item in items] == ["claim-support"]
+
+    def test_recorded_but_uncited_items_are_included(self):
+        sources = _sources_stub(
+            recorded=_sources.RecordedSource(available=True, data={"a2024": ["evidence"]})
+        )
+        items = _items.all_items(sources, [])
+        assert [item.cls for item in items] == ["recorded-but-uncited"]
+
+    def test_the_class_sorts_directly_after_missing_citekey(self):
+        """Position is visibility: appended after `candidate` the class
+        would render beneath every candidate item, which on a real
+        draft runs to three figures (#701)."""
+        assert _items.CLASSES.index("recorded-but-uncited") == (
+            _items.CLASSES.index("missing-citekey") + 1
+        )
 
     def test_synthesis_and_figure_produce_no_items(self):
         sources = _sources_stub(

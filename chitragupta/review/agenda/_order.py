@@ -22,7 +22,8 @@ _UNCITED_CLAIM_RANK = {False: 0, True: 1}
 def severity_rank(item: Item) -> int | float:
     """Where `item` falls within its own class's severity ordering.
     Classes with no distinct severity notion (`missing-citekey`,
-    `uncited-source`, `misquoted`, `candidate`) rank everything 0 --
+    `recorded-but-uncited`, `uncited-source`, `misquoted`, `candidate`)
+    rank everything 0 --
     position (or, lacking one, citekey) is the only thing left to sort
     by. `prose` is also a single bucket, deliberately: neither Vale's own
     `severity` string nor `count` is a documented defect-urgency scale
