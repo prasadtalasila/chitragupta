@@ -1,0 +1,8 @@
+{
+  "name": "chitragupta-webapp-dev-tools",
+  "private": true,
+  "description": "Dev-only npm manifest for assets/webapp/'s own code-standards ratchet (scripts/webapp_code_standards.js, DEVELOPER-AGENTS.md). Not published, not part of the chitragupta-cli package or the release archive (scripts/release.py's EXCLUDE_TOP_LEVEL) -- a release consumer never runs this.",
+  "devDependencies": {
+    "acorn": "8.15.0"
+  }
+}

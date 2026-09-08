@@ -11,8 +11,8 @@ This is the code counterpart of
 genre skills write prose against, this one is the standard an agent
 changes *this repository's own code* against.
 
-**Written for** someone changing code in `chitragupta/` or `scripts/`, or
-deciding whether a proposed rule is worth enforcing. It assumes
+**Written for** someone changing code in `chitragupta/`, `scripts/` or
+`assets/webapp/`, or deciding whether a proposed rule is worth enforcing. It assumes
 `DEVELOPER-AGENTS.md` for the process around a
 change -- test policy, the local check suite, commit/PR/release
 conventions -- and states only what the code itself must look like.
@@ -251,6 +251,22 @@ is better than the alternative reading, which is that its long
 functions were quietly not counted -- see
 `bench/README.md` for the current self-check count
 and the reasoning behind each of the four things `bench/` sits outside.
+
+**`assets/webapp/` holds both rules too, scanned separately.** This
+table's scope is Python-only -- `ast` has no notion of a `.js` file --
+so `scripts/webapp_code_standards.js` re-derives C1 and C2 over
+`assets/webapp/` (excluding `vendor/`, the one third-party file there)
+with its own small parser, ratcheted against
+`code-standards-register.toml`'s `c1js`/`c2js` tables and enforced by
+`tests/webapp/code_standards.test.js` under `node --test` rather than
+`pytest`. Two things do not carry over from the columns above, and that
+script's own docstring has why: a function is a C1 candidate only when it
+has a real, derivable name (every file here is a UMD module whose
+top-level anonymous wrapper holds the *entire* file as its own
+statements, which is the JS analogue of Python module-level code -- C1
+never counted that either); and C2's line count excludes real comment
+spans the same way the Python side does, not `wc -l`'s raw count, which
+would count every line of the rationale banners these files open with.
 
 ### 📊 Cognitive complexity: the bar is 25, not SonarQube's default 15
 
