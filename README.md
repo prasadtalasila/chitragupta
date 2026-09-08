@@ -28,6 +28,24 @@ against it -- which is what this does to citations.
 >See more</a>.
 </p>
 
+<!-- markdownlint-disable-next-line MD033 -->
+<p align="center">
+<img src="docs/images/demo.svg" alt="Animated terminal recording: syncing
+the corpus, discovering its topics, reading a gate-passed draft and its
+dossier, and running the review agenda -- against the committed sample
+project." width="760">
+</p>
+
+<p align="center">
+<a href="docs/DEMO.md"><img src="docs/images/demo-webapp.png"
+alt="The offline topic-graph viewer, showing a selected topic's papers
+and neighbours" width="380"></a>
+<br>
+<sub>The recording above is the terminal half only; <a
+href="docs/DEMO.md">docs/DEMO.md</a> has the full recording -- including
+the browser segment pictured here -- as video and GIF.</sub>
+</p>
+
 ---
 
 ## 🔑 The one rule
@@ -344,6 +362,7 @@ one-screen router for exactly that.
 | --- | --- |
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
 | [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits -- from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
+| [docs/DEMO.md](docs/DEMO.md) | What does actually running it look like? A short recorded pass through the spine, as video and GIF, made against the committed sample project |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary -- citekey, ledger, dossier, gate, topic, review aid -- each defined by what it is *to you*, grouped by when you first meet it. Read once and every other document gets easier |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
