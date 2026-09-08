@@ -780,6 +780,20 @@ with a 2% rate rather than evidence of stability. The three mechanisms
 are each observed once or twice; treat them as existence proofs of
 distinct failure modes, not as a frequency distribution over them.
 
+**And this section's own discipline was not applied to the repeat count
+until 2026-09-08, which is how #695 came to report a five-fold rise that
+is not there.** Everything above reasons about the *sample* size -- 50
+documents against 300 -- and nothing about the number of
+*same-configuration pairs*, which was one in every record until
+`--repeat 5`. Eight pairs at a single fixed post-#632 4-GPU
+configuration have since returned **0, 1, 3, 4, 4, 4, 5 and 6**
+differing documents. Every published rate in this file (0.33%, 0.67%,
+1.67%, 2.33%) is one draw from that spread, and #695's comparison is one
+draw against another. See ["2026-09-08b
+(B2d)"](#2026-09-08b-b2d-the-quiet-host-arm-and-what-it-does-to-every-rate-in-this-file).
+The rule this adds: **`--repeat 2` establishes that a difference can
+happen, and no count of documents rescues it for a rate.**
+
 ## 2026-08-08: what a drift sweep costs
 
 `python3 -m chitragupta.dossier status --all` builds a BM25 index in memory and
