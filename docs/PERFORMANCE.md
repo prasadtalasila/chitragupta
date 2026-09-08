@@ -758,9 +758,13 @@ At the scale this matters: comparing runs over all 501 documents, ~1.4%
 of documents come back with different text and ~1.0% with a different
 quotable passage. Two runs of the *same* configuration are not exempt, at
 roughly a third of that rate. **Confining the run to one GPU lowers the
-rate but does not remove it** -- 1 document of 300 differed on a
-same-configuration single-GPU pair. Serial parsing has not been observed
-to vary. Every one of those rates was measured with `[parser].ocr` and
+rate but does not remove it** -- 1 document of 300 still differed, though
+over 1,200 single-GPU comparisons on an idle host what moved was bytes
+and one element *label*, and no quotable passage. Serial parsing has not
+been observed to vary. **Read all of these as orders of magnitude:**
+every published figure came from a single pair of runs, and eight pairs
+at one fixed configuration have since ranged from 0 to 6 differing
+documents. Every one of those rates was measured with `[parser].ocr` and
 `[parser].formulas` both off; each adds a model pass per page, and
 neither configuration has a measured rate.
 

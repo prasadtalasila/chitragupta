@@ -460,7 +460,7 @@ a specific span of a specific source.
 | `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `failure_kind` and the bib columns are byte-stable |
 | `pdf_size`, `pdf_mtime_ns` | Stable only while the file is untouched. A re-export producing byte-identical PDFs with fresh mtimes changes `pdf_mtime_ns` -- which is what the stat-before-hash skip reads, so those documents are re-hashed (not re-parsed: the hash still matches) |
 | `content/parsed/<citekey>.txt`, `pdftotext` | **Yes** -- byte-identical, measured |
-| `content/parsed/<citekey>.txt`, `docling` | **No.** ~1.4% of documents differ between differently-configured runs, ~0.9% between two runs of the *same* configuration on multiple GPUs, and **1 of 300 even on a single GPU** -- confining the pool to one card lowers the rate without removing it. Every rate in this row and below was measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and no rate here applies |
+| `content/parsed/<citekey>.txt`, `docling` | **No**, at any GPU count -- 1 of 300 differed even on a single card, so confining the pool lowers the rate without removing it. **Treat the percentages below as orders of magnitude, not figures.** Every rate this document has ever carried came from a *single* pair of runs, and eight pairs at one fixed configuration have since ranged from 0 to 6 documents. All of them were measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and none applies |
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters -- see below |
 | `content/rendered/*.md`, `*.tex` | **Yes** -- byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
@@ -486,14 +486,13 @@ two, leaving a reference truncated before its publisher and pages; or two
 entries merge into one. Same-configuration runs are not exempt either --
 2 of 572 comparisons (0.3%) changed a passage's text.
 
-**The single-GPU case below is the first mechanism, not a third one.**
-The two parses of `qi_enabling_2021` hold the same characters bar one:
-a reference to Zaccaria et al. is one `list_item` in the first run and
-two in the second, split after "Proceedings of ASME" and before "Turbo
-Expo 2018". A reviewer shown the first half alone would be shown a
-citation truncated mid-venue. So the boundary moved rather than any
-content appearing, which is why this is a scope correction to a known
-mechanism and not a new one.
+**Neither mechanism is new, and the single-GPU case below is the first
+of them rather than a third.** The clearest instance on record: two
+parses of `qi_enabling_2021` hold the same characters bar one, because a
+reference to Zaccaria et al. is one `list_item` in the first run and two
+in the second, split after "Proceedings of ASME" and before "Turbo Expo
+2018". A reviewer shown the first half alone is shown a citation
+truncated mid-venue. The boundary moved; no content appeared.
 
 Two consequences worth stating plainly:
 
@@ -504,22 +503,39 @@ Two consequences worth stating plainly:
 - **Serial parsing is the stable configuration.** Every observed
   difference required a worker pool, and `[parser].workers = 1` (the
   default) has not been observed to vary.
-- **A pool confined to one GPU is not exact, and this table used to say
-  it was.** That claim rested on three clean single-GPU arms -- 286
-  comparisons on 2026-08-07, then 300 each on 2026-08-30 and
-  2026-09-04. Re-run on 2026-09-08 at `--repeat 5`, giving **four**
-  same-configuration single-GPU pairs against a common reference arm
-  rather than one, it fails: `qi_enabling_2021` came back as **215
-  passages in one run and 216 in another**, 12 workers on one card,
-  default parse settings, on an otherwise idle host. Confining a pool to
-  one GPU lowers the rate; it does not remove it. Only
-  `[parser].workers = 1` does, on the evidence there is.
-- **One differing document in 1,200 comparisons is a counterexample,
-  not a rate.** It is enough to retire "reproduces exactly" and nowhere
-  near enough to publish 0.08% as a single-GPU figure. The passage
-  sidecar was also not byte-stable in **any** of the four pairs (9 to 12
-  documents each), though in three of them only the `bbox` floats moved
-  and the records themselves were identical.
+- **A pool confined to one GPU is not exact either, but what moves is
+  bytes and labels rather than quotations.** This table used to claim
+  exactness, on the strength of three single-GPU arms that were each a
+  *single* pair. Re-run at `--repeat 5` on an idle host -- four pairs,
+  1,200 document comparisons, default parse settings -- it separates
+  cleanly by level:
+
+  | level | result |
+  | --- | --- |
+  | sidecar bytes | differ in **all four** pairs (6 to 10 documents each) -- `bbox` floats |
+  | span records | **1** flip in 1,200 |
+  | passage *text* | **0** in 1,200 |
+
+  So "reproduces exactly" is false and should not be relied on, while
+  the thing this pipeline actually shows a reviewer held still
+  throughout. Only `[parser].workers = 1` has been observed to give
+  byte-exactness.
+- **The one span flip is a label, and it lands on the boundary that
+  decides whether a passage exists at all.** The line "P. Singh et al."
+  -- a running header -- came back as `section_header` in one run and
+  `text` in another, byte-identical, same page. Both are in
+  `PASSAGE_LABELS`, so the passage survived and no quotation changed.
+  One step further, to `page_header`, is *not* in `PASSAGE_LABELS`, and
+  that record would have vanished silently. Label instability is
+  therefore not cosmetic even when the text is untouched: it is the
+  classifier wavering one category away from deleting a quotable span.
+- **On a contended card, the passage text does move.** The same matrix
+  run while another process competed for the same GPU put
+  `qi_enabling_2021` at 215 passages against 216 -- a real quotation
+  change, from the bibliography-splitting mechanism above. Two runs is
+  not enough to state a rate or to prove contention is the mechanism,
+  but the contrast is the wrong way round to ignore: quiet gave 0 of
+  1,200, contended gave 1.
 
 This is Docling's behaviour under load, not something this repository's
 parallelism introduced, and it cannot be switched off. Docling exposes no
@@ -531,11 +547,11 @@ difference into a hard failure.
 `bench/RESULTS.md`'s "2026-08-07: does the *quotable passage* survive a
 re-parse?" has the measurement, the three mechanisms it separates, and
 its own statement of how little 286 comparisons can pin down. Its
-"2026-09-08 (B2c)" section has the single-GPU measurement above, the
-split reference in full, and why foreign load on the card is not the
-explanation for it; "2026-09-07 (B2b)" is the record that prompted that
-re-run, and a post-mortem on why it could not have settled anything
-itself.
+"2026-09-08 (B2d)" section has the quiet-host single-GPU measurement
+above and what eight pairs at one configuration do to every rate in
+this document. "2026-09-08 (B2c)" is the contended run the quotation
+change came from, and "2026-09-07 (B2b)" the record that prompted both
+-- a post-mortem on a parse configuration that was not held fixed.
 
 ## 🚫 What this architecture does not do
 
