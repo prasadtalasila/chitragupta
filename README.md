@@ -37,12 +37,14 @@ project." width="760">
 </p>
 
 <p align="center">
-<a href="docs/DEMO.md"><img src="docs/images/demo-webapp.png"
+<a href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
+><img src="docs/images/demo-webapp.png"
 alt="The offline topic-graph viewer, showing a selected topic's papers
 and neighbours" width="380"></a>
 <br>
 <sub>The recording above is the terminal half only; <a
-href="docs/DEMO.md">docs/DEMO.md</a> has the full recording -- including
+href="https://github.com/prasadtalasila/chitragupta/blob/main/docs/DEMO.md"
+>docs/DEMO.md</a> has the full recording -- including
 the browser segment pictured here -- as video and GIF.</sub>
 </p>
 
