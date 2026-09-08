@@ -130,6 +130,22 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
             warned = False
         if not done:
             stalled.append(True)
+            # terminate_workers first, shutdown second -- not the reverse.
+            # ProcessPoolExecutor.shutdown() sets executor._processes = None
+            # unconditionally, even with wait=False (CPython
+            # concurrent/futures/process.py), and terminate_workers reads
+            # that same attribute to find which OS processes to signal.
+            # Calling shutdown() first leaves it nothing to kill: the
+            # wedged worker (blocked in docling/torch native code, or --
+            # this arm's own repro -- in a blocking FIFO read) is never
+            # actually signalled, its sentinel never fires, and the
+            # executor's manager thread then blocks in
+            # mp.connection.wait() forever waiting for a death it was
+            # never told about -- which is what hangs the interpreter's
+            # own atexit join of that thread (issue #698). Reproduced with
+            # bench/bench_pool_rebuild.py's --with-stall-arm and a
+            # faulthandler thread dump pinning the exact three frames.
+            #
             # cancel_futures drops every job the pool has not yet started
             # (thread or process). terminate_workers is the other half:
             # it kills docling's in-flight *processes*, but is a no-op for
@@ -138,8 +154,8 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
             # after this run has already reported those citekeys failed,
             # writing content/parsed/<citekey>.txt for them behind the
             # ledger's back.
-            executor.shutdown(wait=False, cancel_futures=True)
             pdf_text.terminate_workers(executor)
+            executor.shutdown(wait=False, cancel_futures=True)
             logger.warning(
                 "WARNING no document finished in %ss ([parser].stall_timeout) -- "
                 "giving up on the %d still outstanding. They are reported as "
@@ -212,12 +228,17 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
         # submit() itself raises once the pool is already known-broken.
         broken = pool_exc
     except KeyboardInterrupt:
+        # terminate_workers before shutdown -- see _as_they_land's own
+        # comment on this same pair, a few lines up in this module:
+        # shutdown() nulls executor._processes before terminate_workers
+        # can read it, which leaves it nothing to signal (issue #698).
+        #
         # cancel_futures drops everything not yet started; wait=False
         # means we don't block on the handful still running. Whatever
         # finished is still recorded by the caller, so an interrupted run
         # keeps its work rather than discarding it.
-        executor.shutdown(wait=False, cancel_futures=True)
         pdf_text.terminate_workers(executor)
+        executor.shutdown(wait=False, cancel_futures=True)
         logger.warning(
             "interrupted after %d/%d document(s) -- work already finished "
             "is kept; re-run to continue.",

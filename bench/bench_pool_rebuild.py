@@ -20,19 +20,33 @@ which ones do.
 Each arm runs in a subprocess against a **throwaway CONTENT_DIR**, so a
 parse this benchmark drives never writes into the corpus it reads.
 
-**The watchdog arm is off by default and its figures are unmeasured.**
-`arm_stall` does not terminate: given real documents and a working
-`terminate_workers`, it still sits in `futex_wait_queue` for hours after
-the healthy documents are done. That is issue #698 and it is *not*
-fixed -- what was fixed is the reason every arm previously measured
-nothing (an empty throwaway ledger, so `build_corpus()` returned no
-rows). The two rebuild arms work and are what this script now reports.
-Pass `--with-stall-arm` to reproduce the hang; the code is kept rather
-than deleted so whoever picks #698 up has the reproduction to hand.
+**The watchdog arm now terminates and is still off by default.**
+`arm_stall` used to sit in `futex_wait_queue` for hours after the healthy
+documents were done, even with a working `terminate_workers` -- because
+`chitragupta/sync_pool.py`'s stall-timeout branch called
+`executor.shutdown(wait=False, cancel_futures=True)` *before*
+`pdf_text.terminate_workers(executor)`, and `ProcessPoolExecutor.shutdown()`
+sets `executor._processes = None` unconditionally, even with `wait=False`
+(CPython `concurrent/futures/process.py`). `terminate_workers` reads that
+same attribute to find which OS processes to signal, so by the time it
+ran there was nothing left to kill -- the FIFO-blocked worker was never
+actually terminated, its death was never observed, and the executor's own
+manager thread blocked forever waiting for a result that would never
+arrive. That was issue #698, fixed by reordering those two calls (and
+their two sibling copies in `chitragupta/enrich/_docling_pool.py` and
+`sync_pool.py`'s own `_drain_pool`) so `terminate_workers` runs while
+`executor._processes` is still populated. `arm_stall` is kept opt-in via
+`--with-stall-arm` regardless -- it still blocks a real worker in a real
+read for the full `--stall-timeout`, which is deliberately slow, not
+because it hangs anymore.
 
-So of #610's B3 questions, this answers rebuild wall-clock overhead,
-documents lost and pool-narrowing convergence, and leaves the stall
-watchdog's cancellation latency unanswered.
+An unrelated fix landed alongside it: every arm previously measured
+nothing at all, because the throwaway `CONTENT_DIR` had no ledger, so
+`build_corpus()` returned zero rows. `_seeded_content_dir` copies the real
+ledger in to fix that. Of #610's B3 questions, this script now answers
+all four: rebuild wall-clock overhead, documents lost, pool-narrowing
+convergence, and (with `--with-stall-arm`) the stall watchdog's
+cancellation latency.
 
 Needs the "enrich" Poetry group and a synced corpus (it parses real PDFs
 named in the ledger).
@@ -315,7 +329,8 @@ def main(argv=None):
     parser.add_argument(
         "--with-stall-arm",
         action="store_true",
-        help="run the watchdog arm, which is known to hang -- see issue #698",
+        help="run the watchdog arm -- opt-in because it blocks a real worker for "
+        "the full --stall-timeout, not because it hangs (issue #698, fixed)",
     )
     parser.add_argument("--arm", default=None, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
@@ -335,9 +350,10 @@ def main(argv=None):
 
     baseline = _run_arm_in_subprocess("uninterrupted", args)
     injected = _run_arm_in_subprocess("worker-killed", args)
-    # Off by default: the watchdog arm does not terminate. See this
-    # module's docstring -- it is opt-in rather than deleted so whoever
-    # picks up #698 has the reproduction to hand.
+    # Off by default: this arm deliberately blocks a real worker in a real
+    # read for the full --stall-timeout, which is slow, not because it
+    # hangs -- see this module's docstring for #698, which used to make
+    # it hang and is now fixed.
     stall = _run_arm_in_subprocess("stall", args) if args.with_stall_arm else None
     ratio = overhead(baseline["seconds"], injected["seconds"])
 
@@ -352,8 +368,9 @@ def main(argv=None):
     print(f"documents lost to the kill: {injected['lost']} {injected['lost_citekeys']}")
     if stall is None:
         print(
-            "\nstall watchdog: NOT MEASURED -- the arm does not terminate (issue "
-            "#698). Pass --with-stall-arm to reproduce it."
+            "\nstall watchdog: NOT MEASURED -- off by default because it blocks a "
+            "real worker for the full --stall-timeout. Pass --with-stall-arm to "
+            "measure it."
         )
     else:
         print(
