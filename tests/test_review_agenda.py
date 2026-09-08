@@ -352,10 +352,15 @@ class TestRecordedButUncitedItems:
         assert item.unattended is False
         assert item.detail == {"surfaces": ["evidence"]}
 
-    def test_the_summary_names_every_surface(self):
+    def test_the_summary_names_every_surface_as_a_real_filename(self):
+        """Each surface carries its own `.md`. Joining first and
+        suffixing once reads "evidence, sections.md", which names a file
+        that does not exist -- and a test asserting only that both words
+        appear passes on it."""
         source = _sources.RecordedSource(available=True, data={"a2024": ["evidence", "sections"]})
         summary = _items.recorded_but_uncited_items(source)[0].summary
-        assert "evidence" in summary and "sections" in summary
+        assert "evidence.md, sections.md" in summary
+        assert "evidence, sections.md" not in summary
 
     def test_items_are_ordered_by_citekey(self):
         source = _sources.RecordedSource(

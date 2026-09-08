@@ -200,8 +200,11 @@ def recorded_but_uncited(draft: Path) -> "dict[str, list[str]]":
     omission rather than an oversight. A paper this draft weighed and
     turned down is recorded precisely so it is not reconsidered;
     reporting it as "recorded but uncited" would describe every
-    rejection ever made as a defect. `_citekeys.CITED_FILES` draws the
-    same line for `drift()` and is reused here rather than restated.
+    rejection ever made as a defect. `_citekeys.CITED_FILES` draws that
+    same line for `drift()`, and this reads its two members
+    individually rather than through it: the finding has to name *which*
+    file still records the citekey, and `_citekeys_in` merges them into
+    one set.
     """
     target = dossier_dir(draft)
     text = draft.read_text(encoding="utf-8")

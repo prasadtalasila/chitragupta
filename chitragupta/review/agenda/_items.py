@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from chitragupta.dossier._drift import Drift
 from chitragupta.dossier._sections import Section
 from chitragupta.review.agenda._identity import item_id
+from chitragupta.review.agenda._sources import RecordedSource
 
 # The item-class table's own order (docs/AUTO-IMPROVEMENT.md).
 CLASSES = (
@@ -64,7 +65,7 @@ def missing_citekey_items(drift: Drift | None) -> list[Item]:
     return items
 
 
-def recorded_but_uncited_items(source) -> list[Item]:
+def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
     """One item per citekey the dossier records and the draft no longer
     cites -- `missing-citekey` read in the other direction (#701).
 
@@ -91,7 +92,12 @@ def recorded_but_uncited_items(source) -> list[Item]:
                 citekey=citekey,
                 line=None,
                 unattended=False,
-                summary=f"`{citekey}` is recorded in {', '.join(surfaces)}.md "
+                # Suffixed per surface, not once after the join: two
+                # surfaces read "evidence, sections.md" that way, naming
+                # a file that does not exist and implying the first is
+                # something other than a file.
+                summary=f"`{citekey}` is recorded in "
+                f"{', '.join(f'{name}.md' for name in surfaces)} "
                 "but the draft no longer cites it",
                 detail={"surfaces": list(surfaces)},
             )
