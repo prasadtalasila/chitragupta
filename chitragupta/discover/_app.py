@@ -67,8 +67,8 @@ def write_app(path: str, origins: "set | None" = None) -> str:
     `origins` is the `--origins` selection, and it filters what ships
     rather than what is drawn: the directory then contains what it says
     it contains. The payload records the classes that *can* appear under
-    it, so the app can disable a checkbox for a class this export left
-    out and say why, instead of doing nothing when it is clicked."""
+    it, so the app can disable that class's picker row and say why,
+    instead of doing nothing when it is clicked."""
     origins = origins or set(_origin.CLASSES)
     graph, topic_set = _origin.keep(_data.load_graph(), _data.load_topic_set(), origins)
     terms = _data.top_terms(topic_set)

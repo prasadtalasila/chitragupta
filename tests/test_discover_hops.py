@@ -28,13 +28,20 @@ class TestSharedCases:
     def test_every_shared_hop_case_matches(self):
         rows = cases()
         assert len(rows) >= 2  # non-vacuity
+        # A row naming its families is what pins the per-family walk to
+        # the app's; a table of both-family rows only would let the two
+        # surfaces disagree the moment either narrowed.
+        assert any("families" in row for row in rows)
         for row in rows:
             graph = {
                 "edges_overlap": row["edges_overlap"],
                 "edges_semantic": row["edges_semantic"],
             }
-            assert _hops.hops_from(graph, row["roots"]) == row["expected_hops"], row["name"]
-            assert _hops.reached_via(graph, row["roots"]) == row["expected_via"], row["name"]
+            families = row.get("families")
+            walked = _hops.hops_from(graph, row["roots"], families)
+            assert walked == row["expected_hops"], row["name"]
+            typed = _hops.reached_via(graph, row["roots"], families)
+            assert typed == row["expected_via"], row["name"]
 
 
 class TestBuild:
@@ -88,6 +95,60 @@ class TestBuild:
         assert via["b"] == "semantic"
 
 
+class TestOneFamily:
+    """`--hops N --family F`: the rings over one family, which the app's
+    Edges picker asks of the same walk. Until it existed the terminal
+    measured over the union whatever the reader wanted, the same defect
+    the app had -- so this is the twin, not a new capability."""
+
+    def graph(self) -> dict:
+        row = cases()[0]
+        return {
+            "topics": [{"label": label} for label in ("E", "a", "b", "c", "island")],
+            "edges_overlap": row["edges_overlap"],
+            "edges_semantic": row["edges_semantic"],
+        }
+
+    def test_the_walk_narrows_and_the_payload_says_which(self):
+        both = _hops.build_hops(self.graph(), "E", 2)
+        assert both["families"] == ["overlap", "semantic"]
+        assert [t["label"] for t in both["rings"][1]["topics"]] == ["c"]
+
+        one = _hops.build_hops(self.graph(), "E", 2, ["overlap"])
+        assert one["families"] == ["overlap"]
+        # `c` was two hops out over a path that changed family. Over
+        # shared papers alone it is not two hops out; it is unreached.
+        assert [ring["hop"] for ring in one["rings"]] == [1]
+        assert [t["label"] for t in one["rings"][0]["topics"]] == ["a"]
+        assert one["unreached"] == 3
+
+    def test_ring_one_is_typed_over_the_family_walked(self):
+        graph = self.graph()
+        graph["edges_semantic"] = graph["edges_semantic"] + [
+            {"a": "E", "b": "a", "similarity": 0.5, "bridge": ["p1", "p2"]}
+        ]
+        assert _hops.reached_via(graph, ["E"])["a"] == "both"
+        assert _hops.reached_via(graph, ["E"], ["overlap"])["a"] == "overlap"
+
+    def test_the_prose_names_the_family_it_walked(self):
+        prose = _hops.render_hops(_hops.build_hops(self.graph(), "E", 2, ["semantic"]))
+        assert "over semantic nearness" in prose
+        # With both walked there is nothing to qualify, and a header
+        # saying "over both families" on every default run is noise.
+        assert "over" not in _hops.render_hops(_hops.build_hops(self.graph(), "E", 2))
+
+    def test_an_unreachable_topic_says_which_family_could_not_reach_it(self):
+        prose = _hops.render_hops(_hops.build_hops(self.graph(), "island", 2, ["overlap"]))
+        assert "no topic is reachable from here over shared papers" in prose
+        assert "in either family" in _hops.render_hops(_hops.build_hops(self.graph(), "island", 2))
+
+    def test_the_families_default_to_both(self):
+        """Every caller written before the flag passes three arguments."""
+        assert _hops.build_hops(self.graph(), "E", 2) == _hops.build_hops(
+            self.graph(), "E", 2, ["overlap", "semantic"]
+        )
+
+
 class TestHopsCli:
     def test_the_rings_reach_the_terminal(self, isolated_config, capsys):
         write_artefacts(isolated_config, graph=WHY_GRAPH, topic_set=WHY_TOPIC_SET)
@@ -108,6 +169,29 @@ class TestHopsCli:
         assert discover.main(["machine learning", "--hops", "zero"]) == 2
         assert discover.main(["machine learning", "--hops", "0"]) == 2
         assert "--hops" in capsys.readouterr().err
+
+    def test_family_composes_with_hops(self, isolated_config, capsys):
+        """The flag existed for --path only and was silently ignored
+        everywhere else: `--hops 2 --family semantic` measured over both
+        families and said nothing about it."""
+        write_artefacts(isolated_config, graph=WHY_GRAPH, topic_set=WHY_TOPIC_SET)
+        assert discover.main(["machine learning", "--hops", "all", "--family", "overlap"]) == 0
+        out = capsys.readouterr().out
+        assert "over shared papers" in out
+        assert "formal methods  (via shared papers)" in out
+
+        # WHY_GRAPH holds no semantic edges at all, so the same
+        # neighbourhood over that family is empty -- and says so.
+        assert discover.main(["machine learning", "--hops", "all", "--family", "semantic"]) == 0
+        assert "no topic is reachable from here over semantic nearness" in capsys.readouterr().out
+
+    def test_json_carries_the_families_walked(self, isolated_config, capsys):
+        write_artefacts(isolated_config, graph=WHY_GRAPH, topic_set=WHY_TOPIC_SET)
+        assert (
+            discover.main(["--json", "machine learning", "--hops", "1", "--family", "overlap"]) == 0
+        )
+        data = json.loads(capsys.readouterr().out)
+        assert data["families"] == ["overlap"]
 
     def test_without_hops_the_flat_topic_view_stays(self, isolated_config, capsys):
         prepare(isolated_config)

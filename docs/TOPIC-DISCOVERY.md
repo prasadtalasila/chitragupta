@@ -286,6 +286,7 @@ chitragupta corpus discover --why "A" "B"        # why there is no edge here
 chitragupta corpus discover --path "A" "B" --family overlap   # the chain between two
 chitragupta corpus discover --compare "A" "B"    # topics side by side
 chitragupta corpus discover "A" --hops 2         # the neighbourhood as rings
+chitragupta corpus discover "A" --hops 2 --family overlap  # ...over one family
 ```
 
 The reader computes no topic and no edge. It resolves, joins ledger

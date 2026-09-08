@@ -34,13 +34,27 @@
      their sense of where they are in a corpus this size. `maxHops`
      bounds the ring view: one hop answers "what is next to this", two
      answers "what would a chapter around this have to cover". */
-  /* The origin filter (#742). `activeOrigins` opens as whatever the
-     export shipped, so the app's first frame is exactly what the same
+  /* The origin filter. `activeOrigins` opens as whatever the export
+     shipped, so the app's first frame is exactly what the same
      `--origins` run showed in the terminal; ALL_LABELS is derived from
-     it and re-derived whenever a checkbox moves. */
+     it and re-derived whenever a picker row moves. */
   var activeOrigins = new Set(app.shippedOrigins(DATA));
   var ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
-  var FAMILIES = ["overlap", "semantic"];
+
+  /* The edge-family filter. This was a module constant no element read,
+     and the cost was not a missing control: `hopsFrom` walks whatever
+     adjacency it is handed, so the ego rings measured distance over the
+     union of both families and a topic one shared paper plus one cosine
+     hop away sat on ring 2 beside a topic two shared papers out. The
+     reader could not ask "how far is this over shared papers" -- a
+     question `discover --path --family` has always answered in the
+     terminal.
+
+     A Set here and a list at the call sites, because `familiesOf` in
+     graph.js and `hopsFrom` in ego.js both want an ordered list and
+     order is the legend's. */
+  var activeFamilies = new Set(app.shippedFamilies(DATA));
+
   var context = "dim";
   var maxHops = 2;
   /* Papers on the canvas, opt-in and capped: a paper in three topics is
@@ -54,6 +68,12 @@
      releases it if the id no longer exists. */
   var latched = null;
   var hoverTimer = null;
+
+  function families() {
+    return app.FAMILY_CLASSES.filter(function (family) {
+      return activeFamilies.has(family);
+    });
+  }
 
   // ---------- cytoscape ----------
 
@@ -214,7 +234,7 @@
   function view() {
     return {
       cut: cut, collapsed: collapsed, context: context,
-      all: ALL_LABELS, expanded: expanded,
+      all: ALL_LABELS, expanded: expanded, families: families(),
     };
   }
 
@@ -241,7 +261,7 @@
     // emphasised and where it is drawn: the hop control moves them
     // together, so nothing is ever placed on a ring and dimmed to
     // background at the same time.
-    var hops = selected.length ? app.hopsFrom(DATA, selected, FAMILIES) : null;
+    var hops = selected.length ? app.hopsFrom(DATA, selected, families()) : null;
     // The rings are walked over the whole payload, so a neighbour can be
     // a topic the origin filter has taken off the canvas.
     var visible = hops
@@ -263,7 +283,7 @@
       // an extension of the "a circle is legible" argument rather than
       // a contradiction of it. elementsFor has already suspended the
       // cut, so there are no boxes to lay out here.
-      var at = app.ringPositions(DATA, selected, hops, maxHops);
+      var at = app.ringPositions(DATA, selected, hops, maxHops, families());
       var outside = app.contextRing(
         cy.nodes().map(function (n) { return n.id(); }), hops, maxHops
       );
@@ -381,10 +401,33 @@
      panel the reader has since pointed elsewhere. */
   var disagreementShown = false;
 
+  /* Which edge family owns what the panel is currently showing, if one
+     does: a path over shared papers, or one edge's own card. Hiding the
+     control that produced it does not unsay it -- switch that family
+     off with its path on screen and the panel goes on describing hops
+     over edges no longer drawn -- so the family is remembered and the
+     panel is put back to the help text when it goes.
+
+     Cleared here because every panel writer goes through clearHint
+     first, the same mechanism `disagreementShown` relies on. */
+  var panelFamily = null;
+
   function clearHint() {
     hint.hidden = true;
     hint.textContent = HELP;
     disagreementShown = false;
+    panelFamily = null;
+  }
+
+  /* Back to the standing help text, with nothing selected in the panel:
+     the state the app opens in, and where a panel whose subject has
+     just left the canvas has to return to. */
+  function showHelp() {
+    detail.innerHTML = "";
+    hint.textContent = HELP;
+    hint.hidden = false;
+    disagreementShown = false;
+    panelFamily = null;
   }
 
   function say(message) {
@@ -415,6 +458,7 @@
   function showEdge(family, index) {
     clearHint();
     detail.innerHTML = app.edgeHtml(DATA, family, index);
+    panelFamily = family;
   }
 
   function showGroup(id) {
@@ -433,6 +477,12 @@
   function showBundle(pairs) {
     clearHint();
     detail.innerHTML = app.bundleHtml(DATA, pairs);
+    /* A bundle is keyed by family as well as by endpoints, so every
+       pair in one shares a family and the card belongs to it -- but
+       `bundleHtml` counts the two apart rather than assuming that, and
+       this asks rather than assuming too. */
+    var one = pairs.every(function (pair) { return pair.family === pairs[0].family; });
+    panelFamily = one && pairs.length ? pairs[0].family : null;
   }
 
   /* Two pinned topics with no edge between them: the reader gets the
@@ -681,6 +731,7 @@
     clearHint();
     detail.innerHTML = "<h2>" + app.escapeHtml(selected[0]) + " — " +
       app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result, ALL_LABELS);
+    panelFamily = family;
     highlightPath(result);
   }
 
@@ -753,10 +804,13 @@
     focusControls.hidden = !pinned;
     var resolution = document.getElementById("resolution");
     if (resolution) { resolution.hidden = pinned || !DATA.hierarchy.length; }
-    // A path is a question about a pair, so the buttons appear at two
-    // pinned topics and go again at one or three.
+    /* A path is a question about a pair and about one family, so a
+       button appears at two pinned topics and only while its own family
+       is on. Offering "path over semantic nearness" over edges the
+       reader has just taken off the canvas would answer a question
+       about a graph they are not looking at. */
     Object.keys(pathButtons).forEach(function (family) {
-      pathButtons[family].hidden = selected.length !== 2;
+      pathButtons[family].hidden = selected.length !== 2 || !activeFamilies.has(family);
     });
   }
 
@@ -890,21 +944,46 @@
      fall-through from Esc. */
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") { return; }
-    if (app.escapeAction(!suggestions.hidden, latched) === "releaseLatch") {
-      releaseLatch();
+    var action = app.escapeAction(!suggestions.hidden, latched, anyPickerOpen());
+    if (action === "closePicker") {
+      // Focus goes back to the button that opened it: without this it
+      // is left on a checkbox inside a hidden panel, and the next Tab
+      // starts from nowhere the reader can see.
+      var row = openPicker();
+      closeAllPickers(null);
+      row.querySelector(".picker-summary").focus();
+      return;
     }
+    if (action === "releaseLatch") { releaseLatch(); }
   }, true);
 
-  // ---------- origin filter ----------
+  // ---------- the two filter pickers ----------
 
-  /* One checkbox per origin class, all ticked on open. The filter is
-     the reader's, not the corpus's: it changes which topics are on the
-     canvas, never what any stage computed -- the absence verdict and
-     the withheld-edge count stay corpus-wide for that reason. */
+  /* Origin classes and edge families, one widget each. Both are the
+     reader's view and not the corpus's: they change what is on the
+     canvas, never what any stage computed -- the absence verdict, the
+     withheld-edge count and the panel's per-family brokerage figures
+     stay corpus-wide for that reason, and the caption in the header
+     says so.
+
+     Only the summary is rewritten when a row moves, never the panel:
+     re-rendering the whole control would close it under the reader's
+     pointer, and the second of two families is exactly the tick they
+     most often want to move straight after the first. */
   var originsRow = document.getElementById("origins");
+  var familiesRow = document.getElementById("families");
 
   function renderOrigins() {
     originsRow.innerHTML = app.originsHtml(app.originControls(DATA, activeOrigins), DATA);
+  }
+
+  function renderFamilies() {
+    familiesRow.innerHTML = app.familiesHtml(app.familyControls(DATA, activeFamilies));
+  }
+
+  function updateSummary(row, text) {
+    var state = row.querySelector(".picker-state");
+    if (state) { state.textContent = text; }
   }
 
   /* A pinned topic whose class has just gone out cannot stay pinned:
@@ -922,22 +1001,111 @@
   originsRow.addEventListener("change", function (event) {
     var box = event.target.closest("input[data-origin]");
     if (!box) { return; }
-    var next = app.nextOrigins(activeOrigins, box.dataset.origin, box.checked);
+    var next = app.nextSelection(activeOrigins, box.dataset.origin, box.checked);
     if (!next) {
       // The last class. An empty canvas reads as an empty corpus, so
-      // the box goes back rather than the graph going away.
+      // the tick goes back rather than the graph going away.
       box.checked = true;
       return;
     }
     activeOrigins = next;
     ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
+    updateSummary(
+      originsRow,
+      app.originsSummary(app.originControls(DATA, activeOrigins), DATA)
+    );
     pruneChips();
     renderHierarchy();
-    renderOrigins();
     redraw();
   });
 
+  familiesRow.addEventListener("change", function (event) {
+    var box = event.target.closest("input[data-family]");
+    if (!box) { return; }
+    var next = app.nextSelection(activeFamilies, box.dataset.family, box.checked);
+    if (!next) {
+      /* The last family. With neither on there is no graph at all --
+         not even the union the rings used to walk -- so the tick goes
+         back, the same refusal the origin axis makes. */
+      box.checked = true;
+      return;
+    }
+    activeFamilies = next;
+    updateSummary(
+      familiesRow, app.familiesSummary(app.familyControls(DATA, activeFamilies))
+    );
+    /* The panel first: a path or an edge card belonging to the family
+       that has just gone off is describing lines no longer drawn.
+       Then the buttons, then the canvas -- where the edge set, the hop
+       distances and the ring placement all move together, because
+       `redraw` reads `families()` for all three. */
+    if (panelFamily && !activeFamilies.has(panelFamily)) { showHelp(); }
+    showControlsForSelection();
+    redraw();
+  });
+
+  /* Opening and shutting, for both pickers. A native <button> already
+     answers Enter and Space, so this is the toggle, the escape hatch
+     and the click-away -- the same three the type-ahead's popover has.
+     Arrow-down opens and steps into the rows; inside the panel, Tab and
+     Space are the browser's own and are left alone, which is why the
+     rows are real checkboxes and not list items pretending to be. */
+  function panelOf(row) { return row.querySelector(".picker-panel"); }
+
+  /* Which picker is open, if either. Esc's policy lives in one place
+     (`escapeAction`, with the type-ahead ahead of this and the latch
+     behind it), so what the pickers owe that policy is this question
+     and nothing more. */
+  function openPicker() {
+    var rows = [originsRow, familiesRow];
+    for (var i = 0; i < rows.length; i++) {
+      if (!panelOf(rows[i]).hidden) { return rows[i]; }
+    }
+    return null;
+  }
+
+  function anyPickerOpen() { return openPicker() !== null; }
+
+  function setOpen(row, open) {
+    var button = row.querySelector(".picker-summary");
+    panelOf(row).hidden = !open;
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function closeAllPickers(except) {
+    [originsRow, familiesRow].forEach(function (row) {
+      if (row !== except && panelOf(row)) { setOpen(row, false); }
+    });
+  }
+
+  [originsRow, familiesRow].forEach(function (row) {
+    row.addEventListener("click", function (event) {
+      var button = event.target.closest(".picker-summary");
+      if (!button) { return; }
+      var open = panelOf(row).hidden;
+      closeAllPickers(row);
+      setOpen(row, open);
+    });
+    /* Esc is not handled here: it is one policy for the whole app, in
+       the capture-phase handler above, because with a panel open it has
+       to outrank releasing the latch and be outranked by closing the
+       type-ahead. Two handlers would be two policies. */
+    row.addEventListener("keydown", function (event) {
+      if (event.key === "ArrowDown" && event.target.closest(".picker-summary")) {
+        setOpen(row, true);
+        var first = row.querySelector('.picker-row input:not([disabled])');
+        if (first) { first.focus(); }
+        event.preventDefault();
+      }
+    });
+  });
+
+  document.addEventListener("click", function (event) {
+    if (!event.target.closest(".picker")) { closeAllPickers(null); }
+  });
+
   renderOrigins();
+  renderFamilies();
   showControlsForSelection();
   redraw();
 })();

@@ -1,11 +1,14 @@
-/* Filtering the canvas by topic origin (#742): the checkbox row, and
-   every consumer of the label universe that has to move with it.
+/* Filtering the canvas by topic origin: the class vocabulary, and
+   every consumer of the label universe that has to move with it. The
+   control itself is a picker row now rather than a loose checkbox, and
+   tests/webapp/picker.test.js covers the widget; what is here is the
+   filtering the widget drives.
 
    The properties under test are the ones a reader would notice if they
    broke -- the type-ahead offering a topic that is not on the canvas,
-   a hierarchy row naming a topic the filter removed, a checkbox for a
-   class this export never contained looking merely unticked, and the
-   last class going out to leave an empty canvas that reads as an empty
+   a hierarchy row naming a topic the filter removed, a row for a class
+   this export never contained looking merely unticked, and the last
+   class going out to leave an empty canvas that reads as an empty
    corpus. */
 "use strict";
 
@@ -32,12 +35,12 @@ test("the universe is the labels whose origin is ticked", () => {
   assert.deepEqual([...labels], ["topic-7"]);
 });
 
-test("corroborated is its own checkbox, not a rider on seed", () => {
+test("corroborated is its own row, not a rider on seed", () => {
   /* The CLI's `--origins seed` is inclusive of corroborated, because
      three words cannot express four classes and hiding a hand-written
      topic from someone who asked for hand-written topics would be
-     wrong. The app has a box per class, so here each one is literal:
-     every box the reader can tick does something when ticked.
+     wrong. The app has a row per class, so here each one is literal:
+     every row the reader can tick does something when ticked.
 
      The two still agree on what a reader sees, because the app opens
      with every class that shipped ticked -- see the test below. */
@@ -119,25 +122,25 @@ test("a payload that records no origins is treated as carrying all four", () => 
 });
 
 test("toggling a class off returns the smaller selection", () => {
-  const next = graph.nextOrigins(ALL, "emergent", false);
+  const next = graph.nextSelection(ALL, "emergent", false);
   assert.ok(!next.has("emergent"));
   assert.equal(next.size, 3);
 });
 
 test("toggling the last class off is refused", () => {
   // An empty canvas reads as an empty corpus. The caller restores the
-  // checkbox rather than drawing nothing.
-  assert.equal(graph.nextOrigins(new Set(["seed"]), "seed", false), null);
+  // tick rather than drawing nothing.
+  assert.equal(graph.nextSelection(new Set(["seed"]), "seed", false), null);
 });
 
 test("toggling a class on returns the larger selection, and does not mutate", () => {
   const active = new Set(["seed"]);
-  const next = graph.nextOrigins(active, "emergent", true);
+  const next = graph.nextSelection(active, "emergent", true);
   assert.deepEqual([...active], ["seed"]);
   assert.equal(next.size, 2);
 });
 
-test("the checkbox row escapes what it renders and marks the excluded", () => {
+test("the origin picker escapes what it renders and marks the excluded", () => {
   const shipped = { ...DATA, origins: ["emergent"] };
   const html = panel.originsHtml(graph.originControls(shipped, new Set(["emergent"])), shipped);
   assert.ok(html.includes('data-origin="emergent"'));

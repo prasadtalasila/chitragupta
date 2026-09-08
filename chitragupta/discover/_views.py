@@ -114,7 +114,12 @@ def hops_view(args, resolution, graph) -> int:
     else:
         print("--hops takes a positive hop count, or 'all'.", file=sys.stderr)
         return 2
-    data = _hops.build_hops(graph, resolution.label, bound)
+    # `--family` reached only --path before this, and was accepted and
+    # ignored everywhere else: the rings were always walked over the
+    # union, so "two hops out" meant "two hops over whichever family got
+    # there first" and nothing said so. None still means both.
+    families = [args.family] if args.family else None
+    data = _hops.build_hops(graph, resolution.label, bound, families)
     data["resolved_via"] = resolution.via
     emit(args, data, _hops.render_hops(data))
     return 0

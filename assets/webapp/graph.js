@@ -41,9 +41,73 @@
     emergent: "emergent topic",
   });
   /* The reader's order, not the machine's: how much of a human is in
-     the topic, most first. The checkbox row, the legend and the CLI's
+     the topic, most first. The origin picker, the legend and the CLI's
      --origins help all follow it. */
   var ORIGIN_CLASSES = ["seed", "keyword", "corroborated", "emergent"];
+
+  /* The two edge families, in the legend's order, with the words the
+     reader was actually shown. `overlap` and `semantic` are field names
+     in data.js; nobody outside this file needs to see them, and the
+     picker rows carry the legend's own key -- a solid line and a dashed
+     one -- so a row can be matched to a line on the canvas.
+
+     Never fused, here as everywhere: this table is what lets the reader
+     ask one family's question at a time, which the terminal's
+     `discover --path --family` has always allowed and the app did not. */
+  var FAMILY_CLASSES = ["overlap", "semantic"];
+  var FAMILY_LABELS = Object.assign(Object.create(null), {
+    overlap: "shares papers",
+    semantic: "semantically near",
+  });
+  var FAMILY_KEYS = Object.assign(Object.create(null), {
+    overlap: "solid",
+    semantic: "dashed",
+  });
+
+  function familyEdges(data, family) {
+    return (family === "overlap" ? data.edges_overlap : data.edges_semantic) || [];
+  }
+
+  /* Which families this corpus actually has edges for, and so which the
+     app opens with. A family with no edges anywhere is not something
+     the reader switched off, and a picker row that merely does nothing
+     when ticked tells them neither -- the same distinction the origin
+     row draws for a class `--origins` left out.
+
+     A payload with no edges at all offers both: there is nothing to
+     filter, and every row dead with no row saying why is worse. */
+  function shippedFamilies(data) {
+    var held = FAMILY_CLASSES.filter(function (family) {
+      return familyEdges(data, family).length > 0;
+    });
+    return held.length ? held : FAMILY_CLASSES.slice();
+  }
+
+  /* One row per family for the header: its human name, its legend key,
+     how many edges it holds here, whether it holds any at all, and
+     whether it is on. */
+  function familyControls(data, active) {
+    var shipped = shippedFamilies(data);
+    return FAMILY_CLASSES.map(function (family) {
+      return {
+        family: family,
+        name: FAMILY_LABELS[family],
+        key: FAMILY_KEYS[family],
+        count: familyEdges(data, family).length,
+        shipped: shipped.indexOf(family) >= 0,
+        checked: active.has(family),
+      };
+    });
+  }
+
+  /* The families a view asks for, with an absent carrier meaning both.
+     Every caller written before the picker existed passes a view with
+     no `families` -- and one of them is `elementsFor(data, visible,
+     selected)` with no view at all -- so "not said" has to mean the
+     union rather than nothing, or those canvases lose all their edges. */
+  function familiesOf(view) {
+    return (view && view.families) || FAMILY_CLASSES;
+  }
 
   /* Which classes this export could contain (#742): `--origins` filters
      what ships, so a class the flag left out is not merely absent from
@@ -104,13 +168,19 @@
     });
   }
 
-  /* The selection after a checkbox moves, or null when it would empty
+  /* The selection after a picker row moves, or null when it would empty
      the canvas -- an empty graph reads as an empty corpus, so the last
-     class cannot be unticked. Non-destructive: the caller still holds
-     the old selection to restore the checkbox from. */
-  function nextOrigins(active, origin, on) {
+     member cannot be unticked. Non-destructive: the caller still holds
+     the old selection to restore the tick from.
+
+     One function for both axes. It was `nextOrigins` while origins were
+     the only filter; the logic never mentioned an origin, and the edge
+     families need exactly the same refusal -- with no family on there
+     would be no graph at all, not even the union the rings used to
+     walk. */
+  function nextSelection(active, key, on) {
     var next = new Set(active);
-    if (on) { next.add(origin); } else { next.delete(origin); }
+    if (on) { next.add(key); } else { next.delete(key); }
     return next.size ? next : null;
   }
 
@@ -298,7 +368,7 @@
      two families are bundled separately and never fused: a bundle
      counting shared papers together with cosine nearness would be the
      one number this design refuses to compute. */
-  function bundleEdges(data, drawnAs, collapsedIds) {
+  function bundleEdges(data, drawnAs, collapsedIds, families) {
     var bundles = Object.create(null);
     var order = [];
     function fold(family, i, a, b, width, surprise) {
@@ -325,14 +395,27 @@
       }
       bundle.data.pairs.push({ family: family, index: i });
     }
-    data.edges_overlap.forEach(function (e, i) {
-      fold("overlap", i, e.a, e.b, 1.5 + 6 * e.overlap_coeff, absence.surpriseOpacity(e.p_value));
-    });
-    data.edges_semantic.forEach(function (e, i) {
-      // No p-value on this family, and none is borrowed: opacity means
-      // "how surprising" only where the gate actually ran.
-      fold("semantic", i, e.a, e.b, 1 + 3 * e.similarity, null);
-    });
+    /* A family the picker has switched off is skipped whole, and its
+       edge list is never rebuilt: the plain-edge id below is "ov-" or
+       "se-" plus an index into `data.edges_overlap` /
+       `data.edges_semantic`, and that is how the panel finds a clicked
+       edge again in the payload. Filtering by copying the array into a
+       shorter one would leave every id pointing at its neighbour's
+       evidence -- the panel would name the wrong shared papers and
+       nothing would look wrong. */
+    var enabled = families || FAMILY_CLASSES;
+    if (enabled.indexOf("overlap") >= 0) {
+      data.edges_overlap.forEach(function (e, i) {
+        fold("overlap", i, e.a, e.b, 1.5 + 6 * e.overlap_coeff, absence.surpriseOpacity(e.p_value));
+      });
+    }
+    if (enabled.indexOf("semantic") >= 0) {
+      data.edges_semantic.forEach(function (e, i) {
+        // No p-value on this family, and none is borrowed: opacity means
+        // "how surprising" only where the gate actually ran.
+        fold("semantic", i, e.a, e.b, 1 + 3 * e.similarity, null);
+      });
+    }
     // An edge between two topics that are both drawn as themselves is
     // not a bundle: hand it back in its plain form, so nothing changes
     // for the part of the graph the reader has expanded.
@@ -591,7 +674,9 @@
       if (dimming) { node.data.dim = dim(t.label); }
       els.push(node);
     });
-    var edges = bundleEdges(data, resolved.drawnAs, resolved.collapsedIds);
+    var edges = bundleEdges(
+      data, resolved.drawnAs, resolved.collapsedIds, familiesOf(view)
+    );
     if (dimming) {
       // An edge is only as bright as its dimmer end: a line running out
       // of the focus into the context has to read as leaving it.
@@ -649,12 +734,17 @@
   }
 
   /* Esc's precedence: the type-ahead list, when open, always
-     wins -- closing it is today's behaviour and stays unchanged. Chips
+     wins -- closing it is today's behaviour and stays unchanged. An
+     open filter picker comes next, ahead of the latch: both answer to
+     "back out of what is open", and the latch is the wider gesture, so
+     a reader whose only reason for pressing Esc was the panel would
+     otherwise lose the neighbourhood they were reading with it. Chips
      are never touched here; clearing them is a destructive act the
      request deliberately gives its own gesture rather than a
      fall-through. */
-  function escapeAction(suggestionsOpen, latched) {
+  function escapeAction(suggestionsOpen, latched, pickerOpen) {
     if (suggestionsOpen) { return "closeSuggestions"; }
+    if (pickerOpen) { return "closePicker"; }
     if (latched) { return "releaseLatch"; }
     return "none";
   }
@@ -667,7 +757,12 @@
     labelsWithOrigins: labelsWithOrigins,
     restrictTo: restrictTo,
     originControls: originControls,
-    nextOrigins: nextOrigins,
+    nextSelection: nextSelection,
+    FAMILY_CLASSES: FAMILY_CLASSES,
+    FAMILY_LABELS: FAMILY_LABELS,
+    FAMILY_KEYS: FAMILY_KEYS,
+    shippedFamilies: shippedFamilies,
+    familyControls: familyControls,
     byLabel: byLabel,
     nodeSize: nodeSize,
     elementsFor: elementsFor,

@@ -263,7 +263,9 @@ deterministic, needs no physics, and extends rather than contradicts the "a
 circle is legible" argument already made for the static page.
 
 The sketch: an undirected `bfs` from the pinned set, over the currently
-enabled edge families, recording each node's hop depth in a map; the
+enabled edge families -- which the header's **Edges** picker is what
+makes reachable, and until it shipped the walk was always over the union
+of both -- recording each node's hop depth in a map; the
 nodes within `maxHops` (and the edges among them) then run the built-in
 `concentric` layout with the negated hop depth as the concentric value
 (so hop 0 sits innermost), one hop per level, about 30px of node
@@ -296,6 +298,19 @@ increasing order of effort:
 
 What must not happen is a single ring whose radius averages the two strengths.
 Averaging is the fusion the design explicitly refuses.
+
+Shipped as option 2, proportional arcs, and with one thing this section
+did not think to say: the rule binds the *distance metric* as well as
+the placement. Typed arcs over a hop distance walked across both
+families keep the two apart on the first ring and fuse them everywhere
+outside it -- a topic one shared paper plus one cosine hop away lands on
+ring 2 beside a topic two shared papers out, and the reader cannot tell
+which they are looking at. The **Edges** picker is what closes that:
+enabling a family decides which edges are drawn, which are walked, and
+how ring 1 is typed, all from one piece of state. `--hops N --family F`
+is the terminal's half of the same fix -- the port had the union
+hardcoded, so closing it on one surface alone would have opened the
+section 13.5 gap in the other direction.
 
 ### 4.5 Report ego statistics in the panel
 
@@ -630,7 +645,9 @@ topic label.
 > of pinning on the same key that dismisses a dropdown or a hover latch
 > is a worse failure mode than three gestures that each do one thing,
 > so `Esc` only releases a latched node (once the type-ahead, which
-> still wins, is closed) and chips keep their own removal gesture. `/`
+> still wins, and then an open filter picker have been closed -- one
+> policy, `escapeAction`, ordered by how wide the gesture is) and chips
+> keep their own removal gesture. `/`
 > as a focus shortcut, keyboard-removable chips and the list-view
 > toggle remain unbuilt.
 
@@ -764,7 +781,7 @@ all**.
 
 | Technique | Where it runs | New dependency | Answers | Shipped |
 | --- | --- | --- | --- | --- |
-| Concentric ego rings by hop | browser | none | what is next to this topic | yes |
+| Concentric ego rings by hop | browser | none | what is next to this topic | yes, walked over the families the reader has on |
 | Dim-not-remove context | browser | none | where am I in the whole corpus | yes |
 | Ego density, Burt brokerage | builder | none | is this a theme or a bridge | as view-derived numbers |
 | Hierarchy cut slider | browser (stored tree) | none | what are the broad areas | yes |
@@ -812,6 +829,7 @@ a shared case file under `tests/webapp/`.
 | what connects A to B, via which papers | `discover --path A B --family F`, walked from the stored matrices |
 | why is there *no* edge here | `discover --why A B` -- the first twin shipped, path A's shape |
 | set comparison across pinned topics | `discover --compare A B [C ...]` -- pairwise shared papers, bridges with ledger entries, mutual edges |
+| how far is this over *one* family | `discover TOPIC --hops N --family F` -- the twin of the app's **Edges** picker, pinned to it by the single-family rows in `tests/webapp/hop_cases.json`. Both surfaces walked the union until the picker shipped; the flag reached only `--path` before that |
 
 The terminal's own exclusives -- the resolution ladder, the
 cross-encoder rescoring, the plural-match PageRank `neighbourhood` --

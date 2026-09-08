@@ -65,6 +65,28 @@ hop 1:
 unreached from here: 65 topics
 ```
 
+Add `--family overlap` or `--family semantic` to measure over one
+relation instead of both. Without it the walk is over the union, so a
+topic one shared paper plus one cosine hop away sits on the same ring as
+a topic two shared papers out -- and "two hops" means "two hops over
+whichever family got there first". With it the question is the one you
+asked, the header says which family answered, and a neighbour both
+families reach is typed by the one you walked rather than as `both`:
+
+```console
+$ chitragupta corpus discover "digital twin" --hops 1 --family overlap
+digital twin — neighbourhood by hop distance over shared papers
+
+hop 1:
+  asset  (via shared papers)
+  compression  (via shared papers)
+  ...
+```
+
+This is the terminal's half of the app's **Edges** picker
+([the web tour](EXPLORE-WEB.md) shows the other half); the single-family
+rows in `tests/webapp/hop_cases.json` hold the two to the same answers.
+
 The topic view itself closes with the stored brokerage numbers:
 
 ```console

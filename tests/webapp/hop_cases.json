@@ -3,9 +3,11 @@
     "The contract between two runtimes walking one neighbourhood.",
     "assets/webapp/ego.js (hopsFrom, reachedVia) lays out the app's ego",
     "rings; chitragupta/discover/_hops.py is the terminal twin behind",
-    "`discover TOPIC --hops N` (#716). Node asserts ego.js reproduces",
+    "`discover TOPIC --hops N`. Node asserts ego.js reproduces",
     "every row (tests/webapp/ego.test.js), pytest asserts the port does",
-    "(tests/test_discover_hops.py), so neither can drift alone."
+    "(tests/test_discover_hops.py), so neither can drift alone.",
+    "A row may name the families walked. Absent means both, which is",
+    "what every row meant before either surface could switch one off."
   ],
   "cases": [
     {
@@ -34,6 +36,47 @@
       "roots": ["E"],
       "expected_hops": { "E": 0, "a": 1 },
       "expected_via": { "a": "both" }
+    },
+    {
+      "name": "the same chain over shared papers alone stops at the first hop",
+      "families": ["overlap"],
+      "edges_overlap": [
+        { "a": "E", "b": "a", "overlap_coeff": 0.9, "jaccard": 0.4, "p_value": 0.001, "shared": ["p1"] }
+      ],
+      "edges_semantic": [
+        { "a": "E", "b": "b", "similarity": 0.8, "bridge": ["p1", "p2"] },
+        { "a": "a", "b": "b", "similarity": 0.7, "bridge": ["p1", "p3"] },
+        { "a": "b", "b": "c", "similarity": 0.6, "bridge": ["p2", "p4"] }
+      ],
+      "roots": ["E"],
+      "expected_hops": { "E": 0, "a": 1 },
+      "expected_via": { "a": "overlap" }
+    },
+    {
+      "name": "a two-hop path alternating families is nowhere under one family",
+      "families": ["semantic"],
+      "edges_overlap": [
+        { "a": "E", "b": "a", "overlap_coeff": 0.9, "jaccard": 0.4, "p_value": 0.001, "shared": ["p1"] }
+      ],
+      "edges_semantic": [
+        { "a": "a", "b": "c", "similarity": 0.7, "bridge": ["p1", "p3"] }
+      ],
+      "roots": ["E"],
+      "expected_hops": { "E": 0 },
+      "expected_via": {}
+    },
+    {
+      "name": "a neighbour both families reach types as the family walked",
+      "families": ["semantic"],
+      "edges_overlap": [
+        { "a": "E", "b": "a", "overlap_coeff": 0.5, "jaccard": 0.2, "p_value": 0.004, "shared": ["p1"] }
+      ],
+      "edges_semantic": [
+        { "a": "a", "b": "E", "similarity": 0.9, "bridge": ["p1", "p2"] }
+      ],
+      "roots": ["E"],
+      "expected_hops": { "E": 0, "a": 1 },
+      "expected_via": { "a": "semantic" }
     }
   ]
 }

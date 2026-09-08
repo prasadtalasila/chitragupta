@@ -179,10 +179,11 @@ real citekey.
 | `... --path "A" "B" --family overlap` | the strongest chain between two topics over one relation, every hop named by its papers |
 | `... --compare "A" "B"` | two to six topics side by side: shared papers, bridges with full references, and the edges among them |
 | `... "digital twin" --hops 2` | a topic's neighbourhood as rings by distance, ring one labelled by which relation reached each neighbour |
+| `... "digital twin" --hops 2 --family overlap` | the same rings measured over *one* relation, so "two out" means two shared papers out rather than two hops over whichever relation got there first |
 | `... --origins seed,corroborated` | only the topics you named yourself, or only the ones the corpus proposed, or only what the model found on its own -- in every view, including the exported page and app |
 | `... --out overview.md` | a topic overview file -- papers, related topics, and representative sentences quoted verbatim from the papers themselves -- ready to seed a new draft |
 | `... --html topics.html` | your whole topic landscape as one clickable page that works offline, forever |
-| `... --app topicapp/` | the same landscape as an interactive app -- opens grouped at a readable handful of groups (a cut of the stored merge tree you can slide), type-ahead topic search, the neighbourhood of what you picked drawn as rings with the rest of the corpus dimmed rather than deleted, papers on click -- a directory you can hand to anyone, opened from `file://` |
+| `... --app topicapp/` | the same landscape as an interactive app -- opens grouped at a readable handful of groups (a cut of the stored merge tree you can slide), type-ahead topic search, the neighbourhood of what you picked drawn as rings with the rest of the corpus dimmed rather than deleted, papers on click, and two pickers in the header for which kinds of topic and which relation to show -- a directory you can hand to anyone, opened from `file://` |
 
 Three properties worth knowing before you rely on it:
 

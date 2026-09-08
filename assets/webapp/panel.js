@@ -395,25 +395,152 @@
     }).join("");
   }
 
-  /* The origin filter's checkbox row. A class this export left out
-     (`--origins`, #742) is disabled and says so: "filtered out at
-     export" and "this corpus has none" are different facts, and a
-     checkbox that merely does nothing when clicked tells the reader
-     neither. */
-  function originsHtml(controls, data) {
+  /* ---------- the header's pickers ----------
+
+     One widget, two axes: which origin classes are on the canvas, and
+     which edge families are drawn and walked. "All or some of these"
+     is the same question either way, and a row of loose checkboxes
+     makes the reader read four states to learn one fact -- so the
+     closed control says what is on, and opening it shows the rows.
+
+     A row the corpus or the export cannot offer is disabled and says
+     why in its title: "you switched it off", "filtered out at export"
+     and "there is none of this here" are three different facts, and a
+     tick that merely does nothing when clicked tells the reader none of
+     them. */
+
+  function names(rows) {
+    return rows.map(function (row) { return row.name; }).join(", ");
+  }
+
+  /* What the closed control says. Everything on reads as `allLabel` --
+     the reader has not filtered anything and should not be told they
+     have -- and a genuine subset is named and marked as one, because
+     "shares papers" alone would read as a description of the graph
+     rather than of the filter over it.
+
+     Whichever side is shorter gets named: "all but emergent" over
+     "seed, keyword, corroborated only", which is the same fact in three
+     words instead of six. Ties go to the "only" form, which is the one
+     that reads as a filter.
+
+     A row the corpus cannot offer does not count towards "everything":
+     with no semantic edges anywhere, shared papers alone *is* both
+     families' worth of what exists, and calling it a subset would
+     blame the reader for the corpus. */
+  function pickerSummary(rows, allLabel) {
+    var offerable = rows.filter(function (row) { return row.shipped; });
+    var on = offerable.filter(function (row) { return row.checked; });
+    var off = offerable.filter(function (row) { return !row.checked; });
+    if (!off.length) { return allLabel; }
+    if (on.length <= off.length) { return names(on) + " only"; }
+    return "all but " + names(off);
+  }
+
+  function pickerRowHtml(spec, row) {
+    var why = row.shipped
+      ? row.count + " " + spec.unit
+      : row.reason || "none in this corpus";
+    var key = row.color
+      ? '<span class="swatch" style="background:' + row.color + '"></span>'
+      : '<span class="edge-key ' + escapeHtml(row.edge) + '"></span>';
+    return '<label class="picker-row' + (row.shipped ? "" : " excluded") + '"' +
+      ' title="' + escapeHtml(why) + '">' +
+      '<input type="checkbox" ' + spec.attr + '="' + escapeHtml(row.value) + '"' +
+      (row.checked && row.shipped ? " checked" : "") +
+      (row.shipped ? "" : " disabled") + ">" +
+      key + escapeHtml(row.name) + "</label>";
+  }
+
+  /* The summary button plus its panel, as one string for the container
+     app.js owns. `aria-expanded` is the state; the panel is `hidden`
+     until the button is pressed, which is also what keeps its checkboxes
+     out of the tab order while it is shut. */
+  function pickerHtml(spec) {
+    return '<button type="button" class="picker-summary" aria-expanded="false">' +
+      escapeHtml(spec.label) + ": " +
+      '<span class="picker-state">' +
+      escapeHtml(pickerSummary(spec.rows, spec.allLabel)) + "</span>" +
+      "</button>" +
+      '<div class="picker-panel" hidden>' +
+      spec.rows.map(function (row) { return pickerRowHtml(spec, row); }).join("") +
+      "</div>";
+  }
+
+  /* What "everything" is called, counted over the rows the reader can
+     actually reach. `--origins seed` ships two classes and disables the
+     other two, and calling that "all 4 origins" states a number the
+     picker visibly contradicts -- the same misstatement the disabled
+     rows exist to prevent. One reachable row is named rather than
+     counted: "all 1 origins" is not a sentence. */
+  function allLabelFor(rows, plural) {
+    var offerable = rows.filter(function (row) { return row.shipped; });
+    if (offerable.length === 1) { return offerable[0].name; }
+    return "all " + offerable.length + " " + plural;
+  }
+
+  /* The origin picker. A class this export left out (`--origins`) is
+     disabled and named as the export's doing, not the corpus's. */
+  function originSpec(controls, data) {
     var flag = "--origins " + (data.origins || []).join(",");
-    return controls.map(function (control) {
-      var why = control.shipped
-        ? control.count + " topics"
-        : "not in this export (" + flag + ")";
-      return '<label class="origin-toggle' + (control.shipped ? "" : " excluded") + '"' +
-        ' title="' + escapeHtml(why) + '">' +
-        '<input type="checkbox" data-origin="' + escapeHtml(control.origin) + '"' +
-        (control.checked && control.shipped ? " checked" : "") +
-        (control.shipped ? "" : " disabled") + ">" +
-        '<span class="swatch" style="background:' + control.color + '"></span>' +
-        escapeHtml(control.origin) + "</label>";
-    }).join("");
+    var rows = controls.map(function (control) {
+      return {
+        value: control.origin, name: control.origin, color: control.color,
+        count: control.count, shipped: control.shipped,
+        checked: control.checked,
+        reason: "not in this export (" + flag + ")",
+      };
+    });
+    return {
+      attr: "data-origin", label: "Nodes", unit: "topics",
+      allLabel: allLabelFor(rows, "origins"), rows: rows,
+    };
+  }
+
+  /* The edge-family picker. What it switches is the reader's view and
+     never a claim about the corpus: the panel's per-family brokerage
+     numbers, the absence verdict and the withheld-edge count all stay
+     corpus-wide whatever is drawn. */
+  function familySpec(controls) {
+    var rows = controls.map(function (control) {
+      return {
+        value: control.family, name: control.name, edge: control.key,
+        count: control.count, shipped: control.shipped,
+        checked: control.checked,
+      };
+    });
+    var offerable = rows.filter(function (row) { return row.shipped; });
+    return {
+      attr: "data-family", label: "Edges", unit: "edges",
+      // "both" is only true of two: a corpus with one family's edges
+      // has one reachable row, and that row's own name is the whole
+      // graph there is.
+      allLabel: offerable.length === 2 ? "both families" : allLabelFor(rows, "families"),
+      rows: rows,
+    };
+  }
+
+  /* The four exports the wiring uses: the whole control, and its
+     summary alone for when a row has moved. The summary is recomputed
+     from the same spec rather than rebuilt by the caller, because a
+     caller holding its own copy of "all 4 origins" is how the label
+     came to disagree with the rows in the first place. */
+  function originsHtml(controls, data) {
+    return pickerHtml(originSpec(controls, data));
+  }
+
+  function originsSummary(controls, data) {
+    var spec = originSpec(controls, data);
+    return pickerSummary(spec.rows, spec.allLabel);
+  }
+
+  function familiesHtml(controls) {
+    return pickerHtml(familySpec(controls));
+  }
+
+  function familiesSummary(controls) {
+    var spec = familySpec(controls);
+    return pickerSummary(spec.rows, spec.allLabel);
   }
 
   return {
@@ -431,7 +558,12 @@
     bundleHtml: bundleHtml,
     suggestionsHtml: suggestionsHtml,
     hierarchyHtml: hierarchyHtml,
+    pickerSummary: pickerSummary,
+    pickerHtml: pickerHtml,
     originsHtml: originsHtml,
+    originsSummary: originsSummary,
+    familiesHtml: familiesHtml,
+    familiesSummary: familiesSummary,
     uncoveredHtml: uncoveredHtml,
   };
 });
