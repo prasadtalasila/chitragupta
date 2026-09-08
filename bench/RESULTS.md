@@ -48,7 +48,8 @@ if it is obvious which is which, so:
 | [2026-09-04: the #610 benchmark run (B1-B14)](#2026-09-04-the-610-benchmark-run-b1-b14) | **Current** | Fourteen measurements the paper's Evaluation section needs, ten of them run. **Six A40s, not four**, and a parse that gained tables and formulae (#632), so no parallel or GPU figure in it is like-for-like with anything above |
 | [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
 | [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
-| [2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing](#2026-09-07-b2b-the-single-gpu-counterexample-and-the-pin-that-was-missing) | **Current, and it does not supersede B2 -- it measures a different parse** | Set up as the 4-GPU arm B2 needed to separate its confound, and it is not one: 85 of 300 documents disagree with B2's parse, span counts up in all 85 and down in none, and **all 85 contain `$$` decoded LaTeX against none of the other 215**. The harness pinned `PARSER_OCR` but not #655's `PARSER_FORMULAS`, so the arm inherited `formulas = true` from the host. What stands is a counterexample, not a rate: a **formulas-on** single-GPU pool disagreed with its own partner on one document's passage text. B2's confound is untouched. The missing pin, and a guard against the next one, are fixed in `repro_check.py` |
+| [2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing](#2026-09-07-b2b-the-single-gpu-counterexample-and-the-pin-that-was-missing) | **Current as a post-mortem on a record, not as evidence about the parser** -- B2c below has the arm it asked for | Set up as the 4-GPU arm B2 needed to separate its confound, and it is not one: 85 of 300 documents disagree with B2's parse, span counts up in all 85 and down in none, and **all 85 contain `$$` decoded LaTeX against none of the other 215**. The harness pinned `PARSER_OCR` but not #655's `PARSER_FORMULAS`, so the arm inherited `formulas = true` from the host. What stands is a counterexample, not a rate: a **formulas-on** single-GPU pool disagreed with its own partner on one document's passage text. B2's confound is untouched. The missing pin, and a guard against the next one, are fixed in `repro_check.py` |
+| [2026-09-08 (B2c): single-GPU parsing is not exact, measured under the pin](#2026-09-08-b2c-single-gpu-parsing-is-not-exact-measured-under-the-pin) | **Current, and it overturns a contract claim** | The first run under the parse-config pin, and comparable where B2b was not -- all 300 `.txt` byte-identical to B2's. Four same-config single-GPU pairs instead of one: `qi_enabling_2021` came back **215 passages against 216**, default settings, idle host, so `docs/ARCHITECTURE.md`'s "one GPU reproduces exactly" is **refuted** rather than merely unscoped. The extra span is a bibliography entry splitting mid-venue -- the mechanism already documented for multi-GPU, not a new one. One document in 1,200 comparisons: a counterexample, not a publishable rate. On #695 it narrows without closing -- at 4 cards held fixed the rate is 1.33% against 2026-08-30's 0.33%, disfavouring the host-count hypothesis, but a foreign tenant occupied the reference arm's card |
 | [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
 | [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Rebuild numbers current; its watchdog claim corrected below** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. Its claim that the watchdog arm "still hangs" is the thing the row below corrects |
 | [2026-09-08: the watchdog hang, root-caused and fixed -- still unmeasured](#2026-09-08-the-stall-watchdog-hang-root-caused-and-fixed----still-unmeasured) | **Current** | Identifies the actual mechanism (a call-order race in `terminate_workers`/`executor.shutdown`, not the pool or the nesting) and fixes it. `--with-stall-arm` should now terminate rather than hang -- confirmed with a faithful reproduction using the real pool machinery, not with a run of the arm itself, which needs docling and was not available on the host that diagnosed this. Cancellation latency therefore remains unmeasured; what changed is that it is now *measurable* |
@@ -4201,8 +4202,10 @@ against a recorded "roughly 0.3%"; across-config is 2/300 = **0.67%**
 against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300 --
 which is consistent with serial parsing never having been observed to
 vary, and is not the same claim: this arm ran 12 workers on one card,
-not one worker. The 2026-09-07 (B2b) section has a single-GPU pair that
-disagreed, in a parser configuration none of these arms used.
+not one worker. **A single clean pair is also all this arm is.** The
+2026-09-08 (B2c) section runs four of them under the same settings and
+one disagrees, so read this row as underpowered rather than as evidence
+that one GPU is exact.
 
 So [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)'s contract and the
 README's "not bit-reproducible with every parser" are **confirmed at
@@ -5172,6 +5175,18 @@ record -- both members ran formulas-on, both at 12 workers on one card
 is enough to refute "reproduces exactly" and nowhere near enough to
 publish 0.33% as a single-GPU rate; #723 says so itself and is right to.
 
+**And the narrowness of that turned out not to matter.** This section
+first closed by saying the finding held only for a configuration the
+contract does not describe, and asked for a formulas-off arm to settle
+it. That arm was run the next day and is the B2c section below: the
+default parse, on an idle host, at four times the pair count --
+**single-GPU parsing is not exact there either.** So this record's
+headline was right about the parser and wrong about its own standing,
+which is a better outcome than the reverse and is not a reason to
+soften what follows: the arm still could not have shown it, and reading
+a valid conclusion off an invalid comparison is luck rather than
+method.
+
 **What does not survive.** #695 asks for a 4-GPU arm on the current
 parse to separate the host's 4-to-6-card change from #632, and this is
 not one. That confound is exactly where B2 left it.
@@ -5196,10 +5211,83 @@ The pin was verified the way it can go vacuous: reading
 Unset reads `True`, pinned reads `False`. Against a default
 `config.toml` the same check passes while proving nothing.
 
-**What it would take to settle #723.** A 1-GPU arm at
-`PARSER_FORMULAS=false` on an idle host, at `--repeat 5` or more. Under
-the pin above that is now the default behaviour of the command in this
-section's heading.
+### 2026-09-08 (B2c): single-GPU parsing is not exact, measured under the pin
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,4 --repeat 5`
+(record: `bench/results/2026-09-08-repro-300-pinned/repro.json`), the
+first repro run under `PINNED_PARSER_ENV`. Same 300 citekeys as
+2026-08-30, B2 and B2b. `--repeat 5` gives **four** same-configuration
+pairs per GPU count against a common reference arm, rather than one.
+
+**It is comparable, and that was checked before anything was read off
+it.** All 300 documents' `.txt` are byte-identical to B2's single-GPU
+run -- the test B2b failed at 215 of 300. Wall clock is back on the
+pre-#655 baseline too: 192.8s against B2's 196.9s.
+
+| same-configuration pair, 1 GPU | `.txt` | sidecar bytes | spans | **texts** |
+| --- | ---: | ---: | ---: | ---: |
+| `g1-r0`~`g1-r1` | 0 | 12 | 0 | **0** |
+| `g1-r0`~`g1-r2` | **1** | 9 | **1** | **1** |
+| `g1-r0`~`g1-r3` | 0 | 10 | 0 | **0** |
+| `g1-r0`~`g1-r4` | 0 | 10 | 0 | **0** |
+
+**`docs/ARCHITECTURE.md`'s single-GPU claim is refuted in the default
+configuration.** `qi_enabling_2021` parsed to **215 passages in `g1-r0`
+and 216 in `g1-r2`** -- 12 workers on one card, `ocr` and `formulas`
+both off, on an idle host. One differing document in 1,200
+document-comparisons: a counterexample, and far too little to publish
+0.08% as a rate. Note also that the sidecar was not byte-stable in **any**
+of the four pairs, though in three only the `bbox` floats moved.
+
+**Which passage, and by what mechanism.** #723 asked whether the extra
+span is real content or a boundary that moved. It is the boundary, and
+it is the mechanism this file and the architecture doc already describe
+for the multi-GPU case rather than a new one. A reference to Zaccaria et
+al. is one `list_item` in `g1-r0` and two in `g1-r2`, split after
+"Proceedings of ASME" and before "Turbo Expo 2018". `list_item` goes 77
+to 78 and every other label count is identical; the concatenated text
+differs by the single character at the join. **The hazard is the one
+that matters here: a reviewer shown the first half alone is shown a
+citation truncated mid-venue.**
+
+**Why contention is not the explanation, stated carefully.** A foreign
+tenant arrived on card 0 partway through the matrix -- `g1-r0` to
+`g1-r2` sampled idle at their start, `g1-r3` at 67% and `g1-r4` at 100%,
+and it was still there after the run ended with nothing of this
+benchmark left running. `gpu_state_before` is a **start-only sample**,
+and `g1-r2`'s wall clock (206.1s against 192.8s and 195.4s) rises in the
+same direction as the arms that followed, so onset partway through
+`g1-r2` cannot be excluded and this is not a clean "both members were
+idle" pair. What does the work instead is the pattern: **`g1-r3` and
+`g1-r4` ran under heavy, measured contention and both agreed with the
+reference at 215.** The arm that flipped is the one least affected. Load
+on the card manufacturing the flip does not fit that.
+
+| same-configuration pair, 4 GPUs | `.txt` | spans | **texts** |
+| --- | ---: | ---: | ---: |
+| `g4-r0`~`g4-r1` | 4 | 4 | **3** |
+| `g4-r0`~`g4-r2` | 5 | 5 | **5** |
+| `g4-r0`~`g4-r3` | 5 | 5 | **4** |
+| `g4-r0`~`g4-r4` | 7 | 7 | **4** |
+
+**On #695, this narrows the confound without closing it.** At the GPU
+count held to 4 and the parse post-#632, the same-configuration
+text-level count averages **4 of 300 (1.33%)** against 2026-08-30's **1
+of 300 (0.33%)** at the same 4 cards. The rise survives holding the GPU
+count constant, which disfavours the host's 4-to-6-card change as the
+cause and points at the parse. It is not proof: **`g4-r0` is the left
+member of all four pairs and it started at 99% on card 0**, so every
+4-GPU number here inherits a contended reference arm, against a
+2026-08-30 baseline that had none. This arm swapped one confound for
+another rather than removing it. The single-GPU half does not have that
+problem -- `g1-r0` was idle, so all four 1-GPU pairs share an
+uncontended reference -- which is why it is the stronger half of the
+run.
+
+**The complaint added in this cycle fired on this very run**, on the
+four pairs whose members started under different load, which is what it
+is for. Two of those four were the clean-result pairs, so it is not
+merely restating the findings.
 
 ### 2026-09-04 (B3): attempted, and not obtained
 

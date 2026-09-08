@@ -74,8 +74,10 @@ in some places; it estimated the serial case only.)
 dense reference blocks are grouped into elements slightly differently
 between runs: ~1.4% of documents come back with different text and ~1.0%
 with a different *quotable passage*, and two runs of the same
-configuration are not exempt. Both rates are for the default parse, with
-`ocr` and `formulas` off; with either on there is no measured rate.
+configuration are not exempt, and neither is a pool confined to a single
+GPU -- 1 document of 300, measured. Both rates are for the default
+parse, with `ocr` and `formulas` off; with either on there is no
+measured rate.
 Ranking is unaffected -- `chitragupta/retrieval.py`
 tokenises on runs of `[a-z0-9]`, so where an element boundary falls
 between two words changes nothing about the terms extracted -- but the
