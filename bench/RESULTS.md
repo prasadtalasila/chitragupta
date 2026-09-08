@@ -47,7 +47,10 @@ if it is obvious which is which, so:
 | [2026-09-04: would a figure-similarity tier (#659) catch a draft figure redrawn from a source's?](#2026-09-04-would-a-figure-similarity-tier-659-catch-a-draft-figure-redrawn-from-a-sources) | **Current** | The whole corpus's 6,541 indexed figure crops, two encoders (CLIP, SigLIP), four graded TikZ fixtures. A first pass's numbers were **retracted mid-benchmark** by a page-clipping bug in the TikZ-to-PNG renderer (see "A rendering bug retracted the first numbers" below) -- the figures quoted here are the corrected re-run. Pipeline is sound (identity control passes both encoders). **SigLIP** ranks a style-matched trace of a real corpus figure **1st of 6,541** and a differently-styled same-label redraw **5th**, both inside a realistic top-10 review list; **CLIP** is markedly weaker on the same fixtures (133rd, 182nd). Both encoders lose almost all of that signal once the redraw's labels are genericized (rank ~450, indistinguishable from the unrelated negative control) -- the signal is substantially anchored to preserved text content, not pure geometry. **Recommendation: a narrowly-scoped ship, SigLIP only, explicitly described as catching a label-preserving redraw and nothing past it** |
 | [2026-09-04: the #610 benchmark run (B1-B14)](#2026-09-04-the-610-benchmark-run-b1-b14) | **Current** | Fourteen measurements the paper's Evaluation section needs, ten of them run. **Six A40s, not four**, and a parse that gained tables and formulae (#632), so no parallel or GPU figure in it is like-for-like with anything above |
 | [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
-| [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
+| [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current for its measurement, superseded on both conclusions** -- see B2d below | Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67%, which this section read as roughly five-fold up. B2d shows why it cannot be: every arm here is a **single pair**, and eight pairs at one fixed configuration span 0 to 6 differing documents. Its two conclusions have since failed -- "single-GPU determinism holds (0 of 300)" is one clean pair rather than a property, and "the qualitative contract stands" is false, because that contract claimed single-GPU exactness. The *recommendation* survives and firms up: the paper should stop quoting a rate |
+| [2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing](#2026-09-07-b2b-the-single-gpu-counterexample-and-the-pin-that-was-missing) | **Current as a post-mortem on a record, not as evidence about the parser** -- B2c below has the arm it asked for | Set up as the 4-GPU arm B2 needed to separate its confound, and it is not one: 85 of 300 documents disagree with B2's parse, span counts up in all 85 and down in none, and **all 85 contain `$$` decoded LaTeX against none of the other 215**. The harness pinned `PARSER_OCR` but not #655's `PARSER_FORMULAS`, so the arm inherited `formulas = true` from the host. What stands is a counterexample, not a rate: a **formulas-on** single-GPU pool disagreed with its own partner on one document's passage text. B2's confound is untouched. The missing pin, and a guard against the next one, are fixed in `repro_check.py` |
+| [2026-09-08 (B2c): single-GPU parsing is not exact, measured under the pin](#2026-09-08-b2c-single-gpu-parsing-is-not-exact-measured-under-the-pin) | **Current as the contended half of a contrast** -- its interpretation is superseded by B2d below | The first run under the parse-config pin, and comparable where B2b was not: all 300 `.txt` byte-identical to B2's. Four same-config single-GPU pairs instead of one, and `qi_enabling_2021` came back **215 passages against 216** -- a real quotation change, the bibliography entry splitting mid-venue that is already documented for multi-GPU. **But another worktree's session was competing for the same card**, and B2d re-runs the identical matrix on an idle host with 0 of 1,200 at the text level, so this section's reading of it as a *default-configuration* finding does not hold. Its value now is as the contended arm: quiet gave 0, contended gave 1 |
+| [2026-09-08b (B2d): the quiet-host arm, and what it does to every rate in this file](#2026-09-08b-b2d-the-quiet-host-arm-and-what-it-does-to-every-rate-in-this-file) | **Current, and it retracts a claim from B2c while undercutting every published rate** | The same matrix on a genuinely idle host, **zero integrity complaints**. Single-GPU: sidecar bytes move in all four pairs and one span *label* flips (`section_header`/`text` on a running header, one category away from `page_header` and silent deletion), but the quotable **passage text is stable at 0 of 1,200** -- so "reproduces exactly" is still false, and B2c's text-level flip is **retracted** as a default-configuration finding. The wider result: **eight pairs at one fixed 4-GPU configuration gave 0, 1, 3, 4, 4, 4, 5, 6**, and every earlier record ran `--repeat 2` -- one pair. So 0.33%/0.67%/1.67%/2.33% are single draws from that spread, #695's five-fold rise is not established, and the paper should stop quoting a rate rather than pick a new one |
 | [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
 | [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Rebuild numbers current; its watchdog claim corrected below** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. Its claim that the watchdog arm "still hangs" is the thing the row below corrects |
 | [2026-09-08: the watchdog hang, root-caused and fixed -- still unmeasured](#2026-09-08-the-stall-watchdog-hang-root-caused-and-fixed----still-unmeasured) | **Current** | Identifies the actual mechanism (a call-order race in `terminate_workers`/`executor.shutdown`, not the pool or the nesting) and fixes it. `--with-stall-arm` should now terminate rather than hang -- confirmed with a faithful reproduction using the real pool machinery, not with a run of the arm itself, which needs docling and was not available on the host that diagnosed this. Cancellation latency therefore remains unmeasured; what changed is that it is now *measurable* |
@@ -776,6 +779,20 @@ put a tight interval on the rate, and a 0-of-50 arm is fully consistent
 with a 2% rate rather than evidence of stability. The three mechanisms
 are each observed once or twice; treat them as existence proofs of
 distinct failure modes, not as a frequency distribution over them.
+
+**And this section's own discipline was not applied to the repeat count
+until 2026-09-08, which is how #695 came to report a five-fold rise that
+is not there.** Everything above reasons about the *sample* size -- 50
+documents against 300 -- and nothing about the number of
+*same-configuration pairs*, which was one in every record until
+`--repeat 5`. Eight pairs at a single fixed post-#632 4-GPU
+configuration have since returned **0, 1, 3, 4, 4, 4, 5 and 6**
+differing documents. Every published rate in this file (0.33%, 0.67%,
+1.67%, 2.33%) is one draw from that spread, and #695's comparison is one
+draw against another. See ["2026-09-08b
+(B2d)"](#2026-09-08b-b2d-the-quiet-host-arm-and-what-it-does-to-every-rate-in-this-file).
+The rule this adds: **`--repeat 2` establishes that a difference can
+happen, and no count of documents rescues it for a rate.**
 
 ## 2026-08-08: what a drift sweep costs
 
@@ -4197,8 +4214,16 @@ was re-run at n=300, which is the order the recorded finding rests on:
 **The instability reappears, reaches the passage text, and the rates
 match.** Same-config multi-GPU text disagreement is 1/300 = **0.33%**
 against a recorded "roughly 0.3%"; across-config is 2/300 = **0.67%**
-against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300,
-consistent with serial parsing never having been observed to vary.
+against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300 --
+which is consistent with serial parsing never having been observed to
+vary, and is not the same claim: this arm ran 12 workers on one card,
+not one worker. **A single pair is also all this arm is, and so is
+every other same-configuration figure in this section.** The 2026-09-08b
+(B2d) section runs four pairs per configuration and finds 0 to 6
+differing documents at one fixed 4-GPU setting, so read every rate here
+as a single draw rather than as a measured rate -- including the two
+"the rates match" numbers above, whose agreement with the recorded
+values carries less than it appears to.
 
 So [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)'s contract and the
 README's "not bit-reproducible with every parser" are **confirmed at
@@ -5091,6 +5116,287 @@ floating-point difference to land in. Both the `.txt` and the passage
 spans move, so this is not confined to the sidecar.
 
 The wall clock either side: 1 GPU 196.9s/193.3s, 6 GPUs 111.8s/109.5s.
+
+**The confound above is still unseparated, and the 2026-09-07 run does
+not separate it.** That run was set up as the missing 4-GPU arm on the
+current parse and turned out not to be on the same parse at all -- see
+the B2b section below. Every number in this section stands: it is the
+last repro record taken with formula decoding off, and its comparison
+against 2026-08-30 is like-for-like.
+
+### 2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,4 --repeat 2`
+(record: `bench/results/2026-09-07-repro-300-gpu4/repro.json`). Same 300
+citekeys as B2 and as 2026-08-30, drawn by the same rank sample.
+
+| arm | `.txt` | sidecar bytes | spans | **texts** |
+| --- | ---: | ---: | ---: | ---: |
+| same configuration, 1 GPU | **1** | 5 | **1** | **1** |
+| same configuration, 4 GPUs | 5 | 55 | 5 | **4** |
+| across configuration (1 vs 4 GPUs) | 5 | 67 | 5 | **4** |
+
+The single-GPU row is the point: `qi_enabling_2021` parsed to **217
+passages on one run and 216 on the other**, at the same 12 workers on
+the same one card, and the difference reaches the passage *text* -- the
+level a reviewer is actually shown. Every earlier arm had that row at
+zero.
+
+**Read as a re-run of B2, this record is invalid, and the reason is a
+defect in the harness rather than anything about the parser.** Two
+things gave it away. The wall clock is ~8x B2's on the 1-GPU arm
+(1577.2s/1611.6s against 196.9s/193.3s) and ~5.4x on the 4-GPU one, at
+an identical sample and worker count. And of the 300 documents, **85
+disagree with B2's single-GPU parse in `.txt`** -- not 1, 85 -- with the
+span count rising in **all 85 and falling in none** (min +1, median +4,
+max +74), while the remaining 215 are byte-identical in both `.txt` and
+passage text. A monotone one-directional gain in 28% of a corpus is the
+signature of a different parse, not of the run-to-run wobble this script
+measures, which scatters both ways (217/216, 390/391, 507/506 in this
+very record).
+
+The prediction that identifies it: those 85 should be exactly the
+documents that contain equations. They are. **All 85 contain `$$`
+decoded LaTeX and none of the 215 does** -- so the cause is #655's
+`[parser].formulas`, which reached this host's `config.toml` as
+`formulas = true` on 2026-09-04 and turns
+`<!-- formula-not-decoded -->` into the equation. `repro_check.py`
+pinned `PARSER`, `PARSER_OCR`, `PARSER_WORKERS` and
+`PARSER_STALL_TIMEOUT` per run precisely so an arm would not inherit the
+host's parse settings, and a setting added after that block was written
+was never added to it.
+
+A second, independent problem, and it reaches every arm rather than one:
+`g1-r1` started with **card 0 at 42% utilisation and 917 MiB held by a
+foreign process** where `g1-r0` started idle, and `g4-r0` started with
+431 MiB where `g4-r1` was idle. **All three of this record's pairs were
+unevenly contended.** The harness captured that in `gpu_state_before`
+from the beginning and nothing read it. Contention is the axis this
+script varies, so no pair here ran under the same treatment on both
+sides -- which is a second reason not to read the 4-GPU rows as B2's
+numbers moving.
+
+Replaying the check added here over the three committed records puts
+2026-08-30 and 2026-09-04 clean on all six pairs and flags all three of
+2026-09-07's, which is the discrimination it needs to be worth having.
+2026-08-30 is the case that decided its design: card 0 held 1925 MiB in
+**all four** of its arms, so an "was the host idle?" test would have
+condemned the very record this section compares against. Identical
+occupancy on both sides of a pair is a constant, and a constant is
+controlled; what invalidates a pair is the occupancy arriving on one
+side only.
+
+**What survives.** The same-configuration comparison is internal to the
+record -- both members ran formulas-on, both at 12 workers on one card
+-- so the counterexample stands for the configuration it was taken in: a
+**formulas-on** single-GPU pool is not exact. One document in one pair
+is enough to refute "reproduces exactly" and nowhere near enough to
+publish 0.33% as a single-GPU rate; #723 says so itself and is right to.
+
+**And the narrowness of that turned out not to matter.** This section
+first closed by saying the finding held only for a configuration the
+contract does not describe, and asked for a formulas-off arm to settle
+it. That arm was run the next day and is the B2c section below: the
+default parse, on an idle host, at four times the pair count --
+**single-GPU parsing is not exact there either.** So this record's
+headline was right about the parser and wrong about its own standing,
+which is a better outcome than the reverse and is not a reason to
+soften what follows: the arm still could not have shown it, and reading
+a valid conclusion off an invalid comparison is luck rather than
+method.
+
+**What does not survive.** #695 asks for a 4-GPU arm on the current
+parse to separate the host's 4-to-6-card change from #632, and this is
+not one. That confound is exactly where B2 left it.
+
+**Fixed here, in the harness rather than in prose.** Parser settings
+that decide what the parse *contains* now live in one
+`PINNED_PARSER_ENV` block, `formulas` included, and every run records
+what was pinned beside the resolved value of what was not.
+`unpinned_parser_settings()` asks `chitragupta.config` which
+`[parser].*` settings exist and refuses to run against one this module
+has not classified, so the next such setting stops the matrix on its
+first invocation instead of costing four arms and a record. Foreign GPU
+load is now an integrity complaint rather than an unread field, raised
+per *pair* on a difference between its members rather than per arm on
+absolute occupancy. `sweep_sync.py` had the identical gap and is pinned
+too; no published throughput row is affected, because its last run
+predates the flip.
+
+The pin was verified the way it can go vacuous: reading
+`config.PARSER_FORMULAS` against a `config.toml` that really does set
+`formulas = true`, both with the environment variable and without it.
+Unset reads `True`, pinned reads `False`. Against a default
+`config.toml` the same check passes while proving nothing.
+
+### 2026-09-08 (B2c): single-GPU parsing is not exact, measured under the pin
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,4 --repeat 5`
+(record: `bench/results/2026-09-08-repro-300-pinned/repro.json`), the
+first repro run under `PINNED_PARSER_ENV`. Same 300 citekeys as
+2026-08-30, B2 and B2b. `--repeat 5` gives **four** same-configuration
+pairs per GPU count against a common reference arm, rather than one.
+
+**It is comparable, and that was checked before anything was read off
+it.** All 300 documents' `.txt` are byte-identical to B2's single-GPU
+run -- the test B2b failed at 215 of 300. Wall clock is back on the
+pre-#655 baseline too: 192.8s against B2's 196.9s.
+
+| same-configuration pair, 1 GPU | `.txt` | sidecar bytes | spans | **texts** |
+| --- | ---: | ---: | ---: | ---: |
+| `g1-r0`~`g1-r1` | 0 | 12 | 0 | **0** |
+| `g1-r0`~`g1-r2` | **1** | 9 | **1** | **1** |
+| `g1-r0`~`g1-r3` | 0 | 10 | 0 | **0** |
+| `g1-r0`~`g1-r4` | 0 | 10 | 0 | **0** |
+
+**`docs/ARCHITECTURE.md`'s single-GPU claim is refuted in the default
+configuration.** `qi_enabling_2021` parsed to **215 passages in `g1-r0`
+and 216 in `g1-r2`** -- 12 workers on one card, `ocr` and `formulas`
+both off, on an idle host. One differing document in 1,200
+document-comparisons: a counterexample, and far too little to publish
+0.08% as a rate. Note also that the sidecar was not byte-stable in **any**
+of the four pairs, though in three only the `bbox` floats moved.
+
+**Which passage, and by what mechanism.** #723 asked whether the extra
+span is real content or a boundary that moved. It is the boundary, and
+it is the mechanism this file and the architecture doc already describe
+for the multi-GPU case rather than a new one. A reference to Zaccaria et
+al. is one `list_item` in `g1-r0` and two in `g1-r2`, split after
+"Proceedings of ASME" and before "Turbo Expo 2018". `list_item` goes 77
+to 78 and every other label count is identical; the concatenated text
+differs by the single character at the join. **The hazard is the one
+that matters here: a reviewer shown the first half alone is shown a
+citation truncated mid-venue.**
+
+**Why contention is not the explanation, stated carefully.** A foreign
+tenant arrived on card 0 partway through the matrix -- `g1-r0` to
+`g1-r2` sampled idle at their start, `g1-r3` at 67% and `g1-r4` at 100%,
+and it was still there after the run ended with nothing of this
+benchmark left running. `gpu_state_before` is a **start-only sample**,
+and `g1-r2`'s wall clock (206.1s against 192.8s and 195.4s) rises in the
+same direction as the arms that followed, so onset partway through
+`g1-r2` cannot be excluded and this is not a clean "both members were
+idle" pair. What does the work instead is the pattern: **`g1-r3` and
+`g1-r4` ran under heavy, measured contention and both agreed with the
+reference at 215.** The arm that flipped is the one least affected. Load
+on the card manufacturing the flip does not fit that.
+
+| same-configuration pair, 4 GPUs | `.txt` | spans | **texts** |
+| --- | ---: | ---: | ---: |
+| `g4-r0`~`g4-r1` | 4 | 4 | **3** |
+| `g4-r0`~`g4-r2` | 5 | 5 | **5** |
+| `g4-r0`~`g4-r3` | 5 | 5 | **4** |
+| `g4-r0`~`g4-r4` | 7 | 7 | **4** |
+
+**On #695, this narrows the confound without closing it.** At the GPU
+count held to 4 and the parse post-#632, the same-configuration
+text-level count averages **4 of 300 (1.33%)** against 2026-08-30's **1
+of 300 (0.33%)** at the same 4 cards. The rise survives holding the GPU
+count constant, which disfavours the host's 4-to-6-card change as the
+cause and points at the parse. It is not proof: **`g4-r0` is the left
+member of all four pairs and it started at 99% on card 0**, so every
+4-GPU number here inherits a contended reference arm, against a
+2026-08-30 baseline that had none. This arm swapped one confound for
+another rather than removing it. The single-GPU half does not have that
+problem -- `g1-r0` was idle, so all four 1-GPU pairs share an
+uncontended reference -- which is why it is the stronger half of the
+run.
+
+**The complaint added in this cycle fired on this very run**, on the
+four pairs whose members started under different load, which is what it
+is for. Two of those four were the clean-result pairs, so it is not
+merely restating the findings.
+
+**Superseded on the interpretation, 2026-09-08b, and the contention this
+section argued past turns out to matter.** The competing GPU work was
+another worktree's session, not an outside tenant; once it finished, the
+identical matrix was re-run on a genuinely idle host with **zero**
+integrity complaints. Single-GPU passage *text* came back stable at 0 of
+1,200 comparisons there, against the 1 here. So the argument above --
+that the heavily-contended arms being clean rules contention out -- does
+not survive: `g1-r2`'s elevated wall clock was the better signal, and
+this section under-weighted it. The B2d section below has the quiet
+numbers and what they do to every rate in this file. **This record still
+stands as the contended arm of that contrast**, which is what makes the
+comparison possible at all.
+
+### 2026-09-08b (B2d): the quiet-host arm, and what it does to every rate in this file
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,4 --repeat 5`
+(record: `bench/results/2026-09-08b-repro-300-quiet/repro.json`), the
+same command as B2c on the same 300 citekeys, run after the competing
+worktree session finished. **Zero integrity complaints**: all ten arms
+started idle and the wall clocks are tight (1 GPU 190.9-198.0s, 4 GPUs
+109.9-111.2s), against B2c's 192.8-247.1s drift.
+
+**Single-GPU, and it separates by level.** Four pairs, 1,200
+document-comparisons, default parse:
+
+| pair | `.txt` | sidecar bytes | spans | **texts** |
+| --- | ---: | ---: | ---: | ---: |
+| `g1-r0`~`g1-r1` | 0 | 6 | 0 | **0** |
+| `g1-r0`~`g1-r2` | 0 | 6 | 0 | **0** |
+| `g1-r0`~`g1-r3` | 0 | 6 | 0 | **0** |
+| `g1-r0`~`g1-r4` | **1** | 10 | **1** | **0** |
+
+So `docs/ARCHITECTURE.md`'s "reproduces exactly" is still false on one
+GPU -- the sidecar moved in every pair and one span record flipped --
+but **the quotable passage held still in all 1,200**. B2c's text-level
+flip is not reproduced here, and **the claim that a quotable passage
+moves on a single GPU in the default configuration is retracted.**
+
+**The one span flip is a label, on the boundary that decides whether a
+passage exists.** `singh_enabling_2024` came back with 405 spans in
+both runs; index 16, the line "P. Singh et al.", is `section_header` in
+one and `text` in the other, byte-identical, same page. Both are in
+`PASSAGE_LABELS`, so nothing quotable changed. One category further --
+`page_header`, which is *not* in `PASSAGE_LABELS` -- and the record
+would have disappeared without trace. That is a running header the
+classifier is genuinely unsure about, which is exactly where a flip
+stops being cosmetic. `repro_check.py`'s docstring predicted this shape
+from a cross-configuration observation; this is a same-configuration,
+single-GPU instance of it.
+
+**And the headline, which is about this file rather than about docling.**
+
+| record | GPUs | pairs, text level |
+| --- | ---: | --- |
+| 2026-08-30, pre-#632 | 4 | `[1]` |
+| 2026-09-04, post-#632 | 6 | `[5]` |
+| 2026-09-08 (B2c), contended | 4 | `[3, 5, 4, 4]` |
+| 2026-09-08b (B2d), quiet | 4 | `[0, 1, 6, 4]` |
+
+**Eight pairs at one fixed post-#632 4-GPU configuration gave 0, 1, 3,
+4, 4, 4, 5, and 6 differing documents.** Every record before today ran
+`--repeat 2`, which is **one pair per configuration** -- so 0.33%,
+0.67%, 1.67% and 2.33%, every rate this harness has ever published, is a
+single draw from a distribution that spans nought to six. A baseline of
+one pair reading 1 sits inside that range, and two of these eight pairs
+read 1 or less.
+
+**So #695's five-fold rise is not established, and the fix is not a
+different number.** The comparison is one pair against one pair. This
+file's own ["Power, stated plainly"](#power-stated-plainly) says as much
+in advance about small counts; it had not been applied to the
+same-configuration control itself. The recommendation to the paper
+therefore firms up rather than changing: **stop quoting a rate.** The
+qualitative contract -- more GPUs, less reproducible; one GPU is better
+but not exact -- is what the evidence supports.
+
+It also does not clear #632. Holding the card count at 4 the quiet mean
+is 2.75 against the pre-#632 pair's 1, which is the direction #695
+suspects, but a single pre-#632 pair cannot establish a baseline when
+the per-pair spread is this wide. Settling it needs `--repeat 5` on a
+pre-#632 checkout, not another post-#632 arm.
+
+**One methodological note, because it recurred.** Three conclusions in
+this cycle were drawn from a single observation and then revised: that
+B2b's finding was confined to a formulas-on parse, that B2c's differing
+pair was uncontended because both members sampled idle, and that a
+quotable passage moves on one GPU by default. The common error is the
+one the table above measures -- reading a rate off one pair. The pin and
+`--repeat 5` are the two fixes, and they are the same fix twice: state
+the configuration, then measure the variance before believing the mean.
 
 ### 2026-09-04 (B3): attempted, and not obtained
 

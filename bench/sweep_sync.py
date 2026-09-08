@@ -299,6 +299,12 @@ def one_run(workers: int, gpus: int, ocr: bool, python: str, keep_output: bool =
         "CONTENT_DIR": str(content_dir),
         "PARSER": "docling",
         "PARSER_OCR": "true" if ocr else "false",
+        # Pinned for the same reason OCR is set explicitly rather than
+        # inherited: #655's `[parser].formulas` adds a model pass per
+        # page, so a host that turned it on would make every row here
+        # incomparable to the ones already recorded -- which is exactly
+        # what it did to `repro_check.py`'s 2026-09-07 record.
+        "PARSER_FORMULAS": "false",
         "PARSER_WORKERS": str(workers),
         "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(gpus)) if gpus else "",
         # A stall watchdog firing mid-benchmark would silently truncate

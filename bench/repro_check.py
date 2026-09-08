@@ -22,6 +22,13 @@ That is what this script measures, and why it is separate from
 and throws its output away, while this one answers "is the output the
 same" and must keep every byte to compare.
 
+Which makes one thing load-bearing that reads like housekeeping: **every
+parser setting that decides what the parse contains is pinned to a
+literal, not inherited from the host's config.toml**, and the pinned set
+is recorded in each run. `PINNED_PARSER_ENV` below has the incident that
+made this a rule -- the 2026-09-07 record was published as a re-run of
+the 2026-09-04 arms and was not one.
+
 ## What it varies, and what it holds still
 
 The variance is not device-dependent -- parsing one document explicitly
@@ -132,6 +139,98 @@ BENCH_DIR = REPO_ROOT / "bench"
 # release because every run looked like it honoured the setting.
 _WORKERS_LINE = re.compile(r"parsing (\d+) document\(s\) with (\d+) workers")
 _PARSED_LINE = re.compile(r"Sync complete: (\d+) parsed")
+
+# Every parser setting that decides what the parse *contains*, pinned to
+# a literal so an arm is comparable to one run on another day and not
+# merely to its own partner.
+#
+# This block is the fix for a defect that cost three records their
+# comparability. It once pinned `PARSER_OCR` and nothing else in this
+# class, on the reasoning that OCR is the expensive knob. Then #655 added
+# `[parser].formulas`, the 2026-09-07 run inherited `formulas = true`
+# from the host's config.toml, and 85 of its 300 documents came back with
+# decoded LaTeX where the 2026-09-04 run had
+# `<!-- formula-not-decoded -->`. Every span count moved *up*, never
+# down, which is the signature of a different parse rather than of the
+# non-determinism this script exists to measure -- and nothing in the
+# record said so, because the record named the settings it varied and
+# not the ones it assumed. `unpinned_parser_settings()` below is what
+# stops the next such setting arriving unnoticed.
+PINNED_PARSER_ENV = {
+    "PARSER": "docling",
+    "PARSER_OCR": "false",
+    "PARSER_FORMULAS": "false",
+    # A stall watchdog firing mid-run would truncate the corpus and
+    # leave a short, wrong comparison looking like a clean one.
+    "PARSER_STALL_TIMEOUT": "off",
+}
+
+# Pinned too, but from an argument rather than a literal: `--workers` is
+# the axis this script holds fixed across arms by measuring it.
+_PARSER_SETTINGS_PINNED_PER_RUN = frozenset({"PARSER_WORKERS"})
+
+# Not pinned, each for a stated reason. Named rather than omitted,
+# because "unlisted" is how `PARSER_FORMULAS` got in.
+_PARSER_SETTINGS_LEFT_ALONE = {
+    # Value registries, not settings: tuples of what the two settings
+    # above will accept.
+    "PARSER_BACKENDS": "a registry of valid values for PARSER",
+    "PARSER_START_METHODS": "a registry of valid values for PARSER_START_METHOD",
+    # These two change how the parse *runs* rather than what it extracts.
+    # Recorded per run instead, so a record whose host differed here can
+    # be told apart afterwards -- which is more than pinning would give,
+    # since neither has a defensible literal to pin to.
+    "PARSER_START_METHOD": "affects pool mechanics, not extracted content; recorded",
+    "PARSER_DOCUMENT_TIMEOUT": "host-dependent bound on a slow document; recorded",
+}
+
+
+def unpinned_parser_settings(names: "list[str]") -> "list[str]":
+    """Those of `names` this script neither pins nor deliberately leaves.
+
+    The guard on the next `PARSER_FORMULAS`. A new parser setting is
+    added to `chitragupta/config.py` roughly once a release, and the
+    failure mode is silent in both directions: the harness keeps running,
+    and its record keeps looking exactly like the ones it can no longer
+    be compared with. So the harness asks `config` what parser settings
+    exist rather than trusting this module to have kept up, and refuses
+    to run against one it has never heard of.
+    """
+    known = (
+        set(PINNED_PARSER_ENV) | _PARSER_SETTINGS_PINNED_PER_RUN | set(_PARSER_SETTINGS_LEFT_ALONE)
+    )
+    return sorted(n for n in names if n.startswith("PARSER") and n not in known)
+
+
+def parser_settings() -> dict:
+    """What was pinned, and the resolved value of what was not.
+
+    Written into every run's record. The 2026-09-07 record could not be
+    read as incomparable because it stated no parser configuration at
+    all; a reader had to re-derive one from the parsed bytes.
+    """
+    # Idempotent rather than an unconditional insert: this runs once per
+    # arm, and `make_corpus` has already put the repo root here as an
+    # import side-effect. Depending on that silently is what this avoids.
+    if str(REPO_ROOT) not in sys.path:
+        sys.path.insert(0, str(REPO_ROOT))
+    from chitragupta import config  # noqa: PLC0415  -- read for its setting names
+
+    inherited = {}
+    for name in sorted(_PARSER_SETTINGS_LEFT_ALONE):
+        if name in ("PARSER_BACKENDS", "PARSER_START_METHODS"):
+            continue
+        inherited[name] = str(getattr(config, name, None))
+    unpinned = unpinned_parser_settings(dir(config))
+    if unpinned:
+        raise SystemExit(
+            f"repro_check.py does not know about {', '.join(unpinned)}. Add "
+            f"each to PINNED_PARSER_ENV if it changes what the parse "
+            f"contains, or to _PARSER_SETTINGS_LEFT_ALONE with a reason. "
+            f"Running without deciding is how the 2026-09-07 record lost "
+            f"its comparability -- see that block's comment."
+        )
+    return {"pinned": dict(PINNED_PARSER_ENV), "inherited_from_config": inherited}
 
 
 def _portable(path: Path) -> str:
@@ -312,6 +411,49 @@ def _as_int(value: str) -> "int | None":
         return None
 
 
+# A card holding less than this before a run has not been claimed by
+# anything that matters: an idle A40 on this host reports 0 or 4 MiB, the
+# latter being the driver's own accounting rather than a process.
+_IDLE_MIB_CEILING = 64
+
+
+def busy_cards(before: "list[dict] | None") -> "list[dict]":
+    """The cards already in use when an arm started, if any.
+
+    Recorded per run, and advisory rather than fatal: a shared GPU host
+    is the normal case, and refusing to run on one would make this
+    script unrunnable where it is most needed.
+    """
+    if not before:
+        return []
+    return [
+        card
+        for card in before
+        if (card.get("utilisation_pct") or 0) > 0
+        or (card.get("memory_used_mib") or 0) >= _IDLE_MIB_CEILING
+    ]
+
+
+def contention_differs(left: "list[dict]", right: "list[dict]") -> bool:
+    """Did the two members of a pair start under *different* foreign load?
+
+    The distinction this draws is the whole value of the check, and
+    getting it wrong would have flagged a record this file endorses. An
+    absolute test -- "was the host idle?" -- reports every arm of the
+    2026-08-30 run, whose card 0 held 1925 MiB in all four arms
+    identically. That is a constant, and a constant is controlled: both
+    members of every pair paid it. What invalidated 2026-09-07's
+    single-GPU pair is that only *one* member paid, `g1-r1` starting at
+    42% utilisation and 917 MiB against `g1-r0`'s idle card.
+
+    So the complaint keys on the set of busy cards differing between the
+    pair, not on either member being busy. A benchmark on a permanently
+    half-occupied host stays interpretable; one where the occupancy
+    arrived mid-matrix does not.
+    """
+    return {card["index"] for card in left} != {card["index"] for card in right}
+
+
 def run_once(
     bib: Path, workers: int, gpus: int, cpus: "str | None", content_dir: Path, python: str
 ) -> dict:
@@ -324,15 +466,11 @@ def run_once(
     """
     env = {
         **os.environ,
+        **PINNED_PARSER_ENV,
         "BIB_FILE": str(bib),
         "CONTENT_DIR": str(content_dir),
-        "PARSER": "docling",
-        "PARSER_OCR": "false",
         "PARSER_WORKERS": str(workers),
         "CUDA_VISIBLE_DEVICES": ",".join(str(i) for i in range(gpus)),
-        # A stall watchdog firing mid-run would truncate the corpus and
-        # leave a short, wrong comparison looking like a clean one.
-        "PARSER_STALL_TIMEOUT": "off",
     }
     # taskset rather than trusting the ambient mask: allowed_cpus() feeds
     # both worker_ceiling() and docling_threads(), so an arm that ran
@@ -378,6 +516,17 @@ def run_once(
             line for line in proc.stderr.splitlines() if "GPU" in line or "device" in line.lower()
         ],
         "gpu_state_before": before,
+        # The parse configuration this arm actually ran under, so the
+        # next reader does not have to reconstruct it from the bytes.
+        "parser_settings": parser_settings(),
+        # gpu_state_before was captured from the start and read by
+        # nobody, which is how the 2026-09-07 single-GPU arm came to be
+        # published as a same-configuration pair: `g1-r1` started with
+        # 42% utilisation and 917 MiB held by a foreign process while
+        # `g1-r0` started idle. Contention is the very knob this script
+        # varies, so a busy host is not a footnote on the result -- it is
+        # an uncontrolled second dose of the treatment.
+        "host_busy_before": busy_cards(before),
         "content_dir": _portable(content_dir),
     }
 
@@ -527,6 +676,46 @@ def self_check() -> None:
         "reports exactly what a perfectly stable run reports"
     )
     assert require_sidecars([{"name": "t", "fingerprint": present}]) is None
+    # A parser setting this module has never heard of must be seen, and
+    # the fabricated one proves the checker looks at `config`'s names
+    # rather than at this module's own list. Without this, the next
+    # `[parser].*` addition repeats 2026-09-07 exactly.
+    assert unpinned_parser_settings(["PARSER_INVENTED_KNOB"]) == ["PARSER_INVENTED_KNOB"], (
+        "an unknown parser setting must be reported -- it is how a run "
+        "silently stops being comparable to the record before it"
+    )
+    assert not unpinned_parser_settings(sorted(PINNED_PARSER_ENV)), (
+        "a pinned setting is not unpinned"
+    )
+    assert not unpinned_parser_settings(["PARSER_WORKERS", "PARSER_DOCUMENT_TIMEOUT"])
+    # And a busy card must be seen for what it is. Both directions,
+    # because a checker that flags everything is as useless here as one
+    # that flags nothing: every arm would carry the caveat and the caveat
+    # would stop meaning anything.
+    idle = [{"index": 0, "memory_used_mib": 4, "utilisation_pct": 0}]
+    assert not busy_cards(idle), "an idle card must not be reported busy"
+    assert not busy_cards(None), "an unreadable nvidia-smi is not evidence of a busy host"
+    assert (
+        len(busy_cards([*idle, {"index": 1, "memory_used_mib": 917, "utilisation_pct": 42}])) == 1
+    )
+    assert len(busy_cards([{"index": 0, "memory_used_mib": 0, "utilisation_pct": 42}])) == 1, (
+        "utilisation alone must count -- a foreign process between "
+        "allocations holds no memory and still competes for the card"
+    )
+    # The two cases from the committed records, run as the *pair* test
+    # rather than the per-arm one. The second is why `contention_differs`
+    # exists: an absolute test flags all four arms of 2026-08-30, whose
+    # card 0 held 1925 MiB throughout -- a record the 2026-09-07 section
+    # rests its like-for-like comparison on.
+    one_sided = busy_cards([{"index": 0, "memory_used_mib": 917, "utilisation_pct": 42}])
+    assert contention_differs([], one_sided), (
+        "load on one member of a pair and not the other must be reported"
+    )
+    shared = busy_cards([{"index": 0, "memory_used_mib": 1925, "utilisation_pct": 0}])
+    assert not contention_differs(shared, shared), (
+        "identical foreign occupancy in both members is a constant, not a "
+        "differential -- flagging it would condemn the 2026-08-30 record"
+    )
 
 
 def integrity_complaints(
@@ -573,7 +762,19 @@ def integrity_complaints(
                 f"document(s) have no passage records (e.g. {', '.join(missing[:3])}) "
                 f"-- the sidecar/spans/texts columns are not evidence for those"
             )
+    busy = {run["name"]: run.get("host_busy_before") or [] for run in runs}
     for c in comparisons:
+        left, right = busy.get(c["left"], []), busy.get(c["right"], [])
+        if contention_differs(left, right):
+            where = " vs ".join(
+                ", ".join(f"card {b['index']} at {b['utilisation_pct']}%" for b in side) or "idle"
+                for side in (left, right)
+            )
+            complaints.append(
+                f"{c['left']}~{c['right']}: the two arms started under different "
+                f"foreign GPU load ({where}) -- contention is the axis this script "
+                f"varies, so this pair is not the controlled comparison it looks like"
+            )
         if c["only_in_left"] or c["only_in_right"]:
             complaints.append(
                 f"{c['left']}~{c['right']}: {len(c['only_in_left'])} document(s) only "
@@ -676,6 +877,17 @@ def main() -> int:
             "--cpus to run on the ambient CPU mask -- but note the arms are "
             "then only comparable if nothing else changes that mask mid-matrix."
         )
+
+    # Same reason, and the same failure this time: an unknown parser
+    # setting must stop the matrix before it costs four arms, not after.
+    settings = parser_settings()
+    print(
+        "  parser pinned: "
+        + ", ".join(f"{k}={v}" for k, v in sorted(settings["pinned"].items()))
+        + "; inherited: "
+        + ", ".join(f"{k}={v}" for k, v in sorted(settings["inherited_from_config"].items())),
+        flush=True,
+    )
 
     gpu_counts = [int(g) for g in args.gpus.split(",")]
     out_dir = Path(args.out) if args.out else BENCH_DIR / "results" / args.tag

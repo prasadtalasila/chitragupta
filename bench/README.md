@@ -206,10 +206,30 @@ being tested.
 `repro_check.py` is the odd one out here, and deliberately so: every other
 script measures **cost**, it measures **agreement**. That is why it keeps
 each run's output instead of discarding it, pins the CPU affinity mask
-with `taskset` so `worker_ceiling()` cannot drift between arms, and runs
-every configuration twice -- the same-configuration pair is the control
-that says whether a difference belongs to the varied axis or to the
-parser simply being unstable.
+with `taskset` so `worker_ceiling()` cannot drift between arms, pins
+every parse-affecting `[parser].*` setting rather than inheriting it from
+the host's `config.toml`, and runs every configuration more than once --
+the same-configuration pair is the control that says whether a difference
+belongs to the varied axis or to the parser simply being unstable.
+
+**Use `--repeat 5`, not the default 2, for anything you intend to quote.**
+`--repeat 2` gives **one** same-configuration pair per GPU count, and one
+pair is a single draw. Eight pairs at one fixed configuration have
+returned 0, 1, 3, 4, 4, 4, 5 and 6 differing documents out of 300 -- so a
+single pair establishes only that a difference *can* occur, and two
+single pairs cannot be compared to each other. #695 reported a five-fold
+rise in the rate that was exactly that comparison; `RESULTS.md`'s
+"2026-09-08b (B2d)" section has the arithmetic. Sample size does not
+help here: 300 documents per arm and one pair still yields one number.
+
+Two settings it does **not** pin, and inherits and records instead:
+`PARSER_DOCUMENT_TIMEOUT` and `PARSER_START_METHOD`. Neither changes what
+is extracted, and neither has a defensible literal to pin to.
+`unpinned_parser_settings()` refuses to run against a `[parser].*`
+setting the script has never classified, so a new one stops the matrix on
+its first invocation rather than silently making a record incomparable --
+which is what happened to the 2026-09-07 record when `[parser].formulas`
+arrived.
 
 ## `self_check()`: what a script here owes a number it publishes
 

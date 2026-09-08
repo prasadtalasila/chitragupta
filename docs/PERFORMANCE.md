@@ -757,8 +757,16 @@ and the passage spans quoted from it.
 At the scale this matters: comparing runs over all 501 documents, ~1.4%
 of documents come back with different text and ~1.0% with a different
 quotable passage. Two runs of the *same* configuration are not exempt, at
-roughly a third of that rate. Serial parsing has not been observed to
-vary.
+roughly a third of that rate. **Confining the run to one GPU lowers the
+rate but does not remove it** -- 1 document of 300 still differed, though
+over 1,200 single-GPU comparisons on an idle host what moved was bytes
+and one element *label*, and no quotable passage. Serial parsing has not
+been observed to vary. **Read all of these as orders of magnitude:**
+every published figure came from a single pair of runs, and eight pairs
+at one fixed configuration have since ranged from 0 to 6 differing
+documents. Every one of those rates was measured with `[parser].ocr` and
+`[parser].formulas` both off; each adds a model pass per page, and
+neither configuration has a measured rate.
 
 **The full contract is
 [ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)**,
@@ -771,3 +779,28 @@ files differ, under 0.06%" understated the effect by counting bytes
 rather than passages. And "repeating a run at the same worker count
 reproduces exactly" is **false**: 5 of 572 same-configuration
 comparisons differ in bytes, and 2 in passage text.
+
+### 🎲 Why there is no reproducibility *rate* here, only an order of magnitude
+
+Worth its own heading because it was reported as a defect and is not
+one. #695 recorded that multi-GPU non-determinism had risen roughly
+five-fold -- 0.33% to 1.67% same-configuration, 0.67% to 2.33% across
+configurations -- and asked which of two changes on the host caused it.
+
+**Neither, as far as anyone can tell: the comparison was one pair of
+runs against one pair of runs.** Every reproducibility record before
+2026-09-08 was taken at `--repeat 2`, which yields exactly **one**
+same-configuration pair per GPU count. Run at `--repeat 5` instead,
+eight pairs at a *single fixed* configuration returned **0, 1, 3, 4, 4,
+4, 5 and 6** differing documents of 300. Both of #695's figures sit
+inside that spread, so the difference between them is consistent with
+nothing having changed at all.
+
+That is a fact about the measurement rather than about docling, and it
+generalises to every percentage on this page's reproducibility rows:
+read them as orders of magnitude -- "about one document in a hundred,
+more with more GPUs" -- and not as figures to compare against each
+other. Establishing that a rate has genuinely moved needs several pairs
+per arm on both sides of the change, which no record before 2026-09-08
+has. `bench/RESULTS.md`'s "2026-09-08b (B2d)" section has the pair
+counts, and its "Power, stated plainly" section now carries the rule.
