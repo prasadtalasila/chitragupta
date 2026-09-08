@@ -96,6 +96,14 @@ Read it before a non-trivial change. In brief:
   function, at most **250 code lines** per module. Both are **ratchets** --
   today's offenders are frozen in a register that may only shrink, so a
   new offender fails and a fixed one must be delisted.
+- **The same two rules bind `assets/webapp/`**, checked separately by
+  `tests/webapp/code_standards.test.js` under `node --test` rather than
+  `pytest` (JS has no `ast`) -- offenders live in the same
+  `code-standards-register.toml`, in its `c1js`/`c2js` tables, and it is
+  the same ratchet: a new offender fails, a fixed one must be delisted.
+  See [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-the-binary-rules)
+  for the two ways the JS scan's counting deliberately differs from the
+  Python one.
 - **Statements, not physical lines**, because this repository *requires*
   rationale comments and a physical-line limit would reward deleting them.
 - **Cognitive complexity is capped at 25, not SonarQube's default 15** --
@@ -511,6 +519,7 @@ Before saying so, actually run, in this repo:
 - **The webapp's own tests, if you touched `assets/webapp/`**:
 
   ```bash
+  npm install --ignore-scripts   # once per checkout: acorn, behind the C1/C2 scan below
   node --test tests/webapp/*.test.js
   ```
 
@@ -522,7 +531,10 @@ Before saying so, actually run, in this repo:
   the real functions; `app.js` is the wiring left over. CI runs
   it in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
-  the glob is not decoration.
+  the glob is not decoration. `tests/webapp/code_standards.test.js` rides
+  the same command: it is `assets/webapp/`'s C1/C2 ratchet (see "Code
+  standards" above), not a behavioural test, but there is no separate
+  webapp check suite for it to live in instead.
 
 - `poetry check`.
 - At least one real end-to-end smoke test that exercises the actual

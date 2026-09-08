@@ -13,6 +13,14 @@
 # every release. `scripts/code_standards.py` and the test both read this
 # one file.
 #
+# **`c1js`/`c2js` are the same ratchet for `assets/webapp/`**, read by
+# `scripts/webapp_code_standards.js` and enforced by
+# `tests/webapp/code_standards.test.js` -- added here rather than in a
+# second root-level file, for the same reason: one place a size fact is
+# written. The JS scan's own module docstring has what differs from the
+# Python columns above (a named-function-only C1, and a real C2 line
+# count that is not `wc -l`).
+#
 # **The count is a value, not a comment.** It was a trailing `# 32` while
 # the register was a Python literal, and `tomllib` discards comments --
 # so keeping it as one would have made the number unreadable to the very
@@ -59,3 +67,23 @@ code_lines = 260
 [[c2]]
 name = "chitragupta/review/figure_layout/__init__.py"
 code_lines = 257
+
+# C1 (JS): at most 25 statements per function, assets/webapp/ only.
+
+[[c1js]]
+name = "assets/webapp/families.js::<anonymous@31>.computePath"
+statements = 27
+
+# C2 (JS): at most 250 code lines per module, assets/webapp/ only.
+
+[[c2js]]
+name = "assets/webapp/app.js"
+code_lines = 716
+
+[[c2js]]
+name = "assets/webapp/graph.js"
+code_lines = 513
+
+[[c2js]]
+name = "assets/webapp/panel.js"
+code_lines = 398

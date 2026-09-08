@@ -547,6 +547,15 @@ jobs:
       - name: markdownlint
         run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 
+      # package.json's one devDependency (acorn), behind
+      # scripts/webapp_code_standards.js -- assets/webapp/'s own C1/C2
+      # ratchet, checked by tests/webapp/code_standards.test.js below.
+      # `npm ci` reads package-lock.json exactly rather than re-resolving,
+      # same reasoning as the pinned installs above; `--ignore-scripts`
+      # again, though acorn ships none.
+      - name: Install webapp dev dependencies (acorn)
+        run: npm ci --ignore-scripts
+
       # The interaction code shipped in assets/webapp/ is JavaScript, so
       # pytest reaches none of it and the coverage bar says nothing about
       # it. graph.js and panel.js are written to run without a DOM and
@@ -554,6 +563,10 @@ jobs:
       # rides in the lint job because node is already installed here and
       # a second setup-node in the test matrix would cost both legs.
       # Node's runner takes files, not a directory, hence the glob.
+      # tests/webapp/code_standards.test.js is one of the files that glob
+      # picks up: assets/webapp/'s own function-size/module-size ratchet,
+      # same standing as C1/C2's pylint-adjacent check above but scoped to
+      # code_standards-register.toml's c1js/c2js tables instead.
       - name: Test the webapp modules
         run: node --test tests/webapp/*.test.js
 

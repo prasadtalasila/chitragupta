@@ -109,6 +109,12 @@ EXCLUDE_TOP_LEVEL = {
     # this repository's own commit history, which an unzipped release
     # doesn't carry either.
     ".git-blame-ignore-revs",
+    # The npm manifest/lockfile behind assets/webapp/'s own C1/C2 ratchet
+    # (scripts/webapp_code_standards.js, DEVELOPER-AGENTS.md) -- developer
+    # tooling in the same sense as `tests/`, needed to run a check this
+    # repository holds itself to, not to run the pipeline a release ships.
+    "package.json",
+    "package-lock.json",
 }
 
 # Ships as an empty placeholder directory instead of its tracked contents
