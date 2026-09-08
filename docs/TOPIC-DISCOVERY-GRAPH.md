@@ -509,6 +509,21 @@ the full label on hover.
 
 ### 7.4 Hover neighbourhood highlighting
 
+> **Shipped**, and grown past the sketch below in two ways. First, the
+> neighbourhood is not merely left alone while everything else fades --
+> nodes get their own outline (`focus-near`, distinct from the pinned
+> node's border and from the click-latched centre's own `focused`
+> outline) and edges get a flat width bump on top of their strength
+> encoding, both at full opacity, so the neighbourhood reads as
+> actively highlighted rather than as "unaffected by the fade" -- edge
+> family colour (indigo/purple) is kept throughout, so the overlap-vs-
+> semantic vocabulary survives being highlighted. Second, the fade is
+> not only a hover preview: clicking a node latches it -- the same
+> paint, but it survives `mouseout`, so a reader can move the pointer
+> into the side panel without the highlight evaporating. Released by
+> clicking the same node again, clicking the canvas background, or Esc
+> (7.10).
+
 The sketch: on node `mouseover`, add a `faded` class to every element
 outside the node's `closedNeighborhood()`; on `mouseout`, remove it
 everywhere.
@@ -606,6 +621,18 @@ Parse defensively and treat every hash value as untrusted input, the same as a
 topic label.
 
 ### 7.10 Accessibility
+
+> **Partly shipped, and one clause below withdrawn.** `#detail` carries
+> `aria-live="polite"` and its topic/edge links carry `tabindex="0"`
+> and `role="link"` (they have no `href`, so nothing marks them as
+> links without it), so Enter reaches a node's neighbourhood (7.4) with
+> no pointer. `Esc` does **not** clear chips: releasing several minutes
+> of pinning on the same key that dismisses a dropdown or a hover latch
+> is a worse failure mode than three gestures that each do one thing,
+> so `Esc` only releases a latched node (once the type-ahead, which
+> still wins, is closed) and chips keep their own removal gesture. `/`
+> as a focus shortcut, keyboard-removable chips and the list-view
+> toggle remain unbuilt.
 
 The canvas is opaque to assistive technology, so the **side panel is the
 accessible representation** of the graph. Keep it real DOM (a `<ul>` of topics

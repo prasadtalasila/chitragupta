@@ -47,6 +47,13 @@
      visibly a bridge, and 131 topics fully expanded is several hundred
      nodes and thousands of lines. */
   var expanded = new Set();
+  /* Sticky node focus: the id latched by a click, or null. A
+     hover previews the same paint transiently and reverts to this on
+     `mouseout`; `redraw()` wipes every class each call (it removes and
+     re-adds all elements), so it repaints this after every rebuild, or
+     releases it if the id no longer exists. */
+  var latched = null;
+  var hoverTimer = null;
 
   // ---------- cytoscape ----------
 
@@ -125,6 +132,45 @@
       } },
       { selector: "edge[bundled = 1]", style: { "line-style": "solid", "opacity": 0.85 } },
       { selector: "edge[bundled = 1][family = 'semantic']", style: { "line-style": "dashed" } },
+      /* Moved ahead of its usual place beside the other paper-related
+         rules below: `edge.focus-near` sets the same two properties
+         (`width`, `opacity`) and has to win over this family styling
+         when a paper's membership line is in a latched neighbourhood --
+         `elementsFor` never marks a member edge `dim` (paperElements is
+         concatenated after the dimming pass), so member and dim never
+         compete for the same element and reordering the two is safe. */
+      { selector: "edge[family = 'member']", style: {
+        "width": 1,
+        "line-color": "#90a4ae",
+        "line-style": "dotted",
+        "curve-style": "haystack",
+        "opacity": 0.7,
+      } },
+      /* Node focus (click-to-latch, hover-to-preview): an outline
+         rather than a border, so it never fights `node[picked = 1]`'s
+         4px border or `.on-path`'s for the same channel. Teal is a
+         fresh hue nothing else on this canvas uses. Placed after the
+         member rule above (so a latched paper's membership lines still
+         get the highlight) and before the dim rules below (so a dim
+         node inside a latched neighbourhood still reads as context,
+         not as newly emphasised) -- dim must keep winning. */
+      { selector: "node.focused", style: {
+        "outline-width": 3, "outline-color": "#00897b", "outline-offset": 2,
+      } },
+      { selector: "node.focus-near", style: {
+        "outline-width": 2, "outline-color": "#4db6ac", "outline-offset": 1,
+      } },
+      // Undoes a family's partial opacity (surprise, or the semantic
+      // 0.65) and adds a flat width bump on top of `data(width)`'s
+      // strength encoding -- a function, not a fixed number, so a
+      // strong edge still reads as stronger than a weak one among the
+      // ones highlighted. Family colour is kept throughout: only
+      // opacity and width change, so the two families stay legible as
+      // a *set*, not just as not-faded.
+      { selector: "edge.focus-near", style: {
+        "opacity": 1,
+        "width": function (ele) { return (ele.data("width") || 1) + 1.5; },
+      } },
       /* Focus plus context. The context is pushed back rather than
          deleted, and `events: no` keeps it from taking clicks or
          stealing hover -- a dimmed node that still answers the mouse
@@ -133,9 +179,11 @@
         "opacity": 0.12, "text-opacity": 0, "events": "no",
       } },
       { selector: "edge[dim = 1]", style: { "opacity": 0.06, "events": "no" } },
-      /* Hover is a separate channel from selection dimming, so the two
-         compose instead of clobbering each other: `.faded` is what the
-         mouse is doing right now, `dim` is what the chips are doing. */
+      /* `.faded` is the third channel, separate from `dim` (the chips')
+         and from `.focused`/`.focus-near` (the click/hover target and
+         its neighbourhood): it is everything outside whatever is
+         currently focused, whether that focus is a hover preview or a
+         click latch. */
       { selector: ".faded", style: { "opacity": 0.15, "text-opacity": 0.15 } },
       /* A paper is a different *kind* of thing, so it gets the one
          channel nothing else uses: shape. Its line to a topic is
@@ -155,20 +203,10 @@
         "border-width": 2,
         "border-color": "#880e4f",
       } },
-      { selector: "edge[family = 'member']", style: {
-        "width": 1,
-        "line-color": "#90a4ae",
-        "line-style": "dotted",
-        "curve-style": "haystack",
-        "opacity": 0.7,
-      } },
       { selector: ".on-path", style: {
         "line-color": "#e53935", "target-arrow-color": "#e53935",
         "border-width": 3, "border-color": "#e53935",
         "opacity": 1, "z-index": 10,
-      } },
-      { selector: ".hovered", style: {
-        "border-width": 3, "border-color": "#e53935", "text-opacity": 1,
       } },
     ],
   });
@@ -214,6 +252,12 @@
       cy.elements().remove();
       cy.add(elements);
     });
+    // Every redraw removes and re-adds every element, which drops any
+    // class along with it -- the latch has to be repainted after each
+    // one, or released if whatever it named is no longer on the canvas
+    // (an origin filter, a group collapsing over it, an ego view that
+    // no longer reaches it).
+    paintLatchOrClear();
     if (hops) {
       // Rings by hop distance from what is pinned: deterministic, and
       // an extension of the "a circle is legible" argument rather than
@@ -259,6 +303,66 @@
     } else {
       cy.fit(undefined, 40);
     }
+  }
+
+  // ---------- node focus: click-to-latch, hover-to-preview ----------
+
+  /* One paint, shared by hover and latch: everything outside the
+     closed neighbourhood fades, the neighbourhood itself is actively
+     highlighted rather than merely left alone, and the centre is
+     marked apart from its neighbours. A no-op if `id` is not on the
+     canvas -- the caller (redraw's repaint, a stale hover) decides
+     whether that means releasing the latch.
+
+     `closedNeighborhood()` is edge-based only -- an expanded group is
+     a compound *parent* with no edges of its own, so without also
+     pulling in `ancestors()`/`descendants()` a latched group box faded
+     its own members, and a latched member faded the box around it. */
+  function paintFocus(id) {
+    var center = cy.$id(id);
+    if (!center.length) { return; }
+    var near = center.closedNeighborhood()
+      .union(center.ancestors())
+      .union(center.descendants());
+    cy.batch(function () {
+      cy.elements().removeClass("focused focus-near faded");
+      cy.elements().not(near).addClass("faded");
+      near.not(center).addClass("focus-near");
+      center.addClass("focused");
+    });
+  }
+
+  function clearFocus() {
+    cy.batch(function () { cy.elements().removeClass("focused focus-near faded"); });
+  }
+
+  // What every path back to "no transient hover" repaints: the latch,
+  // if it is still on the canvas, otherwise nothing -- and releasing it
+  // cleanly if it just fell off (an origin filter, a collapsed group).
+  function paintLatchOrClear() {
+    if (latched && cy.$id(latched).length) {
+      paintFocus(latched);
+    } else if (latched) {
+      releaseLatch();
+    } else {
+      clearFocus();
+    }
+  }
+
+  function releaseLatch() {
+    if (hoverTimer) { window.clearTimeout(hoverTimer); hoverTimer = null; }
+    latched = null;
+    clearFocus();
+  }
+
+  // Click toggles: the same node releases, a different node moves the
+  // latch, and the decision itself is a pure function (tests/webapp/
+  // graph.test.js) so the toggle/move/release cases don't depend on a
+  // browser to check.
+  function setLatch(id) {
+    if (hoverTimer) { window.clearTimeout(hoverTimer); hoverTimer = null; }
+    latched = app.nextLatch(latched, id);
+    paintLatchOrClear();
   }
 
   // ---------- side panel ----------
@@ -389,6 +493,15 @@
     } else {
       showTopic(node.id());
     }
+    setLatch(node.id());
+  });
+
+  // A tap that lands on neither a node nor an edge is the canvas
+  // background: `event.target` is the core itself only then, and it is
+  // the release gesture the request names alongside Esc and re-tapping
+  // the same node.
+  cy.on("tap", function (event) {
+    if (event.target === cy) { releaseLatch(); }
   });
 
   // Double-click a topic to put its papers on the canvas, and again to
@@ -415,17 +528,21 @@
 
   /* Hovering a node lights its own neighbourhood and pushes the rest
      back -- the one interaction people expect from a graph, and the
-     app had none of it. Cheap enough to do on every mouse move because
-     it is class toggles inside one batch, not a re-layout. */
+     app had none of it. Debounced: unbatched per mouse-move is costless
+     at 131 topics but not once paper diamonds are on the canvas. A
+     latch survives the preview -- `mouseout` reverts to it rather than
+     to nothing. */
   cy.on("mouseover", "node", function (event) {
-    var near = event.target.closedNeighborhood();
-    cy.batch(function () {
-      cy.elements().not(near).addClass("faded");
-      event.target.addClass("hovered");
-    });
+    var id = event.target.id();
+    if (hoverTimer) { window.clearTimeout(hoverTimer); }
+    hoverTimer = window.setTimeout(function () {
+      hoverTimer = null;
+      paintFocus(id);
+    }, 60);
   });
   cy.on("mouseout", "node", function () {
-    cy.batch(function () { cy.elements().removeClass("faded hovered"); });
+    if (hoverTimer) { window.clearTimeout(hoverTimer); hoverTimer = null; }
+    paintLatchOrClear();
   });
   cy.on("tap", "edge", function (event) {
     var edge = event.target;
@@ -450,17 +567,32 @@
     redraw();
   });
 
-  detail.addEventListener("click", function (event) {
-    var goto_ = event.target.closest("a[data-goto]");
+  // The panel's own topic links are the accessible route to a node's
+  // neighbourhood -- `tabindex` (panel.js) makes them reachable, and a
+  // click and an Enter/Space both count as activating one.
+  function activatePanelLink(target) {
+    var goto_ = target.closest("a[data-goto]");
     if (goto_) {
-      showTopic(goto_.getAttribute("data-goto"));
-      return;
+      var label = goto_.getAttribute("data-goto");
+      showTopic(label);
+      setLatch(label);
+      return true;
     }
-    var edge = event.target.closest("a[data-edge]");
+    var edge = target.closest("a[data-edge]");
     if (edge) {
       var parts = edge.getAttribute("data-edge").split(":");
       showEdge(parts[0], Number(parts[1]));
+      return true;
     }
+    return false;
+  }
+
+  detail.addEventListener("click", function (event) {
+    activatePanelLink(event.target);
+  });
+  detail.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter" && event.key !== " ") { return; }
+    if (activatePanelLink(event.target)) { event.preventDefault(); }
   });
 
   // ---------- resolution: cutting the stored merge tree ----------
@@ -747,6 +879,21 @@
       suggestions.hidden = true;
     }
   });
+
+  /* Esc's precedence: the type-ahead, when open, always wins --
+     that is the searchInput handler above, unchanged. Registered on
+     `document` in the *capture* phase so it observes `suggestions`
+     before this keystroke's own bubble-phase handler (searchInput's)
+     has run and possibly closed it -- capture fires top-down, ahead of
+     the target's own listeners. Chips are never touched here: clearing
+     them is a destructive act the request gives its own gesture, not a
+     fall-through from Esc. */
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Escape") { return; }
+    if (app.escapeAction(!suggestions.hidden, latched) === "releaseLatch") {
+      releaseLatch();
+    }
+  }, true);
 
   // ---------- origin filter ----------
 
