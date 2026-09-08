@@ -49,7 +49,8 @@ if it is obvious which is which, so:
 | [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
 | [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
 | [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
-| [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Current, and it supersedes the row above** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. The watchdog arm still hangs and is now off by default, so cancellation latency stays unmeasured and #698 stays open |
+| [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Rebuild numbers current; its watchdog claim corrected below** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. Its claim that the watchdog arm "still hangs" is the thing the row below corrects |
+| [2026-09-08: the watchdog hang, root-caused and fixed -- still unmeasured](#2026-09-08-the-stall-watchdog-hang-root-caused-and-fixed----still-unmeasured) | **Current** | Identifies the actual mechanism (a call-order race in `terminate_workers`/`executor.shutdown`, not the pool or the nesting) and fixes it. `--with-stall-arm` should now terminate rather than hang -- confirmed with a faithful reproduction using the real pool machinery, not with a run of the arm itself, which needs docling and was not available on the host that diagnosed this. Cancellation latency therefore remains unmeasured; what changed is that it is now *measurable* |
 | [2026-09-04 (B4): the converged topic set's stability](#2026-09-04-b4-the-converged-topic-sets-stability-and-where-the-instability-actually-lives) | **Current, and it reframes every stability number above** | Like-for-like emergent ARI is **0.73** (recorded 0.80); refitting UMAP too drops it to **0.44**, so **most of the instability is UMAP's, not HDBSCAN's**. The converged arm's 0.41 must not be quoted -- 98.4% of documents are in more than one topic, so its partition is constructed |
 | [2026-09-07 (B4b): both stability arms](#2026-09-07-b4b-both-stability-arms-and-the-improvement-that-mostly-is-not-one) | **Current** | Every grid setting loses about half its apparent stability when UMAP is refitted as the stage does: `hdb` 0.56--0.82 against `full` 0.35--0.51. The recorded 0.14 -> 0.80 improvement is **0.35 -> 0.37** like-for-like -- no measured difference. And the shipped defaults are not the most stable setting: `(5, 5, 5, 3)` scores 0.51 against their 0.37 |
 | [2026-09-07 (B4c): the converged set gets an honest number](#2026-09-07-b4c-the-converged-set-gets-an-honest-number-and-it-is-better-than-the-one-being-retracted) | **Current** | The converged topic set scores **omega 0.60** over 10 resamples. The retracted partition-ARI of 0.41 was *understating* it, not flattering it. Emergent whole-pipeline ARI is 0.4405, inside B4b's independent 0.35--0.51 range |
@@ -5247,6 +5248,49 @@ over zero documents. The throwaway directory is now seeded with the real
 ledger -- and only the ledger, since `pdf_path` points under `papers/`,
 so the arms still write every artefact into the tempdir and never into
 the corpus they read.
+
+### 2026-09-08: the stall watchdog hang, root-caused and fixed -- still unmeasured
+
+The row above's "still hangs, given #726's `terminate_workers` fix" was
+a correct observation pointed at the wrong layer. The actual mechanism:
+`chitragupta/sync_pool.py`'s stall-timeout branch called
+`executor.shutdown(wait=False, cancel_futures=True)` **before**
+`pdf_text.terminate_workers(executor)`. `ProcessPoolExecutor.shutdown()`
+sets `executor._processes = None` unconditionally -- even with
+`wait=False` (CPython `concurrent/futures/process.py`, the block
+dropping references "to reduce the risk of opening too many files") --
+and `terminate_workers` reads that same attribute to find which OS
+processes to signal. By the time it ran there was nothing left to kill:
+the FIFO-blocked worker was never actually terminated, its death was
+never observed by the executor's own manager thread, and that thread
+then blocked in `mp.connection.wait()` forever waiting for a result that
+would never arrive -- which is what hangs the interpreter's own atexit
+join of it. `chitragupta/enrich/_docling_pool.py`'s and `sync_pool.py`'s
+own `_drain_pool` KeyboardInterrupt handlers had the identical ordering
+bug and are fixed alongside it.
+
+Confirmed with a reproduction built from the real pieces -- the real
+`chitragupta.pdf_text.docling_process_pool`, the real
+`chitragupta.pdf_text.terminate_workers`, a real named FIFO opened by a
+real worker process, no docling and no mocks -- instrumented with
+`faulthandler` and a patched `wait_result_broken_or_wakeup` to pin the
+exact three stuck frames (a worker sitting on `pipe_read`/`ep_poll`, the
+manager thread in `mp.connection.wait()`, the main thread joining it in
+`concurrent.futures.process._python_exit`). The old call order hung
+every time; reordering the two calls resolved it every time, confirmed
+by a red-then-green regression test
+(`tests/test_sync.py::TestStallWatchdog::test_terminate_workers_runs_before_shutdown_clears_the_processes`)
+that fails on the old order and passes on the new one.
+
+**What this does not do: run `arm_stall` itself and report a number.**
+The host that diagnosed this has no docling installed, and a faithful
+run needs it -- `arm_stall`'s worker is a separate interpreter, so the
+reproduction above cannot be monkeypatched into standing in for a real
+parse the way the rebuild arms' own tests do. So B3's stall-watchdog
+cancellation latency is now **measurable, not measured**: `--with-stall-arm`
+should terminate and report figures the next time this is run on a host
+with the "enrich" group installed, rather than hang for hours. That run,
+and the number it produces, is still owed.
 
 ### 2026-09-04 (B4): the converged topic set's stability, and where the instability actually lives
 

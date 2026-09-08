@@ -1557,6 +1557,91 @@ class TestStallWatchdog:
             blocked.set()
         assert killed, "workers were left running after the stall"
 
+    def test_terminate_workers_runs_before_shutdown_clears_the_processes(
+        self, many_corpus, monkeypatch
+    ):
+        """issue #698: ProcessPoolExecutor.shutdown() sets executor._processes
+        to None *unconditionally* -- even with wait=False (CPython
+        concurrent/futures/process.py, "remove references to objects that
+        use file descriptors"). `pdf_text.terminate_workers` reads that
+        same attribute to find which OS processes to signal, via
+        `getattr(executor, "_processes", None) or {}` (issue #726's own
+        fix, which made `_processes is None` a quiet no-op rather than an
+        AttributeError). Calling shutdown() *before* terminate_workers
+        therefore leaves it nothing to kill: a genuinely wedged worker
+        (blocked in docling/torch native code, or -- reproduced directly
+        -- in a blocking read with no docling involved at all) is never
+        actually signalled, so its death is never observed and the
+        executor's own manager thread blocks forever waiting for a result
+        that will never arrive -- which is what hung the interpreter's
+        atexit join of that thread in bench/bench_pool_rebuild.py's
+        --with-stall-arm.
+
+        A real ProcessPoolExecutor doesn't fail this test either way (its
+        own shutdown() nulls `_processes` regardless of who calls it
+        first), so this uses a fake that copies the one behaviour that
+        matters -- `_processes` is only readable *before* shutdown() runs
+        -- while still running real jobs on real threads.
+        """
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+
+        class _FakeProcess:
+            def __init__(self):
+                self.terminated = False
+
+            def terminate(self):
+                self.terminated = True
+
+            def join(self, timeout=None):
+                pass
+
+            def is_alive(self):
+                return False
+
+            def kill(self):
+                pass
+
+        class _ProcessLikeExecutor(ThreadPoolExecutor):
+            """A thread pool that otherwise behaves like the docling
+            ProcessPoolExecutor terminate_workers actually targets: a
+            live `_processes` dict until shutdown() -- at which point,
+            like the real class, the reference is gone."""
+
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self._processes = {0: _FakeProcess(), 1: _FakeProcess()}
+
+            def shutdown(self, wait=True, *, cancel_futures=False):
+                super().shutdown(wait=wait, cancel_futures=cancel_futures)
+                self._processes = None
+
+        saved_processes = {}
+
+        def factory(workers):
+            executor = _ProcessLikeExecutor(max_workers=workers)
+            # Captured before shutdown() can null executor._processes, so
+            # the assertion below can still see whether terminate_workers
+            # reached these specific objects -- if it ran too late, they
+            # stay untouched even though the executor's own attribute was
+            # already cleared by the time this test looks at it.
+            saved_processes["processes"] = dict(executor._processes)
+            return executor
+
+        blocked = threading.Event()
+        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.3)
+        monkeypatch.setattr(sync_pool, "_executor_for", factory)
+        monkeypatch.setattr(pdf_text, "extract_one", lambda job: blocked.wait(30))
+        try:
+            sync.run()
+        finally:
+            blocked.set()
+
+        assert all(p.terminated for p in saved_processes["processes"].values()), (
+            "terminate_workers ran after shutdown() had already cleared "
+            "executor._processes, so nothing was actually signalled (issue #698)"
+        )
+
     def test_a_stall_cancels_jobs_that_never_started(self, many_corpus, monkeypatch):
         """#491: with the shipped pdftotext backend, terminate_workers is a
         no-op (it only reaches ProcessPoolExecutor's `_processes`), so the

@@ -245,8 +245,19 @@ def _drain(executor, jobs: list[tuple], cache: dict, status: dict[str, str]) -> 
                 done += 1
                 logging_setup.say(logger, f"  [{done}/{len(jobs)}] {citekey}")
     except KeyboardInterrupt:
-        executor.shutdown(wait=False, cancel_futures=True)
+        # terminate_workers before shutdown, not after: shutdown() sets
+        # executor._processes = None unconditionally (even with
+        # wait=False -- CPython concurrent/futures/process.py), and
+        # terminate_workers reads that same attribute to find which OS
+        # processes to signal. Calling shutdown() first leaves it nothing
+        # to kill, so a genuinely wedged worker is never signalled, its
+        # death is never observed, and the executor's own manager thread
+        # blocks forever waiting for it -- which is what hung the
+        # interpreter's exit in issue #698's stall-watchdog arm
+        # (chitragupta/sync_pool.py's own copy of this pair, fixed
+        # alongside this one).
         pdf_text.terminate_workers(executor)
+        executor.shutdown(wait=False, cancel_futures=True)
         logging_setup.say(
             logger,
             f"\n  interrupted after {done}/{len(jobs)} document(s) -- "
