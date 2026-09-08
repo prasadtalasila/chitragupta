@@ -160,6 +160,7 @@ nav:
   - Home: README.md
   - Getting started:
       - What it does: docs/FEATURES.md
+      - Demo recording: docs/DEMO.md
       - Glossary: docs/GLOSSARY.md
       - Installing and the CLI surface: docs/PACKAGING.md
       - Docker install: DOCKER.md
