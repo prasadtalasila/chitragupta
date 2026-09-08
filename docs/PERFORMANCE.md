@@ -758,7 +758,9 @@ At the scale this matters: comparing runs over all 501 documents, ~1.4%
 of documents come back with different text and ~1.0% with a different
 quotable passage. Two runs of the *same* configuration are not exempt, at
 roughly a third of that rate. Serial parsing has not been observed to
-vary.
+vary. Every one of those rates was measured with `[parser].ocr` and
+`[parser].formulas` both off; each adds a model pass per page, and
+neither configuration has a measured rate.
 
 **The full contract is
 [ARCHITECTURE.md's "What is reproducible, and what is not"](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)**,

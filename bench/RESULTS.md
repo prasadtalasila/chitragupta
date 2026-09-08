@@ -48,6 +48,7 @@ if it is obvious which is which, so:
 | [2026-09-04: the #610 benchmark run (B1-B14)](#2026-09-04-the-610-benchmark-run-b1-b14) | **Current** | Fourteen measurements the paper's Evaluation section needs, ten of them run. **Six A40s, not four**, and a parse that gained tables and formulae (#632), so no parallel or GPU figure in it is like-for-like with anything above |
 | [2026-09-04 (B1): parse throughput, like-for-like at last](#2026-09-04-b1-parse-throughput-like-for-like-at-last) | **Current** | Closes B1. The serial baseline **reproduces** -- 2,533s against 2026-08-30's 2,569s -- and the efficiency curve is unchanged at 100%/94%/88%. OCR costs **3.09x** at 12 workers. Also finds every `sweep_sync.py` row exiting **rc=1 on a 497-of-497 clean parse** |
 | [2026-09-04 (B2): reproducibility at n = 300, and it got worse](#2026-09-04-b2-reproducibility-at-n--300-and-it-got-worse) | **Current, and it supersedes the rates above** | Single-GPU determinism holds (0 of 300). Multi-GPU same-config is **1.67%** against a recorded 0.33%, across-config **2.33%** against 0.67% -- roughly five-fold up. The qualitative contract stands; the *rate* the paper quotes does not |
+| [2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing](#2026-09-07-b2b-the-single-gpu-counterexample-and-the-pin-that-was-missing) | **Current, and it does not supersede B2 -- it measures a different parse** | Set up as the 4-GPU arm B2 needed to separate its confound, and it is not one: 85 of 300 documents disagree with B2's parse, span counts up in all 85 and down in none, and **all 85 contain `$$` decoded LaTeX against none of the other 215**. The harness pinned `PARSER_OCR` but not #655's `PARSER_FORMULAS`, so the arm inherited `formulas = true` from the host. What stands is a counterexample, not a rate: a **formulas-on** single-GPU pool disagreed with its own partner on one document's passage text. B2's confound is untouched. The missing pin, and a guard against the next one, are fixed in `repro_check.py` |
 | [2026-09-04 (B3): attempted, and not obtained](#2026-09-04-b3-attempted-and-not-obtained) | **Failed, recorded as such** | The uninterrupted *control* arm deadlocked in the process pool at 0% CPU and was killed after ten hours. No pool-rebuild claim may be drawn from it. B3 remains open |
 | [2026-09-07 (B3): the rebuild arms, measured at last](#2026-09-07-b3-the-rebuild-arms-measured-at-last----and-the-watchdog-arm-switched-off) | **Rebuild numbers current; its watchdog claim corrected below** | Rebuild costs **1.90x** wall clock and loses **0** documents; the pool narrows `[3, 1]` and terminates. The 2026-09-04 diagnosis was wrong twice over -- the nesting was not the cause and the control arm was not the one hanging; every arm ran over *zero documents*. Its claim that the watchdog arm "still hangs" is the thing the row below corrects |
 | [2026-09-08: the watchdog hang, root-caused and fixed -- still unmeasured](#2026-09-08-the-stall-watchdog-hang-root-caused-and-fixed----still-unmeasured) | **Current** | Identifies the actual mechanism (a call-order race in `terminate_workers`/`executor.shutdown`, not the pool or the nesting) and fixes it. `--with-stall-arm` should now terminate rather than hang -- confirmed with a faithful reproduction using the real pool machinery, not with a run of the arm itself, which needs docling and was not available on the host that diagnosed this. Cancellation latency therefore remains unmeasured; what changed is that it is now *measurable* |
@@ -4197,8 +4198,11 @@ was re-run at n=300, which is the order the recorded finding rests on:
 **The instability reappears, reaches the passage text, and the rates
 match.** Same-config multi-GPU text disagreement is 1/300 = **0.33%**
 against a recorded "roughly 0.3%"; across-config is 2/300 = **0.67%**
-against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300,
-consistent with serial parsing never having been observed to vary.
+against a recorded "roughly 1.0%". The 1-GPU arm is clean at 0/300 --
+which is consistent with serial parsing never having been observed to
+vary, and is not the same claim: this arm ran 12 workers on one card,
+not one worker. The 2026-09-07 (B2b) section has a single-GPU pair that
+disagreed, in a parser configuration none of these arms used.
 
 So [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)'s contract and the
 README's "not bit-reproducible with every parser" are **confirmed at
@@ -5091,6 +5095,111 @@ floating-point difference to land in. Both the `.txt` and the passage
 spans move, so this is not confined to the sidecar.
 
 The wall clock either side: 1 GPU 196.9s/193.3s, 6 GPUs 111.8s/109.5s.
+
+**The confound above is still unseparated, and the 2026-09-07 run does
+not separate it.** That run was set up as the missing 4-GPU arm on the
+current parse and turned out not to be on the same parse at all -- see
+the B2b section below. Every number in this section stands: it is the
+last repro record taken with formula decoding off, and its comparison
+against 2026-08-30 is like-for-like.
+
+### 2026-09-07 (B2b): the single-GPU counterexample, and the pin that was missing
+
+`bench/repro_check.py --sample 300 --workers 12 --gpus 1,4 --repeat 2`
+(record: `bench/results/2026-09-07-repro-300-gpu4/repro.json`). Same 300
+citekeys as B2 and as 2026-08-30, drawn by the same rank sample.
+
+| arm | `.txt` | sidecar bytes | spans | **texts** |
+| --- | ---: | ---: | ---: | ---: |
+| same configuration, 1 GPU | **1** | 5 | **1** | **1** |
+| same configuration, 4 GPUs | 5 | 55 | 5 | **4** |
+| across configuration (1 vs 4 GPUs) | 5 | 67 | 5 | **4** |
+
+The single-GPU row is the point: `qi_enabling_2021` parsed to **217
+passages on one run and 216 on the other**, at the same 12 workers on
+the same one card, and the difference reaches the passage *text* -- the
+level a reviewer is actually shown. Every earlier arm had that row at
+zero.
+
+**Read as a re-run of B2, this record is invalid, and the reason is a
+defect in the harness rather than anything about the parser.** Two
+things gave it away. The wall clock is ~8x B2's on the 1-GPU arm
+(1577.2s/1611.6s against 196.9s/193.3s) and ~5.4x on the 4-GPU one, at
+an identical sample and worker count. And of the 300 documents, **85
+disagree with B2's single-GPU parse in `.txt`** -- not 1, 85 -- with the
+span count rising in **all 85 and falling in none** (min +1, median +4,
+max +74), while the remaining 215 are byte-identical in both `.txt` and
+passage text. A monotone one-directional gain in 28% of a corpus is the
+signature of a different parse, not of the run-to-run wobble this script
+measures, which scatters both ways (217/216, 390/391, 507/506 in this
+very record).
+
+The prediction that identifies it: those 85 should be exactly the
+documents that contain equations. They are. **All 85 contain `$$`
+decoded LaTeX and none of the 215 does** -- so the cause is #655's
+`[parser].formulas`, which reached this host's `config.toml` as
+`formulas = true` on 2026-09-04 and turns
+`<!-- formula-not-decoded -->` into the equation. `repro_check.py`
+pinned `PARSER`, `PARSER_OCR`, `PARSER_WORKERS` and
+`PARSER_STALL_TIMEOUT` per run precisely so an arm would not inherit the
+host's parse settings, and a setting added after that block was written
+was never added to it.
+
+A second, independent problem, and it reaches every arm rather than one:
+`g1-r1` started with **card 0 at 42% utilisation and 917 MiB held by a
+foreign process** where `g1-r0` started idle, and `g4-r0` started with
+431 MiB where `g4-r1` was idle. **All three of this record's pairs were
+unevenly contended.** The harness captured that in `gpu_state_before`
+from the beginning and nothing read it. Contention is the axis this
+script varies, so no pair here ran under the same treatment on both
+sides -- which is a second reason not to read the 4-GPU rows as B2's
+numbers moving.
+
+Replaying the check added here over the three committed records puts
+2026-08-30 and 2026-09-04 clean on all six pairs and flags all three of
+2026-09-07's, which is the discrimination it needs to be worth having.
+2026-08-30 is the case that decided its design: card 0 held 1925 MiB in
+**all four** of its arms, so an "was the host idle?" test would have
+condemned the very record this section compares against. Identical
+occupancy on both sides of a pair is a constant, and a constant is
+controlled; what invalidates a pair is the occupancy arriving on one
+side only.
+
+**What survives.** The same-configuration comparison is internal to the
+record -- both members ran formulas-on, both at 12 workers on one card
+-- so the counterexample stands for the configuration it was taken in: a
+**formulas-on** single-GPU pool is not exact. One document in one pair
+is enough to refute "reproduces exactly" and nowhere near enough to
+publish 0.33% as a single-GPU rate; #723 says so itself and is right to.
+
+**What does not survive.** #695 asks for a 4-GPU arm on the current
+parse to separate the host's 4-to-6-card change from #632, and this is
+not one. That confound is exactly where B2 left it.
+
+**Fixed here, in the harness rather than in prose.** Parser settings
+that decide what the parse *contains* now live in one
+`PINNED_PARSER_ENV` block, `formulas` included, and every run records
+what was pinned beside the resolved value of what was not.
+`unpinned_parser_settings()` asks `chitragupta.config` which
+`[parser].*` settings exist and refuses to run against one this module
+has not classified, so the next such setting stops the matrix on its
+first invocation instead of costing four arms and a record. Foreign GPU
+load is now an integrity complaint rather than an unread field, raised
+per *pair* on a difference between its members rather than per arm on
+absolute occupancy. `sweep_sync.py` had the identical gap and is pinned
+too; no published throughput row is affected, because its last run
+predates the flip.
+
+The pin was verified the way it can go vacuous: reading
+`config.PARSER_FORMULAS` against a `config.toml` that really does set
+`formulas = true`, both with the environment variable and without it.
+Unset reads `True`, pinned reads `False`. Against a default
+`config.toml` the same check passes while proving nothing.
+
+**What it would take to settle #723.** A 1-GPU arm at
+`PARSER_FORMULAS=false` on an idle host, at `--repeat 5` or more. Under
+the pin above that is now the default behaviour of the command in this
+section's heading.
 
 ### 2026-09-04 (B3): attempted, and not obtained
 
