@@ -50,7 +50,7 @@
     data.edges_overlap.forEach(function (e) {
       var other = e.a === topic.label ? e.b : e.b === topic.label ? e.a : null;
       if (!other) { return; }
-      rows += '<div class="linked-topic"><a data-goto="' + escapeHtml(other) + '">' +
+      rows += '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(other) + '">' +
         escapeHtml(other) + "</a><div class=\"why\">shares " + e.shared.length +
         " paper" + (e.shared.length === 1 ? "" : "s") + ": " +
         escapeHtml(e.shared.join(", ")) + "</div></div>";
@@ -58,7 +58,7 @@
     data.edges_semantic.forEach(function (e) {
       var other = e.a === topic.label ? e.b : e.b === topic.label ? e.a : null;
       if (!other) { return; }
-      rows += '<div class="linked-topic"><a data-goto="' + escapeHtml(other) + '">' +
+      rows += '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(other) + '">' +
         escapeHtml(other) + "</a><div class=\"why\">semantically near (" +
         e.similarity.toFixed(2) + "), bridged by " +
         escapeHtml(e.bridge.join(" and ")) + "</div></div>";
@@ -124,7 +124,7 @@
       "written back, and <code>--json</code> reports no grouping.</p>" +
       "<h3>Topics in this group</h3>" +
       group.members.map(function (label) {
-        return '<div class="linked-topic"><a data-goto="' + escapeHtml(label) + '">' +
+        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(label) + '">' +
           escapeHtml(label) + "</a></div>";
       }).join("");
   }
@@ -152,7 +152,7 @@
   }
 
   function bundleRow(pair, e, why) {
-    return '<div class="linked-topic"><a data-edge="' + pair.family + ":" + pair.index +
+    return '<div class="linked-topic"><a tabindex="0" role="link" data-edge="' + pair.family + ":" + pair.index +
       '">' + escapeHtml(e.a) + " — " + escapeHtml(e.b) + "</a>" +
       '<div class="why">' + escapeHtml(why) + "</div></div>";
   }
@@ -285,8 +285,8 @@
     if (!pairs.length) { return ""; }
     return "<h3>" + title + "</h3>" + '<p class="terms">' + why + "</p>" +
       pairs.map(function (pair) {
-        return '<div class="linked-topic"><a data-goto="' + escapeHtml(pair.a) + '">' +
-          escapeHtml(pair.a) + "</a> — <a data-goto=\"" + escapeHtml(pair.b) + '">' +
+        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(pair.a) + '">' +
+          escapeHtml(pair.a) + "</a> — <a tabindex=\"0\" role=\"link\" data-goto=\"" + escapeHtml(pair.b) + '">' +
           escapeHtml(pair.b) + "</a>" + '<div class="why">' +
           (pair.shared
             ? pair.shared + " shared paper" + (pair.shared === 1 ? "" : "s")
@@ -325,7 +325,7 @@
           (offCanvas.length === 1 ? " is" : " are") + " named here but not drawn.</p>"
         : "") +
       result.hops.map(function (hop) {
-        return '<div class="linked-topic"><a data-goto="' + escapeHtml(hop.b) + '">' +
+        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(hop.b) + '">' +
           escapeHtml(hop.a) + " → " + escapeHtml(hop.b) + "</a>" +
           '<div class="why">' + hop.strength.toFixed(2) + " · " +
           hop.evidence.map(function (citekey) {
@@ -353,7 +353,7 @@
           "one, which is why it is drawn once with a line to each.</p>"
         : "") +
       holders.map(function (t) {
-        return '<div class="linked-topic"><a data-goto="' + escapeHtml(t.label) + '">' +
+        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(t.label) + '">' +
           escapeHtml(t.label) + "</a></div>";
       }).join("");
   }

@@ -636,6 +636,29 @@
     return null;
   }
 
+  /* Sticky node focus: what clicking a node does to the
+     latched id, with no cytoscape or DOM in the decision so the
+     toggle/move/release cases are each one assertion under
+     `node --test` rather than a browser-only behaviour. `clickedId`
+     is null for a background tap, which always releases regardless
+     of what was latched. */
+  function nextLatch(current, clickedId) {
+    if (clickedId == null) { return null; }
+    if (current === clickedId) { return null; }
+    return clickedId;
+  }
+
+  /* Esc's precedence: the type-ahead list, when open, always
+     wins -- closing it is today's behaviour and stays unchanged. Chips
+     are never touched here; clearing them is a destructive act the
+     request deliberately gives its own gesture rather than a
+     fall-through. */
+  function escapeAction(suggestionsOpen, latched) {
+    if (suggestionsOpen) { return "closeSuggestions"; }
+    if (latched) { return "releaseLatch"; }
+    return "none";
+  }
+
   return {
     ORIGIN_COLORS: ORIGIN_COLORS,
     ORIGIN_LABELS: ORIGIN_LABELS,
@@ -657,5 +680,7 @@
     thresholdForGroups: thresholdForGroups,
     candidatesFor: candidatesFor,
     findMember: findMember,
+    nextLatch: nextLatch,
+    escapeAction: escapeAction,
   };
 });

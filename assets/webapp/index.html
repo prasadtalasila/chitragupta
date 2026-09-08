@@ -81,8 +81,14 @@
     resolution slider for coarser or finer groups. Click a topic to see
     its papers, or an edge to see what links two topics. Type in the
     search box to filter the graph to the topics you pick and everything
-    related to them.</p>
-    <div id="detail"></div>
+    related to them. Click a node to latch its neighbourhood in place --
+    it survives moving the pointer into this panel; hovering another node
+    previews its neighbourhood without losing the latch. Release it by
+    clicking the same node again, clicking empty canvas, or pressing Esc
+    (Esc also closes an open search list first, and never touches your
+    pinned chips). The panel's own topic links are keyboard-reachable:
+    Tab to one and press Enter to jump to it and latch it.</p>
+    <div id="detail" aria-live="polite"></div>
     <details id="hierarchy">
       <summary>Merge hierarchy</summary>
       <div id="hierarchy-body"></div>

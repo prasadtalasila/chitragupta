@@ -113,3 +113,32 @@ test("findMember reaches a paper in any topic, and reports a miss", () => {
   assert.equal(graph.findMember(DATA, "rv2018").title, "Runtime verification");
   assert.equal(graph.findMember(DATA, "nosuchkey2099"), null);
 });
+
+test("nextLatch latches an unlatched node", () => {
+  assert.equal(graph.nextLatch(null, "digital twin"), "digital twin");
+});
+
+test("nextLatch releases on a second click of the same node", () => {
+  assert.equal(graph.nextLatch("digital twin", "digital twin"), null);
+});
+
+test("nextLatch moves the latch to a different node", () => {
+  assert.equal(graph.nextLatch("digital twin", "machine learning"), "machine learning");
+});
+
+test("nextLatch releases on a background tap regardless of what was latched", () => {
+  assert.equal(graph.nextLatch("digital twin", null), null);
+  assert.equal(graph.nextLatch(null, null), null);
+});
+
+test("escapeAction closes an open type-ahead ahead of releasing a latch", () => {
+  assert.equal(graph.escapeAction(true, "digital twin"), "closeSuggestions");
+});
+
+test("escapeAction releases the latch once the type-ahead is closed", () => {
+  assert.equal(graph.escapeAction(false, "digital twin"), "releaseLatch");
+});
+
+test("escapeAction does nothing with no list open and nothing latched", () => {
+  assert.equal(graph.escapeAction(false, null), "none");
+});
