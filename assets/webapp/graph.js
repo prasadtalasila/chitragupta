@@ -734,12 +734,17 @@
   }
 
   /* Esc's precedence: the type-ahead list, when open, always
-     wins -- closing it is today's behaviour and stays unchanged. Chips
+     wins -- closing it is today's behaviour and stays unchanged. An
+     open filter picker comes next, ahead of the latch: both answer to
+     "back out of what is open", and the latch is the wider gesture, so
+     a reader whose only reason for pressing Esc was the panel would
+     otherwise lose the neighbourhood they were reading with it. Chips
      are never touched here; clearing them is a destructive act the
      request deliberately gives its own gesture rather than a
      fall-through. */
-  function escapeAction(suggestionsOpen, latched) {
+  function escapeAction(suggestionsOpen, latched, pickerOpen) {
     if (suggestionsOpen) { return "closeSuggestions"; }
+    if (pickerOpen) { return "closePicker"; }
     if (latched) { return "releaseLatch"; }
     return "none";
   }

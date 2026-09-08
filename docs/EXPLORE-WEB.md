@@ -63,9 +63,9 @@ live view rather than of the corpus:**
 - click-to-latch node focus: a click highlights a node's neighbourhood
   and holds it past `mouseout`, so reading the side panel does not cost
   the highlight; released by re-clicking the node, clicking empty
-  canvas, or Esc (which closes an open type-ahead first and never
-  touches pinned chips), and reachable from the keyboard via the
-  panel's own topic links;
+  canvas, or Esc (which closes an open type-ahead first, then an open
+  filter picker, and never touches pinned chips), and reachable from the
+  keyboard via the panel's own topic links;
 - the resolution slider's cut of the stored merge tree, and the nested
   circle layout of the groups it produces;
 - the ego view's concentric ring placement, hop bounds and dim-or-hide

@@ -944,9 +944,17 @@
      fall-through from Esc. */
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") { return; }
-    if (app.escapeAction(!suggestions.hidden, latched) === "releaseLatch") {
-      releaseLatch();
+    var action = app.escapeAction(!suggestions.hidden, latched, anyPickerOpen());
+    if (action === "closePicker") {
+      // Focus goes back to the button that opened it: without this it
+      // is left on a checkbox inside a hidden panel, and the next Tab
+      // starts from nowhere the reader can see.
+      var row = openPicker();
+      closeAllPickers(null);
+      row.querySelector(".picker-summary").focus();
+      return;
     }
+    if (action === "releaseLatch") { releaseLatch(); }
   }, true);
 
   // ---------- the two filter pickers ----------
@@ -1044,6 +1052,20 @@
      rows are real checkboxes and not list items pretending to be. */
   function panelOf(row) { return row.querySelector(".picker-panel"); }
 
+  /* Which picker is open, if either. Esc's policy lives in one place
+     (`escapeAction`, with the type-ahead ahead of this and the latch
+     behind it), so what the pickers owe that policy is this question
+     and nothing more. */
+  function openPicker() {
+    var rows = [originsRow, familiesRow];
+    for (var i = 0; i < rows.length; i++) {
+      if (!panelOf(rows[i]).hidden) { return rows[i]; }
+    }
+    return null;
+  }
+
+  function anyPickerOpen() { return openPicker() !== null; }
+
   function setOpen(row, open) {
     var button = row.querySelector(".picker-summary");
     panelOf(row).hidden = !open;
@@ -1064,12 +1086,11 @@
       closeAllPickers(row);
       setOpen(row, open);
     });
+    /* Esc is not handled here: it is one policy for the whole app, in
+       the capture-phase handler above, because with a panel open it has
+       to outrank releasing the latch and be outranked by closing the
+       type-ahead. Two handlers would be two policies. */
     row.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") {
-        setOpen(row, false);
-        row.querySelector(".picker-summary").focus();
-        return;
-      }
       if (event.key === "ArrowDown" && event.target.closest(".picker-summary")) {
         setOpen(row, true);
         var first = row.querySelector('.picker-row input:not([disabled])');

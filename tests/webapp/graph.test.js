@@ -143,6 +143,20 @@ test("escapeAction does nothing with no list open and nothing latched", () => {
   assert.equal(graph.escapeAction(false, null), "none");
 });
 
+test("escapeAction shuts an open picker before it releases a latch", () => {
+  /* Both landed in the same release and Esc means "back out of the
+     thing that is open" for each of them. The latch is the wider
+     gesture, so it goes last: a reader whose only reason for pressing
+     Esc was the open panel would otherwise lose the neighbourhood they
+     were reading as well. The type-ahead still outranks both. */
+  assert.equal(graph.escapeAction(false, "digital twin", true), "closePicker");
+  assert.equal(graph.escapeAction(false, null, true), "closePicker");
+  assert.equal(graph.escapeAction(true, null, true), "closeSuggestions");
+  // And with no panel open the two existing answers are unchanged.
+  assert.equal(graph.escapeAction(false, "digital twin", false), "releaseLatch");
+  assert.equal(graph.escapeAction(false, null, false), "none");
+});
+
 // ---------- the canvas moves with the family picker ----------
 
 test("with both families on the canvas is unchanged", () => {

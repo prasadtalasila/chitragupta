@@ -645,7 +645,9 @@ topic label.
 > of pinning on the same key that dismisses a dropdown or a hover latch
 > is a worse failure mode than three gestures that each do one thing,
 > so `Esc` only releases a latched node (once the type-ahead, which
-> still wins, is closed) and chips keep their own removal gesture. `/`
+> still wins, and then an open filter picker have been closed -- one
+> policy, `escapeAction`, ordered by how wide the gesture is) and chips
+> keep their own removal gesture. `/`
 > as a focus shortcut, keyboard-removable chips and the list-view
 > toggle remain unbuilt.
 
