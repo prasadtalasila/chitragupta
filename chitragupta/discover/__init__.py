@@ -93,7 +93,8 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="N",
         help=(
             "with a phrase: the topic's neighbourhood as rings by hop "
-            "distance (a count, or 'all' for everything reachable)"
+            "distance (a count, or 'all' for everything reachable); "
+            "add --family to measure over one family"
         ),
     )
     parser.add_argument(
@@ -122,7 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--family",
         choices=("overlap", "semantic"),
-        help="which edge family --path walks -- never one fused weight",
+        help=("which edge family --path walks and --hops measures over -- never one fused weight"),
     )
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument(

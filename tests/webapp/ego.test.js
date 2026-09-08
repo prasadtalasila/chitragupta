@@ -550,14 +550,19 @@ const HOP_CASES = require("./hop_cases.json").cases;
 
 test("every shared hop case matches the browser's own walk", () => {
   assert.ok(HOP_CASES.length >= 2, "the table is read at all");
+  /* A row naming its families is what pins the per-family walk to the
+     terminal's. Without one the table would only ever check the union,
+     and the two surfaces could disagree the moment either narrowed. */
+  assert.ok(HOP_CASES.some((row) => row.families), "no single-family row");
   HOP_CASES.forEach((row) => {
     const data = {
       edges_overlap: row.edges_overlap,
       edges_semantic: row.edges_semantic,
     };
-    const hops = ego.hopsFrom(data, row.roots, ["overlap", "semantic"]);
+    const families = row.families || BOTH;
+    const hops = ego.hopsFrom(data, row.roots, families);
     assert.deepEqual({ ...hops }, row.expected_hops, row.name);
-    const via = ego.reachedVia(data, row.roots);
+    const via = ego.reachedVia(data, row.roots, families);
     assert.deepEqual({ ...via }, row.expected_via, row.name);
   });
 });

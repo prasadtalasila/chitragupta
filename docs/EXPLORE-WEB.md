@@ -285,10 +285,13 @@ brokerage figures, the absence verdict and the withheld-edge counts stay
 corpus-wide, because they are statements about the corpus and not about
 your view of it, and the caption in the header says so.
 
-**Terminal:** `chitragupta corpus discover --path A B --family
-overlap|semantic` walks one family at a time, and `--clusters` reports
-the two partitions separately. Both predate this control; the picker is
-how the app asks the same question of the ego rings.
+**Terminal:** `chitragupta corpus discover TOPIC --hops N --family
+overlap|semantic` is the same question of the same walk -- the rings as
+text, over one family. `--path A B --family F` walks a chain over one
+family and `--clusters` reports the two partitions separately; both
+predate this control, while `--family` on `--hops` landed with it,
+because until then the terminal measured hop distance over the union
+too.
 
 ## 📷 How the screenshots were made
 

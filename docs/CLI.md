@@ -639,9 +639,9 @@ relation and each resolution rung is computed.
 | `--clusters` | -- | The stored MCL partitions of both edge families and the two lists where they disagree -- the app's disagreement grid as a view, read from the artefact's `communities` (this side clusters nothing). Its own view: composes with `--inflation` and `--json` only; exits `1` naming the stored range when the inflation has no partition, or naming the enrich stage when the artefact predates the field |
 | `--inflation X` | `2.0` | Which stored inflation `--clusters` reads (the slider's own steps: 1.2 to 4.0 by 0.1) |
 | `--path TOPIC TOPIC` | -- | The strongest chain between two topics over one family, hop by hop, each hop with its evidence (shared citekeys, or the bridging pair) -- walked from the artefact's stored next-hop matrices, never searched here. Requires `--family`; "no path over this family" is a real answer and exits `0`. Its own view: composes with `--json` only; exits `1` naming the enrich stage when the artefact predates the matrices |
-| `--family F` | -- | Which edge family `--path` walks: `overlap` or `semantic` -- required, never one fused weight |
+| `--family F` | -- | Which edge family to read one family's answer over: `overlap` or `semantic`, never one fused weight. Required by `--path`; optional on `--hops`, where it narrows the walk rather than the output |
 | `--why TOPIC TOPIC` | -- | Why is there no overlap edge between these two topics? Shared citekeys, both sizes, the corpus size, the hypergeometric tail, and the gate's verdict -- the terminal twin of the app's absence view, plus the one number the app cannot show: the artefact's stored threshold. Its own view: composes with `--json` but with no phrase and no `--paper`, and exits `1` when a name resolves to no topic or both resolve to the same one |
-| `--hops N` | -- | With a phrase: print the topic's neighbourhood as rings by hop distance instead of the flat topic view -- ring one typed by which family reached each neighbour, deeper rings by distance alone, and an honest count of what the topic cannot reach. `N` is a positive count, or `all` for everything reachable |
+| `--hops N` | -- | With a phrase: print the topic's neighbourhood as rings by hop distance instead of the flat topic view -- ring one typed by which family reached each neighbour, deeper rings by distance alone, and an honest count of what the topic cannot reach. `N` is a positive count, or `all` for everything reachable. Add `--family F` to measure over one family: without it the walk is over both, so a topic one shared paper plus one cosine hop away sits on the same ring as a topic two shared papers out. The prose and the `--json` `families` both say which were walked |
 | `--origins LIST` | every class | Show only topics of these origins, comma-separated: `seed` (you wrote the phrase in `content/seed_topics.toml`), `keyword` (the extractor proposed it into `content/keywords.toml`), `corroborated` (both files name it -- two independent sources agree), `emergent` (the topic model found it on its own). Filters the artefacts every view reads, so it composes with all of them: the list, `--json`, `--html` and `--app`. **`seed` and `keyword` each include the corroborated topics** -- a topic you named must not be hidden from you because the extractor agreed -- so `corroborated` is how you ask for that intersection alone. Exits `1` on an unknown class or a selection that names none |
 | `--json` | off | Machine-readable output |
 | `--out FILE` | -- | Also write the topic view as a Markdown overview -- papers, linked topics, and verbatim member-paper snippets |
@@ -687,7 +687,7 @@ for narrowing further; a class this export left out is shown disabled and
 says which `--origins` run excluded it, so "filtered out at export" stays
 distinguishable from "this corpus has none". Beside it an **Edges**
 picker does the same for the two edge families, which is the app's
-counterpart to `--family` on `--path`.
+counterpart to `--family` on `--path` and `--hops`.
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,
 then a hybrid of BM25 over each topic's own vocabulary fused with

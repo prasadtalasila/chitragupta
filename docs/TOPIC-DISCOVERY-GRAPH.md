@@ -307,7 +307,10 @@ outside it -- a topic one shared paper plus one cosine hop away lands on
 ring 2 beside a topic two shared papers out, and the reader cannot tell
 which they are looking at. The **Edges** picker is what closes that:
 enabling a family decides which edges are drawn, which are walked, and
-how ring 1 is typed, all from one piece of state.
+how ring 1 is typed, all from one piece of state. `--hops N --family F`
+is the terminal's half of the same fix -- the port had the union
+hardcoded, so closing it on one surface alone would have opened the
+section 13.5 gap in the other direction.
 
 ### 4.5 Report ego statistics in the panel
 
@@ -824,7 +827,7 @@ a shared case file under `tests/webapp/`.
 | what connects A to B, via which papers | `discover --path A B --family F`, walked from the stored matrices |
 | why is there *no* edge here | `discover --why A B` -- the first twin shipped, path A's shape |
 | set comparison across pinned topics | `discover --compare A B [C ...]` -- pairwise shared papers, bridges with ledger entries, mutual edges |
-| how far is this over *one* family | `discover --path A B --family F` and `--clusters`'s two partitions -- the app's **Edges** picker asks the same question of the ego rings, which until it shipped were walked over the union |
+| how far is this over *one* family | `discover TOPIC --hops N --family F` -- the twin of the app's **Edges** picker, pinned to it by the single-family rows in `tests/webapp/hop_cases.json`. Both surfaces walked the union until the picker shipped; the flag reached only `--path` before that |
 
 The terminal's own exclusives -- the resolution ladder, the
 cross-encoder rescoring, the plural-match PageRank `neighbourhood` --
