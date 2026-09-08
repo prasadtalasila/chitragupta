@@ -31,6 +31,7 @@ from chitragupta.dossier._language import _cmd_set_language
 from chitragupta.dossier._retrieval import _cmd_mark_revision
 from chitragupta.dossier._sections import _cmd_sections
 from chitragupta.dossier._outline import _cmd_outline
+from chitragupta.dossier._prune import _cmd_prune
 from chitragupta.dossier._status import _cmd_status
 
 _DRAFT_PATH_HELP = "Path to the draft under content/drafts/"
@@ -100,6 +101,29 @@ def _add_sections_parser(sub) -> None:
         help="With --citekeys: write the table to the dossier's sections.md",
     )
     p_sections.set_defaults(func=_cmd_sections)
+
+
+def _add_prune_parser(sub) -> None:
+    p_prune = sub.add_parser(
+        "prune",
+        help="Remove an evidence.md block for a citekey the draft no longer cites "
+        "(dry run unless --apply)",
+    )
+    p_prune.add_argument("draft", help=_DRAFT_PATH_HELP)
+    p_prune.add_argument(
+        "--citekey",
+        action="append",
+        help="Prune only this citekey (repeatable). Default: every "
+        "recorded-but-uncited evidence.md block",
+    )
+    p_prune.add_argument(
+        "--apply",
+        action="store_true",
+        help="Actually write. Off by default because a recorded-but-uncited "
+        "block may be a candidate that was never cited rather than a "
+        "citation you deleted, and only you can tell which",
+    )
+    p_prune.set_defaults(func=_cmd_prune)
 
 
 def _add_outline_parser(sub) -> None:
@@ -208,6 +232,7 @@ def main(argv: list[str] | None = None) -> int:
     _add_mark_revision_parser(sub)
     _add_stamp_parser(sub)
     _add_sections_parser(sub)
+    _add_prune_parser(sub)
     _add_outline_parser(sub)
     _add_brief_parser(sub)
     _add_set_language_parser(sub)
