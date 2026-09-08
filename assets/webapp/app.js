@@ -477,6 +477,12 @@
   function showBundle(pairs) {
     clearHint();
     detail.innerHTML = app.bundleHtml(DATA, pairs);
+    /* A bundle is keyed by family as well as by endpoints, so every
+       pair in one shares a family and the card belongs to it -- but
+       `bundleHtml` counts the two apart rather than assuming that, and
+       this asks rather than assuming too. */
+    var one = pairs.every(function (pair) { return pair.family === pairs[0].family; });
+    panelFamily = one && pairs.length ? pairs[0].family : null;
   }
 
   /* Two pinned topics with no edge between them: the reader gets the
@@ -998,9 +1004,7 @@
     ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
     updateSummary(
       originsRow,
-      app.pickerSummary(app.originControls(DATA, activeOrigins).map(function (c) {
-        return { name: c.origin, shipped: c.shipped, checked: c.checked };
-      }), "all 4 origins")
+      app.originsSummary(app.originControls(DATA, activeOrigins), DATA)
     );
     pruneChips();
     renderHierarchy();
@@ -1020,8 +1024,7 @@
     }
     activeFamilies = next;
     updateSummary(
-      familiesRow,
-      app.pickerSummary(app.familyControls(DATA, activeFamilies), "both families")
+      familiesRow, app.familiesSummary(app.familyControls(DATA, activeFamilies))
     );
     /* The panel first: a path or an edge card belonging to the family
        that has just gone off is describing lines no longer drawn.

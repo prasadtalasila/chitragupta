@@ -467,40 +467,80 @@
       "</div>";
   }
 
+  /* What "everything" is called, counted over the rows the reader can
+     actually reach. `--origins seed` ships two classes and disables the
+     other two, and calling that "all 4 origins" states a number the
+     picker visibly contradicts -- the same misstatement the disabled
+     rows exist to prevent. One reachable row is named rather than
+     counted: "all 1 origins" is not a sentence. */
+  function allLabelFor(rows, plural) {
+    var offerable = rows.filter(function (row) { return row.shipped; });
+    if (offerable.length === 1) { return offerable[0].name; }
+    return "all " + offerable.length + " " + plural;
+  }
+
   /* The origin picker. A class this export left out (`--origins`) is
      disabled and named as the export's doing, not the corpus's. */
-  function originsHtml(controls, data) {
+  function originSpec(controls, data) {
     var flag = "--origins " + (data.origins || []).join(",");
-    return pickerHtml({
-      attr: "data-origin", label: "Nodes", unit: "topics",
-      allLabel: "all " + controls.length + " origins",
-      rows: controls.map(function (control) {
-        return {
-          value: control.origin, name: control.origin, color: control.color,
-          count: control.count, shipped: control.shipped,
-          checked: control.checked,
-          reason: "not in this export (" + flag + ")",
-        };
-      }),
+    var rows = controls.map(function (control) {
+      return {
+        value: control.origin, name: control.origin, color: control.color,
+        count: control.count, shipped: control.shipped,
+        checked: control.checked,
+        reason: "not in this export (" + flag + ")",
+      };
     });
+    return {
+      attr: "data-origin", label: "Nodes", unit: "topics",
+      allLabel: allLabelFor(rows, "origins"), rows: rows,
+    };
   }
 
   /* The edge-family picker. What it switches is the reader's view and
      never a claim about the corpus: the panel's per-family brokerage
      numbers, the absence verdict and the withheld-edge count all stay
      corpus-wide whatever is drawn. */
-  function familiesHtml(controls) {
-    return pickerHtml({
-      attr: "data-family", label: "Edges", unit: "edges",
-      allLabel: "both families",
-      rows: controls.map(function (control) {
-        return {
-          value: control.family, name: control.name, edge: control.key,
-          count: control.count, shipped: control.shipped,
-          checked: control.checked,
-        };
-      }),
+  function familySpec(controls) {
+    var rows = controls.map(function (control) {
+      return {
+        value: control.family, name: control.name, edge: control.key,
+        count: control.count, shipped: control.shipped,
+        checked: control.checked,
+      };
     });
+    var offerable = rows.filter(function (row) { return row.shipped; });
+    return {
+      attr: "data-family", label: "Edges", unit: "edges",
+      // "both" is only true of two: a corpus with one family's edges
+      // has one reachable row, and that row's own name is the whole
+      // graph there is.
+      allLabel: offerable.length === 2 ? "both families" : allLabelFor(rows, "families"),
+      rows: rows,
+    };
+  }
+
+  /* The four exports the wiring uses: the whole control, and its
+     summary alone for when a row has moved. The summary is recomputed
+     from the same spec rather than rebuilt by the caller, because a
+     caller holding its own copy of "all 4 origins" is how the label
+     came to disagree with the rows in the first place. */
+  function originsHtml(controls, data) {
+    return pickerHtml(originSpec(controls, data));
+  }
+
+  function originsSummary(controls, data) {
+    var spec = originSpec(controls, data);
+    return pickerSummary(spec.rows, spec.allLabel);
+  }
+
+  function familiesHtml(controls) {
+    return pickerHtml(familySpec(controls));
+  }
+
+  function familiesSummary(controls) {
+    var spec = familySpec(controls);
+    return pickerSummary(spec.rows, spec.allLabel);
   }
 
   return {
@@ -521,7 +561,9 @@
     pickerSummary: pickerSummary,
     pickerHtml: pickerHtml,
     originsHtml: originsHtml,
+    originsSummary: originsSummary,
     familiesHtml: familiesHtml,
+    familiesSummary: familiesSummary,
     uncoveredHtml: uncoveredHtml,
   };
 });

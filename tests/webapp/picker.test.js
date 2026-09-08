@@ -197,3 +197,42 @@ test("the families row says which families are on, in one string", () => {
   assert.ok(html.includes('data-family="overlap"'));
   assert.ok(html.includes("shares papers only"));
 });
+
+// ---------- "everything" counts only what the reader can reach ----------
+
+test("a filtered export does not claim four origins while showing one", () => {
+  /* `--origins emergent` ships one class and disables the other three.
+     Saying "all 4 origins" over three dead rows states a number the
+     picker itself contradicts -- the same quiet misstatement the
+     disabled rows exist to prevent. */
+  const shipped = { ...DATA, origins: ["emergent"] };
+  const controls = graph.originControls(shipped, new Set(["emergent"]));
+  assert.equal(panel.originsSummary(controls, shipped), "emergent");
+  const html = panel.originsHtml(controls, shipped);
+  assert.ok(!html.includes("all 4 origins"));
+});
+
+test("an unfiltered export does say all four", () => {
+  const controls = graph.originControls(DATA, new Set(graph.ORIGIN_CLASSES));
+  assert.equal(panel.originsSummary(controls, DATA), "all 4 origins");
+});
+
+test("a corpus with one family's edges does not call it both", () => {
+  const overlapOnly = { ...DATA, edges_semantic: [] };
+  const controls = graph.familyControls(overlapOnly, new Set(["overlap"]));
+  assert.equal(panel.familiesSummary(controls), "shares papers");
+  assert.equal(
+    panel.familiesSummary(graph.familyControls(DATA, new Set(graph.FAMILY_CLASSES))),
+    "both families"
+  );
+});
+
+test("the summary the wiring shows is the one the widget rendered", () => {
+  // The label lived in two places once -- the renderer's and the
+  // caller's copy -- and that is how they came to disagree.
+  const shipped = { ...DATA, origins: ["seed", "corroborated"] };
+  const controls = graph.originControls(shipped, new Set(["seed", "corroborated"]));
+  const inHtml = panel.originsHtml(controls, shipped).match(/picker-state">([^<]*)/)[1];
+  assert.equal(inHtml, panel.originsSummary(controls, shipped));
+  assert.equal(inHtml, "all 2 origins");
+});
