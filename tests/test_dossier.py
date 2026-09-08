@@ -3302,7 +3302,8 @@ class TestEvidenceBlockSpans:
         text = "## `a_2024`\r\nrelevance: one\r\n\r\n## `b_2024`\r\nrelevance: two\r\n"
         target, spans = self._spans(draft, text)
         assert spans == {"a_2024": (0, 3), "b_2024": (3, 5)}
-        raw = (target / "evidence.md").read_text(encoding="utf-8", newline="")
+        with (target / "evidence.md").open(encoding="utf-8", newline="") as handle:
+            raw = handle.read()
         lines = raw.splitlines(keepends=True)
         start, end = spans["a_2024"]
         assert "".join(lines[start:end]) == "## `a_2024`\r\nrelevance: one\r\n\r\n"
@@ -3413,7 +3414,8 @@ class TestPruneEvidence:
 
         assert _prune.prune_evidence(draft, None, apply=True) == {"cut_2023": "removed"}
 
-        raw = path.read_text(encoding="utf-8", newline="")
+        with path.open(encoding="utf-8", newline="") as handle:
+            raw = handle.read()
         assert raw == "# Evidence\r\n\r\n## `kept_2024`\r\n\r\n- relevance: cited\r\n\r\n"
         assert "\r\n" in raw, "the file's own endings must survive a prune"
 

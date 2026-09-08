@@ -8,7 +8,8 @@ tags: [revision, review, agenda, dossier, citation]
 
 `python -m chitragupta.review agenda <draft>` merges every review aid's own report
 -- provenance, verbatim, coverage, synthesis, figure layout, uncited prose,
-quotation integrity, claim support -- plus the dossier's own drift, into one
+quotation integrity, claim support -- plus the dossier's own drift and its
+recorded-but-uncited citekeys, into one
 ranked, deduplicated worklist. Each item carries an `unattended` field,
 decided once by the aid that produced it and never re-derived here: a
 `verbatim-run` at severity `short`, every `prose` finding, and a

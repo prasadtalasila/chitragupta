@@ -117,13 +117,22 @@ def prune_evidence(draft: Path, citekeys: "set[str] | None", apply: bool) -> dic
         # by a smoke test's `od`, not by the unit test, which did its
         # own join over raw lines and so never exercised this path.
         #
+        # Via `open()` rather than `read_text(newline=...)`: that
+        # keyword reached `Path.read_text` only in 3.13, while this
+        # project supports 3.12 (`pyproject.toml`'s `python`), so the
+        # tidier spelling passes locally and `TypeError`s in CI. Note
+        # `write_text` *has* taken it since 3.10 -- the asymmetry is
+        # the trap, and matching both to `open()` is what removes it.
+        #
         # Line *counts* agree between the two modes -- `splitlines`
         # splits on `\r\n`, `\n` and a lone `\r` alike -- so the spans
         # `_parse_evidence` computed under universal newlines index
         # this list correctly.
-        lines = path.read_text(encoding="utf-8", newline="").splitlines(keepends=True)
+        with path.open(encoding="utf-8", newline="") as handle:
+            lines = handle.read().splitlines(keepends=True)
         kept = [line for index, line in enumerate(lines) if not _within(index, doomed)]
-        path.write_text("".join(kept), encoding="utf-8", newline="")
+        with path.open("w", encoding="utf-8", newline="") as handle:
+            handle.write("".join(kept))
     return report
 
 
