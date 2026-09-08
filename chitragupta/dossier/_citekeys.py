@@ -260,35 +260,77 @@ def duplicate_evidence_keys(dossier: Path) -> dict[str, int]:
     return _parse_evidence(dossier)[1]
 
 
-def _parse_evidence(dossier: Path) -> tuple[dict[str, str], dict[str, int]]:
-    """`evidence.md` read once: its first block per key, and the counts
-    for any key that appeared more than once."""
+def evidence_block_spans(dossier: Path) -> dict[str, tuple[int, int]]:
+    """citekey -> the `[start, end)` line range its block occupies.
+
+    What `dossier prune` deletes by, instead of matching the text
+    `evidence_blocks` returns. That text is *reconstructed* --
+    `"\\n".join(body).rstrip() + "\\n"` below -- so it is not in general
+    a substring of the file it came from, and three ordinary shapes
+    break the match outright: CRLF line endings (every block), no
+    trailing newline at EOF (the last block), and trailing whitespace
+    on the final line (the last block). A substring-matching prune
+    reports "no matching block found" on a correct input and silently
+    does nothing, which reads as "that key is not here" when it is.
+
+    A span cannot drift from the file that way, and the caller joining
+    `splitlines(keepends=True)` around one preserves whatever line
+    endings the file had rather than rewriting them to `\\n`.
+
+    Keyed like `evidence_blocks`, first block per key -- so a duplicated
+    heading spans only its first occurrence, and `prune` refuses that
+    case rather than removing one of two and reporting success.
+    """
+    return _parse_evidence(dossier)[2]
+
+
+def _parse_evidence(
+    dossier: Path,
+) -> tuple[dict[str, str], dict[str, int], dict[str, tuple[int, int]]]:
+    """`evidence.md` read once: its first block per key, the counts for
+    any key that appeared more than once, and each key's line span.
+
+    Three returns from one pass rather than three parses, and the span
+    is information this walk already had and used to discard: it closes
+    a block on the next `##` heading, which is exactly where the span
+    ends. `evidence_blocks`/`duplicate_evidence_keys`/
+    `evidence_block_spans` are the three thin accessors over it, and
+    index `[0]`/`[1]`/`[2]` respectively.
+    """
     path = dossier / EVIDENCE_MD
     if not path.is_file():
-        return {}, {}
+        return {}, {}, {}
+    # Bound in one statement rather than three: this walk is at the
+    # C1 statement ceiling, and three dict literals is where the
+    # headroom went. `agenda.__init__._print_recheck` groups its own
+    # locals the same way.
     found: dict[str, str] = {}
-    counts: dict[str, int] = {}
+    counts, spans = {}, {}
     key: str | None = None
     body: list[str] = []
+    start = 0
 
-    def close() -> None:
+    def close(end: int) -> None:
         if key is None:
             return
         counts[key] = counts.get(key, 0) + 1
         found.setdefault(key, "\n".join(body).rstrip() + "\n")
+        spans.setdefault(key, (start, end))
 
-    for line in path.read_text(encoding="utf-8").splitlines():
+    lines = path.read_text(encoding="utf-8").splitlines()
+    for index, line in enumerate(lines):
         if line.startswith("## "):
-            close()
+            close(index)
             heading = line[3:].strip()
             tokens = _citekeys(heading)
             key = tokens[0] if tokens else heading.strip("` ")
             body = [line]
+            start = index
             continue
         if key is not None:
             body.append(line)
-    close()
-    return found, {name: count for name, count in counts.items() if count > 1}
+    close(len(lines))
+    return found, {name: count for name, count in counts.items() if count > 1}, spans
 
 
 # suggest_acronyms/NoUserAcronymsFile/apply_suggestions/_cmd_acronyms_suggest

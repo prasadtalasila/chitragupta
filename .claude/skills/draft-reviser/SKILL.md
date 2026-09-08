@@ -194,13 +194,17 @@ on an unanswered one:
 | Finding | What to offer |
 | --- | --- |
 | a citekey is cited with no `evidence.md` block | add a block for it (treat it like a newly kept citation in step 6), or say why it doesn't need one |
-| an `evidence.md` block for a citekey no longer cited | remove the block, or note that the citation belongs back in the draft |
+| an `evidence.md` block for a citekey no longer cited | offer `python -m chitragupta.draft dossier prune <draft> --citekey <key> --apply`, the repair primitive that now exists for this (dry-run without `--apply`) -- or note that the citation belongs back in the draft. Log the run in `revisions.md`: the command deliberately does not, being a primitive, exactly as `dossier sections --citekeys --write` does not |
 | a heading with no row in `sections.md` | run `dossier sections --citekeys --write`, the repair primitive that already exists for this |
 | a `sections.md` row with no matching heading | the same command; a rename and a deletion both show up here |
 | a `math.md` row appearing nowhere in the draft | update the row's key to the reworded span, or drop it if the quantity was cut |
 
 A `not recorded` fingerprint means this draft has never been stamped --
-say so once, and don't treat it as drift to chase.
+say so once, and don't treat it as drift to chase. Note what that does
+*not* excuse any more: a recorded-but-uncited citekey is now reported
+by `review agenda` without a stamp baseline (#701), as a surfaced
+`recorded-but-uncited` item and over `sections.md` as well as
+`evidence.md`, so an unstamped draft is no longer silent about it.
 
 **A `CHANGED` fingerprint is also FEATURE-ROADMAP.md's E4 trigger**: "a
 draft fingerprint is what says the query moved." Once the four

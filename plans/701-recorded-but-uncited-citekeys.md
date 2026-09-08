@@ -1,6 +1,43 @@
 # Detecting and removing a de-cited citekey the dossier still records (#701)
 
-Status: **planned.** Written 2026-09-08, against `main` at 6.99.0.
+Status: **done.** Written 2026-09-08 against `main` at 6.99.0.
+Sub-defects 1, 3 and 4 landed in PR #754 (6.101.0), sub-defect 2 in
+PR #755 (6.102.0).
+
+**What changed on the way**, since a plan that no longer matches what
+shipped is worse than no plan:
+
+- **The prune primitive's file I/O.** The plan chose line-span
+  deletion over substring matching, which was right. What it missed is
+  that `Path.read_text(encoding=..., newline="")` -- the obvious way to
+  preserve line endings -- takes `newline` only from Python 3.13, while
+  `write_text` has taken it since 3.10. The local venv is 3.13 and CI's
+  test legs are 3.12, so it passed every local check and `TypeError`d
+  on both legs. Shipped via `path.open()` on both halves.
+- **Preserving line endings needed its own fix, separate from the span
+  decision.** Spans made the *deletion* exact, but the first
+  implementation still read with universal newlines, so pruning one
+  block from a CRLF dossier rewrote the whole file to LF. The unit test
+  missed it by joining raw lines itself instead of reading the file
+  back; a smoke test's `od` caught it.
+- **`_verdict` grew a `recorded` set.** The plan's four refusals were
+  right, but inferring "not recorded" from a missing `evidence.md` span
+  reported a cited, `sections.md`-only citekey as unrecorded.
+- **Three more doc surfaces than the plan found.** `docs/PACKAGING.md`'s
+  command table, its stated leaf-command count (56 -> 57) and
+  `tests/test_packaging_command_table.py`'s own constant are all
+  machine-checked, and the plan's grep for the agenda class name found
+  none of them -- the count sentence contains no subcommand name.
+  `docs/FEATURES.md` and `docs/CLI.md`'s per-subcommand table needed
+  sweeping too, plus three claims PR #754 falsified in
+  `agenda/__init__.py`, `docs/REVIEW.md` and the agenda-reviser skill.
+- **`_parse_evidence` needed a statement shed.** The plan measured the
+  prototype at 24/25; the real version came in at 25/25 until three
+  dict initialisers became one tuple assignment.
+- **The item summary suffixed `.md` once after joining**, so a
+  two-surface finding read "evidence, sections.md". Caught in the
+  delegate-review pass, along with a docstring that claimed to reuse
+  `_citekeys.CITED_FILES` and did not reference it.
 
 **Written for** whoever implements #701, filed as the detail behind
 Issue #700 ("Remove citations that are no longer in the draft text").

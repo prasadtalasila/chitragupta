@@ -1,5 +1,6 @@
 """One ranked, deduplicated worklist merged across the other eight review
-aids, `style_check.py`'s prose findings, and the dossier's drift report.
+aids, `style_check.py`'s prose findings, the dossier's drift report, and
+its recorded-but-uncited citekeys.
 
     python -m chitragupta.review agenda <draft>
         merge everything else in the layer already knows about this
@@ -16,12 +17,13 @@ caller but `--baseline` uses.** The eight review aids' `.json` files
 (`_sources.py`), each optional and read from wherever an earlier
 `--json`/`--write` run left them -- `review agenda <draft>` never runs an
 aid live, and stays the free, read-only command docs/CLI.md and
-docs/AUTO-IMPROVEMENT.md describe. `style_check.check()` and
-`dossier.drift()` have no on-disk artefact, so those two are called
-in-process instead. A draft with no dossier still produces an agenda,
-with no `missing-citekey`/`candidate` items and the absence named in the
-header -- the same "optional input, missing" pattern every aid already
-uses, not a refusal.
+docs/AUTO-IMPROVEMENT.md describe. `style_check.check()`,
+`dossier.drift()` and `recorded_but_uncited()` have no on-disk artefact,
+so those three are called in-process instead. A draft with no dossier
+still produces an agenda, with no
+`missing-citekey`/`recorded-but-uncited`/`candidate` items and the
+absence named in the header -- the same "optional input, missing"
+pattern every aid already uses, not a refusal.
 
 **`--baseline` is the one exception, and it is scoped to that flag.**
 `review agenda <draft> --baseline <a previous agenda .json>` re-runs the

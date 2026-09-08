@@ -143,7 +143,8 @@ and it is deliberately not among them. Each of the aids above answers its
 own question in isolation; this one reads what they already wrote (each
 optional -- an aid that
 never ran is named as absent, not treated as clean), plus the drafting
-layer's prose check and the dossier's drift report, and merges them into
+layer's prose check, the dossier's drift report and its
+recorded-but-uncited citekeys, and merges them into
 one ordered list a person or a future reviser skill can work down. In its
 bare form it **reads, never runs, an aid** -- a stale or missing input is
 named in the report's header rather than triggering a live re-run.

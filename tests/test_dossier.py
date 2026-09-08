@@ -29,6 +29,7 @@ from chitragupta.dossier import (
     _draft_fingerprint,
     _drift,
     _evidence_check,
+    _prune,
     _retrieval,
     _sections,
     _status,
@@ -3274,6 +3275,240 @@ class TestSectionsCitekeysCli:
 # not TDD red-then-green: they pass before this module exists too. What
 # is new is `_evidence_check`, tested below them.
 # ---------------------------------------------------------------------
+
+
+class TestEvidenceBlockSpans:
+    """Line spans, not reconstructed text -- the substring a block
+    reconstructs to is not in general present in the file it came from
+    (#701). `evidence_blocks` rejoins with `\\n` after `.rstrip()`, so
+    the three shapes below each break a substring match while the
+    span stays exact.
+    """
+
+    def _spans(self, draft, text):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").write_text(text, encoding="utf-8", newline="")
+        return target, _citekeys.evidence_block_spans(target)
+
+    def test_crlf_endings_still_span_exactly(self, draft):
+        """The case that falsified the first design: with CRLF every
+        block's reconstruction fails a substring match, so a
+        substring-matching prune silently did nothing at all.
+
+        The span covers the blank separator line too -- the residue
+        rule -- so joining it back yields the block *and* the blank
+        line, with the file's own `\\r\\n` endings intact."""
+        text = "## `a_2024`\r\nrelevance: one\r\n\r\n## `b_2024`\r\nrelevance: two\r\n"
+        target, spans = self._spans(draft, text)
+        assert spans == {"a_2024": (0, 3), "b_2024": (3, 5)}
+        with (target / "evidence.md").open(encoding="utf-8", newline="") as handle:
+            raw = handle.read()
+        lines = raw.splitlines(keepends=True)
+        start, end = spans["a_2024"]
+        assert "".join(lines[start:end]) == "## `a_2024`\r\nrelevance: one\r\n\r\n"
+        # And what survives a delete keeps CRLF rather than being
+        # rewritten to LF, which a rebuild from "\n".join would do.
+        assert "".join(lines[:start] + lines[end:]) == ("## `b_2024`\r\nrelevance: two\r\n")
+
+    def test_no_trailing_newline_spans_the_last_block(self, draft):
+        text = "## `a_2024`\nrelevance: one\n\n## `b_2024`\nrelevance: two"
+        _target, spans = self._spans(draft, text)
+        assert spans["b_2024"] == (3, 5)
+
+    def test_trailing_whitespace_on_the_final_line(self, draft):
+        text = "## `a_2024`\nrelevance: one\n\n## `b_2024`\nrelevance: two   \n"
+        _target, spans = self._spans(draft, text)
+        assert spans["b_2024"] == (3, 5)
+
+    def test_a_blank_line_run_belongs_to_the_block_above(self, draft):
+        text = "## `a_2024`\nrelevance: one\n\n\n\n## `b_2024`\nrelevance: two\n"
+        _target, spans = self._spans(draft, text)
+        assert spans["a_2024"] == (0, 5)
+        assert spans["b_2024"] == (5, 7)
+
+    def test_no_evidence_file_spans_nothing(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "evidence.md").unlink()
+        assert _citekeys.evidence_block_spans(target) == {}
+
+    def test_a_duplicate_key_keeps_the_first_span(self, draft):
+        text = "## `a_2024`\nfirst\n\n## `a_2024`\nsecond\n"
+        _target, spans = self._spans(draft, text)
+        assert spans == {"a_2024": (0, 3)}
+
+
+_PRUNE_EVIDENCE = (
+    "# Evidence\n\n"
+    "## `kept_2024`\n\n"
+    "- relevance: still cited\n\n"
+    "## `cut_2023`\n\n"
+    "- relevance: the sentence citing this was deleted\n"
+)
+
+
+def _prune_fixture(draft):
+    """A dossier where `cut_2023` is recorded and uncited, and
+    `kept_2024` is recorded and still cited."""
+    dossier.init(draft, "survey")
+    target = dossier.dossier_dir(draft)
+    (target / "evidence.md").write_text(_PRUNE_EVIDENCE, encoding="utf-8")
+    draft.write_text("# A survey\n\n## 1. First\n\nStanding [@kept_2024].\n", encoding="utf-8")
+    return target
+
+
+class TestPruneEvidence:
+    """`dossier prune`: the removal primitive #701's sub-defect 2 asked
+    for. Dry run by default, `evidence.md` only, and refusing rather
+    than half-doing anything ambiguous."""
+
+    def test_a_dry_run_writes_nothing_at_all(self, draft):
+        target = _prune_fixture(draft)
+        path = target / "evidence.md"
+        before, before_mtime = path.read_bytes(), path.stat().st_mtime_ns
+
+        report = _prune.prune_evidence(draft, None, apply=False)
+
+        assert report == {"cut_2023": "would remove"}
+        assert path.read_bytes() == before, "a dry run must not rewrite the file"
+        assert path.stat().st_mtime_ns == before_mtime, "nor touch its mtime"
+
+    def test_apply_removes_only_the_orphaned_span(self, draft):
+        target = _prune_fixture(draft)
+        path = target / "evidence.md"
+
+        report = _prune.prune_evidence(draft, None, apply=True)
+
+        assert report == {"cut_2023": "removed"}
+        assert path.read_text(encoding="utf-8") == (
+            "# Evidence\n\n## `kept_2024`\n\n- relevance: still cited\n\n"
+        ), "the residue rule: the span, blank separator included, and nothing else"
+
+    def test_a_still_cited_citekey_is_refused_by_name(self, draft):
+        _prune_fixture(draft)
+        report = _prune.prune_evidence(draft, {"kept_2024"}, apply=True)
+        assert report == {"kept_2024": "still cited -- not an orphan"}
+
+    def test_an_unknown_citekey_is_refused_by_name(self, draft):
+        _prune_fixture(draft)
+        report = _prune.prune_evidence(draft, {"never_heard_of_2019"}, apply=True)
+        assert report == {"never_heard_of_2019": "not recorded in this dossier"}
+
+    def test_apply_preserves_crlf_endings_in_the_surviving_text(self, draft):
+        """Through `prune_evidence` itself, not a hand join: the first
+        version read with universal newlines, which rewrites CRLF to
+        `\\n` *before* `keepends` sees it, so pruning one block silently
+        converted the whole file to LF. A test that joined raw lines
+        itself passed on that; only reading the file back catches it."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        path = target / "evidence.md"
+        path.write_text(
+            "# Evidence\r\n\r\n## `kept_2024`\r\n\r\n- relevance: cited\r\n\r\n"
+            "## `cut_2023`\r\n\r\n- relevance: deleted\r\n",
+            encoding="utf-8",
+            newline="",
+        )
+        draft.write_text("# S\n\n## 1. First\n\nStanding [@kept_2024].\n", encoding="utf-8")
+
+        assert _prune.prune_evidence(draft, None, apply=True) == {"cut_2023": "removed"}
+
+        with path.open(encoding="utf-8", newline="") as handle:
+            raw = handle.read()
+        assert raw == "# Evidence\r\n\r\n## `kept_2024`\r\n\r\n- relevance: cited\r\n\r\n"
+        assert "\r\n" in raw, "the file's own endings must survive a prune"
+
+    def test_a_cited_sections_only_citekey_is_not_called_unrecorded(self, draft):
+        """It has no `evidence.md` span, so inferring "not recorded"
+        from the absence of one would call a recorded, cited citekey
+        unrecorded -- and that message is one a person acts on."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "sections.md").write_text(
+            dossier._SECTIONS_TEMPLATE + "| 1. First | `cited_2024` |\n", encoding="utf-8"
+        )
+        draft.write_text("# S\n\n## 1. First\n\nStanding [@cited_2024].\n", encoding="utf-8")
+        report = _prune.prune_evidence(draft, {"cited_2024"}, apply=True)
+        assert report == {"cited_2024": "still cited -- not an orphan"}
+
+    def test_a_sections_only_orphan_names_the_other_command(self, draft):
+        """`sections.md` has a working regeneration primitive already,
+        so prune points at it rather than growing a second writer."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        (target / "sections.md").write_text(
+            dossier._SECTIONS_TEMPLATE + "| 1. First | `row_only_2021` |\n", encoding="utf-8"
+        )
+        report = _prune.prune_evidence(draft, {"row_only_2021"}, apply=True)
+        assert "sections --citekeys --write" in report["row_only_2021"]
+
+    def test_a_duplicated_block_is_refused_not_half_pruned(self, draft):
+        """Removing one of two leaves the key recorded and uncited while
+        reporting success -- the orphan survives and the next run still
+        names it."""
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        path = target / "evidence.md"
+        path.write_text(
+            "## `twice_2024`\n\n- relevance: one\n\n## `twice_2024`\n\n- relevance: two\n",
+            encoding="utf-8",
+        )
+        before = path.read_bytes()
+
+        report = _prune.prune_evidence(draft, None, apply=True)
+
+        assert "2 blocks" in report["twice_2024"]
+        assert path.read_bytes() == before
+
+    def test_rejected_md_is_never_a_prune_target(self, draft):
+        dossier.init(draft, "survey")
+        target = dossier.dossier_dir(draft)
+        rejected = target / "rejected.md"
+        rejected.write_text(
+            "| citekey | title | reason |\n|---|---|---|\n"
+            "| `declined_2020` | A Paper | about a different field |\n",
+            encoding="utf-8",
+        )
+        before = rejected.read_bytes()
+
+        report = _prune.prune_evidence(draft, None, apply=True)
+
+        assert report == {}, "a declined paper is not an orphan"
+        assert rejected.read_bytes() == before
+
+    def test_a_dossier_with_no_evidence_file_prunes_nothing(self, draft):
+        dossier.init(draft, "survey")
+        (dossier.dossier_dir(draft) / "evidence.md").unlink()
+        assert _prune.prune_evidence(draft, None, apply=True) == {}
+
+
+class TestPruneCli:
+    def test_the_dry_run_says_so_and_exits_zero(self, draft, capsys):
+        _prune_fixture(draft)
+        assert dossier.main(["prune", str(draft)]) == 0
+        out = capsys.readouterr().out
+        assert "cut_2023" in out and "would remove" in out
+        assert "--apply" in out, "a dry run has to say how to make it real"
+
+    def test_apply_reports_removed(self, draft, capsys):
+        _prune_fixture(draft)
+        assert dossier.main(["prune", str(draft), "--apply"]) == 0
+        assert "removed" in capsys.readouterr().out
+
+    def test_nothing_to_prune_is_a_clean_exit(self, draft, capsys):
+        dossier.init(draft, "survey")
+        assert dossier.main(["prune", str(draft)]) == 0
+        assert "nothing" in capsys.readouterr().out.lower()
+
+    def test_a_refused_citekey_exits_one(self, draft, capsys):
+        _prune_fixture(draft)
+        assert dossier.main(["prune", str(draft), "--citekey", "kept_2024"]) == 1
+        assert "still cited" in capsys.readouterr().out
+
+    def test_a_missing_draft_is_refused(self, draft, capsys):
+        assert dossier.main(["prune", "content/drafts/nope.md"]) == 1
+        assert "No such draft" in capsys.readouterr().out
 
 
 class TestEvidenceBlocksCoexistence:

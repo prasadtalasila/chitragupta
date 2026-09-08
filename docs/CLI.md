@@ -1007,6 +1007,9 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | `acronyms-suggest <draft> --apply` | The same, then writes the new entries to your acronyms file (creating it if absent). Refuses if `[style].acronyms` is unset, rather than writing into the vendored `assets/style/acronyms.toml` |
 | `brief <draft> [citekey ...]` | The kept-evidence blocks for a section or a citekey list, for a subagent to read. **Exits 1 if nothing resolves** |
 | `check-evidence <draft>` | Advisory, two checks over `evidence.md`. First, any citekey carrying **more than one block** -- the first is the one every reader gets, so the rest are text nothing will read. Then: does any `claim:` read like its own `quote:` with the words moved? Never blocks a draft from being read -- exits 1 if the target has no dossier yet (same convention as `brief`/`status`), 0 otherwise |
+| `prune <draft>` | The `evidence.md` blocks for citekeys the draft no longer cites, as a **dry run** -- one line per citekey saying what would happen. Exits 0 |
+| `prune <draft> --apply` | The same, and actually removes them. Deletes by line span, so the file's own line endings survive; `evidence.md` only, never `sections.md` (use `sections --citekeys --write`) and never `rejected.md` |
+| `prune <draft> --citekey <key>` | Restrict to one citekey (repeatable). Exits **1** if a named citekey was refused -- still cited, unrecorded, `sections.md`-only, or carrying more than one block -- so a script that asked for a specific key hears about it |
 | `list` | Every dossier on this machine |
 | `export [<name> ...]` | Bundle drafts + dossiers to a `.tar.gz` |
 | `restore <archive>` | Unpack a bundle. **Dry run unless `--force`** |
@@ -1054,6 +1057,13 @@ chitragupta draft dossier brief content/drafts/survey.md talasila_composable_202
 
 # After writing evidence.md: does any claim: just restate its own quote:?
 chitragupta draft dossier check-evidence content/drafts/survey.md
+
+# A citation deleted by hand leaves its evidence.md block behind.
+# Dry run first -- a recorded-but-uncited block may be a candidate that
+# was never cited rather than a citation you cut, and only you can tell.
+chitragupta draft dossier prune content/drafts/survey.md
+chitragupta draft dossier prune content/drafts/survey.md --apply
+chitragupta draft dossier prune content/drafts/survey.md --citekey talasila_composable_2025 --apply
 
 # After a sync: which drafts went stale, and what specifically
 chitragupta draft dossier status --all

@@ -527,6 +527,38 @@ blocks the revision on one going unanswered.** A digest that has never
 been stamped reports `not recorded` rather than `CHANGED`; that is not
 drift to chase, just a draft nobody has stamped yet.
 
+### 🧹 The second row has a command, and a second reader
+
+Two things about "an `evidence.md` block whose citekey is no longer
+cited" that the table above cannot carry, both from #701.
+
+**It is removable by a primitive rather than a hand edit:**
+
+```bash
+python -m chitragupta.draft dossier prune content/drafts/<slug>.md              # dry run
+python -m chitragupta.draft dossier prune content/drafts/<slug>.md --apply
+python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey doe_x_2024 --apply
+```
+
+Dry run by default, and that default is the design rather than
+timidity: `recorded - cited` cannot distinguish a citation the user cut
+from a candidate transcribed into `evidence.md` and never cited, and
+the two want opposite repairs. It deletes by line span, touches
+`evidence.md` only, and refuses -- rather than half-doing -- a citekey
+with two blocks, a citekey still cited, and a citekey recorded only in
+`sections.md` (which `dossier sections --citekeys --write` already
+regenerates). `rejected.md` is never read or written.
+
+**And `status` is no longer the only surface that reports it.** Every
+class in the table above is gated on the digest having changed, which
+needs a prior `dossier stamp` -- so a dossier written before stamping
+landed (2026-08-30) answers nothing, with no backfill path.
+`python -m chitragupta.review agenda` therefore computes the same state
+**ungated**, as a surfaced `recorded-but-uncited` item, and over
+`sections.md` as well as `evidence.md`. `status` keeps its gate, for
+the reason stated above: unconditional, these classes fire on almost
+any real dossier and become a wall nobody reads.
+
 Reuses the same text digest `chitragupta/spec/_cli.py`'s `spec sign`
 computes over a book's outline (`chitragupta.spec.digest`, a plain
 sha256[:12] of the text) -- not `dossier.digest`, the corpus
