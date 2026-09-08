@@ -611,3 +611,78 @@ test("stored analysis is preferred, and its absence falls back with a flag", () 
   assert.equal(fallback.stored, false);
   assert.equal(fallback.alters, row.expected.overlap.degree);
 });
+
+// ---------- one family at a time ----------
+
+/* The defect this block exists for: the rings used to be walked over
+   the union of both families whatever the reader wanted, so a topic
+   reached by one shared-paper hop followed by one cosine hop sat on
+   ring 2 beside a topic two shared papers out. The placement was never
+   fused -- ring 1 has always been typed by family -- but which topics
+   are on the rings, and how far out, was decided by whichever family
+   got there first.
+
+       E --overlap-- A --semantic-- C
+
+   Over shared papers alone, C is not two hops from E. It is not
+   anywhere: nothing reaches it. */
+const CHAIN = {
+  n_docs: 4,
+  topics: ["E", "A", "C"].map((label) => ({
+    label: label, origin: "seed", terms: [],
+    members: [{ citekey: label.toLowerCase() + "2020", title: label, score: 0.5 }],
+  })),
+  edges_overlap: [
+    { a: "E", b: "A", jaccard: 0.5, overlap_coeff: 1, p_value: 0.01, shared: ["x2020"] },
+  ],
+  edges_semantic: [{ a: "A", b: "C", similarity: 0.7, bridge: ["x2020", "c2020"] }],
+};
+
+test("a semantic-only neighbour leaves the rings when the semantic family is off", () => {
+  const hops = ego.hopsFrom(CHAIN, ["E"], ["overlap"]);
+  const at = ego.ringPositions(CHAIN, ["E"], hops, 2, ["overlap"]);
+  assert.ok(at["A"], "the shared-paper neighbour is still on ring 1");
+  assert.equal(at["C"], undefined);
+});
+
+test("a two-hop path alternating families is not on ring 2 under one family", () => {
+  // Both on: C is two hops out, which is today's behaviour and stays.
+  const union = ego.hopsFrom(CHAIN, ["E"], BOTH);
+  assert.equal(union["C"], 2);
+  assert.ok(ego.ringPositions(CHAIN, ["E"], union, 2, BOTH)["C"]);
+  // Shared papers alone: the question is "how far is this over shared
+  // papers", and the answer for C is not two.
+  assert.equal(ego.hopsFrom(CHAIN, ["E"], ["overlap"])["C"], undefined);
+});
+
+test("ring 1 is typed over the enabled families, not the payload's", () => {
+  /* Without this, a neighbour reached over overlap that also happens to
+     have a semantic edge still types as "both" and lands in the middle
+     arc -- ring-1 placement consulting a family the reader switched
+     off, which is the same defect one layer down. */
+  const mixed = {
+    topics: EGO.topics,
+    edges_overlap: [
+      { a: "E", b: "A", jaccard: 0.5, overlap_coeff: 1, p_value: 0.01, shared: ["x"] },
+      { a: "E", b: "B", jaccard: 0.5, overlap_coeff: 1, p_value: 0.01, shared: ["x"] },
+    ],
+    edges_semantic: [
+      { a: "E", b: "B", similarity: 0.7, bridge: ["x", "y"] },
+      { a: "E", b: "C", similarity: 0.6, bridge: ["x", "y"] },
+    ],
+  };
+  assert.equal(ego.reachedVia(mixed, ["E"], BOTH)["B"], "both");
+  assert.equal(ego.reachedVia(mixed, ["E"], ["overlap"])["B"], "overlap");
+  assert.equal(ego.reachedVia(mixed, ["E"], ["overlap"])["C"], undefined);
+});
+
+test("the families are both when the walk is asked without them", () => {
+  /* Every caller before the picker existed passed four arguments to
+     ringPositions and two to reachedVia. Absent must mean both, or the
+     canvas those callers describe loses half its edges. */
+  const hops = ego.hopsFrom(CHAIN, ["E"], BOTH);
+  assert.deepEqual(ego.ringPositions(CHAIN, ["E"], hops, 2),
+    ego.ringPositions(CHAIN, ["E"], hops, 2, BOTH));
+  assert.deepEqual({ ...ego.reachedVia(CHAIN, ["E"]) },
+    { ...ego.reachedVia(CHAIN, ["E"], BOTH) });
+});

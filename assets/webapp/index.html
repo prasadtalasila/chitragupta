@@ -54,9 +54,16 @@
     <span class="note">pinned topics are laid out in rings by hop distance;
     grouping is suspended while anything is pinned</span>
   </div>
-  <div id="origins">
-    <!-- One checkbox per origin class, filled in by app.js: which of
-         seed, keyword, corroborated and emergent are on the canvas. -->
+  <div id="filters">
+    <!-- Two multi-select pickers, both filled in by app.js: which of
+         seed, keyword, corroborated and emergent are on the canvas, and
+         which edge families are drawn *and* walked. Each says what is
+         on while shut, so neither costs the reader a scan of four
+         states to learn one fact. -->
+    <div class="picker" id="origins"></div>
+    <div class="picker" id="families"></div>
+    <span class="note">both are your view of the corpus, never a claim
+    about it: the panel's per-family figures stay corpus-wide</span>
   </div>
   <div id="legend">
     <span class="swatch seed"></span>seed

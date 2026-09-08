@@ -142,3 +142,51 @@ test("escapeAction releases the latch once the type-ahead is closed", () => {
 test("escapeAction does nothing with no list open and nothing latched", () => {
   assert.equal(graph.escapeAction(false, null), "none");
 });
+
+// ---------- the canvas moves with the family picker ----------
+
+test("with both families on the canvas is unchanged", () => {
+  /* The picker's first frame. `elementsFor` gained a families carrier,
+     and every caller that does not pass one -- including the ones in
+     this file written before it existed -- must get today's canvas. */
+  const all = new Set(DATA.topics.map((t) => t.label));
+  const before = graph.elementsFor(DATA, all, []);
+  const both = graph.elementsFor(DATA, all, [], { families: ["overlap", "semantic"] });
+  assert.deepEqual(both, before);
+});
+
+test("a switched-off family's edges leave the canvas", () => {
+  const all = new Set(DATA.topics.map((t) => t.label));
+  const edges = graph
+    .elementsFor(DATA, all, [], { families: ["overlap"] })
+    .filter((e) => e.group === "edges");
+  assert.ok(edges.length);
+  edges.forEach((e) => assert.equal(e.data.family, "overlap"));
+  // The topics stay: the filter is about the lines, not the nodes.
+  const nodes = graph
+    .elementsFor(DATA, all, [], { families: ["overlap"] })
+    .filter((e) => e.group === "nodes");
+  assert.equal(nodes.length, DATA.topics.length);
+});
+
+test("filtering a family does not re-index the other one's edges", () => {
+  /* The plain-edge id is "se-" plus an index into `edges_semantic`, and
+     the panel resolves a clicked edge through it. Filtering by
+     rebuilding the array would silently repoint every edge to its
+     neighbour's evidence. */
+  const two = {
+    ...DATA,
+    edges_semantic: [
+      { a: "digital twin", b: "machine learning", similarity: 0.2, bridge: ["dt2022"] },
+      { a: "machine learning", b: "topic-7", similarity: 0.61, bridge: ["ml2020", "rv2018"] },
+    ],
+  };
+  const all = new Set(two.topics.map((t) => t.label));
+  const edges = graph
+    .elementsFor(two, all, [], { families: ["semantic"] })
+    .filter((e) => e.group === "edges");
+  assert.deepEqual(edges.map((e) => e.data.id).sort(), ["se-0", "se-1"]);
+  const outer = edges.find((e) => e.data.id === "se-1");
+  assert.equal(outer.data.index, 1);
+  assert.equal(outer.data.width, 1 + 3 * 0.61);
+});

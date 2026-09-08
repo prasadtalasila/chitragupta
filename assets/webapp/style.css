@@ -130,10 +130,11 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
 .swatch.group { background: #8a97a8; border-radius: 3px; }
 .swatch.paper { background: #455a64; border-radius: 0; transform: rotate(45deg); }
 .swatch.bridge { background: #c2185b; border-radius: 0; transform: rotate(45deg); }
-/* The origin filter's checkbox row. A class this export left out is
-   still shown, disabled: "filtered out at export" and "this corpus has
-   none" are different facts, and a hidden control says neither. */
-#origins {
+/* The two filter pickers: origin classes, and edge families. A row the
+   export or the corpus cannot offer is still shown, disabled --
+   "filtered out at export" and "this corpus has none" are different
+   facts, and a hidden control says neither. */
+#filters {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -141,8 +142,44 @@ header h1 { font-size: 18px; margin: 0; white-space: nowrap; }
   font-size: 12.5px;
   margin: 4px 0;
 }
-.origin-toggle { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
-.origin-toggle.excluded { color: var(--muted); cursor: not-allowed; opacity: 0.55; }
+/* The panel is absolutely positioned against this, so it can overlap
+   the canvas instead of pushing the header taller each time it opens. */
+.picker { position: relative; }
+.picker-summary {
+  font: inherit;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+.picker-summary::after { content: " \25be"; color: var(--muted); }
+.picker-summary[aria-expanded="true"] { border-color: #5c6bc0; }
+.picker-state { font-weight: 600; }
+.picker-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 4px;
+  min-width: 100%;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(28, 39, 51, 0.12);
+}
+.picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.picker-row:hover { background: #eef3f8; }
+.picker-row.excluded { color: var(--muted); cursor: not-allowed; opacity: 0.55; }
 .edge-key { width: 22px; height: 0; display: inline-block; }
 .edge-key.solid { border-top: 2px solid #5c6bc0; }
 .edge-key.dashed { border-top: 2px dashed #8e24aa; }

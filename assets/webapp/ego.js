@@ -23,6 +23,12 @@
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
 })(typeof self !== "undefined" ? self : this, function () {
+  /* The union, used only as the default for a caller that names no
+     families -- every call site here predates the reader being able to
+     switch one off, and "not said" has to mean both or the rings lose
+     half the graph. Never used to *merge* the two: the walk is over
+     whichever families are enabled, one adjacency built per call. */
+  var BOTH = ["overlap", "semantic"];
   var RING_GAP = 240;
   var NODE_SPACING = 110;
   var ROOT_RADIUS = 70;
@@ -91,15 +97,22 @@
   /* Which family reaches each direct neighbour of the pinned set:
      "overlap", "semantic", or "both". A neighbour reached only through
      a shared paper is a different object from one reached only through
-     cosine nearness, and this is what keeps them apart on the ring. */
-  function reachedVia(data, roots) {
+     cosine nearness, and this is what keeps them apart on the ring.
+
+     Over the enabled families only, and an absent `families` means
+     both. Without that, a neighbour reached over shared papers that
+     also happens to have a semantic edge still types as "both" and
+     lands in the middle arc -- ring-1 placement consulting a family the
+     reader has switched off, which is the same defect as walking the
+     union: a verdict about edges that are not on the canvas. */
+  function reachedVia(data, roots, families) {
     var pinned = new Set(roots);
     var via = Object.create(null);
     function mark(label, family) {
       if (pinned.has(label)) { return; }
       via[label] = via[label] && via[label] !== family ? "both" : family;
     }
-    ["overlap", "semantic"].forEach(function (family) {
+    (families || BOTH).forEach(function (family) {
       edgesOf(data, family).forEach(function (edge) {
         if (pinned.has(edge.a)) { mark(edge.b, family); }
         if (pinned.has(edge.b)) { mark(edge.a, family); }
@@ -211,9 +224,14 @@
      Only the first ring is typed by family. Past one hop a topic is
      reached by a path rather than an edge, and labelling a path with
      one family would be a claim about how the reader got there that
-     the graph does not support. */
-  function ringPositions(data, roots, hops, maxHops) {
-    var via = reachedVia(data, roots);
+     the graph does not support.
+
+     `hops` decides who is on the rings, so restricting the walk to one
+     family is what makes the radius answer "how far is this over shared
+     papers" rather than over whichever family got there first. Pass the
+     same families here, so ring 1's typing agrees with the walk. */
+  function ringPositions(data, roots, hops, maxHops, families) {
+    var via = reachedVia(data, roots, families);
     var rings = Object.create(null);
     Object.keys(hops).forEach(function (label) {
       var depth = hops[label];

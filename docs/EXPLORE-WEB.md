@@ -205,17 +205,18 @@ even carry.
 
 ## 🏷 Filtering by where a topic came from
 
-![The header's checkbox row with seed, keyword and corroborated ticked
-and emergent unticked; the canvas shows only the groups that
+![The header's Nodes picker open, reading "all but emergent", with seed,
+keyword and corroborated ticked; the canvas shows only the groups that
 survive](images/discovery/origins.png)
 
-*Real corpus, emergent unticked.* Four classes, one checkbox each:
-**seed** (you wrote the phrase in `content/seed_topics.toml`),
-**keyword** (the extractor proposed it into `content/keywords.toml`),
-**corroborated** (both files name it -- two independent sources agree),
-and **emergent** (the topic model found it on its own). Ticking classes
-off is how you ask "show me only the literature I went looking for", or
-only what the corpus proposed back.
+*Real corpus, emergent unticked.* The **Nodes** picker says what is on
+the canvas before you open it -- "all 4 origins", or "all but emergent"
+-- and opens to one row per class: **seed** (you wrote the phrase in
+`content/seed_topics.toml`), **keyword** (the extractor proposed it into
+`content/keywords.toml`), **corroborated** (both files name it -- two
+independent sources agree), and **emergent** (the topic model found it
+on its own). Ticking classes off is how you ask "show me only the
+literature I went looking for", or only what the corpus proposed back.
 
 The filter moves the whole view together: the type-ahead stops offering
 what is not drawn, a pinned topic whose class goes out is un-pinned, a
@@ -245,6 +246,49 @@ agreed -- and `corroborated` alone asks for that intersection. Under
 the same flag showed in the terminal, and a class the export left out is
 a disabled checkbox naming the run that excluded it, so "filtered out at
 export" never looks like "this corpus has none".
+
+## 🔗 Filtering by which kind of edge
+
+![The header's Edges picker open, reading "shares papers only", with
+semantically near unticked; the ego rings around a pinned topic are drawn
+entirely in solid lines](images/discovery/families.png)
+
+*Real corpus, one topic pinned at two hops, semantic nearness off.* The
+**Edges** picker is the same control over the graph's other axis: the
+two edge families, **shares papers** (a shared-paper link that survived
+the hypergeometric gate) and **semantically near** (cosine nearness
+between topic centroids). Its rows carry the legend's own keys, the
+solid line and the dashed one, so a row can be matched to a line on the
+canvas.
+
+Switching a family off takes its edges off the canvas **and** out of the
+hop walk, which is the part that matters. The rings are hop distance
+from what you pinned, so with semantic nearness off the second ring
+means "two shared papers out" rather than "two hops over whichever
+family got there first" -- and a topic reached by one shared paper
+followed by one cosine hop is not on it at all. That is a question the
+terminal has always answered per family and the app previously could
+not ask: the compare above is the whole point of the control.
+
+Ring 1 is still split by which family reached each neighbour, over the
+families you have on rather than over the payload's. Past one hop
+nothing is typed, because a topic there was reached by a path and
+labelling a path with one family would claim more than the graph
+supports. Unticking the last family is refused, for the same reason as
+the last origin class.
+
+The path buttons follow the picker: the button for a family you have
+switched off is hidden, and a path already on screen over that family is
+withdrawn rather than left describing lines no longer drawn. What does
+not move is the corpus's own arithmetic -- the panel's per-family
+brokerage figures, the absence verdict and the withheld-edge counts stay
+corpus-wide, because they are statements about the corpus and not about
+your view of it, and the caption in the header says so.
+
+**Terminal:** `chitragupta corpus discover --path A B --family
+overlap|semantic` walks one family at a time, and `--clusters` reports
+the two partitions separately. Both predate this control; the picker is
+how the app asks the same question of the ego rings.
 
 ## 📷 How the screenshots were made
 

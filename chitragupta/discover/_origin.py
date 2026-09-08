@@ -33,8 +33,8 @@ import copy
 from chitragupta import config, seed_topics
 
 # Order is the reader's, not the machine's: how much of a human is in
-# the topic, most first. `--help`, the docs table and the app's
-# checkbox row all follow it.
+# the topic, most first. `--help`, the docs table and the app's origin
+# picker all follow it.
 CLASSES = ("seed", "keyword", "corroborated", "emergent")
 
 # Which selected classes show a topic of each origin. Only the

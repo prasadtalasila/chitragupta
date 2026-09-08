@@ -682,10 +682,12 @@ artefact.
 a phrase naming a filtered-out topic falls through the resolution ladder
 like any unknown phrase, and an exported page or app directory contains
 only the classes asked for rather than hiding them on screen. The app
-opens showing exactly what shipped, with a checkbox per class for
-narrowing further; a class this export left out is shown disabled and
+opens showing exactly what shipped, with a **Nodes** picker in the header
+for narrowing further; a class this export left out is shown disabled and
 says which `--origins` run excluded it, so "filtered out at export" stays
-distinguishable from "this corpus has none".
+distinguishable from "this corpus has none". Beside it an **Edges**
+picker does the same for the two edge families, which is the app's
+counterpart to `--family` on `--path`.
 
 A free phrase resolves through a ladder -- exact label, fuzzy label,
 then a hybrid of BM25 over each topic's own vocabulary fused with
