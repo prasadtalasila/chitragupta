@@ -63,10 +63,13 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 const MAX_STATEMENTS = 25;
 const MAX_CODE_LINES = 250;
 
+// The one directory tree this scan covers -- docs/CODE-STANDARDS.md's own
+// "Written for" scope, extended to JS.
+const ROOTS = ["assets/webapp"];
+
 // `vendor/` ships a third-party library (cytoscape.min.js), not code this
 // project wrote -- same reasoning `bench/` gets for staying out of the
 // Python scan, see CODE-STANDARDS.md.
-const ROOTS = ["assets/webapp"];
 const EXCLUDED_DIRS = new Set(["vendor"]);
 
 const REGISTER_PATH = path.join(REPO_ROOT, "code-standards-register.toml");
@@ -215,9 +218,9 @@ function codeLines(source) {
   return count;
 }
 
-function jsFiles(roots) {
+function jsFiles() {
   const found = [];
-  for (const root of roots) {
+  for (const root of ROOTS) {
     const walk = (dir) => {
       for (const entry of fs.readdirSync(path.join(REPO_ROOT, dir), { withFileTypes: true })) {
         if (EXCLUDED_DIRS.has(entry.name)) continue;
@@ -241,10 +244,10 @@ function namedOverLimit(entries) {
   });
 }
 
-/** `{qualifiedName: statementCount}` for every named function over C1, across `roots`. */
-function longFunctions(roots) {
+/** `{qualifiedName: statementCount}` for every named function over C1, across `ROOTS`. */
+function longFunctions() {
   const found = {};
-  for (const relPath of jsFiles(roots || ROOTS)) {
+  for (const relPath of jsFiles()) {
     const source = fs.readFileSync(path.join(REPO_ROOT, relPath), "utf8");
     for (const [name, count] of namedOverLimit(functions(source))) {
       found[`${relPath}::${name}`] = count;
@@ -253,10 +256,10 @@ function longFunctions(roots) {
   return found;
 }
 
-/** `{path: codeLineCount}` for every module over C2, across `roots`. */
-function longFiles(roots) {
+/** `{path: codeLineCount}` for every module over C2, across `ROOTS`. */
+function longFiles() {
   const found = {};
-  for (const relPath of jsFiles(roots || ROOTS)) {
+  for (const relPath of jsFiles()) {
     const source = fs.readFileSync(path.join(REPO_ROOT, relPath), "utf8");
     const count = codeLines(source);
     if (count > MAX_CODE_LINES) found[relPath] = count;
@@ -360,6 +363,8 @@ module.exports = {
   formatFindings,
 };
 
+// Always exits 0, like scripts/code_standards.py's own `main()`: this
+// reports, and tests/webapp/code_standards.test.js is what fails a build.
 if (require.main === module) {
   const found = findings();
   if (process.argv.includes("--json")) {
