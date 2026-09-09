@@ -144,6 +144,88 @@ class TestMissingSummaryIsNotAnError:
         assert tldr.read(ledger_con, "smith2024") is None
 
 
+def _passage_sidecar(citekey, records):
+    """A structural passage sidecar on rung 2, so `_abstract` has reading
+    order to work with -- tests/test_abstract.py owns the detector's own
+    cases; these are about which of the four answers `resolve` gives."""
+    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+    config.PARSED_DIR.joinpath(f"{citekey}.passages.json").write_text(
+        json.dumps([{"text": t, "label": lbl, "page": 1} for t, lbl in records]),
+        encoding="utf-8",
+    )
+
+
+ABSTRACT_BODY = " ".join(f"word{i}" for i in range(60))
+
+
+class TestResolveFallsBackToTheAuthorsAbstract:
+    def test_a_hand_written_summary_wins_over_an_abstract(self, ledger_con):
+        """The stated precedence: somebody who wrote a TL;DR chose to."""
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+        tldr.write(ledger_con, "smith2024", "A hand-written summary.")
+
+        result = tldr.resolve(ledger_con, "smith2024")
+        assert result["source"] == "human"
+        assert result["summary"] == "A hand-written summary."
+
+    def test_with_no_summary_the_abstract_stands_in(self, ledger_con):
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+
+        result = tldr.resolve(ledger_con, "smith2024")
+        assert result["source"] == "abstract"
+        assert result["summary"] == ABSTRACT_BODY
+
+    def test_an_extracted_abstract_is_never_stale(self, ledger_con):
+        """It is re-derived on every read, so there is no earlier text for
+        it to have been written against. A re-parse changes what it says
+        without ever making it wrong."""
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+        config.PARSED_DIR.joinpath("smith2024.txt").write_text("Re-parsed.", encoding="utf-8")
+
+        assert tldr.resolve(ledger_con, "smith2024")["stale"] is False
+
+    def test_it_writes_no_sidecar(self, ledger_con):
+        """A derived abstract is deliberately not persisted -- caching it
+        would create the staleness the derive-on-read design removes."""
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+        tldr.resolve(ledger_con, "smith2024")
+        assert not tldr.sidecar_path("smith2024").exists()
+
+    def test_a_paper_with_no_abstract_says_so(self, ledger_con):
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar(
+            "smith2024", [("1 Introduction", "section_header"), (ABSTRACT_BODY, "text")]
+        )
+
+        result = tldr.resolve(ledger_con, "smith2024")
+        assert result["source"] == "none"
+        assert result["summary"] is None
+
+    def test_no_structural_sidecar_is_a_separate_answer(self, ledger_con):
+        """Not "this paper has no abstract" -- a claim about a document
+        this cannot read. A `pdftotext` parse leaves no sidecar at all."""
+        _add_item("smith2024", "Original parsed text.")
+
+        result = tldr.resolve(ledger_con, "smith2024")
+        assert result["source"] == "unknown"
+        assert result["summary"] is None
+
+    def test_a_corrupted_tldr_sidecar_falls_through_to_the_abstract(self, ledger_con):
+        """`read`'s forgiving parse already treats a damaged sidecar as
+        missing; the fallback then applies, rather than the damage
+        withholding an abstract that is sitting right there."""
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+        config.TLDR_DIR.mkdir(parents=True, exist_ok=True)
+        config.TLDR_DIR.joinpath("smith2024.json").write_text("not json", encoding="utf-8")
+
+        assert tldr.resolve(ledger_con, "smith2024")["source"] == "abstract"
+
+
 class TestRefusals:
     def test_an_unknown_citekey_is_refused(self, ledger_con):
         with pytest.raises(tldr.TldrError, match="not in the ledger"):
@@ -219,11 +301,33 @@ class TestCLI:
         assert tldr.main(["show", "smith2024", "--json"]) == 0
         payload = json.loads(capsys.readouterr().out)
         assert payload["stale"] is False
+        assert payload["source"] == "human"
 
-    def test_show_with_no_summary_exits_zero(self, ledger_con, capsys):
+    def test_show_with_no_sidecar_of_either_kind_exits_zero(self, ledger_con, capsys):
         _add_item("smith2024", "Original parsed text.")
         assert tldr.main(["show", "smith2024"]) == 0
-        assert "no TL;DR recorded" in capsys.readouterr().out
+        out = capsys.readouterr().out
+        assert "cannot tell" in out and "docling" in out
+
+    def test_show_names_the_paper_with_no_abstract(self, ledger_con, capsys):
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar(
+            "smith2024", [("1 Introduction", "section_header"), (ABSTRACT_BODY, "text")]
+        )
+        assert tldr.main(["show", "smith2024"]) == 0
+        assert "abstract not available" in capsys.readouterr().out
+
+    def test_show_marks_an_extracted_abstract_as_the_authors_words(self, ledger_con, capsys):
+        _add_item("smith2024", "Original parsed text.")
+        _passage_sidecar("smith2024", [("Abstract", "section_header"), (ABSTRACT_BODY, "text")])
+        assert tldr.main(["show", "smith2024"]) == 0
+        out = capsys.readouterr().out
+        assert "authors' own abstract" in out and ABSTRACT_BODY in out
+
+    def test_show_json_carries_the_source_in_every_case(self, ledger_con, capsys):
+        _add_item("smith2024", "Original parsed text.")
+        assert tldr.main(["show", "smith2024", "--json"]) == 0
+        assert json.loads(capsys.readouterr().out)["source"] == "unknown"
 
     def test_write_of_an_unknown_citekey_is_a_refusal_not_a_traceback(
         self, ledger_con, monkeypatch, capsys

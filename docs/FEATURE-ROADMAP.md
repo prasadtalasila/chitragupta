@@ -956,6 +956,7 @@ Recorded so each is not re-proposed as an oversight.
 | A blocking overlap gate | Declined on measured evidence (#130), and a second meaning would blunt the gate's one meaning ([WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10) |
 | Claim extraction cached in the corpus or enrichment layer | LLM output on the corpus plane; breaks "same bibliography in, same citekeys out" ([SOUL.md](../SOUL.md)) |
 | TL;DR shown in `corpus ledger` output | Same, plus it inverts the layer order -- see [FEATURES.md](FEATURES.md)'s per-citekey TL;DR section |
+| An LLM-written TL;DR for a paper with no abstract | The other half of the unattended-generation design: extraction shipped, whole-paper summarisation did not. 4.92M input tokens for 160 documents, re-incurred on every re-parse, and [SOUL.md](../SOUL.md) requires a human to accept anything abstractive -- with no `tldr accept`, no review surface, and no answer to who reads 160 machine summaries. Such a paper reports "abstract not available" instead. [TLDR.md](TLDR.md) has the measurements |
 | Image-generated figures | Non-deterministic, and cannot satisfy §10's two-form contract |
 | Any ML dependency in the core | `bibtexparser` as sole core dependency is a design decision in `pyproject.toml`, not an accident |
 | Fetching papers from arXiv or anywhere else | Admission is the reference manager's job alone ([AGENTS.md](../AGENTS.md)) |

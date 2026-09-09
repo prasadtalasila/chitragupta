@@ -1,35 +1,39 @@
-# 🔭 Per-citekey TL;DR: what's built, and the unattended generator that isn't
+# 🔭 Per-citekey TL;DR: the written summary, and the abstract behind it
 
-Status: **reference, plus a parked proposal.** Written 2026-08-24.
+Status: **reference.** Written 2026-08-24. Updated 2026-09-09.
 
-What `chitragupta draft tldr` does today -- a one-paragraph,
-human-authored summary per citekey, cached beside a fingerprint of its
-parsed text -- and the
-[unattended-generation design](https://github.com/prasadtalasila/chitragupta/issues/401),
-parked rather than built.
+What `chitragupta draft tldr` does: a one-paragraph summary per citekey,
+written by a person and cached beside a fingerprint of its parsed text,
+falling back to the authors' own abstract for the citekeys nobody has got
+to. Plus the half of the
+[unattended-generation design](https://github.com/prasadtalasila/chitragupta/issues/401)
+that was **declined** rather than built -- sending the whole text of a
+paper with no abstract to a model.
 
-**Written for** someone deciding whether to build that generator, or wondering why
-`tldr write` still reads from stdin instead of summarising a paper
-itself. **Assumed:** [ARCHITECTURE.md](ARCHITECTURE.md)'s four layers and
-the citekey invariant ([SOUL.md](../SOUL.md)). **Not covered here:** every
-flag -- [CLI.md](CLI.md#-chitragupta-draft-tldr) is the exhaustive
-reference; this is the design.
+**Written for** someone wondering why `tldr write` reads from stdin
+instead of summarising a paper itself, or why a paper with no abstract
+reports nothing rather than getting one generated. **Assumed:**
+[ARCHITECTURE.md](ARCHITECTURE.md)'s four layers and the citekey
+invariant ([SOUL.md](../SOUL.md)). **Not covered here:** every flag --
+[CLI.md](CLI.md#-chitragupta-draft-tldr) is the exhaustive reference;
+this is the design.
 
 ## 🧭 Table of contents
 
-- [What's built: a cache, not a generator](#-whats-built-a-cache-not-a-generator)
+- [What's built](#-whats-built)
 - [Why it lives where it lives](#-why-it-lives-where-it-lives)
-- [The parked proposal: generating it unattended](#-the-parked-proposal-generating-it-unattended)
-  - [The shape: two paths, split on whether the paper has an abstract](#-the-shape-two-paths-split-on-whether-the-paper-has-an-abstract)
-  - [Measured: the abstract is detectable more often than a heading scan suggests](#-measured-the-abstract-is-detectable-more-often-than-a-heading-scan-suggests)
+- [The abstract fallback](#-the-abstract-fallback)
+  - [Why the passage sidecar and not the flattened text](#-why-the-passage-sidecar-and-not-the-flattened-text)
+  - [Docling has no abstract label](#-docling-has-no-abstract-label)
+  - [The three guards, and what each one cost](#-the-three-guards-and-what-each-one-cost)
+  - [Why it is derived on every read and never stored](#-why-it-is-derived-on-every-read-and-never-stored)
+  - [Why a verbatim abstract is not the extractive summary this rejects](#-why-a-verbatim-abstract-is-not-the-extractive-summary-this-rejects)
+- [What is declined: whole-paper summarisation](#-what-is-declined-whole-paper-summarisation)
   - [Measured: the papers without abstracts are the long ones](#-measured-the-papers-without-abstracts-are-the-long-ones)
-  - [Why whole text on path B, not an extractive reduction step](#-why-whole-text-on-path-b-not-an-extractive-reduction-step)
-  - [Why nothing extractive is ever shown to a reader](#-why-nothing-extractive-is-ever-shown-to-a-reader)
-  - [What this needs before it can be built](#-what-this-needs-before-it-can-be-built)
-  - [Risks a reader should not have to rediscover](#-risks-a-reader-should-not-have-to-rediscover)
-  - [Why this is parked, not next](#-why-this-is-parked-not-next)
+  - [Why no reduction step would have rescued it](#-why-no-reduction-step-would-have-rescued-it)
+  - [The three things it would have needed first](#-the-three-things-it-would-have-needed-first)
 
-## 📦 What's built: a cache, not a generator
+## 📦 What's built
 
 `chitragupta/tldr.py` is deliberately small: a `write`/`show` pair
 over a JSON sidecar at `content/tldr/<citekey>.json`, keyed to a
@@ -51,16 +55,33 @@ from a person, or from a skill in the current Claude Code session -- and
 persists it. **No LLM call happens inside this module, ever.**
 `show` recomputes the fingerprint on every read and reports the summary
 `[STALE]` rather than silently describing a paper that has since been
-re-parsed; staleness is never cached, only re-derived. See
-[CLI.md](CLI.md#-chitragupta-draft-tldr) for the full flag/exit-code
-reference.
+re-parsed; staleness is never cached, only re-derived.
+
+`show` answers with one of four `source` values, and the last two are
+deliberately not one:
+
+| `source` | Meaning |
+| --- | --- |
+| `human` | somebody wrote a TL;DR; `stale` reports it against the current parse |
+| `abstract` | nobody did, so the authors' own abstract stands in; never stale |
+| `none` | nobody did, and this paper has no abstract -- "abstract not available" |
+| `unknown` | nobody did, and there is no passage sidecar, so nothing can tell |
+
+`none` is a statement about the paper. `unknown` is a statement about how
+the paper was parsed: `pdf_text/_backends.py`'s `_extract_pdftotext`
+returns `None` rather than an empty list -- "this backend resolves no
+reading order" -- so nothing writes a passage sidecar for it, and
+`[parser].backend = "docling"` is what fixes it. Collapsing the two would
+report "no abstract" about a document nothing had read, which is the one
+answer worse than no answer.
 
 ## 🏗 Why it lives where it lives
 
 `content/tldr/`, not `content/dossiers/` or `content/ledger.sqlite`:
 
-- **Not the corpus layer.** A summary is LLM output, and
-  [SOUL.md](../SOUL.md) says the corpus layer "has no LLM and no
+- **Not the corpus layer.** A written summary may be LLM output -- a
+  skill in the current session is one of the two things that compose one
+  -- and [SOUL.md](../SOUL.md) says the corpus layer "has no LLM and no
   judgment calls." `python -m chitragupta.corpus ledger` is untouched by
   any of this.
 - **Not a dossier.** A summary belongs to a *citekey*, not to any one
@@ -74,65 +95,163 @@ reference.
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-four-constraints-every-item-respects)'s
 constraint 1 ("no LLM output may reach the corpus plane") names this
 placement as the whole design decision behind the module; nothing below
-changes that.
+changes that. The abstract fallback does not touch that constraint from
+either side: it makes no LLM call, and it writes nothing at all.
 
-## 🔭 The parked proposal: generating it unattended
+## 🔍 The abstract fallback
 
-Everything in this section is **proposed, not built**, and is tracked as
-parked on
-[the issue tracker](https://github.com/prasadtalasila/chitragupta/issues/401).
-`tldr.py`'s own docstring already anticipates a generator -- "someone
-else composed" the summary, "a person, or a skill in the current Claude
-Code session" -- and this is a design for who that someone else is when
-nobody is watching a session at all. The measurements below were taken
-against the real corpus at 497 parsed documents and are the durable part
-of the proposal; whoever picks this up should not need to re-derive them.
+`chitragupta/_abstract.py` answers "what does this paper say it is
+about?" without asking a model, by finding the authors' own abstract in
+the citekey's passage sidecar and returning it verbatim. Nothing is
+summarised, paraphrased or rewritten, so there is no hallucination
+surface: the words are the authors' or there is no answer.
 
-### 📐 The shape: two paths, split on whether the paper has an abstract
+It resolves an abstract for **318 of this project's 498 parsed
+documents (63.9%)**. The remaining 180 report `none` or `unknown` rather
+than getting anything generated -- see
+[what is declined](#-what-is-declined-whole-paper-summarisation).
 
-**Path A -- the author's own abstract, stored verbatim.** No LLM, no
-word limit, no summarisation. This is *extraction*, not summarisation:
-the words are the authors' own, so there is no hallucination surface at
-all.
+### 📐 Why the passage sidecar and not the flattened text
 
-**Path B -- no detectable abstract: the whole parsed text to an LLM, out
-comes 100-120 words.**
+The obvious implementation is a regex over `content/parsed/<citekey>.txt`,
+and it is the one issue #401 and an earlier revision of this document
+described. It was measured and then replaced, because the flattened file
+has thrown away the thing the job needs.
 
-The split pays for itself: path A covers 68% of the corpus for zero
-tokens, and **self-heals for free on re-parse** -- when the fingerprint
-goes stale, re-deriving an abstract costs nothing, so two thirds of the
-corpus never needs regenerating.
+Docling resolves reading order and labels every item it emits, and
+`content/docling/<citekey>.passages.json` already carries both -- 498 of
+them, written by a stage that has already run. `chitragupta/passages.py`
+is that sidecar's reader, so `structural_passages()` there is the one
+resolver both rungs go through, and this module never re-derives the
+"enrichment sidecar before corpus sidecar" order for itself.
 
-### 📊 Measured: the abstract is detectable more often than a heading scan suggests
+Recall is the same either way -- a flat-text regex finds 337 of 498 and
+the structural pass finds 342 -- so the sidecar buys nothing in coverage.
+What it buys is **precision**: "stop at the next `section_header`" is a
+structural fact, where "stop after N words" is a guess. That difference
+is the entire value, and it is why the shipped figure (318) is *lower*
+than the regex's 337 rather than higher. The gap is the withheld set.
 
-A Markdown-heading scan finds `Abstract` in only 133 of 497 documents
-(27%). That undercounts badly, because Docling emits it as running text
-as often as a heading -- one document reads `Abstract At the heart of a
-digital twin is...` mid-paragraph. An inline-aware regex over the first
-25% of each document, stopping at `Keywords`/`Index Terms`/`Introduction`:
+### 🏷 Docling has no abstract label
 
-| | count | share |
-| --- | ---: | ---: |
-| usable abstract body (60-400 words) | 337 | 68% |
-| no usable abstract | 160 | 32% |
+Worth stating plainly, because it is the first thing a reader assumes:
+there is no `abstract` in `DocItemLabel`. The enum runs
+`caption`, `chart`, `code`, `document_index`, `footnote`, `form`,
+`formula`, `list_item`, `marker`, `page_footer`, `page_header`,
+`paragraph`, `picture`, `reference`, `section_header`, `table`, `text`,
+`title`, plus field and checkbox variants -- and nothing in it marks an
+abstract semantically.
 
-The length distribution of the 337 is why "no word limit" is safe rather
-than reckless:
+"Structure" here therefore means reading order and heading boundaries,
+nothing more. The two openers are matched on their *text*: `Abstract`
+alone on a line as a `section_header`, or the same word opening a
+paragraph that runs straight into the abstract. The second is not an edge
+case -- Docling emits it that way for 210 of the 342 documents where an
+abstract is found at all, as in `Abstract At the heart of a digital twin
+is...`, which is why a heading-only scan finds just 133.
 
-| percentile | words |
-| --- | ---: |
-| median | 162 |
-| p90 | 243 |
-| max | 321 |
+### ⚖ The three guards, and what each one cost
 
-Only 23 exceed 250 words and 2 exceed 300 -- no 800-word outlier hiding
-in the tail.
+The guards **withhold** rather than trim, and the asymmetry is the whole
+reason. A false negative reports "abstract not available" for a paper
+that has one, and costs a reader one `less
+content/parsed/<citekey>.txt`. A false positive publishes something that
+is not an abstract as though the authors wrote it. Each guard is set
+where measurement put it, against the real 498, and each answers a
+failure that was read rather than imagined:
+
+| Guard | Set at | The failure it answers |
+| --- | --- | --- |
+| `MAX_LEAD_ITEMS` | 40 | `slavic_python_2025` matched an inline `Abstract` at item #155 and `akiki_resources_2025` at #93, both capturing class-diagram text. Genuine openers sit at median item #5 (inline) or #7 (heading), p90 #21 |
+| `MAX_BODY_ITEMS` | 3 | Five documents opened with a correct abstract and ran on, because no `section_header` and no `Keywords` line arrived to stop them -- `humlum_large_2025` swallowed 1442 words |
+| `MIN_BODY_WORDS` / `MAX_BODY_WORDS` | 40 / 400 | A length sanity check on the result. The longest genuine abstract here is 321 words and the p90 is 243, so anything past the ceiling means the stop rule failed |
+
+Three things about that table are decisions rather than tuning, and are
+the parts worth not re-deriving:
+
+- **The body cap counts items, not words.** A word cap discards a
+  correct abstract whose real text sits in its first 200 words, which is
+  exactly `humlum_large_2025`: its abstract is right there and the
+  runaway is behind it.
+- **The floor is 40, not the 60 issue #401 proposed.** `lin_utwin_2023`
+  is a real, correctly-bounded abstract at 58 words, and a floor of 60
+  drops it.
+  `deslauriers_everyday_2022`'s title-and-affiliations false positive
+  falls under 40 anyway, at 35 -- caught by a length check rather than by
+  any rule about title blocks, which is worth knowing before someone
+  reads the floor as a precision device. It is not one.
+- **One real detection is knowingly lost.**
+  `fitzgerald_engineering_2024-1` is a genuine chapter abstract sitting
+  at item #407 of a whole-book PDF, and the lead window withholds it.
+  That is the stated price of the lead window rather than an
+  unnoticed bug: chapter-in-book PDFs are the shape it costs.
+
+The precision claim behind all of this is a read sample, not a count of
+what a regex matched: 19 detected bodies were read by hand, which is what
+issue #401 asked for before any of it shipped. Every one between roughly
+60 and 300 words was a genuine, correctly-bounded abstract; all four
+false positives and all five runaways were outside that band, and the
+guards above are where they were drawn from.
+
+### ♻ Why it is derived on every read and never stored
+
+An extracted abstract is not written to `content/tldr/`, and that is the
+design rather than an omission. Caching it would *create* the staleness
+the sidecar's fingerprint exists to detect: a stored abstract goes stale
+on the next re-parse and needs re-deriving, where a derived one is
+current by construction. `stale` is therefore structurally `false` for
+`source: "abstract"`, not merely usually false.
+
+Two things follow, and both are why this shape is small:
+
+- **No schema change.** The payload on disk stays
+  `{citekey, summary, fingerprint}`. Because nothing but `write` ever
+  creates that file, everything in it is human-authored by construction,
+  so provenance is answered by *where the text came from* rather than by
+  a stored field: a sidecar exists, or extraction ran. `source` lives
+  only in the dict `resolve()` returns.
+- **A written summary wins.** Extraction runs only when `read` finds
+  nothing. Somebody who wrote a TL;DR chose to, and the fingerprint
+  machinery exists for exactly that text -- a summary a person composed
+  cannot be recovered once it is stale, and an abstract can always just
+  be read again.
+
+### 🧷 Why a verbatim abstract is not the extractive summary this rejects
+
+An earlier revision of this document said, of the declined generator's
+internals, that "an extractive summary must never be the stored
+artefact": stitching four sentences from different sections into 110
+words produces dangling anaphora -- "this approach", "as shown in Fig.
+3", "the proposed method" -- referring to things that are not in the
+summary. That is incoherent by construction rather than by tuning, and it
+still stands.
+
+It is not what the fallback does, and the distinction is structural
+rather than a matter of degree. The abstract is one **contiguous** span
+in reading order that its authors wrote to be read standalone; up to
+three consecutive paragraphs are joined, and the span ends at the next
+heading. Nothing is selected from elsewhere in the paper and nothing is
+recombined, so there is no dangling reference to construct. That is why
+issue #401 put the author's abstract on a path of its own from the start,
+rather than treating it as the cheap end of summarisation.
+
+## 🚫 What is declined: whole-paper summarisation
+
+The other half of the proposal was: no detectable abstract, so send the
+whole parsed text to an LLM and take 100-120 words back. That is
+**declined**, not deferred, and
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)
+carries the row. A paper with no abstract reports that it has none.
+
+The measurements below are why, and they are the durable part of the
+original proposal; whoever reopens this should not need to re-derive
+them.
 
 ### 📈 Measured: the papers without abstracts are the long ones
 
-This is the measurement that shapes the whole design. The 160 documents
-with no detected abstract are not a random 32% of the corpus -- they are
-systematically the largest:
+This is the measurement that decides it. The documents with no detected
+abstract are not a random third of the corpus -- they are systematically
+the largest:
 
 | | no-abstract set | whole corpus |
 | --- | ---: | ---: |
@@ -143,32 +262,34 @@ systematically the largest:
 That tracks: standards deliverables, project reports and theses are both
 the documents that skip an abstract *and* the ones that run long.
 
-Consequence: feeding whole text on path B costs **4.92M input tokens**,
-not the ~130k a reduced-extract design would cost -- roughly $10 on
-Sonnet 5 or $26 on Opus 5, one-time, re-incurred only for citekeys whose
-fingerprint actually moved. Feeding whole text for *all* 497 documents
-would be 11.7M tokens; path A is what keeps that off the table.
+Consequence: feeding whole text costs **4.92M input tokens** -- roughly
+$10 on Sonnet 5 or $26 on Opus 5, and re-incurred for every citekey whose
+parsed text moves, so it is a *running* cost attached to a feature nobody
+asked for rather than a one-off. Feeding whole text for all 498 documents
+would be 11.7M; the abstract path is what keeps that off the table.
 
-### ⚖ Why whole text on path B, not an extractive reduction step
+### ⚙ Why no reduction step would have rescued it
 
 The obvious cheaper design reduces each long document first -- rank
 `embed_index` chunks by cosine similarity to the document centroid
 `doc_vectors.pooled_embedding()` already caches, take the top-K, feed
-~600 words to the LLM. Considered and rejected, in order of weight:
+~600 words to the model. Rejected, in order of weight:
 
-1. **It breaches the dependency boundary.** `chitragupta/tldr.py`
-   currently imports only `config` and `ledger` -- stdlib plus
-   `bibtexparser`. Centroid selection needs `sentence_transformers`,
-   which [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-four-constraints-every-item-respects)'s
-   constraint 3 quarantines behind the `enrich` extra, and
-   `pyproject.toml` deliberately keeps out of core. Whole text *deletes*
-   that problem instead of engineering around it, and
-   [SOUL.md](../SOUL.md) says the smaller change wins ties.
-2. **The 160 long documents are precisely where a centroid is
-   weakest.** A centroid selects the *typical* chunk, and in a
-   28,000-word standards deliverable the typical chunk is boilerplate.
-   It would drop a contribution stated once and keep procedural filler
-   stated forty times.
+1. **It breaches the dependency boundary.** Centroid selection needs
+   `sentence_transformers`, which
+   [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-four-constraints-every-item-respects)'s
+   constraint 3 quarantines behind the `enrich` extra and
+   `pyproject.toml` deliberately keeps out of core -- and `tldr` is a
+   tier-1 command that must run under bare `python3`
+   ([ARCHITECTURE.md](ARCHITECTURE.md#-which-interpreter-and-why)). Worth
+   noting what shipped instead: `_abstract.py` imports only
+   `chitragupta.passages`, itself stdlib-only, so the extractor stays
+   inside that boundary rather than engineering around it.
+2. **The long documents are precisely where a centroid is weakest.** A
+   centroid selects the *typical* chunk, and in a 28,000-word standards
+   deliverable the typical chunk is boilerplate. It would drop a
+   contribution stated once and keep procedural filler stated forty
+   times.
 3. **The long-document literature argues for seeing everything.** Koh
    et al.'s *An Empirical Survey on Long Document Summarization* (ACM
    Computing Surveys 55:8, 2022) -- already cited in prose at
@@ -176,99 +297,38 @@ The obvious cheaper design reduces each long document first -- rank
    reason -- reports that the layout bias making prefixes work for short
    documents is *absent* in long ones (uniformity 0.89-0.93 long against
    0.78-0.86 short). Salient content is scattered, so any sampling step
-   risks missing it and full context does not. That paper is cited here
-   as prose, not as a citekey: a ledger query confirms it is not in this
-   corpus, and the one citekey invariant applies to a proposal's own
-   text as much as to a draft.
+   risks missing it. That paper is cited here as prose, not as a
+   citekey: a ledger query confirms it is not in this corpus, and the one
+   citekey invariant applies to a document's own text as much as to a
+   draft.
 
-### 🚫 Why nothing extractive is ever shown to a reader
+So the choice was whole text or nothing, and whole text is what the cost
+above prices.
 
-Separately from path B's internals: an extractive summary must never be
-the *stored* artefact. Stitching four sentences from different sections
-of a paper into 110 words produces dangling anaphora -- "this approach",
-"as shown in Fig. 3", "the proposed method" -- referring to things not in
-the summary. That is incoherent by construction, not by tuning.
-Extraction is acceptable as LLM *input*, where the reader never sees it;
-it is not acceptable as output.
+### 🧩 The three things it would have needed first
 
-### 🧩 What this needs before it can be built
+Recorded because they are what a reopening would have to answer, and none
+of them is a matter of effort:
 
-- **Provenance fields on the sidecar.** The payload today is
-  `{citekey, summary, fingerprint}`. A human-authored TL;DR, an author's
-  verbatim abstract and a machine-written summary would be
-  indistinguishable on disk. [SOUL.md](../SOUL.md) says "anything
-  abstractive waits for a human to accept it" -- that acceptance has
-  nowhere to be recorded today. Needs `source: human|abstract|llm` and
-  `accepted: bool`, with `show` marking an unaccepted machine summary the
-  way it already marks `[STALE]`.
-- **An enumerator.** Something like `tldr stale --json` listing citekeys
-  whose sidecar is missing or whose fingerprint no longer matches, so a
-  driver has a work list. `dossier status --all` is the existing shape
-  to follow.
+- **A home for acceptance.** [SOUL.md](../SOUL.md) requires a human to
+  accept anything abstractive. There is no `tldr accept`, no review
+  surface, and no plausible answer to "who reads 160 machine summaries,
+  and on what occasion" -- and building the generator first produces 160
+  artefacts that are permanently unaccepted, which is worse than not
+  having them. Note that this clause is exactly what the abstract
+  fallback does *not* trip: verbatim extraction is not abstractive, so
+  there is nothing to accept, which is why it needs no `accepted` field
+  and could ship without one.
+- **Provenance on the sidecar.** A human TL;DR and a machine summary
+  would be indistinguishable on disk, so an LLM path needs
+  `source: human|llm` and `accepted: bool` *stored*. The abstract
+  fallback needs neither, because it stores nothing -- see
+  [why it is derived on every read](#-why-it-is-derived-on-every-read-and-never-stored).
 - **One subagent per paper, not one session loop.** A single session
   cannot carry 4.92M tokens; it would hit compaction partway through and
-  later summaries would degrade silently. Each paper needs a fresh
-  context that returns 100-120 words to a parent, which pipes them to
-  `tldr write`. This is also what makes "no conversation history
-  crosses between papers" true rather than aspirational.
-
-### ⚠ Risks a reader should not have to rediscover
-
-- **Abstract detection is a length gate, not a content gate.**
-  `60 <= words <= 400` is what separates path A from path B, and it can
-  be fooled: a table-of-contents entry, or an `Abstract` heading
-  followed by unrelated prose, passes it and gets stored verbatim as
-  authoritative -- on the path that skips both the LLM *and* human
-  acceptance. The asymmetry is backwards: a false negative merely costs
-  tokens on path B, a false positive publishes noise as trustworthy.
-  **Sample and read ~20 of the 337 detected bodies before any of this
-  ships.** If precision is not near-perfect, `accepted` should default to
-  `false` on both paths, not just path B.
-- **A verbatim abstract is still the authors' wording.** The sidecar
-  itself is fine -- attributed to a citekey, a browsing aid rather than a
-  draft. The hazard is downstream: a TL;DR *reads like* a finished
-  summary, so a drafting session may echo its phrasing into prose in a
-  way it would not when paraphrasing from `content/parsed/`.
-  `python -m chitragupta.review verbatim scan` is a real safety net here
-  -- it compares a draft against the parsed text the abstract came from --
-  but only where its deterministic tiers can see it. The `source:
-  "abstract"` field is what would warn a consumer these are borrowed
-  words.
-- **Two artefact shapes in one sidecar.** Author abstracts up to 321
-  words alongside machine summaries at ~110. Acceptable for a browsing
-  aid, but it should be a stated choice rather than something discovered
-  later by a reader comparing two TL;DRs.
-- **Two cheap wins already identified, for whoever builds this:**
-  back-matter stripping (`chitragupta/enrich/doc_vectors.py`'s
-  `BACK_MATTER` regex) saves 12% of path B's tokens (4.92M to 4.34M) but
-  is recommended *against* importing for this, since pulling from
-  `chitragupta.enrich` reintroduces exactly the drafting-to-enrichment
-  coupling whole text was chosen to avoid, to save about $1.20 on an
-  axis that is not the binding constraint. Byte-identical duplicate
-  parsed files (7 pairs in the no-abstract set, 2% of path B's tokens)
-  are worth a hash check in the enumerator instead.
-
-### 🅿 Why this is parked, not next
-
-- **The detection precision is unvalidated.** The 68% figure counts what
-  the regex *matched*, not what it matched *correctly*. Until someone
-  reads a sample, path A's headline benefit is unproven and the
-  false-positive risk above is unquantified.
-- **It is a schema change to a sidecar that just landed.** The cache
-  module merged days before this generator was proposed. `source` and
-  `accepted` are the right
-  fields, but adding them before the current format has been used in
-  anger is guessing at requirements.
-- **The acceptance workflow has no home.** [SOUL.md](../SOUL.md)
-  requires a human to accept abstractive output, and there is no `tldr
-  accept`, no review surface, and no plausible answer yet to "who reads
-  160 machine summaries, and on what occasion." Building the generator
-  before the acceptance path produces 160 artefacts that are permanently
-  unaccepted -- worse than not having them at all.
-- **The cost is real and recurring**, not one-time. 4.92M tokens is
-  cheap once, but it is re-incurred on every backend switch or
-  `--reparse` that changes text for those 160 documents -- a running cost
-  attached to a feature nobody has yet asked for.
+  the later summaries would degrade silently. Each paper needs a fresh
+  context returning 100-120 words to a parent that pipes them to `tldr
+  write`.
 
 Also explicitly **not** proposed by this or any related work: showing a
 TL;DR in `corpus ledger` output. That would put LLM output in the
