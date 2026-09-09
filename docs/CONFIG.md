@@ -501,12 +501,24 @@ issue #693).
 
 Setting a number pre-ranks premises by the same lexical overlap
 `[provenance]` bands and sends the model only the top *k*, cheaper in
-proportion. It is left off because the cap trades recall for that and
-the size of the trade is not yet measured: it needs human ratings
-(issue #757). `bench/bench_support_topk.py` reports what a given *k*
-does to the scores and to the reading order on your own drafts, which is
-the thing to read before setting this -- and note what it *cannot* say,
-since agreeing with the uncapped scorer is not the same as being right.
+proportion -- 5.3x to 102x fewer pairs across the k values measured.
+
+**It is off because it was measured and it damages the report, not
+merely because it is unproven.** `bench/bench_support_topk.py` swept k
+from 8 to 128 over two real drafts (`bench/RESULTS.md`, 2026-09-09) and
+found the lexical pre-ranker picks the same supporting passage as the
+entailment model for only **56.5% of citations at k = 128**, falling to
+14.6% at k = 8. The consequence is not a slightly worse score: claims
+that scored 0.995 uncapped came back at 0.138, which puts a
+well-supported citation at the *top* of the review agenda as the draft's
+worst finding. The two drafts also disagreed about which k was safe.
+
+So there is no recommended value, and `bench_support_topk.py` is worth
+running on your own drafts before you set this rather than for choosing
+between the k values above. Note also what it cannot say: it compares a
+capped run to the uncapped one, and agreeing with the uncapped scorer is
+not the same as being right -- that needs the human ratings issue #757
+tracks.
 
 ## 🔤 How values are parsed
 

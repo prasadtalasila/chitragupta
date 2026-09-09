@@ -657,13 +657,21 @@ figure above is the uncapped default, which is what the shipped
 `bench/RESULTS.md` was measured under -- a table quoting these numbers
 against a capped run is comparing two different amounts of work.
 
-The cap is off by default because it buys speed with recall and the
-recall is not yet a measured quantity: that needs the human ratings
-issue #757 tracks. `bench/bench_support_topk.py` measures what a given
-*k* does to the scores and to the worst-first reading order -- read the
-reading-order column first, because this aid is ranked rather than
-banded, so there is no threshold for a finding to fall below and the
-order *is* the output.
+**The cap is off because it was measured and it damaged the report.**
+`bench/bench_support_topk.py` swept k from 8 to 128 over the two drafts
+above (`bench/RESULTS.md`, 2026-09-09). It buys what the arithmetic
+promised -- 5.3x to 102x fewer pairs, 62 s of scoring down to 4 s -- and
+at k = 128 the lexical pre-ranker agrees with the entailment model about
+which passage supports a claim for only **56.5%** of citations, falling
+to 14.6% at k = 8. Claims scoring 0.995 uncapped came back at 0.138,
+which is a well-supported citation promoted to the top of the review
+agenda as the draft's worst finding.
+
+That is #693's proposed fix -- lexical pre-ranking -- ruled out at every
+k measured, not a cap ruled out in principle: the ranker is what failed,
+and a semantic pre-rank is the candidate it points at. Precision is
+still unmeasured either way, which needs the human ratings issue #757
+tracks.
 
 Everything besides those two is flat and nearly free. `coverage` holds
 ~305 ms at every size, because its work is a corpus query rather than a
