@@ -211,7 +211,9 @@ class TestStructuralPassagesIsTheOneResolver:
         whole-page passages, which carry no labels and cannot answer a
         structural question. This returns None instead of degrading."""
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-        config.PARSED_DIR.joinpath("smith2024.txt").write_text("page one\fpage two", "utf-8")
+        config.PARSED_DIR.joinpath("smith2024.txt").write_text(
+            "page one\fpage two", encoding="utf-8"
+        )
         ledger_con.execute(
             "INSERT INTO items (citekey, title, status, parsed_path, last_synced)"
             " VALUES (?, 'T', 'parsed', ?, '2026-01-01')",

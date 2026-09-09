@@ -72,6 +72,14 @@ from chitragupta import passages
 # and only one of them is a statement about the paper. Collapsing them
 # would report "no abstract available" for a `pdftotext`-parsed document
 # whose abstract is sitting in the PDF unread.
+#
+# **Compare it with `is`, never `==`.** It is a `str` so that `extract`'s
+# return stays `str | None` rather than widening to `object` for one
+# case, which costs every caller an annotation to carry a value none of
+# them wants to read. The identity check is what keeps that safe: a real
+# body is always built by the `" ".join` below, so it is a fresh object
+# and can never *be* this one -- where `==` would mistake a paper whose
+# extracted text happened to be this word for a paper nobody could read.
 UNKNOWN = "unknown"
 
 # `Abstract` alone on its own line, optionally numbered -- the heading
@@ -89,6 +97,14 @@ _INLINE = re.compile(r"^abstract\s*[:.—-]?\s+(\S)", re.I)
 # What ends an abstract when no `section_header` does. These arrive as
 # ordinary text as often as as a heading, so the stop cannot rely on the
 # label alone.
+#
+# `chitragupta/enrich/keyword_extract.py`'s `_MARKER` matches two of the
+# same words and is deliberately not shared with this. It is looking for
+# the keyword declaration in order to *read* it; this is looking past the
+# abstract's end in order to stop. Same vocabulary, opposite purpose --
+# and reaching into `chitragupta/enrich/` from a tier-1 drafting module
+# would breach the boundary that kept this module stdlib-only in the
+# first place, to share one alternation.
 _STOP = re.compile(r"^(keywords?|key words|index terms|\d*\s*\.?\s*introduction)\b", re.I)
 
 # Docling's labels for running prose. `list_item` is deliberately absent:
