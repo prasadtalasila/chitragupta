@@ -257,11 +257,20 @@ def main(argv=None):
         print(f"not run -- {reason}", file=sys.stderr)
         return 0
 
-    results = []
+    # Named, not merely honoured. A `--drafts 2` run that printed nothing
+    # about the other three would read exactly like a five-draft run in
+    # which three drafts happened to be absent -- and the absent case is
+    # the one that actually occurs here, so the two have to be
+    # distinguishable in the output a record is written from.
+    for relative in DRAFTS[args.drafts :]:
+        print(f"not swept: {relative} (--drafts {args.drafts} of {len(DRAFTS)})")
+
+    results, absent = [], []
     for relative in DRAFTS[: args.drafts]:
         draft = config.CONTENT_DIR / relative
         if not draft.exists():
             print(f"skipping {relative}: not present in this content directory")
+            absent.append(relative)
             continue
         rows = sweep(entailer, draft)
         if rows is None:
@@ -282,8 +291,20 @@ def main(argv=None):
     out = REPO / "bench" / "results" / args.tag
     out.mkdir(parents=True, exist_ok=True)
     written = out / "support_topk.json"
+    # `absent` and `not_swept` are in the artefact, not only on stdout.
+    # A reader opening this file months later has no terminal scrollback,
+    # and two swept drafts out of a five-draft list looks like a
+    # deliberate n = 2 unless the file says three were missing.
     written.write_text(
-        json.dumps({"entailment_model": config.ENTAILMENT_MODEL, "drafts": results}, indent=2),
+        json.dumps(
+            {
+                "entailment_model": config.ENTAILMENT_MODEL,
+                "drafts": results,
+                "absent_drafts": absent,
+                "not_swept_drafts": list(DRAFTS[args.drafts :]),
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
     print(f"\nwrote {written}")

@@ -509,11 +509,19 @@ entailment_model = "cross-encoder/nli-deberta-v3-base"
 # Cheaper in proportion: k = 32 against ~800 premises is roughly a 25x
 # cut in model work.
 #
-# Left off by default because it trades recall for that, and the size of
-# the trade is not yet a measured number: it needs the human ratings
-# issue #757 tracks. bench/bench_support_topk.py reports what a given k
-# does to the scores on your own drafts, which is the thing to read
-# before setting this.
+# Left off because it was measured and it damaged the report, not merely
+# because it was unproven. Swept from k = 8 to 128 over two real drafts
+# (bench/RESULTS.md, 2026-09-09): the lexical pre-rank picks the same
+# supporting passage as the entailment model for only 56.5% of citations
+# even at k = 128, and claims scoring 0.995 uncapped came back at 0.138
+# -- a well-supported citation promoted to the top of the review agenda
+# as the draft's worst finding. The two drafts also disagreed about
+# which k was safe.
+#
+# So there is no recommended value. Run bench/bench_support_topk.py on
+# your own drafts before setting this at all, and note what it cannot
+# say: it compares against the uncapped scorer, which is not the same as
+# being right. That needs the human ratings issue #757 tracks.
 #                                       Default if absent: off (uncapped)
 support_premise_topk = "off"
 

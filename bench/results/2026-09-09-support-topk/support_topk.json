@@ -8,7 +8,7 @@
         {
           "top_k": null,
           "pairs": 18806,
-          "seconds": 52.55,
+          "seconds": 52.86,
           "vs_uncapped": {
             "findings": 23,
             "missing": 0,
@@ -38,7 +38,7 @@
         {
           "top_k": 64,
           "pairs": 1472,
-          "seconds": 12.91,
+          "seconds": 12.89,
           "vs_uncapped": {
             "findings": 23,
             "missing": 0,
@@ -53,7 +53,7 @@
         {
           "top_k": 32,
           "pairs": 736,
-          "seconds": 9.39,
+          "seconds": 9.36,
           "vs_uncapped": {
             "findings": 23,
             "missing": 0,
@@ -68,7 +68,7 @@
         {
           "top_k": 16,
           "pairs": 368,
-          "seconds": 4.82,
+          "seconds": 4.77,
           "vs_uncapped": {
             "findings": 23,
             "missing": 0,
@@ -83,7 +83,7 @@
         {
           "top_k": 8,
           "pairs": 184,
-          "seconds": 2.5,
+          "seconds": 2.45,
           "vs_uncapped": {
             "findings": 23,
             "missing": 0,
@@ -104,7 +104,7 @@
         {
           "top_k": null,
           "pairs": 27952,
-          "seconds": 62.24,
+          "seconds": 62.25,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -119,7 +119,7 @@
         {
           "top_k": 128,
           "pairs": 5248,
-          "seconds": 25.93,
+          "seconds": 25.98,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -134,7 +134,7 @@
         {
           "top_k": 64,
           "pairs": 2624,
-          "seconds": 20.19,
+          "seconds": 19.58,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -149,7 +149,7 @@
         {
           "top_k": 32,
           "pairs": 1312,
-          "seconds": 15.2,
+          "seconds": 15.18,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -164,7 +164,7 @@
         {
           "top_k": 16,
           "pairs": 656,
-          "seconds": 7.45,
+          "seconds": 7.46,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -179,7 +179,7 @@
         {
           "top_k": 8,
           "pairs": 328,
-          "seconds": 3.98,
+          "seconds": 3.97,
           "vs_uncapped": {
             "findings": 41,
             "missing": 0,
@@ -193,5 +193,11 @@
         }
       ]
     }
-  ]
+  ],
+  "absent_drafts": [
+    "drafts/book-chapters/digital-twin-platforms/digital-twin-platforms.md",
+    "drafts/books/digital-twins-for-software-engineers/03-anatomy-of-a-twin.md",
+    "drafts/books/digital-twins-for-software-engineers/07-should-you-trust-the-twin.md"
+  ],
+  "not_swept_drafts": []
 }

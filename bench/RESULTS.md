@@ -5827,18 +5827,46 @@ k measured.
 
 | draft | k | pairs | cut | scoring s | median delta | worst delta | argmax agreement | worst-20 kept |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| deep-research.md (1,258 w) | uncapped | 18,806 | 1x | 52.6 | 0 | 0 | 1.00 | 20/20 |
+| deep-research.md (1,258 w) | uncapped | 18,806 | 1x | 52.9 | 0 | 0 | 1.00 | 20/20 |
 | | 128 | 2,944 | 6.4x | 17.8 | 0 | **-0.35** | 0.565 | 20/20 |
 | | 64 | 1,472 | 12.8x | 12.9 | -0.031 | **-0.94** | 0.261 | 18/20 |
 | | 32 | 736 | 25.6x | 9.4 | -0.031 | **-0.98** | 0.217 | 18/20 |
 | | 16 | 368 | 51.1x | 4.8 | -0.097 | **-0.99** | 0.174 | 18/20 |
 | | 8 | 184 | 102.2x | 2.5 | -0.099 | **-0.99** | 0.174 | 18/20 |
 | survey.md (2,448 w) | uncapped | 27,952 | 1x | 62.2 | 0 | 0 | 1.00 | 20/20 |
-| | 128 | 5,248 | 5.3x | 25.9 | 0 | **-0.86** | 0.585 | 18/20 |
-| | 64 | 2,624 | 10.7x | 20.2 | -0.004 | **-0.94** | 0.439 | 18/20 |
+| | 128 | 5,248 | 5.3x | 26.0 | 0 | **-0.86** | 0.585 | 18/20 |
+| | 64 | 2,624 | 10.7x | 19.6 | -0.004 | **-0.94** | 0.439 | 18/20 |
 | | 32 | 1,312 | 21.3x | 15.2 | -0.021 | **-0.98** | 0.317 | 14/20 |
 | | 16 | 656 | 42.6x | 7.5 | -0.037 | **-0.98** | 0.195 | 15/20 |
 | | 8 | 328 | 85.2x | 4.0 | -0.047 | **-0.98** | 0.146 | 14/20 |
+
+**It reproduces, which is worth stating in this file.** The sweep was
+run twice on the same host. Every pair count, score delta, argmax
+agreement and reading-order figure below is **bit-identical** across the
+two runs; the only cells that moved are three wall-clock seconds
+(52.6/52.9, 25.9/26.0, 20.2/19.6). So unlike the parse-side records
+above, nothing here is a single draw from a spread -- the entailment
+scoring is deterministic on a quiet card, and only the timing column
+needs reading as noisy. The table below is the second run, matching the
+committed JSON.
+
+**An incidental confirmation, and a stale table it exposes.** The
+uncapped pair counts here are **18,806** and **27,952**, against the
+**20,402** and **29,738** `docs/PERFORMANCE.md`'s 2026-09-07 table
+records for the same two drafts on the same corpus -- **-7.8%** and
+**-6.0%**. That is #722, which stopped scoring section headings as
+premises and estimated it would cut "~7% of the pairs": measured here,
+independently, at 7.8% and 6.0%. It also means that table's figures are
+**pre-#722** (the run predates the merge that same day) and are now
+about 7% high. Not corrected here -- this branch is not what made them
+stale -- but a reader comparing a fresh pair count against them should
+expect the gap. The `cut` column below is against *this* run's own
+uncapped baseline, so it is unaffected.
+
+Relatedly, "41 findings" here against that table's "43 citations" for
+`survey.md` is not a third discrepancy: this script counts findings the
+entailer actually **scored**, and two of that draft's citations resolve
+to sources with no premise at all.
 
 **Read the argmax column first, because it is the finding.** It is the
 share of scored citations where the capped run reports the *same*

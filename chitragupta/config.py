@@ -1119,14 +1119,13 @@ ENTAILMENT_MODEL = _get(
 # them, which is the behaviour every recorded score in
 # docs/PERFORMANCE.md and bench/RESULTS.md was measured under.
 #
-# Uncapped by default on purpose: the cap is what makes the pass
-# affordable (#693 measures 725-887 pairs per citation, and `support` is
-# ~97% of the nine-aid total on a draft without a dossier), but it
-# trades recall for that, and the recall loss cannot be quantified until
-# B9's rating instrument has labels (#757).
-# bench/bench_support_topk.py measures what a given k costs against the
-# uncapped scorer without labels; flipping this default is a decision
-# that record informs rather than makes.
+# Uncapped by default because the cap was measured and found harmful,
+# not because it is unproven. It buys what the arithmetic promised
+# (#693: 725-887 pairs per citation, `support` ~97% of the nine-aid
+# total on a dossier-less draft, cut 5.3-102x here) and it turns
+# strongly-supported claims into top-of-agenda false alarms at every k
+# from 8 to 128 -- bench/RESULTS.md's 2026-09-09 entry has the numbers
+# and `claim_support._ranked` the reason. There is no recommended value.
 SUPPORT_PREMISE_TOPK = _get_optional_positive_int(
     "SUPPORT_PREMISE_TOPK", "enrich", "support_premise_topk"
 )

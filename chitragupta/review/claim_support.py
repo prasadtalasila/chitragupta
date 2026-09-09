@@ -121,10 +121,23 @@ def _quotable(passages: list[Passage]) -> list[Passage]:
 # similarity here would be one more thing to disagree with it.
 #
 # `top_k` is None everywhere by default, so nothing below runs unless a
-# caller asks for it. That is not timidity: a cap trades recall for
-# speed, and the recall loss cannot be quantified until B9's rating
-# instrument has labels (#757). The mechanism ships measured; the
-# default stays the owner's call.
+# caller asks for it -- and it should stay that way. This ranker was
+# swept from k = 8 to k = 128 over two real drafts and it damages the
+# report at every one of them (bench/RESULTS.md, 2026-09-09): it agrees
+# with the entailment model about which passage supports a claim for
+# only 56.5% of citations even at k = 128, and claims scoring 0.995
+# uncapped came back at 0.138 -- a well-supported citation promoted to
+# the top of the agenda as the worst finding.
+#
+# That is #693's proposal ruled out, not a cap ruled out: what failed is
+# *lexical* pre-ranking, which is this module's own docstring argument
+# for why provenance is not enough, reappearing one level down. A
+# semantic pre-rank is the untested candidate, and
+# `enrich/embed_index.py`'s `search()` already has the machinery.
+# Precision is unmeasured either way; that needs B9's labels (#757).
+#
+# The mechanism stays because it is what makes that next experiment
+# cheap, not because a value for it is defensible today.
 #
 # Two properties the tests pin, because a cap lacking either is worse
 # than no cap:
