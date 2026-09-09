@@ -294,7 +294,11 @@ where it cannot -- a 44--86x difference that depends on whether the
 dossier, the Docling sidecars, the ledger and the enrichment layer are
 all present,
 not on the draft. `support` has no such off switch: it always loads
-the entailment model and scores every citation, so it costs
+the entailment model and scores every citation -- what it *does* have is
+a dial, `[enrich].support_premise_topk`, which caps how many premises
+each citation is scored against and is uncapped by default, so every
+figure here is the uncapped cost ([CONFIG.md](CONFIG.md), issue #693).
+It costs
 21.2--62.3 s on every draft measured, dossier or not. Where `verbatim`'s
 tier 3 cannot run, `support` alone is ~95% of the total; where both run,
 they split it -- 39%/59% on the 10,003-word draft. **The layer's floor

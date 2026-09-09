@@ -491,6 +491,32 @@ rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
 #                       Default if absent: cross-encoder/nli-deberta-v3-small
 entailment_model = "cross-encoder/nli-deberta-v3-base"
 
+# How many premises `review support` scores per citation -- "off" for all
+# of them, which is the default and what every cost figure in
+# docs/PERFORMANCE.md was measured under.
+#
+# This is the one setting that decides what a review pass costs.
+# `support` sends the entailment model one (passage, claim) pair per
+# quotable passage of the cited source, measured at 725-887 pairs per
+# citation on the real corpus -- a number set by how finely the parse
+# segmented the corpus, not by the length of your draft. It is why
+# `support` is ~97% of the whole nine-aid total on a draft with no
+# dossier, and why it nearly doubled in cost when a re-parse re-segmented
+# the corpus without adding a single document (issue #693).
+#
+# Setting a number here pre-ranks the premises by the same lexical
+# overlap `[provenance]` above bands, and sends the model only the top k.
+# Cheaper in proportion: k = 32 against ~800 premises is roughly a 25x
+# cut in model work.
+#
+# Left off by default because it trades recall for that, and the size of
+# the trade is not yet a measured number: it needs the human ratings
+# issue #757 tracks. bench/bench_support_topk.py reports what a given k
+# does to the scores on your own drafts, which is the thing to read
+# before setting this.
+#                                       Default if absent: off (uncapped)
+support_premise_topk = "off"
+
 # Whether the docling stage also extracts figure bitmaps, into
 # content/docling/<doc>_artifacts/, plus a <doc>.figures.json giving each
 # figure's page, caption, and the exact string to cite it by.

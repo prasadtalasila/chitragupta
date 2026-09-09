@@ -49,7 +49,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, entailment, ledger, review
-from chitragupta.passages import Passage, source_passages
+from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _claim_support_render as _render
 from chitragupta.review import citation_provenance
 
@@ -109,26 +109,69 @@ def _quotable(passages: list[Passage]) -> list[Passage]:
     return [p for p in passages if p.quotable and p.label not in _NOT_A_PREMISE]
 
 
-def _score_claim(entailer, claim: str, passages: list[Passage]) -> tuple[float, Passage]:
-    """Best-scoring quotable passage for `claim`.
+# The cheap lexical scorer decides which premises the expensive model
+# sees. That is the whole cost lever behind issue #693: `_score_claim`
+# sends one pair per quotable passage, and docs/PERFORMANCE.md measures
+# that at 725-887 pairs per citation -- a figure set by how finely the
+# parse segmented the corpus, not by anything the draft controls.
+#
+# Ranked by the *same* overlap count `citation_provenance.score_claim`
+# bands, deliberately: that scorer is already trusted to pick a claim's
+# best passage for the neighbouring aid, and a second notion of lexical
+# similarity here would be one more thing to disagree with it.
+#
+# `top_k` is None everywhere by default, so nothing below runs unless a
+# caller asks for it. That is not timidity: a cap trades recall for
+# speed, and the recall loss cannot be quantified until B9's rating
+# instrument has labels (#757). The mechanism ships measured; the
+# default stays the owner's call.
+#
+# Two properties the tests pin, because a cap lacking either is worse
+# than no cap:
+#
+#   - It ranks what `_quotable` already kept, never the raw list, so a
+#     filtered heading cannot occupy a slot a real premise needed.
+#   - Ties resolve on document order (`sorted` is stable over an
+#     already-ordered list), so a capped re-run over an unchanged draft
+#     and corpus reports the same best passage. An arbitrary tie-break
+#     would break R2's stable-identity rule for a whole class of
+#     findings, because an all-stopword claim ties *every* premise at
+#     zero overlap.
+def _ranked(claim: str, passages: list[Passage], top_k: int | None) -> list[Passage]:
+    """`passages`, cut to the `top_k` sharing most distinctive words with
+    `claim` -- or unchanged when `top_k` is None."""
+    if top_k is None or len(passages) <= top_k:
+        return passages
+    wanted = distinctive(claim)
+    return sorted(passages, key=lambda p: -len(wanted & p.words))[:top_k]
 
-    Callers pass every passage, not just the quotable ones, so the
-    filter below is not redundant with the caller's own check -- it is
-    what selects which passages the entailer actually sees. Only
-    `build_report` calls this, and only after confirming `_quotable`
-    is non-empty for the same `passages`, so unlike
-    `citation_provenance.score_claim` (a public function with no such
-    guarantee from its callers) this one does not re-guard against an
-    empty result -- and its return type has no `| None` for the same
-    reason: that would be defensive handling for a state this module's
-    own call graph makes impossible."""
-    quotable = _quotable(passages)
+
+# Callers pass every passage, not just the quotable ones, so the filter
+# below is not redundant with the caller's own check -- it is what
+# selects which passages the entailer actually sees. Only `build_report`
+# calls this, and only after confirming `_quotable` is non-empty for the
+# same `passages`, so unlike `citation_provenance.score_claim` (a public
+# function with no such guarantee from its callers) this one does not
+# re-guard against an empty result -- and its return type has no
+# `| None` for the same reason: that would be defensive handling for a
+# state this module's own call graph makes impossible.
+#
+# `_ranked` preserves that invariant, because it only ever shortens a
+# non-empty list, and never to zero: `top_k` is at least 1 wherever it
+# is not None, which `config._get_optional_positive_int` enforces at
+# load rather than here.
+def _score_claim(
+    entailer, claim: str, passages: list[Passage], top_k: int | None = None
+) -> tuple[float, Passage]:
+    """Best-scoring quotable passage for `claim`, over at most `top_k`
+    of them."""
+    quotable = _ranked(claim, _quotable(passages), top_k)
     scores = entailer.score([(p.text, claim) for p in quotable])
     best_index = max(range(len(scores)), key=scores.__getitem__)
     return scores[best_index], quotable[best_index]
 
 
-def build_report(draft_path: Path, entailer) -> Report:
+def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report:
     text = Path(draft_path).read_text(encoding="utf-8")
     report = Report(draft=Path(draft_path))
     with ledger.connection() as con:
@@ -151,7 +194,7 @@ def build_report(draft_path: Path, entailer) -> Report:
                 )
                 score, passage, note = 0.0, None, report.unscoreable[citekey]
             else:
-                score, passage = _score_claim(entailer, claim, passages)
+                score, passage = _score_claim(entailer, claim, passages, top_k)
                 note = None
             report.findings.append(
                 Finding(
@@ -294,7 +337,11 @@ def run(args: argparse.Namespace) -> int:
         print(f"support: not run -- {reason}", file=sys.stderr)
         return 0
 
-    report = build_report(draft_path, entailer)
+    # Resolved here rather than defaulted inside `build_report`, so that
+    # the config is what the *CLI* obeys while a caller -- notably
+    # bench/bench_support_topk.py, which sweeps k -- pins it per arm at
+    # the call site instead of mutating a module constant mid-run.
+    report = build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
     found = findings(report)
 
     if not (args.json or args.write):

@@ -648,6 +648,23 @@ means.
 milliseconds-per-citation figure as valid only for the passage universe
 it was measured against.
 
+**The pair count is settable, and is not set by default.**
+`[enrich].support_premise_topk` ([CONFIG.md](CONFIG.md)) caps how many
+premises reach the model per citation, pre-ranking them by the same
+lexical overlap `[provenance]` bands and sending only the top *k*. Every
+figure above is the uncapped default, which is what the shipped
+`config.toml.example` still ships and what every dated entry in
+`bench/RESULTS.md` was measured under -- a table quoting these numbers
+against a capped run is comparing two different amounts of work.
+
+The cap is off by default because it buys speed with recall and the
+recall is not yet a measured quantity: that needs the human ratings
+issue #757 tracks. `bench/bench_support_topk.py` measures what a given
+*k* does to the scores and to the worst-first reading order -- read the
+reading-order column first, because this aid is ranked rather than
+banded, so there is no threshold for a finding to fall below and the
+order *is* the output.
+
 Everything besides those two is flat and nearly free. `coverage` holds
 ~305 ms at every size, because its work is a corpus query rather than a
 draft scan. `synthesis`, `uncited` and `quotation` sit within noise of

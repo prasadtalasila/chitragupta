@@ -108,6 +108,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What does a whole-file rewrite cost against a section-scoped edit, and what does the dispatch pointer really save? | **`bench_prompt_economics.py`** (#610 B8) -- characters at the documented four-per-token conversion, over every draft with a dossier. Classifies each section's zero rather than summing it, which is what separates "nothing to paste" from "nothing transcribed" |
 | The instrument for rating claim support: stratified, blinded, three raters | **`bench_claim_support_labelling.py`** (#610 B9) -- builds the sheet and the key and **computes no statistic** until three humans have filled it in. `--score` then reports Fleiss' kappa, pairwise Cohen's kappa, Spearman rho and the separation medians |
 | What do all **ten** review aids cost now, `union` included? | **`bench_review_cost.py`** (#610 B11) -- the same five drafts docs/PERFORMANCE.md's 2026-08-27 table used, re-timed through the real CLI, median of `--repeats`. A refused aid reports its exit status, never a fast time |
+| What does capping `support`'s premises per citation cost, and what does it buy? | **`bench_support_topk.py`** (#693) -- sweeps `build_report`'s `top_k` over the same five drafts, k pinned per arm at the call site rather than through the config. Read the **worst-20 reading order** column, not the argmax agreement: this aid is ranked rather than banded, so a cap's real harm is changing which citation a reviewer reads first. Measures self-consistency against the uncapped scorer, never precision -- that needs #757's labels |
 | Does the shipped keyword pipeline still reach the corpus it reached on the last snapshot? | **`bench_keyword_pipeline.py`** (#610 B14) -- the 2026-09-03e entry's four arms as one command, coverage read off the stage's own `topic_seeds.json`. Regenerates `content/keywords.toml` per arm rather than scoring whatever is on disk |
 
 **Prefer a real measurement over an extrapolation whenever you can afford
@@ -251,8 +252,9 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `topic_cluster_eval.py`, `bench_topic_graph_shape.py`,
 `bench_pool_rebuild.py`, `bench_review_cost.py`,
 `bench_prompt_economics.py`, `bench_topic_converged_stability.py`,
-`bench_keyword_pipeline.py` and `bench_claim_support_labelling.py` each have
-one -- 36 of the 38 scripts here. The
+`bench_keyword_pipeline.py`, `bench_claim_support_labelling.py` and
+`bench_support_topk.py` each have
+one -- 37 of the 39 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

@@ -375,6 +375,7 @@ Used only by `chitragupta/enrich/*` (the `enrich` dependency group), never by
 | `rerank` | `RERANK` | boolean | `false` | `false` |
 | `rerank_model` | `RERANK_MODEL` | a sentence-transformers **cross-encoder** id | `cross-encoder/ms-marco-MiniLM-L6-v2` | `cross-encoder/ms-marco-MiniLM-L6-v2` |
 | `entailment_model` | `ENTAILMENT_MODEL` | a `sentence_transformers.CrossEncoder` model id | `cross-encoder/nli-deberta-v3-small` | `cross-encoder/nli-deberta-v3-base` |
+| `support_premise_topk` | `SUPPORT_PREMISE_TOPK` | integer >= 1, or `"off"` | `off` (uncapped) | `off` (uncapped) |
 | `docling_images` | `DOCLING_IMAGES` | boolean | `false` | `false` |
 | `docling_image_scale` | `DOCLING_IMAGE_SCALE` | number | `2.0` | `2.0` |
 | `docling_formulas` | `DOCLING_FORMULAS` | boolean | `false` | `false` |
@@ -486,6 +487,26 @@ accurate `-base` variant of the same DeBERTa-v3 family. Both are genuine
 drop-ins -- confirmed by actually loading all three real candidates via
 `sentence_transformers.CrossEncoder`, not by assumption. See
 [Choosing an entailment model](#-choosing-an-entailment-model).
+
+**`support_premise_topk` is the one setting that decides what a review
+pass costs, and it is off by default anyway.** `review support` sends
+the entailment model one (passage, claim) pair per quotable passage of
+the cited source, which measured **725-887 pairs per citation** on the
+real corpus -- a number set by how finely the parse segmented the
+corpus, not by the length of the draft. It is why `support` is ~97% of a
+nine-aid pass on a draft with no dossier, and why a re-parse that added
+no documents at all nearly doubled the aid's cost
+([PERFORMANCE.md](PERFORMANCE.md#-what-supports-cost-actually-tracks),
+issue #693).
+
+Setting a number pre-ranks premises by the same lexical overlap
+`[provenance]` bands and sends the model only the top *k*, cheaper in
+proportion. It is left off because the cap trades recall for that and
+the size of the trade is not yet measured: it needs human ratings
+(issue #757). `bench/bench_support_topk.py` reports what a given *k*
+does to the scores and to the reading order on your own drafts, which is
+the thing to read before setting this -- and note what it *cannot* say,
+since agreeing with the uncapped scorer is not the same as being right.
 
 ## 🔤 How values are parsed
 

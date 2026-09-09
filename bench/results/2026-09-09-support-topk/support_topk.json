@@ -1,0 +1,197 @@
+{
+  "entailment_model": "cross-encoder/nli-deberta-v3-base",
+  "drafts": [
+    {
+      "draft": "drafts/digital-twins-for-software-engineers/deep-research.md",
+      "words": 1258,
+      "arms": [
+        {
+          "top_k": null,
+          "pairs": 18806,
+          "seconds": 52.55,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": 0.0,
+            "median_delta": 0.0,
+            "unchanged_scores": 23,
+            "argmax_agreement": 1.0,
+            "worst_20_kept": 20,
+            "worst_20_order_identical": true
+          }
+        },
+        {
+          "top_k": 128,
+          "pairs": 2944,
+          "seconds": 17.79,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": -0.3515,
+            "median_delta": 0.0,
+            "unchanged_scores": 10,
+            "argmax_agreement": 0.565,
+            "worst_20_kept": 20,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 64,
+          "pairs": 1472,
+          "seconds": 12.91,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": -0.9357,
+            "median_delta": -0.0311,
+            "unchanged_scores": 6,
+            "argmax_agreement": 0.261,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 32,
+          "pairs": 736,
+          "seconds": 9.39,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": -0.9826,
+            "median_delta": -0.0311,
+            "unchanged_scores": 5,
+            "argmax_agreement": 0.217,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 16,
+          "pairs": 368,
+          "seconds": 4.82,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": -0.9899,
+            "median_delta": -0.097,
+            "unchanged_scores": 0,
+            "argmax_agreement": 0.174,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 8,
+          "pairs": 184,
+          "seconds": 2.5,
+          "vs_uncapped": {
+            "findings": 23,
+            "missing": 0,
+            "worst_delta": -0.9899,
+            "median_delta": -0.0991,
+            "unchanged_scores": 0,
+            "argmax_agreement": 0.174,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        }
+      ]
+    },
+    {
+      "draft": "drafts/digital-twins-for-software-engineers/survey.md",
+      "words": 2448,
+      "arms": [
+        {
+          "top_k": null,
+          "pairs": 27952,
+          "seconds": 62.24,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": 0.0,
+            "median_delta": 0.0,
+            "unchanged_scores": 41,
+            "argmax_agreement": 1.0,
+            "worst_20_kept": 20,
+            "worst_20_order_identical": true
+          }
+        },
+        {
+          "top_k": 128,
+          "pairs": 5248,
+          "seconds": 25.93,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": -0.8565,
+            "median_delta": 0.0,
+            "unchanged_scores": 20,
+            "argmax_agreement": 0.585,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 64,
+          "pairs": 2624,
+          "seconds": 20.19,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": -0.94,
+            "median_delta": -0.0039,
+            "unchanged_scores": 14,
+            "argmax_agreement": 0.439,
+            "worst_20_kept": 18,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 32,
+          "pairs": 1312,
+          "seconds": 15.2,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": -0.9768,
+            "median_delta": -0.0211,
+            "unchanged_scores": 10,
+            "argmax_agreement": 0.317,
+            "worst_20_kept": 14,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 16,
+          "pairs": 656,
+          "seconds": 7.45,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": -0.9799,
+            "median_delta": -0.037,
+            "unchanged_scores": 0,
+            "argmax_agreement": 0.195,
+            "worst_20_kept": 15,
+            "worst_20_order_identical": false
+          }
+        },
+        {
+          "top_k": 8,
+          "pairs": 328,
+          "seconds": 3.98,
+          "vs_uncapped": {
+            "findings": 41,
+            "missing": 0,
+            "worst_delta": -0.9822,
+            "median_delta": -0.047,
+            "unchanged_scores": 0,
+            "argmax_agreement": 0.146,
+            "worst_20_kept": 14,
+            "worst_20_order_identical": false
+          }
+        }
+      ]
+    }
+  ]
+}

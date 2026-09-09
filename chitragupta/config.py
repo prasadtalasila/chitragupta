@@ -240,6 +240,31 @@ def _get_positive_int(env_var: str, *toml_path: str, default: int) -> int:
     return value
 
 
+# The integer counterpart of `_get_optional_float` below, off by the same
+# explicit word rather than by 0 for the same reason: a
+# `support_premise_topk = 0` reads as "score zero premises", which is not
+# what "uncapped" means and would empty every premise set if it were ever
+# honoured literally. Absent means None too -- unlike
+# `_get_optional_float`, no setting using this has a real default, so
+# there is no `default` parameter to keep the two cases apart.
+#
+# A wrapper rather than a fourth hand-rolled validator, because this
+# module is a registered C2 offender (see the header) and a copy of
+# `_get_positive_int`'s bool/float/parse rules would grow it by three
+# times as much for no behaviour that getter does not already have --
+# including the bool-before-int check TOML's `= true` needs.
+def _get_optional_positive_int(env_var: str, *toml_path: str) -> "int | None":
+    """A whole number of at least 1, or None for "no cap"."""
+    raw = _raw_setting(env_var, toml_path)
+    if isinstance(raw, str) and raw.strip().lower() in ("", "off", "none", "false"):
+        return None
+    # `default=0` is a value the setting may never take, which is exactly
+    # what makes it usable as "absent": `_get_positive_int` returns its
+    # default unvalidated and rejects every *written* value below 1, so a
+    # 0 coming back out cannot have come from the config.
+    return _get_positive_int(env_var, *toml_path, default=0) or None
+
+
 def _get_optional_float(
     env_var: str, *toml_path: str, default: "float | None" = None
 ) -> "float | None":
@@ -1087,6 +1112,23 @@ ENTAILMENT_MODEL = _get(
     "enrich",
     "entailment_model",
     default="cross-encoder/nli-deberta-v3-small",
+)
+
+# How many premises `review support` scores per citation -- None (the
+# default, and the shipped config.toml.example's value) meaning all of
+# them, which is the behaviour every recorded score in
+# docs/PERFORMANCE.md and bench/RESULTS.md was measured under.
+#
+# Uncapped by default on purpose: the cap is what makes the pass
+# affordable (#693 measures 725-887 pairs per citation, and `support` is
+# ~97% of the nine-aid total on a draft without a dossier), but it
+# trades recall for that, and the recall loss cannot be quantified until
+# B9's rating instrument has labels (#757).
+# bench/bench_support_topk.py measures what a given k costs against the
+# uncapped scorer without labels; flipping this default is a decision
+# that record informs rather than makes.
+SUPPORT_PREMISE_TOPK = _get_optional_positive_int(
+    "SUPPORT_PREMISE_TOPK", "enrich", "support_premise_topk"
 )
 
 
