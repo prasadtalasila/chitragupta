@@ -164,6 +164,124 @@ class TestSectionHeadingsAreNotPremises:
         assert "page-level only" not in report.unscoreable["allheadings_2024"]
 
 
+class TestPremiseCap:
+    """Issue #693. `_score_claim` scores one entailment pair per quotable
+    passage of the cited source, measured at 725-887 pairs per citation
+    (docs/PERFORMANCE.md), so the cap is what makes the pass affordable.
+    Uncapped stays the default -- see the module comment for the gate."""
+
+    def test_uncapped_by_default_every_premise_reaches_the_entailer(self, isolated_config):
+        """The default is the pre-#693 behaviour exactly. Asserted so a
+        cap that leaked into the default fails here rather than silently
+        changing every recorded score."""
+        _add_item("uncapped_2024")
+        _sidecar(
+            "uncapped_2024",
+            [{"text": f"Passage {i} on loops.", "page": 1} for i in range(6)],
+        )
+        draft = _draft(config, "Digital twins close the loop [@uncapped_2024].\n")
+        fake = FakeEntailer({})
+        claim_support.build_report(draft, fake)
+
+        assert len(fake.calls[0]) == 6
+
+    def test_a_cap_sends_only_the_best_lexical_overlap(self, isolated_config):
+        """The kept premise is the one sharing the claim's distinctive
+        words, not the first on the page -- the ranking is what makes a
+        cap survivable, so document order winning would be the bug."""
+        _add_item("ranked_2024")
+        _sidecar(
+            "ranked_2024",
+            [
+                {"text": "The plant was instrumented in 2019.", "page": 1},
+                {"text": "Digital twins close the control loop.", "page": 2},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop [@ranked_2024].\n")
+        fake = FakeEntailer(
+            {("Digital twins close the control loop.", "Digital twins close the loop."): 0.9}
+        )
+        report = claim_support.build_report(draft, fake, top_k=1)
+
+        premises = [premise for call in fake.calls for premise, _claim in call]
+        assert premises == ["Digital twins close the control loop."]
+        assert report.findings[0].score == pytest.approx(0.9)
+
+    def test_a_cap_above_the_premise_count_changes_nothing(self, isolated_config):
+        _add_item("small_2024")
+        _sidecar("small_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        draft = _draft(config, "Digital twins close the loop [@small_2024].\n")
+        fake = FakeEntailer(
+            {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
+        )
+        report = claim_support.build_report(draft, fake, top_k=50)
+
+        assert report.findings[0].score == pytest.approx(0.91)
+
+    def test_a_heading_does_not_consume_a_slot(self, isolated_config):
+        """The cap ranks what `_quotable` already kept, so a filtered
+        heading cannot crowd out a real premise. Capped at 1 with the
+        heading ranking highest on overlap, a cap applied *before* the
+        filter would send nothing at all and report the source
+        unscoreable."""
+        _add_item("order_2024")
+        _sidecar(
+            "order_2024",
+            [
+                {"text": "Digital twins close the loop", "page": 1, "label": "section_header"},
+                {"text": "Twins close the control loop.", "page": 2, "label": "text"},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop [@order_2024].\n")
+        fake = FakeEntailer(
+            {("Twins close the control loop.", "Digital twins close the loop."): 0.77}
+        )
+        report = claim_support.build_report(draft, fake, top_k=1)
+
+        premises = [premise for call in fake.calls for premise, _claim in call]
+        assert premises == ["Twins close the control loop."]
+        assert report.findings[0].score == pytest.approx(0.77)
+
+    def test_equal_overlap_breaks_the_tie_on_document_order(self, isolated_config):
+        """Two premises with identical overlap must resolve the same way
+        on every run, or a capped re-run reports a different best passage
+        for an unchanged draft and corpus (R2's stable-identity rule)."""
+        _add_item("tied_2024")
+        _sidecar(
+            "tied_2024",
+            [
+                {"text": "Twins close the loop.", "page": 1},
+                {"text": "The loop is closed by twins.", "page": 2},
+            ],
+        )
+        draft = _draft(config, "Digital twins close the loop [@tied_2024].\n")
+        fake = FakeEntailer({})
+        claim_support.build_report(draft, fake, top_k=1)
+
+        premises = [premise for call in fake.calls for premise, _claim in call]
+        assert premises == ["Twins close the loop."]
+
+    def test_a_claim_with_no_distinctive_words_still_sends_a_premise(self, isolated_config):
+        """`distinctive` returns nothing for an all-stopword claim, so
+        every premise ties at zero overlap. The cap must still send `k`
+        of them rather than an empty batch, which `_score_claim`'s
+        documented no-empty-result invariant depends on."""
+        _add_item("stopwords_2024")
+        _sidecar(
+            "stopwords_2024",
+            [
+                {"text": "Twins close the control loop.", "page": 1},
+                {"text": "The plant was instrumented.", "page": 2},
+            ],
+        )
+        draft = _draft(config, "It is so [@stopwords_2024].\n")
+        fake = FakeEntailer({})
+        report = claim_support.build_report(draft, fake, top_k=1)
+
+        assert len(fake.calls[0]) == 1
+        assert report.unscoreable == {}
+
+
 class TestBuildReport:
     def test_scores_a_claim_against_its_citekeys_best_passage(self, isolated_config):
         _add_item("good_2024")
@@ -449,6 +567,24 @@ class TestCli:
         args = claim_support.build_parser().parse_args([str(draft)])
         assert claim_support.run(args) == 0
         assert "not installed" in capsys.readouterr().err
+
+    def test_run_obeys_the_configured_premise_cap(self, isolated_config, capsys, monkeypatch):
+        """The CLI is the one caller that reads `SUPPORT_PREMISE_TOPK`;
+        `build_report`'s own default stays uncapped so a bench arm can
+        pin k per call instead of mutating this constant mid-run."""
+        _add_item("clipath_2024")
+        _sidecar(
+            "clipath_2024",
+            [{"text": f"Passage {i} on loops.", "page": 1} for i in range(5)],
+        )
+        fake = FakeEntailer({})
+        monkeypatch.setattr(entailment, "open_entailer", lambda: (fake, None))
+        monkeypatch.setattr(config, "SUPPORT_PREMISE_TOPK", 2)
+        draft = _draft(config, "Digital twins close the loop [@clipath_2024].\n")
+        args = claim_support.build_parser().parse_args([str(draft)])
+
+        assert claim_support.run(args) == 0
+        assert len(fake.calls[0]) == 2
 
     def test_run_returns_1_for_a_missing_draft(self, isolated_config, capsys):
         args = claim_support.build_parser().parse_args(["content/drafts/nope.md"])

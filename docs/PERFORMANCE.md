@@ -648,6 +648,31 @@ means.
 milliseconds-per-citation figure as valid only for the passage universe
 it was measured against.
 
+**The pair count is settable, and is not set by default.**
+`[enrich].support_premise_topk` ([CONFIG.md](CONFIG.md)) caps how many
+premises reach the model per citation, pre-ranking them by the same
+lexical overlap `[provenance]` bands and sending only the top *k*. Every
+figure above is the uncapped default, which is what the shipped
+`config.toml.example` still ships and what every dated entry in
+`bench/RESULTS.md` was measured under -- a table quoting these numbers
+against a capped run is comparing two different amounts of work.
+
+**The cap is off because it was measured and it damaged the report.**
+`bench/bench_support_topk.py` swept k from 8 to 128 over the two drafts
+above (`bench/RESULTS.md`, 2026-09-09). It buys what the arithmetic
+promised -- 5.3x to 102x fewer pairs, 62 s of scoring down to 4 s -- and
+at k = 128 the lexical pre-ranker agrees with the entailment model about
+which passage supports a claim for only **56.5%** of citations, falling
+to 14.6% at k = 8. Claims scoring 0.995 uncapped came back at 0.138,
+which is a well-supported citation promoted to the top of the review
+agenda as the draft's worst finding.
+
+That is #693's proposed fix -- lexical pre-ranking -- ruled out at every
+k measured, not a cap ruled out in principle: the ranker is what failed,
+and a semantic pre-rank is the candidate it points at. Precision is
+still unmeasured either way, which needs the human ratings issue #757
+tracks.
+
 Everything besides those two is flat and nearly free. `coverage` holds
 ~305 ms at every size, because its work is a corpus query rather than a
 draft scan. `synthesis`, `uncited` and `quotation` sit within noise of

@@ -550,6 +550,64 @@ class TestModuleReloadWithEnvOverrides:
         assert config.EMBEDDING_MODEL == "custom/model"
 
 
+class TestGetOptionalPositiveInt:
+    """A cap that can be switched off (#693's `support_premise_topk`).
+    `_get_positive_int` can't express it -- it requires an int default,
+    and every value it accepts is a cap -- and encoding "off" as 0 would
+    read as "score zero premises"."""
+
+    @pytest.fixture(autouse=True)
+    def _toml(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+
+    def test_missing_key_is_uncapped(self):
+        assert config._get_optional_positive_int("K", "enrich", "k") is None
+
+    def test_number_from_toml(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 32}})
+        assert config._get_optional_positive_int("K", "enrich", "k") == 32
+
+    @pytest.mark.parametrize("raw", ["", "off", "none", "false", "OFF", " off "])
+    def test_off_words_work_from_either_source(self, monkeypatch, raw):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": raw}})
+        assert config._get_optional_positive_int("K", "enrich", "k") is None
+
+    def test_env_override_wins(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 32}})
+        monkeypatch.setenv("K", "8")
+        assert config._get_optional_positive_int("K", "enrich", "k") == 8
+
+    def test_a_quoted_integer_is_accepted(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": "16"}})
+        assert config._get_optional_positive_int("K", "enrich", "k") == 16
+
+    @pytest.mark.parametrize("raw", ["0", "-5"])
+    def test_non_positive_is_rejected(self, monkeypatch, raw):
+        """0 in particular: `_ranked`'s no-empty-result invariant is what
+        rests on this, since a cap of 0 would send the entailer an empty
+        batch and `max()` over no scores raises."""
+        monkeypatch.setenv("K", raw)
+        with pytest.raises(ValueError, match=">= 1"):
+            config._get_optional_positive_int("K", "enrich", "k")
+
+    def test_nonsense_is_rejected(self, monkeypatch):
+        monkeypatch.setenv("K", "lots")
+        with pytest.raises(ValueError, match=">= 1"):
+            config._get_optional_positive_int("K", "enrich", "k")
+
+    def test_bool_in_toml_is_rejected(self, monkeypatch):
+        """bool is an int subclass, so `k = true` would quietly mean a
+        cap of 1 -- one premise per citation, near-total recall loss."""
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": True}})
+        with pytest.raises(ValueError, match=">= 1"):
+            config._get_optional_positive_int("K", "enrich", "k")
+
+    def test_a_float_is_rejected(self, monkeypatch):
+        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 8.5}})
+        with pytest.raises(ValueError, match=">= 1"):
+            config._get_optional_positive_int("K", "enrich", "k")
+
+
 class TestGetOptionalFloat:
     """A duration that can be switched off. _get_float can't express
     that -- it requires a float default -- and encoding "off" as 0 in a

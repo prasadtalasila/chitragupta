@@ -491,6 +491,40 @@ rerank_model = "cross-encoder/ms-marco-MiniLM-L6-v2"
 #                       Default if absent: cross-encoder/nli-deberta-v3-small
 entailment_model = "cross-encoder/nli-deberta-v3-base"
 
+# How many premises `review support` scores per citation -- "off" for all
+# of them, which is the default and what every cost figure in
+# docs/PERFORMANCE.md was measured under.
+#
+# This is the one setting that decides what a review pass costs.
+# `support` sends the entailment model one (passage, claim) pair per
+# quotable passage of the cited source, measured at 725-887 pairs per
+# citation on the real corpus -- a number set by how finely the parse
+# segmented the corpus, not by the length of your draft. It is why
+# `support` is ~97% of the whole nine-aid total on a draft with no
+# dossier, and why it nearly doubled in cost when a re-parse re-segmented
+# the corpus without adding a single document (issue #693).
+#
+# Setting a number here pre-ranks the premises by the same lexical
+# overlap `[provenance]` above bands, and sends the model only the top k.
+# Cheaper in proportion: k = 32 against ~800 premises is roughly a 25x
+# cut in model work.
+#
+# Left off because it was measured and it damaged the report, not merely
+# because it was unproven. Swept from k = 8 to 128 over two real drafts
+# (bench/RESULTS.md, 2026-09-09): the lexical pre-rank picks the same
+# supporting passage as the entailment model for only 56.5% of citations
+# even at k = 128, and claims scoring 0.995 uncapped came back at 0.138
+# -- a well-supported citation promoted to the top of the review agenda
+# as the draft's worst finding. The two drafts also disagreed about
+# which k was safe.
+#
+# So there is no recommended value. Run bench/bench_support_topk.py on
+# your own drafts before setting this at all, and note what it cannot
+# say: it compares against the uncapped scorer, which is not the same as
+# being right. That needs the human ratings issue #757 tracks.
+#                                       Default if absent: off (uncapped)
+support_premise_topk = "off"
+
 # Whether the docling stage also extracts figure bitmaps, into
 # content/docling/<doc>_artifacts/, plus a <doc>.figures.json giving each
 # figure's page, caption, and the exact string to cite it by.

@@ -114,6 +114,14 @@ def entailment_pairs(draft: Path) -> dict:
     re-deriving which passages count -- the aid's premise filter (which
     drops section headings, #719) has to move this number when it
     changes, or the benchmark would report work the aid no longer does.
+
+    `SUPPORT_PREMISE_TOPK` is honoured here for the same reason. The
+    timed arms below run the real CLI, which obeys that setting, so a
+    host with a cap configured would otherwise get capped milliseconds
+    beside an uncapped pair count -- the exact pairing this column exists
+    to make readable. It is unset by default and every recorded entry was
+    measured that way (#693); `bench/bench_support_topk.py` is what
+    sweeps it deliberately.
     """
     from chitragupta import ledger
     from chitragupta.passages import source_passages
@@ -121,13 +129,15 @@ def entailment_pairs(draft: Path) -> dict:
     from chitragupta.review.claim_support import _quotable
 
     text = draft.read_text(encoding="utf-8", errors="replace")
+    cap = config.SUPPORT_PREMISE_TOPK
     cache: dict = {}
     citations = pairs = unscoreable = 0
     with ledger.connection() as con:
         for _line, citekey, _claim in citation_provenance.claims(text):
             citations += 1
             if citekey not in cache:
-                cache[citekey] = len(_quotable(source_passages(con, citekey)[0]))
+                premises = len(_quotable(source_passages(con, citekey)[0]))
+                cache[citekey] = premises if cap is None else min(premises, cap)
             if cache[citekey]:
                 pairs += cache[citekey]
             else:
