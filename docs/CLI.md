@@ -2475,14 +2475,19 @@ only duplication, which is what a machine can decide.
 
 ### 🔭 `chitragupta draft tldr`
 
-A one-paragraph, human-authored summary per citekey, so skimming a large
-corpus does not mean opening every PDF. `write` never generates the
-summary itself -- it reads one on stdin, from a person or a skill -- and
-persists it under `content/tldr/<citekey>.json`, keyed to a fingerprint
-of that citekey's current parsed text. `show` recomputes the fingerprint
-every time and reports the summary **stale** rather than silently
-describing a paper that has since been re-parsed; it never rewrites the
-sidecar itself.
+A one-paragraph summary per citekey, so skimming a large corpus does not
+mean opening every PDF. `write` never generates the summary itself -- it
+reads one on stdin, from a person or a skill -- and persists it under
+`content/tldr/<citekey>.json`, keyed to a fingerprint of that citekey's
+current parsed text. `show` recomputes the fingerprint every time and
+reports the summary **stale** rather than silently describing a paper
+that has since been re-parsed; it never rewrites the sidecar itself.
+
+**Where nobody has written one, `show` falls back to the authors' own
+abstract**, extracted from the citekey's passage sidecar. That is
+extraction, not summarisation -- the words are the authors', there is no
+LLM call, and nothing is stored, so it is re-derived on every read and
+can never be stale. A hand-written TL;DR always wins over it.
 
 ```bash
 echo "This paper proposes ..." | chitragupta draft tldr write smith2024
@@ -2493,11 +2498,30 @@ chitragupta draft tldr show smith2024 --json
 | Command | Does | Exit |
 | --- | --- | --- |
 | `write <citekey>` | store stdin as `<citekey>`'s summary | 1 if the citekey isn't in the ledger, has no parsed text yet, or stdin is empty |
-| `show <citekey> [--json]` | print the summary and whether it's stale | **always 0** -- no summary recorded is not an error |
+| `show <citekey> [--json]` | print the best available summary, its `source`, and whether it's stale | **always 0** -- nothing recorded is not an error |
 
-Never touches `content/ledger.sqlite`: the summary is LLM output, so it
-stays in this drafting-layer sidecar rather than the corpus plane, and
-`chitragupta corpus ledger` is unchanged.
+`show` gives one of four answers, and `--json`'s `source` field names
+which:
+
+| `source` | Meaning |
+| --- | --- |
+| `human` | somebody wrote a TL;DR; `stale` reports it against the current parse |
+| `abstract` | nobody did, so the authors' own abstract stands in; never stale |
+| `none` | nobody did, and this paper has no abstract -- "abstract not available" |
+| `unknown` | nobody did, and there is no passage sidecar, so nothing can tell |
+
+The last two are separate on purpose. `none` is a statement about the
+paper; `unknown` is a statement about how it was parsed -- `pdftotext`
+resolves no reading order and so writes no sidecar, and a re-parse with
+`[parser].backend = "docling"` is what fixes it. Reporting "no abstract"
+there would describe a document nothing had read. On this project's own
+corpus the fallback finds an abstract for 318 of 498 documents;
+[TLDR.md](TLDR.md) has the measurements and the three guards that decide
+when it withholds one.
+
+Never touches `content/ledger.sqlite`: a written summary may be LLM
+output, so it stays in this drafting-layer sidecar rather than the corpus
+plane, and `chitragupta corpus ledger` is unchanged.
 
 ### 🖼 `chitragupta draft figures`
 

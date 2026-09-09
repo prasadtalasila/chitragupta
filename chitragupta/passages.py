@@ -221,6 +221,39 @@ def _from_pages(raw: str) -> list[Passage]:
 # `([], "no parsed text with page breaks and no readable PDF")` when rung
 # 4 could not run -- false about the first half -- while an empty rung 4
 # returned `([], None)`, no passages and no explanation at all.
+def structural_passages(citekey: str) -> list[Passage] | None:
+    """Rungs 1 and 2 only -- the reading-ordered, semantically labelled
+    records -- or None if neither sidecar is there to read.
+
+    Split out for a caller that needs the *structure* rather than the best
+    available text, and for which the ladder's own fallback would be
+    wrong rather than merely worse. `chitragupta/_abstract.py` asks
+    "where does this document's `Abstract` heading sit, and where does the
+    next heading start?", which rungs 3 and 4 cannot answer at all: a
+    whole-page `Passage` carries `label=None` and `text=None`, so a
+    caller reading down the returned list would find no headings and
+    conclude the paper has no abstract. That is a claim about a document
+    this could not read, which is the one answer worse than no answer --
+    so the distinction stays a `None` here rather than being flattened
+    into an empty result.
+
+    A `pdftotext` parse is exactly that case and is not hypothetical:
+    `pdf_text/_backends.py`'s `_extract_pdftotext` returns None rather
+    than an empty list, so nothing writes a sidecar for it.
+    """
+    if citekey_problem(citekey):
+        return None
+    # Rung 1 before rung 2: both hold the same kind of record, but the
+    # enrichment layer's is a second, independent parse of the PDF under
+    # its own OCR and figure settings, so it is the richer of the two
+    # whenever a run has paid for it.
+    for path in (config.DOCLING_DIR / f"{citekey}.passages.json", sidecar_path(citekey)):
+        sidecar = _from_sidecar(path)
+        if sidecar:
+            return sidecar
+    return None
+
+
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     """Best available passages for `citekey`, plus a reason if there are
     none."""
@@ -232,14 +265,9 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     problem = citekey_problem(citekey)
     if problem:
         return [], f"citekey is unsafe as a filename stem: {problem}"
-    # Rung 1 before rung 2: both hold the same kind of record, but the
-    # enrichment layer's is a second, independent parse of the PDF under
-    # its own OCR and figure settings, so it is the richer of the two
-    # whenever a run has paid for it.
-    for path in (config.DOCLING_DIR / f"{citekey}.passages.json", sidecar_path(citekey)):
-        sidecar = _from_sidecar(path)
-        if sidecar:
-            return sidecar, None
+    sidecar = structural_passages(citekey)
+    if sidecar:
+        return sidecar, None
 
     row = _ledger_row(con, citekey)
     if row is None:
