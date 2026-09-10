@@ -1,12 +1,13 @@
-"""`_scan_diff.annotate` -- the word-level markup that makes a
-substitution visible without collating two paragraphs by eye.
+"""`passage_diff` -- the word-level markup that makes a substitution
+visible without collating two paragraphs by eye, and the whitespace
+collapse that keeps a passage inside one Markdown blockquote.
 
 Own module rather than a class in tests/test_verbatim_check.py: that file
-is already the largest in the suite and this is a self-contained pure
-function with no corpus, no ledger and no fixtures.
+is already the largest in the suite and these are self-contained pure
+functions with no corpus, no ledger and no fixtures.
 """
 
-from chitragupta.review.verbatim_check._scan_diff import annotate
+from chitragupta.passage_diff import annotate, one_line
 
 
 class TestSharedWordingIsLeftBare:
@@ -59,12 +60,12 @@ class TestEveryOpcode:
         draft, source = annotate("the big red car", "the red car")
         assert draft == "the **big** red car"
         assert "**" not in source
-        assert "~~" not in source
+        assert "*" not in source
 
-    def test_a_word_only_the_source_has_is_struck_on_the_source(self):
+    def test_a_word_only_the_source_has_is_italicised_on_the_source(self):
         # difflib calls this `insert`; to a reader the draft dropped it.
         draft, source = annotate("the red car", "the big red car")
-        assert source == "the ~~big~~ red car"
+        assert source == "the *big* red car"
         assert "**" not in draft
 
 
@@ -102,11 +103,38 @@ class TestLongPassages:
         assert "**dog**" in marked_source
 
 
+class TestOneLine:
+    """A Markdown blockquote is a single `> ...` line, so a newline in a
+    passage ends the quote and spills the remainder into an ordinary
+    paragraph beside it. Real source passages carry them constantly:
+    most of a real `content/parsed/*.txt` is hard-wrapped.
+    """
+
+    def test_newlines_and_runs_of_space_collapse_to_one_space(self):
+        assert one_line("a\nb  c\n\n  d\te") == "a b c d e"
+
+    def test_text_already_on_one_line_is_unchanged(self):
+        assert one_line("already flat") == "already flat"
+
+    def test_leading_and_trailing_whitespace_goes(self):
+        assert one_line("  padded  ") == "padded"
+
+    def test_it_is_never_applied_to_the_stored_passage(self):
+        """Rendering-time only, by contract: `source_text` in the payload
+        is the source's real text, and a consumer matching it back
+        against the parsed file needs the whitespace it actually has.
+        This pins the function as pure, so a caller cannot be tempted to
+        normalise in place."""
+        original = "a\nb"
+        assert one_line(original) == "a b"
+        assert original == "a\nb"
+
+
 class TestDegenerateInput:
-    def test_an_empty_draft_side_strikes_the_whole_source(self):
+    def test_an_empty_draft_side_marks_the_whole_source_dropped(self):
         draft, source = annotate("", "every word here is dropped")
         assert draft == ""
-        assert source == "~~every word here is dropped~~"
+        assert source == "*every word here is dropped*"
 
     def test_an_empty_source_side_marks_the_whole_draft(self):
         draft, source = annotate("all of this is the draft's own", "")
@@ -118,3 +146,22 @@ class TestDegenerateInput:
 
     def test_text_with_no_words_at_all_is_returned_unchanged(self):
         assert annotate("---", "!!!") == ("---", "!!!")
+
+
+class TestOnlyPortableMarkup:
+    """Every one of these reports is rendered to PDF through pandoc and
+    pdflatex, and `~~strikeout~~` -- the obvious mark for a dropped word
+    -- compiles to `\\st{}`, which needs `soul.sty`. A TeX install
+    without it is not exotic: this project's own host has neither
+    `soul.sty` nor `ulem.sty`, and the failure mode is a silently
+    skipped PDF while the report's other three formats write normally.
+    """
+
+    def test_no_strikeout_is_ever_emitted(self):
+        draft, source = annotate("a c", "a b c")
+        assert "~~" not in draft + source
+
+    def test_the_two_marks_are_emphasis_and_strong_emphasis_only(self):
+        from chitragupta import passage_diff
+
+        assert {passage_diff._CHANGED, passage_diff._DROPPED} == {"**", "*"}

@@ -50,7 +50,7 @@ Within the two blocks, the markup says which words did what:
 | Markup | Means |
 | --- | --- |
 | **Bold**, either side | a word that side has and the other does not -- substituted, or added by the draft |
-| ~~Struck through~~, source side | a word the source has that the draft dropped |
+| *Italic*, source side | a word the source has that the draft dropped |
 | unmarked | the wording the two share -- the overlap |
 
 The overlap is what is left bare, deliberately: on a marked-up finding it
@@ -75,9 +75,15 @@ All of this replaces a report that printed the draft's own normalized
 words as a lone blockquote under a "verbatim" heading, where a paraphrase
 read as an uncaught exact-tier match.
 
+Emphasis and strong emphasis, and nothing else. `~~strikeout~~` is the
+obvious mark for a dropped word and is unusable here: pandoc compiles it
+to `\st{}`, which needs `soul.sty`, and a TeX install carrying neither
+that nor `ulem` is not exotic -- the PDF is then silently skipped while
+the report's other three formats write normally.
+
 The markup is Markdown-only. The terminal form of a scan prints the same
 two passages, labelled and unmarked: `chitragupta` emits no ANSI anywhere,
-and `**`/`~~` in a shell are noise rather than emphasis.
+and `**`/`*` in a shell are noise rather than emphasis.
 
 This is the one **tier set** in this project whose options
 are not mutually exclusive

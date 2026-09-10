@@ -5,6 +5,7 @@ discipline every other review aid's `*_payload` function documents).
 """
 
 from chitragupta import review
+from chitragupta.passage_diff import annotate, one_line
 from chitragupta.review.agenda._items import CLASSES
 
 # `{aid: review.AIDS[aid] for aid in _sources.AID_NAMES}`, restated
@@ -107,8 +108,77 @@ def _findings_lines(agenda) -> list[str]:
         marker = "unattended" if item.unattended else "surfaced"
         section = f" ({item.section})" if item.section else ""
         lines.append(f"- `{item.id}` [{marker}]{section}: {item.summary}")
+        lines += _passage_lines(agenda, item)
     lines.append("")
     return lines
+
+
+def _passage_lines(agenda, item) -> list[str]:
+    """The overlapping text behind a `verbatim-run` item, indented under
+    it: the draft's words, and the source's where the two differ.
+
+    A worklist that says "9-word skip-gram match citing `x_2024`" and
+    stops has told a reader the shape of the finding and none of its
+    content -- so the first thing anyone does is open the aid's report to
+    see what the words actually were. Carrying the passage here answers
+    that in place.
+
+    **Joined from the aid's filed JSON, not from `item.detail`.** That
+    field stays exactly `{"severity", "verbatim_id"}`: it is thin by a
+    documented decision (`agenda-reviser/SKILL.md`), and the contract it
+    exists to enforce is "look the id up in the raising aid's own JSON".
+    This does precisely that, through `agenda.sources`, which is the same
+    filed report every consumer is pointed at -- so the decision is
+    honoured rather than reversed, and nothing is recomputed here.
+
+    Indented four spaces, not emitted flush left. A blockquote or a
+    heading placed directly under a `- ...` bullet is lazy continuation
+    in Markdown, not a quote or a heading -- the same failure that lost
+    every class heading but the first (see `_findings_lines`). Indenting
+    to the bullet's own continuation column is what makes these render as
+    part of the item rather than beside it.
+    """
+    if item.cls != "verbatim-run":
+        return []
+    finding = _verbatim_finding(agenda, item.detail.get("verbatim_id"))
+    if finding is None:
+        return []
+    draft, source = finding.get("fragment", ""), finding.get("source_text")
+    if not draft:
+        return []
+    if source is None:
+        # The exact tier: the two sides are the same words, so there is
+        # one passage and nothing to mark.
+        return ["", f"    > {one_line(draft)}", ""]
+    marked_draft, marked_source = annotate(one_line(draft), one_line(source))
+    return [
+        "",
+        f"    > **draft** -- {marked_draft}",
+        "",
+        f"    > **source** -- {marked_source}",
+        "",
+    ]
+
+
+def _verbatim_finding(agenda, verbatim_id: str | None) -> dict | None:
+    """The verbatim aid's own filed finding for `verbatim_id`.
+
+    `None` for every way this can come up empty -- no id, the aid's
+    report absent or unreadable, or an id that is in the agenda but not
+    in the report. The last one is not hypothetical: the agenda in its
+    bare form *reads* reports rather than running them, so a `.json`
+    older than the item list can genuinely lack an id. The item still
+    prints; only its passage is omitted.
+    """
+    if not verbatim_id:
+        return None
+    source = agenda.sources.aids.get("verbatim")
+    if source is None or not source.available:
+        return None
+    for finding in source.data.get("findings", []):
+        if finding.get("id") == verbatim_id:
+            return finding
+    return None
 
 
 def render_markdown(agenda, command: str) -> str:

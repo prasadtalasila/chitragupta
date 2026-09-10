@@ -23,6 +23,15 @@ Markdown only, deliberately. `chitragupta/` prints no ANSI anywhere, and
 the terminal form of a scan is read once in a shell where `**` and `~~`
 are noise rather than emphasis; the filed `.md` is the copy read next to
 the draft weeks later, and is the one that renders.
+
+Here rather than inside `review/verbatim_check/`, though that is where it
+was written and is still its main caller, because `review/agenda/` needs
+it too and must not import an aid to get it: that package is built to
+read the aids' *filed JSON and nothing else*, so an agenda can be
+assembled from reports on disk without the tool that wrote them being
+importable (`review/agenda/_items_findings.py` says so directly). This
+module is stdlib-only and knows nothing about either caller, so it sits
+in the shared layer both already depend on and the property holds.
 """
 
 import re
@@ -33,12 +42,20 @@ from difflib import SequenceMatcher
 _WORD = re.compile(r"[A-Za-z0-9]+")
 
 # `**` for a word this side has and the other does not (substituted or
-# added); `~~` for one the source had and the draft dropped. Underline is
-# not Markdown and is deliberately absent: there is no portable syntax
-# for it, and inventing one (`<u>`) would render as literal HTML in the
-# plain-text viewers these reports are also read in.
+# added); `*` for one the source had and the draft dropped.
+#
+# Emphasis and strong emphasis, and nothing else, because every one of
+# these reports is rendered to PDF through pandoc and pdflatex. `~~` was
+# the obvious mark for a dropped word and is the wrong one: pandoc
+# compiles strikeout to `\st{}`, which needs `soul.sty` (or `ulem` on
+# older pandoc), and a TeX install carrying neither is not exotic --
+# this project's own host has no `soul.sty`, `ulem.sty` or
+# `soulutf8.sty`, and the failure is a skipped PDF with the report's
+# other three formats written as normal. Underline is out for a
+# different reason: it is not Markdown at all, and the `<u>` people
+# reach for renders as literal HTML in a plain-text viewer.
 _CHANGED = "**"
-_DROPPED = "~~"
+_DROPPED = "*"
 
 
 def _tokens(text: str) -> list[tuple[int, int, str]]:
@@ -73,6 +90,25 @@ def _wrap(text: str, tokens: list[tuple[int, int, str]], runs: list[tuple[int, i
         start, end = tokens[first][0], tokens[last][1]
         out = out[:start] + mark + out[start:end] + mark + out[end:]
     return out
+
+
+def one_line(text: str) -> str:
+    """`text` with every run of whitespace collapsed to one space.
+
+    Both callers render a passage into a Markdown blockquote, which is a
+    single `> ...` line -- so a newline inside the passage ends the quote
+    and renders the remainder as an ordinary paragraph beside it. Source
+    passages routinely contain them: most of a real
+    `content/parsed/*.txt` is hard-wrapped somewhere around 110-156
+    characters depending on the parser backend that wrote it, so any span
+    of more than a few words is likely to cross a line break.
+
+    Applied at the point of rendering and never to the stored passage:
+    `source_text` in the payload is the source's real text, and a
+    consumer matching it back against the parsed file needs the
+    whitespace it actually has. Only the blockquote needs it flat.
+    """
+    return " ".join(text.split())
 
 
 def annotate(draft_text: str, source_text: str) -> tuple[str, str]:

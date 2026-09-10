@@ -8,12 +8,12 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.passage_diff import annotate, one_line
 from chitragupta.review.verbatim_check._scan import (
     BUCKET_ORDER,
     _bucket,
     _bucket_title,
 )
-from chitragupta.review.verbatim_check._scan_diff import annotate
 from chitragupta.review.verbatim_check._scan_notes import (
     _flags,
     _page_range,
@@ -109,25 +109,6 @@ def _bucketed_lines(findings: list[dict]) -> list[str]:
     return lines
 
 
-def _one_line(text: str) -> str:
-    """`text` with every run of whitespace collapsed to one space.
-
-    A blockquote is emitted as `f"> {text}"`, one line, so a newline
-    inside `text` ends the quote and renders the remainder as an ordinary
-    paragraph beside it. Source passages routinely contain them: most of
-    this corpus's `content/parsed/*.txt` is hard-wrapped somewhere around
-    110-156 characters, depending on the parser backend that wrote it, so
-    any span of more than a few words is likely to cross a line break.
-
-    Collapsed here, at the point of rendering, and deliberately not in
-    `overlap_source_text.source_span` or in the payload: `source_text` is
-    the source's real text, and a consumer matching it back against the
-    parsed file needs the whitespace it actually has. Only the blockquote
-    needs it flat.
-    """
-    return " ".join(text.split())
-
-
 def _passage_lines(finding: dict) -> list[str]:
     """The finding's text: one blockquote where the two sides are the
     same words, two marked-up ones where they are not.
@@ -148,7 +129,7 @@ def _passage_lines(finding: dict) -> list[str]:
     """
     if finding["source_text"] is None:
         return [f"> {finding['fragment']}", ""]
-    draft, source = annotate(finding["fragment"], _one_line(finding["source_text"]))
+    draft, source = annotate(finding["fragment"], one_line(finding["source_text"]))
     return [
         "Draft:",
         "",

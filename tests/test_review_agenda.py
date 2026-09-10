@@ -1073,6 +1073,116 @@ class TestRenderMarkdown:
         )
         assert "- Dossier drift: read" in rendered
 
+
+class TestVerbatimPassageInTheAgenda:
+    """A `verbatim-run` item carries the overlapping text under it.
+
+    The passage is joined from the verbatim aid's *filed JSON* through
+    `agenda.sources`, never from `item.detail` -- which stays thin by a
+    documented decision, and whose whole contract is "look the id up in
+    the raising aid's own report". This does exactly that.
+    """
+
+    def _rendered(self, finding, item_detail=None):
+        item = _items.Item(
+            "v1",
+            "verbatim-run",
+            "Intro",
+            finding.get("citekey"),
+            5,
+            True,
+            "9-word skip-gram match",
+            item_detail if item_detail is not None else {"verbatim_id": finding.get("id")},
+        )
+        sources = _sources_stub(
+            aids={"verbatim": _sources.AidSource(available=True, data={"findings": [finding]})}
+        )
+        return _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[item]),
+            "cmd",
+        )
+
+    def _finding(self, **overrides):
+        base = {
+            "id": "abc123",
+            "citekey": "a2024",
+            "fragment": "the draft s own wording here",
+            "source_text": None,
+        }
+        base.update(overrides)
+        return base
+
+    def test_an_exact_finding_shows_one_passage(self):
+        rendered = self._rendered(self._finding())
+        assert "    > the draft s own wording here" in rendered
+        assert "**source**" not in rendered
+
+    def test_a_two_sided_finding_shows_both_marked_up(self):
+        rendered = self._rendered(
+            self._finding(fragment="the cat sat down", source_text="The dog sat down")
+        )
+        assert "**draft** -- the **cat** sat down" in rendered
+        assert "**source** -- The **dog** sat down" in rendered
+
+    def test_the_passage_is_indented_under_its_bullet(self):
+        """A `>` placed flush left directly under a `- ...` bullet is not
+        a blockquote inside the item -- Markdown reads it as lazy
+        continuation, and it renders beside the item instead of within
+        it. This is the same failure that lost every class heading but
+        the first, and it is invisible in the `.md` source."""
+        rendered = self._rendered(self._finding())
+        quotes = [ln for ln in rendered.splitlines() if ln.lstrip().startswith(">")]
+        passage = [ln for ln in quotes if "the draft s own wording" in ln]
+        assert passage and all(ln.startswith("    ") for ln in passage)
+
+    def test_a_newline_in_the_source_stays_inside_the_blockquote(self):
+        rendered = self._rendered(self._finding(fragment="a b c", source_text="a\nb\n\nc"))
+        assert len([ln for ln in rendered.splitlines() if "**source**" in ln]) == 1
+
+    def test_no_passage_when_the_aids_report_lacks_the_id(self):
+        """The bare agenda *reads* reports rather than running them, so a
+        `.json` older than the item list can genuinely lack an id. The
+        item still prints; only its passage is omitted."""
+        rendered = self._rendered(self._finding(), item_detail={"verbatim_id": "not-in-report"})
+        assert "`v1`" in rendered
+        assert "the draft s own wording" not in rendered
+
+    def test_no_passage_when_the_item_carries_no_id(self):
+        rendered = self._rendered(self._finding(), item_detail={})
+        assert "the draft s own wording" not in rendered
+
+    def test_no_passage_when_the_aid_is_unavailable(self):
+        item = _items.Item(
+            "v1", "verbatim-run", None, "a2024", 5, True, "s", {"verbatim_id": "abc123"}
+        )
+        rendered = _render.render_markdown(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"),
+                sources=_sources_stub(),
+                items=[item],
+            ),
+            "cmd",
+        )
+        assert "`v1`" in rendered
+
+    def test_a_finding_with_no_fragment_is_skipped(self):
+        rendered = self._rendered(self._finding(fragment=""))
+        assert "    >" not in rendered
+
+    def test_other_classes_carry_no_passage(self):
+        item = _items.Item("p1", "prose", None, None, 1, True, "a prose finding", {})
+        rendered = _render.render_markdown(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"),
+                sources=_sources_stub(),
+                items=[item],
+            ),
+            "cmd",
+        )
+        assert "    >" not in rendered
+
+
+class TestRenderMarkdownGrouping:
     def test_findings_grouped_by_class_then_severity(self):
         items = _order.sort(
             [

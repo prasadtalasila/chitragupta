@@ -1553,13 +1553,6 @@ class TestBothSidesOfAnEmbeddingFinding:
             quote.replace("**", "").replace("~~", "").split()
         )
 
-    def test_the_payload_keeps_the_sources_real_whitespace(self):
-        """Collapsed at the point of rendering, not in `source_span` or
-        the payload: a consumer matching `source_text` back against the
-        parsed file needs the whitespace the file actually has. Only the
-        blockquote needs it flat."""
-        assert vc._scan_render._one_line("a\nb") == "a b"
-
     def test_the_terminal_form_prints_both_sides_too(self):
         printed = vc.format_scan([_rendered_finding("embedding")], 8)
         assert "draft:  the draft s own words flattened" in printed
