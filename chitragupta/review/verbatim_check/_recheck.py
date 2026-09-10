@@ -14,7 +14,8 @@ from pathlib import Path
 
 from chitragupta import overlap_chroma, review
 from chitragupta.review.verbatim_check._baseline import load_baseline
-from chitragupta.review.verbatim_check._scan import _page_range, published, scan_findings
+from chitragupta.review.verbatim_check._scan import published, scan_findings
+from chitragupta.review.verbatim_check._scan_notes import _page_range
 
 
 def _tier_drift_warnings(baseline: dict, not_run: list[dict]) -> list[str]:

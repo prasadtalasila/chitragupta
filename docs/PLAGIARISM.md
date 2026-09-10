@@ -38,6 +38,47 @@ enrichment layer, the Docling passage sidecars, a synced ledger and the
 draft's own dossier are all present, and it compares a section only against the
 sources that section already cites.
 
+**A finding whose two sides differ shows both, marked up.** `skip-gram`
+and `embedding` findings print a `Draft:` block and a `Source:` block,
+because on those tiers the two are by construction *not* the same wording
+-- had they been, the exact tier would have caught it and the other would
+have stood aside. `exact` shows one unmarked block: there is no second
+side to show.
+
+Within the two blocks, the markup says which words did what:
+
+| Markup | Means |
+| --- | --- |
+| **Bold**, either side | a word that side has and the other does not -- substituted, or added by the draft |
+| ~~Struck through~~, source side | a word the source has that the draft dropped |
+| unmarked | the wording the two share -- the overlap |
+
+The overlap is what is left bare, deliberately: on a marked-up finding it
+is the only unmarked text on the line, so it is what the eye finds first,
+and finding a swapped word by collating two paragraphs is work a reader
+will do carefully twice and then stop doing.
+
+The comparison behind the markup runs on **normalized** words on both
+sides, while the markup itself lands on the real ones -- so the source
+keeps its own casing, apostrophes and hyphens on the page, and a
+difference in any of those is never reported as a substitution. Diffing
+the normalized draft against the raw source directly would mark nearly
+every word (`Configuration` against `configuration`, `machine's DT`
+against `machine s dt`), which looks convincing and means nothing.
+
+An `embedding` finding's word count says `aligned`, not `matched`: the
+number is the width of the aligned sentences, not a count of words the
+two sides share, so a long `aligned` count beside a low `score` is a weak
+alignment over a long sentence rather than a long lift.
+
+All of this replaces a report that printed the draft's own normalized
+words as a lone blockquote under a "verbatim" heading, where a paraphrase
+read as an uncaught exact-tier match.
+
+The markup is Markdown-only. The terminal form of a scan prints the same
+two passages, labelled and unmarked: `chitragupta` emits no ANSI anywhere,
+and `**`/`~~` in a shell are noise rather than emphasis.
+
 This is the one **tier set** in this project whose options
 are not mutually exclusive
 ([ARCHITECTURE.md](ARCHITECTURE.md#-ladders-and-tiers)): nobody picks one,
@@ -366,7 +407,11 @@ decides whether each repair may be kept.
 cannot be located in the file by position. Alongside them each finding carries
 `line`, `char_start`, `char_end` and `draft_text` -- the passage exactly
 as written, citation markers and line breaks included -- plus `id`, a
-digest of `(citekey, page, fragment)`. `id` is deliberately
+digest of `(citekey, page, fragment)`, and `source_text`, the source
+passage the finding matched -- the document's own text, not a normalized
+form. `source_text` is `null` on the `exact` tier alone, where `fragment`
+already is the source's wording and there is no second side to show; the
+`skip-gram` and `embedding` tiers both carry it. `id` is deliberately
 position-free: an identity built on `start` would rename every remaining
 finding the moment the first was repaired, and nothing could then say
 whether a finding had survived a revision.

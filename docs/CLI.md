@@ -1172,8 +1172,8 @@ and in its bare form it **reads, never runs, an aid** -- an aid's `.json`
 that does not exist yet is named as absent in the header, not computed on
 the fly. `--baseline` below is the one mode that departs from that, and
 the only one. A draft with no dossier still produces an agenda;
-`missing-citekey`, `recorded-but-uncited` and `candidate` are simply
-absent from it, and the header says why.
+`missing-citekey` and `recorded-but-uncited` are simply absent from it,
+and the header says why.
 
 Every item carries a `class` from the item-class table
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)), a section anchor where one
@@ -1181,7 +1181,7 @@ applies, and whether it is `unattended` -- safe for a future automated
 pass to act on without asking first (`missing-citekey`, the short runs a
 verbatim scan finds, and `prose`) -- or merely surfaced for a person to
 decide (`recorded-but-uncited`, `unsupported-claim`, `claim-support`,
-`uncited-source`, `uncited-claim`, `misquoted` and `candidate`).
+`uncited-claim` and `misquoted`).
 
 `prose` moved to the unattended side in issue 421, and this sentence
 carried the damage that issue was filed for: it called the mechanically

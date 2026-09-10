@@ -12,10 +12,10 @@ quotation integrity, claim support -- plus the dossier's own drift and its
 recorded-but-uncited citekeys, into one
 ranked, deduplicated worklist. Each item carries an `unattended` field,
 decided once by the aid that produced it and never re-derived here: a
-`verbatim-run` at severity `short`, every `prose` finding, and a
-`missing-citekey` may be repaired without asking; everything else is
-surfaced for a person. The agenda stops there, because it is a review aid
-and review aids report. Everything after that -- reading an unattended
+`verbatim-run` at severity `short` from a deterministic tier, every
+`prose` finding, and a `missing-citekey` may be repaired without asking;
+everything else is surfaced for a person. The agenda stops there, because
+it is a review aid and review aids report. Everything after that -- reading an unattended
 item, finding its repair payload, applying it without losing the claim,
 checking the repair did not make something else worse -- was left to a
 person. That is the tedious half, and the half that gets skipped.
@@ -71,13 +71,14 @@ Three classes carry `unattended: true` on this checkout:
 
 | Class | What it is | This skill |
 | --- | --- | --- |
-| `verbatim-run`, severity `short` | Under 15 words of borrowed wording, not a marked quotation | Repair unattended |
+| `verbatim-run`, severity `short`, `exact` or `skip-gram` tier | Under 15 words of borrowed wording, not a marked quotation | Repair unattended |
 | `verbatim-run`, severity `long` | 15 words or more, not a marked quotation | **Stop and ask** -- surfaced, not unattended |
+| `verbatim-run`, `embedding` tier, **any** severity | A meaning-level alignment, sharing no wording with the source | Surfaced whatever its length. The tier is advisory only, permanently -- its findings move with tier availability and the embedding model, not only with an edit -- so there is nothing here an edit can reliably resolve. The item names its tier in the summary; do not infer it from the length |
 | `verbatim-run`, `quoted` | Touching quote marks **and** citing the source | Already correct. Do not touch it |
 | `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended |
 | `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below |
 | `recorded-but-uncited` | `evidence.md` or `sections.md` still records a citekey the draft no longer cites -- often the residue of *this skill's own* `missing-citekey` repair | Surfaced. Report and do not touch. The repair is `dossier prune`, which a person confirms; pruning it here would delete evidence that may instead be an uncited candidate |
-| Every other class (`unsupported-claim`, `claim-support`, `uncited-source`, `uncited-claim`, `misquoted`, `candidate`) | Judgement calls | Surfaced. Report and do not touch |
+| Every other class (`unsupported-claim`, `claim-support`, `uncited-claim`, `misquoted`) | Judgement calls | Surfaced. Report and do not touch |
 
 **The agenda's own `detail` field is thin by design and is not the repair
 payload.** A `verbatim-run` item's `detail` carries `verbatim_id`, not

@@ -200,4 +200,11 @@ def _exact_finding(
         # would read as "aligned, badly", which is a different claim
         # from "this tier does not measure that".
         "score": None,
+        # `None` for the same reason `score` is, and meaning the mirror
+        # image of it: not "this tier cannot tell you", but "there is no
+        # second side to show". A deterministic tier only fires where the
+        # two sides share wording, so `fragment` above *is* the source
+        # text; printing it twice under two headings would imply the
+        # comparison found something it did not.
+        "source_text": None,
     }

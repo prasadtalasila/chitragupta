@@ -310,26 +310,45 @@ class TestMissingCitekeyItems:
         assert items[0].section is None
 
 
-class TestCandidateItems:
-    def test_no_drift_gives_no_items(self):
-        assert _items.candidate_items(None) == []
+class TestSurfacedButNeverUsedClassesAreGone:
+    """`uncited-source` and `candidate` were removed from the agenda.
 
-    def test_one_item_per_candidate(self):
+    Both said "the corpus holds a paper you surfaced and did not cite",
+    which for a draft that makes no claim from it is the correct outcome
+    rather than a finding. The aids that computed them are untouched --
+    that is the point of the pair of tests below: the *inputs* that used
+    to raise each class are still constructed here, in full, and the
+    assertion is that the agenda no longer turns either into an item. A
+    test that merely dropped the old ones would pass just as well if the
+    aids had been deleted too, which is a different change from the one
+    that was made.
+    """
+
+    def test_neither_class_is_in_the_class_table(self):
+        assert "uncited-source" not in _items.CLASSES
+        assert "candidate" not in _items.CLASSES
+
+    def test_a_drift_candidate_raises_no_agenda_item(self):
         drift = Drift(
             dossier=Path("d"),
             name="d",
             draft=None,
             candidates=[Candidate("b2024", "A Paper", ["query one"])],
         )
-        items = _items.candidate_items(drift)
-        assert len(items) == 1
-        item = items[0]
-        assert item.cls == "candidate"
-        assert item.citekey == "b2024"
-        assert item.line is None
-        assert item.section is None
-        assert item.unattended is False
-        assert item.detail == {"queries": ["query one"]}
+        sources = _sources_stub(drift=_sources.DriftSource(available=True, data=drift))
+        assert _items.all_items(sources, []) == []
+
+    def test_an_uncited_retrieved_source_raises_no_agenda_item(self):
+        coverage = _sources.AidSource(
+            available=True,
+            data={
+                "findings": [
+                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"}
+                ]
+            },
+        )
+        sources = _sources_stub(aids={"coverage": coverage})
+        assert _items.all_items(sources, []) == []
 
 
 class TestRecordedButUncitedItems:
@@ -380,6 +399,7 @@ class TestVerbatimRunItems:
             "matched_words": 20,
             "fragment": "some borrowed wording",
             "severity": "long",
+            "tier": "exact",
         }
         base.update(overrides)
         return base
@@ -436,6 +456,61 @@ class TestVerbatimRunItems:
         )
         items = _items_findings.verbatim_run_items(source, [])
         assert items[0].summary == "15-word verbatim run citing `a2024`, 6 matched"
+
+    def test_an_embedding_finding_is_never_unattended_however_short(self):
+        """`severity` comes from `_bucket`, which thresholds on
+        `matched_words` and never looks at `tier` -- so a short embedding
+        alignment arrives here indistinguishable from a short exact run.
+        Marking it unattended authorises `agenda-reviser` to edit a
+        passage away on the evidence of a similarity score, while
+        `verbatim_check._recheck` refuses to so much as *count* that tier
+        because its own docstring calls it advisory only, permanently."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, tier="embedding")]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].unattended is False
+
+    def test_a_short_skipgram_finding_is_still_unattended(self):
+        """The gate is on the embedding tier specifically, not on
+        "anything that is not exact": skip-gram is deterministic,
+        reproducible from the corpus alone, and is counted by `recheck`
+        like tier 1."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, tier="skip-gram")]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].unattended is True
+
+    def test_the_summary_names_what_the_tier_actually_found(self):
+        """Calling every finding a "verbatim run" is true only of tier 1.
+        A skip-gram match has words substituted and an embedding
+        alignment shares no wording at all -- and the agenda must not
+        make a stronger claim than the aid it quotes."""
+
+        def summary(tier):
+            source = _sources.AidSource(
+                available=True, data={"findings": [self._finding(tier=tier)]}
+            )
+            return _items_findings.verbatim_run_items(source, [])[0].summary
+
+        assert summary("exact").startswith("20-word verbatim run")
+        assert summary("skip-gram").startswith("20-word skip-gram match")
+        assert summary("embedding").startswith("20-word embedding-tier alignment")
+
+    def test_a_report_filed_before_the_tier_field_existed_overstates_nothing(self):
+        """`tier` is absent from a payload written before it existed, and
+        the agenda reads reports off disk rather than recomputing them.
+        The fallback is the neutral "run" -- never "verbatim run", which
+        would be a claim about a tier that did not record itself."""
+        finding = self._finding()
+        del finding["tier"]
+        source = _sources.AidSource(available=True, data={"findings": [finding]})
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].summary == "20-word run citing `a2024`"
+        assert "verbatim" not in items[0].summary
 
 
 class TestProseItems:
@@ -582,29 +657,6 @@ class TestClaimSupportItems:
         source = _sources.AidSource(available=True, data={"findings": [self._finding(score=0.97)]})
         items = _items_findings.claim_support_items(source, [])
         assert len(items) == 1
-
-
-class TestUncitedSourceItems:
-    def test_unavailable_source_gives_no_items(self):
-        assert _items_findings.uncited_source_items(_sources.AidSource()) == []
-
-    def test_only_uncited_candidates_status_is_kept(self):
-        source = _sources.AidSource(
-            available=True,
-            data={
-                "findings": [
-                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"},
-                    {
-                        "id": "2",
-                        "citekey": "b2024",
-                        "title": "B",
-                        "status": "cited_outside_candidates",
-                    },
-                ]
-            },
-        )
-        items = _items_findings.uncited_source_items(source)
-        assert [item.citekey for item in items] == ["a2024"]
 
 
 class TestUncitedClaimItems:
@@ -896,9 +948,9 @@ class TestSeverityRank:
 
 class TestSort:
     def test_class_order_wins_over_input_order(self):
-        candidate = _items.Item("c", "candidate", None, "z", None, False, "s", {})
+        last = _items.Item("c", "misquoted", None, "z", None, False, "s", {})
         missing = _items.Item("m", "missing-citekey", None, "a", None, True, "s", {})
-        assert [i.id for i in _order.sort([candidate, missing])] == ["m", "c"]
+        assert [i.id for i in _order.sort([last, missing])] == ["m", "c"]
 
     def test_severity_outranks_position_within_a_class(self):
         weak_early = _items.Item(
@@ -914,25 +966,28 @@ class TestSort:
         second = _items.Item("bbb", "prose", None, None, 5, False, "s", {})
         assert [i.id for i in _order.sort([second, first])] == ["aaa", "bbb"]
 
-    def test_misquoted_sits_between_uncited_claim_and_candidate(self):
-        candidate = _items.Item("c", "candidate", None, "z", None, False, "s", {})
+    def test_misquoted_sorts_after_uncited_claim(self):
         misquoted = _items.Item("m", "misquoted", None, "a", None, False, "s", {})
         uncited_claim = _items.Item("u", "uncited-claim", None, None, 1, False, "s", {})
-        ordered = [i.cls for i in _order.sort([candidate, misquoted, uncited_claim])]
-        assert ordered == ["uncited-claim", "misquoted", "candidate"]
+        ordered = [i.cls for i in _order.sort([misquoted, uncited_claim])]
+        assert ordered == ["uncited-claim", "misquoted"]
 
-    def test_claim_support_sits_between_unsupported_claim_and_uncited_source(self):
-        uncited_source = _items.Item("s", "uncited-source", None, "z", None, False, "s", {})
+    def test_claim_support_sits_between_unsupported_claim_and_uncited_claim(self):
+        uncited_claim = _items.Item("s", "uncited-claim", None, "z", 9, False, "s", {})
         claim_support = _items.Item("cs", "claim-support", None, "a", 1, False, "s", {"score": 0.2})
         unsupported_claim = _items.Item(
             "uc", "unsupported-claim", None, None, 1, False, "s", {"band": "weak"}
         )
-        ordered = [i.cls for i in _order.sort([uncited_source, claim_support, unsupported_claim])]
-        assert ordered == ["unsupported-claim", "claim-support", "uncited-source"]
+        ordered = [i.cls for i in _order.sort([uncited_claim, claim_support, unsupported_claim])]
+        assert ordered == ["unsupported-claim", "claim-support", "uncited-claim"]
 
-    def test_candidates_order_by_citekey(self):
-        z = _items.Item("z-id", "candidate", None, "z2024", None, False, "s", {})
-        a = _items.Item("a-id", "candidate", None, "a2024", None, False, "s", {})
+    def test_unpositioned_items_order_by_citekey(self):
+        """`line is None` collapses to the same sort position for every
+        item in the class, so citekey is what actually separates them --
+        the property `misquoted` and `recorded-but-uncited` both rely on
+        now that `candidate`, which used to demonstrate it, is gone."""
+        z = _items.Item("z-id", "misquoted", None, "z2024", None, False, "s", {})
+        a = _items.Item("a-id", "misquoted", None, "a2024", None, False, "s", {})
         assert [i.citekey for i in _order.sort([z, a])] == ["a2024", "z2024"]
 
 
@@ -1027,7 +1082,7 @@ class TestRenderMarkdown:
                 _items.Item(
                     "m2", "missing-citekey", "Intro", "b2024", None, True, "missing b2024", {}
                 ),
-                _items.Item("c1", "candidate", None, "b2024", None, False, "candidate b2024", {}),
+                _items.Item("c1", "misquoted", None, "b2024", None, False, "misquoted b2024", {}),
             ]
         )
         rendered = _render.render_markdown(
@@ -1037,9 +1092,9 @@ class TestRenderMarkdown:
             "cmd",
         )
         assert "### missing-citekey" in rendered
-        assert "### candidate" in rendered
+        assert "### misquoted" in rendered
         assert rendered.count("### missing-citekey") == 1
-        assert rendered.index("### missing-citekey") < rendered.index("### candidate")
+        assert rendered.index("### missing-citekey") < rendered.index("### misquoted")
         assert "[unattended]" in rendered
         assert "[surfaced]" in rendered
         assert "(Intro)" in rendered
@@ -1253,16 +1308,16 @@ class TestBuildAgendaAndCli:
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         review.write_json(
             draft,
-            "coverage",
+            "uncited",
             {
                 "findings": [
-                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"}
+                    {"id": "1", "line": 1, "sentence": "A bare claim.", "block_cites": False}
                 ]
             },
         )
         built = agenda.build_agenda(draft)
         assert len(built.items) == 1
-        assert built.items[0].cls == "uncited-source"
+        assert built.items[0].cls == "uncited-claim"
 
 
 # --------------------------------------------------------------------------

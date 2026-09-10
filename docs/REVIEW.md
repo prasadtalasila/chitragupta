@@ -153,9 +153,9 @@ comparison it reports means something, then rebuilds and diffs against a
 previous agenda. Every item carries whether it is `unattended` (safe for
 a future automated pass) or merely surfaced for a human to decide;
 `missing-citekey`, `prose`, and the short runs a verbatim scan finds are
-the former, everything judgement-shaped -- `unsupported-claim`,
-`claim-support`, `uncited-source`, `uncited-claim`, `misquoted` and
-`candidate` -- is the latter.
+the former, everything judgement-shaped -- `recorded-but-uncited`,
+`unsupported-claim`, `claim-support`, `uncited-claim` and `misquoted` --
+is the latter.
 
 **`review support` -- does the source actually entail this claim?** Same
 underlying question as `provenance`, asked a different way. `provenance`

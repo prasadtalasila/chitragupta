@@ -21,6 +21,12 @@ from pathlib import Path
 import pytest
 
 from chitragupta.review import verbatim_check as vc
+
+# Reached through its own module rather than the package: the package
+# `__init__.py` is a registered CODE-STANDARDS.md long-file offender at
+# its recorded count, and one more re-export line would grow a debt the
+# ratchet exists to stop growing.
+from chitragupta.review.verbatim_check._scan_notes import _words_note
 from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_index
 from tests.conftest import make_reference
 
@@ -533,6 +539,63 @@ class TestSkipgramTierPrecision:
         findings, _min_run, _suppressed, _ = vc.scan_findings(draft, min_run=8)
 
         assert findings == []
+
+
+class TestSkipgramTierSourceSide:
+    """Tier 2 reports the source passage it matched, not only the draft's.
+
+    This is the tier built for substituted wording, so it is the one
+    where showing a single side hides the most: a stemmed match fires
+    precisely where the two texts do *not* read alike, and a reader shown
+    only the draft cannot see which words moved. The span is recovered
+    from the group's own diagonal (`src_pos - draft_pos`, constant across
+    the merged run) via `overlap_source_text`.
+    """
+
+    def _swapped_draft(self, ledger_con, tmp_path, block, source_extra=""):
+        """The odd-index-swap construction the tests above use, so the
+        exact tier cannot match and mask tier 2 under `scan_findings`'
+        containment rule."""
+        _add_parsed_item(ledger_con, tmp_path, "cited_2024", " ".join(block) + source_extra)
+        swapped = [w if i % 2 == 0 else f"z{i}" for i, w in enumerate(block)]
+        draft = tmp_path / "draft.md"
+        draft.write_text("[@cited_2024] " + " ".join(swapped) + " end.\n")
+        return draft
+
+    def test_the_finding_carries_the_matched_source_passage(self, ledger_con, tmp_path):
+        block = (
+            "alpha bexo gamov delka epsilo zenith etaro thelos iotara kappor lambdo muvex"
+        ).split()
+        draft = self._swapped_draft(ledger_con, tmp_path, block)
+
+        findings, _, _, _ = vc.scan_findings(draft, min_run=8)
+
+        [found] = [f for f in findings if f["tier"] == "skip-gram"]
+        assert found["source_text"] is not None
+        # The even family survived the swap and is what matched; the odd
+        # positions are the substitutions, and both must be visible in
+        # the source side for the markup to have anything to mark.
+        assert "alpha" in found["source_text"]
+        assert "bexo" in found["source_text"]
+        # The draft's own substitution is *not* in the source passage --
+        # this is genuinely the other document, not a copy of `fragment`.
+        assert "z1" not in found["source_text"]
+        assert found["source_text"] != found["fragment"]
+
+    def test_the_source_passage_keeps_the_documents_own_casing(self, ledger_con, tmp_path):
+        """A normalised source side would show no difference in capitals
+        or apostrophes, which is exactly the detail a reader checking a
+        suspected lift wants. `fragment` is normalised; this is not."""
+        block = (
+            "Alpha bexo Gamov delka Epsilo zenith Etaro thelos Iotara kappor Lambdo muvex"
+        ).split()
+        draft = self._swapped_draft(ledger_con, tmp_path, block)
+
+        findings, _, _, _ = vc.scan_findings(draft, min_run=8)
+
+        [found] = [f for f in findings if f["tier"] == "skip-gram"]
+        assert "Alpha" in found["source_text"]
+        assert found["fragment"].islower()
 
 
 class TestSkipgramTierQuoting:
@@ -1353,13 +1416,159 @@ class TestBucket:
 
 class TestBucketTitle:
     def test_long(self):
-        assert vc._bucket_title("long") == f"Long runs (>= {vc.LONG_RUN_WORDS} matched words)"
+        assert vc._bucket_title("long") == f"Long runs (>= {vc.LONG_RUN_WORDS} words of evidence)"
+
+    def test_long_does_not_claim_the_words_were_matched(self):
+        """The bucket is mixed-tier, and `matched_words` -- what
+        `_bucket` thresholds on -- means shared wording only on tiers 1
+        and 2. Saying "matched words" in the heading asserted that of
+        every tier-3 finding underneath it, contradicting the `aligned`
+        that `_words_note` prints three lines below."""
+        assert "matched" not in vc._bucket_title("long")
 
     def test_short(self):
         assert vc._bucket_title("short") == "Short runs"
 
     def test_quoted(self):
         assert vc._bucket_title("quoted") == "Quoted runs"
+
+
+def _rendered_finding(tier, **overrides) -> dict:
+    """A finding dict with every field the two renderers read.
+
+    Not `scan_findings`' output: the tier-3 rendering below has to be
+    pinned against a *known* draft/source pair, and driving the real
+    tier to produce one takes the whole embedding stack (see the `tier3`
+    fixture). What is under test here is the rendering decision, which
+    reads only `tier` and `source_text`.
+    """
+    finding = {
+        "citekey": "source_2024",
+        "page": 7,
+        "end_page": 7,
+        "tier": tier,
+        "span_words": 31,
+        "matched_words": 31,
+        "fragment": "the draft s own words flattened",
+        "context": "before the draft s own words flattened after",
+        "cites_source": True,
+        "quoted": False,
+        "score": 0.404 if tier == "embedding" else None,
+        "source_text": "The source's own, differently worded sentence."
+        if tier == "embedding"
+        else None,
+    }
+    finding.update(overrides)
+    return finding
+
+
+class TestWordsNote:
+    """The word count at the head of a finding says what it means for
+    the tier that produced it.
+
+    Tier 3's `matched_words` is the union of the *aligned sentences'*
+    word ranges, not a count of words the two sides share -- so for the
+    common single-sentence alignment it equals `span_words`,
+    `_matched_note` suppresses itself, and the finding used to print as
+    a bare `"31 words"`, identical in form to a tier-1 line where that
+    number does mean shared wording.
+    """
+
+    def test_a_deterministic_tier_reports_matched_words_unchanged(self):
+        assert _words_note(_rendered_finding("exact")) == "31 words"
+
+    def test_a_deterministic_tier_still_qualifies_a_partial_match(self):
+        finding = _rendered_finding("skip-gram", span_words=40, matched_words=23)
+        assert _words_note(finding) == "40 words, 23 matched"
+
+    def test_an_embedding_finding_says_aligned_not_matched(self):
+        assert _words_note(_rendered_finding("embedding")) == "31 words aligned"
+        assert "matched" not in _words_note(_rendered_finding("embedding"))
+
+    def test_an_embedding_finding_names_the_sentence_units_when_they_differ(self):
+        finding = _rendered_finding("embedding", span_words=40, matched_words=23)
+        assert _words_note(finding) == "40 words aligned, 23 in matched sentence(s)"
+
+
+class TestBothSidesOfAnEmbeddingFinding:
+    """An embedding finding prints its source passage beside the draft's.
+
+    The two are by construction *not* the same wording -- if they were,
+    a deterministic tier would have caught it and this one would have
+    stood aside. Printing only the draft side, normalized into a bare
+    blockquote under a report headed "verbatim", made a restatement read
+    as an uncaught lift; the source side is what makes it legible as a
+    restatement.
+    """
+
+    def test_a_deterministic_tier_prints_one_unlabelled_block(self):
+        rendered = vc.render_scan_markdown(
+            Path("content/drafts/t/survey.md"), [_rendered_finding("exact")], 8, None, "cmd"
+        )
+        assert "> the draft s own words flattened" in rendered
+        # `- Draft: <path>` is in every report's standing header, so the
+        # assertion has to be about the *label line* this rendering adds.
+        assert "\nDraft:\n" not in rendered
+        assert "\nSource:\n" not in rendered
+
+    def test_an_embedding_finding_prints_both_sides_labelled(self):
+        rendered = vc.render_scan_markdown(
+            Path("content/drafts/t/survey.md"), [_rendered_finding("embedding")], 8, None, "cmd"
+        )
+        assert "\nDraft:\n" in rendered
+        assert "\nSource:\n" in rendered
+        assert rendered.index("\nDraft:\n") < rendered.index("\nSource:\n")
+        # Both passages are present, though marked up word by word -- the
+        # shared words survive verbatim, which is what makes the markup
+        # readable at all. `_scan_diff` owns the marking; this only pins
+        # that both sides reach the page.
+        assert "the draft s own words flattened" in rendered.replace("**", "")
+        assert "The source's own, differently worded sentence." in rendered.replace("**", "")
+
+    def test_a_source_passage_containing_newlines_stays_one_blockquote(self):
+        """A blockquote is emitted as a single `> ...` line, so a newline
+        inside the passage would end the quote and render the remainder
+        as an ordinary paragraph beside it.
+
+        This is the common case, not an edge one: most of a real
+        `content/parsed/*.txt` is hard-wrapped -- measured at 42 of 60
+        sources in this project's own corpus, around 110-156 characters
+        depending on the parser backend -- so any span of more than a few
+        words is likely to cross a line break.
+        """
+        finding = _rendered_finding(
+            "embedding", source_text="The source's own\nwording, wrapped\n\nacross lines."
+        )
+
+        rendered = vc.render_scan_markdown(
+            Path("content/drafts/t/survey.md"), [finding], 8, None, "cmd"
+        )
+
+        lines = rendered.splitlines()
+        quote = lines[lines.index("Source:") + 2]
+        assert quote.startswith("> ")
+        # The whole passage is on that one line, markup and all -- not
+        # spilled into paragraphs after the quote ends.
+        assert {"wording,", "wrapped", "across", "lines."} <= set(
+            quote.replace("**", "").replace("~~", "").split()
+        )
+
+    def test_the_payload_keeps_the_sources_real_whitespace(self):
+        """Collapsed at the point of rendering, not in `source_span` or
+        the payload: a consumer matching `source_text` back against the
+        parsed file needs the whitespace the file actually has. Only the
+        blockquote needs it flat."""
+        assert vc._scan_render._one_line("a\nb") == "a b"
+
+    def test_the_terminal_form_prints_both_sides_too(self):
+        printed = vc.format_scan([_rendered_finding("embedding")], 8)
+        assert "draft:  the draft s own words flattened" in printed
+        assert "source: The source's own, differently worded sentence." in printed
+
+    def test_the_terminal_form_leaves_a_deterministic_tier_unlabelled(self):
+        printed = vc.format_scan([_rendered_finding("exact")], 8)
+        assert "      the draft s own words flattened" in printed
+        assert "draft:" not in printed
 
 
 class TestScanWrite:
@@ -1477,7 +1686,7 @@ class TestScanWrite:
         vc.cmd_scan(str(draft), write=True, formats=["md"])
 
         text = (config.REVIEW_DIR / "survey.verbatim.md").read_text()
-        assert f"### Long runs (>= {vc.LONG_RUN_WORDS} matched words)" in text
+        assert f"### Long runs (>= {vc.LONG_RUN_WORDS} words of evidence)" in text
         assert "### Short verbatim runs" not in text
 
     def test_a_quoted_and_cited_run_lands_under_the_quoted_heading(self, ledger_con, tmp_path):
@@ -1640,6 +1849,7 @@ class TestScanPayload:
             "cites_source",
             "quoted",
             "score",
+            "source_text",
             "severity",
         ]
 
@@ -3127,6 +3337,57 @@ class TestEmbeddingTier:
 
         [found] = [f for f in findings if f["tier"] == "embedding"]
         assert body[found["char_start"] : found["char_end"]] == found["draft_text"]
+
+    def test_the_finding_carries_the_source_passage_it_aligned_against(
+        self, ledger_con, tmp_path, tier3
+    ):
+        """The one thing only this tier can report, and the thing it
+        computed and discarded until now.
+
+        Every other field locates the finding in the *draft*. Without
+        the source side a reader has no way to see that the two are
+        differently worded -- which is the whole content of a tier-3
+        finding, and, read from `fragment` alone, looks instead like a
+        verbatim lift the exact tier somehow missed.
+        """
+        _add_parsed_item(ledger_con, tmp_path, "source_2024", "unrelated corpus text")
+        _add_sidecar(
+            "source_2024",
+            [
+                {"text": "A restated claim about the subject.", "label": "text", "page": 2},
+            ],
+        )
+        tier3({("protecting", "restated claim"): 0.95})
+        draft = _tier3_draft(
+            "# Section\n\nThe study reports a strategy of protecting profit here.\n"
+        )
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        [found] = [f for f in findings if f["tier"] == "embedding"]
+        assert found["source_text"] == "A restated claim about the subject."
+        # And it is genuinely the other side, not a copy of the draft's.
+        assert found["source_text"] != found["fragment"]
+
+    def test_a_deterministic_tier_reports_no_separate_source_side(self, ledger_con, tmp_path):
+        """`None`, because there is nothing to show, not because the
+        tier declines to say: an exact run's `fragment` already is the
+        source's wording, and printing it twice under two headings would
+        imply a comparison that never happened."""
+        draft = _content_draft(
+            tmp_path, "A phrase repeated verbatim from the corpus source text here.\n"
+        )
+        _add_parsed_item(
+            ledger_con,
+            tmp_path,
+            "source_2024",
+            "A phrase repeated verbatim from the corpus source text here.",
+        )
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        assert findings
+        assert all(f["source_text"] is None for f in findings)
 
     def test_a_passage_a_deterministic_tier_already_found_is_not_reported_twice(
         self, ledger_con, tmp_path, tier3

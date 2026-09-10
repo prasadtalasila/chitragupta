@@ -113,9 +113,17 @@ def draft(isolated_config):
     - `[@twin_ref_2024]` -- cited while the paper existed, then the
       paper is dropped from the corpus -- `missing-citekey`, unattended
       (`dossier.drift`, computed live from the dossier's own files).
-    - `twin_candidate_2025` -- a second paper that matches the draft's
-      recorded retrieval query but is never cited -- `candidate`,
-      surfaced, also drift-based and live.
+    - `twin_candidate_2025` -- a second paper the dossier's own
+      `evidence.md` records as kept, which the draft never cites --
+      `recorded-but-uncited`, surfaced, also dossier-based and live.
+
+    That third bullet used to be a `candidate` item (a paper the draft's
+    recorded query surfaces but never cites), until that class was
+    removed from the agenda for being noise. It is replaced rather than
+    dropped because this module needs *some* surfaced class to pin the
+    surfaced/unattended partition with, and `recorded-but-uncited` is
+    the one that is likewise computed live from the dossier -- keeping
+    the fixture's "no aid `.json` pre-seeded on disk" property intact.
     """
     _add_paper(
         "twin_ref_2024",
@@ -134,7 +142,8 @@ def draft(isolated_config):
     dossier.init(draft, "survey")
     target = dossier.dossier_dir(draft)
     (target / "evidence.md").write_text(
-        "# Kept evidence\n\n## `twin_ref_2024`\n\nHow the system tracks the asset.\n"
+        "# Kept evidence\n\n## `twin_ref_2024`\n\nHow the system tracks the asset.\n\n"
+        "## `twin_candidate_2025`\n\nKept, but never worked into the draft.\n"
     )
     (target / "sections.md").write_text(
         "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
@@ -163,7 +172,14 @@ def _decite(draft):
         encoding="utf-8",
     )
     target = dossier.dossier_dir(draft)
-    (target / "evidence.md").write_text("# Kept evidence\n")
+    # `twin_candidate_2025` stays: it is the fixture's surfaced
+    # `recorded-but-uncited` item and has nothing to do with the
+    # `missing-citekey` repair this helper performs. Dropping it here
+    # would quietly resolve a second item in a different class and make
+    # this repair look larger than it is.
+    (target / "evidence.md").write_text(
+        "# Kept evidence\n\n## `twin_candidate_2025`\n\nKept, but never worked into the draft.\n"
+    )
     (target / "sections.md").write_text(
         "# Sections and their citekeys\n\n| section | citekeys |\n|---|---|\n"
         "| Deployment | (none) |\n"
@@ -248,10 +264,10 @@ def test_two_failed_attempts_then_the_item_is_escalated(draft):
 def test_surfaced_items_are_never_among_the_unattended_worklist(draft):
     _, payload = _baseline(draft)
     surfaced = [i for i in payload["items"] if not i["unattended"]]
-    assert any(i["class"] == "candidate" for i in surfaced)
+    assert any(i["class"] == "recorded-but-uncited" for i in surfaced)
 
     unattended = [i for i in payload["items"] if i["unattended"]]
-    assert "candidate" not in {i["class"] for i in unattended}
+    assert "recorded-but-uncited" not in {i["class"] for i in unattended}
 
 
 def test_a_pass_that_keeps_falling_terminates_before_the_bound(draft):
