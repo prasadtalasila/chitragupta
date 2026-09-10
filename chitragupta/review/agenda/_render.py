@@ -85,10 +85,23 @@ def _summary_lines(agenda) -> list[str]:
 
 
 def _findings_lines(agenda) -> list[str]:
+    """One `### <class>` heading per class, then a bullet per item.
+
+    The blank line before each heading after the first is load-bearing,
+    not cosmetic. A `###` line placed directly under a `- ...` bullet is
+    lazy continuation in Markdown, not a heading: it is parsed as more
+    text of that bullet, so every class heading but the first vanished
+    into the last item of the class above it. Rendered to PDF the second
+    section had no heading at all, and its items read as a continuation
+    of the previous class -- which, on a worklist whose whole structure
+    is "grouped by class", is the one thing it must not do.
+    """
     lines = ["## Findings", ""]
     current = None
     for item in agenda.items:
         if item.cls != current:
+            if current is not None:
+                lines.append("")
             lines += [f"### {item.cls}", ""]
             current = item.cls
         marker = "unattended" if item.unattended else "surfaced"

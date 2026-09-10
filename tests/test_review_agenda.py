@@ -1095,6 +1095,15 @@ class TestRenderMarkdown:
         assert "### misquoted" in rendered
         assert rendered.count("### missing-citekey") == 1
         assert rendered.index("### missing-citekey") < rendered.index("### misquoted")
+        # A `###` line directly under a `- ...` bullet is lazy
+        # continuation in Markdown, not a heading -- so every class
+        # heading after the first needs a blank line before it or it is
+        # swallowed into the last item of the class above, and the
+        # rendered PDF shows no heading there at all.
+        lines = rendered.splitlines()
+        for index, line in enumerate(lines):
+            if line.startswith("### ") and index:
+                assert lines[index - 1] == "", f"{line!r} follows {lines[index - 1]!r}"
         assert "[unattended]" in rendered
         assert "[surfaced]" in rendered
         assert "(Intro)" in rendered
