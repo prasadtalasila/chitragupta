@@ -214,6 +214,11 @@ _PAYLOAD_FIELDS = (
     "matched_words",
     "start",
     "line",
+    # The paragraph the run starts and ends in, 1-based. Beside `line`
+    # rather than at the end: both are human-readable locators into the
+    # draft, and a consumer reading positionally sees them together.
+    "paragraph",
+    "end_paragraph",
     "char_start",
     "char_end",
     "draft_text",

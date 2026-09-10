@@ -1108,9 +1108,48 @@ class TestVerbatimPassageInTheAgenda:
             "citekey": "a2024",
             "fragment": "the draft s own wording here",
             "source_text": None,
+            "page": 7,
+            "end_page": 7,
+            "line": 35,
+            "paragraph": 4,
+            "end_paragraph": 4,
         }
         base.update(overrides)
         return base
+
+    def test_the_locator_names_the_source_page_and_the_draft_position(self):
+        """The aid's own report has carried `p.N` since it was written and
+        the agenda never did -- an item said which paper and how many
+        words and left the reader to open the aid's report for the only
+        numbers that say where to look."""
+        rendered = self._rendered(self._finding())
+        assert "source p.7, draft line 35, paragraph 4" in rendered
+
+    def test_a_run_spanning_pages_and_paragraphs_reports_both_ranges(self):
+        rendered = self._rendered(self._finding(end_page=8, end_paragraph=5))
+        assert "source p.7-8, draft line 35, paragraphs 4-5" in rendered
+
+    def test_a_finding_filed_before_the_locators_existed_omits_them(self):
+        """The bare agenda reads reports off disk, so a `.json` written by
+        an earlier release has no `paragraph` key. The passage still
+        prints; the locator names only what it actually knows."""
+        finding = self._finding()
+        del finding["paragraph"]
+        del finding["end_paragraph"]
+        del finding["page"]
+        del finding["end_page"]
+        rendered = self._rendered(finding)
+        assert "draft line 35" in rendered
+        assert "paragraph" not in rendered
+        assert "source p." not in rendered
+        assert "the draft s own wording here" in rendered
+
+    def test_a_finding_with_no_locators_at_all_still_prints_its_passage(self):
+        finding = self._finding()
+        for key in ("page", "end_page", "line", "paragraph", "end_paragraph"):
+            del finding[key]
+        rendered = self._rendered(finding)
+        assert "the draft s own wording here" in rendered
 
     def test_an_exact_finding_shows_one_passage(self):
         rendered = self._rendered(self._finding())

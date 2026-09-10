@@ -302,6 +302,17 @@ def _embed_finding(
         ),
         "quoted": _run_is_quoted(run_words),
         "tier": "embedding",
+        # 1-based, like `line` and unlike the 0-based `p_idx` the
+        # tokenizer works in: this is a locator a person reads, and
+        # "paragraph 0" is not how anyone counts paragraphs. Computed in
+        # every tier and thrown away until now -- `run_paragraphs` was
+        # built only to answer `_cites_source` -- though it is the
+        # coarsest and most durable locator a finding has. `line` and
+        # `char_start` both move when anything above the run is edited;
+        # a paragraph number survives ordinary revision, which is what a
+        # reader holding a report next to a changed draft needs.
+        "paragraph": min(run_paragraphs) + 1,
+        "end_paragraph": max(run_paragraphs) + 1,
         # The source passage this alignment matched, which only this tier
         # can report and until now was the one thing it computed and threw
         # away (`SectionAlignment.source_text` has always carried it).

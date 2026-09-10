@@ -1414,6 +1414,45 @@ class TestBucket:
         assert vc._bucket(self._finding(5, quoted=True, cites_source=False)) == "short"
 
 
+class TestParagraphLocator:
+    """`paragraph` is 1-based and counts blank-line-separated blocks.
+
+    Computed in every tier (`run_paragraphs`, built to answer
+    `_cites_source`) and discarded until it was published -- though it is
+    the most durable locator a finding has: `line`, `char_start` and
+    `start` all move when anything above the run is edited, and a
+    paragraph number survives ordinary revision.
+    """
+
+    def test_a_run_in_the_first_paragraph_is_paragraph_one(self, ledger_con, tmp_path):
+        shared = "the quick brown fox jumps over the lazy dog repeatedly today"
+        draft = _content_draft(tmp_path, f"{shared}\n")
+        _add_parsed_item(ledger_con, tmp_path, "src_2024", f"Intro. {shared}. More.")
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        assert findings[0]["paragraph"] == 1
+        assert findings[0]["end_paragraph"] == 1
+
+    def test_paragraphs_are_counted_not_lines(self, ledger_con, tmp_path):
+        """A wrapped paragraph is still one paragraph -- the split is
+        `\\n\\s*\\n`, not every newline -- so the count must not track
+        `line`."""
+        shared = "the quick brown fox jumps over the lazy dog repeatedly today"
+        body = f"First para.\n\nSecond para,\nwrapped over two lines.\n\n{shared}\n"
+        draft = _content_draft(tmp_path, body)
+        _add_parsed_item(ledger_con, tmp_path, "src_2024", f"Intro. {shared}. More.")
+
+        findings, _, _, _ = vc.scan_findings(str(draft))
+
+        found = findings[0]
+        assert found["paragraph"] == 3
+        # The run starts on the sixth line but in the third paragraph;
+        # the two locators are genuinely different numbers here, which is
+        # the point of publishing both.
+        assert found["line"] == 6
+
+
 class TestBucketTitle:
     def test_long(self):
         assert vc._bucket_title("long") == f"Long runs (>= {vc.LONG_RUN_WORDS} words of evidence)"
@@ -1834,6 +1873,8 @@ class TestScanPayload:
             "matched_words",
             "start",
             "line",
+            "paragraph",
+            "end_paragraph",
             "char_start",
             "char_end",
             "draft_text",
