@@ -90,6 +90,37 @@ def _page_range(finding: dict) -> str:
     return f"p.{page}" if page == end_page else f"p.{page}-{end_page}"
 
 
+def _draft_position(finding: dict) -> str:
+    """Where in the *draft* the run sits: `line 35, paragraph 9`.
+
+    The complement of `_page_range`, which locates it in the source. Both
+    numbers, not one: `line` is what an editor jumps to and moves the
+    moment anything above the run is edited, while `paragraph` is coarse
+    enough to survive ordinary revision -- so a report read a week after
+    it was filed still points somewhere real.
+
+    Degrades key by key rather than all-or-nothing. A baseline written
+    before these fields existed is still read by `recheck`
+    (`scan_payload` added them additively), and a locator that vanished
+    entirely because one half was missing would be worse than a partial
+    one.
+
+    `review/agenda/_render.py` composes its own, slightly different line
+    -- it prefixes the source page, which this does not because every
+    caller here already prints `_page_range` beside it. The two are not
+    shared because `review/agenda/` deliberately imports no aid module
+    (see `_items_findings.py`'s module docstring); they are eleven lines
+    each and neither can drift without a test noticing.
+    """
+    parts = []
+    if finding.get("line") is not None:
+        parts.append(f"line {finding['line']}")
+    para, end_para = finding.get("paragraph"), finding.get("end_paragraph")
+    if para is not None:
+        parts.append(f"paragraph {para}" if para == end_para else f"paragraphs {para}-{end_para}")
+    return ", ".join(parts)
+
+
 def _not_run_lines(not_run: list[dict]) -> list[str]:
     """One line per coverage gap, naming the tier and why.
 

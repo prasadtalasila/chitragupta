@@ -612,17 +612,27 @@ _FINDING_RE = re.compile(
     # which `\w` never matches -- with `\w+` this line simply fails to
     # match at all, and the finding silently vanishes from _findings()'s
     # result instead of raising anywhere near the mistake.
-    r"pdf p\.(?P<page>\d+)\] (?P<citekey>\S+) \(tier=(?P<tier>[\w-]+)\)(?P<flags>.*)"
+    # The draft-side locator is optional in the pattern and not in the
+    # output: a finding whose report predates those fields has no line or
+    # paragraph to print, and matching only the long form would make such
+    # a finding vanish from this parser rather than fail an assertion.
+    r"pdf p\.(?P<page>\d+)(?:, draft (?P<position>[^\]]+))?\] "
+    r"(?P<citekey>\S+) \(tier=(?P<tier>[\w-]+)\)(?P<flags>.*)"
 )
 
 
 def _findings(stdout):
-    """`scan`'s three-lines-per-finding output, parsed back into dicts.
+    """`scan`'s per-finding output, parsed back into dicts.
 
     Asserting through the printed form rather than around it is
     deliberate: the printed line *is* the product here, and a change that
     dropped the page number or the UNCITED SOURCE flag would leave every
     in-process assertion on the findings list passing.
+
+    Three lines per finding on the exact tier and four on the other two,
+    which print the source passage under the draft's own and label both.
+    `fragment` is the draft side either way, so a caller comparing it
+    against a planted run does not have to know which tier reported it.
     """
     lines = stdout.splitlines()
     parsed = []
@@ -636,7 +646,8 @@ def _findings(stdout):
                     "citekey": match["citekey"],
                     "tier": match["tier"],
                     "flags": match["flags"].strip(),
-                    "fragment": lines[i + 1].strip(),
+                    "position": (match["position"] or "").strip(),
+                    "fragment": lines[i + 1].strip().removeprefix("draft:").strip(),
                 }
             )
     return parsed

@@ -15,7 +15,7 @@ from pathlib import Path
 from chitragupta import overlap_chroma, review
 from chitragupta.review.verbatim_check._baseline import load_baseline
 from chitragupta.review.verbatim_check._scan import published, scan_findings
-from chitragupta.review.verbatim_check._scan_notes import _page_range
+from chitragupta.review.verbatim_check._scan_notes import _draft_position, _page_range
 
 
 def _tier_drift_warnings(baseline: dict, not_run: list[dict]) -> list[str]:
@@ -190,7 +190,8 @@ def format_recheck(
         for f in items:
             lines.append(
                 f"      {f['id']}  [{f['span_words']} words, {f['severity']}] "
-                f"{f['citekey']} {_page_range(f)} line {f['line']}"
+                f"{f['citekey']} {_page_range(f)}"
+                + (f" -- draft {_draft_position(f)}" if _draft_position(f) else "")
             )
         lines.append("")
     lines.append(f"objective findings (long + short): {before} -> {after} ({after - before:+d})")

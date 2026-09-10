@@ -13,6 +13,7 @@ from pathlib import Path
 from chitragupta import config, overlap_chroma, review
 from chitragupta.review.verbatim_check._scan import published, scan_findings
 from chitragupta.review.verbatim_check._scan_notes import (
+    _draft_position,
     _flags,
     _not_run_lines,
     _page_range,
@@ -36,8 +37,10 @@ def format_scan(
         for f in findings:
             flags = _flags(f)
             flag_text = f" [{', '.join(flags)}]" if flags else ""
+            position = _draft_position(f)
+            where = f", draft {position}" if position else ""
             lines.append(
-                f"  [{_words_note(f)}, pdf {_page_range(f)}] "
+                f"  [{_words_note(f)}, pdf {_page_range(f)}{where}] "
                 f"{f['citekey']} ({_tier_note(f)}){flag_text}"
             )
             # Labelled "draft:" only where there is a second side to

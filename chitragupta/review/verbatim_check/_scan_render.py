@@ -15,6 +15,7 @@ from chitragupta.review.verbatim_check._scan import (
     _bucket_title,
 )
 from chitragupta.review.verbatim_check._scan_notes import (
+    _draft_position,
     _flags,
     _page_range,
     _tier_note,
@@ -101,6 +102,12 @@ def _bucketed_lines(findings: list[dict]) -> list[str]:
                 f"{_page_range(f)} ({_tier_note(f)}){flag_text}",
                 "",
             ]
+            # The heading locates the run in the *source* (`p.N`); this
+            # locates it in the draft. Its own line rather than more
+            # heading, which is already carrying five facts.
+            position = _draft_position(f)
+            if position:
+                lines += [f"At draft {position}.", ""]
             lines += _passage_lines(f)
             lines += [
                 f"In context: {f['context']}...",

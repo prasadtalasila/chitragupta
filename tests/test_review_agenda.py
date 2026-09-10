@@ -1117,6 +1117,39 @@ class TestVerbatimPassageInTheAgenda:
         base.update(overrides)
         return base
 
+    def test_the_json_payload_carries_the_same_locators_as_the_markdown(self):
+        """Joined from the aid's filed JSON in both forms, so the two
+        cannot disagree about where a finding is."""
+        finding = self._finding()
+        item = _items.Item(
+            "v1", "verbatim-run", "Intro", "a2024", 5, True, "s", {"verbatim_id": "abc123"}
+        )
+        sources = _sources_stub(
+            aids={"verbatim": _sources.AidSource(available=True, data={"findings": [finding]})}
+        )
+        built = agenda.Agenda(
+            draft=Path("content/drafts/t/survey.md"), sources=sources, items=[item]
+        )
+
+        published = _render.agenda_payload(built, "cmd")["items"][0]
+
+        assert (published["page"], published["end_page"]) == (7, 7)
+        assert (published["paragraph"], published["end_paragraph"]) == (4, 4)
+
+    def test_a_class_with_no_such_locator_publishes_the_keys_as_null(self):
+        """Present rather than absent, so `prose` and `verbatim-run`
+        items do not have different key sets and a consumer reading these
+        positionally sees a stable shape."""
+        item = _items.Item("p1", "prose", None, None, 1, True, "s", {})
+        built = agenda.Agenda(
+            draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=[item]
+        )
+
+        published = _render.agenda_payload(built, "cmd")["items"][0]
+
+        assert published["page"] is None
+        assert published["paragraph"] is None
+
     def test_the_locator_names_the_source_page_and_the_draft_position(self):
         """The aid's own report has carried `p.N` since it was written and
         the agenda never did -- an item said which paper and how many
@@ -1285,6 +1318,10 @@ class TestAgendaPayload:
                 "section": "Intro",
                 "citekey": "a2024",
                 "line": None,
+                "page": None,
+                "end_page": None,
+                "paragraph": None,
+                "end_paragraph": None,
                 "unattended": True,
                 "summary": "missing a2024",
                 "detail": {"sections": ["Intro"]},

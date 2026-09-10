@@ -1453,6 +1453,57 @@ class TestParagraphLocator:
         assert found["line"] == 6
 
 
+class TestEveryRenderedSurfaceCarriesTheLocators:
+    """`page` locates a run in the source, `line`/`paragraph` in the
+    draft, and every form of the report says both.
+
+    Pinned per surface because they are four separate renderers with no
+    shared assembly -- the Markdown report, the terminal form, `recheck`'s
+    comparison and the JSON payload -- and a field published but printed
+    nowhere is the state this class exists to prevent recurring.
+    """
+
+    def _finding(self, **overrides):
+        base = _rendered_finding("exact")
+        base.update({"line": 35, "paragraph": 9, "end_paragraph": 9, "page": 7, "end_page": 7})
+        base.update(overrides)
+        return base
+
+    def test_the_markdown_report(self):
+        rendered = vc.render_scan_markdown(
+            Path("content/drafts/t/survey.md"), [self._finding()], 8, None, "cmd"
+        )
+        assert "p.7" in rendered
+        assert "At draft line 35, paragraph 9." in rendered
+
+    def test_the_terminal_form(self):
+        printed = vc.format_scan([self._finding()], 8)
+        assert "pdf p.7, draft line 35, paragraph 9" in printed
+
+    def test_a_multi_paragraph_run_reports_the_range(self):
+        printed = vc.format_scan([self._finding(end_paragraph=10)], 8)
+        assert "paragraphs 9-10" in printed
+
+    def test_a_finding_from_a_report_predating_the_fields_degrades_key_by_key(self):
+        """`scan_payload` added these additively and `recheck` still reads
+        a baseline written before they existed. A locator that vanished
+        because one half was missing would be worse than a partial one."""
+        finding = self._finding()
+        del finding["paragraph"]
+        del finding["end_paragraph"]
+        printed = vc.format_scan([finding], 8)
+        assert "draft line 35" in printed
+        assert "paragraph" not in printed
+
+    def test_no_locator_at_all_prints_no_empty_brackets(self):
+        finding = self._finding()
+        for key in ("line", "paragraph", "end_paragraph"):
+            del finding[key]
+        printed = vc.format_scan([finding], 8)
+        assert "pdf p.7]" in printed
+        assert "draft ," not in printed
+
+
 class TestBucketTitle:
     def test_long(self):
         assert vc._bucket_title("long") == f"Long runs (>= {vc.LONG_RUN_WORDS} words of evidence)"
