@@ -129,14 +129,33 @@ bucket within a class, then position in the draft.
 | --- | --- | --- | --- |
 | `missing-citekey` | drift | defect -- the gate will fail on it | yes |
 | `recorded-but-uncited` | dossier | `missing-citekey` in the other direction -- `evidence.md` or `sections.md` still records a citekey the draft's text no longer cites | no -- surfaced. `recorded - cited` cannot tell a citation the user deleted from a candidate transcribed and never cited, and the two want opposite repairs, so deleting recorded evidence unattended would trade a cosmetic staleness for a real loss. The repair is `dossier prune`, which a person confirms. Computed without a `dossier stamp` baseline, unlike `status`'s own report of the same state |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human. Built: `agenda-reviser` |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human, **and every `embedding`-tier finding whatever its length**. `severity` comes from `_bucket`, which thresholds on `matched_words` and never looks at `tier`, so a short embedding alignment used to arrive here indistinguishable from a short exact run -- authorising an automated edit on the evidence of a similarity score, while `verbatim recheck` already refused even to *count* that tier on the grounds its own docstring gives ("advisory only, permanently": its findings move with tier availability and the embedding model, not only with an edit). Something advisory-only cannot also be safe to act on unasked. Built: `agenda-reviser` |
 | `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the whole class -- a recorded decision. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set |
 | `unsupported-claim` | provenance | judgement | no -- surfaced |
 | `claim-support` | support | judgement | no -- surfaced. Unfiltered by design -- a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)) -- so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
-| `uncited-source` | coverage | judgement | no -- surfaced |
 | `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
 | `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
-| `candidate` | drift | a decision, usually correct to decline | no -- surfaced |
+
+Two classes were removed from this table, and are named here so their
+absence reads as a decision rather than an oversight. `uncited-source`
+(from `coverage`, "was retrieved but never cited") and `candidate` (from
+`drift`, "matches this draft's own queries but is never cited") both
+reported the same thing: the corpus holds a paper the retrieval surfaced
+and the draft does not cite. For a draft that makes no claim from a
+surfaced paper -- the overwhelmingly common case, since retrieval
+surfaces far more than any one draft uses -- declining to cite it is the
+correct outcome, not a finding. As standing agenda items they were
+volume, and volume on a worklist has a real cost: it is read, triaged
+and dismissed by a person on every cycle.
+
+Neither aid changed. `citation_coverage` still computes and reports
+`uncited_candidates` in its own `.json` and `.md`, and `dossier status`
+still reports drift candidates. Asking either directly is how you get
+that list; what stopped is either one reaching the agenda unasked.
+`recorded-but-uncited` deliberately stays, and is a different claim: it
+says the *dossier* records a citekey the draft no longer cites, which is
+an inconsistency between two artefacts the project maintains, not a
+paper someone declined to use.
 
 `support` (C2) asks the same underlying question as `provenance` --
 does the source support this claim? -- but was never wired in as a

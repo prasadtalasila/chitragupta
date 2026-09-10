@@ -5,7 +5,7 @@ Split out of chitragupta/review/verbatim_check.py (#361) -- see
 chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 """
 
-from chitragupta import overlap_skipgram
+from chitragupta import overlap_skipgram, overlap_source_text
 from chitragupta.review.verbatim_check._allowlist import _mask_allowlisted_stemmed
 from chitragupta.review.verbatim_check._masking import _DraftWord
 from chitragupta.review.verbatim_check._merge import _merge_spans
@@ -110,7 +110,7 @@ def _skipgram_findings_from_groups(
     findings = []
     seen_ids = set()
     suppressed = 0
-    for (citekey, _diagonal), spans in groups.items():
+    for (citekey, diagonal), spans in groups.items():
         for start, end, members in _merge_spans(spans, gap):
             span_words = end - start
             if span_words < min_run:
@@ -126,6 +126,7 @@ def _skipgram_findings_from_groups(
                 members,
                 span_words,
                 citekey,
+                diagonal,
                 words,
                 word_strs,
                 newlines,
@@ -185,6 +186,7 @@ def _skipgram_finding(
     members: list[tuple[int, int, int]],
     span_words: int,
     citekey: str,
+    diagonal: int,
     words: list[_DraftWord],
     word_strs: list[str],
     newlines: list[int],
@@ -222,6 +224,17 @@ def _skipgram_finding(
         "cites_source": cites_source,
         "quoted": _run_is_quoted(run_words),
         "tier": "skip-gram",
+        # 1-based, like `line` and unlike the 0-based `p_idx` the
+        # tokenizer works in: this is a locator a person reads, and
+        # "paragraph 0" is not how anyone counts paragraphs. Computed in
+        # every tier and thrown away until now -- `run_paragraphs` was
+        # built only to answer `_cites_source` -- though it is the
+        # coarsest and most durable locator a finding has. `line` and
+        # `char_start` both move when anything above the run is edited;
+        # a paragraph number survives ordinary revision, which is what a
+        # reader holding a report next to a changed draft needs.
+        "paragraph": min(run_paragraphs) + 1,
+        "end_paragraph": max(run_paragraphs) + 1,
         # `None`, not absent and not 0.0: every tier's finding has to
         # carry every published field (`published` projects
         # `_PAYLOAD_FIELDS` with a hard `KeyError`, deliberately), and a
@@ -229,4 +242,14 @@ def _skipgram_finding(
         # would read as "aligned, badly", which is a different claim
         # from "this tier does not measure that".
         "score": None,
+        # Unlike tier 1, this tier *does* have a second side worth
+        # showing. A stemmed-subsequence match fires precisely where the
+        # two texts do not read alike -- a substituted word, an
+        # inflection, a reordering -- so `fragment` is the draft's
+        # wording and the source's is something else. The span is
+        # recovered from the group's own diagonal, which is
+        # `src_pos - draft_pos` and therefore constant across the whole
+        # merged run: the source positions are the draft's shifted by it.
+        # `None` when the parsed text is gone (see `source_span`).
+        "source_text": overlap_source_text.source_span(citekey, start + diagonal, end + diagonal),
     }

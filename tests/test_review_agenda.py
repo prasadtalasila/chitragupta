@@ -310,26 +310,45 @@ class TestMissingCitekeyItems:
         assert items[0].section is None
 
 
-class TestCandidateItems:
-    def test_no_drift_gives_no_items(self):
-        assert _items.candidate_items(None) == []
+class TestSurfacedButNeverUsedClassesAreGone:
+    """`uncited-source` and `candidate` were removed from the agenda.
 
-    def test_one_item_per_candidate(self):
+    Both said "the corpus holds a paper you surfaced and did not cite",
+    which for a draft that makes no claim from it is the correct outcome
+    rather than a finding. The aids that computed them are untouched --
+    that is the point of the pair of tests below: the *inputs* that used
+    to raise each class are still constructed here, in full, and the
+    assertion is that the agenda no longer turns either into an item. A
+    test that merely dropped the old ones would pass just as well if the
+    aids had been deleted too, which is a different change from the one
+    that was made.
+    """
+
+    def test_neither_class_is_in_the_class_table(self):
+        assert "uncited-source" not in _items.CLASSES
+        assert "candidate" not in _items.CLASSES
+
+    def test_a_drift_candidate_raises_no_agenda_item(self):
         drift = Drift(
             dossier=Path("d"),
             name="d",
             draft=None,
             candidates=[Candidate("b2024", "A Paper", ["query one"])],
         )
-        items = _items.candidate_items(drift)
-        assert len(items) == 1
-        item = items[0]
-        assert item.cls == "candidate"
-        assert item.citekey == "b2024"
-        assert item.line is None
-        assert item.section is None
-        assert item.unattended is False
-        assert item.detail == {"queries": ["query one"]}
+        sources = _sources_stub(drift=_sources.DriftSource(available=True, data=drift))
+        assert _items.all_items(sources, []) == []
+
+    def test_an_uncited_retrieved_source_raises_no_agenda_item(self):
+        coverage = _sources.AidSource(
+            available=True,
+            data={
+                "findings": [
+                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"}
+                ]
+            },
+        )
+        sources = _sources_stub(aids={"coverage": coverage})
+        assert _items.all_items(sources, []) == []
 
 
 class TestRecordedButUncitedItems:
@@ -380,6 +399,7 @@ class TestVerbatimRunItems:
             "matched_words": 20,
             "fragment": "some borrowed wording",
             "severity": "long",
+            "tier": "exact",
         }
         base.update(overrides)
         return base
@@ -436,6 +456,61 @@ class TestVerbatimRunItems:
         )
         items = _items_findings.verbatim_run_items(source, [])
         assert items[0].summary == "15-word verbatim run citing `a2024`, 6 matched"
+
+    def test_an_embedding_finding_is_never_unattended_however_short(self):
+        """`severity` comes from `_bucket`, which thresholds on
+        `matched_words` and never looks at `tier` -- so a short embedding
+        alignment arrives here indistinguishable from a short exact run.
+        Marking it unattended authorises `agenda-reviser` to edit a
+        passage away on the evidence of a similarity score, while
+        `verbatim_check._recheck` refuses to so much as *count* that tier
+        because its own docstring calls it advisory only, permanently."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, tier="embedding")]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].unattended is False
+
+    def test_a_short_skipgram_finding_is_still_unattended(self):
+        """The gate is on the embedding tier specifically, not on
+        "anything that is not exact": skip-gram is deterministic,
+        reproducible from the corpus alone, and is counted by `recheck`
+        like tier 1."""
+        source = _sources.AidSource(
+            available=True,
+            data={"findings": [self._finding(severity="short", matched_words=8, tier="skip-gram")]},
+        )
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].unattended is True
+
+    def test_the_summary_names_what_the_tier_actually_found(self):
+        """Calling every finding a "verbatim run" is true only of tier 1.
+        A skip-gram match has words substituted and an embedding
+        alignment shares no wording at all -- and the agenda must not
+        make a stronger claim than the aid it quotes."""
+
+        def summary(tier):
+            source = _sources.AidSource(
+                available=True, data={"findings": [self._finding(tier=tier)]}
+            )
+            return _items_findings.verbatim_run_items(source, [])[0].summary
+
+        assert summary("exact").startswith("20-word verbatim run")
+        assert summary("skip-gram").startswith("20-word skip-gram match")
+        assert summary("embedding").startswith("20-word embedding-tier alignment")
+
+    def test_a_report_filed_before_the_tier_field_existed_overstates_nothing(self):
+        """`tier` is absent from a payload written before it existed, and
+        the agenda reads reports off disk rather than recomputing them.
+        The fallback is the neutral "run" -- never "verbatim run", which
+        would be a claim about a tier that did not record itself."""
+        finding = self._finding()
+        del finding["tier"]
+        source = _sources.AidSource(available=True, data={"findings": [finding]})
+        items = _items_findings.verbatim_run_items(source, [])
+        assert items[0].summary == "20-word run citing `a2024`"
+        assert "verbatim" not in items[0].summary
 
 
 class TestProseItems:
@@ -582,29 +657,6 @@ class TestClaimSupportItems:
         source = _sources.AidSource(available=True, data={"findings": [self._finding(score=0.97)]})
         items = _items_findings.claim_support_items(source, [])
         assert len(items) == 1
-
-
-class TestUncitedSourceItems:
-    def test_unavailable_source_gives_no_items(self):
-        assert _items_findings.uncited_source_items(_sources.AidSource()) == []
-
-    def test_only_uncited_candidates_status_is_kept(self):
-        source = _sources.AidSource(
-            available=True,
-            data={
-                "findings": [
-                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"},
-                    {
-                        "id": "2",
-                        "citekey": "b2024",
-                        "title": "B",
-                        "status": "cited_outside_candidates",
-                    },
-                ]
-            },
-        )
-        items = _items_findings.uncited_source_items(source)
-        assert [item.citekey for item in items] == ["a2024"]
 
 
 class TestUncitedClaimItems:
@@ -896,9 +948,9 @@ class TestSeverityRank:
 
 class TestSort:
     def test_class_order_wins_over_input_order(self):
-        candidate = _items.Item("c", "candidate", None, "z", None, False, "s", {})
+        last = _items.Item("c", "misquoted", None, "z", None, False, "s", {})
         missing = _items.Item("m", "missing-citekey", None, "a", None, True, "s", {})
-        assert [i.id for i in _order.sort([candidate, missing])] == ["m", "c"]
+        assert [i.id for i in _order.sort([last, missing])] == ["m", "c"]
 
     def test_severity_outranks_position_within_a_class(self):
         weak_early = _items.Item(
@@ -914,25 +966,28 @@ class TestSort:
         second = _items.Item("bbb", "prose", None, None, 5, False, "s", {})
         assert [i.id for i in _order.sort([second, first])] == ["aaa", "bbb"]
 
-    def test_misquoted_sits_between_uncited_claim_and_candidate(self):
-        candidate = _items.Item("c", "candidate", None, "z", None, False, "s", {})
+    def test_misquoted_sorts_after_uncited_claim(self):
         misquoted = _items.Item("m", "misquoted", None, "a", None, False, "s", {})
         uncited_claim = _items.Item("u", "uncited-claim", None, None, 1, False, "s", {})
-        ordered = [i.cls for i in _order.sort([candidate, misquoted, uncited_claim])]
-        assert ordered == ["uncited-claim", "misquoted", "candidate"]
+        ordered = [i.cls for i in _order.sort([misquoted, uncited_claim])]
+        assert ordered == ["uncited-claim", "misquoted"]
 
-    def test_claim_support_sits_between_unsupported_claim_and_uncited_source(self):
-        uncited_source = _items.Item("s", "uncited-source", None, "z", None, False, "s", {})
+    def test_claim_support_sits_between_unsupported_claim_and_uncited_claim(self):
+        uncited_claim = _items.Item("s", "uncited-claim", None, "z", 9, False, "s", {})
         claim_support = _items.Item("cs", "claim-support", None, "a", 1, False, "s", {"score": 0.2})
         unsupported_claim = _items.Item(
             "uc", "unsupported-claim", None, None, 1, False, "s", {"band": "weak"}
         )
-        ordered = [i.cls for i in _order.sort([uncited_source, claim_support, unsupported_claim])]
-        assert ordered == ["unsupported-claim", "claim-support", "uncited-source"]
+        ordered = [i.cls for i in _order.sort([uncited_claim, claim_support, unsupported_claim])]
+        assert ordered == ["unsupported-claim", "claim-support", "uncited-claim"]
 
-    def test_candidates_order_by_citekey(self):
-        z = _items.Item("z-id", "candidate", None, "z2024", None, False, "s", {})
-        a = _items.Item("a-id", "candidate", None, "a2024", None, False, "s", {})
+    def test_unpositioned_items_order_by_citekey(self):
+        """`line is None` collapses to the same sort position for every
+        item in the class, so citekey is what actually separates them --
+        the property `misquoted` and `recorded-but-uncited` both rely on
+        now that `candidate`, which used to demonstrate it, is gone."""
+        z = _items.Item("z-id", "misquoted", None, "z2024", None, False, "s", {})
+        a = _items.Item("a-id", "misquoted", None, "a2024", None, False, "s", {})
         assert [i.citekey for i in _order.sort([z, a])] == ["a2024", "z2024"]
 
 
@@ -1018,6 +1073,188 @@ class TestRenderMarkdown:
         )
         assert "- Dossier drift: read" in rendered
 
+
+class TestVerbatimPassageInTheAgenda:
+    """A `verbatim-run` item carries the overlapping text under it.
+
+    The passage is joined from the verbatim aid's *filed JSON* through
+    `agenda.sources`, never from `item.detail` -- which stays thin by a
+    documented decision, and whose whole contract is "look the id up in
+    the raising aid's own report". This does exactly that.
+    """
+
+    def _rendered(self, finding, item_detail=None):
+        item = _items.Item(
+            "v1",
+            "verbatim-run",
+            "Intro",
+            finding.get("citekey"),
+            5,
+            True,
+            "9-word skip-gram match",
+            item_detail if item_detail is not None else {"verbatim_id": finding.get("id")},
+        )
+        sources = _sources_stub(
+            aids={"verbatim": _sources.AidSource(available=True, data={"findings": [finding]})}
+        )
+        return _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[item]),
+            "cmd",
+        )
+
+    def _finding(self, **overrides):
+        base = {
+            "id": "abc123",
+            "citekey": "a2024",
+            "fragment": "the draft s own wording here",
+            "source_text": None,
+            "page": 7,
+            "end_page": 7,
+            "line": 35,
+            "paragraph": 4,
+            "end_paragraph": 4,
+        }
+        base.update(overrides)
+        return base
+
+    def test_the_json_payload_carries_the_same_locators_as_the_markdown(self):
+        """Joined from the aid's filed JSON in both forms, so the two
+        cannot disagree about where a finding is."""
+        finding = self._finding()
+        item = _items.Item(
+            "v1", "verbatim-run", "Intro", "a2024", 5, True, "s", {"verbatim_id": "abc123"}
+        )
+        sources = _sources_stub(
+            aids={"verbatim": _sources.AidSource(available=True, data={"findings": [finding]})}
+        )
+        built = agenda.Agenda(
+            draft=Path("content/drafts/t/survey.md"), sources=sources, items=[item]
+        )
+
+        published = _render.agenda_payload(built, "cmd")["items"][0]
+
+        assert (published["page"], published["end_page"]) == (7, 7)
+        assert (published["paragraph"], published["end_paragraph"]) == (4, 4)
+
+    def test_a_class_with_no_such_locator_publishes_the_keys_as_null(self):
+        """Present rather than absent, so `prose` and `verbatim-run`
+        items do not have different key sets and a consumer reading these
+        positionally sees a stable shape."""
+        item = _items.Item("p1", "prose", None, None, 1, True, "s", {})
+        built = agenda.Agenda(
+            draft=Path("content/drafts/t/survey.md"), sources=_sources_stub(), items=[item]
+        )
+
+        published = _render.agenda_payload(built, "cmd")["items"][0]
+
+        assert published["page"] is None
+        assert published["paragraph"] is None
+
+    def test_the_locator_names_the_source_page_and_the_draft_position(self):
+        """The aid's own report has carried `p.N` since it was written and
+        the agenda never did -- an item said which paper and how many
+        words and left the reader to open the aid's report for the only
+        numbers that say where to look."""
+        rendered = self._rendered(self._finding())
+        assert "source p.7, draft line 35, paragraph 4" in rendered
+
+    def test_a_run_spanning_pages_and_paragraphs_reports_both_ranges(self):
+        rendered = self._rendered(self._finding(end_page=8, end_paragraph=5))
+        assert "source p.7-8, draft line 35, paragraphs 4-5" in rendered
+
+    def test_a_finding_filed_before_the_locators_existed_omits_them(self):
+        """The bare agenda reads reports off disk, so a `.json` written by
+        an earlier release has no `paragraph` key. The passage still
+        prints; the locator names only what it actually knows."""
+        finding = self._finding()
+        del finding["paragraph"]
+        del finding["end_paragraph"]
+        del finding["page"]
+        del finding["end_page"]
+        rendered = self._rendered(finding)
+        assert "draft line 35" in rendered
+        assert "paragraph" not in rendered
+        assert "source p." not in rendered
+        assert "the draft s own wording here" in rendered
+
+    def test_a_finding_with_no_locators_at_all_still_prints_its_passage(self):
+        finding = self._finding()
+        for key in ("page", "end_page", "line", "paragraph", "end_paragraph"):
+            del finding[key]
+        rendered = self._rendered(finding)
+        assert "the draft s own wording here" in rendered
+
+    def test_an_exact_finding_shows_one_passage(self):
+        rendered = self._rendered(self._finding())
+        assert "    > the draft s own wording here" in rendered
+        assert "**source**" not in rendered
+
+    def test_a_two_sided_finding_shows_both_marked_up(self):
+        rendered = self._rendered(
+            self._finding(fragment="the cat sat down", source_text="The dog sat down")
+        )
+        assert "**draft** -- the **cat** sat down" in rendered
+        assert "**source** -- The **dog** sat down" in rendered
+
+    def test_the_passage_is_indented_under_its_bullet(self):
+        """A `>` placed flush left directly under a `- ...` bullet is not
+        a blockquote inside the item -- Markdown reads it as lazy
+        continuation, and it renders beside the item instead of within
+        it. This is the same failure that lost every class heading but
+        the first, and it is invisible in the `.md` source."""
+        rendered = self._rendered(self._finding())
+        quotes = [ln for ln in rendered.splitlines() if ln.lstrip().startswith(">")]
+        passage = [ln for ln in quotes if "the draft s own wording" in ln]
+        assert passage and all(ln.startswith("    ") for ln in passage)
+
+    def test_a_newline_in_the_source_stays_inside_the_blockquote(self):
+        rendered = self._rendered(self._finding(fragment="a b c", source_text="a\nb\n\nc"))
+        assert len([ln for ln in rendered.splitlines() if "**source**" in ln]) == 1
+
+    def test_no_passage_when_the_aids_report_lacks_the_id(self):
+        """The bare agenda *reads* reports rather than running them, so a
+        `.json` older than the item list can genuinely lack an id. The
+        item still prints; only its passage is omitted."""
+        rendered = self._rendered(self._finding(), item_detail={"verbatim_id": "not-in-report"})
+        assert "`v1`" in rendered
+        assert "the draft s own wording" not in rendered
+
+    def test_no_passage_when_the_item_carries_no_id(self):
+        rendered = self._rendered(self._finding(), item_detail={})
+        assert "the draft s own wording" not in rendered
+
+    def test_no_passage_when_the_aid_is_unavailable(self):
+        item = _items.Item(
+            "v1", "verbatim-run", None, "a2024", 5, True, "s", {"verbatim_id": "abc123"}
+        )
+        rendered = _render.render_markdown(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"),
+                sources=_sources_stub(),
+                items=[item],
+            ),
+            "cmd",
+        )
+        assert "`v1`" in rendered
+
+    def test_a_finding_with_no_fragment_is_skipped(self):
+        rendered = self._rendered(self._finding(fragment=""))
+        assert "    >" not in rendered
+
+    def test_other_classes_carry_no_passage(self):
+        item = _items.Item("p1", "prose", None, None, 1, True, "a prose finding", {})
+        rendered = _render.render_markdown(
+            agenda.Agenda(
+                draft=Path("content/drafts/t/survey.md"),
+                sources=_sources_stub(),
+                items=[item],
+            ),
+            "cmd",
+        )
+        assert "    >" not in rendered
+
+
+class TestRenderMarkdownGrouping:
     def test_findings_grouped_by_class_then_severity(self):
         items = _order.sort(
             [
@@ -1027,7 +1264,7 @@ class TestRenderMarkdown:
                 _items.Item(
                     "m2", "missing-citekey", "Intro", "b2024", None, True, "missing b2024", {}
                 ),
-                _items.Item("c1", "candidate", None, "b2024", None, False, "candidate b2024", {}),
+                _items.Item("c1", "misquoted", None, "b2024", None, False, "misquoted b2024", {}),
             ]
         )
         rendered = _render.render_markdown(
@@ -1037,9 +1274,18 @@ class TestRenderMarkdown:
             "cmd",
         )
         assert "### missing-citekey" in rendered
-        assert "### candidate" in rendered
+        assert "### misquoted" in rendered
         assert rendered.count("### missing-citekey") == 1
-        assert rendered.index("### missing-citekey") < rendered.index("### candidate")
+        assert rendered.index("### missing-citekey") < rendered.index("### misquoted")
+        # A `###` line directly under a `- ...` bullet is lazy
+        # continuation in Markdown, not a heading -- so every class
+        # heading after the first needs a blank line before it or it is
+        # swallowed into the last item of the class above, and the
+        # rendered PDF shows no heading there at all.
+        lines = rendered.splitlines()
+        for index, line in enumerate(lines):
+            if line.startswith("### ") and index:
+                assert lines[index - 1] == "", f"{line!r} follows {lines[index - 1]!r}"
         assert "[unattended]" in rendered
         assert "[surfaced]" in rendered
         assert "(Intro)" in rendered
@@ -1072,6 +1318,10 @@ class TestAgendaPayload:
                 "section": "Intro",
                 "citekey": "a2024",
                 "line": None,
+                "page": None,
+                "end_page": None,
+                "paragraph": None,
+                "end_paragraph": None,
                 "unattended": True,
                 "summary": "missing a2024",
                 "detail": {"sections": ["Intro"]},
@@ -1253,16 +1503,16 @@ class TestBuildAgendaAndCli:
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
         review.write_json(
             draft,
-            "coverage",
+            "uncited",
             {
                 "findings": [
-                    {"id": "1", "citekey": "a2024", "title": "A", "status": "uncited_candidates"}
+                    {"id": "1", "line": 1, "sentence": "A bare claim.", "block_cites": False}
                 ]
             },
         )
         built = agenda.build_agenda(draft)
         assert len(built.items) == 1
-        assert built.items[0].cls == "uncited-source"
+        assert built.items[0].cls == "uncited-claim"
 
 
 # --------------------------------------------------------------------------

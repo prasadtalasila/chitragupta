@@ -110,11 +110,10 @@ from chitragupta.review.verbatim_check._scan import (
     _PAYLOAD_FIELDS,
     _bucket,
     _bucket_title,
-    _flags,
-    _tier_note,
     published,
     scan_findings,
 )
+from chitragupta.review.verbatim_check._scan_notes import _flags, _tier_note
 from chitragupta.review.verbatim_check._scan_cmd import (
     cmd_scan,
     format_scan,

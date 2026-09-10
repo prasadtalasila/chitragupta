@@ -49,6 +49,7 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
         # directly, where every read here tolerates a partial payload.
         words = finding.get("span_words", "?")
         matched = finding.get("matched_words", "?")
+        tier = finding.get("tier")
         items.append(
             Item(
                 id=item_id("verbatim", "verbatim-run", section, citekey, span),
@@ -56,14 +57,52 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
                 section=section,
                 citekey=citekey,
                 line=line,
-                unattended=(severity == "short"),
-                summary=f"{words}-word verbatim run"
-                + (f" citing `{citekey}`" if citekey else "")
-                + (f", {matched} matched" if matched != words else ""),
+                # `short` **and a deterministic tier**. `severity` comes
+                # from `_bucket`, which thresholds on `matched_words` and
+                # never looks at `tier`, so a short embedding alignment
+                # reaches this line looking exactly like a short exact
+                # run -- and was marked unattended, authorising
+                # `agenda-reviser` to edit a passage away on the evidence
+                # of a similarity score. `verbatim_check`'s own
+                # `_recheck.py` already refuses to count that tier
+                # (`f["tier"] != "embedding"`, #500) on the grounds its
+                # docstring gives -- "advisory only, permanently", moving
+                # with tier availability and the embedding model rather
+                # than with an edit. Something advisory-only cannot also
+                # be safe to act on unasked; the two modules disagreeing
+                # about the same tier was the bug, not the wording.
+                unattended=(severity == "short" and tier != "embedding"),
+                summary=_run_summary(tier, words, matched, citekey),
                 detail={"severity": severity, "verbatim_id": finding.get("id")},
             )
         )
     return items
+
+
+def _run_summary(tier: str | None, words, matched, citekey: str | None) -> str:
+    """One line naming what the tier actually found.
+
+    `"N-word verbatim run"` was said of every finding regardless of tier,
+    which is true only of the exact tier: a skip-gram finding is a
+    stemmed match with words substituted, and an embedding finding shares
+    no wording at all. The agenda must not describe a finding differently
+    from the aid it quotes -- and calling a restatement a verbatim run is
+    a stronger claim than the aid ever made.
+
+    `tier` may be absent from a report filed before the field existed;
+    the wording falls back to the neutral "run", which overstates
+    nothing.
+    """
+    kind = {
+        "exact": "verbatim run",
+        "skip-gram": "skip-gram match",
+        "embedding": "embedding-tier alignment",
+    }.get(tier, "run")
+    return (
+        f"{words}-word {kind}"
+        + (f" citing `{citekey}`" if citekey else "")
+        + (f", {matched} matched" if matched != words else "")
+    )
 
 
 def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
@@ -188,32 +227,6 @@ def claim_support_items(source: AidSource, sections: list[Section]) -> list[Item
                 summary=f"`[@{citekey}]` entailment score {score:.0%} "
                 f"(not a verdict): {claim[:80]}",
                 detail={"score": score, "claim": claim, "support_id": finding.get("id")},
-            )
-        )
-    return items
-
-
-def uncited_source_items(source: AidSource) -> list[Item]:
-    """Only `status == \"uncited_candidates\"`. `\"cited_outside_candidates\"`
-    is explicitly not a problem per `citation_coverage.py`'s own
-    docstring and is excluded."""
-    if not source.available:
-        return []
-    items = []
-    for finding in source.data.get("findings", []):
-        if finding.get("status") != "uncited_candidates":
-            continue
-        citekey = finding.get("citekey")
-        items.append(
-            Item(
-                id=item_id("coverage", "uncited-source", None, citekey, citekey),
-                cls="uncited-source",
-                section=None,
-                citekey=citekey,
-                line=None,
-                unattended=False,
-                summary=f"`{citekey}` ({finding.get('title', '')}) was retrieved but never cited",
-                detail={"coverage_id": finding.get("id")},
             )
         )
     return items

@@ -302,6 +302,30 @@ def _embed_finding(
         ),
         "quoted": _run_is_quoted(run_words),
         "tier": "embedding",
+        # 1-based, like `line` and unlike the 0-based `p_idx` the
+        # tokenizer works in: this is a locator a person reads, and
+        # "paragraph 0" is not how anyone counts paragraphs. Computed in
+        # every tier and thrown away until now -- `run_paragraphs` was
+        # built only to answer `_cites_source` -- though it is the
+        # coarsest and most durable locator a finding has. `line` and
+        # `char_start` both move when anything above the run is edited;
+        # a paragraph number survives ordinary revision, which is what a
+        # reader holding a report next to a changed draft needs.
+        "paragraph": min(run_paragraphs) + 1,
+        "end_paragraph": max(run_paragraphs) + 1,
+        # The source passage this alignment matched, which only this tier
+        # can report and until now was the one thing it computed and threw
+        # away (`SectionAlignment.source_text` has always carried it).
+        # `fragment` above is the *draft's* words -- normalized, lowercased
+        # and stripped of punctuation -- and for tiers 1 and 2 that is also
+        # the source's words, so a report showing `fragment` alone says
+        # everything there is to say. For this tier it does not: the two
+        # sides are by construction *different wording*, and a reader shown
+        # only the draft side in a report headed "verbatim" reasonably reads
+        # a flattened run of fluent prose as a lift and asks why tier 1
+        # missed it. Reporting both sides is what makes a restatement
+        # legible as a restatement.
+        "source_text": alignment.source_text,
         # Rounded where it is built, not where it is printed: the JSON
         # payload and the Markdown report both read this field, and a
         # float that renders differently in the two is the kind of

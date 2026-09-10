@@ -1,7 +1,7 @@
-"""`Item`, the worklist-entry type, plus the three dossier-based
-extractors (`missing-citekey`, `recorded-but-uncited`, `candidate`) and
-the `all_items` orchestrator. The other seven classes' extractors --
-reading the other aids' `.json` and `style_check`'s findings -- are
+"""`Item`, the worklist-entry type, plus the two dossier-based
+extractors (`missing-citekey`, `recorded-but-uncited`) and the
+`all_items` orchestrator. The other six classes' extractors -- reading
+the other aids' `.json` and `style_check`'s findings -- are
 `_items_findings.py`, split out once the two halves together crossed
 the 250-code-line cap.
 """
@@ -14,6 +14,23 @@ from chitragupta.review.agenda._identity import item_id
 from chitragupta.review.agenda._sources import RecordedSource
 
 # The item-class table's own order (docs/AUTO-IMPROVEMENT.md).
+#
+# `uncited-source` and `candidate` were both removed from this table. Each
+# said some version of "the corpus holds a paper you surfaced and did not
+# cite" -- `uncited-source` from the coverage aid's `uncited_candidates`,
+# `candidate` from dossier drift's own recorded queries -- and for a draft
+# that makes no claim from a surfaced paper, not citing it is the correct
+# and overwhelmingly common outcome, not a finding. Standing on the agenda
+# they were near-pure volume, and volume on a worklist is not free: it is
+# read, triaged and dismissed by a person, every cycle, forever.
+#
+# Both aids still compute and still report them -- `citation_coverage`'s
+# own `.json`/`.md` and `dossier status` are unchanged, and asking either
+# directly is how you get the list now. What changed is that neither
+# reaches the agenda unasked. `recorded-but-uncited` deliberately stays:
+# it is the different claim that the *dossier* records a citekey the draft
+# no longer cites, which is an inconsistency between two artefacts rather
+# than a paper someone declined to use.
 CLASSES = (
     "missing-citekey",
     "recorded-but-uncited",
@@ -21,10 +38,8 @@ CLASSES = (
     "prose",
     "unsupported-claim",
     "claim-support",
-    "uncited-source",
     "uncited-claim",
     "misquoted",
-    "candidate",
 )
 
 
@@ -105,33 +120,6 @@ def recorded_but_uncited_items(source: RecordedSource) -> list[Item]:
     return items
 
 
-def candidate_items(drift: Drift | None) -> list[Item]:
-    """One item per paper the corpus gained that this draft's own
-    recorded queries would surface. `drift.reconsider` never produces an
-    item under any state: `drift()` already excludes `rejected.md`
-    citekeys from `.candidates` via `cited_citekeys()`'s
-    `MENTIONED_FILES`, so "a declined candidate is never re-proposed" is
-    enforced by that call, not filtered here."""
-    if drift is None:
-        return []
-    items = []
-    for candidate in sorted(drift.candidates, key=lambda c: c.citekey):
-        items.append(
-            Item(
-                id=item_id("drift", "candidate", None, candidate.citekey, candidate.citekey),
-                cls="candidate",
-                section=None,
-                citekey=candidate.citekey,
-                line=None,
-                unattended=False,
-                summary=f"`{candidate.citekey}` ({candidate.title}) matches this draft's "
-                "own queries but is never cited",
-                detail={"queries": candidate.queries},
-            )
-        )
-    return items
-
-
 def all_items(sources, sections: list[Section]) -> list[Item]:
     """Every item from every class, unordered and undeduplicated --
     `_dedup.merge` and `_order.sort` do the rest."""
@@ -144,8 +132,6 @@ def all_items(sources, sections: list[Section]) -> list[Item]:
         *f.prose_items(sources.style, sections),
         *f.unsupported_claim_items(sources.aids["provenance"], sections),
         *f.claim_support_items(sources.aids["support"], sections),
-        *f.uncited_source_items(sources.aids["coverage"]),
         *f.uncited_claim_items(sources.aids["uncited"], sections),
         *f.misquoted_items(sources.aids["quotation"]),
-        *candidate_items(sources.drift.data),
     ]

@@ -6,6 +6,10 @@ discipline every other review aid's `*_payload` function documents).
 
 from chitragupta import review
 from chitragupta.review.agenda._items import CLASSES
+from chitragupta.review.agenda._passages import (
+    _passage_lines,
+    _verbatim_finding,
+)
 
 # `{aid: review.AIDS[aid] for aid in _sources.AID_NAMES}`, restated
 # rather than derived -- and the restatement is load-bearing to get
@@ -85,15 +89,29 @@ def _summary_lines(agenda) -> list[str]:
 
 
 def _findings_lines(agenda) -> list[str]:
+    """One `### <class>` heading per class, then a bullet per item.
+
+    The blank line before each heading after the first is load-bearing,
+    not cosmetic. A `###` line placed directly under a `- ...` bullet is
+    lazy continuation in Markdown, not a heading: it is parsed as more
+    text of that bullet, so every class heading but the first vanished
+    into the last item of the class above it. Rendered to PDF the second
+    section had no heading at all, and its items read as a continuation
+    of the previous class -- which, on a worklist whose whole structure
+    is "grouped by class", is the one thing it must not do.
+    """
     lines = ["## Findings", ""]
     current = None
     for item in agenda.items:
         if item.cls != current:
+            if current is not None:
+                lines.append("")
             lines += [f"### {item.cls}", ""]
             current = item.cls
         marker = "unattended" if item.unattended else "surfaced"
         section = f" ({item.section})" if item.section else ""
         lines.append(f"- `{item.id}` [{marker}]{section}: {item.summary}")
+        lines += _passage_lines(agenda, item)
     lines.append("")
     return lines
 
@@ -124,13 +142,39 @@ def render_markdown(agenda, command: str) -> str:
     return "\n".join(lines)
 
 
-def _item_dict(item) -> dict:
+def _item_dict(agenda, item) -> dict:
+    """One item as the payload publishes it.
+
+    `page`/`end_page`/`paragraph`/`end_paragraph` are joined from the
+    raising aid's own filed JSON, exactly as `_passage_lines` joins the
+    passage, and are `None` on every class that has no such locator --
+    present rather than absent, so a consumer reading these positionally
+    sees a stable shape and `prose` and `verbatim-run` items do not have
+    different key sets.
+
+    Joined rather than carried on `Item` or stuffed into `detail`: the
+    agenda's own `detail` is thin by a documented decision, and widening
+    `Item` with four fields only one class can fill would push the same
+    locator into every other extractor. The rendered Markdown reads its
+    locator from the same join, so the two forms cannot disagree.
+    """
+    finding = (
+        _verbatim_finding(agenda, item.detail.get("verbatim_id"))
+        if item.cls == "verbatim-run"
+        else None
+    ) or {}
     return {
         "id": item.id,
         "class": item.cls,
         "section": item.section,
         "citekey": item.citekey,
         "line": item.line,
+        # Appended after `line` rather than slotted beside it: a consumer
+        # written against the previous shape sees an unchanged prefix.
+        "page": finding.get("page"),
+        "end_page": finding.get("end_page"),
+        "paragraph": finding.get("paragraph"),
+        "end_paragraph": finding.get("end_paragraph"),
         "unattended": item.unattended,
         "summary": item.summary,
         "detail": item.detail,
@@ -180,7 +224,7 @@ def agenda_payload(agenda, command: str) -> dict:
             "sources": _sources_dict(agenda),
             "pass_bound": agenda_module.PASS_BOUND,
             "objective_class_count": agenda.objective_class_count,
-            "items": [_item_dict(item) for item in agenda.items],
+            "items": [_item_dict(agenda, item) for item in agenda.items],
         }
     )
     return payload

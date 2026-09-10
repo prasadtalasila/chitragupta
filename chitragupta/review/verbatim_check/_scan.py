@@ -143,50 +143,6 @@ def scan_findings(
     return findings, min_run, suppressed, not_run
 
 
-def _flags(finding: dict) -> list[str]:
-    flags = []
-    if not finding["cites_source"]:
-        flags.append("UNCITED SOURCE")
-    if finding["quoted"]:
-        flags.append("quoted")
-    return flags
-
-
-def _matched_note(finding: dict) -> str:
-    if finding["matched_words"] == finding["span_words"]:
-        return ""
-    return f", {finding['matched_words']} matched"
-
-
-def _tier_note(finding: dict) -> str:
-    """`tier=exact`, or `tier=embedding, score=0.41` where there is a
-    score to report.
-
-    The score rides inside the tier's own parenthesis rather than beside
-    the word count, because it is only meaningful *given* the tier: it is
-    an alignment strength in `overlap_embed`'s shifted-cosine units, not
-    a probability and not comparable to anything tier 1 or tier 2
-    reports.
-    """
-    if finding["score"] is None:
-        return f"tier={finding['tier']}"
-    return f"tier={finding['tier']}, score={finding['score']}"
-
-
-def _page_range(finding: dict) -> str:
-    """`p.N` for an ordinary single-page run, `p.N-M` for one whose
-    postings start on more than one page (#131).
-
-    Not a guarantee that `p.N` never means multi-page content: `page`/
-    `end_page` are the pages an n-gram in the run actually *starts* on, so
-    a remainder shorter than the index's own n-gram size -- recovered
-    into the run's word content because nothing that short can start a
-    gram of its own -- can leave `end_page` unmoved even though the run's
-    text reaches that page. See `scan_findings`'s docstring."""
-    page, end_page = finding["page"], finding["end_page"]
-    return f"p.{page}" if page == end_page else f"p.{page}-{end_page}"
-
-
 # A run at or above this many words is "long" for bucketing purposes
 # (see `_bucket`) -- a fixed policy constant, not a flag: the threshold
 # is project-wide reading guidance, not a per-invocation choice.
@@ -223,30 +179,23 @@ def _bucket(finding: dict) -> str:
 
 
 def _bucket_title(bucket: str) -> str:
+    """`"words of evidence"`, not `"matched words"`.
+
+    The bucket is mixed-tier and the threshold is `matched_words`, which
+    means two different things across the tiers under this one heading:
+    words the two sides actually share on tiers 1 and 2, the width of the
+    aligned sentences on tier 3 (`overlap_segments.matched_words`, which
+    is where this phrasing comes from -- it already describes the field
+    as "how much of this span is evidence"). Saying "matched words" here
+    made the heading assert, of every tier-3 finding beneath it, exactly
+    the shared-wording claim `_words_note` prints `aligned` to deny three
+    lines further down. Bucketing is unchanged; only the claim is.
+    """
     if bucket == "long":
-        return f"Long runs (>= {LONG_RUN_WORDS} matched words)"
+        return f"Long runs (>= {LONG_RUN_WORDS} words of evidence)"
     if bucket == "short":
         return "Short runs"
     return "Quoted runs"
-
-
-def _not_run_lines(not_run: list[dict]) -> list[str]:
-    """One line per coverage gap, naming the tier and why.
-
-    Shared by the printed and written forms so the two cannot end up
-    saying different things about the same scan -- the same reason
-    `scan_command` is built once and handed to both. `"did not run"` is
-    only said of an entry that is actually `partial: False` -- an entry
-    that ran and still contributed real findings gets its own phrasing,
-    so the two forms cannot contradict the prose `_scan_render.py`
-    prints directly above them (#499).
-    """
-    return [
-        f"tier {entry['tier']} did not run: {entry['reason']}"
-        if not entry.get("partial")
-        else f"tier {entry['tier']} ran, but not against everything: {entry['reason']}"
-        for entry in not_run
-    ]
 
 
 # The finding fields the JSON payload publishes, in the order they are
@@ -265,6 +214,11 @@ _PAYLOAD_FIELDS = (
     "matched_words",
     "start",
     "line",
+    # The paragraph the run starts and ends in, 1-based. Beside `line`
+    # rather than at the end: both are human-readable locators into the
+    # draft, and a consumer reading positionally sees them together.
+    "paragraph",
+    "end_paragraph",
     "char_start",
     "char_end",
     "draft_text",
@@ -278,6 +232,11 @@ _PAYLOAD_FIELDS = (
     # lists are written by hand against this order -- sees the same
     # prefix it saw before the tier existed.
     "score",
+    # Tier 3's source side -- the passage it aligned the draft against --
+    # and `None` on the two deterministic tiers, where `fragment` already
+    # is both sides. Appended for the same reason `score` was: consumers
+    # reading these positionally see an unchanged prefix.
+    "source_text",
 )
 
 
