@@ -409,7 +409,8 @@ self-marking, not about who may invoke an aid.
 It also falsifies two written claims at once: `agenda-reviser`'s own
 description ends *"never runs unless a person asked for it"*, and
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s build-order step 5 asserts
-that skill's *"person-only trigger"* is already what R1-R11 ask for.
+that skill's *"person-only trigger"* is already what R1-R11 -- the
+requirement set as it stood then, before R12 -- ask for.
 Auto-invoking it from nine genre skills would make both sentences false,
 which is a documentation change nobody proposed and a rule change
 smuggled in as a convenience.

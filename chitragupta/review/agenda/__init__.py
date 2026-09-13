@@ -46,7 +46,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, dossier, review
-from chitragupta.review.agenda import _dedup, _items, _order, _recheck, _render, _sources
+from chitragupta.review.agenda import (
+    _dedup,
+    _items,
+    _order,
+    _recheck,
+    _render,
+    _sources,
+    _stale,
+)
 
 # plans/f-auto-improvement-adoption.md's Decision 2: a backstop against a
 # miscounting bug in the future agenda-reviser re-run loop, not a cost
@@ -62,6 +70,11 @@ class Agenda:
     draft: Path
     sources: _sources.Sources
     items: list = field(default_factory=list)
+    # Items dropped from `items` because the draft text they were derived
+    # from is gone -- reported, never repaired (R12, `_stale.py`). Kept
+    # off `items` deliberately: a stale item on the worklist is one a
+    # reviser could act on, which is the whole hazard.
+    stale: list = field(default_factory=list)
 
     @property
     def objective_class_count(self) -> int:
@@ -79,12 +92,22 @@ class Agenda:
 
 def build_agenda(draft: Path) -> Agenda:
     """Everything this aid does, as data: collect the eight sources,
-    extract one item per finding, merge, then order."""
+    extract one item per finding, merge, order, then refuse whatever the
+    draft no longer says.
+
+    The refusal is last on purpose. It is a property of the draft as it
+    now stands rather than of any one aid's report, so it applies once,
+    to the merged and ordered list, instead of being re-implemented in
+    each extractor -- and `_dedup.merge` still sees every item, so a
+    stale signal cannot silently change which of two merged items
+    survives.
+    """
     sources = _sources.collect(draft)
-    sections = dossier.sections(draft.read_text(encoding="utf-8"))
+    text = draft.read_text(encoding="utf-8")
+    sections = dossier.sections(text)
     items = _items.all_items(sources, sections)
-    items = _order.sort(_dedup.merge(items))
-    return Agenda(draft=draft, sources=sources, items=items)
+    items, stale = _stale.partition(text, _order.sort(_dedup.merge(items)))
+    return Agenda(draft=draft, sources=sources, items=items, stale=stale)
 
 
 def _command(draft_path: Path, as_json: bool) -> str:

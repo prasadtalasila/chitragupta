@@ -53,6 +53,12 @@ class Item:
     unattended: bool
     summary: str
     detail: dict = field(default_factory=dict)
+    # The exact draft text this finding was derived from, or None where
+    # the finding is not about the draft's own text. Never serialised --
+    # it exists so `_stale.partition` can refuse an item whose passage
+    # the author has since rewritten. See `_stale.py` for which classes
+    # can fill it and why the rest must not.
+    span: str | None = None
 
 
 def missing_citekey_items(drift: Drift | None) -> list[Item]:
