@@ -10,6 +10,7 @@ from chitragupta.review.agenda._passages import (
     _passage_lines,
     _verbatim_finding,
 )
+from chitragupta.review.agenda._stale import stale_dicts, stale_lines
 
 # `{aid: review.AIDS[aid] for aid in _sources.AID_NAMES}`, restated
 # rather than derived -- and the restatement is load-bearing to get
@@ -132,6 +133,11 @@ def render_markdown(agenda, command: str) -> str:
     ]
     lines += _source_notes(agenda)
     lines.append("")
+    # Above the worklist, beside the Sources header rather than below the
+    # findings: a refusal is a statement about what this run could not
+    # act on, and a run whose every item was refused still has to say so
+    # -- the empty-worklist return below is exactly that case.
+    lines += stale_lines(agenda.stale)
 
     if not agenda.items:
         lines += ["No items -- nothing for this worklist to report.", ""]
@@ -225,6 +231,11 @@ def agenda_payload(agenda, command: str) -> dict:
             "pass_bound": agenda_module.PASS_BOUND,
             "objective_class_count": agenda.objective_class_count,
             "items": [_item_dict(agenda, item) for item in agenda.items],
+            # Named `stale_spans`, not `stale`: this payload already uses
+            # `stale` for an aid report older than the draft
+            # (`sources.aids.<aid>.stale`, an mtime comparison), and one
+            # document cannot carry two meanings of the word.
+            "stale_spans": stale_dicts(agenda.stale),
         }
     )
     return payload
