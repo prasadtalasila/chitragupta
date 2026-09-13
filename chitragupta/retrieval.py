@@ -56,11 +56,11 @@ import re
 import sqlite3
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from chitragupta import bib_collections, ledger, retrieval_cache, retrieval_tables
 from chitragupta._passage_words import _CORE_STOPWORDS as _STOPWORDS
+from chitragupta.retrieval_text import _full_text
 
 # Question words and question-forming auxiliaries -- rare in academic
 # PDFs, so they carry high IDF and out-compete the terms a question is
@@ -220,24 +220,6 @@ def _snippet(text: str, terms: set[str], window: int = 500) -> str:
     if best:
         return best[0]
     return _clean_window(text[:window])
-
-
-def _full_text(item: sqlite3.Row) -> str:
-    text_parts = [item["title"] or ""]
-    # A non-'parsed' status means parsed_path may point at a superseded
-    # version's text (or none at all) -- mark_parse_failed and a
-    # hash-changed re-sync both leave the column set without updating what
-    # it names (#490). overlap_index_ledger.py already gates on status;
-    # this was BM25 retrieval and evidence's own read serving the stale
-    # text as current.
-    if item["status"] == "parsed" and item["parsed_path"]:
-        try:
-            text_parts.append(
-                Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")
-            )
-        except OSError:
-            pass
-    return "\n".join(text_parts)
 
 
 def _tokenize_item(item: sqlite3.Row) -> dict:

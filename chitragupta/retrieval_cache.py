@@ -9,11 +9,12 @@ touches directly. `chitragupta/dossier/_drift.py` also composes
 own docstring) -- moving here does not change what it imports from,
 `from chitragupta import retrieval_cache` instead of `retrieval`.
 
-`_tokenize`/`_full_text` stay in `chitragupta/retrieval.py`: `search`'s own
-snippet-building needs them independent of caching, so `retrieval.py`
-imports `_load_index` from here (at the bottom of the file, after those
-two are already defined, to avoid the circular import a top-of-file
-import would make) rather than this module importing `search`.
+`_tokenize` stays in `chitragupta/retrieval.py` and `_full_text` lives in
+`chitragupta/retrieval_text.py`: `search`'s own snippet-building needs
+both independent of caching, so `retrieval.py` imports `_load_index` from
+here (at the bottom of the file, after `_tokenize` is already defined, to
+avoid the circular import a top-of-file import would make) rather than
+this module importing `search`.
 """
 
 import json
@@ -21,15 +22,21 @@ import os
 import uuid
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, passages
 
-_INDEX_SCHEMA_VERSION = 1
+# 2: `_full_text` stops at a document's own reference-section header
+# (chitragupta/retrieval_text.py), so every cached `length` and
+# `term_freqs` written under version 1 counts tokens this version does
+# not index. Bumped rather than migrated -- the cache is derivable from
+# the corpus in one pass, so re-tokenizing is cheaper than a migration
+# that has to be right.
+_INDEX_SCHEMA_VERSION = 2
 
 
-def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
-    if parsed_path:
+def _file_stat(path: Path | None) -> tuple[bool, int, int]:
+    if path:
         try:
-            st = Path(parsed_path).stat()
+            st = path.stat()
             return True, st.st_size, st.st_mtime_ns
         except OSError:
             pass
@@ -44,8 +51,27 @@ def _fingerprint(item) -> list:
     # `_load_index`/`_ephemeral_index` skip `_tokenize_item` -> `_full_text`
     # entirely, serving the superseded text through the very guard meant
     # to stop that.
-    exists, size, mtime_ns = _parsed_file_stat(item["parsed_path"])
-    return [item["title"] or "", item["parsed_path"] or "", item["status"], exists, size, mtime_ns]
+    parsed_path = item["parsed_path"]
+    exists, size, mtime_ns = _file_stat(Path(parsed_path) if parsed_path else None)
+    # The passage sidecar is stat'd for the same reason, one rung along:
+    # `_full_text` now truncates at the reference header the sidecar
+    # names, so the sidecar is an input to the cached token counts and a
+    # fingerprint blind to it would keep serving an entry built under a
+    # different cut. In the machine-written path this is belt and braces
+    # -- `pdf_text.extract_text` clears the sidecar and rewrites the
+    # `.txt` in the same call, so the two never move apart -- but a
+    # sidecar deleted or edited by hand moves only this stat, and that is
+    # precisely the case the rest of the fingerprint cannot see.
+    side = _file_stat(passages.sidecar_path(item["citekey"]))
+    return [
+        item["title"] or "",
+        parsed_path or "",
+        item["status"],
+        exists,
+        size,
+        mtime_ns,
+        *side,
+    ]
 
 
 # (path, size, mtime_ns) -> the parsed "items" mapping, for the one file

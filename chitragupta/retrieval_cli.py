@@ -34,12 +34,12 @@ from typing import Any
 from chitragupta import config, ledger, retrieval_iterative
 from chitragupta.retrieval import (
     SearchResult,
-    _full_text,
     _query_terms,
     _windows,
     search,
     short_query_terms,
 )
+from chitragupta.retrieval_text import _full_text
 
 EVIDENCE_CHARS = 600
 EVIDENCE_WINDOWS = 2
@@ -69,10 +69,14 @@ def evidence(
     with ledger.connection() as con:
         # row_factory set and cleared around the read, matching
         # ledger.all_items: connect() leaves rows as tuples, and
-        # _full_text addresses its columns by name.
+        # _full_text addresses its columns by name. `citekey` is selected
+        # despite already being in hand, because _full_text needs it to
+        # find the passage sidecar that says where this document's
+        # bibliography starts, and it reads the row rather than taking a
+        # second argument so that its two callers cannot disagree.
         con.row_factory = sqlite3.Row
         row = con.execute(
-            "SELECT title, parsed_path, status FROM items WHERE citekey = ?", (citekey,)
+            "SELECT citekey, title, parsed_path, status FROM items WHERE citekey = ?", (citekey,)
         ).fetchone()
         con.row_factory = None
     if row is None:

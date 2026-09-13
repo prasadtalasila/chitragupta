@@ -2167,7 +2167,13 @@ class TestEphemeralIndex:
                 ("fresh_twin_2026", "Fresh", "digital twin"),
             ]
         )
-        config.RETRIEVAL_INDEX_PATH.write_text('{"version": 1, "items": {}}')
+        from chitragupta import retrieval_cache
+
+        config.RETRIEVAL_INDEX_PATH.write_text(
+            __import__("json").dumps(
+                {"version": retrieval_cache._INDEX_SCHEMA_VERSION, "items": {}}
+            )
+        )
         before = config.RETRIEVAL_INDEX_PATH.read_bytes()
         _drift.drift(grounded)
         assert config.RETRIEVAL_INDEX_PATH.read_bytes() == before
@@ -2187,7 +2193,7 @@ class TestEphemeralIndex:
         config.RETRIEVAL_INDEX_PATH.write_text(
             __import__("json").dumps(
                 {
-                    "version": 1,
+                    "version": retrieval_cache._INDEX_SCHEMA_VERSION,
                     "items": {
                         "cached_paper_2026": {
                             "fingerprint": fingerprint,
@@ -2202,11 +2208,13 @@ class TestEphemeralIndex:
         assert [c.citekey for c in report.candidates] == ["cached_paper_2026"]
 
     def test_a_stale_cache_entry_is_re_tokenized_in_memory(self, grounded):
+        from chitragupta import retrieval_cache
+
         _seed_corpus([("fresh_twin_2026", "Fresh", "digital twin")])
         config.RETRIEVAL_INDEX_PATH.write_text(
             __import__("json").dumps(
                 {
-                    "version": 1,
+                    "version": retrieval_cache._INDEX_SCHEMA_VERSION,
                     "items": {
                         "fresh_twin_2026": {
                             "fingerprint": ["stale"],

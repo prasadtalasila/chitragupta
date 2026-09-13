@@ -412,7 +412,9 @@ class TestIndexCaching:
         # otherwise crash on it instead of treating it as a cache miss.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(
-            json.dumps({"version": 1, "items": ["not", "a", "dict"]})
+            json.dumps(
+                {"version": retrieval_cache._INDEX_SCHEMA_VERSION, "items": ["not", "a", "dict"]}
+            )
         )
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
 
@@ -425,7 +427,9 @@ class TestIndexCaching:
         # _load_index() either.
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(
-            json.dumps({"version": 1, "items": {"a2024": "not-a-dict"}})
+            json.dumps(
+                {"version": retrieval_cache._INDEX_SCHEMA_VERSION, "items": {"a2024": "not-a-dict"}}
+            )
         )
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
 
@@ -444,7 +448,12 @@ class TestIndexCaching:
         fp = retrieval_cache._fingerprint(item)
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         config.RETRIEVAL_INDEX_PATH.write_text(
-            json.dumps({"version": 1, "items": {"a2024": {"fingerprint": fp}}})
+            json.dumps(
+                {
+                    "version": retrieval_cache._INDEX_SCHEMA_VERSION,
+                    "items": {"a2024": {"fingerprint": fp}},
+                }
+            )
         )
 
         results = retrieval.search("digital")
