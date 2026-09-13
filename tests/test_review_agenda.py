@@ -2373,3 +2373,42 @@ class TestAcceptedAgendaEndToEnd:
         payload = json.loads(capsys.readouterr().out)
         assert payload["resolved"] == []
         assert [row["id"] for row in payload["accepted"]] == [item_id]
+
+    def test_accepting_under_baseline_records_the_id_the_caller_could_see(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """`--accept` resolves before the refresh, so an id copied off the
+        report in front of the caller is always resolvable. If the refresh
+        then moves the span, the record is left naming a finding that no
+        longer exists -- which is the reopening property firing, not a
+        bug: the acceptance was made about text the aid no longer reports,
+        so the new finding is surfaced rather than silently covered."""
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        monkeypatch.setattr(
+            _recheck,
+            "refresh_aids",
+            lambda d: review.write_json(
+                d,
+                "uncited",
+                {"findings": [{"id": "u1", "line": 3, "sentence": "A quite different claim."}]},
+            ),
+        )
+        baseline = tmp_path / "baseline.agenda.json"
+        baseline.write_text(json.dumps({"aid": "agenda", "items": []}))
+        assert agenda.main([str(draft), "--accept", item_id, "--baseline", str(baseline)]) == 0
+
+        assert _accept.accepted_ids(_accept.load(draft)) == {item_id}
+        filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert filed["accepted"] == [
+            {
+                "id": item_id,
+                "class": "uncited-claim",
+                "section": "Survey",
+                "citekey": None,
+                "summary": self.SENTENCE,
+                "suppressed": False,
+            }
+        ]
+        assert [item["class"] for item in filed["items"]] == ["uncited-claim"]
+        assert filed["items"][0]["id"] != item_id

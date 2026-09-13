@@ -1223,6 +1223,14 @@ accepted, `misquoted` included; [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)
 has why that one is excluded although it is surfaced rather than
 unattended.
 
+Combined with `--baseline`, the id is resolved **before** the refresh, so
+an id copied off the report in front of you always resolves. If the
+refresh then moves that span, the acceptance is left naming a finding
+that no longer exists: the record shows as `not raised by this run` and
+the new finding is on the worklist. That is the reopening property
+working, not a failure -- the judgement was made about text the aid no
+longer reports.
+
 **`--baseline`** refreshes before it compares, and that is the point
 rather than a convenience: reading the aids' pre-edit `.json` reports a
 finding resolved that is not, and does so silently. Passing the report's
