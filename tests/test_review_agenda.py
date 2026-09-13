@@ -1440,9 +1440,15 @@ class TestNoFuzzyRelocation:
         are needed, so the skill's own prose is checked here rather than
         assumed -- #766's stated layer is "a rule in `agenda-reviser`,
         plus the staleness report in the aid's output"."""
-        skill = (
-            Path(agenda.__file__).parents[3] / ".claude" / "skills" / "agenda-reviser" / "SKILL.md"
-        ).read_text(encoding="utf-8")
+        # Anchored on this test file, not on `agenda.__file__`: the
+        # convention `tests/test_skill_style_check_step.py` already
+        # follows, and the reason is that CI's test job does a real
+        # project install, so a path walked up from the imported package
+        # can land outside the checkout.
+        repo_root = Path(__file__).resolve().parent.parent
+        skill = (repo_root / ".claude" / "skills" / "agenda-reviser" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
         assert "stale_spans" in skill
         assert "refused as stale" in skill.lower()
         assert "R12" in skill
