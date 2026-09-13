@@ -1257,9 +1257,7 @@ report, written unconditionally either way, same as always.
 **`--json`** carries the same envelope every review aid's JSON does, plus
 `sources` (`available`/`stale` per aid, `available`/`partial` for the
 prose check, `available`/`corpus_available` for the dossier drift,
-`available`/`count` for the acceptance record), an `accepted` list
-carrying each stored record and whether this run's worklist was shorter
-for it, and
+`available`/`count` for the acceptance record) and
 one `items` object per worklist entry -- `id`, `class`, `section`,
 `citekey`, `line`, `unattended`, `summary` and a `detail` object whose
 shape is specific to the class. An additional serialisation of what
@@ -1269,7 +1267,33 @@ backstop on how many passes one may take, and `objective_class_count`,
 the number of `unattended` items in this agenda -- both carried as data
 because a skill cannot import a Python constant, and hardcoding either
 into a skill's prose is exactly what naming them as constants was meant
-to prevent. Like
+to prevent.
+
+Two further keys say what this run left *off* `items`, and they are not
+the same thing. `stale_spans` lists what this run **refused**
+(R12, [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)): an item whose exact
+draft text has changed since the aid found it is dropped from `items`
+rather than repaired against text that no longer exists, and appears here
+instead with its `id`, `class`, `section` anchor, `summary` and the
+`refused` reason. Refused items are not counted in
+`objective_class_count`, and the Markdown report carries the same list
+under `## Refused as stale`. Nothing is relocated by similarity and
+nothing is merged; the finding is re-derived on the next run against the
+current text. `stale_spans` is a different thing from
+`sources.aids.<aid>.stale`, which is the mtime comparison saying a whole
+aid report predates the draft -- hence the different key.
+
+`accepted` is the other one: each stored acceptance record, plus a
+`suppressed` flag saying whether this run's worklist was shorter for it.
+The two never name the same item -- a refusal asks whether the finding is
+still about anything, an acceptance asks what a person decided about one
+that is, and the refusal is applied first for that reason. They are also
+disjoint by construction today, since only `verbatim-run` and `prose`
+carry the span a refusal needs and neither may be accepted. An
+acceptance whose item was refused as stale would therefore read
+`suppressed: false` and appear in `stale_spans`, which is the honest
+account of what happened rather than a claim that the judgement was
+honoured. Like
 [`provenance`](#-chitragupta-review-provenance), the `.json` (and the
 `.md`) is filed unconditionally -- there is no `--write` flag -- and
 `--json` only decides whether the worklist is *also* printed to stdout,

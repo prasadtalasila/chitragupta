@@ -25,6 +25,7 @@ from chitragupta.review.agenda import (
     _recheck,
     _render,
     _sources,
+    _stale,
 )
 
 from tests.conftest import content_draft
@@ -1367,6 +1368,104 @@ class TestAgendaPayload:
 
 
 # --------------------------------------------------------------------------
+# _stale.py
+# --------------------------------------------------------------------------
+
+
+class TestStalePartition:
+    """#766: an item whose draft span is gone is dropped and reported,
+    never relocated onto whatever now occupies that position."""
+
+    def test_an_item_whose_span_is_still_present_is_kept(self):
+        item = _items.Item(
+            "v1", "verbatim-run", "Intro", "a2024", 3, True, "s", {}, span="a borrowed run"
+        )
+        live, refused = _stale.partition("# Survey\n\nHere is a borrowed run.\n", [item])
+        assert live == [item]
+        assert refused == []
+
+    def test_an_item_whose_span_has_changed_is_refused(self):
+        item = _items.Item(
+            "v1", "verbatim-run", "Intro", "a2024", 3, True, "s", {}, span="a borrowed run"
+        )
+        live, refused = _stale.partition("# Survey\n\nThe author rewrote this.\n", [item])
+        assert live == []
+        assert refused == [item]
+
+    def test_an_item_with_no_draft_span_is_never_refused(self):
+        """`missing-citekey`, `recorded-but-uncited` and `misquoted` are
+        derived from the dossier, not the draft's text -- the second by
+        construction names a citekey the draft does *not* cite, so a
+        containment check would refuse it on every run."""
+        item = _items.Item("m1", "missing-citekey", None, "a2024", None, True, "s", {})
+        live, refused = _stale.partition("# Survey\n", [item])
+        assert live == [item]
+        assert refused == []
+
+    def test_the_refusal_keeps_the_section_anchor(self):
+        item = _items.Item("p1", "prose", "Methods", None, 7, True, "'AI' (1x)", {}, span="AI")
+        _live, refused = _stale.partition("# Survey\n", [item])
+        assert _stale.stale_dicts(refused) == [
+            {
+                "id": "p1",
+                "class": "prose",
+                "section": "Methods",
+                "summary": "'AI' (1x)",
+                "refused": "the draft text this finding was derived from is no longer present",
+            }
+        ]
+
+    def test_nothing_refused_renders_no_section(self):
+        assert _stale.stale_lines([]) == []
+
+    def test_a_refusal_renders_with_its_anchor(self):
+        item = _items.Item("p1", "prose", "Methods", None, 7, True, "'AI' (1x)", {}, span="AI")
+        lines = _stale.stale_lines([item])
+        assert "## Refused as stale" in lines
+        assert any("`p1`" in line and "(Methods)" in line for line in lines)
+
+
+class TestNoFuzzyRelocation:
+    """#766's fourth criterion, checked rather than asserted in prose: a
+    refusal that could be talked into a similarity score is not a
+    refusal. Nothing in this package may import a fuzzy matcher, for the
+    reason `docs/AUTO-IMPROVEMENT.md` already gives about the verbatim
+    scan's embedding tier -- an edit authorised on the evidence of a
+    score is exactly what the agenda refuses to do elsewhere."""
+
+    FUZZY = ("difflib", "SequenceMatcher", "get_close_matches", "rapidfuzz", "Levenshtein")
+
+    def test_the_skill_states_the_refusal(self):
+        """The aid dropping the item protects a run that happens *after*
+        the edit; the skill holds a baseline taken before it. Both halves
+        are needed, so the skill's own prose is checked here rather than
+        assumed -- #766's stated layer is "a rule in `agenda-reviser`,
+        plus the staleness report in the aid's output"."""
+        # Anchored on this test file, not on `agenda.__file__`: the
+        # convention `tests/test_skill_style_check_step.py` already
+        # follows, and the reason is that CI's test job does a real
+        # project install, so a path walked up from the imported package
+        # can land outside the checkout.
+        repo_root = Path(__file__).resolve().parent.parent
+        skill = (repo_root / ".claude" / "skills" / "agenda-reviser" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        assert "stale_spans" in skill
+        assert "refused as stale" in skill.lower()
+        assert "R12" in skill
+
+    def test_the_agenda_package_imports_no_fuzzy_matcher(self):
+        package = Path(agenda.__file__).parent
+        offenders = {
+            module.name: name
+            for module in sorted(package.glob("*.py"))
+            for name in self.FUZZY
+            if name in module.read_text(encoding="utf-8")
+        }
+        assert offenders == {}
+
+
+# --------------------------------------------------------------------------
 # Agenda / CLI (chitragupta/review/agenda/__init__.py)
 # --------------------------------------------------------------------------
 
@@ -1499,6 +1598,64 @@ class TestBuildAgendaAndCli:
         agenda.run(args)
         second = json_path.read_bytes()
         assert first == second
+
+    def test_an_edit_between_the_aid_run_and_the_reviser_refuses_the_item(
+        self, isolated_config, monkeypatch
+    ):
+        """#766, the whole window in one test: the aid runs, the human
+        revises the very passage it found, and the next agenda drops the
+        item rather than handing a reviser a repair aimed at text that is
+        gone. The human's draft survives byte for byte -- `agenda` never
+        writes a draft, so that assertion is the floor; the load-bearing
+        ones are that the item left `items`, left the objective count, and
+        is reported with its section anchor instead."""
+        draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
+        draft.write_text("# Survey\n\n## Intro\n\nWidely regarded as the standard.\n")
+        review.write_json(
+            draft,
+            "verbatim",
+            {
+                "findings": [
+                    {
+                        "id": "v1",
+                        "line": 5,
+                        "severity": "short",
+                        "tier": "exact",
+                        "citekey": "a2024",
+                        "span_words": 6,
+                        "matched_words": 6,
+                        "fragment": "Widely regarded as the standard",
+                        "draft_text": "Widely regarded as the standard",
+                    }
+                ]
+            },
+        )
+        before = agenda.build_agenda(draft)
+        assert [item.cls for item in before.items] == ["verbatim-run"]
+        assert before.objective_class_count == 1
+        assert before.stale == []
+
+        revised = "# Survey\n\n## Intro\n\nMost practitioners reach for it first.\n"
+        draft.write_text(revised)
+        after = agenda.build_agenda(draft)
+
+        assert after.items == []
+        assert after.objective_class_count == 0
+        assert [item.id for item in after.stale] == [before.items[0].id]
+        assert after.stale[0].section == "Intro"
+
+        payload = _render.agenda_payload(after, "cmd")
+        assert payload["stale_spans"] == [
+            {
+                "id": before.items[0].id,
+                "class": "verbatim-run",
+                "section": "Intro",
+                "summary": before.items[0].summary,
+                "refused": "the draft text this finding was derived from is no longer present",
+            }
+        ]
+        assert "## Refused as stale" in _render.render_markdown(after, "cmd")
+        assert draft.read_text(encoding="utf-8") == revised
 
     def test_a_present_aid_json_produces_a_worklist_item(self, isolated_config, monkeypatch):
         draft = self._draft_with_no_dossier(isolated_config, monkeypatch)
@@ -2148,6 +2305,156 @@ class TestPartition:
         )
         kept, suppressed = _accept.partition([reworded], source)
         assert (kept, suppressed) == ([reworded], [])
+
+
+class TestStaleAndAcceptedDoNotOverlap:
+    """R12's refusal (#766) and acceptance (#767) are two filters on one
+    list, and neither change existed when the other was written.
+
+    They cannot collide today, and this asserts *why* rather than
+    restating it: only an item carrying a `span` can be refused as stale,
+    and no class that carries one may be accepted.
+    """
+
+    def _every_class_with_a_span(self) -> set[str]:
+        """The classes the real extractors file a `span` for, derived by
+        running them rather than copied from `_stale.py`'s prose.
+
+        Every aid gets one finding carrying a superset of the keys any
+        extractor reads, so a class that starts filing a span later is
+        caught here instead of silently becoming refusable.
+        """
+        finding = {
+            "id": "f1",
+            "line": 3,
+            "citekey": "a2024",
+            "claim": "a claim",
+            "sentence": "a sentence",
+            "quote": "a quote",
+            "score": 0.1,
+            "note": None,
+            "band": "no support found",
+            "severity": "short",
+            "tier": "exact",
+            "matched_words": 4,
+            "rule": "chitragupta.Weasel",
+            "message": "weasel",
+            "draft_text": "a borrowed run",
+            "match": "clearly",
+        }
+        payload = {"findings": [finding]}
+        sources = _sources_stub(
+            aids={
+                aid: _sources.AidSource(available=True, data=payload) for aid in _sources.AID_NAMES
+            },
+            style=_sources.StyleSource(available=True, data={"findings": [finding]}),
+        )
+        sections = dossier.sections("# Intro\n\na sentence\n")
+        items = _items.all_items(sources, sections)
+        assert {item.cls for item in items} >= set(_accept.ACCEPTABLE)
+        return {item.cls for item in items if item.span is not None}
+
+    def test_only_verbatim_run_and_prose_carry_a_refusable_span(self):
+        assert self._every_class_with_a_span() == {"verbatim-run", "prose"}
+
+    def test_no_acceptable_class_can_be_refused_as_stale(self):
+        assert self._every_class_with_a_span().isdisjoint(_accept.ACCEPTABLE)
+
+    def test_a_stale_item_is_refused_rather_than_reported_as_suppressed(
+        self, isolated_config, monkeypatch
+    ):
+        """The order `build_agenda` runs the two filters in, pinned
+        through a hand-written record naming an item that is also stale.
+
+        Refusal first: the item lands in `stale`, not in `suppressed`,
+        and its record reads `suppressed: false`. The other order would
+        claim a judgement was honoured on a finding this run declined to
+        raise at all, and would drop it out of the refusal report.
+        """
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nThe author has since rewritten this.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        review.write_json(
+            draft,
+            "verbatim",
+            {
+                "findings": [
+                    {
+                        "id": "v1",
+                        "line": 3,
+                        "citekey": "a2024",
+                        "severity": "short",
+                        "tier": "exact",
+                        "matched_words": 4,
+                        "draft_text": "a run the draft no longer carries",
+                    }
+                ]
+            },
+        )
+        stale_id = agenda.build_agenda(draft).stale[0].id
+        _accept.write(draft, [{"id": stale_id, "class": "verbatim-run", "summary": "s"}], "cmd")
+
+        built = agenda.build_agenda(draft)
+        assert [item.id for item in built.stale] == [stale_id]
+        assert built.suppressed == []
+        assert built.items == []
+
+        payload = _render.agenda_payload(built, "cmd")
+        assert [row["id"] for row in payload["stale_spans"]] == [stale_id]
+        assert payload["accepted"] == [
+            {"id": stale_id, "class": "verbatim-run", "summary": "s", "suppressed": False}
+        ]
+        rendered = _render.render_markdown(built, "cmd")
+        assert "## Refused as stale" in rendered
+        assert f"- `{stale_id}` [verbatim-run, not raised by this run]" in rendered
+
+    def test_a_live_accepted_item_is_still_suppressed_when_a_stale_one_exists(
+        self, isolated_config, monkeypatch
+    ):
+        """The two filters compose: a refusal does not stop the
+        acceptance filter reaching the items that survived it."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nA claim with no citation at all.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        review.write_json(
+            draft,
+            "verbatim",
+            {
+                "findings": [
+                    {
+                        "id": "v1",
+                        "line": 3,
+                        "citekey": "a2024",
+                        "severity": "short",
+                        "tier": "exact",
+                        "matched_words": 4,
+                        "draft_text": "wording that is gone",
+                    }
+                ]
+            },
+        )
+        review.write_json(
+            draft,
+            "uncited",
+            {"findings": [{"id": "u1", "line": 3, "sentence": "A claim with no citation at all."}]},
+        )
+        built = agenda.build_agenda(draft)
+        live = [item for item in built.items if item.cls == "uncited-claim"]
+        assert len(built.stale) == 1 and len(live) == 1
+
+        _accept.accept(draft, built.items, [live[0].id], "cmd")
+        after = agenda.build_agenda(draft)
+        assert [item.id for item in after.suppressed] == [live[0].id]
+        assert [item.id for item in after.stale] == [built.stale[0].id]
+        assert after.items == []
 
 
 class TestAcceptedAgendaEndToEnd:

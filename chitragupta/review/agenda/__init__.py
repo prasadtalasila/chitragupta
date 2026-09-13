@@ -58,6 +58,7 @@ from chitragupta.review.agenda import (
     _recheck,
     _render,
     _sources,
+    _stale,
 )
 
 # plans/f-auto-improvement-adoption.md's Decision 2: a backstop against a
@@ -74,6 +75,11 @@ class Agenda:
     draft: Path
     sources: _sources.Sources
     items: list = field(default_factory=list)
+    # Items dropped from `items` because the draft text they were derived
+    # from is gone -- reported, never repaired (R12, `_stale.py`). Kept
+    # off `items` deliberately: a stale item on the worklist is one a
+    # reviser could act on, which is the whole hazard.
+    stale: list = field(default_factory=list)
     # The items this run computed and then left off the worklist because
     # the acceptance record names them (`_accept.py`). Kept rather than
     # dropped for two reasons: the report lists them, so the record is
@@ -98,18 +104,40 @@ class Agenda:
 
 def build_agenda(draft: Path) -> Agenda:
     """Everything this aid does, as data: collect the eight sources,
-    extract one item per finding, merge, order, then set aside the ones a
-    person has already accepted."""
-    # The acceptance step is a filter over a freshly computed list, never
-    # stored per-item state: every item is recomputed from the aids on
-    # every run, and an accepted one returns by itself the moment its
-    # span changes, because its identity changes with it (`_accept.py`).
+    extract one item per finding, merge, order, refuse whatever the draft
+    no longer says, then set aside the ones a person has already
+    accepted.
+
+    Both filters run last, after the merge and the sort, and for the same
+    reason: each is a property of something outside any one aid's report
+    -- the draft as it now stands, and the acceptance record -- so each
+    applies once to the whole ordered list instead of being
+    re-implemented in every extractor. `_dedup.merge` still sees every
+    item, so neither signal can silently change which of two merged items
+    survives, and `_order.sort` has already run, so neither re-orders
+    what it did not remove.
+    """
+    # **Refusal first, acceptance second**, and the order is decided
+    # rather than arbitrary: staleness asks whether the item is still
+    # *about* anything, acceptance asks what a person decided about one
+    # that is. The other way round would mark a stored record
+    # `suppressed: true` for a finding this run refused on other grounds
+    # and drop it from the refusal report -- claiming a judgement was
+    # honoured where the item was never raised. docs/AUTO-IMPROVEMENT.md
+    # section 5 carries the argument in full.
+    #
+    # The two are disjoint today besides: `_stale.partition` only refuses
+    # an item carrying a `span`, which is `verbatim-run` and `prose`
+    # alone, and `_accept.ACCEPTABLE` holds neither.
+    # `TestStaleAndAcceptedDoNotOverlap` pins that, so a later class
+    # carrying both has to decide rather than inherit this.
     sources = _sources.collect(draft)
-    sections = dossier.sections(draft.read_text(encoding="utf-8"))
+    text = draft.read_text(encoding="utf-8")
+    sections = dossier.sections(text)
     items = _items.all_items(sources, sections)
-    items = _order.sort(_dedup.merge(items))
+    items, stale = _stale.partition(text, _order.sort(_dedup.merge(items)))
     items, suppressed = _accept.partition(items, sources.accepted)
-    return Agenda(draft=draft, sources=sources, items=items, suppressed=suppressed)
+    return Agenda(draft, sources, items=items, stale=stale, suppressed=suppressed)
 
 
 def _command(draft_path: Path, as_json: bool) -> str:
@@ -224,32 +252,6 @@ def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, writte
         review.print_written(written)
 
 
-def _apply_accept(draft_path: Path, args) -> int | None:
-    """`--accept`: record each id, say what was recorded, and return the
-    layer's usage-error code if any id was refused."""
-    # Resolved against `items + suppressed`, so an id accepted by an
-    # earlier run reports "already accepted" rather than "no such item"
-    # -- suppression is what would otherwise hide it from the very
-    # lookup checking it. The messages keep the written-files summary's
-    # stream discipline: stderr under `--json`, so a caller piping
-    # stdout through `json.loads` is unaffected.
-    agenda = build_agenda(draft_path)
-    try:
-        messages = _accept.accept(
-            draft_path,
-            agenda.items + agenda.suppressed,
-            args.accept,
-            _accept.accept_command(draft_path, args.accept),
-        )
-    except _accept.NotAcceptable as exc:
-        print(exc, file=sys.stderr)
-        return 2
-    stream = sys.stderr if args.json else sys.stdout
-    for message in messages:
-        print(message, file=stream)
-    return None
-
-
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments.
 
@@ -300,7 +302,7 @@ def run(args: argparse.Namespace) -> int:
             return 2
 
     if args.accept:
-        refusal = _apply_accept(draft_path, args)
+        refusal = _accept.apply(draft_path, build_agenda(draft_path), args)
         if refusal is not None:
             return refusal
 

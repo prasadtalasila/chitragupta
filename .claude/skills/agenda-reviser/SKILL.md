@@ -174,9 +174,39 @@ rather than interrupting per finding.
 
 ### 4. Repair one item
 
-Read only the section that owns it -- `python -m chitragupta.draft dossier
-sections content/drafts/<path>` gives the line ranges. Keep the pre-edit
-text; step 5 needs it if the repair is rejected.
+**First, refuse a stale span.** The baseline from step 2 is a snapshot,
+and the author may have edited the draft since -- that window is real,
+and applying a repair computed against text that is gone is the one
+failure mode in this loop that destroys a person's own work. So before
+the first repair of the pass, and again after any pause in which the
+draft may have been touched, take a fresh bare read:
+
+```bash
+python -m chitragupta.review agenda content/drafts/<path> --json
+```
+
+An item whose exact draft text has changed is **dropped** from `items`
+by the aid itself and listed in `stale_spans` with its section anchor
+(R12). **Do not repair an item that is not in the fresh `items`, and do
+not repair one listed in `stale_spans`.** Never relocate it by
+similarity, never merge, never apply it anywhere near where it used to
+be: the author's text wins by default, and the finding is re-derived on
+the next agenda run against what they wrote. Log the refusal in step 6
+like any other outcome, and say in step 7 which items were refused this
+way -- a silently dropped item reads as a repaired one.
+
+Two consequences to hold. This re-file overwrites `<stem>.agenda.json`,
+which is the `--baseline` target; that is safe, but it means the pass's
+recorded baseline is now the refreshed one, so state step 7's report
+against *it* (R9). And dropping an item lowers `objective_class_count`
+on a bare run with no repair having happened -- so do not read that fall
+as progress. Step 5's `--baseline` cycle re-runs the eight aids in front
+of the rebuild and is the number that counts.
+
+Then read only the section that owns the item -- `python -m
+chitragupta.draft dossier sections content/drafts/<path>` gives the line
+ranges. Keep the pre-edit text; step 5 needs it if the repair is
+rejected.
 
 **Repair a `missing-citekey` item.** The only unattended repair available
 is a deletion: this skill may not run `corpus sync` (the user's write
@@ -413,6 +443,10 @@ copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
   corpus layer. Suppressing a finding by allowlisting it is the user's
   call about their own project, and a loop that could silence its own
   detector is not a loop anyone should trust.
+- **Never repair an item the fresh agenda refused as stale** -- one
+  listed in `stale_spans`, or one no longer in `items` at all. No merge,
+  no similarity-based relocation, no best-effort application near where
+  the passage used to be. The author's own edit wins by default (R12).
 - **Never decide paraphrase-or-quote on a long run.** Ask.
 - **Never `Write` the whole draft.** `Edit` the passage.
 - **Never add a claim, and never fabricate a citekey.** A fabricated
@@ -443,7 +477,7 @@ What the verbatim tiers catch and what they structurally cannot is in
 [`docs/PLAGIARISM.md`](../../../docs/PLAGIARISM.md). The requirements
 this loop is built to satisfy -- the write-set, the binary re-check, the
 two-attempt limit and the rule that only a person may start it -- are
-R1-R11 in
+R1-R12 in
 [`docs/AUTO-IMPROVEMENT.md`](../../../docs/AUTO-IMPROVEMENT.md#-the-requirements),
 with the reasoning in
 [`docs/AUTO-IMPROVEMENT-RATIONALE.md`](../../../docs/AUTO-IMPROVEMENT-RATIONALE.md).

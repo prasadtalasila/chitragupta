@@ -317,9 +317,30 @@ repeatable, which covers "these four, now"; accepting a class wholesale
 would let a single keystroke silence findings nobody read, which is the
 opposite of what the record is for.
 
+**Acceptance and R12's stale-span refusal are two filters on one list,
+and the order between them is decided.** `build_agenda` refuses first and
+suppresses second. Staleness asks whether the item is still *about*
+anything -- the draft text it was derived from is gone -- and acceptance
+asks what a person decided about an item that is; an item failing the
+first question has not reached the second. Running acceptance first would
+mark a stored record `suppressed` for a finding this run refused on other
+grounds, and drop that finding out of the refusal report, so the run
+would claim a judgement was honoured where it had declined to raise the
+item at all. Refusing first keeps both reports true: the item appears
+under `## Refused as stale`, and its acceptance record reads `not raised
+by this run`.
+
+The two are also disjoint by construction today. `_stale.partition` only
+refuses an item carrying a `span`, which is `verbatim-run` and `prose`
+alone, and neither is acceptable -- the three acceptable classes are
+exactly the ones no span is filed for. That is a coincidence of the two
+designs rather than a guarantee either one makes, so a test asserts it,
+and a later class carrying both a span and acceptability has to decide
+rather than inherit an answer.
+
 ## 🎯 The requirements
 
-Eleven obligations, each phrased so a reviewer can tell whether it has been
+Twelve obligations, each phrased so a reviewer can tell whether it has been
 met. [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-mapping-the-method-onto-this-pipeline)
 says where each comes from.
 
@@ -336,6 +357,7 @@ says where each comes from.
 | **R9** | The agenda taken before the pass is the recorded baseline, and the closing report is stated against it. |
 | **R10** | The aid is registered in both `review.AIDS` and `__main__.AIDS`; the skill's `description` names its triggers; and both appear in AGENTS.md's layer bullets, CLI.md, the README tables and `mkdocs.yml`. |
 | **R11** | No hook, no scheduled job and no other skill invokes the `agenda-reviser` skill. Its only trigger is a person asking. |
+| **R12** | An item whose draft text has changed since the aid found it is **dropped and reported, never repaired**. No merge, no similarity-based relocation, no best-effort application. The finding is re-derived on the next run against the current text. |
 
 ## 👥 Who calls it, and when
 
@@ -371,6 +393,46 @@ deliberately, so they diff cleanly -- so the check is file mtime. An aid
 report older than the draft is named as stale in the agenda's header and
 its findings marked, rather than presented as current; the header says to
 re-run that aid.
+
+**A stale *span* is refused, not relocated** (R12). The mtime check above
+is about a whole report; this one is about a single item, and it is the
+finer-grained half of the same posture. The window is real and it is the
+only one in this loop that can destroy a person's own work: the aid runs,
+the author reads the worklist and revises the very passage it found, and
+`agenda-reviser` then holds a repair -- a `draft_text` to use as an
+`Edit`'s `old_string` -- aimed at text that no longer exists. So
+`build_agenda` checks each item's span against the draft as it now stands
+and **drops** any whose text is gone, reporting it under
+`## Refused as stale` in the Markdown and as `stale_spans` in the `.json`,
+with its section anchor. A dropped item is not counted in
+`objective_class_count` and cannot be repaired. It is re-derived on the
+next agenda run against the current text, where it will either still
+stand or have been fixed by the author's own edit.
+
+Three alternatives are refused rather than deferred, and the reasons are
+the same ones this document already gives elsewhere:
+
+- **Merging the two edits**, as `llm_wiki` does for a regenerated page
+  ([INSPIRATION.md](INSPIRATION.md) records that reading, and that no
+  code was copied). A merge must decide which of two edits wins, and this
+  project's posture is that the human's wins by default. Refusal gets
+  that for free.
+- **Re-locating the span by similarity.** That authorises an edit on the
+  evidence of a similarity score -- which this document already refuses
+  for the verbatim scan's embedding tier, for the same reason. There is
+  no fuzzy matcher anywhere in `chitragupta/review/agenda/`, and a test
+  scans the package to keep it that way.
+- **Locking the draft between runs.** A person editing their own draft is
+  the point of the tool.
+
+Only a span an aid guarantees to be exact draft text is checked --
+`verbatim`'s `draft_text` and `style_check`'s Vale match, which are
+exactly the two classes that are both unattended and positioned in the
+draft. `missing-citekey`, `recorded-but-uncited` and `misquoted` are
+derived from the dossier rather than the draft's text and are never
+refused on this basis; `recorded-but-uncited` by construction names a
+citekey the draft does not cite, so a text check would refuse it on every
+run. This adds no gate: the aid still exits 0 whatever it finds.
 
 ## 🪝 How the loop is reached
 
@@ -474,7 +536,8 @@ not its sequence.
    is the report step 7 has to be tuned against. Widening it is now a
    matter of giving it the agenda as an input and the other classes as
    work; the write-set, the two-attempt limit, the binary re-check and
-   the person-only trigger are already what R1-R11 ask for.*
+   the person-only trigger are already what R1-R11 -- the requirement
+   set as it stood then, before R12 -- ask for.*
 
    Two pieces of that step landed with it, both in the review layer
    rather than the skill: the scan payload's `id` (R2's stable identity,

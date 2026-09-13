@@ -60,6 +60,7 @@ simply comes back surfaced.
 
 import json
 import shlex
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -215,6 +216,39 @@ def accept(draft: Path, items: list, ids: list[str], command: str) -> list[str]:
         messages.append(f"accepted `{item_id}` [{item.cls}]: {item.summary}")
     write(draft, records, command)
     return messages
+
+
+def apply(draft: Path, agenda, args) -> int | None:
+    """`--accept`'s whole side of the command: record each id, say what
+    was recorded, and return the layer's usage-error code if any id was
+    refused.
+
+    Takes the built `Agenda` rather than building one, so this module
+    stays a leaf its own package can import without a cycle.
+    """
+    # Resolved against `items + suppressed`, so an id accepted by an
+    # earlier run reports "already accepted" rather than "no such item"
+    # -- suppression is what would otherwise hide it from the very lookup
+    # checking it. A stale-refused item is deliberately not in that
+    # lookup: it is off this run's worklist on other grounds, and every
+    # refusable class is unacceptable anyway (`build_agenda`). The
+    # messages keep the written-files summary's stream discipline:
+    # stderr under `--json`, so a caller piping stdout through
+    # `json.loads` is unaffected.
+    try:
+        messages = accept(
+            draft,
+            agenda.items + agenda.suppressed,
+            args.accept,
+            accept_command(draft, args.accept),
+        )
+    except NotAcceptable as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    stream = sys.stderr if args.json else sys.stdout
+    for message in messages:
+        print(message, file=stream)
+    return None
 
 
 def write(draft: Path, records: list[dict], command: str) -> Path:

@@ -74,6 +74,9 @@ def verbatim_run_items(source: AidSource, sections: list[Section]) -> list[Item]
                 unattended=(severity == "short" and tier != "embedding"),
                 summary=_run_summary(tier, words, matched, citekey),
                 detail={"severity": severity, "verbatim_id": finding.get("id")},
+                # `draft_text`, not the `fragment` the id hashes: only
+                # the former is `draft[char_start:char_end]` (R12).
+                span=finding.get("draft_text") or None,
             )
         )
     return items
@@ -155,6 +158,9 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
                     "severity": finding.get("severity"),
                     "count": finding.get("count"),
                 },
+                # Vale's `Match` alone -- the id hashes `rule\x00match`,
+                # which is not draft text (R12).
+                span=finding.get("match") or None,
             )
         )
     return items
