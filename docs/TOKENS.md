@@ -41,6 +41,7 @@ Related reading:
 - [What the dossier actually recovers](#-what-the-dossier-actually-recovers)
 - [Why deep-research has no lever left](#-why-deep-research-has-no-lever-left)
 - [The one lever this repository does not own](#-the-one-lever-this-repository-does-not-own)
+- [Dividing the window: one budget table the skills call](#-dividing-the-window-one-budget-table-the-skills-call)
 - [Who writes a packet down, and when](#-who-writes-a-packet-down-and-when)
 - [Measuring this without writing a survey](#-measuring-this-without-writing-a-survey)
 - [Measured, derived, and asserted](#-measured-derived-and-asserted)
@@ -393,6 +394,65 @@ asserted"](#-measured-derived-and-asserted) below: the resolution order and
 the `inherit` default are properties of the harness, and the size of the
 saving is unmeasured until [the planned
 measurement](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
+
+## 🪟 Dividing the window: one budget table the skills call
+
+Everything above is about what a run *costs*. This section is about the
+smaller, prior question a skill has to answer before it retrieves
+anything: how much of the window may this step fill?
+
+Until 6.110.0 each of the nine skills in `.claude/skills/` answered that
+in its own prose, which meant nine answers that could not be compared,
+could not be tested, and drifted every time a skill was edited on its
+own. The module
+`chitragupta/context_budget.py` replaces the prose with a call:
+
+```python
+from chitragupta import config, context_budget
+
+budgets = context_budget.allocate(config.TOKENS_WINDOW_SIZE)
+# {'dossier': 30000, 'passages': 90000, 'draft': 50000, 'reserve': 30000}
+```
+
+Four sections, as parts per hundred of the whole window: **dossier** 15,
+**retrieved passages** 45, **draft** 25, **reserve** 15. The reserve is
+never selectable and is taken off the top, so it cannot be raided by a
+step that wants more room; the other three are floored integers, so the
+budgets always sum to no more than the window.
+
+**The shares are code and the window is configuration, and that split is
+the point.** One table in one module is what makes two skills' budgets
+comparable in a single diff. Shares in each skill's frontmatter would be
+the prose budgets again in YAML. The window itself is a property of the
+model a user runs rather than of this pipeline, so it is
+[`[tokens] window_size`](CONFIG.md#-tokens----the-context-window-a-skill-divides),
+read by the caller and passed in -- which is also what keeps `allocate()`
+pure, I/O-free and exhaustively testable.
+
+**A named subset does not reshare what it left behind.** Asking only for
+`("passages",)` gives `passages` the number the full set would have given
+it and leaves the rest unallocated. Resharing would make a section's
+budget depend on which *other* sections the caller wanted, and then the
+comparison this module exists to enable would need both section sets to
+interpret.
+
+**Degenerate windows are defined rather than incidental.** A window of
+zero allocates zero everywhere. A window too small to pay the 1,024-token
+reserve floor spends all of itself on the reserve and gives the working
+sections nothing -- deliberately that direction, because a run that
+cannot afford an answer is worse than one that is thinly grounded. A
+negative or non-integer window is rejected, `True` included, rather than
+read as a one-token window.
+
+**This is not a new lever, and it does not touch either claim above.**
+["Why deep-research has no lever left"](#-why-deep-research-has-no-lever-left)
+and ["The one lever this repository does not
+own"](#-the-one-lever-this-repository-does-not-own) both stand unchanged:
+this allocator moves nothing out of the expensive pool, changes no
+dispatch boundary, and cannot alter what a turn re-sends. It only says
+how much a skill may *deliberately* place in front of the model, which
+was previously said in prose and is now said in one testable place. The
+saving, if any, is in the drift it prevents rather than in tokens.
 
 ## ✍ Who writes a packet down, and when
 
@@ -963,3 +1023,11 @@ properties of the harness rather than of this repository, and everything
 in ["What the dossier actually recovers"](#-what-the-dossier-actually-recovers)
 depends on them. If a future harness evicts old tool results, the
 residency argument weakens and the dispatch-prompt argument does not.
+
+The four
+[context-budget shares](#-dividing-the-window-one-budget-table-the-skills-call)
+and the 1,024-token reserve floor belong here too, in the weakest sense
+of the word: they are a design decision this document records rather than
+a number anything above derives from. What makes them defensible is that
+they sit in one table where a change is a reviewable diff -- not that
+they were measured.

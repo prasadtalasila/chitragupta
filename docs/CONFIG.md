@@ -22,6 +22,7 @@ this document can stay a reference rather than an argument.
   - [`[render]` -- citation style](#-render----citation-style)
   - [`[style]` -- prose conformance and the acronym vocabulary](#-style----prose-conformance-and-the-acronym-vocabulary)
   - [`[parser]` -- PDF text extraction](#-parser----pdf-text-extraction)
+  - [`[tokens]` -- the context window a skill divides](#-tokens----the-context-window-a-skill-divides)
   - [`[logging]` -- the pipeline log file](#-logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#-provenance----citation-support-bands)
   - [`[enrich]` -- the optional enrichment layer](#-enrich----the-optional-enrichment-layer)
@@ -307,6 +308,26 @@ The values in full:
 - **`long_word_ratio`** -- a fraction between 0.0 and 1.0. The range is
   not enforced, so a value above 1.0 loads fine and disables the
   warning, since no document can exceed it.
+
+### 🪟 `[tokens]` -- the context window a skill divides
+
+| Key | Env var | Accepts | Default |
+| --- | --- | --- | --- |
+| `window_size` | `TOKENS_WINDOW_SIZE` | positive integer | `200000` |
+
+- **`window_size`** -- the context window, in tokens, that a genre skill
+  splits into per-section budgets through
+  `chitragupta.context_budget.allocate()`. Zero and negative values are
+  rejected at load rather than silently defaulted, the same as the other
+  positive-integer settings here.
+
+Only the *window* is configurable; the per-section shares are not. They
+are a single table in `chitragupta/context_budget.py`, because one table
+is what keeps nine skills' budgets comparable in one diff -- shares in
+each skill's own frontmatter would be the prose budgets this setting
+exists to replace. The window, by contrast, is a property of the model
+you happen to run, so it belongs to you. [TOKENS.md](TOKENS.md) has the
+split and what happens to a window too small to pay the reserve.
 
 ### 🪵 `[logging]` -- the pipeline log file
 

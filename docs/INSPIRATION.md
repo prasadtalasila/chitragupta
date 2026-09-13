@@ -177,6 +177,21 @@ came from.
   fail-silent by design, which is right for what they protect and would be
   a silently inert citation gate if copied across.
 
+- **llm_wiki** (**GPL-3.0**) -- a context-budget allocator as a pure
+  function: the full window in, per-section budgets out, with the
+  response reserve doing double duty as the provider's `max_tokens`.
+  `chitragupta/context_budget.py` takes that shape and nothing else.
+  **Only the concept transfers, and it had to:** that project is
+  copyleft and this one is MIT, so no line of it was read into this
+  repository's code. The section set here is different in substance as
+  well as in name -- dossier, retrieved passages, draft and reserve,
+  against upstream's index, pages, history and reserve -- and the shares
+  and the 1,024-token reserve floor were chosen for this pipeline rather
+  than taken. The reserve also does *not* double as a `max_tokens`: this
+  project never calls a provider API, so there is nothing to set.
+  [TOKENS.md](TOKENS.md) has the split and why the shares are code while
+  the window is configuration.
+
 ### 🪝 Hook architecture as a first-class layer
 
 - **[jcode](https://jcode.sh/docs)** -- hooks as shell commands fired at
@@ -338,8 +353,9 @@ Stated once, because it is the same rule the pipeline applies to drafts:
 
 **Attribute the idea, and never copy the text.** Where an upstream is
 permissively licensed the adaptation is still written from scratch, and
-where it is not (`academic-research-skills`, CC-BY-NC 4.0) only the
-concept is taken and the entry above says so explicitly. The rule held
+where it is not (`academic-research-skills`, CC-BY-NC 4.0; llm_wiki,
+GPL-3.0) only the concept is taken and the entry above says so
+explicitly. The rule held
 when it was tested: copying from two permissively-licensed upstreams was
 offered for the feature roadmap and declined, at a measured cost of
 about one PR. That is

@@ -195,6 +195,24 @@ collapse them for the sake of a cleaner narrative.
    the ledger has moved since.
 1. **Retrieve broadly, over-fetching on purpose.**
 
+   **Take the budget, don't describe one.** Before the first search, ask
+   what this run may spend rather than judging it by feel:
+
+   ```bash
+   python -c "from chitragupta import config, context_budget; print(context_budget.allocate(config.TOKENS_WINDOW_SIZE))"
+   ```
+
+   Read `passages` as the ceiling on retrieved material you may hold in
+   your own context at once, and `reserve` as what has to stay free for
+   you to write with. Both are token counts; at four characters per token
+   they are roughly `passages * 4` characters of snippets and evidence
+   windows. Crossing `passages` is the cue to put step 2a's subagents in
+   front of the retrieval, not to read faster or to read less carefully
+   -- `docs/TOKENS.md` has why those are not the same trade. The shares
+   are one table in `chitragupta/context_budget.py` so that this skill's
+   budget and every other genre skill's can be compared in one diff;
+   `[tokens] window_size` in `config.toml` is the only part you retune.
+
    **First, check whether the dossier has an `outline.md`** -- a human
    writes this file by hand (`dossier init --outline`, or added later)
    with, per section, a heading, a `brief:` and/or `claim:` block, and
@@ -236,7 +254,8 @@ collapse them for the sake of a cleaner narrative.
    python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --collection "<from scope.md>" --log content/drafts/<slug>.md
    ```
 
-   Pull more candidates than you expect to use. This is a keyword-overlap
+   Pull more candidates than you expect to use, up to the `passages`
+   budget above. This is a keyword-overlap
    ranker, not embeddings (unless `chitragupta/enrich/embed_index.py` has been built
    for this corpus) -- a high score means the query's words are in the
    document, not that it supports your claim.

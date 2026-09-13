@@ -342,6 +342,19 @@ long_word_chars = 20
 long_word_ratio = 0.01
 min_tokens = 200
 
+[tokens]
+# The context window, in tokens, that a genre skill divides into named
+# budgets via chitragupta.context_budget.allocate(). A property of the
+# model you run, not of this pipeline -- which is why it is here and the
+# per-section shares are not: those live in one table in code so that
+# nine skills' budgets stay comparable in a single diff.
+#
+# Lower it if you run a smaller window; the split scales, and a window
+# too small to pay the reserve spends all of itself on the reserve rather
+# than leaving the model no room to answer. See docs/TOKENS.md.
+#                                                         Default: 200000
+window_size = 200000
+
 [logging]
 # How much the pipeline writes to logs/pipeline.log (rotated,
 # gitignored -- created on first run). One of Python's own level names:

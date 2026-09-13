@@ -590,6 +590,17 @@ PARSE_LONG_WORD_RATIO = _get_float(
 # cover page, or a scan that yielded almost no text).
 PARSE_MIN_TOKENS = _get_int("PARSE_MIN_TOKENS", "parser", "min_tokens", default=200)
 
+# The context window a genre skill is dividing up, in tokens. Read here
+# and passed to `chitragupta.context_budget.allocate` by the caller: the
+# allocator is deliberately pure and reads nothing, and the window is the
+# one part of the split that is a property of the host's model rather
+# than of this pipeline. The default is the 200k window the models this
+# project is run against advertise; a user on a different size retunes it
+# here rather than by editing Python.
+TOKENS_WINDOW_SIZE = _get_positive_int(
+    "TOKENS_WINDOW_SIZE", "tokens", "window_size", default=200_000
+)
+
 
 def _get_log_level(env_var: str, *toml_path: str, default: str) -> str:
     """One of LOG_LEVELS, case-insensitive on input, canonical on output.

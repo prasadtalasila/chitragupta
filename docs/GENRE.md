@@ -133,6 +133,11 @@ deliverable, so they are never collapsed for a cleaner narrative.
 This is the skill whose retrieval pass dominates its own token cost, and
 the one whose economics are worked through in
 [TOKENS.md](TOKENS.md#-example-1-one-rejected-paper-followed-to-the-end-of-the-run).
+It is also the first skill to take its retrieval budget from
+`chitragupta.context_budget.allocate()` rather than describe one in
+prose, for that same reason -- [dividing the
+window](TOKENS.md#-dividing-the-window-one-budget-table-the-skills-call)
+has the split, and the other eight skills still describe theirs.
 
 ### 🎓 `thesis-chapter-writer`
 
