@@ -23,6 +23,7 @@ came from.
 - [Harness engineering](#-harness-engineering)
 - [The feature roadmap](#-the-feature-roadmap)
 - [Topic discovery](#-topic-discovery)
+- [The corpus layer](#-the-corpus-layer)
 - [The rule on borrowing](#-the-rule-on-borrowing)
 
 ## ✍ The drafting layer's method
@@ -331,6 +332,29 @@ load-bearing as the borrowings.
   entry corroborates rather than introduces it. *Not taken:* the whole
   training/distillation stack -- there is no labelled relevance data in
   a personal corpus, and fine-tuning is out of scope.
+
+## 🗃 The corpus layer
+
+- **llm_wiki** (GPL-3.0) -- a wiki generator whose delete path is a
+  *cascade*: it matches the pages a deleted source affects, prunes the
+  source out of the survivors, cleans the index and removes the dead
+  links. One idea taken, and it is the diagnosis rather than the
+  remedy: **removing a source leaves residue in every artefact derived
+  from it, and the moment to say so is the removal, not the next time
+  something downstream breaks.** That is `sync --remove-stale`'s residue
+  report ([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)).
+
+  *Not taken: the cascade itself,* and this is the substantive refusal.
+  Pruning a citekey out of a dossier's `evidence.md` would delete
+  evidence a human transcribed by hand, which no automatic repair is
+  entitled to do -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) already
+  reasons through the same boundary for `recorded-but-uncited`. So this
+  reports and repairs nothing. Its three-method fuzzy matcher is not
+  taken either: a citekey here is an exact string from the human's own
+  BibTeX export, and a matcher that guessed would report residue for a
+  paper that has none. The upstream is copyleft, so only the concept is
+  taken; nothing is copied, which is the same rule the permissively
+  licensed entries above are held to anyway.
 
 ## 🔑 The rule on borrowing
 

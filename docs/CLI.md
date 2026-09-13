@@ -21,6 +21,7 @@ short path; this is the full set.
 - [The full first run, step by step](#-the-full-first-run-step-by-step)
 - [Every command and flag](#-every-command-and-flag)
   - [`chitragupta corpus sync`](#-chitragupta-corpus-sync)
+  - [What else still references a citekey you are about to remove](#-what-else-still-references-a-citekey-you-are-about-to-remove)
   - [When `sync` re-parses a document it already parsed](#-when-sync-re-parses-a-document-it-already-parsed)
   - [`chitragupta corpus ledger`](#-chitragupta-corpus-ledger)
   - [`chitragupta corpus topics`](#-chitragupta-corpus-topics)
@@ -536,6 +537,52 @@ three mean an item that never had a PDF here.
 If a stale path in your bib file is expected and you would rather the
 scheduled run stayed green, fix the path or drop the `file` field --
 there is deliberately no flag to suppress it.
+
+### 🧾 What else still references a citekey you are about to remove
+
+The ledger row is not the only place a citekey lives. Whenever a run has
+stale citekeys to report -- in the default report-only mode, and again
+just before `--remove-stale` deletes anything -- `sync` scans four other
+artefacts and names what still points at each one:
+
+| Artefact | Where it lives | Counted as |
+| --- | --- | --- |
+| overlap index | `content/overlap/docs/<citekey>.fpr`, `.skipgram.fpr`, and `index.json`'s citekey list | files |
+| topic graph | `content/topic_graph.json`'s `edges_overlap`, `edges_withheld` and `edges_semantic` | edges |
+| dossiers | `evidence.md` and `sections.md` under `content/dossiers/` | mentions, per file |
+| chroma vectors | the chunk collection under `content/chroma/` | vectors |
+
+```text
+  stale   smith_example_2024 (no longer in bibliography.bib)
+  Checking what else still references the 1 stale citekey(s) ...
+    smith_example_2024: still referenced by 2 artefact class(es)
+      overlap index    2 file(s): .../content/overlap/docs/smith_example_2024.fpr, ...
+      dossiers         4 mention(s): .../content/dossiers/dt/survey/evidence.md (4)
+    Reported, not repaired -- nothing above is touched by this run.
+Review the 1 stale item(s) above, then re-run with --remove-stale ...
+```
+
+**It reports; it never repairs.** Nothing above is deleted, rewritten or
+created -- the only thing `--remove-stale` removes is still the ledger
+row. Pruning a citekey out of a dossier's `evidence.md` would destroy
+evidence you transcribed by hand, so that decision stays yours. A
+citekey nothing else references says so, on its own line, and the
+existing "re-run with `--remove-stale`" prompt is unchanged either way.
+
+Three things worth knowing. A citekey is matched as an **exact string**,
+bounded so `smith_2024` never answers for `smith_2024b`; there is no
+fuzzy matching and none is wanted, since the citekey comes from your own
+BibTeX export. `content/chroma/` is only opened if it already exists and
+the `enrich` extra is installed -- otherwise you get a `NOTE:` line
+saying the class was not scanned, rather than a silent zero. And the
+chroma collection is namespaced by `[embedding].model`, so a corpus
+embedded under a different model reads as zero vectors here; that is a
+true statement about the collection this configuration would use.
+
+The `--remove-stale` run skips the scan entirely when the bib file
+yielded **zero** references, because the refusal described above is
+about to be raised and a residue report for every row in your ledger
+would bury it.
 
 ### ♻ When `sync` re-parses a document it already parsed
 
