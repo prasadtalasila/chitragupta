@@ -789,8 +789,10 @@ carried any decoded LaTeX.
 
 That matters more than a missing-content bug usually would, because
 `chitragupta/retrieval.py` indexes `content/parsed/*.txt` and **nothing
-else** -- so with this off, an equation is absent from the only artefact
-a drafting skill can read. With it on, the equation is LaTeX, which is
+else** -- the passage sidecar beside it is read only to find where the
+reference list starts ([RETRIEVAL.md](RETRIEVAL.md#-a-papers-own-bibliography-is-not-indexed)),
+never for text -- so with this off, an equation is absent from the only
+artefact a drafting skill can read. With it on, the equation is LaTeX, which is
 text, which that index already handles. No other setting has to change.
 
 **Why this is not `[enrich].docling_formulas.`** The two keys set the

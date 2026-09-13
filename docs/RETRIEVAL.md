@@ -1,6 +1,6 @@
 # 🔎 Retrieval: BM25, embeddings, and topic models
 
-Status: **reference.** Written 2026-08-06. Updated 2026-08-23.
+Status: **reference.** Written 2026-08-06. Updated 2026-09-13.
 
 Three things in this repository search or organise your corpus. Two of
 them answer the same question in different ways, and the third answers a
@@ -83,10 +83,14 @@ Two properties matter when you compare it with the alternative:
 
 - **Every hit is citable.** It reads the ledger, so every result already
   has a citekey that `citation_gate` will accept.
-- **It reads `content/parsed/<citekey>.txt` and nothing else.** Running
+- **It reads the corpus layer's own directory and nothing else.**
+  `content/parsed/<citekey>.txt`, plus the `<citekey>.passages.json`
+  sidecar beside it that says where that document's reference list starts
+  ([below](#-a-papers-own-bibliography-is-not-indexed)). Running
   the enrichment layer's `docling` stage does not improve BM25 --
-  `content/docling/` is not on its read path. The only way Docling's output
-  reaches keyword
+  `content/docling/` is not on its read path, and the sidecar BM25 reads
+  is deliberately the corpus layer's, not that layer's richer one. The
+  only way Docling's output reaches keyword
   retrieval is `[parser].backend = "docling"` in the corpus layer, which
   changes what
   `sync` writes into `content/parsed/`. (That choice also decides whether
@@ -98,6 +102,71 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 `status`, and the parsed file's size and mtime -- not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
+
+### 📚 A paper's own bibliography is not indexed
+
+A reference list is dozens of *other* papers' titles sitting inside this
+one's body text, so a short query naming a subject used to match the
+bibliography of every paper that merely cites work on it. On the corpus
+this was measured against, **792,963 of 4,231,367 indexed tokens --
+18.7%** -- sat after a reference heading; the median document gave up
+17.9% of its tokens to one and the worst gave up 80.8%. It cost twice:
+spurious term frequencies, and an inflated document length, so a paper
+with a long bibliography was penalised by BM25's own length
+normalization for text that is not its own.
+
+Since 6.107.0 the indexed text stops at that heading, and so does every
+snippet and every `evidence` window -- one cut in
+`chitragupta/_reference_cut.py`, applied where all three read their text,
+because a snippet quoting a reference list is evidence of nothing.
+
+**What identifies the span, since no label does.** Docling has no
+`reference` label -- the same caveat [TLDR.md](TLDR.md) records about
+there being no `abstract` one. So the cut is structural: a
+`section_header` passage in `content/parsed/<citekey>.passages.json`
+whose text *is* `References` / `Bibliography` / `Works Cited` /
+`Literature Cited` (optionally numbered), and everything from the last
+such heading to the end of the document. A heading that merely starts
+with the word -- "Reference architecture" -- is not one, and neither is
+the same word carrying a different label.
+
+**It is backend-dependent, and that is licensed rather than overlooked.**
+A `pdftotext` parse leaves no sidecar, so those items are indexed exactly
+as before. 459 of 497 parsed items here have a locatable heading; the
+other 38 are untouched. `_INDEX_SCHEMA_VERSION` moved to 2, so every
+cache entry written under the old rule is discarded rather than mixed
+with new ones.
+
+**What the rule costs, measured rather than assumed.** On 79 of those 459
+a heading follows the cut -- overwhelmingly `Acknowledgements`,
+`Competing interests`, `Author contributions` and author biographies,
+which is why "to the end of the document" is the right rule here and not
+a lazy one. Two outliers pay for it with real prose: a working paper
+whose appendix tables follow its references, and a report whose last
+chapter bibliography is followed by workshop summaries. A book with a
+bibliography per chapter keeps every chapter's but the last.
+
+**Retrieval quality, before and after**, on the same two arms
+`bench/bench_retrieval_keyword_selfretrieval.py` and
+`bench/bench_retrieval_live_logs.py` score everything else with, BM25 row
+only:
+
+| arm | queries | recall@5 | nDCG@5 |
+| --- | --- | --- | --- |
+| keyword self-retrieval | 256 | 0.8086 → **0.8086** | 0.7296 → **0.7150** |
+| live drafting logs | 96 | 0.8542 → **0.8646** | 0.4729 → **0.4526** |
+
+Read that honestly: recall is flat on one arm and up a little on the
+other, and nDCG slips on both. Per query, the self-retrieval arm moves 37
+of 236 distinct queries (16 better, 21 worse) and the live-logs arm 54 of
+96 (19 better, 35 worse), so the aggregate is rank swaps inside the top
+five rather than sources appearing or vanishing. Neither arm can show what the
+change is actually for: both score against citekeys a human already kept
+during a BM25-only session, so a bibliography hit that wasted a slot was
+never recorded as a miss. The self-retrieval arm is biased against the
+cut for a more specific reason -- its query is a paper's own keywords,
+and a paper's own bibliography is full of them, so removing it removes a
+signal that particular ground truth rewards.
 
 ### 🪟 One window chooser, shared and deterministic
 

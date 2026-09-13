@@ -23,7 +23,14 @@ from pathlib import Path
 
 from chitragupta import config
 
-_INDEX_SCHEMA_VERSION = 1
+# 2 since #768: every entry written before it counted the tokens of the
+# document's own reference list, and nothing else in the fingerprint says
+# so -- the parsed file is byte-identical, only the rule for what counts
+# as its text changed. The sidecar that rule reads is deliberately *not*
+# in `_fingerprint` below: `passages.clear_sidecar` runs before every
+# re-parse and the same parse rewrites the `.txt`, so a sidecar cannot
+# move without the parsed file's own mtime moving with it.
+_INDEX_SCHEMA_VERSION = 2
 
 
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:

@@ -81,6 +81,7 @@ __all__ = [
     "Passage",
     "PASSAGE_LABELS",
     "clear_sidecar",
+    "corpus_passages",
     "distinctive",
     "passage_records",
     "sidecar_path",
@@ -252,6 +253,18 @@ def structural_passages(citekey: str) -> list[Passage] | None:
         if sidecar:
             return sidecar
     return None
+
+
+def corpus_passages(citekey: str) -> list[Passage] | None:
+    """Rung 2 alone -- what *this* layer's own parse recorded.
+
+    `structural_passages` prefers rung 1, which is right for a caller
+    that wants the best structure available. It is wrong for one whose
+    output must not move when someone runs `chitragupta.enrich`:
+    `chitragupta/retrieval.py` promises exactly that of the BM25 index,
+    and `chitragupta/_reference_cut.py` cuts that index on a sidecar.
+    """
+    return _from_sidecar(sidecar_path(citekey))
 
 
 def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
