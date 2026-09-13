@@ -1235,7 +1235,20 @@ backstop on how many passes one may take, and `objective_class_count`,
 the number of `unattended` items in this agenda -- both carried as data
 because a skill cannot import a Python constant, and hardcoding either
 into a skill's prose is exactly what naming them as constants was meant
-to prevent. Like
+to prevent.
+
+A fourth top-level key, `stale_spans`, lists what this run **refused**
+(R12, [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)): an item whose exact
+draft text has changed since the aid found it is dropped from `items`
+rather than repaired against text that no longer exists, and appears here
+instead with its `id`, `class`, `section` anchor, `summary` and the
+`refused` reason. Refused items are not counted in
+`objective_class_count`, and the Markdown report carries the same list
+under `## Refused as stale`. Nothing is relocated by similarity and
+nothing is merged; the finding is re-derived on the next run against the
+current text. `stale_spans` is a different thing from
+`sources.aids.<aid>.stale`, which is the mtime comparison saying a whole
+aid report predates the draft -- hence the different key. Like
 [`provenance`](#-chitragupta-review-provenance), the `.json` (and the
 `.md`) is filed unconditionally -- there is no `--write` flag -- and
 `--json` only decides whether the worklist is *also* printed to stdout,
