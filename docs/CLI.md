@@ -1195,15 +1195,33 @@ Both are corrected above.
 | `<draft>` | required | The Markdown draft to check |
 | `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written -- it *is* the report; `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 | `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
-| `--baseline PATH` | unset | Re-run the eight aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** -- the bare command above never does -- so it costs seconds rather than milliseconds |
+| `--accept ID` | unset | Record this item id as considered and accepted, keeping it off the worklist while the finding's identity is unchanged. Repeatable. Only `claim-support`, `uncited-claim` and `unsupported-claim` may be accepted; every other class is refused with exit code 2 |
+| `--baseline PATH` | unset | Re-run the eight aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new`/`accepted` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** -- the bare command above never does -- so it costs seconds rather than milliseconds |
 
 ```bash
 chitragupta review agenda content/drafts/survey.md
 # chitragupta review agenda content/drafts/survey.md --formats md
 # chitragupta review agenda content/drafts/survey.md --json > agenda.json
+# chitragupta review agenda content/drafts/survey.md --accept 3f2a91c40b7e
 # chitragupta review agenda content/drafts/survey.md \
 #     --baseline content/review/survey.agenda.json --json
 ```
+
+**`--accept`** records a judgement you have already made, so the next
+cycle shows you what is new rather than what you already decided about.
+The record is `content/review/<topic>/<stem>.accepted.json`, written
+beside the report whose ids it names, and it stores identities only --
+the agenda still recomputes every item from the aids on every run, and an
+accepted item is filtered out of a freshly computed list rather than
+remembered as "done". Because an item's id is a hash of the span it is
+about, **an edit to that span raises a new id and the item comes back by
+itself**; there is no reopen command because none is needed. Every
+accepted item is listed in the report's own `## Accepted` section --
+including one whose record now matches nothing, which is what the
+reopening looks like from the record's side. Defect classes cannot be
+accepted, `misquoted` included; [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)
+has why that one is excluded although it is surfaced rather than
+unattended.
 
 **`--baseline`** refreshes before it compares, and that is the point
 rather than a convenience: reading the aids' pre-edit `.json` reports a
@@ -1218,14 +1236,22 @@ against an invented query. Under `--baseline` the aids are refreshed at
 `.md` until a full-format run of the layer follows.
 
 Under `--baseline --json`, stdout carries the comparison payload, not
-the worklist -- `resolved`/`persisting`/`new`/`objective_before`/
-`objective_after`/`objective_delta`, and no `items` key at all. The
+the worklist -- `resolved`/`persisting`/`new`/`accepted`/
+`objective_before`/`objective_after`/`objective_delta`, and no `items`
+key at all. `accepted` is why an accepted item is not reported as
+`resolved`: suppression removes it from this run's worklist, and without
+that group a set difference would call a finding nobody repaired fixed.
+An accepted item that has genuinely gone -- the span was edited, the
+finding did not recur -- is still `resolved`, which is what it is. The
 worklist itself is unaffected: it still lands in the filed `.json`
 report, written unconditionally either way, same as always.
 
 **`--json`** carries the same envelope every review aid's JSON does, plus
 `sources` (`available`/`stale` per aid, `available`/`partial` for the
-prose check, `available`/`corpus_available` for the dossier drift) and
+prose check, `available`/`corpus_available` for the dossier drift,
+`available`/`count` for the acceptance record), an `accepted` list
+carrying each stored record and whether this run's worklist was shorter
+for it, and
 one `items` object per worklist entry -- `id`, `class`, `section`,
 `citekey`, `line`, `unattended`, `summary` and a `detail` object whose
 shape is specific to the class. An additional serialisation of what

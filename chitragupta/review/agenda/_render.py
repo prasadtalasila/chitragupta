@@ -73,7 +73,57 @@ def _source_notes(agenda) -> list[str]:
         if recorded.available
         else "- Recorded-but-uncited citekeys: not available -- no dossier for this draft"
     )
+    notes.append(_accepted_note(agenda.sources.accepted))
     return notes
+
+
+def _accepted_note(accepted) -> str:
+    """The acceptance record's line in the header.
+
+    An unreadable record is named rather than passed over, and the note
+    says what that costs: nothing was hidden, so the worklist below is
+    the full one. A reader who does not know a suppression input exists
+    cannot ask why an item they accepted is back.
+    """
+    if accepted.reason:
+        return (
+            f"- Accepted items: **unreadable** -- {accepted.reason}. "
+            "Nothing is suppressed, so every accepted item is listed below again"
+        )
+    if not accepted.available:
+        return "- Accepted items: none recorded for this draft"
+    return f"- Accepted items: read, {len(accepted.records)} recorded"
+
+
+def _accepted_lines(agenda) -> list[str]:
+    """The audit trail: every accepted item, and whether this run's
+    worklist is actually shorter for it.
+
+    A record that matched nothing is shown too, and is the ordinary
+    outcome of the repair working: the span changed, the id changed with
+    it, and the acceptance no longer applies to anything. Dropping those
+    rows would make an acceptance look permanent when it is not.
+    """
+    records = agenda.sources.accepted.records
+    if not records:
+        return []
+    suppressed = {item.id for item in agenda.suppressed}
+    lines = [
+        "## Accepted",
+        "",
+        "Considered and accepted by a person, and therefore kept off the",
+        "worklist below while each finding's identity is unchanged. An edit to",
+        "an accepted span raises a new id, which no record matches, so the item",
+        "returns by itself -- there is no reopen command because none is needed.",
+        "",
+    ]
+    for record in records:
+        state = "suppressed" if record["id"] in suppressed else "not raised by this run"
+        lines.append(
+            f"- `{record['id']}` [{record.get('class')}, {state}]: {record.get('summary')}"
+        )
+    lines.append("")
+    return lines
 
 
 def _summary_lines(agenda) -> list[str]:
@@ -132,6 +182,7 @@ def render_markdown(agenda, command: str) -> str:
     ]
     lines += _source_notes(agenda)
     lines.append("")
+    lines += _accepted_lines(agenda)
 
     if not agenda.items:
         lines += ["No items -- nothing for this worklist to report.", ""]
@@ -195,7 +246,26 @@ def _sources_dict(agenda) -> dict:
             "available": agenda.sources.drift.available,
             "corpus_available": agenda.sources.drift.corpus_available,
         },
+        "accepted": {
+            "available": agenda.sources.accepted.available,
+            "count": len(agenda.sources.accepted.records),
+        },
     }
+
+
+def _accepted_dicts(agenda) -> list[dict]:
+    """The acceptance record as the payload publishes it -- each stored
+    row, plus whether this run's worklist is shorter for it.
+
+    `suppressed` is computed here rather than stored in the record: it is
+    a fact about *this* run, and a stored copy of it would be the mutable
+    per-item state #767 rejected.
+    """
+    suppressed = {item.id for item in agenda.suppressed}
+    return [
+        {**record, "suppressed": record["id"] in suppressed}
+        for record in agenda.sources.accepted.records
+    ]
 
 
 def agenda_payload(agenda, command: str) -> dict:
@@ -225,6 +295,10 @@ def agenda_payload(agenda, command: str) -> dict:
             "pass_bound": agenda_module.PASS_BOUND,
             "objective_class_count": agenda.objective_class_count,
             "items": [_item_dict(agenda, item) for item in agenda.items],
+            # Appended after `items`, like `_item_dict`'s own locators, so
+            # a consumer written against the previous shape reads an
+            # unchanged prefix.
+            "accepted": _accepted_dicts(agenda),
         }
     )
     return payload

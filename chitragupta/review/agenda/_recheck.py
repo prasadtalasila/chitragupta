@@ -182,10 +182,11 @@ def load_baseline(path: str | Path) -> dict:
 
 
 def compare(
-    new_items: list[dict], baseline_items: list[dict]
-) -> tuple[list[dict], list[dict], list[dict], int, int]:
-    """`(resolved, persisting, new, objective_before, objective_after)`
-    for one agenda against another.
+    new_items: list[dict],
+    baseline_items: list[dict],
+    accepted_ids: "set[str] | frozenset[str]" = frozenset(),
+) -> tuple[list[dict], list[dict], list[dict], list[dict], int, int]:
+    """`(resolved, persisting, new, accepted, before, after)`, one agenda against another.
 
     Both sides are `_render._item_dict`-shaped, and matching is on `id`
     alone. That id is content-addressed (`_identity.item_id`) and carries
@@ -197,16 +198,27 @@ def compare(
     re-deriving what "objective" means, and a second definition here is
     how the two would come to disagree.
     """
+    # `accepted_ids` exists so an accepted item is not reported resolved,
+    # which is exactly the silent wrong answer this module was written to
+    # prevent: such an item is absent from `new_items` by suppression,
+    # not by repair, so plain set difference would call it fixed. The
+    # caller passes only the ids this run actually suppressed
+    # (`_render._accepted_dicts`), so an accepted item that has genuinely
+    # gone -- the span was edited, the finding did not recur -- still
+    # lands in `resolved`, which is what it is. Neither objective count
+    # moves either way: the acceptable classes are all surfaced.
     new_ids = {item["id"] for item in new_items}
     baseline_ids = {item["id"] for item in baseline_items}
-    resolved = [item for item in baseline_items if item["id"] not in new_ids]
+    resolved = [item for item in baseline_items if item["id"] not in new_ids | accepted_ids]
+    accepted = [item for item in baseline_items if item["id"] in accepted_ids - new_ids]
     persisting = [item for item in new_items if item["id"] in baseline_ids]
     appeared = [item for item in new_items if item["id"] not in baseline_ids]
 
     def objective(items: list[dict]) -> int:
         return sum(1 for item in items if item["unattended"])
 
-    return resolved, persisting, appeared, objective(baseline_items), objective(new_items)
+    before, after = objective(baseline_items), objective(new_items)
+    return resolved, persisting, appeared, accepted, before, after
 
 
 def recheck_command(draft: str | Path, baseline: str | Path) -> str:
@@ -228,16 +240,15 @@ def recheck_command(draft: str | Path, baseline: str | Path) -> str:
 def recheck_payload(
     draft: str | Path,
     baseline_path: str | Path,
-    groups: tuple[list[dict], list[dict], list[dict]],
+    groups: tuple[list[dict], list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
     command: str,
 ) -> dict:
     """The comparison as data -- `verbatim recheck`'s payload shape, key
-    for key. Carries the baseline's path as well as the three groups: a
-    verdict whose basis is not recorded beside it is one nobody can
-    check later.
-    """
-    resolved, persisting, appeared = groups
+    for key, plus the `accepted` group that shape has no counterpart for.
+    Carries the baseline's path too: a verdict whose basis is not
+    recorded beside it is one nobody can check later."""
+    resolved, persisting, appeared, accepted = groups
     before, after = counts
     payload = review.envelope(Path(draft), "agenda", command)
     payload.update(
@@ -249,6 +260,9 @@ def recheck_payload(
             "resolved": resolved,
             "persisting": persisting,
             "new": appeared,
+            # Last, so the three groups a reader of the previous shape
+            # already looks up keep their place.
+            "accepted": accepted,
         }
     )
     return payload
@@ -256,21 +270,20 @@ def recheck_payload(
 
 def format_recheck(
     baseline_path: str | Path,
-    groups: tuple[list[dict], list[dict], list[dict]],
+    groups: tuple[list[dict], list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
 ) -> str:
     """The plain-text form, for stdout. Lists each item by `id`, `class`
     and `summary` -- an agenda item's own fields, where `verbatim
     recheck`'s counterpart prints a citekey, a page range and a line.
     """
-    resolved, persisting, appeared = groups
+    # `accepted` prints last and always, empty or not, for the same
+    # reason the other three do: a group that appears only when it is
+    # non-empty teaches a reader it does not exist.
     before, after = counts
     lines = [f"baseline: {baseline_path}", ""]
-    for label, items in (
-        ("resolved", resolved),
-        ("persisting", persisting),
-        ("new", appeared),
-    ):
+    labels = ("resolved", "persisting", "new", "accepted")
+    for label, items in zip(labels, groups, strict=True):
         lines.append(f"  {label} ({len(items)}):")
         if not items:
             lines.append("      -")

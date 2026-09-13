@@ -16,6 +16,7 @@ from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
 from chitragupta.review import agenda, citation_provenance
 from chitragupta.review.agenda import (
+    _accept,
     _dedup,
     _identity,
     _items,
@@ -1739,18 +1740,33 @@ class TestLoadBaseline:
 class TestCompare:
     def test_an_item_in_both_persists(self):
         both = [_item_dict("a")]
-        resolved, persisting, new, _, _ = _recheck.compare(both, both)
-        assert (resolved, persisting, new) == ([], both, [])
+        resolved, persisting, new, accepted, _, _ = _recheck.compare(both, both)
+        assert (resolved, persisting, new, accepted) == ([], both, [], [])
 
     def test_an_item_only_in_the_baseline_is_resolved(self):
         before = [_item_dict("a")]
-        resolved, persisting, new, _, _ = _recheck.compare([], before)
-        assert (resolved, persisting, new) == (before, [], [])
+        resolved, persisting, new, accepted, _, _ = _recheck.compare([], before)
+        assert (resolved, persisting, new, accepted) == (before, [], [], [])
 
     def test_an_item_only_in_the_new_list_is_new(self):
         after = [_item_dict("a")]
-        resolved, persisting, new, _, _ = _recheck.compare(after, [])
-        assert (resolved, persisting, new) == ([], [], after)
+        resolved, persisting, new, accepted, _, _ = _recheck.compare(after, [])
+        assert (resolved, persisting, new, accepted) == ([], [], after, [])
+
+    def test_an_accepted_item_is_not_reported_resolved(self):
+        """Suppression removes it from the new list, so plain set
+        difference would call a finding nobody repaired fixed."""
+        before = [_item_dict("a", cls="uncited-claim", unattended=False)]
+        resolved, _, _, accepted, _, _ = _recheck.compare([], before, {"a"})
+        assert (resolved, accepted) == ([], before)
+
+    def test_an_item_that_really_went_away_is_still_resolved(self):
+        """Only the ids this run actually suppressed are passed in, so an
+        accepted item whose span was edited -- and which therefore no
+        longer matches anything -- reports as the repair it was."""
+        before = [_item_dict("a")]
+        resolved, _, _, accepted, _, _ = _recheck.compare([], before, set())
+        assert (resolved, accepted) == (before, [])
 
     def test_objective_counts_fall_when_an_unattended_item_is_repaired(self):
         *_, before, after = _recheck.compare([], [_item_dict("a"), _item_dict("b")])
@@ -1773,7 +1789,12 @@ class TestCompare:
 
 class TestRecheckPayloadAndText:
     def _groups(self):
-        return ([_item_dict("r")], [_item_dict("p")], [_item_dict("n")])
+        return (
+            [_item_dict("r")],
+            [_item_dict("p")],
+            [_item_dict("n")],
+            [_item_dict("a", cls="uncited-claim", unattended=False)],
+        )
 
     def test_command_reproduces_the_invocation(self):
         # A plain string, not `Path(...)`: `str(Path(...))` normalises to
@@ -1799,6 +1820,7 @@ class TestRecheckPayloadAndText:
         assert payload["resolved"] == [_item_dict("r")]
         assert payload["persisting"] == [_item_dict("p")]
         assert payload["new"] == [_item_dict("n")]
+        assert payload["accepted"] == [_item_dict("a", cls="uncited-claim", unattended=False)]
 
     def test_a_rising_count_gives_a_positive_delta(self):
         payload = _recheck.recheck_payload(
@@ -1812,12 +1834,13 @@ class TestRecheckPayloadAndText:
         assert "resolved (1)" in text
         assert "persisting (1)" in text
         assert "new (1)" in text
+        assert "accepted (1)" in text
         assert "`r` [prose]: a finding" in text
         assert "3 -> 1 (-2)" in text
 
     def test_text_marks_an_empty_group(self):
-        text = _recheck.format_recheck("b.json", ([], [], []), (0, 0))
-        assert text.count("      -") == 3
+        text = _recheck.format_recheck("b.json", ([], [], [], []), (0, 0))
+        assert text.count("      -") == 4
 
 
 class TestBaselineCli:
@@ -1962,3 +1985,391 @@ class TestBaselineCli:
         payload = json.loads(capsys.readouterr().out)
         assert payload["objective_after"] == agenda.build_agenda(draft).objective_class_count
         assert payload["objective_after"] == 1
+
+
+# --------------------------------------------------------------------------
+# _accept.py
+# --------------------------------------------------------------------------
+
+
+def _acceptable_item(item_id: str = "aaa", cls: str = "uncited-claim") -> _items.Item:
+    return _items.Item(
+        id=item_id,
+        cls=cls,
+        section="Intro",
+        citekey=None,
+        line=4,
+        unattended=False,
+        summary="a claim a person read and accepted",
+    )
+
+
+class TestAcceptableClasses:
+    def test_the_three_judgement_classes_are_acceptable(self):
+        assert set(_accept.ACCEPTABLE) == {
+            "claim-support",
+            "uncited-claim",
+            "unsupported-claim",
+        }
+
+    def test_every_other_class_in_the_table_is_refused(self, isolated_config):
+        """Derived from `_items.CLASSES` rather than a copy of it, so a
+        ninth class has to decide whether it is acceptable instead of
+        inheriting an answer."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+        for cls in set(_items.CLASSES) - set(_accept.ACCEPTABLE):
+            item = _acceptable_item("id-" + cls, cls=cls)
+            with pytest.raises(_accept.NotAcceptable, match=cls):
+                _accept.accept(draft, [item], [item.id], "cmd")
+
+    def test_the_two_defect_classes_are_named_among_the_refused(self):
+        refused = set(_items.CLASSES) - set(_accept.ACCEPTABLE)
+        assert {"missing-citekey", "misquoted"} <= refused
+
+
+class TestAcceptRecord:
+    def _draft(self, isolated_config) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+        return draft
+
+    def test_no_record_file_yet_is_absent_not_an_error(self, isolated_config):
+        source = _accept.load(self._draft(isolated_config))
+        assert (source.available, source.records, source.reason) == (False, [], None)
+
+    def test_accepting_writes_a_record_beside_the_report(self, isolated_config):
+        draft = self._draft(isolated_config)
+        _accept.accept(draft, [_acceptable_item()], ["aaa"], "cmd")
+        path = _accept.accepted_path(draft)
+        assert path.parent == review.report_dir(draft)
+        payload = json.loads(path.read_text())
+        assert payload["aid"] == "agenda"
+        assert payload["command"] == "cmd"
+        assert payload["accepted"] == [
+            {
+                "id": "aaa",
+                "class": "uncited-claim",
+                "section": "Intro",
+                "citekey": None,
+                "summary": "a claim a person read and accepted",
+            }
+        ]
+
+    def test_an_accepted_record_reads_back(self, isolated_config):
+        draft = self._draft(isolated_config)
+        _accept.accept(draft, [_acceptable_item()], ["aaa"], "cmd")
+        source = _accept.load(draft)
+        assert source.available
+        assert _accept.accepted_ids(source) == {"aaa"}
+
+    def test_accepting_twice_records_the_item_once(self, isolated_config):
+        draft = self._draft(isolated_config)
+        item = _acceptable_item()
+        _accept.accept(draft, [item], ["aaa"], "cmd")
+        messages = _accept.accept(draft, [item], ["aaa"], "cmd")
+        assert len(_accept.load(draft).records) == 1
+        assert "already accepted" in messages[0]
+
+    def test_an_unknown_id_is_refused(self, isolated_config):
+        draft = self._draft(isolated_config)
+        with pytest.raises(_accept.NotAcceptable, match="nope"):
+            _accept.accept(draft, [_acceptable_item()], ["nope"], "cmd")
+
+    def test_a_refused_id_writes_nothing(self, isolated_config):
+        draft = self._draft(isolated_config)
+        with pytest.raises(_accept.NotAcceptable):
+            _accept.accept(draft, [_acceptable_item()], ["nope"], "cmd")
+        assert not _accept.accepted_path(draft).is_file()
+
+    def test_two_ids_in_one_call_are_both_recorded(self, isolated_config):
+        draft = self._draft(isolated_config)
+        items = [_acceptable_item("aaa"), _acceptable_item("bbb", cls="claim-support")]
+        _accept.accept(draft, items, ["aaa", "bbb"], "cmd")
+        assert _accept.accepted_ids(_accept.load(draft)) == {"aaa", "bbb"}
+
+    def test_a_truncated_record_degrades_to_unreadable_with_a_reason(self, isolated_config):
+        draft = self._draft(isolated_config)
+        path = _accept.accepted_path(draft)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{not json")
+        source = _accept.load(draft)
+        assert (source.available, source.records) == (False, [])
+        assert str(path) in source.reason
+
+    def test_a_payload_that_is_not_an_acceptance_record_is_unreadable(self, isolated_config):
+        draft = self._draft(isolated_config)
+        path = _accept.accepted_path(draft)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"aid": "agenda"}))
+        assert "no 'accepted' list" in _accept.load(draft).reason
+
+    def test_a_hand_mangled_row_is_dropped_rather_than_raising(self, isolated_config):
+        draft = self._draft(isolated_config)
+        path = _accept.accepted_path(draft)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"accepted": ["just a string", {"id": "aaa"}]}))
+        assert _accept.accepted_ids(_accept.load(draft)) == {"aaa"}
+
+    def test_an_unreadable_record_refuses_a_new_acceptance_rather_than_overwriting_it(
+        self, isolated_config
+    ):
+        draft = self._draft(isolated_config)
+        path = _accept.accepted_path(draft)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("{not json")
+        with pytest.raises(_accept.NotAcceptable, match="unreadable"):
+            _accept.accept(draft, [_acceptable_item()], ["aaa"], "cmd")
+        assert path.read_text() == "{not json"
+
+
+class TestPartition:
+    def test_an_unaccepted_item_is_kept(self):
+        items = [_acceptable_item()]
+        kept, suppressed = _accept.partition(items, _accept.AcceptedSource())
+        assert (kept, suppressed) == (items, [])
+
+    def test_an_accepted_item_is_suppressed(self):
+        items = [_acceptable_item()]
+        source = _accept.AcceptedSource(available=True, records=[{"id": "aaa"}])
+        kept, suppressed = _accept.partition(items, source)
+        assert (kept, suppressed) == ([], items)
+
+    def test_a_changed_span_brings_the_item_back(self):
+        """The identity is the span hash, so an edited claim raises a new
+        id, which no record matches -- the reopening mechanism, and the
+        reason there is no second one."""
+        source = _accept.AcceptedSource(
+            available=True,
+            records=[{"id": _identity.item_id("uncited", "uncited-claim", "Intro", None, "old")}],
+        )
+        reworded = _acceptable_item(
+            _identity.item_id("uncited", "uncited-claim", "Intro", None, "new")
+        )
+        kept, suppressed = _accept.partition([reworded], source)
+        assert (kept, suppressed) == ([reworded], [])
+
+
+class TestAcceptedAgendaEndToEnd:
+    """`--accept` through the real command, against a real
+    `.uncited.json` an earlier aid run would have left on disk."""
+
+    SENTENCE = "Digital twins are widely deployed in industry."
+
+    def _draft(self, isolated_config, monkeypatch, sentence: str | None = None) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nSome prose here.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        review.write_json(
+            draft,
+            "uncited",
+            {"findings": [{"id": "u1", "line": 3, "sentence": sentence or self.SENTENCE}]},
+        )
+        return draft
+
+    def _only_id(self, draft: Path) -> str:
+        built = agenda.build_agenda(draft)
+        assert [item.cls for item in built.items] == ["uncited-claim"]
+        return built.items[0].id
+
+    def test_accepting_takes_the_item_off_the_next_worklist(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        assert agenda.main([str(draft), "--accept", item_id]) == 0
+        assert f"accepted `{item_id}`" in capsys.readouterr().out
+
+        built = agenda.build_agenda(draft)
+        assert built.items == []
+        assert [item.id for item in built.suppressed] == [item_id]
+
+    def test_the_agenda_still_recomputes_from_the_aids(self, isolated_config, monkeypatch, capsys):
+        """Nothing durable holds item state: delete the aid's report and
+        the item is gone from the worklist *and* from the suppressed
+        list, because it was never stored -- only its identity was."""
+        draft = self._draft(isolated_config, monkeypatch)
+        agenda.main([str(draft), "--accept", self._only_id(draft)])
+        capsys.readouterr()
+        review.report_path(draft, "uncited", "json").unlink()
+        built = agenda.build_agenda(draft)
+        assert (built.items, built.suppressed) == ([], [])
+        assert len(built.sources.accepted.records) == 1
+
+    def test_an_edited_span_brings_the_accepted_item_back(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        agenda.main([str(draft), "--accept", self._only_id(draft)])
+        capsys.readouterr()
+        review.write_json(
+            draft,
+            "uncited",
+            {"findings": [{"id": "u1", "line": 3, "sentence": "A different claim entirely."}]},
+        )
+        built = agenda.build_agenda(draft)
+        assert [item.cls for item in built.items] == ["uncited-claim"]
+        assert built.suppressed == []
+
+    def test_the_report_lists_the_accepted_item_so_the_record_is_auditable(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        agenda.main([str(draft), "--accept", item_id])
+        capsys.readouterr()
+        rendered = review.report_path(draft, "agenda", "md").read_text()
+        assert "## Accepted" in rendered
+        assert f"- `{item_id}` [uncited-claim, suppressed]" in rendered
+        assert "Accepted items: read, 1 recorded" in rendered
+
+        payload = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert payload["accepted"] == [
+            {
+                "id": item_id,
+                "class": "uncited-claim",
+                "section": "Survey",
+                "citekey": None,
+                "summary": self.SENTENCE,
+                "suppressed": True,
+            }
+        ]
+        assert payload["sources"]["accepted"] == {"available": True, "count": 1}
+        assert payload["items"] == []
+
+    def test_a_record_that_matches_nothing_is_still_listed(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        agenda.main([str(draft), "--accept", item_id])
+        capsys.readouterr()
+        review.report_path(draft, "uncited", "json").unlink()
+        built = agenda.build_agenda(draft)
+        rendered = _render.render_markdown(built, "cmd")
+        assert f"- `{item_id}` [uncited-claim, not raised by this run]" in rendered
+        assert _render.agenda_payload(built, "cmd")["accepted"][0]["suppressed"] is False
+
+    def test_no_record_at_all_renders_no_accepted_section(self, isolated_config, monkeypatch):
+        draft = self._draft(isolated_config, monkeypatch)
+        rendered = _render.render_markdown(agenda.build_agenda(draft), "cmd")
+        assert "## Accepted" not in rendered
+        assert "Accepted items: none recorded" in rendered
+
+    def test_an_unreadable_record_is_named_in_the_header(self, isolated_config, monkeypatch):
+        draft = self._draft(isolated_config, monkeypatch)
+        _accept.accepted_path(draft).write_text("{not json")
+        built = agenda.build_agenda(draft)
+        rendered = _render.render_markdown(built, "cmd")
+        assert "Accepted items: **unreadable**" in rendered
+        assert [item.cls for item in built.items] == ["uncited-claim"]
+
+    def test_accepting_an_already_accepted_id_says_so_rather_than_refusing(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        agenda.main([str(draft), "--accept", item_id])
+        capsys.readouterr()
+        assert agenda.main([str(draft), "--accept", item_id]) == 0
+        assert "already accepted" in capsys.readouterr().out
+
+    def test_a_defect_class_id_is_refused_with_the_usage_code(
+        self, isolated_config, monkeypatch, capsys, ledger_con
+    ):
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nA claim [@gone_2024].\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        directory = dossier.dossier_dir(draft)
+        directory.mkdir(parents=True)
+        (directory / dossier.SECTIONS_MD).write_text(
+            "| Section | Citekeys |\n| --- | --- |\n| Survey | `gone_2024` |\n"
+        )
+        built = agenda.build_agenda(draft)
+        defects = [item for item in built.items if item.cls == "missing-citekey"]
+        assert defects, "the fixture must raise a defect-class item to refuse"
+        assert agenda.main([str(draft), "--accept", defects[0].id]) == 2
+        err = capsys.readouterr().err
+        assert "cannot be accepted" in err
+        assert not _accept.accepted_path(draft).is_file()
+
+    def test_an_unknown_id_is_refused_with_the_usage_code(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        assert agenda.main([str(draft), "--accept", "nosuchid"]) == 2
+        assert "No agenda item `nosuchid`" in capsys.readouterr().err
+
+    def test_accept_defaults_to_none_and_is_repeatable(self):
+        assert agenda.build_parser().parse_args(["d.md"]).accept is None
+        args = agenda.build_parser().parse_args(["d.md", "--accept", "a", "--accept", "b"])
+        assert args.accept == ["a", "b"]
+
+    def test_under_json_the_messages_stay_off_stdout(self, isolated_config, monkeypatch, capsys):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        assert agenda.main([str(draft), "--accept", item_id, "--json"]) == 0
+        out = capsys.readouterr()
+        json.loads(out.out)
+        assert f"accepted `{item_id}`" in out.err
+
+    def test_the_record_names_the_command_that_wrote_it(self, isolated_config, monkeypatch, capsys):
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        agenda.main([str(draft), "--accept", item_id])
+        capsys.readouterr()
+        recorded = json.loads(_accept.accepted_path(draft).read_text())["command"]
+        assert recorded == shlex.join(
+            ["python", "-m", "chitragupta.review", "agenda", str(draft), "--accept", item_id]
+        )
+
+    def test_the_filed_report_still_records_a_command_that_regenerates_an_agenda(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        agenda.main([str(draft), "--accept", self._only_id(draft)])
+        capsys.readouterr()
+        filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert "--accept" not in filed["command"]
+
+    def test_acceptance_never_moves_the_objective_count(self, isolated_config, monkeypatch, capsys):
+        """The three acceptable classes are all surfaced, so the number
+        `agenda-reviser`'s loop terminates on cannot be lowered by
+        accepting anything."""
+        draft = self._draft(isolated_config, monkeypatch)
+        before = agenda.build_agenda(draft).objective_class_count
+        agenda.main([str(draft), "--accept", self._only_id(draft)])
+        capsys.readouterr()
+        assert agenda.build_agenda(draft).objective_class_count == before
+
+    def test_baseline_reports_an_accepted_item_as_accepted_not_resolved(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """The failure this guards is silent: suppression removes the
+        item from the new list, so a set difference would call a finding
+        nobody repaired resolved."""
+        draft = self._draft(isolated_config, monkeypatch)
+        item_id = self._only_id(draft)
+        agenda.main([str(draft), "--accept", item_id])
+        capsys.readouterr()
+        baseline = tmp_path / "baseline.agenda.json"
+        baseline.write_text(
+            json.dumps(
+                {
+                    "aid": "agenda",
+                    "items": [_item_dict(item_id, cls="uncited-claim", unattended=False)],
+                }
+            )
+        )
+        assert agenda.main([str(draft), "--baseline", str(baseline), "--json"]) == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert payload["resolved"] == []
+        assert [row["id"] for row in payload["accepted"]] == [item_id]

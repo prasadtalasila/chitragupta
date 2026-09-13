@@ -39,6 +39,7 @@ writes the ledger.
 - [2. The `agenda` aid](#-2-the-agenda-aid)
 - [3. The `agenda-reviser` skill](#-3-the-agenda-reviser-skill)
 - [4. Acceptance and rollback](#-4-acceptance-and-rollback)
+- [5. Considered and accepted](#-5-considered-and-accepted)
 - [The requirements](#-the-requirements)
 - [Who calls it, and when](#-who-calls-it-and-when)
 - [How the loop is reached](#-how-the-loop-is-reached)
@@ -107,10 +108,14 @@ it finds.
   the state;
 - `rejected.md` -- a candidate already turned down with a reason is never
   re-proposed;
-- `sections.md`, so every item carries a section anchor.
+- `sections.md`, so every item carries a section anchor;
+- `<stem>.accepted.json`, the items a person has already considered and
+  accepted (section 5 below) -- optional and absent by default, and it
+  raises no class of its own.
 
 **Writes:** `<stem>.agenda.md` and `<stem>.agenda.json` under
-`content/review/<topic>/`, via the layer's existing `write()`.
+`content/review/<topic>/`, via the layer's existing `write()`. Under
+`--accept`, also `<stem>.accepted.json` in the same directory.
 
 **Merges.** One finding may appear in two aids' output; the agenda emits
 one item. This cross-signal merge is the work no individual aid can do.
@@ -211,6 +216,104 @@ A failed attempt is logged in `revisions.md` and **never** in
 
 The human is presented with a diff plus the `revisions.md` entries. The
 loop proposes and repairs; the human accepts.
+
+## ▶ 5. Considered and accepted
+
+A different sense of "accept" from section 4's, and worth separating
+before anything else: that one accepts *an edit the skill proposed*, this
+one accepts *a finding as it stands* -- "I have read this, and I am
+leaving the draft as it is."
+
+    python -m chitragupta.review agenda <draft> --accept <item id>
+
+The problem is the one this whole document already names. The agenda
+recomputes from the aids on every run, which is right -- no stale state,
+no queue to corrupt -- but it means a surfaced judgement item a person
+has read and decided about arrives again, identical, on every cycle. That
+is the same cost that removed `uncited-source` and `candidate` from the
+item-class table: volume on a worklist is read, triaged and dismissed by
+a person, every cycle, forever. `rejected.md` does not help, because it
+records turned-down *candidates*, not considered *findings*.
+
+**Keyed on the identity the item already has.** `(aid, class, section
+anchor, citekey, span hash)` -- `chitragupta/review/agenda/_identity.py`'s
+`item_id`, R2's identity, not a second mechanism invented for this.
+Suppressing by citekey or by section alone was rejected as too coarse: a
+new defect in an accepted section would be hidden.
+
+**Reopening is free, and there is no reopen command.** The id hashes the
+span, so an edit to the accepted claim raises a *different* id, which no
+record matches, and the item is back on the worklist. The acceptance says
+"I have read this text and I accept it", which is exactly as durable as
+the text.
+
+**The agenda still recomputes from the aids.** This is a filter applied
+to a freshly computed list, not a durable queue with mutable item state
+-- that alternative was considered and rejected, because the
+recompute-from-aids property is worth more than the convenience. Delete
+an aid's `.json` and the item is gone from both the worklist and the
+suppressed list; nothing but the identity was ever stored.
+
+**Three classes may be accepted:** `claim-support`, `uncited-claim` and
+`unsupported-claim` -- the ones surfaced because a person genuinely has a
+call to make. Every other class in the item-class table is refused in
+code, with exit code 2. `missing-citekey` is a defect the gate fails on;
+accepting one should not be possible.
+
+**`misquoted` is deliberately excluded**, although it is surfaced rather
+than unattended, and the reason is not obvious enough to leave
+unrecorded. Three things, any one of which would be enough:
+
+1. **It is surfaced for a write-set reason, not a judgement one.** The
+   item-class table above gives its reason as "the defect is in
+   `evidence.md`, and `agenda-reviser` edits drafts. There is no
+   unattended repair for a bad `quote:`" -- a statement about what the
+   tool can reach, not about a decision a person has to record.
+2. **The class conflates two very different findings.**
+   `chitragupta/review/_quotation_match.py` measured 70 raw findings
+   reducing to 33 after three normalisations, and calls what is left
+   "residual absents". An `absent` finding is therefore either a correct
+   quote the matcher cannot verify -- legitimately accept-worthy -- or a
+   genuinely fabricated quotation, which is the one failure
+   [SOUL.md](../SOUL.md) exists to prevent. The aid does not distinguish
+   them, and the obvious discriminator is closed off: that module records
+   that R3 bars a continuous `near_miss_score` from being the thing
+   optimised.
+3. **Its identity is keyed on the wrong side of the comparison.**
+   `misquoted_items` sets `section=None`, `line=None` and spans the quote
+   text from `evidence.md`. A `misquoted` finding can become newly true
+   with the quote byte-identical -- a re-parse under different `PARSER_*`
+   settings, a replaced PDF, a `corpus sync` -- so the id would not
+   change, the acceptance would hold, and a real fabrication would stay
+   suppressed. Every acceptable class above is keyed on the draft text it
+   is about.
+
+Whether `misquoted` should ever be acceptable is a separate question with
+its own issue, and the answer needs a discriminator this aid does not
+have today.
+
+**The record is auditable.** `<stem>.accepted.json` holds one row per
+accepted item -- id, class, section, citekey and the summary as it read
+when it was accepted -- and the agenda's own report lists every row in an
+`## Accepted` section, marked `suppressed` or `not raised by this run`.
+The second marker is what a reopening looks like from the record's side,
+and is why those rows are kept rather than pruned. Under `--baseline`,
+accepted items are reported in their own `accepted` group and not as
+`resolved`: an item absent by suppression was not repaired, and reporting
+it as fixed is precisely the silent wrong answer that mode exists to
+prevent.
+
+Two consequences worth knowing. The record lives under `content/review/`,
+which `chitragupta draft dossier export`/`restore` does not bundle, so
+unlike `rejected.md` it does not survive that round-trip -- the cost of
+losing one is a re-judgement, never a hidden finding. And an unreadable
+record suppresses nothing: every accepted item returns to the worklist,
+and the report's header says why.
+
+Bulk acceptance over a whole class is not built. `--accept` is
+repeatable, which covers "these four, now"; accepting a class wholesale
+would let a single keystroke silence findings nobody read, which is the
+opposite of what the record is for.
 
 ## 🎯 The requirements
 
