@@ -182,6 +182,15 @@ evidence for citing that paper. After the cut that is zero by
 construction, which is the checklist item neither recall nor nDCG can
 see.
 
+**Zero for the documents the cut reaches, which is not all of them.** A
+`pdftotext` parse, or a docling parse with no locatable heading, is
+indexed whole, so a snippet from one can still be a reference list. That
+residual is bounded rather than hoped at: such documents are **67 of
+1,280 (5.2%)** and **20 of 480 (4.2%)** of the top-five hits on the two
+arms. Note also what this does *not* touch -- an in-text citation in a
+paper's own prose is that paper's text and stays in the snippet. What
+goes is the reference section, not the act of citing.
+
 Two further figures explain the rank churn rather than excusing it. The
 median top-five hit *gains* 6.4% (self-retrieval) and 3.6% (live logs) of
 its score, because dropping the bibliography drops a length-normalization
