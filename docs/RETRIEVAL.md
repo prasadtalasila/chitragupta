@@ -164,13 +164,30 @@ Read that honestly: recall is flat on one arm and up a little on the
 other, and nDCG slips on both. Per query, the self-retrieval arm moves 37
 of 236 distinct queries (16 better, 21 worse) and the live-logs arm 54 of
 96 (19 better, 35 worse), so the aggregate is rank swaps inside the top
-five rather than sources appearing or vanishing. Neither arm can show what the
-change is actually for: both score against citekeys a human already kept
-during a BM25-only session, so a bibliography hit that wasted a slot was
-never recorded as a miss. The self-retrieval arm is biased against the
-cut for a more specific reason -- its query is a paper's own keywords,
-and a paper's own bibliography is full of them, so removing it removes a
-signal that particular ground truth rewards.
+five rather than sources appearing or vanishing. The self-retrieval arm
+is biased against the cut for a specific reason -- its query is a paper's
+own keywords, and a paper's own bibliography is full of them, so removing
+it removes a signal that particular ground truth rewards.
+
+**What those two arms structurally cannot score is where the gain is.**
+Both rank *papers*, and the ranking barely moves, because a paper that
+matches in its bibliography almost always matches in its body too: of the
+1,760 top-five hits across both arms, **not one** matched only in its
+reference list, so no result slot was being wasted. What moves is the
+text handed back. Of the snippets those same hits returned before the
+cut, **235 of 1,241 (18.9%)** on the self-retrieval arm and **42 of 455
+(9.2%)** on the live-logs arm were cut from a reference list -- author
+lists, DOIs and journal titles offered to a drafting agent as the
+evidence for citing that paper. After the cut that is zero by
+construction, which is the checklist item neither recall nor nDCG can
+see.
+
+Two further figures explain the rank churn rather than excusing it. The
+median top-five hit *gains* 6.4% (self-retrieval) and 3.6% (live logs) of
+its score, because dropping the bibliography drops a length-normalization
+penalty it was paying; only 27 and 13 hits respectively lose more than a
+quarter of their score. So the cut mostly rescales, and rescaling reorders
+a top five whose members were already close together.
 
 ### 🪟 One window chooser, shared and deterministic
 
