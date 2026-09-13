@@ -1,6 +1,6 @@
 # 💡 Inspiration: what this project borrowed, and from where
 
-Status: **reference.** Written 2026-08-13. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-13. Updated 2026-09-13.
 
 Every external idea this project took, what was taken, and -- where it
 matters -- what was deliberately *not* taken. Credit is the first purpose;
@@ -23,7 +23,7 @@ came from.
 - [Harness engineering](#-harness-engineering)
 - [The feature roadmap](#-the-feature-roadmap)
 - [Topic discovery](#-topic-discovery)
-- [The corpus layer](#-the-corpus-layer)
+- [A local wiki builder, read under GPL-3.0](#-a-local-wiki-builder-read-under-gpl-30)
 - [The rule on borrowing](#-the-rule-on-borrowing)
 
 ## ✍ The drafting layer's method
@@ -333,28 +333,75 @@ load-bearing as the borrowings.
   training/distillation stack -- there is no labelled relevance data in
   a personal corpus, and fine-tuning is out of scope.
 
-## 🗃 The corpus layer
+## 🧱 A local wiki builder, read under GPL-3.0
 
-- **llm_wiki** (GPL-3.0) -- a wiki generator whose delete path is a
-  *cascade*: it matches the pages a deleted source affects, prunes the
-  source out of the survivors, cleans the index and removes the dead
-  links. One idea taken, and it is the diagnosis rather than the
-  remedy: **removing a source leaves residue in every artefact derived
-  from it, and the moment to say so is the removal, not the next time
-  something downstream breaks.** That is `sync --remove-stale`'s residue
-  report ([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)).
+- **[nashsu/llm_wiki](https://github.com/nashsu/llm_wiki)** -- a desktop
+  application that ingests documents and builds a linked local wiki from
+  them. Read on **2026-09-13** at commit
+  **`e8082119649e6a8e1cf85eaf289adcabfdf39d4e`** (2026-08-25), and the
+  reading is the reason this entry exists before any of the adaptations
+  it lists.
 
-  *Not taken: the cascade itself,* and this is the substantive refusal.
-  Pruning a citekey out of a dossier's `evidence.md` would delete
-  evidence a human transcribed by hand, which no automatic repair is
-  entitled to do -- [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) already
-  reasons through the same boundary for `recorded-but-uncited`. So this
-  reports and repairs nothing. Its three-method fuzzy matcher is not
-  taken either: a citekey here is an exact string from the human's own
-  BibTeX export, and a matcher that guessed would report residue for a
-  paper that has none. The upstream is copyleft, so only the concept is
-  taken; nothing is copied, which is the same rule the permissively
-  licensed entries above are held to anyway.
+**The licence, stated precisely.** llm_wiki is **GPL-3.0**. GitHub's own
+licence detector reports `NOASSERTION` for the repository, which is a
+detector artefact rather than a disagreement: the `LICENSE` file is the
+GPL-3.0 text with a `Copyright (C) 2024-2026 Yong Su` line prepended, so
+it no longer byte-matches the template the detector keys on. Anyone
+re-checking this entry will see the mismatch, so it is recorded here
+rather than left to be rediscovered as a doubt.
+
+That licence is why this is the most careful entry in the file. This
+project is MIT. GPL-3.0 is copyleft, so **no file, function, prompt
+string, constant, identifier set or documentation paragraph may move
+between the two projects in either direction** -- and none has. Every
+mechanism below was read as a description of a behaviour and
+reimplemented here from scratch, against this project's own artefacts,
+tests and layering. Where a borrowed idea arrives with a number attached
+upstream, the number is not borrowed with it: this file's standing rule
+is that a default is measured on this corpus or it is not a default.
+
+Mechanisms taken **as concept only**:
+
+| Upstream mechanism | Taken here as | Issue |
+| --- | --- | --- |
+| A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | [#762](https://github.com/prasadtalasila/chitragupta/issues/762) |
+| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt -- report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
+| An ingest queue persisted to disk, surviving a restart | The resolved sync plan persisted as an artefact, resumed on restart and rejected when stale | [#764](https://github.com/prasadtalasila/chitragupta/issues/764) |
+| A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
+| Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | [#766](https://github.com/prasadtalasila/chitragupta/issues/766) |
+| Per-item resolved state, with reopening and a bulk resolve | An acceptance record keyed by an item's existing stable identity, so reopening needs no mechanism of its own | [#767](https://github.com/prasadtalasila/chitragupta/issues/767) |
+
+Three of those six are adaptations that **invert** what upstream does,
+and the inversions are the load-bearing part. Upstream's title bonus is
+additive, which does not compose with BM25's scale; the weight here is
+multiplicative, so a weight of 1.0 reproduces today's ranking exactly.
+Upstream's cascade delete repairs the survivors; pruning a citekey out
+of a dossier's `evidence.md` would destroy transcribed evidence, so this
+project reports and stops. Upstream merges a regenerated page into an
+edited one; a merge has to guess which of two edits wins, and this
+project's posture is that the person's own edit wins by default, which
+refusal gets for free.
+
+*Not taken, deliberately.* Multi-format ingest (DOCX/EPUB/MOBI/web
+clips), the browser clipper, the two-step LLM ingest and deep research
+over the open web all break the invariant that a `.bib` export is the
+only entrance to this corpus ([SOUL.md](../SOUL.md)). Louvain community
+detection is duplication -- the merge-tree cut answers the same question
+and is already measured
+([TOPIC-MODELLING.md](TOPIC-MODELLING.md)). Multi-conversation chat and
+thinking-block display are interface features for a different product.
+A per-task retry counter was declined because `sync_pool`'s
+`failure_kind` already encodes the decision a counter would
+approximate, and two mechanisms for one question is worse than one.
+
+*Not from here, despite arriving alongside.* Several retrieval issues
+were raised while planning [#762](https://github.com/prasadtalasila/chitragupta/issues/762)
+and are **not** llm_wiki adaptations -- excluding the reference list
+from the index, a passage-level index, caption and table fields, query
+expansion from this corpus's own topic vocabulary. They are recorded
+here only so that a later reader does not credit them upstream by
+association. Capping passages per paper, which one of them uses, is
+already credited above to OpenScholar.
 
 ## 🔑 The rule on borrowing
 
@@ -362,8 +409,9 @@ Stated once, because it is the same rule the pipeline applies to drafts:
 
 **Attribute the idea, and never copy the text.** Where an upstream is
 permissively licensed the adaptation is still written from scratch, and
-where it is not (`academic-research-skills`, CC-BY-NC 4.0) only the
-concept is taken and the entry above says so explicitly. The rule held
+where it is not -- `academic-research-skills` (CC-BY-NC 4.0) and
+`llm_wiki` (GPL-3.0) -- only the concept is taken and the entry above
+says so explicitly. The rule held
 when it was tested: copying from two permissively-licensed upstreams was
 offered for the feature roadmap and declined, at a measured cost of
 about one PR. That is
