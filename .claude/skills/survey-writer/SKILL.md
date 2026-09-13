@@ -210,7 +210,7 @@ collapse them for the sake of a cleaner narrative.
    front of the retrieval, not to read faster or to read less carefully
    -- `docs/TOKENS.md` has why those are not the same trade. The shares
    are one table in `chitragupta/context_budget.py` so that this skill's
-   budget and every other genre skill's can be compared in one diff;
+   budget and every other retrieving skill's can be compared in one diff;
    `[tokens] window_size` in `config.toml` is the only part you retune.
 
    **First, check whether the dossier has an `outline.md`** -- a human

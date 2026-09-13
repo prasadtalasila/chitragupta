@@ -347,7 +347,7 @@ min_tokens = 200
 # budgets via chitragupta.context_budget.allocate(). A property of the
 # model you run, not of this pipeline -- which is why it is here and the
 # per-section shares are not: those live in one table in code so that
-# nine skills' budgets stay comparable in a single diff.
+# every retrieving skill's budget stays comparable in a single diff.
 #
 # Lower it if you run a smaller window; the split scales, and a window
 # too small to pay the reserve spends all of itself on the reserve rather

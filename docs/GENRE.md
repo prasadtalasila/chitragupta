@@ -1,6 +1,6 @@
 # 🎭 Genres
 
-Status: **reference.** Written 2026-08-08. Updated 2026-08-24, describing `.claude/skills/`
+Status: **reference.** Written 2026-08-08. Updated 2026-09-13, describing `.claude/skills/`
 as it stands.
 
 **Written for** anyone choosing which skill to ask for, and anyone
@@ -137,7 +137,7 @@ It is also the first skill to take its retrieval budget from
 `chitragupta.context_budget.allocate()` rather than describe one in
 prose, for that same reason -- [dividing the
 window](TOKENS.md#-dividing-the-window-one-budget-table-the-skills-call)
-has the split, and the other eight skills still describe theirs.
+has the split, and the other retrieving skills still describe theirs.
 
 ### 🎓 `thesis-chapter-writer`
 

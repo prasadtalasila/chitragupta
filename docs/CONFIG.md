@@ -1,6 +1,6 @@
 # ⚙ Configuration
 
-Status: **reference.** Written 2026-08-03. Updated 2026-08-26.
+Status: **reference.** Written 2026-08-03. Updated 2026-09-13.
 
 **Written for** anyone setting this pipeline up on their own machine.
 **Assumed:** [CLI.md](CLI.md) for the commands these settings change.
@@ -323,9 +323,10 @@ The values in full:
 
 Only the *window* is configurable; the per-section shares are not. They
 are a single table in `chitragupta/context_budget.py`, because one table
-is what keeps nine skills' budgets comparable in one diff -- shares in
-each skill's own frontmatter would be the prose budgets this setting
-exists to replace. The window, by contrast, is a property of the model
+is what keeps the retrieving skills' budgets comparable in one diff --
+shares in each skill's own frontmatter would be the prose budgets this
+setting exists to replace. The window, by contrast, is a property of the
+model
 you happen to run, so it belongs to you. [TOKENS.md](TOKENS.md) has the
 split and what happens to a window too small to pay the reserve.
 

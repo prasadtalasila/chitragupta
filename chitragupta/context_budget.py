@@ -1,11 +1,10 @@
 """One context window, divided into named budgets. Pure, and in one table.
 
 `docs/TOKENS.md` analyses where a run's tokens go; until this module it
-handed the genre skills nothing to call. Each of the nine skills in
-`.claude/skills/` described its own retrieval budget in its own prose,
-which meant nine budgets that could not be compared against each other,
-could not be tested, and drifted as the skills were edited
-independently.
+handed the genre skills nothing to call. Every skill in `.claude/skills/`
+that retrieves described its own budget in its own prose, which meant a
+set of budgets that could not be compared against each other, could not
+be tested, and drifted as the skills were edited independently.
 
 **Why the weights are a module-level table and not per-skill
 frontmatter.** A table in code is the thing that makes the budgets

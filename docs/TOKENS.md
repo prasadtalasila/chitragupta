@@ -1,6 +1,6 @@
 # 🪙 Tokens
 
-Status: **reasoning document.** Written 2026-08-08. Updated 2026-08-23.
+Status: **reasoning document.** Written 2026-08-08. Updated 2026-09-13.
 
 **Written for** someone deciding where to spend engineering effort on
 cost, or reviewing a proposal that claims a saving. **Assumed:**
@@ -401,10 +401,10 @@ Everything above is about what a run *costs*. This section is about the
 smaller, prior question a skill has to answer before it retrieves
 anything: how much of the window may this step fill?
 
-Until 6.110.0 each of the nine skills in `.claude/skills/` answered that
-in its own prose, which meant nine answers that could not be compared,
-could not be tested, and drifted every time a skill was edited on its
-own. The module
+Until 6.110.0 every skill in `.claude/skills/` that retrieves answered
+that in its own prose, which meant a set of answers that could not be
+compared, could not be tested, and drifted every time a skill was edited
+on its own. The module
 `chitragupta/context_budget.py` replaces the prose with a call:
 
 ```python
