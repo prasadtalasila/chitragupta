@@ -547,7 +547,7 @@ artefacts and names what still points at each one:
 
 | Artefact | Where it lives | Counted as |
 | --- | --- | --- |
-| overlap index | `content/overlap/docs/<citekey>.fpr`, `.skipgram.fpr`, and `index.json`'s citekey list | files |
+| overlap index | `content/overlap/docs/<citekey>.fpr` and `.skipgram.fpr`, plus the citekey list in `index.json` and `skipgram_index.json` | files, each named |
 | topic graph | `content/topic_graph.json`'s `edges_overlap`, `edges_withheld` and `edges_semantic` | edges |
 | dossiers | `evidence.md` and `sections.md` under `content/dossiers/` | mentions, per file |
 | chroma vectors | the chunk collection under `content/chroma/` | vectors |

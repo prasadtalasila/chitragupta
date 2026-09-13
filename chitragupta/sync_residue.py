@@ -76,11 +76,16 @@ def _pattern(citekey: str) -> "re.Pattern[str]":
 
 def _scan_overlap(citekeys: list[str]) -> dict[str, Hit]:
     """Per-document fingerprints and the merged corpus index."""
-    indexed: set[str] = set()
+    # Which index named it, not merely that one did: the two tiers are
+    # built independently, so unioning them would report a citekey that
+    # is only in the skipgram index as living in `index.json` -- a path
+    # that need not exist -- and would count a citekey in both as one.
+    indexed: dict[str, list[str]] = {}
     for name in ("index.json", "skipgram_index.json"):
         path = config.OVERLAP_DIR / name
         if path.is_file():
-            indexed |= set(json.loads(path.read_text(encoding="utf-8")).get("citekeys", []))
+            for key in json.loads(path.read_text(encoding="utf-8")).get("citekeys", []):
+                indexed.setdefault(key, []).append(str(path))
     hits = {}
     for citekey in citekeys:
         where = [
@@ -91,8 +96,7 @@ def _scan_overlap(citekeys: list[str]) -> dict[str, Hit]:
             )
             if path.is_file()
         ]
-        if citekey in indexed:
-            where.append(str(config.OVERLAP_DIR / "index.json"))
+        where += indexed.get(citekey, [])
         if where:
             hits[citekey] = Hit(OVERLAP, len(where), "file", tuple(where))
     return hits

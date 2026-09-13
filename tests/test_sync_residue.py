@@ -108,12 +108,26 @@ class TestScan:
         assert found == {"anything_2000": []}
         assert notes == []
 
-    def test_the_skipgram_index_is_read_too(self, isolated_config):
+    def test_the_skipgram_index_is_named_as_itself(self, isolated_config):
+        # Not as `index.json`: the two tiers are built independently, so
+        # reporting the wrong one would send a reader to a path that need
+        # not exist at all.
         write_json(isolated_config.OVERLAP_DIR / "skipgram_index.json", {"citekeys": ["only_2001"]})
         found, _notes = sync_residue.scan(["only_2001"])
         assert [hit.where for hit in found["only_2001"]] == [
-            (str(isolated_config.OVERLAP_DIR / "index.json"),)
+            (str(isolated_config.OVERLAP_DIR / "skipgram_index.json"),)
         ]
+
+    def test_a_citekey_in_both_indexes_is_counted_twice(self, isolated_config):
+        write_json(isolated_config.OVERLAP_DIR / "index.json", {"citekeys": ["both_2004"]})
+        write_json(isolated_config.OVERLAP_DIR / "skipgram_index.json", {"citekeys": ["both_2004"]})
+        found, _notes = sync_residue.scan(["both_2004"])
+        (hit,) = found["both_2004"]
+        assert hit.count == 2
+        assert hit.where == (
+            str(isolated_config.OVERLAP_DIR / "index.json"),
+            str(isolated_config.OVERLAP_DIR / "skipgram_index.json"),
+        )
 
     def test_dossier_mentions_name_the_file_and_the_count(self, residue_corpus):
         found, _notes = sync_residue.scan(["smith_gone_2020"])
