@@ -413,6 +413,14 @@ minutes per document with docling.
 Skipping interpreter shutdown is safe because the ledger commits
 incrementally and synchronously: whatever finished is already on disk.
 
+What the interrupt does cost is the *plan* -- which references still
+needed work -- and that is what `chitragupta/sync_plan.py` writes down
+before the pool starts (#764). It adds no commit point and no lock: a
+plain `content/sync_plan.json`, recorded once, offered back by the next
+run under `--resume`, and discarded once every document in it has been
+attempted. Skipping interpreter shutdown stays safe for the same reason
+as before -- the file is written before any parse, not during teardown.
+
 ## 🔒 Concurrency control: one writer at a time
 
 A separate mechanism for a separate problem — two *runs* overlapping, not

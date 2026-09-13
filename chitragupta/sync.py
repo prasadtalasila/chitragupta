@@ -20,13 +20,13 @@ first (creates .venv-full/ on a bare host), then run this via that
 venv's python. python -m chitragupta.draft gate does not need it and still
 runs with the bare system interpreter.
 
-Split (#441) into four modules: this one keeps the top-level
-orchestration (`run`/`main`) and the per-document ledger-write/tally
-step, `chitragupta/sync_pool.py` holds the parse-dispatch engine,
-`chitragupta/sync_decide.py` the two ledger-vs-bib-file decisions, and
-`chitragupta/sync_report.py` the printed summary/warnings -- each a
-one-way dependency of this module, none of the other three importing
-back.
+Split (#441) into four modules, five since #764: this one keeps the
+top-level orchestration (`run`/`main`) and the per-document
+ledger-write/tally step, `chitragupta/sync_pool.py` holds the
+parse-dispatch engine, `chitragupta/sync_decide.py` the two
+ledger-vs-bib-file decisions, `chitragupta/sync_plan.py` the recorded,
+resumable plan, and `chitragupta/sync_report.py` the printed
+summary/warnings -- each a one-way dependency of this module.
 """
 
 import argparse
@@ -45,6 +45,7 @@ from chitragupta import (
     pdf_text,
     runlock,
     sync_decide,
+    sync_plan,
     sync_pool,
     sync_report,
 )
@@ -137,6 +138,11 @@ def _dispatch_and_apply(con, to_parse, tally) -> None:
     # diffing them.
     for _ref, (citekey, out_path, exc) in zip(to_parse, results):
         _record_result(con, citekey, out_path, exc, tally)
+    # Here, rather than after a clean exit code: the plan records what
+    # was still to be *attempted*, and by this line everything in it has
+    # been -- see sync_plan.discard on why a permanently failing document
+    # must not keep offering itself back forever.
+    sync_plan.discard()
     tally.parse_elapsed = time.monotonic() - parse_started
 
 
@@ -203,7 +209,7 @@ def _parser_available() -> bool:
     return available
 
 
-def run(remove_stale: bool = False, reparse: bool = False) -> int:
+def run(remove_stale: bool = False, reparse: bool = False, resume: bool = False) -> int:
     # Before the bibliography, not after: on a docling run with a worker
     # pool this starts the forkserver importing torch and docling in the
     # background, and reading a 646-entry bib file is the ~2.5s that
@@ -219,7 +225,7 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     parser_available = _parser_available()
     tally = _Tally()
     with ledger.connection() as con:
-        to_parse = sync_decide._to_parse(con, references, reparse, parser_available, tally)
+        to_parse = sync_plan.resolve(con, references, reparse, parser_available, tally, resume)
         _dispatch_and_apply(con, to_parse, tally)
         pruned, stale, suspicious = sync_decide._report_stale(con, references, remove_stale)
         # Read while the connection is still open -- the summary below
@@ -326,6 +332,17 @@ def main(argv: "list[str] | None" = None) -> int:
         help="Delete ledger rows for citekeys no longer in the bib file "
         "(default: report only, don't delete)",
     )
+    # Off by default, and that is the whole of "offered, never forced":
+    # an interrupted run's plan is reported on the next run and acted on
+    # only if this flag says so. A crontab line cannot answer a prompt
+    # (docs/CLI.md, "Running sync on a schedule"), so the offer is a
+    # printed line and the acceptance is a flag.
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue the plan an interrupted run recorded, instead of deriving a fresh one "
+        "(ignored, with a message, if none is recorded or the bibliography has changed since)",
+    )
     args = parser.parse_args(argv)
     # Held for the whole run, and only at the entrypoint: run() itself
     # stays callable in-process (the tests do that) without fighting a
@@ -345,7 +362,7 @@ def main(argv: "list[str] | None" = None) -> int:
             # this lock and this log file -- configures in the same
             # place; see chitragupta/logging_setup.py's own docstring.
             logging_setup.configure()
-            return run(remove_stale=args.remove_stale, reparse=args.reparse)
+            return run(remove_stale=args.remove_stale, reparse=args.reparse, resume=args.resume)
     except runlock.AlreadyRunning as exc:
         # Deliberately still a bare print, not the logger: this is the
         # losing side of the race above and must not touch

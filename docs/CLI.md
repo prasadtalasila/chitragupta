@@ -477,17 +477,44 @@ than waiting.
 | `-h`, `--help` | -- | Show help and exit |
 | `--reparse` | off | Re-extract every PDF, ignoring the ledger's record of what is already parsed. For when output is recorded as fine but you have reason to doubt it |
 | `--remove-stale` | off (report only) | Delete ledger rows for citekeys no longer in the bib file. Without it they are only *reported* |
+| `--resume` | off (offer only) | Continue the plan an interrupted run recorded, instead of deriving a fresh one. Ignored, with a message, if no plan is recorded or the bibliography has changed since |
 
 ```bash
 chitragupta corpus sync
 # chitragupta corpus sync --reparse
 # chitragupta corpus sync --remove-stale
+# chitragupta corpus sync --resume
 # chitragupta corpus sync --reparse --remove-stale
 
 # Exit codes: 0 = clean, 1 = documents this host could not parse,
 #             2 = another run holds the lock,
 #             3 = everything parsed, but the bibliography has a hole in it.
 ```
+
+**What `--resume` is for.** A full serial run over this corpus takes
+1h 56m ([PERFORMANCE.md](PERFORMANCE.md)), and a machine that sleeps
+partway through one loses nothing it parsed -- the ledger commits per
+document, and content hashing means nothing is parsed twice. What it
+loses is the *plan*: which of several hundred references still needed
+work. So a run writes its resolved plan to `content/sync_plan.json`
+before it parses anything, and discards it once every document in it has
+been attempted.
+
+The next run reads that file and **offers** it:
+
+```text
+  an interrupted sync run left a plan recorded at 2026-09-13T09:14:02+00:00,
+  with 312 document(s) still to parse. Re-run with --resume to continue it;
+  this run derives a fresh plan instead.
+```
+
+Offered, never forced. Without the flag nothing changes: the run derives
+its own plan exactly as it always has, which is why a crontab line needs
+no edit. A recorded plan is rejected rather than resumed if the
+bibliography has changed since it was written -- a re-export that added,
+removed or re-filed an entry -- and a rejected plan is never an error: the
+run says so and derives a fresh one. The run lock is unaffected, so a
+second writer still exits **2** without reading anyone else's plan.
 
 **What the two nonzero completion codes mean, since the exit code is
 the whole API an unattended caller has.** They split by *remedy*:
@@ -2765,6 +2792,16 @@ holds the lock" refusal comes from the losing side of a race, which must
 not touch a file the winner is writing. All three are rare
 and none is the kind of thing a schedule needs to recover from
 unattended.
+
+**A schedule needs no `--resume`, and that is deliberate.** An
+interrupted run records the plan it had resolved
+([`corpus sync`](#-chitragupta-corpus-sync) above), and the next run
+reports it and derives a fresh one anyway. Resuming is a person's
+decision, taken with the flag, because a cron line has nothing to answer
+a prompt with and a scheduled run that blocked on one would sit holding
+the write lock until someone noticed. Nothing about an unattended
+schedule changes: same codes, same log, same behaviour as before the
+plan existed.
 
 **Exit codes are the API**, not the printed text:
 

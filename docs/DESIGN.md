@@ -280,6 +280,16 @@ writes). That last one is a *batch*, not a run, and it commits in a
 finished is on disk. A row is written whole or not at all, and the parse
 phase that follows still commits per document.
 
+The resumable sync plan (#764) is held to that same line. What a run
+resolved to parse is written to `content/sync_plan.json` -- a plain file
+beside the ledger, never a table in it, because a seventh commit point
+would reopen exactly the design this section rejects. It is written after
+the bibliography-upsert batch has committed, so everything the plan
+presumes is on disk already is, and it is only ever an answer to "which
+references were worth asking about": whether a document still needs
+parsing is re-decided against the ledger even on a resumed run, so the
+ledger stays the single source of truth for what is done.
+
 Contention is detected by `sqlite_errorcode ==
 SQLITE_BUSY` rather than by message, since `OperationalError` also covers
 a full disk and a corrupt file, and the lock file is never deleted --

@@ -524,6 +524,18 @@ editions of this table read `~1.6 h -> ~39 min -> 8.8 min -> 5m26s`; the
 first two were extrapolations that ran low, so the improvement was
 understated.
 
+**What an interrupt costs, at the top row of that table.** A machine that
+sleeps an hour into the 1h 56m baseline loses none of what it parsed --
+the ledger commits per document and content hashing means nothing is
+parsed twice -- but it did lose the plan: which of the 501 references
+still needed work. Since #764 the resolved plan is written to
+`content/sync_plan.json` before any parsing, and the next run offers it
+back (`chitragupta corpus sync --resume`, see
+[CLI.md](CLI.md#-chitragupta-corpus-sync)). That saves the re-derivation,
+not the parse -- a fixed, corpus-sized cost, not a share of the hours
+above -- and it is offered rather than taken automatically, so none of
+these measurements changes.
+
 **22x with the shipped defaults, and the GPU work is the smallest
 contribution.** The largest is a boolean.
 [PARALLELISM.md](PARALLELISM.md) describes the machinery that produces

@@ -237,10 +237,10 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         monkeypatch.setattr(logging_setup, "configure", lambda: None)
         monkeypatch.setattr(sync, "run", lambda **kwargs: seen.update(kwargs) or 1)
 
-        assert entrypoint.main(["sync", "--reparse", "--remove-stale"]) == 1
-        assert seen == {"remove_stale": True, "reparse": True}
+        assert entrypoint.main(["sync", "--reparse", "--remove-stale", "--resume"]) == 1
+        assert seen == {"remove_stale": True, "reparse": True, "resume": True}
 
-    def test_sync_with_no_flags_defaults_both_off(self, isolated_config, monkeypatch):
+    def test_sync_with_no_flags_defaults_every_flag_off(self, isolated_config, monkeypatch):
         from chitragupta import logging_setup, sync
 
         seen = {}
@@ -248,7 +248,7 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         monkeypatch.setattr(sync, "run", lambda **kwargs: seen.update(kwargs) or 0)
 
         assert entrypoint.main(["sync"]) == 0
-        assert seen == {"remove_stale": False, "reparse": False}
+        assert seen == {"remove_stale": False, "reparse": False, "resume": False}
 
     def test_a_malformed_sync_invocation_exits_two(self):
         result = _run("-m", "chitragupta.corpus", "sync", "--bogus-flag")

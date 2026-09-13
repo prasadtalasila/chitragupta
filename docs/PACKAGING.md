@@ -109,7 +109,7 @@ command already has -- this is a front door, not a redesign.
 
 | Command | Flags |
 | --- | --- |
-| `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
+| `chitragupta corpus sync` | `--reparse`, `--remove-stale`, `--resume` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
 | `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k`, `--html FILE`, `--app DIR` |
