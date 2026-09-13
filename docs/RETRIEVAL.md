@@ -115,7 +115,7 @@ spurious term frequencies, and an inflated document length, so a paper
 with a long bibliography was penalised by BM25's own length
 normalization for text that is not its own.
 
-Since 6.107.0 the indexed text stops at that heading, and so does every
+The indexed text therefore stops at that heading, and so does every
 snippet and every `evidence` window -- one cut in
 `chitragupta/_reference_cut.py`, applied where all three read their text,
 because a snippet quoting a reference list is evidence of nothing.
@@ -135,7 +135,11 @@ A `pdftotext` parse leaves no sidecar, so those items are indexed exactly
 as before. 459 of 497 parsed items here have a locatable heading; the
 other 38 are untouched. `_INDEX_SCHEMA_VERSION` moved to 2, so every
 cache entry written under the old rule is discarded rather than mixed
-with new ones.
+with new ones. `dossier status` scores drift from this same index
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), so the first sweep after this
+arrived can surface candidates on a draft nobody edited: what moved is
+what the corpus now looks like to BM25, which is exactly what that report
+is for.
 
 **What the rule costs, measured rather than assumed.** On 79 of those 459
 a heading follows the cut -- overwhelmingly `Acknowledgements`,
