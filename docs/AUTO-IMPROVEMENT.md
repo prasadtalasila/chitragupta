@@ -286,9 +286,11 @@ stand or have been fixed by the author's own edit.
 Three alternatives are refused rather than deferred, and the reasons are
 the same ones this document already gives elsewhere:
 
-- **Merging the two edits**, as `llm_wiki` does for a regenerated page. A
-  merge must decide which of two edits wins, and this project's posture
-  is that the human's wins by default. Refusal gets that for free.
+- **Merging the two edits**, as `llm_wiki` does for a regenerated page
+  ([INSPIRATION.md](INSPIRATION.md) records that reading, and that no
+  code was copied). A merge must decide which of two edits wins, and this
+  project's posture is that the human's wins by default. Refusal gets
+  that for free.
 - **Re-locating the span by similarity.** That authorises an edit on the
   evidence of a similarity score -- which this document already refuses
   for the verbatim scan's embedding tier, for the same reason. There is
