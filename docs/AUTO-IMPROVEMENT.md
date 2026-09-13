@@ -224,7 +224,9 @@ before anything else: that one accepts *an edit the skill proposed*, this
 one accepts *a finding as it stands* -- "I have read this, and I am
 leaving the draft as it is."
 
-    python -m chitragupta.review agenda <draft> --accept <item id>
+```bash
+python -m chitragupta.review agenda <draft> --accept <item id>
+```
 
 The problem is the one this whole document already names. The agenda
 recomputes from the aids on every run, which is right -- no stale state,
