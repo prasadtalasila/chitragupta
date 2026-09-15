@@ -111,8 +111,13 @@ its book and the registries say so rather than pretending otherwise.
 You need a synced corpus, because every unit is grounded in it:
 
 ```bash
-.venv-full/bin/python -m chitragupta.corpus ledger        # non-empty, items `parsed`
+chitragupta corpus ledger        # non-empty, items `parsed`
 ```
+
+> Every command on this page also works as
+> `python -m chitragupta.<layer> ...` -- `python -m chitragupta.draft
+> spec init` is the same as `chitragupta draft spec init`. Use whichever
+> your install gives you; the console script is used throughout below.
 
 A book lives in one directory under `content/drafts/`, one file per
 **chapter**, named for that chapter's own `{#id}`. Nothing needs to exist
@@ -137,7 +142,7 @@ content/specs/twins/registries/*.md   terminology, claims, xrefs -- step 5
 ## ▶ Step 1: write the outline
 
 ```bash
-python -m chitragupta.draft spec init content/drafts/twins --title "Composable Twins"
+chitragupta draft spec init content/drafts/twins --title "Composable Twins"
 ```
 
 That writes a skeleton. Edit it into the book you mean to write --
@@ -234,7 +239,7 @@ Four things that example is showing:
 Check what you wrote:
 
 ```bash
-python -m chitragupta.draft spec show content/drafts/twins
+chitragupta draft spec show content/drafts/twins
 ```
 
 ```text
@@ -255,8 +260,8 @@ The first of the two human gates. Nothing generates prose from an
 unsigned outline, and no command can do this for you:
 
 ```bash
-python -m chitragupta.draft spec sign content/drafts/twins --by "Your Name"
-python -m chitragupta.draft spec status content/drafts/twins
+chitragupta draft spec sign content/drafts/twins --by "Your Name"
+chitragupta draft spec status content/drafts/twins
 ```
 
 ```text
@@ -297,7 +302,7 @@ The spec owns the book's structure; the genre skills own its content. This
 is the handover:
 
 ```bash
-python -m chitragupta.draft spec seed content/drafts/twins --genre textbook-chapter
+chitragupta draft spec seed content/drafts/twins --genre textbook-chapter
 ```
 
 ```text
@@ -358,8 +363,8 @@ which genre wrote a chapter.
 Ask for the contract, which is what the unit is generated *from*:
 
 ```bash
-python -m chitragupta.draft unit contract content/drafts/twins sec-1 --source smith_2024
-python -m chitragupta.draft unit contract content/drafts/twins sec-1 --json   # for a skill
+chitragupta draft unit contract content/drafts/twins sec-1 --source smith_2024
+chitragupta draft unit contract content/drafts/twins sec-1 --json   # for a skill
 ```
 
 ```text
@@ -396,7 +401,7 @@ another genre for Markdown), grounded in the sources, and saves it as
 what the rest of the book already settled:
 
 ```bash
-python -m chitragupta.draft registry excerpt content/drafts/twins sec-1
+chitragupta draft registry excerpt content/drafts/twins sec-1
 ```
 
 A part or a chapter has no contract, and asking for one is refused rather
@@ -409,7 +414,7 @@ Before accepting, check that what was written still matches what you
 approved:
 
 ```bash
-python -m chitragupta.draft spec align content/drafts/twins
+chitragupta draft spec align content/drafts/twins
 ```
 
 ```text
@@ -437,7 +442,7 @@ only at chapter level -- see
 for the scoping rule and what it is protecting against.
 
 ```bash
-python -m chitragupta.draft unit accept content/drafts/twins sec-1 --source smith_2024
+chitragupta draft unit accept content/drafts/twins sec-1 --source smith_2024
 ```
 
 ```text
@@ -474,7 +479,7 @@ the draft. It refuses five ways, each for a stated reason:
    one gate rather than re-implementing or replacing it -- it reads the
    draft once and hands *that string* to `citation_gate.check_text`,
    reporting through `citation_gate.report`, which is the same printer
-   `python -m chitragupta.draft gate` itself uses, so the two read
+   `chitragupta draft gate` itself uses, so the two read
    identically. Reading once is the point: `accept` used to gate the
    *path* and then re-read the file to hash and record it, so a write
    landing between the two calls produced a permanent record for prose
@@ -507,7 +512,7 @@ mention the other. `no dossier`, `not stamped`, `agrees`, `disagrees` and
 this layer does not judge a dossier.
 
 ```bash
-python -m chitragupta.draft unit status content/drafts/twins
+chitragupta draft unit status content/drafts/twins
 ```
 
 | State | Means |
@@ -525,8 +530,8 @@ only when every unit is accepted and current -- the same standing as
 ## ▶ Step 5: build and read the registries
 
 ```bash
-python -m chitragupta.draft registry build content/drafts/twins
-python -m chitragupta.draft registry check content/drafts/twins
+chitragupta draft registry build content/drafts/twins
+chitragupta draft registry check content/drafts/twins
 ```
 
 ```text
@@ -600,7 +605,7 @@ thing.
 converted with
 
 ```bash
-python -m chitragupta.draft render <unit>.md --format tex --fragment \
+chitragupta draft render <unit>.md --format tex --fragment \
     --output-dir content/drafts/<book>
 ```
 
@@ -727,8 +732,8 @@ Worth running before you circulate it, per unit rather than over
 `book.tex` (which holds no prose):
 
 ```bash
-python -m chitragupta.draft style content/drafts/twins/<unit-id>.md
-python -m chitragupta.review verbatim scan content/drafts/twins/<unit-id>.md
+chitragupta draft style content/drafts/twins/<unit-id>.md
+chitragupta review verbatim scan content/drafts/twins/<unit-id>.md
 ```
 
 Both are review aids: they exit 0 whatever they find, and neither may
@@ -907,7 +912,7 @@ preference reports and never blocks, however mechanical its answer. These
 two are measured against neither. They read back a record of a *person's
 decision* -- did a human approve this outline, accept this unit? -- and
 report it. They judge no draft's content, refuse no write, and block no
-draft: `python -m chitragupta.draft gate` remains the only gate in this project,
+draft: `chitragupta draft gate` remains the only gate in this project,
 and `.claude/hooks/citation_gate_hook.py` remains the only automatic
 refusal.
 

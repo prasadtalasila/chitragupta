@@ -140,7 +140,8 @@ deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
 **`review agenda` -- one ranked, deduplicated worklist across the eight
-it reads.** Eight, not nine: `union` reads a book rather than a draft, so
+it reads.** [AGENDA.md](AGENDA.md) walks one report section by
+section. Eight, not nine: `union` reads a book rather than a draft, so
 its findings are about a different object than the agenda's other inputs
 and it is deliberately not among them. Each of the aids above answers its
 own question in isolation; this one reads what they already wrote (each

@@ -441,6 +441,9 @@ Add `--write` to any of them to file the report under
 
 ### The agenda: all of them as one worklist
 
+[AGENDA.md](AGENDA.md) explains every section of an agenda file in
+full; what follows is the short version for this genre.
+
 Rather than reading seven reports, merge them:
 
 ```bash

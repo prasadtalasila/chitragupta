@@ -21,7 +21,8 @@ Two workflows the drafting layer does not support today:
 
 **Written for** whoever builds this. **It assumes**
 [docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md) for the dossier,
-[docs/WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) for the book track's outline and unit
+[docs/WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) for the book track's
+outline and unit
 contract, [docs/RETRIEVAL.md](../docs/RETRIEVAL.md) and
 [docs/CORPUS-SEARCH.md](../docs/CORPUS-SEARCH.md) for the search path,
 and [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the cycle each PR

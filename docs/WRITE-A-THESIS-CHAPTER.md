@@ -391,6 +391,9 @@ chitragupta review figure content/drafts/thesis/methods.tex
 
 ### The agenda: all of them as one worklist
 
+[AGENDA.md](AGENDA.md) explains every section of an agenda file in
+full; what follows is the short version for this genre.
+
 ```bash
 chitragupta review agenda content/drafts/thesis/methods.tex
 ```

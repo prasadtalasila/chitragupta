@@ -2504,7 +2504,8 @@ fragment carries its own numbered reference list.
 `--output-dir` writes the result somewhere other than the mirrored
 `content/rendered/` path -- for a book unit, the directory `book.tex`
 `\input`s it from. Confined to `content/` like every other path this
-command writes. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly procedure both exist
+command writes. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly
+procedure both exist
 for.
 
 ### 🎯 `chitragupta draft spec`
@@ -2548,7 +2549,8 @@ reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 ### 🧱 `chitragupta draft unit`
 
 One section's generation contract, and the record of its acceptance --
-the book-scale track's second artefact ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Reads the
+the book-scale track's second artefact
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Reads the
 outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
 
 ```bash
@@ -2575,7 +2577,8 @@ the gate refuses cannot be accepted, and nothing here is a second gate.
 ### 📇 `chitragupta draft registry`
 
 Terminology, claims and cross-references over a book's **accepted** units
-([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Three registries, built by a deterministic pass
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Three registries, built by a
+deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash

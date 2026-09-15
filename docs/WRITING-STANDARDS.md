@@ -878,7 +878,8 @@ and nobody reads it, which is why it is the half in a comment.
 **Ids are kebab-case and unique within a draft.** Two tables sharing one
 id become two `\label{}`s in one LaTeX document, where a duplicate
 resolves silently to the wrong table -- which is a real risk for a book
-unit, since [WRITE-A-BOOK.md](WRITE-A-BOOK.md)'s assembly puts fifteen units in one
+unit, since [WRITE-A-BOOK.md](WRITE-A-BOOK.md)'s assembly puts fifteen
+units in one
 document.
 
 ### 📄 The `.tex` fragment writes its own

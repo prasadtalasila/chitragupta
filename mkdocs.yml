@@ -182,6 +182,7 @@ nav:
       - The dossier (machine-facing): docs/DOSSIER.md
   - Review drafts:
       - The review layer: docs/REVIEW.md
+      - Agenda: docs/AGENDA.md
       - Citation provenance: docs/CITATION-PROVENANCE.md
       - Plagiarism / verbatim reuse: docs/PLAGIARISM.md
       - Writing standards: docs/WRITING-STANDARDS.md

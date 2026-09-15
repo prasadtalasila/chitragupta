@@ -803,7 +803,8 @@ enough to even ask about.
 
 What raises the ceiling from chapter/report scale to book scale is
 built, tracked under one umbrella issue and
-described in full in [WRITE-A-BOOK.md](WRITE-A-BOOK.md). It depended on none of the
+described in full in [WRITE-A-BOOK.md](WRITE-A-BOOK.md). It depended on
+none of the
 tracks above, but benefits from all of them, since every gate and every
 review aid built there applies per-unit at book scale, which is what
 makes a 300-page grounded document tractable at all. In the order it was
@@ -832,7 +833,8 @@ built:
    enforcement machinery because everything it assembles has already
    passed every gate per-unit.
 
-All four are closed, in the order listed above; [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is
+All four are closed, in the order listed above;
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) is
 the record of what each shipped as, not just what it was scoped to be.
 
 ---
