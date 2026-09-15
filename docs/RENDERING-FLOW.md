@@ -13,7 +13,7 @@ have read [ARCHITECTURE.md's drafting
 layer](ARCHITECTURE.md#-layer-2-the-drafting-layer). **Not covered here:**
 every render flag ([CLI.md](CLI.md)), the TikZ style rules a figure is
 held to ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and book assembly's own
-citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
+citeproc pass over a composed book ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🧭 Table of contents
 
@@ -189,7 +189,7 @@ surprise people who have only read the code:
   while setting its loaded flag globally -- so the second figure in the
   document skips the load and finds no macros. A `--fragment` render has
   no preamble for this to land in and prints the union instead, for the
-  book that `\input`s it ([BOOKS.md](BOOKS.md)).
+  book that `\input`s it ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 

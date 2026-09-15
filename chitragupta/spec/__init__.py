@@ -29,7 +29,7 @@ resolve against.
 **`status`'s exit code is not a gate.** It answers "has a human approved
 this outline yet?" -- a record of a person's decision, not a machine's
 judgement of a draft's content. No draft is blocked by it; the one gate
-in this project stays `python -m chitragupta.draft gate`. docs/BOOKS.md carries
+in this project stays `python -m chitragupta.draft gate`. docs/WRITE-A-BOOK.md carries
 that reconciliation in full.
 
 Stdlib only, like `citation_gate` and `render_output`, so a genre skill

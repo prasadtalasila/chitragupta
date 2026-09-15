@@ -385,7 +385,7 @@ DOSSIERS_DIR = CONTENT_DIR / "dossiers"
 # The outline a book is generated from, one directory per book, mirroring
 # the book's own directory under DRAFTS_DIR -- content/drafts/twins/ has
 # its outline and its sign-off record at content/specs/twins/. See
-# chitragupta/spec.py and docs/BOOKS.md.
+# chitragupta/spec.py and docs/WRITE-A-BOOK.md.
 #
 # Mirrored one level differently from the three above, and deliberately:
 # those mirror a *draft*, so they carry the draft's parent directory; a

@@ -125,17 +125,81 @@ chitragupta draft dossier init content/drafts/thesis/methods.tex \
 
 Note the `.tex` suffix -- this genre's draft is LaTeX.
 
-Fill in `content/dossiers/thesis/methods/scope.md` by hand now: the
-reader, what the chapter covers, what it does not, and the **glossary**.
-The glossary matters more here than in any other genre: it is where the
-chapter's terminology is pinned so a later revision cannot drift off it,
-and an examiner notices drift.
+That writes eight files. **Exactly one is yours to fill in: `scope.md`.**
+The rest -- `evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
+`steering.md`, `revisions.md`, `README.md` -- are written for you as the
+chapter is produced.
 
-Set the dialect your institution expects:
+### What goes in `scope.md`
+
+`init` writes it with every heading present and empty. Five things are
+yours:
+
+| Field | What goes in it | Why it is asked for |
+| --- | --- | --- |
+| `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**; your institution decides it, and an unset one silently gets the model's own |
+| `## Reader` | the examiner, in one sentence, including what they have just read | background gets recapped where it is needed and nowhere else |
+| `## Covers` | the RQ this chapter serves, and nothing beyond it | keeps the chapter from absorbing the next one |
+| `## Does not cover` | what belongs to other chapters, and any theme the corpus could not support | an examiner reads an unexplained absence as an oversight |
+| `## Glossary` | each recurring term with its one pinned definition | **the field that matters most in this genre**: an examiner notices terminology drift, and this is what a later revision is held to |
+
+Set the dialect with the command, so the format is right:
 
 ```bash
 chitragupta draft dossier set-language content/drafts/thesis/methods.tex en-GB
 ```
+
+A filled-in thesis-chapter `scope.md` -- the whole file is at
+[`examples/dossiers/thesis-chapter/scope.md`](examples/dossiers/thesis-chapter/scope.md):
+
+```markdown
+# Scope
+
+- genre: thesis-chapter
+- language: en-GB
+- draft: content/drafts/thesis/methods.tex
+- created: 2026-09-15
+- corpus: 214 citekeys, digest `a31f0c4b77de`
+- draft digest: not recorded (run `dossier stamp` once the draft is ready)
+
+## Reader
+
+The external examiner: a control engineer who has supervised
+reduced-order modelling work but has never built a digital twin, and who
+will read adversarially for the claim that outruns its evidence. They
+have just read chapters 1-3, so the motivation is established and must
+not be re-argued here.
+
+## Covers
+
+RQ2 only: under what conditions a reduced-order surrogate stays faithful
+enough to support a safety decision.
+
+## Does not cover
+
+The empirical evaluation. That is chapter 5, and moving any of it here
+would leave chapter 5 as a results table with no argument.
+
+Learned surrogates (neural). Deliberate: the thesis' contribution is in
+projection-based reduction, and the two literatures have different
+notions of error entirely.
+
+## Glossary
+
+- **Surrogate** -- any cheaper model standing in for the full-order
+  simulation. Reserved for the projection-based kind; a learned stand-in
+  is called an emulator.
+- **Fidelity** -- error on the quantities the safety decision depends
+  on, never a global norm. Pinned here because three cited papers use it
+  the other way and the chapter must not drift into their sense.
+- **Error bound** -- a guarantee that holds for every admissible input,
+  as opposed to an observed maximum error on a test set, which is called
+  an empirical fit throughout.
+```
+
+The two glossary entries that say "pinned here because the sources use
+it differently" are doing the real work: that is how a chapter keeps its
+own vocabulary while citing papers that do not share it.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -153,10 +217,27 @@ Look at what the corpus holds before you commit to sections:
 chitragupta draft retrieve search "surrogate model fidelity" --k 15
 ```
 
-Then edit `content/dossiers/thesis/methods/outline.md`. Each `##` heading
-takes a `brief:` (steering, never printed), `claim:` blocks (your own
-prose, which must be grounded or reported as unsupported), and optional
-`queries:` run verbatim:
+Then edit `content/dossiers/thesis/methods/outline.md`. Three fields per
+section:
+
+| Field | What goes in it | What the skill does with it |
+| --- | --- | --- |
+| `brief:` | steering in your own words | consumed once, **never appears in the chapter** |
+| `claim:` | your own prose -- the argument you intend to make | rewritten and **grounded**; any sentence the corpus cannot support is reported back rather than shipped |
+| `queries:` | a `-` list of search terms | run **verbatim** instead of the skill inventing sub-themes |
+
+A section needs at least a `brief:` or a `claim:`; `queries:` is optional
+even then. Sections may nest -- `###` under `##` -- which this genre uses
+more than the others, because a chapter's technical core usually has two
+or three families to treat separately.
+
+**`claim:` is the field this genre gets the most out of.** A thesis
+chapter argues; writing your intended argument as `claim:` blocks means
+the skill either grounds each one or tells you it cannot -- which is
+exactly the conversation you want before the examiner has it with you.
+
+A worked example -- the whole file is at
+[`examples/dossiers/thesis-chapter/outline.md`](examples/dossiers/thesis-chapter/outline.md):
 
 ```markdown
 ## Why the surrogate question arises here
@@ -170,6 +251,7 @@ claim: Fidelity is defined against a decision, not in the abstract, and
 the field has no shared threshold.
 
 queries:
+
 - surrogate model fidelity criterion
 - reduced order model validation
 
@@ -179,6 +261,7 @@ brief: This is the chapter's technical core. Prefer sources that state
 an error bound over ones that report an empirical fit.
 
 queries:
+
 - reduced order model error bound
 - surrogate uncertainty quantification
 
@@ -188,6 +271,7 @@ brief: The gap that motivates chapter 5. Be explicit that this is my
 argument, grounded where the corpus supports it.
 
 queries:
+
 - error bound assumptions violated nonlinear
 ```
 
@@ -293,21 +377,129 @@ For a thesis chapter, two are worth more than the rest:
 
 - **`review verbatim`** -- reuse of a source's wording is the failure with
   consequences at a viva. It reports wording shared with any parsed
-  source, cited or not.
-- **`review support`** -- whether each claim's recorded evidence actually
-  bears the weight the sentence puts on it.
-
-One merged worklist across all of them:
-
-```bash
-chitragupta review agenda content/drafts/thesis/methods.tex
-```
+  source, cited or not, in three buckets: `long`, `short` and `quoted`
+  (the last being an attributed quotation, which is legitimate).
+- **`review support`** -- whether each citation actually entails the
+  claim it is attached to. This is the examiner's own reading habit,
+  mechanised.
 
 If the chapter has TikZ figures, also:
 
 ```bash
 chitragupta review figure content/drafts/thesis/methods.tex
 ```
+
+### The agenda: all of them as one worklist
+
+```bash
+chitragupta review agenda content/drafts/thesis/methods.tex
+```
+
+It **reads the aids' filed JSON and never runs an aid**, so run the aids
+first with `--write`, then the agenda. Any aid whose report is absent is
+named as absent rather than quietly skipped.
+
+Each item carries a class, a section anchor, and whether it is
+`[unattended]` -- safe for an automated pass to repair without asking
+(`prose`, short verbatim runs, `missing-citekey`) -- or `[surfaced]`, a
+judgement only you can make (`unsupported-claim`, `claim-support`,
+`uncited-claim`, `recorded-but-uncited`, `misquoted`).
+
+For the methods chapter we have been building:
+
+```markdown
+# Agenda: content/drafts/thesis/methods.tex
+
+> **Review aid, not a gate.** This report is evidence for a human
+> judgement, never a verdict. No draft is blocked by what it says.
+
+- Draft: `content/drafts/thesis/methods.tex`
+- Command: `chitragupta review agenda content/drafts/thesis/methods.tex`
+
+## Sources
+
+- Citation provenance: read
+- Verbatim scan: read
+- Citation coverage: not run
+- Multi-source synthesis: read, no item class defined
+- TikZ layout check: read
+- Uncited prose: read
+- Quotation integrity: read
+- Claim support: read
+- Prose (style_check): read
+- Dossier drift: read
+
+## Summary
+
+- 5 unsupported-claim
+- 3 verbatim-run
+- 2 uncited-claim
+- 1 misquoted
+
+## Findings
+
+### unsupported-claim
+
+- `b7c2109af441` [surfaced] (4.3 Why the existing bounds do not
+  transfer): `\citep{benner_survey_2015}` scores weak: The available
+  a-priori bounds assume a linearity the water-network model does not
+- `1c9e77d0a2b8` [surfaced] (4.2 Methods that bound the error):
+  `\citep{rozza_reduced_2008}` scores no support found: and the bound
+  degrades gracefully outside the training envelope
+
+### verbatim-run
+
+- `3e716e1cee1c` [unattended] (4.1 What "faithful enough" has meant):
+  17-word verbatim run citing `benner_survey_2015`, 8 matched
+- `dc32161a46ac` [unattended] (4.2 Methods that bound the error):
+  13-word verbatim run citing `rozza_reduced_2008`
+
+### misquoted
+
+- `9f04b1e7c3a2` [surfaced] (4.1 What "faithful enough" has meant): the
+  quoted span differs from the source at 3 words -- "error bound" for
+  "error estimate"
+
+### uncited-claim
+
+- `a1971eb28d62` [surfaced] (4.4 What this chapter establishes):
+  Projection-based reduction is the only family with a-priori guarantees
+```
+
+**How to read that as the author.** The `misquoted` item is the one to
+fix first -- a quotation that says "bound" where the source said
+"estimate" is exactly the error this chapter's own glossary exists to
+prevent, and an examiner who spots it will doubt the rest. The two
+`unsupported-claim` items are the sentences where your argument outruns
+your sources: either soften them, or find the source that carries them.
+The `uncited-claim` in the closing section is a claim you have made on
+your own authority in a place the chapter said it would not.
+
+The `[unattended]` verbatim runs can be handed off: ask to "work the
+review agenda" and `agenda-reviser` repairs them one at a time, re-running
+the gate after each and logging every attempt in `revisions.md`.
+
+To check a round of edits actually helped:
+
+```bash
+chitragupta review agenda content/drafts/thesis/methods.tex \
+    --baseline content/review/thesis/methods.agenda.json
+```
+
+That re-runs the aids and reports each finding as `resolved`,
+`persisting`, `new` or `accepted`. Read the `new` list, not just the
+count: a repair that resolves one finding and introduces another leaves
+the total unchanged.
+
+If you have considered a surfaced item and decided it stands as written:
+
+```bash
+chitragupta review agenda content/drafts/thesis/methods.tex \
+    --accept b7c2109af441
+```
+
+Only `claim-support`, `uncited-claim` and `unsupported-claim` may be
+accepted; anything else is refused with exit code 2.
 
 ## 📝 Step 8: change something
 

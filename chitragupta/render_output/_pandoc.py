@@ -117,7 +117,7 @@ def _pandoc_command(
     # A fragment is for `\input` into a larger document, so it gets no
     # preamble and no `\begin{document}` -- and its own `#` heading is
     # that document's chapter, not a section, which is why the two flags
-    # travel together (docs/BOOKS.md's assembly step is the caller).
+    # travel together (docs/WRITE-A-BOOK.md's assembly step is the caller).
     # Everything else is unchanged: the citations are still resolved by
     # citeproc against the same CSL, so a fragment carries its own IEEE
     # reference list under its own heading rather than deferring to a
@@ -127,7 +127,7 @@ def _pandoc_command(
     # that only the standalone template defines, so a highlighted fragment
     # fails to compile in the book that \input-s it. Plain `verbatim` is
     # what a fragment can promise. The citeproc macros are the one
-    # exception a book must supply itself -- see docs/BOOKS.md.
+    # exception a book must supply itself -- see docs/WRITE-A-BOOK.md.
     shape = ["--top-level-division=chapter", "--no-highlight"] if fragment else ["--standalone"]
     cmd = [
         "pandoc",
@@ -216,7 +216,7 @@ def _pandoc_command(
     # a render that works today over a package its draft never needs.
     # A `--fragment` render emits no preamble at all, so this reaches
     # nothing there -- a book supplies it from its own preamble, the
-    # same way it supplies the citeproc macros (docs/BOOKS.md).
+    # same way it supplies the citeproc macros (docs/WRITE-A-BOOK.md).
     if has_code_block:  # pragma: no cover-windows
         cmd += [
             "--variable",

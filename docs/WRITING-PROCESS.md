@@ -168,7 +168,7 @@ report. None of them is a gate; the only mechanical gate is
 
 A book is the same pipeline at a larger scale: one outline you sign off
 once, then one generation contract per chapter, each accepted on its
-own. [BOOKS.md](BOOKS.md) is the authoritative walkthrough; the shape:
+own. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the authoritative walkthrough; the shape:
 
 | Step | Command | Who runs it |
 | --- | --- | --- |
@@ -194,6 +194,6 @@ Once every chapter is accepted:
 
 Steps 5 to 7 are what `.claude/skills/book-assembler/` does in one run
 when you ask it to assemble the book. Step 8 is the track's second
-human sign-off -- [BOOKS.md](BOOKS.md) explains why it is a sibling
+human sign-off -- [WRITE-A-BOOK.md](WRITE-A-BOOK.md) explains why it is a sibling
 file rather than another flag, and what `registry check`'s exit code
 does and does not promise.

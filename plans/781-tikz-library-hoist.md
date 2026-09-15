@@ -56,7 +56,7 @@ changed.
 **Written for** whoever builds it. **Assumed:**
 [docs/WRITING-STANDARDS.md](../docs/WRITING-STANDARDS.md) §10 for the
 two-form figure contract and the `figure:` marker,
-[docs/BOOKS.md](../docs/BOOKS.md) and
+[docs/WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) and
 `.claude/skills/book-assembler/SKILL.md` for how a unit becomes a
 chapter, and [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the
 commit, lint and release conventions. **Not covered here:** the
@@ -818,7 +818,7 @@ Immediately after `tikz_libraries` is computed in `render`:
     # A fragment has no preamble for the load above to land in, so the
     # assembling book has to carry it -- the same structural reason
     # `fvextra` and `\LTcapwidth` are in book-assembler's own preamble
-    # (docs/BOOKS.md). Printed rather than returned because `render`'s
+    # (docs/WRITE-A-BOOK.md). Printed rather than returned because `render`'s
     # return value is the output path and every consumer of this is a
     # skill reading the render's output. One line, only when there is
     # something to say.
@@ -853,8 +853,8 @@ git commit -m "feat(render): report a fragment's TikZ library union for the asse
 
 - Modify: `.claude/skills/book-assembler/SKILL.md` (the skeleton at lines
   53-80, and the prose after it)
-- Modify: `docs/BOOKS.md` if it restates the preamble (grep first:
-  `grep -n 'fvextra\|LTcapwidth' docs/BOOKS.md`)
+- Modify: `docs/WRITE-A-BOOK.md` if it restates the preamble (grep first:
+  `grep -n 'fvextra\|LTcapwidth' docs/WRITE-A-BOOK.md`)
 
 No test: this is a skill instruction, not code. It is the *only*
 uncovered link in the chain, which is why Task 7's regression test exists.
@@ -916,7 +916,7 @@ as `loads-library-by-hand`.
 - [ ] **Step 3: check markdownlint, which runs locally and in CI**
 
 ```bash
-npx --yes markdownlint-cli2@0.23.2 ".claude/skills/book-assembler/SKILL.md" "docs/BOOKS.md"
+npx --yes markdownlint-cli2@0.23.2 ".claude/skills/book-assembler/SKILL.md" "docs/WRITE-A-BOOK.md"
 ```
 
 Expected: 0 errors. (A nested fenced block inside a fenced block is an
@@ -926,7 +926,7 @@ fence, use a longer outer fence.)
 - [ ] **Step 4: commit**
 
 ```bash
-git add .claude/skills/book-assembler/SKILL.md docs/BOOKS.md
+git add .claude/skills/book-assembler/SKILL.md docs/WRITE-A-BOOK.md
 git commit -m "docs(book-assembler): load the TikZ library union in the book preamble (#781)"
 ```
 

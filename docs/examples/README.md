@@ -21,6 +21,13 @@ Two honesty notes, so the samples cannot mislead:
   holds, each under 1,000 words, with the dossier filled as drafting
   went. They are samples of *shape*, not of scholarship.
 
+A second directory sits beside `sample-project/` and is **not** pipeline
+output: [`dossiers/`](dossiers/README.md) holds hand-written `scope.md`
+and `outline.md` files, one pair per genre, plus a book's `spec.md`.
+They are the files *you* fill in, shown filled in, for the five
+start-to-finish tutorials under Writing. Nothing in them was produced by
+a run, and they contain no citekeys.
+
 ## 🗺 The sample project, artefact by artefact
 
 | Path (under `sample-project/`) | What it is | The document that explains it |
@@ -33,7 +40,7 @@ Two honesty notes, so the samples cannot mislead:
 | `content/dossiers/dt-overview/<stem>/` | each draft's dossier: scope, kept evidence with `claim:`/`quote:`, rejected candidates, logged retrieval, sections, steering, revisions | [DOSSIER.md](../DOSSIER.md), [DRAFT-ITERATION.md](../DRAFT-ITERATION.md) |
 | `content/review/dt-overview/<stem>.*.md` (+ `.json`) | the review layer's reports for each draft -- provenance, verbatim, coverage, synthesis, uncited, quotation, support, and the merged agenda | [REVIEW.md](../REVIEW.md), [CITATION-PROVENANCE.md](../CITATION-PROVENANCE.md), [PLAGIARISM.md](../PLAGIARISM.md) |
 | `content/rendered/dt-overview/` | rendered outputs: the survey as PDF and Markdown, the thesis fragment as `\input`-ready `.tex` | [RENDERING-FLOW.md](../RENDERING-FLOW.md) |
-| `content/specs/twin-basics/` | a signed book outline, its sign-off record, and one accepted unit (`units/ch-staleness.json`) -- with the second unit honestly `unwritten` | [BOOKS.md](../BOOKS.md) |
+| `content/specs/twin-basics/` | a signed book outline, its sign-off record, and one accepted unit (`units/ch-staleness.json`) -- with the second unit honestly `unwritten` | [WRITE-A-BOOK.md](../WRITE-A-BOOK.md) |
 | [`content/seed_topics.toml`](sample-project/content/seed_topics.toml), [`content/topics.json`](sample-project/content/topics.json), [`content/topic_seeds.json`](sample-project/content/topic_seeds.json), [`content/topic_set.json`](sample-project/content/topic_set.json), [`content/topic_graph.json`](sample-project/content/topic_graph.json) | the topic artefacts, from hand-written phrases through clustering to the derived graph | [TOPIC-MODELLING.md](../TOPIC-MODELLING.md), [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |
 | [`content/topic_map.html`](sample-project/content/topic_map.html) | the whole topic landscape as one offline page | [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |
 | [`content/topic_gold.toml`](sample-project/content/topic_gold.toml), [`content/topic_gold_results.json`](sample-project/content/topic_gold_results.json), [`content/discover_digital_twin.txt`](sample-project/content/discover_digital_twin.txt) | a gold query set, its measured scores per resolution rung, and one `corpus discover` transcript | [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |

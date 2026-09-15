@@ -734,7 +734,7 @@ shipped it; §5 has the full status table.
     itself calls "already soft-solved" -- everything else in that
     paragraph is what that issue would have built and didn't.
 
-### 📕 4.6 Scaling to books — built (see §5.2 and BOOKS.md)
+### 📕 4.6 Scaling to books — built (see §5.2 and WRITE-A-BOOK.md)
 
 1. **Spec/outline artifact** with human sign-off before any prose.
 2. **Unit decomposition**: generation contract at section granularity;
@@ -787,7 +787,7 @@ production, not just designed. As of v5.29.0:
 | Blocking `overlap_gate` | **Declined**: measured against this project's own 178,000-word book -- no span-length threshold separated the one genuine violation from false positives that were correctly quoted, correctly attributed passages several corpus papers also quote. Not a gap; a closed, evidence-based decision, revisitable only given new evidence (a corpus of real rather than planted reuse, or a version-controlled seed allowlist) |
 | Language quality: dialect recording, deterministic style/defect-marker check, automatic invocation, copy-edit revision path | Built: `python -m chitragupta.draft style`, a vendored-Vale review aid; a non-blocking hook and a step in every skill invoke it automatically; `draft-reviser`'s copy-edit mode is the sanctioned edit path. Advisory, never a gate, by the same reasoning as the overlap gate -- a recorded target can be wrong in a way a ledger entry cannot |
 | Multi-language plumbing (render metadata, non-English reference connectives, non-English retrieval/OCR) | **Explicitly parked**, not merely absent: each of the three was fully designed in its own issue, then closed "not a priority" |
-| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built -- see [BOOKS.md](BOOKS.md) |
+| Book-scale: spec/outline sign-off, unit decomposition, consistency registries, book assembly | Built -- see [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
 | Topic discovery: topic graph, phrase-to-topic resolution with a cross-encoder precision tier, extractive overviews, gold-set benchmark, offline HTML map | Built -- LLM-free end to end, every relation explainable by naming citekeys; see [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) and §"Five more" above for what the landscape contributed and what was refused |
 
 Competitive position in one sentence: **commercial tools (Paperguide,
@@ -803,7 +803,7 @@ enough to even ask about.
 
 What raises the ceiling from chapter/report scale to book scale is
 built, tracked under one umbrella issue and
-described in full in [BOOKS.md](BOOKS.md). It depended on none of the
+described in full in [WRITE-A-BOOK.md](WRITE-A-BOOK.md). It depended on none of the
 tracks above, but benefits from all of them, since every gate and every
 review aid built there applies per-unit at book scale, which is what
 makes a 300-page grounded document tractable at all. In the order it was
@@ -832,7 +832,7 @@ built:
    enforcement machinery because everything it assembles has already
    passed every gate per-unit.
 
-All four are closed, in the order listed above; [BOOKS.md](BOOKS.md) is
+All four are closed, in the order listed above; [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is
 the record of what each shipped as, not just what it was scoped to be.
 
 ---

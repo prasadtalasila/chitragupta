@@ -219,7 +219,7 @@ class TestBreakableInlineCodeFilter:
     """A standalone render and a book-assembler `--fragment` render both
     build their pandoc argv from this one function, so wiring the filter
     in here -- rather than in either caller -- is what makes it reach
-    every LaTeX/PDF render, not just the book path (docs/BOOKS.md)."""
+    every LaTeX/PDF render, not just the book path (docs/WRITE-A-BOOK.md)."""
 
     def test_the_filter_is_always_passed(self):
         cmd, _ = render_output._pandoc_command(

@@ -228,7 +228,7 @@ one ([GENRE.md](GENRE.md)).
 | `draft-reviser` | edits an existing draft, from its dossier | -- the cheap, default path for any change |
 | `corpus-reviser` | edits an existing draft, re-searching everything | -- by explicit request only |
 | `agenda-reviser` | repairs the unattended findings a review agenda found | -- one item at a time |
-| `book-assembler` | one LaTeX book from accepted units | [BOOKS.md](BOOKS.md) |
+| `book-assembler` | one LaTeX book from accepted units | [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
 
 **The rule that saves the most money:** never re-run a genre skill to
 change a draft that exists. `draft-reviser` reads the dossier and edits
@@ -344,7 +344,7 @@ copyrighted sources.
 into a book: an outline you sign off, a per-section generation contract
 with a recorded acceptance, and terminology/claim/cross-reference checks
 over the accepted units. Two human sign-offs, not one.
-[BOOKS.md](BOOKS.md) has the workflow.
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) has the workflow.
 
 ### 🔭 Per-citekey TL;DR
 

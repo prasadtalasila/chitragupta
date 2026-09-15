@@ -176,8 +176,8 @@ nav:
       - "Tutorial: write a textbook chapter": docs/WRITE-A-TEXTBOOK-CHAPTER.md
       - "Tutorial: write a tutorial": docs/WRITE-A-TUTORIAL.md
       - "Tutorial: write a deep-research report": docs/WRITE-A-DEEP-RESEARCH-REPORT.md
+      - "Tutorial: write a book": docs/WRITE-A-BOOK.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
-      - Book-scale drafting: docs/BOOKS.md
       - Drafting with it: AGENTS.md
       - The dossier (machine-facing): docs/DOSSIER.md
   - Review drafts:

@@ -122,7 +122,7 @@ def preamble_libraries(
     exists to produce reaches nothing there and the document that
     `\input`s the unit has to carry it -- the same structural reason
     `fvextra` and `\LTcapwidth` are in `book-assembler`'s own preamble
-    (docs/BOOKS.md). One stderr line says which, in the `[prefix] text`
+    (docs/WRITE-A-BOOK.md). One stderr line says which, in the `[prefix] text`
     shape `render()` already prints every figure, table and equation
     warning in, because the consumer is a skill reading the render's
     output rather than a caller reading a return value.

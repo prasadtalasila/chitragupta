@@ -383,7 +383,7 @@ finding, and does not say the book is finished. A unit that is missing,
 unaccepted or stale sends it back to the genre skill or to
 `draft-reviser`; it never drafts and never edits.
 
-[BOOKS.md](BOOKS.md) is the track -- the outline, the generation unit,
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the track -- the outline, the generation unit,
 the registries, and why the consistency check reports rather than
 blocks.
 

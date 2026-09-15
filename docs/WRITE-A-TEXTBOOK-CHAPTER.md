@@ -8,7 +8,7 @@ exercises -- and who has not used this pipeline before. **Assumed:**
 nothing. This page repeats what other documents also say, deliberately.
 **Not covered here:** why each prose rule exists
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)) and how a whole book is
-assembled from chapters ([BOOKS.md](BOOKS.md)).
+assembled from chapters ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 Sister tutorials: [a survey](WRITE-A-SURVEY.md),
 [a thesis chapter](WRITE-A-THESIS-CHAPTER.md),
@@ -115,17 +115,86 @@ chitragupta draft dossier init \
     content/drafts/course/ch3-state-estimation.md --genre textbook-chapter
 ```
 
-Fill in `scope.md` by hand now: the reader, the prerequisites, what the
-chapter covers, what it does not, and the glossary. For teaching
-material the glossary is the chapter's vocabulary contract -- a term that
-drifts between sections is a student's lost afternoon.
+That writes eight files. **Exactly one is yours to fill in: `scope.md`.**
+The rest -- `evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
+`steering.md`, `revisions.md`, `README.md` -- are written for you as the
+chapter is produced.
 
-Set the dialect your course uses:
+### What goes in `scope.md`
+
+`init` writes it with every heading present and empty. Five things are
+yours:
+
+| Field | What goes in it | Why it is asked for |
+| --- | --- | --- |
+| `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**; a chapter whose dialect nobody chose silently gets the model's own |
+| `## Reader` | the student, concretely, including the courses they have had | decides what is assumed, what is recapped, and how fast the worked examples move |
+| `## Covers` | the chapter's content **and its learning objectives** | this genre has no other home for the objectives, and they are the chapter's contract |
+| `## Does not cover` | what is deferred to a later chapter or a lab | students who see a term with no treatment assume they missed it |
+| `## Glossary` | each recurring term with one definition | a term that drifts between sections is a student's lost afternoon |
+
+Set the dialect with the command, so the format is right:
 
 ```bash
 chitragupta draft dossier set-language \
     content/drafts/course/ch3-state-estimation.md en-GB
 ```
+
+A filled-in textbook-chapter `scope.md` -- the whole file is at
+[`examples/dossiers/textbook-chapter/scope.md`](examples/dossiers/textbook-chapter/scope.md):
+
+```markdown
+# Scope
+
+- genre: textbook-chapter
+- language: en-GB
+- draft: content/drafts/course/ch3-state-estimation.md
+- created: 2026-09-15
+- corpus: 214 citekeys, digest `a31f0c4b77de`
+- draft digest: not recorded (run `dossier stamp` once the draft is ready)
+
+## Reader
+
+Second-year undergraduates who have had one linear-algebra course and no
+signals or probability course beyond a first module. They have seen a
+mean and a variance; they have not seen a covariance matrix, and will
+not in this chapter.
+
+## Covers
+
+Why a raw measurement is not enough; the one-dimensional estimator built
+from two variances; two steps worked by hand; a faded example the
+student finishes; and an honest section on which assumptions break.
+
+Learning objectives -- by the end a student can:
+
+1. state what a state estimator does and why a raw reading is not enough;
+2. derive the one-dimensional update from the two variances;
+3. hand-compute two steps on given numbers;
+4. say when the assumptions fail and what happens then.
+
+## Does not cover
+
+The matrix form. That is chapter 4, and reaching for it here would cost
+the derivation its arithmetic-only property.
+
+Implementation. There is no code in this chapter -- students who want to
+build one are pointed at the lab, which is a tutorial.
+
+## Glossary
+
+- **State** -- the quantity we want to know and cannot measure directly.
+  Never "the system" or "the value".
+- **Estimate** -- our current best guess of the state, always paired
+  with its variance. A number without its variance is never called an
+  estimate in this chapter.
+- **Gain** -- the weight given to a new measurement against the current
+  estimate, between 0 and 1.
+```
+
+Putting the objectives in `## Covers` is the convention for this genre:
+they are scope, they are what the exercises test, and a later revision
+that quietly drops one is then visible.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -138,10 +207,22 @@ chitragupta draft dossier init \
     --genre textbook-chapter --outline
 ```
 
-Edit `content/dossiers/course/ch3-state-estimation/outline.md`. Sections
-need a `brief:` and/or `claim:`; `queries:` are optional and, in this
-genre, often absent -- most sections are your own explanation with
-nothing to retrieve:
+Edit `content/dossiers/course/ch3-state-estimation/outline.md`. Three
+fields per section:
+
+| Field | What goes in it | What the skill does with it |
+| --- | --- | --- |
+| `brief:` | steering in your own words -- what to emphasise, what to leave out, how long | consumed once, **never appears in the chapter** |
+| `claim:` | your own prose, where you want a specific statement made | rewritten and grounded; anything the corpus cannot support is reported rather than shipped |
+| `queries:` | a `-` list of search terms | run **verbatim** instead of the skill inventing sub-themes |
+
+A section needs at least a `brief:` or a `claim:`. **In this genre most
+sections have only a `brief:` and no `queries:` at all** -- a worked
+example and a set of exercises are yours to design, not the corpus'. An
+outline here that is almost all briefs is correct, not thin.
+
+A worked example -- the whole file is at
+[`examples/dossiers/textbook-chapter/outline.md`](examples/dossiers/textbook-chapter/outline.md):
 
 ```markdown
 ## Learning objectives
@@ -154,6 +235,7 @@ brief: Motivate before mechanism. One concrete scenario -- a robot whose
 wheel encoder drifts -- carried through the whole chapter.
 
 queries:
+
 - state estimation sensor noise motivation
 
 ## The idea in one dimension
@@ -172,6 +254,7 @@ brief: Non-Gaussian noise and an unmodelled bias. Honest about what
 breaks; this is where students who go on to research start.
 
 queries:
+
 - kalman filter assumption violation bias
 
 ## Exercises
@@ -251,16 +334,97 @@ chitragupta review verbatim scan \
 chitragupta review figure content/drafts/course/ch3-state-estimation.md
 ```
 
-For teaching material, `review verbatim` is the one that matters most: a
-chapter that reuses a source's wording is a copyright problem in a way a
-private research note is not. It reports wording shared with any parsed
-source, cited or not.
+What each is for here:
 
-`review uncited` is deliberately gentler on this genre -- prose with no
+| Aid | Reads for | Why it matters in teaching material |
+| --- | --- | --- |
+| `review verbatim` | wording shared with any parsed source, cited or not | **the one that matters most.** A chapter that reuses a source's wording is a copyright problem in a way a private research note is not |
+| `draft style` | defect markers, an acronym never expanded at first use, dialect | a student meets every acronym for the first time; an unexpanded one costs them the paragraph |
+| `review figure` | overlapping nodes, overlong labels, and the edge list | confirm the edge list against your own prose -- a diagram that wires the concepts up wrongly teaches the wrong thing convincingly |
+
+`review uncited` is deliberately gentler on this genre: prose with no
 citation is the normal state of a textbook, not a finding.
 
-If the chapter has TikZ figures, `review figure` reports overlapping
-nodes, overlong labels and the edge list to confirm against your prose.
+### The agenda: all of them as one worklist
+
+```bash
+chitragupta review agenda content/drafts/course/ch3-state-estimation.md
+```
+
+It **reads the aids' filed JSON and never runs an aid**, so run them
+first with `--write`. Items are `[unattended]` (safe to repair
+automatically: `prose`, short verbatim runs, `missing-citekey`) or
+`[surfaced]` (yours to judge).
+
+A chapter that cites lightly produces a short agenda, and that is the
+expected shape here:
+
+```markdown
+# Agenda: content/drafts/course/ch3-state-estimation.md
+
+> **Review aid, not a gate.** This report is evidence for a human
+> judgement, never a verdict. No draft is blocked by what it says.
+
+- Draft: `content/drafts/course/ch3-state-estimation.md`
+- Command: `chitragupta review agenda content/drafts/course/ch3-state-estimation.md`
+
+## Sources
+
+- Citation provenance: read
+- Verbatim scan: read
+- Citation coverage: not run
+- Multi-source synthesis: read, no item class defined
+- TikZ layout check: read
+- Uncited prose: read
+- Quotation integrity: not run
+- Claim support: read
+- Prose (style_check): read
+- Dossier drift: read
+
+## Summary
+
+- 3 prose
+- 1 verbatim-run
+
+## Findings
+
+### prose
+
+- `5a8bf91ec244` [unattended] (2. Why a raw measurement is not enough):
+  chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
+- `c14d0b7e9a33` [unattended] (5. When the assumptions fail):
+  chitragupta.DefectMarker: 'obviously' (1x)
+- `7e2a55c1b09d` [unattended] (6. Exercises): chitragupta.DialectDrift:
+  'analyze' -- scope.md records en-GB
+
+### verbatim-run
+
+- `1561cffaa101` [unattended] (2. Why a raw measurement is not enough):
+  10-word verbatim run citing `bar_shalom_estimation_2001`
+```
+
+**How to read that as the author.** All four are `[unattended]`, which
+is typical for a chapter whose content is mostly your own: an acronym a
+student meets before its expansion, a hedge word, a US spelling in a
+chapter that declared `en-GB`, and one phrase that matches a textbook you
+cited. Hand them off -- ask to "work the review agenda" and
+`agenda-reviser` repairs them one at a time, re-running the gate after
+each and logging every attempt in `revisions.md`.
+
+The `DialectDrift` finding is only possible because `scope.md` records
+`language: en-GB`. Leave that line unset and this whole class of finding
+silently does not exist.
+
+To check a round of edits helped:
+
+```bash
+chitragupta review agenda content/drafts/course/ch3-state-estimation.md \
+    --baseline content/review/course/ch3-state-estimation.agenda.json
+```
+
+That re-runs the aids and reports each finding as `resolved`,
+`persisting`, `new` or `accepted` -- read the `new` list, not just the
+count.
 
 ## 📝 Step 7: change something
 
@@ -293,7 +457,7 @@ If this chapter is one of many, the book track keeps them consistent: a
 signed outline (`chitragupta draft spec`), per-chapter acceptance records
 (`chitragupta draft unit`), a cross-reference check
 (`chitragupta draft registry check`) and an assembly step that produces
-one LaTeX book. Start at [BOOKS.md](BOOKS.md) before drafting chapter
+one LaTeX book. Start at [WRITE-A-BOOK.md](WRITE-A-BOOK.md) before drafting chapter
 two -- retrofitting the outline afterwards costs more than declaring it
 now.
 

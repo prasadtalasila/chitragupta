@@ -6,12 +6,12 @@ tags: [book, latex, assembly, composition]
 
 # book-assembler
 
-The last step of the book-scale track (`docs/BOOKS.md`), and deliberately
+The last step of the book-scale track (`docs/WRITE-A-BOOK.md`), and deliberately
 the smallest. Everything this skill assembles has already passed every
 gate per unit, so assembly is **deterministic composition plus a human
 sign-off** -- not a drafting genre.
 
-Read `docs/BOOKS.md` before the first run. This file is the procedure;
+Read `docs/WRITE-A-BOOK.md` before the first run. This file is the procedure;
 that one is why the procedure is shaped this way.
 
 ## What this skill is not

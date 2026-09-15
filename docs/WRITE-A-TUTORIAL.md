@@ -115,25 +115,90 @@ chitragupta draft dossier init content/drafts/labs/first-twin.md \
     --genre tutorial
 ```
 
-Fill in `scope.md` by hand now:
+That writes eight files. **Exactly one is yours to fill in now:
+`scope.md`.** One other -- `rejected.md` -- is unusually important in
+this genre and is described below.
 
-- **Reader** -- the learner in one concrete sentence, *including what they
-  already know*. "A second-year student who has written Python but never
-  used a message queue."
-- **Covers** -- the destination artifact and the capability it leaves
-  behind.
-- **Does not cover** -- the variations, edge cases and alternate
-  environments you are deliberately refusing. Write these down; they are
-  what stops a later revision quietly widening the lesson.
-- **Glossary** -- each recurring term with the one definition the whole
-  lesson uses.
+### What goes in `scope.md`
 
-Set the dialect:
+| Field | What goes in it | Why it is asked for |
+| --- | --- | --- |
+| `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**. Note that command output and file contents keep whatever the tool emits -- they are quoted material, not your prose |
+| `## Reader` | the learner in one sentence, *including what they already know* | the prerequisites section follows directly from it |
+| `## Covers` | **the destination artifact**, named concretely, plus the capability left behind | if you cannot write this sentence the lesson is not scoped yet |
+| `## Does not cover` | the variations, edge cases and alternate environments you refuse | this is what stops a later revision quietly widening a 45-minute lesson |
+| `## Glossary` | each recurring term with one definition | a lesson that calls the same thing three names loses a learner mid-step |
+
+Set the dialect with the command:
 
 ```bash
 chitragupta draft dossier set-language \
     content/drafts/labs/first-twin.md en-GB
 ```
+
+A filled-in tutorial `scope.md` -- the whole file is at
+[`examples/dossiers/tutorial/scope.md`](examples/dossiers/tutorial/scope.md):
+
+```markdown
+# Scope
+
+- genre: tutorial
+- language: en-GB
+- draft: content/drafts/labs/first-twin.md
+- created: 2026-09-15
+- corpus: 214 citekeys, digest `a31f0c4b77de`
+- draft digest: not recorded (run `dossier stamp` once the draft is ready)
+
+## Reader
+
+A second-year student who has written Python before, has never used a
+message queue, and is sitting at a lab machine with 45 minutes. They
+have read chapter 3, so they know what an estimate and a variance are.
+
+## Covers
+
+The destination artifact: **a running digital twin of a water tank that
+prints the estimated level once a second and visibly corrects itself
+when you change the inflow by hand.**
+
+## Does not cover
+
+Deployment, containers, or anything that runs on hardware. Deliberate:
+every one adds an install before the lesson starts, and the lesson has
+45 minutes.
+
+Tuning. The gain is given as a constant with a one-line justification
+and a pointer onward.
+
+## Glossary
+
+- **Tank** -- the simulated physical asset. Always "the tank", never
+  "the system" or "the plant".
+- **Twin** -- the Python process holding the estimate.
+- **Reading** -- one noisy level measurement from the simulator.
+- **Estimate** -- the twin's current best level, printed each second.
+```
+
+### The file this genre gets the most out of: `rejected.md`
+
+In other genres `rejected.md` holds retrieved sources that were turned
+down. A tutorial adds a second use, and it is the most valuable entry a
+lesson's dossier holds -- a `## Rejected paths` section with its own
+two-column table:
+
+```markdown
+## Rejected paths
+
+| alternative | why not chosen |
+| --- | --- |
+| Poetry instead of a venv | one more install before the lesson starts |
+| Docker instead of a local interpreter | hides the thing being taught |
+| Real hardware instead of the simulator | 45 minutes, and half the lab has no board |
+| Deriving the gain in step 3 | that is chapter 3; deriving it here stops the lesson dead |
+```
+
+The prose can only show the path you kept. Without this table a revision
+re-argues every branch you already decided.
 
 Command output and file contents keep whatever spelling the tool
 actually emits -- they are quoted material, not your prose.
@@ -147,6 +212,21 @@ come from walking the path. If you want to fix the shape first:
 chitragupta draft dossier init content/drafts/labs/first-twin.md \
     --genre tutorial --outline
 ```
+
+Three fields per section:
+
+| Field | What goes in it | What the skill does with it |
+| --- | --- | --- |
+| `brief:` | steering in your own words | consumed once, **never appears in the lesson** |
+| `claim:` | your own prose | rewritten and grounded. **Rare in this genre** -- a tutorial makes few claims about the literature |
+| `queries:` | a `-` list of search terms | run **verbatim**. In a tutorial these belong to the closing section only |
+
+A section needs at least a `brief:` or a `claim:`. A tutorial's outline
+is almost all briefs, with one `queries:` block at the end -- the only
+place this genre may cite.
+
+A worked example -- the whole file is at
+[`examples/dossiers/tutorial/outline.md`](examples/dossiers/tutorial/outline.md):
 
 ```markdown
 ## What you will build
@@ -181,6 +261,7 @@ brief: The only place citations may appear. Point at the two corpus
 papers that explain what we just did by hand.
 
 queries:
+
 - state estimation tutorial introduction
 - digital twin synchronisation
 ```
@@ -252,14 +333,75 @@ chitragupta draft style content/drafts/labs/first-twin.md
 chitragupta review verbatim scan content/drafts/labs/first-twin.md
 ```
 
-`draft style` is the most useful one here: an acronym never expanded at
-first use is a bigger problem for a learner mid-task than for any other
-reader.
+| Aid | Reads for | Why it matters in a lesson |
+| --- | --- | --- |
+| `draft style` | defect markers, an acronym never expanded at first use, dialect | **the most useful one here.** An unexpanded acronym mid-task stops a learner who cannot look it up without losing their place |
+| `review verbatim` | wording shared with any parsed source | a lesson quoting a source's prose reads as borrowed rather than taught |
 
-Note that a long code block in a lesson can be reported as a wide line by
-the typesetting checks. The render wraps it with a continuation marker,
-so it is a quality note rather than a broken page -- but a line a learner
-has to retype is worth shortening anyway.
+A long code block can also be reported as a wide line by the typesetting
+checks. The render wraps it with a `,→` continuation marker, so it is a
+quality note rather than a broken page -- but a line a learner has to
+retype is worth shortening anyway.
+
+### The agenda: all of them as one worklist
+
+```bash
+chitragupta review agenda content/drafts/labs/first-twin.md
+```
+
+It **reads the aids' filed JSON and never runs an aid**, so run them
+first with `--write`. Items are `[unattended]` (safe to repair
+automatically) or `[surfaced]` (yours to judge).
+
+A tutorial that cites only in its closing section produces the shortest
+agenda of any genre:
+
+```markdown
+# Agenda: content/drafts/labs/first-twin.md
+
+> **Review aid, not a gate.** This report is evidence for a human
+> judgement, never a verdict. No draft is blocked by what it says.
+
+- Draft: `content/drafts/labs/first-twin.md`
+- Command: `chitragupta review agenda content/drafts/labs/first-twin.md`
+
+## Sources
+
+- Citation provenance: read
+- Verbatim scan: read
+- Citation coverage: not run
+- Multi-source synthesis: not run
+- TikZ layout check: not run
+- Uncited prose: read
+- Quotation integrity: not run
+- Claim support: not run
+- Prose (style_check): read
+- Dossier drift: read
+
+## Summary
+
+- 2 prose
+
+## Findings
+
+### prose
+
+- `5a8bf91ec244` [unattended] (Step 1 -- Get the simulator running):
+  chitragupta.WideCodeLine: 'python -m tanksim --seed 42 --rate 1 --noise'
+- `c14d0b7e9a33` [unattended] (Step 3 -- Add the estimate):
+  chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
+```
+
+**How to read that as the author.** Both are `[unattended]`. The wide
+line is one a learner has to type, so shortening it is worth doing even
+though the render would wrap it. The unexpanded acronym is the finding
+this genre should take most seriously -- a learner three steps into a
+lesson cannot pause to look one up.
+
+Several aids read `not run` here, and that is correct rather than a gap:
+a lesson with no claims has nothing for claim support to score, and one
+with no figures has nothing for the TikZ check to measure. The agenda
+names them as absent rather than pretending they passed.
 
 ## 📝 Step 8: change something
 
