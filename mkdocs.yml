@@ -171,6 +171,11 @@ nav:
   - Writing:
       - Which genre skill: docs/GENRE.md
       - The writing process, start to finish: docs/WRITING-PROCESS.md
+      - "Tutorial: write a survey": docs/WRITE-A-SURVEY.md
+      - "Tutorial: write a thesis chapter": docs/WRITE-A-THESIS-CHAPTER.md
+      - "Tutorial: write a textbook chapter": docs/WRITE-A-TEXTBOOK-CHAPTER.md
+      - "Tutorial: write a tutorial": docs/WRITE-A-TUTORIAL.md
+      - "Tutorial: write a deep-research report": docs/WRITE-A-DEEP-RESEARCH-REPORT.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Book-scale drafting: docs/BOOKS.md
       - Drafting with it: AGENTS.md
