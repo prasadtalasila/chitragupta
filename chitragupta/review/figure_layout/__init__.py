@@ -17,6 +17,7 @@ from geometry, and the split matters:
 | Node text overload (>15 words) | binary | no |
 | Edge list | binary, reported for confirmation | no |
 | Stranded arrowhead | binary | no |
+| Loads its TikZ library by hand (#781) | binary | no |
 | Node overlap | binary | yes |
 | Content protrusion | binary | yes |
 | Nothing was measurable | binary | yes |

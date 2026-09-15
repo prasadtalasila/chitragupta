@@ -179,6 +179,17 @@ surprise people who have only read the code:
   panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
   as well as in the picture: for three of the five formats the twin is
   the only thing the reader sees.
+- **The TikZ libraries those figures ask for are loaded in the
+  preamble, not in the figure file** (#781). `_pandoc_command` reads the
+  union of the `\usetikzlibrary` names across the draft's figure files
+  (`_tikz_libraries.py`) and emits it beside `\usepackage{tikz}` as one
+  `header-includes` value. It has to happen there rather than where the
+  figure is `\input`: that point is inside a `figure` float, a float is
+  a group, and a load inside one defines the library's macros locally
+  while setting its loaded flag globally -- so the second figure in the
+  document skips the load and finds no macros. A `--fragment` render has
+  no preamble for this to land in and prints the union instead, for the
+  book that `\input`s it ([BOOKS.md](BOOKS.md)).
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 

@@ -405,7 +405,7 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review verbatim` | how much wording the draft shares with its sources -- and with **any** parsed source, cited or not |
 | `review coverage` | retrieval surfaced these sources; did the draft cite them? |
 | `review synthesis` | how many sources each unit rests on, at the unit its genre binds at |
-| `review figure` | what a TikZ figure's own geometry says -- overlapping nodes, protrusion, overlong labels |
+| `review figure` | what a TikZ figure's own geometry says -- overlapping nodes, protrusion, overlong labels -- plus one source check: a figure file that loads its TikZ library by hand, which renders correctly alone and multiplies node spacing in an assembled book |
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
 | `review agenda` | merges the eight draft-level aids' reports into one ranked, deduplicated worklist |
