@@ -29,9 +29,10 @@ against pandoc 3.1.11.1 rather than assumed:
   itself, and a reference becomes `Table~\\ref{}`. That is what makes the
   same unit read "Table 3" in an `article` and "Table 2.1" inside an
   assembled `book` that numbers its chapters -- or "Table 5" in one that
-  does not, since `book-assembler` suppresses chapter numbering
-  (`\\setcounter{secnumdepth}{-2}`) for units that number their own
-  headings, and a table then counts flat across the whole book. Both
+  does not, since a book whose units number their own headings suppresses
+  chapter numbering (`\\setcounter{secnumdepth}{-2}` in its own
+  `preamble.tex`, overriding `book-assembler`'s default of `2`), and a
+  table then counts flat across the whole book. Both
   measured; the point is that the *consuming* document decides, which is
   why no number belongs in a draft.
 - **`md`**: this format never reaches pandoc at all

@@ -437,3 +437,114 @@ class TestTheReport:
         out = capsys.readouterr().out
         assert "Not checked:" in out and "ch-data -- unwritten" in out
         assert "not determinable" in out
+
+
+class TestAnAssemblyUnderRendered:
+    """The book is composed into `content/rendered/<book>/`, not beside its
+    units, and that puts the two sides of the subtraction in two trees.
+
+    The fragments sit next to `book.tex` under `content/rendered/`; the
+    acceptance records are reached from `content/drafts/`, because
+    `unit.record_path` routes through `spec.spec_dir` and that requires a
+    path under `DRAFTS_DIR`. Deriving one directory from `book.tex`'s own
+    parent answered only one of the two, and answered the other by
+    raising.
+    """
+
+    def test_a_rendered_book_is_checked_against_its_drafts_records(self, book, isolated_config):
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assembled = assemble(rendered, ["ch-model", "ch-data"])
+
+        result = citekey_union.compute(assembled)
+
+        assert result.dropped == {}
+        assert result.omitted == []
+        assert [entry.unit for entry in result.checked] == ["ch-model", "ch-data"]
+
+    def test_a_unit_the_rendered_book_left_out_is_still_located(self, book, isolated_config):
+        """The fragments are resolved against the assembly's own directory,
+        so an omission is still found -- reading them from `content/drafts/`
+        would report both units missing and every citekey dropped."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assembled = assemble(rendered, ["ch-data"])
+
+        result = citekey_union.compute(assembled)
+
+        assert result.dropped == {"smith_2024": ["ch-model"]}
+        assert result.omitted[0].unit == "ch-model"
+
+    def test_a_rendered_unit_gets_the_refusal_rather_than_an_error(self, book, isolated_config):
+        """#496's refusal, for the path shape the move makes easy. Reaching
+        the ids from `content/rendered/` looked for a spec that cannot be
+        there, so this raised `spec.SpecError` instead of refusing."""
+        write_record(book, "ch-model", ["smith_2024"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assemble(rendered, ["ch-model"])
+
+        refusal = citekey_union.refuse_a_unit(rendered / "ch-model.tex")
+
+        assert refusal is not None
+        assert "is unit `ch-model`" in refusal
+
+    def test_the_written_report_mirrors_the_book_instead_of_landing_flat(
+        self, book, isolated_config
+    ):
+        """`content/review/<book>/`, not one shared `content/review/`. A
+        rendered assembly mirrored to nothing, so every book in a project
+        wrote the same `book.union.md` over the last one."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assembled = assemble(rendered, ["ch-model", "ch-data"])
+
+        assert citekey_union.main([str(assembled), "--write", "--formats", "md"]) == 0
+
+        assert (isolated_config.REVIEW_DIR / "twins" / "book.union.md").is_file()
+        assert not (isolated_config.REVIEW_DIR / "book.union.md").exists()
+
+    def test_a_path_in_no_book_is_refused_rather_than_raising(self, isolated_config, capsys):
+        """`spec.SpecError` is a sibling of `unit.UnitError`, not a subclass,
+        so it escaped `run()`'s handler and left a traceback."""
+        stray = isolated_config.CONTENT_DIR / "stray.tex"
+        stray.parent.mkdir(parents=True, exist_ok=True)
+        stray.write_text("\\documentclass{book}\n", encoding="utf-8")
+
+        assert citekey_union.main([str(stray)]) == 1
+        assert "spec" in capsys.readouterr().err.lower()
+
+    def test_an_authored_preamble_is_read_as_the_assembly_s_own_material(
+        self, book, isolated_config
+    ):
+        """`\\input{preamble}` needs no change here, and this is what says so.
+        It resolves through `_SUFFIXES`, its stem is no unit id, so it lands
+        in `others` -- and a citekey in it entered outside every acceptance
+        record, which is exactly what `appeared` means."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assembled = assemble(
+            rendered,
+            ["ch-model", "ch-data"],
+            beside={"preamble.tex": "% \\citep{house_2020}\n"},
+        )
+        assembled.write_text(
+            assembled.read_text(encoding="utf-8").replace(
+                "\\input{preamble.tex}", "\\input{preamble}"
+            ),
+            encoding="utf-8",
+        )
+
+        result = citekey_union.compute(assembled)
+
+        assert result.unresolved == []
+        assert "preamble.tex" in result.outside_units
+        assert result.appeared == {"house_2020"}

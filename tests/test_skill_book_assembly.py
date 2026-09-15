@@ -63,7 +63,7 @@ def test_the_assembler_confirms_both_human_gates():
 def test_the_assembler_runs_the_gate_on_what_it_composed():
     """Every unit passed the gate already; the assembled document is a
     new file, and this layer has one exit whatever produced the file."""
-    assert "-m chitragupta.draft gate content/drafts/<book>/book.tex" in _body()
+    assert "-m chitragupta.draft gate content/rendered/<book>/book.tex" in _body()
 
 
 def test_the_assembler_writes_no_prose_and_says_where_that_line_is():
@@ -78,9 +78,15 @@ def test_a_unit_is_converted_by_render_with_the_fragment_flag():
     file said to use one until the first real assembly. `--fragment` is
     the flag that exists for it, and going through `render` rather than a
     restated pandoc invocation is what keeps the citeproc, IEEE-style and
-    citekey-aliasing behaviour identical to every other rendered draft."""
+    citekey-aliasing behaviour identical to every other rendered draft.
+
+    No `--output-dir`: a draft's renders already mirror its own path, so
+    `content/drafts/<book>/<id>.md` lands in `content/rendered/<book>/`,
+    which is where `book.tex` is composed. Naming the directory again was
+    what put assembly output in the authored one."""
     body = _body()
-    assert "--format tex --fragment --output-dir" in body
+    assert "--format tex --fragment" in body
+    assert "--fragment --output-dir" not in body, "the default already mirrors there"
 
 
 def test_the_book_carries_no_bibliography_of_its_own():
@@ -118,3 +124,36 @@ def test_the_citeproc_macros_go_in_their_own_file():
     body = _body()
     assert "citeproc-defs.def" in body
     assert "**not inline**" in body
+
+
+def test_the_assembly_is_composed_into_rendered_not_beside_its_units():
+    """`content/drafts/<book>/` holds authored chapters only. Everything
+    assembly produces is output, and output mirrors to `content/rendered/`
+    like every other render -- which is also why step 4 needs no
+    `--output-dir` to put the fragments beside `book.tex`."""
+    body = _body()
+    assert "content/rendered/<book>/book.tex" in body
+    assert "content/rendered/<book>/book.md" in body
+    assert "cd content/rendered/<book>" in body, "the build runs where the \\input paths resolve"
+
+
+def test_the_skeleton_states_its_numbering_and_stops_the_toc_at_sections():
+    """`secnumdepth{2}` restates the `book` class default so the book says
+    what its numbering is; `tocdepth{1}` is the real departure (the class
+    lists subsections). An outline's section titles carry no numbers, so
+    there is nothing to be numbered twice."""
+    body = _body()
+    assert r"\setcounter{secnumdepth}{2}" in body
+    assert r"\setcounter{tocdepth}{1}" in body
+    assert r"\setcounter{secnumdepth}{-2}" in body, "still the documented override"
+
+
+def test_an_authored_preamble_is_optional_copied_and_input_last():
+    """`content/specs/<book>/preamble.tex` is where a book overrides the
+    skeleton -- including the `-2` a self-numbering book needs. Absent is
+    the ordinary case and must produce no `\\input` and no remark."""
+    body = _body()
+    assert "content/specs/<book>/preamble.tex" in body
+    assert r"\input{preamble}" in body
+    assert "last line of the preamble" in body, "an override after \\begin{document} is too late"
+    assert "write no `\\input` and say nothing about it" in body

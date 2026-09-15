@@ -64,8 +64,8 @@ import shlex
 import sys
 from pathlib import Path
 
-from chitragupta import citation_gate, config, review, unit
-from chitragupta.review import _citekey_union_includes, _citekey_union_render
+from chitragupta import citation_gate, config, review, spec, unit
+from chitragupta.review import _book_paths, _citekey_union_includes, _citekey_union_render
 from chitragupta.review._citekey_union_result import UnionResult, UnitInput
 
 
@@ -88,19 +88,23 @@ def _citekeys(text: str) -> set[str]:
 
 
 def compute(assembled: Path) -> UnionResult:
-    """The invariant over `assembled` and the book directory holding it.
+    """The invariant over `assembled` and the book it was composed from.
 
-    Raises `unit.UnitError` for a path in no book, or in one whose
-    outline does not parse -- there is no expected set to compare against
-    in either case, and inventing one is the failure this aid exists to
-    catch.
+    Raises `unit.UnitError` or `spec.SpecError` for a path in no book, or
+    in one whose outline does not parse -- there is no expected set to
+    compare against, and inventing one is the failure this aid catches.
+
+    **Two directories, because the two sides of the subtraction live in
+    two places**: the fragments beside the assembly, the acceptance
+    records under `content/drafts/`. `_book_paths` owns the mapping and
+    its argument.
     """
     assembled = Path(assembled)
-    book = assembled.parent
+    book = _book_paths.drafts_dir_for(assembled)
     units = unit.acceptance_units(book)
     text = assembled.read_text(encoding="utf-8")
     included, others, unread = _citekey_union_includes.split(
-        book, text, {entry["id"] for entry in units}
+        assembled.parent, text, {entry["id"] for entry in units}
     )
 
     result = UnionResult(
@@ -134,8 +138,13 @@ def refuse_a_unit(assembled: Path) -> str | None:
     unit's citekeys as dropped -- a confident and wholly wrong report,
     and the one misuse the path shape makes easy. Checked by id rather
     than by name, so it holds for both suffixes a genre skill emits.
+
+    Reaches the records through `_book_paths` for the reason `compute`
+    does, and gains a case by it: a rendered `ch-01.tex` is refused with
+    this message, where deriving the book from its own parent looked for
+    a spec under `content/rendered/` and raised instead.
     """
-    book = Path(assembled).parent
+    book = _book_paths.drafts_dir_for(Path(assembled))
     if Path(assembled).stem in {entry["id"] for entry in unit.acceptance_units(book)}:
         return (
             f"{assembled} is unit `{Path(assembled).stem}` of {book}, not an assembly of "
@@ -260,6 +269,10 @@ def run(args: argparse.Namespace) -> int:
     Exit 1 covers both refusals for the reason the layer already gives it
     that meaning: an input this aid will not read, said once on stderr,
     rather than a traceback or a report built on a guess.
+
+    `spec.SpecError` is caught alongside `unit.UnitError` because it is a
+    sibling rather than a subclass of it: a path under `content/` in no
+    book at all raised it straight through this handler as a traceback.
     """
     try:
         assembled = review.require_reviewable(Path(args.draft), "assembled document")
@@ -268,7 +281,7 @@ def run(args: argparse.Namespace) -> int:
             print(refusal, file=sys.stderr)
             return 1
         result = compute(assembled)
-    except (FileNotFoundError, config.OutsideContentDir, unit.UnitError) as exc:
+    except (FileNotFoundError, config.OutsideContentDir, spec.SpecError, unit.UnitError) as exc:
         print(exc, file=sys.stderr)
         return 1
 
