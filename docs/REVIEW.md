@@ -155,7 +155,11 @@ a future automated pass) or merely surfaced for a human to decide;
 `missing-citekey`, `prose`, and the short runs a verbatim scan finds are
 the former, everything judgement-shaped -- `recorded-but-uncited`,
 `unsupported-claim`, `claim-support`, `uncited-claim` and `misquoted` --
-is the latter.
+is the latter. Three of those surfaced classes -- `claim-support`,
+`uncited-claim` and `unsupported-claim` -- can be marked considered and
+accepted with `--accept <id>`, which keeps the item off later worklists
+until its span changes; `misquoted` cannot, and
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) has why.
 
 **`review support` -- does the source actually entail this claim?** Same
 underlying question as `provenance`, asked a different way. `provenance`

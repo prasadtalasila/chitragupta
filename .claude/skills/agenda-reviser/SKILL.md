@@ -80,6 +80,15 @@ Three classes carry `unattended: true` on this checkout:
 | `recorded-but-uncited` | `evidence.md` or `sections.md` still records a citekey the draft no longer cites -- often the residue of *this skill's own* `missing-citekey` repair | Surfaced. Report and do not touch. The repair is `dossier prune`, which a person confirms; pruning it here would delete evidence that may instead be an uncited candidate |
 | Every other class (`unsupported-claim`, `claim-support`, `uncited-claim`, `misquoted`) | Judgement calls | Surfaced. Report and do not touch |
 
+**Never run `review agenda --accept`.** That flag records a *person's*
+judgement that a surfaced item may stand, and it is theirs to make: the
+three classes it covers -- `claim-support`, `uncited-claim`,
+`unsupported-claim` -- are exactly the ones this skill is forbidden to
+act on. Report such an item, say that `--accept <id>` is how they keep it
+off later worklists, and leave the decision with them. An item already
+accepted never reaches this skill: it is filtered out of the agenda
+before the worklist is rendered.
+
 **The agenda's own `detail` field is thin by design and is not the repair
 payload.** A `verbatim-run` item's `detail` carries `verbatim_id`, not
 the `draft_text` an `Edit`'s `old_string` needs. **Look the id up in the

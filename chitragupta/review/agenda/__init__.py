@@ -25,6 +25,10 @@ still produces an agenda, with no
 absence named in the header -- the same "optional input, missing"
 pattern every aid already uses, not a refusal.
 
+"Reads" there means "runs no other aid"; the bare mode does write its
+own report unconditionally, and `--accept` additionally files the
+acceptance record (`_accept.py`). Neither touches the draft.
+
 **`--baseline` is the one exception, and it is scoped to that flag.**
 `review agenda <draft> --baseline <a previous agenda .json>` re-runs the
 eight aids at `--formats md` first, then rebuilds and reports
@@ -47,6 +51,7 @@ from pathlib import Path
 
 from chitragupta import config, dossier, review
 from chitragupta.review.agenda import (
+    _accept,
     _dedup,
     _items,
     _order,
@@ -75,6 +80,13 @@ class Agenda:
     # off `items` deliberately: a stale item on the worklist is one a
     # reviser could act on, which is the whole hazard.
     stale: list = field(default_factory=list)
+    # The items this run computed and then left off the worklist because
+    # the acceptance record names them (`_accept.py`). Kept rather than
+    # dropped for two reasons: the report lists them, so the record is
+    # auditable beside the findings it silences, and `--accept` resolves
+    # an id against `items + suppressed`, so accepting an already-accepted
+    # id says so instead of reporting an unknown id.
+    suppressed: list = field(default_factory=list)
 
     @property
     def objective_class_count(self) -> int:
@@ -92,22 +104,40 @@ class Agenda:
 
 def build_agenda(draft: Path) -> Agenda:
     """Everything this aid does, as data: collect the eight sources,
-    extract one item per finding, merge, order, then refuse whatever the
-    draft no longer says.
+    extract one item per finding, merge, order, refuse whatever the draft
+    no longer says, then set aside the ones a person has already
+    accepted.
 
-    The refusal is last on purpose. It is a property of the draft as it
-    now stands rather than of any one aid's report, so it applies once,
-    to the merged and ordered list, instead of being re-implemented in
-    each extractor -- and `_dedup.merge` still sees every item, so a
-    stale signal cannot silently change which of two merged items
-    survives.
+    Both filters run last, after the merge and the sort, and for the same
+    reason: each is a property of something outside any one aid's report
+    -- the draft as it now stands, and the acceptance record -- so each
+    applies once to the whole ordered list instead of being
+    re-implemented in every extractor. `_dedup.merge` still sees every
+    item, so neither signal can silently change which of two merged items
+    survives, and `_order.sort` has already run, so neither re-orders
+    what it did not remove.
     """
+    # **Refusal first, acceptance second**, and the order is decided
+    # rather than arbitrary: staleness asks whether the item is still
+    # *about* anything, acceptance asks what a person decided about one
+    # that is. The other way round would mark a stored record
+    # `suppressed: true` for a finding this run refused on other grounds
+    # and drop it from the refusal report -- claiming a judgement was
+    # honoured where the item was never raised. docs/AUTO-IMPROVEMENT.md
+    # section 5 carries the argument in full.
+    #
+    # The two are disjoint today besides: `_stale.partition` only refuses
+    # an item carrying a `span`, which is `verbatim-run` and `prose`
+    # alone, and `_accept.ACCEPTABLE` holds neither.
+    # `TestStaleAndAcceptedDoNotOverlap` pins that, so a later class
+    # carrying both has to decide rather than inherit this.
     sources = _sources.collect(draft)
     text = draft.read_text(encoding="utf-8")
     sections = dossier.sections(text)
     items = _items.all_items(sources, sections)
     items, stale = _stale.partition(text, _order.sort(_dedup.merge(items)))
-    return Agenda(draft=draft, sources=sources, items=items, stale=stale)
+    items, suppressed = _accept.partition(items, sources.accepted)
+    return Agenda(draft, sources, items=items, stale=stale, suppressed=suppressed)
 
 
 def _command(draft_path: Path, as_json: bool) -> str:
@@ -144,6 +174,16 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
         help="Print the worklist as JSON instead of just the "
         "written-files summary. The .json sibling is filed beside the "
         "Markdown report either way.",
+    )
+    parser.add_argument(
+        "--accept",
+        action="append",
+        metavar="ID",
+        help="Record this agenda item id as considered and accepted, so "
+        "it stays off the worklist while the finding's identity is "
+        "unchanged. Repeatable. Only claim-support, uncited-claim and "
+        "unsupported-claim may be accepted; an edit to the accepted span "
+        "brings the item back, the id being a hash of that span.",
     )
     parser.add_argument(
         "--baseline",
@@ -188,10 +228,16 @@ def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, writte
     the payload is the only thing on stdout, so `agenda --baseline ...
     --json > report.json` stays a valid JSON file.
     """
-    resolved, persisting, appeared, before, after = _recheck.compare(
-        payload["items"], baseline["items"]
+    # The suppressed ids are read off the report this run just filed,
+    # not re-derived: an accepted item is missing from `payload["items"]`
+    # because it was suppressed, and without them the comparison would
+    # report it resolved -- a finding called fixed that nobody fixed,
+    # which is the failure `_recheck.py` exists to prevent.
+    suppressed_ids = {row["id"] for row in payload["accepted"] if row["suppressed"]}
+    resolved, persisting, appeared, accepted, before, after = _recheck.compare(
+        payload["items"], baseline["items"], suppressed_ids
     )
-    groups, counts = (resolved, persisting, appeared), (before, after)
+    groups, counts = (resolved, persisting, appeared, accepted), (before, after)
     if args.json:
         command = _recheck.recheck_command(draft_path, args.baseline)
         print(
@@ -232,8 +278,15 @@ def run(args: argparse.Namespace) -> int:
       which is where `_recheck.recheck_command` puts it.
 
     A `ValueError` from the load prints to stderr and returns 2, the
-    usage-error code `verbatim_check.run` uses for its own refusals.
+    usage-error code `verbatim_check.run` uses for its own refusals, and
+    so does a `--accept` this command will not record.
     """
+    # `--accept` is applied before any refresh and before the report is
+    # filed. The ids a caller passes were read off the report in front of
+    # them, which is the pre-refresh one, so resolving them against
+    # freshly re-run aids would refuse an id that was valid when it was
+    # copied; filing afterwards is what makes the report this run leaves
+    # behind agree with the acceptance it just recorded.
     try:
         draft_path = review.require_reviewable(Path(args.draft))
     except (FileNotFoundError, config.OutsideContentDir) as exc:
@@ -247,6 +300,13 @@ def run(args: argparse.Namespace) -> int:
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2
+
+    if args.accept:
+        refusal = _accept.apply(draft_path, build_agenda(draft_path), args)
+        if refusal is not None:
+            return refusal
+
+    if baseline is not None:
         _recheck.refresh_aids(draft_path)
 
     payload, written = _file_report(draft_path, args)
