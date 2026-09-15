@@ -1,12 +1,13 @@
 """What else still names a citekey that `sync --remove-stale` is about
 to drop from the ledger -- reported, never repaired (issue #763).
 
-The ledger row is not the only place a citekey lives. Four other
+The ledger row is not the only place a citekey lives. Five other
 artefacts carry it: the enrichment layer's chunk vectors under
 `content/chroma/`, the overlap index under `content/overlap/`, the topic
-graph's edges in `content/topic_graph.json`, and the drafting layer's
-dossiers under `content/dossiers/`. Dropping the row leaves every one of
-them pointing at a paper the corpus no longer holds --
+graph's edges in `content/topic_graph.json`, the topic membership records
+in `content/topic_set.json` and `content/topics.json` (#782), and the
+drafting layer's dossiers under `content/dossiers/`. Dropping the row
+leaves every one of them pointing at a paper the corpus no longer holds --
 `chitragupta/citation_gate.py` catches the draft-side symptom, but only
 at the next gate run and without saying what caused it.
 
@@ -47,6 +48,7 @@ from chitragupta import chroma_paging, config, overlap_chroma
 # reader can diff them. Roughly cheapest-to-costliest to scan.
 OVERLAP = "overlap index"
 TOPIC_GRAPH = "topic graph"
+TOPIC_MEMBERSHIP = "topic membership"
 DOSSIERS = "dossiers"
 CHROMA = "chroma vectors"
 
@@ -105,8 +107,9 @@ def _scan_overlap(citekeys: list[str]) -> dict[str, Hit]:
 def _graph_edge_citekeys(graph: dict) -> list[list[str]]:
     """Every edge's citekey list, across the three kinds of edge the
     topic graph records. The topic *nodes* carry no citekeys at all --
-    membership lives in `content/topic_set.json`, which is a different
-    artefact and out of scope here."""
+    membership lives in `content/topic_set.json` and
+    `content/topics.json`, which are a separate artefact class scanned by
+    `_scan_topic_membership` rather than here."""
     edges = []
     for key, field in (
         ("edges_overlap", "shared"),
@@ -128,6 +131,59 @@ def _scan_topic_graph(citekeys: list[str]) -> dict[str, Hit]:
         count = sum(1 for edge in edges if citekey in edge)
         if count:
             hits[citekey] = Hit(TOPIC_GRAPH, count, "edge", (str(path),))
+    return hits
+
+
+def _topic_set_citekeys(data: dict) -> list[str]:
+    """Every citekey `topic_set.json` names: one per membership record,
+    plus the `uncovered` list of papers no topic claimed.
+
+    A member carrying no `citekey` yields `None`, which no citekey ever
+    equals -- so a malformed record counts zero instead of raising, which
+    matters in a module that runs immediately before a destructive
+    prompt.
+    """
+    named = [
+        member.get("citekey")
+        for topic in data.get("topics", [])
+        for member in topic.get("members", [])
+    ]
+    return named + list(data.get("uncovered", []))
+
+
+def _topics_citekeys(data: dict) -> list[str]:
+    """`topics.json` keys both of its maps by citekey: `assignments`
+    (the one topic each paper was assigned) and `memberships` (every
+    topic it scored against)."""
+    return list(data.get("assignments", {})) + list(data.get("memberships", {}))
+
+
+def _scan_topic_membership(citekeys: list[str]) -> dict[str, Hit]:
+    """Which topic each paper belongs to, across the two files that
+    record it.
+
+    Named per file with its own count, like `_scan_dossiers`, because the
+    two are written by different stages and either may exist alone.
+    Unlike a dossier, this residue is **self-healing**: both files are
+    regenerated wholesale by the next enrichment run, so a hit here is a
+    staleness that expires rather than one a human must go and remove.
+    """
+    named = []
+    for path, extract in (
+        (config.TOPIC_SET_PATH, _topic_set_citekeys),
+        (config.TOPICS_PATH, _topics_citekeys),
+    ):
+        if path.is_file():
+            named.append((path, extract(json.loads(path.read_text(encoding="utf-8")))))
+    hits = {}
+    for citekey in citekeys:
+        counts = [(path, keys.count(citekey)) for path, keys in named]
+        counts = [(path, n) for path, n in counts if n]
+        if counts:
+            where = tuple(f"{path} ({n})" for path, n in counts)
+            hits[citekey] = Hit(
+                TOPIC_MEMBERSHIP, sum(n for _path, n in counts), "membership", where
+            )
     return hits
 
 
@@ -202,6 +258,7 @@ def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
     by_class = [
         _scan_overlap(citekeys),
         _scan_topic_graph(citekeys),
+        _scan_topic_membership(citekeys),
         _scan_dossiers(citekeys),
         chroma,
     ]

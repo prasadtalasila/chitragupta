@@ -542,13 +542,14 @@ there is deliberately no flag to suppress it.
 
 The ledger row is not the only place a citekey lives. Whenever a run has
 stale citekeys to report -- in the default report-only mode, and again
-just before `--remove-stale` deletes anything -- `sync` scans four other
+just before `--remove-stale` deletes anything -- `sync` scans five other
 artefacts and names what still points at each one:
 
 | Artefact | Where it lives | Counted as |
 | --- | --- | --- |
 | overlap index | `content/overlap/docs/<citekey>.fpr` and `.skipgram.fpr`, plus the citekey list in `index.json` and `skipgram_index.json` | files, each named |
 | topic graph | `content/topic_graph.json`'s `edges_overlap`, `edges_withheld` and `edges_semantic` | edges |
+| topic membership | `content/topic_set.json`'s `topics[].members[].citekey` and `uncovered`, plus `content/topics.json`'s `assignments` and `memberships` | memberships, per file |
 | dossiers | `evidence.md` and `sections.md` under `content/dossiers/` | mentions, per file |
 | chroma vectors | the chunk collection under `content/chroma/` | vectors |
 
@@ -578,6 +579,16 @@ saying the class was not scanned, rather than a silent zero. And the
 chroma collection is namespaced by `[embedding].model`, so a corpus
 embedded under a different model reads as zero vectors here; that is a
 true statement about the collection this configuration would use.
+
+**Not every hit is equally durable, and the classes differ in kind.** A
+dossier mention was transcribed by a human and stays stale until a human
+removes it -- that is the hit to act on. The **topic membership** and
+**topic graph** classes are the opposite: both files are regenerated
+wholesale by the next enrichment run, so a hit there is a staleness that
+expires on its own. It is reported because you asked what still
+references the citekey, not because it is a chore waiting for you. The
+overlap index sits in between -- per-document fingerprints persist, but
+are rebuilt for the documents that change.
 
 The `--remove-stale` run skips the scan entirely when the bib file
 yielded **zero** references, because the refusal described above is

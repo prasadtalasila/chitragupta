@@ -24,7 +24,7 @@ def write_text(path, body):
 
 @pytest.fixture
 def residue_corpus(isolated_config):
-    """One stale citekey (`smith_gone_2020`) with residue in all four
+    """One stale citekey (`smith_gone_2020`) with residue in all five
     artefact classes, and a lookalike (`smith_gone_2020b`) that must
     never be mistaken for it."""
     cfg = isolated_config
@@ -40,6 +40,32 @@ def residue_corpus(isolated_config):
             ],
             "edges_withheld": [{"shared": ["smith_gone_2020"]}],
             "edges_semantic": [{"bridge": ["kept_2021", "smith_gone_2020"]}],
+        },
+    )
+    # Membership is keyed by citekey in both files, so `smith_gone_2020b`
+    # sitting in `uncovered` is the reverse of the prefix trap: scanning
+    # the shorter key must not pick the longer one up either.
+    write_json(
+        cfg.TOPIC_SET_PATH,
+        {
+            "topics": [
+                {
+                    "label": "twins",
+                    "members": [
+                        {"citekey": "smith_gone_2020", "score": 0.9},
+                        {"citekey": "kept_2021", "score": 0.8},
+                    ],
+                },
+                {"label": "models", "members": [{"citekey": "smith_gone_2020", "score": 0.7}]},
+            ],
+            "uncovered": ["smith_gone_2020b"],
+        },
+    )
+    write_json(
+        cfg.TOPICS_PATH,
+        {
+            "assignments": {"smith_gone_2020": 40, "kept_2021": 12},
+            "memberships": {"smith_gone_2020": {"40": 0.95}},
         },
     )
     write_text(
@@ -86,6 +112,7 @@ class TestScan:
         assert counts == {
             sync_residue.OVERLAP: 3,
             sync_residue.TOPIC_GRAPH: 3,
+            sync_residue.TOPIC_MEMBERSHIP: 4,
             sync_residue.DOSSIERS: 2,
             sync_residue.CHROMA: 2,
         }
@@ -101,7 +128,9 @@ class TestScan:
         # `smith_gone_2020b`, which is a different paper.
         found, _notes = sync_residue.scan(["smith_gone_2020b"])
         hits = {hit.artefact: hit.count for hit in found["smith_gone_2020b"]}
-        assert hits == {sync_residue.DOSSIERS: 1}
+        # The membership hit is its own `uncovered` entry, not the two
+        # `smith_gone_2020` memberships sitting beside it.
+        assert hits == {sync_residue.TOPIC_MEMBERSHIP: 1, sync_residue.DOSSIERS: 1}
 
     def test_absent_artefacts_scan_clean(self, isolated_config):
         found, notes = sync_residue.scan(["anything_2000"])
@@ -128,6 +157,39 @@ class TestScan:
             str(isolated_config.OVERLAP_DIR / "index.json"),
             str(isolated_config.OVERLAP_DIR / "skipgram_index.json"),
         )
+
+    def test_topic_membership_names_each_file_and_its_own_count(self, residue_corpus):
+        # Two memberships in topic_set.json (one per topic), and two in
+        # topics.json (`assignments` and `memberships` each key by
+        # citekey) -- reported per file, the way dossier mentions are.
+        found, _notes = sync_residue.scan(["smith_gone_2020"])
+        (hit,) = [
+            hit for hit in found["smith_gone_2020"] if hit.artefact == sync_residue.TOPIC_MEMBERSHIP
+        ]
+        assert hit.unit == "membership"
+        assert hit.where == (
+            f"{residue_corpus.TOPIC_SET_PATH} (2)",
+            f"{residue_corpus.TOPICS_PATH} (2)",
+        )
+
+    def test_a_citekey_only_in_topics_json_is_still_found(self, isolated_config):
+        # topic_set.json need not exist for topics.json to be scanned;
+        # the two are written by different stages.
+        write_json(isolated_config.TOPICS_PATH, {"assignments": {"lone_2003": 7}})
+        found, _notes = sync_residue.scan(["lone_2003"])
+        (hit,) = found["lone_2003"]
+        assert (hit.artefact, hit.count) == (sync_residue.TOPIC_MEMBERSHIP, 1)
+        assert hit.where == (f"{isolated_config.TOPICS_PATH} (1)",)
+
+    def test_a_member_carrying_no_citekey_is_ignored_rather_than_raising(self, isolated_config):
+        # A malformed member reports zero, not a KeyError: this module
+        # runs immediately before a destructive prompt.
+        write_json(
+            isolated_config.TOPIC_SET_PATH,
+            {"topics": [{"label": "x", "members": [{"score": 0.5}]}]},
+        )
+        found, notes = sync_residue.scan(["anything_2000"])
+        assert (found, notes) == ({"anything_2000": []}, [])
 
     def test_dossier_mentions_name_the_file_and_the_count(self, residue_corpus):
         found, _notes = sync_residue.scan(["smith_gone_2020"])
@@ -189,9 +251,10 @@ class TestReport:
         use_fake_chroma(monkeypatch, residue_corpus, [{"citekey": "smith_gone_2020"}])
         sync_residue.report(["smith_gone_2020"])
         out = capsys.readouterr().out
-        assert "still referenced by 4 artefact class(es)" in out
+        assert "still referenced by 5 artefact class(es)" in out
         assert "overlap index    3 file(s):" in out
         assert "topic graph      3 edge(s):" in out
+        assert "topic membership 4 membership(s):" in out
         assert "dossiers         2 mention(s):" in out
         assert "chroma vectors   1 vector(s):" in out
         assert "Reported, not repaired" in out

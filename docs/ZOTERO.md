@@ -142,10 +142,12 @@ the ledger untouched until a human confirms.
 
 Before either run acts, it also names **what else on disk still
 references that citekey** -- the overlap index, the topic graph's edges,
-the `evidence.md`/`sections.md` of any dossier, and the enrichment
-layer's chunk vectors -- so you can see the residue before you confirm
-instead of meeting it as a dead reference in a draft weeks later. It
-reports and repairs nothing: only the ledger row is ever removed.
+which topics the paper was a member of, the `evidence.md`/`sections.md`
+of any dossier, and the enrichment layer's chunk vectors -- so you can
+see the residue before you confirm instead of meeting it as a dead
+reference in a draft weeks later. It reports and repairs nothing: only
+the ledger row is ever removed, and the topic classes clear themselves
+on the next enrichment run.
 [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)
 has the format and the one case it skips.
 
