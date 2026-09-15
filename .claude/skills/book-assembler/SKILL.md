@@ -63,13 +63,15 @@ The document skeleton, in order:
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
-\setcounter{secnumdepth}{-2}                 % if the units number themselves
+\setcounter{secnumdepth}{2}                  % see "Numbering" below
+\setcounter{tocdepth}{1}                     % chapters and sections only
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 % pandoc's citeproc definitions -- see below
 \title{<the outline's own title>}
 \author{<ask the user; never invent one>}
 \date{}
+\input{preamble}                             % only if the book has one
 
 \begin{document}
 \frontmatter
@@ -82,6 +84,31 @@ The document skeleton, in order:
 \backmatter
 \end{document}
 ```
+
+**The two `\setcounter` lines, and which is which.** `secnumdepth{2}` is
+the `book` class's own default, restated here so the book *states* its
+numbering rather than inheriting it silently -- an outline's section
+titles carry no numbers of their own, so LaTeX supplies them and nothing
+is numbered twice. `tocdepth{1}` is the real setting: the class defaults
+to 2, which lists every subsection, and a book's table of contents stops
+at the section. Subsections are still numbered and still `\cref`-able;
+they are simply not listed.
+
+**An authored preamble, if the book has one.** If
+`content/specs/<book>/preamble.tex` exists, copy it beside `book.tex` and
+`\input` it as the **last line of the preamble**, immediately before
+`\begin{document}`, so it overrides every default set above it. It has to
+land there rather than later in the document: a `\setcounter` after
+`\begin{document}` is read too late to change how the body was set. If it does not
+exist, emit no `\input` at all and say nothing -- its absence is the
+ordinary case, not a finding. That file is where a book that does number
+its own headings puts `\setcounter{secnumdepth}{-2}`, and where anything
+else this skeleton gets wrong for one book gets corrected without
+editing the skeleton for every book.
+
+Note the two senses of "preamble" this file uses: the **generated**
+preamble is the block above, written inline into `book.tex`; the
+**authored** preamble is `preamble.tex`, a file the user owns.
 
 **There is no bibliography at the end, and no `natbib`, `bibtex` or
 `biber` pass.** Citations are resolved per unit, by pandoc's citeproc
@@ -251,12 +278,16 @@ It is the reading copy for anyone who is not building LaTeX.
    a registry built over units it could not read is a narrower claim
    than it looks.
 
-4. **Convert each accepted unit to a fragment**, into the book's own
-   directory so `\input` resolves without copying anything:
+4. **Convert each accepted unit to a fragment.** The default output
+   directory is already the right one -- a draft's renders mirror its
+   path, so `content/drafts/<book>/<unit-id>.md` renders to
+   `content/rendered/<book>/<unit-id>.tex`, which is where `book.tex`
+   goes too. So `\input` resolves without copying anything, and no
+   `--output-dir` is needed:
 
    ```bash
    python -m chitragupta.draft render content/drafts/<book>/<unit-id>.md \
-       --format tex --fragment --output-dir content/drafts/<book>
+       --format tex --fragment
    ```
 
    **A unit's mathematics resolves per unit, and that is why this works.**
@@ -283,9 +314,22 @@ It is the reading copy for anyone who is not building LaTeX.
    `\label{ch-NN}`) goes immediately after that, so a label binds to the
    chapter counter rather than to whatever sectioning command follows.
 
-5. **Compose the book.** Write `content/drafts/<book>/book.tex` and
-   `content/drafts/<book>/book.md` from the conventions above, in outline
-   order, covering only units step 2 reported as `accepted`. Ask the user
+5. **Compose the book.** Write `content/rendered/<book>/book.tex` and
+   `content/rendered/<book>/book.md` from the conventions above, in
+   outline order, covering only units step 2 reported as `accepted`.
+   **That directory is assembly output, not authored material**:
+   `content/drafts/<book>/` holds the chapters a person wrote and nothing
+   else, and step 4's fragments are already here beside what you are
+   about to write.
+
+   **Copy `content/specs/<book>/preamble.tex` beside `book.tex` if it
+   exists**, and `\input` it as the last line of the generated preamble.
+   If it does not exist, write no `\input` and say nothing about it --
+   most books have none, and reporting its absence would read as a
+   finding. Copy it rather than `\input` it across directories: the
+   `\input` paths in `book.tex` are all relative to the book's own
+   directory, and one that reached out of it would break the moment the
+   book was built anywhere else. Ask the user
    for the author line rather than choosing for them; everything else is
    mechanical.
 
@@ -294,7 +338,7 @@ It is the reading copy for anyone who is not building LaTeX.
    only exit:
 
    ```bash
-   python -m chitragupta.draft gate content/drafts/<book>/book.tex
+   python -m chitragupta.draft gate content/rendered/<book>/book.tex
    ```
 
    A `FAIL` here is a failing test, not a warning. Never "fix" one by
@@ -358,7 +402,7 @@ It is the reading copy for anyone who is not building LaTeX.
    directory, because the `\input` paths are relative to it:
 
    ```bash
-   cd content/drafts/<book>
+   cd content/rendered/<book>
    pdflatex -interaction=nonstopmode book.tex
    pdflatex -interaction=nonstopmode book.tex
    ```
@@ -388,10 +432,11 @@ It is the reading copy for anyone who is not building LaTeX.
    `docs/WRITING-STANDARDS.md` §13's markers, which the conversion turns
    into `\caption{...\label{tab:<id>}}`, so the `book` class numbers them
    itself. **Which shape it uses follows the `\setcounter{secnumdepth}`
-   decision below**, and both were measured with `pdflatex` rather than
-   assumed: with chapter numbering on, tables read "1.1", "2.1", "2.2" --
-   reset per chapter; with `-2` (units numbering their own headings),
-   they read "1", "2", "3" -- flat, continuous across the whole book.
+   the skeleton sets**, and both were measured with `pdflatex` rather
+   than assumed: at the skeleton's `2`, tables read "1.1", "2.1", "2.2"
+   -- reset per chapter, which is what a book gets by default; at `-2`
+   (a book whose units number their own headings, overriding in
+   `preamble.tex`), they read "1", "2", "3" -- flat and continuous.
    Either way the numbers are unique and every `\ref` resolves, so there
    is nothing to configure for the tables themselves. What does not
    survive is a **duplicate id**: two units that
@@ -444,11 +489,13 @@ It is the reading copy for anyone who is not building LaTeX.
    is the check.
 
    **If the units number their own headings, turn LaTeX's numbering
-   off** -- `\setcounter{secnumdepth}{-2}` in the preamble. A book whose
+   off** -- `\setcounter{secnumdepth}{-2}` in
+   `content/specs/<book>/preamble.tex`, which the skeleton `\input`s
+   last and which therefore wins over its default of `2`. A book whose
    Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0
    Before you start", and worse further in ("10.1510.14"). Which
-   numbering a book shows is a composition decision and belongs in
-   `book.tex`; renumbering the author's headings does not, and is
+   numbering a book shows is a composition decision and belongs to the
+   book; renumbering the author's headings does not, and is
    `draft-reviser`'s call rather than this skill's.
 
    Without TeX Live, say so plainly and stop there rather than working

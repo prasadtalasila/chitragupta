@@ -105,9 +105,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--output-dir",
         default=None,
-        help="Write the output here instead of content/rendered/<mirrored path> "
-        "-- for a book unit, the directory book.tex \\input-s it from. "
-        "Confined to content/ like every other path this writes",
+        help="Write the output here instead of content/rendered/<mirrored path>. "
+        "A book's fragments need no override -- they mirror to the same "
+        "directory book.tex is composed into. Confined to content/ like "
+        "every other path this writes",
     )
     parser.add_argument(
         "--fragment",

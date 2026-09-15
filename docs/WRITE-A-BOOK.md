@@ -130,7 +130,19 @@ content/specs/twins/spec.md           the outline -- step 1
 content/specs/twins/signoff.md        your approval -- step 2
 content/specs/twins/units/*.json      one acceptance record -- step 4
 content/specs/twins/registries/*.md   terminology, claims, xrefs -- step 5
+content/specs/twins/preamble.tex      your own LaTeX, optional -- step 6
+content/rendered/twins/<id>.tex       each chapter as a fragment -- step 6
+content/rendered/twins/book.tex       the assembled book -- step 6
+content/rendered/twins/book.md        the same structure in Markdown
+content/rendered/twins/book.pdf       the built book -- step 7
 ```
+
+**`content/drafts/twins/` holds only chapters a person wrote.**
+Everything the assembly produces is output and lands under
+`content/rendered/twins/`, which is where a chapter's own render goes
+anyway -- so the fragments arrive there without being told to, and
+`book.tex` is composed beside them. Nothing you author is ever mixed in
+with something regenerated, in either direction.
 
 `content/specs/` mirrors the book's own directory under `content/drafts/`
 -- the same rule `content/dossiers/`, `content/rendered/` and
@@ -605,8 +617,7 @@ thing.
 converted with
 
 ```bash
-chitragupta draft render <unit>.md --format tex --fragment \
-    --output-dir content/drafts/<book>
+chitragupta draft render <unit>.md --format tex --fragment
 ```
 
 and `--fragment` is the whole difference: no preamble, the unit's own `#`
@@ -631,9 +642,9 @@ The `book` class's own margins are 94pt inner and 143pt outer (measured),
 generous enough to run a 15-chapter book to 546 pages; a third of that
 was tried and read too tight for print, so the setting is that doubled.
 
-**`book.md` is written beside `book.tex`**: the same structure in
-Markdown, hyperlinking the chapter files alongside it, for anyone who is
-not building LaTeX.
+**`book.md` is written beside `book.tex`**, in
+`content/rendered/<book>/`: the same structure in Markdown, hyperlinking
+the chapter files alongside it, for anyone who is not building LaTeX.
 
 **Where the registry proposal's "blocking" actually lives.** The skill must run
 `registry check` and print every finding, in full, before composing --
@@ -647,7 +658,7 @@ A book is built directly, from its own directory -- the `\input` paths
 are relative to it:
 
 ```bash
-cd content/drafts/twins
+cd content/rendered/twins
 pdflatex -interaction=nonstopmode book.tex
 pdflatex -interaction=nonstopmode book.tex
 ```
@@ -672,11 +683,24 @@ rather than `grep -c` deliberately: on the host this was first run,
 reports nothing is worse than no check.
 
 **If your units number their own headings** (`## 1.0 Before you start`),
-put `\setcounter{secnumdepth}{-2}` in the preamble, or LaTeX numbers them
-a second time -- "1.1 1.0 Before you start", and worse further in.
-Which numbering a book shows is a composition decision and belongs in
-`book.tex`; renumbering your headings does not, and is `draft-reviser`'s
-call.
+put `\setcounter{secnumdepth}{-2}` in `content/specs/twins/preamble.tex`,
+or LaTeX numbers them a second time -- "1.1 1.0 Before you start", and
+worse further in.
+
+That file is the supported way to override anything the assembled
+`book.tex` sets. It is optional and most books have none; if it exists,
+`book-assembler` copies it beside `book.tex` and `\input`s it as the last
+line of the generated preamble, so it wins over the defaults above it.
+**Do not hand-edit `book.tex` to do this.** That file is regenerated
+every time the book is assembled, so an edit to it is lost at the next
+run, while `preamble.tex` is yours and survives.
+
+The default `book.tex` sets `\setcounter{secnumdepth}{2}` -- the `book`
+class's own default, restated so a book states its numbering rather than
+inheriting it silently -- and `\setcounter{tocdepth}{1}`, which stops the
+table of contents at the section. Which numbering a book shows is a
+composition decision and belongs to the book; renumbering your headings
+does not, and is `draft-reviser`'s call.
 
 ## ▶ Step 7b: the one review aid that reads a book
 
@@ -685,7 +709,7 @@ a question only a book can be asked -- does the assembled document still
 carry every citekey its accepted units stand on?
 
 ```bash
-chitragupta review union content/drafts/twins/book.tex
+chitragupta review union content/rendered/twins/book.tex
 ```
 
 Advisory, exits 0 whatever it finds, blocks nothing. It reports two

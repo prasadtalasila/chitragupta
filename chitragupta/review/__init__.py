@@ -72,6 +72,7 @@ from pathlib import Path
 from typing import TextIO
 
 from chitragupta import config
+from chitragupta.review import _book_paths
 
 # One place per aid, so a caller cannot invent a report kind by
 # typo. The value is the suffix that goes between the draft's stem and
@@ -136,12 +137,14 @@ def report_dir(draft: Path) -> Path:
     """Where `draft`'s review reports go: `config.REVIEW_DIR` with the
     draft's own place under `config.DRAFTS_DIR` mirrored into it.
 
-    Falls back to a flat `REVIEW_DIR` for a draft that is under
-    `content/` but not under `content/drafts/`, matching
-    `render_output._output_dir`'s policy rather than
-    `dossier.dossier_dir`'s raise: a review aid that refuses to run is a
-    worse answer than one that writes flat, and unlike a dossier, nothing
-    later goes looking for the report by its mirrored path.
+    An assembled book is mirrored from `config.RENDERED_DIR` instead --
+    `_book_paths.review_dir_for` owns both cases and why.
+
+    Falls back to a flat `REVIEW_DIR` for a draft under `content/` but
+    under neither, matching `render_output._output_dir`'s policy rather
+    than `dossier.dossier_dir`'s raise: a review aid that refuses to run
+    is a worse answer than one that writes flat, and unlike a dossier,
+    nothing later goes looking for the report by its mirrored path.
     """
     for label, directory in (("review", config.REVIEW_DIR), ("drafts", config.DRAFTS_DIR)):
         if not config.resolves_inside(directory, config.CONTENT_DIR):
@@ -155,7 +158,7 @@ def report_dir(draft: Path) -> Path:
                 "really lives."
             )
 
-    mirrored = config.mirrored_dir(draft, config.DRAFTS_DIR, config.REVIEW_DIR)
+    mirrored = _book_paths.review_dir_for(draft)
     if mirrored is None:
         return config.REVIEW_DIR
     if not config.resolves_inside(mirrored, config.REVIEW_DIR):

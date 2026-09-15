@@ -73,13 +73,19 @@ def _copy_beside(src: Path, dst: Path) -> None:
     """Copies `src` to `dst`, unless they are the same file.
 
     Rendering *into the draft's own directory* is a real case, not a
-    degenerate one: `--output-dir` exists so a book's fragments land
-    beside the `book.tex` that \\input-s them, which is the directory the
-    chapters already live in. There the source and the destination of
-    every figure and image are the same path, and `shutil.copy2` raises
-    `SameFileError` rather than doing nothing -- which failed all fifteen
-    fragment conversions of a real book at once (2026-08-19). Compared by
-    resolved path, so a symlinked output directory is caught too.
+    degenerate one: `--output-dir` takes any directory under `content/`,
+    and a caller is free to name the one the draft is already in. There
+    the source and the destination of every figure and image are the same
+    path, and `shutil.copy2` raises `SameFileError` rather than doing
+    nothing -- which failed all fifteen fragment conversions of a real
+    book at once (2026-08-19), back when assembling one meant rendering
+    into `content/drafts/<book>/`. That is no longer how a book is built
+    (its fragments mirror to `content/rendered/<book>/` like any other
+    render), so the guard now answers the general case rather than that
+    one; it is not dead code, and removing it would restore a crash for
+    anyone who points `--output-dir` at their own draft's directory.
+    Compared by resolved path, so a symlinked output directory is caught
+    too.
     """
     if src.resolve() == dst.resolve():
         return
