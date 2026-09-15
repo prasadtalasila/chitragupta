@@ -6183,8 +6183,9 @@ all still fall at that same width.
 is flat; the biased one loses at every query width, including the short
 widths #787 predicted it would win. What the change would cost is not
 flat: the index format changes (`_INDEX_SCHEMA_VERSION` has to bump --
-again, a third time in two days, so every cached entry in every checkout
-re-tokenizes once), and snippet and `evidence` window selection need a
+again, and it would be the third bump in a single day: #768 took it to 2
+at 12:45 and #762 to 3 at 22:47, both on 2026-09-15 -- so every cached
+entry in every checkout re-tokenizes once), and snippet and `evidence` window selection need a
 new stem-to-surface resolution step, because `_windows` anchors with
 `str.find` against the document's raw text and `stem("sizing")` is
 `"size"`, which such a document never contains. That is a real format
