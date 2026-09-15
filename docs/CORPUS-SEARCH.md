@@ -420,6 +420,15 @@ Work down this list instead:
 It is **one result per citekey by construction** -- it scores
 whole documents, so no cap is needed and none exists.
 
+Its passage-unit sibling, `retrieval_passages.py::search_passages()`
+(`retrieve search --unit passage`, #769), scores paragraphs and therefore
+*does* need the cap -- `[retrieval].max_passages_per_source`. It needs no
+over-fetch multiplier beside it, unlike stage 1 above, because nothing
+truncates its candidate list: BM25 scores every passage in memory, so the
+cap walks the fully ranked list. That unit trades recall for quotable
+text, and [RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit) has the figures
+rather than this page.
+
 That also means it has **no cap-position question**, and no
 `rerank` key. Reranking BM25's own over-fetched list was measured and
 did not help: nDCG@5 fell from 0.7321 to 0.6886. See

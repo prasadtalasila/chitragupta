@@ -261,6 +261,7 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_claim_support.py`,
 `bench_retrieval_compare.py`, `bench_retrieval_ground_truth.py`,
 `bench_retrieval_keyword_selfretrieval.py`, `bench_retrieval_live_logs.py`,
+`bench_retrieval_passage.py`,
 `bench_retrieval_fusion.py`,
 `bench_rerank_position.py`, `bench_rerank_cost.py`, `embed_models.py`,
 `bench_collection_scope.py`, `bench_overlap.py`,
@@ -273,7 +274,7 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_prompt_economics.py`, `bench_topic_converged_stability.py`,
 `bench_keyword_pipeline.py`, `bench_claim_support_labelling.py`,
 `bench_support_topk.py` and `bench_retrieval_stemming.py` each have
-one -- 38 of the 40 scripts here. The
+one -- 39 of the 41 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

@@ -302,7 +302,11 @@ chitragupta enrich --stages docling,embed
 # 7. Search the corpus yourself, the same way a skill does. Read-only.
 #    `--log` takes the draft whose dossier records the call, so retrieval
 #    cost can be totalled later -- omit it for a one-off look.
+#    `--unit passage` ranks paragraphs rather than whole documents and
+#    hands back the paragraph that scored, with its page -- RETRIEVAL.md
+#    has when that is the unit you want.
 chitragupta draft retrieve search "digital twin composability" --k 15
+chitragupta draft retrieve search "digital twin composability" --unit passage
 chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
@@ -398,6 +402,7 @@ python -m chitragupta.enrich --stages docling,embed
 
 # 7.
 python -m chitragupta.draft retrieve search "digital twin composability" --k 15
+python -m chitragupta.draft retrieve search "digital twin composability" --unit passage
 python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 

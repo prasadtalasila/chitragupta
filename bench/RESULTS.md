@@ -40,6 +40,7 @@ if it is obvious which is which, so:
 | [2026-08-26b: what cross-encoding the over-fetched passages costs](#2026-08-26b-what-cross-encoding-the-over-fetched-passages-costs) | **Current** | The cost half of #380, which the section above deliberately left unmeasured. At the shipped pool of 20 the cheapest reranker makes an `embed_index.search()` call **2.5x** more expensive on a GPU and **5.75x** on a CPU; `bge-reranker-base`, the quality winner above, costs a full **second per call on CPU**. Read beside that section's "recall@5 unchanged", this is what makes `rerank = false` the only defensible default |
 | [2026-08-27: does claim-support checking (#C2) separate supported claims from unsupported ones on this corpus?](#2026-08-27-does-claim-support-checking-c2-separate-supported-claims-from-unsupported-ones-on-this-corpus) | **Current, qualitative only** | 71 real citations scored across four real drafts; a human read of the 20 lowest- and 20 highest-scored found the dominant failure at the low end is the wrong passage being matched, not genuine non-entailment. No `labels.json`/`--crosscheck` was run, so there is no separation statistic here, only the qualitative pattern and its examples |
 | [2026-08-29: does stripping interrogatives recover the recall a question-form query loses (#453, roadmap E1)?](#2026-08-29-does-stripping-interrogatives-recover-the-recall-a-question-form-query-loses-453-roadmap-e1) | **Current** | Re-runs docs/CORPUS-SEARCH.md's own measurement against today's 256-row corpus (up from 208). Confirms the **provably inert on keyword queries** property (recall@5 and nDCG@5 both exactly unchanged) and finds **full** recovery for a `"what is X"`-form question here, not the partial recovery the original write-up found for a three-template mix -- read as a property of this narrower template, not a correction to the original finding |
+| [2026-09-15: what a passage-level BM25 unit costs and buys (#769)](#2026-09-15-what-a-passage-level-bm25-unit-costs-and-buys-769) | **Current** | The unit change #769 asked for, scored on both arms above with passage hits collapsed to citekeys. **It loses recall** -- 0.8086 -> 0.6914 (keyword) and 0.8646 -> 0.7812 (live logs) -- because a document pools every paragraph's evidence into one score and a passage does not. What it buys is the evidence itself: hits cut mid-sentence fall from **99.8% to 16.4%**, every hit gains a page, and the returned text is the object that scored rather than a window chosen afterwards by an unrelated rule. Source diversity is **spent, not gained** (5.00 -> 3.72 of 5 at the shipped cap of 3), since the document unit is one-per-citekey by construction. Read as the case for an opt-in second unit, not for replacing the default |
 | [2026-08-30: a full-suite re-run, and the three figures it moved](#2026-08-30-a-full-suite-re-run-and-the-three-figures-it-moved) | **Current** | Every script here re-run on 96 allowed CPUs against a 497-PDF corpus, so **no figure in it is like-for-like with the sections above**. Supersedes three: the 55m 30s serial baseline (now **42m 49s**), `scan`'s 26.8s cold corpus index (now **~62s**, because `scan` gained tiers 2 and 3 after that figure was taken), and the 16.5s converter cold start (now **free to rebuild per PDF**). The parallel efficiency curve is **unchanged**. Also finds the **OCR stage 33% slower** per corpus -- visible only serially, because at 12/24 workers the extra CPUs hide it |
 | [The shipped embedding model is no longer the best-recall one](#the-shipped-embedding-model-is-no-longer-the-best-recall-one) | **Current, and it overturns a ranking above** | Organic recall is 14/15/16 of 22 for MiniLM-L6 / mpnet-base / multi-qa-mpnet, against the 2026-08-16 section's 11-13 with the **shipped default ahead**. The shipped default is now second. All three still catch 4/4 graded rungs. **Not a recommendation to change the default** -- one run, partly-resolving labels, and the winner also returns the most findings, with no precision measurement for any of them |
 | [The corpus moved under every hand-authored label](#the-corpus-moved-under-every-hand-authored-label) | **Current, and it invalidates arms above** | Finding ids are built from parsed-passage offsets, and a re-parse moved them. Every arm scored against a committed `labels.json` is now scoring against a partial ground truth -- 4 stale in `overlap_gate`, 176 unlabelled in `overlap_df`, 18 stale in `skipgram`, and **41 of 48** in `retrieval_ground_truth`, which refuses to run rather than build a partial set. Arm B of #194 cannot be re-measured until a human re-judges its pairs |
@@ -5423,6 +5424,76 @@ the control. See the 2026-09-07 (B3) section below: every arm was
 running over *zero documents*, because the throwaway `CONTENT_DIR` has
 no ledger for `build_corpus()` to read. The rebuild arms work once that
 is fixed. The watchdog arm hangs for a different, still-unfound reason.
+
+### 2026-09-15: what a passage-level BM25 unit costs and buys (#769)
+
+`chitragupta/retrieval_passages.py` ranks the corpus layer's
+reading-ordered paragraphs instead of whole documents, so that the object
+that scored is the object handed back. Scored by
+`bench/bench_retrieval_passage.py` against both ground truths above,
+passage hits collapsed to citekeys with `collapse_to_citekeys` so
+recall@5 means the same thing on both rows. Shipped defaults: cap 3,
+floor 20. 497-document corpus, 47,355 indexed passages.
+
+```bash
+.venv-full/bin/python bench/bench_retrieval_passage.py \
+    --tag 2026-09-15-retrieval-passage \
+    --live-dossiers content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers
+```
+
+| arm | queries | recall@5 | nDCG@5 |
+| --- | --- | --- | --- |
+| keyword self-retrieval | 256 | 0.8086 -> **0.6914** | 0.7296 -> **0.5879** |
+| live drafting logs | 96 | 0.8646 -> **0.7812** | 0.4729 -> **0.3261** |
+
+**The recall loss is structural, not a tuning failure.** A document
+pools every paragraph's evidence into one score; a passage stands alone.
+A paper arguing the query diffusely across ten paragraphs loses to one
+saying it once, emphatically, and collapsing back to citekeys afterwards
+cannot recover what was never pooled. No cap or floor setting recovers
+it: the floor sweep below moves recall by at most 6 points and never
+past the document row.
+
+| | document | passage, cap 3 |
+| --- | --- | --- |
+| hits beginning or ending mid-sentence | 99.8% / 99.8% | **16.4% / 13.5%** |
+| hits carrying a page number | 0% / 0% | **100% / 100%** |
+| distinct sources in top 5 | 5.00 / 5.00 | 3.72 / 4.16 |
+
+(keyword arm / live-logs arm.) The first row is what the feature is for,
+and it is measured the same way on both units rather than asserted of
+either -- a document-unit snippet is a 500-character window, so it is cut
+wherever 500 characters land.
+
+**Source diversity is spent here, not gained.** The document unit is 5.00
+of 5 *by construction* (one result per citekey), which no cap can beat.
+At cap 1 the passage unit matches it and gives up its second-best
+paragraph per source; at the shipped cap of 3 it recovers 3.72. So the
+cap defends a property the smaller unit gave up.
+
+**The token floor's default, swept at cap 3** (recall@5):
+
+| floor | 1 | 10 | **20** | 40 |
+| --- | --- | --- | --- | --- |
+| keyword self-retrieval | **0.7539** | 0.7500 | 0.6914 | 0.7148 |
+| live drafting logs | 0.7083 | 0.7500 | **0.7812** | 0.7708 |
+
+The arms disagree, and the disagreement has the same cause as the one
+[the reference cut ran into](#2026-08-16-retrieval-quality-with-a-ground-truth-no-retrieval-method-built):
+the self-retrieval arm's query is *a paper's own author-assigned
+keywords*, which is exactly the text that lands in short passages, so
+that arm rewards admitting them. 20 is chosen on the live-logs arm,
+whose queries are real drafting questions in prose, and the cost on the
+other arm is recorded here rather than omitted.
+
+**Cost per query**: 130 ms against the document unit's 34 ms (~3.8x),
+same corpus, index warm.
+
+**What this does not measure.** Whether a drafting session produces
+better citations with one unit or the other -- that needs new human
+judgements, and neither arm here can supply them (the fairness problem
+the keyword arm was built for applies again). Nothing in this repository
+switches unit on the strength of these numbers.
 
 ### 2026-09-07 (B4c): the converged set gets an honest number, and it is better than the one being retracted
 

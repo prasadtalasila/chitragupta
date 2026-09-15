@@ -110,6 +110,7 @@ def isolated_config(tmp_path, monkeypatch):
         "SPECS_DIR": "specs",
         "TLDR_DIR": "tldr",
         "RETRIEVAL_INDEX_PATH": "retrieval_index.json",
+        "RETRIEVAL_PASSAGE_INDEX_PATH": "retrieval_passage_index.json",
         "OVERLAP_DIR": "overlap",
         "VERBATIM_ALLOWLIST_PATH": "verbatim_allowlist.toml",
         "PIPELINE_LOCK_PATH": "pipeline.lock.db",

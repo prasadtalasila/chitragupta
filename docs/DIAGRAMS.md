@@ -403,6 +403,7 @@ flowchart TB
     subgraph L3["caches — rebuilt on demand, safe to delete, cost only time"]
       direction LR
       RIX[/"content/retrieval_index.json"/]
+      RPX[/"content/retrieval_passage_index.json"/]
       DCA[/"content/docling_cache.json"/]
       TCA[/"content/topic_embed_cache.json"/]
     end
@@ -435,8 +436,10 @@ flowchart TB
   CVG -- "chitragupta/enrich/topic_graph.py<br/><small>how the topics relate — shared-member<br/>and semantic edges, both explainable by papers</small>" --> TGR
 
   TXT -- "chitragupta/retrieval_cache.py" --> RIX
+  CPS -- "chitragupta/retrieval_passages_cache.py" --> RPX
 
   RIX -- "<b>chitragupta/retrieval.py</b> · BM25 hits<br/><small>the default path</small>" --> DRF
+  RPX -- "<b>chitragupta/retrieval_passages.py</b> · BM25 passage hits<br/><small>same ranker, one unit down — <code>--unit passage</code></small>" --> DRF
   CHR -. "<b>chitragupta/enrich/embed_index.py</b> · semantic hits<br/><small><b>either this or BM25 — never both.</b> Only<br/>survey-writer and deep-research name it.</small>" .-> DRF
   DOC -- "chitragupta/passages.py<br/>quotable passages — rung 1" --> DRF
   CPS -- "chitragupta/passages.py<br/>quotable passages — rung 2" --> DRF
