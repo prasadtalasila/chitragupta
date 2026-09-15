@@ -140,6 +140,15 @@ a citekey is far more often a botched re-export, or `BIB_FILE` pointing
 at the wrong path, than an intentional deletion -- so the default keeps
 the ledger untouched until a human confirms.
 
+Before either run acts, it also names **what else on disk still
+references that citekey** -- the overlap index, the topic graph's edges,
+the `evidence.md`/`sections.md` of any dossier, and the enrichment
+layer's chunk vectors -- so you can see the residue before you confirm
+instead of meeting it as a dead reference in a draft weeks later. It
+reports and repairs nothing: only the ledger row is ever removed.
+[CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)
+has the format and the one case it skips.
+
 `--remove-stale` still refuses, raising, if the bib file comes back
 completely empty against a non-empty ledger. Same reason: fix the export
 or the path rather than deleting everything in one run.

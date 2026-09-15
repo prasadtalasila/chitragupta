@@ -2,6 +2,7 @@
 (the corpus layer -- AGENTS.md). No LLM calls, must be idempotent."""
 
 import contextlib
+import json
 import logging
 import multiprocessing
 import subprocess
@@ -20,12 +21,19 @@ from chitragupta import (
     sync,
     sync_decide,
     sync_pool,
+    sync_residue,
 )
 from tests.conftest import make_reference
 
 
 def write_bib(path, body):
     path.write_text(body, encoding="utf-8")
+
+
+def drop_noauthor(bib):
+    """BASIC_BIB minus its one PDF-less entry -- the stale citekey the
+    removal tests below work with."""
+    return bib.replace("@misc{noauthor_page_nodate,\n  title = {A Page With No Author},\n}\n\n", "")
 
 
 @pytest.fixture(autouse=True)
@@ -390,6 +398,103 @@ class TestRun:
         assert rc == 0
         assert "0 stale (not removed)" in out
         assert "  stale   " not in out
+
+    def test_default_mode_names_the_artefacts_that_still_reference_the_citekey(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # Issue #763: the default run is the moment the human is being
+        # asked to confirm, so the residue belongs between the stale
+        # names and the invitation to delete them -- not left for
+        # citation_gate to surface as a symptom weeks later.
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        evidence = basic_corpus.DOSSIERS_DIR / "dt" / "survey" / "evidence.md"
+        evidence.parent.mkdir(parents=True)
+        evidence.write_text("## `noauthor_page_nodate`\n\nQuoted evidence.\n", encoding="utf-8")
+        before = evidence.read_bytes()
+
+        write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(BASIC_BIB))
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert rc == 0
+        assert "Checking what else still references the 1 stale citekey(s)" in out
+        assert "noauthor_page_nodate: still referenced by 1 artefact class(es)" in out
+        assert f"dossiers         1 mention(s): {evidence} (1)" in out
+        assert "Reported, not repaired" in out
+        # Declining -- which is what not passing --remove-stale is --
+        # leaves every artefact exactly as it was.
+        assert evidence.read_bytes() == before
+
+    def test_remove_stale_reports_the_residue_before_it_prunes(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        graph = basic_corpus.TOPIC_GRAPH_PATH
+        graph.write_text(
+            '{"edges_overlap": [{"shared": ["noauthor_page_nodate", "smith_example_2024"]}]}',
+            encoding="utf-8",
+        )
+
+        write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(BASIC_BIB))
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == 0
+        # Before, not after: the report has to describe the corpus the
+        # person is being told about, not the one already changed.
+        assert out.index("topic graph      1 edge(s)") < out.index("pruned  noauthor_page_nodate")
+        assert json.loads(graph.read_text(encoding="utf-8"))["edges_overlap"][0]["shared"] == [
+            "noauthor_page_nodate",
+            "smith_example_2024",
+        ]
+
+    def test_a_stale_citekey_with_no_residue_says_so(self, basic_corpus, monkeypatch, capsys):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+
+        write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(BASIC_BIB))
+        sync.run()
+        out = capsys.readouterr().out
+
+        assert "noauthor_page_nodate: no other artefact references it" in out
+        # The existing prompt is untouched by the new report.
+        assert "Review the 1 stale item(s) above" in out
+        assert "--remove-stale to delete them" in out
+
+    def test_a_clean_run_pays_neither_the_scan_nor_the_noise(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        monkeypatch.setattr(
+            sync_residue, "scan", lambda _keys: pytest.fail("scanned with nothing stale")
+        )
+
+        sync.run()
+        assert "Checking what else still references" not in capsys.readouterr().out
+
+    def test_the_zero_reference_refusal_is_not_buried_under_a_residue_report(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # prune_missing's guard is about to refuse on this exact shape,
+        # so scanning first would print residue for every row in the
+        # ledger ahead of the refusal it exists to make visible.
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        monkeypatch.setattr(
+            sync_residue, "scan", lambda _keys: pytest.fail("scanned before the refusal")
+        )
+
+        write_bib(basic_corpus.BIB_FILE_PATH, "")
+        with pytest.raises(ledger.PruneRefused):
+            sync.run(remove_stale=True)
 
     def test_bib_yielding_zero_refs_warns_instead_of_suggesting_remove_stale(
         self, basic_corpus, monkeypatch, capsys
