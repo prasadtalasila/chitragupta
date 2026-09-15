@@ -24,6 +24,7 @@ this document can stay a reference rather than an argument.
   - [`[parser]` -- PDF text extraction](#-parser----pdf-text-extraction)
   - [`[logging]` -- the pipeline log file](#-logging----the-pipeline-log-file)
   - [`[provenance]` -- citation-support bands](#-provenance----citation-support-bands)
+  - [`[retrieval]` -- BM25's field weights, cap and floor](#-retrieval----bm25s-field-weights-cap-and-floor)
   - [`[enrich]` -- the optional enrichment layer](#-enrich----the-optional-enrichment-layer)
 - [How values are parsed](#-how-values-are-parsed)
 - [Notes on individual settings](#-notes-on-individual-settings)
@@ -360,6 +361,63 @@ Round numbers on purpose: the report sets a reading order for a human,
 not a pass/fail line, so tuning them precisely would be false precision.
 Neither is range-checked, and nothing enforces
 `weak_score < good_score`.
+
+### 🔎 `[retrieval]` -- BM25's field weights, cap and floor
+
+Tier 1: stdlib only, no venv and no model, which is why these are not
+`[enrich]` keys.
+
+| Key | Env var | Accepts | Default |
+| --- | --- | --- | --- |
+| `weight_title` | `RETRIEVAL_WEIGHT_TITLE` | number, finite and at least 0 | `1.0` |
+| `weight_abstract` | `RETRIEVAL_WEIGHT_ABSTRACT` | number, finite and at least 0 | `1.0` |
+| `max_passages_per_source` | `MAX_PASSAGES_PER_SOURCE` | positive integer | `3` |
+| `min_passage_tokens` | `MIN_PASSAGE_TOKENS` | positive integer | `20` |
+
+`weight_title` and `weight_abstract` (#762) tilt how much a query term
+counts when it appears in a paper's title or abstract rather than its
+body. The weighted frequency is a delta on the ordinary one, so **1.0
+reproduces the previous ranking to the bit** and is not an approximation
+of "off"; a negative or infinite value is rejected at load rather than
+producing a ranking nobody can explain. `weight_abstract` needs a
+structural passage sidecar to have anything to weight, so on the shipped
+`[parser].backend = "pdftotext"` it is silently inert.
+[RETRIEVAL.md](RETRIEVAL.md) carries the sweep behind both defaults.
+
+The remaining two apply to `retrieve search --unit passage` only
+([RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit)). The document unit takes
+neither: it returns one result per source by construction, so there is
+nothing to cap, and it ranks whole documents, so there is no
+short-passage problem to floor.
+
+**The field weights above run the other way round.** `weight_title` and
+`weight_abstract` apply to the *document* unit and are inert on the
+passage unit, which carries no field counts to weight. That is deliberate
+rather than unfinished: a title is a property of the paper, and the
+passage unit exists precisely to stop a paragraph being scored on its
+paper's behalf. Raising a weight will move one unit's ranking and not the
+other's.
+
+`max_passages_per_source` is what stops one well-matched paper filling
+every slot -- the smaller unit's cost, and the thing the document unit
+got for free. Lower it to 1 for maximal source diversity per query.
+
+`min_passage_tokens` keeps short dense passages out of the index
+entirely. BM25's length normalization *rewards* a short match, which is
+harmless when the unit is a whole document and is not when it is a
+paragraph: a one-line bibliography entry or a three-word heading whose
+words happen to be your query would outrank every real paragraph in the
+corpus. Excluding `section_header` and `title` passages is the
+structural half of that answer and is not configurable; this is the half
+a corpus of unusually terse prose might want to move.
+
+**There is deliberately no over-fetch multiplier here**, and the
+asymmetry with `[enrich].embed_overfetch_multiplier` is worth
+understanding rather than reading as an oversight. That one exists
+because Chroma returns a pre-truncated candidate list, so a cap applied
+to it can only shorten the result. BM25 scores every passage in memory,
+so the cap walks the fully ranked list and promotes another paper's
+passage into the window by construction.
 
 ### 🧠 `[enrich]` -- the optional enrichment layer
 

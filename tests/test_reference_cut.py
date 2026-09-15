@@ -5,7 +5,15 @@ import json
 
 import pytest
 
-from chitragupta import _reference_cut, config, ledger, retrieval, retrieval_cache, retrieval_cli
+from chitragupta import (
+    _reference_cut,
+    config,
+    ledger,
+    passages,
+    retrieval,
+    retrieval_cache,
+    retrieval_cli,
+)
 
 from tests.conftest import make_reference
 
@@ -138,6 +146,51 @@ class TestStripReferences:
 
     def test_an_item_with_no_parsed_path_is_unchanged(self, isolated_config):
         assert _reference_cut.strip_references(BODY + REFS, None) == BODY + REFS
+
+
+class TestReferenceCutIndex:
+    """The same rule, reported as a position in the passage list rather
+    than applied to flattened text -- what a passage-level index needs so
+    it cuts on the same boundary rather than re-deriving one (#769)."""
+
+    def body(self, text: str, label: str = "text"):
+        return passages.Passage(page=1, words=set(), text=text, label=label)
+
+    def test_the_index_of_the_last_reference_header_is_returned(self):
+        found = [self.body("a"), self.body("References", "section_header"), self.body("Smith 2020")]
+
+        assert _reference_cut.reference_cut_index(found) == 1
+
+    def test_the_last_header_wins_when_a_book_has_one_per_chapter(self):
+        found = [
+            self.body("chapter one"),
+            self.body("References", "section_header"),
+            self.body("chapter two"),
+            self.body("References", "section_header"),
+            self.body("Smith 2020"),
+        ]
+
+        assert _reference_cut.reference_cut_index(found) == 3
+
+    def test_a_document_with_no_reference_header_returns_none(self):
+        found = [self.body("a"), self.body("Method", "section_header")]
+
+        assert _reference_cut.reference_cut_index(found) is None
+
+    def test_a_heading_that_merely_starts_with_the_word_is_not_a_cut_point(self):
+        found = [self.body("a"), self.body("Reference architecture", "section_header")]
+
+        assert _reference_cut.reference_cut_index(found) is None
+
+    def test_the_same_word_under_another_label_is_not_a_cut_point(self):
+        found = [self.body("a"), self.body("References", "caption")]
+
+        assert _reference_cut.reference_cut_index(found) is None
+
+    def test_a_numbered_header_is_a_cut_point(self):
+        found = [self.body("a"), self.body("7 REFERENCES", "section_header")]
+
+        assert _reference_cut.reference_cut_index(found) == 1
 
 
 class TestReferencesAreNotIndexed:

@@ -434,6 +434,12 @@ def _get_field_weight(field: str) -> float:
 # measurement that would justify any other number, and #770 adds
 # `caption` and `table` to the same table.
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
+# The same, for chitragupta/retrieval_passages.py's passage-level index
+# (#769). A separate file rather than a second key inside the one above:
+# the two are invalidated by different things -- the document index by
+# the parsed .txt, this one by the passage sidecar beside it -- and a
+# shared file would make either rebuild discard the other's work.
+RETRIEVAL_PASSAGE_INDEX_PATH = CONTENT_DIR / "retrieval_passage_index.json"
 # Cached n-gram fingerprints for chitragupta/overlap_index.py -- content/overlap/docs/
 # holds one file per citekey, content/overlap/index.bin the merged corpus
 # index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same
@@ -1108,6 +1114,52 @@ EMBED_OVERFETCH_MULTIPLIER = _get_positive_int(
     "enrich",
     "embed_overfetch_multiplier",
     default=4,
+)
+
+# ---------------------------------------------------------------------
+# [retrieval] -- the tier-1 BM25 path's own settings. Deliberately its
+# own section rather than more [enrich] keys: everything below runs under
+# bare `python` with no venv and no model, which is the distinction that
+# decides whether a setting can be honoured at all on a given host.
+# ---------------------------------------------------------------------
+
+# The most passages retrieval_passages.search() will return from a single
+# citekey (#769). The document-level retrieval.search() needs no such
+# key: it is one-result-per-citekey by construction, so a cap there would
+# be a no-op. Same default and same reasoning as
+# EMBED_MAX_PASSAGES_PER_SOURCE above, and deliberately the same shape --
+# the two paths cap for one reason and should read as one idea.
+MAX_PASSAGES_PER_SOURCE = _get_positive_int(
+    "MAX_PASSAGES_PER_SOURCE",
+    "retrieval",
+    "max_passages_per_source",
+    default=3,
+)
+
+# There is deliberately no `passage_overfetch_multiplier` beside the cap,
+# and the omission is the interesting half. EMBED_OVERFETCH_MULTIPLIER
+# exists because Chroma hands back a *pre-truncated* candidate list, so a
+# cap applied to it can only shorten the result rather than promote
+# another paper's chunk into the window -- the failure #305 existed to
+# fix. Nothing truncates here: `_bm25_scores` scores every indexed
+# passage in memory, so the cap walks the fully ranked list and takes the
+# first k that fit, which is what an infinite over-fetch would buy. A
+# multiplier would be a knob whose every setting gave the same answer.
+#
+# Passages shorter than this many tokens (after retrieval's own
+# tokenizer, so stopwords and 1-2 character words are already gone) are
+# not indexed. BM25's length normalization *rewards* a short dense
+# match, which is harmless at document scale and not at passage scale: a
+# three-word heading or a one-line bibliography entry whose words are the
+# query outscores every real paragraph in the corpus. A floor is the
+# cheap half of the answer; excluding section_header/title passages
+# outright is the other half, and that one is structural rather than
+# configurable. Default measured in bench/bench_retrieval_passage.py.
+MIN_PASSAGE_TOKENS = _get_positive_int(
+    "MIN_PASSAGE_TOKENS",
+    "retrieval",
+    "min_passage_tokens",
+    default=20,
 )
 
 # Whether embed_index.search() reorders its over-fetched passages with a

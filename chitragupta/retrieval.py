@@ -289,10 +289,10 @@ def search(
     (issue #305): `scores` below is a dict keyed by citekey, so a
     document cannot contribute two entries to `ranked` no matter how
     many of its terms match. A per-citekey cap would be a no-op here --
-    it is `chitragupta.enrich.embed_index.search()`, ranking individual
-    chunks rather than whole documents, that needs one. Tested in
-    tests/test_retrieval.py so a future chunk-level BM25 index can't
-    silently lose this property.
+    it is a ranker of sub-document units that needs one, which since
+    #769 means `chitragupta.retrieval_passages.search_passages()` as
+    much as `enrich.embed_index.search()`. Tested in
+    tests/test_retrieval.py so this module cannot silently lose it.
     """
     terms = _query_terms(query)
     if not terms:

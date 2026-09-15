@@ -404,6 +404,35 @@ good_score = 0.50
 weight_title = 1.0
 weight_abstract = 1.0
 
+# The two settings below apply to the *passage* unit only
+# (`retrieve search --unit passage`, #769). The document unit takes
+# neither: it is one-result-per-citekey by construction, so there is
+# nothing to cap, and it ranks whole documents, so there is no
+# short-passage problem to floor.
+
+# The most passages one citekey may contribute to a single result set.
+# Lower to 1 for maximal source diversity per query; raise it where a
+# single paper legitimately deserves more of the result. The document
+# unit needs no equivalent -- it already returns one result per source.
+#                                                             Default: 3
+max_passages_per_source = 3
+
+# There is no `passage_overfetch_multiplier` here, unlike [enrich]'s
+# embed_overfetch_multiplier. That one exists because Chroma returns a
+# pre-truncated candidate list, so a cap applied to it can only shorten
+# the result. BM25 scores every passage in memory, so the cap walks the
+# fully ranked list and promotes another paper's passage into the window
+# by construction -- a multiplier would be a knob with one answer.
+
+# Passages shorter than this many tokens are not indexed at all. BM25's
+# length normalization rewards a short dense match, so without a floor a
+# one-line bibliography entry or a three-word heading whose words happen
+# to be your query outranks every real paragraph in the corpus. Measured
+# on this corpus in bench/bench_retrieval_passage.py; 0 is not accepted,
+# lower it to 1 if you want every passage indexed.
+#                                                            Default: 20
+min_passage_tokens = 20
+
 [enrich]
 # Used only by chitragupta/enrich/* (the "enrich" dependency group), never by sync
 # or the citation gate. The table name is matched exactly and there is no
@@ -450,7 +479,9 @@ embed_top_k = 5
 # its top k (#305): a per-citekey cap applied to the ranked list before
 # it's truncated, so one thoroughly-matched paper can't fill every
 # slot. BM25's chitragupta.retrieval.search() needs no matching key --
-# it's already one-per-citekey by construction. Lower to 1 for maximal
+# it's already one-per-citekey by construction. Its passage-unit sibling
+# does need one, and that is [retrieval].max_passages_per_source above:
+# the cap belongs to the unit, not to the ranker. Lower to 1 for maximal
 # source diversity per query; raise it where a single paper legitimately
 # deserves more of the result.
 #                                                             Default: 3

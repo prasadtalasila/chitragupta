@@ -21,11 +21,11 @@ stage by stage, see [RAG.md](RAG.md).
 
 | | **BM25** | **embeddings** | **topic model** |
 | --- | --- | --- | --- |
-| Module | `chitragupta/retrieval.py` | `chitragupta/enrich/embed_index.py` | `chitragupta/enrich/topic_model.py` |
+| Module | `chitragupta/retrieval.py`, `chitragupta/retrieval_passages.py` | `chitragupta/enrich/embed_index.py` | `chitragupta/enrich/topic_model.py` |
 | Question it answers | which sources match this query? | *the same question* | what clusters exist in my corpus? |
 | Takes a query | yes | yes | **no** |
 | Method | Okapi BM25 over whitespace tokens | dense vectors, cosine distance | UMAP then HDBSCAN over one vector per document |
-| Unit of a hit | a whole document | a 200-word chunk | a whole document |
+| Unit of a hit | a whole document, or **one paragraph** -- the caller picks ([below](#-the-passage-unit)) | a 200-word chunk | a whole document |
 | Corpus | ledger rows only, so every hit is citable | *the same* | *the same* |
 | Needs | stdlib, bare `python` | venv + `enrich` group + a model download | venv + `enrich` group |
 | Used by | every genre skill, by default | `survey-writer`, `deep-research` (only if built) | **nothing in this repository** |
@@ -335,6 +335,183 @@ size of its payload to that draft's dossier (`retrieval.md` -- see
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md)). That is what makes the cost of
 retrieval for a given draft a measurement rather than an estimate.
 
+## 📄 The passage unit
+
+```bash
+python -m chitragupta.draft retrieve search "<query>" --unit passage
+```
+
+Everything above ranks whole documents. `--unit passage` ranks the corpus
+layer's reading-ordered paragraphs instead, and hands back the paragraph
+that scored -- verbatim, with its page. Same BM25, same corpus, same
+stdlib-only requirement; a smaller unit.
+
+**It is opt-in, and it should be**, because it trades recall for
+quotability: **recall@5 falls from 0.8086 to 0.6914** on one arm and
+0.8646 to 0.7812 on the other, while the fraction of returned text cut
+mid-sentence falls from 99.8% to 16.4% and every hit gains a page
+number. [The figures are below](#-what-it-costs-measured). So:
+
+| Use `--unit passage` when… | Stay on the default when… |
+| --- | --- |
+| You want a paragraph you can quote, and the page it sits on | You are asking "did this paper argue X?" -- a document-level question |
+| You already know roughly which papers matter and want their best passage | You are still finding out which papers matter, where recall is the thing that matters |
+| Your corpus is parsed with `[parser].backend = "docling"` | Any part of your corpus was parsed with `pdftotext` -- those sources are [unreachable here](#-what-this-unit-structurally-cannot-return) |
+
+No genre skill switches to it, and none should on this evidence alone.
+
+### 🔁 What it actually changes: one criterion instead of two
+
+The document unit does two things with two unrelated scoring functions,
+and only the first of them is BM25:
+
+| | ranks | displays |
+| --- | --- | --- |
+| Function | `_bm25_scores` | `_snippet` → `_windows` |
+| Criterion | IDF × saturated term frequency, normalized against corpus `avgdl` | count of *distinct* query terms inside a 500-character window |
+| When | over the whole ledger | **after** the top *k* is already decided |
+
+So the text a drafting skill is shown as evidence was chosen by a rule
+that had no part in deciding the source was worth showing. The window
+chooser is good at what it does -- it is deterministic and picks the
+best-covering passage rather than an arbitrary one
+([above](#-one-window-chooser-shared-and-deterministic)) -- but it is
+not the ranker, and it cuts at a character count rather than at a
+paragraph.
+
+The passage unit collapses the two: **what ranks is what is shown.** The
+page comes along for free, because a sidecar record already carries one.
+
+### 📚 Where the paragraphs come from
+
+`chitragupta/passages.py`'s rung 2 -- `content/parsed/<citekey>.passages.json`,
+the corpus layer's own parse -- and deliberately not the enrichment
+layer's richer rung 1, because BM25 promises that running
+`chitragupta.enrich` does not change what it ranks. `_reference_cut`'s
+boundary is read as a *position* in the passage list rather than
+re-derived, so both units cut the bibliography at the same heading.
+
+Two exclusions beyond that, both about BM25's length normalization
+rewarding a short dense match -- harmless when the unit is a whole
+document, and not when it is a paragraph:
+
+- **`section_header` and `title` passages are never indexed.** A
+  three-word heading whose text *is* your query is the highest-scoring
+  object in any passage index that admits it, and it is evidence of
+  nothing. Structural, not configurable.
+- **A passage under `[retrieval].min_passage_tokens` (default 20) is
+  not indexed.** This is also what keeps a one-line bibliography entry
+  out on the documents whose reference heading could not be located.
+
+Note the second consequence of that arithmetic, since the issue behind
+this feature guessed it the other way round: reference-list entries are
+*more* dangerous as passages than as pooled document text, not less.
+Short and stuffed with other papers' title words is exactly the shape
+BM25 over-rewards at this scale.
+
+### 🧢 One paper cannot take the page
+
+The document unit returns one result per citekey by construction -- its
+scores are a dict keyed by citekey -- so its `search()` has never needed
+a cap. A well-matched paper has as many passages as it has paragraphs,
+so this unit does: `[retrieval].max_passages_per_source`, default 3.
+
+The cap is applied to the **fully ranked** list, so dropping a dominant
+paper's excess passages promotes another paper's passage into the window
+rather than merely shortening the result. That is why there is no
+over-fetch multiplier here and there is one on the embedding path: Chroma
+returns a pre-truncated candidate list and BM25 does not.
+[CONFIG.md](CONFIG.md#-retrieval----bm25s-field-weights-cap-and-floor) has
+both keys.
+
+### 🕳 What this unit structurally cannot return
+
+A citekey parsed by `pdftotext` leaves no passage sidecar, so it is not
+ranked low here -- it is **absent from the index entirely**, however well
+it matches. Falling back to a document-level score for those would put
+two incomparable numbers in one ranking, so the gap is reported instead:
+the CLI counts such sources and names them under the results.
+
+On a corpus parsed with `[parser].backend = "docling"` that count is
+zero. On a `pdftotext` corpus this unit has nothing to search at all,
+which is the honest answer and the reason it is a flag rather than the
+default.
+
+**Scores from the two units are not comparable.** `N`, every document
+frequency and `avgdl` are computed over passages on one path and over
+documents on the other. Nothing in this repository sorts them into one
+list, and nothing should.
+
+### 📊 What it costs, measured
+
+On the 497-document corpus this was measured against, the passage index
+holds **47,355 paragraphs**, and a query costs **130 ms against 34 ms**
+for the document unit -- about 3.8x, for an index rebuilt incrementally
+on the same stat-fingerprint terms
+(`content/retrieval_passage_index.json`, its own file and its own schema
+version, because the two indexes are invalidated by different things).
+
+**And it costs recall.** Scored by `bench/bench_retrieval_passage.py` on
+the same two arms as everything else here, passage hits collapsed to
+citekeys so that recall@5 means the same thing on both rows
+(2026-09-15, shipped defaults: cap 3, floor 20):
+
+| arm | queries | recall@5 | nDCG@5 |
+| --- | --- | --- | --- |
+| keyword self-retrieval | 256 | 0.8086 → **0.6914** | 0.7296 → **0.5879** |
+| live drafting logs | 96 | 0.8646 → **0.7812** | 0.4729 → **0.3261** |
+
+That is a real loss, not measurement noise, and the reason is structural
+rather than fixable by tuning: **a document pools every paragraph's
+evidence into one score, and a passage stands alone.** A paper that
+argues your query diffusely across ten paragraphs loses to one that says
+it once, emphatically. Collapsing back to citekeys afterwards cannot
+recover evidence the smaller unit never pooled.
+
+**What it buys, on the same hits:**
+
+| | document | passage (cap 3) |
+| --- | --- | --- |
+| Hits that begin or end mid-sentence | **99.8%** / 99.8% | **16.4%** / 13.5% |
+| Hits carrying a page number | 0% | **100%** |
+| Distinct sources in the top five | 5.00 | 3.72 / 4.16 |
+
+(Two figures per cell are the keyword and live-logs arms.) The first row
+is the feature: a document-unit snippet is a character window, so it is
+cut wherever 500 characters land and essentially always starts or ends
+mid-sentence; a passage is a whole paragraph and mostly does not. The
+residual 16% is real -- Docling splits some paragraphs across a page
+break, and a table or formula record has no sentence to end.
+
+**Read the third row as a loss the cap recovers, not a gain.** The
+document unit is 5.00 of 5 *by construction*, and no cap can beat that.
+At cap 1 the passage unit matches it (5.00) and gives up its second-best
+paragraph per source; at the shipped cap of 3 it recovers 3.72. Source
+diversity is something this unit spends, and the cap is what limits the
+spending.
+
+### 🔢 Where the token floor's default came from
+
+Swept on both arms at cap 3, recall@5:
+
+| floor | 1 | 10 | **20** | 40 |
+| --- | --- | --- | --- | --- |
+| keyword self-retrieval | **0.7539** | 0.7500 | 0.6914 | 0.7148 |
+| live drafting logs | 0.7083 | 0.7500 | **0.7812** | 0.7708 |
+
+The two arms disagree, and the disagreement is informative rather than
+awkward. The self-retrieval arm's query is *a paper's own author-assigned
+keywords*, which is exactly the text that lands in short passages -- so
+that arm rewards admitting them, for the same reason
+[it was biased against the reference cut](#-a-papers-own-bibliography-is-not-indexed).
+The live-logs arm's queries are real drafting questions in prose, and it
+prefers 20.
+
+20 is chosen on the live-logs arm because that is the arm whose queries
+look like the ones this feature will actually serve, and the cost on the
+other arm is stated here rather than omitted. A corpus of unusually
+terse prose is a fair reason to lower it.
+
 ## 🧠 Embeddings -- a replacement for BM25, not an addition
 
 `chitragupta/enrich/embed_index.py` chunks each document into 200 words with
@@ -349,15 +526,20 @@ same shape as BM25's, so callers do not change. Nothing in this repository
 fuses or re-ranks the two -- there is no hybrid search here. A skill uses
 one or the other.
 
-**Unlike BM25, this ranks chunks, not documents**, so without a check a
+**This ranks chunks, not documents**, so without a check a
 single well-matched paper could fill every one of the `k` slots. `search`
 caps each citekey at `[enrich].embed_max_passages_per_source` (default
 3) chunks among the top `k`, applied to the over-fetched ranked list
 before it is truncated -- so dropping a dominant paper's excess chunks
 promotes another paper's chunk into the result, rather than merely
 shortening it ([CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
-BM25's `search` needs no such cap: it is already one-per-citekey by
-construction.
+
+BM25's *document* unit needs no such cap -- it is one-per-citekey by
+construction -- but its [passage unit](#-the-passage-unit) does, and has
+one. The cap belongs to the unit rather than to the ranker, which is why
+the two settings live in different tables and why only this one needs an
+over-fetch multiplier beside it: Chroma truncates its candidate list and
+BM25 does not.
 
 **A cross-encoder can reorder the over-fetched passages before that
 cap, and is off by default.** It improves ordering rather than recall
@@ -424,6 +606,7 @@ Three things to know before you run it:
 | If you want to… | Do this |
 | --- | --- |
 | Draft from a modest, consistent corpus | Nothing. BM25 is already running |
+| Get a quotable paragraph and a page out of a search | Nothing to build -- `retrieve search --unit passage`, if your corpus is docling-parsed. Costs recall; [the figures](#-what-it-costs-measured) |
 | Quote sources accurately in a review | `--stages docling` -- it is the passage sidecar, not the ranker, that improves quoting |
 | Find papers that argue your point in other words | `--stages docling,embed` |
 | Decide what your survey should cover | `--stages docling,embed,bertopic`, then read `content/topics.json` yourself |

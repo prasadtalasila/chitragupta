@@ -78,7 +78,7 @@ pipeline exactly:
 | --- | --- | --- |
 | **Paradigm** (Gao §II) | Naive -> Advanced -> Modular | **Advanced.** It has pre-retrieval (collection scoping) and post-retrieval (cap, optional rerank) around a fixed chain -- not Modular's swappable routing |
 | **Retrieval process** (Gao Table I) | Once / Iterative / Recursive / Adaptive | **Once**, for every genre skill's ordinary retrieve-per-sub-theme flow. `draft-reviser`'s hand-edit re-grounding round ("Stage 11" below) is the one opt-in, two-round exception; nothing here is Recursive or Adaptive |
-| **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25 -- the coarsest rung -- and Chunk for the dense path |
+| **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25's default unit -- the coarsest rung -- with a **Chunk**-grade passage unit beside it since #769, and Chunk for the dense path |
 | **Integration layer** (Fan §2.3) | Input / Intermediate / Output | **Input, necessarily.** The other two need white-box access to the generator, which a harness-driven model does not give |
 
 Three consequences worth drawing out, because each one bounds what this
@@ -154,7 +154,8 @@ guarantee for reach.
 
 | System | Unit | Algorithm |
 | --- | --- | --- |
-| **Chitragupta (BM25)** | **the whole document** | none -- BM25 scores documents |
+| **Chitragupta (BM25, default)** | **the whole document** | none -- BM25 scores documents |
+| **Chitragupta (BM25, `--unit passage`)** | **one reading-ordered paragraph** | none -- the corpus layer's Docling parse already segmented it |
 | **Chitragupta (dense)** | 200 words, 40 overlap | fixed window, `chunk_text()` |
 | RAGFlow | ~128 tokens, 15 templates | layout-aware, `naive_merge()` on delimiters |
 | papersgpt | a paragraph (old) / a whole page (shipped) | font-size + y-gap clustering (old) |
@@ -162,16 +163,32 @@ guarantee for reach.
 | AutoRAG | swept as a parameter | several, compared empirically |
 
 **The trade-off, and it is the one that shapes everything downstream.**
-Scoring whole documents makes chitragupta's BM25 **one-result-per-citekey
-by construction** -- no paper can occupy two slots, so no cap is needed
-and none exists. That is a structural guarantee of source diversity which
-every chunk-ranking system has to reintroduce as a *filter*, and which
-RAGFlow (see stage 8) never reintroduces at all. The cost is precision:
-a 40-page paper matching in one paragraph scores as a document, so the
-snippet chooser has to find the passage afterwards. papersgpt's
-regression -- paragraphs with bounding boxes replaced by whole pages with
-none -- is the same trade taken in the losing direction, and it cost that
-project its ability to point at where a claim came from.
+Scoring whole documents makes chitragupta's default BM25 unit
+**one-result-per-citekey by construction** -- no paper can occupy two
+slots, so no cap is needed and none exists. That is a structural
+guarantee of source diversity which every chunk-ranking system has to
+reintroduce as a *filter*, and which RAGFlow (see stage 8) never
+reintroduces at all. The cost is precision: a 40-page paper matching in
+one paragraph scores as a document, so the snippet chooser has to find
+the passage afterwards -- by a criterion that played no part in the
+ranking.
+
+**Since #769 that cost is a choice rather than a property.** The same
+BM25 will rank the corpus layer's paragraphs instead, and then the object
+that scored *is* the object handed back, with the page it sits on. Two
+things change with it, and both are the generic chunk-ranking costs this
+project had been exempt from: the structural diversity guarantee becomes
+a configured cap (`[retrieval].max_passages_per_source`), and a source
+whose parse produced no paragraphs is unreachable rather than merely
+ranked low. So this row is now the literature's ordinary trade, taken
+deliberately and per call, rather than a place this pipeline sits apart.
+
+Note what does *not* follow: the unit is picked per query, not per
+corpus, so nothing here needs the whole-document guarantee to be given
+up to get the paragraph. papersgpt's regression -- paragraphs with
+bounding boxes replaced by whole pages with none -- is the same trade
+taken in the losing direction, and it cost that project its ability to
+point at where a claim came from.
 
 ## 🗂 Stage 3: indexing, and the algorithms
 
@@ -379,7 +396,8 @@ so a refactor cannot quietly swap them.
 
 | System | Per-document cap |
 | --- | --- |
-| **Chitragupta (BM25)** | **structural** -- one result per citekey |
+| **Chitragupta (BM25, default)** | **structural** -- one result per citekey |
+| **Chitragupta (BM25, `--unit passage`)** | `max_passages_per_source`, default 3, on the *whole* ranked list |
 | **Chitragupta (dense)** | `embed_max_passages_per_source`, default 3, applied before truncation |
 | MiniRAG | per-anchor `max_chunks=3` |
 | **RAGFlow** | **none** |
@@ -388,8 +406,20 @@ so a refactor cannot quietly swap them.
 **This is where chitragupta is furthest ahead, and the reason is stage
 2.** RAGFlow's `top_n` default is 6 with no cap, so all six chunks can
 come from one paper -- which in a survey produces a section citing a
-single source. AutoRAG's multi-query path is worse: results are combined
-by a per-query quota with **no cross-query deduplication**, so a document
+single source.
+
+**The passage unit is where that structural lead is spent**, and it is
+worth naming as a cost rather than listing as a third row. Measured on
+this corpus, distinct sources in the top five fall from 5.00 to 3.72 at
+the shipped cap -- so choosing the finer unit buys the same problem every
+other system on this table has, and the cap is what keeps it bounded. The
+one thing the cap does better here than on any row above is *where* it
+applies: BM25 scores every passage in memory, so it caps the fully ranked
+list and a dropped passage is replaced rather than merely removed. Every
+other row caps something already truncated.
+
+AutoRAG's multi-query path is worse: results are combined by a
+per-query quota with **no cross-query deduplication**, so a document
 returned by two expanded queries occupies two of your slots.
 
 **Across rounds, the same question returns and two implementations

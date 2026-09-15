@@ -64,13 +64,32 @@ _HEADER = re.compile(
 )
 
 
+def reference_cut_index(found: list) -> int | None:
+    """The position of the last reference heading in `found`, or None.
+
+    The same rule as `strip_references` below, reported as a position in
+    the passage list rather than applied to flattened text. A
+    passage-level index (#769) drops every passage from here on, and must
+    cut on *this* boundary rather than re-deriving one: two rules for one
+    span drift apart the first time a heading is added to `_HEADER`, and
+    the drift would show up as a bibliography entry ranked as body text
+    on one path and not the other.
+
+    Public where `strip_references`'s own helper was private, because
+    that is the difference: this is the shared rule, and the truncation
+    below is one of its two consumers.
+    """
+    for i in range(len(found) - 1, -1, -1):
+        passage = found[i]
+        if passage.label == "section_header" and _HEADER.match((passage.text or "").strip()):
+            return i
+    return None
+
+
 def _last_header(found: list) -> str | None:
     """The text of the last reference heading in `found`, or None."""
-    for passage in reversed(found):
-        text = (passage.text or "").strip()
-        if passage.label == "section_header" and _HEADER.match(text):
-            return text
-    return None
+    cut = reference_cut_index(found)
+    return None if cut is None else (found[cut].text or "").strip()
 
 
 def strip_references(text: str, parsed_path: str | None) -> str:

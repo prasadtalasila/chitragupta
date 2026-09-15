@@ -117,6 +117,17 @@ def _build_parser() -> Any:
     p_search.add_argument("--k", type=int, default=5, help="Results to return (default 5)")
     p_search.add_argument("--chars", type=int, default=500, help="Snippet size (default 500)")
     p_search.add_argument(
+        "--unit",
+        choices=("document", "passage"),
+        default="document",
+        help="What a result is (#769). `document` ranks whole sources and cuts a "
+        "--chars window out of each afterwards, one result per source. `passage` "
+        "ranks the corpus layer's reading-ordered paragraphs and hands back the "
+        "paragraph that scored, with its page -- capped per source so one paper "
+        "cannot fill the page. Scores from the two are on different scales and "
+        "must not be compared",
+    )
+    p_search.add_argument(
         "--collection",
         metavar="NAME",
         help="Only items in this Zotero collection, or one beneath it. Needs a "
@@ -189,6 +200,13 @@ def _run_evidence(args) -> "tuple[int, int] | None":
 def _run_search(args) -> tuple[int, int]:
     """The search subcommand: prints the ranking and returns
     (results, chars)."""
+    if args.unit == "passage":
+        # `--y-prev` with this unit is already refused in `main` -- it has
+        # to be, since a refusal needs an exit code and this returns a
+        # (results, chars) pair -- so by here the combination cannot occur.
+        from chitragupta import retrieval_passages_cli
+
+        return retrieval_passages_cli.run(args)
     if args.y_prev:
         found, truncated = retrieval_iterative.search_iterative(
             args.query, args.y_prev, k=args.k, snippet_chars=args.chars, collection=args.collection
@@ -276,6 +294,14 @@ def main(argv: "list[str] | None" = None) -> int:
         return 1
 
     _warn_of_short_terms(args.query)
+
+    # Refused rather than quietly ignored: --y-prev merges two rounds on
+    # citekey and caps back to --k, and the passage unit changes what
+    # that merge key means (two passages of one paper are two results
+    # here, one result there). Making it work is its own decision.
+    if getattr(args, "unit", None) == "passage" and args.y_prev:
+        print("[error] --y-prev is document-unit only; drop --unit passage.", file=sys.stderr)
+        return 1
 
     if args.command == "evidence":
         outcome = _run_evidence(args)
