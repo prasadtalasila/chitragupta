@@ -31,15 +31,15 @@ Twelve commands, run by hand or by a genre skill over one draft:
 
     python -m chitragupta.draft spec init|show|sign|status <book>
         the outline a book is generated from, and the human sign-off on
-        it -- the book-scale track's first artefact (docs/BOOKS.md).
+        it -- the book-scale track's first artefact (docs/WRITE-A-BOOK.md).
 
     python -m chitragupta.draft unit contract|accept|status <book> [<unit-id>]
         one section's generation contract -- what it is generated from,
-        hashed -- and the record of its acceptance (docs/BOOKS.md).
+        hashed -- and the record of its acceptance (docs/WRITE-A-BOOK.md).
 
     python -m chitragupta.draft registry build|check|excerpt <book> [<unit-id>]
         terminology, claims and cross-references over a book's accepted
-        units -- a review aid, never a gate (docs/BOOKS.md).
+        units -- a review aid, never a gate (docs/WRITE-A-BOOK.md).
 
     python -m chitragupta.draft tldr write|show <citekey>
         a one-paragraph, human-authored summary per citekey, cached

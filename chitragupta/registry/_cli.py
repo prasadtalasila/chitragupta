@@ -22,7 +22,7 @@ _BOOK_HELP = "The book's directory under content/drafts/"
 _BANNER = (
     "<!-- Derived from the accepted units by a deterministic pass. "
     "Evidence for a judgement, not a verdict: nothing here blocks "
-    "anything. See docs/BOOKS.md. -->"
+    "anything. See docs/WRITE-A-BOOK.md. -->"
 )
 
 _FILES = {
@@ -100,7 +100,7 @@ def _cmd_check(args) -> int:
     "reports and never blocks, whichever layer it lives in". What #138
     calls blocking is guaranteed *invocation*: the assembly step (#139)
     must run this and surface it, and the human sign-off is what
-    decides. docs/BOOKS.md carries the argument.
+    decides. docs/WRITE-A-BOOK.md carries the argument.
     """
     built = build(args.book)
     print("Consistency check -- evidence for a judgement, not a verdict.")

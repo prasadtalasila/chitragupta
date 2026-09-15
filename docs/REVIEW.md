@@ -85,8 +85,11 @@ survey's expectations.
 **`review figure` -- what a TikZ figure's own geometry says.**
 Overlapping nodes, content protruding past the frame, node text too long
 to fit, page-width overflow, an arrowhead stranded mid-line where a
-figure builds one arrow out of two `\draw`s, and the edge list to
-confirm the figure connects what you meant it to. The mechanical half of
+figure builds one arrow out of two `\draw`s, the edge list to
+confirm the figure connects what you meant it to, and a figure file that
+manages a TikZ library load by hand -- which renders correctly on its own
+and multiplies node spacing the moment a second figure joins it in one
+document (#781). The mechanical half of
 the figure style guide: it checks what can be measured from the compiled
 geometry and leaves taste to you ([TIKZ-STYLE.md](TIKZ-STYLE.md)). It
 also says **how much of a figure it could measure at all** -- a picture
@@ -137,7 +140,8 @@ deliberate act rather than the residue of retrieval. That is the
 expected answer, not a clean bill of health, and the report says so.
 
 **`review agenda` -- one ranked, deduplicated worklist across the eight
-it reads.** Eight, not nine: `union` reads a book rather than a draft, so
+it reads.** [AGENDA.md](AGENDA.md) walks one report section by
+section. Eight, not nine: `union` reads a book rather than a draft, so
 its findings are about a different object than the agenda's other inputs
 and it is deliberately not among them. Each of the aids above answers its
 own question in isolation; this one reads what they already wrote (each

@@ -1020,7 +1020,7 @@ material is gone rather than mislaid.
 #### The human's own outline
 
 `outline.md` (`init --outline`) is a single-draft sibling to the book
-track's `spec.md`, not a second copy of it -- see [BOOKS.md](BOOKS.md)
+track's `spec.md`, not a second copy of it -- see [WRITE-A-BOOK.md](WRITE-A-BOOK.md)
 for why a book's outline and a survey's don't share one file. Per
 `##`-or-deeper heading, the human declares intent about prose they
 supply rather than leaving a skill to guess: `brief:` (steering,
@@ -1450,6 +1450,21 @@ as `names_declared` and `names_unmeasured` per figure, and as a
 `nothing-measurable` finding; `geometry_checked` keeps its old meaning,
 which is only that a compile happened. Name the nodes you draw, in
 whichever idiom -- `\node (a)` and `child { node (a) ... }` both count.
+
+**One finding is about the figure file rather than the picture:
+`loads-library-by-hand`.** A figure file names the TikZ libraries it
+needs with a plain `\usetikzlibrary` line and nothing else; the renderer
+collects those names across a draft's figures and loads the union in the
+preamble (#781). A file that instead clears
+`\tikz@library@<name>@loaded` or saves and restores
+`\tikz@node@reset@hook` is carrying a workaround for a bug that is now
+fixed, and the workaround is worse than the bug was: `positioning`
+appends its placement transform to that hook *globally* on every load,
+so the Nth figure in a document shifts every node N times. It renders
+correctly alone, which is why nothing else catches it -- the damage
+appears only once a second figure joins it, in an assembled book that
+`pdflatex` builds with exit 0. Delete the workaround and keep the plain
+load line.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -2489,13 +2504,14 @@ fragment carries its own numbered reference list.
 `--output-dir` writes the result somewhere other than the mirrored
 `content/rendered/` path -- for a book unit, the directory `book.tex`
 `\input`s it from. Confined to `content/` like every other path this
-command writes. [BOOKS.md](BOOKS.md) is the assembly procedure both exist
+command writes. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly
+procedure both exist
 for.
 
 ### 🎯 `chitragupta draft spec`
 
 The outline a book is generated from, and the human sign-off on it --
-the book-scale track's first artefact ([BOOKS.md](BOOKS.md)). Stdlib
+the book-scale track's first artefact ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Stdlib
 only, no venv needed. Writes only under `content/specs/`, mirroring the
 book's own directory under `content/drafts/`.
 
@@ -2527,13 +2543,14 @@ someone rewords a heading and orphans the units written against it.
 `status`'s exit code is **not a gate**. It reads back a record of a
 person's decision -- did a human approve this outline? -- rather than
 judging any draft's content, and nothing it says can refuse a write.
-[BOOKS.md](BOOKS.md#-what-statuss-exit-code-is-and-is-not) has that
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md#-what-statuss-exit-code-is-and-is-not) has that
 reconciliation against [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4".
 
 ### 🧱 `chitragupta draft unit`
 
 One section's generation contract, and the record of its acceptance --
-the book-scale track's second artefact ([BOOKS.md](BOOKS.md)). Reads the
+the book-scale track's second artefact
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Reads the
 outline `spec` owns; writes only `content/specs/<book>/units/<id>.json`.
 
 ```bash
@@ -2560,7 +2577,8 @@ the gate refuses cannot be accepted, and nothing here is a second gate.
 ### 📇 `chitragupta draft registry`
 
 Terminology, claims and cross-references over a book's **accepted** units
-([BOOKS.md](BOOKS.md)). Three registries, built by a deterministic pass
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). Three registries, built by a
+deterministic pass
 and written under `content/specs/<book>/registries/`.
 
 ```bash
@@ -2580,7 +2598,7 @@ chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block --
-[BOOKS.md](BOOKS.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md#-why-registry-check-exits-0-when-the-two-status-commands-do-not)
 has the argument, and [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" the
 rule behind it.
 

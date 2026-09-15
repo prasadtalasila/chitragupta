@@ -393,9 +393,15 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      alone never reaches the fragment.
      If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
      its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
-     copy that line into the probe too: the renderer's preamble loads
-     `tikz` and no library, so a picture that relies on one and does not
-     load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
+     copy that line into the probe too: the probe's own preamble loads
+     `tikz` and no library, so a picture that relies on one errors there
+     whether or not it is sound. Keep the line in the figure file and
+     write nothing else about loading -- no clearing of
+     `\tikz@library@...@loaded`, no saving or restoring of
+     `\tikz@node@reset@hook`. The renderer collects those lines and
+     loads the union in its own preamble (#781); a load *inside* the
+     figure float is the bug that multiplied node spacing in this
+     project's own book. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 11's gate reads the
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
@@ -409,6 +415,25 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      numbering once this fragment is `\input`-ed there -- a hand-typed
      number is wrong the moment a chapter before it changes length, the
      same defect issue 411 removes from every other genre's figures.
+   - **Tell the user what their thesis preamble must load.** This genre
+     is the one place the renderer's fix for #781 cannot reach. Its
+     figures are `\input` inside `figure` floats, and a float is a
+     group: `\usetikzlibrary` there defines its macros locally but sets
+     the loaded flag globally, so the *second* figure in their thesis
+     skips the load and finds no macros. This pipeline loads the union
+     in its own preamble for its own renders and cannot touch theirs.
+     Render the fragment and quote the line it prints:
+
+     ```text
+     [tikz-libraries] fit,positioning -- a fragment has no preamble; load these in the assembling document
+     ```
+
+     Say plainly that `\usetikzlibrary{fit,positioning}` belongs in
+     their thesis preamble, beside `\usepackage{tikz}`. Never suggest
+     working around it inside a figure file: clearing the loaded flag
+     makes `positioning` append its placement transform to a global hook
+     once per figure, so the Nth figure shifts every node N times, with
+     `pdflatex` exiting 0 and nothing in the log.
 
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.

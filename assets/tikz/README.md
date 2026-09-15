@@ -54,10 +54,19 @@ carry no `figure` float, so the float and the `\caption` are added to
 your copy, not found in it.
 
 Each file carries its own `\usetikzlibrary` line at the top. Keep it:
-the renderer's preamble loads `tikz` and no library at all, so a picture
-that reaches for `below=4mm of store` without loading `positioning`
-fails the *whole* render, with a message naming neither the library nor
-the figure.
+the renderer collects those lines across a draft's figures and loads the
+union in the preamble (#781), so the line is a no-op in a rendered draft
+-- but it is what makes the file compile on its own, which is how you are
+told to check one, and what `thesis-chapter-writer`'s fragment needs
+inside a thesis this pipeline never sees. A picture that reaches for
+`below=4mm of store` with no load anywhere fails the *whole* render, with
+a message naming neither the library nor the figure.
+
+Do not add anything else about loading -- no clearing of
+`\tikz@library@...@loaded`, no saving or restoring of
+`\tikz@node@reset@hook`. Inside a `figure` float those workarounds
+multiply every node's placement shift, silently. See
+`docs/TIKZ-STYLE.md`.
 
 ## ✅ What "known-good" means here
 

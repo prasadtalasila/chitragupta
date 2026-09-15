@@ -215,7 +215,7 @@ install_os_deps() {
     # Named explicitly rather than relied on transitively, because the
     # thing that needs them is a *book*: a LaTeX-side bibliography, in
     # IEEE style, for a document assembled from many units
-    # (docs/BOOKS.md). Nothing else here needs either -- every ordinary
+    # (docs/WRITE-A-BOOK.md). Nothing else here needs either -- every ordinary
     # render resolves citations with pandoc's citeproc against
     # assets/csl/ieee.csl and emits no \cite at all -- which is exactly
     # why they were missing until a real book was built.

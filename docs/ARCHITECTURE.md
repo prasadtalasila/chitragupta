@@ -567,7 +567,7 @@ change came from, and "2026-09-07 (B2b)" the record that prompted both
   job.
 - **It does not take an outline from you, except for a book.** The book
   track has one -- you write `spec.md`, sign it, and each unit is
-  generated from its slice ([BOOKS.md](BOOKS.md)). At *single-draft*
+  generated from its slice ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). At *single-draft*
   scale there is no equivalent: all five genre skills manufacture their
   own retrieval queries from a one-line topic, and there is nowhere to
   hand them a structure, a per-section brief, or the queries you want

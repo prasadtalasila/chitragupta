@@ -1,14 +1,32 @@
-# ✍ Book-scale drafting: the outline, the units, and the registries
+# ✍ Write a book, start to finish
 
-Status: **built.** Written 2026-08-18. Updated 2026-08-23. All four pieces of
-the track are here -- the outline, the generation unit, the three
-registries and the assembly skill. Each section below describes
-something that exists; nothing here is a plan.
+Status: **built, and a tutorial.** Written 2026-08-18. Updated
+2026-09-15, renamed from `BOOKS.md` and given the walkthrough framing its
+five sister pages use. All four pieces of the track exist -- the outline,
+the generation unit, the three registries and the assembly skill.
+Nothing here is a plan.
 
 **Written for** someone drafting a document larger than a chapter with
-this pipeline, and for whoever builds the next piece of the track. It
-assumes [AGENTS.md](../AGENTS.md) for the drafting layer and
-[ARCHITECTURE.md](ARCHITECTURE.md) for the four layers.
+this pipeline. **Assumed:** nothing about this pipeline, though a
+book is the one genre where doing a single chapter first
+([a textbook chapter](WRITE-A-TEXTBOOK-CHAPTER.md) is the usual one) will
+save you a false start. [AGENTS.md](../AGENTS.md) has the drafting
+layer's contract and [ARCHITECTURE.md](ARCHITECTURE.md) the four layers,
+but you do not need either to follow the steps below.
+
+Sister tutorials, for the chapters this book is made of:
+[a survey](WRITE-A-SURVEY.md),
+[a thesis chapter](WRITE-A-THESIS-CHAPTER.md),
+[a textbook chapter](WRITE-A-TEXTBOOK-CHAPTER.md),
+[a tutorial](WRITE-A-TUTORIAL.md),
+[a deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md).
+
+**A book is not a longer draft.** It is a signed outline, one authored
+chapter per `{#id}`, an acceptance record per chapter, three derived
+registries, and an assembly step -- with **two human sign-offs**, one
+before any prose is generated and one before the book is called
+finished. Those two gates are the whole point: everything between them
+is mechanical, and neither can be automated away.
 
 **The walkthrough is the first half of this document**, in the order you
 run it, with a real book's output at each step. The second half is the
@@ -27,6 +45,7 @@ stated once and read where you need it.
 - [Step 5: build and read the registries](#-step-5-build-and-read-the-registries)
 - [Step 6: assemble the book](#-step-6-assemble-the-book)
 - [Step 7: build the PDF](#-step-7-build-the-pdf)
+- [Step 7b: the one review aid that reads a book](#-step-7b-the-one-review-aid-that-reads-a-book)
 - [Step 8: the second sign-off](#-step-8-the-second-sign-off)
 - [What one real book looked like](#-what-one-real-book-looked-like)
 - [Retrofitting a book drafted before this track](#-retrofitting-a-book-drafted-before-this-track)
@@ -92,8 +111,13 @@ its book and the registries say so rather than pretending otherwise.
 You need a synced corpus, because every unit is grounded in it:
 
 ```bash
-.venv-full/bin/python -m chitragupta.corpus ledger        # non-empty, items `parsed`
+chitragupta corpus ledger        # non-empty, items `parsed`
 ```
+
+> Every command on this page also works as
+> `python -m chitragupta.<layer> ...` -- `python -m chitragupta.draft
+> spec init` is the same as `chitragupta draft spec init`. Use whichever
+> your install gives you; the console script is used throughout below.
 
 A book lives in one directory under `content/drafts/`, one file per
 **chapter**, named for that chapter's own `{#id}`. Nothing needs to exist
@@ -118,7 +142,7 @@ content/specs/twins/registries/*.md   terminology, claims, xrefs -- step 5
 ## ▶ Step 1: write the outline
 
 ```bash
-python -m chitragupta.draft spec init content/drafts/twins --title "Composable Twins"
+chitragupta draft spec init content/drafts/twins --title "Composable Twins"
 ```
 
 That writes a skeleton. Edit it into the book you mean to write --
@@ -145,10 +169,77 @@ sub-headings an author writes underneath are theirs, not the spec's.
 
 Every part, chapter and section needs an explicit `{#id}`, and a heading
 without one is refused rather than guessed at --
-[why](#-why-an-id-is-required-on-every-heading). Check what you wrote:
+[why](#-why-an-id-is-required-on-every-heading).
+
+A worked `spec.md`, short enough to read whole and showing all four
+levels, the briefs, and the preamble that belongs to nobody -- the file
+is at [`examples/dossiers/book/spec.md`](examples/dossiers/book/spec.md):
+
+```markdown
+# Composable Twins {#book}
+
+This outline is signed before any prose is generated. Text up here is
+the preamble: it belongs to no heading, is never handed to a generator,
+and exists for whoever opens the file next. Audience: practising
+engineers who have built one twin and are now asked for five.
+
+## Part I: Foundations {#part-i}
+
+### What a twin is, and is not {#ch-what}
+
+Establish the vocabulary the rest of the book leans on, and settle the
+twin/shadow distinction early -- later chapters assume it. Must not
+drift into architecture; that is Part II's job.
+
+#### The model half {#sec-model}
+
+What the model must reproduce, and the fidelity question stated but not
+answered. The answer is `ch-fidelity`.
+
+#### The data half {#sec-data}
+
+Synchronisation, sampling and staleness, as vocabulary only.
+
+### What a twin costs {#ch-cost}
+
+The honest chapter. Build cost, maintenance cost, and the cost of a
+twin nobody trusts. Leans on `ch-what`'s vocabulary and nothing else.
+
+## Part II: Building one {#part-ii}
+
+### Choosing fidelity {#ch-fidelity}
+
+Answers the question `sec-model` raised. This is the book's technical
+core and the chapter most likely to need two passes.
+
+#### Fidelity against a decision {#sec-decision}
+
+#### When more fidelity makes things worse {#sec-worse}
+
+### Keeping it in step {#ch-sync}
+
+Staleness, dropped links, and what an operator should see when the twin
+is behind. Cross-references `sec-data` for the vocabulary.
+```
+
+Four things that example is showing:
+
+- **The brief is the text under a heading**, in your own words. It says
+  what the chapter must establish *and what it must leave to another*,
+  which is what stops two chapters writing the same section.
+- **Ids are stable names, not numbers.** `ch-fidelity`, not `ch-3`. A
+  chapter that moves keeps its id, and every `\cref{ch-fidelity}` in
+  every other chapter still resolves.
+- **Nothing sits below `####`.** A level deeper would be describing
+  structure the outline has no business owning.
+- **Cross-references are declared in the brief** ("answers the question
+  `sec-model` raised"), which is what makes step 5's registry check able
+  to tell you when one dangles.
+
+Check what you wrote:
 
 ```bash
-python -m chitragupta.draft spec show content/drafts/twins
+chitragupta draft spec show content/drafts/twins
 ```
 
 ```text
@@ -169,8 +260,8 @@ The first of the two human gates. Nothing generates prose from an
 unsigned outline, and no command can do this for you:
 
 ```bash
-python -m chitragupta.draft spec sign content/drafts/twins --by "Your Name"
-python -m chitragupta.draft spec status content/drafts/twins
+chitragupta draft spec sign content/drafts/twins --by "Your Name"
+chitragupta draft spec status content/drafts/twins
 ```
 
 ```text
@@ -211,7 +302,7 @@ The spec owns the book's structure; the genre skills own its content. This
 is the handover:
 
 ```bash
-python -m chitragupta.draft spec seed content/drafts/twins --genre textbook-chapter
+chitragupta draft spec seed content/drafts/twins --genre textbook-chapter
 ```
 
 ```text
@@ -240,13 +331,40 @@ A freshly seeded outline has headings and no briefs, so
 nor a claim: block". That is the correct reading: nobody has filled it in
 yet.
 
+**Filling it in is the chapter author's job, and it is the same
+`outline.md` every other genre uses.** Per section: `brief:` (steering,
+never printed), `claim:` (your prose, grounded or reported back),
+`queries:` (run verbatim). Each chapter also gets its own `scope.md` --
+the reader, what the chapter covers, what it defers to another chapter,
+and the glossary.
+
+That glossary is where a book is won or lost. Chapter authors working in
+parallel will define the same term three ways unless each chapter's
+`scope.md` pins it, and step 5's terminology registry is what catches
+them when they do.
+
+Whichever genre a chapter is, its tutorial has the field-by-field
+walkthrough and a complete filled-in example:
+
+| Chapter is | Follow |
+| --- | --- |
+| teaching material, worked examples, exercises | [WRITE-A-TEXTBOOK-CHAPTER.md](WRITE-A-TEXTBOOK-CHAPTER.md) |
+| a hands-on lab the reader follows at a keyboard | [WRITE-A-TUTORIAL.md](WRITE-A-TUTORIAL.md) |
+| a literature map or state-of-the-art chapter | [WRITE-A-SURVEY.md](WRITE-A-SURVEY.md) |
+| an RQ-driven argument | [WRITE-A-THESIS-CHAPTER.md](WRITE-A-THESIS-CHAPTER.md) |
+| a multi-perspective, contradiction-mapped report | [WRITE-A-DEEP-RESEARCH-REPORT.md](WRITE-A-DEEP-RESEARCH-REPORT.md) |
+
+A book may mix them -- a textbook whose third chapter is a survey and
+whose fifth is a lab is a normal shape, and the unit record does not care
+which genre wrote a chapter.
+
 ## ▶ Step 3b: generate one unit
 
 Ask for the contract, which is what the unit is generated *from*:
 
 ```bash
-python -m chitragupta.draft unit contract content/drafts/twins sec-1 --source smith_2024
-python -m chitragupta.draft unit contract content/drafts/twins sec-1 --json   # for a skill
+chitragupta draft unit contract content/drafts/twins sec-1 --source smith_2024
+chitragupta draft unit contract content/drafts/twins sec-1 --json   # for a skill
 ```
 
 ```text
@@ -283,7 +401,7 @@ another genre for Markdown), grounded in the sources, and saves it as
 what the rest of the book already settled:
 
 ```bash
-python -m chitragupta.draft registry excerpt content/drafts/twins sec-1
+chitragupta draft registry excerpt content/drafts/twins sec-1
 ```
 
 A part or a chapter has no contract, and asking for one is refused rather
@@ -296,7 +414,7 @@ Before accepting, check that what was written still matches what you
 approved:
 
 ```bash
-python -m chitragupta.draft spec align content/drafts/twins
+chitragupta draft spec align content/drafts/twins
 ```
 
 ```text
@@ -324,7 +442,7 @@ only at chapter level -- see
 for the scoping rule and what it is protecting against.
 
 ```bash
-python -m chitragupta.draft unit accept content/drafts/twins sec-1 --source smith_2024
+chitragupta draft unit accept content/drafts/twins sec-1 --source smith_2024
 ```
 
 ```text
@@ -361,7 +479,7 @@ the draft. It refuses five ways, each for a stated reason:
    one gate rather than re-implementing or replacing it -- it reads the
    draft once and hands *that string* to `citation_gate.check_text`,
    reporting through `citation_gate.report`, which is the same printer
-   `python -m chitragupta.draft gate` itself uses, so the two read
+   `chitragupta draft gate` itself uses, so the two read
    identically. Reading once is the point: `accept` used to gate the
    *path* and then re-read the file to hash and record it, so a write
    landing between the two calls produced a permanent record for prose
@@ -394,7 +512,7 @@ mention the other. `no dossier`, `not stamped`, `agrees`, `disagrees` and
 this layer does not judge a dossier.
 
 ```bash
-python -m chitragupta.draft unit status content/drafts/twins
+chitragupta draft unit status content/drafts/twins
 ```
 
 | State | Means |
@@ -412,8 +530,8 @@ only when every unit is accepted and current -- the same standing as
 ## ▶ Step 5: build and read the registries
 
 ```bash
-python -m chitragupta.draft registry build content/drafts/twins
-python -m chitragupta.draft registry check content/drafts/twins
+chitragupta draft registry build content/drafts/twins
+chitragupta draft registry check content/drafts/twins
 ```
 
 ```text
@@ -487,7 +605,7 @@ thing.
 converted with
 
 ```bash
-python -m chitragupta.draft render <unit>.md --format tex --fragment \
+chitragupta draft render <unit>.md --format tex --fragment \
     --output-dir content/drafts/<book>
 ```
 
@@ -560,6 +678,45 @@ Which numbering a book shows is a composition decision and belongs in
 `book.tex`; renumbering your headings does not, and is `draft-reviser`'s
 call.
 
+## ▶ Step 7b: the one review aid that reads a book
+
+Every other aid reads a draft; this one reads the **assembly**, and asks
+a question only a book can be asked -- does the assembled document still
+carry every citekey its accepted units stand on?
+
+```bash
+chitragupta review union content/drafts/twins/book.tex
+```
+
+Advisory, exits 0 whatever it finds, blocks nothing. It reports two
+things, and they mean opposite problems:
+
+| Finding | What happened | Usually means |
+| --- | --- | --- |
+| `dropped` | an accepted unit the assembly never `\input`s, named with every citekey the book then holds nowhere else | a chapter left out of `book.tex` by accident -- the most expensive assembly mistake there is, and invisible in a PDF that compiles |
+| `appeared` | a citekey in a file the assembly includes that no unit owns | a title page, appendix or preamble file citing something -- fine if deliberate, a leak if not |
+
+It resolves the assembly's `\input` chain rather than grepping
+`book.tex` for citekeys, and that is not a detail: citeproc resolves each
+unit's citations *inside that unit*, so the assembly's own text states no
+citekey at all. An aid that read the text would report every source in a
+correct book as lost.
+
+Two things it refuses, both exit 1: a path in no book (there is no
+expected set to compare against), and a path that is itself one of the
+book's units -- pointed at a unit it would report every *other* unit's
+citekeys as dropped, which is a confident and wholly wrong report.
+
+Per-chapter aids still apply, and are worth running before assembly
+rather than after:
+
+```bash
+chitragupta review agenda content/drafts/twins/ch-fidelity.md
+```
+
+Its findings are the chapter author's, in the same `[unattended]` /
+`[surfaced]` shape each genre tutorial describes.
+
 ## ▶ Step 8: the second sign-off
 
 The assembler presents what it composed -- the unit count, what the
@@ -575,8 +732,8 @@ Worth running before you circulate it, per unit rather than over
 `book.tex` (which holds no prose):
 
 ```bash
-python -m chitragupta.draft style content/drafts/twins/<unit-id>.md
-python -m chitragupta.review verbatim scan content/drafts/twins/<unit-id>.md
+chitragupta draft style content/drafts/twins/<unit-id>.md
+chitragupta review verbatim scan content/drafts/twins/<unit-id>.md
 ```
 
 Both are review aids: they exit 0 whatever they find, and neither may
@@ -755,7 +912,7 @@ preference reports and never blocks, however mechanical its answer. These
 two are measured against neither. They read back a record of a *person's
 decision* -- did a human approve this outline, accept this unit? -- and
 report it. They judge no draft's content, refuse no write, and block no
-draft: `python -m chitragupta.draft gate` remains the only gate in this project,
+draft: `chitragupta draft gate` remains the only gate in this project,
 and `.claude/hooks/citation_gate_hook.py` remains the only automatic
 refusal.
 

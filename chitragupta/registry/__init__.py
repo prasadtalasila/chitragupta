@@ -30,7 +30,7 @@ references are `[text](#id)` and LaTeX ones `\\ref{id}`/`\\cref{id}`;
 *contradiction*. Two chapters asserting opposite things is what #138 asks
 for and is not deterministically decidable -- a duplicate is, and that is
 what the claim register flags. The second human sign-off is what covers
-the rest. docs/BOOKS.md carries this and the reason `check` exits 0
+the rest. docs/WRITE-A-BOOK.md carries this and the reason `check` exits 0
 whatever it finds.
 """
 
@@ -209,7 +209,7 @@ def findings(built: dict) -> list[tuple[str, str]]:
     """`(kind, message)` for everything the three registries disagree on.
 
     Evidence for a human judgement, never a verdict -- which is why the
-    caller prints these and exits 0 regardless. See docs/BOOKS.md.
+    caller prints these and exits 0 regardless. See docs/WRITE-A-BOOK.md.
     """
     found = []
     for term, rows in _repeats(built["terms"], "term").items():
@@ -246,7 +246,7 @@ def excerpt(book, unit_id: str) -> dict:
     Deliberately **not** part of `unit.contract`'s input digest: a
     registry grows with every acceptance, so hashing it in would mark
     every later unit stale each time one earlier is accepted -- which is
-    exactly the cheap-regeneration property #137 exists for. docs/BOOKS.md
+    exactly the cheap-regeneration property #137 exists for. docs/WRITE-A-BOOK.md
     has the argument.
     """
     built = build(book)

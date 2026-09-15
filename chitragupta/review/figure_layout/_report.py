@@ -40,11 +40,20 @@ def _figure_lines(result: FigureResult) -> list[str]:
         lines.append(f"  - does not compile: {result.failed}")
     for name, count in result.overlong:
         lines.append(f"  - node `{name}` has {count} words (over {MAX_NODE_WORDS})")
-    for point in result.stranded:
-        lines.append(
-            f"  - an arrowhead lands mid-line at `({point})`, where another path "
-            f"continues -- put the `->` on the last piece only"
-        )
+    # These two are comprehensions rather than append loops, unlike their
+    # neighbours, only to keep this function inside C1's 25-statement
+    # limit as findings were added to it. No other difference is meant.
+    lines += [
+        f"  - an arrowhead lands mid-line at `({point})`, where another path "
+        f"continues -- put the `->` on the last piece only"
+        for point in result.stranded
+    ]
+    lines += [
+        f"  - loads its TikZ library by hand (`{internal}`) -- the renderer loads "
+        f"the union in the preamble, so delete this and keep only the plain "
+        f"`\\usetikzlibrary` line"
+        for internal in result.by_hand
+    ]
     for one, other in result.overlapping:
         lines.append(f"  - nodes `{one}` and `{other}` overlap")
     if result.protruding:
@@ -158,6 +167,10 @@ def _findings(results: list[FigureResult]) -> list[dict]:
         findings += [
             {"figure": figure, "kind": "stranded-arrowhead", "at": point}
             for point in result.stranded
+        ]
+        findings += [
+            {"figure": figure, "kind": "loads-library-by-hand", "internal": internal}
+            for internal in result.by_hand
         ]
         if result.protruding:
             findings.append({"figure": figure, "kind": "content-protrusion"})

@@ -17,6 +17,7 @@ from chitragupta import config
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._tables import _LATEX_BOUND
+from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 
 # What a table's caption is allowed to be as wide as. pandoc writes every
 # Markdown table as a `longtable`, and `longtable.sty` sets its captions
@@ -116,7 +117,7 @@ def _pandoc_command(
     # A fragment is for `\input` into a larger document, so it gets no
     # preamble and no `\begin{document}` -- and its own `#` heading is
     # that document's chapter, not a section, which is why the two flags
-    # travel together (docs/BOOKS.md's assembly step is the caller).
+    # travel together (docs/WRITE-A-BOOK.md's assembly step is the caller).
     # Everything else is unchanged: the citations are still resolved by
     # citeproc against the same CSL, so a fragment carries its own IEEE
     # reference list under its own heading rather than deferring to a
@@ -126,7 +127,7 @@ def _pandoc_command(
     # that only the standalone template defines, so a highlighted fragment
     # fails to compile in the book that \input-s it. Plain `verbatim` is
     # what a fragment can promise. The citeproc macros are the one
-    # exception a book must supply itself -- see docs/BOOKS.md.
+    # exception a book must supply itself -- see docs/WRITE-A-BOOK.md.
     shape = ["--top-level-division=chapter", "--no-highlight"] if fragment else ["--standalone"]
     cmd = [
         "pandoc",
@@ -173,8 +174,28 @@ def _pandoc_command(
     # tikzpicture environment fails with "Environment tikzpicture
     # undefined" without it, but the package load itself is inert for a
     # draft that never draws one, so this stays conditional.
+    #
+    # The libraries those figures ask for ride in the *same* string
+    # (#781), not a second `--variable`: `\usetikzlibrary` needs `tikz`
+    # already loaded, and pandoc's concatenation order for repeated
+    # variables is not a contract to lean on. They are loaded here rather
+    # than left in the figure file because a figure file is `\input`
+    # inside a `figure` float and a float is a group -- see
+    # `_tikz_libraries.py` for what that does to node placement.
+    #
+    # Not conditioned on `_LATEX_BOUND`, matching the tikz load it
+    # extends rather than quietly diverging from it: `_figure_refs` reads
+    # the draft on disk, so an html render of a figure-bearing draft
+    # already interpolates this into `<head>`. Deliberate -- changing it
+    # would be a second, unrelated fix.
     if figure_refs:  # pragma: no cover-windows
-        cmd += ["--variable", r"header-includes=\usepackage{tikz}"]
+        cmd += [
+            "--variable",
+            "header-includes="
+            + header_include(
+                preamble_libraries(figure_refs, input_path.parent, fragment, output_format)
+            ),
+        ]
     # Same shape, same reason, for a draft that has a fenced code block:
     # a LaTeX `verbatim` line is one unbreakable box, so a line wider
     # than the page runs into the margin and `pdflatex` reports an
@@ -195,7 +216,7 @@ def _pandoc_command(
     # a render that works today over a package its draft never needs.
     # A `--fragment` render emits no preamble at all, so this reaches
     # nothing there -- a book supplies it from its own preamble, the
-    # same way it supplies the citeproc macros (docs/BOOKS.md).
+    # same way it supplies the citeproc macros (docs/WRITE-A-BOOK.md).
     if has_code_block:  # pragma: no cover-windows
         cmd += [
             "--variable",

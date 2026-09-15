@@ -1192,6 +1192,98 @@ class TestMeasurabilityReport:
         assert figure_layout.check_draft(draft)[0].stranded == ["46,36"]
 
 
+class TestLoadsLibraryByHand:
+    """#781: a figure file may name the libraries it needs and nothing
+    more.
+
+    Clearing `\\tikz@library@<name>@loaded` or saving and restoring
+    `\\tikz@node@reset@hook` are the two workaround generations for a
+    bug the renderer now fixes in the preamble -- and both are worse than
+    the bug, because `positioning` appends to that hook *globally* on
+    every load, so N loads shift every node N times. Invisible in a
+    single-chapter render: it only misbehaves once a second figure shares
+    the document. Source-only, so it runs where there is no TeX.
+    """
+
+    def test_a_plain_load_is_fine(self):
+        assert figure_layout.loads_library_by_hand(r"\usetikzlibrary{positioning}") == []
+
+    def test_clearing_the_loaded_flag(self):
+        source = r"\expandafter\let\csname tikz@library@positioning@loaded\endcsname\relax"
+
+        assert figure_layout.loads_library_by_hand(source) == ["tikz@library@positioning@loaded"]
+
+    def test_touching_the_node_reset_hook(self):
+        assert figure_layout.loads_library_by_hand(r"\let\savedhook\tikz@node@reset@hook") == [
+            "tikz@node@reset@hook"
+        ]
+
+    def test_both_generations_in_one_file(self):
+        source = "\\csname tikz@library@fit@loaded\\endcsname\n\\let\\s\\tikz@node@reset@hook\n"
+
+        assert figure_layout.loads_library_by_hand(source) == [
+            "tikz@library@fit@loaded",
+            "tikz@node@reset@hook",
+        ]
+
+    def test_a_dotted_library_name(self):
+        source = r"\csname tikz@library@arrows.meta@loaded\endcsname"
+
+        assert figure_layout.loads_library_by_hand(source) == ["tikz@library@arrows.meta@loaded"]
+
+    def test_a_repeat_is_named_once(self):
+        source = "\\tikz@node@reset@hook\n\\tikz@node@reset@hook\n"
+
+        assert figure_layout.loads_library_by_hand(source) == ["tikz@node@reset@hook"]
+
+    def test_a_commented_out_workaround_is_not_flagged(self):
+        # Inert in TeX, so flagging it would send an author to fix
+        # something that does nothing -- #404's rule, applied here.
+        assert figure_layout.loads_library_by_hand("% \\tikz@node@reset@hook") == []
+
+    def test_it_counts_as_a_finding(self, tmp_path):
+        result = figure_layout.FigureResult(
+            path=tmp_path / "figures" / "flow.tex", by_hand=["tikz@node@reset@hook"]
+        )
+
+        assert result.has_findings
+
+    def test_it_reaches_the_text_and_the_findings(self, tmp_path):
+        results = [
+            figure_layout.FigureResult(
+                path=tmp_path / "figures" / "flow.tex",
+                by_hand=["tikz@node@reset@hook"],
+            )
+        ]
+
+        text = figure_layout.format_report(tmp_path / "s.md", results)
+        findings = figure_layout.payload(tmp_path / "s.md", results, "cmd")["findings"]
+
+        assert "tikz@node@reset@hook" in text
+        assert "preamble" in text
+        assert findings == [
+            {
+                "figure": str(tmp_path / "figures" / "flow.tex"),
+                "kind": "loads-library-by-hand",
+                "internal": "tikz@node@reset@hook",
+            }
+        ]
+
+    def test_check_draft_finds_one_without_any_compile(self, tmp_path, monkeypatch):
+        """Source-only, like the node-length, edge-list and arrowhead
+        checks -- so it runs on CI's Windows leg, which installs no TeX."""
+
+        def _no_tikz():
+            raise figure_layout.MissingBinary("tikz.sty is not installed")
+
+        monkeypatch.setattr(figure_layout, "_require_tikz", _no_tikz)
+        draft = _draft_with_figure(
+            tmp_path, "\\let\\saved\\tikz@node@reset@hook\n\\node (a) {A};\n"
+        )
+
+        assert figure_layout.check_draft(draft)[0].by_hand == ["tikz@node@reset@hook"]
+
+
 class TestReport:
     def test_a_clean_draft_says_so(self, tmp_path):
         draft = tmp_path / "survey.md"

@@ -224,7 +224,7 @@ def render(
     LaTeX document (documentclass + preamble), not a bare fragment --
     matching what pandoc already builds internally on the way to a `pdf`
     output. `fragment=True` is the exception, for a unit destined to be
-    `\\input` into a book (docs/BOOKS.md): no preamble, and its own top
+    `\\input` into a book (docs/WRITE-A-BOOK.md): no preamble, and its own top
     heading becomes a `\\chapter`. `documentclass` defaults to LaTeX's
     plain `article`
     class, the right shape for the short, section-based genre drafts this

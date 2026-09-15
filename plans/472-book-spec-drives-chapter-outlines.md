@@ -6,7 +6,7 @@ Status: **proposed.** Written 2026-08-30. Tracked as
 **Written for** whoever builds the bridge between the book track
 (`chitragupta/spec/`, `chitragupta/unit/`) and the dossier track that
 actually drafts a book's chapters. It replaces the unimplemented half of
-[BOOKS.md](../docs/BOOKS.md)'s step 3.
+[WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md)'s step 3.
 
 **Assumed:** [#465](https://github.com/prasadtalasila/chitragupta/issues/465)'s
 per-chapter sign-off has landed, so "this chapter is approved" is a
@@ -93,7 +93,7 @@ checked in full.
 
 ## 🔁 The chapter is the drafting unit
 
-This revises [BOOKS.md](../docs/BOOKS.md)'s "one file per section"
+This revises [WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md)'s "one file per section"
 (line 83) and #137's "the section is the generation unit" (line 118).
 **A chapter is one authored document; the spec's sections are the
 headings inside it.**
@@ -131,7 +131,7 @@ path.
 Matching is on the **normalised title** -- case-folded, whitespace
 collapsed, any leading `N.` / `N.M` numbering stripped. Not on `{#id}`:
 draft headings carry none, and inventing a mapping would be the derived-id
-mistake [BOOKS.md](../docs/BOOKS.md) already refuses. A reworded heading
+mistake [WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) already refuses. A reworded heading
 *is* a misalignment, which is the point; `align` reports a near-miss as a
 rename rather than as one missing plus one extra.
 
@@ -158,7 +158,7 @@ precondition on acceptance, not a second gate beside
 `python -m chitragupta.draft gate`. `spec status` reports alignment
 alongside sign-off. `unit status` cross-reports the dossier fingerprint,
 so "stale: draft changed since accepted" stops being the whole story.
-BOOKS.md's step 3 is rewritten to describe the flow above, and the
+WRITE-A-BOOK.md's step 3 is rewritten to describe the flow above, and the
 responsibility table lands in it.
 
 PR 3 depends on PR 1. PR 2 is independent of both and can go first or

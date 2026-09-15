@@ -219,7 +219,7 @@ class TestBreakableInlineCodeFilter:
     """A standalone render and a book-assembler `--fragment` render both
     build their pandoc argv from this one function, so wiring the filter
     in here -- rather than in either caller -- is what makes it reach
-    every LaTeX/PDF render, not just the book path (docs/BOOKS.md)."""
+    every LaTeX/PDF render, not just the book path (docs/WRITE-A-BOOK.md)."""
 
     def test_the_filter_is_always_passed(self):
         cmd, _ = render_output._pandoc_command(
@@ -321,6 +321,119 @@ class TestBreakableCodeBlocks:
         assert len(includes) == 2
         assert any(r"\usepackage{tikz}" in inc for inc in includes)
         assert any(r"\usepackage{fvextra}" in inc for inc in includes)
+
+
+class TestTikzLibraryPreamble:
+    """#781: the libraries a draft's figures ask for are loaded once, in
+    the preamble, never inside a `figure` float -- where the load defines
+    its macros locally but sets the loaded flag globally, so the second
+    float finds neither."""
+
+    def _header_includes(self, cmd):
+        # The `\LTcapwidth` one is dropped here for the reason
+        # TestBreakableCodeBlocks drops it: unconditional on every
+        # LaTeX-bound render, and pinned in its own class.
+        return [
+            cmd[i + 1]
+            for i, flag in enumerate(cmd)
+            if flag == "--variable"
+            and cmd[i + 1].startswith("header-includes")
+            and "LTcapwidth" not in cmd[i + 1]
+        ]
+
+    def _cmd(self, tmp_path, figures, fragment=False):
+        """The argv for a draft in `tmp_path` whose figure files are the
+        given (name, body) pairs. Real files, because the union is read
+        off disk -- no pandoc runs, so this stays a fast unit test."""
+        (tmp_path / "figures").mkdir(exist_ok=True)
+        for name, body in figures:
+            (tmp_path / "figures" / name).write_text(body, encoding="utf-8")
+        cmd, _ = render_output._pandoc_command(
+            tmp_path / "in.md",
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            tmp_path / "out.tex",
+            tmp_path / "in.md",
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [f"figures/{name}" for name, _ in figures],
+            fragment,
+            False,
+        )
+        return cmd
+
+    _POSITIONING = "\\usetikzlibrary{positioning}\n\\begin{tikzpicture}\\end{tikzpicture}\n"
+    _FIT = "\\usetikzlibrary{fit}\n\\begin{tikzpicture}\\end{tikzpicture}\n"
+    _BARE = "\\begin{tikzpicture}\\draw (0,0) circle (1);\\end{tikzpicture}\n"
+
+    def test_the_union_is_loaded_after_the_package(self, tmp_path):
+        cmd = self._cmd(tmp_path, [("a.tex", self._POSITIONING), ("b.tex", self._FIT)])
+        assert self._header_includes(cmd) == [
+            r"header-includes=\usepackage{tikz}\usetikzlibrary{fit,positioning}"
+        ]
+
+    def test_a_figure_with_no_library_gets_no_call(self, tmp_path):
+        # `\usetikzlibrary{}` is fatal, so an empty union emits nothing.
+        assert self._header_includes(self._cmd(tmp_path, [("a.tex", self._BARE)])) == [
+            r"header-includes=\usepackage{tikz}"
+        ]
+
+    def test_a_draft_with_no_figure_loads_nothing(self, tmp_path):
+        assert self._header_includes(self._cmd(tmp_path, [])) == []
+
+    def test_one_variable_not_two(self, tmp_path):
+        # Two `--variable header-includes` arguments would leave the
+        # order pandoc concatenates them in load-bearing, and
+        # `\usetikzlibrary` before `\usepackage{tikz}` is an undefined
+        # control sequence.
+        cmd = self._cmd(tmp_path, [("a.tex", self._POSITIONING)])
+        assert len(self._header_includes(cmd)) == 1
+
+    def test_a_fragment_reports_the_union_it_cannot_load(self, tmp_path, capsys):
+        # #781: a fragment emits no preamble, so the assembling document
+        # has to carry the load and this line is how it learns which.
+        self._cmd(
+            tmp_path,
+            [("a.tex", self._POSITIONING), ("b.tex", self._FIT)],
+            fragment=True,
+        )
+        err = capsys.readouterr().err
+        assert err.count("[tikz-libraries]") == 1
+        assert "[tikz-libraries] fit,positioning" in err
+
+    def test_a_standalone_render_reports_nothing(self, tmp_path, capsys):
+        # It is in the preamble there, so a line about it would be noise
+        # on every ordinary render.
+        self._cmd(tmp_path, [("a.tex", self._POSITIONING)])
+        assert "[tikz-libraries]" not in capsys.readouterr().err
+
+    def test_a_fragment_whose_figures_load_nothing_reports_nothing(self, tmp_path, capsys):
+        self._cmd(tmp_path, [("a.tex", self._BARE)], fragment=True)
+        assert "[tikz-libraries]" not in capsys.readouterr().err
+
+    def test_a_docx_fragment_reports_nothing(self, tmp_path, capsys):
+        # Only a LaTeX-bound format has a preamble to be missing.
+        (tmp_path / "figures").mkdir()
+        (tmp_path / "figures" / "a.tex").write_text(self._POSITIONING, encoding="utf-8")
+        render_output._pandoc_command(
+            tmp_path / "in.md",
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            tmp_path / "out.docx",
+            tmp_path / "in.md",
+            "docx",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            ["figures/a.tex"],
+            True,
+            False,
+        )
+        assert "[tikz-libraries]" not in capsys.readouterr().err
 
 
 class TestLongtableCaptionWidth:

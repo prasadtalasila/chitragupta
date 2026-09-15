@@ -30,7 +30,7 @@ changed since".
 acceptable only if `python -m chitragupta.draft gate` already passes on it; this
 module runs `citation_gate.run` and refuses to write a record when it
 does not. Nothing here judges a draft on its own authority, and nothing
-here blocks a write -- see docs/BOOKS.md.
+here blocks a write -- see docs/WRITE-A-BOOK.md.
 """
 
 import json
@@ -157,7 +157,7 @@ def contract(book: Path, unit_id: str, sources: list[str]) -> dict:
         # an earlier one was accepted -- destroying the cheap-regeneration
         # property this contract exists for. It stays in the digest's
         # shape (empty, labelled) so a caller that does want to pin an
-        # excerpt has somewhere to put it. docs/BOOKS.md has the argument.
+        # excerpt has somewhere to put it. docs/WRITE-A-BOOK.md has the argument.
         "registries": [],
         # POSIX spelling, not the host's: this string is hashed into a
         # record that has to read the same on the Windows CI leg as on

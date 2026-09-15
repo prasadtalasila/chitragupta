@@ -1,10 +1,10 @@
-"""The three checks that read a figure's source and never compile it.
+"""The four checks that read a figure's source and never compile it.
 
-Node text length, the edge list and stranded arrowheads are properties
-of what an author wrote, not of what TeX drew, so they need no toolchain
-and run on any host. Keeping them here rather than beside the geometry
-checks is what lets most of this aid work -- and most of its tests run --
-where TeX Live is not installed.
+Node text length, the edge list, stranded arrowheads and a hand-rolled
+TikZ library load are properties of what an author wrote, not of what TeX
+drew, so they need no toolchain and run on any host. Keeping them here
+rather than beside the geometry checks is what lets most of this aid work
+-- and most of its tests run -- where TeX Live is not installed.
 
 Deliberately regex over TikZ rather than a LaTeX parser, matching how
 `render_output/_figures.py` already reads these same files. Each pattern
@@ -13,25 +13,27 @@ below says what that costs it.
 
 import re
 
+from chitragupta.render_output._tikz_libraries import strip_comments
+
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
 MAX_NODE_WORDS = 15
 
-# A TeX comment: `%` to the end of the line. Stripped before any pattern
-# below runs, and before `_probe.node_names()` runs -- #404, where every
-# symptom was a *wrong* answer rather than a missing one. A commented-out
-# `\draw` was reported as an edge the figure claims; a commented-out
-# `\node`'s label was measured for length; and worst, a comment merely
-# *mentioning* a node declaration made the probe ask pdflatex for a shape
-# nothing had drawn, so the aid reported a figure that compiles fine as
-# one that does not.
-#
-# `\%` is a literal percent sign and does not start a comment, hence the
-# lookbehind. `\\%` -- an escaped backslash followed by a real comment --
-# is read the wrong way by that lookbehind and is left alone: it needs a
-# character-by-character scan rather than a regex, and no figure this
-# pipeline draws has produced one.
-_COMMENT_RE = re.compile(r"(?<!\\)%[^\n]*")
+# `strip_comments` used to be defined here. It moved to
+# `render_output/_tikz_libraries.py` (#781), which needs the same
+# stripper to collect a figure's `\usetikzlibrary` names, and is
+# re-exported under its old name because this module is where every
+# reader of a figure's source looks for it. The dependency only runs one
+# way -- review imports render_output, never the reverse -- so the
+# canonical definition, and #404's record of what it fixes, live there.
+__all__ = [
+    "MAX_NODE_WORDS",
+    "edge_list",
+    "loads_library_by_hand",
+    "overlong_nodes",
+    "stranded_arrowheads",
+    "strip_comments",
+]
 
 # The two spellings TikZ has for declaring a node, as one fragment
 # because both define a real, probe-able name and nothing downstream
@@ -56,15 +58,6 @@ _NODE_RE = re.compile(
     r"(?:\s*at\s*\([^)]*\))?\s*\{(?P<label>.*?)\}",
     re.DOTALL,
 )
-
-
-def strip_comments(source: str) -> str:
-    """`source` with every TeX comment removed.
-
-    The first thing every reader of a figure's source here does. See
-    `_COMMENT_RE` for what that fixes and what it deliberately does not.
-    """
-    return _COMMENT_RE.sub("", source)
 
 
 # A `\draw`/`\path` statement, up to its terminating semicolon.
@@ -301,4 +294,37 @@ def stranded_arrowheads(source: str) -> list[str]:
     for point in ends_with_head:
         if point in opens_at and point not in found and _COORDINATE_RE.match(point):
             found.append(point)
+    return found
+
+
+# The two TeX internals a figure file has no business naming (#781).
+# `\tikz@library@<name>@loaded` is the flag `\usetikzlibrary` sets
+# globally; clearing it forces a reload. `\tikz@node@reset@hook` is the
+# macro `positioning` appends to globally on every load, which is what
+# makes those reloads multiply every node's placement shift. Either one
+# in a figure file is a workaround for the float-grouping bug the
+# renderer now fixes in the preamble, and it is invisible in a
+# single-chapter render -- it only misbehaves once a second figure exists
+# in the same document.
+#
+# Matched with or without the leading backslash, because both spellings
+# occur: `\tikz@node@reset@hook` directly, and a bare
+# `tikz@library@x@loaded` inside a `\csname ... \endcsname`. The library
+# name admits a dot, since `arrows.meta` is a real library.
+_BY_HAND_RE = re.compile(r"\\?(tikz@library@[A-Za-z.]+@loaded|tikz@node@reset@hook)")
+
+
+def loads_library_by_hand(source: str) -> list[str]:
+    r"""Every TeX internal this figure file touches to manage a library
+    load itself, in source order, deduped.
+
+    Comments stripped first, for the reason every other check here strips
+    them: a commented-out workaround is inert, and sending an author to
+    fix something that does nothing is a wrong answer rather than a
+    cautious one.
+    """
+    found: list[str] = []
+    for name in _BY_HAND_RE.findall(strip_comments(source)):
+        if name not in found:
+            found.append(name)
     return found

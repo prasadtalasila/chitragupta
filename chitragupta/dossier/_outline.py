@@ -25,7 +25,7 @@ from chitragupta.dossier import OUTLINE_MD, _resolve_dossier, draft_relpath
 from chitragupta.dossier._retrieval import recorded_queries_with_evidence
 
 # Level 2 or deeper, because that is the contract `OutlineSection`'s own
-# docstring states ("one `##` heading") and the one docs/BOOKS.md tells a
+# docstring states ("one `##` heading") and the one docs/WRITE-A-BOOK.md tells a
 # book to write ("bare `##`"). Matching `#` too was #506/m-64: a file that
 # opened with its own `# Title` line got a section named after that title,
 # with no `brief:` and no `claim:` under it, which `--check` then reported

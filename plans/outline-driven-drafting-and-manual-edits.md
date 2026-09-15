@@ -21,7 +21,8 @@ Two workflows the drafting layer does not support today:
 
 **Written for** whoever builds this. **It assumes**
 [docs/DRAFT-ITERATION.md](../docs/DRAFT-ITERATION.md) for the dossier,
-[docs/BOOKS.md](../docs/BOOKS.md) for the book track's outline and unit
+[docs/WRITE-A-BOOK.md](../docs/WRITE-A-BOOK.md) for the book track's
+outline and unit
 contract, [docs/RETRIEVAL.md](../docs/RETRIEVAL.md) and
 [docs/CORPUS-SEARCH.md](../docs/CORPUS-SEARCH.md) for the search path,
 and [DEVELOPER-AGENTS.md](../DEVELOPER-AGENTS.md) for the cycle each PR
@@ -672,7 +673,7 @@ convention.
 
 - **A second outline system.** PR 2 is a dossier file, not a rival to
   `spec.md`. The reason is stated above and should be a sentence in
-  BOOKS.md so the next reader finds it.
+  WRITE-A-BOOK.md so the next reader finds it.
 - **A sign-off gate for a single draft.** No second gate.
 - **Human prose pasted into the draft.** Named and excluded in PR 2.
 - **Auto-reconciliation of a hand-edited draft.** PR 3 offers; it never

@@ -13,7 +13,7 @@ have read [ARCHITECTURE.md's drafting
 layer](ARCHITECTURE.md#-layer-2-the-drafting-layer). **Not covered here:**
 every render flag ([CLI.md](CLI.md)), the TikZ style rules a figure is
 held to ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and book assembly's own
-citeproc pass over a composed book ([BOOKS.md](BOOKS.md)).
+citeproc pass over a composed book ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🧭 Table of contents
 
@@ -179,6 +179,17 @@ surprise people who have only read the code:
   panelled figure's `(a)`/`(b)` sub-captions have to exist in the `.txt`
   as well as in the picture: for three of the five formats the twin is
   the only thing the reader sees.
+- **The TikZ libraries those figures ask for are loaded in the
+  preamble, not in the figure file** (#781). `_pandoc_command` reads the
+  union of the `\usetikzlibrary` names across the draft's figure files
+  (`_tikz_libraries.py`) and emits it beside `\usepackage{tikz}` as one
+  `header-includes` value. It has to happen there rather than where the
+  figure is `\input`: that point is inside a `figure` float, a float is
+  a group, and a load inside one defines the library's macros locally
+  while setting its loaded flag globally -- so the second figure in the
+  document skips the load and finds no macros. A `--fragment` render has
+  no preamble for this to land in and prints the union instead, for the
+  book that `\input`s it ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 

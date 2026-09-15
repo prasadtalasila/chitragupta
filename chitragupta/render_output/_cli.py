@@ -113,7 +113,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--fragment",
         action="store_true",
         help="Emit an \\input-able LaTeX fragment (no preamble) whose top "
-        "heading is a chapter, for assembling a book -- see docs/BOOKS.md",
+        "heading is a chapter, for assembling a book -- see docs/WRITE-A-BOOK.md",
     )
     parser.add_argument(
         "--no-collapse-citations",

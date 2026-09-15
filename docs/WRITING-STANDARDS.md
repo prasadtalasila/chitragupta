@@ -393,11 +393,15 @@ pipeline.
   in a minimal `\documentclass{article}` + `\usepackage{tikz}` document,
   run `pdflatex` on it, and never keep one that fails. **Copy the
   figure's own `\usetikzlibrary` line into that probe**, or the check
-  fails for a reason the figure does not have: the probe preamble loads
-  no library, exactly as the renderer's does not, so anything using
+  fails for a reason the figure does not have: a bare
+  `\usepackage{tikz}` preamble loads no library, so anything using
   `positioning`, `matrix`, `fit` or `tree` errors there whether or not
-  it is sound. [TIKZ-STYLE.md](TIKZ-STYLE.md) says where that line goes
-  and why the figure file has to carry it.
+  it is sound. The renderer loads the union of a draft's
+  `\usetikzlibrary` lines in its own preamble (#781), and your probe is
+  standing in for that preamble -- which is why the line has to be
+  copied rather than assumed. [TIKZ-STYLE.md](TIKZ-STYLE.md) says where
+  the line goes in the figure file, and why nothing else about loading
+  belongs there.
 - **Plain 7-bit ASCII in the ASCII form**, wherever it lives, same
   alphabet and same reasoning as the Unicode exclusion above. It is
   what every non-LaTeX render emits, and a draft with no TikZ figure at
@@ -874,7 +878,8 @@ and nobody reads it, which is why it is the half in a comment.
 **Ids are kebab-case and unique within a draft.** Two tables sharing one
 id become two `\label{}`s in one LaTeX document, where a duplicate
 resolves silently to the wrong table -- which is a real risk for a book
-unit, since [BOOKS.md](BOOKS.md)'s assembly puts fifteen units in one
+unit, since [WRITE-A-BOOK.md](WRITE-A-BOOK.md)'s assembly puts fifteen
+units in one
 document.
 
 ### 📄 The `.tex` fragment writes its own
