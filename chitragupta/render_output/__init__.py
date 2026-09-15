@@ -100,7 +100,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
-from chitragupta.render_output import _equation_captions, _math, _tables
+from chitragupta.render_output import _assets, _equation_captions, _math, _tables
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figure_captions import figures as _declared_figures
@@ -174,16 +174,17 @@ def _target_dir(input_path: Path, output_dir: str | Path | None) -> Path:
     return out_dir
 
 
-def _copy_local_assets(input_path: Path, dest_dir: Path) -> None:
-    """Every local file the draft references, copied beside the output.
+def _copy_local_assets(input_path: Path, dest_dir: Path, fragment: bool = False) -> None:
+    """Every local file the output needs beside it, copied there.
 
-    The two kinds travel together on every path that produces output, so
-    they are called together rather than separately at each site -- one of
-    them being forgotten is precisely how a `tex` output stops compiling
-    on its own.
+    Called together, not separately at each site -- one kind being
+    forgotten is how a `tex` output stops compiling alone. `fragment` adds
+    the book's aliased `.bib` (`_assets._copy_book_bibliography`).
     """
     _copy_local_images(input_path, dest_dir)
     _copy_local_tex_includes(input_path, dest_dir)
+    if fragment:
+        _assets._copy_book_bibliography(dest_dir)
 
 
 def render(
@@ -279,7 +280,7 @@ def render(
         _require_tikz()
 
     out_dir.mkdir(parents=True, exist_ok=True)  # pragma: no cover-windows
-    _copy_local_assets(input_path, out_dir)  # pragma: no cover-windows
+    _copy_local_assets(input_path, out_dir, fragment)  # pragma: no cover-windows
     out_path = out_dir / f"{input_path.stem}.{output_format}"  # pragma: no cover-windows
 
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
@@ -287,7 +288,7 @@ def render(
             input_path,
             config.BIB_FILE_PATH,
             Path(tmp),
-            _substituted(draft_text, input_path, output_format, math_mapping),
+            _substituted(draft_text, input_path, output_format, math_mapping, fragment),
         )
         cmd, env = _pandoc_command(
             safe_md,

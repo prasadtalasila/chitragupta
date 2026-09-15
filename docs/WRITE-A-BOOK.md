@@ -87,7 +87,7 @@ sign-offs is mechanical.
 | 4 | `spec align`, then `unit accept` | you, per unit |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` | skill |
-| 7 | `pdflatex` x2 -- no bibliography pass | you or the assembler |
+| 7 | `pdflatex`, `bibtex`, `pdflatex` x2 | you or the assembler |
 | 8 | read it | **you, and only you** |
 
 Steps 3 and 4 repeat per chapter. Steps 5 to 7 are what
@@ -613,7 +613,7 @@ cross-references `registry check` verified actually resolve in the built
 PDF -- the outline, the registry and the document all name the same
 thing.
 
-**There is no bibliography at the end of the book.** Each unit is
+**The bibliography is one list at the end of the book.** Each unit is
 converted with
 
 ```bash
@@ -623,21 +623,62 @@ chitragupta draft render <unit>.md --format tex --fragment
 and `--fragment` is the whole difference: no preamble, the unit's own `#`
 heading becomes a `\chapter`, and code blocks are left unhighlighted
 because `Shaded`/`Highlighting` exist only in the standalone template.
-Everything else is the ordinary render -- pandoc's citeproc against the
-vendored IEEE style, and the citekey aliasing that stops a key containing
-`--` being truncated (`@lim_state---art_2020` would otherwise reach LaTeX
-as `lim_state` and render as `[?]`). So every chapter carries **its own
-numbered IEEE reference list**, under its own heading, exactly as every
-other genre skill produces one -- and a bibliography at the end would be
-a second, differently numbered answer to the same question. No `natbib`,
-no `bibtex`, no `biber`, and nothing for either to resolve.
+It also **defers its citations**: the fragment emits `\citep{...}`
+instead of a resolved `[1]`, and carries no reference list of its own.
+`book.tex` then holds `\bibliographystyle{IEEEtran}` and
+`\bibliography{bibliography}`, and one `bibtex` pass numbers every
+citation in the whole document at once.
 
-Two consequences for the book itself. It must supply pandoc's `csl-refs`
-macro block, taken from `pandoc --print-default-template=latex` so it
-matches the pandoc that did the conversion -- written to
-`citeproc-defs.def` and `\input`, not inline, because that block contains
-`\cite{#1}` and `\@`-internals which the citation gate reads as citekeys
-and would fail the assembled book on. And `margin=80pt` -- about 28mm.
+**Why the resolution has to move, not just the list.** Citeproc assigns
+numbers in the same pass that builds the list. Resolve per unit and every
+chapter restarts at `[1]`, so chapter 1's `[2]` and chapter 2's `[2]` are
+different papers; collect those into one back-of-book list and half the
+markers point at the wrong entry, in a book that compiles cleanly.
+Deferred, a source cited in two chapters carries **one** number in both
+and the sequence runs continuously -- measured both ways on a real
+two-chapter build.
+
+The **citekey aliasing** still applies, and now on both sides: a key
+containing `--` (`@lim_state---art_2020`) would otherwise reach LaTeX
+truncated and render as `[?]`, so the render rewrites it to
+`lim_state-x2d-x2d-art_2020` in the fragment *and* in the `.bib` it
+copies beside `book.tex`. Never hand-edit either.
+
+A **standalone** render -- the same unit without `--fragment` -- is
+unchanged: citeproc, the vendored IEEE style, and its own numbered
+reference list, exactly as every other genre skill produces one. The two
+shapes exist because a chapter read alone wants its sources at the end of
+the chapter, and the same chapter in a book wants them at the end of the
+book.
+
+### 🔠 Brace-protect acronyms in your `.bib` titles
+
+**This is the one thing a book needs from your bibliography that a
+single draft does not.** Two IEEE implementations now format your
+references: `assets/csl/ieee.csl` for a standalone render, and
+`IEEEtran.bst` for the assembled book. They agree -- byte for byte, on
+every entry measured -- **provided acronyms in a title are wrapped in
+braces**:
+
+```bibtex
+title = {A Survey of {IoT} and {AI} Digital Twins: An {FMI}-Based Approach}
+```
+
+Unbraced, `bibtex` lowercases them and the book's bibliography reads "a
+survey of iot and ai digital twins". Citeproc preserves them, so the same
+entry is correct in a standalone render and wrong in the book. Braced,
+both produce the same line.
+
+This is ordinary BibTeX practice -- braces mean "do not change this
+case" -- and it was simply never load-bearing here before, because
+nothing in this pipeline ran `bibtex`. It is a property of **your own
+export**, so fix it in your reference manager rather than in
+`papers/bibliography.bib`, which a re-export overwrites. Nothing in the
+pipeline rewrites your titles: guessing which capitalised word is an
+acronym and which is a proper noun is exactly the kind of silent
+alteration to a human's bibliographic data this project does not make.
+
+One more consequence for the book itself: `margin=80pt` -- about 28mm.
 The `book` class's own margins are 94pt inner and 143pt outer (measured),
 generous enough to run a 15-chapter book to 546 pages; a third of that
 was tried and read too tight for print, so the setting is that doubled.
@@ -660,13 +701,17 @@ are relative to it:
 ```bash
 cd content/rendered/twins
 pdflatex -interaction=nonstopmode book.tex
+bibtex book
+pdflatex -interaction=nonstopmode book.tex
 pdflatex -interaction=nonstopmode book.tex
 ```
 
-**Two passes, and no bibliography pass at all**: citeproc resolved every
-citation when the units were converted, so the document holds no `\cite`
-for `bibtex` or `biber` to answer. The second pass is what resolves
-`\cref` and the table of contents.
+**Four passes, and the `bibtex` one is not optional**: the first
+`pdflatex` records which keys the document cites, `bibtex` turns those
+into `book.bbl`, the third pulls the bibliography in, and the fourth
+resolves `\cref`, the table of contents and the citation numbers now that
+the entries exist. Skip `bibtex` and every citation renders `[?]` while
+`pdflatex` still exits 0.
 
 **Then read the log before believing the PDF.** `pdflatex` exits 0 on a
 book that renders `[?]` where a reference should be -- natbib reports a
@@ -677,7 +722,10 @@ python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='re
     print(sorted(set(re.findall(r\"Citation \`([^']+)' on page\", log))))"
 ```
 
-Anything but `[]` means a citekey never reached the bibliography. Python
+Anything but `[]` means a citekey never reached the bibliography. This
+check became load-bearing when the bibliography moved to the end of the
+book -- before that, citeproc had resolved every citation already and
+there was nothing for the warning to report. Python
 rather than `grep -c` deliberately: on the host this was first run,
 `grep -c` over that log printed nothing at all, and a check that silently
 reports nothing is worse than no check.

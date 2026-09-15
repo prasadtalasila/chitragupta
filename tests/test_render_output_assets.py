@@ -235,3 +235,81 @@ class TestRenderingIntoTheDraftsOwnDirectory:
         render_output._copy_local_assets(draft, draft_dir)
 
         assert (draft_dir / "img" / "cover.png").read_bytes() == b"\x89PNG\r\n\x1a\n"
+
+
+class TestTheBookBibliographyBesideAFragment:
+    """`bibtex` resolves `\\bibliography{...}` against the directory it runs
+    in, which for a book is `content/rendered/<book>/`. A fragment's
+    citations are deferred, so the `.bib` has to be there or every citation
+    in the assembled book renders `[?]` with pdflatex still exiting 0.
+    """
+
+    def test_the_corpus_bib_lands_in_the_output_directory(self, isolated_config, tmp_path):
+        isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{smith_2024, title={A}}\n", encoding="utf-8"
+        )
+        dest = tmp_path / "rendered" / "twins"
+
+        render_output._assets._copy_book_bibliography(dest)
+
+        written = dest / isolated_config.BIB_FILE_PATH.name
+        assert written.is_file()
+        assert "@article{smith_2024," in written.read_text(encoding="utf-8")
+
+    def test_double_hyphen_keys_are_aliased_to_match_the_fragments(self, isolated_config, tmp_path):
+        """The fragment carries `\\citep{..._state-x2d-x2d-art_...}`, so the
+        copy has to agree or bibtex answers nothing -- the silent half of
+        the `--` problem, since pdflatex reports it only as a warning."""
+        isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{tygesen_state---art_2019, title={A}}\n", encoding="utf-8"
+        )
+        dest = tmp_path / "rendered" / "twins"
+
+        render_output._assets._copy_book_bibliography(dest)
+
+        written = (dest / isolated_config.BIB_FILE_PATH.name).read_text(encoding="utf-8")
+        assert "@article{tygesen_state-x2d-x2d-art_2019," in written
+
+    def test_the_users_own_bib_is_never_modified(self, isolated_config, tmp_path):
+        """`papers/bibliography.bib` is the human's export and the source of
+        truth for every citekey in the project."""
+        isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        original = "@article{tygesen_state---art_2019, title={A}}\n"
+        isolated_config.BIB_FILE_PATH.write_text(original, encoding="utf-8")
+
+        render_output._assets._copy_book_bibliography(tmp_path / "out")
+
+        assert isolated_config.BIB_FILE_PATH.read_text(encoding="utf-8") == original
+
+    def test_a_project_with_no_bibliography_yet_is_not_an_error(self, isolated_config, tmp_path):
+        """The render that produced the fragment would have failed on the
+        missing file long before this, and a book with no citations has
+        nothing for bibtex to answer either way."""
+        dest = tmp_path / "out"
+
+        render_output._assets._copy_book_bibliography(dest)
+
+        assert not (dest / isolated_config.BIB_FILE_PATH.name).exists()
+
+    def test_copy_local_assets_brings_the_bib_only_for_a_fragment(self, isolated_config, tmp_path):
+        """A standalone render resolves its own citations, so a `.bib`
+        beside it would be an unused file in the publish output. A fragment
+        defers, so it is the one thing between its `\\citep{...}` and a
+        resolved reference."""
+        isolated_config.BIB_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        isolated_config.BIB_FILE_PATH.write_text("@article{a_2024, title={A}}\n", encoding="utf-8")
+        draft = tmp_path / "unit.md"
+        draft.write_text("Body [@a_2024].\n", encoding="utf-8")
+        name = isolated_config.BIB_FILE_PATH.name
+
+        standalone = tmp_path / "standalone"
+        standalone.mkdir()
+        render_output._copy_local_assets(draft, standalone)
+        assert not (standalone / name).exists()
+
+        fragment = tmp_path / "fragment"
+        fragment.mkdir()
+        render_output._copy_local_assets(draft, fragment, True)
+        assert (fragment / name).is_file()

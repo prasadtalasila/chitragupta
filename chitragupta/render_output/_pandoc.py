@@ -118,10 +118,17 @@ def _pandoc_command(
     # preamble and no `\begin{document}` -- and its own `#` heading is
     # that document's chapter, not a section, which is why the two flags
     # travel together (docs/WRITE-A-BOOK.md's assembly step is the caller).
-    # Everything else is unchanged: the citations are still resolved by
-    # citeproc against the same CSL, so a fragment carries its own IEEE
-    # reference list under its own heading rather than deferring to a
-    # bibliography at the end of the book.
+    # Citations are **deferred**, not resolved: `--natbib` emits
+    # `\citep{key}` and leaves the numbering to one `bibtex` pass over the
+    # whole assembled document. Citeproc assigns numbers in the pass that
+    # builds the list, so resolving per unit and listing per book would
+    # give two chapters the same `[2]` for different sources -- measured,
+    # not assumed. The book supplies `\bibliographystyle{IEEEtran}` and
+    # `\bibliography{...}`; `_copy_book_bibliography` puts the `.bib`
+    # beside it. A thesis fragment wants the same thing for the same
+    # reason (.claude/skills/thesis-chapter-writer's "inherit the thesis's
+    # own document-wide bibliography"), which is why this keys off
+    # `fragment` and needs no further discrimination.
     # `--no-highlight` travels with it for the same reason: pandoc's
     # syntax-highlighting output uses `Shaded`/`Highlighting` environments
     # that only the standalone template defines, so a highlighted fragment
@@ -156,11 +163,11 @@ def _pandoc_command(
         f"papersize={papersize}",
         "--variable",
         f"geometry:margin={margin}",
-        "--citeproc",
+        # `--natbib` and `--citeproc` are alternatives, not additions:
+        # one defers every citation to LaTeX, the other resolves it here.
+        *(["--natbib"] if fragment else ["--citeproc", "--csl", str(csl_path)]),
         "--bibliography",
         str(safe_bib),
-        "--csl",
-        str(csl_path),
         # Gives a long inline code span (a URL, a REST path, a file
         # path) somewhere to break in LaTeX/PDF output -- see the
         # filter's own header comment for why pandoc's default

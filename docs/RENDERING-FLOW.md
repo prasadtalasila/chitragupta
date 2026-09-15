@@ -13,12 +13,13 @@ have read [ARCHITECTURE.md's drafting
 layer](ARCHITECTURE.md#-layer-2-the-drafting-layer). **Not covered here:**
 every render flag ([CLI.md](CLI.md)), the TikZ style rules a figure is
 held to ([TIKZ-STYLE.md](TIKZ-STYLE.md)), and book assembly's own
-citeproc pass over a composed book ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
+single `bibtex` pass over a composed book
+([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 
 ## 🧭 Table of contents
 
 - [The two paths through `render()`](#-the-two-paths-through-render)
-- [Citation resolution: `--citeproc` is the only mode there is](#-citation-resolution---citeproc-is-the-only-mode-there-is)
+- [Citation resolution: resolve now, or defer to the consuming document](#-citation-resolution-resolve-now-or-defer-to-the-consuming-document)
 - [Mathematics: substituted on the pandoc path only](#-mathematics-substituted-on-the-pandoc-path-only)
 - [Four places a rendered bibliography can live](#-four-places-a-rendered-bibliography-can-live)
 - [The manual References section, and why citeproc replaces it](#-the-manual-references-section-and-why-citeproc-replaces-it)
@@ -27,7 +28,7 @@ citeproc pass over a composed book ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
 - [Table numbering: four cases, and pandoc numbers in only one](#-table-numbering-four-cases-and-pandoc-numbers-in-only-one)
 - [Equation numbering: the one pass that reads what `_math` left behind](#-equation-numbering-the-one-pass-that-reads-what-_math-left-behind)
 - [Known defect: the fourth combination isn't a no-op on this host](#-known-defect-the-fourth-combination-isnt-a-no-op-on-this-host)
-- [Unbuilt: a natbib-style mode for thesis fragments](#-unbuilt-a-natbib-style-mode-for-thesis-fragments)
+- [Still unbuilt: `--natbib` for a thesis fragment's own preview](#-still-unbuilt---natbib-for-a-thesis-fragments-own-preview)
 
 ## 🔀 The two paths through `render()`
 
@@ -41,30 +42,56 @@ decided by `output_format` and the draft's own suffix:
   every marker to `\[1\]` and wrap the bibliography in `::: {#refs}`
   fenced divs that render as literal punctuation anywhere that isn't
   pandoc.
-- **Every other combination goes through pandoc** -- `--citeproc` against
-  `config.BIB_FILE_PATH`, the vendored IEEE CSL style, and (for `pdf`)
-  `pdflatex`. This is the path the rest of this document is about,
-  including a `.tex` fragment rendered to `.md`: converting
-  `\citep{...}` to Markdown is a real format conversion, so it does not
-  qualify for the first bullet's shortcut.
+- **Every other combination goes through pandoc** -- against
+  `config.BIB_FILE_PATH`, and (for `pdf`) `pdflatex`. This is the path
+  the rest of this document is about, including a `.tex` fragment
+  rendered to `.md`: converting `\citep{...}` to Markdown is a real
+  format conversion, so it does not qualify for the first bullet's
+  shortcut. Whether citations are resolved here or deferred is the next
+  section.
 
 Output always lands mirrored under `content/rendered/`: a draft at
 `content/drafts/<topic>/<name>.tex` renders to
 `content/rendered/<topic>/<name>.{md,pdf,...}`.
 
-## 📚 Citation resolution: `--citeproc` is the only mode there is
+## 📚 Citation resolution: resolve now, or defer to the consuming document
 
 Every genre-skill draft cites with Pandoc-style `[@citekey]` markers (or,
 for `thesis-chapter-writer`'s `.tex` fragment, `\citep{citekey}`/
-`\citet{citekey}`). `_pandoc_command` always passes `--citeproc
---bibliography <bib> --csl <ieee.csl>` -- there is no flag or code path
-that renders a citation any other way. Two fixups run first, on temp
-copies only (`_safe_render_inputs`, `chitragupta/render_output/_citeproc.py`):
-aliasing a citekey containing `--` (pandoc's tokenizer truncates it
-mid-key otherwise, silently dropping the citation), and stripping control
-characters / folding math-alphanumeric Unicode that `content/parsed/`
-text can carry and pdflatex cannot. Neither the draft nor
-`papers/bibliography.bib` is ever written to.
+`\citet{citekey}`). `_pandoc_command` chooses between two **rival**
+strategies for resolving them, on one predicate:
+
+| Render | Flags | Who numbers the citations |
+| --- | --- | --- |
+| Ordinary (the default) | `--citeproc --bibliography <bib> --csl <ieee.csl>` | pandoc, here and now, into the output |
+| `--fragment` | `--natbib --bibliography <bib>` | the document that `\input`s it, via one `bibtex` pass |
+
+**Why a fragment must defer.** Citeproc assigns numbers in the same pass
+that builds the list, so a fragment that resolved its own citations would
+restart at `[1]` in every chapter -- and an assembled book collecting
+those into one bibliography would have half its markers pointing at the
+wrong entry, while compiling cleanly. Deferring moves the *resolution*,
+not just the list, which is the only thing that makes the numbers right.
+A thesis fragment wants the same behaviour for the same reason
+(`thesis-chapter-writer` documents its fragment as inheriting the
+thesis's own document-wide bibliography), so `fragment` is the whole
+discriminator and needs no further qualification.
+
+The deferred path writes `config.BIB_FILE_PATH` beside the output as well
+(`_assets._copy_book_bibliography`), because `bibtex` resolves
+`\bibliography{...}` against the directory it runs in.
+
+Two fixups run first, on temp copies only (`_safe_render_inputs`,
+`chitragupta/render_output/_citeproc.py`): aliasing a citekey containing
+`--` (pandoc's tokenizer truncates it mid-key otherwise, silently
+dropping the citation -- and under `--natbib` it is worse, emitting
+`\citep[art_2019]{tygesen_state}`, a truncated key *plus* a spurious
+optional argument), and stripping control characters / folding
+math-alphanumeric Unicode that `content/parsed/` text can carry and
+pdflatex cannot. Neither the draft nor `papers/bibliography.bib` is ever
+written to; the `.bib` that lands beside a fragment is a copy with
+**every** `--`-bearing key aliased, not just the ones one draft cites, so
+the result does not depend on which unit was rendered last.
 
 ## 🔢 Mathematics: substituted on the pandoc path only
 
@@ -103,10 +130,11 @@ draft actually proves:
 
 | What | Where | Who reads it |
 | --- | --- | --- |
-| The bibliographic data | `papers/bibliography.bib` -- `config.BIB_FILE_PATH` (`chitragupta/config.py:221`), your own Zotero/JabRef export | pandoc's `--citeproc`, at render time only |
+| The bibliographic data | `papers/bibliography.bib` -- `config.BIB_FILE_PATH` (`chitragupta/config.py:221`), your own Zotero/JabRef export | pandoc's `--citeproc` at render time; or, for a `--fragment` render, an aliased copy written beside the output for `bibtex` |
 | The verification record | `content/ledger.sqlite` | `python -m chitragupta.draft gate`, `references.py`, retrieval -- never the render itself |
 | The rendered bibliography | generated fresh into `content/rendered/...` on every render | a preview artefact; nothing downstream reads it back |
 | The real bibliography, for a `.tex` fragment specifically | your own thesis's `\bibliography{...}`/biblatex resource, outside this repository entirely | your own `pdflatex`+`bibtex` run, at submission |
+| The real bibliography, for an assembled book | `content/rendered/<book>/` -- the copy the fragment render wrote there | `book.tex`'s `\bibliography{...}`, one `bibtex` pass over the whole book |
 
 The fourth row only applies to `thesis-chapter-writer`'s output. Every
 other genre's rendered draft *is* the bibliography-bearing artefact --
@@ -376,34 +404,37 @@ then reads the real file itself. **Not applied anywhere in this
 codebase as of this writing** -- flagged here rather than fixed, since
 fixing it is a separate, scoped change.
 
-## 🧾 Unbuilt: a natbib-style mode for thesis fragments
+## 🧾 Still unbuilt: `--natbib` for a thesis fragment's own preview
 
-A change discussed but not built: rendering a `.tex` fragment's `tex`/`pdf`
-preview with `--natbib` instead of `--citeproc`, so the preview defers
-citation resolution to `bibtex` the same way the fragment's real,
-`\input`-ing thesis eventually will, rather than baking citeproc's own
-numbering into a document that only ever wants to demonstrate the
-fragment compiles. `--citeproc` and `--natbib` are rival strategies for
-the same job -- one resolves now and writes a formatted bibliography into
-the output, the other emits `\citep{key}` plus
-`\bibliographystyle{}`/`\bibliography{}` for the *consuming* document's
-own `bibtex` to resolve later -- and pandoc accepts both flags together
-without erroring, silently letting `--natbib` win. Nothing in this
-codebase passes `--natbib` today; `_pandoc_command` always passes
-`--citeproc`, unconditionally, for every format.
+`--natbib` **is** built now, for `--fragment` -- see the citation
+resolution section above. What is still unbuilt is the narrower case this
+section originally described: rendering a `.tex` fragment's own `tex`/`pdf`
+*preview* with `--natbib`, so the preview defers to `bibtex` the way the
+fragment's real `\input`-ing thesis eventually will, rather than baking
+citeproc's numbering into a document that only wants to demonstrate the
+fragment compiles. That path still passes `--citeproc`, and
+`thesis-chapter-writer` depends on it: the preview is the only place that
+fragment's citations are ever shown resolved.
 
-Two things worth recording about that unbuilt mode, in case it is picked
-up later: it would need `-f latex+raw_tex-auto_identifiers` on the LaTeX
-reader (the previous section's fix, plus turning off `auto_identifiers`
-so a fragment's own `\section{Introduction}` doesn't collide with another
-chapter's), and `--variable biblio-style=IEEEtran` (pandoc's own default
-under `--natbib` is `plainnat`, author-year, which would render this
-project's one numeric-citation genre in the wrong style; `IEEEtran.bst`
-is present on this host at
-`/usr/share/texlive/texmf-dist/bibtex/bst/ieeetran/`). It would also need
-`_swap_manual_refs_for_citeproc` (see above) to keep refusing to run
-under `--natbib` -- which it already does, since a thesis fragment has no
-`## References` section for `section_start` to find, but that safety is
-currently incidental rather than asserted, and a future change wiring
-`--natbib` into a genre that *does* write a References section should
-make the refusal explicit rather than relying on the same accident.
+Two notes from the original design, and what the built path actually
+needed:
+
+- It would need `-f latex+raw_tex-auto_identifiers` on the LaTeX reader
+  (the previous section's fix, plus turning off `auto_identifiers` so a
+  fragment's own `\section{Introduction}` doesn't collide with another
+  chapter's). **Still required, and still unbuilt** -- the built path
+  reads Markdown, not LaTeX, so it never needed this.
+- It would need `--variable biblio-style=IEEEtran`, since pandoc's own
+  default under `--natbib` is `plainnat` (author-year). **Not needed as
+  built**: a `--fragment` render emits no preamble at all, so there is
+  nothing for that variable to land in -- the assembled book states
+  `\bibliographystyle{IEEEtran}` itself, alongside
+  `\usepackage[numbers,sort&compress]{natbib}` for numeric markers.
+
+The original note closed by saying that a future change wiring
+`--natbib` into a genre that *does* write a `## References` section
+"should make the refusal explicit rather than relying on the same
+accident". That is what `_citeproc.drop_manual_refs` is: a fragment's
+manual References section is removed from the temp copy outright --
+heading included, tail after it preserved -- rather than left to
+`section_start` happening to find nothing.

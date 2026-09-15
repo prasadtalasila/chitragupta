@@ -89,20 +89,22 @@ def test_a_unit_is_converted_by_render_with_the_fragment_flag():
     assert "--fragment --output-dir" not in body, "the default already mirrors there"
 
 
-def test_the_book_carries_no_bibliography_of_its_own():
-    """Each chapter's citations were resolved per unit into its own IEEE
-    list, so a book-level bibliography would be a second, differently
-    numbered answer to the same question."""
+def test_the_book_carries_one_bibliography_built_by_bibtex():
+    """Citeproc numbers in the pass that builds the list, so resolving per
+    unit and collecting the lists would leave chapter 1's `[2]` and
+    chapter 2's `[2]` as different papers under one back-of-book entry.
+    Deferring the resolution is what makes the numbers right."""
     body = _body()
-    assert "There is no bibliography at the end" in body
-    assert "no bibliography pass at all" in body
+    assert r"\bibliographystyle{IEEEtran}" in body
+    assert r"\usepackage[numbers,sort&compress]{natbib}" in body
+    assert r"\addcontentsline{toc}{chapter}{Bibliography}" in body, "it is a chapter*"
 
 
-def test_the_book_supplies_pandocs_citeproc_macros():
-    """The one thing a fragment legitimately emits that only the
-    standalone preamble defines. Without this block the book fails on
-    `Environment CSLReferences undefined`."""
-    assert "print-default-template=latex" in _body()
+def test_the_build_runs_bibtex_between_the_pdflatex_passes():
+    """Skip it and every citation renders `[?]` while pdflatex exits 0."""
+    body = _body()
+    assert "bibtex book" in body
+    assert "Four passes" in body
 
 
 def test_the_assembler_writes_a_markdown_twin_of_the_book():
@@ -117,13 +119,14 @@ def test_the_assembler_checks_the_build_log_before_believing_the_pdf():
     assert "Read `book.log` before believing the PDF" in _body()
 
 
-def test_the_citeproc_macros_go_in_their_own_file():
-    """Inline, that block fails the gate on the assembled book: it holds
-    `\\cite{#1}` and `\\citeproc{mm}`, which read as citekeys. Found by
-    gating a real 15-chapter book, which FAILed on `@mm`, `@#1`, `@#2`."""
+def test_the_citeproc_macro_file_is_gone_and_says_so():
+    """A deferred fragment emits no `CSLReferences`, so there is nothing
+    left for `citeproc-defs.def` to define. The skill still names the file
+    -- an older `book.tex` on disk will still `\\input` it, and dropping
+    both is part of re-assembling."""
     body = _body()
-    assert "citeproc-defs.def" in body
-    assert "**not inline**" in body
+    assert "No `citeproc-defs.def`" in body
+    assert "drop both the line and the file" in body
 
 
 def test_the_assembly_is_composed_into_rendered_not_beside_its_units():
@@ -157,3 +160,18 @@ def test_an_authored_preamble_is_optional_copied_and_input_last():
     assert r"\input{preamble}" in body
     assert "last line of the preamble" in body, "an override after \\begin{document} is too late"
     assert "write no `\\input` and say nothing about it" in body
+
+
+def test_the_brace_protection_requirement_is_documented():
+    """Two IEEE implementations now format a book's references -- ieee.csl
+    for a standalone render, IEEEtran.bst for the assembled book -- and
+    they agree only where acronyms are brace-protected in the `.bib`.
+    Unbraced, bibtex lowercases them ("iot", "ai") while citeproc does
+    not, so the same entry is right in one artefact and wrong in the
+    other. The pipeline deliberately does not rewrite a human's titles to
+    fix it, which makes saying so the whole mitigation."""
+    book_doc = (Path(__file__).resolve().parent.parent / "docs" / "WRITE-A-BOOK.md").read_text(
+        encoding="utf-8"
+    )
+    assert "Brace-protect acronyms" in book_doc
+    assert "{IoT}" in book_doc

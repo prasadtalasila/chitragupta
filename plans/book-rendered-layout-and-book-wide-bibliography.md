@@ -3,6 +3,12 @@
 Five threads, settled in discussion and verified against the code and the
 host toolchain. Numbers below are measured, not estimated.
 
+**Status: all shipped.** A+B+C in #791, D in the PR that added this line.
+Two decisions moved during implementation and are recorded in place: the
+citation mode is inferred from `--fragment` alone (D1), and normalisation
+of the two IEEE implementations turned out to need no code at all (D14).
+Kept as the record of why the shape is what it is.
+
 ## Decisions taken
 
 | # | Decision |
@@ -111,11 +117,14 @@ keep their own reference list.
 
 - **D1** `_pandoc.py:101-171` -- the deferred path swaps
   `--citeproc --bibliography --csl` for `--natbib --bibliography`.
-  **Open: define the inference.** `--fragment` alone cannot mean deferred --
-  `thesis-chapter-writer` emits a fragment a *thesis* `\input`s and its `.pdf`
-  preview relies on citeproc (`thesis-chapter-writer/SKILL.md:630-634`). Candidate
-  discriminator is an output directory under `content/rendered/<book>/` with a
-  spec; verify it is available at that point in `render()`.
+  **Resolved: `--fragment` alone is the discriminator.** The worry was
+  `thesis-chapter-writer`, but that skill renders its `.tex` *without*
+  `--fragment` (`SKILL.md:581-582`) -- and its fragment wants deferral for
+  the same reason a book unit does, since it inherits the thesis's own
+  document-wide bibliography (`SKILL.md:629-634`). So deferring is correct
+  for both readings of "fragment" and needs no spec lookup, which also
+  keeps `render_output` inside its stdlib-plus-`config` tier (it cannot
+  import `spec`, which pulls in `dossier`).
 - **D2** `_citeproc.py:130` -- persist the **aliased** `.bib` into
   `content/rendered/<book>/`. Alias is mandatory: unaliased, `--natbib` emits
   `\citep[art\_2019]{tygesen_state}` for `tygesen_state---art_2019` -- a

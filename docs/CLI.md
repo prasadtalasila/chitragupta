@@ -346,7 +346,7 @@ chitragupta review uncited content/drafts/<slug>.md              # which sentenc
 chitragupta review quotation content/drafts/<slug>.md            # is each quoted span really in that source?
 chitragupta review agenda content/drafts/<slug>.md               # merges the eight draft-level aids into one worklist
 chitragupta review support content/drafts/<slug>.md              # does the cited source actually entail this claim?
-chitragupta review union content/drafts/<book>/book.tex          # did assembling the book lose a unit's citekey?
+chitragupta review union content/rendered/<book>/book.tex          # did assembling the book lose a unit's citekey?
 # add --write to any of these to file the report under content/review/,
 # mirroring the draft's path -- printing stays the default
 ```
@@ -1638,13 +1638,13 @@ confident and wholly wrong report.
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
-| `<draft>` | required | The assembled document, e.g. `content/drafts/<book>/book.tex` |
+| `<draft>` | required | The assembled document, e.g. `content/rendered/<book>/book.tex` |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the book's path. Printing stays the default |
 | `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
 
 ```bash
-chitragupta review union content/drafts/twins/book.tex
+chitragupta review union content/rendered/twins/book.tex
 # ... --write --formats md
 # ... --json > union.json
 ```
@@ -2490,7 +2490,7 @@ settles any of them.
 
 ```bash
 chitragupta draft render content/drafts/<book>/<unit>.md \
-    --format tex --fragment --output-dir content/drafts/<book>
+    --format tex --fragment
 ```
 
 `--fragment` emits an `\input`-able LaTeX fragment instead of a
@@ -2498,14 +2498,23 @@ standalone document: no preamble, the draft's own top heading becomes a
 `\chapter`, and code blocks are left unhighlighted (pandoc's
 `Shaded`/`Highlighting` environments are defined only by the standalone
 template, so a highlighted fragment fails to compile inside the book).
-Citations, the IEEE style and the citekey aliasing are unchanged, so each
-fragment carries its own numbered reference list.
 
-`--output-dir` writes the result somewhere other than the mirrored
-`content/rendered/` path -- for a book unit, the directory `book.tex`
-`\input`s it from. Confined to `content/` like every other path this
-command writes. [WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly
-procedure both exist
+**It also defers its citations.** A fragment emits `\citep{...}` rather
+than resolved `[1]` markers, and carries no reference list of its own:
+the document that `\input`s it resolves every citation once, in a single
+`bibtex` pass, so one source has one number across the whole book. The
+draft's own `## References` section is dropped from what pandoc sees --
+never from the draft on disk -- and the corpus `.bib` is written beside
+the output for `bibtex` to read. Citekey aliasing is unchanged and
+applies to both sides, so a key containing `--` survives into the
+bibliography.
+
+No `--output-dir` is needed: a draft's renders already mirror its own
+path, so `content/drafts/<book>/<unit>.md` lands in
+`content/rendered/<book>/`, which is where `book.tex` is composed.
+`--output-dir` writes the result somewhere else under `content/`
+entirely, for a caller whose output does not belong in the mirrored path.
+[WRITE-A-BOOK.md](WRITE-A-BOOK.md) is the assembly procedure these exist
 for.
 
 ### 🎯 `chitragupta draft spec`

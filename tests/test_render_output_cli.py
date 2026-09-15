@@ -158,10 +158,10 @@ class TestFigureRepairHint:
 
 class TestFragmentOutput:
     """`--fragment` is what makes a unit assemblable into a book: no
-    preamble to collide with the book's own, and its top heading becomes
-    the book's chapter. Everything else -- citeproc, the IEEE style, the
-    citekey aliasing -- is unchanged, which is the whole reason this
-    lives here rather than being restated in the assembly skill."""
+    preamble to collide with the book's own, its top heading becomes the
+    book's chapter, and its citations are deferred to the document that
+    `\\input`s it. The citekey aliasing is unchanged, which is the whole
+    reason this lives here rather than being restated in the skill."""
 
     def test_fragment_drops_standalone_and_makes_the_top_heading_a_chapter(self):
         cmd, _ = render_output._pandoc_command(
@@ -184,6 +184,52 @@ class TestFragmentOutput:
         # the standalone template defines -- a fragment that emitted them
         # would fail to compile in the book that \input-s it.
         assert "--no-highlight" in cmd
+
+    def test_fragment_defers_citations_to_natbib_instead_of_resolving_them(self):
+        """Citeproc numbers in the pass that builds the list, so a fragment
+        that resolved its own citations would restart at `[1]` in every
+        chapter -- and one back-of-book bibliography over those would leave
+        markers pointing at the wrong entries. `--natbib` emits
+        `\\citep{key}` and leaves numbering to one `bibtex` pass."""
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            True,
+        )
+        assert "--natbib" in cmd
+        # Rival strategies, not additions: pandoc accepts both without
+        # erroring and silently lets --natbib win, which would make the
+        # CSL a lie rather than an error.
+        assert "--citeproc" not in cmd
+        assert "--csl" not in cmd
+        assert "--bibliography" in cmd, "bibtex still needs to be told which .bib"
+
+    def test_a_normal_render_still_resolves_with_citeproc_and_the_csl(self):
+        cmd, _ = render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path("out.tex"),
+            Path("in.md"),
+            "tex",
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            False,
+        )
+        assert "--citeproc" in cmd and "--csl" in cmd
+        assert "--natbib" not in cmd
 
     def test_a_normal_render_is_still_standalone(self):
         cmd, _ = render_output._pandoc_command(
