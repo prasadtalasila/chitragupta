@@ -73,7 +73,11 @@ flowchart TB
 
 `chitragupta/retrieval.py` ranks whole documents by Okapi BM25 over
 whitespace-separated tokens, with the usual constants (`k1 = 1.5`,
-`b = 0.75`). It is stdlib-only: no model download, no venv, nothing to
+`b = 0.75`) and every `[retrieval]` field weight at 1.0
+([below](#-title-and-abstract-can-outweigh-body-text)). Scoring itself
+lives in `chitragupta/retrieval_scoring.py`; this module owns what text
+an item contributes, that one owns what the text scores. It is
+stdlib-only: no model download, no venv, nothing to
 build. `search(query, k)` returns
 `SearchResult(citekey, title, score, snippet)`, and the snippet is a
 window of the real text around the matched terms, so a skill can judge
@@ -102,6 +106,58 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 `status`, and the parsed file's size and mtime -- not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
+
+### ⚖ Title and abstract can outweigh body text
+
+A query term can be made to count for more when it appears in a paper's
+**title** or its **abstract** than when it appears in the body, under
+`[retrieval]` in `config.toml`:
+
+```toml
+[retrieval]
+weight_title = 1.0
+weight_abstract = 1.0
+```
+
+The weighted term frequency is a delta on the ordinary one, applied once
+before BM25's saturation — `tf + (weight - 1) × tf_in_field`. Two
+consequences are worth knowing before you turn a dial:
+
+- **1.0 is not an approximation of "off". It is off**, exactly: every
+  added term is multiplied by zero, so the ranker never reads a field
+  count at all and the scores are bit-identical to a build without the
+  feature. Above 1.0 the field counts for more; 0.0 discounts it
+  entirely. A negative or infinite weight is rejected when the config
+  loads, rather than surfacing later as a ranking nobody can explain.
+- **Document length is deliberately not weighted**, where textbook BM25F
+  normalizes per field. Weighting it would move the corpus's average
+  document length the moment any weight left 1.0, so "1.0 changes
+  nothing" would stop being true and no measurement would have a
+  baseline. The cost is that a weight raises a document's score without
+  raising its modelled length; the baseline is worth more.
+
+**`weight_abstract` needs a structural passage sidecar, and the shipped
+`[parser].backend` is `pdftotext`, which writes none.** On a default
+install there is no abstract for it to weight and the setting is
+silently inert; `[parser].backend = "docling"` is what makes it live.
+`weight_title` always applies — a title comes from the ledger. The
+abstract is read from the corpus layer's own sidecar and never from
+`content/docling/`, which is what keeps the promise
+[above](#-bm25----the-default-and-always-available) that running the
+enrichment layer does not change what BM25 ranks.
+
+**Both ship at 1.0, and that is a measurement rather than caution.**
+Swept over both BM25 ground truths on this project's own corpus
+(`bench/RESULTS.md`, 2026-09-15): title weighting is weakly positive at
+2.0 on both arms (nDCG +0.0025 and +0.0029, no recall lost) but the gain
+on real drafting queries is **one query in 96**, and the two arms
+disagree in sign at higher weights. Abstract weighting leaves recall
+**unchanged at every weight** on the independent arm and costs 1–4
+queries on the other, with the field populated for 318 of 642 items — so
+that is a result about the field, not about coverage. No value was
+supported by both arms, so none was adopted. Read that table before
+setting either dial on your own corpus; the right value there is an
+empirical question this one cannot answer for you.
 
 ### 📚 A paper's own bibliography is not indexed
 

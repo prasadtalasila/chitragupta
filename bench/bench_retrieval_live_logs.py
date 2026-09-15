@@ -42,17 +42,30 @@ sys.path.insert(0, str(REPO))
 
 from chitragupta import config, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
+    FIELD_WEIGHT_GRID,
     K_REPORT,
     K_POOL,
     DENSE_MODELS,
     RERANK_MODEL,
+    field_weight_label,
     recall_at_k,
     ndcg_at_k,
     collapse_to_citekeys,
+    with_field_weights,
     _venv_python,
 )
 
 BOOK_DOSSIERS = config.CONTENT_DIR / "dossiers" / "books" / "digital-twins-for-software-engineers"
+# The book has left `content/dossiers/` more than once on this host --
+# it is gitignored per-host data, so nothing restores it -- while a
+# `content/backup/<date>-content/` snapshot still holds the retrieval
+# logs this ground truth is built from. Overridable so a run can point at
+# that snapshot for the *logs* while `CONTENT_DIR` still names the live
+# ledger and parsed text, which is the combination a re-measurement
+# needs and which one CONTENT_DIR cannot express. Absent, nothing
+# changes.
+if os.environ.get("BENCH_BOOK_DOSSIERS"):
+    BOOK_DOSSIERS = Path(os.environ["BENCH_BOOK_DOSSIERS"])
 
 _TICK = re.compile(r"`([^`]+)`")
 _SEARCH_ROW = re.compile(
@@ -130,6 +143,35 @@ def score_live_rows(ranked_by_query, ground_truth):
         f"recall@{K_REPORT}": round(sum(recalls) / len(recalls), 4) if recalls else None,
         f"ndcg@{K_REPORT}": round(sum(ndcgs) / len(ndcgs), 4) if ndcgs else None,
     }
+
+
+def field_weight_rows(ground_truth):
+    """#762's sweep, on the ground truth that is *not* circular for the
+    abstract field.
+
+    bench_retrieval_keyword_selfretrieval.py runs the same grid, but its
+    query is a paper's own author-assigned keywords, which an author
+    routinely also writes into their abstract -- so an abstract weight
+    has a head start there that it does not have on a real drafting
+    query. These queries are real `search`-mode calls a drafting session
+    logged, judged against that chapter's kept citekeys. Where the two
+    arms disagree about the abstract, this is the one to believe.
+    """
+    rows = []
+    for overrides in FIELD_WEIGHT_GRID:
+        with_field_weights(overrides)
+        ranked_by_query = {}
+        for row in ground_truth:
+            results = retrieval.search(row["query"], k=K_REPORT)
+            ranked_by_query[(row["chapter"], row["query_index"])] = [r.citekey for r in results]
+        rows.append(
+            {
+                "row": field_weight_label(overrides),
+                **score_live_rows(ranked_by_query, ground_truth),
+            }
+        )
+    with_field_weights({})
+    return rows
 
 
 def bm25_row(ground_truth):
@@ -293,6 +335,25 @@ def cascade_row(winning_model, ground_truth, tag, shortlist_size=50):
     }
 
 
+def _report(rows, tag):
+    """Print the table and write the record -- its own function since
+    #762, so `--only field-weights` and a full run write the same record
+    shape and can be read against each other."""
+    print(f"\n{'row':45}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
+    for row in rows:
+        print(
+            f"{row['row']:45}  {row['n_queries']:>3}  "
+            f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}"
+        )
+
+    out_dir = BENCH_DIR / "results" / Path(tag).name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    record = out_dir / "comparison.json"
+    record.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    print(f"\nRecord: {record}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--tag", help="names bench/results/<tag>/")
@@ -300,6 +361,14 @@ def main(argv=None):
     ap.add_argument("--cascade-worker", default=None, metavar="MODEL", help=argparse.SUPPRESS)
     ap.add_argument("--out", default=None, help=argparse.SUPPRESS)
     ap.add_argument("--shortlist-size", type=int, default=50, help=argparse.SUPPRESS)
+    # See the same flag in bench_retrieval_keyword_selfretrieval.py:
+    # #762's sweep needs no model and no GPU, and skipping the encoder
+    # arms is what makes it cheap to re-run on a shared host.
+    ap.add_argument(
+        "--only",
+        choices=("field-weights",),
+        help="run only the named arms (default: every arm)",
+    )
     args = ap.parse_args(argv)
 
     self_check()
@@ -340,7 +409,9 @@ def main(argv=None):
         flush=True,
     )
 
-    rows = [bm25_row(ground_truth)]
+    rows = [bm25_row(ground_truth)] + field_weight_rows(ground_truth)
+    if args.only == "field-weights":
+        return _report(rows, args.tag)
     for model in DENSE_MODELS:
         dense, rerank = dense_and_rerank_rows(model, ground_truth, args.tag)
         rows += [dense, rerank]
@@ -351,19 +422,7 @@ def main(argv=None):
     winning_model = winner["row"].removeprefix("dense+rerank: ")
     rows.append(cascade_row(winning_model, ground_truth, args.tag))
 
-    print(f"\n{'row':45}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
-    for row in rows:
-        print(
-            f"{row['row']:45}  {row['n_queries']:>3}  "
-            f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}"
-        )
-
-    out_dir = BENCH_DIR / "results" / Path(args.tag).name
-    out_dir.mkdir(parents=True, exist_ok=True)
-    record = out_dir / "comparison.json"
-    record.write_text(json.dumps(rows, indent=1), encoding="utf-8")
-    print(f"\nRecord: {record}")
-    return 0
+    return _report(rows, args.tag)
 
 
 if __name__ == "__main__":

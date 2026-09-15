@@ -373,6 +373,37 @@ level = "INFO"
 weak_score = 0.20
 good_score = 0.50
 
+[retrieval]
+# BM25 keyword search -- chitragupta/retrieval.py and its scorer,
+# chitragupta/retrieval_scoring.py. Tier 1: stdlib only, no venv, no
+# model. Deliberately *not* in [enrich] below, whose settings all need
+# the optional dependency group; these run on a bare `python3`.
+
+# How much more a query term counts when it appears in a paper's title or
+# its abstract than in its body (#762).
+#
+# The weighted term frequency is a delta on the ordinary one --
+# `tf + (weight - 1) * tf_in_field` -- so **1.0 leaves ranking exactly as
+# it was**, to the bit, and is not an approximation of "off". Above 1.0
+# the field counts for more; 0.0 discounts it entirely. Negative and
+# infinite are rejected at load rather than producing a ranking nobody
+# can explain.
+#
+# Both ship at 1.0, so the feature is inert until someone turns it on.
+# That is a measurement, not caution: docs/RETRIEVAL.md carries the sweep
+# these defaults come from, and shipping a number the sweep does not
+# support is the thing this project keeps refusing to do.
+#
+# `weight_abstract` needs a structural passage sidecar to have anything
+# to weight, and only `[parser].backend = "docling"` writes one -- on the
+# shipped `pdftotext` default there is no abstract to find, so the weight
+# is silently inert. `weight_title` always applies: a title comes from
+# the ledger. Issue #772 proposes letting the enrichment layer's sidecar
+# feed this too.
+#                                                    Defaults: 1.0 / 1.0
+weight_title = 1.0
+weight_abstract = 1.0
+
 [enrich]
 # Used only by chitragupta/enrich/* (the "enrich" dependency group), never by sync
 # or the citation gate. The table name is matched exactly and there is no
