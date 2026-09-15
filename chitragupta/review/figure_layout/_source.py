@@ -13,25 +13,26 @@ below says what that costs it.
 
 import re
 
+from chitragupta.render_output._tikz_libraries import strip_comments
+
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
 MAX_NODE_WORDS = 15
 
-# A TeX comment: `%` to the end of the line. Stripped before any pattern
-# below runs, and before `_probe.node_names()` runs -- #404, where every
-# symptom was a *wrong* answer rather than a missing one. A commented-out
-# `\draw` was reported as an edge the figure claims; a commented-out
-# `\node`'s label was measured for length; and worst, a comment merely
-# *mentioning* a node declaration made the probe ask pdflatex for a shape
-# nothing had drawn, so the aid reported a figure that compiles fine as
-# one that does not.
-#
-# `\%` is a literal percent sign and does not start a comment, hence the
-# lookbehind. `\\%` -- an escaped backslash followed by a real comment --
-# is read the wrong way by that lookbehind and is left alone: it needs a
-# character-by-character scan rather than a regex, and no figure this
-# pipeline draws has produced one.
-_COMMENT_RE = re.compile(r"(?<!\\)%[^\n]*")
+# `strip_comments` used to be defined here. It moved to
+# `render_output/_tikz_libraries.py` (#781), which needs the same
+# stripper to collect a figure's `\usetikzlibrary` names, and is
+# re-exported under its old name because this module is where every
+# reader of a figure's source looks for it. The dependency only runs one
+# way -- review imports render_output, never the reverse -- so the
+# canonical definition, and #404's record of what it fixes, live there.
+__all__ = [
+    "MAX_NODE_WORDS",
+    "edge_list",
+    "overlong_nodes",
+    "stranded_arrowheads",
+    "strip_comments",
+]
 
 # The two spellings TikZ has for declaring a node, as one fragment
 # because both define a real, probe-able name and nothing downstream
@@ -56,15 +57,6 @@ _NODE_RE = re.compile(
     r"(?:\s*at\s*\([^)]*\))?\s*\{(?P<label>.*?)\}",
     re.DOTALL,
 )
-
-
-def strip_comments(source: str) -> str:
-    """`source` with every TeX comment removed.
-
-    The first thing every reader of a figure's source here does. See
-    `_COMMENT_RE` for what that fixes and what it deliberately does not.
-    """
-    return _COMMENT_RE.sub("", source)
 
 
 # A `\draw`/`\path` statement, up to its terminating semicolon.
