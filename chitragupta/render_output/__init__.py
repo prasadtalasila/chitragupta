@@ -141,7 +141,6 @@ from chitragupta.render_output._substitution import (
     _draft_warnings,
     _substituted,
 )
-from chitragupta.render_output._tikz_libraries import library_union
 
 # Everything above is re-exported deliberately, not incidentally. Every
 # caller in this repository reaches these off the module

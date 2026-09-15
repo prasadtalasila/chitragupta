@@ -17,6 +17,7 @@ from chitragupta import config
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._tables import _LATEX_BOUND
+from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 
 # What a table's caption is allowed to be as wide as. pandoc writes every
 # Markdown table as a `longtable`, and `longtable.sty` sets its captions
@@ -173,8 +174,28 @@ def _pandoc_command(
     # tikzpicture environment fails with "Environment tikzpicture
     # undefined" without it, but the package load itself is inert for a
     # draft that never draws one, so this stays conditional.
+    #
+    # The libraries those figures ask for ride in the *same* string
+    # (#781), not a second `--variable`: `\usetikzlibrary` needs `tikz`
+    # already loaded, and pandoc's concatenation order for repeated
+    # variables is not a contract to lean on. They are loaded here rather
+    # than left in the figure file because a figure file is `\input`
+    # inside a `figure` float and a float is a group -- see
+    # `_tikz_libraries.py` for what that does to node placement.
+    #
+    # Not conditioned on `_LATEX_BOUND`, matching the tikz load it
+    # extends rather than quietly diverging from it: `_figure_refs` reads
+    # the draft on disk, so an html render of a figure-bearing draft
+    # already interpolates this into `<head>`. Deliberate -- changing it
+    # would be a second, unrelated fix.
     if figure_refs:  # pragma: no cover-windows
-        cmd += ["--variable", r"header-includes=\usepackage{tikz}"]
+        cmd += [
+            "--variable",
+            "header-includes="
+            + header_include(
+                preamble_libraries(figure_refs, input_path.parent, fragment, output_format)
+            ),
+        ]
     # Same shape, same reason, for a draft that has a fenced code block:
     # a LaTeX `verbatim` line is one unbreakable box, so a line wider
     # than the page runs into the margin and `pdflatex` reports an

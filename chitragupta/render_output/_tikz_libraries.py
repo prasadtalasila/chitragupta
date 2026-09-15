@@ -27,9 +27,10 @@ what keeps it -- and its tests -- working on a host with no TeX Live.
 """
 
 import re
+import sys
 from pathlib import Path
 
-from chitragupta.render_output._figures import _resolve_sibling
+from chitragupta.render_output._figures import _TEX_FORMATS, _resolve_sibling
 
 # A TeX comment: `%` to the end of the line. Stripped before any pattern
 # here runs, and before `review/figure_layout`'s own source checks run --
@@ -110,6 +111,34 @@ def library_union(figure_refs: list[str], draft_dir: Path) -> list[str]:
         if resolved is not None:
             found.update(libraries_in(resolved.read_text(encoding="utf-8", errors="replace")))
     return sorted(found)
+
+
+def preamble_libraries(
+    figure_refs: list[str], draft_dir: Path, fragment: bool, output_format: str
+) -> list[str]:
+    r"""The union for this render, reporting it when nothing can load it.
+
+    A `--fragment` render emits no preamble, so the load this module
+    exists to produce reaches nothing there and the document that
+    `\input`s the unit has to carry it -- the same structural reason
+    `fvextra` and `\LTcapwidth` are in `book-assembler`'s own preamble
+    (docs/BOOKS.md). One stderr line says which, in the `[prefix] text`
+    shape `render()` already prints every figure, table and equation
+    warning in, because the consumer is a skill reading the render's
+    output rather than a caller reading a return value.
+
+    Printed only when there is something to say: a standalone render has
+    it in its own preamble, and a fragment whose figures load nothing
+    would otherwise get a line naming no library.
+    """
+    libraries = library_union(figure_refs, draft_dir)
+    if fragment and libraries and output_format in _TEX_FORMATS:
+        print(
+            f"[tikz-libraries] {','.join(libraries)} -- a fragment has no preamble; "
+            "load these in the assembling document",
+            file=sys.stderr,
+        )
+    return libraries
 
 
 def header_include(libraries: list[str]) -> str:
