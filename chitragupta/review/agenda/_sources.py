@@ -1,4 +1,4 @@
-"""Reads the eleven inputs `agenda` merges, each degrading to "absent"
+"""Reads the twelve inputs `agenda` merges, each degrading to "absent"
 rather than raising -- the same posture every review aid already keeps
 towards an optional input.
 
@@ -10,6 +10,11 @@ ever calls `review.write_json` for it, since it is a drafting-layer
 command, not a review aid), `dossier.drift()` (the `missing-citekey`
 and `candidate` classes) and `recorded_but_uncited()` (the
 `recorded-but-uncited` class).
+
+The twelfth is the acceptance record (`_accept.py`), which raises no
+class of its own: it names the items a person has already considered and
+accepted, and the only thing this run does with it is leave those items
+off the worklist.
 """
 
 import json
@@ -19,6 +24,7 @@ from pathlib import Path
 from chitragupta import dossier, review, style_check
 from chitragupta.dossier._draft_fingerprint import recorded_but_uncited
 from chitragupta.dossier._drift import Drift
+from chitragupta.review.agenda import _accept
 
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
 # of `review.AIDS`: `agenda` itself is excluded, and so is `union`.
@@ -133,6 +139,12 @@ class Sources:
     style: StyleSource
     drift: DriftSource
     recorded: RecordedSource
+    # The acceptance record (`_accept.py`) -- an input to this run like
+    # any other, and read here rather than in `build_agenda` so that the
+    # header can name it whether it was present, absent or unreadable,
+    # the same account this module gives of every other optional input.
+    # Defaulted so a caller assembling `Sources` by hand keeps working.
+    accepted: _accept.AcceptedSource = field(default_factory=_accept.AcceptedSource)
 
 
 def _read_aid_json(draft: Path, aid: str) -> AidSource:
@@ -188,4 +200,5 @@ def collect(draft: Path) -> Sources:
         style=_read_style(draft),
         drift=_read_drift(draft),
         recorded=_read_recorded(draft),
+        accepted=_accept.load(draft),
     )
