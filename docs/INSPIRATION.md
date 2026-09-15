@@ -366,12 +366,11 @@ Mechanisms taken **as concept only**:
 | --- | --- | --- |
 | A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | [#762](https://github.com/prasadtalasila/chitragupta/issues/762) |
 | Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt -- report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
-| An ingest queue persisted to disk, surviving a restart | The resolved sync plan persisted as an artefact, resumed on restart and rejected when stale | [#764](https://github.com/prasadtalasila/chitragupta/issues/764) |
 | A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
 | Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | [#766](https://github.com/prasadtalasila/chitragupta/issues/766) |
 | Per-item resolved state, with reopening and a bulk resolve | An acceptance record keyed by an item's existing stable identity, so reopening needs no mechanism of its own | [#767](https://github.com/prasadtalasila/chitragupta/issues/767) |
 
-Three of those six are adaptations that **invert** what upstream does,
+Three of those five are adaptations that **invert** what upstream does,
 and the inversions are the load-bearing part. Upstream's title bonus is
 additive, which does not compose with BM25's scale; the weight here is
 multiplicative, so a weight of 1.0 reproduces today's ranking exactly.
@@ -393,6 +392,17 @@ thinking-block display are interface features for a different product.
 A per-task retry counter was declined because `sync_pool`'s
 `failure_kind` already encodes the decision a counter would
 approximate, and two mechanisms for one question is worse than one.
+An **ingest queue persisted to disk**, surviving a restart, was declined
+on measurement beside it
+([#764](https://github.com/prasadtalasila/chitragupta/issues/764)): the
+plan it would restore is re-derived in **0.058s** over this corpus's 642
+references, because `ledger_upsert._pdf_identity` trusts an unchanged
+`(size, mtime)` rather than re-hashing, and even a worst case that
+re-hashes all 497 PDFs costs ~2.2s against the 1h 56m run it was meant to
+rescue. A write-once plan also saves nothing at all on the cold
+full-corpus parse that motivates it, since the recorded `to_parse` is
+then the whole bibliography; and `failure_kind` already governs retry
+without it.
 
 *Not from here, despite arriving alongside.* Several retrieval issues
 were raised while planning [#762](https://github.com/prasadtalasila/chitragupta/issues/762)

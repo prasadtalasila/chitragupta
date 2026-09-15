@@ -147,9 +147,9 @@ Four nuances worth knowing before you rely on it:
   only *reports* a citekey that dropped out of your bib export; it
   deletes nothing until re-run with `--remove-stale`. A short export is
   more often a botched one than an intentional deletion. Either way it
-  first names every other artefact -- overlap index, topic graph,
-  dossiers, chroma vectors -- that still references that citekey, and
-  repairs none of them.
+  first names every other artefact -- overlap index, topic graph, topic
+  membership, dossiers, chroma vectors -- that still references that
+  citekey, and repairs none of them.
 - **A citekey is also a filename stem.** One containing a path
   separator, a character Windows forbids, or a reserved device name is
   **skipped with a warning naming it**, never sanitised -- this project
