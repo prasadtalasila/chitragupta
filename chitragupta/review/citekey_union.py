@@ -2,7 +2,7 @@
 
 A deterministic check on the one place this pipeline *combines* evidence
 without writing prose. `book-assembler` composes accepted units into
-`content/drafts/<book>/book.tex`; every unit has already recorded, in
+`content/rendered/<book>/book.tex`; every unit has already recorded, in
 `content/specs/<book>/units/<unit-id>.json`, the citekeys its prose
 stands on. So the invariant is set arithmetic against something on disk:
 the union of the inputs' citekeys must equal the union in the output.
@@ -53,8 +53,8 @@ same extractor `unit accept` recorded the input side with, which is what
 makes the two sets comparable at all.
 
 Usage:
-    python -m chitragupta.review union content/drafts/<book>/book.tex
-    python -m chitragupta.review union content/drafts/<book>/book.tex --write
+    python -m chitragupta.review union content/rendered/<book>/book.tex
+    python -m chitragupta.review union content/rendered/<book>/book.tex --write
 """
 
 import argparse

@@ -133,6 +133,68 @@ def _safe_render_inputs(
     return safe_md, safe_bib
 
 
+def drop_manual_refs(text: str) -> str:
+    """`text` without its References section at all -- heading and entries.
+
+    The sibling of `_swap_manual_refs_for_citeproc`, for the render that
+    has no bibliography of its own to put there. A fragment `\\input` into
+    a book defers its citations to the book's single `\\bibliography`
+    pass, so the per-chapter list the draft carries would be a second,
+    differently numbered answer to the same question -- and the heading
+    left behind would be an empty `References` chapter in the assembled
+    book.
+
+    The **heading goes too**, which is the difference from the swap. There
+    the heading is kept because citeproc emits none of its own and the
+    bibliography would render untitled; here there is no bibliography to
+    title, and the book supplies one heading for the whole document.
+
+    Applied only to the temp copy handed to pandoc, exactly like the swap.
+    The draft on disk keeps its citekey-labelled entries -- which matters
+    more here than anywhere: a unit's `output_digest` is a hash of its
+    authored `.md`, so editing that file to assemble it would report every
+    unit in the book as `stale:`.
+
+    `section_end` is respected for the same reason the swap respects it
+    (M-8): an appendix or acknowledgments section introduced by its own
+    heading *after* References is not part of it, and dropping to the end
+    of the file would silently delete it from the book.
+    """
+    lines = text.splitlines(keepends=True)
+    idx = references.section_start(lines)
+    if idx is None:
+        return text
+    tail = "".join(lines[references.section_end(lines, idx) :])
+    out = "".join(lines[:idx]).rstrip() + "\n"
+    if tail.strip():
+        out = out + "\n" + tail.lstrip("\n")
+    return out
+
+
+def aliased_bib_text(bib_text: str) -> str:
+    """`bib_text` with **every** `--`-bearing citekey aliased, not just one
+    draft's.
+
+    `_safe_render_inputs` aliases only the keys the draft in hand cites,
+    which is right for a temp bibliography consumed by one pandoc run. A
+    book's `.bib` is consumed by one `bibtex` pass over *every* chapter,
+    and each chapter is rendered separately -- so a per-draft aliasing
+    would have the last unit rendered decide which keys are aliased, and
+    every other unit's `\\citep{...-x2d-...}` would resolve to nothing.
+    Aliasing the whole file makes the result independent of render order.
+
+    Unconditional rather than conditional on any key being bad: a file
+    with no `--` key is returned unchanged by the substitution itself, and
+    a second code path that decides whether to run it is a place for the
+    two to disagree.
+    """
+    return re.sub(
+        r"(@\w+\{)([^,\s]*--[^,\s]*)(,)",
+        lambda m: m.group(1) + _alias_for(m.group(2)) + m.group(3),
+        bib_text,
+    )
+
+
 # Pandoc's own idiom for "put the bibliography exactly here" -- citeproc
 # fills this div in place instead of appending its bibliography to the end
 # of the document. `fenced_divs` is on by default in pandoc's markdown.

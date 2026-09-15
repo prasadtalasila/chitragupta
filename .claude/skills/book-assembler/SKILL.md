@@ -63,11 +63,11 @@ The document skeleton, in order:
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
 \DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+\usepackage[numbers,sort&compress]{natbib}   % see "The bibliography" below
 \setcounter{secnumdepth}{2}                  % see "Numbering" below
 \setcounter{tocdepth}{1}                     % chapters and sections only
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
-% pandoc's citeproc definitions -- see below
 \title{<the outline's own title>}
 \author{<ask the user; never invent one>}
 \date{}
@@ -82,6 +82,9 @@ The document skeleton, in order:
 % \part / \input, in outline order
 
 \backmatter
+\bibliographystyle{IEEEtran}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{bibliography}                  % the .bib render wrote here
 \end{document}
 ```
 
@@ -110,17 +113,35 @@ Note the two senses of "preamble" this file uses: the **generated**
 preamble is the block above, written inline into `book.tex`; the
 **authored** preamble is `preamble.tex`, a file the user owns.
 
-**There is no bibliography at the end, and no `natbib`, `bibtex` or
-`biber` pass.** Citations are resolved per unit, by pandoc's citeproc
-against this project's vendored IEEE style (`assets/csl/ieee.csl`), when
-the unit is converted -- so each chapter carries its **own numbered IEEE
-reference list**, under the chapter's own `References` heading, exactly
-as every other genre skill produces one. That is the house citation style
-and the reason natbib is not used: its author-year markers are not what
-the rest of this pipeline emits. `bibtex` and `IEEEtran.bst` are
-installed (`scripts/install_full_pipeline.sh`) for a document that
-genuinely wants a LaTeX-side bibliography; a book assembled this way does
-not.
+**The bibliography is one list at the end of the book, built by one
+`bibtex` pass.** A unit converted `--fragment` emits `\citep{...}` and no
+reference list of its own; `bibtex` numbers every citation in the
+assembled document at once, against `IEEEtran.bst` for IEEE numeric
+markers. `scripts/install_full_pipeline.sh` installs `bibtex` and
+`IEEEtran.bst` for exactly this.
+
+**Why not resolve per unit and move the list.** Citeproc assigns numbers
+in the same pass that builds the list, so a per-unit resolution gives
+chapter 1 and chapter 2 each their own `[1]`, `[2]`, `[3]` for different
+sources. Collecting those into one back-of-book list would leave every
+marker pointing at the wrong entry -- a book that compiles cleanly and
+cites the wrong paper. Measured both ways: deferred, a source cited in
+two chapters carries **one** number in both, and numbering runs
+continuously across the book.
+
+`natbib`'s `[numbers,sort&compress]` is what makes those markers IEEE
+numeric rather than its author-year default, which is not this pipeline's
+house style.
+
+**The `.bib` is written beside `book.tex` by the render**, not by this
+skill -- `draft render --fragment` copies the corpus bibliography into
+`content/rendered/<book>/` with every `--`-bearing citekey aliased to
+match the `\citep{...}` in the fragments. Do not hand-write or edit it.
+
+Standalone renders are untouched by any of this: a draft rendered without
+`--fragment` still resolves its citations with pandoc's citeproc against
+`assets/csl/ieee.csl` and still carries its own reference list, which is
+what every other genre skill produces.
 
 **Wide code lines: the book must supply `fvextra` too**, and for the
 same structural reason as the citeproc macros. A `verbatim` line is one
@@ -194,24 +215,15 @@ clearing of `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
 one as `loads-library-by-hand`.
 
-**The book must supply pandoc's citeproc macros, in their own file.** A
-converted unit uses the `CSLReferences` environment, which `--standalone`
-would have defined in a preamble the fragment does not have. Write the
-block to `citeproc-defs.def` beside `book.tex` and `\input` it --
-**not inline**, because it contains `\cite{#1}`, `\citeproc{mm}` and
-`\@`-internals that the citation gate reads as citekeys, and a false
-`FAIL` on the one gate in this project is worse than one more file.
-`.def` is LaTeX's own extension for a definitions file.
-
-Take the block from the installed pandoc rather than hand-copying it, so
-it matches the pandoc that did the conversion:
-
-```bash
-pandoc --print-default-template=latex | \
-  python3 -c "import sys; t=sys.stdin.read(); s=t.index('\$if(csl-refs)\$'); \
-    b=t[s:t.index('\$endif\$', s)+7]; \
-    print('\n'.join(l for l in b.splitlines() if not l.strip().startswith('\$')))"
-```
+**No `citeproc-defs.def`, and no `CSLReferences` block.** A fragment
+used to carry citeproc's own bibliography environment, which
+`--standalone` defines and a fragment's absent preamble does not -- so
+the book had to supply the macros itself, in their own file because the
+block contains `\cite{#1}` and `\@`-internals that the citation gate
+reads as citekeys. Deferred citations emit no `CSLReferences` at all, so
+there is nothing left to define and no file to write. If you are looking
+at an older `book.tex` that `\input`s `citeproc-defs.def`, drop both the
+line and the file when you re-assemble.
 
 **Margins.** `margin=80pt` -- about 28mm, and this project's setting for
 an assembled book. Arrived at by measurement rather than taste: the
@@ -404,13 +416,17 @@ It is the reading copy for anyone who is not building LaTeX.
    ```bash
    cd content/rendered/<book>
    pdflatex -interaction=nonstopmode book.tex
+   bibtex book
+   pdflatex -interaction=nonstopmode book.tex
    pdflatex -interaction=nonstopmode book.tex
    ```
 
-   **Two passes, and no bibliography pass at all.** Citeproc resolved
-   every citation when the units were converted, so the document contains
-   no `\cite` for `bibtex` or `biber` to answer. The second pass is what
-   resolves `\cref` and the table of contents.
+   **Four passes, and the `bibtex` one is not optional.** The first
+   `pdflatex` records which keys the document cites; `bibtex` turns those
+   into `book.bbl`; the third pass pulls the bibliography in and the
+   fourth resolves `\cref`, the table of contents and the citation
+   numbers now that the entries exist. Skip `bibtex` and every citation
+   renders as `[?]` -- with `pdflatex` still exiting 0.
 
    **Read `book.log` before believing the PDF.** A `pdflatex` run that
    exits 0 can still be missing something -- a dropped citation is
@@ -422,7 +438,21 @@ It is the reading copy for anyone who is not building LaTeX.
    ```
 
    Anything but `[]` means a citekey did not reach the bibliography --
-   go back to the conversion step, do not hand over the PDF. Python
+   go back to the conversion step, do not hand over the PDF. This check
+   became load-bearing when the bibliography moved to the end of the
+   book: before that, citeproc had already resolved every citation and
+   there was nothing for this warning to report.
+
+   **A citekey containing `--` is the case worth knowing about.** The
+   render aliases it (`state---art` becomes `state-x2d-x2d-art`) on both
+   sides -- the `\citep{...}` and the copied `.bib` -- so it resolves.
+   What breaks it is hand-editing either one.
+
+   **Never run `draft gate` on a fragment.** The gate is for the
+   assembled `book.tex` (step 6) and for a unit's authored `.md`, which
+   is what every unit already passed. A fragment is render output: its
+   citekeys may be aliased, and an alias is not a ledger key, so the gate
+   would report a `FAIL` on a book that is perfectly correct. Python
    rather than `grep -c` deliberately: on the host this was first run,
    `grep -c` over that log printed nothing at all, and a check that
    silently reports nothing is worse than no check.

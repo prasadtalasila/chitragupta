@@ -99,7 +99,7 @@ document that fails at both.
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass -- by request only |
 | `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
-| `book-assembler` | `content/drafts/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
+| `book-assembler` | `content/rendered/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write

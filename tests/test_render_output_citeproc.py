@@ -164,3 +164,80 @@ class TestSafeRenderInputs:
         assert "@article{zech_digital-twins-as-x2d-service_2024," in bib_text
         # The "-1" duplicate entry must be untouched, not also aliased.
         assert "@article{zech_digital-twins-as--service_2024-1," in bib_text
+
+
+class TestDeferringCitationsToTheConsumingDocument:
+    """A `--fragment` render emits `\\citep{...}` and no reference list: the
+    document that `\\input`s it resolves every citation once, so one source
+    carries one number across the whole book.
+
+    Citeproc assigns numbers in the pass that builds the list, so the
+    alternative -- resolve per unit, collect the lists at the back -- gives
+    chapter 1 and chapter 2 each their own `[2]` for different papers, in a
+    book that compiles cleanly. These pin the two text-level halves of
+    moving the resolution rather than the list.
+    """
+
+    def test_the_references_section_goes_entirely_heading_and_all(self):
+        """The difference from `_swap_manual_refs_for_citeproc`, which keeps
+        the heading for citeproc's untitled bibliography to sit under. Here
+        there is no bibliography to title, so a kept heading would be an
+        empty `References` chapter in the assembled book."""
+        text = "Body [@smith_2024].\n\n## References\n\n[1] Smith. `smith_2024`\n"
+
+        out = render_output._citeproc.drop_manual_refs(text)
+
+        assert "## References" not in out
+        assert "[1] Smith" not in out
+        assert "Body [@smith_2024]." in out
+
+    def test_a_section_after_references_survives(self):
+        """M-8, the same rule the swap obeys: an appendix introduced by its
+        own heading after References is not part of it, and dropping to the
+        end of the file would delete it from the book silently."""
+        text = "Body.\n\n## References\n\n[1] Smith. `smith_2024`\n\n## Appendix\n\nKeep me.\n"
+
+        out = render_output._citeproc.drop_manual_refs(text)
+
+        assert "## Appendix" in out and "Keep me." in out
+        assert "[1] Smith" not in out
+
+    def test_a_draft_with_no_references_section_is_unchanged(self):
+        text = "Body [@smith_2024].\n\n## Method\n\nProse.\n"
+
+        assert render_output._citeproc.drop_manual_refs(text) == text
+
+    def test_every_double_hyphen_key_in_the_bib_is_aliased_not_just_one_drafts(self):
+        """The book's `.bib` is read by one `bibtex` pass over every
+        chapter, but each chapter is rendered separately. Aliasing only the
+        keys the draft in hand cites would let the last unit rendered decide
+        the file's contents, and every other unit's `\\citep{...-x2d-...}`
+        would resolve to nothing."""
+        bib = (
+            "@article{tygesen_state---art_2019, title={A}}\n"
+            "@book{lim_state--art_2020, title={B}}\n"
+            "@misc{plain_2021, title={C}}\n"
+        )
+
+        out = render_output._citeproc.aliased_bib_text(bib)
+
+        assert "@article{tygesen_state-x2d-x2d-art_2019," in out
+        assert "@book{lim_state-x2d-art_2020," in out
+        assert "@misc{plain_2021," in out, "a key with no -- is left exactly as it was"
+
+    def test_aliasing_a_bib_with_no_bad_key_changes_nothing(self):
+        bib = "@article{smith_2024, title={A}}\n"
+
+        assert render_output._citeproc.aliased_bib_text(bib) == bib
+
+    def test_substituted_drops_the_references_section_for_a_fragment_only(self, tmp_path):
+        """The drop rides on the one function that answers "what does the
+        writer actually see", so there is no second place rewriting the
+        same text. A standalone render keeps the section for
+        `_swap_manual_refs_for_citeproc` to fill from citeproc."""
+        draft = tmp_path / "unit.md"
+        text = "Body [@a_2024].\n\n## References\n\n[1] A. `a_2024`\n"
+        draft.write_text(text, encoding="utf-8")
+
+        assert "## References" in render_output._substituted(text, draft, "tex", {})
+        assert "## References" not in render_output._substituted(text, draft, "tex", {}, True)

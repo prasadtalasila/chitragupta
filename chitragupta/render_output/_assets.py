@@ -10,6 +10,8 @@ import shutil
 from pathlib import Path
 from urllib.parse import unquote
 
+from chitragupta import config
+from chitragupta.render_output._citeproc import aliased_bib_text
 from chitragupta.render_output._figures import _figure_refs, _resolve_sibling
 
 
@@ -107,3 +109,33 @@ def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
         if src is None:
             continue
         _copy_beside(src, dest_dir / ref)
+
+
+def _copy_book_bibliography(dest_dir: Path) -> None:
+    """Writes the corpus bibliography into `dest_dir`, aliased for bibtex.
+
+    The third thing an assembled book needs beside it, and the only one
+    that is not a file the draft itself references. A fragment defers its
+    citations to the book's own `\\bibliography{...}`, and `bibtex`
+    resolves that against a `.bib` in the directory it runs in -- which is
+    `content/rendered/<book>/`, where `book.tex` and the fragments are.
+
+    `config.BIB_FILE_PATH` is the user's own export and is **never
+    modified**; what lands here is a copy, with `aliased_bib_text` applied
+    so the keys match the `\\citep{...}` the fragments carry. Written
+    rather than copied for exactly that reason.
+
+    Idempotent across the units of one book: every unit writes the same
+    bytes, because the aliasing is over the whole file rather than over
+    the keys one draft happens to cite.
+
+    A project with no bibliography yet is not an error here -- the render
+    that produced the fragment would already have failed on the missing
+    file long before this, and a book with no citations has nothing for
+    `bibtex` to answer either way.
+    """
+    if not config.BIB_FILE_PATH.is_file():
+        return
+    text = config.BIB_FILE_PATH.read_text(encoding="utf-8")
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    (dest_dir / config.BIB_FILE_PATH.name).write_text(aliased_bib_text(text), encoding="utf-8")

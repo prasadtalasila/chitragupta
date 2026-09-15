@@ -548,3 +548,30 @@ class TestAnAssemblyUnderRendered:
         assert result.unresolved == []
         assert "preamble.tex" in result.outside_units
         assert result.appeared == {"house_2020"}
+
+    def test_the_books_bib_is_not_read_as_an_include(self, book, isolated_config):
+        """`\\bibliography{bibliography}` is not `\\input`, and the union aid
+        resolves only `\\input`/`\\include`. That matters: the `.bib` beside
+        `book.tex` is the whole corpus export, so reading it as the
+        assembly's own material would report every citekey in the project
+        as having `appeared` from nowhere."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        rendered = isolated_config.RENDERED_DIR / "twins"
+        rendered.mkdir(parents=True, exist_ok=True)
+        assembled = assemble(rendered, ["ch-model", "ch-data"])
+        (rendered / "bibliography.bib").write_text(
+            "@article{never_cited_1999, title={A}}\n", encoding="utf-8"
+        )
+        assembled.write_text(
+            assembled.read_text(encoding="utf-8").replace(
+                "\\end{document}", "\\bibliography{bibliography}\n\\end{document}"
+            ),
+            encoding="utf-8",
+        )
+
+        result = citekey_union.compute(assembled)
+
+        assert result.appeared == set()
+        assert result.outside_units == []
+        assert result.unresolved == []

@@ -241,7 +241,7 @@ rather than a single-topic draft. The contract is the same rule applied
 to the book's own path:
 
 ```text
-content/drafts/<book>/book.tex
+content/rendered/<book>/book.tex
   -> content/review/<book>/book.union.md           (+ .tex/.pdf, .json)
 ```
 
