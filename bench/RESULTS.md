@@ -5967,3 +5967,157 @@ per-arm pair counts, seconds and comparisons. The per-finding scores are
 deliberately **not** in it -- they are claim-keyed material out of the
 real drafts, the reason `bench_claim_support.py` gitignores its own
 `candidates.md`.
+
+
+### 2026-09-15 (#787): does stemming BM25's tokens find papers the corpus names in another form?
+
+`bench/bench_retrieval_stemming.py` (new). Issue #787 asks for the one
+standard BM25 preprocessing step `chitragupta/retrieval.py::_tokenize`
+does not do: Porter-stem every token, on the document side and the query
+side alike, so that a query for "digital twin" reaches a paper that says
+"digital twins". The stemmer needed no dependency -- 
+`chitragupta/porter_stemmer.py` has been vendored here since #133 for
+`overlap_skipgram.py`, stdlib-only. Two arms, both written into the
+script itself (`_unstemmed_tokens`, `_stemmed_tokens`) rather than
+imported, scored over both ground truths this file already uses; every
+index is built in memory, so no arm ever wrote
+`content/retrieval_index.json`.
+
+**Precision is reported as rank quality, not as precision@k.** The
+self-retrieval set has exactly one relevant document per query, so
+precision@5 there *is* recall@5 / 5 and says nothing recall did not. What
+over-merging costs is not a missing paper but junk above the right one,
+so it shows up as recall@1, MRR@5 and nDCG@5 moving differently from
+recall@5 -- and in the mean document frequency of a query's own terms,
+which is the mechanism in one number: a term matching more documents has
+less IDF to contribute.
+
+#### Self-retrieval (256 author-keyword queries), swept by query width
+
+| keywords | arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF |
+|---|---|---|---|---|---|---|
+| all | unstemmed | 0.6055 | 0.8086 | 0.6837 | 0.7150 | 276.7 |
+| all | stemmed | 0.5820 | 0.7734 | 0.6660 | 0.6934 | 323.3 |
+| 3 | unstemmed | 0.3242 | 0.5273 | 0.3988 | 0.4308 | 310.4 |
+| 3 | stemmed | 0.3086 | 0.5078 | 0.3814 | 0.4129 | 357.5 |
+| 2 | unstemmed | 0.1797 | 0.3945 | 0.2624 | 0.2955 | 324.0 |
+| 2 | stemmed | 0.1680 | 0.3750 | 0.2415 | 0.2746 | 372.2 |
+| 1 | unstemmed | 0.0781 | 0.1641 | 0.1094 | 0.1230 | 339.5 |
+| 1 | stemmed | 0.0703 | 0.1680 | 0.1052 | 0.1208 | 383.7 |
+
+Per-query movement, stemmed against unstemmed: 17 better / 34 worse at
+the full width, 20/29 at three keywords, 21/36 at two, 8/11 at one.
+
+**The width sweep is there because #787's own case is a short query.**
+The issue argues stemming "matters most for ... a short query naming a
+subject", since "with two or three query terms there is no redundancy to
+absorb a missed match" -- so each row's keyword list was cut to its first
+3, 2 and 1 keywords and re-scored against the same corpus and the same
+correct answer. The prediction does not hold: the loss is there at every
+width. The single positive cell in the table -- recall@5 at one keyword,
++0.39pp -- is **one query in 256** (42 correct answers found, against
+43), and MRR@5, nDCG@5 and the per-query count all still fall at that
+same width.
+
+**MRR@5, not MRR.** Every ranking above is cut to five before it is
+scored, so a correct answer at rank 9 scores zero exactly as one that was
+never ranked does. That is reciprocal rank at a cutoff -- a smaller
+number than full MRR over the whole ledger, and not comparable with one.
+
+#### Live-logged (96 real drafting-session queries, chapter-level relevant sets)
+
+| arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF |
+|---|---|---|---|---|---|
+| unstemmed | 0.5938 | 0.8646 | 0.7109 | 0.4590 | 251.6 |
+| stemmed | 0.6042 | 0.8646 | 0.7165 | 0.4378 | 296.0 |
+
+Per-query movement: 17 better / 15 worse / 64 unchanged.
+
+**This set exists because the other one is biased, and the bias runs
+toward the arm that won it.** A self-retrieval query is a paper's own
+`keywords` field and the correct answer is that paper, whose text usually
+carries those keyword strings verbatim -- so an exact surface match is
+favoured by construction, which is precisely what the unstemmed arm does.
+The live-logged set has no such bias: a human typed each query into
+`search` while writing a chapter, and the relevant set is the citekeys
+that chapter actually kept. Neither the query nor the answer came out of
+a tokenizer.
+
+And on that set stemming is a **wash**: recall@5 identical to four
+decimal places, recall@1 and MRR@5 up by a single query's worth, nDCG@5
+down 2.1pp, and 17 queries better against 15 worse out of 96. Not the
+clean loss the biased set reports -- and not a gain either.
+
+**Decision: decline.** Neither ground truth shows a win. The biased one
+loses at every query width including the short widths #787 predicted it
+would win; the unbiased one is flat. What the change would cost is not
+flat: the index format changes (`_INDEX_SCHEMA_VERSION` has to bump, so
+every cached entry in every checkout re-tokenizes once), and snippet and
+`evidence` window selection need a new stem-to-surface resolution step,
+because `_windows` anchors with `str.find` against the document's raw
+text and `stem("sizing")` is `"size"`, which such a document never
+contains. That is a real format change and real machinery on both window
+call sites, bought with a wash. Issue #787 closes as declined against
+this entry, joining the overlap gate, reranking-BM25 and retrieval
+fusion (#617). One thing the decline settles for free: #762
+(field-weighted BM25) states its success criterion as "setting the
+weight to 1.0 reproduces current ranking exactly", which #787 would have
+made unsatisfiable by changing the index under it. It no longer does.
+
+**The mechanism, since it is the same in both tables.** Stemming took the
+index vocabulary from 68,477 terms to 54,705, and the mean document
+frequency of a query's own terms up 17% on both ground truths (276.7 ->
+323.3; 251.6 -> 296.0). That is the trade in one line: fewer, broader
+terms, each contributing less IDF. `--overmerge` lists the widest stem
+classes in this corpus -- 54,705 stem classes, of which 6,893 merge two
+or more surface forms -- and they are not all merges a reader would
+accept -- `organ` holds organic, organism and organization; `author`
+holds author, authority and authorization; `activ` holds activate and
+active; `gener` holds general, generality and generalize. #787 predicted
+this ("Porter is aggressive in places ... which can merge terms a reader
+would not consider related") and asked for precision to be reported
+alongside recall for that reason.
+
+**Two facts worth keeping for whoever re-attempts this.** Both were found
+by a test rather than by reading, and both are in `_stemmed_tokens`'
+docstring so they survive with the script. The stopword list and the
+1-2 character floor must be applied to the **surface** form, before
+stemming: `stem("this")` is `"thi"`, so a stopword list consulted after
+stemming stops recognising it. And `retrieval._INTERROGATIVES` must be
+too: `stem("does")` is `"doe"`, so a set of question words checked after
+stemming silently stops matching the one auxiliary it was written to
+catch, handing "does" its high IDF back and undoing #453 with nothing to
+show it.
+
+**What this does not rule out.** A narrower rule than Porter. Every row
+above is one stemmer at full strength; a plural-only fold ("twins" ->
+"twin", and nothing else) would buy the case #787 opens with while
+merging none of the classes above, and was not measured here. Nor was a
+query-side-only expansion, which #771 is already about and which changes
+no index format at all.
+
+Reproducing:
+
+```
+cp /workspace/config.toml .   # worktree only; gitignored per-host data
+CONTENT_DIR=/workspace/content \
+  BIB_FILE=/workspace/papers/bibliography-groups.bib \
+  .venv-full/bin/python bench/bench_retrieval_stemming.py \
+  --only self-retrieval --overmerge --tag <tag>
+CONTENT_DIR=/workspace/content/backup/20260901-content \
+  BIB_FILE=/workspace/papers/bibliography-groups.bib \
+  .venv-full/bin/python bench/bench_retrieval_stemming.py \
+  --only live-logged --tag <tag>
+```
+
+The live-logged arm reads this book's dossiers, which are not in the live
+`content/` on this host and are in the `20260901-content` snapshot --
+whose ledger's `parsed_path` column still names the live
+`content/parsed/` files, so both arms rank the same text either way. That
+is also why the 48-pair drafting ground truth is absent again here, for
+the reason the 2026-09-04 fusion entry records: no snapshot on disk
+reproduces the book state `labels.json` was judged against, and the
+script refuses a partial set by design.
+
+Records: `bench/results/2026-09-15-retrieval-stemming-self/stemming.json`,
+`bench/results/2026-09-15-retrieval-stemming-live/stemming.json`.

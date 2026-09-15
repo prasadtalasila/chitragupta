@@ -27,6 +27,14 @@ There is no automated check that a change here bumped it -- but
 `tests/test_porter_stemmer.py` pins `stem()`'s output for enough words
 across all five steps that an unintended rule change breaks a test
 before it can reach a stale cache silently.
+
+`bench/bench_retrieval_stemming.py` is the one other caller, and the
+only one outside `chitragupta/`: it is the measurement that **declined**
+stemming for BM25 retrieval (#787), so nothing on the retrieval path
+imports this module and no second version constant was added. A change
+to a suffix rule here does move that script's stemmed arm, and so the
+committed comparison in `bench/RESULTS.md`'s 2026-09-15 entry -- which
+the pinned tests above are also the guard for.
 """
 
 from __future__ import annotations

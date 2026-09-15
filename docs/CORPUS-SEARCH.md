@@ -406,6 +406,7 @@ Work down this list instead:
 | Symptom | Likely stage | What to change |
 | --- | --- | --- |
 | You phrased the query as a question | **before stage 1** | Re-phrase it as keywords and compare. On the BM25 path this alone changes over half the result -- [above](#-before-stage-1-the-shape-of-the-query) |
+| The corpus says "twins" and you searched "twin" | **before stage 1** | Neither path stems, on the BM25 side deliberately and measured ([below](#-what-bm25-does-instead)). Search the form the corpus uses, or both |
 | The paper has no parsed text | before stage 1 | It is findable by BM25 (title) but not here -- `build_index` skips documents with no text. Re-run `sync`, check the PDF parsed |
 | One paper fills the result | stage 3 | Lower `embed_max_passages_per_source` (to `1` for maximal diversity) |
 | The right paper is in the results but 4th or 5th | stage 2 | This is what reranking is for |
@@ -423,6 +424,20 @@ That also means it has **no cap-position question**, and no
 `rerank` key. Reranking BM25's own over-fetched list was measured and
 did not help: nDCG@5 fell from 0.7321 to 0.6886. See
 `bench/RESULTS.md`.
+
+**It also does not stem, and that is measured rather than left
+undone.** So a query for "digital twin" does not by itself reach a paper
+that only ever says "digital twins" -- re-phrasing to the form the corpus
+uses is the remedy -- the second row of the table above. Porter
+stemming both sides was measured on both ground truths (#787): on 96 real
+drafting-session queries it is a wash -- recall@5 identical, nDCG@5 down
+2.1pp, 17 queries better against 15 worse -- and on 256 author-keyword
+queries it loses at every query width, including the two- and
+three-term widths the case for it rested on. The mechanism is in one
+number: it takes the index from 68,477 terms to 54,705 and raises the
+mean document frequency of a query's own terms by 17%, so each surviving
+term carries less IDF. `bench/RESULTS.md`'s 2026-09-15 entry has both
+tables and the stem classes that do the damage.
 
 On this project's corpus BM25 outscores the dense path on every ground
 truth tried so far. [RETRIEVAL.md](RETRIEVAL.md#-which-should-i-build)

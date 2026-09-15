@@ -1,0 +1,167 @@
+{
+ "rows": [
+  {
+   "row": "unstemmed (as shipped)",
+   "n_queries": 96,
+   "recall@1": 0.5938,
+   "recall@5": 0.8646,
+   "mrr@5": 0.7109,
+   "ndcg@5": 0.459,
+   "mean_query_term_df": 251.6,
+   "index_vocabulary": 68477,
+   "ground_truth": "live-logged",
+   "query_keywords": "all"
+  },
+  {
+   "row": "stemmed (#787, proposed)",
+   "n_queries": 96,
+   "recall@1": 0.6042,
+   "recall@5": 0.8646,
+   "mrr@5": 0.7165,
+   "ndcg@5": 0.4378,
+   "mean_query_term_df": 296.0,
+   "index_vocabulary": 54705,
+   "ground_truth": "live-logged",
+   "query_keywords": "all"
+  }
+ ],
+ "movements": [
+  {
+   "better": [
+    [
+     "01-why-anyone-pays-for-a-digital-twin",
+     4
+    ],
+    [
+     "02-twin-shadow-model-simulation",
+     2
+    ],
+    [
+     "04-just-enough-modeling",
+     4
+    ],
+    [
+     "05-just-enough-simulation",
+     4
+    ],
+    [
+     "05-just-enough-simulation",
+     5
+    ],
+    [
+     "07-should-you-trust-the-twin",
+     4
+    ],
+    [
+     "07-should-you-trust-the-twin",
+     7
+    ],
+    [
+     "08-where-ai-fits",
+     0
+    ],
+    [
+     "08-where-ai-fits",
+     2
+    ],
+    [
+     "08-where-ai-fits",
+     4
+    ],
+    [
+     "08-where-ai-fits",
+     9
+    ],
+    [
+     "08-where-ai-fits",
+     12
+    ],
+    [
+     "09-connecting-the-physical",
+     0
+    ],
+    [
+     "09-connecting-the-physical",
+     1
+    ],
+    [
+     "10-data-engineering-for-twins",
+     6
+    ],
+    [
+     "13-standards-and-open-source",
+     6
+    ],
+    [
+     "15-twins-at-scale",
+     1
+    ]
+   ],
+   "worse": [
+    [
+     "01-why-anyone-pays-for-a-digital-twin",
+     6
+    ],
+    [
+     "04-just-enough-modeling",
+     3
+    ],
+    [
+     "06-simulators",
+     0
+    ],
+    [
+     "07-should-you-trust-the-twin",
+     6
+    ],
+    [
+     "07-should-you-trust-the-twin",
+     8
+    ],
+    [
+     "07-should-you-trust-the-twin",
+     10
+    ],
+    [
+     "08-where-ai-fits",
+     10
+    ],
+    [
+     "10-data-engineering-for-twins",
+     1
+    ],
+    [
+     "10-data-engineering-for-twins",
+     4
+    ],
+    [
+     "11-twin-services",
+     0
+    ],
+    [
+     "11-twin-services",
+     2
+    ],
+    [
+     "12-platforms-and-composability",
+     0
+    ],
+    [
+     "12-platforms-and-composability",
+     2
+    ],
+    [
+     "13-standards-and-open-source",
+     3
+    ],
+    [
+     "15-twins-at-scale",
+     3
+    ]
+   ],
+   "unchanged": 64,
+   "ground_truth": "live-logged",
+   "query_keywords": "all"
+  }
+ ]
+}
