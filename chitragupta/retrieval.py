@@ -11,10 +11,11 @@ should assert a number for. It is a *replacement*, not a complement:
 nothing here fuses or re-ranks the two, and a caller uses one or the
 other (docs/RETRIEVAL.md).
 
-Two boundaries worth knowing, because they're easy to assume otherwise.
-This module reads the ledger's `parsed_path` -- `content/parsed/*.txt` --
-and never `content/docling/`, so running the enrichment layer's Docling
-stage does not change what BM25 ranks or what its snippets say; only `[parser].backend`
+Two boundaries worth knowing, because they're easy to assume otherwise. This module reads
+the ledger's `parsed_path` -- `content/parsed/*.txt`, plus this layer's own sidecar beside
+it, read for where the reference list starts and nothing else (`_reference_cut`) -- and
+never `content/docling/`, so running the enrichment layer's Docling stage does not change
+what BM25 ranks or what its snippets say; only `[parser].backend`
 does. And nothing in `chitragupta/enrich/__main__.py` imports this module, so
 the enrichment layer neither uses nor updates this index. `parsed_path` is
 only ever read when the row's `status` is `'parsed'` (#490) -- a failed
@@ -59,7 +60,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from chitragupta import bib_collections, ledger, retrieval_cache, retrieval_tables
+from chitragupta import _reference_cut, bib_collections, ledger, retrieval_cache, retrieval_tables
 from chitragupta._passage_words import _CORE_STOPWORDS as _STOPWORDS
 
 # Question words and question-forming auxiliaries -- rare in academic
@@ -232,11 +233,18 @@ def _full_text(item: sqlite3.Row) -> str:
     # text as current.
     if item["status"] == "parsed" and item["parsed_path"]:
         try:
-            text_parts.append(
-                Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")
-            )
+            raw = Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")
         except OSError:
             pass
+        else:
+            # The paper's own bibliography carries other papers' titles as
+            # this one's body text; #768 and chitragupta/_reference_cut.py
+            # have the measurement. Cut here rather than at index build so
+            # the snippet `search` shows, the windows
+            # `retrieval_cli.evidence` returns and the tokens BM25 ranks
+            # are all drawn from the same text -- a snippet quoting a
+            # reference list would be evidence of nothing.
+            text_parts.append(_reference_cut.strip_references(raw, item["parsed_path"]))
     return "\n".join(text_parts)
 
 

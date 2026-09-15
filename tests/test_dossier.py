@@ -2187,7 +2187,11 @@ class TestEphemeralIndex:
         config.RETRIEVAL_INDEX_PATH.write_text(
             __import__("json").dumps(
                 {
-                    "version": 1,
+                    # The live version, not a literal: this case is about
+                    # a *warm* entry being reused, so an entry written
+                    # under a superseded indexing rule (#768 bumped it to
+                    # 2) would be discarded before the reuse under test.
+                    "version": retrieval_cache._INDEX_SCHEMA_VERSION,
                     "items": {
                         "cached_paper_2026": {
                             "fingerprint": fingerprint,
