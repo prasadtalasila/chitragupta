@@ -202,6 +202,13 @@ one report over every dossier under `content/dossiers/`, always exiting
 0, because "some drafts have drifted" is the normal state of a live
 corpus and not a build failure.
 
+`sync` now names the dossiers that still reference a citekey it is about
+to drop, at the moment of the drop
+([CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove)).
+That is the same evidence from the other end and it does not replace
+this sweep: it sees only the removal in front of it, and it counts
+mentions rather than telling a missing citekey from a candidate.
+
 ### ⚖ Two findings, and they are not the same kind of thing
 
 | Finding | What it is | What it costs to ignore |

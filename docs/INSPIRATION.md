@@ -365,7 +365,7 @@ Mechanisms taken **as concept only**:
 | Upstream mechanism | Taken here as | Issue |
 | --- | --- | --- |
 | A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | [#762](https://github.com/prasadtalasila/chitragupta/issues/762) |
-| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt -- report, never repair | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
+| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt -- report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
 | An ingest queue persisted to disk, surviving a restart | The resolved sync plan persisted as an artefact, resumed on restart and rejected when stale | [#764](https://github.com/prasadtalasila/chitragupta/issues/764) |
 | A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
 | Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | [#766](https://github.com/prasadtalasila/chitragupta/issues/766) |
