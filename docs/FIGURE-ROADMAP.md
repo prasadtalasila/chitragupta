@@ -81,12 +81,15 @@ the roadmap has to preserve all three:
 - Numbered artefact classes are exactly three: `figureref` (21 uses),
   `equationref` (11), `tableref` (9). There is no listing or algorithm
   class.
-- The renderer adds `\usepackage{tikz}` and nothing else, conditionally,
-  via `header-includes` in `render_output/_pandoc.py`. `fvextra`
-  is added by the same mechanism for a draft with a code block.
-- `\usetikzlibrary` is legal in the document body, so figure files carry
-  their own library loads. `\usepackage` is not, which makes any new
-  package a renderer change rather than a figure-file change.
+- The renderer adds `\usepackage{tikz}` plus the union of the
+  `\usetikzlibrary` names its figure files ask for (#781),
+  conditionally, via `header-includes` in `render_output/_pandoc.py`.
+  `fvextra` is added by the same mechanism for a draft with a code block.
+- `\usetikzlibrary` is legal in the document body, so figure files still
+  *name* the libraries they need and the renderer hoists them into the
+  preamble -- loading one inside the `figure` float is #781's bug, since
+  a float is a group. `\usepackage` is not body-legal at all, which makes
+  any new package a renderer change rather than a figure-file change.
 - There is **no** `\tikzset{pics/...}` and no `tikzset` of any kind in
   `assets/tikz/`. Every scaffold is standalone and every figure is drawn
   from nothing.
@@ -218,7 +221,8 @@ Common requirements for all of them:
 - Every node carries an explicit `(name)`, or the aid measures nothing
   and says so (the measured-nothing rule).
 - The `\usetikzlibrary` load sits at the top of the figure file, above
-  the `tikzpicture`, because the renderer will not supply it.
+  the `tikzpicture`, which is where the renderer reads it from (#781)
+  and what makes the scaffold compile standalone.
 - The scaffold ships with its ASCII twin, and the twin is part of what
   makes the metaphor acceptable.
 
@@ -843,10 +847,10 @@ which is enough to keep it on the roadmap but not enough to put it first.
 ### Mechanism
 
 - **This is a renderer change.** `\usetikzlibrary` is body-legal so
-  figure files carry their own libraries, but `\usepackage{pgfplots}` is
+  figure files name their own libraries, but `\usepackage{pgfplots}` is
   not. It needs a conditional `header-includes` in `_pandoc.py`, which is
-  architecturally identical to what the tikz header-includes change did
-  and what already
+  architecturally identical to what the tikz header-includes change did,
+  to the library union #781 added beside it, and to what already
   exists for `fvextra`. Precedented and small.
 - **Data lives beside the figure** as `figures/<n>.dat`, drawn with
   `\addplot table`. The numbers become diffable and auditable, which is

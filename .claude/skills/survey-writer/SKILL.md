@@ -469,9 +469,15 @@ collapse them for the sake of a cleaner narrative.
      not just the figure.
      If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
      its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
-     copy that line into the probe too: the renderer's preamble loads
-     `tikz` and no library, so a picture that relies on one and does not
-     load it fails the whole render. `docs/TIKZ-STYLE.md` has the detail.
+     copy that line into the probe too: the probe's own preamble loads
+     `tikz` and no library, so a picture that relies on one errors there
+     whether or not it is sound. Keep the line in the figure file and
+     write nothing else about loading -- no clearing of
+     `\tikz@library@...@loaded`, no saving or restoring of
+     `\tikz@node@reset@hook`. The renderer collects those lines and
+     loads the union in its own preamble (#781); a load *inside* the
+     figure float is the bug that multiplied node spacing in this
+     project's own book. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 11's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This is the genre

@@ -57,6 +57,8 @@ The document skeleton, in order:
 \usepackage{longtable,booktabs,array,calc}   % what the converted units use
 \setlength{\LTcapwidth}{\textwidth}          % see "Table captions" below
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
@@ -122,6 +124,48 @@ converted `--fragment` has no preamble for that to land in, so the book
 sets it here. Unguarded, unlike the render's own `\ifdefined` form: the
 line above it loads `longtable` unconditionally, so the register always
 exists by this point.
+
+**TikZ libraries: the book must load them, and no figure file may.**
+Same structural reason as `fvextra` and `\LTcapwidth` above --
+`draft render` puts the union of a draft's `\usetikzlibrary` names in its
+own preamble, and a unit converted `--fragment` has no preamble for that
+to land in.
+
+It is not merely a convenience here. A figure file is `\input` **inside a
+`figure` float**, and a float is a group: the library's macros are
+defined locally and die with the float, while
+`\tikz@library@<name>@loaded` is set globally -- so the second figure in
+the book skips the load and finds no macros. Every per-figure workaround
+for that is worse, because `tikzlibrarypositioning.code.tex` appends to
+`\tikz@node@reset@hook` *globally* on every load, so N loads apply every
+node's placement shift N times. Measured on a three-float document:
+71.26pt, then 128.17pt, then 185.07pt, with `pdflatex` exiting 0 and
+nothing but `Overfull \hbox` in the log. That is how figures that fit in
+their single-chapter PDF spilled off the page of this project's own
+assembled book (#781).
+
+**Take the union from the renders, not by guessing.** Each
+`draft render --fragment` prints one line per unit whose figures ask for
+a library:
+
+```text
+[tikz-libraries] fit,positioning -- a fragment has no preamble; load these in the assembling document
+```
+
+Collect those across every unit, deduplicate, and write the result as the
+single `\usetikzlibrary` line in the skeleton above. Never write
+`\usetikzlibrary{}` -- an empty comma list fails fatally rather than
+skipping a name -- so a book whose units draw no figure omits both that
+line and the `\usepackage{tikz}` above it.
+
+A unit's figure file still carries its own plain `\usetikzlibrary` line,
+and that is correct: with the book's preamble load already done it is a
+no-op that appends nothing, and it is what lets the same figure compile
+in `thesis-chapter-writer`'s fragment and in `review figure`'s probe.
+What a figure file must **never** contain is a hand-rolled load -- no
+clearing of `\tikz@library@...@loaded`, no saving or restoring of
+`\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
+one as `loads-library-by-hand`.
 
 **The book must supply pandoc's citeproc macros, in their own file.** A
 converted unit uses the `CSLReferences` environment, which `--standalone`

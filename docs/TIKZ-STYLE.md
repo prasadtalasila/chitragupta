@@ -74,28 +74,45 @@ the edge list `review figure` reports for such a figure is empty rather
 than short. Confirm a tree's wiring from the source's own nesting.
 
 **Every idiom in that table needs a `\usetikzlibrary` line, and the
-figure file has to carry it itself.** The renderer adds
-`\usepackage{tikz}` to the preamble and nothing else
-(`chitragupta/render_output/__init__.py`), so a picture that reaches for
-`below=4mm of store` without loading `positioning` does not fall back --
-it fails the whole render with a message that names neither the library
-nor the figure:
-
-```text
-! Package PGF Math Error: Unknown operator `o' or `of' (in '4mm of a').
-```
-
-Put the load at the top of `figures/<name>.tex`, above the
-`tikzpicture`:
+figure file carries it at the top, above the `tikzpicture`:**
 
 ```latex
 \usetikzlibrary{positioning}
 \begin{tikzpicture}[thick,x=1mm,y=1mm]
 ```
 
-That works because the renderer emits `\input{figures/<name>.tex}` into
-the body, and `\usetikzlibrary` is legal there -- inside a `figure`
-float included. Both verified by compiling on this host.
+**The renderer collects those lines and loads the union in the preamble**
+(`chitragupta/render_output/_tikz_libraries.py`, #781), so by the time
+your figure is `\input` the library is already there and your own line is
+a no-op. Keep the line anyway: it is what lets the same file compile in
+the two documents this pipeline does not write --
+`thesis-chapter-writer`'s fragment inside a user's own thesis, and the
+minimal probe document [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §10
+tells you to build around one figure. Without any load at all, a picture
+that reaches for `below=4mm of store` does not fall back; it fails the
+whole render with a message that names neither the library nor the
+figure:
+
+```text
+! Package PGF Math Error: Unknown operator `o' or `of' (in '4mm of a').
+```
+
+**Write nothing else about loading.** No clearing of
+`\tikz@library@<name>@loaded`, no saving or restoring of
+`\tikz@node@reset@hook`, no `\ifdefined` guard around the load. Those
+workarounds exist in older figure files and they are the bug, not the
+fix. `\usetikzlibrary` is legal in the document body, but a figure file
+is `\input` *inside a `figure` float*, and a float is a group: the load
+defines the library's macros **locally** while setting the loaded flag
+**globally**, so the next float skips the load and finds no macros.
+Clearing the flag to force a reload is worse -- `positioning` appends its
+placement transform to a **global** hook on every load, so the Nth figure
+shifts every node N times. Measured on a three-float document: 71.26pt,
+then 128.17pt, then 185.07pt, with `pdflatex` exiting 0 and nothing but
+`Overfull \hbox` in the log. That is how figures that fit in their
+single-chapter PDF spilled off the page of this project's own assembled
+book. `python -m chitragupta.review figure` reports one as
+`loads-library-by-hand`.
 
 Two things to know before you reach for one:
 
