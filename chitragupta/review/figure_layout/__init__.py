@@ -113,6 +113,7 @@ from chitragupta.review.figure_layout._probe import (
 from chitragupta.review.figure_layout._source import (
     MAX_NODE_WORDS,
     edge_list,
+    loads_library_by_hand,
     overlong_nodes,
     stranded_arrowheads,
 )
@@ -134,6 +135,7 @@ __all__ = [
     "emptiness",
     "figures_in",
     "format_report",
+    "loads_library_by_hand",
     "node_boxes",
     "node_names",
     "overlaps",
@@ -207,6 +209,7 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
             overlong=overlong_nodes(source),
             edges=edge_list(source),
             stranded=stranded_arrowheads(source),
+            by_hand=loads_library_by_hand(source),
             # What the probe will ask pdflatex about, recorded so the
             # report can say how much of the figure was measurable
             # (#405). The same call `node_boxes()` makes internally over

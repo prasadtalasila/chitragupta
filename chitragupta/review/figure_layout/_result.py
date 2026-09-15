@@ -34,6 +34,7 @@ class FigureResult:
     overlong: list[tuple[str, int]] = field(default_factory=list)
     edges: list[tuple[str, str]] = field(default_factory=list)
     stranded: list[str] = field(default_factory=list)
+    by_hand: list[str] = field(default_factory=list)
     declared: list[str] = field(default_factory=list)
     boxes: dict[str, Box] | None = None
     skipped: str = ""
@@ -107,6 +108,7 @@ class FigureResult:
             or self.overlapping
             or self.protruding
             or self.stranded
+            or self.by_hand
             or self.nothing_measurable
             or self.failed
         )

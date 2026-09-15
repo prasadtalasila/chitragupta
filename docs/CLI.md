@@ -1451,6 +1451,21 @@ as `names_declared` and `names_unmeasured` per figure, and as a
 which is only that a compile happened. Name the nodes you draw, in
 whichever idiom -- `\node (a)` and `child { node (a) ... }` both count.
 
+**One finding is about the figure file rather than the picture:
+`loads-library-by-hand`.** A figure file names the TikZ libraries it
+needs with a plain `\usetikzlibrary` line and nothing else; the renderer
+collects those names across a draft's figures and loads the union in the
+preamble (#781). A file that instead clears
+`\tikz@library@<name>@loaded` or saves and restores
+`\tikz@node@reset@hook` is carrying a workaround for a bug that is now
+fixed, and the workaround is worse than the bug was: `positioning`
+appends its placement transform to that hook *globally* on every load,
+so the Nth figure in a document shifts every node N times. It renders
+correctly alone, which is why nothing else catches it -- the damage
+appears only once a second figure joins it, in an assembled book that
+`pdflatex` builds with exit 0. Delete the workaround and keep the plain
+load line.
+
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
