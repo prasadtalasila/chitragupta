@@ -147,6 +147,31 @@ def _body(found: list, start: int, body: list[str]) -> str:
     return " ".join(body)
 
 
+def extract_from(found: list) -> str | None:
+    """The abstract in `found`, or None if these passages hold none.
+
+    Split from `extract` for #762, which weights a paper's abstract above
+    its body in BM25 and must read the *corpus* layer's sidecar alone --
+    `chitragupta/retrieval.py` promises that running the enrichment layer
+    does not change what it ranks, and `passages.structural_passages`
+    below prefers the enrichment layer's rung. Taking the passages as an
+    argument is what lets that caller choose its rung without a second
+    copy of the guards, whose values are each a measured failure named in
+    this module's docstring and would drift the moment there were two.
+
+    Never returns `UNKNOWN`: that sentinel distinguishes "no sidecar" from
+    "no abstract", and only `extract` can be in the first case -- this has
+    the passages by construction.
+    """
+    opener = _opener(found)
+    if opener is None:
+        return None
+    text = _body(found, *opener)
+    if not MIN_BODY_WORDS <= len(text.split()) <= MAX_BODY_WORDS:
+        return None
+    return text
+
+
 def extract(citekey: str) -> str | None:
     """`citekey`'s abstract, None if the paper has none, or `UNKNOWN` if
     there is no structural sidecar to look in.
@@ -160,10 +185,4 @@ def extract(citekey: str) -> str | None:
     found = passages.structural_passages(citekey)
     if found is None:
         return UNKNOWN
-    opener = _opener(found)
-    if opener is None:
-        return None
-    text = _body(found, *opener)
-    if not MIN_BODY_WORDS <= len(text.split()) <= MAX_BODY_WORDS:
-        return None
-    return text
+    return extract_from(found)

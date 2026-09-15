@@ -52,7 +52,6 @@ surrounding text, not just term counts.
 # because docs/CODE-STANDARDS.md's C2 counts docstring lines and this
 # module has two of headroom.
 
-import math
 import re
 import sqlite3
 from collections import Counter
@@ -60,7 +59,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from chitragupta import _reference_cut, bib_collections, ledger, retrieval_cache, retrieval_tables
+from chitragupta import (
+    _reference_cut,
+    bib_collections,
+    ledger,
+    retrieval_cache,
+    retrieval_scoring,
+    retrieval_tables,
+)
 from chitragupta._passage_words import _CORE_STOPWORDS as _STOPWORDS
 
 # Question words and question-forming auxiliaries -- rare in academic
@@ -86,12 +92,6 @@ _INTERROGATIVES = {
     "does",
     "did",
 }
-
-# Standard Okapi BM25 constants (term-frequency saturation and length
-# normalization strength) -- the usual defaults, not tuned against this
-# corpus specifically.
-_K1 = 1.5
-_B = 0.75
 
 
 @dataclass
@@ -249,35 +249,22 @@ def _full_text(item: sqlite3.Row) -> str:
 
 
 def _tokenize_item(item: sqlite3.Row) -> dict:
+    # `field_freqs` is what #762's weights read; `term_freqs` and
+    # `length` are unchanged, so an index entry written before it existed
+    # still scores -- see `_INDEX_SCHEMA_VERSION`, which is bumped anyway
+    # so that no entry is *missing* the field counts a live weight needs.
     tokens = _tokenize(_full_text(item))
-    return {"length": len(tokens), "term_freqs": dict(Counter(tokens))}
+    fields = retrieval_scoring.field_freqs(item, _tokenize)
+    return {"length": len(tokens), "term_freqs": dict(Counter(tokens)), "field_freqs": fields}
 
 
 def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
-    doc_count = len(index)
-    if doc_count == 0:
-        return {}
-    avgdl = sum(entry["length"] for entry in index.values()) / doc_count
-
-    term_set = set(terms)
-    doc_freq = {
-        t: sum(1 for entry in index.values() if entry["term_freqs"].get(t)) for t in term_set
-    }
-    idf = {t: math.log((doc_count - doc_freq[t] + 0.5) / (doc_freq[t] + 0.5) + 1) for t in term_set}
-
-    scores: dict[str, float] = {}
-    for citekey, entry in index.items():
-        doc_len = entry["length"]
-        norm = 1 - _B + _B * (doc_len / avgdl if avgdl else 0)
-        score = 0.0
-        for t in term_set:
-            freq = entry["term_freqs"].get(t, 0)
-            if freq == 0:
-                continue
-            score += idf[t] * (freq * (_K1 + 1)) / (freq + _K1 * norm)
-        if score > 0:
-            scores[citekey] = score
-    return scores
+    """Moved to `chitragupta/retrieval_scoring.py` (#762), and delegated
+    to rather than re-exported: `chitragupta/dossier/_drift.py` and
+    `chitragupta/discover/_resolve.py` both reach for this name, and a
+    module-level alias would bind the function object at import, so a
+    test patching the new module's `bm25_scores` would not reach them."""
+    return retrieval_scoring.bm25_scores(index, terms)
 
 
 def search(

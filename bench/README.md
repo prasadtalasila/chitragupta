@@ -34,18 +34,21 @@ it re-runs `chitragupta.retrieval.search()` only to reconstruct what those
 sessions already saw -- which is sound only while the ledger has not
 moved since, so `--hashes` checks that and reports `replay_sound`.
 
-`bench_retrieval_stemming.py` is stdlib-only and needs no GPU too, and
-what it needs beyond a synced corpus is worth knowing before you run it:
-`papers/bibliography.bib` through `bib_reader` for the author keywords
-its first ground truth is built from, and this book's **dossiers** for
-its second. On this host those dossiers are not in the live `content/`
-and are in the `20260901-content` snapshot, so that arm runs with
-`CONTENT_DIR` pointed there -- the snapshot's ledger still names the live
-`content/parsed/` files, so both arms rank the same text either way. It
-writes nothing: every index it scores is built in memory, deliberately,
-because one tokenizer arm's terms landing in the shared
-`content/retrieval_index.json` would corrupt real corpus state for every
-later run.
+`bench_retrieval_stemming.py` is stdlib-only and needs no GPU too, and it
+consumes *both* retrieval ground truths above in one run -- so it needs
+`papers/bibliography.bib` through `bib_reader` for the author keywords,
+and `BENCH_BOOK_DOSSIERS=` for the live-logged set, for the same reason
+and by the same mechanism `bench_retrieval_live_logs.py` documents above.
+Do not reach for `CONTENT_DIR` pointed at a snapshot instead: it ranks
+that snapshot's ledger rather than the live one, which is the wrong shape
+even where it happens to give the same answer (on this ground truth it
+did, since the snapshot names the same `content/parsed/` files). It writes nothing: every index it scores
+is built in memory, deliberately, because one tokenizer arm's terms
+landing in the shared `content/retrieval_index.json` would corrupt real
+corpus state for every later run. Those in-memory entries carry
+`field_freqs` as well as `term_freqs`, because since #762 a missing one
+reads as "this document's title matched nothing" and would quietly stop
+tracking the shipped scorer the moment a `[retrieval].weight_*` left 1.0.
 
 `topic_cluster_eval.py` is stdlib-only and needs no GPU as well, and it
 is the one script here with a requirement outside Python entirely:
@@ -107,6 +110,7 @@ CUDA_VISIBLE_DEVICES=0 .venv-full/bin/python bench/bench_docling.py \
 | What 48 real `(query, citekey)` pairs can retrieval quality be scored against? | `bench_retrieval_ground_truth.py` -- joins `bench_paraphrase_hunt.py`'s committed judgments back onto freshly re-extracted claim text; output is gitignored, regenerate locally |
 | Does the same nine-row comparison hold against what a drafting session actually logged, not a reconstructed pair? | **`bench_retrieval_live_logs.py`** -- 96 real `search`-mode queries from the restored book's own `retrieval.md`, scored against each chapter's real `evidence.md` kept-citekey set; no book-restore-and-rejoin risk, but a coarser, chapter-level ground truth -- its nDCG@5 is not comparable in magnitude to `bench_retrieval_compare.py`'s |
 | Does the same nine-row comparison hold with a ground truth no retrieval method built (the two above both score against citekeys BM25 itself surfaced)? | **`bench_retrieval_keyword_selfretrieval.py`** -- 256 real bib entries' own author-assigned `keywords`, query = the keywords, correct answer = the entry itself; needs no restored book, only `bibliography.bib` and the synced ledger |
+| Does weighting a paper's title or abstract above its body improve BM25 (#762)? | **`--only field-weights`** on **both** `bench_retrieval_keyword_selfretrieval.py` and `bench_retrieval_live_logs.py` -- same grid (`FIELD_WEIGHT_GRID` in `bench_retrieval_compare.py`), one field at a time, no model and no GPU. Read the two together: the self-retrieval arm's query is a paper's own keywords, which an author routinely also writes into the abstract, so it is **structurally favourable to the abstract field** and the live-logs arm is the one to believe there. Live-logs needs `BENCH_BOOK_DOSSIERS=` (below) whenever the book has left `content/dossiers/` |
 | Would stemming BM25's tokens find papers the corpus names in another form (#787)? | **`bench_retrieval_stemming.py`** -- stdlib only, no GPU; two tokenizer arms over *both* ground truths above, because the self-retrieval one is biased toward the unstemmed arm by construction. Reports recall@1/@5, MRR and nDCG@5 beside the mean document frequency of a query's own terms -- the mechanism, since a single-relevant ground truth makes precision@5 a restatement of recall@5. **Measured and declined** |
 | Does a topic set *reproduce*, or does it look settled by luck? | **`bench_topic_depth.py --repeats N`** -- adjusted Rand index between a fit and refits on 90% resamples. The values hardcoded until 6.9.0 score **0.14** |
 | How many topics does this corpus divide into, at each clustering setting -- and what does the coarse setting cost? | **`bench_topic_depth.py`** -- needs the `enrich` group and a synced corpus; reuses `content/topic_embed_cache.json`, so a warm cache makes it minutes. The **outlier** column is the one to read: it *falls* as topics get finer |
@@ -206,7 +210,7 @@ being tested.
 | `bench_embed_model_compare.py` | Orchestrates `bench_overlap_embed.py` and `bench_paraphrase_hunt.py --crosscheck` once per candidate model in `docs/CONFIG.md`'s "Choosing an embedding model", via `EMBEDDING_MODEL` -- neither script is modified, only invoked once per model |
 | `bench_retrieval_ground_truth.py` | Recovers 48 real `(query, citekey)` pairs for Arm B (#194) by joining `bench_paraphrase_hunt.py`'s committed judgments back onto claim text re-extracted from the restored book; its own `ground_truth.json` output is gitignored -- carries claim text, same discipline as `pairs.json` |
 | `bench_retrieval_compare.py` | Scores BM25, each of three dense drop-ins (alone and cross-encoder-reranked), SPECTER2 standalone, and a SPECTER2-shortlist cascade against the ground truth above, by recall@5/nDCG@5 -- each dense model and the cascade run in their own `.venv-full` subprocess since `EMBEDDING_MODEL` is fixed at `chitragupta/config.py` import time |
-| `bench_retrieval_live_logs.py` | Same nine rows as `bench_retrieval_compare.py` (imports its scoring functions rather than reimplementing them), against a different ground truth: 96 real `search`-mode queries logged live in the restored book's own `retrieval.md`, each scored against its whole chapter's real kept-citekey set from `evidence.md` -- coarser than a single-citekey pair, so its nDCG@5 has a different (harsher) ideal denominator and is not comparable in magnitude to `bench_retrieval_compare.py`'s |
+| `bench_retrieval_live_logs.py` | Same nine rows as `bench_retrieval_compare.py` (imports its scoring functions rather than reimplementing them), against a different ground truth: 96 real `search`-mode queries logged live in the restored book's own `retrieval.md`, each scored against its whole chapter's real kept-citekey set from `evidence.md` -- coarser than a single-citekey pair, so its nDCG@5 has a different (harsher) ideal denominator and is not comparable in magnitude to `bench_retrieval_compare.py`'s. **Set `BENCH_BOOK_DOSSIERS=` to a `content/backup/<date>-content/dossiers/books/<book>` path whenever the book has left `content/dossiers/`** -- it is gitignored per-host data and has gone missing more than once, while a snapshot still holds the `retrieval.md` logs this ground truth is built from. The override takes the *logs* from the snapshot while `CONTENT_DIR` still names the live ledger and parsed text, which one `CONTENT_DIR` cannot express |
 | `bench_retrieval_keyword_selfretrieval.py` | Same nine rows again, against a ground truth built by neither of the two scripts above: 256 real bib entries' own `keywords` field as the query, that entry's own citekey as the correct answer -- independent of what any retrieval method surfaced during drafting, since no drafting session is involved at all. Also the one script here whose `specter2_row()` ranks over the whole ledger rather than the ground truth's own citekeys, to keep every row's pool the same size |
 | `bench_retrieval_stemming.py` | Scores an unstemmed against a Porter-stemmed tokenizer over the two ground truths above, with the keyword set additionally swept down to its first 3, 2 and 1 keywords -- #787's own case is a short query, so the narrow widths are the ones its prediction stands or falls on. Both arms are written into this script rather than imported: the stemmed one was declined and never shipped, and pinning the unstemmed one here keeps a later change to `retrieval._tokenize` from silently redefining the "before" of a committed comparison. Builds every index in memory, so no arm can write a mixed-tokenizer `content/retrieval_index.json` |
 | `bench_collection_scope.py` | What a `--collection` filter costs and buys across a real two-arm drafting run: retrieval payload from each dossier's `retrieval.md`, surfaced/selected/rejected by replaying each arm's own logged queries at its own `--k` (with and without the filter), index cost by md5 across three checkpoints, tokens windowed from the session transcript by those same checkpoints, and both arms' verbatim scans. Parameterised (`--topic`/`--arm-f`/`--arm-c`/`--collection`) so one script serves every run of the design -- the first run's copy hard-coded its paths and was never committed |

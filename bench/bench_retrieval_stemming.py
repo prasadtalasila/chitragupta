@@ -12,11 +12,12 @@ imported from the scripts that own them rather than rebuilt here.
 
 The arms:
 
-- **unstemmed** -- what ships: `retrieval._tokenize`'s rule, lowercase,
-  `[a-z0-9]+`, the shared stopword list and a 1-2 character floor, and
-  nothing else.
-- **stemmed** -- the same rule with `porter_stemmer.stem` applied to
-  every surviving token, on the document side and the query side alike.
+- **unstemmed** -- what ships: `retrieval._tokenize`'s rule on a document
+  (lowercase, `[a-z0-9]+`, the shared stopword list, a 1-2 character
+  floor) and `retrieval._query_terms`' rule on a query (the same, plus
+  dropping interrogatives). Two rules, because the pipeline has two.
+- **stemmed** -- both of those with `porter_stemmer.stem` applied to
+  every surviving token, document side and query side alike.
 
 **Both arms are local to this script, and that is deliberate.** #787 was
 measured and **declined** on the strength of what is below, so there is
@@ -53,22 +54,24 @@ host's real `content/ledger.sqlite` and `content/parsed/` read-only, plus
 ledger deliberately does not store, and (for the live-logged set) this
 book's dossiers.
 
-    cp /workspace/config.toml .   # worktree only; gitignored per-host data
+    cp config.toml.example config.toml   # worktree only; gitignored data
     CONTENT_DIR=/workspace/content \\
       BIB_FILE=/workspace/papers/bibliography-groups.bib \\
+      BENCH_BOOK_DOSSIERS=/workspace/content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers \\
       .venv-full/bin/python bench/bench_retrieval_stemming.py \\
-      --only self-retrieval --overmerge --tag <tag>
+      --overmerge --tag <tag>
 
-The live-logged set reads this book's dossiers, which are not in the live
-`content/` on this host and are in the `20260901-content` snapshot, whose
-ledger's `parsed_path` column still names the live `content/parsed/`
-files -- so that arm points `CONTENT_DIR` at the snapshot and gets the
-same parsed text either way:
-
-    CONTENT_DIR=/workspace/content/backup/20260901-content \\
-      BIB_FILE=/workspace/papers/bibliography-groups.bib \\
-      .venv-full/bin/python bench/bench_retrieval_stemming.py \\
-      --only live-logged --tag <tag>
+`BENCH_BOOK_DOSSIERS` is #762's override, not optional on this host, and
+what lets one invocation build both sets. The book has left
+`content/dossiers/`, so the retrieval logs the live-logged ground truth is
+built from survive only in the `20260901-content` snapshot -- while
+`CONTENT_DIR` has to keep naming the *live* ledger and parsed text,
+because that is what every other row in `bench/RESULTS.md` ranks over.
+Measured, for the record: pointing `CONTENT_DIR` at the snapshot instead
+changed none of this ground truth's figures, because that snapshot's
+ledger names the same `content/parsed/` files -- so it is the wrong shape
+rather than a wrong number, and the reason to prefer the override is that
+it cannot drift that way.
 """
 
 import argparse
@@ -82,7 +85,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import ledger, retrieval  # noqa: E402
+from chitragupta import ledger, retrieval, retrieval_scoring  # noqa: E402
 from chitragupta._passage_words import _CORE_STOPWORDS  # noqa: E402
 from chitragupta.porter_stemmer import stem  # noqa: E402
 from bench_retrieval_compare import ndcg_at_k, recall_at_k  # noqa: E402
@@ -110,37 +113,74 @@ def _stem_token(word: str) -> str:
 
 
 def _stemmed_tokens(text: str) -> list[str]:
-    """The proposed arm: the same rule, stemmed.
+    """The proposed arm's document side: the same rule, stemmed."""
+    return [_stem_token(w) for w in _unstemmed_tokens(text)]
 
-    The stopword list and the length floor deliberately apply to the
-    *surface* form, before stemming, and a re-attempt at #787 has to keep
-    that ordering. Both lists are lists of words as a reader writes them,
-    and Porter's output is not a word: `stem("this")` is "thi", so a
+
+def _unstemmed_query_terms(query: str) -> list[str]:
+    """`retrieval._query_terms`' rule: the document rule, plus dropping
+    interrogatives, query-side only (#453).
+
+    **The query side is not the document side, and conflating them
+    silently misreports the baseline.** The first version of this script
+    tokenized queries with `_unstemmed_tokens`, so its "as shipped" arm
+    kept the "why" in "digital twin hype barriers cost why projects
+    fail" that `search()` drops -- 6 of the 96 live-logged queries, enough
+    to move that set's unstemmed nDCG@5 to 0.4590 against the 0.4526 the
+    #762 entry measured the same day on the same ground truth. The arms
+    here must differ in *stemming and nothing else*, so both go through
+    this. `self_check` pins the agreement with `retrieval._query_terms`.
+    """
+    return [w for w in _unstemmed_tokens(query) if w not in retrieval._INTERROGATIVES]
+
+
+def _stemmed_query_terms(query: str) -> list[str]:
+    """The proposed arm's query side, and the ordering is the whole point.
+
+    Interrogatives, the stopword list and the length floor all apply to
+    the *surface* form, before stemming, and a re-attempt at #787 has to
+    keep that ordering. All three are lists of words as a reader writes
+    them, and Porter's output is not a word: `stem("this")` is "thi", so a
     stopword list consulted after stemming stops recognising it, and
     `stem("does")` is "doe", so `retrieval._INTERROGATIVES` -- which
     exists to strip exactly that auxiliary (#453) -- would silently stop
     matching and hand "does" its high IDF back.
     """
-    return [_stem_token(w) for w in _unstemmed_tokens(text)]
+    return [_stem_token(w) for w in _unstemmed_query_terms(query)]
 
 
+# label -> (how a document is tokenized, how a query is tokenized). Two
+# functions per arm rather than one, because the shipped pipeline has two
+# (`_tokenize` and `_query_terms`) and an arm that collapses them is not
+# measuring the shipped pipeline.
 ARMS = {
-    "unstemmed (as shipped)": _unstemmed_tokens,
-    "stemmed (#787, proposed)": _stemmed_tokens,
+    "unstemmed (as shipped)": (_unstemmed_tokens, _unstemmed_query_terms),
+    "stemmed (#787, proposed)": (_stemmed_tokens, _stemmed_query_terms),
 }
 
 
 def build_index(items, tokenize):
-    """`{citekey: {"length", "term_freqs"}}` for one arm, in memory.
+    """The same per-document entry `retrieval._tokenize_item` produces,
+    in memory, for one arm's tokenizer.
 
-    Same two fields `retrieval._tokenize_item` produces, so
-    `retrieval._bm25_scores` can score it unchanged -- the arm is the
-    tokenizer and nothing else.
+    `field_freqs` is carried as well as `length`/`term_freqs`, and that is
+    not optional since #762: `retrieval_scoring.weighted_freq` reads a
+    *missing* `field_freqs` as "this document's title matched nothing", so
+    an index built without it scores correctly only while every
+    `[retrieval].weight_*` is still 1.0 and silently stops tracking the
+    shipped scorer the moment one is not. Built through
+    `retrieval_scoring.field_freqs`, which takes the tokenizer as an
+    argument -- so each arm's fields are counted by that arm's own rule,
+    and the arm remains the tokenizer and nothing else.
     """
     index = {}
     for item in items:
         tokens = tokenize(retrieval._full_text(item))
-        index[item["citekey"]] = {"length": len(tokens), "term_freqs": dict(Counter(tokens))}
+        index[item["citekey"]] = {
+            "length": len(tokens),
+            "term_freqs": dict(Counter(tokens)),
+            "field_freqs": retrieval_scoring.field_freqs(item, tokenize),
+        }
     return index
 
 
@@ -359,13 +399,28 @@ def self_check():
             "status": "parsed",
         },
     ]
+    # The "as shipped" arm has to *be* what ships on the query side, or
+    # its baseline is a number about this script rather than about the
+    # pipeline. Pinned against `retrieval._query_terms` on a query that
+    # exercises every filter: an interrogative, a stopword, a 1-2
+    # character word, and an inflected content word.
+    probe = "why does the AI model twins in situ"
+    assert _unstemmed_query_terms(probe) == retrieval._query_terms(probe), (
+        f"the unstemmed arm's query rule has drifted from retrieval._query_terms: "
+        f"{_unstemmed_query_terms(probe)} != {retrieval._query_terms(probe)}"
+    )
+    assert "doe" not in _stemmed_query_terms(probe), (
+        "'does' survived as its stem -- the stemmed arm is filtering "
+        "interrogatives after stemming instead of before"
+    )
+
     rows = {}
-    for label, tokenize in ARMS.items():
-        index = build_index(fake_items, tokenize)
+    for label, (doc_tokenize, query_tokenize) in ARMS.items():
+        index = build_index(fake_items, doc_tokenize)
         row, ranked = score_arm(
             label,
             index,
-            tokenize,
+            query_tokenize,
             [{"key": "plural_2024", "query": "twin model", "relevant": {"plural_2024"}}],
         )
         rows[label] = (row, ranked)
@@ -418,10 +473,10 @@ def main(argv=None):
     parser.add_argument(
         "--only",
         choices=sorted(GROUND_TRUTHS),
-        help="Score against one ground truth rather than both. On this "
-        "host you want this: the two sets need different CONTENT_DIR "
-        "values (the live corpus, and the 20260901 snapshot that still "
-        "has this book's dossiers), so neither invocation builds both",
+        help="Score against one ground truth rather than both. Both build "
+        "in one run: set BENCH_BOOK_DOSSIERS (bench_retrieval_live_logs.py) "
+        "so the live-logged set takes its logs from a snapshot while "
+        "CONTENT_DIR still names the live ledger and parsed text",
     )
     parser.add_argument("--self-check", action="store_true", help="Run the self-check and stop")
     args = parser.parse_args(argv)
@@ -440,9 +495,9 @@ def main(argv=None):
     # depends on the tokenizer, never on the query, so narrowing the
     # queries or changing ground truth must not cost a rebuild.
     indexes = {}
-    for label, tokenize in ARMS.items():
+    for label, (doc_tokenize, _query_tokenize) in ARMS.items():
         print(f"building the {label} index over {len(items)} ledger items...", flush=True)
-        indexes[label] = build_index(items, tokenize)
+        indexes[label] = build_index(items, doc_tokenize)
 
     rows, movements = [], []
     for name in sorted(GROUND_TRUTHS):
@@ -474,8 +529,8 @@ def main(argv=None):
             narrowed = narrow(ground_truth, keywords)
             width = "all" if keywords is None else str(keywords)
             rankings = {}
-            for label, tokenize in ARMS.items():
-                row, ranked = score_arm(label, indexes[label], tokenize, narrowed)
+            for label, (_doc_tokenize, query_tokenize) in ARMS.items():
+                row, ranked = score_arm(label, indexes[label], query_tokenize, narrowed)
                 row["ground_truth"] = name
                 row["query_keywords"] = width
                 rankings[label] = ranked

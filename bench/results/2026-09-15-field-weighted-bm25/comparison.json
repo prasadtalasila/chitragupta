@@ -1,0 +1,100 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.715
+ },
+ {
+  "row": "E1 interrogative-strip: keywords (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.715
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as a question",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7812,
+  "ndcg@5": 0.6867
+ },
+ {
+  "row": "E1 interrogative-strip: question, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.715
+ },
+ {
+  "row": "E1 interrogative-strip: keywords, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.715
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as an assertion",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7344,
+  "ndcg@5": 0.6491
+ },
+ {
+  "row": "field weights: all 1.0 (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.715
+ },
+ {
+  "row": "field weights: title=1.5",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.7158
+ },
+ {
+  "row": "field weights: title=2.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8086,
+  "ndcg@5": 0.7175
+ },
+ {
+  "row": "field weights: title=4.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8008,
+  "ndcg@5": 0.7143
+ },
+ {
+  "row": "field weights: title=8.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7195
+ },
+ {
+  "row": "field weights: abstract=1.5",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7151
+ },
+ {
+  "row": "field weights: abstract=2.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7969,
+  "ndcg@5": 0.7141
+ },
+ {
+  "row": "field weights: abstract=4.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.793,
+  "ndcg@5": 0.7165
+ }
+]

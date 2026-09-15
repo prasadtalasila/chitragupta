@@ -1,0 +1,65 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8646,
+  "ndcg@5": 0.4526
+ },
+ {
+  "row": "field weights: all 1.0 (baseline)",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8646,
+  "ndcg@5": 0.4526
+ },
+ {
+  "row": "field weights: title=1.5",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4555
+ },
+ {
+  "row": "field weights: title=2.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4555
+ },
+ {
+  "row": "field weights: title=4.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4566
+ },
+ {
+  "row": "field weights: title=8.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4588
+ },
+ {
+  "row": "field weights: abstract=1.5",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8646,
+  "ndcg@5": 0.4529
+ },
+ {
+  "row": "field weights: abstract=2.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8646,
+  "ndcg@5": 0.4517
+ },
+ {
+  "row": "field weights: abstract=4.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8646,
+  "ndcg@5": 0.4526
+ }
+]

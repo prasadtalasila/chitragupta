@@ -428,16 +428,18 @@ did not help: nDCG@5 fell from 0.7321 to 0.6886. See
 **It also does not stem, and that is measured rather than left
 undone.** So a query for "digital twin" does not by itself reach a paper
 that only ever says "digital twins" -- re-phrasing to the form the corpus
-uses is the remedy -- the second row of the table above. Porter
-stemming both sides was measured on both ground truths (#787): on 96 real
-drafting-session queries it is a wash -- recall@5 identical, nDCG@5 down
-2.1pp, 17 queries better against 15 worse -- and on 256 author-keyword
-queries it loses at every query width, including the two- and
-three-term widths the case for it rested on. The mechanism is in one
-number: it takes the index from 68,477 terms to 54,705 and raises the
-mean document frequency of a query's own terms by 17%, so each surviving
-term carries less IDF. `bench/RESULTS.md`'s 2026-09-15 entry has both
-tables and the stem classes that do the damage.
+uses is the remedy, the second row of the table above. Porter stemming
+both sides was measured on both ground truths (#787) and declined. On
+96 real drafting-session queries it is a wash, moving in no consistent
+direction: recall@5 down one query, recall@1 up two, nDCG@5 down
+1.91pp, 17 queries better against 15 worse. On
+256 author-keyword queries it loses at every query width, including the
+one-, two- and three-term widths the case for it rested on. The mechanism
+is in one number: it takes the index from 68,477 terms to
+54,705 and raises the mean document frequency of a query's own terms
+by ~17%, so each surviving term carries less IDF. `bench/RESULTS.md`'s
+2026-09-15 (#787) entry has both tables and the stem classes that do the
+damage.
 
 On this project's corpus BM25 outscores the dense path on every ground
 truth tried so far. [RETRIEVAL.md](RETRIEVAL.md#-which-should-i-build)

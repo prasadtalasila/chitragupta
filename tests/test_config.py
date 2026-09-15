@@ -454,6 +454,46 @@ class TestModuleReloadWithEnvOverrides:
         empty_toml.write_text("", encoding="utf-8")
         monkeypatch.setenv("CONFIG_PATH", str(empty_toml))
 
+    def test_retrieval_field_weights_default_to_one(self, monkeypatch, _empty_config_toml):
+        """1.0 is the code's default, not this host's setting, and it is
+        what makes #762's field weighting inert until someone turns it
+        on -- `retrieval_scoring.field_deltas` returns nothing at 1.0, so
+        the ranker never reads a field count."""
+        for field in ("TITLE", "ABSTRACT"):
+            monkeypatch.delenv(f"RETRIEVAL_WEIGHT_{field}", raising=False)
+        importlib.reload(config)
+        assert config.RETRIEVAL_FIELD_WEIGHTS == {"title": 1.0, "abstract": 1.0}
+
+    @pytest.mark.parametrize("bad", ["-1.0", "inf", "-inf"])
+    def test_a_negative_or_infinite_field_weight_is_rejected(
+        self, monkeypatch, _empty_config_toml, bad
+    ):
+        """Rejected at load rather than coerced, because neither value
+        fails where it was written. A negative weight makes BM25's
+        saturation return a negative contribution, ranking a document
+        that contains the term below one that does not; an infinite one
+        ties every document carrying the field at `inf`. Both surface as
+        a ranking nobody can explain, arbitrarily far from the config
+        line that caused them."""
+        monkeypatch.setenv("RETRIEVAL_WEIGHT_TITLE", bad)
+        with pytest.raises(ValueError) as excinfo:
+            importlib.reload(config)
+        assert "weight_title" in str(excinfo.value)
+        # Cleared here rather than left to monkeypatch: this class's own
+        # teardown reloads `config`, and it runs before monkeypatch undoes
+        # the environment -- so a bad value left set makes the *teardown*
+        # raise, reporting as an error on a test that passed.
+        monkeypatch.delenv("RETRIEVAL_WEIGHT_TITLE")
+        importlib.reload(config)
+
+    def test_a_zero_field_weight_is_allowed(self, monkeypatch, _empty_config_toml):
+        """0.0 means "discount this field entirely", which is a coherent
+        thing to ask for and is one end of #770's own sweep -- so the
+        guard above must reject below zero, not at it."""
+        monkeypatch.setenv("RETRIEVAL_WEIGHT_ABSTRACT", "0")
+        importlib.reload(config)
+        assert config.RETRIEVAL_FIELD_WEIGHTS["abstract"] == 0.0
+
     def test_bib_file_env_override(self, monkeypatch, _empty_config_toml):
         monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
         importlib.reload(config)
