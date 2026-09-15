@@ -23,6 +23,16 @@ is what selects it. This document is for the two cases where that isn't
 enough: when you want to know which genre you are actually asking for,
 and when you want to know why the one that ran refused something.
 
+**If you have picked your genre and want to be walked through it**, each
+one has a start-to-finish tutorial -- every command from `dossier init`
+to a gated, rendered draft, with an example outline:
+[survey](WRITE-A-SURVEY.md),
+[thesis chapter](WRITE-A-THESIS-CHAPTER.md),
+[textbook chapter](WRITE-A-TEXTBOOK-CHAPTER.md),
+[tutorial](WRITE-A-TUTORIAL.md),
+[deep-research report](WRITE-A-DEEP-RESEARCH-REPORT.md). This page is
+the chooser; those are the walkthroughs.
+
 Related reading:
 
 - [WRITING-STANDARDS.md](WRITING-STANDARDS.md) -- the prose rules the
