@@ -143,10 +143,13 @@ same bibliography in, same citekeys out.
 
 Four nuances worth knowing before you rely on it:
 
-- **Removal is opt-in.** `sync` only *reports* a citekey that dropped out
-  of your bib export; it deletes nothing until re-run with
-  `--remove-stale`. A short export is more often a botched one than an
-  intentional deletion.
+- **Removal is opt-in, and it tells you what you are removing.** `sync`
+  only *reports* a citekey that dropped out of your bib export; it
+  deletes nothing until re-run with `--remove-stale`. A short export is
+  more often a botched one than an intentional deletion. Either way it
+  first names every other artefact -- overlap index, topic graph,
+  dossiers, chroma vectors -- that still references that citekey, and
+  repairs none of them.
 - **A citekey is also a filename stem.** One containing a path
   separator, a character Windows forbids, or a reserved device name is
   **skipped with a warning naming it**, never sanitised -- this project

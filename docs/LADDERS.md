@@ -324,7 +324,13 @@ supports it, and may it be quoted?
 **Where:**
 [`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/passages.py),
 read by
-`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`.
+`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`
+-- which does now read **rung 2 alone**, through
+`passages.corpus_passages`, to find where a document's reference list
+starts ([RETRIEVAL.md](RETRIEVAL.md#-a-papers-own-bibliography-is-not-indexed)),
+but still cuts its own snippets as character windows out of the flat text.
+Rung 2 alone, not the ladder, because rung 1 is the enrichment layer's
+parse and what BM25 ranks may not depend on whether that layer has run.
 
 | # | Rung | Written by | Quotable? |
 | --- | --- | --- | --- |

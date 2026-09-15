@@ -20,13 +20,15 @@ first (creates .venv-full/ on a bare host), then run this via that
 venv's python. python -m chitragupta.draft gate does not need it and still
 runs with the bare system interpreter.
 
-Split (#441) into four modules: this one keeps the top-level
-orchestration (`run`/`main`) and the per-document ledger-write/tally
-step, `chitragupta/sync_pool.py` holds the parse-dispatch engine,
-`chitragupta/sync_decide.py` the two ledger-vs-bib-file decisions, and
-`chitragupta/sync_report.py` the printed summary/warnings -- each a
-one-way dependency of this module, none of the other three importing
-back.
+Split (#441) into four modules, and a fifth since: this one keeps the
+top-level orchestration (`run`/`main`) and the per-document
+ledger-write/tally step, `chitragupta/sync_pool.py` holds the
+parse-dispatch engine, `chitragupta/sync_decide.py` the two
+ledger-vs-bib-file decisions, `chitragupta/sync_report.py` the printed
+summary/warnings, and `chitragupta/sync_residue.py` (#763) the read-only
+scan for artefacts that still name a citekey about to be dropped. Each
+is a one-way dependency of this module; none imports back, and only
+`sync_decide` reaches `sync_residue`.
 """
 
 import argparse

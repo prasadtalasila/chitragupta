@@ -8,7 +8,7 @@ has, and neither calls back into `chitragupta.sync` -- `chitragupta/sync.py`
 calls these, not the reverse.
 """
 
-from chitragupta import bib_reader, config, ledger
+from chitragupta import bib_reader, config, ledger, sync_residue
 
 
 def _to_parse(con, references, reparse, parser_available, tally) -> list:
@@ -126,12 +126,24 @@ def _report_stale(
     (a botched re-export, BIB_FILE pointing at the wrong path) than an
     intentional removal, so the default is to report it and let a human
     confirm rather than delete on every routine sync.
+
+    Either way, `chitragupta/sync_residue.py` first reports what else on
+    disk still names each of those citekeys (issue #763). It runs before
+    the deletion, not after, so the report describes the corpus the
+    person is being asked about rather than the one already changed --
+    and it repairs nothing, which is the whole of its contract.
     """
     pruned: list[tuple[str, str | None]] = []
     stale: list[tuple[str, str | None]] = []
     suspicious = False
     seen_citekeys = {r.citekey for r in references}
     if remove_stale:
+        # Skipped when the bib yielded nothing: prune_missing's guard is
+        # about to refuse and raise on exactly that shape, and a residue
+        # report for every row in the ledger would bury the refusal it
+        # is printed just ahead of.
+        if seen_citekeys:
+            sync_residue.report([key for key, _path in ledger.find_stale(con, seen_citekeys)])
         pruned = ledger.prune_missing(con, seen_citekeys)
         for citekey, _parsed_path in pruned:
             print(f"  pruned  {citekey} (no longer in {config.BIB_FILE_PATH.name})")
@@ -165,4 +177,9 @@ def _report_stale(
         # meant to be.
         for citekey, _parsed_path in stale:
             print(f"  stale   {citekey} (no longer in {config.BIB_FILE_PATH.name})")
+        # After the list, before the summary's "re-run with
+        # --remove-stale" instruction: this default run *is* the moment
+        # the human is being asked to confirm, so the residue belongs
+        # between the names and the invitation to act on them.
+        sync_residue.report([citekey for citekey, _parsed_path in stale])
     return pruned, stale, suspicious

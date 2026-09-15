@@ -137,8 +137,9 @@ text to `content/parsed/<citekey>.txt`.
 
 Three checks ride along, and none of them is fatal: near-duplicate
 citekeys, a parse-quality warning when a backend starts losing word
-boundaries, and a stale-citekey report. Deletion of a stale row happens
-only under `--remove-stale`.
+boundaries, and a stale-citekey report -- which also names every other
+artefact that still references each stale citekey, and repairs none of
+them. Deletion of a stale row happens only under `--remove-stale`.
 
 It is idempotent and incremental -- a PDF whose bytes haven't changed is
 not re-parsed -- which is what makes the second run nearly free. Exit
