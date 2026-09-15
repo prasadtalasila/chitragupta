@@ -26,7 +26,51 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import retrieval  # noqa: E402
+from chitragupta import config, retrieval, retrieval_scoring  # noqa: E402
+
+# #762's field-weight grid, shared by the two scripts that score BM25
+# against a ground truth (bench_retrieval_keyword_selfretrieval.py and
+# bench_retrieval_live_logs.py) so both sweep the same vectors and their
+# rows can be read against each other.
+#
+# **One arm at a time**, Ni et al.'s protocol as everywhere else here: no
+# row moves two fields at once, so a change is attributable to the field
+# it names rather than to a vector. The grid is geometric rather than
+# fine because the question #762 asks is "does weighting this field help
+# at all", not "what is the optimum" -- a fine grid over a ground truth
+# of a few hundred rows would mostly be reading noise.
+FIELD_WEIGHT_GRID = (
+    {},
+    {"title": 1.5},
+    {"title": 2.0},
+    {"title": 4.0},
+    {"title": 8.0},
+    {"abstract": 1.5},
+    {"abstract": 2.0},
+    {"abstract": 4.0},
+)
+
+
+def with_field_weights(overrides):
+    """Pin *every* field's weight, not just the ones `overrides` names.
+
+    An arm that let an unnamed field fall through to config.toml would
+    measure whatever this host happens to set, which is the class of bug
+    `repro_check.py` was taught to guard against after B2b inherited
+    `formulas = true` from the host and silently compared two different
+    parses.
+    """
+    pinned = dict.fromkeys(retrieval_scoring.FIELDS, 1.0)
+    pinned.update(overrides)
+    config.RETRIEVAL_FIELD_WEIGHTS = pinned
+    return pinned
+
+
+def field_weight_label(overrides):
+    if not overrides:
+        return "field weights: all 1.0 (baseline)"
+    return "field weights: " + ", ".join(f"{name}={w}" for name, w in sorted(overrides.items()))
+
 
 K_REPORT = 5
 K_POOL = 50  # first-pass depth offered to the reranker, per discussion #43 Sec.3

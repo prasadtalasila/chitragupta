@@ -30,7 +30,14 @@ from chitragupta import config
 # in `_fingerprint` below: `passages.clear_sidecar` runs before every
 # re-parse and the same parse rewrites the `.txt`, so a sidecar cannot
 # move without the parsed file's own mtime moving with it.
-_INDEX_SCHEMA_VERSION = 2
+#
+# 3 since #762: an entry written before it carries no `field_freqs`, and
+# `retrieval_scoring.weighted_freq` reads a missing one as "no fields" --
+# which is correct for `discover/_resolve.py`'s hand-built entries and
+# wrong here, where it would silently score a cached document as though
+# its title matched nothing. The parsed file is again byte-identical and
+# the fingerprint again cannot say so, for the same reason as 2.
+_INDEX_SCHEMA_VERSION = 3
 
 
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:

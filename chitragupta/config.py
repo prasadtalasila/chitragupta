@@ -403,6 +403,37 @@ TLDR_DIR = CONTENT_DIR / "tldr"
 # search() call only re-tokenizes docs whose text actually changed since
 # the last run, mirroring chitragupta/ledger.py's own stat-before-hash skip logic.
 RETRIEVAL_INDEX_PATH = CONTENT_DIR / "retrieval_index.json"
+
+
+def _get_field_weight(field: str) -> float:
+    """One `[retrieval]` field weight, validated at load.
+
+    Rejected rather than coerced, like _get_workers and
+    _get_optional_float: a negative weight makes BM25's term-frequency
+    saturation return a negative contribution, and an infinite one makes
+    every document carrying the field tie at inf. Both surface far from
+    the config line that caused them -- as a ranking nobody can explain
+    rather than as an error -- which is the failure mode this project
+    keeps choosing to move forward.
+    """
+    weight = _get_float(
+        f"RETRIEVAL_WEIGHT_{field.upper()}", "retrieval", f"weight_{field}", default=1.0
+    )
+    if not 0.0 <= weight < math.inf:
+        raise ValueError(
+            f"[retrieval].weight_{field} must be a finite number at least 0, not {weight!r}. "
+            "1.0 leaves ranking exactly as it is."
+        )
+    return weight
+
+
+# Per-field BM25 weights, keyed by chitragupta/retrieval_scoring.py's
+# FIELDS -- built from that tuple so a field cannot exist without a
+# weight or a weight without a field. Every default is 1.0, which
+# reproduces the pre-#762 ranking exactly; docs/RETRIEVAL.md carries the
+# measurement that would justify any other number, and #770 adds
+# `caption` and `table` to the same table.
+RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
 # Cached n-gram fingerprints for chitragupta/overlap_index.py -- content/overlap/docs/
 # holds one file per citekey, content/overlap/index.bin the merged corpus
 # index. Both are keyed by (pdf_hash, parsed-file size/mtime_ns), the same

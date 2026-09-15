@@ -1014,6 +1014,12 @@ class TestDocsQuoteTheActualDefaults:
         # rewrapped -- it is the number that must not drift, not the
         # column the line happens to break at.
         assert f"{retrieval_tables._TABLE_BLOCK_MAX_CHARS} characters" in " ".join(retr.split())
+        # #762's field weights, same reason again: RETRIEVAL.md shows the
+        # `[retrieval]` block as a TOML snippet a reader will copy, and a
+        # weight that ships at something other than 1.0 while the snippet
+        # still says 1.0 would be read as "this is inert" when it is not.
+        for field, weight in config.RETRIEVAL_FIELD_WEIGHTS.items():
+            assert f"weight_{field} = {weight}" in retr
 
     def test_y_prev_bound_is_pinned_in_cli_md(self):
         from chitragupta import retrieval_iterative

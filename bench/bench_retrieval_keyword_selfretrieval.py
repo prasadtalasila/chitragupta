@@ -49,13 +49,16 @@ sys.path.insert(0, str(REPO))
 
 from chitragupta import bib_reader, ledger, retrieval, retrieval_cache  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
+    FIELD_WEIGHT_GRID,
     K_REPORT,
     K_POOL,
     DENSE_MODELS,
     RERANK_MODEL,
+    field_weight_label,
     recall_at_k,
     ndcg_at_k,
     collapse_to_citekeys,
+    with_field_weights,
     _venv_python,
 )
 
@@ -125,6 +128,44 @@ def self_check():
     assert "decoy_2024" not in stripped_hits, (
         "stripping interrogatives must drop the decoy that only matched on 'what'"
     )
+
+    # #762's own before/after, same convention: fabricate a corpus where
+    # a title weight *must* change the order, and assert the sweep sees
+    # it. `titled_2024` says "digital twin" once, in its title;
+    # `bulk_2024` says it eight times in its body and is not about it --
+    # the defect #762 names. Without this, a field-weight row that
+    # silently read no weights at all would publish a flat sweep as a
+    # measured null result, which is the one failure mode a null result
+    # cannot be distinguished from by looking at the numbers.
+    weight_items = [
+        {
+            "citekey": "titled_2024",
+            "title": "digital twin",
+            "parsed_path": None,
+            "status": "parsed",
+        },
+        {
+            "citekey": "bulk_2024",
+            "title": "unrelated survey",
+            "parsed_path": None,
+            "status": "parsed",
+        },
+    ]
+    weight_index = {item["citekey"]: retrieval._tokenize_item(item) for item in weight_items}
+    weight_index["bulk_2024"]["term_freqs"] = {"digital": 8, "twin": 8, "unrelated": 1}
+    weight_index["bulk_2024"]["length"] = 17
+
+    def _top(overrides):
+        with_field_weights(overrides)
+        scores = retrieval._bm25_scores(weight_index, retrieval._query_terms("digital twin"))
+        return max(scores, key=scores.get)
+
+    assert _top({}) == "bulk_2024", "unweighted, the passing mention must win -- that is the defect"
+    assert _top({"title": 8.0}) == "titled_2024", (
+        "a title weight of 8 must flip the fixture; a sweep that cannot see this "
+        "would report a null result indistinguishable from reading no weights at all"
+    )
+    with_field_weights({})
 
 
 def score_keyword_rows(ranked_by_query, ground_truth):
@@ -196,6 +237,36 @@ def wrapped_and_stripped_rows(ground_truth):
                 **score_keyword_rows(ranked_by_query, ground_truth),
             }
         )
+    return rows
+
+
+def field_weight_rows(ground_truth):
+    """#762's sweep, on the self-retrieval ground truth.
+
+    **Read the abstract rows with the circularity in mind.** The query
+    here is the paper's own author-assigned `keywords` field, and an
+    author's keywords very often also appear in their abstract -- so an
+    abstract weight has a structural head start on this ground truth that
+    it does not have on a real drafting query. The live-logs arm
+    (bench_retrieval_live_logs.py) shares this grid precisely so the two
+    can be read against each other; where they disagree about the
+    abstract, that arm is the one to believe. Title rows do not have the
+    problem: a title is not where a keywords field is drawn from.
+    """
+    rows = []
+    for overrides in FIELD_WEIGHT_GRID:
+        with_field_weights(overrides)
+        ranked_by_query = {}
+        for row in ground_truth:
+            results = retrieval.search(row["query"], k=K_REPORT)
+            ranked_by_query[row["citekey"]] = [r.citekey for r in results]
+        rows.append(
+            {
+                "row": field_weight_label(overrides),
+                **score_keyword_rows(ranked_by_query, ground_truth),
+            }
+        )
+    with_field_weights({})
     return rows
 
 
@@ -350,6 +421,26 @@ def cascade_row(winning_model, ground_truth, tag, shortlist_size=50):
     }
 
 
+def _report(rows, tag):
+    """Print the table and write the record. Its own function since
+    #762: `--only field-weights` returns before the dense and SPECTER2
+    arms, and both exits must write the same record shape or the two runs
+    cannot be read against each other."""
+    print(f"\n{'row':50}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
+    for row in rows:
+        print(
+            f"{row['row']:50}  {row['n_queries']:>3}  "
+            f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}"
+        )
+
+    out_dir = BENCH_DIR / "results" / Path(tag).name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    record = out_dir / "comparison.json"
+    record.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    print(f"\nRecord: {record}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--tag", help="names bench/results/<tag>/")
@@ -357,6 +448,14 @@ def main(argv=None):
     ap.add_argument("--cascade-worker", default=None, metavar="MODEL", help=argparse.SUPPRESS)
     ap.add_argument("--out", default=None, help=argparse.SUPPRESS)
     ap.add_argument("--shortlist-size", type=int, default=50, help=argparse.SUPPRESS)
+    # #762's sweep needs no model and no GPU, and the arms it skips cost
+    # several minutes of encoder time each -- worth an opt-out on a host
+    # whose cards other worktree sessions are also using.
+    ap.add_argument(
+        "--only",
+        choices=("field-weights",),
+        help="run only the named arms (default: every arm)",
+    )
     args = ap.parse_args(argv)
 
     self_check()
@@ -391,7 +490,13 @@ def main(argv=None):
         flush=True,
     )
 
-    rows = [bm25_row(ground_truth)] + wrapped_and_stripped_rows(ground_truth)
+    rows = (
+        [bm25_row(ground_truth)]
+        + wrapped_and_stripped_rows(ground_truth)
+        + field_weight_rows(ground_truth)
+    )
+    if args.only == "field-weights":
+        return _report(rows, args.tag)
     for model in DENSE_MODELS:
         dense, rerank = dense_and_rerank_rows(model, ground_truth, args.tag)
         rows += [dense, rerank]
@@ -402,19 +507,7 @@ def main(argv=None):
     winning_model = winner["row"].removeprefix("dense+rerank: ")
     rows.append(cascade_row(winning_model, ground_truth, args.tag))
 
-    print(f"\n{'row':50}  {'n':>3}  recall@{K_REPORT}  ndcg@{K_REPORT}")
-    for row in rows:
-        print(
-            f"{row['row']:50}  {row['n_queries']:>3}  "
-            f"{row[f'recall@{K_REPORT}']:>9}  {row[f'ndcg@{K_REPORT}']:>8}"
-        )
-
-    out_dir = BENCH_DIR / "results" / Path(args.tag).name
-    out_dir.mkdir(parents=True, exist_ok=True)
-    record = out_dir / "comparison.json"
-    record.write_text(json.dumps(rows, indent=1), encoding="utf-8")
-    print(f"\nRecord: {record}")
-    return 0
+    return _report(rows, args.tag)
 
 
 if __name__ == "__main__":
