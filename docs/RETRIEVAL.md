@@ -351,9 +351,14 @@ on per-process string hashing, **the same query on the same document
 returned a different snippet run to run.**
 
 Both `search` and `evidence` now go through one chooser. Candidate
-windows are anchored on every occurrence of every term, scored by how
-many *distinct* query terms fall inside, de-overlapped, and returned in
-document order. Ties break on position. Nothing reads the set's order, so
+windows are anchored on every occurrence of every term **as a whole
+word**, scored by how many *distinct* query terms fall inside on the same
+word-boundary rule, de-overlapped, and returned in
+document order. The boundary matches the tokenizer's, so a term is found
+in the window exactly where the index counted it -- "co" in
+"co-simulation" and not in "control"
+([above](#-where-the-token-length-floor-came-from) has what that was
+worth). Ties break on position. Nothing reads the set's order, so
 the result is deterministic by construction -- and it is the
 best-covering passage rather than an arbitrary one, so a passage late in
 a long paper is reachable.
