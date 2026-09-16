@@ -6383,7 +6383,7 @@ or #762 self-retrieval rows.
 
 ### `k1`, with `b` at 0.75 (258 author-keyword queries)
 
-| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse |
+| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse (MRR@10) |
 |---|---|---|---|---|---|---|
 | baseline (k1 = 1.5, b = 0.75) | 0.7519 -- | 0.8101 -- | 0.8566 -- | 0.7254 | -- | -- |
 | k1 = 0.0 | 0.3876 **-94 queries** | 0.4690 **-88 queries** | 0.5853 **-70 queries** | 0.3439 | -0.3815 | 5 / 160 |
@@ -6400,7 +6400,7 @@ or #762 self-retrieval rows.
 
 ### `b`, with `k1` at 1.5 (the same 258 queries)
 
-| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse |
+| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse (MRR@10) |
 |---|---|---|---|---|---|---|
 | baseline (k1 = 1.5, b = 0.75) | 0.7519 -- | 0.8101 -- | 0.8566 -- | 0.7254 | -- | -- |
 | b = 0.0 | 0.5736 **-46 queries** | 0.6434 **-43 queries** | 0.7326 **-32 queries** | 0.4996 | -0.2258 | 10 / 125 |
@@ -6413,7 +6413,13 @@ or #762 self-retrieval rows.
 Deltas are stated in **queries** rather than percentage points, per this
 file's own ["Power, stated plainly"](#power-stated-plainly): one query in
 258 is 0.39pp, and a table of four-decimal recalls invites reading three
-of those decimals as signal.
+of those decimals as signal. The **better / worse** column is the count
+of individual queries whose own correct answer moved up or down, by
+reciprocal rank over the top 10 -- so a paper that moves from rank 11 to
+rank 12 reads as unchanged, which is the same depth every other column in
+the row is measured at. It is there because a mean can hide a swap: an
+arm that promotes four papers and demotes four reports no movement at
+all.
 
 **Decision: ship both as settings, leave 1.5 and 0.75. Declined for `b`;
 undecided for `k1`, and the two are not the same verdict.**

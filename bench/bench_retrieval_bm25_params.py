@@ -248,7 +248,14 @@ def available_ground_truths(only):
 
 def sweep(index, ground_truth):
     """Every arm against one ground truth, plus how many individual
-    queries each arm moved against the baseline's own rankings."""
+    queries each arm moved against the baseline's own rankings.
+
+    Movement is reciprocal rank over the top `K_DEEPEST`, so a correct
+    answer that moves from rank 11 to rank 12 reads as unchanged -- the
+    same depth every reported figure is measured at, and stated in
+    `bench/RESULTS.md` beside the column rather than left to be inferred
+    from it.
+    """
     rows, movements, baseline_ranked = [], [], None
     for label, k1, b in arms():
         row, ranked = score_arm(label, k1, b, index, ground_truth)
