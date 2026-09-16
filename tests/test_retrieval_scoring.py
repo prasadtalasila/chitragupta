@@ -11,6 +11,7 @@ at both ends: the delta list, and the score.
 """
 
 import json
+import math
 
 import pytest
 
@@ -295,6 +296,110 @@ class TestSearchHonoursTheWeights:
         )
         unweighted = [(r.citekey, r.score) for r in retrieval.search("humidity")]
         assert weighted == unweighted
+
+
+def bm25_as_shipped_before_788(index, terms, k1=1.5, b=0.75):
+    """Okapi BM25 with the constants written in, as #788 found them.
+
+    A second implementation rather than a call with the defaults pinned,
+    for the reason `test_weight_one_reproduces_the_unweighted_scores_exactly`
+    gives about the field seam: comparing `bm25_scores` against itself
+    proves determinism, not that the shipped defaults reproduce the
+    ranking the module had before the constants became configurable.
+    This is that ranking, transcribed from the pre-#788 source.
+    """
+    doc_count = len(index)
+    avgdl = sum(entry["length"] for entry in index.values()) / doc_count
+    term_set = set(terms)
+    doc_freq = {
+        t: sum(1 for entry in index.values() if entry["term_freqs"].get(t)) for t in term_set
+    }
+    idf = {t: math.log((doc_count - doc_freq[t] + 0.5) / (doc_freq[t] + 0.5) + 1) for t in term_set}
+    scores = {}
+    for citekey, entry in index.items():
+        norm = 1 - b + b * (entry["length"] / avgdl if avgdl else 0)
+        score = 0.0
+        for t in term_set:
+            freq = float(entry["term_freqs"].get(t, 0))
+            if freq == 0:
+                continue
+            score += idf[t] * (freq * (k1 + 1)) / (freq + k1 * norm)
+        if score > 0:
+            scores[citekey] = score
+    return scores
+
+
+def constants(monkeypatch, k1=1.5, b=0.75):
+    """Pin both BM25 constants, so a test states the whole pair rather
+    than inheriting whatever the measured defaults become -- the same
+    reason `weights` above pins every field."""
+    monkeypatch.setattr(config, "RETRIEVAL_K1", k1)
+    monkeypatch.setattr(config, "RETRIEVAL_B", b)
+
+
+class TestTheBm25ConstantsComeFromConfig:
+    def test_the_shipped_defaults_reproduce_the_pre_788_scores_exactly(self, monkeypatch):
+        """#788's own success criterion. Not `approx`: 1.5 and 0.75 have
+        to be the ranking this module had when they were module
+        constants, or the sweep in bench/RESULTS.md has no baseline."""
+        weights(monkeypatch)
+        constants(monkeypatch)
+        index = {
+            "long2024": {"length": 400, "term_freqs": {"twin": 9, "humidity": 2}},
+            "short2024": {"length": 40, "term_freqs": {"twin": 2}},
+            "unrelated2024": {"length": 120, "term_freqs": {"soil": 4}},
+        }
+        assert retrieval_scoring.bm25_scores(index, ["twin", "humidity"]) == (
+            bm25_as_shipped_before_788(index, ["twin", "humidity"])
+        )
+
+    def test_the_scorer_reads_the_configured_constants_not_its_own(self, monkeypatch):
+        """Read at call time, like `field_deltas` reads the weights --
+        which is what lets bench/bench_retrieval_bm25_params.py sweep a
+        grid in one process, and what would silently stop working if the
+        pair were bound at import."""
+        weights(monkeypatch)
+        index = {
+            "long2024": {"length": 400, "term_freqs": {"twin": 9}},
+            "short2024": {"length": 40, "term_freqs": {"twin": 2}},
+        }
+        constants(monkeypatch, k1=0.5, b=0.2)
+        assert retrieval_scoring.bm25_scores(index, ["twin"]) == (
+            bm25_as_shipped_before_788(index, ["twin"], k1=0.5, b=0.2)
+        )
+
+    def test_b_of_zero_scores_a_long_and_a_short_document_the_same(self, monkeypatch):
+        """`b = 0` is "do not normalize by length at all", the bottom of
+        #788's `b` sweep. Two documents with the same term count and very
+        different lengths must then tie exactly -- which is the property
+        the sweep's `b` arm is moving, stated as behaviour rather than as
+        a number."""
+        weights(monkeypatch)
+        index = {
+            "long2024": {"length": 4000, "term_freqs": {"twin": 3}},
+            "short2024": {"length": 40, "term_freqs": {"twin": 3}},
+        }
+        constants(monkeypatch, b=0.0)
+        scores = retrieval_scoring.bm25_scores(index, ["twin"])
+        assert scores["long2024"] == scores["short2024"]
+
+        constants(monkeypatch, b=0.75)
+        normalized = retrieval_scoring.bm25_scores(index, ["twin"])
+        assert normalized["short2024"] > normalized["long2024"]
+
+    def test_k1_of_zero_scores_presence_and_not_frequency(self, monkeypatch):
+        """`k1 = 0` saturates immediately: `freq * (k1+1) / (freq + 0)`
+        is 1 for every non-zero frequency, so nine mentions and one
+        mention score identically. The top of the curve the `k1` arm
+        sweeps, pinned as behaviour."""
+        weights(monkeypatch)
+        index = {
+            "many2024": {"length": 100, "term_freqs": {"twin": 9}},
+            "once2024": {"length": 100, "term_freqs": {"twin": 1}},
+        }
+        constants(monkeypatch, k1=0.0)
+        scores = retrieval_scoring.bm25_scores(index, ["twin"])
+        assert scores["many2024"] == scores["once2024"]
 
 
 class TestExtractFrom:

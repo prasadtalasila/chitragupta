@@ -408,6 +408,7 @@ Work down this list instead:
 | You phrased the query as a question | **before stage 1** | Re-phrase it as keywords and compare. On the BM25 path this alone changes over half the result -- [above](#-before-stage-1-the-shape-of-the-query) |
 | The corpus says "twins" and you searched "twin" | **before stage 1** | Neither path stems, on the BM25 side deliberately and measured ([below](#-what-bm25-does-instead)). Search the form the corpus uses, or both |
 | The paper has no parsed text | before stage 1 | It is findable by BM25 (title) but not here -- `build_index` skips documents with no text. Re-run `sync`, check the PDF parsed |
+| A paper that mentions your subject in passing outranks the paper about it | **before stage 1** | A BM25 lever, not a dense one: raise `[retrieval].k1` so a repeated term saturates later. Swept and left at 1.5 for *this* corpus, on one ground truth that could not settle it -- read [RETRIEVAL.md](RETRIEVAL.md#-k1-and-b-are-settings-and-the-defaults-were-swept) before moving it |
 | One paper fills the result | stage 3 | Lower `embed_max_passages_per_source` (to `1` for maximal diversity) |
 | The right paper is in the results but 4th or 5th | stage 2 | This is what reranking is for |
 | The right paper is absent entirely | stage 1 | Raise `embed_overfetch_multiplier`, or `embed_top_k` -- the pool is their product. Reranking will not help |

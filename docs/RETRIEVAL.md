@@ -72,8 +72,9 @@ flowchart TB
 ## 🔎 BM25 -- the default, and always available
 
 `chitragupta/retrieval.py` ranks whole documents by Okapi BM25 over
-whitespace-separated tokens, with the usual constants (`k1 = 1.5`,
-`b = 0.75`) and every `[retrieval]` field weight at 1.0
+whitespace-separated tokens, with `k1 = 1.5` and `b = 0.75`
+([below](#-k1-and-b-are-settings-and-the-defaults-were-swept)) and every
+`[retrieval]` field weight at 1.0
 ([below](#-title-and-abstract-can-outweigh-body-text)). Scoring itself
 lives in `chitragupta/retrieval_scoring.py`; this module owns what text
 an item contributes, that one owns what the text scores. It is
@@ -106,6 +107,54 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 `status`, and the parsed file's size and mtime -- not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
+
+### 🎛 `k1` and `b` are settings, and the defaults were swept
+
+Okapi BM25 has two free parameters, and both sit under `[retrieval]` in
+`config.toml`:
+
+```toml
+[retrieval]
+k1 = 1.5
+b = 0.75
+```
+
+`k1` is how fast a term's frequency saturates — how much the ninth
+mention of a word adds over the first. `b` is how strongly a document's
+score is normalized by its length, from 0 (not at all) to 1 (in full).
+Both also govern the [passage unit](#-the-passage-unit), which shares the
+same scorer. A `k1` below 0 or non-finite, or a `b` outside [0, 1], is
+rejected when the config loads: past 1, `b` makes the normalizer
+`1 - b + b × dl/avgdl` negative for a short document, which flips the
+sign of BM25's denominator and ranks a paper containing your term below
+one that does not.
+
+**1.5 and 0.75 are the textbook values, and they were swept rather than
+assumed.** They come from TREC-era ad-hoc retrieval over news and web
+collections; this corpus is a few hundred academic PDFs running from a
+four-page paper to a whole book, which is the length spread `b` exists
+for. The sweep (`bench/RESULTS.md`, 2026-09-16) moved one parameter at a
+time at k in {3, 5, 10}, and found two different things:
+
+- **`b` has no better value here.** 0.75 is the recall peak. Everything
+  below it loses monotonically at all three cutoffs, and the two settings
+  above it trade a query at one cutoff for a query at another — `0.875`
+  gains 2 at k = 3 and gives back 2 at k = 5 and 1 at k = 10. Read at
+  k = 5 alone it would have looked like a small win, which is why three
+  cutoffs were measured.
+- **`k1` prefers 8.0, and was left at 1.5 anyway.** On the one ground
+  truth the measuring host could build, `k1 = 8` is worth 7 queries of
+  recall@5 and +0.0195 nDCG@5 — a real peak, not a grid edge. But that
+  ground truth asks a paper's own author keywords to find that paper,
+  so "let raw repetition count for more" is the change it is built to
+  reward, and the independent arm of real drafting queries was
+  unavailable. A large gain on the circular arm alone is not a default.
+
+**So the right value for your corpus is an open question this one cannot
+answer.** Raise `k1` if a paper genuinely about your query keeps losing
+to one that merely mentions it a lot. Lower `b` if short documents win on
+brevity rather than relevance, raise it if long ones win on size. Read
+the table in `bench/RESULTS.md` before either.
 
 ### ⚖ Title and abstract can outweigh body text
 

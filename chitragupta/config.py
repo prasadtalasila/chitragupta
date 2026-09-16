@@ -434,8 +434,66 @@ def _get_field_weight(field: str) -> float:
 # measurement that would justify any other number, and #770 adds
 # `caption` and `table` to the same table.
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
+
+
+def _get_bm25_constant(key: str, default: float, upper: float) -> float:
+    """One `[retrieval]` Okapi BM25 constant, validated at load (#788).
+
+    Rejected rather than coerced, like _get_field_weight above and for
+    the same reason: neither constant fails anywhere near the config line
+    that set it.
+
+    - **`k1` below 0 inverts term-frequency saturation**, so a paper
+      saying "digital twin" nine times scores *below* one saying it once.
+      Not finite is worse: `inf` and `nan` both make every score `nan`,
+      and a sort over `nan` is arbitrary rather than wrong in a
+      direction anyone could notice.
+    - **`b` outside [0, 1] is not a stronger length normalization, it is
+      a broken one.** The normalizer is `1 - b + b * (dl / avgdl)`, which
+      goes negative for a short document once `b` passes 1 -- flipping
+      the sign of BM25's denominator, so a document containing the term
+      ranks below one that does not.
+
+    Hence two bounded ends here where the field weights have one. `upper`
+    is `math.inf` for `k1`, whose upper end is genuinely open; the
+    finiteness check is what that end still needs.
+    """
+    value = _get_float(f"RETRIEVAL_{key.upper()}", "retrieval", key, default=default)
+    if not (math.isfinite(value) and 0.0 <= value <= upper):
+        allowed = "at least 0" if upper == math.inf else f"between 0 and {upper:g}"
+        raise ValueError(
+            f"[retrieval].{key} must be a finite number {allowed}, not {value!r}. "
+            f"{default} is what this project ships, and what #788's sweep examined."
+        )
+    return value
+
+
+# Okapi BM25's two free parameters, for chitragupta/retrieval_scoring.py
+# -- `k1` sets how fast term frequency saturates, `b` how strongly a
+# document's length is normalized. Both apply to the passage unit
+# (chitragupta/retrieval_passages.py) as well, which shares that scorer.
+#
+# The defaults are the textbook TREC values, and #788 is what turned them
+# from *inherited* into *examined*: swept one parameter at a time on this
+# project's own corpus. They did not move, and the reason is recorded
+# rather than assumed. `b` has no better value -- 0.75 is the recall peak,
+# and the one setting that beats it on nDCG loses two queries of recall.
+# `k1` does: the sweep prefers 8.0 over 1.5, by seven queries. It was not
+# adopted because only one of this repository's two BM25 ground truths
+# could be built on the measuring host, and it is the one structurally
+# unable to decide this -- its query is a paper's own author keywords and
+# its answer is that paper, so weakening term-frequency saturation is
+# favoured by construction. bench/RESULTS.md carries the table and
+# docs/RETRIEVAL.md the reading of it.
+#
+# Configurable regardless, because the next corpus is not this one: a
+# bibliography of four-page papers and one that is half books want
+# different length normalization, which is exactly what `b` is for.
+RETRIEVAL_K1 = _get_bm25_constant("k1", 1.5, math.inf)
+RETRIEVAL_B = _get_bm25_constant("b", 0.75, 1.0)
 # The same, for chitragupta/retrieval_passages.py's passage-level index
-# (#769). A separate file rather than a second key inside the one above:
+# (#769). A separate file rather than a second key inside
+# RETRIEVAL_INDEX_PATH above:
 # the two are invalidated by different things -- the document index by
 # the parsed .txt, this one by the passage sidecar beside it -- and a
 # shared file would make either rebuild discard the other's work.
