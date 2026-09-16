@@ -6329,3 +6329,198 @@ state `labels.json` was judged against, and the script refuses a partial
 set by design.
 
 Record: `bench/results/2026-09-15-retrieval-stemming/stemming.json`.
+
+## 2026-09-16 (#790): does lowering the two-character token floor make "AI" and "5G" rankable without costing precision?
+
+`bench/bench_retrieval_token_floor.py` (new). `chitragupta/retrieval.py::
+_tokenize` kept a token only if it was longer than two characters, so
+`AI`, `ML`, `DT`, `QA` and `5G` were in no document's term frequencies and
+in no query's terms: a search for one of them returned empty, and
+`short_query_terms` existed only to let the CLI *warn* that it would.
+Four arms, all four written into the script rather than imported, scored
+over author-keyword self-retrieval at four query widths; every index is
+built in memory, so no arm ever wrote `content/retrieval_index.json`.
+
+The arms are `floor 3` (as shipped), `floor 2` (what #790 asks for),
+`floor 2 but refusing a newly admitted bare number`, and `floor 1` (which
+#790 asked to have swept so the choice would be recorded rather than
+asserted). The digit rule in the third arm stops at the shipped floor
+deliberately: dropping every bare number would also delete `2024` and
+`100`, which `floor 3` indexes today, and the arm would then differ from
+the baseline in two things at once. An earlier run of this harness did
+exactly that and reported 34 affected queries against `floor 2`'s 32,
+which is how it was caught.
+
+**The affected subset is the table to read, and the whole set is the
+table that keeps it honest.** Only 32 of the 258 queries carry a 1-2
+character content word at full width, so averaging the other 226 in
+shrinks every difference roughly eightfold.
+
+### Floor 2 against floor 3, on the queries whose own terms it changes
+
+| width | affected | arm | recall@1 | recall@5 | MRR@5 | nDCG@5 |
+|---|---|---|---|---|---|---|
+| all | 32 | floor 3 | 0.5938 | 0.8438 | 0.6964 | 0.7335 |
+| all | 32 | **floor 2** | **0.6875** | **0.9062** | **0.7812** | **0.8130** |
+| 3 | 12 | floor 3 | 0.8333 | 0.8333 | 0.8333 | 0.8333 |
+| 3 | 12 | **floor 2** | **0.9167** | **0.9167** | **0.9167** | **0.9167** |
+| 2 | 8 | floor 3 | 0.3750 | 0.6250 | 0.5000 | 0.5327 |
+| 2 | 8 | **floor 2** | **0.6250** | **0.8750** | **0.7125** | **0.7522** |
+| 1 | 4 | floor 3 | 0.5000 | 0.7500 | 0.5833 | 0.6250 |
+| 1 | 4 | **floor 2** | **0.7500** | 0.7500 | **0.7500** | **0.7500** |
+
+Every cell improves or holds, at every width. Not one falls.
+
+### The same change over all 258 queries
+
+| width | arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF | vocabulary | mean doc tokens |
+|---|---|---|---|---|---|---|---|---|
+| all | floor 3 | 0.6240 | 0.8101 | 0.6971 | 0.7254 | 279.6 | 67,473 | 5,479.0 |
+| all | floor 2 | 0.6240 | 0.8178 | 0.7030 | 0.7319 | 278.7 | 68,454 | 5,870.0 |
+| all | floor 2, no bare numbers | 0.6318 | 0.8217 | 0.7076 | 0.7362 | 278.6 | 68,354 | 5,775.0 |
+| all | floor 1 | 0.6240 | 0.8178 | 0.7023 | 0.7314 | 281.2 | 68,489 | 6,216.4 |
+| 3 | floor 3 | 0.3295 | 0.5271 | 0.4035 | 0.4343 | 313.6 | | |
+| 3 | floor 2 | 0.3372 | 0.5271 | 0.4096 | 0.4391 | 313.2 | | |
+| 3 | floor 1 | 0.3333 | 0.5233 | 0.4057 | 0.4352 | 315.3 | | |
+| 2 | floor 3 | 0.1822 | 0.3953 | 0.2636 | 0.2966 | 327.5 | | |
+| 2 | floor 2 | 0.1899 | 0.4031 | 0.2696 | 0.3029 | 326.9 | | |
+| 2 | floor 1 | 0.1899 | 0.4031 | 0.2695 | 0.3029 | 328.1 | | |
+| 1 | floor 3 | 0.0775 | 0.1667 | 0.1094 | 0.1236 | 343.1 | | |
+| 1 | floor 2 | 0.0814 | 0.1705 | 0.1127 | 0.1270 | 343.1 | | |
+| 1 | floor 1 | 0.0853 | 0.1822 | 0.1175 | 0.1334 | 345.1 | | |
+
+Per-query movement against floor 3, whole set first and the affected
+subset in brackets:
+
+| width | floor 2 | floor 2, no bare numbers | floor 1 |
+|---|---|---|---|
+| all | 7 better / 4 worse (6/1) | 8 / 2 (6/0) | 9 / 7 (7/3) |
+| 3 | 7 / 2 (1/0) | 7 / 2 (1/0) | 8 / 5 (1/1) |
+| 2 | 5 / 4 (4/0) | 6 / 3 (4/0) | 6 / 5 (4/0) |
+| 1 | 2 / 0 (1/0) | 1 / 0 (1/0) | 6 / 0 (2/0) |
+
+**The unaffected queries are not a control, and finding that out
+corrected this harness twice.** A lowered floor admits tokens to every
+*document*, so the mean document grows from 5,479 tokens to 5,870 — and
+document length is BM25's normalization denominator, so a query that
+never changed a term still ranks differently. The first version of
+`per_query_movement` counted only the affected subset and called the rest
+"unreachable". That produced a published contradiction in the same run:
+the affected subset gained three queries at recall@1 while the whole set
+stayed flat at 0.6240, which is arithmetically only possible if three
+unaffected queries lost. They had. Both populations are counted now, and
+`self_check` pins the whole-set count so the narrower version cannot come
+back.
+
+**Decision: adopt floor 2.** It improves or holds every cell of the
+affected-subset table at every query width, is net positive over the
+whole set at every width, and closes a limitation a user could see: the
+CLI's own warning told them their query could not work. `floor 1` is
+declined — it wins nothing `floor 2` had not already won (recall@5 lands
+on the identical 0.8178 at full width, nDCG@5 slightly below), costs
+another 5.9% in tokens per document, and churns twice as much (9 better
+against 7 worse, where floor 2 is 7 against 4). The `no bare numbers`
+variant is also declined, and this is the closest call here: it is
+marginally the best row at full width and marginally the worst at one
+keyword, which is one or two queries either way on 258 — not enough to
+buy a second clause in a one-line tokenizer, and #790's own argument
+against an allowlist ("IDF is the principled instrument") applies to a
+digit as much as to a word.
+
+**#790's premise did not survive the measurement; its conclusion did.**
+The issue argued that short stopwords "are already excluded by
+`_STOPWORDS` regardless of length, so the floor's entire remaining effect
+is to discard short *content* words". On this corpus that is false:
+`retrieval` imports the 19-word `_CORE_STOPWORDS`, not the wider list in
+the same module, and the floor was the only thing keeping `or` (498
+documents), `it` (497), `if` (443), `no` (438), `we` (431), `up` (417),
+`so` and `do` out of the index. Lowering the floor admits every one of
+them. That it costs nothing measurable is the issue's *other* argument
+being right: a term appearing in 77% of the corpus earns a low IDF by
+itself, and no word list had to be grown to handle it. `--admitted` is
+what makes this checkable rather than asserted — 981 tokens enter at
+floor 2 and 35 more at floor 1, 110 of them bare numbers, and the most
+widespread are `1`, `3`, `or`, `2`, `it`, `4`, `s`, `6`, `5` and `e`.
+
+**One ground truth, and it leans toward the change.** A self-retrieval
+query is a paper's own `keywords` field, where an acronym appears as a
+standalone token far more often than in the prose a person types, so the
+set inflates how *often* the floor helps. What it does not obviously
+inflate is the direction: unlike the stemming entry above — where the
+bias was about surface form, the very axis being varied — a keyword list
+favours a verbatim match equally at every token length. The
+affected-subset counts are reported beside the means so a reader can
+weigh that themselves. The independent live-logged set that decided #762
+and #787 **could not be built on this host**: it needs a restored book's
+own `retrieval.md` logs, gitignored per-host data, and neither
+`content/dossiers/` nor any `content/backup/<date>-content/` snapshot
+holds them here. So the confirmation those two entries had, this one does
+not, and re-running `--only live-logged` on a host that has the snapshot
+is worth doing before treating the magnitude as settled.
+
+**What the change cost elsewhere.** Two schema versions, not one:
+`retrieval_cache._INDEX_SCHEMA_VERSION` 3 -> 4 and
+`retrieval_passages_cache._INDEX_SCHEMA_VERSION` 1 -> 2. They are
+separate files with separate fingerprints, and both are tokenized by
+`retrieval._tokenize`, so invalidating one says nothing about the other.
+Both fingerprints watch the parsed *file* — size, mtime, ledger status —
+which is byte-identical across this change, so nothing but the constants
+will re-tokenize anything. That is the third time the rule for what a
+parsed file's text counts as has moved under a fingerprint that only
+watches the file (#768, #762, now this).
+
+**A fix the change forced, in window selection rather than in the
+tokenizer.** `retrieval._windows` chooses the snippet `search` shows and
+the passage `evidence` returns, and it anchored on `str.find` -- a
+substring search. At three characters that was a rare nuisance; at two it
+is routine, since "ai" sits inside maintainer, said, detail, fair and
+failed. Measured over the queries this change enables, before the fix,
+**37 of 134** appearances of a two-character term in a returned snippet
+were substring-only: the snippet did not contain the word the reader
+searched for. Anchoring and scoring both match on a word boundary now,
+which takes it to 18, and those are incidental rather than defects -- the
+window is anchored on a real word match and the short string also happens
+to occur somewhere in the same 500 characters.
+
+**The boundary is the tokenizer's, and Python's `\b` is not it.** The
+first version of the fix used `\b`, which is defined over
+`[A-Za-z0-9_]` plus Unicode letters where `_tokenize` splits on
+`[a-z0-9]+` alone. They disagree on an underscore and on an accented
+letter: `_tokenize("ai_model")` is `["ai", "model"]`, so such a document
+*ranks* on "ai" -- and under `\b` produced no window at all, falling
+back to the paper's opening 500 characters with the searched-for word
+nowhere in them, while `evidence` returned nothing for a document it had
+just ranked. Worse than the substring match it replaced, for those
+inputs. `(?<![a-z0-9])...(?![a-z0-9])` over the already-lowercased text
+is the rule that actually matches the index, and
+`tests/test_retrieval.py::TestWindows` pins the underscore case. This is the class of
+problem the #787 entry predicted a tokenizer change would hit ("snippet
+and `evidence` window selection need a new ... resolution step, because
+`_windows` anchors with `str.find`"), arriving from the floor rather than
+from stemming. `_windows` shrank from 28 statements to 27, and its
+`code-standards-register.toml` entry moved with it.
+
+**A defect this closed for free.** `docs/CORPUS-SEARCH.md` recorded
+`co-simulation` tokenizing to `simulation` alone, the `co` lost to the
+floor, as a known defect beside the interrogative one. A document written
+the same way yields both halves, so the query was offering one of the two
+terms the document had. Floor 2 closes it, and
+`tests/test_retrieval.py::TestQueryTerms` now pins both behaviours in the
+one case.
+
+Reproducing:
+
+```
+cp config.toml.example config.toml   # worktree only; gitignored per-host data
+CONTENT_DIR=/workspace/git/chitragupta/content \
+  BIB_FILE=/workspace/git/chitragupta/papers/bibliography.bib \
+  .venv-full/bin/python bench/bench_retrieval_token_floor.py \
+  --only self-retrieval --admitted --tag <tag>
+```
+
+`--only self-retrieval` is not optional on this host, for the reason
+given above. Where a book's dossiers are on disk, set
+`BENCH_BOOK_DOSSIERS` (`bench_retrieval_live_logs.py`) and drop `--only`,
+and one invocation covers both sets.
+
+Record: `bench/results/2026-09-16-retrieval-token-floor/token_floor.json`.

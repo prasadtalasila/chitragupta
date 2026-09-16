@@ -1147,14 +1147,21 @@ MAX_PASSAGES_PER_SOURCE = _get_positive_int(
 # multiplier would be a knob whose every setting gave the same answer.
 #
 # Passages shorter than this many tokens (after retrieval's own
-# tokenizer, so stopwords and 1-2 character words are already gone) are
+# tokenizer, so stopwords and single-character words are already gone --
+# two-character ones rank since #790) are
 # not indexed. BM25's length normalization *rewards* a short dense
 # match, which is harmless at document scale and not at passage scale: a
 # three-word heading or a one-line bibliography entry whose words are the
 # query outscores every real paragraph in the corpus. A floor is the
 # cheap half of the answer; excluding section_header/title passages
 # outright is the other half, and that one is structural rather than
-# configurable. Default measured in bench/bench_retrieval_passage.py.
+# configurable. Default measured in bench/bench_retrieval_passage.py --
+# and measured *before* #790 lowered the tokenizer's length floor to 2,
+# which grew every passage's token count by about 7%. The number did not
+# move; what it counts did, so this floor now admits passages the sweep
+# behind it excluded. Re-sweeping it is a separate measurement, and the
+# constant is a defensible default rather than a re-derived one until
+# someone runs it.
 MIN_PASSAGE_TOKENS = _get_positive_int(
     "MIN_PASSAGE_TOKENS",
     "retrieval",

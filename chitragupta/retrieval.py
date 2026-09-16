@@ -102,23 +102,39 @@ class SearchResult:
     snippet: str
 
 
+# `> 1`, not `> 2`, since #790: a two-character token is a content word
+# in a technical bibliography ("AI", "DT", "5G", "ML") and the old floor
+# put every one of them outside both the index and the query, so a search
+# for "5G" returned nothing with no ranking it could have contributed to.
+# Measured before it moved, on this project's own corpus
+# (bench/RESULTS.md, 2026-09-16): on the 32 of 258 self-retrieval queries
+# whose terms the floor actually changes, recall@5 goes 0.8438 -> 0.9062
+# and nDCG@5 0.7335 -> 0.8130, six queries better against one worse.
+# Stopping at 2 rather than 1 is measured too, not assumed: floor 1 wins
+# nothing floor 2 had not already won and costs 13.5% more tokens per
+# document. The stopword list is consulted independently of the length,
+# so "of" and "in" stay out at either floor.
 def _tokenize(text: str) -> list[str]:
-    return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _STOPWORDS]
+    return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 1 and w not in _STOPWORDS]
 
 
 def short_query_terms(query: str) -> list[str]:
-    """1-2 character words in `query` dropped *only* by the length floor.
+    """Single-character words in `query` dropped *only* by the length floor.
 
-    A stopword this short ("in", "of") is excluded -- it is dropped by
+    A stopword this short ("a") is excluded -- it is dropped by
     `_STOPWORDS` regardless of length, so naming it explains nothing.
-    What's left is a real content word ("AI", "5G") that can never
-    contribute to ranking, letting a caller (the CLI) warn instead of a
-    query built from only such terms returning empty unexplained. Not
-    applied to `_tokenize` itself: lowering the floor needs an index
-    format change (`_INDEX_SCHEMA_VERSION`).
+    What's left is a word that can never contribute to ranking, letting a
+    caller (the CLI) warn instead of a query built from only such terms
+    returning empty unexplained.
+
+    **One character, not two, since #790.** This used to name "AI" and
+    "5G", which now rank; a warning about a word that *did* reach ranking
+    is worse than no warning, because it sends the reader looking for a
+    cause that is not there. The floor and this function are two readings
+    of one number and have to move together.
     """
     return [
-        w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 2 and w not in _STOPWORDS
+        w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 1 and w not in _STOPWORDS
     ]
 
 
@@ -165,20 +181,40 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
     count over the whole term set, and ties break on position.
     """
     lower = text.lower()
+    # Matched as a *word*, not as a substring, on both halves below. This
+    # was `str.find`, and #790 is what made the difference bite: the
+    # tokenizer admits two-character terms now, and "ai" sits inside
+    # maintainer, said, detail, fair and failed. Measured on this
+    # project's corpus before the fix, 37 of 134 appearances of a
+    # two-character query term in a returned snippet were substring-only
+    # -- the snippet did not contain the word the reader searched for. A
+    # snippet exists so a caller can judge relevance itself rather than
+    # trust a score, and one anchored inside "said" cannot serve that.
+    # Lookarounds over `[a-z0-9]`, and deliberately **not** `\b`: `\b` is
+    # defined over `[A-Za-z0-9_]` plus Unicode letters, where `_tokenize`
+    # splits on `[a-z0-9]+` alone, so the two disagree on an underscore
+    # and on an accented letter. `_tokenize("ai_model")` is
+    # `["ai", "model"]`, so such a document *ranks* on "ai" -- and under
+    # `\b` it yielded no window at all, falling back to the paper's
+    # opening 500 characters with the searched-for word nowhere in them,
+    # while `evidence` returned nothing for a document it had just
+    # ranked. Worse than the substring match this replaced, rather than
+    # better. Written this way the boundary is the tokenizer's by
+    # construction: "co" matches in "co-simulation" and not in "control",
+    # exactly as the index counted it.
+    patterns = {term: re.compile(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])") for term in terms}
     anchors: list[int] = []
-    for term in terms:
-        start = lower.find(term)
-        found = 0
+    for pattern in patterns.values():
         # Bounded per term rather than across all of them, so a book-length
         # document that says "twin" ten thousand times cannot crowd out
         # every anchor for "greenhouse". Scoring rewards distinct-term
         # coverage, so losing a term's anchors entirely would work directly
         # against what the window is chosen for -- and a shared budget
         # would pick its victim by set order, i.e. at random.
-        while start != -1 and found < _MAX_ANCHORS_PER_TERM:
-            anchors.append(start)
-            found += 1
-            start = lower.find(term, start + 1)
+        for found, match in enumerate(pattern.finditer(lower)):
+            if found == _MAX_ANCHORS_PER_TERM:
+                break
+            anchors.append(match.start())
     if not anchors:
         return []
 
@@ -188,7 +224,7 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
         begin = max(0, anchor - half)
         end = min(len(text), begin + width)
         window = lower[begin:end]
-        hits = sum(1 for term in terms if term in window)
+        hits = sum(1 for pattern in patterns.values() if pattern.search(window))
         scored.append((hits, begin, end))
 
     chosen: list[tuple[int, int]] = []

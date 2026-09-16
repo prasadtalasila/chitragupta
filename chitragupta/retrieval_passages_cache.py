@@ -36,7 +36,15 @@ from chitragupta.retrieval import _tokenize
 # claim rests on, which is why #627 put it in the sidecar at all.
 _INDEXED_LABELS = frozenset({"text", "list_item", "table", "formula"})
 
-_INDEX_SCHEMA_VERSION = 1
+# 2 since #790: this index is tokenized by `retrieval._tokenize`, imported
+# above, whose length floor moved from 3 to 2 -- so a byte-identical
+# parsed file and an untouched sidecar now produce different passage term
+# frequencies. Bumped here as well as in `retrieval_cache`, and that is
+# not belt-and-braces: the two indexes are separate files with separate
+# fingerprints (docs/RETRIEVAL.md says so), so invalidating one says
+# nothing about the other, and a stale passage index would keep ranking
+# paragraphs on the old vocabulary while the document index used the new.
+_INDEX_SCHEMA_VERSION = 2
 
 
 def _passage_stats(found: list) -> list[dict]:

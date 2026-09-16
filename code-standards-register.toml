@@ -39,7 +39,7 @@ statements = 37
 
 [[c1]]
 name = "chitragupta/retrieval.py::_windows"
-statements = 28
+statements = 27
 
 [[c1]]
 name = "scripts/release.py::build_release"

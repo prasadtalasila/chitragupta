@@ -44,11 +44,12 @@ the equivalent keyword string:
 
 Less than half the same papers. The cause is visible in the tokenizer:
 `_STOPWORDS` (`chitragupta/retrieval.py`) holds twenty function words and
-**no interrogatives**, and the `len(w) > 2` filter passes `how`, `why`,
-`who` and `can`:
+**no interrogatives**, and the length filter passes `how`, `why`,
+`who` and `can` -- every one of them longer than the floor, whatever the
+floor is:
 
 ```text
-'what are the failure modes of co-simulation' -> ['what', 'failure', 'modes', 'simulation']
+'what are the failure modes of co-simulation' -> ['what', 'failure', 'modes', 'co', 'simulation']
 'why does model calibration matter'           -> ['why', 'does', 'model', 'calibration', 'matter']
 ```
 
@@ -106,17 +107,21 @@ the whole string, so an interrogative shifts the vector slightly rather
 than competing as a high-IDF term. It is still noise; it is not this
 failure.
 
-One related defect, recorded because the term is central here and the fix
-is not the same one: **`co-simulation` tokenizes to `simulation`** -- the
-`co` is dropped by the `len(w) > 2` filter.
+One related defect used to be recorded here and is **fixed**, in #790:
+`co-simulation` tokenized to `simulation` alone, because `co` fell under
+the old `len(w) > 2` floor. The same floor dropped a whole-word query
+term like `AI`, `ML`, `5G` or `QA` -- real content words in an
+engineering corpus, not noise -- so a search for one of them returned
+empty, and `python -m chitragupta.draft retrieve` could only warn that it
+would.
 
-The same filter drops a whole-word query term like `AI`, `ML`, `5G` or
-`QA` -- real content words in an engineering corpus, not noise. Lowering
-the floor would need an `_INDEX_SCHEMA_VERSION` bump (every cached
-document re-tokenized, and every existing query's ranking changed), so
-`python -m chitragupta.draft retrieve` instead warns on stderr, naming
-each dropped term, rather than letting a query built entirely from them
-return empty with nothing to explain why.
+The floor is **2** now, measured rather than argued:
+[RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from) has
+the sweep, including why it stopped at 2 rather than going to 1. What
+survives of the warning is narrower and still worth having -- a
+single-character query word cannot rank at any floor this project would
+ship, so `retrieve` still names one on stderr rather than letting a query
+built entirely from them return empty unexplained.
 
 ## 🪜 The four stages
 

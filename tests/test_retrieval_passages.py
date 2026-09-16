@@ -78,9 +78,15 @@ class TestTheUnitIsAPassage:
         assert found.results[0].text == body
 
     def test_a_query_that_tokenizes_to_nothing_returns_no_results(self, ledger_con):
+        # "why is a?", not "why is it?", since #790: the floor is 2 now
+        # and "it" is not in the core stopword list retrieval imports, so
+        # the old example survives tokenization and stopped reaching the
+        # early return this case is about. Every word here is dropped by
+        # a different rule -- "why" as an interrogative, "is" as a
+        # stopword, "a" by both the floor and the list.
         seeded(ledger_con, "a2024", [paragraph(f"greenhouse humidity {FILLER}")])
 
-        assert retrieval_passages.search_passages("why is it?").results == []
+        assert retrieval_passages.search_passages("why is a?").results == []
 
     def test_the_documents_title_rides_along_from_the_ledger(self, ledger_con):
         seeded(
