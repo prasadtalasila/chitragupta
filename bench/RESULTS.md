@@ -6480,7 +6480,20 @@ were substring-only: the snippet did not contain the word the reader
 searched for. Anchoring and scoring both match on a word boundary now,
 which takes it to 18, and those are incidental rather than defects -- the
 window is anchored on a real word match and the short string also happens
-to occur somewhere in the same 500 characters. This is the class of
+to occur somewhere in the same 500 characters.
+
+**The boundary is the tokenizer's, and Python's `\b` is not it.** The
+first version of the fix used `\b`, which is defined over
+`[A-Za-z0-9_]` plus Unicode letters where `_tokenize` splits on
+`[a-z0-9]+` alone. They disagree on an underscore and on an accented
+letter: `_tokenize("ai_model")` is `["ai", "model"]`, so such a document
+*ranks* on "ai" -- and under `\b` produced no window at all, falling
+back to the paper's opening 500 characters with the searched-for word
+nowhere in them, while `evidence` returned nothing for a document it had
+just ranked. Worse than the substring match it replaced, for those
+inputs. `(?<![a-z0-9])...(?![a-z0-9])` over the already-lowercased text
+is the rule that actually matches the index, and
+`tests/test_retrieval.py::TestWindows` pins the underscore case. This is the class of
 problem the #787 entry predicted a tokenizer change would hit ("snippet
 and `evidence` window selection need a new ... resolution step, because
 `_windows` anchors with `str.find`"), arriving from the floor rather than

@@ -531,6 +531,24 @@ class TestWindows:
         (window,) = retrieval._windows(text, {"ai"}, 30, 1)
         assert "AI systems" in window
 
+    def test_a_boundary_the_tokenizer_splits_on_still_anchors(self):
+        """The boundary is the tokenizer's, not Python's `\\b`.
+
+        `\\b` is defined over `[A-Za-z0-9_]` and Unicode letters, while
+        `_tokenize` splits on `[a-z0-9]+`, so they disagree on an
+        underscore and on an accented letter. `_tokenize("ai_model")` is
+        `["ai", "model"]` -- the index counted "ai" there -- so a
+        document whose only occurrence is `ai_model` ranks, and with
+        `\\b` produced no window at all: the snippet silently fell back
+        to the paper's opening 500 characters, with the searched-for word
+        nowhere in it, and `evidence` returned nothing for a document it
+        had just ranked. That is worse than the substring matching this
+        replaced, not better.
+        """
+        text = "ai_model is the subject of this paper, at some length here"
+        (window,) = retrieval._windows(text, {"ai"}, 30, 1)
+        assert "ai_model" in window
+
     def test_a_term_inside_a_longer_word_does_not_score_a_window(self):
         """The same rule on the scoring half, not only the anchoring
         half. `_windows` ranks a candidate by how many distinct terms

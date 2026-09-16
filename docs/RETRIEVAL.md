@@ -201,9 +201,12 @@ substring-only, meaning the snippet did not contain the word the reader
 searched for. Anchoring and scoring now match on a word boundary, which
 brings that to 18 -- and those remaining are incidental: the window is
 chosen on a real word match and the short string merely also occurs
-somewhere in its 500 characters. The boundary agrees with the tokenizer
-by construction, so "co" matches in "co-simulation" and not in "control",
-exactly as the index counted it.
+somewhere in its 500 characters. The boundary is the **tokenizer's**,
+written as lookarounds over `[a-z0-9]` rather than as Python's `\b`:
+`\b` also treats an underscore and an accented letter as word
+characters, so `ai_model` -- which the index counts as `ai` and `model`
+-- would rank and then yield no window at all. "co" matches in
+"co-simulation" and not in "control", exactly as the index counted it.
 
 **What it costs on disk and on the clock**, measured on the same
 646-item corpus when the schema bump forced the rebuild:
@@ -218,7 +221,7 @@ recall@5 lands on the same 0.8178, nDCG@5 slightly below floor 2's, and
 the mean document grows another 5.9% to 6,216 tokens — 13.5% above where
 it started. What floor 1 admits is visible in why: of the 1,016 tokens the
 two lowered floors add, the most widespread are `1`, `3`, `2`, `4`, `s`,
-`e`, `i` and `g`, sitting in 450–500 of 646 documents apiece. Those are
+`e`, `i` and `g`, sitting in 449–501 of 646 documents apiece. Those are
 list markers, figure numbers and OCR fragments, and IDF makes them nearly
 free rather than positively useful.
 
@@ -232,6 +235,13 @@ imports a 19-word core list, and the floor was the only thing keeping
 they cost nothing measurable is the issue's *other* argument being right:
 a term that appears everywhere earns a low IDF on its own, and no
 word list had to be grown to handle it.
+
+**Every dossier's recorded queries re-rank**, exactly as they did for the
+reference cut in #768. A drift report compares a draft's recorded
+retrieval against what the corpus returns now, so the first
+`chitragupta draft dossier status --all` after this lands reports
+movement on drafts nobody edited. That is the schema bump showing
+through, not a draft going stale, and it settles on the next run.
 
 **What this has not been measured against.** One ground truth, and one
 that leans toward the change: a self-retrieval query is a paper's own
@@ -354,9 +364,9 @@ Both `search` and `evidence` now go through one chooser. Candidate
 windows are anchored on every occurrence of every term **as a whole
 word**, scored by how many *distinct* query terms fall inside on the same
 word-boundary rule, de-overlapped, and returned in
-document order. The boundary matches the tokenizer's, so a term is found
-in the window exactly where the index counted it -- "co" in
-"co-simulation" and not in "control"
+document order. That boundary is the tokenizer's own -- lookarounds over
+`[a-z0-9]`, not Python's `\b`, which would disagree about an underscore
+-- so a term is found in the window exactly where the index counted it
 ([above](#-where-the-token-length-floor-came-from) has what that was
 worth). Ties break on position. Nothing reads the set's order, so
 the result is deterministic by construction -- and it is the
@@ -588,6 +598,13 @@ A different floor from the tokenizer's
 easy to confuse: that one is the shortest *token* that may be indexed,
 measured in characters, and this one is the shortest *passage*, measured
 in tokens.
+
+**The sweep below predates #790**, which lowered the tokenizer's length
+floor and so grew every passage's token count by about 7%. The floor of
+20 did not move; what it counts did, so it now admits passages this table
+excluded. The shape of the answer is unaffected -- the arms disagree for
+a reason about their queries, not about a 7% shift -- but the exact
+crossover has not been re-measured.
 
 Swept on both arms at cap 3, recall@5:
 

@@ -2,21 +2,27 @@
 retrieval on this corpus -- recall *and* precision, before and after,
 over every ground truth this host can build.
 
-`chitragupta/retrieval.py::_tokenize` keeps a token only if it is longer
-than two characters, so "AI", "DT", "ML" and "5G" are in no document's
-term frequencies and in no query's terms. `retrieval.short_query_terms`
-exists solely to let the CLI *warn* about that, and its own docstring
-defers the fix to an index-format change. #790 asks for the fix, and for
-it to be measured rather than assumed.
+`chitragupta/retrieval.py::_tokenize` **used to** keep a token only if it
+was longer than two characters, so "AI", "DT", "ML" and "5G" were in no
+document's term frequencies and in no query's terms, and
+`retrieval.short_query_terms` existed only to let the CLI *warn* about
+that. #790 asked for the fix and for it to be measured rather than
+assumed; this is the measurement, and **floor 2 was adopted on the
+strength of it**, so the shipped tokenizer is no longer this script's
+baseline arm. Nothing below changes for that -- see "Every arm is written
+into this script" -- but a reader comparing an arm here against
+`chitragupta/` today should expect only `floor 2` to match.
 
 The arms, four of them, each a *pair* of tokenizers because the shipped
 pipeline has two (`_tokenize` for a document, `_query_terms` for a query,
 the latter also dropping interrogatives -- #453):
 
-- **floor 3 (as shipped)** -- `len(w) > 2`, the rule in `chitragupta/`
-  today.
-- **floor 2 (#790, proposed)** -- `len(w) > 1`. What the issue asks for:
-  "AI" and "5G" become indexable and rankable.
+- **floor 3 (baseline, shipped until #790)** -- `len(w) > 2`, the rule in
+  `chitragupta/` when this ran and the "before" every figure is a delta
+  on.
+- **floor 2 (#790, proposed -- and since adopted)** -- `len(w) > 1`. What
+  the issue asked for: "AI" and "5G" become indexable and rankable. This
+  is what `chitragupta/` does now.
 - **floor 2, no bare numbers** -- `len(w) > 1`, except that a *newly
   admitted* token of digits alone ("4", "11") stays out. The acronym half
   of #790's case without the page-number/section-number half;
@@ -31,13 +37,13 @@ the latter also dropping interrogatives -- #453):
   wrong and worth measuring rather than assuming", and asks for it in the
   sweep so the choice is recorded rather than asserted.
 
-**Every arm is written into this script, the shipped one included.** Same
-reason `bench_retrieval_stemming.py` gives: three of the four do not
-exist in `chitragupta/`, and pinning the fourth here keeps a later change
-to `retrieval._tokenize` from silently redefining the "before" of a
-committed comparison. `self_check` asserts the pinned rule still agrees
-with `retrieval._query_terms`, so the claim is checked rather than
-assumed.
+**Every arm is written into this script, the baseline included.** Same
+reason `bench_retrieval_stemming.py` gives, and this script is the case
+that proves it: the floor moved *because of* this measurement, so a
+baseline arm that read `retrieval._tokenize` would have silently become
+floor 2 and made the comparison compare nothing. `self_check` pins each
+arm against a literal for that reason rather than against the shipped
+tokenizer.
 
 **Read the whole-set means with the affected-subset table beside them,
 never either alone.** Most queries have no 1-2 character content word in
@@ -120,12 +126,22 @@ _WORD = re.compile(r"[a-z0-9]+")
 
 # The arm every other arm is a delta on, by label, so the comparison
 # tables and `per_query_movement` cannot disagree about which is "before".
-BASELINE = "floor 3 (as shipped)"
+# Not called "as shipped": this measurement is what moved the shipped
+# floor to 2, so that label would have been false the day after the run
+# and every committed record row carries it.
+BASELINE = "floor 3 (baseline, shipped until #790)"
 
-# `retrieval._tokenize`'s `len(w) > 2`, as the number it is. Read by the
-# digit rule below as well as by the baseline arm, so "newly admitted"
-# means the same thing in both places.
+# The floor this script's baseline arm is, as the number it is -- what
+# `retrieval._tokenize` did before #790 adopted floor 2 on the strength
+# of the tables below. Read by the digit rule and by `admitted_tokens` as
+# well as by the baseline arm, so "newly admitted" means the same thing
+# everywhere.
 SHIPPED_FLOOR = 3
+
+# The lowest floor any arm here sweeps. `admitted_tokens` reports what
+# every lowered arm admits between the two, so it has to reach as far
+# down as the arms do.
+LOWEST_FLOOR = 1
 
 
 def _floor_tokens(text: str, floor: int, numbers: bool = True) -> list[str]:
@@ -407,8 +423,8 @@ def admitted_tokens(items, limit=ADMITTED_ROWS):
     document_frequency, in_baseline = Counter(), set()
     for item in items:
         text = retrieval._full_text(item)
-        in_baseline.update(_floor_tokens(text, 3))
-        for token in set(_floor_tokens(text, 1)):
+        in_baseline.update(_floor_tokens(text, SHIPPED_FLOOR))
+        for token in set(_floor_tokens(text, LOWEST_FLOOR)):
             document_frequency[token] += 1
     admitted = {t: df for t, df in document_frequency.items() if t not in in_baseline}
     widest = sorted(admitted.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]
@@ -515,13 +531,23 @@ def self_check():
     # and a 2-character word, a bare number and an ordinary content word.
     probe = "why does the AI model 5G in 4 situ x"
     baseline_doc, baseline_query = ARMS[BASELINE]
-    assert baseline_doc(probe) == retrieval._tokenize(probe), (
-        f"the shipped arm's document rule has drifted from retrieval._tokenize: "
-        f"{baseline_doc(probe)} != {retrieval._tokenize(probe)}"
+    # Pinned against literals, not against `retrieval._tokenize` and
+    # `retrieval._query_terms`. It was a live comparison while the
+    # baseline was also what shipped; the moment this measurement was
+    # acted on, floor 2 became the shipped rule and the baseline arm
+    # stopped being it -- permanently, since the "before" of a published
+    # comparison must not move. Running the live version after the floor
+    # landed aborts `main()` before any work, which is how this was
+    # caught. `bench_retrieval_stemming.py` took the same treatment for
+    # the same reason. The lists below are floor 3's, and are what every
+    # figure in RESULTS.md's 2026-09-16 entry was computed from.
+    assert baseline_doc(probe) == ["why", "does", "model", "situ"], (
+        f"the shipped arm's document rule has drifted from floor 3, the rule "
+        f"this script's published figures were measured against: {baseline_doc(probe)}"
     )
-    assert baseline_query(probe) == retrieval._query_terms(probe), (
-        f"the shipped arm's query rule has drifted from retrieval._query_terms: "
-        f"{baseline_query(probe)} != {retrieval._query_terms(probe)}"
+    assert baseline_query(probe) == ["model", "situ"], (
+        f"the shipped arm's query rule has drifted from floor 3 plus dropping "
+        f"interrogatives: {baseline_query(probe)}"
     )
     # Every interrogative is 3+ characters, so no floor swept here can
     # admit one. Asserted rather than read off the constant, since a

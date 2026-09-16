@@ -1155,7 +1155,13 @@ MAX_PASSAGES_PER_SOURCE = _get_positive_int(
 # query outscores every real paragraph in the corpus. A floor is the
 # cheap half of the answer; excluding section_header/title passages
 # outright is the other half, and that one is structural rather than
-# configurable. Default measured in bench/bench_retrieval_passage.py.
+# configurable. Default measured in bench/bench_retrieval_passage.py --
+# and measured *before* #790 lowered the tokenizer's length floor to 2,
+# which grew every passage's token count by about 7%. The number did not
+# move; what it counts did, so this floor now admits passages the sweep
+# behind it excluded. Re-sweeping it is a separate measurement, and the
+# constant is a defensible default rather than a re-derived one until
+# someone runs it.
 MIN_PASSAGE_TOKENS = _get_positive_int(
     "MIN_PASSAGE_TOKENS",
     "retrieval",

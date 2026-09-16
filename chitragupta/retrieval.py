@@ -190,10 +190,19 @@ def _windows(text: str, terms: set[str], width: int, count: int) -> list[str]:
     # -- the snippet did not contain the word the reader searched for. A
     # snippet exists so a caller can judge relevance itself rather than
     # trust a score, and one anchored inside "said" cannot serve that.
-    # The boundary agrees with `_tokenize` by construction: both treat a
-    # run of `[a-z0-9]` as the word, so "co" matches in "co-simulation"
-    # and not in "control", exactly as the index counted it.
-    patterns = {term: re.compile(rf"\b{re.escape(term)}\b") for term in terms}
+    # Lookarounds over `[a-z0-9]`, and deliberately **not** `\b`: `\b` is
+    # defined over `[A-Za-z0-9_]` plus Unicode letters, where `_tokenize`
+    # splits on `[a-z0-9]+` alone, so the two disagree on an underscore
+    # and on an accented letter. `_tokenize("ai_model")` is
+    # `["ai", "model"]`, so such a document *ranks* on "ai" -- and under
+    # `\b` it yielded no window at all, falling back to the paper's
+    # opening 500 characters with the searched-for word nowhere in them,
+    # while `evidence` returned nothing for a document it had just
+    # ranked. Worse than the substring match this replaced, rather than
+    # better. Written this way the boundary is the tokenizer's by
+    # construction: "co" matches in "co-simulation" and not in "control",
+    # exactly as the index counted it.
+    patterns = {term: re.compile(rf"(?<![a-z0-9]){re.escape(term)}(?![a-z0-9])") for term in terms}
     anchors: list[int] = []
     for pattern in patterns.values():
         # Bounded per term rather than across all of them, so a book-length

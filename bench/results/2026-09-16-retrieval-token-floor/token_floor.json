@@ -1,7 +1,7 @@
 {
  "rows": [
   {
-   "row": "floor 3 (as shipped)",
+   "row": "floor 3 (baseline, shipped until #790)",
    "n_queries": 258,
    "recall@1": 0.624,
    "recall@5": 0.8101,
@@ -102,7 +102,7 @@
    }
   },
   {
-   "row": "floor 3 (as shipped)",
+   "row": "floor 3 (baseline, shipped until #790)",
    "n_queries": 258,
    "recall@1": 0.3295,
    "recall@5": 0.5271,
@@ -203,7 +203,7 @@
    }
   },
   {
-   "row": "floor 3 (as shipped)",
+   "row": "floor 3 (baseline, shipped until #790)",
    "n_queries": 258,
    "recall@1": 0.1822,
    "recall@5": 0.3953,
@@ -304,7 +304,7 @@
    }
   },
   {
-   "row": "floor 3 (as shipped)",
+   "row": "floor 3 (baseline, shipped until #790)",
    "n_queries": 258,
    "recall@1": 0.0775,
    "recall@5": 0.1667,
