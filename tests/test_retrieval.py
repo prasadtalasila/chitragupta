@@ -41,29 +41,59 @@ class TestTokenize:
     def test_keeps_numbers(self):
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
+    def test_keeps_a_two_character_acronym(self):
+        """#790's whole point: "AI", "DT" and "5G" are content words in a
+        technical bibliography, and the floor used to drop every one of
+        them from both the index and the query."""
+        assert retrieval._tokenize("AI and DT for 5G networks") == ["ai", "dt", "5g", "networks"]
+
+    def test_still_drops_a_single_character(self):
+        """The floor is 2, not 1, and the sweep behind that is in
+        bench/RESULTS.md: dropping to 1 admits every list marker, variable
+        name and OCR fragment in the corpus for no recall it did not
+        already have."""
+        assert retrieval._tokenize("a b c x y 1 2 3") == []
+
+    def test_a_two_character_stopword_stays_out(self):
+        """The stopword list is consulted independently of the floor, so
+        lowering the floor must not readmit "of" or "in"."""
+        assert retrieval._tokenize("of in at by on is AI") == ["ai"]
+
 
 class TestShortQueryTerms:
     def test_no_short_terms_returns_empty(self):
         assert retrieval.short_query_terms("digital twin architecture") == []
 
-    def test_flags_two_and_one_character_words(self):
-        # "in" is not flagged -- it is dropped as a stopword regardless of
+    def test_a_two_character_word_is_no_longer_flagged(self):
+        """Since #790 the floor is 2, so "AI" and "5G" rank rather than
+        being warned about. A warning naming a word that *did* reach
+        ranking would send a reader looking for a cause that is not
+        there."""
+        assert retrieval.short_query_terms("AI safety in 5G networks") == []
+
+    def test_flags_one_character_words(self):
+        # "a" is not flagged -- it is dropped as a stopword regardless of
         # length, so naming it would not explain anything the length
         # floor specifically cost this query.
-        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "5g"]
-
-    def test_a_short_stopword_is_not_flagged(self):
-        assert retrieval.short_query_terms("the role of AI in industry") == ["ai"]
+        assert retrieval.short_query_terms("a x y model") == ["x", "y"]
 
     def test_a_query_of_only_short_terms_is_entirely_flagged(self):
-        assert retrieval.short_query_terms("AI ML QA") == ["ai", "ml", "qa"]
+        assert retrieval.short_query_terms("x y z") == ["x", "y", "z"]
 
 
 class TestQueryTerms:
     def test_strips_wh_words_and_a_modal(self):
+        # "co" is here since #790 and its presence is the point, not an
+        # accident of the example: docs/CORPUS-SEARCH.md recorded
+        # `co-simulation` tokenizing to `simulation` alone as a defect
+        # beside the interrogative one, because a document written the
+        # same way yields both halves and the query only offered one.
+        # Lowering the floor to 2 closes it, so this case now pins both
+        # behaviours at once.
         assert retrieval._query_terms("what are the failure modes of co-simulation") == [
             "failure",
             "modes",
+            "co",
             "simulation",
         ]
 
@@ -177,6 +207,23 @@ class TestSearch:
             r.citekey for r in retrieval.search("what is structural health monitoring")
         ]
         assert keyword_hits == question_hits == ["a2024"]
+
+    def test_a_two_character_acronym_ranks(self, ledger_con):
+        """#790's success criterion, end to end rather than at the
+        tokenizer: a query that is nothing but a two-character content
+        word must find the paper about it and leave the others alone.
+
+        Red before the floor moved, and not vacuously: pre-#790 `search`
+        returned `[]` here, because `_query_terms` dropped "5g" and a
+        query with no terms at all short-circuits.
+        """
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="5G Network Slicing")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        assert [r.citekey for r in retrieval.search("5g")] == ["a2024"]
 
     def test_ranks_by_term_overlap_descending(self, ledger_con):
         ledger.upsert_reference(
@@ -467,6 +514,32 @@ class TestWindows:
     def test_returns_nothing_when_no_term_appears(self):
         assert retrieval._windows("nothing relevant here", {"blockchain"}, 50, 3) == []
 
+    def test_a_term_inside_a_longer_word_is_not_an_anchor(self):
+        """A window is anchored on the term as a *word*, not as a
+        substring.
+
+        Latent before #790 and load-bearing after it: the tokenizer now
+        admits two-character terms, and "ai" sits inside maintainer,
+        said, detail, fair and failed. Measured on the real corpus before
+        this was fixed, 37 of 134 appearances of a two-character query
+        term in a returned snippet were substring-only -- the snippet did
+        not contain the word the reader searched for. A snippet exists so
+        a drafting skill can judge relevance itself rather than trust a
+        score, and one anchored inside "said" cannot serve that.
+        """
+        text = "The maintainer said the detail was fair. Later, AI systems failed."
+        (window,) = retrieval._windows(text, {"ai"}, 30, 1)
+        assert "AI systems" in window
+
+    def test_a_term_inside_a_longer_word_does_not_score_a_window(self):
+        """The same rule on the scoring half, not only the anchoring
+        half. `_windows` ranks a candidate by how many distinct terms
+        fall inside it, and counting "ai" inside "detail" there would
+        pick the wrong window even when the anchors were right."""
+        text = "detail maintainer fairly said ||| soil AI ||| " + "filler " * 20
+        (window,) = retrieval._windows(text, {"ai", "soil"}, 24, 1)
+        assert "soil AI" in window
+
     def test_prefers_a_window_covering_more_distinct_terms(self):
         text = "moisture " * 20 + " ||| soil moisture sensor calibration ||| " + "moisture " * 20
         (best,) = retrieval._windows(text, {"soil", "moisture", "sensor"}, 60, 1)
@@ -719,19 +792,28 @@ class TestCli:
 
     def test_a_query_of_only_short_terms_warns_why_it_is_empty(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(["search", "AI ML"]) == 0
+        assert retrieval.main(["search", "x y"]) == 0
         err = capsys.readouterr().err
         assert "too short to search on" in err
-        assert "ai" in err
-        assert "ml" in err
+        assert "x" in err
+        assert "y" in err
 
     def test_a_mixed_query_still_warns_about_its_dropped_short_terms(
         self, ledger_con, tmp_path, capsys
     ):
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        assert retrieval.main(["search", "x digital twin architecture"]) == 0
         err = capsys.readouterr().err
-        assert "too short to search on (dropped): ai" in err
+        assert "too short to search on (dropped): x" in err
+
+    def test_a_two_character_query_word_no_longer_warns(self, ledger_con, tmp_path, capsys):
+        """#790 lowered the floor to 2, so "AI" reaches ranking and the
+        warning must stop naming it -- a warning about a word that did
+        rank is worse than none, because it sends the reader looking for
+        a cause that is not there."""
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        assert "too short to search on" not in capsys.readouterr().err
 
     def test_a_query_with_no_short_terms_does_not_warn(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
@@ -740,8 +822,8 @@ class TestCli:
 
     def test_evidence_also_warns_about_a_short_term(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        retrieval.main(["evidence", "AI patterns", "--citekey", "a2024"])
-        assert "too short to search on (dropped): ai" in capsys.readouterr().err
+        retrieval.main(["evidence", "x patterns", "--citekey", "a2024"])
+        assert "too short to search on (dropped): x" in capsys.readouterr().err
 
     def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
         """The `search` counterpart above is covered; this is its

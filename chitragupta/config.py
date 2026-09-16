@@ -1147,7 +1147,8 @@ MAX_PASSAGES_PER_SOURCE = _get_positive_int(
 # multiplier would be a knob whose every setting gave the same answer.
 #
 # Passages shorter than this many tokens (after retrieval's own
-# tokenizer, so stopwords and 1-2 character words are already gone) are
+# tokenizer, so stopwords and single-character words are already gone --
+# two-character ones rank since #790) are
 # not indexed. BM25's length normalization *rewards* a short dense
 # match, which is harmless at document scale and not at passage scale: a
 # three-word heading or a one-line bibliography entry whose words are the

@@ -159,6 +159,92 @@ supported by both arms, so none was adopted. Read that table before
 setting either dial on your own corpus; the right value there is an
 empirical question this one cannot answer for you.
 
+### 🔡 Where the token-length floor came from
+
+A token shorter than **two characters** is not indexed and not scored,
+on either side. Two is a measurement, not a default: the floor was three
+until #790, which put `AI`, `ML`, `DT`, `5G` and `QA` outside the index
+entirely, so a search for one of them returned nothing and the CLI could
+only warn that it would.
+
+Swept by `bench/bench_retrieval_token_floor.py` over 258 author-keyword
+self-retrieval queries (2026-09-16), **on the 32 queries whose own terms
+the floor actually changes**:
+
+| floor | recall@1 | recall@5 | MRR@5 | nDCG@5 |
+| --- | --- | --- | --- | --- |
+| 3 (before) | 0.5938 | 0.8438 | 0.6964 | 0.7335 |
+| **2 (now)** | **0.6875** | **0.9062** | **0.7812** | **0.8130** |
+
+Six of those 32 queries rank their own paper better and one worse. Over
+all 258, where most queries carry no short word at all, the same change
+is recall@5 0.8101 → 0.8178 and nDCG@5 0.7254 → 0.7319 — smaller,
+because it is the same handful of queries averaged over eight times as
+many.
+
+**Read both columns, because the unaffected queries are not a control.**
+A lowered floor admits tokens to every *document*, so the mean document
+grows from 5,479 tokens to 5,870, and document length is what BM25
+divides by. Queries that never changed a term therefore move too: over
+the whole set the change is 7 better against 4 worse, where the affected
+subset alone is 6 against 1. The difference between those two pairs is
+the collateral cost of renormalizing every document.
+
+**It forced one fix beyond the tokenizer, in window selection.**
+`_windows` -- which chooses the snippet `search` shows and the passage
+`evidence` returns -- used to anchor on `str.find`, a substring search. A
+three-character term made that a rare nuisance; a two-character one makes
+it routine, because "ai" sits inside maintainer, said, detail, fair and
+failed. Measured across the queries this change enables, 37 of 134
+appearances of a two-character term in a returned snippet were
+substring-only, meaning the snippet did not contain the word the reader
+searched for. Anchoring and scoring now match on a word boundary, which
+brings that to 18 -- and those remaining are incidental: the window is
+chosen on a real word match and the short string merely also occurs
+somewhere in its 500 characters. The boundary agrees with the tokenizer
+by construction, so "co" matches in "co-simulation" and not in "control",
+exactly as the index counted it.
+
+**What it costs on disk and on the clock**, measured on the same
+646-item corpus when the schema bump forced the rebuild:
+`content/retrieval_index.json` grows 2.8%, from 12,244,618 to 12,586,273
+bytes, and the whole re-tokenization takes about 7 seconds once. The
+on-disk growth is far below the 7.1% growth in tokens because the added
+tokens are repeats of a small vocabulary and the file stores counts, not
+occurrences.
+
+**It stopped at 2 because 1 was measured and bought nothing.** At floor 1
+recall@5 lands on the same 0.8178, nDCG@5 slightly below floor 2's, and
+the mean document grows another 5.9% to 6,216 tokens — 13.5% above where
+it started. What floor 1 admits is visible in why: of the 1,016 tokens the
+two lowered floors add, the most widespread are `1`, `3`, `2`, `4`, `s`,
+`e`, `i` and `g`, sitting in 450–500 of 646 documents apiece. Those are
+list markers, figure numbers and OCR fragments, and IDF makes them nearly
+free rather than positively useful.
+
+**The issue's own premise did not survive the measurement, and the
+conclusion held anyway.** #790 argued that short stopwords are already
+excluded by the stopword list, "so the floor's entire remaining effect is
+to discard short *content* words". On this corpus it is not: retrieval
+imports a 19-word core list, and the floor was the only thing keeping
+`or`, `it`, `if`, `no`, `we`, `up`, `so` and `do` — each in 400–500 of
+646 documents — out of the index. Lowering it admits all of them. That
+they cost nothing measurable is the issue's *other* argument being right:
+a term that appears everywhere earns a low IDF on its own, and no
+word list had to be grown to handle it.
+
+**What this has not been measured against.** One ground truth, and one
+that leans toward the change: a self-retrieval query is a paper's own
+`keywords` field, where an acronym appears as a standalone token far more
+often than in the prose a person actually types. That inflates how *often*
+the floor helps rather than which direction it moves, which is why the
+affected-subset counts are reported beside the means. The independent
+live-logged set that decided #762 and #787 could not be built when this
+ran — it needs a restored book's own retrieval logs, gitignored per-host
+data absent from this host — so the confirmation those two entries had,
+this one does not. `bench/RESULTS.md`'s 2026-09-16 entry carries the full
+tables and the argument.
+
 ### 📚 A paper's own bibliography is not indexed
 
 A reference list is dozens of *other* papers' titles sitting inside this
@@ -490,7 +576,13 @@ paragraph per source; at the shipped cap of 3 it recovers 3.72. Source
 diversity is something this unit spends, and the cap is what limits the
 spending.
 
-### 🔢 Where the token floor's default came from
+### 🔢 Where the passage-length floor's default came from
+
+A different floor from the tokenizer's
+([above](#-where-the-token-length-floor-came-from)), and the two are
+easy to confuse: that one is the shortest *token* that may be indexed,
+measured in characters, and this one is the shortest *passage*, measured
+in tokens.
 
 Swept on both arms at cap 3, recall@5:
 

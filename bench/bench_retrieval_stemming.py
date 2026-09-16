@@ -12,10 +12,16 @@ imported from the scripts that own them rather than rebuilt here.
 
 The arms:
 
-- **unstemmed** -- what ships: `retrieval._tokenize`'s rule on a document
-  (lowercase, `[a-z0-9]+`, the shared stopword list, a 1-2 character
-  floor) and `retrieval._query_terms`' rule on a query (the same, plus
-  dropping interrogatives). Two rules, because the pipeline has two.
+- **unstemmed** -- lowercase, `[a-z0-9]+`, the shared stopword list and a
+  1-2 character floor on a document, plus dropping interrogatives on a
+  query. Two rules, because the pipeline has two. This *was*
+  `retrieval._tokenize`/`_query_terms` verbatim when this entry was
+  measured; **#790 has since lowered the floor to 2**, so it is now the
+  rule as of 2026-09-15 rather than the rule as shipped. Nothing here
+  changes for that: pinning the arm against drift in the shipped
+  tokenizer is exactly what the note below says these copies are for, and
+  a comparison whose "before" moved under it would not be reproducible.
+  A re-attempt at #787 wants a fresh baseline, not this one.
 - **stemmed** -- both of those with `porter_stemmer.stem` applied to
   every surviving token, document side and query side alike.
 
@@ -97,9 +103,11 @@ OVERMERGE_ROWS = 15
 
 
 def _unstemmed_tokens(text: str) -> list[str]:
-    """`chitragupta.retrieval._tokenize`'s rule, pinned here as this
-    script's "before" arm -- see the module docstring for why it is a
-    copy rather than an import."""
+    """`chitragupta.retrieval._tokenize`'s rule **as of 2026-09-15**,
+    pinned here as this script's "before" arm -- see the module docstring
+    for why it is a copy rather than an import, and note that #790 has
+    since lowered the shipped floor to 2, which is the drift this copy
+    exists to be immune to."""
     return [
         w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 2 and w not in _CORE_STOPWORDS
     ]
@@ -129,7 +137,9 @@ def _unstemmed_query_terms(query: str) -> list[str]:
     to move that set's unstemmed nDCG@5 to 0.4590 against the 0.4526 the
     #762 entry measured the same day on the same ground truth. The arms
     here must differ in *stemming and nothing else*, so both go through
-    this. `self_check` pins the agreement with `retrieval._query_terms`.
+    this. `self_check` pins the rule -- against a literal since #790,
+    which lowered the shipped floor to 2 and so ended the agreement with
+    `retrieval._query_terms` that the assertion used to check directly.
     """
     return [w for w in _unstemmed_tokens(query) if w not in retrieval._INTERROGATIVES]
 
@@ -405,9 +415,17 @@ def self_check():
     # exercises every filter: an interrogative, a stopword, a 1-2
     # character word, and an inflected content word.
     probe = "why does the AI model twins in situ"
-    assert _unstemmed_query_terms(probe) == retrieval._query_terms(probe), (
-        f"the unstemmed arm's query rule has drifted from retrieval._query_terms: "
-        f"{_unstemmed_query_terms(probe)} != {retrieval._query_terms(probe)}"
+    # Pinned against a literal, not against `retrieval._query_terms`.
+    # It was the live comparison until #790 lowered the shipped floor to
+    # 2, at which point the shipped rule keeps "ai" and this arm does
+    # not -- which is the arm doing its job, so the assertion had to
+    # become a statement of what this arm is rather than of what the
+    # pipeline currently does. The expected list is the one the tables in
+    # RESULTS.md's 2026-09-15 entry were computed from.
+    assert _unstemmed_query_terms(probe) == ["model", "twins", "situ"], (
+        f"the unstemmed arm's query rule has drifted from the rule this "
+        f"script's published figures were measured with: "
+        f"{_unstemmed_query_terms(probe)}"
     )
     assert "doe" not in _stemmed_query_terms(probe), (
         "'does' survived as its stem -- the stemmed arm is filtering "
