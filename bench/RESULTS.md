@@ -6527,6 +6527,139 @@ and one invocation covers both sets.
 
 Record: `bench/results/2026-09-16-retrieval-token-floor/token_floor.json`.
 
+## 2026-09-17 (#770): do figure captions and table cells deserve their own BM25 field?
+
+Issue #770 proposes extending #762's field-weighted BM25 with two more
+fields, `caption` and `table`, on the argument that "a caption is one or
+two sentences naming exactly what a figure shows, and a table's cells are
+the paper's measured claims in their most compressed form", both of them
+diluted today by BM25's length normalization against a 5,000-word body.
+
+**The `caption` half was not measured, because it cannot be built at the
+seam the issue names.** The issue draws both fields from "the `caption`
+and `table` labels in the corpus layer's passage sidecar".
+`chitragupta/_passage_records.py::PASSAGE_LABELS` is `{text, list_item,
+section_header, title, formula}` — figure captions are deliberately kept
+out, with the reason in that module ("running heads, page numbers and
+figure captions are not prose a claim can be supported by"). Counted over
+all 497 sidecars on this corpus: **zero caption records**. A `caption`
+weight would have an empty universe on every document, on every corpus,
+until that corpus-layer decision is reversed and 497 PDFs re-parsed —
+which is not the "configuration change plus two more sweep arms" the
+issue budgets. Nothing about this is a measurement problem, so nothing
+below is about captions.
+
+The nearest thing that does exist is already inside the `table` field: a
+table record carries its own caption as its first line, prepended by
+`passage_records`. So the arms below weight table captions, just not
+figure captions.
+
+**What `table` is, measured before weighting it.** 2,115 table records
+across **330 of 642** indexed items, 248,475 indexed tokens — 6.5% of the
+corpus's 3,837,476. The issue's own premise about length does not survive
+contact with the records: a table record averages **219.3 words**, which
+is *longer* than an abstract on this corpus (~173), because Docling's
+markdown export carries the pipes and the repeated header text. The
+"short, dense text averaged into a long body" argument is the argument
+for weighting a caption, and there is no caption field.
+
+Both BM25 ground truths, `FIELD_WEIGHT_GRID`'s `table` arms, one arm at a
+time. **Both directions**, unlike title and abstract: the issue argues
+for more weight, the counter-argument (cell text is fragmentary, pipes
+are noise) argues for less, and `0.0` asks whether cell text should be
+scored at all.
+
+### Live drafting logs (96 real `search`-mode queries, 15 chapters)
+
+| arm | n | recall@5 | Δ | nDCG@5 | Δ |
+|---|---|---|---|---|---|
+| BM25 baseline (all weights 1.0) | 96 | 0.8854 | -- | 0.4596 | -- |
+| table = 0.0 | 96 | 0.8958 | **+1 query** | 0.4607 | +0.0011 |
+| table = 0.5 | 96 | 0.8958 | **+1 query** | 0.4600 | +0.0004 |
+| table = 1.5 | 96 | 0.8750 | **-1 query** | 0.4548 | -0.0048 |
+| table = 2.0 | 96 | 0.8854 | 0 queries | 0.4516 | -0.0080 |
+| table = 4.0 | 96 | 0.8750 | **-1 query** | 0.4387 | -0.0209 |
+
+### Self-retrieval (256 author-keyword query pairs)
+
+| arm | n | recall@5 | Δ | nDCG@5 | Δ |
+|---|---|---|---|---|---|
+| BM25 baseline (all weights 1.0) | 256 | 0.8164 | -- | 0.7220 | -- |
+| table = 0.0 | 256 | 0.8164 | 0 queries | 0.7282 | +0.0062 |
+| table = 0.5 | 256 | 0.8125 | **-1 query** | 0.7228 | +0.0008 |
+| table = 1.5 | 256 | 0.8008 | **-4 queries** | 0.7133 | -0.0087 |
+| table = 2.0 | 256 | 0.8047 | **-3 queries** | 0.7091 | -0.0129 |
+| table = 4.0 | 256 | 0.7969 | **-5 queries** | 0.6864 | -0.0356 |
+
+**The baselines moved since #762's entry** (0.8646/0.4526 on live logs
+there, 0.8854/0.4596 here) because #790 lowered the token floor to two
+characters in between. The rows above are contemporaneous with each
+other; do not diff them against #762's table and read a regression.
+
+**Decision: decline the field. Nothing in `chitragupta/` behaves
+differently, and there is no `[retrieval].weight_table`.**
+
+- **The issue's hypothesis is refuted, and this is the first field in
+  this seam where both ground truths agree in sign at every weight.**
+  #762 could not decide title or abstract because its two arms
+  disagreed. Here they do not: every weight above 1.0 loses nDCG on
+  both, monotonically, and costs recall on both (up to 5 queries in 256
+  and 1 in 96 at `4.0`). A field whose two independent arms agree it
+  hurts does not need a third arm to decline it.
+- **The weak positive runs the other way, and is under-powered.** `0.0`
+  and `0.5` are non-negative on both arms — but the whole gain is **+1
+  query in 96** and **0 queries in 256**, which this file's own ["Power,
+  stated plainly"](#power-stated-plainly) says is not a result. It is
+  not adopted.
+- **The `0.0` arm is also the arm the clamp distorts.** `weighted_freq`
+  clamps a negative frequency to zero, and that can only fire *below*
+  1.0, where the delta is negative. It is not rare for this field:
+  a table's counts come from the sidecar's pipe-markdown and the full
+  count from the flattened `.txt`, and the two disagree on **3.13% of
+  (term, document) pairs and 4.77% of counts, concentrated in 17
+  documents** — against 0.01% for the abstract field, which is the
+  measure of how much rougher this field is. So `0.0` over-penalises
+  those 17 documents rather than merely discounting them, which is one
+  more reason not to read its +1 query as the field earning anything.
+
+**What `table = 0.0` actually asks is a corpus-layer question, and it is
+the follow-up worth having.** "Should a table's cell text be in BM25's
+index at all" is a question about `retrieval._full_text` and the
+reference cut beside it, not about a `[retrieval]` dial — a weight can
+only discount cell text *after* it has already inflated the document
+length that BM25 normalizes by, which is why the `0.0` arm cannot answer
+it cleanly. Filed as the open question; not implemented here.
+
+**None of this touches what the drafting layer is shown.** A table
+already reaches a drafting skill by two paths that no weight is involved
+in: `retrieval_tables.render_windows` widens a snippet window to the
+whole table, header row included, when a hit lands inside one, and since
+#769 `retrieve search --unit passage` ranks and returns table records
+verbatim as quotable passages, where field weights are inert by design.
+Declining the field leaves both exactly as they are.
+
+**Reproducing.** `table` is installed into the scorer by
+`bench_retrieval_compare.arm_table_field` for the length of a run, and
+that function refuses to sweep unless the field is populated and the
+weight seam demonstrably reaches `field_freqs` — the flat curve a stale
+index or an unpatched scorer would publish is the failure it exists to
+catch. It builds its own cold index under `bench/results/<tag>/`,
+because an index cached before the field existed stays valid: the
+fingerprint is a statement about the parsed file, which has not moved.
+
+```
+CONFIG_PATH=<config with [content].dir at the live corpus> \
+BENCH_BOOK_DOSSIERS=content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers \
+  python3 bench/bench_retrieval_live_logs.py \
+  --only field-weights --tag 2026-09-17-770-table-live
+
+CONFIG_PATH=<the same> .venv-full/bin/python \
+  bench/bench_retrieval_keyword_selfretrieval.py \
+  --only field-weights --tag 2026-09-17-770-table-self
+```
+
+Records: `bench/results/2026-09-17-770-table-live/comparison.json` and
+`bench/results/2026-09-17-770-table-self/comparison.json`.
 ## 2026-09-17 (#789): does expanding a query's acronyms from the tier-1 vocabulary find papers that only spell the term out?
 
 `bench/bench_retrieval_acronym_expansion.py` (new).
