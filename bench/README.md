@@ -50,6 +50,20 @@ corpus state for every later run. Those in-memory entries carry
 reads as "this document's title matched nothing" and would quietly stop
 tracking the shipped scorer the moment a `[retrieval].weight_*` left 1.0.
 
+`bench_retrieval_bm25_params.py` is stdlib-only and needs no GPU, and it
+consumes the same two retrieval ground truths for the same reasons, by
+the same two mechanisms -- `papers/bibliography.bib` through
+`bib_reader`, and `BENCH_BOOK_DOSSIERS=` for the live-logged set. It
+sweeps Okapi BM25's own `k1` and `b` (#788) one parameter at a time at
+k in {3, 5, 10}, and it differs from the stemming script above in two
+ways worth knowing before reading its output. It builds **one** in-memory
+index for the whole sweep, because neither parameter changes what a
+document's term frequencies are -- both are applied at scoring time --
+where a tokenizer arm needs an index each. And a ground truth this host
+cannot build is **named and skipped** rather than ending the run: the
+stemming script needed both arms to reach its conclusion, and each arm
+here answers for itself.
+
 `topic_cluster_eval.py` is stdlib-only and needs no GPU as well, and it
 is the one script here with a requirement outside Python entirely:
 **`node` on PATH**, because the partition it scores is the one
@@ -276,9 +290,10 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_prompt_economics.py`, `bench_topic_converged_stability.py`,
 `bench_keyword_pipeline.py`, `bench_claim_support_labelling.py`,
 `bench_support_topk.py`, `bench_retrieval_stemming.py` and
-`bench_retrieval_token_floor.py` and
-`bench_retrieval_acronym_expansion.py` each have
-one -- 41 of the 43 scripts here. The
+`bench_retrieval_token_floor.py`,
+`bench_retrieval_acronym_expansion.py` and
+`bench_retrieval_bm25_params.py` each have
+one -- 42 of the 44 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

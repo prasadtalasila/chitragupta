@@ -536,6 +536,70 @@ class TestModuleReloadWithEnvOverrides:
         importlib.reload(config)
         assert config.RETRIEVAL_FIELD_WEIGHTS["abstract"] == 0.0
 
+    def test_bm25_constants_default_to_the_swept_values(self, monkeypatch, _empty_config_toml):
+        """1.5 and 0.75 are the code's defaults, not this host's setting.
+
+        They are the textbook Okapi values, and #788's sweep is what
+        turned them from inherited into measured -- the curve was flat
+        on this corpus, so the numbers did not move. bench/RESULTS.md
+        carries the table; what this pins is that a fresh install still
+        gets them.
+        """
+        for name in ("RETRIEVAL_K1", "RETRIEVAL_B"):
+            monkeypatch.delenv(name, raising=False)
+        importlib.reload(config)
+        assert (config.RETRIEVAL_K1, config.RETRIEVAL_B) == (1.5, 0.75)
+
+    @pytest.mark.parametrize("bad", ["-0.5", "inf", "nan"])
+    def test_a_negative_or_non_finite_k1_is_rejected(self, monkeypatch, _empty_config_toml, bad):
+        """`k1` shapes term-frequency saturation, and none of these three
+        fails where it was written. A negative `k1` inverts the curve, so
+        a term occurring more often contributes *less*; `inf` and `nan`
+        make every score `nan`, which sorts arbitrarily. All three
+        surface as a ranking nobody can explain."""
+        monkeypatch.setenv("RETRIEVAL_K1", bad)
+        with pytest.raises(ValueError) as excinfo:
+            importlib.reload(config)
+        assert "[retrieval].k1" in str(excinfo.value)
+        # Cleared here rather than left to monkeypatch, for the reason
+        # test_a_negative_or_infinite_field_weight_is_rejected records:
+        # this class's teardown reloads `config` before monkeypatch undoes
+        # the environment, so a bad value left set makes the teardown raise.
+        monkeypatch.delenv("RETRIEVAL_K1")
+        importlib.reload(config)
+
+    @pytest.mark.parametrize("bad", ["-0.1", "1.5"])
+    def test_a_b_outside_the_unit_interval_is_rejected(self, monkeypatch, _empty_config_toml, bad):
+        """`b` is a fraction of the length normalization, and outside
+        [0, 1] the normalizer `1 - b + b * dl/avgdl` goes negative for a
+        short document -- which flips the sign of BM25's denominator and
+        ranks a document containing the term *below* one that does not.
+        Above 1 is as wrong as below 0, which is why this guard has two
+        ends where the field weights' has one."""
+        monkeypatch.setenv("RETRIEVAL_B", bad)
+        with pytest.raises(ValueError) as excinfo:
+            importlib.reload(config)
+        assert "[retrieval].b" in str(excinfo.value)
+        monkeypatch.delenv("RETRIEVAL_B")
+        importlib.reload(config)
+
+    @pytest.mark.parametrize("edge", ["0", "1"])
+    def test_both_ends_of_b_are_allowed(self, monkeypatch, _empty_config_toml, edge):
+        """0 turns length normalization off entirely and 1 applies it in
+        full; both are the ends of #788's own sweep, so the guard has to
+        reject *outside* the interval rather than at it."""
+        monkeypatch.setenv("RETRIEVAL_B", edge)
+        importlib.reload(config)
+        assert config.RETRIEVAL_B == float(edge)
+
+    def test_a_k1_of_zero_is_allowed(self, monkeypatch, _empty_config_toml):
+        """`k1 = 0` saturates immediately, scoring a term's presence and
+        never its frequency. That is a coherent thing to ask a BM25 for
+        and is the bottom of #788's `k1` sweep."""
+        monkeypatch.setenv("RETRIEVAL_K1", "0")
+        importlib.reload(config)
+        assert config.RETRIEVAL_K1 == 0.0
+
     def test_bib_file_env_override(self, monkeypatch, _empty_config_toml):
         monkeypatch.setenv("BIB_FILE", "/tmp/other.bib")
         importlib.reload(config)

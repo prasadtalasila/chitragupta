@@ -409,6 +409,35 @@ good_score = 0.50
 weight_title = 1.0
 weight_abstract = 1.0
 
+# Okapi BM25's own two free parameters (#788). `k1` sets how fast a term's
+# frequency saturates -- how much the ninth mention of a word adds over
+# the first -- and `b` how strongly a document's score is normalized by
+# its length, from 0 (not at all) to 1 (in full).
+#
+# **The defaults were examined, not merely inherited.** 1.5 and 0.75 are
+# the TREC-era ad-hoc retrieval values, chosen on news and web documents
+# rather than on a bibliography of academic PDFs. #788 swept both against
+# this project's own corpus, one parameter at a time. `b` came through
+# with nothing better to offer; `k1` came through with a clear preference
+# for 8.0 that was *not* adopted, because the only ground truth the
+# measuring host could build is the one that cannot settle it. Read
+# bench/RESULTS.md before turning either dial -- the table says far more
+# than the two numbers below do.
+#
+# **And it is a result about this corpus, not about yours.** `b` exists
+# precisely to handle a length spread, and a shelf of four-page papers
+# normalizes differently from one that is half books. Lower `b` if short
+# documents are winning on brevity rather than on relevance; raise it if
+# long ones are winning on sheer size. Raise `k1` if a paper that is
+# genuinely about your query keeps losing to one that mentions it. Both
+# apply to the passage unit below as well, which shares the same scorer.
+#
+# `k1` is rejected below 0 or non-finite, `b` outside [0, 1], at load
+# rather than as a ranking nobody can explain.
+#                                                  Defaults: 1.5 / 0.75
+k1 = 1.5
+b = 0.75
+
 # Expand a query's acronyms before ranking it (#789).
 #
 # BM25 matches exactly, so a query for "DT fidelity" reaches no paper

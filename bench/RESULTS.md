@@ -6926,3 +6926,224 @@ table, and `--rerank-model BAAI/bge-reranker-base` for the last one.
 
 Records: `bench/results/2026-09-17-rerank-title-input/`,
 `-live/`, `-bge/`, each `rerank_title_input.json`.
+
+## 2026-09-17 (#788): BM25's `k1` and `b`, swept -- and why neither default moved
+
+`bench/bench_retrieval_bm25_params.py` (new). Issue #788 points at a
+comment `chitragupta/retrieval_scoring.py` had been carrying in as many
+words: `k1 = 1.5` and `b = 0.75` were "the usual defaults, not tuned
+against this corpus specifically". They are TREC-era ad-hoc retrieval
+values, chosen on news and web documents. This corpus is neither -- 646
+ledger items, 501 of them parsed, running from a four-page paper to a
+whole book, which is the length spread `b` exists to handle and the place
+an inherited value is least likely to be right.
+
+`k1` sets how fast a term's frequency saturates: how much the ninth
+mention of a word adds over the first. `b` sets how strongly a document's
+score is normalized by its length, from 0 (not at all) to 1 (in full).
+One parameter at a time, Ni et al.'s protocol as everywhere else here --
+every row moves one with the other at its default, and there is no
+interaction arm, because the question is whether either default is wrong
+rather than where the joint optimum is.
+
+**Measured twice, and the second run is the one in the tables.** The
+first was taken before #790 lowered the token floor from three characters
+to two. That change moves every document's token count, which is BM25's
+length-normalization denominator, so it moves `avgdl` and therefore every
+figure a `b` arm produces -- a sweep of the length parameter measured
+against a superseded tokenizer is not a result about the shipped ranker.
+Re-run on the merged tree, the **conclusions did not move**: the baseline
+improved (recall@5 0.8101 -> 0.8178, nDCG@5 0.7254 -> 0.7319, consistent
+with what #790 measured for itself), `k1` still peaks at 8.0 by the same
+seven queries, and 0.75 is still `b`'s recall@5 peak. Worth stating as the
+robustness check it accidentally became: the reading below survived a real
+change to the tokenizer underneath it.
+
+**Three k values, because these two parameters move rank more often than
+they move discovery.** A paper pushed from rank 6 to rank 4 is invisible
+at recall@5 alone. The tables below are read at k = 3, 5 and 10, and the
+`b` arm is the reason that was worth doing: its two best rows are the two
+where the three k values disagree with each other.
+
+### One ground truth, and it is the one that cannot decide `k1`
+
+This repository has two BM25 ground truths. Only the **self-retrieval**
+set could be built on the measuring host: 258 bib entries with an
+author-assigned `keywords` field and parsed text, where the query is a
+paper's own keywords and the correct answer is that paper. The
+**live-logged** set -- 96 real `search`-mode queries a human typed while
+drafting -- is built from this book's dossiers, which are gitignored
+per-host data; they are absent from this host and from every snapshot on
+it, so the run reported the set missing by name and scored the other.
+The 48-pair drafting ground truth was not run either, for the reason the
+2026-09-04 fusion entry gives.
+
+That matters more here than it would for most questions, because the
+available set is **structurally favourable to a weak-saturation `k1`**.
+Its query is a list of terms the correct paper's own text repeats, often
+many times; turning `k1` up is precisely "let raw repetition count for
+more", which on this ground truth is close to a direct proxy for "is this
+the right paper". `bench_retrieval_stemming.py` names the same bias in
+the same set from the other direction -- it favours exact surface match
+-- and #762 leaned on the live-logged arm for exactly this reason.
+
+258 rows rather than the 256 earlier entries quote: the bib export has
+moved since, so no absolute figure below is comparable with the 2026-08-16
+or #762 self-retrieval rows.
+
+### `k1`, with `b` at 0.75 (258 author-keyword queries)
+
+| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse (MRR@10) |
+|---|---|---|---|---|---|---|
+| baseline (k1 = 1.5, b = 0.75) | 0.7636 -- | 0.8178 -- | 0.8566 -- | 0.7319 | -- | -- |
+| k1 = 0.0 | 0.3837 **-98 queries** | 0.4690 **-90 queries** | 0.5853 **-70 queries** | 0.3415 | -0.3904 | 5 / 161 |
+| k1 = 0.3 | 0.7054 **-15 queries** | 0.7558 **-16 queries** | 0.8178 **-10 queries** | 0.6633 | -0.0686 | 4 / 43 |
+| k1 = 0.6 | 0.7326 **-8 queries** | 0.7752 **-11 queries** | 0.8411 **-4 queries** | 0.6934 | -0.0385 | 2 / 31 |
+| k1 = 0.9 | 0.7481 **-4 queries** | 0.7868 **-8 queries** | 0.8450 **-3 queries** | 0.7003 | -0.0316 | 2 / 30 |
+| k1 = 1.2 | 0.7597 **-1 query** | 0.8023 **-4 queries** | 0.8605 **+1 query** | 0.7175 | -0.0144 | 1 / 12 |
+| k1 = 2.0 | 0.7829 **+5 queries** | 0.8256 **+2 queries** | 0.8643 **+2 queries** | 0.7441 | +0.0122 | 16 / 3 |
+| k1 = 3.0 | 0.7752 **+3 queries** | 0.8333 **+4 queries** | 0.8643 **+2 queries** | 0.7498 | +0.0179 | 22 / 11 |
+| k1 = 5.0 | 0.7752 **+3 queries** | 0.8372 **+5 queries** | 0.8721 **+4 queries** | 0.7525 | +0.0206 | 26 / 13 |
+| k1 = 8.0 | 0.7829 **+5 queries** | 0.8450 **+7 queries** | 0.8721 **+4 queries** | 0.7537 | +0.0218 | 28 / 15 |
+| k1 = 12.0 | 0.7829 **+5 queries** | 0.8411 **+6 queries** | 0.8682 **+3 queries** | 0.7440 | +0.0121 | 25 / 21 |
+| k1 = 20.0 | 0.7597 **-1 query** | 0.8178 0 queries | 0.8605 **+1 query** | 0.7308 | -0.0011 | 25 / 24 |
+
+### `b`, with `k1` at 1.5 (the same 258 queries)
+
+| arm | recall@3 | recall@5 | recall@10 | nDCG@5 | Δ nDCG@5 | better / worse (MRR@10) |
+|---|---|---|---|---|---|---|
+| baseline (k1 = 1.5, b = 0.75) | 0.7636 -- | 0.8178 -- | 0.8566 -- | 0.7319 | -- | -- |
+| b = 0.0 | 0.5775 **-48 queries** | 0.6395 **-46 queries** | 0.7442 **-29 queries** | 0.4986 | -0.2333 | 11 / 123 |
+| b = 0.25 | 0.6977 **-17 queries** | 0.7481 **-18 queries** | 0.8178 **-10 queries** | 0.6406 | -0.0913 | 15 / 66 |
+| b = 0.5 | 0.7403 **-6 queries** | 0.7946 **-6 queries** | 0.8450 **-3 queries** | 0.6902 | -0.0417 | 13 / 43 |
+| b = 0.625 | 0.7481 **-4 queries** | 0.8062 **-3 queries** | 0.8527 **-1 query** | 0.7049 | -0.0270 | 10 / 28 |
+| b = 0.875 | 0.7636 0 queries | 0.8062 **-3 queries** | 0.8605 **+1 query** | 0.7344 | +0.0025 | 13 / 13 |
+| b = 1.0 | 0.7674 **+1 query** | 0.8101 **-2 queries** | 0.8566 0 queries | 0.7358 | +0.0039 | 23 / 19 |
+
+Deltas are stated in **queries** rather than percentage points, per this
+file's own ["Power, stated plainly"](#power-stated-plainly): one query in
+258 is 0.39pp, and a table of four-decimal recalls invites reading three
+of those decimals as signal. The **better / worse** column is the count
+of individual queries whose own correct answer moved up or down, by
+reciprocal rank over the top 10 -- so a paper that moves from rank 11 to
+rank 12 reads as unchanged, which is the same depth every other column in
+the row is measured at. It is there because a mean can hide a swap: an
+arm that promotes four papers and demotes four reports no movement at
+all.
+
+**Decision: ship both as settings, leave 1.5 and 0.75. Declined for `b`;
+undecided for `k1`, and the two are not the same verdict.**
+
+- **`b` has nothing better to offer, and the three k values are how you
+  can tell.** The default sits at the recall@5 peak: every row below 0.75
+  loses on all three k values and on nDCG, monotonically, and the two
+  rows above it trade. `b = 0.875` is flat at k = 3, gives back 3 queries
+  at k = 5 and buys 1 at k = 10; `b = 1.0` buys 1 at k = 3, gives back 2
+  at k = 5 and is flat at k = 10. Both raise nDCG@5 by under 0.004. A
+  parameter whose best candidate is positive at one cutoff and negative
+  at another, on a 13-better/13-worse split, is a parameter with no
+  better value -- and at nDCG@5 alone `b = 1.0` would have read as
+  "+0.0039, adopt it". This is the arm that justifies the issue's own ask
+  for three k values.
+- **`k1` is a real, large, single-arm preference, and that is exactly why
+  it is not adopted.** The curve rises from 1.5 to a peak at **8.0** --
+  +7 queries at recall@5, +5 at k = 3, +4 at k = 10, +0.0218 nDCG@5, 28
+  queries better against 15 worse -- then turns down through 12.0 and is
+  back to the baseline by 20.0. It is a peak rather than a grid edge,
+  which a first run stopping at 5.0 could not have said. But "let raw
+  repetition count for more" is the one change this ground truth is built
+  to reward, and the arm that would contradict it is the one this host
+  cannot build. **Seven queries on the circular set is not evidence for a
+  default.** #762 declined a weaker version of the same offer -- title
+  weighting, positive on both arms -- for less reason than this.
+
+**What changes in the code, therefore, is only that they are settings.**
+`[retrieval].k1` and `[retrieval].b` are configurable, validated at load
+(`k1` finite and at least 0, `b` inside [0, 1] -- outside it the
+normalizer `1 - b + b * dl/avgdl` goes negative for a short document and
+flips the sign of BM25's denominator), and ship at the values they had.
+Both also govern the passage unit (#769), which shares this scorer.
+
+**`PYTHONHASHSEED` is pinned at 0, and finding out why is a result.**
+`bm25_scores` accumulates a document's score by iterating `set(terms)`,
+and a set of strings iterates in a per-process randomized order, so the
+last bits of a score move between runs and a near-tie can resolve either
+way. Measured across four seeds: every arm above is identical to four
+decimals **except `k1 = 0.0`**, which moved recall@3 over 0.380--0.411.
+That is where it belongs -- `k1 = 0` collapses every non-zero frequency
+to 1 and manufactures ties in bulk -- so no row anything rests on is
+affected. It is nonetheless a real property of the shipped ranker, not of
+this bench: `retrieval.search()` has it too, at the same scale. Left as
+found rather than fixed here, because sorting the term set is a change to
+scoring that #788 did not ask for.
+
+**What this does not measure.** Precision, at any k -- every figure is
+recall or nDCG against a relevant set, so a parameter that surfaces a
+worse paper into an empty slot is invisible, the same gap #762 records.
+The interaction between the two parameters, deliberately. And the whole
+question on **real drafting queries**, which is not a limitation of the
+method but of the host: the single thing that would close #788 properly
+is re-running this script with `BENCH_BOOK_DOSSIERS` pointed at a
+snapshot that still holds the book's retrieval logs, and reading the
+`k1` table above against what that arm says.
+
+Reproducing:
+
+```
+cp config.toml.example config.toml   # worktree only; gitignored per-host data
+PYTHONHASHSEED=0 CONTENT_DIR=/workspace/content BIB_FILE=/workspace/papers/bibliography.bib \
+  BENCH_BOOK_DOSSIERS=/workspace/content/backup/<date>-content/dossiers/books/digital-twins-for-software-engineers \
+  .venv-full/bin/python bench/bench_retrieval_bm25_params.py --tag <tag>
+```
+
+`BENCH_BOOK_DOSSIERS` is #762's override and does nothing on a host
+without such a snapshot, which is the case this run was in: the
+live-logged arm is simply absent from the record rather than zeroed.
+`--only self-retrieval` scores that set alone on a host that has both.
+
+**The record carries the question set, and the first version of it did
+not.** Neither ground truth here is a committed list: the self-retrieval
+set is derived at run time from `papers/bibliography.bib`'s `keywords`
+fields and the live-logged set from a book's dossiers, both of which are
+gitignored per-host data. That data drifts -- the 2026-08-16 and #762
+entries score **256** self-retrieval rows where this one scores **258**,
+because the bib was re-exported in between. So a table of aggregates
+alone is not reproducible: a later run asks a different set of questions
+and has nothing to diff against. `bm25_params.json` therefore carries a
+`queries` object, keyed by ground-truth name, holding every
+`(key, query, relevant)` triple that was scored -- 258 of them here,
+each one a bib entry's own author-assigned keywords paired with the
+citekey that is the correct answer. `key` joins to the `better`/`worse`
+lists in `movements`. The earlier entries in this file do **not** have
+this and cannot be recovered; that is a real limit on re-checking them,
+not a reason to doubt their direction.
+
+**Writing the questions down immediately found a flaw in them, which is
+the argument for having done it.** Of 258 rows, only **237 carry a
+distinct query**, and the 38 rows in the overlap split two ways:
+
+- **27 rows are 13 Zotero duplicate entries** -- `marosi_interoperable_2022`
+  and `marosi_interoperable_2022-1` are one paper catalogued twice, with
+  one `keywords` field between them. Self-retrieval scores each row
+  against *its own* citekey, so whenever the ranker returns the twin the
+  row counts as a miss no matter how good the retrieval was.
+- **11 rows are 4 groups of genuinely different papers sharing a
+  `keywords` field**, 7 of them on the arXiv category string
+  `Computer Science - Software Engineering`. That is a subject
+  classification, not a topical query, and no ranker can pick the
+  intended one of five papers from it.
+
+**What this does and does not do to the tables above.** It depresses the
+absolute recall figures -- the real ceiling is below 1.0 by construction,
+so 0.8178 understates how well the ranker does. It does **not** flip the
+comparison, because every arm is scored on the identical rows, and the
+`k1` and `b` conclusions are read from deltas rather than levels. It does
+add noise to those deltas: a setting that reorders two near-identical
+twins moves a row for a reason that has nothing to do with the setting,
+and 6 rows of noise against a 7-query effect is not a comfortable ratio.
+Treat the `k1 = 8` gain as weaker than its raw number, which is the same
+direction the circularity argument above already pushes it. Filtering
+duplicate entries and category-only keyword fields out of the ground
+truth is the obvious next measurement, and it was not run here.
+
+Record: `bench/results/2026-09-17-bm25-params/bm25_params.json`.

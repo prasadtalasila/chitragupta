@@ -19,8 +19,9 @@ from chitragupta.dossier import RETRIEVAL_MD, _REVISION_MARKER_MODE, _ROW_SPLIT
 
 
 def _retrieval_rows(dossier: Path) -> list[list[str]]:
-    """The parseable rows of `retrieval.md`, normalised to nine cells:
-    date, mode, query, asked, results, chars, collection, origin, expanded.
+    """The parseable rows of `retrieval.md`, normalised to eleven cells:
+    date, mode, query, asked, results, chars, collection, origin, expanded,
+    k1, b.
 
     An integer `chars` cell is what separates a logged call from the
     template's own header and separator rows, which otherwise parse to
@@ -30,8 +31,9 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
 
     A six-cell row -- every row written before #254 added the collection
     column -- or a seven-cell row -- every row written before #455 added
-    the origin column, or an eight-cell one from before #789 added
-    `expanded` -- is padded with trailing empty cells rather than
+    the origin column, an eight-cell one from before #789 added
+    `expanded`, or a nine-cell one from before #788 added the two BM25
+    settings -- is padded with trailing empty cells rather than
     rejected, so it reads back exactly as it always has: a call with no
     recorded collection and no recorded origin, indistinguishable from
     one explicitly logged corpus-wide with no declared/extended origin.
@@ -40,6 +42,14 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
     A cell added in the middle would keep the row length legal while
     silently moving what `cells[5]` means, and `chars` is the integer
     this function tells a real row from a header by.
+
+    **Ten is deliberately not in the accepted set**, which is why this is
+    a membership test rather than a range. Every width above is a shape
+    this project has actually written; nothing has ever written a row
+    with a `k1` and no `b`, so a ten-cell row is torn or hand-edited.
+    Padding it would silently publish it as a real call whose `b` merely
+    went unrecorded, and an unrecorded setting is the one thing these two
+    columns exist to catch.
     """
     path = dossier / RETRIEVAL_MD
     if not path.is_file():
@@ -50,13 +60,13 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
         # containing a pipe as `\|`, which is markdown's literal, and
         # splitting there would cut the row into extra cells.
         cells = [cell.strip() for cell in _ROW_SPLIT.split(line.strip().strip("|"))]
-        if len(cells) not in (6, 7, 8, 9):
+        if len(cells) not in (6, 7, 8, 9, 11):
             continue
         try:
             int(cells[5])
         except ValueError:
             continue
-        cells += [""] * (9 - len(cells))
+        cells += [""] * (11 - len(cells))
         rows.append(cells)
     return rows
 

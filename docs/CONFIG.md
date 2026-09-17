@@ -371,6 +371,8 @@ Tier 1: stdlib only, no venv and no model, which is why these are not
 | --- | --- | --- | --- |
 | `weight_title` | `RETRIEVAL_WEIGHT_TITLE` | number, finite and at least 0 | `1.0` |
 | `weight_abstract` | `RETRIEVAL_WEIGHT_ABSTRACT` | number, finite and at least 0 | `1.0` |
+| `k1` | `RETRIEVAL_K1` | number, finite and at least 0 | `1.5` |
+| `b` | `RETRIEVAL_B` | number between 0 and 1 | `0.75` |
 | `acronym_expansion` | `RETRIEVAL_ACRONYM_EXPANSION` | boolean | `true` |
 | `max_passages_per_source` | `MAX_PASSAGES_PER_SOURCE` | positive integer | `3` |
 | `min_passage_tokens` | `MIN_PASSAGE_TOKENS` | positive integer | `20` |
@@ -384,6 +386,17 @@ producing a ranking nobody can explain. `weight_abstract` needs a
 structural passage sidecar to have anything to weight, so on the shipped
 `[parser].backend = "pdftotext"` it is silently inert.
 [RETRIEVAL.md](RETRIEVAL.md) carries the sweep behind both defaults.
+
+`k1` and `b` (#788) are Okapi BM25's own two parameters: how fast a term's
+frequency saturates, and how strongly a document's score is normalized by
+its length. Unlike the field weights they apply to **both** units, since
+both share one scorer. `b` past 1 makes the length normalizer negative
+for a short document, which flips the sign of BM25's denominator, so it
+is rejected at load rather than left to surface as a ranking nobody can
+explain. Both ship at the textbook values;
+[RETRIEVAL.md](RETRIEVAL.md#-k1-and-b-are-settings-and-the-defaults-were-swept)
+has the sweep, including the one parameter whose measured preference was
+deliberately not adopted.
 
 `acronym_expansion` (#789) adds an acronym's expansion to a query's terms
 — `DT` also searching for "digital twin" — with an added term counting as
