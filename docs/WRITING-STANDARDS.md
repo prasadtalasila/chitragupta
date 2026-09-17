@@ -1,6 +1,7 @@
 # ✍ Writing standards for the drafting layer
 
-Status: **reference.** Written 2026-08-03. Updated 2026-08-26.
+Status: **reference.** Written 2026-08-03. Updated 2026-09-17, adding
+§15's "a heading does not number itself".
 
 **Written for** anyone drafting with this pipeline, and for the skills
 that draft on their behalf. **Assumed:** [GENRE.md](GENRE.md) for which
@@ -188,6 +189,7 @@ means they are checked only when someone remembers to.
 | Whether an equation should have been numbered at all -- standalone, final-of-derivation, reused | §12 | **no** | no -- unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
 | A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes -- the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
 | A code line fits the page's column limit | §14 | yes | yes today, inherited from the `prose` class rather than argued for this rule -- and it is the row where that inheritance is worth re-examining, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works. In a Markdown draft the stake is only the `,→` a wrap leaves behind; in a `.tex` fragment, whose preamble this pipeline may not touch, it is a real overflow |
+| A heading does not state its own chapter number | §15 | yes | yes -- but only in a `.tex` unit, and only because nothing else can reach it: the repair is deleting a prefix the enclosing document supplies, which changes no claim. A Markdown unit is never reported, because the `--fragment` render already drops the prefix from what it emits and the authored heading is still what titles the standalone pdf |
 | A very long token has a breakable form | §14 | yes | **no, and it is not checked at all** -- unlike every other row, the mechanical proxy was built and then rejected: TeX hyphenates long English words correctly, so the rule raised 36 candidates on this project's own book and none of them had a repair that was not a worse word. §14 has the measurement |
 | The reread as the reader | §6 | no | never |
 
@@ -1002,6 +1004,50 @@ table records it beside the other row with no mechanical proxy.
 `python -m chitragupta.draft style` reports the decidable part of this
 section -- a bare URL, and a code line over the column limit. The
 third rule is not checked, deliberately, per the paragraph above.
+
+## 🔢 15. A heading does not number itself
+
+The same rule §10, §12 and §13 already state for a figure, an equation
+and a table, applied to the heading above them: **write the title, not
+the number**. A unit is a chapter of something, and the something
+numbers it -- `\chapter` in an assembled book, the reader's own thesis
+for a fragment. A heading that states its own number is printed twice,
+once by each.
+
+A unit headed `# Chapter 1: Why Anyone Pays` in a book set with the
+`book` class opens
+
+```text
+Chapter 1
+
+Chapter 1: Why Anyone Pays
+```
+
+and its table of contents reads `1 Chapter 1: Why Anyone Pays` to match.
+
+**For a Markdown unit this is handled for you, and the heading stays
+yours.** `python -m chitragupta.draft render --fragment` drops a
+`Chapter N:` prefix from the `\chapter{}` it emits, so the book prints
+the number once, from the class. The authored heading is untouched: a
+unit rendered on its own has nothing supplying a chapter number, so the
+prefix is what titles that standalone pdf, and the two artefacts want
+opposite things from one line. There is nothing to repair and nothing is
+reported.
+
+**For a `.tex` unit it is yours to fix**, and it is the one heading
+`python -m chitragupta.draft style` reports
+(`chitragupta.ChapterSelfNumbered`, `chitragupta/style_headings.py`). A
+unit already drafted as `.tex` needs no conversion to be assembled, so
+it is `\input` exactly as written and no render runs over it -- the same
+carve-out §13's `.tex` fragment has for its tables, read the other way
+round. Delete the prefix; the enclosing document supplies it.
+
+**A self-numbered *section* is a different clash with a different
+remedy.** `## 1.0 Before you start` under LaTeX's own numbering renders
+"1.1 1.0 Before you start", and nothing above touches it -- the fix is
+`\setcounter{secnumdepth}{-2}` in the book's authored preamble, which is
+a decision about the whole document. [WRITE-A-BOOK.md](WRITE-A-BOOK.md)
+has what that costs and when it is the wrong lever.
 
 ## 📖 Sources and attribution
 

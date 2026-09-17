@@ -241,6 +241,15 @@ term drifted from `scope.md`'s vocabulary, fix a dialect slip against
 `scope.md`'s `language:` line. `Edit` the exact span `detail.message` or
 the item's `summary` names.
 
+**`ChapterSelfNumbered`** (a `.tex` draft only) is the one rule whose
+repair is a deletion rather than an addition: drop the `Chapter N:`
+prefix from inside the `\chapter{...}` braces and leave the title, so
+the document the fragment is `\input` into supplies the number once. Do
+not touch the heading's `\label`, and do not reach for
+`\setcounter{secnumdepth}{-2}` -- that is a book-wide decision belonging
+to `content/specs/<book>/preamble.tex`, and it would cost every section
+and table number in the book (docs/WRITING-STANDARDS.md §15).
+
 Two equation rules repair differently from their table/figure siblings.
 **`EquationOrphanMarker`** -- delete the stray `<!-- equation: id -->`
 marker rather than hunting for a `<!-- math -->` block to reattach it to:

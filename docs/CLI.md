@@ -2372,8 +2372,9 @@ drifted from the current `[style].acronyms` vocabulary (§9;
 `chitragupta/style_acronym_drift.py`), §13's tables
 (`chitragupta/style_tables.py`), §10's captioned figures
 (`chitragupta/style_figures.py`), §12's numbered equations
-(`chitragupta/style_equations.py`), and §14's page fit
-(`chitragupta/style_typeset.py`). Those last five are the findings here
+(`chitragupta/style_equations.py`), §14's page fit
+(`chitragupta/style_typeset.py`), and §15's self-numbered chapter heading
+(`chitragupta/style_headings.py`). Those last six are the findings here
 *not* sourced from Vale, and they are computed in plain Python -- the
 id-validity and reference-problem logic behind the table, figure and
 equation checks is shared in `chitragupta/style_elements.py` rather than
@@ -2431,6 +2432,13 @@ right margin rather than anything about the prose itself:
 | --- | --- |
 | `chitragupta.BareUrl` | A URL is printed raw where a `[text](https://…)` link would read better and give the pdf something to click. A code span that is *only* a URL counts; one holding a command that contains a URL does not |
 | `chitragupta.WideCodeLine` | A code line is wider than the page fits. In a Markdown draft the render loads `fvextra` and the line wraps with a `,→` continuation marker, so this is a quality note; in a `.tex` fragment, `\input` into a thesis whose preamble this pipeline may not touch, nothing can load it and the line really does run into the margin |
+
+**The heading finding**, §15's one decidable row, and the only rule here
+that reads a `.tex` draft and nothing else:
+
+| Rule | What it means |
+| --- | --- |
+| `chitragupta.ChapterSelfNumbered` | A `\chapter{}` states its own chapter number (`Chapter 1: …`), so the document it is `\input` into prints it a second time -- at the chapter opening and in the table of contents. Reported only for a `.tex` unit, which `book-assembler` assembles as written; a Markdown unit's `--fragment` render drops the prefix from the `\chapter{}` it emits, so there is nothing left to repair and nothing is reported |
 
 §14's third rule -- prefer a breakable form for a very long token -- is
 deliberately **not** checked. TeX hyphenates long English words
@@ -2506,6 +2514,19 @@ standalone document: no preamble, the draft's own top heading becomes a
 `\chapter`, and code blocks are left unhighlighted (pandoc's
 `Shaded`/`Highlighting` environments are defined only by the standalone
 template, so a highlighted fragment fails to compile inside the book).
+
+**A chapter number the heading states itself is dropped.** A unit headed
+`# Chapter 1: Why Anyone Pays` is emitted as `\chapter{Why Anyone Pays}`,
+because the `book` class supplies "Chapter 1" itself and a heading that
+states it too is numbered twice -- at the chapter opening and in the
+table of contents. Only a heading that *already states a number* is
+touched (`Chapters and Verses` is not), only at the top level, and only
+in what pandoc sees: the draft on disk keeps its prefix, which is what
+titles the unit's own standalone pdf, and every unit stays `accepted`
+because its `output_digest` still hashes the same authored file
+([WRITING-STANDARDS.md](WRITING-STANDARDS.md)'s §15). A self-numbered
+*section* (`## 1.0 Before you start`) is a different clash and is left
+alone -- see [WRITE-A-BOOK.md](WRITE-A-BOOK.md).
 
 **It also defers its citations.** A fragment emits `\citep{...}` rather
 than resolved `[1]` markers, and carries no reference list of its own:

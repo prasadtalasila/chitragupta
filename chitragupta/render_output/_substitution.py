@@ -11,7 +11,14 @@ stay identical to the single module it replaced.
 import sys
 from pathlib import Path
 
-from chitragupta.render_output import _equation_captions, _math, _math_findings, _tables
+from chitragupta.render_output import (
+    _chapter_number,
+    _equation_captions,
+    _math,
+    _math_findings,
+    _paths,
+    _tables,
+)
 from chitragupta.render_output._citeproc import drop_manual_refs
 from chitragupta.render_output._figure_captions import figures as _declared_figures
 from chitragupta.render_output._figure_captions import substitute_captions, substitute_refs
@@ -107,17 +114,27 @@ def _substituted(
 ) -> str:
     """The text a writer actually sees, with every marker resolved.
 
-    `fragment` additionally drops the draft's own References section. A
-    fragment is `\\input` into a larger document that resolves citations
-    once for the whole of itself, so a per-chapter list would be a second,
-    differently numbered answer -- see `_citeproc.drop_manual_refs`. It
-    belongs here rather than at the call site because this function is
-    already the one answer to "what does the writer actually see", and a
-    second place that rewrites the same text is a second place for the two
-    to disagree.
+    `fragment` additionally drops the draft's own References section, and
+    a chapter number its own top heading states. A fragment is `\\input`
+    into a larger document that resolves citations once for the whole of
+    itself, so a per-chapter list would be a second, differently numbered
+    answer -- see `_citeproc.drop_manual_refs` -- and that document
+    numbers the chapter itself, so a heading that states its number is
+    numbered twice (`_chapter_number`). Both belong here rather than at
+    the call site because this function is already the one answer to
+    "what does the writer actually see", and a second place that rewrites
+    the same text is a second place for the two to disagree.
     """
     if fragment:
-        draft_text = drop_manual_refs(draft_text)
+        # `latex` off a `.tex` suffix rather than off `output_format`: what
+        # it selects is which regions of the *draft* are code, and a `.tex`
+        # draft's backticks are quote characters (`_blank_code`'s own
+        # reason). The output is LaTeX either way here, so keying off the
+        # format would read the wrong document.
+        draft_text = _chapter_number.unnumbered(
+            drop_manual_refs(draft_text),
+            input_path.suffix.lower() not in _paths._MARKDOWN_SUFFIXES,
+        )
     declared = _declared_figures(draft_text)
     with_captions = substitute_captions(draft_text, output_format, declared)
     with_refs = substitute_refs(with_captions, output_format, declared)

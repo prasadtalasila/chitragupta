@@ -58,7 +58,7 @@ code_lines = 288
 
 [[c2]]
 name = "chitragupta/style_check.py"
-code_lines = 272
+code_lines = 274
 
 [[c2]]
 name = "chitragupta/review/figure_layout/__init__.py"
