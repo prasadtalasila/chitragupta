@@ -64,6 +64,7 @@ from chitragupta import (
     bib_collections,
     ledger,
     retrieval_cache,
+    retrieval_expansion,
     retrieval_scoring,
     retrieval_tables,
 )
@@ -333,6 +334,14 @@ def search(
     terms = _query_terms(query)
     if not terms:
         return []
+    # Expansion is computed from the typed terms alone and never fed
+    # back through itself: an added term is not looked up as an acronym
+    # in turn, so no vocabulary can expand into a second expansion. An
+    # added term then scores exactly as a typed one does -- #789's own
+    # sweep put full weight ahead of every fraction of it, so there is no
+    # per-term weight here for a caller to set or for the ranker to read.
+    added = retrieval_expansion.expand(terms, _tokenize)
+    terms = terms + [token for _, token in added]
 
     with ledger.connection() as con:
         items = ledger.all_items(con)

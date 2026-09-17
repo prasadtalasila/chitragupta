@@ -130,13 +130,19 @@ collapse_citations = true
 # similar are vendored (assets/style/acronyms.toml, always loaded);
 # point this at your own file to add your field's vocabulary on top of
 # it, merged rather than replacing it -- your domain acronyms are your
-# data, not this project's. Copy assets/style/acronyms.toml.example to
-# content/acronyms.toml (gitignored, per-host, the same footing as this
-# file) and point this key there -- not back at
-# assets/style/acronyms.toml itself, which is the vendored file this
-# merges *over*. See assets/style/README.md.
+# data, not this project's. `chitragupta init` writes
+# content/acronyms.toml for you from assets/style/acronyms.toml.example;
+# this sample project ships one, which is what this key points at. Grow
+# it by hand or from a draft's own glossary with `python -m
+# chitragupta.draft dossier acronyms-suggest <draft> --apply`.
+#
+# It is also what expands a query's acronyms before retrieval ranks it
+# ([retrieval].acronym_expansion, on by default), so "DT" reaches the
+# papers that only ever write "digital twin". Point this at your file,
+# never back at assets/style/acronyms.toml itself, which is the vendored
+# floor this merges *over*. See assets/style/README.md.
 #                                          Default: assets/style/acronyms.toml
-# acronyms = "content/acronyms.toml"
+acronyms = "content/acronyms.toml"
 
 [parser]
 # Which backend `python -m chitragupta.corpus sync` uses to turn a PDF into

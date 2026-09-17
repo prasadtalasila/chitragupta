@@ -93,6 +93,21 @@ class ScaffoldSourceMissing(Exception):
 CONFIG_EXAMPLE = "config.toml.example"
 CONFIG_DEST = "config.toml"
 
+# The second entry that changes name on the way in, and the only one
+# copied *into* `content/`. `[style].acronyms` ships pointing at
+# `content/acronyms.toml`, and `[retrieval].acronym_expansion` is on, so
+# a project with no such file would have a live setting reading a file
+# that does not exist -- discoverable only by someone who reads
+# `config.toml`'s comments. Scaffolded from the same
+# `assets/style/acronyms.toml.example` those comments tell a checkout
+# user to copy by hand, so the two routes into a vocabulary produce the
+# same starting file. It is a *seed*, not a vendored asset: the vendored
+# floor (PDF, CPU, URL, API, HTML) stays in the installed package and is
+# always merged under whatever this file grows into, and
+# `dossier acronyms-suggest --apply` appends to this one.
+ACRONYMS_EXAMPLE = "assets/style/acronyms.toml.example"
+ACRONYMS_DEST = "content/acronyms.toml"
+
 # Created empty, so config.toml's default paths (content.dir, bib.path's
 # parent) resolve to something that exists before a first
 # `corpus sync` populates them.
@@ -230,7 +245,9 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
     hand-maintained listing of it.
     """
     missing = [
-        name for name in (*COPY_VERBATIM, CONFIG_EXAMPLE) if not (SOURCE_ROOT / name).exists()
+        name
+        for name in (*COPY_VERBATIM, CONFIG_EXAMPLE, ACRONYMS_EXAMPLE)
+        if not (SOURCE_ROOT / name).exists()
     ]
     if missing:
         # Refused before anything is written (#509/m-37). `_write_tree`
@@ -252,6 +269,11 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
     report.append(
         _write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST, force=force, dry_run=dry_run)
+    )
+    report.append(
+        _write_one(
+            SOURCE_ROOT / ACRONYMS_EXAMPLE, dest / ACRONYMS_DEST, force=force, dry_run=dry_run
+        )
     )
     for rel in EMPTY_DIRS:
         report.append(_write_empty_dir(dest / rel, dry_run=dry_run))

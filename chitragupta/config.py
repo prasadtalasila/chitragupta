@@ -434,6 +434,27 @@ def _get_field_weight(field: str) -> float:
 # measurement that would justify any other number, and #770 adds
 # `caption` and `table` to the same table.
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
+# Whether a query's acronyms are expanded from the tier-1 acronym
+# vocabulary before it is ranked (#789) -- `DT` also searching for the
+# words "digital twin", so an abbreviation reaches the papers that spell
+# the term out.
+#
+# **A switch, not a dial, and that is a measurement.** An earlier
+# revision of this made it a weight, so an added term could score at a
+# fraction of one the caller typed; the sweep behind docs/RETRIEVAL.md
+# found full weight the best of 0.25/0.5/1.0 on every figure, which
+# leaves a dial whose only supported setting is its maximum. A user who
+# wants less than that wants a different vocabulary, not a smaller
+# number.
+#
+# On by default. What it expands is `[style].acronyms` merged over the
+# vendored floor, so on a host that has written no acronyms file it is
+# five general-computing entries and changes nothing measurable; the
+# benefit arrives with the user's own vocabulary, which is why
+# `chitragupta init` scaffolds `content/acronyms.toml`.
+ACRONYM_EXPANSION = _get_bool(
+    "RETRIEVAL_ACRONYM_EXPANSION", "retrieval", "acronym_expansion", default=True
+)
 # The same, for chitragupta/retrieval_passages.py's passage-level index
 # (#769). A separate file rather than a second key inside the one above:
 # the two are invalidated by different things -- the document index by

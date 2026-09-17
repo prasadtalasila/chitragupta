@@ -19,8 +19,8 @@ from chitragupta.dossier import RETRIEVAL_MD, _REVISION_MARKER_MODE, _ROW_SPLIT
 
 
 def _retrieval_rows(dossier: Path) -> list[list[str]]:
-    """The parseable rows of `retrieval.md`, normalised to eight cells:
-    date, mode, query, asked, results, chars, collection, origin.
+    """The parseable rows of `retrieval.md`, normalised to nine cells:
+    date, mode, query, asked, results, chars, collection, origin, expanded.
 
     An integer `chars` cell is what separates a logged call from the
     template's own header and separator rows, which otherwise parse to
@@ -30,10 +30,16 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
 
     A six-cell row -- every row written before #254 added the collection
     column -- or a seven-cell row -- every row written before #455 added
-    the origin column -- is padded with trailing empty cells rather than
+    the origin column, or an eight-cell one from before #789 added
+    `expanded` -- is padded with trailing empty cells rather than
     rejected, so it reads back exactly as it always has: a call with no
     recorded collection and no recorded origin, indistinguishable from
     one explicitly logged corpus-wide with no declared/extended origin.
+
+    Every column so far has been appended at the *end* for this reason.
+    A cell added in the middle would keep the row length legal while
+    silently moving what `cells[5]` means, and `chars` is the integer
+    this function tells a real row from a header by.
     """
     path = dossier / RETRIEVAL_MD
     if not path.is_file():
@@ -44,13 +50,13 @@ def _retrieval_rows(dossier: Path) -> list[list[str]]:
         # containing a pipe as `\|`, which is markdown's literal, and
         # splitting there would cut the row into extra cells.
         cells = [cell.strip() for cell in _ROW_SPLIT.split(line.strip().strip("|"))]
-        if len(cells) not in (6, 7, 8):
+        if len(cells) not in (6, 7, 8, 9):
             continue
         try:
             int(cells[5])
         except ValueError:
             continue
-        cells += [""] * (8 - len(cells))
+        cells += [""] * (9 - len(cells))
         rows.append(cells)
     return rows
 

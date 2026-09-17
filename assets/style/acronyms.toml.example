@@ -1,7 +1,14 @@
-# A template for your own acronym file -- copy this somewhere and point
-# [style].acronyms in config.toml at it. Merged over the vendored floor
-# in acronyms.toml (PDF, CPU, URL, API, HTML): keep only your own
-# field's terms here, not a copy of the vendored ones. See README.md.
+# Your own acronym vocabulary -- your field's terms, not a copy of the
+# vendored floor in acronyms.toml (PDF, CPU, URL, API, HTML), which is
+# always merged underneath this file.
+#
+# `chitragupta init` writes this to content/acronyms.toml, where
+# `[style].acronyms` in config.toml already points; in a git checkout,
+# copy it there yourself. Grow it by hand, or from a draft's own glossary
+# with `python -m chitragupta.draft dossier acronyms-suggest <draft>
+# --apply`. Everything here also expands your queries when
+# `[retrieval].acronym_expansion` is on, so "DT" finds the papers that
+# only ever write "digital twin". See README.md.
 
 DT = "Digital Twin"
 DS = "Digital Shadow"

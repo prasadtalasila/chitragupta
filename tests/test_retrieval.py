@@ -10,7 +10,15 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli, retrieval_tables
+from chitragupta import (
+    acronyms,
+    config,
+    ledger,
+    retrieval,
+    retrieval_cache,
+    retrieval_cli,
+    retrieval_tables,
+)
 from chitragupta.dossier import _retrieval
 
 from tests.conftest import make_reference
@@ -224,6 +232,81 @@ class TestSearch:
             ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
         )
         assert [r.citekey for r in retrieval.search("5g")] == ["a2024"]
+
+    def test_an_acronym_reaches_a_paper_that_only_spells_it_out(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        """#789's success criterion, end to end: with expansion on, a
+        query of nothing but `DT` reaches the paper that says "digital
+        twin" throughout and never writes the abbreviation.
+
+        Red with the feature off, and not vacuously -- BM25 is exact
+        match, so `dt` appears in no document here at all and the search
+        returns nothing.
+        """
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="A Digital Twin Of A Greenhouse")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        assert retrieval.search("DT") == []
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        assert [r.citekey for r in retrieval.search("DT")] == ["a2024"]
+
+    def test_switching_expansion_off_leaves_the_ranking_alone(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        """The identity #789 asks for, over a corpus where expansion
+        *would* otherwise move things: every citekey and every score is
+        what it was, not merely the same top result."""
+        for citekey, title in (
+            ("a2024", "A Digital Twin Of A Greenhouse"),
+            ("b2024", "Twin Studies In Psychology"),
+            ("c2024", "DT And Nothing Else"),
+        ):
+            ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, title=title))
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        bare = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        off = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        on = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+
+        assert off == bare, "a vocabulary moved the ranking with expansion off"
+        assert [key for key, _ in on] != [key for key, _ in off], (
+            "the same vocabulary moved nothing with expansion on, so `off` proves nothing"
+        )
+
+    def test_an_added_term_scores_as_a_typed_one(self, ledger_con, monkeypatch):
+        """#789's sweep put full weight ahead of every fraction of it, so
+        there is no per-term discount: a paper carrying only the
+        expansion competes on equal terms with one carrying the acronym,
+        and the two tie here rather than ordering by how the query was
+        spelled."""
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "twin"})
+        ledger.upsert_reference(ledger_con, make_reference(citekey="typed2024", title="DT Study"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="added2024", title="Twin Study"))
+        scores = {r.citekey: r.score for r in retrieval.search("DT", k=5)}
+        assert set(scores) == {"typed2024", "added2024"}
+        assert scores["typed2024"] == pytest.approx(scores["added2024"])
+
+    def test_the_snippet_is_cut_around_an_added_term(self, ledger_con, tmp_path, monkeypatch):
+        """A document reached through an expansion says nothing the
+        caller typed, so a snippet built from the typed terms alone would
+        have no window to anchor on and fall back to the paper's opening
+        characters -- a result the reader cannot judge."""
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text(
+            "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
+        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        assert "calibrated" in retrieval.search("DT", k=1)[0].snippet
 
     def test_ranks_by_term_overlap_descending(self, ledger_con):
         ledger.upsert_reference(
@@ -766,6 +849,44 @@ class TestCli:
         assert "a2024" in out
         assert "evidence --citekey" in out
         assert "characters returned" in out
+
+    def test_search_notes_what_acronym_expansion_added(
+        self, ledger_con, tmp_path, capsys, monkeypatch
+    ):
+        """#789 asks that the log record which terms were added, so a
+        caller can see why a result surfaced. On stderr, beside the
+        "too short to search on" note: stdout is a contract the genre
+        skills parse."""
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        assert retrieval.main(["search", "DT patterns"]) == 0
+        captured = capsys.readouterr()
+        assert "acronym expansion added: dt -> digital twin" in captured.err
+        assert "acronym expansion" not in captured.out
+
+    def test_search_says_nothing_when_expansion_is_off(
+        self, ledger_con, tmp_path, capsys, monkeypatch
+    ):
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        assert retrieval.main(["search", "DT patterns"]) == 0
+        assert "acronym expansion" not in capsys.readouterr().err
+
+    def test_the_logged_row_records_what_was_added(self, ledger_con, tmp_path, monkeypatch):
+        """The note and the column are one string: `--log` writes what
+        the note printed, so a dossier read months later explains the
+        same result the session saw explained."""
+        from chitragupta import dossier
+
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert retrieval.main(["search", "DT patterns", "--log", str(draft)]) == 0
+        logged = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        assert logged.rstrip().endswith("| dt -> digital twin |")
 
     def test_evidence_prints_passages(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)

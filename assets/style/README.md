@@ -29,14 +29,23 @@ wholesale replacement: the vendored floor always loads, so a user file
 that only adds `DTaaS = "Digital Twin as a Service"` still gets `PDF`,
 `CPU`, `URL`, `API` and `HTML` for free.
 
-`acronyms.toml.example` in this same directory is a starting point --
-copy it to `content/acronyms.toml` (gitignored, per-host, the same
-footing as `config.toml` itself -- not this directory, which is
-version-controlled and ships with the project), edit your copy to your
-own field's vocabulary, and point `[style].acronyms` at it. `python -m
-chitragupta.draft dossier acronyms-suggest <draft> --apply` can write new
-entries there for you, proposed from a draft's own glossary and its
-prose; see `docs/CONFIG.md`.
+`acronyms.toml.example` in this same directory is that file's starting
+point, and `[style].acronyms` in `config.toml.example` already points at
+`content/acronyms.toml` (gitignored, per-host, the same footing as
+`config.toml` itself -- not this directory, which is version-controlled
+and ships with the project). `chitragupta init` copies the example there
+for you; in a git checkout, copy it yourself. Then edit it to your own
+field's vocabulary -- or let `python -m chitragupta.draft dossier
+acronyms-suggest <draft> --apply` write new entries, proposed from a
+draft's own glossary and its prose; see `docs/CONFIG.md`.
+
+**It is also what expands your searches.** With
+`[retrieval].acronym_expansion` on -- the shipped default -- a query
+saying `DT` also searches for the words that entry maps it to, so an
+abbreviation reaches the papers that only ever spell the term out
+(`docs/RETRIEVAL.md`). That makes this file the one place a domain
+vocabulary pays off twice: once in what a genre skill drafts from, once
+in what retrieval can find.
 
 ## What this is not
 

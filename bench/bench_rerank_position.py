@@ -52,7 +52,7 @@ BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 sys.path.insert(0, str(BENCH_DIR))
 
-from chitragupta import config, retrieval  # noqa: E402
+from chitragupta import config, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import RERANK_MODEL, ndcg_at_k, collapse_to_citekeys  # noqa: E402
 from bench_retrieval_keyword_selfretrieval import build_keyword_ground_truth  # noqa: E402
 
@@ -92,6 +92,28 @@ def cap_and_truncate(hits, cap, k):
     return kept
 
 
+def row_key(row):
+    """What a ground-truth row is keyed on when its arm's results are
+    looked up.
+
+    A keyword self-retrieval row is one query per citekey, so the citekey
+    is a key. A live-log row is one query per *chapter*, and the same
+    query text occurs in more than one chapter -- so those carry their own
+    `key` and this returns it rather than inventing a second convention.
+    """
+    return row.get("key", row.get("citekey"))
+
+
+def relevant_set(row):
+    """The citekeys that count as correct for one row.
+
+    A set for both ground truths, because the live logs have no finer
+    relevance than "a citekey this chapter kept" -- `retrieval.md` records
+    a query's text and result count, never which citekeys came back.
+    """
+    return set(row["citekeys"]) if "citekeys" in row else {row["citekey"]}
+
+
 def score_arm(returned_by_query, ground_truth):
     """Metrics over what the caller is actually handed: a ranked list of
     *passages*. recall@n asks whether the correct citekey is among the
@@ -103,13 +125,13 @@ def score_arm(returned_by_query, ground_truth):
     """
     shallow, deep, ndcgs, distincts, empties = [], [], [], [], 0
     for row in ground_truth:
-        hits = returned_by_query.get(row["citekey"])
+        hits = returned_by_query.get(row_key(row))
         if hits is None:
             continue
         if not hits:
             empties += 1
         citekeys = [hit["citekey"] for hit in hits]
-        relevant = {row["citekey"]}
+        relevant = relevant_set(row)
         shallow.append(1.0 if any(c in relevant for c in citekeys[:K_SHALLOW]) else 0.0)
         deep.append(1.0 if any(c in relevant for c in citekeys[:K_REPORT]) else 0.0)
         ndcgs.append(ndcg_at_k(collapse_to_citekeys(hits), relevant, K_REPORT))
@@ -146,13 +168,15 @@ def compare_arms(left, right, ground_truth):
     """
     set_differs, order_differs, lost, gained = 0, 0, 0, 0
     for row in ground_truth:
-        a = [hit["citekey"] for hit in left.get(row["citekey"], [])]
-        b = [hit["citekey"] for hit in right.get(row["citekey"], [])]
+        a = [hit["citekey"] for hit in left.get(row_key(row), [])]
+        b = [hit["citekey"] for hit in right.get(row_key(row), [])]
         if set(a) != set(b):
             set_differs += 1
         elif a != b:
             order_differs += 1
-        hit_left, hit_right = row["citekey"] in a, row["citekey"] in b
+        relevant = relevant_set(row)
+        hit_left = bool(relevant & set(a))
+        hit_right = bool(relevant & set(b))
         lost += hit_left and not hit_right
         gained += hit_right and not hit_left
     total = len(ground_truth)
@@ -180,8 +204,9 @@ def pool_rank_profile(pools, ground_truth):
     ranks, absent = [], 0
     for pool, row in zip(pools, ground_truth):
         citekeys = collapse_to_citekeys(pool)
-        if row["citekey"] in citekeys:
-            ranks.append(citekeys.index(row["citekey"]) + 1)
+        found = [citekeys.index(c) + 1 for c in relevant_set(row) if c in citekeys]
+        if found:
+            ranks.append(min(found))
         else:
             absent += 1
     ranks.sort()
@@ -366,6 +391,423 @@ def run(ground_truth, k, cap, rerank_model):
     return rows, deltas, pool_rank_profile(pools, ground_truth)
 
 
+# ---------------------------------------------------------------------------
+# Issue 786: what the cross-encoder is handed, rather than where it sits.
+#
+# Same pools, same cap, same order (rerank before the cap, per #380) --
+# only the *text* of the passage side of each scored pair changes. Arm C
+# is not a shipping candidate: it is the diagnostic for "the title
+# dominates", which is the first of the two failure modes the issue
+# names. See plans/786-title-augmented-rerank-input.md for the arms, the
+# ground-truth leak this controls for, and the bar fixed before the run.
+# ---------------------------------------------------------------------------
+
+
+def titled(hit):
+    """786's proposed passage text: the source title, then the snippet.
+
+    Falls back to the bare snippet when the title is missing or empty --
+    `metadata["title"]` is whatever the bib entry had, and an entry with
+    no title is not a reason to hand the model a leading blank line.
+    That fallback is also what the shipped code would have to do, so
+    measuring it here measures the change as it would ship.
+    """
+    title = (hit.get("title") or "").strip()
+    return f"{title}\n\n{hit['snippet']}" if title else hit["snippet"]
+
+
+NO_RERANK = "0 no rerank (shipped default)"
+
+RENDERS = {
+    "A snippet only (shipped)": lambda hit: hit["snippet"],
+    "B title + snippet (786)": titled,
+    "C title only (diagnostic)": lambda hit: (hit.get("title") or "").strip() or hit["snippet"],
+}
+
+
+def score_pool(pool, query, scorer, render):
+    """Raw cross-encoder scores for one pool under one rendering, kept
+    rather than discarded: the within-document diagnostic below is about
+    the *scores*, not the ordering they produce, and re-scoring to get
+    them back would double the run's cost.
+    """
+    # `float`, not the model's own numpy scalar: these scores are written
+    # into the JSON record, and a float32 is not serializable.
+    return [float(score) for score in scorer([(query, render(hit)) for hit in pool])]
+
+
+def order_by_scores(pool, scores):
+    """`_rerank.rerank`'s sort, driven by scores computed elsewhere.
+
+    Same expression as `rerank` above -- sorted on the negated score
+    alone, so ties keep the pool's distance order via the stable sort.
+    That tie behaviour is not incidental here: it is how a rendering
+    that compresses scores toward each other stops reordering at all.
+    """
+    return [hit for _score, hit in sorted(zip(scores, pool), key=lambda pair: -pair[0])]
+
+
+def within_doc_profile(pools, scores_by_pool):
+    """How much a rendering lets the reranker discriminate *between chunks
+    of the same paper* -- the comparison the issue's own failure mode 1 is
+    about, and the one a shared title prefix cannot inform.
+
+    No chunk-level relevance labels exist on this corpus and none are
+    invented. Two label-free measures over every (query, citekey) group
+    with at least two chunks in the pool:
+
+      * the score spread (max - min), in the reranker's own units; and
+      * whether the group's order is unchanged from the bi-encoder's
+        distance order, which is what a compressed spread plus a stable
+        sort produces.
+
+    A fall in spread beside a rise in "order unchanged" is the
+    discrimination loss happening, without needing to know which chunk
+    was the right one.
+    """
+    spreads, unchanged, groups = [], 0, 0
+    for pool, scores in zip(pools, scores_by_pool):
+        by_citekey = {}
+        for hit, score in zip(pool, scores):
+            by_citekey.setdefault(hit["citekey"], []).append(score)
+        for grouped in by_citekey.values():
+            if len(grouped) < 2:
+                continue
+            groups += 1
+            spreads.append(max(grouped) - min(grouped))
+            # The pool is distance-ranked, so a group already in
+            # descending-score order is one the rerank left alone.
+            unchanged += all(a >= b for a, b in zip(grouped, grouped[1:]))
+    return {
+        "groups": groups,
+        "mean_spread": round(statistics.fmean(spreads), 4) if spreads else None,
+        "median_spread": round(statistics.median(spreads), 4) if spreads else None,
+        "order_unchanged": unchanged,
+        "order_unchanged_pct": round(100.0 * unchanged / groups, 1) if groups else None,
+    }
+
+
+def title_overlap(query, title):
+    """Fraction of the query's terms that appear in the paper's own title,
+    tokenized by `retrieval._tokenize` rather than by a second tokenizer
+    invented here.
+
+    This is the leak control. The keyword ground truth's query is the
+    paper's own author-assigned keywords, and author keywords share
+    vocabulary with the paper's title -- so prepending the title hands
+    the model something close to a copy of the query for the correct
+    document and nothing comparable for its distractors. Reporting
+    B - A split at the median of this number is what tells an effect
+    from an artefact of the ground truth.
+    """
+    terms = set(retrieval._tokenize(query))
+    if not terms:
+        return 0.0
+    return len(terms & set(retrieval._tokenize(title or ""))) / len(terms)
+
+
+def ledger_titles():
+    """{citekey: title} from the ledger, for the overlap control.
+
+    Read from the ledger rather than from the pools: a row whose correct
+    paper never enters its own pool still has a title, and dropping those
+    rows from the stratification would bias it toward the easy half.
+    """
+    return {
+        row[0]: row[1] or "" for row in ledger.connect().execute("SELECT citekey, title FROM items")
+    }
+
+
+def budget_profile(pools, queries, tokenizer, max_length):
+    """Whether a title prefix actually displaces passage text.
+
+    The issue carries "input budget" as a risk: `snippet_chars` is the
+    reranker's effective window, so a prefix spends part of it. That is
+    only true if the *model's* window binds, which is a measurement, not
+    an argument -- 500 characters is well inside a 512-token limit. If
+    nothing is truncated under either rendering, the risk is retired with
+    a number instead of carried as an open question.
+    """
+    lengths = {name: [] for name in RENDERS}
+    for query, pool in zip(queries, pools):
+        # A query whose pool came back empty is skipped rather than
+        # tokenized: the batch tokenizer raises on an empty batch, and an
+        # empty pool has no passage whose length could bind anyway.
+        if not pool:
+            continue
+        for name, render in RENDERS.items():
+            encoded = tokenizer([(query, render(hit)) for hit in pool])["input_ids"]
+            lengths[name].extend(len(ids) for ids in encoded)
+    return {
+        "max_length": max_length,
+        "arms": {
+            name: {
+                "median_tokens": round(statistics.median(values), 1),
+                "max_tokens": max(values),
+                "over_max_length": sum(1 for v in values if v > max_length),
+            }
+            for name, values in lengths.items()
+        },
+    }
+
+
+def stratify(ground_truth, titles, by_arm, names):
+    """Every arm's metrics again, over the half of the ground truth whose
+    query largely appears in the correct paper's own title and over the
+    half where it does not.
+
+    This is the leak control, and it is the number that decides 786 on
+    this ground truth: the keyword rows' query *is* the paper's own
+    author-assigned keywords, so a title prefix hands the model something
+    close to a copy of the query for the correct document and nothing
+    comparable for its distractors. A gain that lives only in the
+    high-overlap half is an artefact of the ground truth; one that
+    survives the low-overlap half is not.
+
+    Returns `({}, None)` for a ground truth whose rows are not
+    single-citekey -- the live logs' relevant set is a whole chapter's
+    kept citekeys, so "the correct paper's title" names no one title, and
+    a stratification computed over an arbitrary member of the set would
+    be a number with no meaning rather than a missing one.
+    """
+    if any("citekeys" in row for row in ground_truth):
+        return {}, None
+    overlaps = {
+        row_key(row): title_overlap(row["query"], titles.get(row["citekey"], ""))
+        for row in ground_truth
+    }
+    cut = statistics.median(overlaps.values())
+    strata = {
+        f"high overlap (>= {cut:.2f})": [r for r in ground_truth if overlaps[row_key(r)] >= cut],
+        f"low overlap (< {cut:.2f})": [r for r in ground_truth if overlaps[row_key(r)] < cut],
+    }
+    return {
+        label: [{"row": name, **score_arm(by_arm[name], rows_in)} for name in names]
+        for label, rows_in in strata.items()
+    }, cut
+
+
+def run_input_arms(ground_truth, k, cap, rerank_model):
+    """A/B/C over one set of pools, plus the leak control, the
+    within-document diagnostic and the input-budget check.
+    """
+    from sentence_transformers import CrossEncoder
+
+    queries = [row["query"] for row in ground_truth]
+    keys = [row_key(row) for row in ground_truth]
+    reranker = CrossEncoder(rerank_model)
+    scorer = reranker.predict
+
+    print(
+        f"embedding {len(queries)} queries and pooling "
+        f"{k * config.EMBED_OVERFETCH_MULTIPLIER} chunks each ..."
+    )
+    pools = dense_pools(queries, k)
+    assert_replication_matches_shipped(pools, queries, cap, k)
+
+    titles = ledger_titles()
+    missing_titles = sum(
+        1 for pool in pools for hit in pool if not (hit.get("title") or "").strip()
+    )
+    pool_hits = sum(len(pool) for pool in pools)
+
+    arms, scores_by_arm = {}, {}
+    for name, render in RENDERS.items():
+        print(f"scoring {name} ...")
+        # A list aligned with `pools`, not a dict keyed on the query
+        # text: the live-log ground truth logs the same query in more
+        # than one chapter, and a dict would silently fold those rows
+        # into one.
+        scored = [score_pool(pool, q, scorer, render) for q, pool in zip(queries, pools)]
+        scores_by_arm[name] = scored
+        arms[name] = [
+            cap_and_truncate(order_by_scores(pool, scores), cap, k)
+            for pool, scores in zip(pools, scored)
+        ]
+
+    # The un-reranked shipped arm, as the reference row every rendering is
+    # really being asked about: `[enrich].rerank` is off by default, so
+    # "does the title help arm A" is only half the question -- the other
+    # half is whether either rendering beats running no reranker at all.
+    arms[NO_RERANK] = [cap_and_truncate(pool, cap, k) for pool in pools]
+
+    by_arm = {name: dict(zip(keys, hits)) for name, hits in arms.items()}
+    names = [NO_RERANK] + list(RENDERS)
+    rows = [{"row": name, **score_arm(by_arm[name], ground_truth)} for name in names]
+
+    stratified, cut = stratify(ground_truth, titles, by_arm, names)
+
+    deltas = {
+        "none vs A (what reranking buys at all)": compare_arms(
+            by_arm[NO_RERANK], by_arm[names[1]], ground_truth
+        ),
+        "none vs B (what 786 buys over no reranker)": compare_arms(
+            by_arm[NO_RERANK], by_arm[names[2]], ground_truth
+        ),
+        "A vs B (does the title change what ships)": compare_arms(
+            by_arm[names[1]], by_arm[names[2]], ground_truth
+        ),
+        "B vs C (has the passage stopped mattering)": compare_arms(
+            by_arm[names[2]], by_arm[names[3]], ground_truth
+        ),
+        "A vs C (title alone against passage alone)": compare_arms(
+            by_arm[names[1]], by_arm[names[3]], ground_truth
+        ),
+    }
+    within = {name: within_doc_profile(pools, scores_by_arm[name]) for name in RENDERS}
+    budget = budget_profile(pools, queries, reranker.tokenizer, reranker.max_seq_length)
+    return {
+        "rows": rows,
+        "stratified": stratified,
+        "overlap_cut": round(cut, 4) if cut is not None else None,
+        "deltas": deltas,
+        "within_document": within,
+        "input_budget": budget,
+        "pool_hits": pool_hits,
+        "hits_without_title": missing_titles,
+        "dense_pool_rank_profile": pool_rank_profile(pools, ground_truth),
+    }
+
+
+def input_arms_self_check():
+    """Plant a title that must change which document survives the cap, and
+    assert A and B disagree about it -- bench/'s rule that a script
+    publishing a number first fabricates the difference it claims to
+    detect. Also plant a rendering whose scores are flat, and assert the
+    within-document diagnostic reports the collapse rather than averaging
+    it away.
+    """
+    pool = [
+        {"citekey": "A", "title": "Alpha", "snippet": "a1"},
+        {"citekey": "A", "title": "Alpha", "snippet": "a2"},
+        {"citekey": "A", "title": "Alpha", "snippet": "a3"},
+        {"citekey": "B", "title": "Beta", "snippet": "b1"},
+        {"citekey": "C", "title": "Gamma", "snippet": "c1"},
+    ]
+    assert titled(pool[0]) == "Alpha\n\na1", titled(pool[0])
+    assert titled({"title": "  ", "snippet": "x"}) == "x"
+    # Snippet-only keeps {A, A, B}; the titled rendering promotes C's one
+    # chunk, so B is out and C is in -- the composition change a shared
+    # prefix is supposed to be able to cause.
+    planted = {"a1": 5.0, "a2": 4.0, "a3": 3.0, "b1": 2.0, "c1": 1.0, "Gamma\n\nc1": 9.0}
+
+    def stub(pairs):
+        return [planted.get(text, 0.5) for _query, text in pairs]
+
+    kept = {}
+    for name, render in RENDERS.items():
+        scores = score_pool(pool, "q", stub, render)
+        kept[name] = [h["citekey"] for h in cap_and_truncate(order_by_scores(pool, scores), 2, 3)]
+    assert kept["A snippet only (shipped)"] == ["A", "A", "B"], kept
+    assert set(kept["B title + snippet (786)"]) == {"C", "A"}, kept
+    assert set(kept["A snippet only (shipped)"]) != set(kept["B title + snippet (786)"]), (
+        "the planted title did not change which document survived -- this harness "
+        "cannot detect the effect it exists to measure"
+    )
+
+    discriminating = within_doc_profile([pool], [[5.0, 4.0, 3.0, 2.0, 1.0]])
+    assert discriminating == {
+        "groups": 1,
+        "mean_spread": 2.0,
+        "median_spread": 2.0,
+        "order_unchanged": 1,
+        "order_unchanged_pct": 100.0,
+    }, discriminating
+    reordered = within_doc_profile([pool], [[1.0, 2.0, 3.0, 9.0, 9.0]])
+    assert reordered["order_unchanged"] == 0, reordered
+    flat = within_doc_profile([pool], [[1.0] * 5])
+    assert flat["mean_spread"] == 0.0 and flat["order_unchanged"] == 1, flat
+    assert flat["mean_spread"] < discriminating["mean_spread"], (
+        "a rendering that scores every chunk of a paper alike must read as a "
+        "narrower spread than one that separates them"
+    )
+    assert title_overlap("digital twin fidelity", "Digital twin fidelity in practice") == 1.0
+    assert title_overlap("digital twin", "Unrelated survey") == 0.0
+    assert title_overlap("", "anything") == 0.0
+
+
+def report_input_arms(ground_truth, k, cap, args):
+    """`--input-arms`'s own printing and record, kept out of `main` so the
+    five-arm path it does not touch reads exactly as it did before.
+    """
+    result = run_input_arms(ground_truth, k, cap, args.rerank_model)
+    header = f"{'row':30} {'n':>4} {'r@3':>7} {'r@5':>7} {'nDCG@5':>7} {'distinct@5':>11}"
+    for label, rows in [("all queries", result["rows"])] + list(result["stratified"].items()):
+        print(f"\n{label}\n{header}\n{'-' * len(header)}")
+        for row in rows:
+            print(
+                f"{row['row']:30} {row['n_queries']:>4} "
+                f"{row[f'recall@{K_SHALLOW}']:>7} {row[f'recall@{K_REPORT}']:>7} "
+                f"{row[f'ndcg@{K_REPORT}']:>7} {row[f'distinct@{K_REPORT}']:>11}"
+            )
+    print()
+    for name, delta in result["deltas"].items():
+        print(
+            f"{name}: {delta['set_differs']}/{delta['n']} queries "
+            f"({delta['set_differs_pct']}%) return a different set of papers, "
+            f"{delta['order_differs']} differ only in order; "
+            f"the correct paper was lost {delta['lost']}x, gained {delta['gained']}x"
+        )
+    print()
+    for name, within in result["within_document"].items():
+        print(
+            f"{name}: within-document mean spread {within['mean_spread']} "
+            f"(median {within['median_spread']}), order unchanged for "
+            f"{within['order_unchanged']}/{within['groups']} groups "
+            f"({within['order_unchanged_pct']}%)"
+        )
+    budget = result["input_budget"]
+    print(f"\ninput budget (model max_length {budget['max_length']}):")
+    for name, tokens in budget["arms"].items():
+        print(
+            f"  {name}: median {tokens['median_tokens']} tokens, max "
+            f"{tokens['max_tokens']}, over the limit {tokens['over_max_length']}x"
+        )
+    print(
+        f"\n{result['hits_without_title']}/{result['pool_hits']} pooled chunks carry "
+        "no usable title, and score identically under every arm"
+    )
+    out_dir = BENCH_DIR / "results" / Path(args.tag).name
+    out_dir.mkdir(parents=True, exist_ok=True)
+    record = out_dir / "rerank_title_input.json"
+    record.write_text(
+        json.dumps(
+            {
+                "k": k,
+                "cap": cap,
+                "embedding_model": config.EMBEDDING_MODEL,
+                "rerank_model": args.rerank_model,
+                **result,
+            },
+            indent=1,
+        ),
+        encoding="utf-8",
+    )
+    print(f"\nRecord: {record}")
+    return 0
+
+
+def load_ground_truth(which):
+    """`keywords` or `live`, in the one row shape this script's scorers read.
+
+    The live-log builder is imported here rather than at module import so
+    the keyword path -- which every recorded row for this script uses --
+    does not start depending on a restored book being on disk. Its rows
+    are keyed on `(chapter, query_index)` because the same query text was
+    logged in more than one chapter, and carry a *set* of relevant
+    citekeys because a chapter's kept-citekey list is the finest relevance
+    those logs support.
+    """
+    if which == "keywords":
+        return build_keyword_ground_truth()
+    from bench_retrieval_live_logs import build_live_ground_truth
+
+    return [
+        {**row, "key": f"{row['chapter']}:{row['query_index']}"}
+        for row in build_live_ground_truth()
+    ]
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--tag", required=True, help="names bench/results/<tag>/")
@@ -376,18 +818,39 @@ def main(argv=None):
         help="cross-encoder to score (query, passage) pairs with; the default is the "
         "one bench_retrieval_compare.py already used, so its rows stay comparable",
     )
+    ap.add_argument(
+        "--ground-truth",
+        choices=("keywords", "live"),
+        default="keywords",
+        help="`keywords` (the default) is bench_retrieval_keyword_selfretrieval.py's "
+        "256 self-retrieval pairs, which every row recorded for this script so far "
+        "uses; `live` is bench_retrieval_live_logs.py's real logged drafting queries, "
+        "whose queries no paper's own metadata wrote -- the confirmation ground truth "
+        "for a title-augmentation result (see --input-arms)",
+    )
+    ap.add_argument(
+        "--input-arms",
+        action="store_true",
+        help="instead of the five cap-position arms, run issue 786's three "
+        "passage-rendering arms (snippet, title+snippet, title alone) over one "
+        "set of pools, with the ground-truth-leak control and the "
+        "within-document diagnostic -- see plans/786-title-augmented-rerank-input.md",
+    )
     args = ap.parse_args(argv)
 
     self_check()
+    input_arms_self_check()
 
-    ground_truth = build_keyword_ground_truth()
+    ground_truth = load_ground_truth(args.ground_truth)
     if args.limit:
         ground_truth = ground_truth[: args.limit]
     k, cap = K_REPORT, config.EMBED_MAX_PASSAGES_PER_SOURCE
     print(
-        f"{len(ground_truth)} keyword self-retrieval queries; "
+        f"{len(ground_truth)} {args.ground_truth} queries; "
         f"k={k}, cap={cap}, model={config.EMBEDDING_MODEL}, reranker={args.rerank_model}"
     )
+    if args.input_arms:
+        return report_input_arms(ground_truth, k, cap, args)
     rows, deltas, profile = run(ground_truth, k, cap, args.rerank_model)
 
     header = f"{'row':38} {'n':>4} {'r@3':>7} {'r@5':>7} {'nDCG@5':>7} {'distinct@5':>11}"
