@@ -50,6 +50,8 @@ sys.path.insert(0, str(REPO))
 from chitragupta import bib_reader, ledger, retrieval, retrieval_cache  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
     FIELD_WEIGHT_GRID,
+    arm_table_field,
+    grid_for,
     K_REPORT,
     K_POOL,
     DENSE_MODELS,
@@ -240,7 +242,7 @@ def wrapped_and_stripped_rows(ground_truth):
     return rows
 
 
-def field_weight_rows(ground_truth):
+def field_weight_rows(ground_truth, tag, fields=None):
     """#762's sweep, on the self-retrieval ground truth.
 
     **Read the abstract rows with the circularity in mind.** The query
@@ -252,9 +254,15 @@ def field_weight_rows(ground_truth):
     can be read against each other; where they disagree about the
     abstract, that arm is the one to believe. Title rows do not have the
     problem: a title is not where a keywords field is drawn from.
+
+    **The `table` rows measure a field chitragupta does not have.**
+    `arm_table_field` installs it for this process only -- see its
+    docstring in bench_retrieval_compare.py for why #770's proposal is
+    measured here rather than behind a config key.
     """
+    arm_table_field(tag)
     rows = []
-    for overrides in FIELD_WEIGHT_GRID:
+    for overrides in grid_for(fields):
         with_field_weights(overrides)
         ranked_by_query = {}
         for row in ground_truth:
@@ -456,6 +464,13 @@ def main(argv=None):
         choices=("field-weights",),
         help="run only the named arms (default: every arm)",
     )
+    ap.add_argument(
+        "--field",
+        action="append",
+        metavar="NAME",
+        help="restrict the field-weight arms to this field (repeatable); "
+        "default is every arm in FIELD_WEIGHT_GRID",
+    )
     args = ap.parse_args(argv)
 
     self_check()
@@ -493,7 +508,7 @@ def main(argv=None):
     rows = (
         [bm25_row(ground_truth)]
         + wrapped_and_stripped_rows(ground_truth)
-        + field_weight_rows(ground_truth)
+        + field_weight_rows(ground_truth, args.tag, args.field)
     )
     if args.only == "field-weights":
         return _report(rows, args.tag)

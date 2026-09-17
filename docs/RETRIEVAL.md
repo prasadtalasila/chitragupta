@@ -287,6 +287,31 @@ query's terms rises 264 → 292, because "digital" and "twin" are in far
 more of this corpus than `DT` is. On a corpus where your expansion words
 are ambient, that trade may not pay — this is the dial to reach for, and
 the figures to judge it by.
+**There is no `weight_caption` or `weight_table`, and that is measured
+too.** Issue #770 proposed both, on the argument that a caption and a
+table's cells are the paper's actual result in its most compressed form.
+
+A **caption** field cannot be built at all: the corpus layer's passage
+sidecar carries no `caption` label — figure captions are deliberately
+left out of it, so that a claim cannot "match" a journal name repeated on
+all seventeen pages — and there are zero caption records across this
+corpus's 497 sidecars. A weight over an empty field is not a
+configuration change; it is a reversal of that decision plus a re-parse.
+
+A **table** field was built and swept, and both ground truths agree it
+hurts: every weight above 1.0 loses nDCG on both, monotonically, costing
+up to five queries in 256 (`bench/RESULTS.md`, 2026-09-17). The issue's
+premise does not hold here either — a table record on this corpus
+averages 219 words, *longer* than an abstract, because the markdown
+export carries its pipes and header text. So there is nothing short and
+dense to rescue from length normalization. Nothing in `chitragupta/`
+carries a table field; the arms live in the bench harness.
+
+**Tables still reach a drafting session, by two paths no weight is
+involved in** — a window that lands in one is
+[widened to the whole table](#-a-window-that-lands-in-a-table-keeps-the-whole-table),
+and the [passage unit](#-the-passage-unit) ranks and returns a table
+record verbatim. Declining the field changed neither.
 
 ### 🔡 Where the token-length floor came from
 
@@ -653,6 +678,25 @@ over-fetch multiplier here and there is one on the embedding path: Chroma
 returns a pre-truncated candidate list and BM25 does not.
 [CONFIG.md](CONFIG.md#-retrieval----bm25s-field-weights-cap-and-floor) has
 both keys.
+
+### 📑 An abstract cannot pick the passage either, measured
+
+Four ways of letting a paper's abstract decide which paragraphs this unit
+returns were built and swept on both BM25 ground truths (`bench/RESULTS.md`,
+2026-09-17): fusing the paper's abstract score into every one of its
+passages, shortlisting papers by abstract before ranking their passages,
+lifting a passage by how much vocabulary it shares with its own abstract,
+and dropping abstract passages outright.
+
+**None is supported by both arms**, and the reason is visible in the same
+table. The only rows that gain anywhere move the share of returned
+passages that are *abstract text* from 1.7% to 33%; push harder and the
+share reaches 88% as recall collapses. The mechanism is not finding the
+right paper, it is returning the summary in place of the paragraph --
+which is the substitution this unit exists to prevent. Dropping abstract
+passages is declined too: it costs nine queries on one arm and one on the
+other, so they earn their place at the shipped settings. Leave the
+balance where BM25 put it.
 
 ### 🕳 What this unit structurally cannot return
 

@@ -1,0 +1,86 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.722
+ },
+ {
+  "row": "E1 interrogative-strip: keywords (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.722
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as a question",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7969,
+  "ndcg@5": 0.6996
+ },
+ {
+  "row": "E1 interrogative-strip: question, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.722
+ },
+ {
+  "row": "E1 interrogative-strip: keywords, interrogatives stripped",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.722
+ },
+ {
+  "row": "E1 interrogative-strip: wrapped as an assertion",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.75,
+  "ndcg@5": 0.6616
+ },
+ {
+  "row": "field weights: all 1.0 (baseline)",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.722
+ },
+ {
+  "row": "field weights: table=0.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8164,
+  "ndcg@5": 0.7282
+ },
+ {
+  "row": "field weights: table=0.5",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8125,
+  "ndcg@5": 0.7228
+ },
+ {
+  "row": "field weights: table=1.5",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8008,
+  "ndcg@5": 0.7133
+ },
+ {
+  "row": "field weights: table=2.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.8047,
+  "ndcg@5": 0.7091
+ },
+ {
+  "row": "field weights: table=4.0",
+  "n_queries": 256,
+  "n_missing": 0,
+  "recall@5": 0.7969,
+  "ndcg@5": 0.6864
+ }
+]

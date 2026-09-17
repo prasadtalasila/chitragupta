@@ -6099,9 +6099,12 @@ queries is one query, and this file has discarded a whole arm as
 underpowered before.
 
 **Decision: ship the seam, leave every weight at 1.0. Not established --
-not declined.** The distinction matters, because #770 is about to add two
-more fields to this same seam and should not read this as a dead
-mechanism.
+not declined.** The distinction matters, because issue #770 was about to
+add two more fields to this same seam and should not read this as a dead
+mechanism. *(Amended 2026-09-17: it did, and neither survived -- see
+[that entry](#2026-09-17-770-do-figure-captions-and-table-cells-deserve-their-own-bm25-field).
+The seam is still not a dead mechanism; the two fields it was asked for
+are.)*
 
 - **Title weighting is weakly positive and not reproducible across arms.**
   At `title = 2.0` both arms improve nDCG (+0.0025, +0.0029) and neither
@@ -6128,7 +6131,9 @@ table before anyone implements it.
 retrieval issues and three of the others consume its infrastructure
 rather than its ranking: #770 (caption and table fields) states that "the
 additive per-field scoring seam, the index schema that carries per-field
-term frequencies, and the sweep harness all arrive with it", #772 needs a
+term frequencies, and the sweep harness all arrive with it" -- which held
+exactly: that issue reused all three and needed nothing else, which is
+what let it be answered in one sitting and declined -- #772 needs a
 field to re-point, and #788 (the `k1`/`b` sweep) reuses this grid's
 harness. At 1.0 the seam costs nothing -- `field_deltas()` returns an
 empty list, so the ranker never reads a field count at all.
@@ -6527,6 +6532,147 @@ and one invocation covers both sets.
 
 Record: `bench/results/2026-09-16-retrieval-token-floor/token_floor.json`.
 
+## 2026-09-17 (#770): do figure captions and table cells deserve their own BM25 field?
+
+Issue #770 proposes extending #762's field-weighted BM25 with two more
+fields, `caption` and `table`, on the argument that "a caption is one or
+two sentences naming exactly what a figure shows, and a table's cells are
+the paper's measured claims in their most compressed form", both of them
+diluted today by BM25's length normalization against a 5,000-word body.
+
+**The `caption` half was not measured, because it cannot be built at the
+seam the issue names.** The issue draws both fields from "the `caption`
+and `table` labels in the corpus layer's passage sidecar".
+`chitragupta/_passage_records.py::PASSAGE_LABELS` is `{text, list_item,
+section_header, title, formula}` — figure captions are deliberately kept
+out, with the reason in that module ("running heads, page numbers and
+figure captions are not prose a claim can be supported by"). Counted over
+all 497 sidecars on this corpus: **zero caption records**. A `caption`
+weight would have an empty universe on every document, on every corpus,
+until that corpus-layer decision is reversed and 497 PDFs re-parsed —
+which is not the "configuration change plus two more sweep arms" the
+issue budgets. Nothing about this is a measurement problem, so nothing
+below is about captions.
+
+The nearest thing that does exist is already inside the `table` field: a
+table record carries its own caption as its first line, prepended by
+`passage_records`. So the arms below weight table captions, just not
+figure captions.
+
+**What `table` is, measured before weighting it.** 2,115 table records
+across **330 of 642** indexed items, 248,475 indexed tokens — 6.5% of the
+corpus's 3,837,476. The issue's own premise about length does not survive
+contact with the records: a table record averages **219.3 words**, which
+is *longer* than an abstract on this corpus (~173), because Docling's
+markdown export carries the pipes and the repeated header text. The
+"short, dense text averaged into a long body" argument is the argument
+for weighting a caption, and there is no caption field.
+
+Both BM25 ground truths, `FIELD_WEIGHT_GRID`'s `table` arms, one arm at a
+time. **Both directions**, unlike title and abstract: the issue argues
+for more weight, the counter-argument (cell text is fragmentary, pipes
+are noise) argues for less, and `0.0` asks whether cell text should be
+scored at all.
+
+### Live drafting logs (96 real `search`-mode queries, 15 chapters)
+
+| arm | n | recall@5 | Δ | nDCG@5 | Δ |
+|---|---|---|---|---|---|
+| BM25 baseline (all weights 1.0) | 96 | 0.8854 | -- | 0.4596 | -- |
+| table = 0.0 | 96 | 0.8958 | **+1 query** | 0.4607 | +0.0011 |
+| table = 0.5 | 96 | 0.8958 | **+1 query** | 0.4600 | +0.0004 |
+| table = 1.5 | 96 | 0.8750 | **-1 query** | 0.4548 | -0.0048 |
+| table = 2.0 | 96 | 0.8854 | 0 queries | 0.4516 | -0.0080 |
+| table = 4.0 | 96 | 0.8750 | **-1 query** | 0.4387 | -0.0209 |
+
+### Self-retrieval (256 author-keyword query pairs)
+
+| arm | n | recall@5 | Δ | nDCG@5 | Δ |
+|---|---|---|---|---|---|
+| BM25 baseline (all weights 1.0) | 256 | 0.8164 | -- | 0.7220 | -- |
+| table = 0.0 | 256 | 0.8164 | 0 queries | 0.7282 | +0.0062 |
+| table = 0.5 | 256 | 0.8125 | **-1 query** | 0.7228 | +0.0008 |
+| table = 1.5 | 256 | 0.8008 | **-4 queries** | 0.7133 | -0.0087 |
+| table = 2.0 | 256 | 0.8047 | **-3 queries** | 0.7091 | -0.0129 |
+| table = 4.0 | 256 | 0.7969 | **-5 queries** | 0.6864 | -0.0356 |
+
+**The baselines moved since #762's entry** (0.8646/0.4526 on live logs
+there, 0.8854/0.4596 here) because #790 lowered the token floor to two
+characters in between. The rows above are contemporaneous with each
+other; do not diff them against #762's table and read a regression.
+
+**Decision: decline the field. Nothing in `chitragupta/` behaves
+differently, and there is no `[retrieval].weight_table`.**
+
+- **The issue's hypothesis is refuted, and this is the first field in
+  this seam where both ground truths agree in sign at every weight.**
+  #762 could not decide title or abstract because its two arms
+  disagreed. Here they do not: every weight above 1.0 loses nDCG on
+  both, monotonically, and costs recall on both (up to 5 queries in 256
+  and 1 in 96 at `4.0`). A field whose two independent arms agree it
+  hurts does not need a third arm to decline it.
+- **The weak positive runs the other way, and is under-powered.** `0.0`
+  and `0.5` are non-negative on both arms — but the whole gain is **+1
+  query in 96** and **0 queries in 256**, which this file's own ["Power,
+  stated plainly"](#power-stated-plainly) says is not a result. It is
+  not adopted.
+- **The `0.0` arm is also the arm the clamp distorts.** `weighted_freq`
+  clamps a negative frequency to zero, and that can only fire *below*
+  1.0, where the delta is negative. It is not rare for this field:
+  a table's counts come from the sidecar's pipe-markdown and the full
+  count from the flattened `.txt`, and the two disagree on **3.13% of
+  (term, document) pairs and 4.77% of counts, concentrated in 17
+  documents** — against 0.01% for the abstract field, which is the
+  measure of how much rougher this field is. So `0.0` over-penalises
+  those 17 documents rather than merely discounting them, which is one
+  more reason not to read its +1 query as the field earning anything.
+
+**What `table = 0.0` actually asks is a corpus-layer question, and it is
+the follow-up worth having.** "Should a table's cell text be in BM25's
+index at all" is a question about `retrieval._full_text` and the
+reference cut beside it, not about a `[retrieval]` dial — a weight can
+only discount cell text *after* it has already inflated the document
+length that BM25 normalizes by, which is why the `0.0` arm cannot answer
+it cleanly. Filed as the open question; not implemented here.
+
+**None of this touches what the drafting layer is shown.** A table
+already reaches a drafting skill by two paths that no weight is involved
+in: `retrieval_tables.render_windows` widens a snippet window to the
+whole table, header row included, when a hit lands inside one, and since
+#769 `retrieve search --unit passage` ranks and returns table records
+verbatim as quotable passages, where field weights are inert by design.
+Declining the field leaves both exactly as they are.
+
+**Reproducing.** `table` is installed into the scorer by
+`bench_retrieval_compare.arm_table_field` for the length of a run, and
+that function refuses to sweep unless the field is populated and the
+weight seam demonstrably reaches `field_freqs` — the flat curve a stale
+index or an unpatched scorer would publish is the failure it exists to
+catch. It builds its own cold index under `bench/results/<tag>/`,
+because an index cached before the field existed stays valid: the
+fingerprint is a statement about the parsed file, which has not moved.
+
+```
+CONFIG_PATH=<config with [content].dir at the live corpus> \
+BENCH_BOOK_DOSSIERS=content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers \
+  python3 bench/bench_retrieval_live_logs.py \
+  --only field-weights --field table --tag 2026-09-17-770-table-live
+
+CONFIG_PATH=<the same> .venv-full/bin/python \
+  bench/bench_retrieval_keyword_selfretrieval.py \
+  --only field-weights --field table --tag 2026-09-17-770-table-self
+```
+
+`--field table` is what keeps those records about this entry.
+`FIELD_WEIGHT_GRID` is shared, so an unrestricted sweep also re-measures
+#762's title and abstract arms and commits their numbers here -- fresh
+figures for fields this entry never discusses, and a measurement of the
+abstract that #772 is still open over and nobody asked for. `grid_for`
+restricts the arms; the baseline is always kept, since every row is read
+against it.
+
+Records: `bench/results/2026-09-17-770-table-live/comparison.json` and
+`bench/results/2026-09-17-770-table-self/comparison.json`.
 ## 2026-09-17 (#789): does expanding a query's acronyms from the tier-1 vocabulary find papers that only spell the term out?
 
 `bench/bench_retrieval_acronym_expansion.py` (new).
@@ -7147,3 +7293,212 @@ duplicate entries and category-only keyword fields out of the ground
 truth is the obvious next measurement, and it was not run here.
 
 Record: `bench/results/2026-09-17-bm25-params/bm25_params.json`.
+
+## 2026-09-17 (#772's neighbourhood): can a paper's abstract choose which passages a drafting session is shown?
+
+`bench/bench_retrieval_abstract.py` (new). The one mechanism this
+repository has for using an abstract in retrieval is
+`[retrieval].weight_abstract` (#762), and it is measured to do nothing:
+recall unchanged at every weight on the live-logged arm, a monotone loss
+on the self-retrieval one, with the field populated for 318 of 642 items
+so it is not a coverage artefact ([2026-09-15](#2026-09-15-762-field-weighted-bm25----the-seam-lands-the-weights-do-not)).
+
+That arm weights an abstract's terms inside a *document*'s bag of words,
+where a 173-word abstract is ~3% of a 5,500-token document and BM25's
+saturation has flattened most of what it added. The **passage unit**
+(#769) makes the question live again and changes it: there the ranked
+object is one paragraph, so an abstract can act on *selection* -- which
+paragraphs of which papers a drafting skill is handed -- rather than on a
+document's score. Field weights are inert on that unit by construction,
+so none of what follows is reachable by turning a `[retrieval]` dial.
+
+Four mechanisms, each a different belief about what an abstract is for:
+
+- **`prior`** -- the paper's abstract score fused into every one of its
+  passages, min-max normalized within the query's pool and convex-combined
+  at `lambda` (`bench_retrieval_fusion.py`'s calibration, reused). *The
+  passage unit gave up too much pooling; an abstract is the cheapest way
+  to put some back.*
+- **`shortlist`** -- abstracts rank the papers, the top `N` are the only
+  papers whose passages may be returned. *The abstract is a good filter
+  and a poor scorer.*
+- **`centrality`** -- a passage lifted by how much of its own vocabulary
+  its own abstract shares, independent of the query. *A paragraph
+  restating the paper's thesis is better evidence than one down a
+  side-alley.*
+- **`exclude-abstract`** -- passages that are themselves abstract text are
+  dropped. *An abstract is a summary, and handing a drafting skill the
+  summary when it asked for evidence is the failure, not the feature.*
+
+All four collapse to citekeys before scoring, like every passage row here.
+`abstract_share@5` is the share of returned passages that are the
+abstract's own text -- carried beside recall and nDCG because it turns out
+to be the row that explains the others.
+
+### Before the four arms: can an abstract *replace* full text as the paper ranker?
+
+Asked separately and first, because the four mechanisms below all
+*modify* a ranking while this one *substitutes* for it -- and because it
+is the shape a reader proposes immediately on seeing that abstracts are
+cheap. An abstract index is 318 documents averaging 177 tokens; it builds
+in about two seconds, so cost is not the question and a tier-1 answer
+would carry to tier 3 unchanged. Quality is the question.
+
+| subset | ranker | recall@5 | nDCG@5 |
+|---|---|---|---|
+| self-retrieval, all 256 | full-text BM25 (as shipped) | 0.8164 | 0.7220 |
+| self-retrieval, all 256 | abstract-only, no fallback | 0.4453 | 0.3852 |
+| self-retrieval, all 256 | abstract-first, full-text fallback | 0.4453 | 0.3852 |
+| self-retrieval, answer has an abstract (145) | full-text BM25 (as shipped) | 0.7931 | 0.6961 |
+| self-retrieval, answer has an abstract (145) | abstract-only, no fallback | 0.7862 | 0.6801 |
+| self-retrieval, answer has an abstract (145) | abstract-first, full-text fallback | 0.7862 | 0.6801 |
+| live logs, all 96 | full-text BM25 (as shipped) | 0.8854 | 0.4596 |
+| live logs, all 96 | abstract-only, no fallback | 0.6979 | 0.2688 |
+| live logs, all 96 | abstract-first, full-text fallback | 0.6979 | 0.2688 |
+
+**The fallback tier is unreachable, and structurally rather than
+weakly.** `abstract-first` ties `abstract-only` on every row because its
+first tier is every paper that has an abstract -- 318 of 642 -- so the
+second tier begins at rank 319 and no `k` a caller would ask for reaches
+it. Demoting a paper instead of dropping it changes nothing at k=5. The
+tie is an identity, not a null result, and `self_check` asserts it as one
+so a genuinely broken fallback cannot hide behind the same two rows.
+Making the fallback consultable means *interleaving* the two rankings by
+score rather than stacking them, which needs per-query calibration: the
+two routes have different `N`, different `avgdl` and different IDF, so
+their raw scores are not comparable. That is a different arm and an
+honest one; it is not this one.
+
+**On the papers that have one, the abstract is very nearly a substitute
+-- and that is the trap, not the finding.** Restricted to the 145
+self-retrieval queries whose own correct answer has an abstract,
+abstract-only loses **one query in 145** and 0.0160 nDCG against full
+text, using ~3% of the document's tokens. As a compact representation
+that is a genuinely strong number. But it is the arm whose query is the
+paper's own author keywords, which authors also write into the abstract,
+so it is the *most* favourable possible reading. On real drafting queries
+the same substitution costs **18 queries in 96** and nearly halves nDCG.
+The compactness is real; the substitutability is an artefact of how that
+ground truth is built.
+
+**So: not a substitute.** Which makes the four arms below the right
+question after all -- if an abstract cannot replace the ranking, can it
+improve one.
+
+### Keyword self-retrieval (256 author-keyword queries)
+
+56.64% of this arm's correct answers have an abstract at all.
+
+| arm | recall@5 | Δ | nDCG@5 | abstract_share@5 |
+|---|---|---|---|---|
+| passage baseline (as shipped) | 0.6992 | -- | 0.5956 | 0.1023 |
+| + abstract prior, lambda = 0.1 | 0.6914 | **-2 queries** | 0.5950 | 0.1344 |
+| + abstract prior, lambda = 0.25 | 0.6680 | **-8 queries** | 0.5687 | 0.1953 |
+| + abstract prior, lambda = 0.5 | 0.4453 | **-65 queries** | 0.3892 | 0.2797 |
+| + abstract prior, lambda = 0.75 | 0.4062 | **-75 queries** | 0.3700 | 0.3023 |
+| abstract shortlist, N = 10 | 0.4297 | **-69 queries** | 0.3723 | 0.2263 |
+| abstract shortlist, N = 25 | 0.4258 | **-70 queries** | 0.3686 | 0.1872 |
+| abstract shortlist, N = 50 | 0.4102 | **-74 queries** | 0.3570 | 0.1677 |
+| abstract shortlist, N = 100 | 0.3945 | **-78 queries** | 0.3466 | 0.1521 |
+| x abstract centrality, mu = 0.25 | 0.6992 | 0 queries | 0.6018 | 0.2047 |
+| x abstract centrality, mu = 0.5 | 0.6875 | **-3 queries** | 0.5926 | 0.3555 |
+| x abstract centrality, mu = 1.0 | 0.6328 | **-17 queries** | 0.5275 | 0.5625 |
+| x abstract centrality, mu = 2.0 | 0.5195 | **-46 queries** | 0.4311 | 0.7633 |
+| x abstract centrality, mu = 4.0 | 0.4453 | **-65 queries** | 0.3815 | 0.8477 |
+| x abstract centrality, mu = 8.0 | 0.4336 | **-68 queries** | 0.3718 | 0.8805 |
+| exclude abstract passages | 0.6641 | **-9 queries** | 0.5444 | 0 |
+
+### Live drafting logs (96 real `search`-mode queries)
+
+62.26% of this arm's correct answers have an abstract at all.
+
+| arm | recall@5 | Δ | nDCG@5 | abstract_share@5 |
+|---|---|---|---|---|
+| passage baseline (as shipped) | 0.7604 | -- | 0.3248 | 0.0167 |
+| + abstract prior, lambda = 0.1 | 0.7604 | 0 queries | 0.3271 | 0.0500 |
+| + abstract prior, lambda = 0.25 | 0.7604 | 0 queries | 0.3388 | 0.0958 |
+| + abstract prior, lambda = 0.5 | 0.6771 | **-8 queries** | 0.2539 | 0.2063 |
+| + abstract prior, lambda = 0.75 | 0.5417 | **-21 queries** | 0.2013 | 0.2417 |
+| abstract shortlist, N = 10 | 0.6979 | **-6 queries** | 0.2601 | 0.1375 |
+| abstract shortlist, N = 25 | 0.7188 | **-4 queries** | 0.2683 | 0.0896 |
+| abstract shortlist, N = 50 | 0.7292 | **-3 queries** | 0.2672 | 0.0563 |
+| abstract shortlist, N = 100 | 0.7500 | **-1 query** | 0.2829 | 0.0479 |
+| x abstract centrality, mu = 0.25 | 0.7604 | 0 queries | 0.3218 | 0.0833 |
+| x abstract centrality, mu = 0.5 | 0.7708 | **+1 query** | 0.3272 | 0.1562 |
+| x abstract centrality, mu = 1.0 | 0.7812 | **+2 queries** | 0.3404 | 0.3271 |
+| x abstract centrality, mu = 2.0 | 0.7292 | **-3 queries** | 0.3028 | 0.5667 |
+| x abstract centrality, mu = 4.0 | 0.7083 | **-5 queries** | 0.2791 | 0.7375 |
+| x abstract centrality, mu = 8.0 | 0.6875 | **-7 queries** | 0.2844 | 0.8167 |
+| exclude abstract passages | 0.7500 | **-1 query** | 0.3215 | 0 |
+
+**Decision: decline all four. Nothing in `chitragupta/` behaves
+differently; `retrieve search --unit passage` is unchanged.**
+
+- **Not one arm is supported by both ground truths.** The only rows that
+  gain anywhere are `centrality` at mu = 0.5 and 1.0 on the live-logs arm
+  (+1 and +2 queries) -- and the same two settings cost **3 and 17
+  queries** on self-retrieval. `prior` is flat on live logs at its best
+  and loses 2 to 8 queries on self-retrieval at the same settings. This
+  file's standing rule since #762 is that a value no arm contradicts is
+  the bar; nothing here clears it.
+- **The arm structurally favourable to abstracts is the one that says no
+  loudest, and that is the finding.** Self-retrieval's query is the
+  paper's own author-assigned keywords, which an author routinely also
+  writes into the abstract -- the circularity #762's entry warns about,
+  which should give every arm here a head start. Instead
+  `centrality` at mu = 1.0 costs 17 queries there while gaining 2 on real
+  drafting queries. An effect that reverses on the arm biased *toward* it
+  is not a weak effect; it is a different effect than the one claimed.
+- **Every gain is made of abstract text, and `abstract_share@5` is where
+  to see it.** On the live-logs arm the best row, `centrality` at mu = 1.0,
+  moves the share of returned passages that are abstract text from
+  **1.67% to 32.71%**. Push the same dial further and the share reaches
+  88% while recall falls off a cliff on both arms. So the mechanism is not
+  "find the paper that argues this"; it is "return the summary instead of
+  the paragraph", which is the one substitution the passage unit exists to
+  prevent -- #769 exists so the text handed to a drafting skill is the
+  text that scored, and a summary is not evidence for a claim.
+- **`shortlist` is the clean decline.** It loses on both arms at every
+  size, catastrophically on self-retrieval (-69 to -78 queries), for a
+  structural reason the `reachable` figures state: only **56.64%** and
+  **62.26%** of each ground truth's correct answers have a detectable
+  abstract at all, so a shortlist built from abstracts cannot reach the
+  rest. An abstract is not a filter on this corpus because it is not
+  present often enough to be one.
+- **`exclude-abstract` is declined too, and that is worth saying
+  separately.** Dropping abstract passages costs 9 queries on
+  self-retrieval and 1 on live logs. So abstract passages are pulling
+  their weight as retrieval targets at the shipped settings -- they are
+  1.67% and 10.23% of returned passages, and removing them loses real
+  answers. The finding is not "keep abstracts out"; it is **leave the
+  balance where BM25 put it**, and neither amplify nor suppress.
+
+**What this says about #772.** That issue proposes re-pointing the
+abstract *field* at the enrichment layer's sidecar. It is about where the
+abstract is read from, and this entry is about what an abstract can do
+once read -- but the two meet at the same place: #762 measured the field
+as inert on the document unit, and this measures four ways of using the
+same text on the passage unit and finds none that both arms support. A
+better-sourced abstract feeding a mechanism that does not pay is still a
+mechanism that does not pay. Anyone implementing #772 should have a
+reason the re-pointing changes that, and the re-pointing also needs the
+fingerprint change `retrieval_scoring.field_texts`' docstring names --
+the corpus layer rewrites the `.txt` whenever it rewrites its own
+sidecar, and the enrichment layer does not.
+
+**Reproducing.** One BM25 pass per query, not one per arm: every arm is a
+transform of the same two score dicts, so thirteen rows cost two passes.
+`self_check` fabricates a difference each of the four mechanisms must
+see -- an arm that silently does nothing publishes a row identical to the
+baseline, and a table of thirteen ties reads as "the abstract does not
+help" when it means "the harness never applied it".
+
+```
+CONFIG_PATH=<config with [content].dir at the live corpus> \
+  .venv-full/bin/python bench/bench_retrieval_abstract.py \
+  --tag 2026-09-17-abstract-passage-selection \
+  --live-dossiers content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers
+```
+
+Record:
+`bench/results/2026-09-17-abstract-passage-selection/abstract_passage_selection.json`.

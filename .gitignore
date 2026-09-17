@@ -125,6 +125,11 @@ bench/results/*/embeddings_*.npy
 # in a `git add bench/results/<tag>`.
 bench/results/*/_*_worker*.json
 bench/results/specter2_paper_cache.json
+# arm_table_field's cold BM25 index (#770): a 13MB rebuild of
+# content/retrieval_index.json under a bench tag, there so the `table`
+# arms cannot read a cache written before that field existed. Scratch by
+# construction -- a re-run deletes and rebuilds it first.
+bench/results/*/_table_field_index.json
 
 # config.toml is per-host: every user edits it (parser backend, paths,
 # worker count) and those edits are nobody else's defaults. The tracked

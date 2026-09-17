@@ -10,10 +10,18 @@ contributes* -- `_full_text`, the reference cut, the snippet windows --
 and this module owns *what that text scores*.
 
 **Field-list-driven rather than two named weights.** `FIELDS` below has
-`title` and `abstract` today; #770 adds `caption` and `table` to the same
-seam, and #772 re-points where the abstract is read from. Each of those
-is then a change to one tuple and one config table rather than a fourth
-and fifth scalar threaded through three functions.
+`title` and `abstract`, and #772 re-points where the abstract is read
+from -- a change to one tuple and one config table rather than a third
+scalar threaded through three functions.
+
+The seam has been asked for a third field once and declined it. Issue
+#770 proposed `caption` and `table`; `caption` cannot be built here at
+all, because `_passage_records.PASSAGE_LABELS` deliberately keeps figure
+captions out of the sidecar and there are zero caption records across
+this corpus, and a `table` field measured a monotone loss on both BM25
+ground truths (bench/RESULTS.md, 2026-09-17). Adding a field is still one
+tuple and one config key; that this one is not here is a measurement, not
+an omission.
 
 **The weighted term frequency is a delta on the unweighted one:**
 

@@ -81,9 +81,10 @@ def weights(monkeypatch, **overrides):
 
 class TestTheFieldListDrivesTheSeam:
     def test_every_field_has_a_configured_weight(self):
-        """#770 adds `caption` and `table` here. A field with no weight
-        would raise in `field_deltas`, so this is what says the two lists
-        are one list."""
+        """A field with no weight would raise in `field_deltas`, so this
+        is what says the two lists are one list. Issue #770 asked for two
+        more and got neither: `caption` has no sidecar label to read and
+        `table` measured a loss on both ground truths."""
         assert set(config.RETRIEVAL_FIELD_WEIGHTS) == set(retrieval_scoring.FIELDS)
 
     def test_title_and_abstract_are_the_fields_that_ship(self):
