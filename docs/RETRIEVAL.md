@@ -605,6 +605,25 @@ returns a pre-truncated candidate list and BM25 does not.
 [CONFIG.md](CONFIG.md#-retrieval----bm25s-field-weights-cap-and-floor) has
 both keys.
 
+### 📑 An abstract cannot pick the passage either, measured
+
+Four ways of letting a paper's abstract decide which paragraphs this unit
+returns were built and swept on both BM25 ground truths (`bench/RESULTS.md`,
+2026-09-17): fusing the paper's abstract score into every one of its
+passages, shortlisting papers by abstract before ranking their passages,
+lifting a passage by how much vocabulary it shares with its own abstract,
+and dropping abstract passages outright.
+
+**None is supported by both arms**, and the reason is visible in the same
+table. The only rows that gain anywhere move the share of returned
+passages that are *abstract text* from 1.7% to 33%; push harder and the
+share reaches 88% as recall collapses. The mechanism is not finding the
+right paper, it is returning the summary in place of the paragraph --
+which is the substitution this unit exists to prevent. Dropping abstract
+passages is declined too: it costs nine queries on one arm and one on the
+other, so they earn their place at the shipped settings. Leave the
+balance where BM25 put it.
+
 ### 🕳 What this unit structurally cannot return
 
 A citekey parsed by `pdftotext` leaves no passage sidecar, so it is not
