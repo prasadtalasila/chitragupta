@@ -49,55 +49,6 @@
   "ndcg@5": 0.722
  },
  {
-  "row": "field weights: title=1.5",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8203,
-  "ndcg@5": 0.7237
- },
- {
-  "row": "field weights: title=2.0",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8164,
-  "ndcg@5": 0.7239
- },
- {
-  "row": "field weights: title=4.0",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8164,
-  "ndcg@5": 0.7233
- },
- {
-  "row": "field weights: title=8.0",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8164,
-  "ndcg@5": 0.7268
- },
- {
-  "row": "field weights: abstract=1.5",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8164,
-  "ndcg@5": 0.7211
- },
- {
-  "row": "field weights: abstract=2.0",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8125,
-  "ndcg@5": 0.7228
- },
- {
-  "row": "field weights: abstract=4.0",
-  "n_queries": 256,
-  "n_missing": 0,
-  "recall@5": 0.8086,
-  "ndcg@5": 0.7237
- },
- {
   "row": "field weights: table=0.0",
   "n_queries": 256,
   "n_missing": 0,

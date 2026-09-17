@@ -141,6 +141,26 @@ def arm_table_field(tag):
     print(f"table field populated for {populated} of {len(index)} indexed items", flush=True)
 
 
+def grid_for(fields):
+    """`FIELD_WEIGHT_GRID` restricted to the arms that move one of
+    `fields`, plus the all-1.0 baseline every arm is read against.
+
+    Exists so a run can publish a record of **only the field it is
+    about**. The grid is shared by two scripts and has carried #762's
+    title and abstract arms since it was written, so a sweep asking a
+    new question re-measures those two as a side effect and commits the
+    numbers to `bench/results/<tag>/comparison.json` -- where a reader
+    finds fresh figures for a field the entry beside them never
+    discusses, and an issue still open over that field (#772) acquires a
+    measurement nobody argued for. `None` keeps every arm, which is what
+    a full re-sweep of the grid wants.
+    """
+    if not fields:
+        return FIELD_WEIGHT_GRID
+    wanted = set(fields)
+    return tuple(arm for arm in FIELD_WEIGHT_GRID if not arm or set(arm) <= wanted)
+
+
 def with_field_weights(overrides):
     """Pin *every* field's weight, not just the ones `overrides` names.
 
