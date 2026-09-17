@@ -158,7 +158,32 @@ def weighted_freq(entry: dict, term: str, deltas: list[tuple[str, float]]) -> fl
     return max(0.0, freq)
 
 
-def bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
+def bm25_scores(
+    index: dict, terms: list[str], weights: dict[str, float] | None = None
+) -> dict[str, float]:
+    """Okapi BM25 over `index` for `terms`, top-level score per citekey.
+
+    `weights` (#789) multiplies one term's contribution, for a term the
+    caller did not type -- `retrieval_expansion` adds an acronym's
+    expansion at less than full weight. `None`, the shipped default, is
+    not "a table of 1.0s": the multiplication is skipped entirely, so a
+    caller who has turned expansion off runs the arithmetic this function
+    ran before the parameter existed. A term `weights` does not name
+    scores at 1.0, which is what makes it a table of *exceptions* rather
+    than a second place the query's own terms are listed.
+
+    Unlike a field weight, this one is a per-*term* multiplier and so
+    lands outside the saturation curve rather than inside it. Putting it
+    on the frequency instead would make "this term matters half as much"
+    mean "pretend the document said it half as often", which saturation
+    then flattens to almost no difference for any document that says it
+    more than twice -- i.e. exactly the documents the expansion was
+    added to reach.
+
+    Document frequency and IDF are read from `term_freqs` alone, as they
+    already were for field weights: how much a match matters is not how
+    rare the term is, and an added term must not restate the corpus.
+    """
     doc_count = len(index)
     if doc_count == 0:
         return {}
@@ -185,7 +210,10 @@ def bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
             freq = weighted_freq(entry, t, deltas)
             if freq == 0:
                 continue
-            score += idf[t] * (freq * (_K1 + 1)) / (freq + _K1 * norm)
+            contribution = idf[t] * (freq * (_K1 + 1)) / (freq + _K1 * norm)
+            if weights is not None:
+                contribution *= weights.get(t, 1.0)
+            score += contribution
         if score > 0:
             scores[citekey] = score
     return scores

@@ -170,10 +170,18 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      existed -- but unlike `collection`'s empty reading, that is not read
      as "declared": a pre-outline.md call was neither. Without this
      column, "did this draft follow the outline it declared?" has no
-     evidence to answer from. -->
+     evidence to answer from.
 
-| date | mode | query | asked | results | chars | collection | origin |
-|---|---|---|---|---|---|---|---|
+     `expanded` is what `chitragupta/retrieval_expansion.py` added to the
+     query before ranking it -- `DT -> digital twin`, an acronym and the
+     terms its expansion contributed (#789). Empty for a call that added
+     nothing, which is every call until `[retrieval].acronym_expansion`
+     is turned on, and also how every row written before this column
+     existed reads. Without it, a result that surfaced on a word the
+     caller never typed leaves no record of why. -->
+
+| date | mode | query | asked | results | chars | collection | origin | expanded |
+|---|---|---|---|---|---|---|---|---|
 """
 
 

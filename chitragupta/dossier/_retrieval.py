@@ -37,6 +37,7 @@ def log_retrieval(
     chars: int,
     collection: str | None = None,
     origin: str | None = None,
+    expanded: str | None = None,
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
 
@@ -46,6 +47,14 @@ def log_retrieval(
     parameter existed reads back (#254). Without it, a scoped call and a
     corpus-wide one at the same query and `--k` wrote byte-identical
     rows, and nothing downstream could tell which had actually run.
+
+    `expanded` is what acronym expansion added to the query before it
+    was ranked -- `chitragupta/retrieval_expansion.describe`'s one-line
+    rendering, empty for a call that added nothing (#789). Empty is also
+    how every row written before this column existed reads, and unlike
+    `origin` that widening is exact rather than approximate: a row logged
+    before this existed was ranked with no expansion, because there was
+    none to do.
 
     `origin` is `"declared"` or `"extended"` (#455) -- whether the query
     came verbatim from an `outline.md` section or was added because a
@@ -119,9 +128,10 @@ def log_retrieval(
     safe_query = " ".join(query.split()).replace("|", "\\|")
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
     safe_origin = " ".join((origin or "").split()).replace("|", "\\|")
+    safe_expanded = " ".join((expanded or "").split()).replace("|", "\\|")
     row = (
         f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
-        f"{chars} | {safe_collection} | {safe_origin} |\n"
+        f"{chars} | {safe_collection} | {safe_origin} | {safe_expanded} |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():

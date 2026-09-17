@@ -371,6 +371,7 @@ Tier 1: stdlib only, no venv and no model, which is why these are not
 | --- | --- | --- | --- |
 | `weight_title` | `RETRIEVAL_WEIGHT_TITLE` | number, finite and at least 0 | `1.0` |
 | `weight_abstract` | `RETRIEVAL_WEIGHT_ABSTRACT` | number, finite and at least 0 | `1.0` |
+| `acronym_expansion` | `RETRIEVAL_ACRONYM_EXPANSION` | number, finite and at least 0 | `0.0` |
 | `max_passages_per_source` | `MAX_PASSAGES_PER_SOURCE` | positive integer | `3` |
 | `min_passage_tokens` | `MIN_PASSAGE_TOKENS` | positive integer | `20` |
 
@@ -383,6 +384,19 @@ producing a ranking nobody can explain. `weight_abstract` needs a
 structural passage sidecar to have anything to weight, so on the shipped
 `[parser].backend = "pdftotext"` it is silently inert.
 [RETRIEVAL.md](RETRIEVAL.md) carries the sweep behind both defaults.
+
+`acronym_expansion` (#789) adds an acronym's expansion to a query's terms
+— `DT` also searching for "digital twin" — at this fraction of the weight
+a term you typed yourself carries. The vocabulary is
+`assets/style/acronyms.toml` merged with your own `[style].acronyms`
+file, and nothing else: authored rather than derived, so ranking never
+depends on whether an enrichment stage has run. **`0.0` is off and is the
+default**, because the vendored vocabulary expands nothing in any query
+of this project's own ground truths — what it buys depends on your
+acronyms file, and [RETRIEVAL.md](RETRIEVAL.md) has a stand-in
+measurement to start from. Query-side only: no index is rebuilt, and a
+query spelling the term out still cannot reach a document that only
+abbreviates it.
 
 The remaining two apply to `retrieve search --unit passage` only
 ([RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit)). The document unit takes

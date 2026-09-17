@@ -434,6 +434,26 @@ def _get_field_weight(field: str) -> float:
 # measurement that would justify any other number, and #770 adds
 # `caption` and `table` to the same table.
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
+# What a term added by chitragupta/retrieval_expansion.py -- an acronym's
+# expansion, pulled from the tier-1 acronym vocabulary -- contributes
+# relative to a term the caller actually typed (#789). **0.0 is off, and
+# off is the shipped default**: expansion adds matches, so it is the
+# change most likely to cost precision, and the vendored vocabulary it
+# would expand from is five general-computing entries that no query in
+# either of this project's retrieval ground truths contains. The benefit
+# is therefore entirely a function of a per-host, user-authored
+# `[style].acronyms` file, which no measurement here can stand in for --
+# docs/RETRIEVAL.md carries both figures. Above 1.0 is allowed and is
+# deliberately a bad idea: it would rank a word the caller did not type
+# above one they did.
+ACRONYM_EXPANSION_WEIGHT = _get_float(
+    "RETRIEVAL_ACRONYM_EXPANSION", "retrieval", "acronym_expansion", default=0.0
+)
+if not 0.0 <= ACRONYM_EXPANSION_WEIGHT < math.inf:
+    raise ValueError(
+        "[retrieval].acronym_expansion must be a finite number at least 0, not "
+        f"{ACRONYM_EXPANSION_WEIGHT!r}. 0 leaves ranking exactly as it is."
+    )
 # The same, for chitragupta/retrieval_passages.py's passage-level index
 # (#769). A separate file rather than a second key inside the one above:
 # the two are invalidated by different things -- the document index by

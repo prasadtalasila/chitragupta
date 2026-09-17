@@ -159,6 +159,85 @@ supported by both arms, so none was adopted. Read that table before
 setting either dial on your own corpus; the right value there is an
 empirical question this one cannot answer for you.
 
+### 🔤 An acronym in the query can reach the words it stands for
+
+BM25 is exact-match lexical, so a query for `DT fidelity` reaches no
+paper that spells "digital twin" out and never abbreviates it — which in
+a digital-twin corpus is most of them. Query-side acronym expansion
+(#789) adds the expansion's words to the query's terms, at a weight under
+`[retrieval]`:
+
+```toml
+[retrieval]
+acronym_expansion = 0.0
+```
+
+`0.0` is off, and **off is the shipped default** — see the figures below
+for why. Above 0, an acronym in your query contributes its expansion's
+terms as well, each scoring at that fraction of a term you typed
+yourself: at `0.5`, a paper matching only the expansion ranks below one
+matching the acronym itself. `1.0` makes them count the same. Negative
+and infinite are rejected when the config loads.
+
+The vocabulary is the one the drafting layer already reads —
+`assets/style/acronyms.toml` merged with your own `[style].acronyms`
+file. **That choice is the point, not a convenience.** It is authored
+rather than derived, so expansion cannot make a ranking depend on whether
+an optional enrichment stage has run, which is the promise
+[above](#-bm25----the-default-and-always-available) that this layer never
+reads `content/docling/` or any model output. Nothing about expansion
+touches the index either, so turning it on requires no rebuild and a
+vocabulary edit takes effect on the next query.
+
+**What it can and cannot do.** A query saying `DT` reaches documents
+saying "digital twin". A query saying "digital twin" still cannot reach a
+document that only ever writes `DT` — that would be document-side
+expansion, which would rewrite the index on every edit of the acronym
+file. A word you typed yourself is never added a second time, so it keeps
+full weight rather than being demoted to the expansion weight. And a
+one-character acronym can never expand, because the token floor drops it
+from the query before expansion sees it.
+
+**The CLI says what it added**, on stderr beside its other query notes,
+and `--log` writes the same string to the dossier's `retrieval.md`
+`expanded` column:
+
+```text
+  [note] acronym expansion added: dt -> digital twin
+```
+
+**Why the default is 0.0, measured rather than assumed**
+(`bench/RESULTS.md`, 2026-09-17). The vendored vocabulary is five
+general-computing entries (PDF, CPU, URL, API, HTML), and **zero** of
+this project's 256 self-retrieval queries and **zero** of its 96
+live-logged drafting queries contain one — so on the only vocabulary that
+ships, every arm is bit-identical to the baseline and no measurement can
+support turning it on. A domain vocabulary read off the real 15-chapter
+book's glossary changes nothing on those two sets either, for a
+structural reason: a keyword list or a typed query that uses an acronym
+almost always spells the term out beside it, and expansion never re-adds
+a word you already typed.
+
+On a **derived** set that rewrites each expansion phrase to its acronym —
+149 rows, 106 of them expanded, the only way to see the mechanism at all
+— it works, and the gain is in rank rather than reach:
+
+| weight | recall@1 | recall@5 | nDCG@5 | mean query-term DF | better / worse |
+| --- | --- | --- | --- | --- | --- |
+| off | 0.5660 | 0.7925 | 0.6887 | 264.0 | — |
+| 0.25 | 0.5755 | 0.7925 | 0.6922 | 292.1 | 1 / 0 |
+| 0.5 | 0.5849 | 0.7830 | 0.6976 | 292.1 | 6 / 1 |
+| 1.0 | 0.5943 | 0.7925 | 0.7049 | 292.1 | 8 / 2 |
+
+Figures over the 106 expanded rows; movement counts are over all 149.
+recall@5 barely moves while recall@1 and nDCG@5 rise — the added terms
+are mostly re-ranking papers the query already reached. The precision
+cost is the last column but one: the mean document frequency of a query's
+terms rises 264 → 292, because "digital" and "twin" are in far more of
+this corpus than `DT` is. That is the trade, and it is why this is a dial
+you turn on your own corpus with your own vocabulary rather than one this
+project turns on for you.
+
 ### 🔡 Where the token-length floor came from
 
 A token shorter than **two characters** is not indexed and not scored,
