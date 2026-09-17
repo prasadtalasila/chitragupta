@@ -273,7 +273,8 @@ unrecorded. Three things, any one of which would be enough:
    tool can reach, not about a decision a person has to record.
 2. **The class conflates two very different findings.**
    `chitragupta/review/_quotation_match.py` measured 70 raw findings
-   reducing to 33 after three normalisations, and calls what is left
+   reducing to 33 after three normalisations -- and 40 to 38 after the
+   fourth issue #775 added -- and calls what is left
    "residual absents". An `absent` finding is therefore either a correct
    quote the matcher cannot verify -- legitimately accept-worthy -- or a
    genuinely fabricated quotation, which is the one failure
@@ -290,9 +291,50 @@ unrecorded. Three things, any one of which would be enough:
    suppressed. Every acceptable class above is keyed on the draft text it
    is about.
 
-Whether `misquoted` should ever be acceptable is a separate question with
-its own issue, and the answer needs a discriminator this aid does not
-have today.
+**The answer, which issue #775 asked and settled, is no.** It was asked
+in that order deliberately: narrow the class first, decide afterwards,
+because acceptance over a class that means two things can permanently
+suppress the one finding this project exists to catch. What #775 did and
+what it found:
+
+- **A fourth normalisation shipped**, on the same exact-matching-only
+  footing as the other three. An elision at either *end* of a quote
+  leaves `fragments` one piece instead of two, and `locate` required
+  two, so `"For data-driven models the topic is [unresolved]."` against
+  a source reading `"...the topic is still being debated."` was reported
+  `absent` although everything before the drafter's own bracket is
+  verbatim. Measured over 206 spans extracted from 19 real `evidence.md`
+  files: **40 residual absents to 38, with no span lost.**
+- **One candidate was measured and declined.** Stripping a parenthesised
+  abbreviation gloss from the *source* -- `"a Digital Twin (DT) to gain
+  the most value"` against a quotation that dropped the `(DT)` --
+  recovers 1 span and loses 12, because a drafter quoting that sentence
+  usually keeps the gloss. Recorded rather than dropped, since it is the
+  obvious next thing to try.
+- **Finding 2 is reduced, not removed.** Of the 38 that remain, 15 are
+  under eight words -- the measurement's own extraction rule collecting
+  the book's scare-quoted phrases (`"explain it to a sponsor"`), which a
+  `quote:` field would never hold; 18 have essentially nothing of the
+  quote in the source, which at that extraction rule's fidelity is
+  mostly a mis-attribution rather than a finding; and **5 match a real
+  prefix and then diverge**, which is exactly the class this aid exists
+  for. A class that still contains those 5 is not a class to let a
+  keystroke silence.
+- **Finding 3 is untouched**, and on its own would be enough. Accepting
+  a `misquoted` item would require its identity to carry the parsed
+  source's fingerprint so a re-parse or a replaced PDF reopens it. That
+  is a new mechanism, #767 declined to add one, and nothing in the
+  measurement argues for paying for it now.
+- **The cost of "no" is currently zero.** No dossier in this corpus uses
+  the `quote:`/`claim:`/`support:` contract at all, so `misquoted`'s
+  universe is empty on every real draft and acceptance would buy nothing
+  measurable today. The normalisation was worth doing regardless: it is
+  what makes the class trustworthy the first time the contract is used.
+
+`plans/775-quotation-residual-absents.md` holds the arms, the counts and
+the recipe for rebuilding them. If a later corpus makes the residual
+class mean one thing, this is the entry to revisit -- and the sequence
+to keep: normalise, measure, then decide.
 
 **The record is auditable.** `<stem>.accepted.json` holds one row per
 accepted item -- id, class, section, citekey and the summary as it read

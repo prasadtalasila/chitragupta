@@ -243,6 +243,65 @@ class TestElision:
         assert checked(draft)[0].verdict == "found"
 
 
+class TestElisionAtAnEnd:
+    """An elision at the *start* or *end* of a quote leaves one fragment,
+    not two, and issue #775 measured that one-sided case as a false
+    `absent` on a real corpus: 2 of the 40 residual absents over 206
+    extracted spans are a correct quotation ending in an editorial
+    substitution. The rest of that module's posture is unchanged --
+    the surviving fragment must still appear exactly.
+    """
+
+    def test_a_trailing_editorial_substitution_is_found(self, isolated_config):
+        """The measured case, in miniature. A drafter quotes a sentence
+        and replaces its tail with their own word in brackets: *"the
+        topic is [unresolved]"* against a source reading *"the topic is
+        still being debated"*. Everything before the bracket is verbatim,
+        and that is what the elision contract already promises to match.
+        """
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "For data-driven models the topic is [unresolved]."))
+        a_source(KEY, (5, "For data-driven models the topic is still being debated today."))
+        one = checked(draft)[0]
+        assert (one.verdict, one.tier) == ("found", "elided")
+
+    def test_a_leading_ellipsis_is_found(self, isolated_config):
+        """The same shape from the other end, which is the commoner way
+        to write it by hand."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "... CN is the connection that ties them"))
+        a_source(
+            KEY, (3, "Here PE is the physical entity and CN is the connection that ties them.")
+        )
+        assert checked(draft)[0].verdict == "found"
+
+    def test_a_quote_with_no_elision_at_all_is_still_absent(self, isolated_config):
+        """The guard this widening must not swallow. One fragment and no
+        elision marker is an ordinary quotation that simply is not in the
+        source, and it stays `absent` -- the one-fragment path is reached
+        only because the quote said the source differs somewhere.
+        """
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "the four interconnected layers of no such paper"))
+        a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
+        assert checked(draft)[0].verdict == "absent"
+
+    def test_the_surviving_fragment_must_still_appear_exactly(self, isolated_config):
+        """A fabricated quotation does not become findable by ending in
+        a bracket. What is matched is still an exact character run."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "the twin predicted failure eight hours ahead [emphasis mine]"))
+        a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
+        assert checked(draft)[0].verdict == "absent"
+
+    def test_fragments_drops_slivers_but_keeps_a_lone_survivor(self, isolated_config):
+        """`fragments` is unchanged: it still returns what survived, and
+        an empty tail is still dropped. It is `locate` that stopped
+        requiring two of them."""
+        assert match.fragments("the topic is [unresolved]") == ["thetopicis"]
+        assert match.fragments("no elision here at all") == ["noelisionhereatall"]
+
+
 class TestPassageSeams:
     def test_a_span_straddling_a_seam_is_not_reported_found_on_one_page(self, isolated_config):
         """The false-`found` guard. Flattening strips every separator, so

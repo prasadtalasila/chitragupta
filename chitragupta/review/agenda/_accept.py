@@ -27,7 +27,8 @@ not, and is excluded here rather than merely unimplemented:
    not about a person having a decision to record.
 2. The class conflates two very different findings.
    `chitragupta/review/_quotation_match.py` measured 70 raw findings
-   reducing to 33 after three normalisations, and calls the residue
+   reducing to 33 after three normalisations, and 40 to 38 after the
+   fourth issue #775 added, and calls the residue
    "residual absents": an `absent` finding is either a correct quote the
    matcher cannot verify or a genuinely fabricated quotation, which is
    the one failure SOUL.md exists to prevent. The aid does not
@@ -43,8 +44,14 @@ not, and is excluded here rather than merely unimplemented:
    fabrication would stay suppressed. Every acceptable class above is
    keyed on the draft text it is about.
 
-Whether `misquoted` should ever be acceptable is a separate question
-with its own issue; this module refuses it today, and
+Issue #775 asked whether `misquoted` should ever be acceptable and
+answered **no**, after narrowing the class with a fourth normalisation
+first. Finding 2 above is reduced but not removed -- 38 residual absents
+remain on the measured corpus, 5 of them the real defect the aid exists
+for -- and finding 3 is untouched, so accepting one would still need an
+identity carrying the parsed source's fingerprint, which #767 declined
+to build. docs/AUTO-IMPROVEMENT.md records the decision; this module
+refuses it today, and
 `TestAcceptableClasses` derives the refused set from `_items.CLASSES` so
 a ninth class has to decide rather than inherit an answer.
 

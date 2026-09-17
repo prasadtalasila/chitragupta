@@ -29,8 +29,8 @@ once in 189 -- and it fails in the safe direction, since it can only
 turn an absent into a found, never invent a finding.
 
 **Two normalisations #383 does not name, which measured larger than the
-ones it does.** Without both, the matcher reports 70 findings on that
-corpus where the answer is 33.
+ones it does.** Without both, the matcher reports 70 findings on the
+corpus below where the answer is 33.
 
 1. `strip_markers` drops an inline reference marker from the *source*.
    A passage reads "...circumstances and hypotheses [30]." and a correct
@@ -41,6 +41,31 @@ corpus where the answer is 33.
    connection"` is not contiguous in the source and is not a defect.
    Order is still required, so this stays exact -- ordered subsequence
    matching, with no similarity score anywhere in it.
+
+**A third the first measurement did not separate out**, added by issue
+#775 and measured on its own corpus: an elision at either *end* of a
+quote leaves `fragments` one piece rather than two, and `locate` used to
+require two. `"...the topic is [unresolved]."` against a source reading
+`"...the topic is still being debated."` is the same editorial
+substitution as (2) with nothing after it, and was reported `absent`.
+The reasoning and its sensitivity sit at the guard in `locate`, where a
+reader meeting the behaviour will be looking.
+
+**And one arm declined on measurement**, recorded because a later reader
+will reach for it: stripping a parenthesised abbreviation gloss from the
+source -- `"a Digital Twin (DT) to gain"` -- to match a quotation that
+dropped it. It recovers 1 span and *loses* 12, because a drafter quoting
+that sentence normally keeps the gloss. `plans/775-quotation-residual-absents.md`
+has the arms and the counts.
+
+**The figures, on two corpora.** The first three normalisations took 70
+raw findings to 33 over the 189 spans `plans/c3-quotation-integrity.md`
+measured. That backup is gone from the host it was measured on; #775
+re-ran the same extraction rule over 206 spans from 93 citekeys and
+measured the fourth there -- 40 residual absents to 38, with no span
+lost. Neither number is C3's false-positive rate: the extraction
+attributes each span to the nearest preceding citekey, so both are
+upper bounds.
 
 **Per passage, never over a concatenated document.** Flattening strips
 every separator, so joining the whole source fuses passage seams: `...end
@@ -108,7 +133,14 @@ def strip_markers(text: str) -> str:
 
 def fragments(quote: str) -> list[str]:
     """`quote`'s flattened pieces either side of its elisions, slivers
-    dropped. Fewer than two means there was nothing to elide."""
+    dropped.
+
+    Fewer than two does *not* mean there was nothing to elide -- an
+    elision at either end of the quote leaves exactly one piece, which is
+    what issue #775 found reported `absent`. Whether one piece is enough
+    is `locate`'s call, not this function's, and it is taken there
+    against the quote's own elision markers.
+    """
     pieces = [flatten(piece) for piece in _ELISION.split(quote)]
     return [piece for piece in pieces if len(piece) >= SLIVER]
 
@@ -172,7 +204,37 @@ def locate(quote: str, passages: list[Passage]) -> tuple[str, list[int]] | None:
             if needle in haystack:
                 return tier, pages
     pieces = fragments(quote)
-    if len(pieces) < 2:
+    # One fragment is still an elided match, when the quote said so.
+    #
+    # `fragments` splits on the elision, so an elision at either *end* of
+    # the quote leaves a single piece rather than a pair, and requiring
+    # two of them reported a correct quotation `absent`. Both halves of
+    # the contract are unchanged: the elision still means "the source
+    # differs here", and what survives it is still matched exactly.
+    #
+    #     quote:  "For data-driven models the topic is [unresolved]."
+    #     source: "For data-driven models the topic is still being debated."
+    #
+    # splits to `["fordatadrivenmodelsthetopicis", ""]`, the empty tail
+    # is dropped as a sliver, and the survivor is verbatim in the source.
+    # Written the other way round -- `"... CN is the connection"` -- it is
+    # the leading piece that is empty and the trailing one that matches.
+    #
+    # `_ELISION.search` rather than `len(pieces) == 1` alone, because a
+    # quote with no elision in it at all must stay `absent`: there the
+    # single piece is the whole quote, `needle` already failed the exact
+    # tiers above, and retrying the same characters would only relabel
+    # the same miss as `elided`.
+    #
+    # Measured on issue #775's 206 extracted spans: 2 recoveries, 0 spans
+    # lost, 40 residual absents to 38. Where it is *least* evidenced: both
+    # recovered survivors were long (128 and 207 flattened characters),
+    # and the corpus holds no quote whose lone survivor is near `SLIVER`,
+    # so an 8-character fragment carrying a whole quote's verdict is
+    # untested rather than shown safe. Published the way `SLIVER` is,
+    # instead of guarded by a second constant R3 would bar tuning.
+    least = 1 if _ELISION.search(quote) else 2
+    if len(pieces) < least:
         return None
     for size, tier in ((1, "elided"), (ADJACENT, "elided-pair")):
         for pages, haystack in windows[size]:
@@ -190,9 +252,11 @@ def near_miss(quote: str, passages: list[Passage]) -> tuple[float, int | None]:
 
     Scored on the passage's *unstripped* words. A reference marker
     cannot inflate it, because `passages.distinctive` drops words of two
-    characters or fewer and `30` is two -- verified rather than assumed:
-    none of the 33 residual absents in the measurement changes its score
-    when markers are stripped first.
+    characters or fewer and `30` is two -- verified rather than assumed,
+    on the 189-span corpus: none of the 33 residual absents *there*
+    changed its score when markers were stripped first. #775's 206-span
+    re-run did not repeat that check, so the claim is reported against
+    the corpus it was made on rather than carried silently forward.
     """
     keys = distinctive(quote)
     if not keys:
