@@ -1312,5 +1312,1815 @@
    "row": "b = 1.0",
    "ground_truth": "self-retrieval"
   }
- ]
+ ],
+ "queries": {
+  "self-retrieval": [
+   {
+    "key": "richstein_characterizing_2024",
+    "query": "archetypes, design, digital twin, structural health monitoring, structural mechanics, taxonomy, lifecycle",
+    "relevant": [
+     "richstein_characterizing_2024"
+    ]
+   },
+   {
+    "key": "shao_framework_2020",
+    "query": "Digital twin, Framework, Smart manufacturing",
+    "relevant": [
+     "shao_framework_2020"
+    ]
+   },
+   {
+    "key": "shao_analysis_2023",
+    "query": "iso23247, standard",
+    "relevant": [
+     "shao_analysis_2023"
+    ]
+   },
+   {
+    "key": "ullah_micado-edge_2021",
+    "query": "Application-level orchestration, Cloud-Fog-Edge ecosystems, Cloud-to-Edge continuum, Deployment and run-time management, IoT applications orchestration, Orchestration of microservices, cloud, edge, execution engines, fog",
+    "relevant": [
+     "ullah_micado-edge_2021"
+    ]
+   },
+   {
+    "key": "singh_offload_2022",
+    "query": "Application-level orchestration, Big Data, Big Data analytics, Cloud computing, Cloud-to-Edge con-tinuum, Computational complexity, Computational modeling, Server workload, Servers, Task analysis, WAN, Wide area networks, Wireless LAN, WLAN",
+    "relevant": [
+     "singh_offload_2022"
+    ]
+   },
+   {
+    "key": "marosi_interoperable_2022",
+    "query": "digital twin, algorithm, analytics, IoT, microservice, reference architecture",
+    "relevant": [
+     "marosi_interoperable_2022"
+    ]
+   },
+   {
+    "key": "marosi_interoperable_2022-1",
+    "query": "digital twin, algorithm, analytics, IoT, microservice, reference architecture",
+    "relevant": [
+     "marosi_interoperable_2022-1"
+    ]
+   },
+   {
+    "key": "deslauriers_everyday_2022",
+    "query": "ADT, docker, kubernetes",
+    "relevant": [
+     "deslauriers_everyday_2022"
+    ]
+   },
+   {
+    "key": "cleophas_community-sourced_2022",
+    "query": "digital twin, digital engineering, systems engineering, interviews",
+    "relevant": [
+     "cleophas_community-sourced_2022"
+    ]
+   },
+   {
+    "key": "pfeiffer_towards_2023",
+    "query": "Behavioral sciences, Codes, Computer architecture, Digital twins, domain-specific languages, DSL, product lines, Software architecture, software integration, Software systems",
+    "relevant": [
+     "pfeiffer_towards_2023"
+    ]
+   },
+   {
+    "key": "lehner_pattern_2023",
+    "query": "behavior modeling, Digital Twins, language engineering, model-driven engineering, modeling patterns",
+    "relevant": [
+     "lehner_pattern_2023"
+    ]
+   },
+   {
+    "key": "lehner_aml4dt_2021",
+    "query": "Digital twin, Digital Twin, IoT, AutomationML, Cloud, Conferences, Internet of Things, Knowledge engineering, Maintenance engineering, Model-Driven Engineering, Runtime, Synchronization, automationML",
+    "relevant": [
+     "lehner_aml4dt_2021"
+    ]
+   },
+   {
+    "key": "neri_design_2020",
+    "query": "Architectural principles, Architectural smells, Microservices, Refactorings, SOA",
+    "relevant": [
+     "neri_design_2020"
+    ]
+   },
+   {
+    "key": "noauthor_summary_nodate",
+    "query": "standard, iso, iot",
+    "relevant": [
+     "noauthor_summary_nodate"
+    ]
+   },
+   {
+    "key": "tygesen_state---art_2019",
+    "query": "Digital twin, FEM updating, Grey-box, Linear and nonlinear system identification, Machine learning, Modal expansion, Predictive maintenance, Uncertainties, Wave load calibration",
+    "relevant": [
+     "tygesen_state---art_2019"
+    ]
+   },
+   {
+    "key": "van_dinter_predictive_2022",
+    "query": "Digital twin, Predictive maintenance, Active learning, Systematic literature review",
+    "relevant": [
+     "van_dinter_predictive_2022"
+    ]
+   },
+   {
+    "key": "wanasinghe_digital_2020",
+    "query": "Digital twin, Bibliographies, Companies, Data models, digital twin (DT), Digitalization, extended reality, industrial Internet of Things (IIoT), Industries, industry 4.0, Market research, oil and gas, Oils",
+    "relevant": [
+     "wanasinghe_digital_2020"
+    ]
+   },
+   {
+    "key": "van_dinter_reference_2023",
+    "query": "Digital twin, Framework, Predictive maintenance, Design, Reference architecture, System architecture",
+    "relevant": [
+     "van_dinter_reference_2023"
+    ]
+   },
+   {
+    "key": "dinter_automation_2021",
+    "query": "automation",
+    "relevant": [
+     "dinter_automation_2021"
+    ]
+   },
+   {
+    "key": "liu_review_2021",
+    "query": "Digital twin, Industrial application, Literature review, Product lifecycle, Simulation",
+    "relevant": [
+     "liu_review_2021"
+    ]
+   },
+   {
+    "key": "qi_enabling_2021",
+    "query": "Digital twin, Enabling technologies, Enabling tools, Five-dimension model",
+    "relevant": [
+     "qi_enabling_2021"
+    ]
+   },
+   {
+    "key": "afrin_resource_2021",
+    "query": "Cloud computing, Task analysis, cloud computing, computation and communication trade-off, edge computing, Multi-robot system, offloading, Real-time systems, resource allocation, Resource management, Robot kinematics, Robot sensing systems, Robots, service provisioning, task scheduling",
+    "relevant": [
+     "afrin_resource_2021"
+    ]
+   },
+   {
+    "key": "xu_pretrain_2024",
+    "query": "Computer Science - Software Engineering",
+    "relevant": [
+     "xu_pretrain_2024"
+    ]
+   },
+   {
+    "key": "lu_evoclinical_2023",
+    "query": "Computer Science - Software Engineering, Computer Science - Machine Learning",
+    "relevant": [
+     "lu_evoclinical_2023"
+    ]
+   },
+   {
+    "key": "mihai_digital_2022",
+    "query": "structural health monitoring, Digital twin, Digital twins, industry 4.0, Market research, 5G, Data visualization, digital transformation, Internet, Monitoring, smart manufacturing, Solid modeling, Tutorials",
+    "relevant": [
+     "mihai_digital_2022"
+    ]
+   },
+   {
+    "key": "aheleroff_digital_2021",
+    "query": "Digital Twin, Cloud computing, Augmented reality, Industry 4.0, Internet of things, Reference architecture model, visualisation",
+    "relevant": [
+     "aheleroff_digital_2021"
+    ]
+   },
+   {
+    "key": "fan_digital-twin_2021",
+    "query": "Digital Mock-up (DMU), Digital-twin modeling, Flexible Manufacturing System, Virtual visualization",
+    "relevant": [
+     "fan_digital-twin_2021"
+    ]
+   },
+   {
+    "key": "formentini_circular_nodate",
+    "query": "circular thread, digital passport, circular economy",
+    "relevant": [
+     "formentini_circular_nodate"
+    ]
+   },
+   {
+    "key": "picone_wldt_2021",
+    "query": "Digital twin, Internet of Things, Library, Software agent",
+    "relevant": [
+     "picone_wldt_2021"
+    ]
+   },
+   {
+    "key": "semeraro_digital_2021",
+    "query": "Digital twin, Industry 4.0, Cyber-physical systems, Predictive manufacturing",
+    "relevant": [
+     "semeraro_digital_2021"
+    ]
+   },
+   {
+    "key": "gil_modeling_2023",
+    "query": "Digital Twin, Task analysis, Digital twins, Composition, Cooperative systems, Manipulators, Object oriented modeling, Ontologies, Ontology, Robotic system, Semantics",
+    "relevant": [
+     "gil_modeling_2023"
+    ]
+   },
+   {
+    "key": "bottjer_review_2023-1",
+    "query": "Cyber Physical System, Digital Twin, Digital Twin Engineering, Smart Manufacturing",
+    "relevant": [
+     "bottjer_review_2023-1"
+    ]
+   },
+   {
+    "key": "steinmetz_digital_2022",
+    "query": "digital twin, carla simulator, model, node-red, simulation, Smart City, synchronization",
+    "relevant": [
+     "steinmetz_digital_2022"
+    ]
+   },
+   {
+    "key": "steinmetz_key-components_2022",
+    "query": "Digital twin, Computer architecture, Data models, industry 4.0, Solid modeling, Ontologies, model, architecture, Automobiles, car-as-a-service, granularity, Standards",
+    "relevant": [
+     "steinmetz_key-components_2022"
+    ]
+   },
+   {
+    "key": "schroeder_digital_2021",
+    "query": "Digital Twin, Digitalization, Model, Topology",
+    "relevant": [
+     "schroeder_digital_2021"
+    ]
+   },
+   {
+    "key": "steinmetz_methodology_2022",
+    "query": "digital twin, Digital twins, Data models, Semantics, model, Annotations, knowledge graph, Metaverse, Node-RED, semantic, Technological innovation, Wires",
+    "relevant": [
+     "steinmetz_methodology_2022"
+    ]
+   },
+   {
+    "key": "tekinerdogan_systems_2020",
+    "query": "digital twins, farm management systems, internet of things, remote sensing and control, smart agriculture, system architecture design, system engineering, virtualization",
+    "relevant": [
+     "tekinerdogan_systems_2020"
+    ]
+   },
+   {
+    "key": "schweiger_empirical_2019",
+    "query": "Simulation, Co-simulation, Delphi method, Empirical survey, Modelling",
+    "relevant": [
+     "schweiger_empirical_2019"
+    ]
+   },
+   {
+    "key": "liu_shipboard_2024",
+    "query": "Digital twin, Co-simulation, Crane, FMI, Offshore",
+    "relevant": [
+     "liu_shipboard_2024"
+    ]
+   },
+   {
+    "key": "zhong_overview_2023",
+    "query": "Digital twin, Predictive maintenance, Fault prediction, predictive maintenance",
+    "relevant": [
+     "zhong_overview_2023"
+    ]
+   },
+   {
+    "key": "jiang_industrial_2021",
+    "query": "digital twin, digital transformation, Industry 4.0, industrial application",
+    "relevant": [
+     "jiang_industrial_2021"
+    ]
+   },
+   {
+    "key": "conejos_fuertes_building_2020",
+    "query": "Digital Twin, detailed model, Epanet, planning operation and maintenance, real time, Water Distribution Systems",
+    "relevant": [
+     "conejos_fuertes_building_2020"
+    ]
+   },
+   {
+    "key": "feng_model-based_2023",
+    "query": "Electrical Engineering and Systems Science - Signal Processing",
+    "relevant": [
+     "feng_model-based_2023"
+    ]
+   },
+   {
+    "key": "noauthor_automationml_nodate",
+    "query": "AutomationML",
+    "relevant": [
+     "noauthor_automationml_nodate"
+    ]
+   },
+   {
+    "key": "noauthor_automationml_2021",
+    "query": "Artificial Intelligence, Automation, Machine Learning",
+    "relevant": [
+     "noauthor_automationml_2021"
+    ]
+   },
+   {
+    "key": "zhang_knowledge_2024",
+    "query": "C.3, Computer Science - Artificial Intelligence, Computer Science - Multiagent Systems, D.2.11, Electrical Engineering and Systems Science - Systems and Control, I.2.11, I.2.4, I.2.6, I.6",
+    "relevant": [
+     "zhang_knowledge_2024"
+    ]
+   },
+   {
+    "key": "noauthor_glossary_nodate-1",
+    "query": "digital twin consortium",
+    "relevant": [
+     "noauthor_glossary_nodate-1"
+    ]
+   },
+   {
+    "key": "chaudhuri_predictive_2023",
+    "query": "Digital Twin, adaptive radiotherapy, brain cancer, mathematical oncology, personalized tumor forecasts, risk-aware clinical decision-making, uncertainty quantification",
+    "relevant": [
+     "chaudhuri_predictive_2023"
+    ]
+   },
+   {
+    "key": "torzoni_digital_2024",
+    "query": "Digital twins, Predictive maintenance, Bayesian networks, Deep learning, Model order reduction, Structural health monitoring, CPSENS",
+    "relevant": [
+     "torzoni_digital_2024"
+    ]
+   },
+   {
+    "key": "niederer_scaling_2021",
+    "query": "Computational science, Engineering",
+    "relevant": [
+     "niederer_scaling_2021"
+    ]
+   },
+   {
+    "key": "kapteyn_probabilistic_2021",
+    "query": "Aerospace engineering, Computational science",
+    "relevant": [
+     "kapteyn_probabilistic_2021"
+    ]
+   },
+   {
+    "key": "niederer_scaling_2021-1",
+    "query": "Computational science, Engineering",
+    "relevant": [
+     "niederer_scaling_2021-1"
+    ]
+   },
+   {
+    "key": "kapteyn_toward_2020",
+    "query": "Machine Learning, Finite Element Analysis, Flight Envelope, Material Properties, Model Order Reduction, Recurrent Neural Network, Strain Gauge, Structural Damage, Structural Displacement, Unmanned Aerial Vehicle",
+    "relevant": [
+     "kapteyn_toward_2020"
+    ]
+   },
+   {
+    "key": "milligan_infrastructure_nodate",
+    "query": "lifecycle",
+    "relevant": [
+     "milligan_infrastructure_nodate"
+    ]
+   },
+   {
+    "key": "jinzhi_exploring_2022",
+    "query": "cdt",
+    "relevant": [
+     "jinzhi_exploring_2022"
+    ]
+   },
+   {
+    "key": "noauthor_increasing_2024",
+    "query": "Computational science, Engineering, Climate sciences, Computational biology and bioinformatics, Environmental sciences, Social sciences",
+    "relevant": [
+     "noauthor_increasing_2024"
+    ]
+   },
+   {
+    "key": "heaton_platform_nodate",
+    "query": "digital twin consortium, dtc",
+    "relevant": [
+     "heaton_platform_nodate"
+    ]
+   },
+   {
+    "key": "almeida_middleware_2023",
+    "query": "digital twins, middleware",
+    "relevant": [
+     "almeida_middleware_2023"
+    ]
+   },
+   {
+    "key": "laubenbacher_building_2022",
+    "query": "Computational models, Translational research",
+    "relevant": [
+     "laubenbacher_building_2022"
+    ]
+   },
+   {
+    "key": "osipov_molecular_2024",
+    "query": "Machine learning, Pancreatic cancer, Predictive markers, Prognostic markers",
+    "relevant": [
+     "osipov_molecular_2024"
+    ]
+   },
+   {
+    "key": "katsoulakis_digital_2024",
+    "query": "Clinical trial design, Drug development",
+    "relevant": [
+     "katsoulakis_digital_2024"
+    ]
+   },
+   {
+    "key": "gosliga_foundations_2021",
+    "query": "Attributed Graph (AG), Complex networks of structures, Irreducible Element (IE) model, Population-based structural health monitoring (SHM)",
+    "relevant": [
+     "gosliga_foundations_2021"
+    ]
+   },
+   {
+    "key": "bull_foundations_2021",
+    "query": "Pattern recognition, Population-based structural health monitoring, Wind turbine monitoring",
+    "relevant": [
+     "bull_foundations_2021"
+    ]
+   },
+   {
+    "key": "gardner_foundations_2021",
+    "query": "Population-based structural health monitoring, Domain adaptation, Transfer learning",
+    "relevant": [
+     "gardner_foundations_2021"
+    ]
+   },
+   {
+    "key": "pezeshki_state_2023",
+    "query": "digital twin, structural health monitoring, fatigue, fracture & fracture mechanics, machine learning, maintenance & inspection, marine structures, maritime engineering, offshore engineering, offshore renewable energy, piles & piling, pipes & pipelines, renewable energy, steel structures, structural analysis, structural design",
+    "relevant": [
+     "pezeshki_state_2023"
+    ]
+   },
+   {
+    "key": "bellavista_exploiting_2024",
+    "query": "Digital Twins, Microservices, Industry 4.0, Cloud-to-edge continuum, Serverless computing",
+    "relevant": [
+     "bellavista_exploiting_2024"
+    ]
+   },
+   {
+    "key": "picone_flexible_2023",
+    "query": "Digital Twin, Internet of Things, edge computing",
+    "relevant": [
+     "picone_flexible_2023"
+    ]
+   },
+   {
+    "key": "worden_artificial_2023",
+    "query": "Machine learning, Deep learning, (Artificial) Neural Networks (ANNs), Convolutional Neural Networks (CNNs), Multi-layer perceptrons (MLPs)",
+    "relevant": [
+     "worden_artificial_2023"
+    ]
+   },
+   {
+    "key": "ghzouli_behavior_2023",
+    "query": "Task analysis, Behavioral sciences, DSL, Robot kinematics, Robots, Analytical models, Behavior trees, exploratory empirical study, Libraries, robotics applications, state machines, usage patterns",
+    "relevant": [
+     "ghzouli_behavior_2023"
+    ]
+   },
+   {
+    "key": "wermann_ktwin_2024",
+    "query": "Computer Science - Networking and Internet Architecture",
+    "relevant": [
+     "wermann_ktwin_2024"
+    ]
+   },
+   {
+    "key": "liu_novel_2019",
+    "query": "Digital twin, Cloud computing, Computational modeling, cloud computing, Real-time systems, convergence, elderly healthcare, interaction, Medical diagnostic imaging, Medical services, personal health management, precision medicine, Senior citizens",
+    "relevant": [
+     "liu_novel_2019"
+    ]
+   },
+   {
+    "key": "villalonga_decision-making_2021",
+    "query": "Digital twin, Cyber-physical systems, Condition-based Monitoring, Decision-making, Fuzzy logic",
+    "relevant": [
+     "villalonga_decision-making_2021"
+    ]
+   },
+   {
+    "key": "xu_optimized_2023",
+    "query": "digital twin, Task analysis, Digital twins, Internet of Things, edge computing, Edge computing, federated learning, Federated learning, hyper-parameter optimization, Logic gates, Processor scheduling, task management",
+    "relevant": [
+     "xu_optimized_2023"
+    ]
+   },
+   {
+    "key": "zhou_secure_2022",
+    "query": "Computational modeling, Servers, digital twin (DT), Processor scheduling, 5G edge computing, Delays, distribution grid, Energy consumption, federated learning (FL), Job shop scheduling, Scheduling, security and latency awareness",
+    "relevant": [
+     "zhou_secure_2022"
+    ]
+   },
+   {
+    "key": "schnicke_enabling_2020",
+    "query": "Digital twin, Industry 4.0, Asset Administration Shell, Service-based production, Service-oriented architecture",
+    "relevant": [
+     "schnicke_enabling_2020"
+    ]
+   },
+   {
+    "key": "perno_implementation_2022",
+    "query": "Digital twin, Literature review, Simulation, Barrier, Enabler, Process industry",
+    "relevant": [
+     "perno_implementation_2022"
+    ]
+   },
+   {
+    "key": "gu_experiences_2024",
+    "query": "Computational modeling, Digital twins, Real-time systems, Technological innovation, Software, machine learning, Buildings, Costs, system design",
+    "relevant": [
+     "gu_experiences_2024"
+    ]
+   },
+   {
+    "key": "lehner_towards_2021",
+    "query": "Digital twin, Digital Twin, Conferences, Internet of Things, Runtime, Industries, Evolution, Fluent APIs, Maintenance, Manuals, Systematics, evolution, save",
+    "relevant": [
+     "lehner_towards_2021"
+    ]
+   },
+   {
+    "key": "lehner_method_nodate",
+    "query": "configuration, dtdl, rules, template",
+    "relevant": [
+     "lehner_method_nodate"
+    ]
+   },
+   {
+    "key": "lehner_pattern_2023-1",
+    "query": "behavior modeling, Digital Twins, language engineering, model-driven engineering, modeling patterns, patterns",
+    "relevant": [
+     "lehner_pattern_2023-1"
+    ]
+   },
+   {
+    "key": "pfeiffer_modeling_2022",
+    "query": "configuration, dtdl, rules, template",
+    "relevant": [
+     "pfeiffer_modeling_2022"
+    ]
+   },
+   {
+    "key": "callisto_de_donato_enabling_2024",
+    "query": "iot",
+    "relevant": [
+     "callisto_de_donato_enabling_2024"
+    ]
+   },
+   {
+    "key": "burattini_ecosystem_2023",
+    "query": "Digital Twin, Computer architecture, Digital twins, Medical services, Aging, Biomedical monitoring, Ecosystems, FHIR, Interoperability, Operating Room Management, Prototypes",
+    "relevant": [
+     "burattini_ecosystem_2023"
+    ]
+   },
+   {
+    "key": "tao_digital_2019-1",
+    "query": "smart manufacturing, connections, cyber-physical system (CPS), Digital twin (DT), Internet of Things (IoT)",
+    "relevant": [
+     "tao_digital_2019-1"
+    ]
+   },
+   {
+    "key": "tao_five-dimension_2019-1",
+    "query": "DT modeling, eight rules, Five-dimension digital twin (DT), key technologies, system of systems (SoS)-level DT, system-level DT, unit-level DT",
+    "relevant": [
+     "tao_five-dimension_2019-1"
+    ]
+   },
+   {
+    "key": "wu_comprehensive_2023",
+    "query": "network digital twin",
+    "relevant": [
+     "wu_comprehensive_2023"
+    ]
+   },
+   {
+    "key": "wu_digital_2021",
+    "query": "Digital twin, Computational modeling, Data models, Market research, Digital twin (DT), DT modeling, digital twin network (DTN), Mirrors, Predictive models, Smart cities",
+    "relevant": [
+     "wu_digital_2021"
+    ]
+   },
+   {
+    "key": "lu_communication-efficient_2021",
+    "query": "digital twin, Internet of Things, Resource management, Edge computing, federated learning, Artificial intelligence, Blockchain, communication efficiency, Data privacy, edge networks, Optimization",
+    "relevant": [
+     "lu_communication-efficient_2021"
+    ]
+   },
+   {
+    "key": "tang_survey_2022",
+    "query": "Cloud computing, Computational modeling, Task analysis, Digital twins, Internet of Things, Monitoring, DT modeling, 6G, applications, challenges, Digital twin edge networks (DITEN), DT deployment, Wireless communication",
+    "relevant": [
+     "tang_survey_2022"
+    ]
+   },
+   {
+    "key": "wu_digital_2021-1",
+    "query": "Digital twin, Computational modeling, Data models, Market research, Digital twin (DT), DT modeling, digital twin network (DTN), Mirrors, Predictive models, Smart cities",
+    "relevant": [
+     "wu_digital_2021-1"
+    ]
+   },
+   {
+    "key": "liu_digital-twin-assisted_2022",
+    "query": "Servers, Task analysis, Data models, digital twin (DT), Delays, Artificial intelligence, Blockchain, Artificial intelligence (AI), blockchain, Collaboration, edge collaboration",
+    "relevant": [
+     "liu_digital-twin-assisted_2022"
+    ]
+   },
+   {
+    "key": "lu_communication-efficient_2021-1",
+    "query": "digital twin, Computational modeling, Servers, Machine learning, Data models, Edge computing, federated learning, Data privacy, Optimization, Communication efficiency, energy cost, Industrial Internet of Things (IIOT)",
+    "relevant": [
+     "lu_communication-efficient_2021-1"
+    ]
+   },
+   {
+    "key": "li_digital_2024",
+    "query": "Digital twin, Industry 4.0, Industrial Internet, Made in China 2025, Networked services",
+    "relevant": [
+     "li_digital_2024"
+    ]
+   },
+   {
+    "key": "mei_joint_2020",
+    "query": "Cloud computing, Task analysis, Resource management, Optimization, Cloning, Communication and computation resource allocation, energy consumption, mobile edge computing (MEC), Trajectory, UAV, unmanned aerial vehicle (UAV) 3-D-trajectory, Unmanned aerial vehicles",
+    "relevant": [
+     "mei_joint_2020"
+    ]
+   },
+   {
+    "key": "singh_navigating_2024",
+    "query": "Architecture, Cross Domain Data Integeration, Data space, IDS, International Data Space, WIND ENERGY",
+    "relevant": [
+     "singh_navigating_2024"
+    ]
+   },
+   {
+    "key": "singh_enabling_2024",
+    "query": "Edge computing, Interoperability, Internet of Things (IoT), Blockchain, Data space, Artificial Intelligence (AI), Convergence of technologies, Distributed ledger technology, Integration, NGSI-LD, Resource pooling, Semantic context",
+    "relevant": [
+     "singh_enabling_2024"
+    ]
+   },
+   {
+    "key": "singh_data-driven_2024",
+    "query": "IoT, Semantics, Data space, Context aware, Data Lake, Cross domain, Architecture, Dataspace, Edge, Platform",
+    "relevant": [
+     "singh_data-driven_2024"
+    ]
+   },
+   {
+    "key": "iliuta_digital_2024",
+    "query": "digital twin, evolution, digital twin in medicine, ethical aspects, medicine, product\u2013service systems",
+    "relevant": [
+     "iliuta_digital_2024"
+    ]
+   },
+   {
+    "key": "frasheri_addressing_2023",
+    "query": "Digital twins, Modelling, Cyber\u2013physical systems, Synchronisation, Time delays",
+    "relevant": [
+     "frasheri_addressing_2023"
+    ]
+   },
+   {
+    "key": "larsen_hubcap_2022",
+    "query": "Collaboration platform, Model-based design, Models, Tools",
+    "relevant": [
+     "larsen_hubcap_2022"
+    ]
+   },
+   {
+    "key": "gill_toward_2024",
+    "query": "Digital twins, Digital Twins, Composition, Integration, Cyber- Physical Systems, Instruments, Manufacturing automation, Pipelines, Production systems, System-of-Systems, Testing",
+    "relevant": [
+     "gill_toward_2024"
+    ]
+   },
+   {
+    "key": "gill_toward_2024-1",
+    "query": "Digital twins, Digital Twins, Composition, Integration, Cyber- Physical Systems, Instruments, Manufacturing automation, Pipelines, Production systems, System-of-Systems, Testing",
+    "relevant": [
+     "gill_toward_2024-1"
+    ]
+   },
+   {
+    "key": "paredis_family_2023",
+    "query": "Digital twin, Architecture, Digital model, Digital shadow, Variability modelling, Workflow",
+    "relevant": [
+     "paredis_family_2023"
+    ]
+   },
+   {
+    "key": "ma_automated_2023",
+    "query": "Computer Science - Software Engineering",
+    "relevant": [
+     "ma_automated_2023"
+    ]
+   },
+   {
+    "key": "apostolakis_digital_2023",
+    "query": "Behavioral sciences, Digital twins, Data models, Real-time systems, Predictive models, 6G mobile communication, Training",
+    "relevant": [
+     "apostolakis_digital_2023"
+    ]
+   },
+   {
+    "key": "tao_digital_2019-2",
+    "query": "Smart manufacturing, Digital twin (DT), Correlation and comparison, Cyber\u2013physical systems (CPS)",
+    "relevant": [
+     "tao_digital_2019-2"
+    ]
+   },
+   {
+    "key": "mertens_continuous_2024",
+    "query": "Computer Science - Software Engineering, Electrical Engineering and Systems Science - Systems and Control, Computer Science - Systems and Control",
+    "relevant": [
+     "mertens_continuous_2024"
+    ]
+   },
+   {
+    "key": "youssef_iumenta_2024",
+    "query": "Computer Science - Other Computer Science, odtp",
+    "relevant": [
+     "youssef_iumenta_2024"
+    ]
+   },
+   {
+    "key": "grubel_outlining_2023",
+    "query": "Digital Twin, Digital twins, Industries, Prototypes, Pipelines, odtp, Containerization, Data Semantics, Mobility, Open Research Data, Privacy, Reproducibility of results, Soft sensors",
+    "relevant": [
+     "grubel_outlining_2023"
+    ]
+   },
+   {
+    "key": "noauthor_fluidos_2021",
+    "query": "execution engines, execution",
+    "relevant": [
+     "noauthor_fluidos_2021"
+    ]
+   },
+   {
+    "key": "galantino_assessing_2023",
+    "query": "Cloud computing, Computational modeling, Energy consumption, Energy management, Performance evaluation, Potential energy, Power demand, Quality of experience",
+    "relevant": [
+     "galantino_assessing_2023"
+    ]
+   },
+   {
+    "key": "iorio_computing_2023",
+    "query": "Cloud computing, Task analysis, Topology, Costs, cloud/edge computing, Computing continuum, Data centers, inter-cluster network fabric, liquid computing, Liquids, Security, task offloading",
+    "relevant": [
+     "iorio_computing_2023"
+    ]
+   },
+   {
+    "key": "faticanti_locality-aware_2023",
+    "query": "Microservices, Federation, Fog computing, Locality constraints, Resources allocation, Virtual Network Embedding, DevOps",
+    "relevant": [
+     "faticanti_locality-aware_2023"
+    ]
+   },
+   {
+    "key": "mahmud_quality_2019",
+    "query": "Fuzzy logic, Quality of experience, Fog computing, Application placement, User expectation",
+    "relevant": [
+     "mahmud_quality_2019"
+    ]
+   },
+   {
+    "key": "mathew_study_2014",
+    "query": "Cloud computing, Servers, Cloudsim, Completion time, Dynamic scheduling, Energy efficiency, Heuristic algorithms, Heuristics, Load management, Makespan, Minimum execution time, Scheduling algorithms, Task scheduling",
+    "relevant": [
+     "mathew_study_2014"
+    ]
+   },
+   {
+    "key": "cimino_efficient_2023",
+    "query": "Computational modeling, Codes, Solid modeling, Object oriented modeling, Libraries, Control system modeling, cyber-physical systems (CPSs), digital twins (DTs), Mathematical models, modeling languages and compilers, Process control, simulation performance",
+    "relevant": [
+     "cimino_efficient_2023"
+    ]
+   },
+   {
+    "key": "chen_service_2024",
+    "query": "Digital twin, Digital model, Digital shadow, 3D printing, Additive manufacturing",
+    "relevant": [
+     "chen_service_2024"
+    ]
+   },
+   {
+    "key": "dittler_agent-based_2022",
+    "query": "Computer Science - Multiagent Systems",
+    "relevant": [
+     "dittler_agent-based_2022"
+    ]
+   },
+   {
+    "key": "zech_digital-twins-as--service_2024",
+    "query": "Cloud computing, Digital twins, Data models, Industries, Real-time systems, Standards, Costs, Optimization, Process control, Proposals",
+    "relevant": [
+     "zech_digital-twins-as--service_2024"
+    ]
+   },
+   {
+    "key": "viceconti_position_2024",
+    "query": "Computational modeling, Digital twins, Data models, Medical services, Ecosystems, Predictive models, Biological system modeling, Digital human twin, digital twins in healthcare, in silico medicine, in silico trials, personal health forecasting",
+    "relevant": [
+     "viceconti_position_2024"
+    ]
+   },
+   {
+    "key": "torzoni_deep_2023",
+    "query": "Deep learning, Structural health monitoring, Bayesian model updating, Markov chain Monte Carlo, Multi-fidelity methods, Real-time damage identification, Reduced-order modeling",
+    "relevant": [
+     "torzoni_deep_2023"
+    ]
+   },
+   {
+    "key": "committee_on_foundational_research_gaps_and_future_directions_for_digital_twins_foundational_2024",
+    "query": "Computers and Information Technology--Information Technology, Computers and Information Technology--Policy, Reviews and Evaluations, Math, Chemistry, and Physics--Math and Statistics",
+    "relevant": [
+     "committee_on_foundational_research_gaps_and_future_directions_for_digital_twins_foundational_2024"
+    ]
+   },
+   {
+    "key": "akiki_resources_2025",
+    "query": "Prioritisation, Resource-driven adaptation, Resources, Tasks",
+    "relevant": [
+     "akiki_resources_2025"
+    ]
+   },
+   {
+    "key": "fitzgerald_engineering_2024-1",
+    "query": "Digital Twins, Co-Design and Co-Simulation, Cyber-Physical Systems, Model-Based Systems Engineering, Modeling and Simulation",
+    "relevant": [
+     "fitzgerald_engineering_2024-1"
+    ]
+   },
+   {
+    "key": "pinon_fischer_fundamentals_2024",
+    "query": "Digital twins, Interoperability, Digital Models, Digital Security, Governance",
+    "relevant": [
+     "pinon_fischer_fundamentals_2024"
+    ]
+   },
+   {
+    "key": "sabri_digital_2024",
+    "query": "Digital Twins, Internet of Things, Artificial Intelligence, Machine Learning, Interoperability, Modeling and Simulation, Building Design, Data Science, Digital Modernization, Digital Transformation, Energy Efficiency, Healthcare, Human Dimensions, Knowledge Engineering, Model Validation, Smart Cities, Supply Chain Management, System-of-systems, Urban Systems, Workforce Development",
+    "relevant": [
+     "sabri_digital_2024"
+    ]
+   },
+   {
+    "key": "aghaabbasi_digital_2024",
+    "query": "3D visualization, Autonomous vehicles, Land use planning, Real-time modeling, Transportation planning, Urban digital twin",
+    "relevant": [
+     "aghaabbasi_digital_2024"
+    ]
+   },
+   {
+    "key": "reynolds_digital_2024",
+    "query": "Digital twin, Building as batteries, Grid-enabled buildings, Mass customization network, P2P energy transfer, Smart grid",
+    "relevant": [
+     "reynolds_digital_2024"
+    ]
+   },
+   {
+    "key": "azevedo_human_2024",
+    "query": "Training, Healthcare, Clinical decision-making, Human digital twin, Multimodal data, Nurse practitioner, Preceptorship",
+    "relevant": [
+     "azevedo_human_2024"
+    ]
+   },
+   {
+    "key": "heithoff_model-based_2024",
+    "query": "Digital Twin, Model-Driven Engineering, Model-Based Systems Engineering, Domain-Specific Languages, Injection Molding, Manufacturing",
+    "relevant": [
+     "heithoff_model-based_2024"
+    ]
+   },
+   {
+    "key": "alexandridis_social_2024",
+    "query": "Digital twin, Critical infrastructure, Digital transformation, Human dimensions, Institutional arrangements, OCDT, Public institutions",
+    "relevant": [
+     "alexandridis_social_2024"
+    ]
+   },
+   {
+    "key": "altamiranda_system_2024",
+    "query": "Digital Twin, Digital Asset Lifecycle Management, Distributed Architecture, Requirements Engineering, Systems of Systems",
+    "relevant": [
+     "altamiranda_system_2024"
+    ]
+   },
+   {
+    "key": "grieves_digital_2024",
+    "query": "Digital Twin, Simulation, Engineering Education, Reengineering",
+    "relevant": [
+     "grieves_digital_2024"
+    ]
+   },
+   {
+    "key": "sabri_introduction_2024",
+    "query": "Digital Twins, Development and Education, Institutions, System of Systems",
+    "relevant": [
+     "sabri_introduction_2024"
+    ]
+   },
+   {
+    "key": "bhandal_conceptualising_2024",
+    "query": "Digital twin architecture, Digital twin capabilities, Supply chain management, Supply chain resilience",
+    "relevant": [
+     "bhandal_conceptualising_2024"
+    ]
+   },
+   {
+    "key": "mckee_discs_2024",
+    "query": "Energy management, Smart Cities, Disaster response, DISCS, Living labs, Sustainable mobility, Water resource management",
+    "relevant": [
+     "mckee_discs_2024"
+    ]
+   },
+   {
+    "key": "qi_digital_2018",
+    "query": "Digital twin, Smart manufacturing, Cyber-physical integration, Manufacturing services",
+    "relevant": [
+     "qi_digital_2018"
+    ]
+   },
+   {
+    "key": "dwivedi_opinion_2023",
+    "query": "ChatGPT, Conversational agent, Generative AI, Generative artificial intelligence, Large language models",
+    "relevant": [
+     "dwivedi_opinion_2023"
+    ]
+   },
+   {
+    "key": "deng_cloud-native_2024",
+    "query": "Cloud computing, microservice, Computer architecture, Cloud-native applications, Life cycle assessment, Microservice architectures, Modeling, Research initiatives, research roadmap, Service level agreements, service life-cycle management, Software engineering, survey, Surveys",
+    "relevant": [
+     "deng_cloud-native_2024"
+    ]
+   },
+   {
+    "key": "aldalur_microservice-based_2024",
+    "query": "Testing, Cyber-Physical Systems, Elevators",
+    "relevant": [
+     "aldalur_microservice-based_2024"
+    ]
+   },
+   {
+    "key": "aldalur_microservice-based_2024-1",
+    "query": "Testing, Cyber-Physical Systems, Elevators",
+    "relevant": [
+     "aldalur_microservice-based_2024-1"
+    ]
+   },
+   {
+    "key": "saracco_digital_2019",
+    "query": "Knowledge engineering, Companies, Solid modeling, Medical services, Education, Symbiosis",
+    "relevant": [
+     "saracco_digital_2019"
+    ]
+   },
+   {
+    "key": "beetz_gitops_2022",
+    "query": "Cloud computing, Codes, Collaboration, DevOps, Software engineering, GitOps, Infrastructure as Code, Software development management",
+    "relevant": [
+     "beetz_gitops_2022"
+    ]
+   },
+   {
+    "key": "combemale_model-based_2023",
+    "query": "Digital twins, Software systems, Runtime, Monitoring, digital twins, DevOps, Adaptation models, evolution of engineering models, Fourth Industrial Revolution, Model driven engineering, model-based software engineering, models at runtime, self-adaptation",
+    "relevant": [
+     "combemale_model-based_2023"
+    ]
+   },
+   {
+    "key": "savaglio_generative_2025",
+    "query": "Computational modeling, Digital twins, Data models, Real-time systems, Solid modeling, Smart cities, Artificial intelligence, Generative AI, Adaptation models, Industrial Internet of Things",
+    "relevant": [
+     "savaglio_generative_2025"
+    ]
+   },
+   {
+    "key": "farahani_kernel_2025",
+    "query": "Cloud computing, Internet of Things, Real-time systems, Resource management, Energy consumption, Ecosystems, Performance evaluation, Security, Kernel, Linux, Multiprocessor interconnection, Operating systems",
+    "relevant": [
+     "farahani_kernel_2025"
+    ]
+   },
+   {
+    "key": "altawy_security_2016",
+    "query": "Cyber-physical systems, Access control, Access Control, Computer security, cyber physical systems, Cyber Physical Systems, implantable medical devices, Implantable Medical Devices, Implants, Medical devices, Physical layer, Safety, Security Vs, security vs. safety",
+    "relevant": [
+     "altawy_security_2016"
+    ]
+   },
+   {
+    "key": "liu_survey_2024",
+    "query": "Maintenance engineering, Cyber-physical systems, Artificial intelligence, Biological system modeling, Life cycle assessment, fault diagnosis, Fault diagnosis, Industrial cyber-physical systems, Industrial engineering, industrial process knowledge, large-scale foundation models, prognostics and health management, Prognostics and health management, remaining useful life, Sensors",
+    "relevant": [
+     "liu_survey_2024"
+    ]
+   },
+   {
+    "key": "liu_case_2024",
+    "query": "Digital twins, Maintenance engineering, Monitoring, Cyber-physical systems, digital twins, Maintenance, Security, Autonomous vehicles, Safety, battery, cyber-physical systems, Fault detection, Qualifications, tracking system, Vehicle dynamics",
+    "relevant": [
+     "liu_case_2024"
+    ]
+   },
+   {
+    "key": "hakiri_comprehensive_2024",
+    "query": "Digital twin, Internet of Things, Interoperability, Security, Frameworks and prototypes, Standardization",
+    "relevant": [
+     "hakiri_comprehensive_2024"
+    ]
+   },
+   {
+    "key": "van_schalkwyk_achieving_2023",
+    "query": "Digital Twin, Agile development, Composability, Composable Digital Twin, Composite Digital Twin, Digital Twin Ecosystem, Digital Twin Functionality, Digital Twin lifecycle, Digital Twin requirements, Lean development, Minimum viable product",
+    "relevant": [
+     "van_schalkwyk_achieving_2023"
+    ]
+   },
+   {
+    "key": "khan_digital-twin-enabled_2022",
+    "query": "Digital twin, Cloud computing, Internet of Things, Market research, Wireless communication, 6G mobile communication, Privacy, Scalability",
+    "relevant": [
+     "khan_digital-twin-enabled_2022"
+    ]
+   },
+   {
+    "key": "amadeo_composing_2024",
+    "query": "Digital Twin, Computer architecture, Digital twins, Data models, Real-time systems, Software, Communications technology, Digital Replica, Inter-twin communications, Intra-twin communications, Toy manufacturing industry",
+    "relevant": [
+     "amadeo_composing_2024"
+    ]
+   },
+   {
+    "key": "jia_simple_2022",
+    "query": "Smart manufacturing, Complex digital twin, Digital twin modeling, Simple digital twin",
+    "relevant": [
+     "jia_simple_2022"
+    ]
+   },
+   {
+    "key": "vanderhorn_digital_2021",
+    "query": "Digital Twin, Decision making, Information fusion, Model updating, Virtual representation",
+    "relevant": [
+     "vanderhorn_digital_2021"
+    ]
+   },
+   {
+    "key": "rasheed_digital_2020",
+    "query": "Digital twin, Big Data, Real-time systems, Monitoring, Solid modeling, machine learning, Buildings, Biological system modeling, artificial intelligence, big data cybernetics, hybrid analysis and modeling",
+    "relevant": [
+     "rasheed_digital_2020"
+    ]
+   },
+   {
+    "key": "schnicke_enabling_2020-1",
+    "query": "Digital twin, Industry 4.0, Asset Administration Shell, Service-based production, Service-oriented architecture",
+    "relevant": [
+     "schnicke_enabling_2020-1"
+    ]
+   },
+   {
+    "key": "li_six-dimensional_2025",
+    "query": "Digital twin, Software architecture, Complex industrial systems, Database, R-TSDB",
+    "relevant": [
+     "li_six-dimensional_2025"
+    ]
+   },
+   {
+    "key": "stadtmann_diagnostic_2024",
+    "query": "Computer Science - Machine Learning, Electrical Engineering and Systems Science - Signal Processing, Computer Science - Artificial Intelligence, Computer Science - Emerging Technologies",
+    "relevant": [
+     "stadtmann_diagnostic_2024"
+    ]
+   },
+   {
+    "key": "leng_digital_2021",
+    "query": "Smart manufacturing, Digital twins, Cyber-physical systems, Function-structure-behavior-control-intelligence-performance, Manufacturing system design",
+    "relevant": [
+     "leng_digital_2021"
+    ]
+   },
+   {
+    "key": "zhang_digital_2021",
+    "query": "Digital twin, industrial robots, reconfigurable strategy, service function block, smart manufacturing system",
+    "relevant": [
+     "zhang_digital_2021"
+    ]
+   },
+   {
+    "key": "grieves_digital_2017",
+    "query": "Additive Manufacturing, Physical System, Sensory Visual, Undesirable Behavior, Virtual Space",
+    "relevant": [
+     "grieves_digital_2017"
+    ]
+   },
+   {
+    "key": "ferko_standardisation_2023",
+    "query": "Digital Twin, Computer architecture, Digital twins, Software architecture, Software, Systematics, Manufacturing, ISO 23247, ISO Standards, Reference Architecture, Software Architecture",
+    "relevant": [
+     "ferko_standardisation_2023"
+    ]
+   },
+   {
+    "key": "gomes_digital_2025",
+    "query": "Digital twin, Simulation, Optimization",
+    "relevant": [
+     "gomes_digital_2025"
+    ]
+   },
+   {
+    "key": "thelen_comprehensive_2022",
+    "query": "Digital twin, Machine learning, Industry 4.0, Optimization, Enabling technology, Perspective, Review",
+    "relevant": [
+     "thelen_comprehensive_2022"
+    ]
+   },
+   {
+    "key": "thelen_comprehensive_2022-1",
+    "query": "Digital twin, Machine learning, Industry 4.0, Optimization, Enabling technology, Perspective, Review",
+    "relevant": [
+     "thelen_comprehensive_2022-1"
+    ]
+   },
+   {
+    "key": "thelen_comprehensive_2022-2",
+    "query": "Digital twin, Machine learning, Industry 4.0, Optimization, Enabling technology, Perspective, Review",
+    "relevant": [
+     "thelen_comprehensive_2022-2"
+    ]
+   },
+   {
+    "key": "thelen_probabilistic_2024",
+    "query": "Batteries, Environmental impact",
+    "relevant": [
+     "thelen_probabilistic_2024"
+    ]
+   },
+   {
+    "key": "li_coupling_2025",
+    "query": "Machine learning, Capacity degradation, Early prediction, Empirical model, Lithium-ion battery, Uncertainty quantification",
+    "relevant": [
+     "li_coupling_2025"
+    ]
+   },
+   {
+    "key": "zonzini_structural_2020",
+    "query": "Task analysis, Computer architecture, Monitoring, Tools, Testing, Sensors, Civil engineering",
+    "relevant": [
+     "zonzini_structural_2020"
+    ]
+   },
+   {
+    "key": "aguzzi_modron_2021",
+    "query": "Internet of Things, Monitoring, Standards, Sensors, Sensor systems, Systems operation, W3C",
+    "relevant": [
+     "aguzzi_modron_2021"
+    ]
+   },
+   {
+    "key": "tang_evaluation_2025",
+    "query": "Mechanical engineering, Information technology",
+    "relevant": [
+     "tang_evaluation_2025"
+    ]
+   },
+   {
+    "key": "tao_maketwin_2024",
+    "query": "Digital twin, Reference architecture, Digital twin software platform, Industrial software, makeTwin",
+    "relevant": [
+     "tao_maketwin_2024"
+    ]
+   },
+   {
+    "key": "picone_harmonizing_2025",
+    "query": "digital twin, Digital twins, Software architecture, Synchronization, Real-time systems, Decision making, Accuracy, cyber-physical, life-cycle, Refining, Software reliability, Telemetry, Time-frequency analysis",
+    "relevant": [
+     "picone_harmonizing_2025"
+    ]
+   },
+   {
+    "key": "bedogni_fluid_2025",
+    "query": "Digital twins, Interoperability, Fluid Computing, Intelligence",
+    "relevant": [
+     "bedogni_fluid_2025"
+    ]
+   },
+   {
+    "key": "robles-enciso_adapting_2024",
+    "query": "Cloud computing, Task analysis, Computer architecture, edge computing, resource allocation, Resource management, Edge computing, Scheduling, Proposals, computing continuum, containers, Containers",
+    "relevant": [
+     "robles-enciso_adapting_2024"
+    ]
+   },
+   {
+    "key": "robles-enciso_multi-layer_2023",
+    "query": "Internet of Things, Edge computing, Fog computing, Markov decision process, Q-learning, Reinforcement learning, Resource allocation, Task offloading",
+    "relevant": [
+     "robles-enciso_multi-layer_2023"
+    ]
+   },
+   {
+    "key": "ye_advancing_2024",
+    "query": "Computer Science - Artificial Intelligence, Computer Science - Computers and Society",
+    "relevant": [
+     "ye_advancing_2024"
+    ]
+   },
+   {
+    "key": "bernabe_murcia_decentralised_2025",
+    "query": "Computing Continuum, DID, DLT, Identity management, Verifiable credentials, Zero trust",
+    "relevant": [
+     "bernabe_murcia_decentralised_2025"
+    ]
+   },
+   {
+    "key": "castellano_scheduling_2024",
+    "query": "Cloud computing, Task analysis, Resource management, Costs, Data centers, Scheduling algorithms, Microservice architectures, cloud-to-edge, Resource sharing, service allocation",
+    "relevant": [
+     "castellano_scheduling_2024"
+    ]
+   },
+   {
+    "key": "iorio_computing_2023-1",
+    "query": "Cloud computing, Task analysis, Topology, Costs, cloud/edge computing, Computing continuum, Data centers, inter-cluster network fabric, liquid computing, Liquids, Security, task offloading",
+    "relevant": [
+     "iorio_computing_2023-1"
+    ]
+   },
+   {
+    "key": "faticanti_locality-aware_2023-1",
+    "query": "Microservices, Federation, Fog computing, Locality constraints, Resources allocation, Virtual Network Embedding",
+    "relevant": [
+     "faticanti_locality-aware_2023-1"
+    ]
+   },
+   {
+    "key": "sieve_bedreflyt_2025",
+    "query": "Computer Science - Artificial Intelligence, Computer Science - Emerging Technologies, Computer Science - Logic in Computer Science",
+    "relevant": [
+     "sieve_bedreflyt_2025"
+    ]
+   },
+   {
+    "key": "franke_fiware_2025",
+    "query": "Digital Twin, Computational modeling, Digital twins, Conferences, Data models, Ecosystems, Benchmark testing, communication, Complex systems, decentralization, Low latency communication, Pervasive computing",
+    "relevant": [
+     "franke_fiware_2025"
+    ]
+   },
+   {
+    "key": "bedogni_fluid_2025-1",
+    "query": "Digital twins, Interoperability, Fluid Computing, Intelligence",
+    "relevant": [
+     "bedogni_fluid_2025-1"
+    ]
+   },
+   {
+    "key": "guo_life_2024",
+    "query": "Life cycle assessment, Carbon emissions, Electric vehicles, System dynamics",
+    "relevant": [
+     "guo_life_2024"
+    ]
+   },
+   {
+    "key": "karnoub_how_2025",
+    "query": "Digital twin, Bionic hand, Digital triplet, Human-robot interaction",
+    "relevant": [
+     "karnoub_how_2025"
+    ]
+   },
+   {
+    "key": "raza_empowering_2024",
+    "query": "Optimization, Application Deployment, Cloud Computing, Control Structures and Microprogramming, Edge Computing, Edge\u2013Cloud Continuum, Enterprise Architecture, Microservice, Response time, Special Purpose and Application-Based Systems, Theory and Algorithms for Application Domains",
+    "relevant": [
+     "raza_empowering_2024"
+    ]
+   },
+   {
+    "key": "karabey_aksakalli_deployment_2021",
+    "query": "Microservice architectures, Communication concerns, Communication patterns of microservices, Deployment challenges, Microservice deployment, Research directions",
+    "relevant": [
+     "karabey_aksakalli_deployment_2021"
+    ]
+   },
+   {
+    "key": "pfeiffer_towards_2025",
+    "query": "Computer Science - Software Engineering",
+    "relevant": [
+     "pfeiffer_towards_2025"
+    ]
+   },
+   {
+    "key": "kritzinger_digital_2018-1",
+    "query": "Digital Twin, Manufacturing, Digital Model, Digital Shadow, Literature Review, Production",
+    "relevant": [
+     "kritzinger_digital_2018-1"
+    ]
+   },
+   {
+    "key": "michael_model-driven_nodate",
+    "query": "digital twin, systems engineering, model-driven engineering, cyber-physical systems",
+    "relevant": [
+     "michael_model-driven_nodate"
+    ]
+   },
+   {
+    "key": "perez_software_2024",
+    "query": "Computer Science - Software Engineering",
+    "relevant": [
+     "perez_software_2024"
+    ]
+   },
+   {
+    "key": "ristov_storeless_2025",
+    "query": "Scheduling, Federation, Serverless workflows, Storage",
+    "relevant": [
+     "ristov_storeless_2025"
+    ]
+   },
+   {
+    "key": "zech_digital-twins-as--service_2024-1",
+    "query": "Cloud computing, Digital twins, Data models, Industries, Real-time systems, Standards, Costs, Optimization, Process control, Proposals",
+    "relevant": [
+     "zech_digital-twins-as--service_2024-1"
+    ]
+   },
+   {
+    "key": "agrawal_coupled_2024",
+    "query": "Simulation, Software, Analytical models, Testing, Proposals, Cyber-Physical Systems, Safety, Environmental factors, Focusing, Process, Requirements, Requirements engineering, Small Unmanned Aerial Systems",
+    "relevant": [
+     "agrawal_coupled_2024"
+    ]
+   },
+   {
+    "key": "eramo_conceptualizing_2022",
+    "query": "Digital twin, Digital Twin, Data models, Analytical models, Predictive models, Biological system modeling, Adaptation models, Conceptual Modeling Framework, Model Types, Unified modeling language",
+    "relevant": [
+     "eramo_conceptualizing_2022"
+    ]
+   },
+   {
+    "key": "lyan_datatime_2021",
+    "query": "Digital twin, Digital Twins, Runtime, Analytical models, Tools, Adaptation models, Data Analysis, Intelligent Public Transportation Systems, Models at Runtime, Time series analysis, Urban areas",
+    "relevant": [
+     "lyan_datatime_2021"
+    ]
+   },
+   {
+    "key": "zech_proposal_2024",
+    "query": "Digital Twin, Analytical models, Buildings, Prototypes, Collaboration, Scalability, Decision making, Architecture Analysis, Digital Twin Repository, Model Repository, Models-meet-data, Technology acceptance model",
+    "relevant": [
+     "zech_proposal_2024"
+    ]
+   },
+   {
+    "key": "marah_re-engineering_2025",
+    "query": "Digital Twins, Federation, (Re-)Engineering, Complex Systems, Digitalisation",
+    "relevant": [
+     "marah_re-engineering_2025"
+    ]
+   },
+   {
+    "key": "gleich_asset_2024",
+    "query": "circular economy, asset administration shell, carbon footprint, digital product passport, Gaia-X",
+    "relevant": [
+     "gleich_asset_2024"
+    ]
+   },
+   {
+    "key": "kimmel_digital_2025",
+    "query": "Computer architecture, Digital twins, Digital Twins, Runtime, Data models, Artificial Intelligence, Software, Artificial intelligence, Process control, Software engineering, Schedules, Software Engineering, Stakeholders",
+    "relevant": [
+     "kimmel_digital_2025"
+    ]
+   },
+   {
+    "key": "anwer_developing_2025-1",
+    "query": "Digital twin, Design, Digital twin engineering",
+    "relevant": [
+     "anwer_developing_2025-1"
+    ]
+   },
+   {
+    "key": "barata_how_2024",
+    "query": "Digital twin, Human-centric, Industry 5.0, Resilience, Strong structuration theory, Sustainability",
+    "relevant": [
+     "barata_how_2024"
+    ]
+   },
+   {
+    "key": "leirmo_digital_2024",
+    "query": "Digital twin, Industry 5.0, Human aspect",
+    "relevant": [
+     "leirmo_digital_2024"
+    ]
+   },
+   {
+    "key": "villani_digital_2025",
+    "query": "Digital twins, digital twins, Automation, Ecosystems, Production, Industry 5.0, Biometrics (access control), Fifth Industrial Revolution, human-centric automation, Production facilities",
+    "relevant": [
+     "villani_digital_2025"
+    ]
+   },
+   {
+    "key": "michael_model-driven_2025",
+    "query": "digital twin, systems engineering, model-driven engineering, cyber-physical systems",
+    "relevant": [
+     "michael_model-driven_2025"
+    ]
+   },
+   {
+    "key": "goffi_engineering_2025",
+    "query": "Computer Science - Software Engineering, Electrical Engineering and Systems Science - Systems and Control, Computer Science - Systems and Control",
+    "relevant": [
+     "goffi_engineering_2025"
+    ]
+   },
+   {
+    "key": "fiter_dtinsight_2025",
+    "query": "Computer Science - Software Engineering, Electrical Engineering and Systems Science - Systems and Control, Computer Science - Systems and Control, Computer Science - Emerging Technologies, Computer Science - Human-Computer Interaction",
+    "relevant": [
+     "fiter_dtinsight_2025"
+    ]
+   },
+   {
+    "key": "wooley_bridging_2025",
+    "query": "Digital twin, Smart manufacturing, Simulation, Industry 4.0, Discrete event simulation",
+    "relevant": [
+     "wooley_bridging_2025"
+    ]
+   },
+   {
+    "key": "katsoulakis_digital_2024-1",
+    "query": "Clinical trial design, Drug development",
+    "relevant": [
+     "katsoulakis_digital_2024-1"
+    ]
+   },
+   {
+    "key": "barbie_toward_2024",
+    "query": "Computer Science - Software Engineering",
+    "relevant": [
+     "barbie_toward_2024"
+    ]
+   },
+   {
+    "key": "infante_distributed_2025",
+    "query": "Digital Twins, Internet of Things, Industry 4.0, Distributed systems, OpenTwins",
+    "relevant": [
+     "infante_distributed_2025"
+    ]
+   },
+   {
+    "key": "bernardo_software_2024",
+    "query": "Digital badges, Open science, Software quality, Software sustainability",
+    "relevant": [
+     "bernardo_software_2024"
+    ]
+   },
+   {
+    "key": "aguzzi_cloud_2020",
+    "query": "Cloud computing, Computer architecture, Internet of Things, Resource management, Standards, Software, W3C, edge/cloud computing, performance evaluation, service migration, software architecture, Web of things (WoT)",
+    "relevant": [
+     "aguzzi_cloud_2020"
+    ]
+   },
+   {
+    "key": "chacon_requirements_2025",
+    "query": "structural health monitoring, digital twins, predictive maintenance, Computer vision, performance indicators, remote sensing, sensors",
+    "relevant": [
+     "chacon_requirements_2025"
+    ]
+   },
+   {
+    "key": "chacon_digital_2024",
+    "query": "digital twins, internet of things, Bridge load testing, building information modelling, cyber-physical bridge, railway bridges, standardization, unmanned aerial vehicles",
+    "relevant": [
+     "chacon_digital_2024"
+    ]
+   },
+   {
+    "key": "posada_job_2025",
+    "query": "IoT, Digital twins, building construction management, IFC, parametric design",
+    "relevant": [
+     "posada_job_2025"
+    ]
+   },
+   {
+    "key": "martin_facilitating_2022",
+    "query": "Cloud computing, Internet of things, Structural health monitoring, Edge computing, Fog computing, Lightweight virtualization",
+    "relevant": [
+     "martin_facilitating_2022"
+    ]
+   },
+   {
+    "key": "gigli_next_2024",
+    "query": "structural health monitoring, Cloud computing, Computer architecture, Internet of Things, Monitoring, Software, Medical services, Edge computing, Biomedical monitoring, Interoperability, Sensors, Edge-cloud continuum, interoperability, Next generation networking, Vibrations",
+    "relevant": [
+     "gigli_next_2024"
+    ]
+   },
+   {
+    "key": "zonzini_cluster-based_2021",
+    "query": "Computer architecture, Monitoring, Sensors, Vibrations, Feature extraction, Graph signal processing (GSP), operational modal analysis (OMA), sensor networks, Shape, Signal processing, structural health monitoring (SHM)",
+    "relevant": [
+     "zonzini_cluster-based_2021"
+    ]
+   },
+   {
+    "key": "naderi_digital_2023",
+    "query": "Digital twins, Metaverse, Interoperability, Civil infrastructures, Content analysis, Evolution map, Network theory",
+    "relevant": [
+     "naderi_digital_2023"
+    ]
+   },
+   {
+    "key": "giulianelli_hwodt_2025",
+    "query": "Interoperability, Digital Twin Ecosystems, Hypermedia, Web architecture",
+    "relevant": [
+     "giulianelli_hwodt_2025"
+    ]
+   },
+   {
+    "key": "slavic_python_2025",
+    "query": "Signal processing, Image based structural identification, Open-source, Rotordynamics, Vibration Fatigue, Vibration-control",
+    "relevant": [
+     "slavic_python_2025"
+    ]
+   },
+   {
+    "key": "schmidt_integration_2025",
+    "query": "digital twin, Industry 4.0, Asset Administration Shell (AAS), dataspace",
+    "relevant": [
+     "schmidt_integration_2025"
+    ]
+   },
+   {
+    "key": "qureshi_survey_2025",
+    "query": "IoT, Digital Twins, Behavior modeling, Cyberphysical systems, CyberSecurity, Security applications, Security tools",
+    "relevant": [
+     "qureshi_survey_2025"
+    ]
+   },
+   {
+    "key": "jaber_comprehensive_2025",
+    "query": "Digital Twin, Attack Surface, Cybersecurity, Game theory, Threat modeling",
+    "relevant": [
+     "jaber_comprehensive_2025"
+    ]
+   },
+   {
+    "key": "sheikhi_bridging_2025",
+    "query": "Interoperability, Security, Critical infrastructure, Computer security, Resilience, Fifth Industrial Revolution, standardization, Cybersecurity, Control systems, Guidelines, IEC 62443, IEC Standards, industrial automation, industry 5.0, Organizations, vulnerability detection",
+    "relevant": [
+     "sheikhi_bridging_2025"
+    ]
+   },
+   {
+    "key": "alhamam_comprehensive_2025",
+    "query": "Digital twin, Systematic literature review, Industries, Monitoring, Technological innovation, Systematics, Security, Surveys, Computer security, Authentication, cybersecurity, data protection, Encryption, real-time monitoring, virtual replicas",
+    "relevant": [
+     "alhamam_comprehensive_2025"
+    ]
+   },
+   {
+    "key": "xu_survey_2023",
+    "query": "Digital twin, Digital twins, Artificial intelligence, blockchain, Security, Surveys, Industrial Internet of Things, artificial intelligence, Blockchains, industrial Internet of Things, integrated design, Software tools",
+    "relevant": [
+     "xu_survey_2023"
+    ]
+   },
+   {
+    "key": "alcaraz_digital_2022",
+    "query": "Digital twin, Digital twins, Tutorials, Predictive models, Security, Fourth Industrial Revolution, Production, Stakeholders, cybersecurity, industry 40",
+    "relevant": [
+     "alcaraz_digital_2022"
+    ]
+   },
+   {
+    "key": "de_azambuja_digital_2024",
+    "query": "Digital Twin, Industry 4.0, Cyber Security",
+    "relevant": [
+     "de_azambuja_digital_2024"
+    ]
+   },
+   {
+    "key": "carreira_foundations_2020",
+    "query": "IoT, Cyber-physical systems, Engineering, Special Purpose and Application-Based Systems, Software Engineering, AADL, Agriculture, CAE) and Design, Computer Applications, Computer-aided design (CAD), Computer-Aided Engineering (CAD, Concurrency Modeling, Cybernetics & systems theory, Design Languages, DEVS, Electrical engineering, Embedded and cyber-physical systems, Expert systems / knowledge-based systems, Industrial processes::TH Energy technology and engineering::THR Electrical engineering, Information technology: general issues, Model-driven software engineering, Modelica, Multi-Paradigm Modeling, Open Access, Performance Analysis, Petri Nets, Software design engineering, Statecharts, System and Modeling, System Description Languages, thema EDItEUR::T Technology, thema EDItEUR::U Computing and Information Technology::UB Information technology: general topics, thema EDItEUR::U Computing and Information Technology::UG Graphical and digital media applications::UGC Computer-aided design (CAD), thema EDItEUR::U Computing and Information Technology::UM Computer programming / software engineering::UMZ Software Engineering, thema EDItEUR::U Computing and Information Technology::UY Computer science::UYQ Artificial intelligence::UYQE Expert systems / knowledge-based systems",
+    "relevant": [
+     "carreira_foundations_2020"
+    ]
+   },
+   {
+    "key": "ferko_architecting_2022",
+    "query": "digital twin, Digital twin, Computer architecture, Software architecture, Market research, Standards, Systematics, Architectural patterns, Planning, quality attributes., software architectures",
+    "relevant": [
+     "ferko_architecting_2022"
+    ]
+   },
+   {
+    "key": "barbone_-device_2026",
+    "query": "Digital twins, Internet of things, Intelligent cyber-physical systems, On-device AI",
+    "relevant": [
+     "barbone_-device_2026"
+    ]
+   },
+   {
+    "key": "lim_state---art_2020",
+    "query": "Digital Twin, Review, Business model, Cyber-physical system, Product lifecycle management",
+    "relevant": [
+     "lim_state---art_2020"
+    ]
+   },
+   {
+    "key": "mattila_interoperability_2025",
+    "query": "Digital twin, Smart manufacturing, Servers, Digital twins, Industries, Standards, Interoperability, Collaboration, asset administration shell, Production facilities, Cranes, digital twin definition language, digital twin description, Hands, web of digital twins, web of things thing description",
+    "relevant": [
+     "mattila_interoperability_2025"
+    ]
+   },
+   {
+    "key": "duran_toward_2026",
+    "query": "Computational modeling, Digital twins, Data models, Systematics, Security, Surveys, Aerospace electronics, Digital twin as-a-service, digital twin performance metrics, digital twin platform, Measurement, metric-driven design, Performance metrics, Reviews",
+    "relevant": [
+     "duran_toward_2026"
+    ]
+   },
+   {
+    "key": "noauthor_ieee_2025",
+    "query": "Simulation, architecture, rules, class attribute, federate, federation, federation execution, federation object model, framework, High Level Architecture, IEEE 1516, IEEE Standards, instance attribute, interaction class, joined federate, Network architecture, object class, object model template, Object oriented programming, runtime infrastructure, simulation object model",
+    "relevant": [
+     "noauthor_ieee_2025"
+    ]
+   },
+   {
+    "key": "barbone_digital_2024",
+    "query": "Digital Twin, Computational modeling, Digital twins, Runtime, Prototypes, Cyber-Physical Systems, Quality of service, Compute-Continuum, Memory management, Smart cameras",
+    "relevant": [
+     "barbone_digital_2024"
+    ]
+   },
+   {
+    "key": "martinelli_hierarchical_2024",
+    "query": "Smart Manufacturing, Digital twins, Digital Twins, Software, Ecosystems, Prototypes, Software engineering, Stakeholders, Complexity theory, Cyber-Physical Architecture, Hierarchical Composition, Logic, Manufacturing systems, Navigation",
+    "relevant": [
+     "martinelli_hierarchical_2024"
+    ]
+   },
+   {
+    "key": "aissat_devops_2025",
+    "query": "IoT, Digital twins, Microservices, DevOps, BIM, Built assets, CI/CD pipelines",
+    "relevant": [
+     "aissat_devops_2025"
+    ]
+   },
+   {
+    "key": "alskaif_evolution_2025-1",
+    "query": "Digital Twin Engineering, Digital twins, Analytical models, Buildings, Evolution, Security, DevOps, Model driven engineering, Safety, Best practices, Lifecycle",
+    "relevant": [
+     "alskaif_evolution_2025-1"
+    ]
+   },
+   {
+    "key": "liu_ai_2025",
+    "query": "Digital twins, Machine learning, SLR, Artificial intelligence, Training, Reinforcement learning, AI, Data science, Deep neural networks, Lifecycle model, Neural networks, Subsymbolic AI, Survey",
+    "relevant": [
+     "liu_ai_2025"
+    ]
+   },
+   {
+    "key": "emmert-streib_role_2025",
+    "query": "Engineering, Health care, Medical research",
+    "relevant": [
+     "emmert-streib_role_2025"
+    ]
+   },
+   {
+    "key": "chae_survey_2023",
+    "query": "Smart manufacturing, industry 4.0, Cyber-physical systems, smart agriculture, Smart cities, Artificial intelligence, Digital transformation, Fourth Industrial Revolution, Sensor systems, Control systems, industrial artificial intelligence, industrial cyber-physical systems, Intelligent sensors, Smart agriculture, smart city, smart factory",
+    "relevant": [
+     "chae_survey_2023"
+    ]
+   },
+   {
+    "key": "altawy_security_2016-1",
+    "query": "Cyber-physical systems, Access control, Access Control, Computer security, cyber physical systems, Cyber Physical Systems, implantable medical devices, Implantable Medical Devices, Implants, Medical devices, Physical layer, Safety, Security Vs, security vs. safety",
+    "relevant": [
+     "altawy_security_2016-1"
+    ]
+   },
+   {
+    "key": "feng_cyber-physical_2023",
+    "query": "Cyber-physical systems, Security, Access control, Zero Trust, Cross layer design, Cyber-Physical system security, cyber-physical zero trust architecture, industrial cyber-physical system, zero trust architecture",
+    "relevant": [
+     "feng_cyber-physical_2023"
+    ]
+   },
+   {
+    "key": "bai_training_2022",
+    "query": "Computer Science - Machine Learning, Computer Science - Computation and Language",
+    "relevant": [
+     "bai_training_2022"
+    ]
+   },
+   {
+    "key": "kadavath_language_2022",
+    "query": "Computer Science - Machine Learning, Computer Science - Artificial Intelligence, Computer Science - Computation and Language",
+    "relevant": [
+     "kadavath_language_2022"
+    ]
+   },
+   {
+    "key": "toth_human-centric_2023",
+    "query": "Industry 4.0, Ontology, Artificial intelligence, Collaboration, Manufacturing, Human-centric, Industry 5.0, Knowledge graph",
+    "relevant": [
+     "toth_human-centric_2023"
+    ]
+   },
+   {
+    "key": "trivedi_explainable_2024",
+    "query": "Data models, Industries, Automation, Predictive models, Artificial intelligence, cyber-physical systems (CPSs), digital twins (DTs), Surveys, Fourth Industrial Revolution, Industry 5.0, Fifth Industrial Revolution, cobots, explainable artificial intelligence (EXAI)",
+    "relevant": [
+     "trivedi_explainable_2024"
+    ]
+   },
+   {
+    "key": "rozanec_human-centric_2023",
+    "query": "Smart manufacturing, active learning, demand forecasting, explainable artificial intelligence (XAI), quality inspection",
+    "relevant": [
+     "rozanec_human-centric_2023"
+    ]
+   },
+   {
+    "key": "franco_customizing_2026-1",
+    "query": "Digital Twin, Digital twins, Monitoring, Large language models, Safety, Industry 5.0, Fifth Industrial Revolution, Biometrics, Human Digital Twin, Human-Machine Interface, Human-machine systems, Mobile applications, Reliability engineering, Visualization",
+    "relevant": [
+     "franco_customizing_2026-1"
+    ]
+   },
+   {
+    "key": "wetter_spawn_2024-1",
+    "query": "Modelica, building energy simulation, co-simulation, controls, EnergyPlus, modular modelling",
+    "relevant": [
+     "wetter_spawn_2024-1"
+    ]
+   },
+   {
+    "key": "yitmen_adapted_2021",
+    "query": "IoT, digital twins, artificial intelligence, building lifecycle management, cognitive, decision support, optimization, self-learning",
+    "relevant": [
+     "yitmen_adapted_2021"
+    ]
+   },
+   {
+    "key": "talasila_digital_2026",
+    "query": "Digital twin as a service, Digital twin platform, Digital twin workflow, Structural health monitoring",
+    "relevant": [
+     "talasila_digital_2026"
+    ]
+   },
+   {
+    "key": "qi_enabling_2021-1",
+    "query": "Digital twin, Enabling technologies, Enabling tools, Five-dimension model",
+    "relevant": [
+     "qi_enabling_2021-1"
+    ]
+   }
+  ]
+ }
 }

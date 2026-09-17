@@ -6491,4 +6491,49 @@ without such a snapshot, which is the case this run was in: the
 live-logged arm is simply absent from the record rather than zeroed.
 `--only self-retrieval` scores that set alone on a host that has both.
 
+**The record carries the question set, and the first version of it did
+not.** Neither ground truth here is a committed list: the self-retrieval
+set is derived at run time from `papers/bibliography.bib`'s `keywords`
+fields and the live-logged set from a book's dossiers, both of which are
+gitignored per-host data. That data drifts -- the 2026-08-16 and #762
+entries score **256** self-retrieval rows where this one scores **258**,
+because the bib was re-exported in between. So a table of aggregates
+alone is not reproducible: a later run asks a different set of questions
+and has nothing to diff against. `bm25_params.json` therefore carries a
+`queries` object, keyed by ground-truth name, holding every
+`(key, query, relevant)` triple that was scored -- 258 of them here,
+each one a bib entry's own author-assigned keywords paired with the
+citekey that is the correct answer. `key` joins to the `better`/`worse`
+lists in `movements`. The earlier entries in this file do **not** have
+this and cannot be recovered; that is a real limit on re-checking them,
+not a reason to doubt their direction.
+
+**Writing the questions down immediately found a flaw in them, which is
+the argument for having done it.** Of 258 rows, only **237 carry a
+distinct query**, and the 38 rows in the overlap split two ways:
+
+- **27 rows are 13 Zotero duplicate entries** -- `marosi_interoperable_2022`
+  and `marosi_interoperable_2022-1` are one paper catalogued twice, with
+  one `keywords` field between them. Self-retrieval scores each row
+  against *its own* citekey, so whenever the ranker returns the twin the
+  row counts as a miss no matter how good the retrieval was.
+- **11 rows are 4 groups of genuinely different papers sharing a
+  `keywords` field**, 7 of them on the arXiv category string
+  `Computer Science - Software Engineering`. That is a subject
+  classification, not a topical query, and no ranker can pick the
+  intended one of five papers from it.
+
+**What this does and does not do to the tables above.** It depresses the
+absolute recall figures -- the real ceiling is below 1.0 by construction,
+so 0.8101 understates how well the ranker does. It does **not** flip the
+comparison, because every arm is scored on the identical rows, and the
+`k1` and `b` conclusions are read from deltas rather than levels. It does
+add noise to those deltas: a setting that reorders two near-identical
+twins moves a row for a reason that has nothing to do with the setting,
+and 6 rows of noise against a 7-query effect is not a comfortable ratio.
+Treat the `k1 = 8` gain as weaker than its raw number, which is the same
+direction the circularity argument above already pushes it. Filtering
+duplicate entries and category-only keyword fields out of the ground
+truth is the obvious next measurement, and it was not run here.
+
 Record: `bench/results/2026-09-16-bm25-params/bm25_params.json`.

@@ -39,6 +39,15 @@ skips a missing set by name instead of returning 2 the way
 `bench_retrieval_stemming.py` does -- that script's conclusion needed
 both arms to disagree; each arm here answers for itself.
 
+**The record carries the questions, not only the answers.** Neither
+ground truth is a committed list -- both are derived at run time from
+gitignored per-host data that demonstrably drifts (256 self-retrieval
+rows in an earlier entry, 258 here) -- so aggregates alone cannot be
+diffed against a later run, which asked a different set of questions.
+`ground_truth_record` writes every `(key, query, relevant)` triple into
+`bm25_params.json` under `queries`, keyed by ground-truth name, so the
+table above it stays checkable after the bib export moves.
+
 **Never touches `content/retrieval_index.json`.** The index is built in
 memory from `retrieval._tokenize_item`, the same per-document entry the
 shipped cache holds, for the reason `bench_retrieval_stemming.py`
@@ -274,6 +283,36 @@ def sweep(index, ground_truth):
     return rows, movements
 
 
+def ground_truth_record(rows):
+    """`rows` as JSON, so the record says what was *asked* and not only
+    what scored.
+
+    **The first version of this script published its tables without
+    this, and they were not reproducible.** Neither ground truth is a
+    committed list: both are derived at run time, the self-retrieval set
+    from `papers/bibliography.bib`'s `keywords` fields and the
+    live-logged set from a book's dossiers, and both of those are
+    gitignored per-host data. That data had already drifted -- earlier
+    entries in `bench/RESULTS.md` score 256 self-retrieval rows where
+    this one scores 258 -- so a later run asks a *different* set of
+    questions and there is nothing to diff its aggregates against. The
+    figures were checkable only by whoever still had the exact bib
+    export, which after a re-export is nobody. Writing the question set
+    down is what makes the answer set mean anything later.
+
+    Two shapes a reader should expect rather than be surprised by.
+    `relevant` is a sorted list because JSON has no set. And `key` is a
+    citekey string for the self-retrieval set but a `(chapter,
+    query_index)` pair for the live-logged one, which JSON renders as a
+    two-element list -- the same keys the `better`/`worse` movement lists
+    beside it carry, so the two can be joined.
+    """
+    return [
+        {"key": row["key"], "query": row["query"], "relevant": sorted(row["relevant"])}
+        for row in rows
+    ]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--tag", help="results/<tag>/ to write the record into")
@@ -301,9 +340,10 @@ def main(argv=None):
     print(f"building the BM25 index over {len(items)} ledger items...", flush=True)
     index = build_index(items)
 
-    record = {"arms": [], "movements": []}
+    record = {"arms": [], "movements": [], "queries": {}}
     for name, ground_truth in ground_truths.items():
         print(f"\n{name}: {len(ground_truth)} queries", flush=True)
+        record["queries"][name] = ground_truth_record(ground_truth)
         rows, movements = sweep(index, ground_truth)
         for row, movement in zip(rows, movements):
             record["arms"].append({**row, "ground_truth": name})
