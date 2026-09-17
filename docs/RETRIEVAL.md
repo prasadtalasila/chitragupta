@@ -159,6 +159,32 @@ supported by both arms, so none was adopted. Read that table before
 setting either dial on your own corpus; the right value there is an
 empirical question this one cannot answer for you.
 
+**There is no `weight_caption` or `weight_table`, and that is measured
+too.** Issue #770 proposed both, on the argument that a caption and a
+table's cells are the paper's actual result in its most compressed form.
+
+A **caption** field cannot be built at all: the corpus layer's passage
+sidecar carries no `caption` label — figure captions are deliberately
+left out of it, so that a claim cannot "match" a journal name repeated on
+all seventeen pages — and there are zero caption records across this
+corpus's 497 sidecars. A weight over an empty field is not a
+configuration change; it is a reversal of that decision plus a re-parse.
+
+A **table** field was built and swept, and both ground truths agree it
+hurts: every weight above 1.0 loses nDCG on both, monotonically, costing
+up to five queries in 256 (`bench/RESULTS.md`, 2026-09-17). The issue's
+premise does not hold here either — a table record on this corpus
+averages 219 words, *longer* than an abstract, because the markdown
+export carries its pipes and header text. So there is nothing short and
+dense to rescue from length normalization. Nothing in `chitragupta/`
+carries a table field; the arms live in the bench harness.
+
+**Tables still reach a drafting session, by two paths no weight is
+involved in** — a window that lands in one is
+[widened to the whole table](#-a-window-that-lands-in-a-table-keeps-the-whole-table),
+and the [passage unit](#-the-passage-unit) ranks and returns a table
+record verbatim. Declining the field changed neither.
+
 ### 🔡 Where the token-length floor came from
 
 A token shorter than **two characters** is not indexed and not scored,

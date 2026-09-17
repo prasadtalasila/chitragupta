@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import config, retrieval, retrieval_scoring  # noqa: E402
+from chitragupta import config, passages, retrieval, retrieval_scoring  # noqa: E402
 
 # #762's field-weight grid, shared by the two scripts that score BM25
 # against a ground truth (bench_retrieval_keyword_selfretrieval.py and
@@ -48,7 +48,97 @@ FIELD_WEIGHT_GRID = (
     {"abstract": 1.5},
     {"abstract": 2.0},
     {"abstract": 4.0},
+    # #770's arms. `table` is **not a field chitragupta ships** -- it is
+    # installed into the scorer by `enable_table_field` below, for the
+    # length of a bench run and no longer. See its docstring for why the
+    # measurement lives here rather than behind a config key.
+    #
+    # Both directions, unlike title and abstract. The issue argues a
+    # table's cells are the paper's measured claims and so deserve *more*
+    # weight; the counter-argument -- a table's cell text is fragmentary
+    # and its markdown pipes are noise -- says less. A one-sided grid
+    # could only ever answer half of that, and 0.0 is the arm that asks
+    # "should cell text be scored at all".
+    {"table": 0.0},
+    {"table": 0.5},
+    {"table": 1.5},
+    {"table": 2.0},
+    {"table": 4.0},
 )
+
+# What a `table` field would read, if chitragupta had one. Kept identical
+# to the shape `retrieval_scoring.field_texts` uses for the abstract --
+# one string per field, absent rather than empty when there is nothing --
+# because an arm that measures a different extraction than the one a
+# reader would implement measures nothing they can act on.
+TABLE_FIELD = "table"
+_SHIPPED_FIELD_TEXTS = retrieval_scoring.field_texts
+
+
+def _field_texts_with_tables(item):
+    """`retrieval_scoring.field_texts` plus the item's table text.
+
+    A table record already carries its own caption as its first line
+    (`_passage_records.passage_records` prepends it), so this is as close
+    to #770's *`caption`* field as any weight can get: the sidecar has no
+    `caption` label, and figure captions are deliberately not in it.
+    """
+    texts = _SHIPPED_FIELD_TEXTS(item)
+    found = passages.corpus_passages(item["citekey"])
+    tables = "\n".join(p.text for p in found or [] if p.label == "table" and p.text)
+    if tables:
+        texts[TABLE_FIELD] = tables
+    return texts
+
+
+def enable_table_field(index_path):
+    """Install the `table` field into the scorer for this process, and
+    point the index cache at `index_path`.
+
+    **Why this is a bench-local patch and not a config key.** #770 asks
+    for `caption` and `table` as weighted fields. `caption` cannot exist
+    -- `_passage_records.PASSAGE_LABELS` deliberately keeps figure
+    captions out of the sidecar, so there are zero caption records in
+    this corpus -- and the `table` arms below measure a loss on both
+    ground truths. Shipping a config key whose measured answer is "do not
+    turn this up" is the thing bench/RESULTS.md keeps declining to do
+    (#794 is the precedent, down to reverting the refactor the attempt
+    forced). So the field lives for the length of a bench run.
+
+    The patch targets `retrieval_scoring.field_texts` by module
+    attribute, which is the one binding that works:
+    `retrieval._tokenize_item` calls `retrieval_scoring.field_freqs`, and
+    that calls `field_texts` as a module global. Rebinding either name
+    locally would reach nothing.
+
+    **The index cache must be cold, and this is the whole trap.** A
+    cached entry's fingerprint is a statement about the *parsed file*,
+    which has not moved, so an index built without table counts stays
+    valid and every arm reads zero table frequencies -- publishing a flat
+    curve that looks like a finding. `index_path` is therefore a fresh
+    file this run owns, deleted first.
+    """
+    retrieval_scoring.FIELDS = retrieval_scoring.FIELDS + (TABLE_FIELD,)
+    retrieval_scoring.field_texts = _field_texts_with_tables
+    config.RETRIEVAL_INDEX_PATH = Path(index_path)
+    Path(index_path).unlink(missing_ok=True)
+
+
+def arm_table_field(tag):
+    """Install the field, build its index cold, and refuse to sweep until
+    both are demonstrably real. Called by every script that runs
+    FIELD_WEIGHT_GRID, before its first arm."""
+    from chitragupta import ledger, retrieval_cache
+
+    index_path = BENCH_DIR / "results" / Path(tag).name / "_table_field_index.json"
+    index_path.parent.mkdir(parents=True, exist_ok=True)
+    enable_table_field(index_path)
+    with ledger.connection() as con:
+        items = ledger.all_items(con)
+    index = retrieval_cache._load_index(items, retrieval._tokenize_item)
+    table_field_self_check(index)
+    populated = sum(1 for e in index.values() if (e.get("field_freqs") or {}).get(TABLE_FIELD))
+    print(f"table field populated for {populated} of {len(index)} indexed items", flush=True)
 
 
 def with_field_weights(overrides):
@@ -145,6 +235,39 @@ def self_check():
         "x",
         "y",
     ], "collapse_to_citekeys should de-duplicate, keeping first-seen order"
+
+
+def table_field_self_check(index):
+    """The `table` arms measure a real, populated field -- fabricated and
+    asserted, per bench/README.md's self-check rule.
+
+    Two ways a `table` arm can publish a flat curve that is not a
+    finding, and this catches both. The field can be empty everywhere
+    (`enable_table_field` never ran, or the corpus has no sidecars), and
+    the index can be a stale cache written before the field existed, whose
+    fingerprint cannot see that the scoring rule moved. Either way every
+    arm reads zero table counts and every row ties the baseline.
+
+    The fabricated difference is the third assertion: a hand-built entry
+    whose table counts are known must score strictly higher under a
+    weight of 2.0 than under 1.0. If the weight seam is not reaching
+    `field_freqs` at all, that comparison is an equality and this fails.
+    """
+    with_table = [e for e in index.values() if (e.get("field_freqs") or {}).get(TABLE_FIELD)]
+    assert with_table, (
+        f"no indexed document has any `{TABLE_FIELD}` counts -- either "
+        "enable_table_field did not run, or the index is a stale cache "
+        "predating the field. Every arm below would tie the baseline."
+    )
+    entry = {"term_freqs": {"twin": 10}, "field_freqs": {TABLE_FIELD: {"twin": 4}}}
+    with_field_weights({TABLE_FIELD: 2.0})
+    boosted = retrieval_scoring.weighted_freq(entry, "twin", retrieval_scoring.field_deltas())
+    with_field_weights({})
+    flat = retrieval_scoring.weighted_freq(entry, "twin", retrieval_scoring.field_deltas())
+    assert flat == 10 and boosted == 14, (
+        f"a table weight of 2.0 should add (2.0-1)*4 to a frequency of 10, "
+        f"got {boosted} against {flat} at 1.0"
+    )
 
 
 def bm25_row(ground_truth):

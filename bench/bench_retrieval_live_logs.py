@@ -43,6 +43,7 @@ sys.path.insert(0, str(REPO))
 from chitragupta import config, ledger, retrieval  # noqa: E402
 from bench_retrieval_compare import (  # noqa: E402
     FIELD_WEIGHT_GRID,
+    arm_table_field,
     K_REPORT,
     K_POOL,
     DENSE_MODELS,
@@ -145,7 +146,7 @@ def score_live_rows(ranked_by_query, ground_truth):
     }
 
 
-def field_weight_rows(ground_truth):
+def field_weight_rows(ground_truth, tag):
     """#762's sweep, on the ground truth that is *not* circular for the
     abstract field.
 
@@ -157,6 +158,7 @@ def field_weight_rows(ground_truth):
     logged, judged against that chapter's kept citekeys. Where the two
     arms disagree about the abstract, this is the one to believe.
     """
+    arm_table_field(tag)
     rows = []
     for overrides in FIELD_WEIGHT_GRID:
         with_field_weights(overrides)
@@ -409,7 +411,7 @@ def main(argv=None):
         flush=True,
     )
 
-    rows = [bm25_row(ground_truth)] + field_weight_rows(ground_truth)
+    rows = [bm25_row(ground_truth)] + field_weight_rows(ground_truth, args.tag)
     if args.only == "field-weights":
         return _report(rows, args.tag)
     for model in DENSE_MODELS:
