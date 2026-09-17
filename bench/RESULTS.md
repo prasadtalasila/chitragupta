@@ -6654,12 +6654,20 @@ fingerprint is a statement about the parsed file, which has not moved.
 CONFIG_PATH=<config with [content].dir at the live corpus> \
 BENCH_BOOK_DOSSIERS=content/backup/20260901-content/dossiers/books/digital-twins-for-software-engineers \
   python3 bench/bench_retrieval_live_logs.py \
-  --only field-weights --tag 2026-09-17-770-table-live
+  --only field-weights --field table --tag 2026-09-17-770-table-live
 
 CONFIG_PATH=<the same> .venv-full/bin/python \
   bench/bench_retrieval_keyword_selfretrieval.py \
-  --only field-weights --tag 2026-09-17-770-table-self
+  --only field-weights --field table --tag 2026-09-17-770-table-self
 ```
+
+`--field table` is what keeps those records about this entry.
+`FIELD_WEIGHT_GRID` is shared, so an unrestricted sweep also re-measures
+#762's title and abstract arms and commits their numbers here -- fresh
+figures for fields this entry never discusses, and a measurement of the
+abstract that #772 is still open over and nobody asked for. `grid_for`
+restricts the arms; the baseline is always kept, since every row is read
+against it.
 
 Records: `bench/results/2026-09-17-770-table-live/comparison.json` and
 `bench/results/2026-09-17-770-table-self/comparison.json`.

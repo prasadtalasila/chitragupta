@@ -14,55 +14,6 @@
   "ndcg@5": 0.4596
  },
  {
-  "row": "field weights: title=1.5",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8854,
-  "ndcg@5": 0.4596
- },
- {
-  "row": "field weights: title=2.0",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.4613
- },
- {
-  "row": "field weights: title=4.0",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.4626
- },
- {
-  "row": "field weights: title=8.0",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.4666
- },
- {
-  "row": "field weights: abstract=1.5",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.4609
- },
- {
-  "row": "field weights: abstract=2.0",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.461
- },
- {
-  "row": "field weights: abstract=4.0",
-  "n_queries": 96,
-  "n_missing": 0,
-  "recall@5": 0.8958,
-  "ndcg@5": 0.4575
- },
- {
   "row": "field weights: table=0.0",
   "n_queries": 96,
   "n_missing": 0,
