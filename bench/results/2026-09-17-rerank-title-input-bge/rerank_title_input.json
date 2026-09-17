@@ -1,0 +1,218 @@
+{
+ "k": 5,
+ "cap": 3,
+ "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+ "rerank_model": "BAAI/bge-reranker-base",
+ "rows": [
+  {
+   "row": "0 no rerank (shipped default)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.5469,
+   "recall@5": 0.5977,
+   "ndcg@5": 0.5033,
+   "distinct@5": 3.738
+  },
+  {
+   "row": "A snippet only (shipped)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.5352,
+   "recall@5": 0.6172,
+   "ndcg@5": 0.4937,
+   "distinct@5": 3.762
+  },
+  {
+   "row": "B title + snippet (786)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.582,
+   "recall@5": 0.6445,
+   "ndcg@5": 0.5591,
+   "distinct@5": 3.594
+  },
+  {
+   "row": "C title only (diagnostic)",
+   "n_queries": 256,
+   "n_empty": 0,
+   "recall@3": 0.4844,
+   "recall@5": 0.5781,
+   "ndcg@5": 0.4696,
+   "distinct@5": 3.328
+  }
+ ],
+ "stratified": {
+  "high overlap (>= 0.29)": [
+   {
+    "row": "0 no rerank (shipped default)",
+    "n_queries": 135,
+    "n_empty": 0,
+    "recall@3": 0.637,
+    "recall@5": 0.6963,
+    "ndcg@5": 0.5975,
+    "distinct@5": 3.615
+   },
+   {
+    "row": "A snippet only (shipped)",
+    "n_queries": 135,
+    "n_empty": 0,
+    "recall@3": 0.6519,
+    "recall@5": 0.7259,
+    "ndcg@5": 0.6113,
+    "distinct@5": 3.667
+   },
+   {
+    "row": "B title + snippet (786)",
+    "n_queries": 135,
+    "n_empty": 0,
+    "recall@3": 0.7185,
+    "recall@5": 0.7778,
+    "ndcg@5": 0.6994,
+    "distinct@5": 3.4
+   },
+   {
+    "row": "C title only (diagnostic)",
+    "n_queries": 135,
+    "n_empty": 0,
+    "recall@3": 0.6,
+    "recall@5": 0.7185,
+    "ndcg@5": 0.5973,
+    "distinct@5": 3.341
+   }
+  ],
+  "low overlap (< 0.29)": [
+   {
+    "row": "0 no rerank (shipped default)",
+    "n_queries": 121,
+    "n_empty": 0,
+    "recall@3": 0.4463,
+    "recall@5": 0.4876,
+    "ndcg@5": 0.3982,
+    "distinct@5": 3.876
+   },
+   {
+    "row": "A snippet only (shipped)",
+    "n_queries": 121,
+    "n_empty": 0,
+    "recall@3": 0.405,
+    "recall@5": 0.4959,
+    "ndcg@5": 0.3624,
+    "distinct@5": 3.868
+   },
+   {
+    "row": "B title + snippet (786)",
+    "n_queries": 121,
+    "n_empty": 0,
+    "recall@3": 0.4298,
+    "recall@5": 0.4959,
+    "ndcg@5": 0.4026,
+    "distinct@5": 3.81
+   },
+   {
+    "row": "C title only (diagnostic)",
+    "n_queries": 121,
+    "n_empty": 0,
+    "recall@3": 0.3554,
+    "recall@5": 0.4215,
+    "ndcg@5": 0.3271,
+    "distinct@5": 3.314
+   }
+  ]
+ },
+ "overlap_cut": 0.2857,
+ "deltas": {
+  "none vs A (what reranking buys at all)": {
+   "n": 256,
+   "set_differs": 228,
+   "order_differs": 14,
+   "set_differs_pct": 89.1,
+   "lost": 15,
+   "gained": 20
+  },
+  "none vs B (what 786 buys over no reranker)": {
+   "n": 256,
+   "set_differs": 228,
+   "order_differs": 16,
+   "set_differs_pct": 89.1,
+   "lost": 11,
+   "gained": 23
+  },
+  "A vs B (does the title change what ships)": {
+   "n": 256,
+   "set_differs": 193,
+   "order_differs": 46,
+   "set_differs_pct": 75.4,
+   "lost": 7,
+   "gained": 14
+  },
+  "B vs C (has the passage stopped mattering)": {
+   "n": 256,
+   "set_differs": 224,
+   "order_differs": 13,
+   "set_differs_pct": 87.5,
+   "lost": 28,
+   "gained": 11
+  },
+  "A vs C (title alone against passage alone)": {
+   "n": 256,
+   "set_differs": 234,
+   "order_differs": 12,
+   "set_differs_pct": 91.4,
+   "lost": 27,
+   "gained": 17
+  }
+ },
+ "within_document": {
+  "A snippet only (shipped)": {
+   "groups": 819,
+   "mean_spread": 0.352,
+   "median_spread": 0.2487,
+   "order_unchanged": 248,
+   "order_unchanged_pct": 30.3
+  },
+  "B title + snippet (786)": {
+   "groups": 819,
+   "mean_spread": 0.27,
+   "median_spread": 0.1874,
+   "order_unchanged": 255,
+   "order_unchanged_pct": 31.1
+  },
+  "C title only (diagnostic)": {
+   "groups": 819,
+   "mean_spread": 0.0,
+   "median_spread": 0.0,
+   "order_unchanged": 819,
+   "order_unchanged_pct": 100.0
+  }
+ },
+ "input_budget": {
+  "max_length": 512,
+  "arms": {
+   "A snippet only (shipped)": {
+    "median_tokens": 150.0,
+    "max_tokens": 506,
+    "over_max_length": 0
+   },
+   "B title + snippet (786)": {
+    "median_tokens": 166.0,
+    "max_tokens": 519,
+    "over_max_length": 4
+   },
+   "C title only (diagnostic)": {
+    "median_tokens": 46.0,
+    "max_tokens": 342,
+    "over_max_length": 0
+   }
+  }
+ },
+ "pool_hits": 5120,
+ "hits_without_title": 0,
+ "dense_pool_rank_profile": {
+  "n": 256,
+  "absent_from_pool": 71,
+  "median_rank": 1,
+  "at_rank_1": 97,
+  "at_rank_1_to_3": 143,
+  "beyond_rank_5": 23
+ }
+}

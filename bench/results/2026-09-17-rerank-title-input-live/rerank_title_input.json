@@ -1,0 +1,141 @@
+{
+ "k": 5,
+ "cap": 3,
+ "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+ "rerank_model": "cross-encoder/ms-marco-MiniLM-L6-v2",
+ "rows": [
+  {
+   "row": "0 no rerank (shipped default)",
+   "n_queries": 96,
+   "n_empty": 0,
+   "recall@3": 0.6354,
+   "recall@5": 0.7083,
+   "ndcg@5": 0.2913,
+   "distinct@5": 3.771
+  },
+  {
+   "row": "A snippet only (shipped)",
+   "n_queries": 96,
+   "n_empty": 0,
+   "recall@3": 0.5833,
+   "recall@5": 0.6979,
+   "ndcg@5": 0.2651,
+   "distinct@5": 3.979
+  },
+  {
+   "row": "B title + snippet (786)",
+   "n_queries": 96,
+   "n_empty": 0,
+   "recall@3": 0.6354,
+   "recall@5": 0.7396,
+   "ndcg@5": 0.2935,
+   "distinct@5": 3.781
+  },
+  {
+   "row": "C title only (diagnostic)",
+   "n_queries": 96,
+   "n_empty": 0,
+   "recall@3": 0.6354,
+   "recall@5": 0.75,
+   "ndcg@5": 0.2862,
+   "distinct@5": 3.25
+  }
+ ],
+ "stratified": {},
+ "overlap_cut": null,
+ "deltas": {
+  "none vs A (what reranking buys at all)": {
+   "n": 96,
+   "set_differs": 89,
+   "order_differs": 6,
+   "set_differs_pct": 92.7,
+   "lost": 10,
+   "gained": 9
+  },
+  "none vs B (what 786 buys over no reranker)": {
+   "n": 96,
+   "set_differs": 91,
+   "order_differs": 3,
+   "set_differs_pct": 94.8,
+   "lost": 10,
+   "gained": 13
+  },
+  "A vs B (does the title change what ships)": {
+   "n": 96,
+   "set_differs": 60,
+   "order_differs": 25,
+   "set_differs_pct": 62.5,
+   "lost": 2,
+   "gained": 6
+  },
+  "B vs C (has the passage stopped mattering)": {
+   "n": 96,
+   "set_differs": 92,
+   "order_differs": 1,
+   "set_differs_pct": 95.8,
+   "lost": 8,
+   "gained": 9
+  },
+  "A vs C (title alone against passage alone)": {
+   "n": 96,
+   "set_differs": 93,
+   "order_differs": 2,
+   "set_differs_pct": 96.9,
+   "lost": 9,
+   "gained": 14
+  }
+ },
+ "within_document": {
+  "A snippet only (shipped)": {
+   "groups": 362,
+   "mean_spread": 5.7616,
+   "median_spread": 4.9603,
+   "order_unchanged": 125,
+   "order_unchanged_pct": 34.5
+  },
+  "B title + snippet (786)": {
+   "groups": 362,
+   "mean_spread": 4.2401,
+   "median_spread": 3.4292,
+   "order_unchanged": 130,
+   "order_unchanged_pct": 35.9
+  },
+  "C title only (diagnostic)": {
+   "groups": 362,
+   "mean_spread": 0.0,
+   "median_spread": 0.0,
+   "order_unchanged": 362,
+   "order_unchanged_pct": 100.0
+  }
+ },
+ "input_budget": {
+  "max_length": 512,
+  "arms": {
+   "A snippet only (shipped)": {
+    "median_tokens": 115.0,
+    "max_tokens": 351,
+    "over_max_length": 0
+   },
+   "B title + snippet (786)": {
+    "median_tokens": 129.0,
+    "max_tokens": 357,
+    "over_max_length": 0
+   },
+   "C title only (diagnostic)": {
+    "median_tokens": 27.0,
+    "max_tokens": 50,
+    "over_max_length": 0
+   }
+  }
+ },
+ "pool_hits": 1920,
+ "hits_without_title": 0,
+ "dense_pool_rank_profile": {
+  "n": 96,
+  "absent_from_pool": 7,
+  "median_rank": 1,
+  "at_rank_1": 45,
+  "at_rank_1_to_3": 66,
+  "beyond_rank_5": 12
+ }
+}
