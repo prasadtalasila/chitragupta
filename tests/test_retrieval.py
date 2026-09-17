@@ -886,7 +886,10 @@ class TestCli:
 
         assert retrieval.main(["search", "DT patterns", "--log", str(draft)]) == 0
         logged = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
-        assert logged.rstrip().endswith("| dt -> digital twin |")
+        # By position, not by `endswith`: #788 appended the two BM25
+        # settings after the expansion cell.
+        row = logged.rstrip().splitlines()[-1]
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
 
     def test_evidence_prints_passages(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)

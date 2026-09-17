@@ -1,4 +1,5 @@
-"""Okapi BM25, and the field weights that tilt it (#762).
+"""Okapi BM25, its two free parameters (#788), and the field weights
+that tilt it (#762).
 
 Split from `chitragupta/retrieval.py`, which sat at exactly the
 250-code-line C2 limit when field weighting arrived -- the same pressure
@@ -9,10 +10,18 @@ contributes* -- `_full_text`, the reference cut, the snippet windows --
 and this module owns *what that text scores*.
 
 **Field-list-driven rather than two named weights.** `FIELDS` below has
-`title` and `abstract` today; #770 adds `caption` and `table` to the same
-seam, and #772 re-points where the abstract is read from. Each of those
-is then a change to one tuple and one config table rather than a fourth
-and fifth scalar threaded through three functions.
+`title` and `abstract`, and #772 re-points where the abstract is read
+from -- a change to one tuple and one config table rather than a third
+scalar threaded through three functions.
+
+The seam has been asked for a third field once and declined it. Issue
+#770 proposed `caption` and `table`; `caption` cannot be built here at
+all, because `_passage_records.PASSAGE_LABELS` deliberately keeps figure
+captions out of the sidecar and there are zero caption records across
+this corpus, and a `table` field measured a monotone loss on both BM25
+ground truths (bench/RESULTS.md, 2026-09-17). Adding a field is still one
+tuple and one config key; that this one is not here is a measurement, not
+an omission.
 
 **The weighted term frequency is a delta on the unweighted one:**
 
@@ -40,6 +49,18 @@ is that a field weight raises a document's score without raising its
 modelled length; the benefit is the baseline. Recorded as the deliberate
 trade it is, not an oversight.
 
+**`k1` and `b` are configuration, not constants.** They shape
+term-frequency saturation and length normalization respectively, they
+ship at the textbook 1.5/0.75, and #788 is what makes those numbers
+*examined* on this corpus rather than merely inherited from TREC-era news
+and web collections. `bench/bench_retrieval_bm25_params.py` sweeps them
+one parameter at a time; bench/RESULTS.md has what it found and why
+neither default moved, which for `k1` is a statement about the ground
+truth available rather than about the parameter. They stay configurable
+because that sweep answers the question for *this* bibliography only --
+`b` exists exactly to handle the four-page-paper-to-whole-book length
+spread, and the next corpus's spread is not this one's.
+
 Stdlib only, like `retrieval.py` itself: this runs under bare `python3`
 with no venv (docs/ARCHITECTURE.md).
 """
@@ -48,12 +69,6 @@ import math
 import sqlite3
 
 from chitragupta import _abstract, config, passages
-
-# Standard Okapi BM25 constants (term-frequency saturation and length
-# normalization strength) -- the usual defaults, not tuned against this
-# corpus specifically. Issue #788 is the sweep that would change that.
-_K1 = 1.5
-_B = 0.75
 
 # The fields that may carry a weight, in the order a reader should meet
 # them. `config.RETRIEVAL_FIELD_WEIGHTS` lists the same names and cannot
@@ -176,16 +191,24 @@ def bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
     # and letting it move IDF would make one document's weight change
     # every other document's score.
     deltas = field_deltas()
+    # Okapi's two free parameters, read here rather than bound at import
+    # for the same reason `field_deltas` re-reads the weights: it is what
+    # lets bench/bench_retrieval_bm25_params.py sweep a grid in one
+    # process. Read once per call, outside the loop below, because that
+    # loop runs over the whole corpus and re-reading config inside it is
+    # the obvious way to make a stdlib ranker slow. #788 is the sweep
+    # they came through; docs/RETRIEVAL.md says what it found.
+    k1, b = config.RETRIEVAL_K1, config.RETRIEVAL_B
     scores: dict[str, float] = {}
     for citekey, entry in index.items():
         doc_len = entry["length"]
-        norm = 1 - _B + _B * (doc_len / avgdl if avgdl else 0)
+        norm = 1 - b + b * (doc_len / avgdl if avgdl else 0)
         score = 0.0
         for t in term_set:
             freq = weighted_freq(entry, t, deltas)
             if freq == 0:
                 continue
-            score += idf[t] * (freq * (_K1 + 1)) / (freq + _K1 * norm)
+            score += idf[t] * (freq * (k1 + 1)) / (freq + k1 * norm)
         if score > 0:
             scores[citekey] = score
     return scores

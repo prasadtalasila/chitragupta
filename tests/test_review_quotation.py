@@ -7,12 +7,16 @@ failure class as a fabricated citekey -- a plausible artefact with
 nothing real behind it -- and the one part of that class
 `chitragupta/citation_gate.py` cannot see, because the citekey is real.
 
-These tests hold the matcher to what `plans/c3-quotation-integrity.md`
-measured on 189 real quoted spans, not to what issue #383 guessed. The
-issue names hyphenation, ligatures, whitespace and quotation marks;
-measured, those are the small effect. The two that dominate are an
-inline reference marker in the source and an elided quotation, and both
-have a test here for that reason.
+These tests hold the matcher to what was *measured* on real quoted spans
+-- `plans/c3-quotation-integrity.md` on 189 of them and
+`plans/775-quotation-residual-absents.md` on 206 -- not to what issue
+#383 guessed. The issue names hyphenation, ligatures, whitespace and
+quotation marks; measured, those are the small effect. Three
+normalisations carried the weight instead, and each has its own class
+here for that reason: an inline reference marker in the source
+(`TestNormalisation`), an elided quotation (`TestElision`), and an
+elision at either *end* of the quote, which leaves one fragment rather
+than two (`TestElisionAtAnEnd`).
 
 Advisory like the other six -- exit 0 whatever it finds, no lock, and no
 draft blocked by any of it.
@@ -241,6 +245,65 @@ class TestElision:
         a_dossier(draft, block(KEY, "operators [who] can start developing twins in-house"))
         a_source(KEY, (8, "Small operators with low budget can start developing twins in-house."))
         assert checked(draft)[0].verdict == "found"
+
+
+class TestElisionAtAnEnd:
+    """An elision at the *start* or *end* of a quote leaves one fragment,
+    not two, and issue #775 measured that one-sided case as a false
+    `absent` on a real corpus: 2 of the 40 residual absents over 206
+    extracted spans are a correct quotation ending in an editorial
+    substitution. The rest of that module's posture is unchanged --
+    the surviving fragment must still appear exactly.
+    """
+
+    def test_a_trailing_editorial_substitution_is_found(self, isolated_config):
+        """The measured case, in miniature. A drafter quotes a sentence
+        and replaces its tail with their own word in brackets: *"the
+        topic is [unresolved]"* against a source reading *"the topic is
+        still being debated"*. Everything before the bracket is verbatim,
+        and that is what the elision contract already promises to match.
+        """
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "For data-driven models the topic is [unresolved]."))
+        a_source(KEY, (5, "For data-driven models the topic is still being debated today."))
+        one = checked(draft)[0]
+        assert (one.verdict, one.tier) == ("found", "elided")
+
+    def test_a_leading_ellipsis_is_found(self, isolated_config):
+        """The same shape from the other end, which is the commoner way
+        to write it by hand."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "... CN is the connection that ties them"))
+        a_source(
+            KEY, (3, "Here PE is the physical entity and CN is the connection that ties them.")
+        )
+        assert checked(draft)[0].verdict == "found"
+
+    def test_a_quote_with_no_elision_at_all_is_still_absent(self, isolated_config):
+        """The guard this widening must not swallow. One fragment and no
+        elision marker is an ordinary quotation that simply is not in the
+        source, and it stays `absent` -- the one-fragment path is reached
+        only because the quote said the source differs somewhere.
+        """
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "the four interconnected layers of no such paper"))
+        a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
+        assert checked(draft)[0].verdict == "absent"
+
+    def test_the_surviving_fragment_must_still_appear_exactly(self, isolated_config):
+        """A fabricated quotation does not become findable by ending in
+        a bracket. What is matched is still an exact character run."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, "the twin predicted failure eight hours ahead [emphasis mine]"))
+        a_source(KEY, (2, "ISO 23247 defines four interconnected layers of domains."))
+        assert checked(draft)[0].verdict == "absent"
+
+    def test_fragments_drops_slivers_but_keeps_a_lone_survivor(self, isolated_config):
+        """`fragments` is unchanged: it still returns what survived, and
+        an empty tail is still dropped. It is `locate` that stopped
+        requiring two of them."""
+        assert match.fragments("the topic is [unresolved]") == ["thetopicis"]
+        assert match.fragments("no elision here at all") == ["noelisionhereatall"]
 
 
 class TestPassageSeams:

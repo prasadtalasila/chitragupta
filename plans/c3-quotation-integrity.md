@@ -7,6 +7,15 @@ merged 2026-08-26. Written 2026-08-25 for
 changed from this plan on the way is recorded below rather than edited
 out.
 
+**Superseded in one place.** A fourth normalisation shipped for
+issue #775, and the 189-span corpus this plan's figures rest on no
+longer exists on the host that produced them.
+[plans/775-quotation-residual-absents.md](775-quotation-residual-absents.md)
+re-runs the extraction rule below over 206 spans, records the new figures
+beside these ones, breaks the residual absents down structurally, and
+settles the acceptance question this plan did not ask. The three
+normalisations argued for here are unchanged.
+
 **Written for** the person building C3 --
 [docs/FEATURE-ROADMAP.md](../docs/FEATURE-ROADMAP.md)'s "Theme C:
 verify faithful use", item C3, and build-order item 6. It closes the

@@ -1297,6 +1297,63 @@ class TestRetrievalLog:
         path.write_text(path.read_text() + "| 2026-01-01 | search | q | 15 | 15 | 100 |\n")
         assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
 
+    def test_the_bm25_settings_in_force_are_recorded(self, draft, monkeypatch):
+        """#788's two settings land in the row, read from config at write
+        time rather than passed in.
+
+        Not a parameter like `collection` and `origin`, deliberately: those
+        describe what the *caller* asked for and only the caller knows
+        them, while these describe the ranker that actually ran and are
+        the same for every call in the process. A parameter a caller can
+        forget writes an empty cell, and an empty cell here is
+        indistinguishable from a row logged before the column existed --
+        which is exactly the ambiguity the column exists to remove.
+        """
+        dossier.init(draft, "survey")
+        monkeypatch.setattr(config, "RETRIEVAL_K1", 8.0)
+        monkeypatch.setattr(config, "RETRIEVAL_B", 0.5)
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        assert "| 8.0 | 0.5 |" in text
+
+    def test_the_shipped_defaults_are_recorded_rather_than_left_blank(self, draft, monkeypatch):
+        """A default run writes the numbers too. "Blank means default" is
+        the one encoding that cannot work: blank already means "logged
+        before this column existed", and a default that moves later would
+        retroactively change what every old blank row claimed."""
+        dossier.init(draft, "survey")
+        monkeypatch.setattr(config, "RETRIEVAL_K1", 1.5)
+        monkeypatch.setattr(config, "RETRIEVAL_B", 0.75)
+        dossier.log_retrieval(draft, "search", "q", 15, 15, 100)
+        text = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        assert "| 1.5 | 0.75 |" in text
+
+    def test_a_row_written_before_the_bm25_columns_still_parses(self, draft):
+        """An eight-cell row -- every `retrieval.md` on disk between #455
+        and #788 -- must keep costing exactly what it always has."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        path.write_text(
+            path.read_text() + "| 2026-01-01 | search | q | 15 | 15 | 100 |  | declared |\n"
+        )
+        assert retrieval_cost(dossier.dossier_dir(draft)) == (1, 100)
+
+    def test_the_bm25_columns_do_not_disturb_the_older_ones(self, draft, monkeypatch):
+        """The two new cells go on the end, so `collection` and `origin`
+        stay at their own indices for every reader that took them
+        positionally."""
+        dossier.init(draft, "survey")
+        monkeypatch.setattr(config, "RETRIEVAL_K1", 3.0)
+        monkeypatch.setattr(config, "RETRIEVAL_B", 0.6)
+        dossier.log_retrieval(
+            draft, "search", "q", 15, 15, 100, collection="Digital twins", origin="declared"
+        )
+        pairs = _retrieval.recorded_queries_with_collection(dossier.dossier_dir(draft))
+        assert pairs == [("q", "Digital twins")]
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("q", "declared")
+        ]
+
 
 class TestRevisionMarker:
     """`mark_revision` and `retrieval_cost_by_revision`.
@@ -1740,15 +1797,22 @@ class TestTheExpandedColumn:
             draft, "search", "DT fidelity", 5, 5, 100, expanded="dt -> digital twin"
         )
         row = path.read_text().splitlines()[-1]
-        assert row.endswith("| dt -> digital twin |")
-        assert row.count("|") == 10
+        # Checked by position rather than by `endswith`, which is what
+        # this test's own name always meant: #788 appended `k1` and `b`
+        # after this cell, so "ninth" and "last" stopped being the same
+        # claim. Every column so far has landed at the end, so this
+        # assertion would have gone stale again on the next one.
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
+        assert row.count("|") == 12
 
     def test_a_call_that_expanded_nothing_writes_an_empty_cell(self, draft):
         """Every call at the shipped default, so this is the ordinary
         row, not the exceptional one."""
         dossier.init(draft, "survey")
         path = dossier.log_retrieval(draft, "search", "digital twin", 5, 5, 100)
-        assert path.read_text().splitlines()[-1].endswith("| 100 |  |  |  |")
+        # The three caller-supplied cells are empty; the two #788 added
+        # after them are not, because they record the ranker that ran.
+        assert path.read_text().splitlines()[-1].endswith("| 100 |  |  |  | 1.5 | 0.75 |")
 
     def test_a_pipe_in_an_expansion_cannot_split_the_row(self, draft):
         dossier.init(draft, "survey")

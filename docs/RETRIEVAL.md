@@ -72,8 +72,9 @@ flowchart TB
 ## 🔎 BM25 -- the default, and always available
 
 `chitragupta/retrieval.py` ranks whole documents by Okapi BM25 over
-whitespace-separated tokens, with the usual constants (`k1 = 1.5`,
-`b = 0.75`) and every `[retrieval]` field weight at 1.0
+whitespace-separated tokens, with `k1 = 1.5` and `b = 0.75`
+([below](#-k1-and-b-are-settings-and-the-defaults-were-swept)) and every
+`[retrieval]` field weight at 1.0
 ([below](#-title-and-abstract-can-outweigh-body-text)). Scoring itself
 lives in `chitragupta/retrieval_scoring.py`; this module owns what text
 an item contributes, that one owns what the text scores. It is
@@ -106,6 +107,54 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 `status`, and the parsed file's size and mtime -- not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
+
+### 🎛 `k1` and `b` are settings, and the defaults were swept
+
+Okapi BM25 has two free parameters, and both sit under `[retrieval]` in
+`config.toml`:
+
+```toml
+[retrieval]
+k1 = 1.5
+b = 0.75
+```
+
+`k1` is how fast a term's frequency saturates — how much the ninth
+mention of a word adds over the first. `b` is how strongly a document's
+score is normalized by its length, from 0 (not at all) to 1 (in full).
+Both also govern the [passage unit](#-the-passage-unit), which shares the
+same scorer. A `k1` below 0 or non-finite, or a `b` outside [0, 1], is
+rejected when the config loads: past 1, `b` makes the normalizer
+`1 - b + b × dl/avgdl` negative for a short document, which flips the
+sign of BM25's denominator and ranks a paper containing your term below
+one that does not.
+
+**1.5 and 0.75 are the textbook values, and they were swept rather than
+assumed.** They come from TREC-era ad-hoc retrieval over news and web
+collections; this corpus is a few hundred academic PDFs running from a
+four-page paper to a whole book, which is the length spread `b` exists
+for. The sweep (`bench/RESULTS.md`, 2026-09-17) moved one parameter at a
+time at k in {3, 5, 10}, and found two different things:
+
+- **`b` has no better value here.** 0.75 is the recall@5 peak.
+  Everything below it loses monotonically at all three cutoffs, and the
+  two settings above it trade a query at one cutoff for a query at
+  another — `1.0` gains one at k = 3 and gives back two at k = 5. Read on
+  nDCG alone either would have looked like a small win, which is why
+  three cutoffs were measured.
+- **`k1` prefers 8.0, and was left at 1.5 anyway.** On the one ground
+  truth the measuring host could build, `k1 = 8` is worth 7 queries of
+  recall@5 and +0.0218 nDCG@5 — a real peak, not a grid edge. But that
+  ground truth asks a paper's own author keywords to find that paper,
+  so "let raw repetition count for more" is the change it is built to
+  reward, and the independent arm of real drafting queries was
+  unavailable. A large gain on the circular arm alone is not a default.
+
+**So the right value for your corpus is an open question this one cannot
+answer.** Raise `k1` if a paper genuinely about your query keeps losing
+to one that merely mentions it a lot. Lower `b` if short documents win on
+brevity rather than relevance, raise it if long ones win on size. Read
+the table in `bench/RESULTS.md` before either.
 
 ### ⚖ Title and abstract can outweigh body text
 
@@ -238,6 +287,31 @@ query's terms rises 264 → 292, because "digital" and "twin" are in far
 more of this corpus than `DT` is. On a corpus where your expansion words
 are ambient, that trade may not pay — this is the dial to reach for, and
 the figures to judge it by.
+**There is no `weight_caption` or `weight_table`, and that is measured
+too.** Issue #770 proposed both, on the argument that a caption and a
+table's cells are the paper's actual result in its most compressed form.
+
+A **caption** field cannot be built at all: the corpus layer's passage
+sidecar carries no `caption` label — figure captions are deliberately
+left out of it, so that a claim cannot "match" a journal name repeated on
+all seventeen pages — and there are zero caption records across this
+corpus's 497 sidecars. A weight over an empty field is not a
+configuration change; it is a reversal of that decision plus a re-parse.
+
+A **table** field was built and swept, and both ground truths agree it
+hurts: every weight above 1.0 loses nDCG on both, monotonically, costing
+up to five queries in 256 (`bench/RESULTS.md`, 2026-09-17). The issue's
+premise does not hold here either — a table record on this corpus
+averages 219 words, *longer* than an abstract, because the markdown
+export carries its pipes and header text. So there is nothing short and
+dense to rescue from length normalization. Nothing in `chitragupta/`
+carries a table field; the arms live in the bench harness.
+
+**Tables still reach a drafting session, by two paths no weight is
+involved in** — a window that lands in one is
+[widened to the whole table](#-a-window-that-lands-in-a-table-keeps-the-whole-table),
+and the [passage unit](#-the-passage-unit) ranks and returns a table
+record verbatim. Declining the field changed neither.
 
 ### 🔡 Where the token-length floor came from
 
@@ -604,6 +678,25 @@ over-fetch multiplier here and there is one on the embedding path: Chroma
 returns a pre-truncated candidate list and BM25 does not.
 [CONFIG.md](CONFIG.md#-retrieval----bm25s-field-weights-cap-and-floor) has
 both keys.
+
+### 📑 An abstract cannot pick the passage either, measured
+
+Four ways of letting a paper's abstract decide which paragraphs this unit
+returns were built and swept on both BM25 ground truths (`bench/RESULTS.md`,
+2026-09-17): fusing the paper's abstract score into every one of its
+passages, shortlisting papers by abstract before ranking their passages,
+lifting a passage by how much vocabulary it shares with its own abstract,
+and dropping abstract passages outright.
+
+**None is supported by both arms**, and the reason is visible in the same
+table. The only rows that gain anywhere move the share of returned
+passages that are *abstract text* from 1.7% to 33%; push harder and the
+share reaches 88% as recall collapses. The mechanism is not finding the
+right paper, it is returning the summary in place of the paragraph --
+which is the substitution this unit exists to prevent. Dropping abstract
+passages is declined too: it costs nine queries on one arm and one on the
+other, so they earn their place at the shipped settings. Leave the
+balance where BM25 put it.
 
 ### 🕳 What this unit structurally cannot return
 

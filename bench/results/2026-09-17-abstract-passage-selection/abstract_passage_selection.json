@@ -1,0 +1,328 @@
+{
+ "arms": [
+  {
+   "arm": "keyword self-retrieval",
+   "reachable": 0.5664,
+   "rankers": [
+    {
+     "subset": "all queries",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 256,
+     "recall@5": 0.8164,
+     "ndcg@5": 0.722
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3852
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-first, full-text fallback",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3852
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 145,
+     "recall@5": 0.7931,
+     "ndcg@5": 0.6961
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 145,
+     "recall@5": 0.7862,
+     "ndcg@5": 0.6801
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-first, full-text fallback",
+     "queries": 145,
+     "recall@5": 0.7862,
+     "ndcg@5": 0.6801
+    }
+   ],
+   "rows": [
+    {
+     "row": "passage baseline (as shipped)",
+     "queries": 256,
+     "recall@5": 0.6992,
+     "ndcg@5": 0.5956,
+     "abstract_share@5": 0.1023
+    },
+    {
+     "row": "+ abstract prior, lambda=0.1",
+     "queries": 256,
+     "recall@5": 0.6914,
+     "ndcg@5": 0.595,
+     "abstract_share@5": 0.1344
+    },
+    {
+     "row": "+ abstract prior, lambda=0.25",
+     "queries": 256,
+     "recall@5": 0.668,
+     "ndcg@5": 0.5687,
+     "abstract_share@5": 0.1953
+    },
+    {
+     "row": "+ abstract prior, lambda=0.5",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3892,
+     "abstract_share@5": 0.2797
+    },
+    {
+     "row": "+ abstract prior, lambda=0.75",
+     "queries": 256,
+     "recall@5": 0.4062,
+     "ndcg@5": 0.37,
+     "abstract_share@5": 0.3023
+    },
+    {
+     "row": "abstract shortlist, N=10",
+     "queries": 256,
+     "recall@5": 0.4297,
+     "ndcg@5": 0.3723,
+     "abstract_share@5": 0.2263
+    },
+    {
+     "row": "abstract shortlist, N=25",
+     "queries": 256,
+     "recall@5": 0.4258,
+     "ndcg@5": 0.3686,
+     "abstract_share@5": 0.1872
+    },
+    {
+     "row": "abstract shortlist, N=50",
+     "queries": 256,
+     "recall@5": 0.4102,
+     "ndcg@5": 0.357,
+     "abstract_share@5": 0.1677
+    },
+    {
+     "row": "abstract shortlist, N=100",
+     "queries": 256,
+     "recall@5": 0.3945,
+     "ndcg@5": 0.3466,
+     "abstract_share@5": 0.1521
+    },
+    {
+     "row": "x abstract centrality, mu=0.25",
+     "queries": 256,
+     "recall@5": 0.6992,
+     "ndcg@5": 0.6018,
+     "abstract_share@5": 0.2047
+    },
+    {
+     "row": "x abstract centrality, mu=0.5",
+     "queries": 256,
+     "recall@5": 0.6875,
+     "ndcg@5": 0.5926,
+     "abstract_share@5": 0.3555
+    },
+    {
+     "row": "x abstract centrality, mu=1.0",
+     "queries": 256,
+     "recall@5": 0.6328,
+     "ndcg@5": 0.5275,
+     "abstract_share@5": 0.5625
+    },
+    {
+     "row": "x abstract centrality, mu=2.0",
+     "queries": 256,
+     "recall@5": 0.5195,
+     "ndcg@5": 0.4311,
+     "abstract_share@5": 0.7633
+    },
+    {
+     "row": "x abstract centrality, mu=4.0",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3815,
+     "abstract_share@5": 0.8477
+    },
+    {
+     "row": "x abstract centrality, mu=8.0",
+     "queries": 256,
+     "recall@5": 0.4336,
+     "ndcg@5": 0.3718,
+     "abstract_share@5": 0.8805
+    },
+    {
+     "row": "exclude abstract passages",
+     "queries": 256,
+     "recall@5": 0.6641,
+     "ndcg@5": 0.5444,
+     "abstract_share@5": 0.0
+    }
+   ]
+  },
+  {
+   "arm": "live drafting logs",
+   "reachable": 0.6226,
+   "rankers": [
+    {
+     "subset": "all queries",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 96,
+     "recall@5": 0.8854,
+     "ndcg@5": 0.4596
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-first, full-text fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 96,
+     "recall@5": 0.8854,
+     "ndcg@5": 0.4596
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-first, full-text fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    }
+   ],
+   "rows": [
+    {
+     "row": "passage baseline (as shipped)",
+     "queries": 96,
+     "recall@5": 0.7604,
+     "ndcg@5": 0.3248,
+     "abstract_share@5": 0.0167
+    },
+    {
+     "row": "+ abstract prior, lambda=0.1",
+     "queries": 96,
+     "recall@5": 0.7604,
+     "ndcg@5": 0.3271,
+     "abstract_share@5": 0.05
+    },
+    {
+     "row": "+ abstract prior, lambda=0.25",
+     "queries": 96,
+     "recall@5": 0.7604,
+     "ndcg@5": 0.3388,
+     "abstract_share@5": 0.0958
+    },
+    {
+     "row": "+ abstract prior, lambda=0.5",
+     "queries": 96,
+     "recall@5": 0.6771,
+     "ndcg@5": 0.2539,
+     "abstract_share@5": 0.2063
+    },
+    {
+     "row": "+ abstract prior, lambda=0.75",
+     "queries": 96,
+     "recall@5": 0.5417,
+     "ndcg@5": 0.2013,
+     "abstract_share@5": 0.2417
+    },
+    {
+     "row": "abstract shortlist, N=10",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2601,
+     "abstract_share@5": 0.1375
+    },
+    {
+     "row": "abstract shortlist, N=25",
+     "queries": 96,
+     "recall@5": 0.7188,
+     "ndcg@5": 0.2683,
+     "abstract_share@5": 0.0896
+    },
+    {
+     "row": "abstract shortlist, N=50",
+     "queries": 96,
+     "recall@5": 0.7292,
+     "ndcg@5": 0.2672,
+     "abstract_share@5": 0.0563
+    },
+    {
+     "row": "abstract shortlist, N=100",
+     "queries": 96,
+     "recall@5": 0.75,
+     "ndcg@5": 0.2829,
+     "abstract_share@5": 0.0479
+    },
+    {
+     "row": "x abstract centrality, mu=0.25",
+     "queries": 96,
+     "recall@5": 0.7604,
+     "ndcg@5": 0.3218,
+     "abstract_share@5": 0.0833
+    },
+    {
+     "row": "x abstract centrality, mu=0.5",
+     "queries": 96,
+     "recall@5": 0.7708,
+     "ndcg@5": 0.3272,
+     "abstract_share@5": 0.1562
+    },
+    {
+     "row": "x abstract centrality, mu=1.0",
+     "queries": 96,
+     "recall@5": 0.7812,
+     "ndcg@5": 0.3404,
+     "abstract_share@5": 0.3271
+    },
+    {
+     "row": "x abstract centrality, mu=2.0",
+     "queries": 96,
+     "recall@5": 0.7292,
+     "ndcg@5": 0.3028,
+     "abstract_share@5": 0.5667
+    },
+    {
+     "row": "x abstract centrality, mu=4.0",
+     "queries": 96,
+     "recall@5": 0.7083,
+     "ndcg@5": 0.2791,
+     "abstract_share@5": 0.7375
+    },
+    {
+     "row": "x abstract centrality, mu=8.0",
+     "queries": 96,
+     "recall@5": 0.6875,
+     "ndcg@5": 0.2844,
+     "abstract_share@5": 0.8167
+    },
+    {
+     "row": "exclude abstract passages",
+     "queries": 96,
+     "recall@5": 0.75,
+     "ndcg@5": 0.3215,
+     "abstract_share@5": 0.0
+    }
+   ]
+  }
+ ]
+}

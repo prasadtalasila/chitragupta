@@ -1,0 +1,51 @@
+[
+ {
+  "row": "BM25 (chitragupta/retrieval.py)",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8854,
+  "ndcg@5": 0.4596
+ },
+ {
+  "row": "field weights: all 1.0 (baseline)",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8854,
+  "ndcg@5": 0.4596
+ },
+ {
+  "row": "field weights: table=0.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8958,
+  "ndcg@5": 0.4607
+ },
+ {
+  "row": "field weights: table=0.5",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8958,
+  "ndcg@5": 0.46
+ },
+ {
+  "row": "field weights: table=1.5",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4548
+ },
+ {
+  "row": "field weights: table=2.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.8854,
+  "ndcg@5": 0.4516
+ },
+ {
+  "row": "field weights: table=4.0",
+  "n_queries": 96,
+  "n_missing": 0,
+  "recall@5": 0.875,
+  "ndcg@5": 0.4387
+ }
+]
