@@ -7,12 +7,16 @@ failure class as a fabricated citekey -- a plausible artefact with
 nothing real behind it -- and the one part of that class
 `chitragupta/citation_gate.py` cannot see, because the citekey is real.
 
-These tests hold the matcher to what `plans/c3-quotation-integrity.md`
-measured on 189 real quoted spans, not to what issue #383 guessed. The
-issue names hyphenation, ligatures, whitespace and quotation marks;
-measured, those are the small effect. The two that dominate are an
-inline reference marker in the source and an elided quotation, and both
-have a test here for that reason.
+These tests hold the matcher to what was *measured* on real quoted spans
+-- `plans/c3-quotation-integrity.md` on 189 of them and
+`plans/775-quotation-residual-absents.md` on 206 -- not to what issue
+#383 guessed. The issue names hyphenation, ligatures, whitespace and
+quotation marks; measured, those are the small effect. Three
+normalisations carried the weight instead, and each has its own class
+here for that reason: an inline reference marker in the source
+(`TestNormalisation`), an elided quotation (`TestElision`), and an
+elision at either *end* of the quote, which leaves one fragment rather
+than two (`TestElisionAtAnEnd`).
 
 Advisory like the other six -- exit 0 whatever it finds, no lock, and no
 draft blocked by any of it.

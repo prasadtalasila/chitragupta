@@ -166,14 +166,24 @@ rather than by a similarity score:
 | `nowhere-in-source` (under 20 characters match) | 18 | Essentially none of the quote is in the paper. At this extraction rule's fidelity these are mostly mis-attributions -- `worden_artificial_2023` matches 7 of 229 characters, `gomes_sensing_2024` 5 of 71 |
 | `diverges-midway` | 5 | A real, long prefix matches and then the text differs. **This is the class C3 exists for** |
 
+**The 20 characters is a reporting boundary, not a tuned constant**, and
+it is stated because this document's whole argument is that nothing here
+is tuned. Nothing depends on its value: the matched-prefix lengths jump
+straight from 18 to 35, so every threshold in that gap produces exactly
+this table. It divides "nothing of this quote is in the paper" from "a
+real run of it is", and the corpus draws the line rather than the author.
+
 The five in the last row are worth naming, since they are the ones a
 human should be reading:
 
 - `ali_modeling_2024` -- 81 of 107 characters, then the source reads
-  `...feasible40and...`: an unbracketed superscript reference marker the
-  Docling parse flattened into the sentence. A *parse* artefact, not a
-  drafting one, and not reachable without stripping bare digits from the
-  source, which would eat every number a quotation legitimately carries.
+  `...feasible40and...`. The sidecar has `"fidelity feasible 40 and is
+  dependent on the use case"`: a bare `40` the parse left standing in the
+  sentence, with no brackets for `strip_markers` to find -- a reference
+  marker on the face of it, though that is read off the one span rather
+  than established. Either way it is a *parse* artefact, not a drafting
+  one, and not reachable without stripping bare digits from the source,
+  which would eat every number a quotation legitimately carries.
 - `rasheed_digital_2020` (twice) -- the source reads `highdelity` where
   the quote reads `highfidelity`: the parse dropped an `fi` ligature
   outright. Recovering it needs fuzzy matching, which R3 bars.
