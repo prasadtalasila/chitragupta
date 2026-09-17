@@ -518,7 +518,7 @@ It is the reading copy for anyone who is not building LaTeX.
    (`EquationDuplicateId`) sees one unit at a time; across units, this
    is the check.
 
-   **If the units number their own headings, turn LaTeX's numbering
+   **If the units number their own *sections*, turn LaTeX's numbering
    off** -- `\setcounter{secnumdepth}{-2}` in
    `content/specs/<book>/preamble.tex`, which the skeleton `\input`s
    last and which therefore wins over its default of `2`. A book whose
@@ -527,6 +527,33 @@ It is the reading copy for anyone who is not building LaTeX.
    numbering a book shows is a composition decision and belongs to the
    book; renumbering the author's headings does not, and is
    `draft-reviser`'s call rather than this skill's.
+
+   **A self-numbered *chapter title* is a different clash, and this is
+   the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
+   Anyone Pays` is numbered twice by the `book` class, but
+   `secnumdepth{-2}` pays a document-level price for a chapter-level
+   problem. Measured on one real book, four `pdflatex` passes each:
+
+   | | `secnumdepth{2}` (the skeleton) | `secnumdepth{-2}` |
+   | --- | --- | --- |
+   | Chapter opening | `Chapter 1` / `Chapter 1: Why Anyone Pays` | correct |
+   | ToC chapter line | `1 Chapter 1: Why Anyone Pays` | correct |
+   | ToC section lines | `1.1`, `1.2`, ... `1.10` | **all numbers lost** |
+   | Table captions | `Table 1.1`, `2.1`, ... | `Table 1`, `2`, ... flat |
+
+   **Nothing is asked of you here: step 4's render drops the prefix
+   already.** `draft render --fragment` emits `\chapter{Why Anyone
+   Pays}` from that heading, so the number comes from the class alone
+   and sections, tables and figures keep theirs. The authored `.md` is
+   untouched, every unit stays `accepted`, and the unit's own standalone
+   pdf keeps the prefix that titles it. If a book already carries
+   `secnumdepth{-2}` for this reason, **remove it** -- it is now costing
+   the section and table numbering for a clash that no longer exists.
+
+   A unit drafted as `.tex` is the exception, because step 4 never
+   converts it: there the prefix is in the file you `\input`, and
+   `draft style` reports it as `chitragupta.ChapterSelfNumbered` in step
+   3 for the author to delete.
 
    Without TeX Live, say so plainly and stop there rather than working
    around it -- the `.tex` is the deliverable either way.

@@ -56,6 +56,7 @@ from chitragupta import config, dossier
 from chitragupta.style_acronym_drift import findings as acronym_drift_findings
 from chitragupta.style_equations import findings as equation_findings
 from chitragupta.style_figures import findings as figure_findings
+from chitragupta.style_headings import findings as heading_findings
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
 from chitragupta.style_tables import findings as table_findings
@@ -277,6 +278,7 @@ def check(draft: Path, override: str | None = None, propose: bool = True) -> dic
         + figure_findings(draft)
         + equation_findings(draft)
         + typeset_findings(draft)
+        + heading_findings(draft)
     )
     vale_error, proposal = None, None
     try:

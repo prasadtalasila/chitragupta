@@ -730,10 +730,29 @@ rather than `grep -c` deliberately: on the host this was first run,
 `grep -c` over that log printed nothing at all, and a check that silently
 reports nothing is worse than no check.
 
-**If your units number their own headings** (`## 1.0 Before you start`),
+**If your units number their own sections** (`## 1.0 Before you start`),
 put `\setcounter{secnumdepth}{-2}` in `content/specs/twins/preamble.tex`,
 or LaTeX numbers them a second time -- "1.1 1.0 Before you start", and
 worse further in.
+
+**A chapter title that carries its own number is a different case, and
+this is the wrong lever for it.** A unit headed `# Chapter 1: Why Anyone
+Pays` used to open `Chapter 1` / `Chapter 1: Why Anyone Pays`, with the
+table of contents reading `1 Chapter 1: Why Anyone Pays` to match --
+and `secnumdepth{-2}` fixed that by taking away every section and table
+number in the book, which is a document-level price for a chapter-level
+problem. Step 6's `draft render --fragment` now drops the prefix from
+the `\chapter{}` it emits instead, so the number comes from the `book`
+class alone and everything else keeps its numbering. Your `.md` is not
+touched: it still titles that unit's own standalone pdf, and every unit
+stays `accepted`. **If you already added `secnumdepth{-2}` for a
+duplicated chapter number, take it out** -- it is now costing you the
+section and table numbers for a clash that no longer happens.
+
+A unit you drafted as `.tex` is the exception: step 6 does not convert
+it, so the prefix reaches the book as you wrote it. `chitragupta draft
+style` reports that one as `chitragupta.ChapterSelfNumbered`; delete the
+prefix from the `\chapter{}` and let the book supply the number.
 
 That file is the supported way to override anything the assembled
 `book.tex` sets. It is optional and most books have none; if it exists,

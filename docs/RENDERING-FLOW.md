@@ -438,3 +438,16 @@ accident". That is what `_citeproc.drop_manual_refs` is: a fragment's
 manual References section is removed from the temp copy outright --
 heading included, tail after it preserved -- rather than left to
 `section_start` happening to find nothing.
+
+**The second fragment-only rewrite, and the one place both live.** A
+heading that states its own chapter number (`# Chapter 1: Why Anyone
+Pays`) is numbered twice in an assembled book, because the `book` class
+supplies "Chapter 1" as well -- so
+`chitragupta/render_output/_chapter_number.py` drops the prefix from the
+same temp copy, in the same `if fragment:` branch of `_substituted`
+(#804). It fires only on a top-level heading that already states a
+number, in both the Markdown and the `\chapter{}` spelling, and never on
+the draft on disk: that heading is what titles the unit's own standalone
+pdf, where nothing else supplies a chapter number. Both rewrites sit in
+`_substituted` rather than at the call site because that function is
+already the one answer to "what does the writer actually see".
