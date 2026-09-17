@@ -245,47 +245,6 @@ class TestBm25ScoresAreUnchangedAtWeightOne:
         assert retrieval_scoring.bm25_scores({}, ["twin"]) == {}
 
 
-class TestPerTermWeights:
-    """#789's seam: an added term contributes less than a typed one."""
-
-    INDEX = {
-        "a": {"length": 10, "term_freqs": {"twin": 3}},
-        "b": {"length": 10, "term_freqs": {"greenhouse": 3}},
-    }
-
-    def test_no_table_is_the_arithmetic_this_ran_before(self, monkeypatch):
-        """`None` and "every term at 1.0" have to agree exactly, or the
-        parameter's presence would be visible to a caller who never uses
-        it -- and every figure in docs/RETRIEVAL.md is read against a
-        baseline that predates it."""
-        weights(monkeypatch)
-        terms = ["twin", "greenhouse"]
-        assert retrieval_scoring.bm25_scores(self.INDEX, terms) == retrieval_scoring.bm25_scores(
-            self.INDEX, terms, {"twin": 1.0, "greenhouse": 1.0}
-        )
-
-    def test_a_weighted_term_contributes_proportionally(self, monkeypatch):
-        """Outside the saturation curve, not inside it: half the weight
-        is half the contribution for every document, rather than "as if
-        the document had said it half as often", which saturation would
-        flatten to almost nothing."""
-        weights(monkeypatch)
-        full = retrieval_scoring.bm25_scores(self.INDEX, ["twin"])
-        half = retrieval_scoring.bm25_scores(self.INDEX, ["twin"], {"twin": 0.5})
-        assert half["a"] == pytest.approx(full["a"] * 0.5)
-
-    def test_a_term_the_table_omits_scores_at_full_weight(self, monkeypatch):
-        """The table is a set of exceptions -- the query's own terms are
-        listed once, in the query."""
-        weights(monkeypatch)
-        typed = retrieval_scoring.bm25_scores(self.INDEX, ["twin"])
-        mixed = retrieval_scoring.bm25_scores(
-            self.INDEX, ["twin", "greenhouse"], {"greenhouse": 0.25}
-        )
-        assert mixed["a"] == pytest.approx(typed["a"])
-        assert mixed["b"] < typed["a"]
-
-
 class TestSearchHonoursTheWeights:
     def test_weighting_the_title_flips_the_paper_that_only_mentions_it(
         self, ledger_con, monkeypatch

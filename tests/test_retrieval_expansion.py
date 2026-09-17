@@ -1,14 +1,12 @@
 """chitragupta/retrieval_expansion.py: query-side acronym expansion (#789).
 
-Two properties carry this file. **Off is identical**, which is what lets
-the feature ship inert: at weight 0 nothing is added, no vocabulary is
-read, and `bm25_scores` gets `None` rather than a table of 1.0s, so the
-ranking is the one the ranker produced before this module existed --
-pinned here at both the unit level and, in tests/test_retrieval.py,
-through a real `search()`. And **an added term never displaces a typed
-one**: a word the caller wrote stays at full weight however many
-acronyms also expand into it, because the alternative silently demotes
-the query the person actually asked.
+Two properties carry this file. **Off means off**: nothing is added and
+no vocabulary is even read, so the ranking is the one the ranker produced
+before this module existed -- pinned here at the unit level and, in
+tests/test_retrieval.py, through a real `search()`. And **a typed term is
+never added twice**: a word the caller wrote contributes once however
+many acronyms also expand into it, so a query cannot be re-weighted by
+the shape of someone's acronym file.
 
 The vocabulary is patched rather than read from `assets/style/acronyms.toml`
 in every test but one. The shipped file is five general-computing entries
@@ -29,7 +27,7 @@ VOCABULARY = {"DT": "digital twin", "DM": "digital model", "UQ": "uncertainty qu
 def vocabulary(monkeypatch):
     """The acronym table `expand` reads, and a weight that turns it on."""
     monkeypatch.setattr(acronyms, "load_vocabulary", lambda: dict(VOCABULARY))
-    monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.5)
+    monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
     return VOCABULARY
 
 
@@ -40,32 +38,41 @@ def expand(query: str) -> list[tuple[str, str]]:
 
 
 class TestOffIsStructural:
-    def test_the_shipped_default_is_zero(self):
-        """0.0 is not a placeholder: docs/RETRIEVAL.md records that no
-        query in either ground truth contains a vendored acronym, so
-        there is no measurement on this corpus that could justify
-        shipping this on. It moves when a measurement says so."""
-        assert config.ACRONYM_EXPANSION_WEIGHT == 0.0
+    def test_the_shipped_default_is_on(self):
+        """#789 ships this on: the vocabulary it expands from is the
+        user's own file merged over a five-entry vendored floor, so a
+        host that has written none gets no measurable change, and the one
+        that has is the case the feature exists for."""
+        assert config.ACRONYM_EXPANSION is True
 
-    def test_nothing_is_added_at_the_default(self):
+    def test_nothing_is_added_when_it_is_switched_off(self, monkeypatch):
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: dict(VOCABULARY))
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         assert expand("DT fidelity") == []
 
-    def test_the_vocabulary_is_never_read_at_the_default(self, monkeypatch):
+    def test_the_vocabulary_is_never_read_when_it_is_off(self, monkeypatch):
         """Not an optimisation -- it is what makes "off" mean *off*. A
         malformed `[style].acronyms` file raises `AcronymsError`, and a
-        caller who has not turned expansion on must not start failing
-        searches because of a file they never pointed retrieval at."""
+        caller who has switched expansion off must not start failing
+        searches because of a file they told retrieval to ignore."""
 
         def explode():
             raise AssertionError("the vocabulary was read with expansion off")
 
         monkeypatch.setattr(acronyms, "load_vocabulary", explode)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         assert expand("DT fidelity") == []
 
-    def test_no_weights_table_is_built_for_an_empty_expansion(self):
-        """`None`, not `{}`: `bm25_scores` tests identity once per call
-        rather than looking up every term of every document."""
-        assert retrieval_expansion.weights([]) is None
+    def test_the_shipped_vocabulary_expands_a_general_computing_acronym(self):
+        """The one test that reads `assets/style/acronyms.toml` rather
+        than a patched table. With the switch on by default, the shipped
+        floor is what a project with no acronyms file of its own gets --
+        five general-computing entries, and this is what they do."""
+        assert expand("PDF parsing") == [
+            ("pdf", "portable"),
+            ("pdf", "document"),
+            ("pdf", "format"),
+        ]
 
 
 class TestWhatIsAdded:
@@ -95,7 +102,7 @@ class TestWhatIsAdded:
         monkeypatch.setattr(
             acronyms, "load_vocabulary", lambda: {"FMI": "the Functional Mock-up Interface"}
         )
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 1.0)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         assert expand("FMI support") == [
             ("fmi", "functional"),
             ("fmi", "mock"),
@@ -114,7 +121,7 @@ class TestWhatIsAdded:
         neither can expand -- silently, like every other unusable entry
         `acronyms.py` already drops."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"I/O": "input output"})
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 1.0)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         assert expand("I/O bound") == []
 
     def test_an_expansion_is_not_itself_expanded(self, monkeypatch):
@@ -125,21 +132,8 @@ class TestWhatIsAdded:
         monkeypatch.setattr(
             acronyms, "load_vocabulary", lambda: {"DTP": "DT platform", "DT": "digital twin"}
         )
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 1.0)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         assert expand("DTP") == [("dtp", "dt"), ("dtp", "platform")]
-
-
-class TestWeights:
-    def test_every_added_term_carries_the_configured_weight(self, vocabulary):
-        assert retrieval_expansion.weights(expand("DT fidelity")) == {
-            "digital": 0.5,
-            "twin": 0.5,
-        }
-
-    def test_a_typed_term_is_absent_from_the_table(self, vocabulary):
-        """Absent, not 1.0 -- `bm25_scores` reads the table as a set of
-        exceptions, so the query's own terms are listed in one place."""
-        assert "fidelity" not in retrieval_expansion.weights(expand("DT fidelity"))
 
 
 class TestDescribe:

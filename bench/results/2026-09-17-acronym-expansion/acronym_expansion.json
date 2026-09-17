@@ -15,7 +15,7 @@
    "ground_truth": "acronym-only (derived)"
   },
   {
-   "row": "vendored vocabulary, weight 0.25",
+   "row": "vendored vocabulary, expansion on",
    "n_queries": 149,
    "recall@1": 0.5839,
    "recall@5": 0.8121,
@@ -30,107 +30,7 @@
    "baseline_affected": null
   },
   {
-   "row": "vendored vocabulary, weight 0.5",
-   "n_queries": 149,
-   "recall@1": 0.5839,
-   "recall@5": 0.8121,
-   "mrr@5": 0.674,
-   "ndcg@5": 0.7088,
-   "mean_query_term_df": 266.1,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "acronym-only (derived)",
-   "baseline_affected": null
-  },
-  {
-   "row": "vendored vocabulary, weight 1.0",
-   "n_queries": 149,
-   "recall@1": 0.5839,
-   "recall@5": 0.8121,
-   "mrr@5": 0.674,
-   "ndcg@5": 0.7088,
-   "mean_query_term_df": 266.1,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "acronym-only (derived)",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 0.25",
-   "n_queries": 149,
-   "recall@1": 0.5906,
-   "recall@5": 0.8121,
-   "mrr@5": 0.6774,
-   "ndcg@5": 0.7113,
-   "mean_query_term_df": 286.1,
-   "queries_expanded": 106,
-   "terms_added": 214,
-   "most_added": [
-    "twin",
-    "digital",
-    "model",
-    "shadow",
-    "uncertainty"
-   ],
-   "affected": {
-    "n_queries": 106,
-    "recall@1": 0.5755,
-    "recall@5": 0.7925,
-    "mrr@5": 0.6586,
-    "ndcg@5": 0.6922,
-    "mean_query_term_df": 292.1
-   },
-   "ground_truth": "acronym-only (derived)",
-   "baseline_affected": {
-    "n_queries": 106,
-    "recall@1": 0.566,
-    "recall@5": 0.7925,
-    "mrr@5": 0.6539,
-    "ndcg@5": 0.6887,
-    "mean_query_term_df": 264.0
-   }
-  },
-  {
-   "row": "domain vocabulary, weight 0.5",
-   "n_queries": 149,
-   "recall@1": 0.5973,
-   "recall@5": 0.8054,
-   "mrr@5": 0.6845,
-   "ndcg@5": 0.7151,
-   "mean_query_term_df": 286.1,
-   "queries_expanded": 106,
-   "terms_added": 214,
-   "most_added": [
-    "twin",
-    "digital",
-    "model",
-    "shadow",
-    "uncertainty"
-   ],
-   "affected": {
-    "n_queries": 106,
-    "recall@1": 0.5849,
-    "recall@5": 0.783,
-    "mrr@5": 0.6686,
-    "ndcg@5": 0.6976,
-    "mean_query_term_df": 292.1
-   },
-   "ground_truth": "acronym-only (derived)",
-   "baseline_affected": {
-    "n_queries": 106,
-    "recall@1": 0.566,
-    "recall@5": 0.7925,
-    "mrr@5": 0.6539,
-    "ndcg@5": 0.6887,
-    "mean_query_term_df": 264.0
-   }
-  },
-  {
-   "row": "domain vocabulary, weight 1.0",
+   "row": "domain vocabulary, expansion on",
    "n_queries": 149,
    "recall@1": 0.604,
    "recall@5": 0.8121,
@@ -179,7 +79,7 @@
    "ground_truth": "live-logged"
   },
   {
-   "row": "vendored vocabulary, weight 0.25",
+   "row": "vendored vocabulary, expansion on",
    "n_queries": 96,
    "recall@1": 0.6042,
    "recall@5": 0.8854,
@@ -194,67 +94,7 @@
    "baseline_affected": null
   },
   {
-   "row": "vendored vocabulary, weight 0.5",
-   "n_queries": 96,
-   "recall@1": 0.6042,
-   "recall@5": 0.8854,
-   "mrr@5": 0.7269,
-   "ndcg@5": 0.4596,
-   "mean_query_term_df": 251.0,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "live-logged",
-   "baseline_affected": null
-  },
-  {
-   "row": "vendored vocabulary, weight 1.0",
-   "n_queries": 96,
-   "recall@1": 0.6042,
-   "recall@5": 0.8854,
-   "mrr@5": 0.7269,
-   "ndcg@5": 0.4596,
-   "mean_query_term_df": 251.0,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "live-logged",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 0.25",
-   "n_queries": 96,
-   "recall@1": 0.6042,
-   "recall@5": 0.8854,
-   "mrr@5": 0.7269,
-   "ndcg@5": 0.4596,
-   "mean_query_term_df": 251.0,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "live-logged",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 0.5",
-   "n_queries": 96,
-   "recall@1": 0.6042,
-   "recall@5": 0.8854,
-   "mrr@5": 0.7269,
-   "ndcg@5": 0.4596,
-   "mean_query_term_df": 251.0,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "live-logged",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 1.0",
+   "row": "domain vocabulary, expansion on",
    "n_queries": 96,
    "recall@1": 0.6042,
    "recall@5": 0.8854,
@@ -283,7 +123,7 @@
    "ground_truth": "self-retrieval"
   },
   {
-   "row": "vendored vocabulary, weight 0.25",
+   "row": "vendored vocabulary, expansion on",
    "n_queries": 256,
    "recall@1": 0.6094,
    "recall@5": 0.8164,
@@ -298,67 +138,7 @@
    "baseline_affected": null
   },
   {
-   "row": "vendored vocabulary, weight 0.5",
-   "n_queries": 256,
-   "recall@1": 0.6094,
-   "recall@5": 0.8164,
-   "mrr@5": 0.6904,
-   "ndcg@5": 0.722,
-   "mean_query_term_df": 275.9,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "self-retrieval",
-   "baseline_affected": null
-  },
-  {
-   "row": "vendored vocabulary, weight 1.0",
-   "n_queries": 256,
-   "recall@1": 0.6094,
-   "recall@5": 0.8164,
-   "mrr@5": 0.6904,
-   "ndcg@5": 0.722,
-   "mean_query_term_df": 275.9,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "self-retrieval",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 0.25",
-   "n_queries": 256,
-   "recall@1": 0.6094,
-   "recall@5": 0.8164,
-   "mrr@5": 0.6904,
-   "ndcg@5": 0.722,
-   "mean_query_term_df": 275.9,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "self-retrieval",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 0.5",
-   "n_queries": 256,
-   "recall@1": 0.6094,
-   "recall@5": 0.8164,
-   "mrr@5": 0.6904,
-   "ndcg@5": 0.722,
-   "mean_query_term_df": 275.9,
-   "queries_expanded": 0,
-   "terms_added": 0,
-   "most_added": [],
-   "affected": null,
-   "ground_truth": "self-retrieval",
-   "baseline_affected": null
-  },
-  {
-   "row": "domain vocabulary, weight 1.0",
+   "row": "domain vocabulary, expansion on",
    "n_queries": 256,
    "recall@1": 0.6094,
    "recall@5": 0.8164,
@@ -382,73 +162,7 @@
    "affected_better": [],
    "affected_worse": [],
    "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.25",
-   "ground_truth": "acronym-only (derived)"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 149,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.5",
-   "ground_truth": "acronym-only (derived)"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 149,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 1.0",
-   "ground_truth": "acronym-only (derived)"
-  },
-  {
-   "better": [
-    "anwer_developing_2025-1"
-   ],
-   "worse": [],
-   "unchanged": 148,
-   "expanded": 106,
-   "affected_better": [
-    "anwer_developing_2025-1"
-   ],
-   "affected_worse": [],
-   "affected_unchanged": 105,
-   "arm": "domain vocabulary, weight 0.25",
-   "ground_truth": "acronym-only (derived)"
-  },
-  {
-   "better": [
-    "van_dinter_predictive_2022",
-    "liu_review_2021",
-    "qi_enabling_2021",
-    "vanderhorn_digital_2021",
-    "anwer_developing_2025-1",
-    "franco_customizing_2026-1"
-   ],
-   "worse": [
-    "eramo_conceptualizing_2022"
-   ],
-   "unchanged": 142,
-   "expanded": 106,
-   "affected_better": [
-    "van_dinter_predictive_2022",
-    "liu_review_2021",
-    "qi_enabling_2021",
-    "vanderhorn_digital_2021",
-    "anwer_developing_2025-1",
-    "franco_customizing_2026-1"
-   ],
-   "affected_worse": [
-    "eramo_conceptualizing_2022"
-   ],
-   "affected_unchanged": 99,
-   "arm": "domain vocabulary, weight 0.5",
+   "arm": "vendored vocabulary, expansion on",
    "ground_truth": "acronym-only (derived)"
   },
   {
@@ -483,7 +197,7 @@
     "wooley_bridging_2025"
    ],
    "affected_unchanged": 96,
-   "arm": "domain vocabulary, weight 1.0",
+   "arm": "domain vocabulary, expansion on",
    "ground_truth": "acronym-only (derived)"
   },
   {
@@ -494,7 +208,7 @@
    "affected_better": [],
    "affected_worse": [],
    "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.25",
+   "arm": "vendored vocabulary, expansion on",
    "ground_truth": "live-logged"
   },
   {
@@ -505,51 +219,7 @@
    "affected_better": [],
    "affected_worse": [],
    "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.5",
-   "ground_truth": "live-logged"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 96,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 1.0",
-   "ground_truth": "live-logged"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 96,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 0.25",
-   "ground_truth": "live-logged"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 96,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 0.5",
-   "ground_truth": "live-logged"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 96,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 1.0",
+   "arm": "domain vocabulary, expansion on",
    "ground_truth": "live-logged"
   },
   {
@@ -560,7 +230,7 @@
    "affected_better": [],
    "affected_worse": [],
    "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.25",
+   "arm": "vendored vocabulary, expansion on",
    "ground_truth": "self-retrieval"
   },
   {
@@ -571,51 +241,7 @@
    "affected_better": [],
    "affected_worse": [],
    "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 0.5",
-   "ground_truth": "self-retrieval"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 256,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "vendored vocabulary, weight 1.0",
-   "ground_truth": "self-retrieval"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 256,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 0.25",
-   "ground_truth": "self-retrieval"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 256,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 0.5",
-   "ground_truth": "self-retrieval"
-  },
-  {
-   "better": [],
-   "worse": [],
-   "unchanged": 256,
-   "expanded": 0,
-   "affected_better": [],
-   "affected_worse": [],
-   "affected_unchanged": 0,
-   "arm": "domain vocabulary, weight 1.0",
+   "arm": "domain vocabulary, expansion on",
    "ground_truth": "self-retrieval"
   }
  ],

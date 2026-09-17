@@ -3,11 +3,25 @@ corpus -- recall *and* precision, over every ground truth this host can
 build, plus a derived set that isolates the case the issue is about.
 
 `chitragupta/retrieval_expansion.py` adds an acronym's expansion to a
-query's terms at `[retrieval].acronym_expansion`, so that a query saying
-`DT` can reach a paper that spells "digital twin" out and never writes
-the abbreviation. Expansion *adds matches*, so it is the change most
-likely to cost precision, and #789 asks for both numbers before any
+query's terms when `[retrieval].acronym_expansion` is on, so that a query
+saying `DT` can reach a paper that spells "digital twin" out and never
+writes the abbreviation. Expansion *adds matches*, so it is the change
+most likely to cost precision, and #789 asks for both numbers before any
 default moves.
+
+**Two arms per vocabulary -- off and on -- because the setting is a
+switch.** It was a weight for one revision of this branch, and the sweep
+that decided otherwise ran from this script: 0.25, 0.5 and 1.0 of the
+weight a typed term carries, with full weight ahead on every figure it
+moved (8 queries better against 2 worse, against 6/1 and 1/0 below it).
+A dial whose only supported setting is its maximum is not a dial, so the
+setting became boolean and the sub-weight arms left with it -- scoring
+them now would need a weighted ranker `chitragupta/` no longer has, i.e.
+a re-implementation, which is what every arm here is written to avoid.
+Those figures are in `results/2026-09-17-acronym-expansion/
+acronym_expansion_weight_sweep.json`, and RESULTS.md reads them out; they
+are not reproducible from this script as it now stands, which is the
+honest cost of having simplified what ships.
 
 **The headline is a null result on the shipped vocabulary, and it is the
 whole reason the feature ships off.** The vendored
@@ -135,27 +149,19 @@ DOMAIN_VOCABULARY = {
 
 VOCABULARIES = {"vendored": VENDORED_VOCABULARY, "domain": DOMAIN_VOCABULARY}
 
-# Geometric rather than fine, and for the reason #762's field-weight grid
-# gives: the question is "does this help at all, and what does it cost",
-# not "what is the optimum". 1.0 is included because it is the boundary
-# worth naming -- an added word counting exactly as much as one the
-# caller typed -- and is expected to be the worst arm for precision.
-WEIGHTS = (0.25, 0.5, 1.0)
-
-ARMS = {BASELINE: (None, 0.0)}
+ARMS = {BASELINE: None}
 for _name, _vocabulary in VOCABULARIES.items():
-    for _weight in WEIGHTS:
-        ARMS[f"{_name} vocabulary, weight {_weight}"] = (_vocabulary, _weight)
+    ARMS[f"{_name} vocabulary, expansion on"] = _vocabulary
 
 
-def arm_expansion(query, vocabulary, weight):
+def arm_expansion(query, vocabulary):
     """`(terms, added)` for one arm, through the shipped code path.
 
-    The arm is the *configuration*, never a re-implementation: this
-    pins `config.ACRONYM_EXPANSION_WEIGHT` and `acronyms.load_vocabulary`
-    and then calls `retrieval_expansion.expand` itself, so a change to
-    the shipped expansion rule moves these figures instead of silently
-    leaving them describing code that no longer runs. The query rule is
+    The arm is the *configuration*, never a re-implementation: this pins
+    `config.ACRONYM_EXPANSION` and `acronyms.load_vocabulary` and then
+    calls `retrieval_expansion.expand` itself, so a change to the shipped
+    expansion rule moves these figures instead of silently leaving them
+    describing code that no longer runs. The query rule is
     `retrieval._query_terms`, not `_tokenize` -- the two differ on
     interrogatives, and measuring an arm through the document rule is a
     mistake this project has made before and caught in a fourth decimal.
@@ -163,14 +169,14 @@ def arm_expansion(query, vocabulary, weight):
     terms = retrieval._query_terms(query)
     if vocabulary is None:
         return terms, []
-    config.ACRONYM_EXPANSION_WEIGHT = weight
-    original = acronyms.load_vocabulary
+    original_vocabulary, original_switch = acronyms.load_vocabulary, config.ACRONYM_EXPANSION
     acronyms.load_vocabulary = lambda: dict(vocabulary)
+    config.ACRONYM_EXPANSION = True
     try:
         added = retrieval_expansion.expand(terms, retrieval._tokenize)
     finally:
-        acronyms.load_vocabulary = original
-        config.ACRONYM_EXPANSION_WEIGHT = 0.0
+        acronyms.load_vocabulary = original_vocabulary
+        config.ACRONYM_EXPANSION = original_switch
     return terms, added
 
 
@@ -254,16 +260,15 @@ def score_arm(label, index, ground_truth):
     than a zero -- "no query could move" and "every query scored zero"
     are different findings.
     """
-    vocabulary, weight = ARMS[label]
+    vocabulary = ARMS[label]
     per_query, ranked_by_key, affected, added_terms = [], {}, set(), Counter()
     for row in ground_truth:
-        terms, added = arm_expansion(row["query"], vocabulary, weight)
+        terms, added = arm_expansion(row["query"], vocabulary)
         if added:
             affected.add(row["key"])
             added_terms.update(token for _acronym, token in added)
         scored_terms = terms + [token for _acronym, token in added]
-        weights = {token: weight for _acronym, token in added} or None
-        scores = retrieval_scoring.bm25_scores(index, scored_terms, weights)
+        scores = retrieval_scoring.bm25_scores(index, scored_terms)
         ranked = [c for c, _ in sorted(scores.items(), key=lambda kv: kv[1], reverse=True)]
         ranked = ranked[:K_REPORT]
         ranked_by_key[row["key"]] = ranked
@@ -468,17 +473,14 @@ def self_check():
     # The arm has to be the shipped rule and nothing else. `_query_terms`
     # drops interrogatives where `_tokenize` does not, and an arm built
     # on the wrong one measures a query nobody ran.
-    terms, added = arm_expansion("what is DT fidelity", DOMAIN_VOCABULARY, 0.5)
+    terms, added = arm_expansion("what is DT fidelity", DOMAIN_VOCABULARY)
     assert terms == ["dt", "fidelity"], f"the arm is not using the shipped query rule: {terms}"
     assert added == [("dt", "digital"), ("dt", "twin")], f"the arm expanded nothing: {added}"
-    assert config.ACRONYM_EXPANSION_WEIGHT == 0.0, (
-        "an arm left the shipped weight pinned, so every later arm measures it"
-    )
-    assert arm_expansion("DT fidelity", None, 0.0)[1] == [], "the baseline arm expanded something"
+    assert arm_expansion("DT fidelity", None)[1] == [], "the baseline arm expanded something"
     # A query that already spells the term out gains nothing -- the
     # property that makes both observed ground truths near-inert, and the
     # reason the derived set exists.
-    assert arm_expansion("digital twin DT", DOMAIN_VOCABULARY, 0.5)[1] == [], (
+    assert arm_expansion("digital twin DT", DOMAIN_VOCABULARY)[1] == [], (
         "a word the caller typed was added again, and would rank at the expansion weight"
     )
 
@@ -516,7 +518,7 @@ def self_check():
         "ordinary terms -- either way the 'before' arm is not the shipped ranker"
     )
     assert rows[BASELINE]["affected"] is None, "the baseline arm expanded a query"
-    for label, (vocabulary, _weight) in ARMS.items():
+    for label, vocabulary in ARMS.items():
         if label == BASELINE:
             continue
         expected = 1.0 if vocabulary is DOMAIN_VOCABULARY else 0.5
@@ -618,9 +620,10 @@ def main(argv=None):
     # Every `[retrieval]` field weight pinned, not just read: an arm that
     # inherited this host's config.toml would measure whatever it happens
     # to say, which is the class of bug `repro_check.py` exists for. The
-    # expansion weight is pinned per arm in `arm_expansion`.
+    # expansion switch is pinned per arm in `arm_expansion`, including for
+    # the baseline, which this host's config.toml now turns on by default.
     with_field_weights({})
-    config.ACRONYM_EXPANSION_WEIGHT = 0.0
+    config.ACRONYM_EXPANSION = False
 
     with ledger.connection() as con:
         items = ledger.all_items(con)

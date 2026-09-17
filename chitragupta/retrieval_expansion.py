@@ -3,9 +3,17 @@
 BM25 is exact-match lexical, so a query for `DT fidelity` reaches no
 paper that spells "digital twin" out and never writes the abbreviation --
 which in a digital-twin corpus is most of them. This module adds an
-acronym's expansion to the query's terms, at a weight `[retrieval].
-acronym_expansion` sets, so the abbreviation a field actually uses is not
-the one form the ranker cannot see.
+acronym's expansion to the query's terms when `[retrieval].acronym_expansion` is on, so the
+abbreviation a field actually uses is not the one form the ranker cannot
+see.
+
+**A switch rather than a weight, and that is a measurement.** An earlier
+revision of this scored an added term at a configurable fraction of one
+the caller typed. The sweep behind docs/RETRIEVAL.md put full weight
+ahead of 0.5 and 0.25 on every figure it moved, which leaves a dial whose
+only supported setting is its maximum -- so an added term now scores
+exactly as a typed one does, and `bm25_scores` needs no per-term table to
+say so.
 
 **Where the vocabulary comes from, and why it is this one.**
 `chitragupta/acronyms.py` -- the vendored `assets/style/acronyms.toml`
@@ -17,12 +25,15 @@ ranks, and expanding from an enrichment artefact would make a ranking
 depend on whether an optional stage had run. Nothing here reads a model,
 an index or a derived file, and nothing here may grow a second source.
 
-**Off is structural, not asserted.** At weight 0 -- the shipped default,
-see `config.ACRONYM_EXPANSION_WEIGHT` for why -- `expand` returns `[]`
-before it loads a vocabulary at all, so `search` passes no added terms
-and `retrieval_scoring.bm25_scores` takes the same path and the same
-arithmetic it took before this module existed. "With it off, ranking is
-identical to today" is then a property of the code rather than of a test.
+**Off is structural, not asserted.** Switched off, `expand` returns `[]`
+before it loads a vocabulary at all, so `search` passes exactly the terms
+the caller typed and `retrieval_scoring.bm25_scores` runs the arithmetic
+it ran before this module existed. "With it off, ranking is identical to
+today" is then a property of the code rather than of a test. On is the
+shipped default (#789): what it expands is the user's own
+`[style].acronyms` file merged over a five-entry vendored floor, so a
+host that has written no vocabulary gets no measurable change and the
+benefit arrives with the file `chitragupta init` scaffolds.
 
 **One direction only.** A query saying `DT` reaches documents saying
 "digital twin"; a query saying "digital twin" still does not reach a
@@ -68,7 +79,7 @@ def expand(terms: list[str], tokenize: Callable[[str], list[str]]) -> list[tuple
     single token -- punctuation, a space -- therefore matches nothing,
     which is the correct reading of a key no query can contain.
     """
-    if not config.ACRONYM_EXPANSION_WEIGHT:
+    if not config.ACRONYM_EXPANSION:
         return []
     vocabulary = {key.lower(): value for key, value in acronyms.load_vocabulary().items()}
     present = set(terms)
@@ -83,20 +94,6 @@ def expand(terms: list[str], tokenize: Callable[[str], list[str]]) -> list[tuple
             present.add(token)
             added.append((term, token))
     return added
-
-
-def weights(added: list[tuple[str, str]]) -> dict[str, float] | None:
-    """The per-term multiplier `bm25_scores` takes, or `None` for nothing.
-
-    `None` rather than an empty dict, so the ranker's "was anything
-    added?" test is an identity check it can make once per call instead
-    of a lookup per (document, term) pair -- the same shape
-    `retrieval_scoring.field_deltas`'s empty list has, and the thing that
-    keeps this free for everyone who has not turned it on.
-    """
-    if not added:
-        return None
-    return {token: config.ACRONYM_EXPANSION_WEIGHT for _, token in added}
 
 
 def describe(added: list[tuple[str, str]]) -> str:

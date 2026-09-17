@@ -295,13 +295,13 @@ def _tokenize_item(item: sqlite3.Row) -> dict:
     return {"length": len(tokens), "term_freqs": dict(Counter(tokens)), "field_freqs": fields}
 
 
-def _bm25_scores(index: dict, terms: list[str], weights: dict | None = None) -> dict[str, float]:
+def _bm25_scores(index: dict, terms: list[str]) -> dict[str, float]:
     """Moved to `chitragupta/retrieval_scoring.py` (#762), and delegated
     to rather than re-exported: `chitragupta/dossier/_drift.py` and
     `chitragupta/discover/_resolve.py` both reach for this name, and a
     module-level alias would bind the function object at import, so a
     test patching the new module's `bm25_scores` would not reach them."""
-    return retrieval_scoring.bm25_scores(index, terms, weights)
+    return retrieval_scoring.bm25_scores(index, terms)
 
 
 def search(
@@ -336,7 +336,10 @@ def search(
         return []
     # Expansion is computed from the typed terms alone and never fed
     # back through itself: an added term is not looked up as an acronym
-    # in turn, so no vocabulary can expand into a second expansion.
+    # in turn, so no vocabulary can expand into a second expansion. An
+    # added term then scores exactly as a typed one does -- #789's own
+    # sweep put full weight ahead of every fraction of it, so there is no
+    # per-term weight here for a caller to set or for the ranker to read.
     added = retrieval_expansion.expand(terms, _tokenize)
     terms = terms + [token for _, token in added]
 
@@ -344,7 +347,7 @@ def search(
         items = ledger.all_items(con)
 
     index = retrieval_cache._load_index(items, _tokenize_item)
-    scores = _bm25_scores(index, terms, retrieval_expansion.weights(added))
+    scores = _bm25_scores(index, terms)
     by_citekey = {item["citekey"]: item for item in items}
     if collection is not None:
         scores = {

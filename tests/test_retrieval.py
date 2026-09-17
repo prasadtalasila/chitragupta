@@ -251,27 +251,29 @@ class TestSearch:
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
         )
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         assert retrieval.search("DT") == []
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.5)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         assert [r.citekey for r in retrieval.search("DT")] == ["a2024"]
 
-    def test_an_expansion_weight_of_zero_leaves_the_ranking_alone(
+    def test_switching_expansion_off_leaves_the_ranking_alone(
         self, ledger_con, tmp_path, monkeypatch
     ):
         """The identity #789 asks for, over a corpus where expansion
-        *would* otherwise move things: the whole ranking and every score
-        is what it was, not merely the same top result."""
+        *would* otherwise move things: every citekey and every score is
+        what it was, not merely the same top result."""
         for citekey, title in (
             ("a2024", "A Digital Twin Of A Greenhouse"),
             ("b2024", "Twin Studies In Psychology"),
             ("c2024", "DT And Nothing Else"),
         ):
             ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, title=title))
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         bare = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
 
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
         off = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 1.0)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
         on = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
 
         assert off == bare, "a vocabulary moved the ranking with expansion off"
@@ -279,20 +281,18 @@ class TestSearch:
             "the same vocabulary moved nothing with expansion on, so `off` proves nothing"
         )
 
-    def test_an_added_term_ranks_below_a_typed_one(self, ledger_con, monkeypatch):
-        """The weight is what keeps expansion from taking the query over:
-        a paper matching the word the caller actually typed outranks one
-        matching only what the acronym added, at any weight below 1."""
-        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.25)
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="typed2024", title="DT Fidelity")
-        )
-        ledger.upsert_reference(
-            ledger_con, make_reference(citekey="added2024", title="Digital Twin Fidelity")
-        )
-        ranked = [r.citekey for r in retrieval.search("DT", k=5)]
-        assert ranked == ["typed2024", "added2024"]
+    def test_an_added_term_scores_as_a_typed_one(self, ledger_con, monkeypatch):
+        """#789's sweep put full weight ahead of every fraction of it, so
+        there is no per-term discount: a paper carrying only the
+        expansion competes on equal terms with one carrying the acronym,
+        and the two tie here rather than ordering by how the query was
+        spelled."""
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "twin"})
+        ledger.upsert_reference(ledger_con, make_reference(citekey="typed2024", title="DT Study"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="added2024", title="Twin Study"))
+        scores = {r.citekey: r.score for r in retrieval.search("DT", k=5)}
+        assert set(scores) == {"typed2024", "added2024"}
+        assert scores["typed2024"] == pytest.approx(scores["added2024"])
 
     def test_the_snippet_is_cut_around_an_added_term(self, ledger_con, tmp_path, monkeypatch):
         """A document reached through an expansion says nothing the
@@ -300,7 +300,6 @@ class TestSearch:
         have no window to anchor on and fall back to the paper's opening
         characters -- a result the reader cannot judge."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.5)
         parsed = tmp_path / "a2024.txt"
         parsed.write_text(
             "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
@@ -860,14 +859,16 @@ class TestCli:
         skills parse."""
         self._seed(ledger_con, tmp_path)
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.5)
         assert retrieval.main(["search", "DT patterns"]) == 0
         captured = capsys.readouterr()
         assert "acronym expansion added: dt -> digital twin" in captured.err
         assert "acronym expansion" not in captured.out
 
-    def test_search_says_nothing_about_expansion_at_the_default(self, ledger_con, tmp_path, capsys):
+    def test_search_says_nothing_when_expansion_is_off(
+        self, ledger_con, tmp_path, capsys, monkeypatch
+    ):
         self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
         assert retrieval.main(["search", "DT patterns"]) == 0
         assert "acronym expansion" not in capsys.readouterr().err
 
@@ -879,7 +880,6 @@ class TestCli:
 
         self._seed(ledger_con, tmp_path)
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        monkeypatch.setattr(config, "ACRONYM_EXPANSION_WEIGHT", 0.5)
         draft = config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("# s\n")

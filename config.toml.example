@@ -130,13 +130,18 @@ collapse_citations = true
 # similar are vendored (assets/style/acronyms.toml, always loaded);
 # point this at your own file to add your field's vocabulary on top of
 # it, merged rather than replacing it -- your domain acronyms are your
-# data, not this project's. Copy assets/style/acronyms.toml.example to
-# content/acronyms.toml (gitignored, per-host, the same footing as this
-# file) and point this key there -- not back at
-# assets/style/acronyms.toml itself, which is the vendored file this
-# merges *over*. See assets/style/README.md.
+# data, not this project's. `chitragupta init` writes
+# content/acronyms.toml for you from assets/style/acronyms.toml.example
+# (gitignored, per-host, the same footing as this file); in a git
+# checkout, copy that example there by hand. Edit it, or grow it from a
+# draft's own glossary with `python -m chitragupta.draft dossier
+# acronyms-suggest <draft> --apply`.
+#
+# Point this at your file, never back at assets/style/acronyms.toml
+# itself, which is the vendored floor this merges *over*. Unset falls
+# back to that floor alone. See assets/style/README.md.
 #                                          Default: assets/style/acronyms.toml
-# acronyms = "content/acronyms.toml"
+acronyms = "content/acronyms.toml"
 
 [parser]
 # Which backend `python -m chitragupta.corpus sync` uses to turn a PDF into
@@ -404,32 +409,29 @@ good_score = 0.50
 weight_title = 1.0
 weight_abstract = 1.0
 
-# What a term added by acronym expansion counts, relative to a term you
-# typed yourself (#789).
+# Expand a query's acronyms before ranking it (#789).
 #
 # BM25 matches exactly, so a query for "DT fidelity" reaches no paper
-# that spells "digital twin" out and never abbreviates it. Above 0, an
-# acronym in your query contributes its expansion's words too, each
-# scoring at this fraction of one of your own: at 0.5 a paper matching
-# only the expansion ranks below one matching the acronym itself; 1.0
-# makes a word you never typed count as much as one you did. A word
-# already in your query is never added again, so it keeps full weight.
+# that spells "digital twin" out and never abbreviates it. With this on,
+# an acronym in your query also searches for the words it stands for,
+# each counting as much as a word you typed yourself -- measured: a
+# smaller share was swept and full weight won every figure it moved, so
+# this is a switch rather than a dial. A word already in your query is
+# never added twice.
 #
-# The vocabulary is assets/style/acronyms.toml merged with your own
-# [style].acronyms file above -- authored, never derived from a model or
-# an enrichment artefact, which is what keeps BM25's ranking independent
-# of whether the optional stages have run. Nothing is added to the index,
-# so there is no rebuild and an edit to your acronyms file takes effect
-# on the next query.
+# The vocabulary is `acronyms` above merged over the vendored floor --
+# authored by you, never derived from a model or an enrichment artefact,
+# which is what keeps BM25's ranking independent of whether the optional
+# stages have run. Nothing is added to the index, so there is no rebuild
+# and an edit to your acronyms file takes effect on the next query.
 #
-# **0.0 is off and is the shipped default, and that is a measurement.**
-# The vendored vocabulary is five general-computing entries, and no query
-# in either of this project's retrieval ground truths contains one -- so
-# there is no evidence here that could justify turning it on. What it
-# buys depends entirely on your own acronyms file; docs/RETRIEVAL.md has
-# the figures from a stand-in vocabulary to start from.
-#                                                            Default: 0.0
-acronym_expansion = 0.0
+# On by default. On a project whose acronyms file is still the shipped
+# seed that means five general-computing entries and a handful of domain
+# ones; what it is worth grows with the file. Switch it off if your
+# corpus punishes the extra matches -- docs/RETRIEVAL.md has the
+# precision figures to judge that by.
+#                                                           Default: true
+acronym_expansion = true
 
 # The two settings below apply to the *passage* unit only
 # (`retrieve search --unit passage`, #769). The document unit takes

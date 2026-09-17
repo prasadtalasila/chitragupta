@@ -371,7 +371,7 @@ Tier 1: stdlib only, no venv and no model, which is why these are not
 | --- | --- | --- | --- |
 | `weight_title` | `RETRIEVAL_WEIGHT_TITLE` | number, finite and at least 0 | `1.0` |
 | `weight_abstract` | `RETRIEVAL_WEIGHT_ABSTRACT` | number, finite and at least 0 | `1.0` |
-| `acronym_expansion` | `RETRIEVAL_ACRONYM_EXPANSION` | number, finite and at least 0 | `0.0` |
+| `acronym_expansion` | `RETRIEVAL_ACRONYM_EXPANSION` | boolean | `true` |
 | `max_passages_per_source` | `MAX_PASSAGES_PER_SOURCE` | positive integer | `3` |
 | `min_passage_tokens` | `MIN_PASSAGE_TOKENS` | positive integer | `20` |
 
@@ -386,17 +386,19 @@ structural passage sidecar to have anything to weight, so on the shipped
 [RETRIEVAL.md](RETRIEVAL.md) carries the sweep behind both defaults.
 
 `acronym_expansion` (#789) adds an acronym's expansion to a query's terms
-— `DT` also searching for "digital twin" — at this fraction of the weight
-a term you typed yourself carries. The vocabulary is
+— `DT` also searching for "digital twin" — with an added term counting as
+much as one you typed. A switch rather than a weight, and that is
+measured: sweeping fractions of a typed term's weight put full weight
+ahead on every figure it moved. The vocabulary is
 `assets/style/acronyms.toml` merged with your own `[style].acronyms`
 file, and nothing else: authored rather than derived, so ranking never
-depends on whether an enrichment stage has run. **`0.0` is off and is the
-default**, because the vendored vocabulary expands nothing in any query
-of this project's own ground truths — what it buys depends on your
-acronyms file, and [RETRIEVAL.md](RETRIEVAL.md) has a stand-in
-measurement to start from. Query-side only: no index is rebuilt, and a
+depends on whether an enrichment stage has run. **On by default** — what
+it is worth grows with your own acronyms file, which `chitragupta init`
+seeds at `content/acronyms.toml`, and on the vendored five alone it
+changes nothing measurable. Query-side only: no index is rebuilt, and a
 query spelling the term out still cannot reach a document that only
-abbreviates it.
+abbreviates it. [RETRIEVAL.md](RETRIEVAL.md) has what it buys and what it
+costs.
 
 The remaining two apply to `retrieve search --unit passage` only
 ([RETRIEVAL.md](RETRIEVAL.md#-the-passage-unit)). The document unit takes

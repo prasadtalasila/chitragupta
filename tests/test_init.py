@@ -36,6 +36,9 @@ def make_source(tmp_path: Path) -> Path:
     (src / "docs" / "CLI.md").write_text("# CLI", encoding="utf-8")
     (src / "assets" / "style").mkdir(parents=True)
     (src / "assets" / "style" / "acronyms.toml").write_text("PDF = []", encoding="utf-8")
+    (src / "assets" / "style" / "acronyms.toml.example").write_text(
+        'DT = "Digital Twin"\n', encoding="utf-8"
+    )
     (src / "AGENTS.md").write_text("agent guidance", encoding="utf-8")
     (src / "CLAUDE.md").write_text("router", encoding="utf-8")
     (src / "SOUL.md").write_text("why", encoding="utf-8")
@@ -59,6 +62,32 @@ class TestScaffold:
         dest = tmp_path / "project"
         init.scaffold(dest)
         assert {p.name for p in dest.iterdir()} == init.TOP_LEVEL
+
+    def test_the_acronyms_example_seeds_the_projects_own_vocabulary(self, source, tmp_path):
+        """`[style].acronyms` ships pointing at `content/acronyms.toml`
+        and `[retrieval].acronym_expansion` ships on, so the file has to
+        be there: a live setting reading a path that does not exist is
+        discoverable only by someone who reads config.toml's comments.
+        Seeded from the same example a checkout user is told to copy by
+        hand, so both routes start from one file."""
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        assert (dest / "content" / "acronyms.toml").read_text(encoding="utf-8") == (
+            source / "assets" / "style" / "acronyms.toml.example"
+        ).read_text(encoding="utf-8")
+
+    def test_a_projects_acronyms_file_survives_a_rerun(self, source, tmp_path):
+        """The file a user has since grown -- by hand or through
+        `acronyms-suggest --apply` -- is their data, and `init` is
+        re-runnable by design."""
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        (dest / "content" / "acronyms.toml").write_text('MINE = "my own"\n', encoding="utf-8")
+        report = init.scaffold(dest)
+        assert (dest / "content" / "acronyms.toml").read_text(
+            encoding="utf-8"
+        ) == 'MINE = "my own"\n'
+        assert any("exists, unchanged" in line and "acronyms.toml" in line for line in report)
 
     def test_config_toml_example_becomes_config_toml(self, source, tmp_path):
         dest = tmp_path / "project"

@@ -164,37 +164,39 @@ empirical question this one cannot answer for you.
 BM25 is exact-match lexical, so a query for `DT fidelity` reaches no
 paper that spells "digital twin" out and never abbreviates it — which in
 a digital-twin corpus is most of them. Query-side acronym expansion
-(#789) adds the expansion's words to the query's terms, at a weight under
-`[retrieval]`:
+(#789) adds the expansion's words to the query's terms:
 
 ```toml
 [retrieval]
-acronym_expansion = 0.0
+acronym_expansion = true
 ```
 
-`0.0` is off, and **off is the shipped default** — see the figures below
-for why. Above 0, an acronym in your query contributes its expansion's
-terms as well, each scoring at that fraction of a term you typed
-yourself: at `0.5`, a paper matching only the expansion ranks below one
-matching the acronym itself. `1.0` makes them count the same. Negative
-and infinite are rejected when the config loads.
+**On by default, and a switch rather than a dial.** An added term counts
+exactly as much as one you typed. That is measured, not assumed: an
+earlier revision made it a weight, and sweeping 0.25 / 0.5 / 1.0 of a
+typed term's weight put full weight ahead on every figure it moved, which
+leaves a dial whose only supported setting is its maximum. Switched off,
+nothing is added and the ranking is the one this layer produced before
+the feature existed — structurally, since `expand` returns before it even
+loads a vocabulary.
 
-The vocabulary is the one the drafting layer already reads —
-`assets/style/acronyms.toml` merged with your own `[style].acronyms`
-file. **That choice is the point, not a convenience.** It is authored
+The vocabulary is the one the drafting layer already reads:
+`assets/style/acronyms.toml` merged with your own file at
+`content/acronyms.toml`, which `chitragupta init` writes for you and
+`dossier acronyms-suggest <draft> --apply` grows from a draft's own
+glossary. **That choice is the point, not a convenience.** It is authored
 rather than derived, so expansion cannot make a ranking depend on whether
-an optional enrichment stage has run, which is the promise
+an optional enrichment stage has run — the promise
 [above](#-bm25----the-default-and-always-available) that this layer never
 reads `content/docling/` or any model output. Nothing about expansion
-touches the index either, so turning it on requires no rebuild and a
-vocabulary edit takes effect on the next query.
+touches the index either, so there is no rebuild and a vocabulary edit
+takes effect on the next query.
 
 **What it can and cannot do.** A query saying `DT` reaches documents
 saying "digital twin". A query saying "digital twin" still cannot reach a
 document that only ever writes `DT` — that would be document-side
 expansion, which would rewrite the index on every edit of the acronym
-file. A word you typed yourself is never added a second time, so it keeps
-full weight rather than being demoted to the expansion weight. And a
+file. A word you typed yourself is never added a second time. And a
 one-character acronym can never expand, because the token floor drops it
 from the query before expansion sees it.
 
@@ -206,37 +208,36 @@ and `--log` writes the same string to the dossier's `retrieval.md`
   [note] acronym expansion added: dt -> digital twin
 ```
 
-**Why the default is 0.0, measured rather than assumed**
-(`bench/RESULTS.md`, 2026-09-17). The vendored vocabulary is five
-general-computing entries (PDF, CPU, URL, API, HTML), and **zero** of
-this project's 256 self-retrieval queries and **zero** of its 96
-live-logged drafting queries contain one — so on the only vocabulary that
-ships, every arm is bit-identical to the baseline and no measurement can
-support turning it on. A domain vocabulary read off the real 15-chapter
-book's glossary changes nothing on those two sets either, for a
+#### What it is worth, and what it costs
+
+Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), and
+the headline is a caveat: **on the shipped vocabulary alone, nothing
+happens.** Zero of 256 self-retrieval queries and zero of 96 live-logged
+drafting queries contain one of the five vendored acronyms, so every
+figure is the baseline's exactly. A domain vocabulary read off a real
+15-chapter book changes nothing on those two sets either, for a
 structural reason: a keyword list or a typed query that uses an acronym
 almost always spells the term out beside it, and expansion never re-adds
 a word you already typed.
 
-On a **derived** set that rewrites each expansion phrase to its acronym —
-149 rows, 106 of them expanded, the only way to see the mechanism at all
-— it works, and the gain is in rank rather than reach:
+So the mechanism was measured on a **derived** set — the self-retrieval
+queries with each expansion phrase rewritten to its acronym, 149 rows of
+which 106 expand — which is the only set here that can see it at all:
 
-| weight | recall@1 | recall@5 | nDCG@5 | mean query-term DF | better / worse |
+| arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF |
 | --- | --- | --- | --- | --- | --- |
-| off | 0.5660 | 0.7925 | 0.6887 | 264.0 | — |
-| 0.25 | 0.5755 | 0.7925 | 0.6922 | 292.1 | 1 / 0 |
-| 0.5 | 0.5849 | 0.7830 | 0.6976 | 292.1 | 6 / 1 |
-| 1.0 | 0.5943 | 0.7925 | 0.7049 | 292.1 | 8 / 2 |
+| off | 0.5660 | 0.7925 | 0.6539 | 0.6887 | 264.0 |
+| **on** | **0.5943** | 0.7925 | **0.6753** | **0.7049** | 292.1 |
 
-Figures over the 106 expanded rows; movement counts are over all 149.
-recall@5 barely moves while recall@1 and nDCG@5 rise — the added terms
-are mostly re-ranking papers the query already reached. The precision
-cost is the last column but one: the mean document frequency of a query's
-terms rises 264 → 292, because "digital" and "twin" are in far more of
-this corpus than `DT` is. That is the trade, and it is why this is a dial
-you turn on your own corpus with your own vocabulary rather than one this
-project turns on for you.
+Figures over the 106 expanded rows; over all 149, expansion makes **8
+queries better and 2 worse**. The gain is in **rank, not reach** —
+recall@5 does not move while recall@1 and nDCG@5 rise, so the added terms
+are mostly lifting the right paper above papers the query already
+reached. The cost is the last column: the mean document frequency of a
+query's terms rises 264 → 292, because "digital" and "twin" are in far
+more of this corpus than `DT` is. On a corpus where your expansion words
+are ambient, that trade may not pay — this is the dial to reach for, and
+the figures to judge it by.
 
 ### 🔡 Where the token-length floor came from
 

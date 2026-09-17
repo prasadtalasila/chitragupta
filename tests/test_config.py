@@ -486,36 +486,21 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.delenv("RETRIEVAL_WEIGHT_TITLE")
         importlib.reload(config)
 
-    def test_acronym_expansion_defaults_to_off(self, _empty_config_toml):
-        """0.0 is the shipped default and the reason the feature can ship
-        at all: the vendored acronym vocabulary is five general-computing
-        entries, no query in either retrieval ground truth contains one,
-        and docs/RETRIEVAL.md records that there is therefore no
-        measurement on this corpus that could justify turning it on."""
-        assert config.ACRONYM_EXPANSION_WEIGHT == 0.0
+    def test_acronym_expansion_defaults_to_on(self, _empty_config_toml):
+        """#789 ships this on. What it expands is the user's own
+        `[style].acronyms` file merged over a five-entry vendored floor,
+        so a project that has written none sees no measurable change --
+        the benefit arrives with the file `chitragupta init` scaffolds,
+        which is what makes on-by-default the useful side of the switch
+        rather than the risky one."""
+        assert config.ACRONYM_EXPANSION is True
 
-    @pytest.mark.parametrize("bad", ["-0.5", "inf", "-inf"])
-    def test_a_negative_or_infinite_expansion_weight_is_rejected(
-        self, monkeypatch, _empty_config_toml, bad
-    ):
-        """Same failure mode as a field weight, at a different seam: a
-        negative multiplier ranks a document containing an added term
-        below one that does not, and an infinite one makes every document
-        the expansion reaches tie above every document the caller's own
-        words found."""
-        monkeypatch.setenv("RETRIEVAL_ACRONYM_EXPANSION", bad)
-        with pytest.raises(ValueError) as excinfo:
-            importlib.reload(config)
-        assert "acronym_expansion" in str(excinfo.value)
+    def test_acronym_expansion_can_be_switched_off(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("RETRIEVAL_ACRONYM_EXPANSION", "false")
+        importlib.reload(config)
+        assert config.ACRONYM_EXPANSION is False
         monkeypatch.delenv("RETRIEVAL_ACRONYM_EXPANSION")
         importlib.reload(config)
-
-    def test_an_expansion_weight_is_read_from_the_environment(
-        self, monkeypatch, _empty_config_toml
-    ):
-        monkeypatch.setenv("RETRIEVAL_ACRONYM_EXPANSION", "0.5")
-        importlib.reload(config)
-        assert config.ACRONYM_EXPANSION_WEIGHT == 0.5
 
     def test_a_zero_field_weight_is_allowed(self, monkeypatch, _empty_config_toml):
         """0.0 means "discount this field entirely", which is a coherent
