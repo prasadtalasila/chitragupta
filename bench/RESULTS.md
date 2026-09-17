@@ -6099,9 +6099,12 @@ queries is one query, and this file has discarded a whole arm as
 underpowered before.
 
 **Decision: ship the seam, leave every weight at 1.0. Not established --
-not declined.** The distinction matters, because #770 is about to add two
-more fields to this same seam and should not read this as a dead
-mechanism.
+not declined.** The distinction matters, because issue #770 was about to
+add two more fields to this same seam and should not read this as a dead
+mechanism. *(Amended 2026-09-17: it did, and neither survived -- see
+[that entry](#2026-09-17-770-do-figure-captions-and-table-cells-deserve-their-own-bm25-field).
+The seam is still not a dead mechanism; the two fields it was asked for
+are.)*
 
 - **Title weighting is weakly positive and not reproducible across arms.**
   At `title = 2.0` both arms improve nDCG (+0.0025, +0.0029) and neither
@@ -6128,7 +6131,9 @@ table before anyone implements it.
 retrieval issues and three of the others consume its infrastructure
 rather than its ranking: #770 (caption and table fields) states that "the
 additive per-field scoring seam, the index schema that carries per-field
-term frequencies, and the sweep harness all arrive with it", #772 needs a
+term frequencies, and the sweep harness all arrive with it" -- which held
+exactly: that issue reused all three and needed nothing else, which is
+what let it be answered in one sitting and declined -- #772 needs a
 field to re-point, and #788 (the `k1`/`b` sweep) reuses this grid's
 harness. At 1.0 the seam costs nothing -- `field_deltas()` returns an
 empty list, so the ranker never reads a field count at all.
