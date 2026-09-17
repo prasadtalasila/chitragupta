@@ -221,11 +221,28 @@ class TestRealConfigToml:
     def test_citations_collapse_by_default(self):
         assert config.RENDER_COLLAPSE_CITATIONS is True
 
-    def test_acronyms_defaults_to_the_vendored_toml(self):
-        assert config.ACRONYMS_PATH == config.ACRONYMS_DEFAULT_PATH
+    def test_acronyms_points_at_the_projects_own_file(self):
+        """`config.toml.example` ships `[style].acronyms` pointing at
+        `content/acronyms.toml` since #789 -- `chitragupta init` writes
+        that file, and `[retrieval].acronym_expansion` is on, so a live
+        setting reading an unset path would be the worst of both. The
+        *code's* default is still the vendored floor -- unset means
+        vendored, pinned in `TestModuleReloadWithEnvOverrides` -- and
+        this is the shipped config.toml, a different question and the one
+        a user actually gets.
+        """
+        assert config.ACRONYMS_PATH == config.PROJECT_ROOT / "content" / "acronyms.toml"
+
+    def test_the_vendored_floor_is_still_vendored_and_still_loads(self):
+        """It is merged *under* the file above, never replaced by it, so
+        a project whose own file names nothing still gets PDF/CPU/URL/
+        API/HTML. Vendored, not fetched: the loader has to work with no
+        network."""
         assert config.ACRONYMS_DEFAULT_PATH == (config.shipped("assets", "style", "acronyms.toml"))
-        # Vendored, not fetched: the loader has to work with no network.
         assert config.ACRONYMS_DEFAULT_PATH.is_file()
+
+    def test_acronym_expansion_is_on_in_the_shipped_config(self):
+        assert config.ACRONYM_EXPANSION is True
 
 
 class TestGetWorkers:
@@ -484,6 +501,31 @@ class TestModuleReloadWithEnvOverrides:
         # the environment -- so a bad value left set makes the *teardown*
         # raise, reporting as an error on a test that passed.
         monkeypatch.delenv("RETRIEVAL_WEIGHT_TITLE")
+        importlib.reload(config)
+
+    def test_acronyms_unset_falls_back_to_the_vendored_floor(self, _empty_config_toml):
+        """The *code's* default, which the shipped config.toml no longer
+        exercises now that it names `content/acronyms.toml`: a project
+        (or a test host) whose config sets nothing still gets the
+        vendored five, and `apply_suggestions` still refuses to write
+        into them."""
+        importlib.reload(config)
+        assert config.ACRONYMS_PATH == config.ACRONYMS_DEFAULT_PATH
+
+    def test_acronym_expansion_defaults_to_on(self, _empty_config_toml):
+        """#789 ships this on. What it expands is the user's own
+        `[style].acronyms` file merged over a five-entry vendored floor,
+        so a project that has written none sees no measurable change --
+        the benefit arrives with the file `chitragupta init` scaffolds,
+        which is what makes on-by-default the useful side of the switch
+        rather than the risky one."""
+        assert config.ACRONYM_EXPANSION is True
+
+    def test_acronym_expansion_can_be_switched_off(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("RETRIEVAL_ACRONYM_EXPANSION", "false")
+        importlib.reload(config)
+        assert config.ACRONYM_EXPANSION is False
+        monkeypatch.delenv("RETRIEVAL_ACRONYM_EXPANSION")
         importlib.reload(config)
 
     def test_a_zero_field_weight_is_allowed(self, monkeypatch, _empty_config_toml):

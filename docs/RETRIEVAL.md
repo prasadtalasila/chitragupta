@@ -133,18 +133,18 @@ one that does not.
 assumed.** They come from TREC-era ad-hoc retrieval over news and web
 collections; this corpus is a few hundred academic PDFs running from a
 four-page paper to a whole book, which is the length spread `b` exists
-for. The sweep (`bench/RESULTS.md`, 2026-09-16) moved one parameter at a
+for. The sweep (`bench/RESULTS.md`, 2026-09-17) moved one parameter at a
 time at k in {3, 5, 10}, and found two different things:
 
-- **`b` has no better value here.** 0.75 is the recall peak. Everything
-  below it loses monotonically at all three cutoffs, and the two settings
-  above it trade a query at one cutoff for a query at another — `0.875`
-  gains 2 at k = 3 and gives back 2 at k = 5 and 1 at k = 10. Read at
-  k = 5 alone it would have looked like a small win, which is why three
-  cutoffs were measured.
+- **`b` has no better value here.** 0.75 is the recall@5 peak.
+  Everything below it loses monotonically at all three cutoffs, and the
+  two settings above it trade a query at one cutoff for a query at
+  another — `1.0` gains one at k = 3 and gives back two at k = 5. Read on
+  nDCG alone either would have looked like a small win, which is why
+  three cutoffs were measured.
 - **`k1` prefers 8.0, and was left at 1.5 anyway.** On the one ground
   truth the measuring host could build, `k1 = 8` is worth 7 queries of
-  recall@5 and +0.0195 nDCG@5 — a real peak, not a grid edge. But that
+  recall@5 and +0.0218 nDCG@5 — a real peak, not a grid edge. But that
   ground truth asks a paper's own author keywords to find that paper,
   so "let raw repetition count for more" is the change it is built to
   reward, and the independent arm of real drafting queries was
@@ -207,6 +207,182 @@ that is a result about the field, not about coverage. No value was
 supported by both arms, so none was adopted. Read that table before
 setting either dial on your own corpus; the right value there is an
 empirical question this one cannot answer for you.
+
+### 🔤 An acronym in the query can reach the words it stands for
+
+BM25 is exact-match lexical, so a query for `DT fidelity` reaches no
+paper that spells "digital twin" out and never abbreviates it — which in
+a digital-twin corpus is most of them. Query-side acronym expansion
+(#789) adds the expansion's words to the query's terms:
+
+```toml
+[retrieval]
+acronym_expansion = true
+```
+
+**On by default, and a switch rather than a dial.** An added term counts
+exactly as much as one you typed. That is measured, not assumed: an
+earlier revision made it a weight, and sweeping 0.25 / 0.5 / 1.0 of a
+typed term's weight put full weight ahead on every figure it moved, which
+leaves a dial whose only supported setting is its maximum. Switched off,
+nothing is added and the ranking is the one this layer produced before
+the feature existed — structurally, since `expand` returns before it even
+loads a vocabulary.
+
+The vocabulary is the one the drafting layer already reads:
+`assets/style/acronyms.toml` merged with your own file at
+`content/acronyms.toml`, which `chitragupta init` writes for you and
+`dossier acronyms-suggest <draft> --apply` grows from a draft's own
+glossary. **That choice is the point, not a convenience.** It is authored
+rather than derived, so expansion cannot make a ranking depend on whether
+an optional enrichment stage has run — the promise
+[above](#-bm25----the-default-and-always-available) that this layer never
+reads `content/docling/` or any model output. Nothing about expansion
+touches the index either, so there is no rebuild and a vocabulary edit
+takes effect on the next query.
+
+**What it can and cannot do.** A query saying `DT` reaches documents
+saying "digital twin". A query saying "digital twin" still cannot reach a
+document that only ever writes `DT` — that would be document-side
+expansion, which would rewrite the index on every edit of the acronym
+file. A word you typed yourself is never added a second time. And a
+one-character acronym can never expand, because the token floor drops it
+from the query before expansion sees it.
+
+**The CLI says what it added**, on stderr beside its other query notes,
+and `--log` writes the same string to the dossier's `retrieval.md`
+`expanded` column:
+
+```text
+  [note] acronym expansion added: dt -> digital twin
+```
+
+#### What it is worth, and what it costs
+
+Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), and
+the headline is a caveat: **on the shipped vocabulary alone, nothing
+happens.** Zero of 256 self-retrieval queries and zero of 96 live-logged
+drafting queries contain one of the five vendored acronyms, so every
+figure is the baseline's exactly. A domain vocabulary read off a real
+15-chapter book changes nothing on those two sets either, for a
+structural reason: a keyword list or a typed query that uses an acronym
+almost always spells the term out beside it, and expansion never re-adds
+a word you already typed.
+
+So the mechanism was measured on a **derived** set — the self-retrieval
+queries with each expansion phrase rewritten to its acronym, 149 rows of
+which 106 expand — which is the only set here that can see it at all:
+
+| arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF |
+| --- | --- | --- | --- | --- | --- |
+| off | 0.5660 | 0.7925 | 0.6539 | 0.6887 | 264.0 |
+| **on** | **0.5943** | 0.7925 | **0.6753** | **0.7049** | 292.1 |
+
+Figures over the 106 expanded rows; over all 149, expansion makes **8
+queries better and 2 worse**. The gain is in **rank, not reach** —
+recall@5 does not move while recall@1 and nDCG@5 rise, so the added terms
+are mostly lifting the right paper above papers the query already
+reached. The cost is the last column: the mean document frequency of a
+query's terms rises 264 → 292, because "digital" and "twin" are in far
+more of this corpus than `DT` is. On a corpus where your expansion words
+are ambient, that trade may not pay — this is the dial to reach for, and
+the figures to judge it by.
+
+### 🔡 Where the token-length floor came from
+
+A token shorter than **two characters** is not indexed and not scored,
+on either side. Two is a measurement, not a default: the floor was three
+until #790, which put `AI`, `ML`, `DT`, `5G` and `QA` outside the index
+entirely, so a search for one of them returned nothing and the CLI could
+only warn that it would.
+
+Swept by `bench/bench_retrieval_token_floor.py` over 258 author-keyword
+self-retrieval queries (2026-09-16), **on the 32 queries whose own terms
+the floor actually changes**:
+
+| floor | recall@1 | recall@5 | MRR@5 | nDCG@5 |
+| --- | --- | --- | --- | --- |
+| 3 (before) | 0.5938 | 0.8438 | 0.6964 | 0.7335 |
+| **2 (now)** | **0.6875** | **0.9062** | **0.7812** | **0.8130** |
+
+Six of those 32 queries rank their own paper better and one worse. Over
+all 258, where most queries carry no short word at all, the same change
+is recall@5 0.8101 → 0.8178 and nDCG@5 0.7254 → 0.7319 — smaller,
+because it is the same handful of queries averaged over eight times as
+many.
+
+**Read both columns, because the unaffected queries are not a control.**
+A lowered floor admits tokens to every *document*, so the mean document
+grows from 5,479 tokens to 5,870, and document length is what BM25
+divides by. Queries that never changed a term therefore move too: over
+the whole set the change is 7 better against 4 worse, where the affected
+subset alone is 6 against 1. The difference between those two pairs is
+the collateral cost of renormalizing every document.
+
+**It forced one fix beyond the tokenizer, in window selection.**
+`_windows` -- which chooses the snippet `search` shows and the passage
+`evidence` returns -- used to anchor on `str.find`, a substring search. A
+three-character term made that a rare nuisance; a two-character one makes
+it routine, because "ai" sits inside maintainer, said, detail, fair and
+failed. Measured across the queries this change enables, 37 of 134
+appearances of a two-character term in a returned snippet were
+substring-only, meaning the snippet did not contain the word the reader
+searched for. Anchoring and scoring now match on a word boundary, which
+brings that to 18 -- and those remaining are incidental: the window is
+chosen on a real word match and the short string merely also occurs
+somewhere in its 500 characters. The boundary is the **tokenizer's**,
+written as lookarounds over `[a-z0-9]` rather than as Python's `\b`:
+`\b` also treats an underscore and an accented letter as word
+characters, so `ai_model` -- which the index counts as `ai` and `model`
+-- would rank and then yield no window at all. "co" matches in
+"co-simulation" and not in "control", exactly as the index counted it.
+
+**What it costs on disk and on the clock**, measured on the same
+646-item corpus when the schema bump forced the rebuild:
+`content/retrieval_index.json` grows 2.8%, from 12,244,618 to 12,586,273
+bytes, and the whole re-tokenization takes about 7 seconds once. The
+on-disk growth is far below the 7.1% growth in tokens because the added
+tokens are repeats of a small vocabulary and the file stores counts, not
+occurrences.
+
+**It stopped at 2 because 1 was measured and bought nothing.** At floor 1
+recall@5 lands on the same 0.8178, nDCG@5 slightly below floor 2's, and
+the mean document grows another 5.9% to 6,216 tokens — 13.5% above where
+it started. What floor 1 admits is visible in why: of the 1,016 tokens the
+two lowered floors add, the most widespread are `1`, `3`, `2`, `4`, `s`,
+`e`, `i` and `g`, sitting in 449–501 of 646 documents apiece. Those are
+list markers, figure numbers and OCR fragments, and IDF makes them nearly
+free rather than positively useful.
+
+**The issue's own premise did not survive the measurement, and the
+conclusion held anyway.** #790 argued that short stopwords are already
+excluded by the stopword list, "so the floor's entire remaining effect is
+to discard short *content* words". On this corpus it is not: retrieval
+imports a 19-word core list, and the floor was the only thing keeping
+`or`, `it`, `if`, `no`, `we`, `up`, `so` and `do` — each in 400–500 of
+646 documents — out of the index. Lowering it admits all of them. That
+they cost nothing measurable is the issue's *other* argument being right:
+a term that appears everywhere earns a low IDF on its own, and no
+word list had to be grown to handle it.
+
+**Every dossier's recorded queries re-rank**, exactly as they did for the
+reference cut in #768. A drift report compares a draft's recorded
+retrieval against what the corpus returns now, so the first
+`chitragupta draft dossier status --all` after this lands reports
+movement on drafts nobody edited. That is the schema bump showing
+through, not a draft going stale, and it settles on the next run.
+
+**What this has not been measured against.** One ground truth, and one
+that leans toward the change: a self-retrieval query is a paper's own
+`keywords` field, where an acronym appears as a standalone token far more
+often than in the prose a person actually types. That inflates how *often*
+the floor helps rather than which direction it moves, which is why the
+affected-subset counts are reported beside the means. The independent
+live-logged set that decided #762 and #787 could not be built when this
+ran — it needs a restored book's own retrieval logs, gitignored per-host
+data absent from this host — so the confirmation those two entries had,
+this one does not. `bench/RESULTS.md`'s 2026-09-16 entry carries the full
+tables and the argument.
 
 ### 📚 A paper's own bibliography is not indexed
 
@@ -314,9 +490,14 @@ on per-process string hashing, **the same query on the same document
 returned a different snippet run to run.**
 
 Both `search` and `evidence` now go through one chooser. Candidate
-windows are anchored on every occurrence of every term, scored by how
-many *distinct* query terms fall inside, de-overlapped, and returned in
-document order. Ties break on position. Nothing reads the set's order, so
+windows are anchored on every occurrence of every term **as a whole
+word**, scored by how many *distinct* query terms fall inside on the same
+word-boundary rule, de-overlapped, and returned in
+document order. That boundary is the tokenizer's own -- lookarounds over
+`[a-z0-9]`, not Python's `\b`, which would disagree about an underscore
+-- so a term is found in the window exactly where the index counted it
+([above](#-where-the-token-length-floor-came-from) has what that was
+worth). Ties break on position. Nothing reads the set's order, so
 the result is deterministic by construction -- and it is the
 best-covering passage rather than an arbitrary one, so a passage late in
 a long paper is reachable.
@@ -539,7 +720,20 @@ paragraph per source; at the shipped cap of 3 it recovers 3.72. Source
 diversity is something this unit spends, and the cap is what limits the
 spending.
 
-### 🔢 Where the token floor's default came from
+### 🔢 Where the passage-length floor's default came from
+
+A different floor from the tokenizer's
+([above](#-where-the-token-length-floor-came-from)), and the two are
+easy to confuse: that one is the shortest *token* that may be indexed,
+measured in characters, and this one is the shortest *passage*, measured
+in tokens.
+
+**The sweep below predates #790**, which lowered the tokenizer's length
+floor and so grew every passage's token count by about 7%. The floor of
+20 did not move; what it counts did, so it now admits passages this table
+excluded. The shape of the answer is unaffected -- the arms disagree for
+a reason about their queries, not about a 7% shift -- but the exact
+crossover has not been re-measured.
 
 Swept on both arms at cap 3, recall@5:
 

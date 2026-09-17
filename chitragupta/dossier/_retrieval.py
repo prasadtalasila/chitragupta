@@ -38,6 +38,7 @@ def log_retrieval(
     chars: int,
     collection: str | None = None,
     origin: str | None = None,
+    expanded: str | None = None,
 ) -> Path:
     """Append one retrieval call to the dossier's `retrieval.md`.
 
@@ -47,6 +48,14 @@ def log_retrieval(
     parameter existed reads back (#254). Without it, a scoped call and a
     corpus-wide one at the same query and `--k` wrote byte-identical
     rows, and nothing downstream could tell which had actually run.
+
+    `expanded` is what acronym expansion added to the query before it
+    was ranked -- `chitragupta/retrieval_expansion.describe`'s one-line
+    rendering, empty for a call that added nothing (#789). Empty is also
+    how every row written before this column existed reads, and unlike
+    `origin` that widening is exact rather than approximate: a row logged
+    before this existed was ranked with no expansion, because there was
+    none to do.
 
     `origin` is `"declared"` or `"extended"` (#455) -- whether the query
     came verbatim from an `outline.md` section or was added because a
@@ -120,16 +129,19 @@ def log_retrieval(
     safe_query = " ".join(query.split()).replace("|", "\\|")
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
     safe_origin = " ".join((origin or "").split()).replace("|", "\\|")
+    safe_expanded = " ".join((expanded or "").split()).replace("|", "\\|")
     # `k1`/`b` are read from config here rather than taken as parameters
-    # like `collection` and `origin` above (#788). Those two describe
-    # what the *caller* asked for and only the caller knows them; these
-    # describe the ranker that actually ran, are the same for every call
-    # in the process, and a caller who forgot to pass them would write a
-    # blank cell indistinguishable from a row logged before the columns
-    # existed -- the exact ambiguity the columns are here to remove.
+    # like `collection`, `origin` and `expanded` above (#788). Those three
+    # describe what the *caller* asked for and only the caller knows them;
+    # these describe the ranker that actually ran, are the same for every
+    # call in the process, and a caller who forgot to pass them would
+    # write a blank cell indistinguishable from a row logged before the
+    # columns existed -- the exact ambiguity the columns are here to
+    # remove. Appended after `expanded`, like every column before them,
+    # so no existing cell index moves.
     row = (
         f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
-        f"{chars} | {safe_collection} | {safe_origin} | "
+        f"{chars} | {safe_collection} | {safe_origin} | {safe_expanded} | "
         f"{config.RETRIEVAL_K1} | {config.RETRIEVAL_B} |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
@@ -161,13 +173,8 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
-    # Both #788 columns stay empty here, unlike every other cell which a
-    # marker fills with a zero: a boundary is not a call, so there is no
-    # ranker whose settings it could be recording. A 0/0 pair would read
-    # as "this call ran at k1=0", a real and very wrong setting.
     row = (
-        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} "
-        "| 0 | 0 | 0 | | | | |\n"
+        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 | | |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():

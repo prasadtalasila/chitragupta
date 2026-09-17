@@ -37,7 +37,17 @@ from chitragupta import config
 # wrong here, where it would silently score a cached document as though
 # its title matched nothing. The parsed file is again byte-identical and
 # the fingerprint again cannot say so, for the same reason as 2.
-_INDEX_SCHEMA_VERSION = 3
+#
+# 4 since #790: `retrieval._tokenize`'s length floor moved from 3 to 2,
+# so a byte-identical parsed file now tokenizes differently -- every
+# entry written before it is missing each two-character token's counts
+# and states a `length` that is ~7% short. `_fingerprint` below is a
+# statement about the *file* (size, mtime, status), which has not
+# changed, so it cannot see this and nothing but this constant will
+# invalidate the entry. Same shape as 2 and 3, and the third time the
+# rule for what a parsed file's text counts as has moved under a
+# fingerprint that only watches the file.
+_INDEX_SCHEMA_VERSION = 4
 
 
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:

@@ -172,28 +172,36 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      column, "did this draft follow the outline it declared?" has no
      evidence to answer from.
 
-     `k1` and `b` are the two Okapi BM25 settings that were in force when
-     the call ran (#788) -- `[retrieval].k1` and `[retrieval].b`, which
-     shape term-frequency saturation and length normalization. Written
-     from config at log time rather than passed in by the caller, because
-     they describe the ranker that actually ran rather than anything the
-     caller asked for, and a caller who forgot would write a blank
-     indistinguishable from a row that predates the columns.
+     `expanded` is what `chitragupta/retrieval_expansion.py` added to the
+     query before ranking it -- `DT -> digital twin`, an acronym and the
+     terms its expansion contributed (#789). Empty for a call that added
+     nothing, which is every call until `[retrieval].acronym_expansion`
+     is turned on, and also how every row written before this column
+     existed reads. Without it, a result that surfaced on a word the
+     caller never typed leaves no record of why.
 
-     The shipped values are written out rather than left blank: "blank
-     means default" is the one encoding that cannot work here, since
-     blank already means "logged before these columns existed", and a
-     default that moved later would retroactively change what every old
-     blank row claimed. A `revision` marker row leaves both empty, since
-     it is a boundary and not a call.
+     `k1` and `b` are the two Okapi BM25 settings in force when the call
+     ran (#788) -- `[retrieval].k1` and `[retrieval].b`, which shape
+     term-frequency saturation and length normalization. Unlike the four
+     columns above, these are written from config rather than passed in
+     by the caller: they describe the ranker that actually ran rather
+     than anything the caller asked for, and a caller who forgot would
+     write a blank indistinguishable from a row predating the columns.
+
+     The shipped values are written out rather than left blank. "Blank
+     means default" is the one encoding that cannot work, because blank
+     already means "logged before these columns existed" and a default
+     that moved later would retroactively change what every old blank row
+     claimed. A `revision` marker row leaves them empty by writing the
+     shorter pre-column shape, as it already does for `expanded`.
 
      Without these, a session that tuned either setting mid-draft leaves
-     a log whose rows cannot be compared with each other, and the
-     replay that `bench/bench_retrieval_live_logs.py` builds its ground
-     truth from silently mixes two rankers. -->
+     a log whose rows cannot be compared with each other, and the replay
+     `bench/bench_retrieval_live_logs.py` builds its ground truth from
+     silently mixes two rankers. -->
 
-| date | mode | query | asked | results | chars | collection | origin | k1 | b |
-|---|---|---|---|---|---|---|---|---|---|
+| date | mode | query | asked | results | chars | collection | origin | expanded | k1 | b |
+|---|---|---|---|---|---|---|---|---|---|---|
 """
 
 

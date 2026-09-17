@@ -1,0 +1,13 @@
+# This sample project's own acronym vocabulary, merged over the vendored
+# floor in assets/style/acronyms.toml (PDF, CPU, URL, API, HTML), which
+# always loads underneath it. `[style].acronyms` in config.toml points
+# here; `chitragupta init` writes the same file from
+# assets/style/acronyms.toml.example in a project of your own.
+#
+# A genre skill reads this at step 0, and -- with
+# [retrieval].acronym_expansion on -- a query naming one of these
+# acronyms also searches for the words it stands for.
+
+DT = "Digital Twin"
+DS = "Digital Shadow"
+CPS = "Cyber-Physical System"

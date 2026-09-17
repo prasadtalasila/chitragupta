@@ -491,6 +491,28 @@ def _get_bm25_constant(key: str, default: float, upper: float) -> float:
 # different length normalization, which is exactly what `b` is for.
 RETRIEVAL_K1 = _get_bm25_constant("k1", 1.5, math.inf)
 RETRIEVAL_B = _get_bm25_constant("b", 0.75, 1.0)
+
+# Whether a query's acronyms are expanded from the tier-1 acronym
+# vocabulary before it is ranked (#789) -- `DT` also searching for the
+# words "digital twin", so an abbreviation reaches the papers that spell
+# the term out.
+#
+# **A switch, not a dial, and that is a measurement.** An earlier
+# revision of this made it a weight, so an added term could score at a
+# fraction of one the caller typed; the sweep behind docs/RETRIEVAL.md
+# found full weight the best of 0.25/0.5/1.0 on every figure, which
+# leaves a dial whose only supported setting is its maximum. A user who
+# wants less than that wants a different vocabulary, not a smaller
+# number.
+#
+# On by default. What it expands is `[style].acronyms` merged over the
+# vendored floor, so on a host that has written no acronyms file it is
+# five general-computing entries and changes nothing measurable; the
+# benefit arrives with the user's own vocabulary, which is why
+# `chitragupta init` scaffolds `content/acronyms.toml`.
+ACRONYM_EXPANSION = _get_bool(
+    "RETRIEVAL_ACRONYM_EXPANSION", "retrieval", "acronym_expansion", default=True
+)
 # The same, for chitragupta/retrieval_passages.py's passage-level index
 # (#769). A separate file rather than a second key inside
 # RETRIEVAL_INDEX_PATH above:
@@ -1205,14 +1227,21 @@ MAX_PASSAGES_PER_SOURCE = _get_positive_int(
 # multiplier would be a knob whose every setting gave the same answer.
 #
 # Passages shorter than this many tokens (after retrieval's own
-# tokenizer, so stopwords and 1-2 character words are already gone) are
+# tokenizer, so stopwords and single-character words are already gone --
+# two-character ones rank since #790) are
 # not indexed. BM25's length normalization *rewards* a short dense
 # match, which is harmless at document scale and not at passage scale: a
 # three-word heading or a one-line bibliography entry whose words are the
 # query outscores every real paragraph in the corpus. A floor is the
 # cheap half of the answer; excluding section_header/title passages
 # outright is the other half, and that one is structural rather than
-# configurable. Default measured in bench/bench_retrieval_passage.py.
+# configurable. Default measured in bench/bench_retrieval_passage.py --
+# and measured *before* #790 lowered the tokenizer's length floor to 2,
+# which grew every passage's token count by about 7%. The number did not
+# move; what it counts did, so this floor now admits passages the sweep
+# behind it excluded. Re-sweeping it is a separate measurement, and the
+# constant is a defensible default rather than a re-derived one until
+# someone runs it.
 MIN_PASSAGE_TOKENS = _get_positive_int(
     "MIN_PASSAGE_TOKENS",
     "retrieval",

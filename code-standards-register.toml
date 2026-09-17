@@ -39,7 +39,7 @@ statements = 37
 
 [[c1]]
 name = "chitragupta/retrieval.py::_windows"
-statements = 28
+statements = 27
 
 [[c1]]
 name = "scripts/release.py::build_release"
@@ -50,7 +50,7 @@ statements = 26
 
 [[c2]]
 name = "chitragupta/config.py"
-code_lines = 554
+code_lines = 557
 
 [[c2]]
 name = "chitragupta/overlap_skipgram.py"

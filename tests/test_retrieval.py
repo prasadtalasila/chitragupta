@@ -10,7 +10,15 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, ledger, retrieval, retrieval_cache, retrieval_cli, retrieval_tables
+from chitragupta import (
+    acronyms,
+    config,
+    ledger,
+    retrieval,
+    retrieval_cache,
+    retrieval_cli,
+    retrieval_tables,
+)
 from chitragupta.dossier import _retrieval
 
 from tests.conftest import make_reference
@@ -41,29 +49,59 @@ class TestTokenize:
     def test_keeps_numbers(self):
         assert retrieval._tokenize("ISO 9001 standard") == ["iso", "9001", "standard"]
 
+    def test_keeps_a_two_character_acronym(self):
+        """#790's whole point: "AI", "DT" and "5G" are content words in a
+        technical bibliography, and the floor used to drop every one of
+        them from both the index and the query."""
+        assert retrieval._tokenize("AI and DT for 5G networks") == ["ai", "dt", "5g", "networks"]
+
+    def test_still_drops_a_single_character(self):
+        """The floor is 2, not 1, and the sweep behind that is in
+        bench/RESULTS.md: dropping to 1 admits every list marker, variable
+        name and OCR fragment in the corpus for no recall it did not
+        already have."""
+        assert retrieval._tokenize("a b c x y 1 2 3") == []
+
+    def test_a_two_character_stopword_stays_out(self):
+        """The stopword list is consulted independently of the floor, so
+        lowering the floor must not readmit "of" or "in"."""
+        assert retrieval._tokenize("of in at by on is AI") == ["ai"]
+
 
 class TestShortQueryTerms:
     def test_no_short_terms_returns_empty(self):
         assert retrieval.short_query_terms("digital twin architecture") == []
 
-    def test_flags_two_and_one_character_words(self):
-        # "in" is not flagged -- it is dropped as a stopword regardless of
+    def test_a_two_character_word_is_no_longer_flagged(self):
+        """Since #790 the floor is 2, so "AI" and "5G" rank rather than
+        being warned about. A warning naming a word that *did* reach
+        ranking would send a reader looking for a cause that is not
+        there."""
+        assert retrieval.short_query_terms("AI safety in 5G networks") == []
+
+    def test_flags_one_character_words(self):
+        # "a" is not flagged -- it is dropped as a stopword regardless of
         # length, so naming it would not explain anything the length
         # floor specifically cost this query.
-        assert retrieval.short_query_terms("AI safety in 5G networks") == ["ai", "5g"]
-
-    def test_a_short_stopword_is_not_flagged(self):
-        assert retrieval.short_query_terms("the role of AI in industry") == ["ai"]
+        assert retrieval.short_query_terms("a x y model") == ["x", "y"]
 
     def test_a_query_of_only_short_terms_is_entirely_flagged(self):
-        assert retrieval.short_query_terms("AI ML QA") == ["ai", "ml", "qa"]
+        assert retrieval.short_query_terms("x y z") == ["x", "y", "z"]
 
 
 class TestQueryTerms:
     def test_strips_wh_words_and_a_modal(self):
+        # "co" is here since #790 and its presence is the point, not an
+        # accident of the example: docs/CORPUS-SEARCH.md recorded
+        # `co-simulation` tokenizing to `simulation` alone as a defect
+        # beside the interrogative one, because a document written the
+        # same way yields both halves and the query only offered one.
+        # Lowering the floor to 2 closes it, so this case now pins both
+        # behaviours at once.
         assert retrieval._query_terms("what are the failure modes of co-simulation") == [
             "failure",
             "modes",
+            "co",
             "simulation",
         ]
 
@@ -177,6 +215,98 @@ class TestSearch:
             r.citekey for r in retrieval.search("what is structural health monitoring")
         ]
         assert keyword_hits == question_hits == ["a2024"]
+
+    def test_a_two_character_acronym_ranks(self, ledger_con):
+        """#790's success criterion, end to end rather than at the
+        tokenizer: a query that is nothing but a two-character content
+        word must find the paper about it and leave the others alone.
+
+        Red before the floor moved, and not vacuously: pre-#790 `search`
+        returned `[]` here, because `_query_terms` dropped "5g" and a
+        query with no terms at all short-circuits.
+        """
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="5G Network Slicing")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        assert [r.citekey for r in retrieval.search("5g")] == ["a2024"]
+
+    def test_an_acronym_reaches_a_paper_that_only_spells_it_out(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        """#789's success criterion, end to end: with expansion on, a
+        query of nothing but `DT` reaches the paper that says "digital
+        twin" throughout and never writes the abbreviation.
+
+        Red with the feature off, and not vacuously -- BM25 is exact
+        match, so `dt` appears in no document here at all and the search
+        returns nothing.
+        """
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="a2024", title="A Digital Twin Of A Greenhouse")
+        )
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="b2024", title="Unrelated Paper About Cats")
+        )
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        assert retrieval.search("DT") == []
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        assert [r.citekey for r in retrieval.search("DT")] == ["a2024"]
+
+    def test_switching_expansion_off_leaves_the_ranking_alone(
+        self, ledger_con, tmp_path, monkeypatch
+    ):
+        """The identity #789 asks for, over a corpus where expansion
+        *would* otherwise move things: every citekey and every score is
+        what it was, not merely the same top result."""
+        for citekey, title in (
+            ("a2024", "A Digital Twin Of A Greenhouse"),
+            ("b2024", "Twin Studies In Psychology"),
+            ("c2024", "DT And Nothing Else"),
+        ):
+            ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, title=title))
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        bare = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        off = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        on = [(r.citekey, r.score) for r in retrieval.search("DT twin", k=5)]
+
+        assert off == bare, "a vocabulary moved the ranking with expansion off"
+        assert [key for key, _ in on] != [key for key, _ in off], (
+            "the same vocabulary moved nothing with expansion on, so `off` proves nothing"
+        )
+
+    def test_an_added_term_scores_as_a_typed_one(self, ledger_con, monkeypatch):
+        """#789's sweep put full weight ahead of every fraction of it, so
+        there is no per-term discount: a paper carrying only the
+        expansion competes on equal terms with one carrying the acronym,
+        and the two tie here rather than ordering by how the query was
+        spelled."""
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "twin"})
+        ledger.upsert_reference(ledger_con, make_reference(citekey="typed2024", title="DT Study"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="added2024", title="Twin Study"))
+        scores = {r.citekey: r.score for r in retrieval.search("DT", k=5)}
+        assert set(scores) == {"typed2024", "added2024"}
+        assert scores["typed2024"] == pytest.approx(scores["added2024"])
+
+    def test_the_snippet_is_cut_around_an_added_term(self, ledger_con, tmp_path, monkeypatch):
+        """A document reached through an expansion says nothing the
+        caller typed, so a snippet built from the typed terms alone would
+        have no window to anchor on and fall back to the paper's opening
+        characters -- a result the reader cannot judge."""
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        parsed = tmp_path / "a2024.txt"
+        parsed.write_text(
+            "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
+        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        assert "calibrated" in retrieval.search("DT", k=1)[0].snippet
 
     def test_ranks_by_term_overlap_descending(self, ledger_con):
         ledger.upsert_reference(
@@ -467,6 +597,50 @@ class TestWindows:
     def test_returns_nothing_when_no_term_appears(self):
         assert retrieval._windows("nothing relevant here", {"blockchain"}, 50, 3) == []
 
+    def test_a_term_inside_a_longer_word_is_not_an_anchor(self):
+        """A window is anchored on the term as a *word*, not as a
+        substring.
+
+        Latent before #790 and load-bearing after it: the tokenizer now
+        admits two-character terms, and "ai" sits inside maintainer,
+        said, detail, fair and failed. Measured on the real corpus before
+        this was fixed, 37 of 134 appearances of a two-character query
+        term in a returned snippet were substring-only -- the snippet did
+        not contain the word the reader searched for. A snippet exists so
+        a drafting skill can judge relevance itself rather than trust a
+        score, and one anchored inside "said" cannot serve that.
+        """
+        text = "The maintainer said the detail was fair. Later, AI systems failed."
+        (window,) = retrieval._windows(text, {"ai"}, 30, 1)
+        assert "AI systems" in window
+
+    def test_a_boundary_the_tokenizer_splits_on_still_anchors(self):
+        """The boundary is the tokenizer's, not Python's `\\b`.
+
+        `\\b` is defined over `[A-Za-z0-9_]` and Unicode letters, while
+        `_tokenize` splits on `[a-z0-9]+`, so they disagree on an
+        underscore and on an accented letter. `_tokenize("ai_model")` is
+        `["ai", "model"]` -- the index counted "ai" there -- so a
+        document whose only occurrence is `ai_model` ranks, and with
+        `\\b` produced no window at all: the snippet silently fell back
+        to the paper's opening 500 characters, with the searched-for word
+        nowhere in it, and `evidence` returned nothing for a document it
+        had just ranked. That is worse than the substring matching this
+        replaced, not better.
+        """
+        text = "ai_model is the subject of this paper, at some length here"
+        (window,) = retrieval._windows(text, {"ai"}, 30, 1)
+        assert "ai_model" in window
+
+    def test_a_term_inside_a_longer_word_does_not_score_a_window(self):
+        """The same rule on the scoring half, not only the anchoring
+        half. `_windows` ranks a candidate by how many distinct terms
+        fall inside it, and counting "ai" inside "detail" there would
+        pick the wrong window even when the anchors were right."""
+        text = "detail maintainer fairly said ||| soil AI ||| " + "filler " * 20
+        (window,) = retrieval._windows(text, {"ai", "soil"}, 24, 1)
+        assert "soil AI" in window
+
     def test_prefers_a_window_covering_more_distinct_terms(self):
         text = "moisture " * 20 + " ||| soil moisture sensor calibration ||| " + "moisture " * 20
         (best,) = retrieval._windows(text, {"soil", "moisture", "sensor"}, 60, 1)
@@ -676,6 +850,47 @@ class TestCli:
         assert "evidence --citekey" in out
         assert "characters returned" in out
 
+    def test_search_notes_what_acronym_expansion_added(
+        self, ledger_con, tmp_path, capsys, monkeypatch
+    ):
+        """#789 asks that the log record which terms were added, so a
+        caller can see why a result surfaced. On stderr, beside the
+        "too short to search on" note: stdout is a contract the genre
+        skills parse."""
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        assert retrieval.main(["search", "DT patterns"]) == 0
+        captured = capsys.readouterr()
+        assert "acronym expansion added: dt -> digital twin" in captured.err
+        assert "acronym expansion" not in captured.out
+
+    def test_search_says_nothing_when_expansion_is_off(
+        self, ledger_con, tmp_path, capsys, monkeypatch
+    ):
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", False)
+        assert retrieval.main(["search", "DT patterns"]) == 0
+        assert "acronym expansion" not in capsys.readouterr().err
+
+    def test_the_logged_row_records_what_was_added(self, ledger_con, tmp_path, monkeypatch):
+        """The note and the column are one string: `--log` writes what
+        the note printed, so a dossier read months later explains the
+        same result the session saw explained."""
+        from chitragupta import dossier
+
+        self._seed(ledger_con, tmp_path)
+        monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+
+        assert retrieval.main(["search", "DT patterns", "--log", str(draft)]) == 0
+        logged = (dossier.dossier_dir(draft) / "retrieval.md").read_text()
+        # By position, not by `endswith`: #788 appended the two BM25
+        # settings after the expansion cell.
+        row = logged.rstrip().splitlines()[-1]
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
+
     def test_evidence_prints_passages(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
         assert retrieval.main(["evidence", "architecture patterns", "--citekey", "a2024"]) == 0
@@ -719,19 +934,28 @@ class TestCli:
 
     def test_a_query_of_only_short_terms_warns_why_it_is_empty(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(["search", "AI ML"]) == 0
+        assert retrieval.main(["search", "x y"]) == 0
         err = capsys.readouterr().err
         assert "too short to search on" in err
-        assert "ai" in err
-        assert "ml" in err
+        assert "x" in err
+        assert "y" in err
 
     def test_a_mixed_query_still_warns_about_its_dropped_short_terms(
         self, ledger_con, tmp_path, capsys
     ):
         self._seed(ledger_con, tmp_path)
-        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        assert retrieval.main(["search", "x digital twin architecture"]) == 0
         err = capsys.readouterr().err
-        assert "too short to search on (dropped): ai" in err
+        assert "too short to search on (dropped): x" in err
+
+    def test_a_two_character_query_word_no_longer_warns(self, ledger_con, tmp_path, capsys):
+        """#790 lowered the floor to 2, so "AI" reaches ranking and the
+        warning must stop naming it -- a warning about a word that did
+        rank is worse than none, because it sends the reader looking for
+        a cause that is not there."""
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "AI digital twin architecture"]) == 0
+        assert "too short to search on" not in capsys.readouterr().err
 
     def test_a_query_with_no_short_terms_does_not_warn(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
@@ -740,8 +964,8 @@ class TestCli:
 
     def test_evidence_also_warns_about_a_short_term(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        retrieval.main(["evidence", "AI patterns", "--citekey", "a2024"])
-        assert "too short to search on (dropped): ai" in capsys.readouterr().err
+        retrieval.main(["evidence", "x patterns", "--citekey", "a2024"])
+        assert "too short to search on (dropped): x" in capsys.readouterr().err
 
     def test_evidence_with_no_matching_passage_is_not_an_error(self, ledger_con, tmp_path, capsys):
         """The `search` counterpart above is covered; this is its

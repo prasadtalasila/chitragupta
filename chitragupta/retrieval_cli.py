@@ -31,11 +31,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, ledger, retrieval_iterative
+from chitragupta import config, ledger, retrieval_expansion, retrieval_iterative
 from chitragupta.retrieval import (
     SearchResult,
     _full_text,
     _query_terms,
+    _tokenize,
     _windows,
     search,
     short_query_terms,
@@ -230,7 +231,7 @@ def _run_search(args) -> tuple[int, int]:
     return len(found), chars
 
 
-def _log_call(args, results: int, chars: int) -> None:
+def _log_call(args, results: int, chars: int, expanded: str) -> None:
     """--log's dossier bookkeeping, reported but never fatal."""
     from chitragupta import dossier
 
@@ -252,6 +253,7 @@ def _log_call(args, results: int, chars: int) -> None:
             chars,
             collection=getattr(args, "collection", None),
             origin=args.origin,
+            expanded=expanded,
         )
     except (dossier.DossierError, OSError) as exc:
         # A measurement is worth less than the retrieval it measures:
@@ -266,14 +268,21 @@ def _log_call(args, results: int, chars: int) -> None:
         print(f"  Logged to {path}")
 
 
+# Single-character, not 1-2 character, since #790 lowered
+# `retrieval._tokenize`'s floor to 2: "AI" and "5G" rank now, and naming
+# one here would send a reader hunting for a cause that is not there.
+# `retrieval.short_query_terms` owns the number; this only prints what it
+# returns, so the two cannot disagree. Said as a comment rather than in
+# the docstring below because this module sits at
+# docs/CODE-STANDARDS.md's 250-line ceiling and comments do not count.
+# Names any single-character query word that ranking can never see. A
+# query built entirely from such terms returns empty with nothing in that
+# result to explain why; a mixed query silently drops just the short
+# ones. Either way the reader making sense of the result deserves to know
+# before they conclude the corpus has nothing on the topic. Written as a
+# comment rather than the docstring it was, for the ceiling this module
+# sits at -- the same trade the paragraph above makes.
 def _warn_of_short_terms(query: str) -> None:
-    """Names any 1-2 character query word that ranking can never see.
-
-    A query built entirely from such terms returns empty with nothing in
-    that result to explain why; a mixed query silently drops just the
-    short ones. Either way the reader making sense of the result deserves
-    to know before they conclude the corpus has nothing on the topic.
-    """
     dropped = short_query_terms(query)
     if dropped:
         print(
@@ -294,6 +303,14 @@ def main(argv: "list[str] | None" = None) -> int:
         return 1
 
     _warn_of_short_terms(args.query)
+    # The other half of "what happened to your query before it was
+    # ranked": the terms the acronym vocabulary added (#789). Announced
+    # rather than left to the score, because a result that surfaced on a
+    # word the caller never typed is the one they would otherwise have no
+    # way to explain. The same string goes to `--log`, so the note and
+    # `retrieval.md`'s `expanded` column cannot disagree. Silent at the
+    # shipped default, where nothing is ever added.
+    expanded = retrieval_expansion.announce(_query_terms(args.query), _tokenize)
 
     # Refused rather than quietly ignored: --y-prev merges two rounds on
     # citekey and caps back to --k, and the passage unit changes what
@@ -313,5 +330,5 @@ def main(argv: "list[str] | None" = None) -> int:
 
     print(f"\n  {results} result(s), {chars:,} characters returned.")
     if args.log:
-        _log_call(args, results, chars)
+        _log_call(args, results, chars, expanded)
     return 0

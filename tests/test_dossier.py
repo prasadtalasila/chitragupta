@@ -1784,6 +1784,64 @@ class TestRecordedQueriesWithEvidence:
         assert _retrieval.recorded_queries_with_evidence(dossier.dossier_dir(draft)) == []
 
 
+class TestTheExpandedColumn:
+    """`expanded` (#789): what acronym expansion added to the query
+    before it was ranked. The column has no reader of its own -- it is
+    there so a person reading the log can see why a result surfaced on a
+    word they never typed -- so these are about the row surviving, which
+    every existing reader depends on."""
+
+    def test_the_expansion_is_written_as_the_ninth_cell(self, draft):
+        dossier.init(draft, "survey")
+        path = dossier.log_retrieval(
+            draft, "search", "DT fidelity", 5, 5, 100, expanded="dt -> digital twin"
+        )
+        row = path.read_text().splitlines()[-1]
+        # Checked by position rather than by `endswith`, which is what
+        # this test's own name always meant: #788 appended `k1` and `b`
+        # after this cell, so "ninth" and "last" stopped being the same
+        # claim. Every column so far has landed at the end, so this
+        # assertion would have gone stale again on the next one.
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
+        assert row.count("|") == 12
+
+    def test_a_call_that_expanded_nothing_writes_an_empty_cell(self, draft):
+        """Every call at the shipped default, so this is the ordinary
+        row, not the exceptional one."""
+        dossier.init(draft, "survey")
+        path = dossier.log_retrieval(draft, "search", "digital twin", 5, 5, 100)
+        # The three caller-supplied cells are empty; the two #788 added
+        # after them are not, because they record the ranker that ran.
+        assert path.read_text().splitlines()[-1].endswith("| 100 |  |  |  | 1.5 | 0.75 |")
+
+    def test_a_pipe_in_an_expansion_cannot_split_the_row(self, draft):
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 5, 5, 100, expanded="dt -> a | b")
+        assert _retrieval.recorded_queries(dossier.dossier_dir(draft)) == ["q"]
+
+    def test_a_row_with_an_expansion_still_costs_what_it_cost(self, draft):
+        """The landmine this column had to avoid: `_retrieval_rows`
+        rejected any row that was not 6, 7 or 8 cells, so a nine-cell row
+        would have been *skipped* -- silently dropping the call from
+        every cost total and from `dossier status`'s drift check."""
+        dossier.init(draft, "survey")
+        dossier.log_retrieval(draft, "search", "q", 5, 5, 700, expanded="dt -> digital twin")
+        segments = _retrieval.retrieval_cost_by_revision(dossier.dossier_dir(draft))
+        assert [(s.calls, s.chars) for s in segments] == [(1, 700)]
+
+    def test_a_row_written_before_this_column_still_parses(self, draft):
+        """An eight-cell row -- every row logged between #455 and #789 --
+        reads as a call that expanded nothing, which is exactly what it
+        was: there was no expansion to do."""
+        dossier.init(draft, "survey")
+        path = dossier.dossier_dir(draft) / "retrieval.md"
+        row = "| 2026-01-01 | search | old query | 15 | 15 | 100 | | declared |\n"
+        path.write_text(path.read_text() + row)
+        assert _retrieval.recorded_queries_with_origin(dossier.dossier_dir(draft)) == [
+            ("old query", "declared"),
+        ]
+
+
 class TestRecordedQueriesWithOrigin:
     """`origin` (#455): a scoped/declared call and a corpus-wide/invented
     one otherwise wrote byte-identical rows, and nothing downstream could
