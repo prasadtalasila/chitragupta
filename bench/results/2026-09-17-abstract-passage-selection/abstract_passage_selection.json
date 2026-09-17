@@ -3,6 +3,50 @@
   {
    "arm": "keyword self-retrieval",
    "reachable": 0.5664,
+   "rankers": [
+    {
+     "subset": "all queries",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 256,
+     "recall@5": 0.8164,
+     "ndcg@5": 0.722
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3852
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-first, full-text fallback",
+     "queries": 256,
+     "recall@5": 0.4453,
+     "ndcg@5": 0.3852
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 145,
+     "recall@5": 0.7931,
+     "ndcg@5": 0.6961
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 145,
+     "recall@5": 0.7862,
+     "ndcg@5": 0.6801
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-first, full-text fallback",
+     "queries": 145,
+     "recall@5": 0.7862,
+     "ndcg@5": 0.6801
+    }
+   ],
    "rows": [
     {
      "row": "passage baseline (as shipped)",
@@ -121,6 +165,50 @@
   {
    "arm": "live drafting logs",
    "reachable": 0.6226,
+   "rankers": [
+    {
+     "subset": "all queries",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 96,
+     "recall@5": 0.8854,
+     "ndcg@5": 0.4596
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "all queries",
+     "row": "abstract-first, full-text fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "full-text BM25 (as shipped)",
+     "queries": 96,
+     "recall@5": 0.8854,
+     "ndcg@5": 0.4596
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-only BM25, no fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    },
+    {
+     "subset": "answer has an abstract",
+     "row": "abstract-first, full-text fallback",
+     "queries": 96,
+     "recall@5": 0.6979,
+     "ndcg@5": 0.2688
+    }
+   ],
    "rows": [
     {
      "row": "passage baseline (as shipped)",

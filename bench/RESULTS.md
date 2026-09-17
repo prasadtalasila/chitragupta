@@ -7113,6 +7113,56 @@ All four collapse to citekeys before scoring, like every passage row here.
 abstract's own text -- carried beside recall and nDCG because it turns out
 to be the row that explains the others.
 
+### Before the four arms: can an abstract *replace* full text as the paper ranker?
+
+Asked separately and first, because the four mechanisms below all
+*modify* a ranking while this one *substitutes* for it -- and because it
+is the shape a reader proposes immediately on seeing that abstracts are
+cheap. An abstract index is 318 documents averaging 177 tokens; it builds
+in about two seconds, so cost is not the question and a tier-1 answer
+would carry to tier 3 unchanged. Quality is the question.
+
+| subset | ranker | recall@5 | nDCG@5 |
+|---|---|---|---|
+| self-retrieval, all 256 | full-text BM25 (as shipped) | 0.8164 | 0.7220 |
+| self-retrieval, all 256 | abstract-only, no fallback | 0.4453 | 0.3852 |
+| self-retrieval, all 256 | abstract-first, full-text fallback | 0.4453 | 0.3852 |
+| self-retrieval, answer has an abstract (145) | full-text BM25 (as shipped) | 0.7931 | 0.6961 |
+| self-retrieval, answer has an abstract (145) | abstract-only, no fallback | 0.7862 | 0.6801 |
+| self-retrieval, answer has an abstract (145) | abstract-first, full-text fallback | 0.7862 | 0.6801 |
+| live logs, all 96 | full-text BM25 (as shipped) | 0.8854 | 0.4596 |
+| live logs, all 96 | abstract-only, no fallback | 0.6979 | 0.2688 |
+| live logs, all 96 | abstract-first, full-text fallback | 0.6979 | 0.2688 |
+
+**The fallback tier is unreachable, and structurally rather than
+weakly.** `abstract-first` ties `abstract-only` on every row because its
+first tier is every paper that has an abstract -- 318 of 642 -- so the
+second tier begins at rank 319 and no `k` a caller would ask for reaches
+it. Demoting a paper instead of dropping it changes nothing at k=5. The
+tie is an identity, not a null result, and `self_check` asserts it as one
+so a genuinely broken fallback cannot hide behind the same two rows.
+Making the fallback consultable means *interleaving* the two rankings by
+score rather than stacking them, which needs per-query calibration: the
+two routes have different `N`, different `avgdl` and different IDF, so
+their raw scores are not comparable. That is a different arm and an
+honest one; it is not this one.
+
+**On the papers that have one, the abstract is very nearly a substitute
+-- and that is the trap, not the finding.** Restricted to the 145
+self-retrieval queries whose own correct answer has an abstract,
+abstract-only loses **one query in 145** and 0.0160 nDCG against full
+text, using ~3% of the document's tokens. As a compact representation
+that is a genuinely strong number. But it is the arm whose query is the
+paper's own author keywords, which authors also write into the abstract,
+so it is the *most* favourable possible reading. On real drafting queries
+the same substitution costs **18 queries in 96** and nearly halves nDCG.
+The compactness is real; the substitutability is an artefact of how that
+ground truth is built.
+
+**So: not a substitute.** Which makes the four arms below the right
+question after all -- if an abstract cannot replace the ranking, can it
+improve one.
+
 ### Keyword self-retrieval (256 author-keyword queries)
 
 56.64% of this arm's correct answers have an abstract at all.

@@ -77,10 +77,10 @@ sys.path.insert(0, str(BENCH_DIR))
 
 from chitragupta import (  # noqa: E402
     _abstract,
-    config,
     ledger,
     passages,
     retrieval,
+    retrieval_cache,
     retrieval_passages,
     retrieval_passages_cache,
     retrieval_scoring,
@@ -343,6 +343,86 @@ def reachable_share(rows, a_index):
     return round(hit / total, 4) if total else 0.0
 
 
+def rank_documents_full_text(doc_scores, _abstract_scores, _has_abstract):
+    return [c for c, _ in sorted(doc_scores.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def rank_documents_abstract_only(_doc_scores, abstract_scores, _has_abstract):
+    return [c for c, _ in sorted(abstract_scores.items(), key=lambda kv: (-kv[1], kv[0]))]
+
+
+def rank_documents_abstract_first(doc_scores, abstract_scores, has_abstract):
+    """Papers with an abstract ranked by it, then every other paper ranked
+    by full-text BM25 -- the two-tier shape that answers "what about the
+    papers with no abstract" by demoting rather than dropping them.
+
+    **It cannot change a top-5, and that is structural rather than
+    measured.** The first tier is every paper that has an abstract -- 318
+    of 642 on this corpus -- so the second tier begins at rank 319 and no
+    `k` a caller would ask for reaches it. The rows below therefore tie
+    `abstract-only` exactly, and a reader should not read that tie as
+    "the fallback did not help": it was never consulted. Making it
+    consultable means interleaving the two rankings by score, which needs
+    the per-query calibration `_normalized` exists for -- the two BM25
+    routes have different `N`, different `avgdl` and different IDF, so
+    their raw scores are not comparable. That is a different arm, and an
+    honest one to build; it is not this one.
+    """
+    ranked = [c for c, _ in sorted(abstract_scores.items(), key=lambda kv: (-kv[1], kv[0]))]
+    rest = [
+        c
+        for c, _ in sorted(doc_scores.items(), key=lambda kv: (-kv[1], kv[0]))
+        if c not in has_abstract
+    ]
+    return ranked + rest
+
+
+DOCUMENT_RANKERS = (
+    ("full-text BM25 (as shipped)", rank_documents_full_text),
+    ("abstract-only BM25, no fallback", rank_documents_abstract_only),
+    ("abstract-first, full-text fallback", rank_documents_abstract_first),
+)
+
+
+def document_ranker_rows(rows, doc_index, a_index):
+    """Can an abstract *replace* full text as the paper ranker?
+
+    A different question from the four passage arms above, and the one to
+    ask before any of them: those modify a ranking, this substitutes for
+    it. Reported over all queries and over the subset whose own correct
+    answer has an abstract -- the second isolates "is an abstract a good
+    enough representation of a paper" from "do enough papers have one",
+    which the first confounds and which no single number can separate.
+    """
+    has_abstract = set(a_index)
+    scored = {}
+    for row in rows:
+        terms = retrieval._query_terms(row["query"])
+        scored[_key(row)] = (
+            retrieval_scoring.bm25_scores(doc_index, terms),
+            retrieval_scoring.bm25_scores(a_index, terms),
+        )
+    subset = [r for r in rows if any(c in has_abstract for c in _relevant(r))]
+    out = []
+    for label, queries in (("all queries", rows), ("answer has an abstract", subset)):
+        for name, fn in DOCUMENT_RANKERS:
+            recalls, ndcgs = [], []
+            for row in queries:
+                ranked = fn(*scored[_key(row)], has_abstract)
+                recalls.append(recall_at_k(ranked, _relevant(row), K_REPORT))
+                ndcgs.append(ndcg_at_k(ranked, _relevant(row), K_REPORT))
+            out.append(
+                {
+                    "subset": label,
+                    "row": name,
+                    "queries": len(queries),
+                    "recall@5": round(sum(recalls) / len(recalls), 4),
+                    "ndcg@5": round(sum(ndcgs) / len(ndcgs), 4),
+                }
+            )
+    return out
+
+
 def self_check():
     """Fabricate a difference each arm must see, per bench/README.md.
 
@@ -385,6 +465,25 @@ def self_check():
         "min-max normalization must map the pool maximum to 1.0"
     )
 
+    # The document rankers, and in particular the claim the entry rests
+    # on: the fallback tier is unreachable at any k below the size of the
+    # first tier. Asserted rather than described, because "these two rows
+    # tie" is exactly what a broken fallback also looks like.
+    doc = {"has": 1.0, "none": 9.0}
+    abstracts = {"has": 1.0}
+    ranked = rank_documents_abstract_first(doc, abstracts, {"has"})
+    assert ranked == ["has", "none"], (
+        f"a paper with no abstract must sit below every paper with one, "
+        f"however high its full-text score: {ranked}"
+    )
+    assert ranked[:1] == rank_documents_abstract_only(doc, abstracts, {"has"})[:1], (
+        "within the first tier's length, abstract-first must equal abstract-only -- "
+        "the tie the entry reports is this identity, not a null result"
+    )
+    assert rank_documents_full_text(doc, abstracts, {"has"}) == ["none", "has"], (
+        "the full-text ranker must ignore abstracts entirely"
+    )
+
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
@@ -414,10 +513,20 @@ def main(argv=None):
         flush=True,
     )
 
+    doc_index = retrieval_cache._load_index(items, retrieval._tokenize_item)
+
     record = {"arms": []}
     for name, rows in _ground_truths(args.arm, args.live_dossiers):
         print(f"\n{name}: {len(rows)} queries", flush=True)
         reach = reachable_share(rows, a_index)
+        rankers = document_ranker_rows(rows, doc_index, a_index)
+        print("\n  -- can an abstract replace full text as the paper ranker?")
+        print(f"  {'subset':22} {'ranker':36} {'recall@5':>9} {'ndcg@5':>8}")
+        for entry in rankers:
+            print(
+                f"  {entry['subset']:22} {entry['row']:36} "
+                f"{entry['recall@5']:>9} {entry['ndcg@5']:>8}"
+            )
         table = measure(rows, index, a_index, spans, overlap)
         print(f"  correct answers that have an abstract at all: {reach:.4f}")
         print(f"\n  {'row':38} {'recall@5':>9} {'ndcg@5':>8} {'abs@5':>7}")
@@ -426,7 +535,7 @@ def main(argv=None):
                 f"  {entry['row']:38} {entry['recall@5']:>9} "
                 f"{entry['ndcg@5']:>8} {entry['abstract_share@5']:>7}"
             )
-        record["arms"].append({"arm": name, "reachable": reach, "rows": table})
+        record["arms"].append({"arm": name, "reachable": reach, "rankers": rankers, "rows": table})
 
     out_dir = BENCH_DIR / "results" / Path(args.tag).name
     out_dir.mkdir(parents=True, exist_ok=True)
