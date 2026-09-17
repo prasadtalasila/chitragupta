@@ -68,8 +68,21 @@ if os.environ.get("BENCH_BOOK_DOSSIERS"):
     BOOK_DOSSIERS = Path(os.environ["BENCH_BOOK_DOSSIERS"])
 
 _TICK = re.compile(r"`([^`]+)`")
+# Anchored at the `chars` cell and open-ended after it, rather than
+# requiring end-of-line there.
+#
+# **The `$` this used to end with made the whole ground truth silently
+# empty on any modern dossier.** `retrieval.md` gained a `collection`
+# cell in #254, an `origin` cell in #455 and `k1`/`b` in #788, so a row
+# written since 2026 has four cells after `chars` and matched nothing --
+# and the failure is a ground truth of zero rows, which reads exactly
+# like "this host has no dossiers" rather than like a parse bug. The 96
+# queries this script has published came from a book drafted before #254,
+# which is the only reason it ever worked. Verified against the
+# committed sample project's own `retrieval.md`, which is written in the
+# current shape: 0 matches before this change, 3 after.
 _SEARCH_ROW = re.compile(
-    r"^\|\s*[\d-]+\s*\|\s*search\s*\|\s*(.+?)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*$",
+    r"^\|\s*[\d-]+\s*\|\s*search\s*\|\s*(.+?)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*\d+\s*\|",
     re.MULTILINE,
 )
 

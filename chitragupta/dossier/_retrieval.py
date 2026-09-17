@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from chitragupta import config
 from chitragupta.dossier import RETRIEVAL_MD, _REVISION_MARKER_MODE, dossier_dir, draft_relpath
 from chitragupta.dossier._create import _RETRIEVAL_TEMPLATE
 from chitragupta.dossier._retrieval_queries import _retrieval_rows
@@ -119,9 +120,17 @@ def log_retrieval(
     safe_query = " ".join(query.split()).replace("|", "\\|")
     safe_collection = " ".join((collection or "").split()).replace("|", "\\|")
     safe_origin = " ".join((origin or "").split()).replace("|", "\\|")
+    # `k1`/`b` are read from config here rather than taken as parameters
+    # like `collection` and `origin` above (#788). Those two describe
+    # what the *caller* asked for and only the caller knows them; these
+    # describe the ranker that actually ran, are the same for every call
+    # in the process, and a caller who forgot to pass them would write a
+    # blank cell indistinguishable from a row logged before the columns
+    # existed -- the exact ambiguity the columns are here to remove.
     row = (
         f"| {date.today().isoformat()} | {mode} | {safe_query} | {k} | {results} | "
-        f"{chars} | {safe_collection} | {safe_origin} |\n"
+        f"{chars} | {safe_collection} | {safe_origin} | "
+        f"{config.RETRIEVAL_K1} | {config.RETRIEVAL_B} |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():
@@ -152,8 +161,13 @@ def mark_revision(draft: Path, label: str = "") -> Path:
     target.mkdir(parents=True, exist_ok=True)
     path = target / RETRIEVAL_MD
     safe_label = " ".join(label.split()).replace("|", "\\|")
+    # Both #788 columns stay empty here, unlike every other cell which a
+    # marker fills with a zero: a boundary is not a call, so there is no
+    # ranker whose settings it could be recording. A 0/0 pair would read
+    # as "this call ran at k1=0", a real and very wrong setting.
     row = (
-        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} | 0 | 0 | 0 | | |\n"
+        f"| {date.today().isoformat()} | {_REVISION_MARKER_MODE} | {safe_label} "
+        "| 0 | 0 | 0 | | | | |\n"
     )
     with path.open("a", encoding="utf-8") as handle:
         if not handle.tell():

@@ -170,10 +170,30 @@ _RETRIEVAL_TEMPLATE = """# Retrieval calls
      existed -- but unlike `collection`'s empty reading, that is not read
      as "declared": a pre-outline.md call was neither. Without this
      column, "did this draft follow the outline it declared?" has no
-     evidence to answer from. -->
+     evidence to answer from.
 
-| date | mode | query | asked | results | chars | collection | origin |
-|---|---|---|---|---|---|---|---|
+     `k1` and `b` are the two Okapi BM25 settings that were in force when
+     the call ran (#788) -- `[retrieval].k1` and `[retrieval].b`, which
+     shape term-frequency saturation and length normalization. Written
+     from config at log time rather than passed in by the caller, because
+     they describe the ranker that actually ran rather than anything the
+     caller asked for, and a caller who forgot would write a blank
+     indistinguishable from a row that predates the columns.
+
+     The shipped values are written out rather than left blank: "blank
+     means default" is the one encoding that cannot work here, since
+     blank already means "logged before these columns existed", and a
+     default that moved later would retroactively change what every old
+     blank row claimed. A `revision` marker row leaves both empty, since
+     it is a boundary and not a call.
+
+     Without these, a session that tuned either setting mid-draft leaves
+     a log whose rows cannot be compared with each other, and the
+     replay that `bench/bench_retrieval_live_logs.py` builds its ground
+     truth from silently mixes two rankers. -->
+
+| date | mode | query | asked | results | chars | collection | origin | k1 | b |
+|---|---|---|---|---|---|---|---|---|---|
 """
 
 
