@@ -431,8 +431,9 @@ def _get_field_weight(field: str) -> float:
 # FIELDS -- built from that tuple so a field cannot exist without a
 # weight or a weight without a field. Every default is 1.0, which
 # reproduces the pre-#762 ranking exactly; docs/RETRIEVAL.md carries the
-# measurement that would justify any other number, and #770 adds
-# `caption` and `table` to the same table.
+# measurement that would justify any other number -- and the one that
+# declined a third field, since issue #770 asked for `caption` and
+# `table` here and neither survived it.
 RETRIEVAL_FIELD_WEIGHTS = {field: _get_field_weight(field) for field in ("title", "abstract")}
 # The same, for chitragupta/retrieval_passages.py's passage-level index
 # (#769). A separate file rather than a second key inside the one above:
