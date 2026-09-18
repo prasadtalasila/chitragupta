@@ -1,6 +1,6 @@
 # 🔭 Corpus search: how a query becomes passages
 
-Status: **reference.** Written 2026-08-26. Updated 2026-08-28.
+Status: **reference.** Written 2026-08-26. Updated 2026-09-18.
 
 [RETRIEVAL.md](RETRIEVAL.md) answers *which* search to build -- BM25,
 embeddings, or the topic model -- and stops there. This document answers
@@ -43,10 +43,12 @@ the equivalent keyword string:
 | question form vs keyword form | **4.7 / 10** | 2 of 6 |
 
 Less than half the same papers. The cause is visible in the tokenizer:
-`_STOPWORDS` (`chitragupta/retrieval.py`) holds twenty function words and
-**no interrogatives**, and the length filter passes `how`, `why`,
-`who` and `can` -- every one of them longer than the floor, whatever the
-floor is:
+`_STOPWORDS` holds nineteen function words and **no interrogatives**
+-- `chitragupta/retrieval.py` imports the set from
+`chitragupta/_passage_words.py`, which defines it as `_CORE_STOPWORDS`
+so the corpus and review layers can share it -- and the length filter
+passes `how`, `why`, `who` and `can`, every one of them longer than the
+floor, whatever the floor is:
 
 ```text
 'what are the failure modes of co-simulation' -> ['what', 'failure', 'modes', 'co', 'simulation']

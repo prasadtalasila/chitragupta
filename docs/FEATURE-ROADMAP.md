@@ -1,6 +1,6 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-08-31.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-09-18.
 **Nineteen of the original twenty-one items have shipped and have been
 removed from this document** rather than marked as done. A twentieth,
 **B3** (section thesis with a source count), was closed unbuilt as *"not
@@ -879,10 +879,12 @@ Highest value first. "One PR" is the unit throughout. Items needing
 **the amendment** need a person's decision, not engineering time, and
 are marked.
 
-**Only unbuilt work appears here.** Eighteen items have shipped and have
-been removed from this document rather than marked -- what they became is
-described in [FEATURES.md](FEATURES.md), and how each was built is in the
-PR that closed it and in `plans/`. A roadmap that accumulates its own
+**Only unbuilt work appears here.** Every shipped item has been removed
+from this document rather than marked -- the count, and which items, is
+kept once at the top of this file rather than restated here, because two
+copies of it drifted apart. What they became is described in
+[FEATURES.md](FEATURES.md), and how each was built is in the PR that
+closed it and in `plans/`. A roadmap that accumulates its own
 history stops being a list of what to do next, which is the only thing it
 is for.
 
