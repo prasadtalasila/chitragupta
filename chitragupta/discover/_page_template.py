@@ -40,6 +40,10 @@ TEMPLATE = """<!DOCTYPE html>
   #legend { position: absolute; left: 1rem; bottom: 1rem; background: #fff;
             border: 1px solid #ccc; padding: 0.5rem; font-size: 0.8rem; }
   details { margin-top: 1rem; }
+  /* Margin, not a border or a rule: the div is empty until the first
+     click, and a collapsed margin leaves no mark on a page nobody has
+     clicked yet. */
+  #detail { margin-top: 1rem; }
   #tree ul { list-style: none; padding-left: 1rem; }
 </style>
 </head>
@@ -53,6 +57,7 @@ TEMPLATE = """<!DOCTYPE html>
 <div id="panel"><h2>Topic graph</h2>
   <p>Click a topic for its papers and neighbours.</p>
   <details id="treebox"><summary>Hierarchy</summary><div id="tree"></div></details>
+  <div id="detail"></div>
 </div>
 <script id="data" type="application/json">__PAYLOAD__</script>
 <script>
@@ -94,7 +99,11 @@ function show(index) {
   if (dot) dot.classList.add("selected");
   const t = DATA.topics[index];
   const label = t.label;
-  const panel = document.getElementById("panel");
+  /* The detail div, never `#panel` itself: the panel also holds the
+     hierarchy disclosure, which `tree()` populates once at load and
+     cannot repopulate, so overwriting the panel deleted the tree for
+     the rest of the page's life on the first click (#807). */
+  const detail = document.getElementById("detail");
   const papers = t.members.map(m =>
     `<li><code>${esc(m.citekey)}</code> [${m.score.toFixed(2)}] ${esc(m.title)}</li>`).join("");
   const overlap = t.linked.overlap.map(e =>
@@ -102,7 +111,7 @@ function show(index) {
   const semantic = t.linked.semantic.map(e =>
     `<li>${esc(e.label)} &mdash; ${e.similarity.toFixed(2)}, bridge ` +
     `${esc(e.bridge[0])} &harr; ${esc(e.bridge[1])}</li>`).join("");
-  panel.innerHTML =
+  detail.innerHTML =
     `<h2>${esc(label)}</h2><p class="prov">${esc(t.provenance)}, ${t.members.length} papers` +
     (t.terms.length ? ` &middot; ${t.terms.map(esc).join(", ")}` : "") + `</p>` +
     `<h3>Papers</h3><ul>${papers}</ul>` +

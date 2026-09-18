@@ -250,6 +250,63 @@ class TestHtml:
         assert "stroke-dasharray" in html
 
 
+class TestPanelFurniture:
+    """What a topic click may overwrite (#807).
+
+    The hierarchy disclosure is built once, at load, by a one-shot IIFE;
+    the per-topic detail is rebuilt on every click. So the click has to
+    write into a container of its own -- when it wrote the whole of
+    `#panel` instead, the first click deleted the tree for the rest of
+    the page's life, and re-adding the element would not have brought it
+    back populated.
+
+    Checked against the emitted page's source rather than by driving a
+    browser: the check has to run in CI, where there is no Chrome and no
+    DOM (the `tests/webapp/` node suite exercises modules written to run
+    without one -- this page's script is inline and cannot be imported).
+    A structural check is what is available, and it pins the property
+    that actually broke: what the click writes, and what it does not.
+    """
+
+    def page(self, cfg) -> str:
+        prepare(cfg)
+        return _page.build_html(_page.build_payload(GRAPH, TOPIC_SET, {"digital twin": ["twin"]}))
+
+    def show_body(self, html: str) -> str:
+        return re.search(r"function show\(index\) \{(.*?)\n\}", html, re.S).group(1)
+
+    def test_the_click_target_is_a_container_of_its_own(self, isolated_config):
+        html = self.page(isolated_config)
+        body = self.show_body(html)
+        assert 'getElementById("detail")' in body
+        assert "detail.innerHTML" in body
+
+    def test_a_click_never_writes_over_the_panel_itself(self, isolated_config):
+        """The regression itself: `panel.innerHTML = ...` took the
+        hierarchy, the invitation to click, and the heading with it."""
+        body = self.show_body(self.page(isolated_config))
+        assert "panel.innerHTML" not in body
+        assert 'getElementById("panel")' not in body
+
+    def test_the_hierarchy_sits_outside_the_rewritten_container(self, isolated_config):
+        """Being a sibling is the whole fix -- a `#treebox` nested in
+        `#detail` would be destroyed by the same assignment."""
+        html = self.page(isolated_config)
+        panel = re.search(r'<div id="panel">.*?</div>\s*<script id="data"', html, re.S).group(0)
+        assert '<details id="treebox">' in panel
+        detail = panel.split('<div id="detail">', 1)[1]
+        assert "treebox" not in detail
+
+    def test_the_empty_tree_branch_still_names_the_disclosure(self, isolated_config):
+        """A page whose corpus grew no tree hides `#treebox` once, at
+        load -- and now stays hidden, because a click no longer rebuilds
+        the panel. Source-level, like the rest of this class: the branch
+        it pins runs at load, where no assertion on the emitted string
+        can distinguish it from the populated case."""
+        html = self.page(isolated_config)
+        assert 'getElementById("treebox").style.display = "none"' in html
+
+
 class TestCli:
     def test_html_writes_the_page_and_exits_zero(self, isolated_config, tmp_path, capsys):
         prepare(isolated_config)
