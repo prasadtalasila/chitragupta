@@ -384,6 +384,7 @@ one-screen router for exactly that.
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
 | [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models -- which one answers my question, and which is worth building? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
+| [docs/USER-EDITS.md](docs/USER-EDITS.md) | I edited a draft myself, by hand -- how do I hand it back so the pipeline picks the edit up cleanly, and what does it check for when I do? |
 | [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model actually contain, layer by layer -- for a single-context genre skill and for the multi-agent `deep-research` skill -- and why don't the two look the same? |
 
 #### ⚙ Choosing settings
