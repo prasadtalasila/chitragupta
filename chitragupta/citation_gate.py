@@ -27,9 +27,8 @@ Known gaps, investigated and left as over-reporting (#834): a brace
 group adjacent to a citation's own reads as a multicite group, so
 `\\citep{k}{\\bfseries x}` offers `\\bfseries x` as a key; a macro
 *defining* a citation, `\\newcommand{\\mc}[1]{\\citep{#1}}`, offers
-`#1`; and a `%` inside `\\url{a%20b}` is not a comment in TeX but is
-blanked here. Each fails a sound draft rather than passing a
-fabricated key, so the fix is to write the citation differently.
+`#1`. Both fail a sound draft rather than passing a fabricated key, so
+the fix is to write the citation differently.
 """
 
 import re
@@ -178,6 +177,13 @@ _LATEX_VERBATIM_RE = re.compile(
 # real citation from the gate, and would read the `*` of `\verb*` as the
 # delimiter and then never close.
 #
+# `\url`/`\href` take their argument with `%` catcode-other, so a `%`
+# in one is a literal character and blanking to end of line there would
+# *hide* a following citation from the gate -- the one direction this
+# module must never fail in. They join the unchanged-return group for
+# that reason, ahead of the escape pair so the whole argument is
+# consumed, and only the first (URL) argument of `\href`.
+#
 # The escape-pair alternative is what makes `%` correct: a `%` starts a
 # comment when an *even* number of backslashes precedes it, so `\%` is a
 # literal percent but `\\%` (a line break, then a comment) is not. A
@@ -187,7 +193,8 @@ _LATEX_VERBATIM_RE = re.compile(
 # TeX's own left-to-right scan does.
 _LATEX_INERT_RE = re.compile(
     r"\\verb\*?([^A-Za-z\s])[^\n]*?\1"  # \verb<d>...<d>, \verb*<d>...<d>
-    r"|(?P<esc>\\[\s\S])"  # an escaped character: not a comment start
+    r"|(?P<esc>\\(?:url|href)\{[^}\n]*\}"  # a URL argument: `%` is ordinary there
+    r"|\\[\s\S])"  # an escaped character: not a comment start
     r"|%[^\n]*"  # a comment, to the end of the line
 )
 

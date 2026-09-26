@@ -518,13 +518,33 @@ class TestLatexCommentsAndVerb:
         assert citation_gate.extract_citekeys("50% done, see [@real2024]\n") == [(1, "real2024")]
 
     def test_a_run_of_unclosed_verbs_completes_fast(self):
-        # Same tripwire as _LATEX_CITE_RE's (#635): a failing `\verb`
-        # scan must not go superlinear, because a hook that times out
-        # does not block and a fabricated citekey lands ungated.
-        text = "\\verb|" * 400 + " x" * 400
+        # Same tripwire as _LATEX_CITE_RE's (#635): a hook that times out
+        # does not block, and a fabricated citekey then lands ungated.
+        # Every delimiter has to be *distinct*, or the run closes itself
+        # pairwise (`\verb|\verb|`) and never exercises the failing
+        # scan at all -- so a distinct CJK character each time, none of
+        # which `\s` matches. Cost is (number of `\verb`) x (line
+        # length): 2000 on one line is ~0.1 s here and far past anything
+        # a draft contains, so the bound is a regression tripwire.
+        text = "".join(f"\\verb{chr(0x4E00 + i)}" for i in range(2000)) + " \\citep{real2024}"
         start = time.perf_counter()
-        assert citation_gate.extract_citekeys(text, latex=True) == []
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
         assert time.perf_counter() - start < 2.0
+
+    def test_a_percent_inside_url_is_not_a_comment(self):
+        # `%` is an ordinary character inside `\url`, so a citation after
+        # one is live -- blanking it would be the one direction this gate
+        # must never fail in (0 citations on a fabricated key).
+        text = "See \\url{http://x/a%20b} and \\citep{fabricated2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
+
+    def test_a_percent_inside_href_is_not_a_comment(self):
+        text = "See \\href{http://x/a%20b}{the page}, \\citep{fabricated2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
+
+    def test_a_url_inside_a_comment_is_still_commented_out(self):
+        text = "% \\url{http://x/a%20b} \\cite{dead}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == []
 
 
 class TestCheckDocument:
