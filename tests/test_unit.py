@@ -242,6 +242,32 @@ def test_accept_records_the_unit_and_what_it_cites(book, corpus, capsys):
     )
 
 
+def test_accept_does_not_record_a_commented_out_citation(book, corpus, capsys):
+    """The permanent record says what the unit stands on (#834).
+
+    A `% \\citep{...}` is not a citation, so recording it would have the
+    provenance claim support the prose does not actually make -- the
+    inverse of the fabricated-citekey failure this gate exists for. The
+    gate itself only over-reports (an extra FAIL), which is why this was
+    invisible until `accept` wrote the same extraction to disk.
+    """
+    sign_off(book)
+    draft = book / "ch-model.tex"
+    draft.parent.mkdir(parents=True, exist_ok=True)
+    draft.write_text(
+        "\\section{What a model is}\n"
+        "A paragraph citing \\citep{smith_example_2024}.\n"
+        "% Dropped in review: \\citep{dropped2024}\n"
+        "\\section{What it leaves out}\n"
+        "The abstraction half.\n",
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert unit.main(["accept", str(book), "ch-model"]) == 0
+    record = json.loads(unit.record_path(book, "ch-model").read_text(encoding="utf-8"))
+    assert record["citekeys"] == ["smith_example_2024"]
+
+
 def test_accept_refuses_an_outline_nobody_signed_off(book, corpus, capsys):
     write_unit_draft(book, "ch-model")
     assert unit.main(["accept", str(book), "ch-model"]) == 1

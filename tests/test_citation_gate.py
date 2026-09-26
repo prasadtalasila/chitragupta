@@ -433,6 +433,100 @@ class TestLatexBlanking:
         assert result.ok and result.total_citations == 0
 
 
+class TestLatexCommentsAndVerb:
+    """A `%` comment and `\\verb` are inert, in the gate and in the record.
+
+    The gate alone could tolerate reading a commented-out citation as
+    live -- an extra FAIL is the safe direction. `unit accept` cannot:
+    it extracts with the same call and writes the result into the
+    permanent acceptance record, so a `% \\citep{...}` became a source
+    the unit was recorded as standing on, and synthesis and provenance
+    counted it (#834)."""
+
+    def test_a_commented_out_citation_is_not_a_citation(self):
+        assert citation_gate.extract_citekeys("% \\cite{commented}\n", latex=True) == []
+
+    def test_a_comment_after_real_prose_on_the_same_line(self):
+        text = "Cited \\citep{real2024}.  % was \\citep{dropped2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
+
+    def test_a_comment_ends_at_the_line_it_is_on(self):
+        text = "% \\cite{commented}\nStill cited \\citep{real2024}.\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(2, "real2024")]
+
+    def test_a_commented_pandoc_key_is_inert_too(self):
+        # The Pandoc regex runs on .tex input as well.
+        assert citation_gate.extract_citekeys("% see @commented2024\n", latex=True) == []
+
+    def test_an_escaped_percent_does_not_start_a_comment(self):
+        # `\%` is a literal percent sign, so the citation after it stands.
+        text = "\\citep[see 5\\% of]{real2024} and \\citep{second2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [
+            (1, "real2024"),
+            (1, "second2024"),
+        ]
+
+    def test_a_percent_after_a_line_break_is_a_comment(self):
+        # Backslash *parity*, not "is the previous character a backslash":
+        # `\\` is a line break, so the `%` after it is a comment start and
+        # the key behind it is not a citation. A one-character lookbehind
+        # reads this as an escaped percent and lets the key through.
+        assert citation_gate.extract_citekeys("Row \\\\% \\cite{dead}\n", latex=True) == []
+
+    def test_a_literal_percent_after_a_line_break_still_escapes(self):
+        text = "Row \\\\\\% \\citep{real2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
+
+    def test_verb_content_is_inert(self):
+        assert citation_gate.extract_citekeys("\\verb|\\cite{x}|\n", latex=True) == []
+
+    def test_verb_takes_an_arbitrary_delimiter(self):
+        assert citation_gate.extract_citekeys("\\verb+\\cite{x}+\n", latex=True) == []
+
+    def test_the_starred_verb_is_recognized(self):
+        # `\verb*` exists; reading its `*` as the delimiter leaves the
+        # rest of the line live, which is the false-negative direction.
+        assert citation_gate.extract_citekeys("\\verb*|\\cite{x}|\n", latex=True) == []
+
+    def test_verb_with_a_star_delimiter(self):
+        assert citation_gate.extract_citekeys("\\verb**\\cite{x}*\n", latex=True) == []
+
+    def test_a_delimiter_is_never_a_letter(self):
+        # `\verbatiminput{f.tex} \citep{fab}`: a `\S` delimiter reads the
+        # `a` of "atiminput" as the delimiter and blanks up to the next
+        # `a`, swallowing a citation the gate must still see.
+        text = "\\verbatiminput{sample.tex} \\citep{fabricated2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
+
+    def test_a_percent_inside_verb_does_not_comment_out_the_rest(self):
+        # Whichever comes first wins, as in TeX: inside `\verb` the `%`
+        # is an ordinary character, so the citation after it is live.
+        text = "\\verb|50%| then \\citep{real2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "real2024")]
+
+    def test_a_verb_inside_a_comment_is_still_commented_out(self):
+        assert citation_gate.extract_citekeys("% \\verb|x| \\cite{dead}\n", latex=True) == []
+
+    def test_an_unclosed_verb_leaves_the_line_alone(self):
+        # Not valid LaTeX; blank nothing rather than guess, which keeps
+        # the error on the FAIL side.
+        text = "\\verb|unclosed \\citep{fabricated2024}\n"
+        assert citation_gate.extract_citekeys(text, latex=True) == [(1, "fabricated2024")]
+
+    def test_markdown_mode_gains_no_comment_rule(self):
+        # `%` is an ordinary character in Markdown.
+        assert citation_gate.extract_citekeys("50% done, see [@real2024]\n") == [(1, "real2024")]
+
+    def test_a_run_of_unclosed_verbs_completes_fast(self):
+        # Same tripwire as _LATEX_CITE_RE's (#635): a failing `\verb`
+        # scan must not go superlinear, because a hook that times out
+        # does not block and a fabricated citekey lands ungated.
+        text = "\\verb|" * 400 + " x" * 400
+        start = time.perf_counter()
+        assert citation_gate.extract_citekeys(text, latex=True) == []
+        assert time.perf_counter() - start < 2.0
+
+
 class TestCheckDocument:
     def test_reports_unknown_with_correct_line_numbers(self, tmp_path):
         path = tmp_path / "draft.md"

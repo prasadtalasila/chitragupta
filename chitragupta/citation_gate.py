@@ -19,8 +19,17 @@ Recognizes any LaTeX/biblatex/natbib command whose name contains "cite"
 (\\cite, \\citep, \\citealp, \\footcite, \\nocite, capitalized biblatex
 forms, ..., with optional * and [] options) and Pandoc/Markdown ([@key],
 [@key1; @key2], bare @key, suppressed-author -@key) citation syntax. Code
-fences, inline code spans, and LaTeX verbatim/lstlisting/minted
-environments are excluded from scanning first (see _blank_code).
+fences, inline code spans, and -- in LaTeX -- verbatim/lstlisting/
+minted environments, `%` comments and \\verb are excluded from
+scanning first (see _blank_code).
+
+Known gaps, investigated and left as over-reporting (#834): a brace
+group adjacent to a citation's own reads as a multicite group, so
+`\\citep{k}{\\bfseries x}` offers `\\bfseries x` as a key; a macro
+*defining* a citation, `\\newcommand{\\mc}[1]{\\citep{#1}}`, offers
+`#1`; and a `%` inside `\\url{a%20b}` is not a comment in TeX but is
+blanked here. Each fails a sound draft rather than passing a
+fabricated key, so the fix is to write the citation differently.
 """
 
 import re
@@ -157,6 +166,30 @@ _INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 _LATEX_VERBATIM_RE = re.compile(
     r"\\begin\{(verbatim|lstlisting|minted)\*?\}.*?\\end\{\1\*?\}", re.DOTALL
 )
+# LaTeX's other two ways of saying "this is not prose", scanned in one
+# left-to-right alternation so whichever construct opens first wins, as
+# in TeX itself: `\verb|50%|` keeps the following citation live, while
+# `% \verb|x| \cite{k}` is commented out whole (#834).
+#
+# `\verb` first, or the escape-pair alternative below eats the `\v`. The
+# delimiter is any non-letter, non-space character, which is what TeX
+# allows -- the issue's proposed `(\S)` would read the `a` of
+# `\verbatiminput` as a delimiter and blank up to the next `a`, hiding a
+# real citation from the gate, and would read the `*` of `\verb*` as the
+# delimiter and then never close.
+#
+# The escape-pair alternative is what makes `%` correct: a `%` starts a
+# comment when an *even* number of backslashes precedes it, so `\%` is a
+# literal percent but `\\%` (a line break, then a comment) is not. A
+# one-character lookbehind, as the issue proposed, gets the second case
+# wrong and lets a commented-out citekey through. Consuming each `\x`
+# pair and leaving it unchanged tracks that parity exactly, the way
+# TeX's own left-to-right scan does.
+_LATEX_INERT_RE = re.compile(
+    r"\\verb\*?([^A-Za-z\s])[^\n]*?\1"  # \verb<d>...<d>, \verb*<d>...<d>
+    r"|(?P<esc>\\[\s\S])"  # an escaped character: not a comment start
+    r"|%[^\n]*"  # a comment, to the end of the line
+)
 
 
 def _blank_fenced(text: str) -> str:
@@ -201,19 +234,23 @@ def _blank_fenced(text: str) -> str:
 def _blank_code(text: str, *, latex: bool = False) -> str:
     """Blank code-like regions to spaces, preserving every offset.
 
-    `latex=True` blanks only LaTeX's own verbatim environments: in LaTeX
-    a backtick is an open-quote character, not code markup, so applying
-    the Markdown rules there blanked the span *between* two quoted
-    phrases as "inline code" -- and any \\citep{...} inside it vanished,
-    letting a fabricated citekey pass the gate as 0 citations.
+    `latex=True` blanks LaTeX's own inert regions -- verbatim-style
+    environments, `%` comments and `\\verb` -- and none of Markdown's: in
+    LaTeX a backtick is an open-quote character, not code markup, so
+    applying the Markdown rules there blanked the span *between* two
+    quoted phrases as "inline code" -- and any \\citep{...} inside it
+    vanished, letting a fabricated citekey pass the gate as 0 citations.
     """
 
     def _blank_match(m: re.Match) -> str:
         return re.sub(r"[^\n]", " ", m.group(0))
 
+    def _blank_unless_escaped(m: re.Match) -> str:
+        return m.group(0) if m.group("esc") else _blank_match(m)
+
     text = _LATEX_VERBATIM_RE.sub(_blank_match, text)
     if latex:
-        return text
+        return _LATEX_INERT_RE.sub(_blank_unless_escaped, text)
     text = _blank_fenced(text)
     text = _INLINE_CODE_RE.sub(_blank_match, text)
     return text
