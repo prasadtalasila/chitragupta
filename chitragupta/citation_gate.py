@@ -119,7 +119,28 @@ _CITE_KEYS_RE = re.compile(r"\[[^\]]*\]|\{([^}]+)\}")
 # Pandoc's own grammar does: requiring a letter made `[@3dprinting_2020]`
 # invisible to the gate (0 citations) while pandoc still rendered it as a
 # citation -- the false-negative direction, which always wins here.
-_PANDOC_CITE_RE = re.compile(r"(?<![A-Za-z0-9._%+\-\\])-?@([A-Za-z0-9_][A-Za-z0-9_-]*)")
+# Pandoc's own citekey grammar, and the one definition of it in this
+# package: an alphanumeric (or `_`) start, then alphanumerics, with
+# `:.#$%&-+?<>~/` allowed only *between* them. The lookahead is what
+# stops a sentence-final `.` or a closing `>` being eaten -- pandoc
+# resolves `key` in "shown by @key.", not `key.`. Restricting the body to
+# `[A-Za-z0-9_-]` truncated the key at the first of those characters, so
+# the gate verified a *prefix* of what pandoc would look up: a draft
+# citing `[@smith:2020]` passed on a ledger holding `smith`, and pandoc
+# then rendered `[?]` -- the one thing this gate exists to catch. In the
+# other direction a legitimate Better-BibTeX key (`doe.2020`) was refused
+# as unknown, pushing an author to "fix" a correct citation.
+#
+# A hyphen *run* is matched whole, deliberately unlike pandoc, which
+# stops at `--` (verified against `pandoc -t json` on this host). Keys
+# with a doubled hyphen are real here -- bibtexparser collapses
+# "as-a-service" into `zech_digital-twins-as--service_2024` -- and
+# render_output/_citeproc.py already repairs that for pandoc by aliasing
+# the run away in a temp copy. That repair is driven by this pattern, so
+# matching pandoc's truncation here would both refuse the key at the gate
+# and leave the alias unbuilt, silently dropping the citation instead.
+PANDOC_KEY = r"[A-Za-z0-9_](?:[A-Za-z0-9_]|-+(?=[A-Za-z0-9_])|[:.#$%&+?<>~/](?=[A-Za-z0-9_]))*"
+_PANDOC_CITE_RE = re.compile(rf"(?<![A-Za-z0-9._%+\-\\])-?@({PANDOC_KEY})")
 
 # The teaching genres' whole job is worked code examples, and code routinely
 # contains @-tokens that look like a Pandoc citation (Python's @dataclass,

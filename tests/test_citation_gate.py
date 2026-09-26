@@ -198,6 +198,29 @@ class TestExtractPandocCitations:
             "[@zech_digital-twins-as--service_2024]"
         ) == ["zech_digital-twins-as--service_2024"]
 
+    def test_internal_colon_is_part_of_the_key(self):
+        # Pandoc's grammar allows ":.#$%&-+?<>~/" *between* alphanumerics,
+        # so this key resolves as `smith:2020`. Stopping at the colon made
+        # the gate verify `smith` -- a prefix pandoc never looks up.
+        assert citation_gate.extract_citekeys_from_line("see [@smith:2020]") == ["smith:2020"]
+
+    def test_internal_dot_is_part_of_the_key(self):
+        # The Better BibTeX default key style; refused as unknown when the
+        # gate truncated it to `doe`.
+        assert citation_gate.extract_citekeys_from_line("as @doe.2020 showed") == ["doe.2020"]
+
+    def test_internal_plus_is_part_of_the_key(self):
+        assert citation_gate.extract_citekeys_from_line("as @a+b showed") == ["a+b"]
+
+    def test_sentence_final_punctuation_is_not_part_of_the_key(self):
+        # Pandoc's rule is *internal* punctuation only: a trailing "." is
+        # the sentence's, not the key's, and eating it would refuse a key
+        # that is in the ledger.
+        assert citation_gate.extract_citekeys_from_line("shown by @key.") == ["key"]
+
+    def test_group_mixes_plain_and_punctuated_keys(self):
+        assert citation_gate.extract_citekeys_from_line("[@a; @b:c]") == ["a", "b:c"]
+
     def test_email_address_not_mistaken_for_citation(self):
         assert (
             citation_gate.extract_citekeys_from_line("Contact us at name@example.com for details.")
@@ -426,6 +449,17 @@ class TestCheckDocument:
         result = citation_gate.check_document(path, known_citekeys={"a2024", "b2024"})
         assert result.ok is True
         assert result.total_citations == 2
+
+    def test_a_ledger_key_that_is_only_a_prefix_fails(self, tmp_path):
+        # The one thing the gate exists to catch: the ledger holds `smith`,
+        # the draft cites `[@smith:2020]`, and pandoc resolves `smith:2020`
+        # -- nothing -- and renders `[?]`. Truncating at the colon printed
+        # OK on exactly this document.
+        path = tmp_path / "draft.md"
+        path.write_text("Claim [@smith:2020].\n")
+        result = citation_gate.check_document(path, known_citekeys={"smith"})
+        assert result.unknown == [(1, "smith:2020")]
+        assert result.ok is False
 
     def test_no_citations_is_ok_with_zero_total(self, tmp_path):
         path = tmp_path / "draft.md"

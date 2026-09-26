@@ -72,7 +72,10 @@ _CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
 # that equals a real ledger citekey cannot be invented by construction.
 # So this pattern is deliberately never used on its own -- it is read only
 # alongside `known`, and only ever as an *addition* to the strict scan.
-_LOOSE_KEY = r"[A-Za-z][A-Za-z0-9_:-]*"
+# The charset is the gate's own `PANDOC_KEY` rather than a third spelling
+# of one: a ledger key this scan could not tokenise the way the gate does
+# is a key the dossier can never be differenced against.
+_LOOSE_KEY = citation_gate.PANDOC_KEY
 
 _LOOSE_CITEKEY_TOKEN = re.compile(rf"`({_LOOSE_KEY})`|@({_LOOSE_KEY})")
 
@@ -86,12 +89,13 @@ def _citekeys(text: str, known: "set[str] | None" = None) -> list[str]:
 
     A union of the two scans, never a substitution of one for the other.
     Filtering a single loose scan by "in `known`, or strictly key-shaped"
-    reads like the same thing and is not: `_LOOSE_KEY` is greedy over
-    `[_:-]`, so `@smith_x_2024:` tokenises as `smith_x_2024:`, which is
-    neither in the ledger nor a strict match -- and a key the strict scan
-    had always found would have been *lost* the moment a caller passed
-    `known`. That is a new false negative in the direction the comment
-    above calls the worse failure, arriving with the fix for one.
+    reads like the same thing and is not: the loose scan runs the gate's
+    grammar, so `@smith_x_2024.v2` tokenises as `smith_x_2024.v2`, which
+    is neither in the ledger nor a strict match -- and a key the strict
+    scan finds inside it (`smith_x_2024`) would have been *lost* the
+    moment a caller passed `known`. That is a new false negative in the
+    direction the comment above calls the worse failure, arriving with
+    the fix for one.
     """
     strict = [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
     if known is None:
