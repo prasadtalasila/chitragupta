@@ -441,6 +441,96 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
     assert "does not parse" in capsys.readouterr().err
 
 
+# --- Issue 820: a unit id is a path component ----------------------------
+
+
+# Three `..` segments: the record they aim at lands in `content/` and the
+# draft beside it, both still inside the test's own tmp_path, so the
+# escape is real and nothing is written outside what pytest cleans up.
+ESCAPE_ID = "../../../pwned"
+ESCAPING_SPEC = GOOD_SPEC.replace("{#ch-model}", "{#" + ESCAPE_ID + "}")
+
+# Ids that leave their directory on POSIX *and* on Windows, so a direct
+# call can be asserted on either leg. `a\\b` and `C:\\x` are deliberately
+# not here: they are one filename component on POSIX and escape only on
+# Windows, and the parse-level rule in test_spec.py is what covers them.
+ESCAPING_IDS = ["../../x", "a/../../b"]
+
+
+def test_a_spec_whose_id_escapes_its_directory_does_not_parse(book, capsys):
+    """The reproducer from issue 820, refused at the outline: signing is
+    where a person approves the ids, so an id that cannot be a filename
+    is named there rather than at the write it would have corrupted."""
+    spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
+    assert spec.main(["sign", str(book)]) == 1
+    assert ESCAPE_ID in capsys.readouterr().err
+
+
+def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, corpus, capsys):
+    """The reproducer end to end, with every other refusal `accept`
+    makes taken out of the way first -- the outline is signed by hand
+    (`spec sign` now refuses it) and the draft is written where the
+    escaping id points, so this fails on `main` by writing the record."""
+    spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
+    spec.signoff_path(book).write_text(
+        f"# Sign-off\n\n- spec digest: `{spec.digest(ESCAPING_SPEC)}`\n",
+        encoding="utf-8",
+    )
+    # The book directory itself has to exist, or the `..` segments walk
+    # through nothing and `accept` refuses for the ordinary reason that
+    # there is no draft, never reaching the write this pins.
+    book.mkdir(parents=True, exist_ok=True)
+    draft = (book / f"{ESCAPE_ID}.md").resolve()
+    draft.parent.mkdir(parents=True, exist_ok=True)
+    draft.write_text(
+        "# Ch\n\n## What a model is\n\nProse.\n\n## What it leaves out\n\nProse.\n",
+        encoding="utf-8",
+    )
+    escape = (spec.spec_dir(book) / unit.UNITS_DIRNAME / f"{ESCAPE_ID}.json").resolve()
+    assert not escape.is_relative_to(spec.spec_dir(book).resolve())
+    assert unit.main(["accept", str(book), ESCAPE_ID]) == 1
+    assert "does not parse" in capsys.readouterr().err
+    assert not escape.exists()
+
+
+@pytest.mark.parametrize("escaping", ESCAPING_IDS)
+def test_record_path_refuses_an_id_that_leaves_the_units_directory(book, escaping):
+    """Belt and braces below the parse: the join itself refuses, so a
+    future id source -- a machine-written outline, a `--unit` typed by
+    hand -- cannot reintroduce the hole one layer up."""
+    with pytest.raises(unit.UnitError, match="outside"):
+        unit.record_path(book, escaping)
+
+
+@pytest.mark.parametrize("escaping", ESCAPING_IDS)
+def test_draft_path_refuses_an_id_that_leaves_the_book(book, escaping):
+    with pytest.raises(unit.UnitError, match="outside"):
+        unit.draft_path(book, escaping)
+
+
+def test_an_absolute_id_discards_the_book_entirely_and_is_refused(book, tmp_path):
+    """`Path(book) / "/abs"` is `/abs`: the book directory is dropped
+    without a word, which is the quietest form of this defect."""
+    absolute = str(tmp_path / "evil")
+    with pytest.raises(unit.UnitError, match="outside"):
+        unit.record_path(book, absolute)
+    with pytest.raises(unit.UnitError, match="outside"):
+        unit.draft_path(book, absolute)
+
+
+def test_a_units_directory_symlinked_out_of_the_spec_tree_is_refused(book, tmp_path):
+    """The same check answers for a symlink, because `resolves_inside`
+    resolves both sides: `units/` pointing anywhere else is not somewhere
+    an acceptance record may be written."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    units = spec.spec_dir(book) / unit.UNITS_DIRNAME
+    units.parent.mkdir(parents=True, exist_ok=True)
+    units.symlink_to(outside, target_is_directory=True)
+    with pytest.raises(unit.UnitError, match="outside"):
+        unit.record_path(book, "ch-model")
+
+
 # --- the entry point -----------------------------------------------------
 
 

@@ -183,6 +183,13 @@ Every part, chapter and section needs an explicit `{#id}`, and a heading
 without one is refused rather than guessed at --
 [why](#-why-an-id-is-required-on-every-heading).
 
+An id also becomes a filename: `unit accept` writes
+`content/specs/<book>/units/<id>.json`. It is held to the same rule a
+citekey is, therefore -- no `/ \ : * ? " < > |`, no control character,
+not `.` or `..`, and not a name Windows reserves -- and an id that
+breaks it is named as a parse problem rather than quietly rewritten into
+one that does not.
+
 A worked `spec.md`, short enough to read whole and showing all four
 levels, the briefs, and the preamble that belongs to nobody -- the file
 is at [`examples/dossiers/book/spec.md`](examples/dossiers/book/spec.md):

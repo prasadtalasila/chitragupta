@@ -453,15 +453,14 @@ def test_a_heading_inside_a_fence_still_does_not_open_a_chapter():
 COLON_ID = TWO_CHAPTERS.replace("{#ch-what}", "{#ch:what}")
 
 
-def test_a_chapter_id_with_a_colon_signs_off_and_reads_back(book):
-    """m-63: `_HEADING` accepts a colon in an id and the writer backticks
-    it, but the sign-off reader's id group excluded colons -- so `ch:what`
-    signed cleanly and was never in `signed_off_chapters`, refusing its
-    units forever."""
+def test_a_chapter_id_with_a_colon_is_refused_as_a_filename(book):
+    """Was m-63's "a colon in an id signs off and reads back". Issue 820
+    withdraws it: the id becomes `ch:what.json` under content/specs/, and
+    on the Windows leg that names an alternate data stream on a file
+    called `ch` rather than the record anybody meant to write."""
     write_spec(book, COLON_ID)
-    spec.main(["sign", str(book)])
-    assert spec.recorded_chapter_digests(book) == spec.chapter_digests(COLON_ID)
-    assert "ch:what" in spec.signed_off_chapters(book, COLON_ID)
+    assert any("ch:what" in problem for problem in spec.parse(COLON_ID)["problems"])
+    assert spec.main(["sign", str(book)]) == 1
 
 
 def test_a_hand_written_chapter_line_without_backticks_is_still_read(book):
@@ -476,6 +475,57 @@ def test_a_hand_written_chapter_line_without_backticks_is_still_read(book):
         encoding="utf-8",
     )
     assert spec.recorded_chapter_digests(book) == {"ch-what": digests["ch-what"]}
+
+
+# --- Issue 820: an id is a path component --------------------------------
+
+
+# Every way a `{#id}` stops being one safe filename stem. The escapes
+# (`..`, a separator, an absolute path) are the defect; the rest are the
+# rest of the class the shared citekey rule already covers, including the
+# two -- a backslash and a drive letter -- that only bite on the Windows
+# leg. Empty ids are absent, not hostile: `{#}` does not match the id
+# group at all, so they are the "has no `{#id}`" problem and stay there.
+HOSTILE_IDS = [
+    "..",
+    ".",
+    "../x",
+    "/abs",
+    "a/b",
+    "a/../../b",
+    "a\\b",
+    "C:\\x",
+    "C:x",
+    "con",
+    "trailing.",
+    "ctrl\x01x",
+]
+
+
+@pytest.mark.parametrize("hostile", HOSTILE_IDS)
+def test_an_id_that_cannot_be_a_filename_is_named_as_a_problem(hostile):
+    """Issue 820: `unit accept` joins the id into a path under
+    content/specs/, so `{#../../../../victimdir/pwned}` wrote its
+    acceptance record outside the content tree. The id rule is now the
+    citekey rule -- the other identifier this project turns into a
+    filename -- and a bad one is reported by name, the way a missing one
+    is, rather than sanitised into something nobody wrote."""
+    text = GOOD.replace("{#sec-model}", "{#" + hostile + "}")
+    problems = spec.parse(text)["problems"]
+    # Backticked, so `.` does not match every sentence with a full stop
+    # and `con` does not match "cannot": the id has to be *named*.
+    assert any(f"`{hostile}`" in problem for problem in problems), problems
+
+
+def test_a_refused_id_contributes_no_unit_but_the_rest_of_the_spec_still_parses():
+    """The collect-every-problem shape is kept: one unusable id does not
+    cost the reader the other problems, or the units that are fine."""
+    parsed = spec.parse(GOOD.replace("{#sec-model}", "{#../x}"))
+    assert [unit["id"] for unit in parsed["units"]] == [
+        "part-foundations",
+        "ch-what",
+        "sec-data",
+    ]
 
 
 # --- the entry point -----------------------------------------------------
