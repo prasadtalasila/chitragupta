@@ -444,7 +444,11 @@ def test_status_refuses_a_spec_that_does_not_parse(book, capsys):
 # --- Issue 820: a unit id is a path component ----------------------------
 
 
-ESCAPING_SPEC = GOOD_SPEC.replace("{#ch-model}", "{#../../../../pwned}")
+# Three `..` segments: the record they aim at lands in `content/` and the
+# draft beside it, both still inside the test's own tmp_path, so the
+# escape is real and nothing is written outside what pytest cleans up.
+ESCAPE_ID = "../../../pwned"
+ESCAPING_SPEC = GOOD_SPEC.replace("{#ch-model}", "{#" + ESCAPE_ID + "}")
 
 # Ids that leave their directory on POSIX *and* on Windows, so a direct
 # call can be asserted on either leg. `a\\b` and `C:\\x` are deliberately
@@ -459,16 +463,32 @@ def test_a_spec_whose_id_escapes_its_directory_does_not_parse(book, capsys):
     is named there rather than at the write it would have corrupted."""
     spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
     assert spec.main(["sign", str(book)]) == 1
-    assert "../../../../pwned" in capsys.readouterr().err
+    assert ESCAPE_ID in capsys.readouterr().err
 
 
 def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, corpus, capsys):
-    """And `accept` refuses too, rather than relying on nobody having
-    signed: the record it would have written landed outside
-    content/specs/ entirely."""
+    """The reproducer end to end, with every other refusal `accept`
+    makes taken out of the way first -- the outline is signed by hand
+    (`spec sign` now refuses it) and the draft is written where the
+    escaping id points, so this fails on `main` by writing the record."""
     spec.spec_path(book).write_text(ESCAPING_SPEC, encoding="utf-8")
-    escape = book.parent.parent.parent.parent / "pwned.json"
-    assert unit.main(["accept", str(book), "../../../../pwned"]) == 1
+    spec.signoff_path(book).write_text(
+        f"# Sign-off\n\n- spec digest: `{spec.digest(ESCAPING_SPEC)}`\n",
+        encoding="utf-8",
+    )
+    # The book directory itself has to exist, or the `..` segments walk
+    # through nothing and `accept` refuses for the ordinary reason that
+    # there is no draft, never reaching the write this pins.
+    book.mkdir(parents=True, exist_ok=True)
+    draft = (book / f"{ESCAPE_ID}.md").resolve()
+    draft.parent.mkdir(parents=True, exist_ok=True)
+    draft.write_text(
+        "# Ch\n\n## What a model is\n\nProse.\n\n## What it leaves out\n\nProse.\n",
+        encoding="utf-8",
+    )
+    escape = (spec.spec_dir(book) / unit.UNITS_DIRNAME / f"{ESCAPE_ID}.json").resolve()
+    assert not escape.is_relative_to(spec.spec_dir(book).resolve())
+    assert unit.main(["accept", str(book), ESCAPE_ID]) == 1
     assert "does not parse" in capsys.readouterr().err
     assert not escape.exists()
 

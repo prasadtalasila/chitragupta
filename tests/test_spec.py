@@ -512,7 +512,9 @@ def test_an_id_that_cannot_be_a_filename_is_named_as_a_problem(hostile):
     is, rather than sanitised into something nobody wrote."""
     text = GOOD.replace("{#sec-model}", "{#" + hostile + "}")
     problems = spec.parse(text)["problems"]
-    assert any(hostile in problem for problem in problems), problems
+    # Backticked, so `.` does not match every sentence with a full stop
+    # and `con` does not match "cannot": the id has to be *named*.
+    assert any(f"`{hostile}`" in problem for problem in problems), problems
 
 
 def test_a_refused_id_contributes_no_unit_but_the_rest_of_the_spec_still_parses():

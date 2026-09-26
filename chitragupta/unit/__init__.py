@@ -85,8 +85,8 @@ def _inside(path: Path, *roots: Path) -> Path:
     if all(config.resolves_inside(path, root) for root in roots):
         return path
     raise UnitError(
-        f"{path} resolves to {path.resolve()}, outside {roots[0]}. A unit id is "
-        "one path component, not a path: fix the `{#id}` in the book's outline."
+        f"{path} resolves to {path.resolve()}, outside {roots[0]}: a unit id is one "
+        "path component, not a path, and no directory above it may be a symlink out."
     )
 
 
