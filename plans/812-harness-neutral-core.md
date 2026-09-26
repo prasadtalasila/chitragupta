@@ -68,8 +68,21 @@ Two things that look like a portable gate are not one:
   requested" rules out. A local model is the likeliest to skip the step,
   and also the likeliest to fabricate.
 
-Today `render` does not run the gate. Only `draft unit accept` refuses an
-ungated draft, and that is on the book track only.
+Render stops a fabricated key in one format only. Measured on
+2026-09-26 on a scratch copy of the sample project, with a draft citing
+a key that is in neither the bib nor the ledger:
+
+- `draft render --format md` refuses, printing `[error] citekey(s) cited
+  in the draft but missing from the ledger` and naming the key. The
+  refusal comes from `references.entries`' `MissingCitekey`, not from
+  the gate.
+- `draft render --format docx` prints pandoc's `[WARNING] Citeproc:
+  citation ... not found` and **writes the document anyway**. Only docx
+  was run. The pdf and tex formats take the same `pandoc --citeproc`
+  path according to `render_output`'s module docstring, and step 1's
+  tests should confirm that.
+
+`draft unit accept` runs the gate itself, but only on the book track.
 
 ## 🏗 The target shape
 
@@ -81,7 +94,7 @@ chitragupta/                    layer 1 -- harness-neutral checks, stdlib gate c
 └── hook_launchers.py           reads every harness's launcher config (step 3)
 
 .agents/                        the neutral source of truth
-├── skills/<name>/SKILL.md      canonical skills; Codex reads this path natively (step 4)
+├── skills/<name>/SKILL.md      canonical skills; Codex's project skills path (step 4)
 └── hooks/                      adapters: payload in, one envelope out (step 3)
     ├── draft_target.py         learns every harness's payload shape
     ├── envelope.py             emits only the field the named host consumes
@@ -102,17 +115,19 @@ Each step is one PR, can be released on its own, and leaves every
 existing Claude Code project working. Steps 1 and 2 come first because
 they are what makes any second harness safe to support.
 
-### 1. The gate runs at render, on every harness
+### 1. The gate runs at render, in every format and on every harness
 
-`draft render` runs `citation_gate.check_text` on the text it is about to
-render. If the gate reports `FAIL`, render refuses with the same
-citekey-naming report the gate prints. This puts the invariant at the
-output boundary, so no harness, hook or model can render around it. It
-stays on the tier-1 chain, because `render_output` already imports
-`citation_gate`.
+Extend the refusal `--format md` already makes to every format. Before
+pandoc runs, `draft render` runs `citation_gate.check_text` on the text
+it is about to render. If the gate reports `FAIL`, render refuses with
+the same citekey-naming report the gate prints. This puts the invariant
+at the output boundary, so no harness, hook or model can render around
+it. The check stays on the tier-1 chain, because `render_output` already
+imports `citation_gate`.
 
-- **Decision needed: what a refusal means for the version.** Rendering a
-  draft that renders today becomes an error. `DEVELOPER-AGENTS.md`'s
+- **Decision needed: what a refusal means for the version.** A docx,
+  pdf or tex render that succeeds with a warning today becomes an
+  error. `DEVELOPER-AGENTS.md`'s
   versioning section calls a change MAJOR when it "requires an existing
   user to change how they invoke" the pipeline, and a user whose draft
   now refuses to render has to. Recommended: MAJOR. Do not add an
@@ -198,10 +213,13 @@ four hooks.
 
 ### 4. One canonical set of skills, in neutral wording
 
-- **Location.** `.agents/skills/` becomes the source. Codex reads it
-  natively. `.claude/skills/` becomes a generated copy, written by
-  `chitragupta init` and checked by a drift test, not a symlink, since
-  symlinks do not survive the release zip or a Windows checkout. **To
+- **Location.** `.agents/skills/` becomes the source. Third-party Codex
+  guides give it as Codex's project skills path. **To confirm** against
+  OpenAI's own documentation before this step starts, since the choice
+  of location rests on it. `.claude/skills/` becomes a generated copy,
+  written by `chitragupta init` and checked by a drift test, not a
+  symlink, since symlinks do not survive the release zip or a Windows
+  checkout. **To
   confirm:** whether Claude Code also reads `.agents/skills/`. If it
   does, the copy is unnecessary, and keeping it would load every skill
   twice.
@@ -291,9 +309,9 @@ instructions:
 
 ## ❓ Open questions this plan does not settle
 
-1. **Whether render refusing is MAJOR** (step 1). It is recommended here,
-   but it is the maintainer's call under `DEVELOPER-AGENTS.md`'s
-   versioning section.
+1. **Whether a docx/pdf/tex render refusing is MAJOR** (step 1). It is
+   recommended here, but it is the maintainer's call under
+   `DEVELOPER-AGENTS.md`'s versioning section.
 2. **Whether either harness can hide its built-in write tools** (step 2).
    This decides whether Continue gets two hard stops or one.
 3. **Whether Claude Code reads `.agents/skills/`** (step 4). This decides
