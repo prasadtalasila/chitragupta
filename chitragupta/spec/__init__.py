@@ -45,6 +45,7 @@ import re
 from pathlib import Path
 
 from chitragupta import config
+from chitragupta.citekey_safety import citekey_problem
 
 # Fence tracking is not re-derived here. `_prose_lines` says in its own
 # docstring that it is "shared so no caller re-derives it", and a brief
@@ -214,6 +215,13 @@ def _unit_problem(head: dict, seen: set[str], stack: list[dict]) -> str | None:
             f"`{head['title']}` has no `{{#id}}`. Every part, chapter and "
             "section needs one, so a reworded heading does not orphan the "
             "units written against it."
+        )
+    unsafe = citekey_problem(head["id"])
+    if unsafe:
+        return (
+            f"`{head['title']}`'s id `{head['id']}` cannot be a filename: {unsafe}. "
+            "An id is joined into a path under content/specs/, so the rule for "
+            "one is the rule a citekey already obeys."
         )
     if head["id"] in seen:
         return (

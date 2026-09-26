@@ -36,7 +36,7 @@ here blocks a write -- see docs/WRITE-A-BOOK.md.
 import json
 from pathlib import Path
 
-from chitragupta import spec
+from chitragupta import config, spec
 from chitragupta.spec._align import chapters, section_described
 
 # Where a book's acceptance records live, beside the outline they are
@@ -71,6 +71,25 @@ def _parsed_spec(book: Path) -> tuple[str, dict]:
     return text, parsed
 
 
+# A unit id is one path component, and until issue 820 nothing enforced
+# that: an outline heading `{#../../../../victimdir/pwned}` had its
+# acceptance record written outside `content/` altogether. `spec.parse`
+# now refuses such an id, and this refuses the *join* as well, so a
+# future id source -- a machine-written outline, an id typed at the CLI
+# -- cannot reintroduce the hole one layer up. Two roots are asked of a
+# record rather than one: `units/` is what a `..` escapes, and the spec
+# directory is what a `units/` symlinked out of the tree escapes, that
+# second one resolving inside itself and so answering for nothing.
+def _inside(path: Path, *roots: Path) -> Path:
+    """`path`, once it is certain it lands under every one of `roots`."""
+    if all(config.resolves_inside(path, root) for root in roots):
+        return path
+    raise UnitError(
+        f"{path} resolves to {path.resolve()}, outside {roots[0]}. A unit id is "
+        "one path component, not a path: fix the `{#id}` in the book's outline."
+    )
+
+
 def draft_path(book: Path, unit_id: str) -> Path:
     """Where unit `unit_id`'s prose lives.
 
@@ -81,15 +100,16 @@ def draft_path(book: Path, unit_id: str) -> Path:
     is missing should go.
     """
     for suffix in (".md", ".tex"):
-        candidate = Path(book) / f"{unit_id}{suffix}"
+        candidate = _inside(Path(book) / f"{unit_id}{suffix}", Path(book))
         if candidate.is_file():
             return candidate
-    return Path(book) / f"{unit_id}.md"
+    return _inside(Path(book) / f"{unit_id}.md", Path(book))
 
 
 def record_path(book: Path, unit_id: str) -> Path:
     """Where `accept` records that this unit was accepted."""
-    return spec.spec_dir(book) / UNITS_DIRNAME / f"{unit_id}.json"
+    units = spec.spec_dir(book) / UNITS_DIRNAME
+    return _inside(units / f"{unit_id}.json", units, spec.spec_dir(book))
 
 
 def acceptance_units(book: Path) -> list[dict]:
