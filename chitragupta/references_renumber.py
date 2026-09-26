@@ -18,8 +18,14 @@ from chitragupta import citation_gate
 # to a bare number would silently delete the words around it. Those are
 # handled one key at a time by _BARE_KEY_RE below, which leaves the
 # surrounding text alone.
+#
+# Built from the gate's own citekey grammar for the reason _BARE_KEY_RE
+# below shares its whole pattern: a group regex that recognised fewer
+# keys than the per-key pass let a group fall through to it, and the
+# per-key replacement then ran *inside* the untouched brackets, nesting a
+# second pair around the number (`[[1]]`).
 _CITATION_GROUP_RE = re.compile(
-    r"\[\s*-?@[A-Za-z][A-Za-z0-9_-]*(?:\s*;\s*-?@[A-Za-z][A-Za-z0-9_-]*)*\s*\]"
+    rf"\[\s*-?@{citation_gate.PANDOC_KEY}(?:\s*;\s*-?@{citation_gate.PANDOC_KEY})*\s*\]"
 )
 # A single citekey with a preserved locator -- `[@doe2020, p. 33]` --
 # which `_CITATION_GROUP_RE` above deliberately does not match (its own
@@ -27,7 +33,7 @@ _CITATION_GROUP_RE = re.compile(
 # as `[3, p. 33]` rather than falling through to the per-key pass below,
 # which would leave the surrounding brackets in place and nest a second
 # pair around the number (`[[3], p. 33]`).
-_LOCATOR_GROUP_RE = re.compile(r"\[\s*(-?@[A-Za-z][A-Za-z0-9_-]*)\s*,\s*([^\[\]@;]+)\]")
+_LOCATOR_GROUP_RE = re.compile(rf"\[\s*(-?@{citation_gate.PANDOC_KEY})\s*,\s*([^\[\]@;]+)\]")
 # citation_gate's own Pandoc-citation regex, not a second definition of
 # one. Its negative lookbehind is what keeps `@` inside a larger token
 # from reading as a citation -- this project's own tutorial draft carries

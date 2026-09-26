@@ -292,6 +292,16 @@ class TestRenumber:
     def test_marker_forms(self, text, expected):
         assert references.renumber(text, self.NUMBERS) == expected
 
+    def test_a_group_holding_a_punctuated_key_renumbers_whole(self):
+        # The group regex reads citekeys with the gate's own grammar, so a
+        # key carrying internal punctuation collapses to its number rather
+        # than falling through to the per-key pass, which would leave the
+        # brackets in place and nest a second pair inside them.
+        assert references.renumber("[@smith:2020]", {"smith:2020": 1}) == "[1]"
+
+    def test_a_locator_group_holding_a_punctuated_key_renumbers_whole(self):
+        assert references.renumber("[@doe.2020, p. 33]", {"doe.2020": 4}) == "[4, p. 33]"
+
     def test_a_key_with_no_number_is_left_alone(self):
         assert references.renumber("Unknown [@zzz].", self.NUMBERS) == "Unknown [@zzz]."
 
