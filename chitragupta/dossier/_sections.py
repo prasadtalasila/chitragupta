@@ -89,12 +89,13 @@ def _citekeys(text: str, known: "set[str] | None" = None) -> list[str]:
 
     A union of the two scans, never a substitution of one for the other.
     Filtering a single loose scan by "in `known`, or strictly key-shaped"
-    reads like the same thing and is not: a loose token need not be
-    strictly key-shaped, so `@smith_x` tokenises as `smith_x`, which is
-    neither in the ledger nor a strict match -- and a key the strict scan
-    had always found would have been *lost* the moment a caller passed
-    `known`. That is a new false negative in the direction the comment
-    above calls the worse failure, arriving with the fix for one.
+    reads like the same thing and is not: the loose scan runs the gate's
+    grammar, so `@smith_x_2024.v2` tokenises as `smith_x_2024.v2`, which
+    is neither in the ledger nor a strict match -- and a key the strict
+    scan finds inside it (`smith_x_2024`) would have been *lost* the
+    moment a caller passed `known`. That is a new false negative in the
+    direction the comment above calls the worse failure, arriving with
+    the fix for one.
     """
     strict = [backticked or at_form for backticked, at_form in _CITEKEY_TOKEN.findall(text)]
     if known is None:

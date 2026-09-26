@@ -4088,11 +4088,12 @@ class TestPassingKnownOnlyEverAdds:
     filtered single scan quietly broke: `known` is a *union* with the
     strict scan, never a substitution for it.
 
-    `_LOOSE_KEY` is greedy over `[_:-]`, so `@smith_x_2024:` tokenises
-    loosely as `smith_x_2024:` -- neither in any ledger nor strictly
-    key-shaped. Read through a filtered loose scan, a key the strict
-    pattern had always found disappeared the moment a caller passed
-    `known`, which is a false negative on the `drift().missing` path.
+    The loose scan reads the gate's own citekey grammar, so
+    `@smith_x_2024.v2` tokenises loosely as `smith_x_2024.v2` -- neither
+    in any ledger nor strictly key-shaped, while the strict scan finds
+    `smith_x_2024` inside it. Read through a filtered loose scan, a key
+    the strict pattern had always found disappeared the moment a caller
+    passed `known`, which is a false negative on `drift().missing`.
     """
 
     @pytest.mark.parametrize(
@@ -4100,6 +4101,7 @@ class TestPassingKnownOnlyEverAdds:
         [
             "@smith_x_2024:",
             "@smith_x_2024-",
+            "@smith_x_2024.v2",
             "cites `kept_paper_2024`-style rows",
             "`a_b_2024` and `c_d_2025`",
             "prose with no citekey at all",
