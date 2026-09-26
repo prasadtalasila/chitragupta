@@ -302,6 +302,40 @@ class TestRenumber:
     def test_a_locator_group_holding_a_punctuated_key_renumbers_whole(self):
         assert references.renumber("[@doe.2020, p. 33]", {"doe.2020": 4}) == "[4, p. 33]"
 
+    @pytest.mark.parametrize(
+        "text,numbers,expected",
+        [
+            # The gate accepts a key starting with a digit or an underscore
+            # -- `[@3dprinting_2020]` was a real one -- and the group regex
+            # now reads the same grammar, so the whole bracket collapses to
+            # the number instead of the per-key pass running inside it and
+            # nesting a second pair (`[[2]]`).
+            ("[@3dprinting_2020]", {"3dprinting_2020": 2}, "[2]"),
+            ("[@_internal2020]", {"_internal2020": 2}, "[2]"),
+            # The repeated `; @key` arm of the same regex, which a
+            # single-key group does not exercise.
+            ("[@3dprinting_2020; @a]", {"3dprinting_2020": 2, "a": 1}, "[1], [2]"),
+        ],
+    )
+    def test_a_group_holding_a_digit_or_underscore_first_key_renumbers_whole(
+        self, text, numbers, expected
+    ):
+        assert references.renumber(text, numbers) == expected
+
+    def test_a_locator_group_holding_a_digit_first_key_renumbers_whole(self):
+        assert references.renumber("[@3dprinting_2020, p. 33]", {"3dprinting_2020": 2}) == (
+            "[2, p. 33]"
+        )
+
+    def test_a_digit_first_key_beside_an_unnumbered_punctuated_one(self):
+        # Issue 833's reproducer, whole: the digit-first group collapses to
+        # its number, and the key carrying an internal ":" is read as one
+        # key -- absent from the map, so left exactly as written rather
+        # than truncated at the colon.
+        assert references.renumber(
+            "[@3dprinting_2020] [@smith:2020]", {"3dprinting_2020": 2, "smith": 1}
+        ) == ("[2] [@smith:2020]")
+
     def test_a_key_with_no_number_is_left_alone(self):
         assert references.renumber("Unknown [@zzz].", self.NUMBERS) == "Unknown [@zzz]."
 
