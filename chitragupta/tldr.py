@@ -87,13 +87,16 @@ def _fingerprint(con, citekey: str) -> str:
             f"{citekey} is not in the ledger -- run `python -m chitragupta.corpus sync`. "
             "A TL;DR is keyed to a citekey that already exists; it never mints one."
         )
-    parsed_path = row[0]
-    if not parsed_path or not Path(parsed_path).is_file():
+    # A path outside `content/parsed/` is no parsed text this pipeline
+    # will read (issue 821), so it takes the same branch as none at all
+    # -- loudly: `confined_path` has already named it on stderr.
+    parsed = config.confined_path(row[0], config.PARSED_DIR)
+    if parsed is None or not parsed.is_file():
         raise TldrError(
             f"{citekey} has no parsed text yet -- run `python -m chitragupta.corpus "
             "sync` first, then summarise it."
         )
-    text = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
+    text = parsed.read_text(encoding="utf-8", errors="replace")
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 

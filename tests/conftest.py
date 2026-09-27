@@ -202,6 +202,31 @@ def content_draft(cfg, name: str) -> Path:
     return path
 
 
+def parsed_text(citekey: str, text: str) -> Path:
+    """Parsed text where a real parse puts it: `content/parsed/<citekey>.txt`.
+
+    Since issue 821 every consumer refuses a ledger `parsed_path` that
+    lands outside `config.PARSED_DIR`, so a fixture dropping the text
+    in a bare `tmp_path` and pointing the row at it is no longer
+    testing the shape a row actually has -- it is testing the one the
+    pipeline now declines to read. Creates the directory, which
+    `isolated_config` names but does not make.
+    """
+    path = parsed_file(citekey)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def parsed_file(citekey: str) -> Path:
+    """`content/parsed/<citekey>.txt`, with the directory made.
+
+    The location half of `parsed_text` above, for a fixture that writes
+    the file itself (or writes it twice, to prove a re-index).
+    """
+    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+    return config.PARSED_DIR / f"{citekey}.txt"
+
+
 def real_bibliography_path() -> Path:
     """This repo's actual, gitignored `papers/bibliography.bib` -- real
     per-host data, for the one test class that deliberately smoke-tests

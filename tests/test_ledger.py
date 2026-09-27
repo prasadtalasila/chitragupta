@@ -12,7 +12,7 @@ import pytest
 
 from chitragupta import config, ledger, ledger_bib_fields, ledger_upsert, passages
 
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_file
 
 
 class TestConnect:
@@ -290,8 +290,8 @@ class TestUpsertReference:
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        (tmp_path / "parsed.txt").write_text("parsed text")
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "parsed.txt")
+        (parsed_file("parsed")).write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("parsed"))
 
         assert ledger.upsert_reference(ledger_con, ref) is False
         row = ledger_con.execute(
@@ -307,7 +307,7 @@ class TestUpsertReference:
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        parsed = tmp_path / "parsed.txt"
+        parsed = parsed_file("parsed")
         parsed.write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed)
         parsed.unlink()
@@ -326,7 +326,7 @@ class TestUpsertReference:
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        parsed = tmp_path / "parsed.txt"
+        parsed = parsed_file("parsed")
         parsed.write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed)
 
@@ -340,7 +340,7 @@ class TestUpsertReference:
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        parsed = tmp_path / "parsed.txt"
+        parsed = parsed_file("parsed")
         parsed.write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed)
 
@@ -355,7 +355,7 @@ class TestUpsertReference:
         pdf.write_bytes(b"same content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        parsed = tmp_path / "parsed.txt"
+        parsed = parsed_file("parsed")
         parsed.write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed)
         passages.write_sidecar(ref.citekey, [])
@@ -367,8 +367,8 @@ class TestUpsertReference:
         pdf.write_bytes(b"version 1")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        (tmp_path / "parsed.txt").write_text("parsed text")
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "parsed.txt")
+        (parsed_file("parsed")).write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("parsed"))
 
         pdf.write_bytes(b"version 2, totally different")
         assert ledger.upsert_reference(ledger_con, ref) is True
@@ -437,8 +437,8 @@ class TestUpsertReferenceRehashSkip:
         # Parsed, so the second upsert is a true no-op run -- a row still
         # at 'discovered' now correctly comes back needs_parse=True (see
         # TestDiscoveredIsRescheduled), which is not the case under test.
-        (tmp_path / "out.txt").write_text("parsed text")
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+        (parsed_file("out")).write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("out"))
 
         calls = []
         original_hash_pdf = ledger_upsert._hash_pdf
@@ -573,7 +573,7 @@ class TestAPdfThatVanishesMidSync:
         pdf.write_bytes(b"real content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        parsed = tmp_path / "out.txt"
+        parsed = parsed_file("out")
         parsed.write_text("parsed text")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed)
 
@@ -605,7 +605,7 @@ class TestUpsertReferenceParsedPathOnHashChange:
         pdf.write_bytes(b"v1 content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("out"))
 
         pdf.write_bytes(b"v2 content, totally different")
         ledger.upsert_reference(ledger_con, ref)
@@ -620,7 +620,7 @@ class TestUpsertReferenceParsedPathOnHashChange:
         pdf.write_bytes(b"stable content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        out = tmp_path / "out.txt"
+        out = parsed_file("out")
         ledger.mark_parsed(ledger_con, ref.citekey, out)
 
         # A forced reparse of a byte-identical PDF must not discard text
@@ -639,7 +639,7 @@ class TestMarkParsed:
         ledger.upsert_reference(ledger_con, ref)
         ledger.mark_parse_failed(ledger_con, ref.citekey, "boom")
 
-        parsed_path = tmp_path / "out.txt"
+        parsed_path = parsed_file("out")
         ledger.mark_parsed(ledger_con, ref.citekey, parsed_path)
 
         row = ledger_con.execute(
@@ -765,7 +765,7 @@ class TestPruneMissing:
         assert "removed_from_bib" not in ledger.known_citekeys(ledger_con)
 
     def test_returns_parsed_path_for_caller_cleanup(self, ledger_con, tmp_path):
-        parsed_path = tmp_path / "orphaned_key.txt"
+        parsed_path = parsed_file("orphaned_key")
         ledger.upsert_reference(ledger_con, make_reference(citekey="kept_key"))
         ref = make_reference(citekey="orphaned_key")
         ledger.upsert_reference(ledger_con, ref)
@@ -836,8 +836,8 @@ class TestFailedParseIsRetried:
         ref = make_reference(pdf_path=str(pdf))
 
         ledger.upsert_reference(ledger_con, ref)
-        (tmp_path / "out.txt").write_text("parsed text")
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+        (parsed_file("out")).write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("out"))
 
         assert ledger.upsert_reference(ledger_con, ref) is False
 
@@ -948,8 +948,8 @@ class TestFailureKind:
         pdf.write_bytes(b"%PDF-1.4 content")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(con=ledger_con, ref=ref)
-        (tmp_path / "out.txt").write_text("parsed text")
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "out.txt")
+        (parsed_file("out")).write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_file("out"))
 
         assert ledger.upsert_reference(ledger_con, ref) is False
         assert ledger.upsert_reference(ledger_con, ref, force=True) is True

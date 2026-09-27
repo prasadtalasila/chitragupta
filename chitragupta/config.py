@@ -1319,6 +1319,7 @@ SUPPORT_PREMISE_TOPK = _get_optional_positive_int(
 # pylint: disable=unused-import,wrong-import-position
 from chitragupta.config_path import (  # noqa: F401,E402
     OutsideContentDir,
+    confined_path,
     mirrored_dir,
     require_inside_content,
     resolves_inside,

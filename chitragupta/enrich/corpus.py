@@ -23,7 +23,7 @@ re-export, and re-run `python -m chitragupta.corpus sync`.
 
 from dataclasses import dataclass
 
-from chitragupta import ledger
+from chitragupta import config, ledger
 
 
 @dataclass
@@ -43,6 +43,17 @@ class CorpusDoc:
     text_path: str | None = None
 
 
+# The enrichment layer's one gate on the two ledger columns that are
+# host paths (issue 821). Every stage below -- Docling, the crops, the
+# embedding text, the figure sidecars -- takes its path from a
+# `CorpusDoc` and none of them re-checks it, so confining the two
+# columns as the corpus is built covers all of them at once, and covers
+# a stage added later without it having to know.
+def _confined(value: "str | None", root) -> "str | None":
+    path = config.confined_path(value, root)
+    return None if path is None else str(path)
+
+
 def build_corpus() -> list[CorpusDoc]:
     """Every ledger item, as the enrichment stages consume them."""
     with ledger.connection() as con:
@@ -52,8 +63,8 @@ def build_corpus() -> list[CorpusDoc]:
         CorpusDoc(
             citekey=item["citekey"],
             title=item["title"] or "Untitled",
-            pdf_path=item["pdf_path"],
-            text_path=item["parsed_path"],
+            pdf_path=_confined(item["pdf_path"], config.BIB_FILE_PATH.parent),
+            text_path=_confined(item["parsed_path"], config.PARSED_DIR),
         )
         for item in rows
     ]

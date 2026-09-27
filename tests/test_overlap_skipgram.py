@@ -6,6 +6,7 @@ disk-cached, family-split analogue of chitragupta/overlap_index.py's exact
 import json
 
 from chitragupta import config, ledger, overlap_skipgram
+from tests.conftest import parsed_text
 
 from tests.conftest import make_reference
 
@@ -13,8 +14,7 @@ from tests.conftest import make_reference
 def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
-    parsed = tmp_path / f"{citekey}.txt"
-    parsed.write_text(text)
+    parsed = parsed_text(citekey, text)
     ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
     ledger.mark_parsed(ledger_con, citekey, parsed)
     return parsed

@@ -4,7 +4,7 @@ model generation the paper calls y_{t-1} -- FEATURE-ROADMAP.md's E4."""
 
 from chitragupta import ledger, retrieval, retrieval_iterative
 
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_file
 
 
 class TestBoundYPrev:
@@ -103,7 +103,7 @@ class TestSearchIterative:
         that scored in both rounds -- exercised here by a citekey whose
         parsed text matches both the plain query and the appended prose,
         so round 2's score for it is strictly higher than round 1's."""
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("digital twin " * 3 + "greenhouse actuator " * 20)
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Twin Paper"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)
@@ -124,7 +124,7 @@ class TestSearchIterative:
         scores identically in both rounds (round 2's extra query terms
         don't appear in its text at all, so its score is unchanged) must
         not be dropped or corrupted by the second, non-improving pass."""
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("digital twin architecture patterns")
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Twin Paper"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)

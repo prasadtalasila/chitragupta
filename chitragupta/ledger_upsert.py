@@ -27,7 +27,6 @@ import logging
 import os
 import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from chitragupta import config, ledger_bib_fields, passages
@@ -153,7 +152,13 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     Directly mirrors `chitragupta/enrich/docling_parse.py`'s `_outputs_present`,
     which exists for the same reason on the other layer's artefacts.
     """
-    if not parsed_path or not Path(parsed_path).exists():
+    # Confined, not raised on (issue 821): a row whose `parsed_path`
+    # lands outside `content/parsed/` has no parse this pipeline will
+    # read, so it reads as "outputs gone" and the next sync re-parses
+    # it -- which rewrites the column correctly and lets a relocated
+    # project heal itself instead of needing a hand repair.
+    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
+    if parsed is None or not parsed.exists():
         return False
     if config.PARSER == "docling" and not passages.sidecar_path(citekey).exists():
         return False

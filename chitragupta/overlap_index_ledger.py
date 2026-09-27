@@ -16,7 +16,6 @@ Waiting takes no lock, so it does not compromise the contract above.
 """
 
 import sqlite3
-from pathlib import Path
 
 from chitragupta import config
 
@@ -25,6 +24,21 @@ def _ledger_connect_ro() -> "sqlite3.Connection | None":
     if not config.LEDGER_PATH.exists():
         return None
     return sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+
+
+def _parsed_text_present(parsed_path: str) -> bool:
+    """Whether this row's parsed text is both inside `content/parsed/`
+    and actually on disk.
+
+    The confinement is issue 821's: the column is data, and a row
+    repointed at a host file had that file fingerprinted, paged and
+    quoted by every overlap consumer below this module. One gate rather
+    than one per consumer, because `overlap_index_doc`,
+    `overlap_skipgram`, `overlap_source_text` and the verbatim aid all
+    reach their `parsed_path` through these two functions.
+    """
+    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
+    return parsed is not None and parsed.exists()
 
 
 def ledger_item(citekey: str) -> "tuple[str, str] | None":
@@ -46,7 +60,7 @@ def ledger_item(citekey: str) -> "tuple[str, str] | None":
     if row is None:
         return None
     pdf_hash, parsed_path = row
-    if not Path(parsed_path).exists():
+    if not _parsed_text_present(parsed_path):
         return None
     return pdf_hash, parsed_path
 
@@ -66,4 +80,4 @@ def _ledger_items() -> list[tuple[str, str, str]]:
         ).fetchall()
     finally:
         con.close()
-    return [(ck, h, p) for ck, h, p in rows if Path(p).exists()]
+    return [(ck, h, p) for ck, h, p in rows if _parsed_text_present(p)]

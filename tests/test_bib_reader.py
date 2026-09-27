@@ -63,11 +63,20 @@ class TestResolvePdfPath:
         field = "paper.pdf:paper.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
 
-    def test_absolute_path(self, tmp_path):
-        pdf = tmp_path / "paper.pdf"
+    def test_absolute_path_inside_the_bib_directory(self, tmp_path):
+        """An absolute `file` path is ordinary -- several exporters
+        write one -- and still resolves, provided it lands beside the
+        bib file that claims it.
+
+        This used to be asserted against a `bib_dir` the PDF was *not*
+        under, which is the hole issue 821 closed: an absolute path was
+        accepted wherever on the host it pointed. See
+        `tests/test_path_confinement.py` for the refusal."""
+        pdf = tmp_path / "files" / "paper.pdf"
+        pdf.parent.mkdir()
         pdf.write_bytes(b"%PDF-1.4")
         field = f"paper.pdf:{pdf}:application/pdf"
-        assert bib_reader._resolve_pdf_path(field, tmp_path / "unrelated") == (
+        assert bib_reader._resolve_pdf_path(field, tmp_path) == (
             str(pdf),
             bib_reader.PDF_RESOLVED,
         )
