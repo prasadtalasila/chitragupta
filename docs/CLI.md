@@ -506,8 +506,20 @@ the whole API an unattended caller has.** They split by *remedy*:
   promises something that is not there: the bib file yielded no
   references against a non-empty ledger, **a PDF the bib file points
   at cannot be read** (whether because it is not on disk or because
-  this host cannot open it), or **two entries share one citekey**. The
-  remedy is in the bib file or on the disk it points at.
+  this host cannot open it), **two entries share one citekey**, **the
+  BibTeX parser dropped an entry** (usually unbalanced braces), or **a
+  citekey was skipped because it cannot be a filename**. The remedy is
+  in the bib file or on the disk it points at.
+
+A dropped entry or an unusable citekey means this run's read of the bib
+file is short of the file itself, so `--remove-stale` deletes nothing on
+it: the stale list is printed as a report, preceded by `Refusing to
+prune: ...`, because a citekey missing from that read may be missing
+only from the read. A shared citekey does not stop the prune -- it still
+counts as present, so it cannot make another row look stale. The
+summary line names every one of these counts (`Bib file: 1 entry
+dropped unparsed by bibtexparser -- see the WARNING above.`), so the
+last line of a log says why the exit was 3.
 
 A shared citekey is named in a `WARNING` and *none* of its entries is
 synced: which paper the key means is not something the pipeline
@@ -2982,7 +2994,7 @@ unattended.
 | `0` | Clean -- everything that needed parsing, parsed | Nothing |
 | `1` | **Documents this host could not parse** -- the conditions [`corpus sync`](#-chitragupta-corpus-sync) lists under code 1, deliberately neither restated nor counted here | Alert; `logs/pipeline.log`'s FAILED/WARNING lines name which citekey and why |
 | `2` | Another run already holds the write lock | Nothing -- expected under any schedule tight enough to overlap a slow run. The skipped cycle costs nothing; the next one picks up whatever this one would have |
-| `3` | **Everything parsed, but the bibliography has a hole in it** -- a stale `file` path, an unreadable PDF, or an export that yielded no references | Alert, but not at the same urgency: no document was lost by this host. The remedy is in the bib file or on the disk it points at |
+| `3` | **Everything parsed, but the bibliography has a hole in it** -- a stale `file` path, an unreadable PDF, an export that yielded no references, or a bib file the parser read only part of (a dropped entry, an unusable or shared citekey) | Alert, but not at the same urgency: no document was lost by this host. The remedy is in the bib file or on the disk it points at |
 
 **A schedule written before 5.2.0 now fails instead of lying.** That
 release moved this command behind `python -m chitragupta.corpus sync` and left

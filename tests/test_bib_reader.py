@@ -452,6 +452,75 @@ class TestReadLibraryRefusesDuplicatedCitekeys:
         assert "entries" not in capsys.readouterr().out
 
 
+UNBALANCED_BIB = """
+@article{good_2024,
+  title = {Good Entry},
+  author = {Smith, Jane},
+  year = {2024},
+}
+
+@article{bad_2024,
+  title = {Unbalanced {Braces},
+  author = {Doe, John},
+  year = {2023},
+}
+"""
+
+
+class TestReadLibraryCountsWhatItLost:
+    """Issue 841: a dropped entry and a skipped citekey travel with the
+    references, so a caller can refuse to act on a read that lost some."""
+
+    def test_a_dropped_entry_is_counted(self, isolated_config):
+        write_bib(isolated_config.BIB_FILE_PATH, UNBALANCED_BIB)
+        library = bib_reader.read_library()
+        assert library.dropped_entries == 1
+        assert library.integrity_problems == {"entry dropped unparsed by bibtexparser": 1}
+        assert library.unread == library.integrity_problems
+
+    def test_an_unfilenameable_citekey_is_named_and_counts_as_seen(self, isolated_config):
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            "@article{smith/2024,\n  title = {Slash},\n  year = {2024},\n}\n"
+            "@article{good_2024,\n  title = {Fine},\n  year = {2024},\n}\n",
+        )
+        library = bib_reader.read_library()
+        assert library.unfilenameable_citekeys == ("smith/2024",)
+        # Still named by the bib file, so its row must not read as stale.
+        assert library.seen_citekeys == {"smith/2024", "good_2024"}
+        assert library.integrity_problems == {"citekey skipped as unusable as a filename": 1}
+
+    def test_a_duplicated_key_is_not_also_reported_unfilenameable(self, isolated_config):
+        entry = "@article{a/b,\n  title = {T},\n  year = {2024},\n}\n"
+        write_bib(isolated_config.BIB_FILE_PATH, entry + entry)
+        library = bib_reader.read_library()
+        assert library.duplicate_citekeys == ("a/b",)
+        assert library.unfilenameable_citekeys == ()
+        assert library.integrity_problems == {"citekey shared by more than one entry": 1}
+        # In seen_citekeys, so it cannot make another row look stale.
+        assert library.unread == {}
+
+    def test_counts_pluralise(self, isolated_config):
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            UNBALANCED_BIB.replace("bad_2024", "bad_a")
+            + UNBALANCED_BIB.replace("good_2024", "good_b").replace("bad_2024", "bad_b"),
+        )
+        assert bib_reader.read_library().integrity_problems == {
+            "entries dropped unparsed by bibtexparser": 2
+        }
+
+    def test_a_clean_bib_has_no_problems(self, isolated_config):
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            "@article{good_2024,\n  title = {Fine},\n  year = {2024},\n}\n",
+        )
+        library = bib_reader.read_library()
+        assert library.dropped_entries == 0
+        assert library.unfilenameable_citekeys == ()
+        assert library.integrity_problems == {}
+
+
 class TestReadLibrary:
     def test_missing_bib_file_raises(self, isolated_config):
         with pytest.raises(FileNotFoundError, match="No bib file"):

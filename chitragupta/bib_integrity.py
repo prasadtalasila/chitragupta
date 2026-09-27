@@ -81,6 +81,28 @@ def count_raw_entries(text: str) -> int:
     )
 
 
+def dropped_entries(raw_text: str, parsed_count: int, bib_name: str) -> int:
+    """How many entries the raw text holds that bibtexparser did not
+    return, warned when nonzero -- see `count_raw_entries` for why this
+    comparison is the only way to see a drop at all.
+
+    The count travels on `bib_reader.Library` (issue 841) rather than
+    ending at the warning: a read that lost an entry must not drive
+    `--remove-stale`, which would prune the lost paper's row."""
+    raw_count = count_raw_entries(raw_text)
+    if parsed_count >= raw_count:
+        return 0
+    print(
+        f"  WARNING: bibtexparser parsed {parsed_count} entries but "
+        f"{bib_name} has {raw_count} @entry block(s) -- "
+        f"{raw_count - parsed_count} may have been silently dropped "
+        "(bibtexparser skips an entry it can't parse -- e.g. unbalanced "
+        "braces/quotes -- without raising). Check the file by hand for "
+        "an entry whose citekey doesn't show up in this run's output."
+    )
+    return raw_count - parsed_count
+
+
 # Issue 840. bibtexparser does not require unique keys: two `@entry`
 # blocks under one citekey both come back, and upserting both made the
 # later one overwrite the earlier's ledger row -- title, DOI, PDF -- with
