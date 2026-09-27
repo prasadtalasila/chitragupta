@@ -163,6 +163,11 @@ stale list is printed as a report, the summary line names what was lost,
 and the run exits **3**. Fix the entry named in the `WARNING`,
 re-export, and re-run.
 
+A non-standard entry type such as `@software` or `@online` is ignored by
+design, silently: it is never synced, and it does not count as dropped,
+so it neither exits **3** nor stops the prune. Export such an item under
+a standard type (`@misc`, say) if you want it in the corpus.
+
 ## 🏷 Citekeys have to work as filenames
 
 A citekey is not only an identifier here -- it is the stem of every file

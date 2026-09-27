@@ -521,6 +521,12 @@ summary line names every one of these counts (`Bib file: 1 entry
 dropped unparsed by bibtexparser -- see the WARNING above.`), so the
 last line of a log says why the exit was 3.
 
+An entry type outside BibTeX's standard list -- `@software`, `@online`,
+`@dataset` and the rest of biblatex's -- is ignored by design: it is
+not synced, and nothing is printed about it. It is not a dropped entry
+either, so it neither exits 3 nor stops a prune. A ledger row whose
+entry has become such a type reads as stale, like a removed entry's.
+
 A shared citekey is named in a `WARNING` and *none* of its entries is
 synced: which paper the key means is not something the pipeline
 guesses. The row the ledger already has for it is left as it was --

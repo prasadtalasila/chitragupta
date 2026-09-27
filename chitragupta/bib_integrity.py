@@ -11,6 +11,7 @@ entries it keeps and needs bibtexparser to have them at all.
 
 import re
 from collections import Counter
+from collections.abc import Collection
 
 # @comment/@string/@preamble are legitimate BibTeX constructs that never
 # show up in BibDatabase.entries (bibtexparser tracks them separately,
@@ -54,7 +55,7 @@ def block_has_fields(body: str) -> bool:
     return bool(comma and fields.strip())
 
 
-def count_raw_entries(text: str) -> int:
+def count_raw_entries(text: str, kept_types: Collection[str] | None = None) -> int:
     """How many actual `@entrytype{...}`/`@entrytype(...)` blocks the raw
     file text has, independent of whether bibtexparser managed to parse
     each one.
@@ -71,17 +72,30 @@ def count_raw_entries(text: str) -> int:
     match bounds the previous one, including the @comment/@string/
     @preamble blocks filtered out afterwards: one of those sitting
     between two entries still ends the first entry's body.
+
+    `kept_types`, when given, is every (lowercase) entry type the parser
+    keeps; a block of any other type is one it ignores by design rather
+    than loses, so it is not counted (issue 888).
     """
     starts = list(_ENTRY_START_RE.finditer(text))
     ends = [m.start() for m in starts[1:]] + [len(text)]
     return sum(
         1
         for m, end in zip(starts, ends)
-        if m.group(1).lower() not in _NON_ENTRY_TYPES and block_has_fields(text[m.end() : end])
+        if _counted_type(m.group(1).lower(), kept_types) and block_has_fields(text[m.end() : end])
     )
 
 
-def dropped_entries(raw_text: str, parsed_count: int, bib_name: str) -> int:
+def _counted_type(entry_type: str, kept_types: Collection[str] | None) -> bool:
+    """Whether a block of `entry_type` is an entry the parser should return."""
+    if entry_type in _NON_ENTRY_TYPES:
+        return False
+    return kept_types is None or entry_type in kept_types
+
+
+def dropped_entries(
+    raw_text: str, parsed_count: int, bib_name: str, kept_types: Collection[str] | None = None
+) -> int:
     """How many entries the raw text holds that bibtexparser did not
     return, warned when nonzero -- see `count_raw_entries` for why this
     comparison is the only way to see a drop at all.
@@ -89,7 +103,7 @@ def dropped_entries(raw_text: str, parsed_count: int, bib_name: str) -> int:
     The count travels on `bib_reader.Library` (issue 841) rather than
     ending at the warning: a read that lost an entry must not drive
     `--remove-stale`, which would prune the lost paper's row."""
-    raw_count = count_raw_entries(raw_text)
+    raw_count = count_raw_entries(raw_text, kept_types)
     if parsed_count >= raw_count:
         return 0
     print(

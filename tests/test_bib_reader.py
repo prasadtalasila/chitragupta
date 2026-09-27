@@ -205,6 +205,17 @@ class TestCountRawEntries:
     def test_empty_text_counts_zero(self):
         assert bib_integrity.count_raw_entries("") == 0
 
+    def test_counts_only_the_types_the_parser_keeps_when_told_them(self):
+        # Issue 888: an entry type the parser ignores by design is not an
+        # entry it lost, so it must not be on the raw side of the count.
+        text = (
+            "@software{tool_2024,\n  title = {A Tool},\n}\n"
+            "@Online(site_2024,\n  title = {A Site},\n)\n"
+            "@ARTICLE{real_2024,\n  title = {Real},\n}\n"
+        )
+        assert bib_integrity.count_raw_entries(text) == 3
+        assert bib_integrity.count_raw_entries(text, kept_types={"article"}) == 1
+
 
 class TestContentlessStubsAreNotCounted:
     """A Zotero export writes `@misc{key,\\n}` for an attachment with no
@@ -509,6 +520,33 @@ class TestReadLibraryCountsWhatItLost:
         assert bib_reader.read_library().integrity_problems == {
             "entries dropped unparsed by bibtexparser": 2
         }
+
+    def test_an_ignored_entry_type_is_silently_skipped_not_counted_dropped(
+        self, isolated_config, capsys
+    ):
+        # Issue 888: bibtexparser ignores types outside its standard list
+        # (@software, @online, ...), and that is the intended behaviour --
+        # but since issue 841 each one also counted as a lost entry, with a
+        # warning blaming unbalanced braces. It is skipped, silently.
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            "@software{tool_2024,\n  title = {A Tool},\n  year = {2024},\n}\n"
+            "@Online(site_2024,\n  title = {A Site},\n  year = {2024},\n)\n"
+            "@article{good_2024,\n  title = {Fine},\n  year = {2024},\n}\n",
+        )
+        library = bib_reader.read_library()
+        assert [ref.citekey for ref in library.references] == ["good_2024"]
+        assert library.seen_citekeys == {"good_2024"}
+        assert library.dropped_entries == 0
+        assert library.integrity_problems == {}
+        assert "WARNING" not in capsys.readouterr().out
+
+    def test_an_ignored_entry_type_does_not_hide_a_genuine_drop(self, isolated_config):
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            "@software{tool_2024,\n  title = {A Tool},\n  year = {2024},\n}\n" + UNBALANCED_BIB,
+        )
+        assert bib_reader.read_library().dropped_entries == 1
 
     def test_a_clean_bib_has_no_problems(self, isolated_config):
         write_bib(
