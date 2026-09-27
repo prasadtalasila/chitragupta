@@ -40,6 +40,7 @@ clone.
 """
 
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path, PurePath
@@ -118,9 +119,10 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
                 program = _program_name(hook)
                 if program and program not in programs:
                     programs.append(program)
+    env = _probe_env(settings_path)
     for program in programs:
         if _is_python_interpreter(program) and _is_bare_command(program) and shutil.which(program):
-            fault = _import_fault(program)
+            fault = _import_fault(program, env)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
     return list(dict.fromkeys(found))
@@ -246,7 +248,20 @@ def _is_python_interpreter(program: str) -> bool:
     return stem.split("-")[0].rstrip("0123456789.") in ("python", "py", "pypy")
 
 
-def _import_fault(program: str) -> str | None:
+def _probe_env(settings_path: Path) -> dict | None:
+    """The probe's environment: safe-path unless this is a checkout (#822).
+
+    `-c` puts cwd first on `sys.path`, where a scaffolded project may hold
+    a stray `chitragupta/`. This module living inside the project that
+    `settings_path` belongs to means a checkout; anywhere else, an install.
+    """
+    root = Path(settings_path).resolve().parent.parent
+    if Path(__file__).resolve().is_relative_to(root):
+        return None
+    return {**os.environ, "PYTHONSAFEPATH": "1"}
+
+
+def _import_fault(program: str, env: dict | None = None) -> str | None:
     """Can `program` import the `chitragupta` package? One short subprocess.
 
     Only called for a program `shutil.which` already resolved, so a
@@ -261,6 +276,7 @@ def _import_fault(program: str) -> str | None:
             capture_output=True,
             timeout=IMPORT_PROBE_TIMEOUT,
             check=False,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return (  # pragma: no cover-windows

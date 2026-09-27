@@ -39,6 +39,7 @@ import subprocess
 import sys
 
 import draft_target
+import safe_path
 
 # What the report leads with, so the agent reads the caveat before the
 # list. The check sees §9's decidable rules and nothing else, and a
@@ -79,6 +80,9 @@ def _findings(draft) -> str:
     write: it is the ordinary state of a checkout that has not run the
     `os-deps` install stage, and a hook that says so on each write teaches
     the reader to skip the channel this one shares with the citation gate.
+
+    `env` from `safe_path`, like the gate's: in a scaffolded project a
+    stray `chitragupta/` at the root must not be what this imports (#822).
     """
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta.draft", "style", "--json", str(draft)],
@@ -86,6 +90,7 @@ def _findings(draft) -> str:
         cwd=draft_target.REPO_ROOT,
         capture_output=True,
         text=True,
+        env=safe_path.child_env(draft_target.REPO_ROOT),
     )
     try:
         report = json.loads(result.stdout)

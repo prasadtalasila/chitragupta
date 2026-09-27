@@ -85,6 +85,18 @@ class ScaffoldSourceMissing(Exception):
     `scaffold`, which refuses rather than writing a partial one."""
 
 
+class ScaffoldTargetUnsafe(Exception):
+    """A target holding a `chitragupta` import the hooks would pick up."""
+
+
+# A hook's `python -m chitragupta...` child runs from the project root,
+# which a checkout needs first on `sys.path` -- so either name here would
+# shadow the installed package (#822). Nothing below scaffolds one, so one
+# already present was put there by someone else. The hooks refuse it at
+# launch as well (.claude/hooks/safe_path.py); this is the louder half.
+SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
+
+
 # The one entry that changes name on the way in. config.toml is
 # gitignored per-user data (chitragupta/config.py's PROJECT_MARKER), so
 # init writes the user's own starting copy, never the tracked template
@@ -263,6 +275,16 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
             f"it would write is incomplete. Expected under {SOURCE_ROOT}. "
             "Reinstall chitragupta-cli, or run from a git checkout."
         )
+    shadowing = [name for name in SHADOWING_NAMES if (dest / name).exists()]
+    if shadowing:
+        # Ahead of `force` and `dry_run` alike: --force is what someone
+        # reaches for over an existing tree, and a dry run must not print a
+        # tree the real run refuses.
+        raise ScaffoldTargetUnsafe(
+            f"{dest} already contains {', '.join(shadowing)}, which the hooks this "
+            "would install could import in place of the installed chitragupta. "
+            "Move it aside, or scaffold into another directory."
+        )
 
     report = []
     for name in COPY_VERBATIM:
@@ -298,7 +320,7 @@ def main(argv=None) -> int:
     args = build_parser().parse_args(sys.argv[1:] if argv is None else argv)
     try:
         report = scaffold(args.dir, force=args.force, dry_run=args.dry_run)
-    except ScaffoldSourceMissing as exc:
+    except (ScaffoldSourceMissing, ScaffoldTargetUnsafe) as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 1
     for line in report:

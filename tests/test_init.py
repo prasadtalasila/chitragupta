@@ -312,3 +312,42 @@ class TestAnIncompleteInstallationRefuses:
         monkeypatch.setattr(init, "SOURCE_ROOT", tmp_path / "nowhere")
         assert init.main([str(tmp_path / "project")]) == 1
         assert "[error]" in capsys.readouterr().err
+
+
+class TestADirectoryThatWouldShadowThePackageRefuses:
+    """#822. A hook's children put the project root first on `sys.path`,
+    so a `chitragupta/` or `chitragupta.py` there would be imported in
+    place of the installed package. `init` scaffolds neither, so one
+    already present was put there by someone else -- and scaffolding the
+    hooks around it would arm it. The hooks refuse it at launch too; this
+    is the earlier, louder half."""
+
+    @pytest.mark.parametrize("name", ["chitragupta", "chitragupta.py"])
+    def test_refuses_before_writing_anything(self, source, tmp_path, name):
+        dest = tmp_path / "project"
+        dest.mkdir()
+        if name.endswith(".py"):
+            (dest / name).write_text("", encoding="utf-8")
+        else:
+            (dest / name).mkdir()
+        with pytest.raises(init.ScaffoldTargetUnsafe) as raised:
+            init.scaffold(dest)
+        assert name in str(raised.value)
+        assert sorted(p.name for p in dest.iterdir()) == [name]
+
+    @pytest.mark.parametrize("flags", [{"force": True}, {"dry_run": True}])
+    def test_neither_force_nor_dry_run_gets_past_it(self, source, tmp_path, flags):
+        """`--force` is exactly what someone reaches for over an existing
+        tree, and a dry run that printed a tree the real run refuses would
+        be the same lie one step earlier."""
+        dest = tmp_path / "project"
+        (dest / "chitragupta").mkdir(parents=True)
+        with pytest.raises(init.ScaffoldTargetUnsafe):
+            init.scaffold(dest, **flags)
+
+    def test_the_cli_exits_one_and_says_so(self, source, tmp_path, capsys):
+        dest = tmp_path / "project"
+        dest.mkdir()
+        (dest / "chitragupta.py").write_text("", encoding="utf-8")
+        assert init.main([str(dest)]) == 1
+        assert "chitragupta.py" in capsys.readouterr().err
