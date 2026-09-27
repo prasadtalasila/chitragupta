@@ -1366,9 +1366,17 @@ against an invented query. Under `--baseline` the aids are refreshed at
 
 Under `--baseline --json`, stdout carries the comparison payload, not
 the worklist -- `resolved`/`persisting`/`new`/`accepted`/
-`objective_before`/`objective_after`/`objective_delta`, and no `items`
-key at all. `accepted` is why an accepted item is not reported as
-`resolved`: suppression removes it from this run's worklist, and without
+`objective_before`/`objective_after`/`objective_delta`/`not_refreshed`,
+and no `items` key at all. `not_refreshed` names each aid whose refresh
+failed -- a non-zero exit, or an exit 0 that wrote no fresh `.json`, as
+`support` does without the enrich stack. That aid's items are an
+earlier run's, so they sit out every group and both counts, and the
+filed report marks it `refreshed: false` and leaves its items out of
+`objective_class_count`. A skipped `coverage` (no recorded query) is
+`refreshed: null`, not a failure.
+
+`accepted` is why an accepted item is not reported as `resolved`:
+suppression removes it from this run's worklist, and without
 that group a set difference would call a finding nobody repaired fixed.
 An accepted item that has genuinely gone -- the span was edited, the
 finding did not recur -- is still `resolved`, which is what it is. The
@@ -1376,8 +1384,8 @@ worklist itself is unaffected: it still lands in the filed `.json`
 report, written unconditionally either way, same as always.
 
 **`--json`** carries the same envelope every review aid's JSON does, plus
-`sources` (`available`/`stale` per aid, `available`/`partial` for the
-prose check, `available`/`corpus_available` for the dossier drift,
+`sources` (`available`/`stale`/`refreshed` per aid, `available`/`partial`
+for the prose check, `available`/`corpus_available` for the dossier drift,
 `available`/`count` for the acceptance record) and
 one `items` object per worklist entry -- `id`, `class`, `section`,
 `citekey`, `line`, `unattended`, `summary` and a `detail` object whose

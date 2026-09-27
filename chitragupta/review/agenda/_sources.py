@@ -65,6 +65,25 @@ AID_NAMES = (
     "support",
 )
 
+# The item classes raised from an aid's `.json`, and which aid. The three
+# classes missing here (`missing-citekey`, `recorded-but-uncited`,
+# `prose`) are computed in-process every run, so no failed refresh can
+# leave them stale. `TestClassAids` pins the map against `_items.CLASSES`
+# and `AID_NAMES`.
+CLASS_AIDS = {
+    "verbatim-run": "verbatim",
+    "unsupported-claim": "provenance",
+    "claim-support": "support",
+    "uncited-claim": "uncited",
+    "misquoted": "quotation",
+}
+
+
+def unverified_classes(aids) -> set[str]:
+    """The item classes whose evidence comes from one of `aids` -- the
+    ones a not-refreshed aid leaves unverified (#837)."""
+    return {cls for cls, aid in CLASS_AIDS.items() if aid in aids}
+
 
 @dataclass
 class AidSource:
@@ -74,12 +93,24 @@ class AidSource:
     from a report older than the draft may still be true, so staleness
     is named in the header and never changes which items are computed
     from `data` (see the module docstring's determinism note).
+
+    `refreshed` is `agenda --baseline`'s account of re-running the aid
+    (`_refresh.refresh_aids`): `None` when no refresh was attempted --
+    the bare mode, or `coverage` with no query -- and `False` when one
+    was and failed, which leaves the `.json` read here an earlier run's.
+    Unlike `stale` it does change something: that aid's items are
+    listed but left out of `Agenda.objective_class_count` (#837).
     """
 
     available: bool = False
     stale: bool = False
     data: dict | None = None
     reason: str | None = None
+    refreshed: bool | None = None
+
+    def flags(self) -> dict:
+        """The payload's `sources.aids.<aid>` entry."""
+        return {"available": self.available, "stale": self.stale, "refreshed": self.refreshed}
 
 
 @dataclass
@@ -147,6 +178,10 @@ class Sources:
     # Defaulted so a caller assembling `Sources` by hand keeps working.
     accepted: _accept.AcceptedSource = field(default_factory=_accept.AcceptedSource)
 
+    def not_refreshed(self) -> list[str]:
+        """The aids whose `--baseline` refresh failed, in `AID_NAMES` order."""
+        return [aid for aid, source in self.aids.items() if source.refreshed is False]
+
 
 def _read_aid_json(draft: Path, aid: str) -> AidSource:
     path = review.report_path(draft, aid, "json")
@@ -193,11 +228,15 @@ def _read_recorded(draft: Path) -> RecordedSource:
     return RecordedSource(available=True, data=recorded_but_uncited(draft))
 
 
-def collect(draft: Path) -> Sources:
+def collect(draft: Path, refreshed: "dict[str, bool | None] | None" = None) -> Sources:
     """Every input `agenda` reads for `draft`, each degraded rather than
-    raised where it is absent."""
+    raised where it is absent. `refreshed` is `_refresh.refresh_aids`'
+    map under `--baseline`, and `None` on the bare path."""
+    aids = {aid: _read_aid_json(draft, aid) for aid in AID_NAMES}
+    for aid, state in (refreshed or {}).items():
+        aids[aid].refreshed = state
     return Sources(
-        aids={aid: _read_aid_json(draft, aid) for aid in AID_NAMES},
+        aids=aids,
         style=_read_style(draft),
         drift=_read_drift(draft),
         recorded=_read_recorded(draft),

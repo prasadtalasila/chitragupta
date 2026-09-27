@@ -23,6 +23,7 @@ from chitragupta.review.agenda import (
     _items_findings,
     _order,
     _recheck,
+    _refresh,
     _render,
     _sources,
     _stale,
@@ -1559,6 +1560,21 @@ class TestObjectiveClassCount:
         )
         assert one.objective_class_count == 2
 
+    def test_a_not_refreshed_aids_items_do_not_count(self):
+        """#837: the verbatim scan's refresh failed, so its `short` run is
+        last run's evidence, not this draft's -- listed, never counted."""
+        sources = _sources_stub(aids={"verbatim": _sources.AidSource(refreshed=False)})
+        one = agenda.Agenda(
+            draft=Path("d"),
+            sources=sources,
+            items=[
+                _items.Item("1", "verbatim-run", None, None, 3, True, "s", {}),
+                _items.Item("2", "prose", None, None, 3, True, "s", {}),
+            ],
+        )
+        assert one.objective_class_count == 1
+        assert sources.not_refreshed() == ["verbatim"]
+
 
 class TestBuildAgendaAndCli:
     def _draft_with_no_dossier(self, isolated_config, monkeypatch):
@@ -1758,17 +1774,35 @@ def _item_dict(id_, cls="prose", unattended=True, summary="a finding") -> dict:
 class _AidStub:
     """Stands in for one aid module's `main`, recording the argv it was
     handed and optionally printing, so the stdout-capture requirement can
-    be tested against something that actually pollutes stdout."""
+    be tested against something that actually pollutes stdout.
 
-    def __init__(self, chatter: str = ""):
+    By default it also files an empty `<stem>.<aid>.json`, which is what
+    a real aid's successful refresh leaves behind and what `refresh_aids`
+    checks for (#837): a stub that wrote nothing would read as a refresh
+    that did not happen. `returncode` and `writes` are the two ways a
+    real refresh fails -- a refusal, and `claim_support`'s exit 0 with no
+    entailer installed.
+    """
+
+    def __init__(self, aid: str = "", chatter: str = "", returncode: int = 0, writes: bool = True):
         self.calls: list[list[str]] = []
+        self.aid = aid
         self.chatter = chatter
+        self.returncode = returncode
+        self.writes = writes
+        # What a successful refresh files; a test that needs the aid to
+        # re-find what an earlier run found sets it to that payload.
+        self.payload: dict = {"findings": []}
 
     def __call__(self, argv):
         self.calls.append(list(argv))
         if self.chatter:
             print(self.chatter)
-        return 0
+        if self.writes and self.aid:
+            # `verbatim` is the one aid called through a subcommand.
+            draft = Path(argv[1] if argv[0] == "scan" else argv[0])
+            review.write_json(draft, self.aid, self.payload)
+        return self.returncode
 
 
 @pytest.fixture
@@ -1780,8 +1814,8 @@ def aid_stubs(monkeypatch):
     and real dossiers, none of which a unit test should depend on.
     """
     stubs = {}
-    for name, module in _recheck._AID_MODULES.items():
-        stub = _AidStub()
+    for name, module in _refresh._AID_MODULES.items():
+        stub = _AidStub(name)
         monkeypatch.setattr(module, "main", stub)
         stubs[name] = stub
     return stubs
@@ -1789,38 +1823,38 @@ def aid_stubs(monkeypatch):
 
 class TestAidModules:
     def test_keys_are_exactly_the_eight_aid_names(self):
-        assert tuple(_recheck._AID_MODULES) == _sources.AID_NAMES
+        assert tuple(_refresh._AID_MODULES) == _sources.AID_NAMES
 
 
 class TestCoverageQueries:
     def test_draft_outside_the_drafts_dir_has_none(self, isolated_config):
         draft = content_draft(isolated_config, "elsewhere/survey.md")
         draft.write_text("# S\n")
-        assert _recheck._coverage_queries(draft) == []
+        assert _refresh._coverage_queries(draft) == []
 
     def test_draft_with_no_dossier_directory_has_none(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# S\n")
-        assert _recheck._coverage_queries(draft) == []
+        assert _refresh._coverage_queries(draft) == []
 
     def test_dossier_with_no_retrieval_rows_has_none(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# S\n")
         dossier.dossier_dir(draft).mkdir(parents=True)
-        assert _recheck._coverage_queries(draft) == []
+        assert _refresh._coverage_queries(draft) == []
 
     def test_only_revision_markers_yields_none(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# S\n")
         _retrieval.mark_revision(draft, "shorten intro")
-        assert _recheck._coverage_queries(draft) == []
+        assert _refresh._coverage_queries(draft) == []
 
     def test_recorded_queries_come_back_first_seen_first(self, isolated_config):
         draft = content_draft(isolated_config, "drafts/t/survey.md")
         draft.write_text("# S\n")
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
         dossier.log_retrieval(draft, "draft", "co-simulation", 5, 2, 90)
-        assert _recheck._coverage_queries(draft) == ["digital twin", "co-simulation"]
+        assert _refresh._coverage_queries(draft) == ["digital twin", "co-simulation"]
 
 
 class TestRefreshAids:
@@ -1832,7 +1866,7 @@ class TestRefreshAids:
     def test_every_aid_is_called_once(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert {name: len(stub.calls) for name, stub in aid_stubs.items()} == {
             name: 1 for name in _sources.AID_NAMES
         }
@@ -1843,15 +1877,15 @@ class TestRefreshAids:
         recorded argv is replayed through the aid's own `build_parser`."""
         draft = self._draft(isolated_config)
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         for name, stub in aid_stubs.items():
-            parsed = _recheck._AID_MODULES[name].build_parser().parse_args(stub.calls[0])
+            parsed = _refresh._AID_MODULES[name].build_parser().parse_args(stub.calls[0])
             assert parsed.formats == "md"
             assert getattr(parsed, "write", True) is True
 
     def test_provenance_is_called_without_write(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         argv = aid_stubs["provenance"].calls[0]
         assert argv == [str(draft), "--formats", "md"]
         with pytest.raises(SystemExit):
@@ -1859,7 +1893,7 @@ class TestRefreshAids:
 
     def test_verbatim_is_called_as_the_scan_subcommand(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert aid_stubs["verbatim"].calls[0] == [
             "scan",
             str(draft),
@@ -1870,7 +1904,7 @@ class TestRefreshAids:
 
     def test_the_plain_five_are_called_with_write_and_formats_md(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         for name in ("synthesis", "figure", "uncited", "quotation", "support"):
             assert aid_stubs[name].calls[0] == [str(draft), "--write", "--formats", "md"]
 
@@ -1878,7 +1912,7 @@ class TestRefreshAids:
         draft = self._draft(isolated_config)
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
         dossier.log_retrieval(draft, "draft", "co-simulation", 5, 2, 90)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert aid_stubs["coverage"].calls[0] == [
             str(draft),
             "--query",
@@ -1892,28 +1926,78 @@ class TestRefreshAids:
 
     def test_coverage_is_skipped_with_no_dossier(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert aid_stubs["coverage"].calls == []
         assert aid_stubs["uncited"].calls  # the other seven still ran
 
     def test_coverage_is_skipped_with_a_dossier_but_no_rows(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         dossier.dossier_dir(draft).mkdir(parents=True)
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert aid_stubs["coverage"].calls == []
 
     def test_coverage_is_skipped_with_only_revision_markers(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         _retrieval.mark_revision(draft, "shorten intro")
-        _recheck.refresh_aids(draft)
+        _refresh.refresh_aids(draft)
         assert aid_stubs["coverage"].calls == []
 
     def test_an_aids_own_stdout_is_swallowed(self, isolated_config, monkeypatch, capsys):
         draft = self._draft(isolated_config)
-        for module in _recheck._AID_MODULES.values():
-            monkeypatch.setattr(module, "main", _AidStub(chatter="WROTE A FILE"))
-        _recheck.refresh_aids(draft)
+        for name, module in _refresh._AID_MODULES.items():
+            monkeypatch.setattr(module, "main", _AidStub(name, chatter="WROTE A FILE"))
+        _refresh.refresh_aids(draft)
         assert "WROTE A FILE" not in capsys.readouterr().out
+
+    def test_a_full_refresh_reports_every_aid_refreshed(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        assert _refresh.refresh_aids(draft) == dict.fromkeys(_sources.AID_NAMES, True)
+
+    def test_a_skipped_coverage_is_none_not_a_failure(self, isolated_config, aid_stubs):
+        """No recorded query means nothing to refresh `coverage` with --
+        by design, on every draft without a dossier, so it must not read
+        as a failure every cycle."""
+        draft = self._draft(isolated_config)
+        refreshed = _refresh.refresh_aids(draft)
+        assert refreshed["coverage"] is None
+        assert all(refreshed[aid] for aid in _sources.AID_NAMES if aid != "coverage")
+
+    def test_a_nonzero_exit_is_not_refreshed(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        aid_stubs["verbatim"].returncode = 1
+        aid_stubs["verbatim"].writes = False
+        assert _refresh.refresh_aids(draft)["verbatim"] is False
+
+    def test_a_nonzero_exit_is_not_refreshed_even_if_it_wrote(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        aid_stubs["verbatim"].returncode = 1
+        assert _refresh.refresh_aids(draft)["verbatim"] is False
+
+    def test_exit_zero_writing_nothing_over_an_old_sidecar_is_not_refreshed(
+        self, isolated_config, aid_stubs
+    ):
+        """`claim_support` with no entailer installed: exit 0, nothing
+        written, last run's `.json` left in place. The exit code alone
+        would call that a refresh."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": []})
+        os.utime(old, (1_000_000, 1_000_000))
+        aid_stubs["support"].writes = False
+        assert _refresh.refresh_aids(draft)["support"] is False
+
+    def test_exit_zero_writing_nothing_and_no_sidecar_is_not_refreshed(
+        self, isolated_config, aid_stubs
+    ):
+        draft = self._draft(isolated_config)
+        aid_stubs["support"].writes = False
+        assert _refresh.refresh_aids(draft)["support"] is False
+
+    def test_rewriting_an_existing_sidecar_is_refreshed(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": []})
+        os.utime(old, (1_000_000, 1_000_000))
+        assert _refresh.refresh_aids(draft)["support"] is True
 
 
 class TestLoadBaseline:
@@ -2005,6 +2089,62 @@ class TestCompare:
         *_, before, after = _recheck.compare(surfaced, surfaced)
         assert (before, after) == (0, 0)
 
+    def test_an_unverified_aids_items_are_in_no_group_and_no_count(self):
+        """#837: an aid that was not refreshed contributes no evidence
+        about the current draft, so its items neither persist, resolve
+        nor appear -- and are counted on neither side, or the delta would
+        fall for an aid that merely failed to run."""
+        run = _item_dict("v", cls="verbatim-run")
+        gone = _item_dict("w", cls="verbatim-run")
+        new = _item_dict("x", cls="verbatim-run")
+        kept = _item_dict("p")
+        resolved, persisting, appeared, accepted, before, after = _recheck.compare(
+            [run, new, kept], [run, gone, kept], set(), {"verbatim"}
+        )
+        assert (resolved, persisting, appeared, accepted) == ([], [kept], [], [])
+        assert (before, after) == (1, 1)
+
+    def test_an_unverified_aid_leaves_other_classes_alone(self):
+        run = _item_dict("v", cls="verbatim-run")
+        *_, before, after = _recheck.compare([run], [run], set(), {"support"})
+        assert (before, after) == (1, 1)
+
+
+class TestNotRefreshed:
+    def test_an_agenda_payload_names_the_aids_marked_not_refreshed(self):
+        payload = {
+            "sources": {
+                "aids": {
+                    "verbatim": {"refreshed": False},
+                    "support": {"refreshed": None},
+                    "uncited": {"refreshed": True},
+                }
+            }
+        }
+        assert _recheck.not_refreshed(payload) == ["verbatim"]
+
+    def test_a_payload_without_refresh_state_names_none(self):
+        """Older baselines and hand-written ones carry no `sources` at
+        all; neither is evidence that any aid failed."""
+        assert _recheck.not_refreshed({"aid": "agenda", "items": []}) == []
+        assert _recheck.not_refreshed({"sources": {"aids": {"verbatim": {}}}}) == []
+
+
+class TestClassAids:
+    def test_every_mapped_class_is_a_real_class_raised_by_a_real_aid(self):
+        assert set(_sources.CLASS_AIDS) <= set(_items.CLASSES)
+        assert set(_sources.CLASS_AIDS.values()) <= set(_sources.AID_NAMES)
+
+    def test_the_in_process_classes_are_never_unverified(self):
+        """`missing-citekey`, `recorded-but-uncited` and `prose` are
+        computed in-process every run, so no refresh failure can make
+        them stale."""
+        assert not {"missing-citekey", "recorded-but-uncited", "prose"} & set(_sources.CLASS_AIDS)
+
+    def test_unverified_classes_follows_the_map(self):
+        assert _sources.unverified_classes(["verbatim"]) == {"verbatim-run"}
+        assert _sources.unverified_classes([]) == set()
+
 
 class TestRecheckPayloadAndText:
     def _groups(self):
@@ -2027,11 +2167,14 @@ class TestRecheckPayloadAndText:
 
     def test_payload_carries_the_envelope_the_groups_and_the_delta(self):
         payload = _recheck.recheck_payload(
-            Path("content/drafts/t/s.md"), "b.json", self._groups(), (3, 1), "cmd"
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (3, 1), []
         )
         assert payload["aid"] == "agenda"
         assert payload["notice"]
-        assert payload["command"] == "cmd"
+        assert payload["command"] == _recheck.recheck_command(
+            Path("content/drafts/t/s.md"), "b.json"
+        )
+        assert payload["not_refreshed"] == []
         assert payload["baseline"] == "b.json"
         assert payload["objective_before"] == 3
         assert payload["objective_after"] == 1
@@ -2043,7 +2186,7 @@ class TestRecheckPayloadAndText:
 
     def test_a_rising_count_gives_a_positive_delta(self):
         payload = _recheck.recheck_payload(
-            Path("content/drafts/t/s.md"), "b.json", self._groups(), (1, 4), "cmd"
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (1, 4), []
         )
         assert payload["objective_delta"] == 3
 
@@ -2060,6 +2203,19 @@ class TestRecheckPayloadAndText:
     def test_text_marks_an_empty_group(self):
         text = _recheck.format_recheck("b.json", ([], [], [], []), (0, 0))
         assert text.count("      -") == 4
+
+    def test_payload_lists_the_aids_that_were_not_refreshed(self):
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (3, 1), ["verbatim"]
+        )
+        assert payload["not_refreshed"] == ["verbatim"]
+
+    def test_text_names_the_aids_that_were_not_refreshed(self):
+        text = _recheck.format_recheck("b.json", self._groups(), (3, 1), ["verbatim", "support"])
+        assert "not refreshed: verbatim, support" in text
+
+    def test_text_says_nothing_about_refreshing_when_every_aid_was(self):
+        assert "not refreshed" not in _recheck.format_recheck("b.json", self._groups(), (3, 1))
 
 
 class TestBaselineCli:
@@ -2121,8 +2277,8 @@ class TestBaselineCli:
 
     def test_json_stdout_is_only_the_payload(self, isolated_config, monkeypatch, capsys, tmp_path):
         draft = self._draft(isolated_config, monkeypatch)
-        for module in _recheck._AID_MODULES.values():
-            monkeypatch.setattr(module, "main", _AidStub(chatter="WROTE A FILE"))
+        for name, module in _refresh._AID_MODULES.items():
+            monkeypatch.setattr(module, "main", _AidStub(name, chatter="WROTE A FILE"))
         baseline = self._baseline_file(tmp_path, [])
         agenda.main([str(draft), "--baseline", str(baseline), "--json"])
         out = capsys.readouterr().out
@@ -2204,6 +2360,139 @@ class TestBaselineCli:
         payload = json.loads(capsys.readouterr().out)
         assert payload["objective_after"] == agenda.build_agenda(draft).objective_class_count
         assert payload["objective_after"] == 1
+
+
+class TestBaselineCliNotRefreshed:
+    """#837: an aid whose refresh failed is named, and its items -- last
+    run's, still on disk -- are never counted or compared as current."""
+
+    RUN = "these exact borrowed words"
+
+    def _draft(self, isolated_config, monkeypatch) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text(f"# Survey\n\nSome prose with {self.RUN} in it.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        # A logged query, so `coverage` runs too and a fully refreshed run
+        # really has every aid refreshed.
+        dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
+        return draft
+
+    def _old_sidecar(self, draft, aid, finding) -> None:
+        """Last run's `.json`, backdated so a same-tick rewrite cannot
+        read as unchanged on a coarse-timestamp filesystem."""
+        path = review.write_json(draft, aid, {"findings": [finding]})
+        os.utime(path, (1_000_000, 1_000_000))
+
+    def _short_run(self) -> dict:
+        # `draft_text` is in the draft, so `_stale.partition` keeps the
+        # item: the test must not pass on the span check alone.
+        return {
+            "id": "v1",
+            "citekey": "a2024",
+            "line": 3,
+            "span_words": 4,
+            "matched_words": 4,
+            "fragment": self.RUN,
+            "draft_text": self.RUN,
+            "severity": "short",
+            "tier": "exact",
+        }
+
+    def _baseline_file(self, tmp_path, payload) -> Path:
+        path = tmp_path / "baseline.agenda.json"
+        path.write_text(json.dumps(payload))
+        return path
+
+    def _recheck(self, draft, baseline, capsys) -> dict:
+        assert agenda.main([str(draft), "--baseline", str(baseline), "--json"]) == 0
+        return json.loads(capsys.readouterr().out)
+
+    def test_a_fully_refreshed_run_lists_nothing(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(tmp_path, {"aid": "agenda", "items": []})
+        assert self._recheck(draft, baseline, capsys)["not_refreshed"] == []
+
+    @pytest.mark.parametrize(
+        ("returncode", "writes"), [(1, False), (0, False)], ids=["exit-1", "exit-0-wrote-nothing"]
+    )
+    def test_a_failed_refresh_is_listed_and_its_items_are_not_counted(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, returncode, writes
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        self._old_sidecar(draft, "verbatim", self._short_run())
+        # The stale item would count if nothing marked it: pins that the
+        # assertions below are about refresh state, not the span check.
+        assert agenda.build_agenda(draft).objective_class_count == 1
+
+        aid_stubs["verbatim"].returncode = returncode
+        aid_stubs["verbatim"].writes = writes
+        baseline = self._baseline_file(tmp_path, {"aid": "agenda", "items": []})
+        payload = self._recheck(draft, baseline, capsys)
+
+        assert payload["not_refreshed"] == ["verbatim"]
+        assert payload["objective_after"] == 0
+        assert payload["new"] == []
+        filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert filed["objective_class_count"] == 0
+        assert filed["sources"]["aids"]["verbatim"]["refreshed"] is False
+        # Still listed on the filed worklist, only not counted.
+        assert [item["class"] for item in filed["items"]] == ["verbatim-run"]
+        rendered = review.report_path(draft, "agenda", "md").read_text()
+        assert "**not refreshed**" in rendered
+
+    def test_a_stale_item_is_neither_persisting_nor_resolved(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        claim = {"id": "c1", "citekey": "a2024", "claim": "a claim", "score": 0.1, "line": 3}
+        draft = self._draft(isolated_config, monkeypatch)
+        self._old_sidecar(draft, "support", claim)
+        agenda.main([str(draft)])
+        capsys.readouterr()
+        baseline = review.report_path(draft, "agenda", "json")
+        assert [item["class"] for item in json.loads(baseline.read_text())["items"]] == [
+            "claim-support"
+        ]
+
+        aid_stubs["support"].writes = False
+        payload = self._recheck(draft, baseline, capsys)
+        assert payload["not_refreshed"] == ["support"]
+        assert payload["persisting"] == []
+        assert payload["resolved"] == []
+
+    def test_a_baseline_marking_an_aid_not_refreshed_does_not_inflate_before(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """Excluding a failed aid from this run's side only would still
+        let the baseline's stale copy of its items count in
+        `objective_before` -- a fall reported for a repair nobody made."""
+        draft = self._draft(isolated_config, monkeypatch)
+        baseline = self._baseline_file(
+            tmp_path,
+            {
+                "aid": "agenda",
+                "sources": {"aids": {"verbatim": {"refreshed": False}}},
+                "items": [_item_dict("v", cls="verbatim-run")],
+            },
+        )
+        payload = self._recheck(draft, baseline, capsys)
+        assert payload["not_refreshed"] == []
+        assert payload["resolved"] == []
+        assert payload["objective_before"] == 0
+
+    def test_the_text_form_names_the_aid(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        aid_stubs["verbatim"].returncode = 1
+        baseline = self._baseline_file(tmp_path, {"aid": "agenda", "items": []})
+        assert agenda.main([str(draft), "--baseline", str(baseline)]) == 0
+        assert "not refreshed: verbatim" in capsys.readouterr().out
 
 
 # --------------------------------------------------------------------------
@@ -2533,11 +2822,14 @@ class TestAcceptedAgendaEndToEnd:
             "check",
             lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
         )
-        review.write_json(
+        path = review.write_json(
             draft,
             "uncited",
             {"findings": [{"id": "u1", "line": 3, "sentence": sentence or self.SENTENCE}]},
         )
+        # Backdated so a `--baseline` stub's same-tick rewrite still reads
+        # as a refresh (`_refresh.refresh_aids` compares mtimes, #837).
+        os.utime(path, (1_000_000, 1_000_000))
         return draft
 
     def _only_id(self, draft: Path) -> str:
@@ -2729,6 +3021,10 @@ class TestAcceptedAgendaEndToEnd:
         item_id = self._only_id(draft)
         agenda.main([str(draft), "--accept", item_id])
         capsys.readouterr()
+        # The refresh re-finds the accepted sentence, as a real aid would.
+        aid_stubs["uncited"].payload = json.loads(
+            review.report_path(draft, "uncited", "json").read_text()
+        )
         baseline = tmp_path / "baseline.agenda.json"
         baseline.write_text(
             json.dumps(
@@ -2755,12 +3051,15 @@ class TestAcceptedAgendaEndToEnd:
         draft = self._draft(isolated_config, monkeypatch)
         item_id = self._only_id(draft)
         monkeypatch.setattr(
-            _recheck,
+            _refresh,
             "refresh_aids",
-            lambda d: review.write_json(
-                d,
-                "uncited",
-                {"findings": [{"id": "u1", "line": 3, "sentence": "A quite different claim."}]},
+            lambda d: (
+                review.write_json(
+                    d,
+                    "uncited",
+                    {"findings": [{"id": "u1", "line": 3, "sentence": "A quite different claim."}]},
+                )
+                and dict.fromkeys(_sources.AID_NAMES, True)
             ),
         )
         baseline = tmp_path / "baseline.agenda.json"
