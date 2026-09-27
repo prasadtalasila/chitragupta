@@ -318,8 +318,13 @@ def _from_pdf(pdf_path: str, single_page: list[Passage]) -> tuple[list[Passage],
             check=True,
             encoding="utf-8",
             errors="replace",
+            # The bound the sync backend already enforces: a malformed
+            # PDF can hang poppler, and without it the report waited
+            # forever (#824). Running out of it is one more way this rung
+            # cannot run, so it takes the same fallback.
+            timeout=config.PARSER_DOCUMENT_TIMEOUT,
         )
-    except (OSError, subprocess.CalledProcessError) as exc:
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
         if single_page:
             return single_page, None
         return [], f"couldn't run pdftotext on the PDF ({exc})"

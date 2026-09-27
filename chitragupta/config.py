@@ -669,8 +669,10 @@ PARSER_START_METHOD = _get_start_method(
 # Give up on a single document after this many seconds, or None for no
 # limit. Applies to both backends, by the mechanism each one has:
 # docling's own PdfPipelineOptions.document_timeout, and a subprocess
-# timeout for pdftotext. Off by default -- any value has to clear the
-# slowest legitimate document in the corpus, and this project's is a
+# timeout for pdftotext -- sync's, and the three on-demand runs outside it
+# (passages, verbatim_check._corpus, enrich.embed_text; #824). Off by
+# default -- any value has to clear the slowest legitimate document in
+# the corpus, and this project's is a
 # 675-page book that took 246s on its own, so a number that is safe here
 # is not necessarily safe elsewhere.
 PARSER_DOCUMENT_TIMEOUT = _get_optional_float(

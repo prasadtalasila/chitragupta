@@ -132,8 +132,15 @@ def pages(citekey: str) -> list[str]:
             capture_output=True,
             text=True,
             check=True,
+            # Bounded as the sync backend is: a PDF that hangs poppler
+            # wedged `verbatim locate` indefinitely (#824).
+            timeout=config.PARSER_DOCUMENT_TIMEOUT,
         )
-    except (OSError, subprocess.CalledProcessError):  # pragma: no cover-windows
+    except (  # pragma: no cover-windows
+        OSError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ):
         return _parsed_pages(citekey)
     return out.stdout.split("\f")  # pragma: no cover-windows
 

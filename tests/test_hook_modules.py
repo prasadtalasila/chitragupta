@@ -243,6 +243,96 @@ class TestCitationGateHookModule:
         assert "could not run" in response["reason"].lower()
         assert "Citation gate FAILED" not in response["reason"]
 
+    @staticmethod
+    def recording(calls: list, result=None, error=None):
+        """A `subprocess.run` stand-in that records each call's argv and
+        kwargs, then answers with `result` or raises `error`."""
+
+        def run(args, **kwargs):
+            calls.append((args, kwargs))
+            if error is not None:
+                raise error
+            return result
+
+        return run
+
+    def test_an_oversize_draft_blocks_without_running_the_gate(self, rooted, monkeypatch, capsys):
+        """#824: past the size the gate is known to finish on inside the
+        harness's 30 s, the hook blocks and says why rather than starting
+        a gate the harness may kill -- a killed hook prints nothing, and
+        the draft lands ungated."""
+        hook, root = rooted
+        monkeypatch.setattr(hook, "MAX_GATED_LINES", 3)
+        draft = root / "content" / "drafts" / "huge.md"
+        draft.write_text("line\n" * 4)
+        calls = []
+        monkeypatch.setattr(hook.subprocess, "run", self.recording(calls, completed(0)))
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        response = emitted(capsys)
+        assert response["decision"] == "block"
+        assert "too large to gate" in response["reason"]
+        assert "4 lines" in response["reason"]
+        assert calls == []  # nothing was started, so nothing can be killed
+
+    def test_a_draft_at_the_limit_is_still_gated(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        monkeypatch.setattr(hook, "MAX_GATED_LINES", 3)
+        draft = root / "content" / "drafts" / "edge.md"
+        draft.write_text("line\n" * 3)
+        calls = []
+        monkeypatch.setattr(hook.subprocess, "run", self.recording(calls, completed(0)))
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        assert emitted(capsys) is None
+        assert len(calls) == 1
+        assert calls[0][1]["timeout"] == hook.GATE_TIMEOUT
+
+    def test_an_unreadable_draft_is_left_to_the_gate(self, rooted, monkeypatch, capsys):
+        """A draft the hook cannot count -- gone by the time it looks --
+        is not a reason to skip the gate: the gate reads it too, and its
+        own failure is what blocks."""
+        hook, root = rooted
+        missing = root / "content" / "drafts" / "gone.md"
+        calls = []
+        failed = completed(1, stdout="FAIL gone.md")
+        monkeypatch.setattr(
+            hook.subprocess, "run", self.gate_and_probe(failed, probe_result=completed(0))
+        )
+        monkeypatch.setattr(hook, "_line_count", lambda path: calls.append(path) or None)
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(missing)}})
+        assert hook.main() == 0
+        assert calls == [missing]
+        assert "Citation gate FAILED" in emitted(capsys)["reason"]
+
+    def test_line_count_is_none_for_an_unreadable_path(self, gate, tmp_path):
+        assert gate._line_count(tmp_path / "absent.md") is None
+        assert gate._line_count(tmp_path) is None  # a directory
+        (tmp_path / "two.md").write_bytes(b"a\n\xff\xfe not utf-8\n")
+        assert gate._line_count(tmp_path / "two.md") == 2  # counted, not decoded
+
+    def test_a_gate_that_runs_out_of_time_blocks(self, rooted, monkeypatch, capsys):
+        """#824: a gate still running at `GATE_TIMEOUT` is stopped by the
+        hook itself, early enough to block before the harness's own
+        30 s kill would silence it. No import probe after it: the probe's
+        own 5 s is what the margin was left for, and a hung gate says
+        nothing about whether the interpreter imports."""
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "slow.md"
+        draft.write_text("A claim [@nope_2026].\n")
+        calls = []
+        timeout = hook.subprocess.TimeoutExpired(cmd="python", timeout=hook.GATE_TIMEOUT)
+        monkeypatch.setattr(hook.subprocess, "run", self.recording(calls, error=timeout))
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        response = emitted(capsys)
+        assert response["decision"] == "block"
+        assert "did not finish" in response["reason"]
+        assert len(calls) == 1  # the gate, and no probe after it
+
+    def test_the_timeouts_fit_inside_the_harness_kill(self, gate):
+        assert gate.GATE_TIMEOUT + gate.IMPORT_PROBE_TIMEOUT < 30
+
     def test_the_import_probe_uses_the_gate_calls_own_cwd(self, rooted, monkeypatch, capsys):
         """Found by Copilot review on #563's PR: `python -c` also puts an
         empty-string cwd entry on `sys.path`, so a probe launched without

@@ -13,6 +13,7 @@ import re
 import subprocess
 import sys
 import types
+from pathlib import Path
 
 import pytest
 
@@ -235,6 +236,28 @@ class TestGetText:
         monkeypatch.setattr(subprocess, "run", fake_run)
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(tmp_path / "a.pdf"))
         assert embed_index.get_text(doc) == "pdftotext output"
+
+    def test_a_pdftotext_timeout_is_no_text_not_a_hang(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        """#824: the on-the-fly pdftotext had no timeout, so one PDF that
+        hangs poppler wedged the whole embed run. Bounded now by
+        `[parser].document_timeout`; a document that runs out of it has
+        no text to embed, reported as such by the caller, and its
+        temporary file is still removed."""
+        monkeypatch.setattr(isolated_config, "PARSER_DOCUMENT_TIMEOUT", 7.0)
+        seen = {}
+
+        def hang(cmd, **kwargs):
+            seen["out"] = cmd[-1]
+            seen["timeout"] = kwargs["timeout"]
+            raise subprocess.TimeoutExpired(cmd, kwargs["timeout"])
+
+        monkeypatch.setattr(subprocess, "run", hang)
+        doc = CorpusDoc(citekey="a2024", title="t", pdf_path=str(tmp_path / "a.pdf"))
+        assert embed_index.get_text(doc) is None
+        assert seen["timeout"] == 7.0
+        assert not Path(seen["out"]).exists()
 
     def test_returns_none_when_nothing_available(self, isolated_config):
         doc = CorpusDoc(citekey="a2024", title="t", pdf_path=None)

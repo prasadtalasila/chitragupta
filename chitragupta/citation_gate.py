@@ -36,7 +36,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import config, hook_launchers, ledger
+from chitragupta import _code_regions, config, hook_launchers, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -160,11 +160,11 @@ _PANDOC_CITE_RE = re.compile(rf"(?<![A-Za-z0-9._%+\-\\])-?@({PANDOC_KEY})")
 # (not delete -- must preserve every other character's offset, since line
 # numbers are computed from position in the original text) fenced code,
 # inline code spans, and LaTeX verbatim-style environments before
-# extraction.
+# extraction. The verbatim environments are paired by
+# `_code_regions.blank_latex_verbatim`, a linear scan: the DOTALL regex it
+# replaced was O(N x L) on N unclosed openers, enough to get the gate hook
+# killed before it could block (#824).
 _INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
-_LATEX_VERBATIM_RE = re.compile(
-    r"\\begin\{(verbatim|lstlisting|minted)\*?\}.*?\\end\{\1\*?\}", re.DOTALL
-)
 # LaTeX's other two ways of saying "this is not prose", scanned in one
 # left-to-right alternation so whichever construct opens first wins, as
 # in TeX itself: `\verb|50%|` keeps the following citation live, while
@@ -255,7 +255,7 @@ def _blank_code(text: str, *, latex: bool = False) -> str:
     def _blank_unless_escaped(m: re.Match) -> str:
         return m.group(0) if m.group("esc") else _blank_match(m)
 
-    text = _LATEX_VERBATIM_RE.sub(_blank_match, text)
+    text = _code_regions.blank_latex_verbatim(text)
     if latex:
         return _LATEX_INERT_RE.sub(_blank_unless_escaped, text)
     text = _blank_fenced(text)

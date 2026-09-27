@@ -46,6 +46,14 @@ mean importing `chitragupta` from *this* process to reach the probe,
 which is exactly the operation being tested for -- the same trap
 `session_start_hook.py`'s docstring names, and worse here, since this is
 the one hook required to fail closed rather than merely go silent.
+
+**The harness's 30 s kill is a silent pass, so the hook stops first
+(#824).** `.claude/settings.json` gives every hook 30 s, and a hook the
+harness kills prints no block -- the draft lands ungated, the one outcome
+this file exists to prevent. Two bounds keep it inside that: a draft over
+`MAX_GATED_LINES` is blocked as too large to gate before any gate starts,
+and a gate still running at `GATE_TIMEOUT` is stopped and blocked. Both
+say what happened, since neither checked a citekey.
 """
 
 import json
@@ -56,6 +64,35 @@ import draft_target
 import safe_path
 
 IMPORT_PROBE_TIMEOUT = 5.0
+
+# Chosen from the gate's measured runtime, not guessed (#824). The whole
+# `python -m chitragupta.draft gate` subprocess, on this project's real
+# ledger, is linear in draft length since the code-region scans stopped
+# being quadratic: 0.10 s at 1k lines, 0.24-0.27 s at 100k, 0.48-0.61 s at
+# 300k, for real chapters repeated and for pathological unclosed-fence
+# drafts alike. So 100k lines is ~36x the largest real draft here (2,749
+# lines) -- nothing real is blocked -- and still ~100x inside the
+# harness's 30 s on the host it was measured on.
+MAX_GATED_LINES = 100_000
+
+# Leaves the import probe's 5 s, and interpreter start-up, inside the
+# harness's 30 s. The gate takes well under a second at MAX_GATED_LINES,
+# so reaching this means something is wrong rather than slow.
+GATE_TIMEOUT = 20.0
+
+
+def _line_count(path) -> "int | None":
+    """Newlines in `path`, counted as bytes so no encoding can raise, or
+    None when it cannot be read -- left to the gate, whose own failure to
+    read it blocks."""
+    try:
+        return path.read_bytes().count(b"\n")
+    except OSError:
+        return None
+
+
+def _block(reason: str) -> None:
+    print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def _environment_is_broken(env: dict) -> bool:
@@ -102,15 +139,37 @@ def main() -> int:
     # and is the one settings.json chose.
     #
     # One `env` for both launches, decided once: see safe_path.py (#822).
+    lines = _line_count(file_path)
+    if lines is not None and lines > MAX_GATED_LINES:
+        _block(
+            f"This draft is too large to gate: {lines} lines, over the "
+            f"{MAX_GATED_LINES} the citation gate is known to finish on inside "
+            "the hook's time limit. Nothing was checked, so it is blocked "
+            "rather than let through. Split it into smaller files under "
+            "content/drafts/, or run `python -m chitragupta.draft gate` on it "
+            "by hand."
+        )
+        return 0
+
     env = safe_path.child_env(draft_target.REPO_ROOT)
-    result = subprocess.run(
-        [sys.executable, "-m", "chitragupta.draft", "gate", str(file_path)],
-        check=False,
-        cwd=draft_target.REPO_ROOT,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "chitragupta.draft", "gate", str(file_path)],
+            check=False,
+            cwd=draft_target.REPO_ROOT,
+            capture_output=True,
+            text=True,
+            env=env,
+            timeout=GATE_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        _block(
+            f"The citation gate did not finish within {GATE_TIMEOUT:.0f}s, so "
+            "nothing was checked and this draft is blocked rather than let "
+            "through. Run `python -m chitragupta.draft gate` on it by hand to "
+            "see why it is slow; your next write to it re-checks it."
+        )
+        return 0
 
     if result.returncode != 0 and _environment_is_broken(env):
         reason = (
@@ -124,7 +183,7 @@ def main() -> int:
             "either way.\n\n"
             f"{result.stdout}{result.stderr}"
         )
-        print(json.dumps({"decision": "block", "reason": reason}))
+        _block(reason)
     elif result.returncode != 0:
         reason = (
             "Citation gate FAILED for this draft (AGENTS.md: a hard gate, not "
@@ -133,7 +192,7 @@ def main() -> int:
             "automatically on your next write to it.\n\n"
             f"{result.stdout}{result.stderr}"
         )
-        print(json.dumps({"decision": "block", "reason": reason}))
+        _block(reason)
 
     return 0
 

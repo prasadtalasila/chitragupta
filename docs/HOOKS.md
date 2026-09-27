@@ -558,6 +558,18 @@ again is a needless second chance to fail, while the launcher has nothing
 to inherit and a name is the only thing `settings.json` can give the
 harness. Resolve by name once, at the outermost edge, and never again.
 
+**Finish inside the harness's timeout, or block.** Every hook gets
+`"timeout": 30`, and a hook the harness kills prints nothing: for the
+gate that is a silent pass, the draft landing ungated. So
+`citation_gate_hook.py` stops itself first, two ways, and names which in
+its block reason since neither checked a citekey: a draft over
+`MAX_GATED_LINES` (100,000) is blocked as too large to gate before any
+gate starts, and a gate still running at `GATE_TIMEOUT` (20 s, leaving
+the import probe's 5 s) is stopped and blocked. The line limit is
+measured, not guessed: the gate is linear in draft length, well under a
+second at 100k lines, and the largest real draft here is under 3k
+(#824).
+
 **Emit only the field this host consumes.** A hook written for several
 harnesses has to branch: Claude Code reads
 `hookSpecificOutput.additionalContext`, Cursor reads a top-level

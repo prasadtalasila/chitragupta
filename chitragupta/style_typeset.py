@@ -43,7 +43,7 @@ shape as its "should this equation have been numbered at all" row.
 import re
 from pathlib import Path
 
-from chitragupta import citation_gate, style_elements
+from chitragupta import _code_regions, citation_gate, style_elements
 from chitragupta.render_output import _paths
 from chitragupta.render_output._tables import line_of
 
@@ -113,25 +113,15 @@ _REFERENCES_RE = re.compile(
     r"(?:\n#+ |\Z)"
 )
 
-# A fenced block, opening fence to closing fence, with the content
-# captured. Deliberately not `citation_gate._blank_fenced`: that one
-# blanks the whole fence including its delimiter lines, because it
+# The width check reads code blocks' bodies from `_code_regions`:
+# `fenced_bodies` for Markdown and `latex_verbatim_bodies` for a `.tex`
+# fragment, each by a linear scan rather than the DOTALL regexes they
+# replaced (#824). Deliberately not `citation_gate._blank_fenced`: that
+# one blanks the whole fence including its delimiter lines, because it
 # exists to blank the block out, and here the delimiter lines must be
 # excluded -- an info string like ```python is not a content line and
-# cannot overflow anything.
-_FENCE_RE = re.compile(
-    r"^([ \t]*)(`{3,}|~{3,})[^\n]*\n(.*?)^[ \t]*\2[^\n]*$", re.MULTILINE | re.DOTALL
-)
-
-# A `.tex` fragment's equivalent, for the same reason and with the same
-# shape: the delimiter lines excluded, the content captured. The
-# environment list matches `citation_gate._LATEX_VERBATIM_RE`'s -- that
-# one blanks these regions and this one measures inside them, so they
-# have to agree on what counts as verbatim.
-_LATEX_VERBATIM_RE = re.compile(
-    r"\\begin\{(verbatim|lstlisting|minted)\*?\}[^\n]*\n(.*?)^[ \t]*\\end\{\1\*?\}",
-    re.MULTILINE | re.DOTALL,
-)
+# cannot overflow anything. The verbatim environment list is the one the
+# gate blanks, so what counts as verbatim agrees between the two.
 
 
 def _finding(rule: str, match: str, line: int, message: str) -> dict:
@@ -182,19 +172,19 @@ def _bare_urls(text: str) -> "list[dict]":
     return found
 
 
-def _wide_code_lines(text: str, pattern: "re.Pattern", group: int, why: str) -> "list[dict]":
-    """Every code line in `pattern`'s blocks too wide for the page."""
+def _wide_code_lines(bodies: "list[tuple[int, str]]", why: str) -> "list[dict]":
+    """Every code line in `bodies` -- `(first line number, body)` pairs,
+    as `_code_regions` returns them -- too wide for the page."""
     found = []
-    for block in pattern.finditer(text):
-        offset = block.start(group)
-        for index, raw in enumerate(block.group(group).split("\n")[:-1]):
+    for first, body in bodies:
+        for index, raw in enumerate(body.split("\n")[:-1]):
             if len(raw.rstrip()) <= MAX_CODE_COLUMNS:
                 continue
             found.append(
                 _finding(
                     "wide-code-line",
                     raw.strip()[:60],
-                    line_of(text, offset) + index,
+                    first + index,
                     f"this code line is {len(raw.rstrip())} columns wide, over "
                     f"the {MAX_CODE_COLUMNS} a page fits. {why} "
                     "(WRITING-STANDARDS.md §14).",
@@ -225,9 +215,7 @@ def findings(draft: Path) -> "list[dict]":
     if draft.suffix.lower() not in _paths._MARKDOWN_SUFFIXES:
         return sorted(
             _wide_code_lines(
-                text,
-                _LATEX_VERBATIM_RE,
-                2,
+                _code_regions.latex_verbatim_bodies(text),
                 "A verbatim environment cannot wrap, and a fragment is `\\input` "
                 "into a document whose preamble this pipeline may not change, so "
                 "nothing downstream can repair it",
@@ -241,9 +229,7 @@ def findings(draft: Path) -> "list[dict]":
     # scan while every other span is still blanked out under it.
     prose = citation_gate._blank_code(_URL_ONLY_SPAN_RE.sub(r" \1 ", text))
     found = _bare_urls(prose) + _wide_code_lines(
-        text,
-        _FENCE_RE,
-        3,
+        _code_regions.fenced_bodies(text),
         "A fenced block renders as LaTeX `verbatim`, which wraps only because "
         "the render loads `fvextra`; keeping the line short avoids the "
         "continuation marker a wrap leaves behind",
