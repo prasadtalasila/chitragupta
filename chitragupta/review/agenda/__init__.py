@@ -93,7 +93,8 @@ class Agenda:
         """The count a future re-run loop watches: unattended items only.
 
         Three classes contribute -- `missing-citekey`, verbatim-run's
-        `"short"` bucket, and `prose`, which joined them in issue 421.
+        `"short"` bucket, and `prose`, which joined them in issue 421
+        (less any finding carrying `repair="review"`, issue 836).
         The list is spelled out rather than left as "whatever is
         flagged" because this is the number the loop terminates on: a
         description of it that has gone stale is the most expensive

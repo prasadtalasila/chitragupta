@@ -37,10 +37,17 @@ _HEADING_RE = re.compile(r"^#{1,6}[ \t]+\S.*$", re.MULTILINE)
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
-def finding(rules: "dict[str, str]", rule: str, match: str, line: int, message: str) -> dict:
-    """One finding in the shape `style_check.collapse()` produces from
+def finding(
+    rules: "dict[str, str]", rule: str, match: str, line: int, message: str, repair: str = "edit"
+) -> dict:
+    """One finding in the shape `style_check.check()` produces from
     Vale's own, so `style_report.py` never has to know which check wrote
-    which line."""
+    which line.
+
+    `repair` is how the finding may be fixed (issue 836): `"edit"`, the
+    default, lets the review agenda repair it unattended; `"review"` is
+    for a rule whose right repair may be to leave the text alone, which
+    only a person can tell."""
     return {
         "rule": rules[rule],
         "match": match,
@@ -48,6 +55,7 @@ def finding(rules: "dict[str, str]", rule: str, match: str, line: int, message: 
         "message": message,
         "severity": "suggestion",
         "count": 1,
+        "repair": repair,
     }
 
 

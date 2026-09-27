@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import dossier, review
+from chitragupta import config, dossier, review, style_check
 from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
 from chitragupta.review import agenda, citation_provenance
@@ -564,6 +564,13 @@ class TestProseItems:
         )
         assert _items_findings.prose_items(source, [])[0].unattended is True
 
+    def test_a_review_mode_finding_is_surfaced_not_unattended(self):
+        """Issue 836: a rule whose right repair may be "leave it alone"
+        says so with `repair="review"`, and the agenda honours it."""
+        finding = {"rule": "r", "match": "x", "line": 3, "count": 1, "repair": "review"}
+        source = _sources.StyleSource(available=True, data={"findings": [finding]})
+        assert _items_findings.prose_items(source, [])[0].unattended is False
+
     def test_line_zero_is_treated_as_no_position(self):
         source = _sources.StyleSource(
             available=True,
@@ -583,6 +590,61 @@ class TestProseItems:
         items = _items_findings.prose_items(source, [])
         assert items[0].line is None
         assert items[0].section is None
+
+
+class TestProseRepairMode:
+    """Issue 836, through the live path the agenda reads -- `_read_style`
+    calls `style_check.check()`, so the dialect decision is exercised
+    where it is made rather than by hand-setting `repair` on a finding.
+
+    A dialect is the author's own statement only from `scope.md` or a
+    `--language` flag; one resolved from the host-wide `config.toml`
+    default may be wrong for this draft, and re-spelling a whole draft
+    on its evidence is not a repair to make unasked."""
+
+    @pytest.fixture
+    def draft(self, isolated_config, monkeypatch):
+        path = content_draft(isolated_config, "drafts/t/survey.md")
+        path.write_text("# Survey\n\nWe organise the data.\n", encoding="utf-8")
+        vale = [
+            {"Check": "chitragupta.DialectUS", "Match": "organise", "Line": 3, "Message": "m"},
+            {"Check": "chitragupta.DefectMarkers", "Match": "the", "Line": 3, "Message": "m"},
+        ]
+        monkeypatch.setattr(style_check, "run_vale", lambda d, lang: list(vale))
+        monkeypatch.setattr(config, "STYLE_LANGUAGE", "en-US")
+        return path
+
+    @staticmethod
+    def _unattended(draft) -> dict:
+        items = _items_findings.prose_items(_sources._read_style(draft), [])
+        return {item.summary.split(":")[0]: item.unattended for item in items}
+
+    def test_a_config_toml_dialect_is_surfaced_not_repaired(self, draft):
+        flags = self._unattended(draft)
+        assert flags["chitragupta.DialectUS"] is False
+        # Only the dialect rule is demoted; every other Vale rule is
+        # still an edit whatever the language's source.
+        assert flags["chitragupta.DefectMarkers"] is True
+
+    def test_a_scope_md_dialect_is_unattended(self, draft):
+        scope_dir = dossier.dossier_dir(draft)
+        scope_dir.mkdir(parents=True, exist_ok=True)
+        (scope_dir / dossier.SCOPE_MD).write_text(
+            "# Scope\n\n- genre: survey\n- language: en-US\n", encoding="utf-8"
+        )
+        assert self._unattended(draft)["chitragupta.DialectUS"] is True
+
+    def test_a_language_flag_dialect_is_repaired_by_edit(self, draft):
+        found = style_check.check(draft, "en-US", propose=False)["findings"]
+        assert {f["rule"]: f["repair"] for f in found}["chitragupta.DialectUS"] == "edit"
+
+    def test_a_wide_code_line_is_never_unattended(self, draft, monkeypatch):
+        """A tutorial's verified-to-run block may be wide on purpose (a
+        long URL or literal); rewrapping it breaks what was promised to
+        run, so the width is reported for a person to decide."""
+        monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [])
+        draft.write_text(f"# Survey\n\n```\n{'x' * 90}\n```\n", encoding="utf-8")
+        assert self._unattended(draft) == {"chitragupta.WideCodeLine": False}
 
 
 class TestUnsupportedClaimItems:

@@ -1,4 +1,5 @@
-"""Which Vale rule implements which dialect, and nothing else.
+"""Which Vale rule implements which dialect, and how a dialect finding
+may be repaired.
 
 A table two modules need -- `style_check` to build Vale's `--filter`, and
 `style_report` to tell a recorded tag this style cannot check from one it
@@ -24,3 +25,24 @@ DIALECT_RULES = {
 }
 
 _ALL_DIALECT_RULES = (_DIALECT_GB, _DIALECT_US, _DIALECT_IN)
+
+# The two places a dialect is the author's own statement. `config.toml`
+# is a standing preference for the machine, not for this draft, and
+# `style_check`'s own docstring says why it may be wrong for one.
+_AUTHOR_SOURCES = ("scope.md", "--language")
+
+
+def with_repair(findings: "list[dict]", language_source: str) -> "list[dict]":
+    """Vale's collapsed `findings`, each stamped with the `repair` mode
+    `style_elements.finding` gives the Python-side ones (issue 836).
+
+    A dialect finding is `"review"` unless the dialect came from the
+    author: re-spelling a whole draft to a host-wide default is not a
+    repair to make unattended when the draft's own dialect may be the
+    deliberate one. Every other Vale rule is an `"edit"`.
+    """
+    for finding in findings:
+        dialect = finding["rule"] in _ALL_DIALECT_RULES
+        review = dialect and language_source not in _AUTHOR_SOURCES
+        finding["repair"] = "review" if review else "edit"
+    return findings

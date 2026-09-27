@@ -87,7 +87,8 @@ class StyleSource:
     """`style_check.check()`'s result. `partial` means Vale did not run
     (`vale_error` was set) -- `prose` is under-reported, not empty, and
     the header must say so by name because `prose` is an *unattended*
-    class (issue 421): a silently short list of it under-counts
+    class (issue 421; issue 836 exempts `repair="review"` findings): a
+    silently short list of it under-counts
     `Agenda.objective_class_count`, which a re-run loop terminates on.
 
     It is not the most populous class, which this docstring claimed

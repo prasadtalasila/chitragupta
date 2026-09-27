@@ -129,13 +129,13 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
     there is no underlying evidential claim for a rewording to
     misrepresent.
 
-    R3 was tested rather than argued. A draft carrying an uncaptioned
-    table and an unreferenced figure reported `chitragupta.TableNoCaption`
-    and `chitragupta.FigureUnreferenced`; adding the caption and the
-    inline reference took `draft style` to zero findings. That is the
-    whole of what R3 asks, so the flag is set for the class rather than
-    for a per-rule subset -- a filter whose every entry is `True` is what
-    the paragraph above already rules out."""
+    R3 was tested rather than argued: adding a caption and an inline
+    reference took `TableNoCaption` and `FigureUnreferenced` to zero.
+    **Except where the finding says otherwise** (issue 836): a rule whose
+    right repair may be "leave it alone" -- `WideCodeLine` in a block
+    verified to run, a dialect taken from `config.toml` rather than the
+    author -- carries `repair="review"` and is surfaced instead. The
+    rule decides that where the finding is built; this reads it only."""
     if not source.available or source.data is None:
         return []
     items = []
@@ -150,7 +150,7 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
                 section=section,
                 citekey=None,
                 line=line,
-                unattended=True,
+                unattended=finding.get("repair", "edit") == "edit",
                 summary=f"{finding.get('rule')}: {finding.get('match')!r} "
                 f"({finding.get('count', 1)}x)",
                 detail={

@@ -1,6 +1,6 @@
 ---
 name: agenda-reviser
-description: Repairs the unattended findings on a draft's review agenda, one item at a time, in a draft that already exists in content/drafts/. Reads `python -m chitragupta.review agenda <draft>`, whose per-item `unattended` field -- never re-derived here -- decides what may be acted on without asking: a `verbatim-run` at severity `short`, every `prose` finding, and a `missing-citekey` (repaired by de-citing the sentence, which escalates it as an uncited claim on the next agenda). Every other class is surfaced for a person to decide. Looks up each item's repair payload in the raising aid's own filed JSON, keyed by the id `detail` carries -- the agenda's own `detail` is thin by design and does not carry it. One R4 cycle is one command, `review agenda <draft> --baseline <stem>.agenda.json --json`, which refreshes all eight aids itself; the skill never hand-rolls the refresh and never reads a bare `review agenda` after an edit. Continues passing only while `objective_class_count`, read from the payload rather than hardcoded, strictly falls, and stops at `pass_bound` (also read from the payload) as a backstop against a miscounting bug. Every repair must re-pass `python -m chitragupta.draft gate` and the same `--baseline` recheck before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to work the review agenda, fix what an agenda run found, or act on unattended findings -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything the agenda surfaces rather than marks unattended is a judgement call for draft-reviser or the human, not this skill; hand off and say so. Never edits the allowlist (now including assets/vale/styles/chitragupta/*.yml), never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
+description: Repairs the unattended findings on a draft's review agenda, one item at a time, in a draft that already exists in content/drafts/. Reads `python -m chitragupta.review agenda <draft>`, whose per-item `unattended` field -- never re-derived here -- decides what may be acted on without asking: a `verbatim-run` at severity `short`, a `prose` finding unless its rule marks it for review, and a `missing-citekey` (repaired by de-citing the sentence, which escalates it as an uncited claim on the next agenda). Every other class is surfaced for a person to decide. Looks up each item's repair payload in the raising aid's own filed JSON, keyed by the id `detail` carries -- the agenda's own `detail` is thin by design and does not carry it. One R4 cycle is one command, `review agenda <draft> --baseline <stem>.agenda.json --json`, which refreshes all eight aids itself; the skill never hand-rolls the refresh and never reads a bare `review agenda` after an edit. Continues passing only while `objective_class_count`, read from the payload rather than hardcoded, strictly falls, and stops at `pass_bound` (also read from the payload) as a backstop against a miscounting bug. Every repair must re-pass `python -m chitragupta.draft gate` and the same `--baseline` recheck before it is kept, and every attempt is logged in the dossier's revisions.md, refusals and reverts included. Triggers when the user asks to work the review agenda, fix what an agenda run found, or act on unattended findings -- and on the three occasions that raise the question: before rendering or submitting, after a sync moved the corpus, and on picking a draft back up after weeks away. Anything the agenda surfaces rather than marks unattended is a judgement call for draft-reviser or the human, not this skill; hand off and say so. Never edits the allowlist (now including assets/vale/styles/chitragupta/*.yml), never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
 tags: [revision, review, agenda, dossier, citation]
 ---
 
@@ -12,8 +12,9 @@ quotation integrity, claim support -- plus the dossier's own drift and its
 recorded-but-uncited citekeys, into one
 ranked, deduplicated worklist. Each item carries an `unattended` field,
 decided once by the aid that produced it and never re-derived here: a
-`verbatim-run` at severity `short` from a deterministic tier, every
-`prose` finding, and a `missing-citekey` may be repaired without asking;
+`verbatim-run` at severity `short` from a deterministic tier, a `prose`
+finding whose rule does not mark it for review, and a `missing-citekey`
+may be repaired without asking;
 everything else is surfaced for a person. The agenda stops there, because
 it is a review aid and review aids report. Everything after that -- reading an unattended
 item, finding its repair payload, applying it without losing the claim,
@@ -75,7 +76,7 @@ Three classes carry `unattended: true` on this checkout:
 | `verbatim-run`, severity `long` | 15 words or more, not a marked quotation | **Stop and ask** -- surfaced, not unattended |
 | `verbatim-run`, `embedding` tier, **any** severity | A meaning-level alignment, sharing no wording with the source | Surfaced whatever its length. The tier is advisory only, permanently -- its findings move with tier availability and the embedding model, not only with an edit -- so there is nothing here an edit can reliably resolve. The item names its tier in the summary; do not infer it from the length |
 | `verbatim-run`, `quoted` | Touching quote marks **and** citing the source | Already correct. Do not touch it |
-| `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended |
+| `prose` | A `draft style` finding -- an unexpanded acronym, a drifted glossary term, a dialect slip, an uncaptioned table or figure | Repair unattended -- except a finding its rule built with `repair: "review"`, which the agenda already surfaces: a `WideCodeLine` (a wide line in a block verified to run may be deliberate) and a dialect finding whose dialect came from the host-wide `config.toml` rather than `scope.md` or `--language`. Read `unattended`; do not re-derive it |
 | `missing-citekey` | A citekey the draft cites that the corpus no longer has | Repair unattended -- by removing the `[@citekey]` marker, per "Repair a `missing-citekey` item" below |
 | `recorded-but-uncited` | `evidence.md` or `sections.md` still records a citekey the draft no longer cites -- often the residue of *this skill's own* `missing-citekey` repair | Surfaced. Report and do not touch. The repair is `dossier prune`, which a person confirms; pruning it here would delete evidence that may instead be an uncited candidate |
 | Every other class (`unsupported-claim`, `claim-support`, `uncited-claim`, `misquoted`) | Judgement calls | Surfaced. Report and do not touch |
@@ -376,10 +377,12 @@ python -m chitragupta.draft style content/drafts/<path>
 
 Already run as part of the baseline agenda in step 2 -- `agenda` reads
 it as one of its eight sources. Under Decision 1 of
-`plans/f3-agenda-reviser.md`, every `prose` finding carries
+`plans/f3-agenda-reviser.md`, a `prose` finding carries
 `unattended: true` and is repaired in step 4, the same as any other
-unattended class. **This is the one skill of the nine where that
-finding list is a work list rather than only a report** -- every other
+unattended class -- unless its rule built it with `repair: "review"`
+(issue 836), in which case the agenda surfaces it and you leave it.
+**This is the one skill of the nine where that finding list is a work
+list rather than only a report** -- every other
 skill that runs this command stops at reporting; this one goes on to
 repair. Your own repairs are new prose, written under pressure to avoid
 someone else's wording on the `verbatim-run` items, which is exactly
