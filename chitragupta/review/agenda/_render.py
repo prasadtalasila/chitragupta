@@ -42,6 +42,8 @@ def _aid_note(aid: str, label: str, source) -> str:
     state = "read, no item class defined" if aid in _NO_CLASS_AIDS else "read"
     if source.stale:
         state += ", **stale** (older than the draft)"
+    if source.refreshed is False:
+        state += ", **not refreshed** (an earlier run's findings; not counted)"
     return f"- {label}: {state}"
 
 
@@ -243,10 +245,7 @@ def _item_dict(agenda, item) -> dict:
 
 def _sources_dict(agenda) -> dict:
     return {
-        "aids": {
-            aid: {"available": source.available, "stale": source.stale}
-            for aid, source in agenda.sources.aids.items()
-        },
+        "aids": {aid: source.flags() for aid, source in agenda.sources.aids.items()},
         "style": {
             "available": agenda.sources.style.available,
             "partial": agenda.sources.style.partial,

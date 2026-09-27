@@ -32,8 +32,8 @@ acceptance record (`_accept.py`). Neither touches the draft.
 **`--baseline` is the one exception, and it is scoped to that flag.**
 `review agenda <draft> --baseline <a previous agenda .json>` re-runs the
 eight aids at `--formats md` first, then rebuilds and reports
-`resolved`/`persisting`/`new` against the baseline -- `_recheck.py`, and
-Decision 6 of `plans/f3-agenda-reviser.md` for why the R4 cycle became
+`resolved`/`persisting`/`new` against the baseline -- `_refresh.py` and
+`_recheck.py`, and Decision 6 of `plans/f3-agenda-reviser.md` for why the R4 cycle became
 one deterministic command rather than prose in seven skills. Refreshing
 is what makes the comparison mean anything: reading pre-edit `.json`
 reports a finding resolved that is not, and it does so silently. That
@@ -56,6 +56,7 @@ from chitragupta.review.agenda import (
     _items,
     _order,
     _recheck,
+    _refresh,
     _render,
     _sources,
     _stale,
@@ -98,12 +99,14 @@ class Agenda:
         The list is spelled out rather than left as "whatever is
         flagged" because this is the number the loop terminates on: a
         description of it that has gone stale is the most expensive
-        comment in this module.
+        comment in this module. An aid `--baseline` failed to refresh
+        contributes nothing (#837): its items are an earlier run's.
         """
-        return sum(1 for item in self.items if item.unattended)
+        skipped = _sources.unverified_classes(self.sources.not_refreshed())
+        return sum(1 for item in self.items if item.unattended and item.cls not in skipped)
 
 
-def build_agenda(draft: Path) -> Agenda:
+def build_agenda(draft: Path, refreshed: "dict[str, bool | None] | None" = None) -> Agenda:
     """Everything this aid does, as data: collect the eight sources,
     extract one item per finding, merge, order, refuse whatever the draft
     no longer says, then set aside the ones a person has already
@@ -132,7 +135,7 @@ def build_agenda(draft: Path) -> Agenda:
     # alone, and `_accept.ACCEPTABLE` holds neither.
     # `TestStaleAndAcceptedDoNotOverlap` pins that, so a later class
     # carrying both has to decide rather than inherit this.
-    sources = _sources.collect(draft)
+    sources = _sources.collect(draft, refreshed)
     text = draft.read_text(encoding="utf-8")
     sections = dossier.sections(text)
     items = _items.all_items(sources, sections)
@@ -201,7 +204,7 @@ def main(argv: list[str] | None = None) -> int:
     return run(build_parser().parse_args(argv))
 
 
-def _file_report(draft_path: Path, args) -> tuple[dict, dict]:
+def _file_report(draft_path: Path, args, refreshed=None) -> tuple[dict, dict]:
     """Build the agenda for `draft_path` and file its `.md` (plus any
     renders) and `.json`, returning `(payload, written)`.
 
@@ -211,7 +214,7 @@ def _file_report(draft_path: Path, args) -> tuple[dict, dict]:
     the next run reads as a baseline.
     """
     formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-    agenda = build_agenda(draft_path)
+    agenda = build_agenda(draft_path, refreshed)
     command = _command(draft_path, args.json)
     body = _render.render_markdown(agenda, command)
     written = review.write(draft_path, "agenda", body, formats)
@@ -234,22 +237,22 @@ def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, writte
     # because it was suppressed, and without them the comparison would
     # report it resolved -- a finding called fixed that nobody fixed,
     # which is the failure `_recheck.py` exists to prevent.
+    # A failed refresh on either side unverifies that aid's items (#837),
+    # but only this run's failures are reported: the baseline's were
+    # reported by the run that filed it.
     suppressed_ids = {row["id"] for row in payload["accepted"] if row["suppressed"]}
+    failed = _recheck.not_refreshed(payload)
+    unverified = {*failed, *_recheck.not_refreshed(baseline)}
     resolved, persisting, appeared, accepted, before, after = _recheck.compare(
-        payload["items"], baseline["items"], suppressed_ids
+        payload["items"], baseline["items"], suppressed_ids, unverified
     )
     groups, counts = (resolved, persisting, appeared, accepted), (before, after)
     if args.json:
-        command = _recheck.recheck_command(draft_path, args.baseline)
-        print(
-            json.dumps(
-                _recheck.recheck_payload(draft_path, args.baseline, groups, counts, command),
-                indent=2,
-            )
-        )
+        recheck = _recheck.recheck_payload(draft_path, args.baseline, groups, counts, failed)
+        print(json.dumps(recheck, indent=2))
         review.print_written(written, stream=sys.stderr)
     else:
-        print(_recheck.format_recheck(args.baseline, groups, counts))
+        print(_recheck.format_recheck(args.baseline, groups, counts, failed))
         review.print_written(written)
 
 
@@ -307,10 +310,8 @@ def run(args: argparse.Namespace) -> int:
         if refusal is not None:
             return refusal
 
-    if baseline is not None:
-        _recheck.refresh_aids(draft_path)
-
-    payload, written = _file_report(draft_path, args)
+    refreshed = _refresh.refresh_aids(draft_path) if baseline is not None else None
+    payload, written = _file_report(draft_path, args, refreshed)
 
     if baseline is not None:
         _print_recheck(draft_path, args, payload, baseline, written)

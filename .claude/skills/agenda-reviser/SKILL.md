@@ -300,6 +300,20 @@ python -m chitragupta.review agenda content/drafts/<path> \
     --baseline content/review/<topic>/<stem>.agenda.json --json
 ```
 
+**Read `not_refreshed` first.** It names the aids whose refresh
+failed this cycle: a refusal, or an exit 0 that wrote nothing, which is
+what `support` does on every cycle on a host without the enrich stack.
+Their items are an earlier run's findings, so the command leaves them
+out of `resolved`, `persisting` and `new` and out of both objective
+counts. Nothing in the comparison can show progress on them, and a
+quiet list is not evidence that they went away:
+
+- **`verbatim` listed: stop the pass and surface it.** It is the only
+  aid whose items can be unattended, so no `verbatim-run` repair can be
+  verified this cycle. Revert an unverified repair rather than keep it.
+- **Any other aid listed: carry on**, but never act on or count its
+  items, and name it in step 7's report.
+
 Accept the repair only if **all** of:
 
 - `python -m chitragupta.draft gate content/drafts/<path>` exits 0;
@@ -365,7 +379,9 @@ that were retrieved and turned down, not repairs that did not work.
 
 Show the diff and the `revisions.md` entries, and state the outcome
 against the baseline agenda from step 2: `objective_class_count` before
-and after, what was repaired per class, what was escalated and why.
+and after, what was repaired per class, what was escalated and why,
+and every aid any cycle's `not_refreshed` named, with a note that its
+items went unverified.
 
 The human accepts. Nothing here merges, commits or renders on its own.
 

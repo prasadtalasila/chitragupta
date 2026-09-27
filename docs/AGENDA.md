@@ -295,6 +295,18 @@ follows). It reports every finding as `resolved`, `persisting`, `new` or
 `accepted`, with `objective_before`, `objective_after` and
 `objective_delta`.
 
+**Read `not_refreshed` before either.** It lists the aids whose
+refresh failed this run: a refusal, or an exit 0 that wrote nothing, as
+`support` does without the enrich stack. Their `.json` on disk is an
+earlier run's. So their items are left out of all four groups and both
+counts, on the baseline's side as well as this run's. A driver must
+stop or surface such an aid, and never count the missing items as
+progress. `verbatim` is the one that matters for the count, being the
+only aid whose items can be unattended. The filed report marks each
+one `refreshed: false` under `sources.aids`, and its header calls it
+**not refreshed**. The items are still listed there, but they do not
+count towards `objective_class_count`.
+
 **Read the `new` list, not just the delta.** A repair that resolves one
 finding and introduces another leaves `objective_delta` at 0, which is
 indistinguishable from having changed nothing unless you look at what is
