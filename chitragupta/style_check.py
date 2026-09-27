@@ -58,7 +58,7 @@ from chitragupta.style_equations import findings as equation_findings
 from chitragupta.style_figures import findings as figure_findings
 from chitragupta.style_headings import findings as heading_findings
 from chitragupta.style_report import report
-from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES
+from chitragupta.style_rules import DIALECT_RULES, _ALL_DIALECT_RULES, with_repair
 from chitragupta.style_tables import findings as table_findings
 from chitragupta.style_typeset import findings as typeset_findings
 
@@ -282,7 +282,7 @@ def check(draft: Path, override: str | None = None, propose: bool = True) -> dic
     )
     vale_error, proposal = None, None
     try:
-        findings = collapse(run_vale(draft, language)) + findings
+        findings = with_repair(collapse(run_vale(draft, language)), source) + findings
     except MissingBinary as exc:
         vale_error = str(exc)
     # Not attempted without Vale: the proposal is measured *by* running

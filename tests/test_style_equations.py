@@ -116,7 +116,7 @@ class TestFindingShape:
     def test_every_finding_carries_what_the_report_prints(self, tmp_path):
         body = "# S\n\n<!-- equation: bare -->\n\nno block\n"
         found = style_equations.findings(draft_with(body, tmp_path))
-        assert set(found[0]) == {"rule", "match", "line", "message", "severity", "count"}
+        assert set(found[0]) == {"rule", "match", "line", "message", "severity", "count", "repair"}
         assert found[0]["count"] == 1
         assert found[0]["severity"] == "suggestion"
 

@@ -124,11 +124,11 @@ _REFERENCES_RE = re.compile(
 # gate blanks, so what counts as verbatim agrees between the two.
 
 
-def _finding(rule: str, match: str, line: int, message: str) -> dict:
+def _finding(rule: str, match: str, line: int, message: str, repair: str = "edit") -> dict:
     """One finding in the shape `style_check.collapse()` produces from
     Vale's own -- a thin `RULES`-bound wrapper over the shared
     `style_elements.finding`, matching how the sibling modules call it."""
-    return style_elements.finding(RULES, rule, match, line, message)
+    return style_elements.finding(RULES, rule, match, line, message, repair)
 
 
 def _blank(pattern: "re.Pattern", text: str) -> str:
@@ -188,6 +188,9 @@ def _wide_code_lines(bodies: "list[tuple[int, str]]", why: str) -> "list[dict]":
                     f"this code line is {len(raw.rstrip())} columns wide, over "
                     f"the {MAX_CODE_COLUMNS} a page fits. {why} "
                     "(WRITING-STANDARDS.md §14).",
+                    # A wide line may be deliberate -- a URL or literal in a
+                    # block verified to run -- so a person decides (#836).
+                    repair="review",
                 )
             )
     return found

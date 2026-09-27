@@ -140,7 +140,7 @@ class TestReferencedOutsideItsSection:
 class TestFindingShape:
     def test_every_finding_carries_what_the_report_prints(self, tmp_path):
         found = style_figures.findings(draft_with(f"# S\n\n{CAPTIONED}", tmp_path))
-        assert set(found[0]) == {"rule", "match", "line", "message", "severity", "count"}
+        assert set(found[0]) == {"rule", "match", "line", "message", "severity", "count", "repair"}
         assert found[0]["count"] == 1
         assert found[0]["severity"] == "suggestion"
 
