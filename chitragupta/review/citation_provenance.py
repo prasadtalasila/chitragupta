@@ -209,7 +209,7 @@ def build_report(draft_path: Path) -> Report:
     # the file. It also makes the recorded command re-runnable, which
     # `survey.md` alone is not.
     report = Report(draft=Path(draft_path))
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         cache: dict[str, list[Passage]] = {}
         for line_no, citekey, claim in claims(text):
             if citekey not in cache:

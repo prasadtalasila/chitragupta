@@ -116,7 +116,7 @@ def _cmd_accept(args) -> int:
     if refusal:
         return _refuse(refusal)
 
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         known = ledger.known_citekeys(con)
     refusal = _unknown_sources(built, known)
     if refusal:

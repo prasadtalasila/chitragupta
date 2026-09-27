@@ -505,7 +505,7 @@ class TestMain:
         assert "no quoted evidence recorded" in capsys.readouterr().out
 
     def test_a_citekey_missing_from_the_ledger_prints_an_error_and_returns_1(
-        self, isolated_config, capsys
+        self, isolated_config, ledger_con, capsys
     ):
         draft = content_draft(isolated_config, "drafts/topic/survey.md")
         draft.write_text("Body [@ghost_x_2024].\n", encoding="utf-8")

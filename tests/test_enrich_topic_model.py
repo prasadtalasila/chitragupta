@@ -17,9 +17,18 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config
+from chitragupta import config, ledger
 from chitragupta.enrich import doc_vectors, embed_index, topic_model
 from chitragupta.enrich.corpus import CorpusDoc
+
+
+@pytest.fixture(autouse=True)
+def _a_synced_ledger(isolated_config):
+    """An empty, current ledger, as a first sync leaves one. Author-name stop words read
+    it read-only (#843), and a missing one is refused rather than created,
+    so a test that never synced has to say so rather than lean on the
+    reader to make one."""
+    ledger.connect().close()
 
 
 class FakeUMAP:

@@ -53,15 +53,12 @@ CANDIDATE_K = 15
 def _ephemeral_index(rows: list[sqlite3.Row]) -> dict:
     """A BM25 term-frequency index built in memory and thrown away.
 
-    `chitragupta.retrieval.search()` cannot be used here, for two reasons that
-    are both about this being a *report*. It connects through
-    `ledger.connect()`, which mkdirs `content/`, executes the schema and
-    runs migrations -- a write connection, which is exactly what
-    `_corpus_rows` avoids. And it goes through `retrieval_cache._load_index`,
-    which calls `_save_cache` whenever any document's fingerprint moved
-    -- which, after the sync that caused the drift being reported, is
-    guaranteed. Either one would make an inspection mutate the corpus
-    layer it is inspecting.
+    `chitragupta.retrieval.search()` cannot be used here, because this is a
+    *report*. It reads the ledger read-only since #843, but it goes
+    through `retrieval_cache._load_index`, which calls `_save_cache`
+    whenever any document's fingerprint moved -- which, after the sync
+    that caused the drift being reported, is guaranteed. That would make
+    an inspection mutate the corpus layer it is inspecting.
 
     The index itself is not the problem, though: `retrieval._tokenize_item`
     and `retrieval._bm25_scores` are pure, and the only thing that persists

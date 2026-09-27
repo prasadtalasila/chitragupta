@@ -56,7 +56,7 @@ def _confined(value: "str | None", root) -> "str | None":
 
 def build_corpus() -> list[CorpusDoc]:
     """Every ledger item, as the enrichment stages consume them."""
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         rows = ledger.all_items(con)
 
     return [

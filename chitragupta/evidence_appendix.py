@@ -194,10 +194,12 @@ def write(draft: Path, out_dir: Path, draft_text: str | None = None) -> Path | N
     """
     if draft_text is None:
         draft_text = draft.read_text(encoding="utf-8")
-    with ledger.connection() as con:
-        text = build(draft_text, dossier_dir(draft), con)
-    if text is None:
+    # Checked before the ledger is opened, so a draft with nothing quoted
+    # has no sidecar -- and needs no ledger -- rather than a refusal.
+    if not quoted_spans(draft_text, dossier_dir(draft)):
         return None
+    with ledger.reading() as con:
+        text = build(draft_text, dossier_dir(draft), con)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = sidecar_path(draft, out_dir)

@@ -689,7 +689,7 @@ class TestMainCli:
         assert "wrote References section" in out
 
     def test_missing_citekey_prints_error_and_returns_1(
-        self, isolated_config, tmp_path, capsys, monkeypatch
+        self, isolated_config, ledger_con, tmp_path, capsys, monkeypatch
     ):
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@fabricated2024]\n")

@@ -194,7 +194,7 @@ def resolve(con, citekey: str) -> dict:
 
 def _cmd_write(args) -> int:
     summary = sys.stdin.read()
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         path = write(con, args.citekey, summary)
     print(f"wrote {path}")
     return 0
@@ -222,7 +222,7 @@ def _describe(citekey: str, result: dict) -> str:
 
 
 def _cmd_show(args) -> int:
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         result = resolve(con, args.citekey)
     if args.json:
         print(json.dumps(result, indent=2, sort_keys=True))

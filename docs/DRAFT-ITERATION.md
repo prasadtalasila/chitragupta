@@ -274,14 +274,14 @@ because there the consumer reads it at the moment it acts.
 ### 🔎 Why the new papers are not found with `search()`
 
 The obvious implementation -- call `chitragupta.retrieval.search(query, k=15)`
-for each recorded query -- is the one thing this could not do, for two
-reasons that are both about a report having no business changing what it
-reports on:
+for each recorded query -- is the one thing this could not do, because a
+report has no business changing what it reports on:
 
-- `search()` reaches the ledger through `ledger.connect()`, which mkdirs
-  `content/`, executes the schema and runs migrations. That is a write
-  connection, and the whole point of `status` opening the ledger
-  `mode=ro` is that an inspection must not take a write lock or run a
+- `search()` used to reach the ledger through `ledger.connect()`, the
+  writer, which mkdirs `content/`, executes the schema and runs
+  migrations. It no longer does: every reader now opens the ledger
+  read-only through `ledger.read_connection`, which is also what
+  `status` uses. An inspection must not take a write lock or run a
   migration. (It *does* wait out a writer's commit window, a deliberate
   later addition -- waiting takes no lock, and the alternative was reporting an
   empty corpus. See [DOSSIER.md](DOSSIER.md#-the-corpus-fingerprint).)

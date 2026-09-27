@@ -81,7 +81,7 @@ from chitragupta.enrich.stages import (  # noqa: F401
 )
 
 # pylint: enable=unused-import
-from chitragupta import config, logging_setup, runlock
+from chitragupta import config, ledger, logging_setup, runlock
 from chitragupta.progname import prog_for
 
 # A fixed name, not __name__: this file is the layer's entry point, so
@@ -202,6 +202,12 @@ def main(configure_logging: bool = False) -> int:
         # the matching branch in chitragupta/sync.py.
         print(f"  {exc}")
         return runlock.EXIT_ALREADY_RUNNING
+    except ledger.NoLedger as exc:
+        # `corpus.build_corpus` reads the ledger read-only (#843), so an
+        # unsynced checkout is refused by name rather than enriched as an
+        # empty corpus -- which used to create the ledger as a side effect.
+        print(f"  {exc}")
+        return 1
 
 
 def _selected_stages(args) -> set[str]:

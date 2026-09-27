@@ -20,8 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, dossier, overlap_chroma
-from chitragupta.overlap_index_ledger import _ledger_connect_ro
+from chitragupta import config, dossier, ledger, overlap_chroma
 
 
 @dataclass
@@ -95,12 +94,13 @@ def open_scope(draft: Path) -> tuple[Scope | None, str | None]:
     # lock (#516/m-79). A scan racing a `corpus sync` could contend for
     # it, and on a fresh checkout this tier would create the ledger it is
     # supposed to be merely reading.
-    connection = _ledger_connect_ro()
-    if connection is None:
-        return (
-            None,
-            f"{config.LEDGER_PATH} does not exist -- run `python -m chitragupta.corpus sync`",
-        )
+    # The refusal's own text rather than a sentence composed here: it
+    # also covers a ledger that exists but needs a sync to migrate it,
+    # which "does not exist" would have misreported.
+    try:
+        connection = ledger.read_connection()
+    except ledger.NoLedger as exc:
+        return None, " ".join(str(exc).split("\n"))
     return Scope(scoped, collection, connection), None
 
 

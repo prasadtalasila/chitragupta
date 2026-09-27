@@ -414,13 +414,22 @@ def run(paths: list[str]) -> int:
             file=sys.stderr,
         )
 
-    with ledger.connection() as con:
-        known = ledger.known_citekeys(con)
+    # No ledger is not a reason to stop: it fails closed exactly as an
+    # empty one does, since every citekey is then unknown, and a
+    # citation-free draft still passes -- which the session-start hook's
+    # gate probe relies on before a first sync. Read-only (#843), so the
+    # gate never creates the ledger it is checking against.
+    try:
+        with ledger.reading() as con:
+            known = ledger.known_citekeys(con)
+        problem = "ledger is empty -- run `python -m chitragupta.corpus sync` first."
+    except ledger.NoLedger as exc:
+        known = set()
+        problem = " ".join(str(exc).split("\n"))
 
     if not known:
         print(
-            "WARNING: ledger is empty -- run `python -m chitragupta.corpus sync` first. "
-            "Every citekey will be reported as unknown.",
+            f"WARNING: {problem} Every citekey will be reported as unknown.",
             file=sys.stderr,
         )
 

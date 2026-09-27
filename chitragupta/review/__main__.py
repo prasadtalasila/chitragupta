@@ -71,7 +71,7 @@ successful run, findings or not; `1` for a draft the layer will not read
 import argparse
 import sys
 
-from chitragupta import review
+from chitragupta import ledger, review
 from chitragupta.review import (
     agenda,
     citation_coverage,
@@ -139,7 +139,14 @@ def main(argv=None) -> int:
     if args.aid is None:
         parser.print_help()
         return 0
-    return AIDS[args.aid][0].run(args)
+    # The aids read the ledger read-only (#843); with none to read, or one
+    # needing a sync, the run stops here with the instruction -- the same
+    # refusal `python -m chitragupta.draft` gives.
+    try:
+        return AIDS[args.aid][0].run(args)
+    except ledger.NoLedger as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

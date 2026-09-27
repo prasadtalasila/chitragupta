@@ -19,7 +19,7 @@ import re
 import sqlite3
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, ledger
 
 # One constant per dossier filename, because each recurs across this
 # module -- as FILES keys, template keys, path joins and report lookups
@@ -179,12 +179,12 @@ def all_dossiers() -> list[Path]:
 def _corpus_rows() -> list[sqlite3.Row] | None:
     """Every ledger item, or None if there is no readable ledger.
 
-    Opened read-only, for the same reason `chitragupta.ledger`'s own CLI
-    does: this is an inspection, and it must not take a write lock or run
-    a migration. `chitragupta.ledger.connect()` would do all three --
-    it mkdirs `content/`, executes the schema and runs migrations -- so
-    nothing here goes through it, and `chitragupta.retrieval.search()`, which
-    does, is off limits for the same reason (see `_ephemeral_index`).
+    Opened through `ledger.read_connection`, for the same reason
+    `chitragupta.ledger`'s own CLI is: this is an inspection, and it must
+    not take a write lock or run a migration, which
+    `chitragupta.ledger.connect()` would do. A ledger that needs a sync to
+    migrate it is `None` here too: "no readable ledger" is exactly what
+    it is until that sync runs.
 
     The `timeout` is sqlite's own default rather than 0, matching that
     CLI, and here the reason is sharper than "the command dies" (issue
@@ -216,11 +216,9 @@ def _corpus_rows() -> list[sqlite3.Row] | None:
     lookup, and `collections` is what lets a scoped query's candidates be
     filtered to the shelf it actually ran against (#254).
     """
-    if not config.LEDGER_PATH.exists():
-        return None
     try:
-        con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
-    except sqlite3.Error:
+        con = ledger.read_connection()
+    except (ledger.NoLedger, sqlite3.Error):
         return None
     try:
         con.row_factory = sqlite3.Row

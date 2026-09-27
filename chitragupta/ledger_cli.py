@@ -77,27 +77,22 @@ def main(argv: "list[str] | None" = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if not config.LEDGER_PATH.exists():
-        print(f"No ledger at {config.LEDGER_PATH}.")
-        print("Run `python -m chitragupta.corpus sync` to build it from your bib file.")
-        return 0
-
     # Opened read-only, NOT via ledger.connect(): connect() runs the schema and
     # migrations and commits, which takes a write lock and can bump
     # PRAGMA user_version. That would contradict this command's whole
     # reason for existing -- inspecting without interfering, including
-    # while a sync is mid-run.
+    # while a sync is mid-run. `ledger.read_connection` has why its
+    # timeout is sqlite's default rather than 0 (m-72).
     #
-    # `timeout` is sqlite's own default rather than 0, and the difference
-    # is that last clause (m-72). Nothing here sets `journal_mode = WAL`,
-    # so the ledger uses the default rollback journal, under which a
-    # reader *is* locked out for the length of a writer's commit -- and
-    # `timeout=0` turns that short, certain window into an immediate
-    # `SQLITE_BUSY`, i.e. this command failing exactly when it is most
-    # worth running. Waiting out a commit is not "interfering": no lock
-    # is taken while waiting, and the alternative on offer is not a
-    # faster answer but no answer.
-    con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    # Both refusals -- no ledger, and one that needs a sync to migrate
+    # it -- exit 0 with the instruction on stdout: they are positions in
+    # clone -> config -> sync -> draft, not faults, and the session-start
+    # hook reads a non-zero exit here as "the corpus layer will not start".
+    try:
+        con = ledger.read_connection()
+    except ledger.NoLedger as exc:
+        print(exc)
+        return 0
     # connect() leaves rows as tuples; this CLI addresses columns by name
     # so that adding one doesn't silently shift the output.
     con.row_factory = sqlite3.Row
