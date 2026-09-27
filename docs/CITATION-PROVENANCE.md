@@ -493,8 +493,9 @@ equivalently as combinations of` -- fragments that match nothing, scoring
 0% and reporting five false "no support found" findings.
 
 Claims are now reconstructed from the whole paragraph, then split into
-sentences with an abbreviation-aware splitter (so `Fig. 1` and `e.g.`
-don't create the same problem one level down). The same draft went from
+sentences with an abbreviation-aware splitter (so `Fig. 1`, `e.g.` and
+`Smith et al. (2020)` don't create the same problem one level down). The
+same draft went from
 5 spurious "no support found" to 0.
 
 ### 🐛 Too wide: the whole table

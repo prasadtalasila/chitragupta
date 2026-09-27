@@ -31,6 +31,50 @@ class TestSplit:
         ):
             assert len(sentences.split(text)) == 1, text
 
+    def test_et_al_before_a_parenthesised_year_does_not_split(self):
+        # The most common shape in a survey (#835): the `(` in the
+        # lookahead used to split "Smith et al." off its own "(2020)",
+        # leaving a subjectless claim for provenance to score and a bare
+        # "Smith et al." for the uncited-prose aid to flag.
+        assert sentences.split(
+            "Smith et al. (2020) found this. As Dr. Jones vs. Brown noted, so."
+        ) == [
+            "Smith et al. (2020) found this.",
+            "As Dr. Jones vs. Brown noted, so.",
+        ]
+
+    def test_the_issue_reproduction_verbatim_no_longer_fragments(self):
+        # #835's own string. It comes back as ONE sentence, not two:
+        # "X." is a lone capital before a period, which the single-initial
+        # lookbehind reads as "J. Smith" -- existing behaviour, unrelated
+        # to the abbreviations. What matters is that none of the four
+        # fragments the issue recorded survive.
+        text = "Smith et al. (2020) found X. As Dr. Jones vs. Brown noted, Y."
+        assert sentences.split(text) == [text]
+
+    def test_does_not_split_after_the_citation_abbreviations(self):
+        for text in (
+            "Shown by Brown et al. [3] first.",
+            "Taught by Prof. Green for years.",
+            "Item No. (4) was lost.",
+            "Quoted from pp. (12-14) of it.",
+        ):
+            assert len(sentences.split(text)) == 1, text
+
+    def test_a_sentence_after_no_and_a_number_still_splits(self):
+        assert sentences.split("No. 5 was first. Then came six.") == [
+            "No. 5 was first.",
+            "Then came six.",
+        ]
+
+    def test_al_inside_a_longer_word_still_ends_a_sentence(self):
+        # `\bal\.`, not `al\.`: the lookbehind is for the free-standing
+        # "al." of "et al.", not every word that happens to end in it.
+        assert sentences.split("It was fatal. Then it stopped.") == [
+            "It was fatal.",
+            "Then it stopped.",
+        ]
+
     def test_does_not_split_after_a_single_initial(self):
         assert sentences.split("Named for J. Smith and nobody else.") == [
             "Named for J. Smith and nobody else."
