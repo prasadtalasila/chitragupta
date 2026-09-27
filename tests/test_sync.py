@@ -1144,6 +1144,43 @@ class TestLossyBibRead:
         assert "Refusing to prune" not in out
         assert "stale   noauthor_page_nodate" in out
 
+    def test_an_ignored_entry_type_neither_exits_3_nor_blocks_the_prune(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # Issue 888: bibtexparser ignores a non-standard type by design, so
+        # the entry is not synced -- but it is not a lost entry either.
+        software = "@software{tool_2024,\n  title = {A Tool},\n  year = {2024},\n}\n"
+        self._synced_then(software, basic_corpus, monkeypatch, capsys)
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == 0
+        assert "pruned  noauthor_page_nodate" in out
+        assert "Refusing to prune" not in out
+        assert "dropped" not in out
+        assert "WARNING" not in out
+        assert "tool_2024" not in self._known()
+
+    def test_a_row_whose_entry_became_an_ignored_type_reads_as_stale(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # Issue 888 keeps the pre-841 behaviour: an ignored entry is not in
+        # the read at all, so its row is stale like any removed entry's,
+        # and --remove-stale prunes it.
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        write_bib(
+            basic_corpus.BIB_FILE_PATH,
+            BASIC_BIB.replace("@misc{noauthor_page_nodate", "@software{noauthor_page_nodate"),
+        )
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == 0
+        assert "pruned  noauthor_page_nodate" in out
+        assert "noauthor_page_nodate" not in self._known()
+
     def test_nothing_stale_prints_no_refusal(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         sync.run()
