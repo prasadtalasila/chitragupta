@@ -1051,6 +1051,24 @@ class TestDuplicatedCitekey:
         assert "pruned  smith_example_2024" not in out
         assert self._row("smith_example_2024")["title"] == "An Example Paper"
 
+    def test_remove_stale_still_prunes_a_genuinely_removed_row(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        # A shared key is in seen_citekeys, so it cannot make any other
+        # row look stale: the read is not short, and pruning goes ahead
+        # (issue 841 refuses only on a dropped entry or unusable key).
+        self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
+        write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(DUPLICATED_BIB))
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "pruned  noauthor_page_nodate" in out
+        assert "Refusing to prune" not in out
+        assert "1 pruned" in out
+        assert "1 citekey shared by more than one entry" in out
+        assert self._row("smith_example_2024")["title"] == "An Example Paper"
+
     def test_a_bib_of_only_duplicates_is_not_suspicious(self, basic_corpus, monkeypatch, capsys):
         self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
         write_bib(basic_corpus.BIB_FILE_PATH, DUPLICATED_BIB.split("@misc", 1)[0])
@@ -1066,6 +1084,76 @@ class TestDuplicatedCitekey:
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
         )
         assert sync.run() == sync.EXIT_PARSE_FAILURE
+
+
+class TestLossyBibRead:
+    """Issue 841: a bib read that dropped an entry, or skipped a citekey
+    it could not use, must never drive --remove-stale, and exits
+    EXIT_BIB_INTEGRITY either way. noauthor_page_nodate is the row that
+    is genuinely gone from the bib in each case."""
+
+    UNBALANCED = "@article{bad_2023,\n  title = {Unbalanced {Braces},\n  year = {2023},\n}\n"
+    UNFILENAMEABLE = "@article{smith/2024,\n  title = {Slash},\n  year = {2024},\n}\n"
+
+    def _synced_then(self, extra, basic_corpus, monkeypatch, capsys):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        write_bib(basic_corpus.BIB_FILE_PATH, drop_noauthor(BASIC_BIB) + extra)
+
+    def _known(self):
+        con = ledger.connect()
+        try:
+            return ledger.known_citekeys(con)
+        finally:
+            con.close()
+
+    @pytest.mark.parametrize(
+        "extra, problem",
+        [
+            (UNBALANCED, "1 entry dropped unparsed by bibtexparser"),
+            (UNFILENAMEABLE, "1 citekey skipped as unusable as a filename"),
+        ],
+    )
+    def test_remove_stale_refuses_reports_and_exits_bib_integrity(
+        self, extra, problem, basic_corpus, monkeypatch, capsys
+    ):
+        self._synced_then(extra, basic_corpus, monkeypatch, capsys)
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "noauthor_page_nodate" in self._known()
+        assert "pruned  noauthor_page_nodate" not in out
+        # Still reported, so the person sees what a clean export would prune.
+        assert "stale   noauthor_page_nodate" in out
+        assert "Refusing to prune" in out
+        assert "1 stale (not removed)" in out
+        # The summary says why the exit is nonzero.
+        assert problem in out
+        assert "re-run with --remove-stale to delete" not in out
+
+    @pytest.mark.parametrize("extra", [UNBALANCED, UNFILENAMEABLE])
+    def test_default_run_exits_bib_integrity(self, extra, basic_corpus, monkeypatch, capsys):
+        self._synced_then(extra, basic_corpus, monkeypatch, capsys)
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "Refusing to prune" not in out
+        assert "stale   noauthor_page_nodate" in out
+
+    def test_nothing_stale_prints_no_refusal(self, basic_corpus, monkeypatch, capsys):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        write_bib(basic_corpus.BIB_FILE_PATH, BASIC_BIB + self.UNBALANCED)
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "Refusing to prune" not in out
+        assert "0 stale (not removed)" in out
 
 
 MANY_BIB = "".join(

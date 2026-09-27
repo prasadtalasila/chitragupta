@@ -106,7 +106,8 @@ class _Tally:
     low_quality: list = field(default_factory=list)
     timed_out: list = field(default_factory=list)
     no_pdf_reasons: Counter = field(default_factory=Counter)
-    duplicate_citekeys: int = 0
+    # `bib_reader.Library.integrity_problems`: what the bib read lost.
+    bib_problems: dict = field(default_factory=dict)
 
 
 def _dispatch_and_apply(con, to_parse, tally) -> None:
@@ -221,19 +222,19 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     sync_report._preflight_warnings(references)
 
     parser_available = _parser_available()
-    tally = _Tally(duplicate_citekeys=len(library.duplicate_citekeys))
+    tally = _Tally(bib_problems=library.integrity_problems)
     with ledger.connection() as con:
         to_parse = sync_decide._to_parse(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
-        pruned, stale, suspicious = sync_decide._report_stale(
-            con, library.seen_citekeys, remove_stale
-        )
+        pruned, stale, suspicious = sync_decide._report_stale(con, library, remove_stale)
         # Read while the connection is still open -- the summary below
         # runs after it is closed.
         kinds = ledger.failure_counts(con)
 
-    stale_count = len(pruned) if remove_stale else len(stale)
-    stale_label = "pruned" if remove_stale else "stale (not removed)"
+    # A lossy bib read turns --remove-stale into a report (issue 841).
+    pruning = remove_stale and not library.unread
+    stale_count = len(pruned) if pruning else len(stale)
+    stale_label = "pruned" if pruning else "stale (not removed)"
     summary = sync_report._summary_line(tally, kinds, stale_count, stale_label)
     print(summary)
     # Also emitted through the logger -- landing in logs/pipeline.log even
@@ -301,6 +302,9 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
 # entries was synced, because picking one would be guessing which paper
 # the key means, so the bibliography promises a document the corpus did
 # not take in. The remedy is in the bib file, which is what this code says.
+# So does an entry bibtexparser dropped, or a citekey that cannot be a
+# filename (issue 841): both are papers the bib file holds and this run
+# did not read, and `tally.bib_problems` carries all three counts.
 #
 # Which of the two nonzero codes, and why in this order: a parse failure
 # is the more actionable of the two and the one that means *this host*
@@ -313,7 +317,7 @@ def _exit_code(tally, kinds, suspicious) -> int:
     if tally.failed or tally.backend_unavailable or kinds["deterministic"]:
         return EXIT_PARSE_FAILURE
     lost = any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS)
-    if suspicious or lost or tally.duplicate_citekeys:
+    if suspicious or lost or tally.bib_problems:
         return EXIT_BIB_INTEGRITY
     return 0
 

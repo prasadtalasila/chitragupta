@@ -120,16 +120,65 @@ class Reference:
 # list so that a further count about the read -- entries dropped or
 # skipped, say -- is a new field here, not a new return shape every
 # caller has to unpack.
+#
+# Issue 841 added the other two ways a read comes back short: entries
+# bibtexparser dropped without raising (unbalanced braces), and citekeys
+# skipped because they cannot be a filename. Either used to be a warning
+# on stdout and nothing else, so `--remove-stale` pruned the row of a
+# paper that was still in the library and the run exited 0.
 @dataclass
 class Library:
     references: list[Reference]
     duplicate_citekeys: tuple[str, ...] = ()
+    dropped_entries: int = 0
+    unfilenameable_citekeys: tuple[str, ...] = ()
 
     @property
     def seen_citekeys(self) -> set[str]:
         """Every citekey the bib file names that a sync must not treat as
-        stale: the references, plus the duplicated keys none was built for."""
-        return {r.citekey for r in self.references} | set(self.duplicate_citekeys)
+        stale: the references, plus the skipped keys none was built for."""
+        skipped = set(self.duplicate_citekeys) | set(self.unfilenameable_citekeys)
+        return {r.citekey for r in self.references} | skipped
+
+    @property
+    def unread(self) -> dict[str, int]:
+        """What the bib file holds that this read never saw, as
+        `{description: count}`, nonzero only: entries bibtexparser
+        dropped, and citekeys skipped as unusable filenames.
+
+        Nonempty means a citekey missing from the references may be
+        missing only from this read, so sync will not prune on it
+        (issue 841). A shared citekey is not here: it is in
+        `seen_citekeys`, so it cannot make another row look stale.
+        """
+        return _described(
+            ("entry", "entries", "dropped unparsed by bibtexparser", self.dropped_entries),
+            (
+                "citekey",
+                "citekeys",
+                "skipped as unusable as a filename",
+                len(self.unfilenameable_citekeys),
+            ),
+        )
+
+    @property
+    def integrity_problems(self) -> dict[str, int]:
+        """Everything this read could not sync, as `unread` plus shared
+        citekeys; nonempty makes sync exit EXIT_BIB_INTEGRITY."""
+        shared = _described(
+            ("citekey", "citekeys", "shared by more than one entry", len(self.duplicate_citekeys))
+        )
+        return self.unread | shared
+
+
+def _described(*counts) -> dict[str, int]:
+    """`(singular, plural, what, n)` rows as `{"<n's noun> <what>": n}`, zeros dropped."""
+    return {f"{one if n == 1 else many} {what}": n for one, many, what, n in counts if n}
+
+
+def listed(problems: dict[str, int]) -> str:
+    """`Library.unread`/`integrity_problems` as one clause for a message."""
+    return ", ".join(f"{n} {what}" for what, n in problems.items())
 
 
 def _parse_authors(author_field: str) -> list[tuple[str, str]]:
@@ -237,6 +286,33 @@ def _clean_title(title: str) -> str:
 # this stays the natural place to find it from the sync side.
 
 
+def _unfilenameable_citekeys(entries, duplicated) -> tuple[str, ...]:
+    """The citekeys that cannot be a filename, in bib order, each warned.
+
+    Checked before anything else touches an entry: such a citekey would
+    fail much later, inside a parse, as an OSError naming a path rather
+    than the entry that produced it. Skipping the entry loses one paper
+    and says so; letting it through risks writing outside content/. A
+    duplicated key is already skipped and reported as that, so it is not
+    counted twice.
+    """
+    skipped = []
+    for entry in entries:
+        key = entry["ID"]
+        problem = citekey_problem(key)
+        if problem is None or key in duplicated:
+            continue
+        skipped.append(key)
+        print(
+            f"  WARNING skipping citekey {key!r}: {problem}. "
+            "It is used directly as a filename (content/parsed/<citekey>.txt "
+            "and the enrichment layer's own outputs), and this project never "
+            "rewrites a citekey -- the bib file is the source of truth. Rename "
+            "it in your reference manager, re-export, and re-run sync."
+        )
+    return tuple(skipped)
+
+
 def _reference(entry: dict, bib_dir: Path) -> Reference:
     """One parsed bib entry, with its PDF resolved, as a `Reference`."""
     if "file" in entry:
@@ -271,38 +347,11 @@ def read_library() -> Library:
     parser.customization = convert_to_unicode
     bib_database = bibtexparser.loads(raw_text, parser=parser)
 
-    raw_count = bib_integrity.count_raw_entries(raw_text)
-    parsed_count = len(bib_database.entries)
-    if parsed_count < raw_count:
-        print(
-            f"  WARNING: bibtexparser parsed {parsed_count} entries but "
-            f"{config.BIB_FILE_PATH.name} has {raw_count} @entry block(s) -- "
-            f"{raw_count - parsed_count} may have been silently dropped "
-            "(bibtexparser skips an entry it can't parse -- e.g. unbalanced "
-            "braces/quotes -- without raising). Check the file by hand for "
-            "an entry whose citekey doesn't show up in this run's output."
-        )
-
-    duplicated = bib_integrity.duplicated_citekeys(bib_database.entries, config.BIB_FILE_PATH.name)
+    name = config.BIB_FILE_PATH.name
+    entries = bib_database.entries
+    dropped = bib_integrity.dropped_entries(raw_text, len(entries), name)
+    duplicated = bib_integrity.duplicated_citekeys(entries, name)
+    unfilenameable = _unfilenameable_citekeys(entries, duplicated)
     bib_dir = config.BIB_FILE_PATH.resolve().parent
-    references = []
-    for entry in bib_database.entries:
-        if entry["ID"] in duplicated:
-            continue
-        # Before anything else touches it: a citekey that cannot be a
-        # filename would fail much later, inside a parse, as an OSError
-        # naming a path rather than the entry that produced it. Skipping
-        # the entry loses one paper and says so; letting it through
-        # risks writing outside content/.
-        problem = citekey_problem(entry["ID"])
-        if problem is not None:
-            print(
-                f"  WARNING skipping citekey {entry['ID']!r}: {problem}. "
-                "It is used directly as a filename (content/parsed/<citekey>.txt "
-                "and the enrichment layer's own outputs), and this project never "
-                "rewrites a citekey -- the bib file is the source of truth. Rename "
-                "it in your reference manager, re-export, and re-run sync."
-            )
-            continue
-        references.append(_reference(entry, bib_dir))
-    return Library(references, duplicated)
+    kept = [e for e in entries if e["ID"] not in duplicated and e["ID"] not in unfilenameable]
+    return Library([_reference(e, bib_dir) for e in kept], duplicated, dropped, unfilenameable)

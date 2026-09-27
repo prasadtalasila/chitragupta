@@ -114,8 +114,39 @@ def _lost_pdf_reason(exc: OSError) -> str:
     return bib_reader.PDF_UNREADABLE
 
 
+def _prune(con, seen_citekeys) -> list[tuple[str, str | None]]:
+    """The --remove-stale deletion itself, residue report first."""
+    # Skipped when the bib yielded nothing: prune_missing's guard is
+    # about to refuse and raise on exactly that shape, and a residue
+    # report for every row in the ledger would bury the refusal it
+    # is printed just ahead of.
+    if seen_citekeys:
+        sync_residue.report([key for key, _path in ledger.find_stale(con, seen_citekeys)])
+    pruned = ledger.prune_missing(con, seen_citekeys)
+    for citekey, _parsed_path in pruned:
+        print(f"  pruned  {citekey} (no longer in {config.BIB_FILE_PATH.name})")
+    return pruned
+
+
+# Issue 841. Printed rather than raised as `ledger.PruneRefused`: that
+# exception ends the run before its summary and exits 1, and this run
+# has a stale list worth reading and a bibliography problem, whose code
+# is EXIT_BIB_INTEGRITY. The list follows, so it says what a clean
+# export *would* prune; nothing is deleted until the read is whole.
+def _refuse_prune(library, stale_count) -> None:
+    """Say why --remove-stale deleted nothing this run."""
+    print(
+        f"  Refusing to prune: this read of {config.BIB_FILE_PATH.name} lost "
+        f"{bib_reader.listed(library.unread)} (see the WARNING above), so a "
+        "citekey missing from it may be "
+        f"missing only from this read, not from your library. The {stale_count} "
+        "stale item(s) below are reported, not deleted. Fix the bib file, "
+        "re-export, and re-run with --remove-stale."
+    )
+
+
 def _report_stale(
-    con, seen_citekeys, remove_stale
+    con, library, remove_stale
 ) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """Prune or report ledger rows the bib file no longer has.
 
@@ -126,7 +157,9 @@ def _report_stale(
     bib file that comes back short a citekey is far more often a mistake
     (a botched re-export, BIB_FILE pointing at the wrong path) than an
     intentional removal, so the default is to report it and let a human
-    confirm rather than delete on every routine sync.
+    confirm rather than delete on every routine sync. Even with it, a
+    read that lost entries (`library.unread`, #841) is only
+    reported: pruning on it would delete the lost papers' rows.
 
     Either way, `chitragupta/sync_residue.py` first reports what else on
     disk still names each of those citekeys (issue #763). It runs before
@@ -134,24 +167,13 @@ def _report_stale(
     person is being asked about rather than the one already changed --
     and it repairs nothing, which is the whole of its contract.
 
-    `seen_citekeys` is `bib_reader.Library.seen_citekeys`, not the
-    references alone: a citekey two entries share is synced from neither,
-    but it is still in the bib file and must not read as stale (#840).
+    Stale is judged against `library.seen_citekeys`, not the references
+    alone: a citekey two entries share, or one that cannot be a filename,
+    is synced from nothing but is still in the bib file (#840, #841).
     """
-    pruned: list[tuple[str, str | None]] = []
-    stale: list[tuple[str, str | None]] = []
-    suspicious = False
-    if remove_stale:
-        # Skipped when the bib yielded nothing: prune_missing's guard is
-        # about to refuse and raise on exactly that shape, and a residue
-        # report for every row in the ledger would bury the refusal it
-        # is printed just ahead of.
-        if seen_citekeys:
-            sync_residue.report([key for key, _path in ledger.find_stale(con, seen_citekeys)])
-        pruned = ledger.prune_missing(con, seen_citekeys)
-        for citekey, _parsed_path in pruned:
-            print(f"  pruned  {citekey} (no longer in {config.BIB_FILE_PATH.name})")
-        return pruned, stale, suspicious
+    seen_citekeys = library.seen_citekeys
+    if remove_stale and not library.unread:
+        return _prune(con, seen_citekeys), [], False
 
     stale = ledger.find_stale(con, seen_citekeys)
     suspicious = not seen_citekeys and bool(stale)
@@ -168,8 +190,8 @@ def _report_stale(
             f"means the bib file is empty, corrupted, or BIB_FILE is "
             f"misconfigured -- not that every citekey was actually "
             f"removed. Fix the export/path and re-run sync rather than "
-            f"passing --remove-stale (which would refuse and raise on "
-            f"this exact shape)."
+            f"passing --remove-stale (which would refuse on this exact "
+            f"shape)."
         )
     else:
         # The "pass --remove-stale" instruction is printed once,
@@ -179,6 +201,8 @@ def _report_stale(
         # times, which reads as routine per-item noise rather than
         # the "review this list before deleting" signal it's
         # meant to be.
+        if remove_stale and stale:
+            _refuse_prune(library, len(stale))
         for citekey, _parsed_path in stale:
             print(f"  stale   {citekey} (no longer in {config.BIB_FILE_PATH.name})")
         # After the list, before the summary's "re-run with
@@ -186,4 +210,4 @@ def _report_stale(
         # the human is being asked to confirm, so the residue belongs
         # between the names and the invitation to act on them.
         sync_residue.report([citekey for citekey, _parsed_path in stale])
-    return pruned, stale, suspicious
+    return [], stale, suspicious

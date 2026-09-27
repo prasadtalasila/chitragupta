@@ -155,6 +155,14 @@ has the format and the one case it skips.
 completely empty against a non-empty ledger. Same reason: fix the export
 or the path rather than deleting everything in one run.
 
+It also deletes nothing when the read itself came back short: an entry
+the BibTeX parser dropped (usually unbalanced braces), or a citekey
+skipped because it cannot be a filename (below).
+A paper missing from that read may still be in your library, so the
+stale list is printed as a report, the summary line names what was lost,
+and the run exits **3**. Fix the entry named in the `WARNING`,
+re-export, and re-run.
+
 ## 🏷 Citekeys have to work as filenames
 
 A citekey is not only an identifier here -- it is the stem of every file

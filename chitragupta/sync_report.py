@@ -72,6 +72,11 @@ def _summary_line(tally, kinds, stale_count, stale_label) -> str:
         summary += f" {kinds['transient']} will be retried next run."
     if tally.backend_unavailable:
         summary += f" {tally.backend_unavailable} skipped ({config.PARSER} unavailable)."
+    # Named here because each one makes the run exit EXIT_BIB_INTEGRITY
+    # (issue 841), and a WARNING scrolled far above is not where anyone
+    # reading only the last line looks for why the exit was nonzero.
+    if tally.bib_problems:
+        summary += f" Bib file: {bib_reader.listed(tally.bib_problems)} -- see the WARNING above."
     # Skipped on a no-op run (parsed == 0, the common case once a corpus
     # is caught up) rather than reporting a meaningless "0 pages/s" --
     # and only after `parsed` is known to be nonzero is `parse_elapsed`
