@@ -193,8 +193,7 @@ class NoLedger(RuntimeError):
 
 
 class StaleLedger(NoLedger):
-    """The ledger exists but predates this version's schema. A subclass,
-    so every caller refusing on `NoLedger` refuses on this too."""
+    """The ledger predates this version's schema; refused wherever `NoLedger` is."""
 
 
 # The one read-only opener (#843). `ledger_cli`, `overlap_index_ledger`
@@ -225,13 +224,18 @@ def read_connection() -> sqlite3.Connection:
     if not config.LEDGER_PATH.exists():
         raise NoLedger()
     con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
-    (version,) = con.execute("PRAGMA user_version").fetchone()
-    if version < len(_MIGRATIONS):
+    # Closed on every way out but the return -- the refusal below, and a
+    # file that is not a database at all, which fails on this first read.
+    try:
+        (version,) = con.execute("PRAGMA user_version").fetchone()
+        if version < len(_MIGRATIONS):
+            raise StaleLedger(
+                f"The ledger at {config.LEDGER_PATH} predates this version's schema.\n"
+                "Run `python -m chitragupta.corpus sync` to migrate it."
+            )
+    except BaseException:
         con.close()
-        raise StaleLedger(
-            f"The ledger at {config.LEDGER_PATH} predates this version's schema.\n"
-            "Run `python -m chitragupta.corpus sync` to migrate it."
-        )
+        raise
     return con
 
 

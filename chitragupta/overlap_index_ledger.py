@@ -17,8 +17,13 @@ from chitragupta import config, ledger
 def _ledger_connect_ro() -> sqlite3.Connection | None:
     """The ledger read-only, or `None` when there is none to read -- the
     answer both readers below turn into "nothing fingerprintable"."""
+    # A ledger needing a sync is raised, not folded into `None`: this feeds
+    # the verbatim check, and "no overlap found" against a corpus that was
+    # never read would be a silent pass on a copying check.
     try:
         return ledger.read_connection()
+    except ledger.StaleLedger:
+        raise
     except ledger.NoLedger:
         return None
 

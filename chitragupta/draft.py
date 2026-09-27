@@ -85,7 +85,8 @@ everything after it verbatim to that module's own `main(argv)`.
 Exit codes are each module's own, unchanged by the dispatch: whatever `0`
 (success), `1` (refusal -- outside `content/`, missing, unresolved
 citekey) and `2` (malformed invocation) already meant for that command
-before it had a shared front door.
+before it had a shared front door. The one refusal said here rather than
+by the module is "no ledger to read" (`ledger.NoLedger`), exit 1.
 """
 
 import argparse

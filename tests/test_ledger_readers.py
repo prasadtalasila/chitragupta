@@ -13,6 +13,7 @@ and passing a citation-free draft, which the session-start hook's probe
 relies on), and a draft with nothing to cite still renders.
 """
 
+import json
 import sqlite3
 import sys
 
@@ -25,6 +26,7 @@ from chitragupta import (
     draft,
     ledger,
     ledger_cli,
+    overlap_index_ledger,
     references,
     render_output,
     retrieval,
@@ -73,6 +75,32 @@ class TestLibraryReaders:
         raw.close()
         assert dossier._corpus_rows() is None
 
+    def test_a_file_that_is_not_a_database_is_no_readable_ledger(
+        self, isolated_config, monkeypatch
+    ):
+        isolated_config.CONTENT_DIR.mkdir(parents=True)
+        isolated_config.LEDGER_PATH.write_bytes(b"not a database, just bytes" * 40)
+        opened = []
+        real = sqlite3.connect
+
+        def tracked(*args, **kwargs):
+            opened.append(real(*args, **kwargs))
+            return opened[-1]
+
+        monkeypatch.setattr(sqlite3, "connect", tracked)
+        with pytest.raises(sqlite3.DatabaseError):
+            ledger.read_connection()
+        # Closed on the way out, not leaked with the exception.
+        with pytest.raises(sqlite3.ProgrammingError):
+            opened[0].execute("SELECT 1")
+        assert dossier._corpus_rows() is None
+
+    def test_the_overlap_index_raises_a_ledger_needing_sync(self, stale_ledger):
+        # Not folded into "nothing fingerprintable": that would be a
+        # silent pass on the verbatim check against a corpus never read.
+        with pytest.raises(ledger.StaleLedger):
+            overlap_index_ledger.ledger_item("smith_2024")
+
     def test_discover_names_the_sync_for_a_ledger_needing_one(self, stale_ledger):
         with pytest.raises(discover_data.MissingArtefact, match="corpus sync"):
             discover_data.read_only_connection()
@@ -109,6 +137,21 @@ class TestCommandsRefuseByName:
         path.parent.mkdir(parents=True)
         path.write_text("A claim [@smith_2024].\n", encoding="utf-8")
         assert review_main.main(["provenance", str(path)]) == 1
+        assert capsys.readouterr().err.startswith("[error] No ledger at")
+        assert not isolated_config.LEDGER_PATH.exists()
+
+    def test_an_agenda_recheck_refuses_rather_than_filing_a_partial_agenda(
+        self, isolated_config, capsys
+    ):
+        # `--baseline` re-runs every aid; the refusal must stop the run,
+        # not leave an agenda counted over whichever aids did not need
+        # the ledger.
+        path = config.DRAFTS_DIR / "topic" / "survey.md"
+        path.parent.mkdir(parents=True)
+        path.write_text("A claim [@smith_2024].\n", encoding="utf-8")
+        baseline = isolated_config.CONTENT_DIR / "baseline.json"
+        baseline.write_text(json.dumps({"aid": "agenda", "items": []}), encoding="utf-8")
+        assert review_main.main(["agenda", str(path), "--baseline", str(baseline)]) == 1
         assert capsys.readouterr().err.startswith("[error] No ledger at")
         assert not isolated_config.LEDGER_PATH.exists()
 

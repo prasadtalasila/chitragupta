@@ -69,7 +69,7 @@ def evidence(
     # the query happens to tokenize to nothing.
     with ledger.reading() as con:
         # row_factory set and cleared around the read, matching
-        # ledger.all_items: connect() leaves rows as tuples, and
+        # ledger.all_items: a connection leaves rows as tuples, and
         # _full_text addresses its columns by name.
         con.row_factory = sqlite3.Row
         row = con.execute(
