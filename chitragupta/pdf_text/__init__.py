@@ -58,6 +58,22 @@ class ExtractionError(RuntimeError):
     """The backend ran but failed on this particular PDF."""
 
 
+def write_failed(path: Path, exc: OSError) -> ExtractionError:
+    """A transient ExtractionError for an OSError writing `path`.
+
+    Takes the path rather than a citekey so no caller has to recover one
+    from a filename to report it.
+
+    Disk full or a permission denied is the machine, not the PDF (#842).
+    Raised bare, the OSError escaped both parse paths -- which catch
+    ExtractionError -- and aborted sync, discarding every other
+    document's result; marked transient, it is recorded and retried.
+    """
+    error = ExtractionError(f"could not write {path}: {exc}")
+    error.transient = True
+    return error
+
+
 _INSTALL_HINT = {
     "pdftotext": (
         "'pdftotext' not found on PATH. Install poppler-utils "
@@ -265,9 +281,15 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
         exc_cls = MissingBinary if config.PARSER == "pdftotext" else MissingDependency
         raise exc_cls(unavailable_reason())
 
-    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
     out_path = config.PARSED_DIR / f"{citekey}.txt"
-    passages.clear_sidecar(citekey)
+    # Each disk write is guarded where it happens -- here, and around the
+    # docling backend's own .txt write -- rather than around the whole
+    # parse, so an OSError from anything else is not misreported as one.
+    try:
+        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+        passages.clear_sidecar(citekey)
+    except OSError as exc:
+        raise write_failed(config.PARSED_DIR, exc) from exc
     # Annotated here rather than in extract_one, so the serial path --
     # which runs in the parent and never reaches a pool worker -- is
     # covered by the same code as the parallel one.
@@ -280,7 +302,10 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     # document it believes is already parsed. The ladder is unaffected: it
     # declines an empty sidecar and falls to the page-level rung.
     if records is not None:
-        passages.write_sidecar(citekey, records)
+        try:
+            passages.write_sidecar(citekey, records)
+        except OSError as exc:
+            raise write_failed(passages.sidecar_path(citekey), exc) from exc
     return out_path
 
 

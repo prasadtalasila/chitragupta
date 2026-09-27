@@ -2,9 +2,9 @@
 (the Python library, via `_converter`/`_worker`).
 
 Split out of chitragupta/pdf_text.py (#361). Imports `ExtractionError`
-from the package's own `__init__`, which is safe despite this module
-being one of the two `__init__` imports used to build `_EXTRACTORS` --
-the exception is defined in `__init__.py` before that import runs, the
+and `write_failed` from the package's own `__init__`, which is safe
+despite this module being one of the two `__init__` imports used to build
+`_EXTRACTORS` -- both are defined in `__init__.py` before that import runs, the
 same load-bearing ordering `chitragupta/dossier/__init__.py` documents
 for its own submodules.
 """
@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 
 from chitragupta import config, passages
-from chitragupta.pdf_text import ExtractionError
+from chitragupta.pdf_text import ExtractionError, write_failed
 from chitragupta.pdf_text._converter import _docling_converter, check_docling_status
 from chitragupta.pdf_text._worker import _demote_to_cpu, is_cuda_oom, worker_device
 
@@ -117,8 +117,11 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
             # document that cannot be parsed.
             error.transient = True
         raise error from exc
-    out_path.write_text(
-        result.document.export_to_markdown(page_break_placeholder="\f"),
-        encoding="utf-8",
-    )
+    try:
+        out_path.write_text(
+            result.document.export_to_markdown(page_break_placeholder="\f"),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        raise write_failed(out_path, exc) from exc
     return passages.passage_records(result.document)

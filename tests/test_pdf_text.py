@@ -348,6 +348,71 @@ class TestExtractTextDocling:
             pdf_text.extract_text(str(tmp_path / "in.pdf"), "key")
 
 
+class TestAWriteFailureIsTransient:
+    """#842: an OSError writing this document's output (disk full,
+    permissions) is caused by the machine, not the PDF -- so it must reach
+    sync as a transient ExtractionError, which both parse paths catch, and
+    not as a bare OSError that aborts the whole batch."""
+
+    def test_the_parsed_text_write(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        real_write_text = Path.write_text
+
+        def full_disk(self, *args, **kwargs):
+            if self.suffix == ".txt":
+                raise OSError(28, "No space left on device")
+            return real_write_text(self, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "write_text", full_disk)
+        with pytest.raises(pdf_text.ExtractionError, match="No space left") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert caught.value.transient is True
+        assert isinstance(caught.value.__cause__, OSError)
+
+    def test_the_passages_sidecar_write(self, isolated_config, fake_docling, tmp_path, monkeypatch):
+        def denied(citekey, records):
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(passages, "write_sidecar", denied)
+        with pytest.raises(pdf_text.ExtractionError, match="Permission denied") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert caught.value.transient is True
+
+    def test_preparing_the_output_directory(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
+        def denied(citekey):
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(passages, "clear_sidecar", denied)
+        with pytest.raises(pdf_text.ExtractionError, match="Permission denied") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert caught.value.transient is True
+
+    def test_an_oserror_outside_a_write_is_not_reworded_as_one(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        """The guard is on the writes, not the whole parse: an OSError from
+        anything else keeps its own type rather than claiming a write."""
+
+        def extractor(pdf_path, out_path, threads=None):
+            raise FileNotFoundError(2, "No such file or directory", "pdftotext")
+
+        monkeypatch.setitem(pdf_text._EXTRACTORS, "pdftotext", extractor)
+        monkeypatch.setattr(pdf_text, "is_available", lambda: True)
+        with pytest.raises(FileNotFoundError):
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+
+    def test_a_backend_failure_is_still_not_transient(
+        self, isolated_config, fake_docling, tmp_path
+    ):
+        """The backend turns a conversion failure into ExtractionError
+        before the write guard sees it, so a PDF docling cannot read stays
+        deterministic, as before."""
+        with pytest.raises(pdf_text.ExtractionError) as caught:
+            pdf_text.extract_text(str(tmp_path / "explode.pdf"), "key")
+        assert getattr(caught.value, "transient", False) is False
+
+
 class TestDoclingPageBreaks:
     """The parsed .txt has to have the same *shape* as pdftotext's, or
     everything downstream that splits on form feeds reports p.1."""
