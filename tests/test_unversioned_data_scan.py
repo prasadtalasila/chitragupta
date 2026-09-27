@@ -151,7 +151,7 @@ def test_parser_ocr_defaults_off(self, monkeypatch):
 def test_real_bib_file_parses_without_error(self, isolated_config, monkeypatch):
     real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
     monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
-    refs = bib_reader.read_library()
+    refs = bib_reader.read_library().references
     assert len(refs) == 646
 """
 
@@ -201,7 +201,7 @@ def test_reload_does_not_raise(self):
 def test_real_bib_smoke(self, isolated_config, monkeypatch):
     real_bib = config.PROJECT_ROOT / "papers" / "bibliography.bib"
     monkeypatch.setattr(config, "CONFIG_PATH", real_bib)
-    refs = bib_reader.read_library()
+    refs = bib_reader.read_library().references
     assert len(refs) == 2
 """
 

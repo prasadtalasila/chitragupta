@@ -504,10 +504,16 @@ the whole API an unattended caller has.** They split by *remedy*:
   parse backend being unavailable. The remedy is on this machine.
 - **3** -- everything asked for was parsed, but the bibliography
   promises something that is not there: the bib file yielded no
-  references against a non-empty ledger, or **a PDF the bib file points
-  at cannot be read**, whether because it is not on disk or because
-  this host cannot open it. The remedy is in the bib file or on the
-  disk it points at.
+  references against a non-empty ledger, **a PDF the bib file points
+  at cannot be read** (whether because it is not on disk or because
+  this host cannot open it), or **two entries share one citekey**. The
+  remedy is in the bib file or on the disk it points at.
+
+A shared citekey is named in a `WARNING` and *none* of its entries is
+synced: which paper the key means is not something the pipeline
+guesses. The row the ledger already has for it is left as it was --
+not overwritten, not listed as stale and not pruned by `--remove-stale`
+-- until you give each entry its own key and re-export.
 
 A run reporting **3** is therefore also asserting that nothing failed to
 parse, which is what makes the two worth telling apart. `1` wins when

@@ -36,7 +36,7 @@ def build_corpus() -> list[dict]:
     import pypdfium2 as pdfium
 
     rows = []
-    for ref in bib_reader.read_library():
+    for ref in bib_reader.read_library().references:
         if not ref.pdf_path:
             continue
         try:

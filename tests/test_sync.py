@@ -999,6 +999,75 @@ class TestTheRemovedDirectInvocation:
         )
 
 
+# BASIC_BIB with smith_example_2024 entered a second time, as a hand-merged
+# export or two libraries with clashing key patterns produce (issue 840).
+DUPLICATED_BIB = BASIC_BIB.replace(
+    "@misc{noauthor_page_nodate,",
+    "@article{smith_example_2024,\n  title = {A Different Paper},\n  year = {2020},\n}\n\n"
+    "@misc{noauthor_page_nodate,",
+)
+
+
+class TestDuplicatedCitekey:
+    """A key on two entries is named, upserted from neither, kept out of
+    the stale set, and makes the run exit EXIT_BIB_INTEGRITY."""
+
+    def _synced_then_duplicated(self, basic_corpus, monkeypatch, capsys):
+        monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
+        sync.run()
+        capsys.readouterr()
+        write_bib(basic_corpus.BIB_FILE_PATH, DUPLICATED_BIB)
+
+    def _row(self, citekey):
+        con = ledger.connect()
+        try:
+            return {r["citekey"]: r for r in ledger.all_items(con)}.get(citekey)
+        finally:
+            con.close()
+
+    def test_default_run_warns_upserts_neither_and_exits_bib_integrity(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "smith_example_2024" in out and "2 entries" in out
+        # Still in the bib file, so it is not stale either.
+        assert "stale   smith_example_2024" not in out
+        assert "0 stale (not removed)" in out
+        # Neither entry reached the ledger: the row is the first sync's.
+        assert self._row("smith_example_2024")["title"] == "An Example Paper"
+
+    def test_remove_stale_does_not_prune_the_duplicated_key(
+        self, basic_corpus, monkeypatch, capsys
+    ):
+        self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
+        rc = sync.run(remove_stale=True)
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "pruned  smith_example_2024" not in out
+        assert self._row("smith_example_2024")["title"] == "An Example Paper"
+
+    def test_a_bib_of_only_duplicates_is_not_suspicious(self, basic_corpus, monkeypatch, capsys):
+        self._synced_then_duplicated(basic_corpus, monkeypatch, capsys)
+        write_bib(basic_corpus.BIB_FILE_PATH, DUPLICATED_BIB.split("@misc", 1)[0])
+        rc = sync.run()
+        out = capsys.readouterr().out
+
+        assert rc == sync.EXIT_BIB_INTEGRITY
+        assert "SUSPICIOUS" not in out
+
+    def test_a_parse_failure_still_wins_over_it(self, basic_corpus, monkeypatch, capsys):
+        write_bib(basic_corpus.BIB_FILE_PATH, DUPLICATED_BIB)
+        monkeypatch.setattr(
+            pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
+        )
+        assert sync.run() == sync.EXIT_PARSE_FAILURE
+
+
 MANY_BIB = "".join(
     f"""
 @article{{doc_{i}_2024,

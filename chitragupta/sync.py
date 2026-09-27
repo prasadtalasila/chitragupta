@@ -106,6 +106,7 @@ class _Tally:
     low_quality: list = field(default_factory=list)
     timed_out: list = field(default_factory=list)
     no_pdf_reasons: Counter = field(default_factory=Counter)
+    duplicate_citekeys: int = 0
 
 
 def _dispatch_and_apply(con, to_parse, tally) -> None:
@@ -214,16 +215,19 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
     pdf_text.prestart_pool()
 
     print(f"Reading bibliography from {config.BIB_FILE_PATH} ...")
-    references = bib_reader.read_library()
+    library = bib_reader.read_library()
+    references = library.references
     print(f"  found {len(references)} bibliographic item(s)")
     sync_report._preflight_warnings(references)
 
     parser_available = _parser_available()
-    tally = _Tally()
+    tally = _Tally(duplicate_citekeys=len(library.duplicate_citekeys))
     with ledger.connection() as con:
         to_parse = sync_decide._to_parse(con, references, reparse, parser_available, tally)
         _dispatch_and_apply(con, to_parse, tally)
-        pruned, stale, suspicious = sync_decide._report_stale(con, references, remove_stale)
+        pruned, stale, suspicious = sync_decide._report_stale(
+            con, library.seen_citekeys, remove_stale
+        )
         # Read while the connection is still open -- the summary below
         # runs after it is closed.
         kinds = ledger.failure_counts(con)
@@ -293,6 +297,11 @@ def run(remove_stale: bool = False, reparse: bool = False) -> int:
 # lives in `bib_reader` beside the reasons themselves, so adding a reason
 # cannot silently miss this gate.
 #
+# A citekey two bib entries share joins it too (issue 840): none of its
+# entries was synced, because picking one would be guessing which paper
+# the key means, so the bibliography promises a document the corpus did
+# not take in. The remedy is in the bib file, which is what this code says.
+#
 # Which of the two nonzero codes, and why in this order: a parse failure
 # is the more actionable of the two and the one that means *this host*
 # could not do its job, so it wins when both hold. A run reporting
@@ -303,7 +312,8 @@ def _exit_code(tally, kinds, suspicious) -> int:
     """What a completed run reports, split by remedy (issue #696)."""
     if tally.failed or tally.backend_unavailable or kinds["deterministic"]:
         return EXIT_PARSE_FAILURE
-    if suspicious or any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS):
+    lost = any(tally.no_pdf_reasons[reason] for reason in bib_reader.PDF_LOST_REASONS)
+    if suspicious or lost or tally.duplicate_citekeys:
         return EXIT_BIB_INTEGRITY
     return 0
 

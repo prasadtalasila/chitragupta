@@ -48,10 +48,11 @@ def _normalize_doi(doi: str) -> str:
 def find_duplicates(references: list[Reference]) -> list[list[Reference]]:
     """Groups references that share a normalized DOI or normalized title.
 
-    Only groups spanning 2+ distinct citekeys are returned -- multiple
-    field entries under the same citekey (shouldn't happen, bibtexparser
-    already requires unique keys) aren't a "duplicate" in the sense this
-    check cares about.
+    Only groups spanning 2+ distinct citekeys are returned. Two entries
+    under one citekey never reach here: bibtexparser does *not* require
+    unique keys and returns both, so `bib_reader.read_library` drops
+    every entry of such a key and warns naming it (#840) -- which paper
+    that key means is the human's call, not this check's.
     """
     by_doi: dict[str, list[Reference]] = defaultdict(list)
     by_title: dict[str, list[Reference]] = defaultdict(list)

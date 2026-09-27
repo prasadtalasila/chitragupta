@@ -74,7 +74,7 @@ def build_keyword_ground_truth():
         for r in ledger.connect().execute("SELECT citekey FROM items WHERE parsed_path IS NOT NULL")
     }
     rows = []
-    for ref in bib_reader.read_library():
+    for ref in bib_reader.read_library().references:
         keywords = ref.fields.get("keywords", "").strip()
         if not keywords or ref.citekey not in parsed_citekeys:
             continue
