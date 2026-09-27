@@ -28,7 +28,7 @@ from chitragupta.review import verbatim_check as vc
 # ratchet exists to stop growing.
 from chitragupta.review.verbatim_check._scan_notes import _words_note
 from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_index
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_text
 
 
 @pytest.fixture
@@ -346,8 +346,7 @@ def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 d
     chitragupta/overlap_index.py instead of pdftotext/PARSED_DIR fallback."""
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
-    parsed = tmp_path / f"{citekey}.txt"
-    parsed.write_text(text)
+    parsed = parsed_text(citekey, text)
     ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
     ledger.mark_parsed(ledger_con, citekey, parsed)
     return parsed

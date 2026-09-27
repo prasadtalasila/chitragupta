@@ -19,7 +19,6 @@ import would make) rather than this module importing `search`.
 import json
 import os
 import uuid
-from pathlib import Path
 
 from chitragupta import config
 
@@ -50,10 +49,18 @@ from chitragupta import config
 _INDEX_SCHEMA_VERSION = 4
 
 
+# Confined here as well as at `_full_text` (issue 821), and that is not
+# belt-and-braces: this fingerprint is what decides whether `_full_text`
+# runs at all. An entry written while the row was still trusted would go
+# on matching a `(size, mtime)` taken from the outside file, so the
+# leaked text would be served out of the cache by the very guard meant
+# to stop it. Refusing here makes a repointed row fingerprint as
+# `(False, 0, 0)` and invalidates its entry.
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
-    if parsed_path:
+    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
+    if parsed:
         try:
-            st = Path(parsed_path).stat()
+            st = parsed.stat()
             return True, st.st_size, st.st_mtime_ns
         except OSError:
             pass

@@ -286,10 +286,15 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     if row is None:
         return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
-    parsed_path, pdf_path, _title = row
+    # Both columns confined before either is opened (issue 821). The
+    # PDF one is the sharper of the two: it is not read here but handed
+    # to `pdftotext` as an argument, so an unconfined row ran a
+    # subprocess over an arbitrary host file and quoted the result.
+    parsed_path = config.confined_path(row[0], config.PARSED_DIR)
+    pdf_path = config.confined_path(row[1], config.BIB_FILE_PATH.parent)
     single_page: list[Passage] = []
-    if parsed_path and Path(parsed_path).exists():
-        raw = Path(parsed_path).read_text(encoding="utf-8", errors="replace")
+    if parsed_path and parsed_path.exists():
+        raw = parsed_path.read_text(encoding="utf-8", errors="replace")
         found = _from_pages(raw)
         # A backend that emits no form feeds yields exactly one "page",
         # which would report every hit as p.1. Fall through to the PDF.
@@ -307,8 +312,8 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
         # far better one than none.
         single_page = found
 
-    if pdf_path and Path(pdf_path).exists():
-        return _from_pdf(pdf_path, single_page)
+    if pdf_path and pdf_path.exists():
+        return _from_pdf(str(pdf_path), single_page)
 
     if single_page:
         return single_page, None

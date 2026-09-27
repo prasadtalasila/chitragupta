@@ -56,12 +56,12 @@ import re
 import sqlite3
 from collections import Counter
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 from chitragupta import (
     _reference_cut,
     bib_collections,
+    config,
     ledger,
     retrieval_cache,
     retrieval_expansion,
@@ -268,9 +268,16 @@ def _full_text(item: sqlite3.Row) -> str:
     # it names (#490). overlap_index_ledger.py already gates on status;
     # this was BM25 retrieval and evidence's own read serving the stale
     # text as current.
-    if item["status"] == "parsed" and item["parsed_path"]:
+    # `confined_path` is the second half of the same guard (issue 821):
+    # `status` says the column is current, and this says the column is
+    # allowed to be opened at all. A ledger row is data -- gitignored
+    # sqlite under a shared `content/` -- so one repointed at
+    # `~/.ssh/id_rsa` had its bytes indexed here as this paper's text.
+    if item["status"] == "parsed" and (
+        parsed := config.confined_path(item["parsed_path"], config.PARSED_DIR)
+    ):
         try:
-            raw = Path(item["parsed_path"]).read_text(encoding="utf-8", errors="ignore")
+            raw = parsed.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             pass
         else:
@@ -281,7 +288,7 @@ def _full_text(item: sqlite3.Row) -> str:
             # `retrieval_cli.evidence` returns and the tokens BM25 ranks
             # are all drawn from the same text -- a snippet quoting a
             # reference list would be evidence of nothing.
-            text_parts.append(_reference_cut.strip_references(raw, item["parsed_path"]))
+            text_parts.append(_reference_cut.strip_references(raw, str(parsed)))
     return "\n".join(text_parts)
 
 

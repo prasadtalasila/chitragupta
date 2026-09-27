@@ -21,7 +21,7 @@ from chitragupta import (
 )
 from chitragupta.dossier import _retrieval
 
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_file
 
 
 def retrieval_cost(target):
@@ -300,7 +300,7 @@ class TestSearch:
         have no window to anchor on and fall back to the paper's opening
         characters -- a result the reader cannot judge."""
         monkeypatch.setattr(acronyms, "load_vocabulary", lambda: {"DT": "digital twin"})
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text(
             "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
         )
@@ -332,7 +332,7 @@ class TestSearch:
         assert len(results) == 2
 
     def test_uses_parsed_text_when_available(self, ledger_con, tmp_path):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
         ref = make_reference(citekey="a2024", title="Unrelated Title")
         ledger.upsert_reference(ledger_con, ref)
@@ -343,9 +343,13 @@ class TestSearch:
         assert results[0].citekey == "a2024"
 
     def test_missing_parsed_file_does_not_crash(self, ledger_con):
+        """Inside `content/parsed/` and simply not there -- the case the
+        `OSError` branch is for, and the one issue 821's confinement
+        must not swallow: a refused path takes a different branch, so a
+        test pointing outside the corpus would stop exercising this."""
         ref = make_reference(citekey="a2024", title="Some Title About Robotics")
         ledger.upsert_reference(ledger_con, ref)
-        ledger.mark_parsed(ledger_con, "a2024", "content/parsed/does-not-exist.txt")
+        ledger.mark_parsed(ledger_con, "a2024", parsed_file("does-not-exist"))
 
         results = retrieval.search("robotics")
         assert len(results) == 1
@@ -355,7 +359,7 @@ class TestSearch:
         # #490: a parsed doc whose PDF changes and then fails to reparse
         # keeps its old parsed_path in the row; retrieval must not read it,
         # because it names text from the superseded (pre-change) PDF.
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
         ref = make_reference(citekey="a2024", title="Unrelated Title")
         ledger.upsert_reference(ledger_con, ref)
@@ -371,7 +375,7 @@ class TestSearch:
         # parsed_path and the file's own stat are all unchanged, so a
         # fingerprint blind to status would still hit and serve the
         # cached, pre-failure tokens straight past _full_text's guard.
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("this document mentions blockchain repeatedly blockchain blockchain")
         ref = make_reference(citekey="a2024", title="Unrelated Title")
         ledger.upsert_reference(ledger_con, ref)
@@ -402,9 +406,9 @@ class TestSearch:
         # ~1200 words of unrelated filler -- the old scorer would have
         # ranked it first on raw count alone; BM25's length normalization
         # must rank the short, tightly-on-topic document first instead.
-        short_parsed = tmp_path / "short2024.txt"
+        short_parsed = parsed_file("short2024")
         short_parsed.write_text("Blockchain is the entire subject of this short paper.")
-        long_parsed = tmp_path / "long2024.txt"
+        long_parsed = parsed_file("long2024")
         long_parsed.write_text(
             "irrelevant filler word " * 400 + "blockchain mentioned twice blockchain here"
         )
@@ -448,7 +452,7 @@ class TestIndexCaching:
     snippet for the returned top-k should touch a parsed file at all."""
 
     def test_cache_file_is_created_on_first_search(self, ledger_con, tmp_path):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("digital twin content")
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)
@@ -460,9 +464,9 @@ class TestIndexCaching:
     def test_second_call_does_not_reread_a_doc_outside_the_results(
         self, ledger_con, tmp_path, monkeypatch
     ):
-        winner_parsed = tmp_path / "winner2024.txt"
+        winner_parsed = parsed_file("winner2024")
         winner_parsed.write_text("digital twin digital twin content")
-        loser_parsed = tmp_path / "loser2024.txt"
+        loser_parsed = parsed_file("loser2024")
         loser_parsed.write_text("nothing related to the query at all, just filler text")
 
         ledger.upsert_reference(
@@ -490,7 +494,7 @@ class TestIndexCaching:
         assert loser_parsed not in read_calls
 
     def test_changed_parsed_file_content_triggers_reindex(self, ledger_con, tmp_path):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("nothing about the topic here")
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Some Title"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)
@@ -788,7 +792,7 @@ class TestWindowsExpandPipeTables:
 
 class TestEvidence:
     def _seed(self, con, tmp_path, text, citekey="a2024"):
-        parsed = tmp_path / f"{citekey}.txt"
+        parsed = parsed_file(citekey)
         parsed.write_text(text)
         ledger.upsert_reference(con, make_reference(citekey=citekey, title="A Paper"))
         ledger.mark_parsed(con, citekey, parsed)
@@ -837,7 +841,7 @@ class TestEvidence:
 
 class TestCli:
     def _seed(self, con, tmp_path):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns catalog")
         ledger.upsert_reference(con, make_reference(citekey="a2024", title="Twin Patterns"))
         ledger.mark_parsed(con, "a2024", parsed)
@@ -906,7 +910,7 @@ class TestCli:
         "what" -- pre-fix it earns evidence() a second window; post-fix
         it contributes no anchor at all, so this is genuinely red before
         _query_terms is wired in, not vacuously green."""
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text(
             ("padding word here " * 40)
             + "architecture patterns catalog"
@@ -999,7 +1003,7 @@ class TestCli:
         from chitragupta import dossier
         from chitragupta.dossier import _retrieval
 
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns catalog")
         ledger.upsert_reference(
             ledger_con,
@@ -1120,7 +1124,7 @@ class TestCli:
 
     def test_y_prev_widens_results_beyond_a_plain_search(self, ledger_con, tmp_path, capsys):
         self._seed(ledger_con, tmp_path)
-        greenhouse = tmp_path / "b2024.txt"
+        greenhouse = parsed_file("b2024")
         greenhouse.write_text("padding " * 50 + "greenhouse actuator calibration drifted")
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="b2024", title="Greenhouse Actuator")
@@ -1260,7 +1264,7 @@ class TestLogNeverFailsTheSearch:
     the caller had already paid to compute."""
 
     def _seed(self, con, tmp_path):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("padding " * 50 + "digital twin architecture patterns")
         ledger.upsert_reference(con, make_reference(citekey="a2024", title="Twin Patterns"))
         ledger.mark_parsed(con, "a2024", parsed)
@@ -1296,7 +1300,7 @@ class TestTheIndexIsParsedOncePerProcess:
     file only changes when `_save_cache` writes it."""
 
     def test_a_second_load_does_not_reread_the_file(self, ledger_con, tmp_path, monkeypatch):
-        parsed = tmp_path / "a2024.txt"
+        parsed = parsed_file("a2024")
         parsed.write_text("digital twin content", encoding="utf-8")
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Digital Twin"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)

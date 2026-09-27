@@ -78,8 +78,15 @@ def pdf_path(citekey: str) -> Path | None:
         p = Path(":".join(parts[1:-1]).strip())
         if not p.is_absolute():
             p = bib_dir / p
-        if p.is_file():
-            return p
+        # Confined the same way `bib_reader._resolve_pdf_path` is, for
+        # the reason the docstring above already gives for splitting the
+        # field the same way: this is a second resolver over the same
+        # untrusted `file` field, so a rule applied only in the other one
+        # does not close the hole, it moves it to `verbatim locate`
+        # (issue 821).
+        confined = config.confined_path(p, bib_dir)
+        if confined is not None and confined.is_file():
+            return confined
     return None
 
 

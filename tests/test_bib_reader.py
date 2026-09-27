@@ -1,8 +1,6 @@
 """chitragupta/bib_reader.py: the only module that reads bibliography.bib, and
 the only place a citekey should ever originate from (AGENTS.md)."""
 
-from pathlib import Path
-
 import pytest
 
 from chitragupta import bib_reader
@@ -63,11 +61,20 @@ class TestResolvePdfPath:
         field = "paper.pdf:paper.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
 
-    def test_absolute_path(self, tmp_path):
-        pdf = tmp_path / "paper.pdf"
+    def test_absolute_path_inside_the_bib_directory(self, tmp_path):
+        """An absolute `file` path is ordinary -- several exporters
+        write one -- and still resolves, provided it lands beside the
+        bib file that claims it.
+
+        This used to be asserted against a `bib_dir` the PDF was *not*
+        under, which is the hole issue 821 closed: an absolute path was
+        accepted wherever on the host it pointed. See
+        `tests/test_path_confinement.py` for the refusal."""
+        pdf = tmp_path / "files" / "paper.pdf"
+        pdf.parent.mkdir()
         pdf.write_bytes(b"%PDF-1.4")
         field = f"paper.pdf:{pdf}:application/pdf"
-        assert bib_reader._resolve_pdf_path(field, tmp_path / "unrelated") == (
+        assert bib_reader._resolve_pdf_path(field, tmp_path) == (
             str(pdf),
             bib_reader.PDF_RESOLVED,
         )
@@ -133,20 +140,26 @@ class TestResolvePdfPath:
         field = "page.html:page.html:text/html;paper.pdf:missing.pdf:application/pdf"
         assert bib_reader._resolve_pdf_path(field, tmp_path) == (None, bib_reader.PDF_PATH_GONE)
 
-    def test_path_containing_colons_is_reassembled(self, tmp_path, monkeypatch):
-        # Windows-style or otherwise colon-bearing paths: the middle
-        # segment must be rejoined with ":", not just taken as parts[1].
-        # Can't literally create a file named "a:b.pdf" to prove this
-        # against -- a bare colon in a filename is illegal on Windows
-        # (reserved for the drive-letter/ADS syntax), not just in the
-        # "C:fakepath" drive-letter-shaped case this comment used to call
-        # out (confirmed by this repo's own Windows CI leg). Monkeypatch
-        # Path.is_file instead of relying on a real file on disk, which
-        # exercises the exact same split/rejoin logic portably.
-        monkeypatch.setattr(Path, "is_file", lambda self: True)
-        pdf = tmp_path / "a:b.pdf"
-        field = "desc:a:b.pdf:application/pdf"
-        assert bib_reader._resolve_pdf_path(field, tmp_path) == (str(pdf), bib_reader.PDF_RESOLVED)
+    def test_path_containing_colons_is_reassembled(self, tmp_path):
+        """Windows-style or otherwise colon-bearing paths: the middle
+        segment must be rejoined with ":", not just taken as `parts[1]`.
+
+        Asked of `_attachment_pdf`, which is the half that does the
+        rejoining, rather than of `_resolve_pdf_path`. No file named
+        `a:b.pdf` can be created to prove it against -- a bare colon in
+        a filename is illegal on Windows, being reserved for the
+        drive-letter and ADS syntax -- and since issue 821 the two
+        platforms legitimately disagree about the *result*: `tmp_path /
+        "a:b.pdf"` is a file in `tmp_path` on POSIX and the
+        drive-relative path `a:b.pdf`, outside it, on Windows, where
+        confinement then refuses it. Both sides of this assertion are
+        spelled the same way, so it pins the rejoin on either platform
+        without pinning a resolution that differs between them.
+        """
+        assert bib_reader._attachment_pdf("desc:a:b.pdf:application/pdf", tmp_path) == (
+            True,
+            tmp_path / "a:b.pdf",
+        )
 
 
 class TestCountRawEntries:

@@ -531,13 +531,44 @@ that gate the code:
 | --- | --- | --- |
 | `PDF path no longer exists on disk` | **3** | The bib file claims a PDF the disk does not have. `chitragupta/bib_reader.py` calls it "a silent data-loss failure". Fix the path, or drop the `file` field |
 | `PDF is on disk but could not be read` | **3** | Permissions, or a failing device. The file is there, so fixing the path is *not* the remedy -- check the mode, the mount, the disk |
+| `PDF path resolves outside the bib file's own directory` | **3** | The bib file claims an attachment this corpus will not open -- see below. Move it beside the `.bib`, point `[bib] path` at the tree it is really in, or drop the `file` field |
 | `no file field in bib entry` | 0 | An item with no attachment saved. An ordinary state of a bibliography |
 | `non-PDF attachment only` | 0 | Typically an HTML snapshot saved instead of the PDF. Invisible to retrieval, but not a hole |
 | `malformed file field` | 0 | This project could not parse the `file` field's `Desc:path:mimetype` shape |
 
-The split is by *remedy*: the first two mean a document the corpus was
+The split is by *remedy*: the first three mean a document the corpus was
 promised and did not get, and the run must not report success. The other
 three mean an item that never had a PDF here.
+
+#### 📎 Why an attachment has to live beside the bib file
+
+A `.bib` export is data someone else's tool wrote -- a reference manager,
+or a collaborator who sent you theirs -- and a `file` field in one may
+name any file on the host. A field reading `/etc/passwd` or
+`~/.ssh/id_rsa` used to have that file parsed into `content/parsed/`,
+indexed by `retrieve search`, and quotable into a draft as corpus
+evidence. So an attachment is accepted only where it resolves inside the
+directory the `.bib` itself lives in (`papers/` by default, wherever
+`[bib] path` points otherwise). A relative path, and an absolute one
+landing in the same tree, both still resolve exactly as they did; the
+refusal names the offending path on stderr.
+
+Resolution is what "inside" means, so a symlink answers for where it
+actually lands. Symlinking the whole of `papers/` somewhere else is
+fine, because both sides resolve to the same tree; symlinking a
+*subdirectory* of it -- `papers/files` pointing at a Zotero storage
+directory, say -- is refused, because the attachments then live outside
+the tree the `.bib` does. Point `[bib] path` at the real location
+instead of symlinking into it.
+
+The same rule applies on the way back *out*. `parsed_path` and
+`pdf_path` are columns of `content/ledger.sqlite`, a gitignored sqlite
+file under a `content/` tree that may be shared, so a row written by an
+older release -- or edited by hand -- is untrusted input too. A row
+whose `parsed_path` does not resolve inside `content/parsed/` reads as
+having no parsed text: `search`, `evidence`, `tldr`, `verbatim` and the
+enrichment stages all decline it and say so, and the next
+`corpus sync` re-parses the document rather than skipping it.
 
 If a stale path in your bib file is expected and you would rather the
 scheduled run stayed green, fix the path or drop the `file` field --

@@ -11,14 +11,14 @@ import re
 import pytest
 
 from chitragupta import ledger, overlap_index, overlap_source_text
+from tests.conftest import parsed_text
 from tests.conftest import make_reference
 
 
 def _parsed(ledger_con, tmp_path, citekey, text):
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(b"%PDF-1.4 dummy")
-    parsed = tmp_path / f"{citekey}.txt"
-    parsed.write_text(text, encoding="utf-8")
+    parsed = parsed_text(citekey, text)
     ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
     ledger.mark_parsed(ledger_con, citekey, parsed)
 

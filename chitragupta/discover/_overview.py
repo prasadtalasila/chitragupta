@@ -46,8 +46,13 @@ def _parsed_texts(citekeys: list) -> dict:
         con.close()
     texts = {}
     for citekey, parsed_path in rows:
-        if parsed_path and config.PROJECT_ROOT.joinpath(parsed_path).exists():
-            texts[citekey] = config.PROJECT_ROOT.joinpath(parsed_path).read_text(encoding="utf-8")
+        # Anchored at PROJECT_ROOT first (a row written under a relative
+        # project root is relative), then confined to `content/parsed/`
+        # before it is opened -- issue 821.
+        anchored = config.PROJECT_ROOT / parsed_path if parsed_path else None
+        parsed = config.confined_path(anchored, config.PARSED_DIR)
+        if parsed and parsed.exists():
+            texts[citekey] = parsed.read_text(encoding="utf-8")
     return texts
 
 

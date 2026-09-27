@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, ledger, overlap_index, overlap_index_doc
+from tests.conftest import parsed_text
 
 from tests.conftest import (
     WRITE_LOCK_HOLD,
@@ -21,8 +22,7 @@ def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 d
     parsed_path pointing at real text on disk."""
     pdf = tmp_path / f"{citekey}.pdf"
     pdf.write_bytes(pdf_bytes)
-    parsed = tmp_path / f"{citekey}.txt"
-    parsed.write_text(text)
+    parsed = parsed_text(citekey, text)
     ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
     ledger.mark_parsed(ledger_con, citekey, parsed)
     return parsed
@@ -213,8 +213,7 @@ class TestLedgerItem:
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_null_pdf_hash_returns_none(self, ledger_con, tmp_path):
-        parsed = tmp_path / "smith_2024.txt"
-        parsed.write_text("some text")
+        parsed = parsed_text("smith_2024", "some text")
         ledger.upsert_reference(ledger_con, make_reference(citekey="smith_2024"))
         ledger.mark_parsed(ledger_con, "smith_2024", parsed)
         assert overlap_index.ledger_item("smith_2024") is None

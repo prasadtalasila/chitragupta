@@ -28,6 +28,7 @@ Deferring the import until the function actually runs sidesteps the
 partial-initialization window entirely.
 """
 
+import sys
 from pathlib import Path
 
 
@@ -50,6 +51,58 @@ def resolves_inside(path: Path, root: Path) -> bool:
     for how they are spelled.
     """
     return Path(path).resolve().is_relative_to(Path(root).resolve())
+
+
+def confined_path(value: "str | Path | None", root: Path) -> "Path | None":
+    """`value` as a path, or `None` -- reported, never silently -- when
+    it does not land inside `root`.
+
+    For the two path-shaped strings this pipeline is *handed* rather
+    than computes: `parsed_path`/`pdf_path` read back out of a ledger
+    row, and the path inside a bib entry's `file` field (issue 821).
+    Both are data some other tool wrote -- a reference manager, an
+    older release, a collaborator's export, a hand edit of a gitignored
+    sqlite file -- so both can name any file on the host, and every
+    consumer used to open whichever one they named. That made
+    `~/.ssh/id_rsa` indexable as a paper's parsed text, and quotable
+    into a draft as corpus evidence.
+
+    Returns a value rather than raising because the callers are bulk
+    readers over a whole corpus, and one refused row must not take the
+    other six hundred down with it. `None` is the answer they already
+    have a branch for -- "nothing readable here" -- so a refused row
+    reads as unparsed rather than as a new kind of failure. An absent
+    or empty value returns `None` too, and *silently*, because that is
+    the routine case: most rows in a fresh ledger have no parsed text
+    yet, and a warning per row would bury the one that matters.
+
+    The refusal itself is never quiet. This project's own named worst
+    failure mode is the silent skip that drops a paper from the corpus,
+    so a refusal names the offending value and the root it had to land
+    under, on stderr, leaving stdout clean for the `--json` callers.
+
+    `resolves_inside` resolves both sides, which is what makes a symlink
+    answer for where it actually lands -- the case that matters on a
+    shared `content/`, where the name can be inside the corpus and the
+    bytes outside it. Resolving can also raise rather than answer: a NUL
+    byte gives `ValueError`, and a name the platform will not accept
+    gives `OSError` on Windows. Both are refusals, not crashes.
+    """
+    if not value:
+        return None
+    path = Path(value)
+    try:
+        if resolves_inside(path, root):
+            return path
+    except (OSError, ValueError):
+        pass
+    print(
+        f"  WARNING refusing {value}: it does not land inside {root}. A path read "
+        "out of the ledger or out of a bib `file` field names a host file, so "
+        "this pipeline opens one only inside the corpus (issue 821).",
+        file=sys.stderr,
+    )
+    return None
 
 
 def mirrored_dir(path: Path, source_root: Path, target_root: Path) -> "Path | None":

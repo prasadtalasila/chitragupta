@@ -49,6 +49,25 @@ PDF_MALFORMED_FILE_FIELD = "malformed_file_field"
 PDF_PATH_GONE = "pdf_path_gone"
 PDF_NON_PDF_ATTACHMENT = "non_pdf_attachment"
 
+# Issue 821. A `file` field is data someone else's tool wrote -- a
+# reference manager, or a collaborator whose export you were sent -- and
+# it may name any file on the host. One naming `/etc/passwd` or
+# `~/.ssh/id_rsa` had that file parsed into `content/parsed/<citekey>.txt`
+# by the next sync, indexed by retrieval, and quotable into a draft as
+# corpus evidence. Confinement is the fix rather than sanitisation: the
+# rule is "an attachment lives beside the bib file that claims it", not
+# a list of spellings to strip.
+#
+# In PDF_LOST_REASONS below, so a run that refuses one exits nonzero.
+# The commonest real outside path is a collaborator's absolute
+# `/home/bob/Zotero/storage/...`, which before this reported as
+# PDF_PATH_GONE and already exited 3; a refusal that quietly exited 0
+# instead would make this *less* visible than the state it replaces,
+# which is the exact defect #556 was filed for. It is a document the
+# bib file promises and the corpus does not get, which is what that
+# list means.
+PDF_OUTSIDE_PAPERS = "pdf_outside_papers"
+
 # The one reason in this set that `_resolve_pdf_path` never produces:
 # a PDF that is on disk and that this host cannot read anyway
 # (permissions, or a failing device). `chitragupta/sync_decide.py` is
@@ -68,7 +87,7 @@ PDF_UNREADABLE = "pdf_unreadable"
 # ordinary states of a bibliography, where a PDF this export claims and
 # this host cannot produce is a document silently missing from the
 # corpus (issue #556).
-PDF_LOST_REASONS = (PDF_PATH_GONE, PDF_UNREADABLE)
+PDF_LOST_REASONS = (PDF_PATH_GONE, PDF_UNREADABLE, PDF_OUTSIDE_PAPERS)
 
 # Dict order doubles as the fixed, deterministic order sync.py's
 # no-PDF breakdown reports these in.
@@ -78,6 +97,7 @@ PDF_RESOLUTION_LABELS = {
     PDF_UNREADABLE: "PDF is on disk but could not be read (permissions, or an I/O error)",
     PDF_NON_PDF_ATTACHMENT: "non-PDF attachment only (e.g. an HTML snapshot)",
     PDF_MALFORMED_FILE_FIELD: "malformed file field (couldn't parse mime/path)",
+    PDF_OUTSIDE_PAPERS: "PDF path resolves outside the bib file's own directory",
 }
 
 
@@ -114,6 +134,31 @@ def _parse_authors(author_field: str) -> list[tuple[str, str]]:
     return authors
 
 
+def _attachment_pdf(attachment: str, bib_dir: Path) -> "tuple[bool, Path | None]":
+    """One `Desc:path:mimetype` segment, as `(did it parse at all, the
+    pdf-mime path it names)`.
+
+    Split out of `_resolve_pdf_path` when issue 821's confinement pushed
+    that function past the 25-statement limit. The split falls here
+    because the two halves answer different questions: this one is
+    about the *field's* shape -- a convention of the export tool, and
+    the reason a path is rejoined with `:` rather than taken as
+    `parts[1]` -- and the caller is about which of several attachments
+    the corpus will actually accept.
+
+    `None` for the path covers both "not three colon-separated parts"
+    and "parsed, but not a PDF"; the boolean is what tells those apart,
+    and the caller needs both to pick between its two no-PDF reasons.
+    """
+    parts = attachment.split(":")
+    if len(parts) < 3:
+        return False, None
+    if "pdf" not in parts[-1].lower():
+        return True, None
+    path = Path(":".join(parts[1:-1]))
+    return True, path if path.is_absolute() else bib_dir / path
+
+
 def _resolve_pdf_path(file_field: str, bib_dir: Path) -> tuple[str | None, str]:
     """The `file` field format in this project's bib export:
     `Desc:path:mimetype`, `;`-separated for multiple attachments (e.g. an
@@ -136,21 +181,23 @@ def _resolve_pdf_path(file_field: str, bib_dir: Path) -> tuple[str | None, str]:
     """
     saw_parseable_attachment = False
     saw_pdf_mime = False
+    saw_outside = False
     for attachment in file_field.split(";"):
-        parts = attachment.split(":")
-        if len(parts) < 3:
-            continue
-        saw_parseable_attachment = True
-        mime = parts[-1]
-        path_str = ":".join(parts[1:-1])
-        if "pdf" not in mime.lower():
+        parseable, path = _attachment_pdf(attachment, bib_dir)
+        saw_parseable_attachment = saw_parseable_attachment or parseable
+        if path is None:
             continue
         saw_pdf_mime = True
-        path = Path(path_str)
-        if not path.is_absolute():
-            path = bib_dir / path
-        if path.is_file():
-            return str(path), PDF_RESOLVED
+        # Confined before is_file(), not after: a refused path is not
+        # probed for existence either, so the reason reported cannot
+        # depend on -- or disclose -- what is actually at it.
+        confined = config.confined_path(path, bib_dir)
+        if confined is None:
+            saw_outside = True
+        elif confined.is_file():
+            return str(confined), PDF_RESOLVED
+    if saw_outside:
+        return None, PDF_OUTSIDE_PAPERS
     if saw_pdf_mime:
         return None, PDF_PATH_GONE
     if saw_parseable_attachment:

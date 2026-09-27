@@ -21,6 +21,7 @@ from chitragupta import config, ledger, ledger_cli
 from tests.conftest import (
     WRITE_LOCK_HOLD,
     make_reference,
+    parsed_text,
     read_under_a_held_write_lock,
 )
 
@@ -44,7 +45,7 @@ def corpus(isolated_config, ledger_con, tmp_path):
         ref = make_reference(citekey=f"key_{i}", pdf_path=str(pdf) if pdf else None)
         ledger.upsert_reference(ledger_con, ref)
         if status == "parsed":
-            ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / f"{ref.citekey}.txt")
+            ledger.mark_parsed(ledger_con, ref.citekey, parsed_text(ref.citekey, "text"))
     bad = tmp_path / "bad.pdf"
     bad.write_bytes(b"%PDF-bad")
     ref = make_reference(citekey="broken_1", pdf_path=str(bad))
@@ -74,7 +75,7 @@ class TestSummary:
         pdf.write_bytes(b"%PDF")
         ref = make_reference(pdf_path=str(pdf))
         ledger.upsert_reference(ledger_con, ref)
-        ledger.mark_parsed(ledger_con, ref.citekey, tmp_path / "a.txt")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed_text(ref.citekey, "text"))
         ledger_cli.main([])
         assert "nothing needs attention" in capsys.readouterr().out.lower()
 

@@ -902,7 +902,14 @@ class TestLostPdfReason:
         the exact defect #556 was filed for."""
         returnable = {bib_reader.PDF_PATH_GONE, bib_reader.PDF_UNREADABLE}
         assert returnable <= set(bib_reader.PDF_RESOLUTION_LABELS)
-        assert returnable == set(bib_reader.PDF_LOST_REASONS)
+        assert returnable <= set(bib_reader.PDF_LOST_REASONS)
+        # `<=` rather than `==` since issue 821: a `file` field pointing
+        # outside the bib directory is a third hole, decided at bib-read
+        # time rather than from an exception, so it is in the gating list
+        # without being something `_lost_pdf_reason` can return. Asserted
+        # by name so the list cannot lose it silently either.
+        assert bib_reader.PDF_OUTSIDE_PAPERS in bib_reader.PDF_LOST_REASONS
+        assert bib_reader.PDF_OUTSIDE_PAPERS in bib_reader.PDF_RESOLUTION_LABELS
 
 
 class TestExitCodesAreDistinguishable:
