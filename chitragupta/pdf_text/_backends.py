@@ -123,5 +123,5 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
             encoding="utf-8",
         )
     except OSError as exc:
-        raise write_failed(out_path.stem, exc) from exc
+        raise write_failed(out_path, exc) from exc
     return passages.passage_records(result.document)

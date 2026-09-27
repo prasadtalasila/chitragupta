@@ -58,15 +58,18 @@ class ExtractionError(RuntimeError):
     """The backend ran but failed on this particular PDF."""
 
 
-def write_failed(citekey: str, exc: OSError) -> ExtractionError:
-    """A transient ExtractionError for an OSError writing `citekey`'s output.
+def write_failed(path: Path, exc: OSError) -> ExtractionError:
+    """A transient ExtractionError for an OSError writing `path`.
+
+    Takes the path rather than a citekey so no caller has to recover one
+    from a filename to report it.
 
     Disk full or a permission denied is the machine, not the PDF (#842).
     Raised bare, the OSError escaped both parse paths -- which catch
     ExtractionError -- and aborted sync, discarding every other
     document's result; marked transient, it is recorded and retried.
     """
-    error = ExtractionError(f"could not write the parsed output for {citekey}: {exc}")
+    error = ExtractionError(f"could not write {path}: {exc}")
     error.transient = True
     return error
 
@@ -286,7 +289,7 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
         passages.clear_sidecar(citekey)
     except OSError as exc:
-        raise write_failed(citekey, exc) from exc
+        raise write_failed(config.PARSED_DIR, exc) from exc
     # Annotated here rather than in extract_one, so the serial path --
     # which runs in the parent and never reaches a pool worker -- is
     # covered by the same code as the parallel one.
@@ -302,7 +305,7 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
         try:
             passages.write_sidecar(citekey, records)
         except OSError as exc:
-            raise write_failed(citekey, exc) from exc
+            raise write_failed(passages.sidecar_path(citekey), exc) from exc
     return out_path
 
 
