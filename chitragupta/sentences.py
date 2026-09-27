@@ -50,9 +50,19 @@ import re
 # `\b[A-Z]\.` rather than `[A-Z]\.` for the initial, so a sentence really
 # ending in an acronym ("... adoption in the USA. Next") still splits:
 # the `A` there is preceded by `S`, which is not a word boundary.
+#
+# `al.`, `vs.`, `Dr.`, `No.`, `Prof.` and `pp.` (#835) are the citation
+# abbreviations: "Smith et al. (2020) found" is the commonest shape in a
+# survey, and the `(` in the lookahead split it into a bare "Smith et
+# al." and a subjectless "(2020) found", which the provenance and
+# uncited-prose aids then both reported against correct prose. The cost
+# is a sentence that genuinely ends in one of them before a capital
+# ("... the answer was No. Then") staying joined to the next -- rare, and
+# the wider-span degradation the module docstring already accepts.
 SENTENCE_SPLIT = re.compile(
     r"(?<!\b[A-Z]\.)(?<!\bFig\.)(?<!\bSect\.)(?<!\bEq\.)(?<!\bRef\.)"
     r"(?<!\be\.g\.)(?<!\bi\.e\.)(?<!\bcf\.)"
+    r"(?<!\bal\.)(?<!\bvs\.)(?<!\bDr\.)(?<!\bNo\.)(?<!\bProf\.)(?<!\bpp\.)"
     r"(?<=[.!?])\s+(?=[A-Z\[(])"
 )
 
