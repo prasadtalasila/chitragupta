@@ -35,7 +35,7 @@ import pytest
 from chitragupta import ledger
 
 from tests.conftest import make_reference
-from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
+from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP, plant_package
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "session_start_hook.py"
@@ -63,6 +63,7 @@ class PreflightRepo:
         self.hook = root / ".claude" / "hooks" / "session_start_hook.py"
         self.hook.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(HOOK_PATH, self.hook)
+        shutil.copy2(HOOK_PATH.parent / "safe_path.py", self.hook.parent / "safe_path.py")
         (root / "content" / "drafts").mkdir(parents=True, exist_ok=True)
         self.write_settings(settings(EXEC_FORM_HOOK))
         self.env = {
@@ -76,16 +77,19 @@ class PreflightRepo:
         path.write_text(data if isinstance(data, str) else json.dumps(data, indent=2))
 
     def stub(self, module: str, body: str) -> None:
-        """Shadow `src.<module>` for the hook's children only.
+        """Replace `chitragupta.<module>` with `body`, in a checkout shape.
 
-        `python -m` puts the child's cwd first on sys.path, and the child's
-        cwd is this temp root -- so a `chitragupta/` package here wins over the real
-        one reached through PYTHONPATH.
+        Before #822 this planted a bare `chitragupta/` in the temp root and
+        relied on `python -m` putting the child's cwd ahead of the real
+        package on PYTHONPATH -- which is exactly the shadowing a scaffolded
+        project now refuses. So the temp root is made a checkout instead:
+        its `chitragupta/` extends `__path__` to this checkout's real
+        package, so every other submodule is the real one, and PYTHONPATH
+        points at the root, so the package resolves inside it.
         """
-        pkg = self.root / "chitragupta"
-        pkg.mkdir(exist_ok=True)
-        (pkg / "__init__.py").touch()
-        (pkg / f"{module}.py").write_text(body)
+        plant_package(self.root, self.root / ".stub-imported", checkout=True)
+        (self.root / "chitragupta" / f"{module}.py").write_text(body)
+        self.env["PYTHONPATH"] = str(self.root)
 
     def run(self):
         return subprocess.run(
@@ -268,17 +272,43 @@ class TestImportProbeFault:
     package -- the failure mode a venv install adds, once `python` no
     longer guarantees `chitragupta` is on its `sys.path` (#264).
 
-    A raising `chitragupta/__init__.py` shadowed into the temp root's cwd
-    stands in for that host: `python -c "import chitragupta"` searches cwd
-    ('' at sys.path[0]) before the real PYTHONPATH entry, the same
-    mechanism `PreflightRepo.stub` documents for the `-m` invocations.
+    A `python` first on PATH that fails every invocation stands in for that
+    host. The settings file names the bare `python`, so that is what the
+    probe runs; the hook itself and its children run on `sys.executable`
+    and are untouched. (This used to be a raising `chitragupta/__init__.py`
+    in the temp root, found through the probe's cwd -- the shadowing #822
+    closed, so it no longer reaches the probe at all.)
     """
 
-    def test_is_reported_through_the_real_hook(self, synced):
-        pkg = synced.root / "chitragupta"
-        pkg.mkdir(exist_ok=True)
-        (pkg / "__init__.py").write_text(
-            "raise ImportError('stubbed for #264')\n", encoding="utf-8"
-        )
+    @pytest.mark.skipif(sys.platform == "win32", reason="a shell-script interpreter")
+    def test_is_reported_through_the_real_hook(self, synced, tmp_path):
+        fake_bin = tmp_path / "fake-bin"
+        fake_bin.mkdir()
+        fake = fake_bin / "python"
+        fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        fake.chmod(0o755)
+        synced.env["PATH"] = f"{fake_bin}{os.pathsep}{synced.env['PATH']}"
         context = PreflightRepo.context(synced.run())
         assert "cannot import chitragupta" in context
+
+
+class TestAPlantedPackageIsNeverImported:
+    """#822, at SessionStart: the one hook that runs before anything is
+    typed. Every launch it makes -- the import probe, the gate liveness
+    probe, the corpus stage -- must reach the installed package in a
+    scaffolded project, and the checkout's own in a checkout."""
+
+    def test_a_scaffolded_project_ignores_a_planted_package(self, synced, tmp_path):
+        sentinel = tmp_path / "planted-ran"
+        plant_package(synced.root, sentinel)
+        result = synced.run()
+        assert not sentinel.exists(), "the planted chitragupta/ was imported"
+        assert result.stdout.strip() == ""  # and the real checks all passed
+
+    def test_a_checkout_still_runs_its_own_package(self, synced, tmp_path):
+        sentinel = tmp_path / "checkout-ran"
+        plant_package(synced.root, sentinel, checkout=True)
+        synced.env["PYTHONPATH"] = str(synced.root)
+        result = synced.run()
+        assert sentinel.exists()
+        assert result.stdout.strip() == ""

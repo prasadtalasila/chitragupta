@@ -53,22 +53,25 @@ import subprocess
 import sys
 
 import draft_target
+import safe_path
 
 IMPORT_PROBE_TIMEOUT = 5.0
 
 
-def _environment_is_broken() -> bool:
+def _environment_is_broken(env: dict) -> bool:
     """Can `sys.executable` import `chitragupta` at all?
 
     Run only after the gate itself has already failed -- this is an extra
     subprocess, paid on the rare non-zero path, not on every draft write.
 
-    `cwd=draft_target.REPO_ROOT`, matching the gate call above: `python -c`
-    also puts an empty-string cwd entry on `sys.path`, so in a checkout
-    (which relies on exactly that to find `chitragupta/`, no PYTHONPATH
-    needed) a probe launched from wherever *this hook process* happened to
-    start would say the environment is broken even when the gate call --
-    which does set this cwd -- imported the package just fine.
+    `cwd=draft_target.REPO_ROOT` and the gate call's own `env`, so the
+    probe searches exactly where the gate did. `python -c` puts an
+    empty-string cwd entry on `sys.path`, which a checkout relies on to
+    find `chitragupta/` with no PYTHONPATH -- a probe launched from
+    wherever *this hook process* started would call that checkout broken.
+    And in a scaffolded project `env` carries `safe_path`'s
+    PYTHONSAFEPATH, without which this probe would import the very
+    planted package the gate call was kept away from (#822).
     """
     try:
         probe = subprocess.run(
@@ -77,6 +80,7 @@ def _environment_is_broken() -> bool:
             cwd=draft_target.REPO_ROOT,
             capture_output=True,
             timeout=IMPORT_PROBE_TIMEOUT,
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return True  # a hung probe never proved the interpreter works either
@@ -96,15 +100,19 @@ def main() -> int:
     # `python` as well as `python3` is the worst of the available failure
     # modes. The interpreter already running this hook is known to exist
     # and is the one settings.json chose.
+    #
+    # One `env` for both launches, decided once: see safe_path.py (#822).
+    env = safe_path.child_env(draft_target.REPO_ROOT)
     result = subprocess.run(
         [sys.executable, "-m", "chitragupta.draft", "gate", str(file_path)],
         check=False,
         cwd=draft_target.REPO_ROOT,
         capture_output=True,
         text=True,
+        env=env,
     )
 
-    if result.returncode != 0 and _environment_is_broken():
+    if result.returncode != 0 and _environment_is_broken(env):
         reason = (
             "The citation gate could not run -- this is an environment fault, "
             "not a bad citekey (nothing was actually checked). "

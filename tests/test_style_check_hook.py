@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
+from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP, plant_package
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOKS = REPO_ROOT / ".claude" / "hooks"
@@ -42,7 +42,7 @@ class StyleHookRepo:
         self.root = root
         hooks = root / ".claude" / "hooks"
         hooks.mkdir(parents=True, exist_ok=True)
-        for name in ("style_check_hook.py", "draft_target.py"):
+        for name in ("style_check_hook.py", "draft_target.py", "safe_path.py"):
             shutil.copy2(HOOKS / name, hooks / name)
         self.hook = hooks / "style_check_hook.py"
         self.drafts = root / "content" / "drafts"
@@ -139,3 +139,21 @@ class TestTheProcessContract:
         result = style_hook.run(draft)
         assert result.returncode == 0
         assert "decision" not in result.stdout
+
+    def test_a_planted_package_in_a_scaffolded_project_is_never_imported(
+        self, style_hook, tmp_path
+    ):
+        """#822, for the advisory launch as well as the gate's."""
+        sentinel = tmp_path / "planted-ran"
+        plant_package(style_hook.root, sentinel)
+        draft = style_hook.draft("e.md", "Plain prose.\n")
+        assert style_hook.run(draft).returncode == 0
+        assert not sentinel.exists(), "the planted chitragupta/ was imported"
+
+    def test_a_checkout_still_runs_its_own_package(self, style_hook, tmp_path):
+        sentinel = tmp_path / "checkout-ran"
+        plant_package(style_hook.root, sentinel, checkout=True)
+        style_hook.env["PYTHONPATH"] = str(style_hook.root)
+        draft = style_hook.draft("f.md", "Plain prose.\n")
+        assert style_hook.run(draft).returncode == 0
+        assert sentinel.exists()

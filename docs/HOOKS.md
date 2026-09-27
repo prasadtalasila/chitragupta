@@ -2,8 +2,9 @@
 
 Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-27. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
-`session_start_hook.py` and `code_standards_hook.py`, the first three sharing
-one `draft_target.py`, all launching in exec form, as `python`. The launcher
+`session_start_hook.py` and `code_standards_hook.py`, the first two sharing
+one `draft_target.py` and the first three one `safe_path.py`, all
+launching in exec form, as `python`. The launcher
 hazards are closed: the placeholder is braced, the interpreter name is
 settled below, and a launcher that cannot start is now reported from two
 sides rather than one.
@@ -281,6 +282,7 @@ three layers with a rule about what may live in each.
 ├── settings.json               the launcher: one exec-form entry per hook
 └── hooks/
     ├── draft_target.py         shared -- payload in, draft path or None out
+    ├── safe_path.py            shared -- which `chitragupta` a child may import
     ├── citation_gate_hook.py   gate class     -- may block
     ├── style_check_hook.py     advisory class -- never blocks
     └── code_standards_hook.py  advisory class -- never blocks
@@ -296,6 +298,7 @@ scripts/
 
 tests/
 ├── test_draft_target.py        the shared helper, both classes of caller
+├── test_safe_path.py           checkout or installed project, every shape
 ├── test_hook_launchers.py      the launcher check, every shape
 ├── test_settings_launchers.py  the real settings.json, against the contract
 ├── test_citation_gate_hook.py  the model the other two follow
@@ -370,9 +373,52 @@ A hook is run by absolute path, so Python puts the hook's own directory on
 `sys.path` first and `import draft_target` resolves with no path
 manipulation. Two consequences worth knowing before they surprise someone:
 this breaks under `python -P` or `PYTHONSAFEPATH`, neither of which the
-launcher sets; and `tests/test_citation_gate_hook.py`'s `hook_repo`
+launcher sets (`safe_path.py` sets it on a hook's *children*, never on
+the hook); and `tests/test_citation_gate_hook.py`'s `hook_repo`
 fixture, which copies the hook script into a temporary root so that
-`Path(__file__).resolve()` lands there, must copy the helper beside it.
+`Path(__file__).resolve()` lands there, must copy both helpers beside it.
+
+### 🛡 Which `chitragupta` a hook's child imports
+
+Every hook that shells out runs `python -m chitragupta.draft ...` (or
+`python -c "import chitragupta"`) with its working directory at the
+project root, and `-m` and `-c` put that directory first on `sys.path`.
+In a git checkout that is the point: it is how the checkout finds its own
+`chitragupta/` with no install. In a project `chitragupta init`
+scaffolded, it was a hole (issue 822): a `chitragupta/` or
+`chitragupta.py` someone committed to a shared project would shadow the
+installed package and run with the user's privileges -- on
+`SessionStart`, before anything is typed, and again on every draft write.
+
+So the two shapes are told apart once, before any child starts, by
+`safe_path.py`. **Not** by whether `<root>/chitragupta/` exists, since in
+the case that matters that directory is the planted file. Instead, by
+where the package resolves *without* the cwd entry, which is what the
+hook process itself sees: it runs as `python <path>`, so its
+`sys.path[0]` is `.claude/hooks`, not the root. If `find_spec` places
+`chitragupta` outside the root, it is installed, and every child gets
+`PYTHONSAFEPATH=1`. Inside the root (an editable install) or nowhere (a
+checkout run from its own tree) leaves the launch as it was.
+`hook_launchers.py`'s import probe makes the same call from its own side,
+by whether it is itself running from inside the project whose settings
+it reads. `session_start_hook.py`'s own in-process import appends the root
+to `sys.path` rather than prepending it, so an installed package wins
+there too.
+
+**What this cannot close**, recorded so nobody assumes it does: an
+interpreter that finds no installed `chitragupta` at all -- the unactivated
+venv of issue 563 -- looks exactly like a checkout, and no marker a
+checkout carries could not also be committed to a shared directory. There
+the gate still fails closed, but a planted package would run.
+Two more follow from the same rule. This protects the hooks' launches,
+not the pipeline's own commands: a skill that runs `python -m
+chitragupta.draft gate` from the project root still searches it first.
+And a checkout whose venv also holds a non-editable `chitragupta-cli`
+reads as an installed project, so its hooks run that copy rather than
+the working tree -- install the checkout editable, or not at all.
+`chitragupta init` covers the other end: it refuses to scaffold into a
+directory already holding `chitragupta/` or `chitragupta.py`, with or
+without `--force`.
 
 ## 📜 The launcher contract
 

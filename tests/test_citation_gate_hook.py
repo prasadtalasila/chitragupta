@@ -116,7 +116,8 @@ class HookRepo:
         # The helper too, or the copy cannot `import draft_target`: a hook
         # is run by absolute path, so Python puts *its* directory first on
         # sys.path, and that directory is this temporary one.
-        shutil.copy2(HOOK_PATH.parent / "draft_target.py", self.hook.parent / "draft_target.py")
+        for helper in ("draft_target.py", "safe_path.py"):
+            shutil.copy2(HOOK_PATH.parent / helper, self.hook.parent / helper)
         self.drafts = root / "content" / "drafts"
         self.drafts.mkdir(parents=True, exist_ok=True)
         self.env = {
@@ -136,6 +137,26 @@ class HookRepo:
             hook=self.hook,
             python=python,
         )
+
+
+def plant_package(root: Path, sentinel: Path, *, checkout: bool = False) -> None:
+    """A `chitragupta/` at `root` whose import leaves `sentinel` behind (#822).
+
+    Two shapes. The default is the attack: a stray package in a scaffolded
+    project, found only because a child's cwd is first on `sys.path`, while
+    the real package is reached through PYTHONPATH -- the stand-in for
+    site-packages. `checkout=True` is a git checkout instead: the package
+    extends its own `__path__` to this checkout's real `chitragupta/`, so
+    every submodule still works, and the caller points PYTHONPATH at
+    `root` so the package resolves *inside* it, as an editable install of
+    a checkout does.
+    """
+    pkg = root / "chitragupta"
+    pkg.mkdir(exist_ok=True)
+    body = f"open({str(sentinel)!r}, 'w').close()\n"
+    if checkout:
+        body += f"__path__.append({str(REPO_ROOT / 'chitragupta')!r})\n"
+    (pkg / "__init__.py").write_text(body, encoding="utf-8")
 
 
 @pytest.fixture
@@ -344,3 +365,36 @@ class TestEnvironmentFaultDistinctFromCitekeyFault:
         assert "chitragupta" in response["reason"]
         assert "some_key" not in response["reason"]  # not blamed on the citekey
         assert "Citation gate FAILED" not in response["reason"]
+
+
+class TestAPlantedPackageIsNeverImported:
+    """#822: in a scaffolded project the installed package is the one a
+    hook runs, whatever the project directory holds; in a checkout, the
+    checkout's own package still is.
+
+    Both launches count, the gate call and the environment probe that
+    follows a failing one -- the second is covered by the failing draft
+    in each test, since the probe only runs after the gate exits non-zero.
+    """
+
+    def test_a_scaffolded_project_ignores_a_planted_package(self, hook_repo, tmp_path):
+        sentinel = tmp_path / "planted-ran"
+        plant_package(hook_repo.root, sentinel)
+        path = hook_repo.draft()
+        path.write_text("This claim cites [@totally_fabricated_key_2026].\n")
+
+        result = hook_repo.run(path)
+
+        assert not sentinel.exists(), "the planted chitragupta/ was imported"
+        assert "Citation gate FAILED" in json.loads(result.stdout)["reason"]  # the real gate
+
+    def test_a_checkout_still_runs_its_own_package(self, hook_repo, tmp_path):
+        sentinel = tmp_path / "checkout-ran"
+        plant_package(hook_repo.root, sentinel, checkout=True)
+        path = hook_repo.draft()
+        path.write_text("This claim cites [@totally_fabricated_key_2026].\n")
+
+        result = hook_repo.run(path, env={**hook_repo.env, "PYTHONPATH": str(hook_repo.root)})
+
+        assert sentinel.exists(), "the checkout's own chitragupta/ was not the one run"
+        assert "Citation gate FAILED" in json.loads(result.stdout)["reason"]

@@ -13,6 +13,7 @@ rather than raise on a file it merely finds odd.
 """
 
 import json
+import os
 import stat
 import sys
 from pathlib import Path
@@ -21,7 +22,22 @@ import pytest
 
 from chitragupta import hook_launchers
 
+from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+@pytest.fixture(autouse=True)
+def installed_package_on_pythonpath(monkeypatch):
+    """PYTHONPATH as the stand-in for site-packages, for every probe here.
+
+    The settings files below live in `tmp_path`, outside this checkout, so
+    to `_probe_env` they are an installed-package project and the import
+    probe runs safe-path (#822): no cwd entry, so it no longer finds this
+    checkout by the accident of pytest's working directory. PYTHONPATH is
+    how the tests' children already reach the real package.
+    """
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
 
 
 @pytest.fixture
@@ -362,7 +378,7 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
     def test_a_bare_name_resolved_from_path_is_still_probed(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program: calls.append(program) or None
+            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
         )
         monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
         hook_launchers.faults(settings(entry_for("python3")))
@@ -388,7 +404,7 @@ class TestImportProbeIsPerDistinctProgram:
     def test_runs_once_for_a_program_two_entries_share(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program: calls.append(program) or None
+            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
         )
         monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
         # Bare-named, since #637 made that the only shape the probe takes.
@@ -403,7 +419,7 @@ class TestImportProbeIsPerDistinctProgram:
     def test_never_runs_for_a_program_not_on_path(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program: calls.append(program) or None
+            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
         )
         hook_launchers.faults(
             settings(
@@ -549,3 +565,41 @@ class TestTheInstallScriptProvidesTheLauncher:
         body = script[script.index("report_launcher_faults()") :]
         body = body[: body.index("\n}\n")]
         assert "exit 1" not in body
+
+
+class TestTheProbeNeverImportsAPlantedPackage:
+    """#822. `-c` puts cwd first on `sys.path`, and this probe runs from
+    wherever the preflight or `draft gate` was started -- a scaffolded
+    project's root, which may hold a `chitragupta/` nobody installed."""
+
+    def test_a_checkout_keeps_its_cwd_entry(self):
+        """The checkout finds its own package through cwd, with no install."""
+        assert hook_launchers._probe_env(REPO_ROOT / ".claude" / "settings.json") is None
+
+    def test_an_installed_package_project_is_probed_safe_path(self, tmp_path):
+        env = hook_launchers._probe_env(tmp_path / ".claude" / "settings.json")
+        assert env["PYTHONSAFEPATH"] == "1"
+        assert env["PYTHONPATH"] == str(REPO_ROOT)  # the rest of the environment survives
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="probes the bare `python` a POSIX PATH resolves"
+    )
+    def test_a_planted_package_is_not_what_the_probe_imports(self, tmp_path, monkeypatch):
+        (tmp_path / ".claude").mkdir()
+        settings_path = tmp_path / ".claude" / "settings.json"
+        settings_path.write_text(json.dumps(entry_for(Path(sys.executable).name)), encoding="utf-8")
+        sentinel = tmp_path / "planted-ran"
+        (tmp_path / "chitragupta").mkdir()
+        (tmp_path / "chitragupta" / "__init__.py").write_text(
+            f"open({str(sentinel)!r}, 'w').close()\n", encoding="utf-8"
+        )
+        monkeypatch.setenv("PATH", f"{Path(sys.executable).parent}{os.pathsep}{os.environ['PATH']}")
+        # The probe inherits this environment and runs from tmp_path, where
+        # a coverage bootstrap finds no config and records statement-only
+        # data the parent's branch data cannot combine with.
+        for name in [k for k in os.environ if _IS_COVERAGE_BOOTSTRAP(k)]:
+            monkeypatch.delenv(name)
+        monkeypatch.chdir(tmp_path)
+
+        assert hook_launchers.faults(settings_path) == []
+        assert not sentinel.exists(), "the probe imported the planted chitragupta/"

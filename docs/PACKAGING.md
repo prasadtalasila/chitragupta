@@ -200,6 +200,17 @@ Both are supported, deliberately, and they are for different callers:
 
 So the two forms are not redundancy to be tidied away later. Keep both.
 
+The module form has one cost, and it is paid for in two places. `python
+-m` puts its working directory first on `sys.path`, and a hook's child
+runs from the project root -- which a checkout relies on, and which in
+an `init`-ed project would let a committed `chitragupta/` shadow the
+installed package. So the hooks decide which shape a project is before
+starting a child and, in an installed-package project, run it with
+`PYTHONSAFEPATH=1` ([HOOKS.md](HOOKS.md) has how, and the one case it
+cannot close); and `chitragupta init` refuses to scaffold into a
+directory that already holds `chitragupta/` or `chitragupta.py`, even
+with `--force`.
+
 ## ⚖ What the decision answers
 
 `pyproject.toml` used to say packaging was "a separate, larger decision

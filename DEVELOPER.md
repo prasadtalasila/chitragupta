@@ -362,7 +362,8 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           every Write/Edit under content/drafts/*.md and *.tex (see AGENTS.md);
                           session_start_hook.py checks the project can draft at all; draft_target.py
                           is the shared "which file did this tool call touch" helper both PostToolUse
-                          hooks use
+                          hooks use; safe_path.py decides whether their children may import
+                          chitragupta from the project root (checkout) or not (installed project)
 .claude/settings.json     wires the three hooks above into PostToolUse/SessionStart
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
                           entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)

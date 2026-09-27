@@ -47,6 +47,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import safe_path
+
 REPO = Path(__file__).resolve().parent.parent.parent
 
 # Not at the top, because the path this import needs is the line above it:
@@ -60,11 +62,12 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # tests/, .github/ and bench/, so `chitragupta/` and `.claude/hooks/` always travel
 # together in a release bundle.
 #
-# Appended rather than prepended: nothing else supplies a `chitragupta` package in
-# a real run, so the position costs nothing there, while prepending would
-# let a repo root shadow anything already importable -- including, in this
-# repository's own tests, the stub `chitragupta/` a test plants to simulate a dead
-# gate for the hook's *children*.
+# Appended rather than prepended, and that is a security property now
+# (#822), not only a tidiness one: an installed `chitragupta` is found in
+# site-packages first, so a stray `chitragupta/` at a scaffolded project's
+# root never reaches this process. Only in a checkout -- nothing installed,
+# the root's own package the one available -- does this line supply it.
+# The hook's *children* are the other half, and `safe_path` decides those.
 sys.path.append(str(REPO))
 from chitragupta import hook_launchers  # noqa: E402  pylint: disable=wrong-import-position
 
@@ -138,13 +141,14 @@ def corpus_stage() -> str | None:
 
 
 def _run(module: str, *args: str, **overrides: str):
+    """`python -m <module>` from the project root, with `safe_path`'s env."""
     return subprocess.run(
         [sys.executable, "-m", module, *args],
         check=False,
         cwd=REPO,
         capture_output=True,
         text=True,
-        env={**os.environ, **overrides},
+        env=safe_path.child_env(REPO, {**os.environ, **overrides}),
     )
 
 
