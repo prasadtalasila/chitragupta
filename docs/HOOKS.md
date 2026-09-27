@@ -410,6 +410,12 @@ interpreter that finds no installed `chitragupta` at all -- the unactivated
 venv of issue 563 -- looks exactly like a checkout, and no marker a
 checkout carries could not also be committed to a shared directory. There
 the gate still fails closed, but a planted package would run.
+Two more follow from the same rule. This protects the hooks' launches,
+not the pipeline's own commands: a skill that runs `python -m
+chitragupta.draft gate` from the project root still searches it first.
+And a checkout whose venv also holds a non-editable `chitragupta-cli`
+reads as an installed project, so its hooks run that copy rather than
+the working tree -- install the checkout editable, or not at all.
 `chitragupta init` covers the other end: it refuses to scaffold into a
 directory already holding `chitragupta/` or `chitragupta.py`, with or
 without `--force`.
