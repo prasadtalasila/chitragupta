@@ -81,8 +81,16 @@ def get_text(doc: CorpusDoc) -> str | None:
                 ["pdftotext", "-layout", doc.pdf_path, tmp_name],
                 check=True,
                 capture_output=True,
+                # The sync backend's bound (#824): one PDF that hangs
+                # poppler used to wedge the whole embed run.
+                timeout=config.PARSER_DOCUMENT_TIMEOUT,
             )
             return Path(tmp_name).read_text(encoding="utf-8", errors="ignore")
+        except subprocess.TimeoutExpired:
+            # No text rather than a crash: the caller reports the
+            # document as having nothing to embed and moves on, which is
+            # what a parse that never finished amounts to.
+            return None
         finally:
             os.unlink(tmp_name)
     return None

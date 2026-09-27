@@ -290,6 +290,18 @@ class TestGateEnforcement:
         assert "totally_fabricated_key_2026" in response["reason"]
         assert "Citation gate FAILED" in response["reason"]
 
+    def test_an_oversize_draft_blocks_as_too_large_to_gate(self, hook_repo):
+        """#824, end to end: a draft past `MAX_GATED_LINES` gets a named
+        block instead of a gate run the harness might kill silently."""
+        path = hook_repo.draft()
+        path.write_text("Plain prose with no citations at all.\n" * 100_001)
+        result = hook_repo.run(path)
+
+        assert result.returncode == 0
+        response = json.loads(result.stdout)
+        assert response["decision"] == "block"
+        assert "too large to gate" in response["reason"]
+
     def test_verified_citation_does_not_block(self, hook_repo, ledger_con):
         ledger.upsert_reference(
             ledger_con, make_reference(citekey="smith_real_2024", title="A Real Paper")

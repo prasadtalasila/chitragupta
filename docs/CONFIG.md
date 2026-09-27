@@ -807,9 +807,13 @@ must guard its top level with `if __name__ == "__main__":`.
 - **`document_timeout`** bounds one document, and the two backends
   enforce it with unequal strength. For `pdftotext` it is a subprocess
   timeout -- a real kill, the one case where a wedged parse can actually
-  be stopped. For `docling` it is that library's own check *between*
-  pipeline stages: it bounds a pathologically slow document but will not
-  interrupt a hang inside a single stage.
+  be stopped. The same limit bounds the `pdftotext` runs made outside
+  `sync` -- `review verbatim`'s page lookup, the passage report's PDF
+  fallback, and `enrich`'s embedding fallback -- each of which then falls
+  back as it would for an unreadable PDF. For `docling` it is that
+  library's own check *between* pipeline stages: it bounds a
+  pathologically slow document but will not interrupt a hang inside a
+  single stage.
 - **`stall_timeout`** bounds a *parallel run*, by asking whether **any**
   document at all has completed recently. With several workers,
   completions arrive constantly, so total silence across the whole pool

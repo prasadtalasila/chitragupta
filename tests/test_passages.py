@@ -544,6 +544,34 @@ class TestPdfFallback:
         assert "feeds" in {word for p in found for word in p.words}
         assert reason is None
 
+    def test_a_pdftotext_timeout_falls_back_like_any_other_failure(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        """#824: a malformed PDF can hang poppler, and rung 4 had no
+        timeout, so the report wedged indefinitely. The call now carries
+        `[parser].document_timeout` -- the one the sync backend already
+        enforces -- and a timeout takes the same fallback as a failure."""
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4")
+        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        monkeypatch.setattr(passages.config, "PARSER_DOCUMENT_TIMEOUT", 7.0)
+        seen = {}
+
+        def hang(*a, **k):
+            seen.update(k)
+            raise subprocess.TimeoutExpired(a[0], k["timeout"])
+
+        monkeypatch.setattr(passages.subprocess, "run", hang)
+        con = ledger.connect()
+        try:
+            found, reason = passages.source_passages(con, "a_2024")
+        finally:
+            con.close()
+
+        assert seen["timeout"] == 7.0
+        assert [p.page for p in found] == [1]
+        assert reason is None
+
     def test_pdftotext_failure_with_nothing_held_is_reported(
         self, isolated_config, monkeypatch, tmp_path
     ):

@@ -303,7 +303,10 @@ start_method = "auto"
 # Applies to both backends, by the mechanism each has -- and those are
 # not equally strong:
 #   - pdftotext: a subprocess timeout, i.e. a real kill. The one backend
-#     where a wedged parse can actually be stopped.
+#     where a wedged parse can actually be stopped. The same limit bounds
+#     the pdftotext runs made outside sync -- `review verbatim`'s page
+#     lookup, the passage report's PDF fallback, enrich's embedding
+#     fallback -- each of which then falls back as for an unreadable PDF.
 #   - docling: its own check *between* pipeline stages. Bounds a
 #     pathologically slow document; will not interrupt a hang inside one
 #     stage.

@@ -279,6 +279,30 @@ class TestPages:
         monkeypatch.setattr(vc._corpus.subprocess, "run", refuse)
         assert vc.pages("smith_2024") == ["the parsed fallback text"]
 
+    def test_a_pdftotext_timeout_falls_through_to_the_parsed_text(self, fixture_repo, monkeypatch):
+        """#824: a PDF that hangs poppler wedged `verbatim locate`
+        indefinitely. The call is bounded by `[parser].document_timeout`,
+        and running out of it takes the same fallback as a failure."""
+        pdf = fixture_repo / "paper.pdf"
+        pdf.write_bytes(b"%PDF-1.4 not really a pdf")
+        vc._corpus.BIB.write_text(
+            "@article{smith_2024,\n  title = {T},\n"
+            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
+        )
+        parsed_dir = fixture_repo / "content" / "parsed"
+        parsed_dir.mkdir(parents=True, exist_ok=True)
+        (parsed_dir / "smith_2024.txt").write_text("the parsed fallback text")
+        monkeypatch.setattr(vc._corpus.config, "PARSER_DOCUMENT_TIMEOUT", 7.0)
+        seen = {}
+
+        def hang(*args, **kwargs):
+            seen.update(kwargs)
+            raise subprocess.TimeoutExpired("pdftotext", kwargs["timeout"])
+
+        monkeypatch.setattr(vc._corpus.subprocess, "run", hang)
+        assert vc.pages("smith_2024") == ["the parsed fallback text"]
+        assert seen["timeout"] == 7.0
+
     def test_a_missing_pdftotext_binary_falls_through_too(self, fixture_repo, monkeypatch):
         """The other half: `OSError`, not a non-zero exit -- what a host
         with no poppler actually raises."""
