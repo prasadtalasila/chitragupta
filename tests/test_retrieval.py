@@ -355,6 +355,30 @@ class TestSearch:
         assert len(results) == 1
         assert results[0].citekey == "a2024"
 
+    def test_only_a_parsed_row_counts_as_missing_its_text(self, ledger_con, capsys):
+        """A `discovered` or `no_pdf` row has no parsed text by design;
+        counting it would make the note fire on every healthy corpus."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
+        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Robotics Too"))
+        ledger.mark_parsed(ledger_con, "b2024", parsed_file("does-not-exist"))
+        retrieval.search("robotics")
+        retrieval_cache.note_missing_parsed()
+        assert "[note] 1 parsed source(s)" in capsys.readouterr().err
+        retrieval_cache.note_missing_parsed()  # the count is taken, not kept
+        assert capsys.readouterr().err == ""
+
+    def test_undecodable_bytes_are_replaced_not_dropped(self, ledger_con):
+        """Issue 844: `errors="ignore"` here and `errors="replace"`
+        everywhere else meant BM25 ranked a different text from the one
+        the aids quote -- dropping a stray Latin-1 byte fused `na\\xefve`
+        into the word `nave`, which this document does not contain."""
+        parsed = parsed_file("a2024")
+        parsed.write_bytes(b"a na\xefve reading of robotics")
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Robotics"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        assert retrieval.search("nave") == []
+        assert "�" in retrieval._full_text(ledger.all_items(ledger_con)[0])
+
     def test_parse_failed_status_does_not_serve_stale_parsed_text(self, ledger_con, tmp_path):
         # #490: a parsed doc whose PDF changes and then fails to reparse
         # keeps its old parsed_path in the row; retrieval must not read it,
@@ -926,6 +950,32 @@ class TestCli:
         with_question = retrieval_cli.evidence("a2024", "what are architecture patterns", windows=2)
         without_question = retrieval_cli.evidence("a2024", "architecture patterns", windows=2)
         assert with_question == without_question
+
+    def test_search_says_nothing_about_parsed_text_that_is_there(
+        self, ledger_con, tmp_path, capsys
+    ):
+        self._seed(ledger_con, tmp_path)
+        assert retrieval.main(["search", "digital twin architecture"]) == 0
+        assert "ranked on their title alone" not in capsys.readouterr().err
+
+    @pytest.mark.parametrize("extra", [[], ["--y-prev", "earlier prose about twins"]])
+    def test_search_notes_a_missing_parsed_file_on_every_run(
+        self, ledger_con, tmp_path, capsys, extra
+    ):
+        """Issue 844: a `content/parsed/` restored from a partial backup
+        made a paper rank on its title alone with no message. Run twice,
+        because the second run serves every entry from the cache, and
+        that is the run the count used to be invisible on. On stderr:
+        stdout is the contract the genre skills parse."""
+        self._seed(ledger_con, tmp_path)
+        ledger.upsert_reference(ledger_con, make_reference(citekey="b2024", title="Twin Gone"))
+        ledger.mark_parsed(ledger_con, "b2024", parsed_file("b2024"))  # never written
+        for _ in range(2):
+            assert retrieval.main(["search", "digital twin", *extra]) == 0
+            captured = capsys.readouterr()
+            assert "[note] 1 parsed source(s)" in captured.err
+            assert "chitragupta.corpus sync" in captured.err
+            assert "title alone" not in captured.out
 
     def test_no_ledger_exits_nonzero_with_the_fix(self, isolated_config, capsys):
         assert retrieval.main(["search", "anything"]) == 1

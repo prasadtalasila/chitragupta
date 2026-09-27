@@ -18,6 +18,7 @@ import would make) rather than this module importing `search`.
 
 import json
 import os
+import sys
 import uuid
 
 from chitragupta import config
@@ -46,7 +47,18 @@ from chitragupta import config
 # invalidate the entry. Same shape as 2 and 3, and the third time the
 # rule for what a parsed file's text counts as has moved under a
 # fingerprint that only watches the file.
-_INDEX_SCHEMA_VERSION = 4
+#
+# 5 since issue 844: `retrieval._full_text` decodes with `errors="replace"`
+# rather than "ignore", so a parsed file with a stray non-UTF-8 byte now
+# splits the words either side of it where it used to fuse them. Same
+# shape as 2-4: the file is byte-identical and only the rule moved.
+_INDEX_SCHEMA_VERSION = 5
+
+# How many rows the last `_load_index` saw marked `parsed` whose parsed
+# file is not on disk, so were indexed on their title alone. Held here
+# rather than returned because `retrieval.search`'s return type is a
+# public contract with many callers; `note_missing_parsed` takes it.
+_MISSING_PARSED = 0
 
 
 # Confined here as well as at `_full_text` (issue 821), and that is not
@@ -194,13 +206,19 @@ def _load_index(items: list, tokenize_item) -> dict:
     checked here instead, so the same unexpected-shape entry costs one
     re-tokenization rather than failing the whole search.
     """
+    global _MISSING_PARSED
     cached = _load_cache()
     current_citekeys = {item["citekey"] for item in items}
     new_index = {}
     changed = bool(set(cached) - current_citekeys)  # stale citekeys dropped
+    _MISSING_PARSED = 0
     for item in items:
         citekey = item["citekey"]
         fp = _fingerprint(item)
+        # Counted from the fingerprint, so a run served wholly from the
+        # cache -- the one a missing file used to be invisible on -- still
+        # counts it (issue 844). fp[2] is the status, fp[3] "file exists".
+        _MISSING_PARSED += fp[2] == "parsed" and not fp[3]
         cached_entry = cached.get(citekey)
         if (
             isinstance(cached_entry, dict)
@@ -215,3 +233,24 @@ def _load_index(items: list, tokenize_item) -> dict:
     if changed:
         _save_cache(new_index)
     return new_index
+
+
+def note_missing_parsed() -> None:
+    """Print the last `_load_index`'s missing-parsed count as a note on
+    stderr, then forget it, so a second call in one process cannot
+    report a search that did not happen.
+
+    On stderr beside `retrieval_cli`'s other notes: stdout is the
+    contract the genre skills parse. The advice is true because
+    `ledger_upsert._parse_outputs_present` reads a missing parsed file
+    as "outputs gone", so the next sync re-parses it.
+    """
+    global _MISSING_PARSED
+    count, _MISSING_PARSED = _MISSING_PARSED, 0
+    if count:
+        print(
+            f"  [note] {count} parsed source(s) have no parsed text on disk and "
+            "were ranked on their title alone; `python -m chitragupta.corpus "
+            "sync` re-parses them.",
+            file=sys.stderr,
+        )

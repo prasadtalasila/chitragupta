@@ -654,13 +654,18 @@ would bury it.
 A PDF whose bytes haven't changed is not re-parsed -- that is what makes
 the second run nearly free. There is one exception, and it is deliberate:
 `sync` treats a document it calls `parsed` whose **passage sidecar is
-missing** as one that needs parsing again.
+missing or unreadable** as one that needs parsing again.
 
-That covers two cases. A corpus parsed with `[parser].backend = "docling"`
-before this project kept Docling's page breaks and passage records would
-otherwise be skipped forever, its PDFs being unchanged; instead the next
-run upgrades exactly those documents and nothing else. And a `.txt` or a
-sidecar you delete by hand is restored by the same check.
+That covers three cases. A corpus parsed with `[parser].backend =
+"docling"` before this project kept Docling's page breaks and passage
+records would otherwise be skipped forever, its PDFs being unchanged;
+instead the next run upgrades exactly those documents and nothing else.
+A `.txt` or a sidecar you delete by hand is restored by the same check.
+And a sidecar that is there but cannot be read -- cut short by a run
+killed mid-write before the write became atomic, or damaged by hand -- is
+re-parsed under either backend, where it used to read as "no passages"
+for good. An *empty* sidecar is readable: it is what a parse that found
+no prose writes, and it does not trigger a re-parse.
 
 It costs one re-parse each, once (6.65s per PDF serial, 0.62s at twelve
 workers -- see [PERFORMANCE.md](PERFORMANCE.md)), and the run reports

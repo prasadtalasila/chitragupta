@@ -15,7 +15,7 @@ import types
 
 import pytest
 
-from chitragupta import config, ledger, passages
+from chitragupta import _passage_sidecar, config, ledger, passages
 
 
 def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
@@ -352,6 +352,59 @@ class TestCorpusLayerSidecar:
         an enrichment sidecar would delete a parse it cannot reproduce."""
         assert passages.sidecar_path("k").parent == config.PARSED_DIR
         assert passages.sidecar_path("k") != config.DOCLING_DIR / "k.passages.json"
+
+    def test_a_write_replaces_the_old_file_whole_and_leaves_no_temp(self, isolated_config):
+        """Issue 844: written through a temp file and `os.replace`, so a
+        reader sees the old sidecar or the new one, never half of one."""
+        passages.write_sidecar("smith_2024", [{"text": "Old.", "page": 1}])
+        passages.write_sidecar("smith_2024", [{"text": "New.", "page": 2}])
+        assert json.loads(passages.sidecar_path("smith_2024").read_text()) == [
+            {"text": "New.", "page": 2}
+        ]
+        assert [p.name for p in config.PARSED_DIR.iterdir()] == ["smith_2024.passages.json"]
+
+    def test_a_failed_write_keeps_the_old_file_and_removes_its_temp(
+        self, isolated_config, monkeypatch
+    ):
+        """The OSError still reaches the caller unchanged --
+        `pdf_text.extract_text` turns it into a transient failure -- and
+        the sidecar already there is untouched rather than truncated."""
+        passages.write_sidecar("smith_2024", [{"text": "Old.", "page": 1}])
+
+        def full_disk(src, dst):
+            raise OSError(28, "No space left on device")
+
+        monkeypatch.setattr(_passage_sidecar.os, "replace", full_disk)
+        with pytest.raises(OSError, match="No space left"):
+            passages.write_sidecar("smith_2024", [{"text": "New.", "page": 2}])
+        assert json.loads(passages.sidecar_path("smith_2024").read_text())[0]["text"] == "Old."
+        assert [p.name for p in config.PARSED_DIR.iterdir()] == ["smith_2024.passages.json"]
+
+    @pytest.mark.parametrize(
+        ("content", "expected"),
+        [
+            (None, "absent"),
+            (b"[]", "ok"),  # a prose-less parse: present and settled
+            (b'[{"text": "A paragraph."}]', "ok"),
+            (b'[{"text": "A para', "unreadable"),
+            (b'[{"text": "caf\xc3', "unreadable"),
+            (b'{"text": "not a list"}', "unreadable"),
+        ],
+    )
+    def test_state_tells_absent_from_unreadable(self, isolated_config, content, expected):
+        """`_from_sidecar` answers None for all three of absent, empty and
+        torn, which is right for a reader and wrong for `sync`: only a
+        torn one needs a re-parse, and an empty one must not get one."""
+        path = passages.sidecar_path("smith_2024")
+        if content is not None:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        assert passages.sidecar_state(path) == expected
+
+    def test_state_reports_an_unreadable_directory_entry(self, isolated_config):
+        path = passages.sidecar_path("smith_2024")
+        path.mkdir(parents=True)
+        assert passages.sidecar_state(path) == "unreadable"
 
 
 class TestSidecarRobustness:

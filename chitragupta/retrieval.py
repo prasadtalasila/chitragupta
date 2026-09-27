@@ -277,10 +277,17 @@ def _full_text(item: sqlite3.Row) -> str:
         parsed := config.confined_path(item["parsed_path"], config.PARSED_DIR)
     ):
         try:
-            raw = parsed.read_text(encoding="utf-8", errors="ignore")
+            raw = parsed.read_text(encoding="utf-8", errors="replace")
         except OSError:
+            # Counted rather than reported here: `retrieval_cache.
+            # _load_index` sees the same absence through the fingerprint
+            # and `retrieval_cli` prints it as a note (issue 844).
             pass
         else:
+            # `errors="replace"`, the rule `sync._record_result` and
+            # `passages` decode by (issue 844): with "ignore" a stray byte
+            # fused the words either side of it, so BM25 ranked a text the
+            # aids never quote. `_INDEX_SCHEMA_VERSION` moved with it.
             # The paper's own bibliography carries other papers' titles as
             # this one's body text; #768 and chitragupta/_reference_cut.py
             # have the measurement. Cut here rather than at index build so

@@ -160,9 +160,13 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     parsed = config.confined_path(parsed_path, config.PARSED_DIR)
     if parsed is None or not parsed.exists():
         return False
-    if config.PARSER == "docling" and not passages.sidecar_path(citekey).exists():
-        return False
-    return True
+    # A sidecar that is there but unreadable -- torn by a killed write
+    # before `write_sidecar` became atomic, or hand-damaged -- counts as
+    # gone under any backend (issue 844): every reader takes it for "no
+    # passages", and `pdf_text.extract_text` clears it before re-parsing,
+    # so one re-parse heals it whichever backend runs.
+    state = passages.sidecar_state(passages.sidecar_path(citekey))
+    return state == "ok" or (state == "absent" and config.PARSER != "docling")
 
 
 def upsert_reference(
