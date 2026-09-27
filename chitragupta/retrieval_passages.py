@@ -191,7 +191,7 @@ def search_passages(query: str, k: int = 5, collection: str | None = None) -> Pa
     if not terms:
         return PassageSearch([], 0)
 
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         items = ledger.all_items(con)
 
     index, without_sidecar = retrieval_passages_cache.load_index(items)

@@ -102,7 +102,7 @@ def build_report(draft: Path) -> Report:
     spans = evidence_appendix.quoted_spans(draft.read_text(encoding="utf-8"), directory)
     if not spans:
         return Report(draft, [])
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         return Report(
             draft,
             [

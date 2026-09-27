@@ -76,7 +76,7 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
     movable as a unit, and a caller handed that raw cannot open it
     without knowing so.
     """
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         row = con.execute("SELECT title FROM items WHERE citekey = ?", (citekey,)).fetchone()
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")

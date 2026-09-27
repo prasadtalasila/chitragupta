@@ -187,7 +187,7 @@ def _score_claim(
 def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report:
     text = Path(draft_path).read_text(encoding="utf-8")
     report = Report(draft=Path(draft_path))
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         cache: dict[str, tuple[list[Passage], str | None]] = {}
         for line_no, citekey, claim in citation_provenance.claims(text):
             if citekey not in cache:

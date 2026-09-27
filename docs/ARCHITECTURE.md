@@ -215,6 +215,19 @@ not write `content/ledger.sqlite`, and they do not run
 first full-corpus parse can run for tens of minutes, so starting one is
 your decision rather than a side effect of asking for a draft.
 
+Nor does anything they call write it. `ledger.connect()` -- which
+creates the database, migrates it and commits, inside one write
+transaction -- belongs to `sync` alone. Every reader (retrieval, the
+gate, references, the review aids, enrichment) opens the ledger through
+`ledger.read_connection()`, which is read-only and creates nothing. With
+no ledger it refuses with the same "No ledger at ..." that
+`corpus ledger` prints, rather than leaving an empty ledger behind that
+would then read as "empty". A ledger that predates the current schema
+is refused the same way, with the instruction to sync, rather than
+migrated by a reader. The gate is the one exception to refusing: with
+no ledger it still runs, failing every citekey closed and passing a
+draft that cites nothing.
+
 On an empty ledger, the three citation-grounded genres --
 `survey-writer`, `thesis-chapter-writer`, `deep-research` -- say so and
 stop. The two teaching genres, where citations are optional, say so and

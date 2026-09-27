@@ -497,7 +497,9 @@ class TestReport:
         assert "> Hysteresis prevents relay chatter." in text
         assert "Best match is on **page 1**" in text
 
-    def test_unreadable_source_is_explained_not_reported_as_unsupported(self, isolated_config):
+    def test_unreadable_source_is_explained_not_reported_as_unsupported(
+        self, isolated_config, ledger_con
+    ):
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("A claim about something [@ghost_2024].\n")
@@ -509,7 +511,7 @@ class TestReport:
         assert "Sources that could not be read" in text
         assert "not because the claim is unsupported" in text
 
-    def test_draft_without_citations_says_so(self, isolated_config):
+    def test_draft_without_citations_says_so(self, isolated_config, ledger_con):
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Prose with no citations at all.\n")
@@ -664,7 +666,7 @@ class TestJsonPayload:
         assert cp.main([str(path), "--formats", "md"]) == 0
         assert (config.REVIEW_DIR / "d.provenance.json").is_file()
 
-    def test_json_flag_prints_the_envelope(self, isolated_config, capsys):
+    def test_json_flag_prints_the_envelope(self, isolated_config, ledger_con, capsys):
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("No citations here.\n")

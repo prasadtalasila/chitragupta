@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, ledger, retrieval_expansion, retrieval_iterative
+from chitragupta import ledger, retrieval_expansion, retrieval_iterative
 from chitragupta.retrieval import (
     SearchResult,
     _full_text,
@@ -67,7 +67,7 @@ def evidence(
     # The citekey is checked before the query, so that naming a key the
     # ledger doesn't have is reported as the caller error it is even when
     # the query happens to tokenize to nothing.
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         # row_factory set and cleared around the read, matching
         # ledger.all_items: connect() leaves rows as tuples, and
         # _full_text addresses its columns by name.
@@ -294,12 +294,12 @@ def _warn_of_short_terms(query: str) -> None:
 def main(argv: "list[str] | None" = None) -> int:
     args = _build_parser().parse_args(argv)
 
-    if not config.LEDGER_PATH.exists():
-        print(f"No ledger at {config.LEDGER_PATH}.", file=sys.stderr)
-        print(
-            "Run `python -m chitragupta.corpus sync` to build it from your bib file.",
-            file=sys.stderr,
-        )
+    # Asked up front, so an absent ledger -- or one needing a sync --
+    # is refused before any note about the query is printed.
+    try:
+        ledger.read_connection().close()
+    except ledger.NoLedger as exc:
+        print(exc, file=sys.stderr)
         return 1
 
     _warn_of_short_terms(args.query)

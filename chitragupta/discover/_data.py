@@ -11,7 +11,7 @@ module's job is to open files and refuse clearly when one is missing.
 import json
 import sqlite3
 
-from chitragupta import config, references
+from chitragupta import config, ledger, references
 
 
 class MissingArtefact(ValueError):
@@ -76,14 +76,13 @@ def topics_of(topic_set: dict) -> dict:
 
 
 def read_only_connection() -> sqlite3.Connection:
-    """The ledger, opened read-only for the same reason `corpus ledger`
-    does: inspecting must keep working during a sync, and
-    `ledger.connect()` would run migrations under a write lock."""
-    if not config.LEDGER_PATH.exists():
-        raise MissingArtefact(
-            f"No ledger at {config.LEDGER_PATH}. Run `python -m chitragupta.corpus sync`."
-        )
-    return sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    """The ledger through `ledger.read_connection`, with its refusal --
+    absent, or needing a sync to migrate -- re-raised as this package's
+    own, which every view already reports as one sentence."""
+    try:
+        return ledger.read_connection()
+    except ledger.NoLedger as exc:
+        raise MissingArtefact(" ".join(str(exc).split("\n"))) from exc
 
 
 def centred_cosine(vector: list, mean: list, centroid: list) -> float:

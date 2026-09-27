@@ -96,6 +96,7 @@ from chitragupta import (
     dossier,
     draft_figures,
     evidence_appendix,
+    ledger,
     references,
     registry,
     render_output,
@@ -176,7 +177,14 @@ def main(argv=None) -> int:
     if args.verb is None:
         parser.print_help()
         return 0
-    return VERBS[args.verb][0].main(args.rest)
+    # Every verb reads the ledger through `ledger.read_connection` (#843),
+    # which refuses rather than creating one; said once here as the same
+    # `[error]` line a genre skill already reacts to, not as a traceback.
+    try:
+        return VERBS[args.verb][0].main(args.rest)
+    except ledger.NoLedger as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

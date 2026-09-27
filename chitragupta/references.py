@@ -286,8 +286,12 @@ def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
     """
     if text is None:
         text = path.read_text(encoding="utf-8")
-    with ledger.connection() as con:
-        rendered = numbered_markdown(text, con)
+    # A draft citing nothing comes back unchanged without the ledger being
+    # opened, so it renders on a machine that has not synced yet.
+    rendered = text
+    if used_citekeys(text):
+        with ledger.reading() as con:
+            rendered = numbered_markdown(text, con)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{path.stem}.md"
@@ -302,7 +306,7 @@ def apply(path: Path, heading: str = "References") -> str:
     if not keys:
         return f"{path}: no citekeys cited -- nothing to do"
 
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         section = build_section(keys, con, heading)
 
     lines = text.splitlines(keepends=True)
@@ -339,7 +343,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         print(apply(Path(args.input), args.heading))
-    except (KeyError, config.OutsideContentDir) as exc:
+    except (KeyError, config.OutsideContentDir, ledger.NoLedger) as exc:
         # Both are "this draft can't be processed, and here is why" rather
         # than a bug: a citekey the ledger doesn't hold, or a path outside
         # content/. Reported on stderr like any other refusal instead of

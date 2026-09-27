@@ -138,10 +138,28 @@ def _migrate(con: sqlite3.Connection) -> None:
 
 
 def connect() -> sqlite3.Connection:
+    """The writer's connection, for `sync` alone: creates the database
+    and migrates it. A reader uses `read_connection` (#843)."""
     config.CONTENT_DIR.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(config.LEDGER_PATH)
-    con.execute(_SCHEMA)
-    _migrate(con)
+    # The schema and the whole migration run as one write transaction
+    # (#843). In autocommit, two processes first-touching an old ledger
+    # -- deep-research fans out subagents that each start by searching --
+    # both read user_version 0 and the pre-migration columns, and the
+    # loser died on "duplicate column name" re-running an ALTER TABLE.
+    # BEGIN IMMEDIATE takes the write lock *before* user_version is read,
+    # so the second one waits (sqlite's default 5 s timeout), then reads
+    # the version the first committed and does nothing. A failure part
+    # way through rolls every step back rather than leaving a half-added
+    # set of columns behind a stale user_version.
+    con.execute("BEGIN IMMEDIATE")
+    try:
+        con.execute(_SCHEMA)
+        _migrate(con)
+    except BaseException:
+        con.rollback()
+        con.close()
+        raise
     con.commit()
     return con
 
@@ -150,10 +168,77 @@ def connect() -> sqlite3.Connection:
 def connection() -> Iterator[sqlite3.Connection]:
     """`with ledger.connection() as con:` -- connect() plus the
     close()-in-a-finally every caller was already writing by hand at
-    eight call sites (#292). Not a change to the connection's lifecycle,
-    just to who writes the boilerplate.
+    eight call sites (#292). The writer's; a reader wants `reading()`.
     """
     con = connect()
+    try:
+        yield con
+    finally:
+        con.close()
+
+
+class NoLedger(RuntimeError):
+    """There is no ledger to read: `read_connection`'s refusal."""
+
+    # The default message is the two lines `corpus ledger` has always
+    # printed, which the genre skills and the session-start hook tell
+    # apart from "the ledger is empty".
+
+    def __init__(self, detail: str | None = None) -> None:
+        super().__init__(
+            detail
+            or f"No ledger at {config.LEDGER_PATH}.\n"
+            "Run `python -m chitragupta.corpus sync` to build it from your bib file."
+        )
+
+
+class StaleLedger(NoLedger):
+    """The ledger exists but predates this version's schema. A subclass,
+    so every caller refusing on `NoLedger` refuses on this too."""
+
+
+# The one read-only opener (#843). `ledger_cli`, `overlap_index_ledger`
+# and `discover/_data` each carried an identical copy, each with its own
+# docstring on why `connect()` is wrong for a reader: it mkdirs content/,
+# creates the database, runs the migration and commits -- a writer, which
+# takes the write lock (so an inspection could stall a running sync) and,
+# before any sync, *creates* an empty ledger, after which "no ledger" can
+# never be reported again.
+#
+# Read-only via the `mode=ro` URI, which also cannot create a missing
+# file; the existence check ahead of it is what turns that case into the
+# typed refusal. `timeout` is sqlite's default rather than 0 (m-72, #552):
+# the ledger has no WAL, so a reader is locked out for the length of a
+# writer's commit, and waiting takes no lock.
+#
+# A ledger whose user_version is behind `_MIGRATIONS` is refused as
+# `StaleLedger`, not migrated: a reader may not migrate (that is a write,
+# and the race above), and read as-is it would fail later on a missing
+# column with a message naming neither the cause nor the fix. The cost is
+# deliberate and bounded -- after an upgrade that adds a migration, readers
+# say "run sync" until one sync has run, which is also what brings the new
+# column's data in. A zero-byte file reads as user_version 0 and gets the
+# same answer, which is the right one for it too.
+def read_connection() -> sqlite3.Connection:
+    """The ledger, read-only. Raises `NoLedger` when there is no file and
+    `StaleLedger` when it needs a sync to migrate; creates nothing."""
+    if not config.LEDGER_PATH.exists():
+        raise NoLedger()
+    con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    (version,) = con.execute("PRAGMA user_version").fetchone()
+    if version < len(_MIGRATIONS):
+        con.close()
+        raise StaleLedger(
+            f"The ledger at {config.LEDGER_PATH} predates this version's schema.\n"
+            "Run `python -m chitragupta.corpus sync` to migrate it."
+        )
+    return con
+
+
+@contextmanager
+def reading() -> Iterator[sqlite3.Connection]:
+    """`connection()`'s shape for a reader: `read_connection()`, closed."""
+    con = read_connection()
     try:
         yield con
     finally:

@@ -109,7 +109,7 @@ class TestHeader:
         assert "python -m chitragupta.x --flag v" in text
         assert "chitragupta " in text
 
-    def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config):
+    def test_a_draft_path_with_a_space_stays_re_runnable(self, isolated_config, ledger_con):
         """The header claims to record the invocation, so it has to be
         one. Two ways it stopped being one: an unquoted path with a space
         names two arguments, and a bare filename names no directory at

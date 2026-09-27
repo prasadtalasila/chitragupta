@@ -350,7 +350,7 @@ def search(
     added = retrieval_expansion.expand(terms, _tokenize)
     terms = terms + [token for _, token in added]
 
-    with ledger.connection() as con:
+    with ledger.reading() as con:
         items = ledger.all_items(con)
 
     index = retrieval_cache._load_index(items, _tokenize_item)

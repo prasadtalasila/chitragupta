@@ -359,7 +359,8 @@ with no detector, checked by hand against the tree:
 - **Resource lifecycle.** Every `sqlite3` connection in `chitragupta/` is closed
   in a `finally`; no leak. The repetition of that pattern was
   the repeated `connect()`/`finally: close()` block, now
-  resolved into one `ledger.connection()` context manager -- it was a
+  resolved into one `ledger.connection()` context manager for the
+  writer and one `ledger.reading()` for every reader -- it was a
   tidiness item, not a correctness one.
 
 ### 📊 5.4 `ruff`: a measured baseline

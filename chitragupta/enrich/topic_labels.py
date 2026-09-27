@@ -114,18 +114,17 @@ def author_names(con=None) -> frozenset:
     """Every author name in the corpus's own bibliography, as lowercase
     tokens.
 
-    Returns an empty set when the ledger holds no `bib_fields` at all,
-    which is the honest answer for a corpus synced before that column
-    existed -- and leaves labelling exactly as it was rather than
-    degrading it.
+    Returns an empty set when no row carries `bib_fields`, which is the
+    honest answer for rows synced before that column existed -- and
+    leaves labelling exactly as it was rather than degrading it.
     """
     if con is not None:
         return _author_names_from(con)
     # Opened here means owned here, so it is closed here (#511/m-80): the
     # old `ledger.connect() if con is None else con` leaked a connection
-    # on every call that did not get one passed in. `ledger.connection()`
-    # is the context manager that already pairs connect with close.
-    with ledger.connection() as owned:
+    # on every call that did not get one passed in. `ledger.reading()`
+    # is the context manager that pairs the read-only open with close.
+    with ledger.reading() as owned:
         return _author_names_from(owned)
 
 

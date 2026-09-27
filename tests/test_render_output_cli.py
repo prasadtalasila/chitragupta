@@ -83,7 +83,7 @@ class TestMainCli:
             render_output.main()
 
     def test_a_citekey_missing_from_the_ledger_prints_and_returns_1(
-        self, isolated_config, monkeypatch, capsys
+        self, isolated_config, ledger_con, monkeypatch, capsys
     ):
         # `--format md` reaches references.write_numbered without needing
         # pandoc/pdflatex, so this exercises m-60's dedicated

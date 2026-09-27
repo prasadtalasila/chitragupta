@@ -147,10 +147,14 @@ class TestLedgerParsedPathIsConfined:
         config.PARSED_DIR.mkdir(parents=True)
         with ledger.connection() as con:
             insert(con, "leaky2024", parsed_path=str(outside_file))
-        monkeypatch.setattr(config, "confined_path", lambda value, root: Path(value or "."))
-        assert [r.citekey for r in retrieval.search("brahmastra")] == ["leaky2024"]
-        assert config.RETRIEVAL_INDEX_PATH.exists()
-        monkeypatch.undo()
+        # A scoped context, not `monkeypatch.undo()`: undo also reverted
+        # `isolated_config`, so the second search ran against the real
+        # checkout's content/ -- and, while readers still opened the
+        # ledger through the writer, created a ledger there (#843).
+        with monkeypatch.context() as scoped:
+            scoped.setattr(config, "confined_path", lambda value, root: Path(value or "."))
+            assert [r.citekey for r in retrieval.search("brahmastra")] == ["leaky2024"]
+            assert config.RETRIEVAL_INDEX_PATH.exists()
         retrieval_cache._forget_cache()
         assert retrieval.search("brahmastra") == []
 

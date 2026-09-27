@@ -1266,8 +1266,9 @@ isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped -- the measurement never fails the search
 it was measuring.
 
-Exits 1 with the fix if there is no ledger; an empty result set is not an
-error.
+Exits 1 with the fix if there is no ledger, or one that predates the
+current schema and needs a sync to migrate it; an empty result set is not
+an error.
 
 A single-character query word never reaches ranking on either side of the
 index, so either subcommand warns on stderr, naming each such word,

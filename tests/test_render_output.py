@@ -112,7 +112,7 @@ class TestRenderMarkdown:
         assert "[@" not in text, "no citekeys left inline"
 
     def test_a_citekey_missing_from_the_ledger_is_reported_not_raised(
-        self, isolated_config, tmp_path, capsys, monkeypatch
+        self, isolated_config, ledger_con, tmp_path, capsys, monkeypatch
     ):
         # The gate would normally catch this first, but render_output is a
         # standalone CLI -- it must not answer with a traceback.

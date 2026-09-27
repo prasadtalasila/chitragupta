@@ -5,7 +5,7 @@ import subprocess
 
 from pathlib import Path
 
-from chitragupta import config, references
+from chitragupta import config, ledger, references
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
@@ -182,6 +182,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows
         print(f"[error] pandoc failed: {exc.stderr or exc}{_figure_repair_hint(args.input)}")
+        return 1
+    except ledger.NoLedger as exc:
+        # `--format md` numbers a citing draft from the ledger; with none
+        # to read, the same `[error]` a skill warns on and carries past.
+        print(f"[error] {exc}")
         return 1
     except references.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a

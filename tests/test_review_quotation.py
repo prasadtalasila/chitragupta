@@ -25,8 +25,9 @@ draft blocked by any of it.
 import json
 from pathlib import Path
 
+import pytest
 
-from chitragupta import config, dossier, review
+from chitragupta import config, dossier, ledger, review
 from chitragupta.review import __main__ as review_main
 from chitragupta.review import _quotation_match as match
 from chitragupta.review import quotation
@@ -34,6 +35,15 @@ from tests.test_review_units import draft_at
 
 KEY = "shao_analysis_2023"
 SPAN = "four interconnected layers of domains"
+
+
+@pytest.fixture(autouse=True)
+def _a_synced_ledger(isolated_config):
+    """An empty, current ledger, as a first sync leaves one. The aid reads
+    it read-only (#843), and a missing one is refused rather than created,
+    so a test that never synced has to say so rather than lean on the
+    reader to make one."""
+    ledger.connect().close()
 
 
 def a_dossier(draft: Path, blocks: str) -> Path:

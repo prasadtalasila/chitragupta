@@ -173,14 +173,14 @@ class TestTheConnectionIsClosedWhenItIsOwned:
         from chitragupta import ledger
 
         opened = []
-        real = ledger.connect
+        real = ledger.read_connection
 
         def tracked():
             con = real()
             opened.append(con)
             return con
 
-        monkeypatch.setattr(ledger, "connect", tracked)
+        monkeypatch.setattr(ledger, "read_connection", tracked)
         topic_labels.author_names()
         assert len(opened) == 1
         with pytest.raises(Exception):  # noqa: B017 -- sqlite3.ProgrammingError on a closed handle

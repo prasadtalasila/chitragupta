@@ -21,7 +21,6 @@ from chitragupta import (
     ledger,
     overlap_chroma,
     overlap_embed,
-    overlap_embed_scope,
     overlap_segments,
 )
 from tests.conftest import make_reference
@@ -484,17 +483,16 @@ class TestOpenScope:
         monkeypatch.setattr(overlap_chroma, "optional_stack", lambda: ("chromadb", None))
         monkeypatch.setattr(overlap_chroma, "built_collection", lambda module: FakeCollection())
         opened = []
-        real = overlap_embed_scope._ledger_connect_ro
+        real = ledger.read_connection
 
         def tracked():
             con = real()
             opened.append(con)
             return con
 
-        # Patched on `overlap_embed_scope`, not on `overlap_embed`: the
-        # name is bound at import there, and `overlap_embed` only
-        # re-exports the three public names around it.
-        monkeypatch.setattr(overlap_embed_scope, "_ledger_connect_ro", tracked)
+        # Patched on `ledger`, which `overlap_embed_scope` reaches by
+        # attribute at call time -- the one read-only opener (#843).
+        monkeypatch.setattr(ledger, "read_connection", tracked)
         assert overlap_embed.unavailable_reason(draft) is None
         assert len(opened) == 1
         with pytest.raises(sqlite3.ProgrammingError):
