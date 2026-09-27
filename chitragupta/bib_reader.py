@@ -27,6 +27,7 @@ import bibtexparser
 # ">=1.4,<2.0"` line for the full rationale (v2 replaces this API with an
 # incompatible one this module doesn't use). Don't migrate this import
 # without reading that comment and relaxing the ceiling first.
+from bibtexparser.bibdatabase import STANDARD_TYPES
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
@@ -343,13 +344,20 @@ def read_library() -> Library:
         )
 
     raw_text = config.BIB_FILE_PATH.read_text(encoding="utf-8", errors="replace")
+    # Deliberately left at bibtexparser's default ignore_nonstandard_types=True:
+    # an entry of a type outside STANDARD_TYPES (`@software`, `@online`,
+    # `@dataset`, ...) is skipped, silently, and never synced. That is the
+    # maintainer's stated intent (issue 888), not an oversight -- do not
+    # "fix" it by passing False. What issue 888 fixed is the count below:
+    # such an entry is ignored, not lost, so it is kept off the raw side of
+    # the dropped-entry comparison and cannot exit 3 or block a prune.
     parser = BibTexParser(common_strings=True)
     parser.customization = convert_to_unicode
     bib_database = bibtexparser.loads(raw_text, parser=parser)
 
     name = config.BIB_FILE_PATH.name
     entries = bib_database.entries
-    dropped = bib_integrity.dropped_entries(raw_text, len(entries), name)
+    dropped = bib_integrity.dropped_entries(raw_text, len(entries), name, STANDARD_TYPES)
     duplicated = bib_integrity.duplicated_citekeys(entries, name)
     unfilenameable = _unfilenameable_citekeys(entries, duplicated)
     bib_dir = config.BIB_FILE_PATH.resolve().parent
