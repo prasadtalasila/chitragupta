@@ -132,7 +132,7 @@ class TestRealBibliographySmoke:
         real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
 
         # Asserted against the file rather than against a number written
         # here. A hardcoded count (it was 646) is a claim about how many
@@ -182,7 +182,7 @@ class TestRealBibliographySmoke:
         real_bib = real_bibliography_path()
         monkeypatch.setattr(config, "BIB_FILE_PATH", real_bib)
 
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         con = ledger.connect()
         try:
             for ref in refs:

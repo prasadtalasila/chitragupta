@@ -30,7 +30,7 @@ import bibtexparser
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-from chitragupta import bib_collections, bib_names, config
+from chitragupta import bib_collections, bib_integrity, bib_names, config
 from chitragupta.citekey_safety import citekey_problem
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
@@ -114,6 +114,22 @@ class Reference:
     collections: tuple[str, ...] = ()
     pdf_path: str | None = None
     pdf_resolution: str = PDF_NO_FILE_FIELD
+
+
+# What one read of the bib file yields. A result object rather than a bare
+# list so that a further count about the read -- entries dropped or
+# skipped, say -- is a new field here, not a new return shape every
+# caller has to unpack.
+@dataclass
+class Library:
+    references: list[Reference]
+    duplicate_citekeys: tuple[str, ...] = ()
+
+    @property
+    def seen_citekeys(self) -> set[str]:
+        """Every citekey the bib file names that a sync must not treat as
+        stale: the references, plus the duplicated keys none was built for."""
+        return {r.citekey for r in self.references} | set(self.duplicate_citekeys)
 
 
 def _parse_authors(author_field: str) -> list[tuple[str, str]]:
@@ -209,75 +225,6 @@ def _clean_title(title: str) -> str:
     return re.sub(r"[{}]", "", title)
 
 
-# @comment/@string/@preamble are legitimate BibTeX constructs that never
-# show up in BibDatabase.entries (bibtexparser tracks them separately,
-# not as dropped entries) -- read_library parses with common_strings=True,
-# so a real export using any of these is plausible, and counting them as
-# "entries" would fire a false discrepancy warning on a perfectly good file.
-_NON_ENTRY_TYPES = {"comment", "string", "preamble"}
-# BibTeX allows either `@type{...}` or `@type(...)` -- bibtexparser
-# accepts both (PR #8 review) -- so a file using the paren form would be
-# under-counted by a brace-only pattern, which could hide a genuine drop
-# instead of just risking a false-positive warning on a good file.
-_ENTRY_START_RE = re.compile(r"^@(\w+)\s*[{(]", re.MULTILINE)
-
-
-def _block_has_fields(body: str) -> bool:
-    """Whether an `@`-block's body carries anything past its citekey.
-
-    A Zotero export writes `@misc{key,\\n}` for an attachment saved with
-    no metadata, and bibtexparser drops it -- correctly, since there is
-    no title, author or year to lose. Counting it as an entry made the
-    dropped-entry warning below fire on every sync against a perfectly
-    healthy library (this project's own bibliography carries two such
-    stubs), and a guard that cries wolf is worse than none: the run it
-    needs to be believed on is the one where a real entry has unbalanced
-    braces. So the test drawn here is bibtexparser's own -- no field
-    means no entry -- and the two agree about what they are counting.
-
-    `body` runs from just past the opening delimiter to the start of the
-    next `@`-block, not to a matching close brace. That bound is the
-    whole point: a forward brace-matcher would, on the *unbalanced* entry
-    this warning exists to catch, run to end of file and swallow every
-    entry after it -- silencing the warning in exactly the case it is
-    for. One trailing `}`/`)` is stripped rather than matched, so a block
-    whose last field value ends in a brace (`title = {T}\\n}`) is not
-    mistaken for a contentless one.
-    """
-    body = body.rstrip()
-    if body.endswith(("}", ")")):
-        body = body[:-1].rstrip()
-    _, comma, fields = body.partition(",")
-    return bool(comma and fields.strip())
-
-
-def _count_raw_entries(text: str) -> int:
-    """How many actual `@entrytype{...}`/`@entrytype(...)` blocks the raw
-    file text has, independent of whether bibtexparser managed to parse
-    each one.
-
-    bibtexparser (both BibTexParser.parse and the customization hook)
-    silently skips an entry it can't parse -- e.g. unbalanced braces --
-    with no exception and no entry in the returned BibDatabase, so
-    len(bib_database.entries) alone can't reveal a dropped entry.
-    Comparing against this raw count is the only way read_library can
-    tell "the file has exactly as many entries as it looks like" from
-    "some entries silently vanished."
-
-    Contentless stubs are excluded -- see `_block_has_fields`. Every
-    match bounds the previous one, including the @comment/@string/
-    @preamble blocks filtered out afterwards: one of those sitting
-    between two entries still ends the first entry's body.
-    """
-    starts = list(_ENTRY_START_RE.finditer(text))
-    ends = [m.start() for m in starts[1:]] + [len(text)]
-    return sum(
-        1
-        for m, end in zip(starts, ends)
-        if m.group(1).lower() not in _NON_ENTRY_TYPES and _block_has_fields(text[m.end() : end])
-    )
-
-
 # A citekey is not just an identifier here -- it is a *filename stem*.
 # `content/parsed/<citekey>.txt`, its `.passages.json` sidecar, and the
 # enrichment layer's `content/docling/<citekey>.md` are all built by
@@ -290,7 +237,28 @@ def _count_raw_entries(text: str) -> int:
 # this stays the natural place to find it from the sync side.
 
 
-def read_library() -> list[Reference]:
+def _reference(entry: dict, bib_dir: Path) -> Reference:
+    """One parsed bib entry, with its PDF resolved, as a `Reference`."""
+    if "file" in entry:
+        pdf_path, pdf_resolution = _resolve_pdf_path(entry["file"], bib_dir)
+    else:
+        pdf_path, pdf_resolution = None, PDF_NO_FILE_FIELD
+    return Reference(
+        citekey=entry["ID"],
+        item_type=entry.get("ENTRYTYPE", "misc"),
+        title=_clean_title(entry.get("title", "Untitled")),
+        authors=_parse_authors(entry.get("author", "")),
+        year=entry.get("year", "n.d."),
+        doi=entry.get("doi"),
+        url=entry.get("url"),
+        fields=entry,
+        collections=bib_collections.parse(entry.get(config.BIB_COLLECTIONS_FIELD)),
+        pdf_path=pdf_path,
+        pdf_resolution=pdf_resolution,
+    )
+
+
+def read_library() -> Library:
     if not config.BIB_FILE_PATH.exists():
         raise FileNotFoundError(
             f"No bib file at {config.BIB_FILE_PATH}. Export your reference "
@@ -303,7 +271,7 @@ def read_library() -> list[Reference]:
     parser.customization = convert_to_unicode
     bib_database = bibtexparser.loads(raw_text, parser=parser)
 
-    raw_count = _count_raw_entries(raw_text)
+    raw_count = bib_integrity.count_raw_entries(raw_text)
     parsed_count = len(bib_database.entries)
     if parsed_count < raw_count:
         print(
@@ -315,9 +283,12 @@ def read_library() -> list[Reference]:
             "an entry whose citekey doesn't show up in this run's output."
         )
 
+    duplicated = bib_integrity.duplicated_citekeys(bib_database.entries, config.BIB_FILE_PATH.name)
     bib_dir = config.BIB_FILE_PATH.resolve().parent
     references = []
     for entry in bib_database.entries:
+        if entry["ID"] in duplicated:
+            continue
         # Before anything else touches it: a citekey that cannot be a
         # filename would fail much later, inside a parse, as an OSError
         # naming a path rather than the entry that produced it. Skipping
@@ -333,23 +304,5 @@ def read_library() -> list[Reference]:
                 "it in your reference manager, re-export, and re-run sync."
             )
             continue
-        if "file" in entry:
-            pdf_path, pdf_resolution = _resolve_pdf_path(entry["file"], bib_dir)
-        else:
-            pdf_path, pdf_resolution = None, PDF_NO_FILE_FIELD
-        references.append(
-            Reference(
-                citekey=entry["ID"],
-                item_type=entry.get("ENTRYTYPE", "misc"),
-                title=_clean_title(entry.get("title", "Untitled")),
-                authors=_parse_authors(entry.get("author", "")),
-                year=entry.get("year", "n.d."),
-                doi=entry.get("doi"),
-                url=entry.get("url"),
-                fields=entry,
-                collections=bib_collections.parse(entry.get(config.BIB_COLLECTIONS_FIELD)),
-                pdf_path=pdf_path,
-                pdf_resolution=pdf_resolution,
-            )
-        )
-    return references
+        references.append(_reference(entry, bib_dir))
+    return Library(references, duplicated)

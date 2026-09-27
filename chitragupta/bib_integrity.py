@@ -1,0 +1,104 @@
+"""Checks that a bib file is what it looks like, before `bib_reader`
+turns its entries into references: how many entries the raw text really
+holds, and which citekeys more than one entry carries.
+
+Split from `chitragupta/bib_reader.py` when issue 840's duplicate check
+took it past the 250-line ceiling. The seam is the question asked: these
+functions judge the *file* -- what bibtexparser dropped or returned
+twice -- and stdlib is enough for that, where `bib_reader` is about the
+entries it keeps and needs bibtexparser to have them at all.
+"""
+
+import re
+from collections import Counter
+
+# @comment/@string/@preamble are legitimate BibTeX constructs that never
+# show up in BibDatabase.entries (bibtexparser tracks them separately,
+# not as dropped entries) -- `bib_reader.read_library` parses with common_strings=True,
+# so a real export using any of these is plausible, and counting them as
+# "entries" would fire a false discrepancy warning on a perfectly good file.
+_NON_ENTRY_TYPES = {"comment", "string", "preamble"}
+# BibTeX allows either `@type{...}` or `@type(...)` -- bibtexparser
+# accepts both (PR #8 review) -- so a file using the paren form would be
+# under-counted by a brace-only pattern, which could hide a genuine drop
+# instead of just risking a false-positive warning on a good file.
+_ENTRY_START_RE = re.compile(r"^@(\w+)\s*[{(]", re.MULTILINE)
+
+
+def block_has_fields(body: str) -> bool:
+    """Whether an `@`-block's body carries anything past its citekey.
+
+    A Zotero export writes `@misc{key,\\n}` for an attachment saved with
+    no metadata, and bibtexparser drops it -- correctly, since there is
+    no title, author or year to lose. Counting it as an entry made the
+    dropped-entry warning below fire on every sync against a perfectly
+    healthy library (this project's own bibliography carries two such
+    stubs), and a guard that cries wolf is worse than none: the run it
+    needs to be believed on is the one where a real entry has unbalanced
+    braces. So the test drawn here is bibtexparser's own -- no field
+    means no entry -- and the two agree about what they are counting.
+
+    `body` runs from just past the opening delimiter to the start of the
+    next `@`-block, not to a matching close brace. That bound is the
+    whole point: a forward brace-matcher would, on the *unbalanced* entry
+    this warning exists to catch, run to end of file and swallow every
+    entry after it -- silencing the warning in exactly the case it is
+    for. One trailing `}`/`)` is stripped rather than matched, so a block
+    whose last field value ends in a brace (`title = {T}\\n}`) is not
+    mistaken for a contentless one.
+    """
+    body = body.rstrip()
+    if body.endswith(("}", ")")):
+        body = body[:-1].rstrip()
+    _, comma, fields = body.partition(",")
+    return bool(comma and fields.strip())
+
+
+def count_raw_entries(text: str) -> int:
+    """How many actual `@entrytype{...}`/`@entrytype(...)` blocks the raw
+    file text has, independent of whether bibtexparser managed to parse
+    each one.
+
+    bibtexparser (both BibTexParser.parse and the customization hook)
+    silently skips an entry it can't parse -- e.g. unbalanced braces --
+    with no exception and no entry in the returned BibDatabase, so
+    len(bib_database.entries) alone can't reveal a dropped entry.
+    Comparing against this raw count is the only way `read_library` can
+    tell "the file has exactly as many entries as it looks like" from
+    "some entries silently vanished."
+
+    Contentless stubs are excluded -- see `block_has_fields`. Every
+    match bounds the previous one, including the @comment/@string/
+    @preamble blocks filtered out afterwards: one of those sitting
+    between two entries still ends the first entry's body.
+    """
+    starts = list(_ENTRY_START_RE.finditer(text))
+    ends = [m.start() for m in starts[1:]] + [len(text)]
+    return sum(
+        1
+        for m, end in zip(starts, ends)
+        if m.group(1).lower() not in _NON_ENTRY_TYPES and block_has_fields(text[m.end() : end])
+    )
+
+
+# Issue 840. bibtexparser does not require unique keys: two `@entry`
+# blocks under one citekey both come back, and upserting both made the
+# later one overwrite the earlier's ledger row -- title, DOI, PDF -- with
+# nothing printed and exit 0. A hand-merged export, or two Better-BibTeX
+# libraries with clashing key patterns, produces this routinely. Every
+# entry under such a key is skipped rather than one picked, because
+# picking is guessing which paper the draft author meant by it; the key
+# is still reported as seen (`bib_reader.Library.seen_citekeys`), so the row it
+# already has is neither listed as stale nor pruned while it is fixed.
+def duplicated_citekeys(entries, bib_name: str) -> tuple[str, ...]:
+    """The citekeys more than one entry carries, in bib order, each warned."""
+    counts = Counter(entry["ID"] for entry in entries)
+    duplicated = tuple(key for key, count in counts.items() if count > 1)
+    for key in duplicated:
+        print(
+            f"  WARNING skipping citekey {key!r}: {counts[key]} entries in "
+            f"{bib_name} share it, so none of them is synced -- "
+            "this project never guesses which paper a citekey means. Give each "
+            "entry its own key in your reference manager, re-export, and re-run sync."
+        )
+    return duplicated

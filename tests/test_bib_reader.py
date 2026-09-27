@@ -3,7 +3,7 @@ the only place a citekey should ever originate from (AGENTS.md)."""
 
 import pytest
 
-from chitragupta import bib_reader
+from chitragupta import bib_integrity, bib_reader
 
 
 def write_bib(path, body):
@@ -173,7 +173,7 @@ class TestCountRawEntries:
   title = {Two},
 }
 """
-        assert bib_reader._count_raw_entries(text) == 2
+        assert bib_integrity.count_raw_entries(text) == 2
 
     def test_excludes_comment_string_and_preamble_blocks(self):
         text = """
@@ -187,11 +187,11 @@ class TestCountRawEntries:
   title = {Real Entry},
 }
 """
-        assert bib_reader._count_raw_entries(text) == 1
+        assert bib_integrity.count_raw_entries(text) == 1
 
     def test_entry_type_matching_is_case_insensitive(self):
         text = "@ARTICLE{shouty_2024,\n  title = {Shouty},\n}\n"
-        assert bib_reader._count_raw_entries(text) == 1
+        assert bib_integrity.count_raw_entries(text) == 1
 
     def test_counts_paren_delimited_entries_too(self):
         # Regression (PR #8 review): BibTeX allows `@type(...)` as well as
@@ -200,10 +200,10 @@ class TestCountRawEntries:
         # could hide a genuine drop instead of just risking a
         # false-positive on a good file.
         text = "@article(paren_2024,\n  title = {Paren Form},\n)\n"
-        assert bib_reader._count_raw_entries(text) == 1
+        assert bib_integrity.count_raw_entries(text) == 1
 
     def test_empty_text_counts_zero(self):
-        assert bib_reader._count_raw_entries("") == 0
+        assert bib_integrity.count_raw_entries("") == 0
 
 
 class TestContentlessStubsAreNotCounted:
@@ -218,24 +218,24 @@ class TestContentlessStubsAreNotCounted:
     """
 
     def test_a_contentless_misc_stub_is_not_counted(self):
-        assert bib_reader._count_raw_entries("@misc{stub_2024,\n}\n") == 0
+        assert bib_integrity.count_raw_entries("@misc{stub_2024,\n}\n") == 0
 
     def test_a_stub_with_no_comma_at_all_is_not_counted(self):
-        assert bib_reader._count_raw_entries("@misc{stub_2024}\n") == 0
+        assert bib_integrity.count_raw_entries("@misc{stub_2024}\n") == 0
 
     def test_a_stub_in_the_paren_form_is_not_counted(self):
-        assert bib_reader._count_raw_entries("@misc(stub_2024,\n)\n") == 0
+        assert bib_integrity.count_raw_entries("@misc(stub_2024,\n)\n") == 0
 
     def test_one_field_is_enough_to_count(self):
         """The bar is "has a field", not "has the fields sync wants" --
         anything stricter would start dropping entries bibtexparser
         keeps, and the two have to agree."""
-        assert bib_reader._count_raw_entries("@misc{thin_2024,\n  title = {T},\n}\n") == 1
+        assert bib_integrity.count_raw_entries("@misc{thin_2024,\n  title = {T},\n}\n") == 1
 
     def test_a_real_entry_whose_last_field_ends_in_a_brace_still_counts(self):
         # The close-delimiter strip takes exactly one character, so a
         # trailing `title = {T}` is not mistaken for the block's own end.
-        assert bib_reader._count_raw_entries("@article{k_2024,\n  title = {T}\n}\n") == 1
+        assert bib_integrity.count_raw_entries("@article{k_2024,\n  title = {T}\n}\n") == 1
 
     def test_a_stub_does_not_hide_an_unbalanced_entry_after_it(self):
         """The case the warning exists for, with the stub first.
@@ -249,7 +249,7 @@ class TestContentlessStubsAreNotCounted:
             "@article{bad_2024,\n  title = {Unclosed,\n  author = {A, One},\n\n"
             "@article{good_2024,\n  title = {Good},\n}\n"
         )
-        assert bib_reader._count_raw_entries(text) == 2
+        assert bib_integrity.count_raw_entries(text) == 2
 
     def test_a_stub_does_not_hide_an_unbalanced_entry_before_it(self):
         """The same file with the order reversed. Order-dependence is how
@@ -260,7 +260,7 @@ class TestContentlessStubsAreNotCounted:
             "@misc{stub_2024,\n}\n\n"
             "@article{good_2024,\n  title = {Good},\n}\n"
         )
-        assert bib_reader._count_raw_entries(text) == 2
+        assert bib_integrity.count_raw_entries(text) == 2
 
 
 class TestTheDroppedEntryWarningAndTheStub:
@@ -274,7 +274,7 @@ class TestTheDroppedEntryWarningAndTheStub:
 
     def test_a_contentless_stub_alone_raises_no_warning(self, isolated_config, capsys):
         write_bib(isolated_config.BIB_FILE_PATH, self._GOOD + "\n" + self._STUB)
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         out = capsys.readouterr().out
         assert [r.citekey for r in refs] == ["good_2024"]
         assert "WARNING" not in out
@@ -375,7 +375,7 @@ class TestReadLibrarySkipsUnusableCitekeys:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
 
         # The good entry survives: one bad citekey must not cost the run.
         assert [r.citekey for r in refs] == ["good_2024"]
@@ -398,8 +398,58 @@ class TestReadLibrarySkipsUnusableCitekeys:
 }
 """,
         )
-        assert bib_reader.read_library() == []
+        assert bib_reader.read_library().references == []
         assert "escape2024" in capsys.readouterr().out
+
+
+DUPLICATED_KEY_BIB = """
+@article{smith_example_2024,
+  title = {First Paper},
+  author = {Smith, Jane},
+  year = {2024},
+}
+@article{good_2024,
+  title = {Fine},
+  author = {Doe, John},
+  year = {2024},
+}
+@article{smith_example_2024,
+  title = {Second Paper},
+  author = {Smith, Jane},
+  year = {2024},
+}
+"""
+
+
+class TestReadLibraryRefusesDuplicatedCitekeys:
+    """Issue 840: bibtexparser returns both entries under one key, and the
+    later one used to overwrite the earlier's ledger row silently."""
+
+    def test_neither_entry_under_a_duplicated_key_is_returned(self, isolated_config, capsys):
+        write_bib(isolated_config.BIB_FILE_PATH, DUPLICATED_KEY_BIB)
+        library = bib_reader.read_library()
+
+        # Never pick one: the pipeline does not guess which paper a key means.
+        assert [r.citekey for r in library.references] == ["good_2024"]
+        assert library.duplicate_citekeys == ("smith_example_2024",)
+        out = capsys.readouterr().out
+        assert "smith_example_2024" in out
+        assert "2 entries" in out
+
+    def test_a_duplicated_key_still_counts_as_named_by_the_bib(self, isolated_config):
+        write_bib(isolated_config.BIB_FILE_PATH, DUPLICATED_KEY_BIB)
+        library = bib_reader.read_library()
+        assert library.seen_citekeys == {"smith_example_2024", "good_2024"}
+
+    def test_a_clean_bib_has_no_duplicates(self, isolated_config, capsys):
+        write_bib(
+            isolated_config.BIB_FILE_PATH,
+            "@article{good_2024,\n  title = {Fine},\n  author = {Doe, John},\n  year = {2024},\n}\n",
+        )
+        library = bib_reader.read_library()
+        assert library.duplicate_citekeys == ()
+        assert library.seen_citekeys == {"good_2024"}
+        assert "entries" not in capsys.readouterr().out
 
 
 class TestReadLibrary:
@@ -420,7 +470,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert len(refs) == 1
         ref = refs[0]
         assert ref.citekey == "smith_example_2024"
@@ -441,7 +491,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].authors == []
         assert refs[0].year == "n.d."
 
@@ -459,7 +509,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].pdf_path == str(pdf)
         assert refs[0].pdf_resolution == bib_reader.PDF_RESOLVED
 
@@ -474,7 +524,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].pdf_path is None
         assert refs[0].pdf_resolution == bib_reader.PDF_NO_FILE_FIELD
 
@@ -492,7 +542,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].pdf_path is None
         assert refs[0].pdf_resolution == bib_reader.PDF_NON_PDF_ATTACHMENT
 
@@ -510,7 +560,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].pdf_path is None
         assert refs[0].pdf_resolution == bib_reader.PDF_PATH_GONE
 
@@ -531,7 +581,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert {r.citekey for r in refs} == {"one_2024", "two_2024"}
 
     def test_no_warning_when_parsed_count_matches_raw_count(self, isolated_config, capsys):
@@ -551,7 +601,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         out = capsys.readouterr().out
         assert len(refs) == 2
         assert "WARNING" not in out
@@ -581,7 +631,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         out = capsys.readouterr().out
         assert len(refs) == 2
         assert "WARNING" not in out
@@ -607,7 +657,7 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         out = capsys.readouterr().out
         assert len(refs) == 1
         assert "WARNING: bibtexparser parsed 1 entries but" in out
@@ -625,5 +675,5 @@ class TestReadLibrary:
 }
 """,
         )
-        refs = bib_reader.read_library()
+        refs = bib_reader.read_library().references
         assert refs[0].authors == [("Hans", "Müller")]

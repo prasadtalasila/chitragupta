@@ -3,9 +3,10 @@ any parsing: which references still need work, and which ledger rows
 the bib file no longer accounts for.
 
 Split from `chitragupta/sync.py` (#441): both functions take the open
-ledger connection and the bib-parsed `references` list a caller already
-has, and neither calls back into `chitragupta.sync` -- `chitragupta/sync.py`
-calls these, not the reverse.
+ledger connection and what the bib read already yielded -- the parsed
+`references`, or the citekeys the bib file names -- and neither calls
+back into `chitragupta.sync` -- `chitragupta/sync.py` calls these, not
+the reverse.
 """
 
 from chitragupta import bib_reader, config, ledger, sync_residue
@@ -114,7 +115,7 @@ def _lost_pdf_reason(exc: OSError) -> str:
 
 
 def _report_stale(
-    con, references, remove_stale
+    con, seen_citekeys, remove_stale
 ) -> tuple[list[tuple[str, str | None]], list[tuple[str, str | None]], bool]:
     """Prune or report ledger rows the bib file no longer has.
 
@@ -132,11 +133,14 @@ def _report_stale(
     the deletion, not after, so the report describes the corpus the
     person is being asked about rather than the one already changed --
     and it repairs nothing, which is the whole of its contract.
+
+    `seen_citekeys` is `bib_reader.Library.seen_citekeys`, not the
+    references alone: a citekey two entries share is synced from neither,
+    but it is still in the bib file and must not read as stale (#840).
     """
     pruned: list[tuple[str, str | None]] = []
     stale: list[tuple[str, str | None]] = []
     suspicious = False
-    seen_citekeys = {r.citekey for r in references}
     if remove_stale:
         # Skipped when the bib yielded nothing: prune_missing's guard is
         # about to refuse and raise on exactly that shape, and a residue
