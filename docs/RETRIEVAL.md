@@ -108,6 +108,21 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
 
+**A document whose parsed file is missing is counted, not hidden.** A row
+the ledger calls `parsed` whose `.txt` is gone -- a `content/parsed/`
+restored from a partial backup, say -- is indexed on its title alone, and
+the CLI says how many there are, on stderr beside its other notes:
+
+```text
+  [note] 2 parsed source(s) have no parsed text on disk and were ranked
+  on their title alone; `python -m chitragupta.corpus sync` re-parses them.
+```
+
+The count comes from the same fingerprint that decides the cache, so a
+search served wholly from the cache still reports it. The parsed text is
+decoded with `errors="replace"`, the rule `sync` and the review aids use,
+so the text BM25 ranks and the text an aid quotes are the same text.
+
 ### 🎛 `k1` and `b` are settings, and the defaults were swept
 
 Okapi BM25 has two free parameters, and both sit under `[retrieval]` in

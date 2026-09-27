@@ -362,6 +362,34 @@ class TestUpsertReference:
 
         assert ledger.upsert_reference(ledger_con, ref) is False
 
+    @pytest.mark.parametrize("parser", ["docling", "pdftotext"])
+    @pytest.mark.parametrize(
+        "torn",
+        [
+            b'[{"text": "A sentence", "pa',  # killed mid-record
+            '[{"text": "café"}]'.encode()[:-5],  # split multi-byte char
+            b'{"text": "not a list"}',  # parses, but not what was written
+        ],
+    )
+    def test_an_unreadable_sidecar_needs_reparse(
+        self, ledger_con, monkeypatch, tmp_path, parser, torn
+    ):
+        """Issue 844: a sidecar torn by a killed write read as "no
+        passages" forever -- `.exists()` was all this checked. Under
+        either parser, since a re-parse clears the sidecar first and so
+        heals it whichever backend runs."""
+        monkeypatch.setattr(config, "PARSER", parser)
+        pdf = tmp_path / "paper.pdf"
+        pdf.write_bytes(b"same content")
+        ref = make_reference(pdf_path=str(pdf))
+        ledger.upsert_reference(ledger_con, ref)
+        parsed = parsed_file("parsed")
+        parsed.write_text("parsed text")
+        ledger.mark_parsed(ledger_con, ref.citekey, parsed)
+        passages.sidecar_path(ref.citekey).write_bytes(torn)
+
+        assert ledger.upsert_reference(ledger_con, ref) is True
+
     def test_changed_pdf_hash_needs_reparse(self, ledger_con, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"version 1")

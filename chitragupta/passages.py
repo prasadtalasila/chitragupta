@@ -44,7 +44,10 @@ definition both producers share (`chitragupta/pdf_text.py` in the corpus
 layer and `chitragupta/enrich/docling_parse.py` in the enrichment
 layer). The reason it is reachable *through this module* is unchanged:
 this module is the sidecar's reader, and writer and reader drift apart
-the moment they stop being found in one place.
+the moment they stop being found in one place. The sidecar *file* --
+its path, its atomic write, and whether it can be read at all -- is
+re-exported the same way from `chitragupta/_passage_sidecar.py`, split
+out when issue 844 needed room here.
 
 Extracted from chitragupta/review/citation_provenance.py, which owned this ladder when
 it was the only consumer, and kept as its own seam for a second one that
@@ -54,13 +57,13 @@ drafting agent as evidence is under exactly the same constraint as a
 passage shown to a reviewer, and the two should not answer "what does
 this source say here?" from different text -- but today they do.
 
-Stdlib only (sqlite3/json/subprocess), like citation_gate.py and
-references.py -- runs with bare `python`, no venv. The `re` that used to
-be in that list left with the stopword vocabulary; see
-`chitragupta/_passage_words.py`, whose `distinctive` is re-exported here.
+Stdlib only (sqlite3/subprocess, and json via the sidecar module), like
+citation_gate.py and references.py -- runs with bare `python`, no venv.
+The `re` that used to be in that list left with the stopword vocabulary;
+see `chitragupta/_passage_words.py`, whose `distinctive` is re-exported
+here.
 """
 
-import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -69,12 +72,21 @@ from typing import Any
 from chitragupta import config
 from chitragupta.citekey_safety import citekey_problem
 
-# Re-exported so `passages.distinctive`, `passages.passage_records` and
-# `passages.PASSAGE_LABELS` keep resolving for every existing caller --
-# see chitragupta/_passage_words.py and chitragupta/_passage_records.py
+# Re-exported so `passages.distinctive`, `passages.passage_records`,
+# `passages.PASSAGE_LABELS` and the sidecar-file functions keep resolving
+# for every existing caller -- see chitragupta/_passage_words.py,
+# chitragupta/_passage_records.py and chitragupta/_passage_sidecar.py
 # for why each moved out. `__all__` names them so the imports are not
 # read as unused.
 from chitragupta._passage_records import PASSAGE_LABELS, passage_records
+from chitragupta._passage_sidecar import (
+    SidecarUnreadable,
+    clear_sidecar,
+    read_records,
+    sidecar_path,
+    sidecar_state,
+    write_sidecar,
+)
 from chitragupta._passage_words import distinctive
 
 __all__ = [
@@ -85,6 +97,7 @@ __all__ = [
     "distinctive",
     "passage_records",
     "sidecar_path",
+    "sidecar_state",
     "source_passages",
     "write_sidecar",
 ]
@@ -104,40 +117,6 @@ class Passage:
     @property
     def quotable(self) -> bool:
         return self.text is not None
-
-
-def sidecar_path(citekey: str) -> Path:
-    """The corpus layer's passage sidecar for `citekey` (rung 2).
-
-    Built from the citekey in one place, so the writer in
-    `chitragupta/pdf_text.py` and the reader below cannot drift apart. The
-    enrichment layer's own sidecar (rung 1) is *not* this path -- it lives
-    under `config.DOCLING_DIR`, written by that layer's own parse under
-    its own OCR and figure settings, so the two must not share a file
-    even though they now key on the same string.
-    """
-    return config.PARSED_DIR / f"{citekey}.passages.json"
-
-
-def write_sidecar(citekey: str, records: list[dict]) -> Path:
-    path = sidecar_path(citekey)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(records, indent=2), encoding="utf-8")
-    return path
-
-
-def clear_sidecar(citekey: str) -> None:
-    """Drop any corpus-layer sidecar for `citekey`.
-
-    Called before every re-parse rather than after a failed one. A
-    sidecar quotes the PDF *as parsed at the time it was written*, so it
-    outlives its own truth in three ways: the backend changes to one that
-    produces no passages, the parse of an edited PDF fails outright, or
-    the same backend re-runs and produces different text. Removing it up
-    front makes all three land on "no sidecar" instead of "last week's
-    sentences, attributed to today's document".
-    """
-    sidecar_path(citekey).unlink(missing_ok=True)
 
 
 def _page_number(raw) -> int | None:
@@ -168,15 +147,14 @@ def _ledger_row(con, citekey: str) -> Any:
 
 def _from_sidecar(path: Path) -> list[Passage] | None:
     try:
-        records = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-        # UnicodeDecodeError alongside the other two: a sidecar truncated
-        # mid-write by a killed process can split a multi-byte character,
-        # which fails to decode before json ever sees it. Falling back to
-        # page-level costs a re-parse at worst; raising would take down a
-        # whole report over one damaged file.
+        records = read_records(path)
+    except SidecarUnreadable:
+        # Falling back to page-level costs nothing lasting: `sync` asks
+        # `sidecar_state` the same question and re-parses a document
+        # whose sidecar is unreadable (issue 844). Raising would take
+        # down a whole report over one damaged file.
         return None
-    if not isinstance(records, list) or not records:
+    if not records:
         return None
     found = []
     for rec in records:

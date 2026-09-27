@@ -2075,6 +2075,28 @@ class TestFailureReporting:
             f"doc_{i}_2024" for i in range(6) if i != 3
         }
 
+    def test_a_torn_sidecar_is_repaired_by_the_next_sync(self, many_corpus, monkeypatch, capsys):
+        """Issue 844: a sidecar cut short by a killed write used to pass
+        `sync`'s `.exists()` check, so the document kept no passages --
+        and an indexed bibliography -- for good. The real extract_text
+        runs, with only the backend faked."""
+
+        def extractor(pdf_path, out_path, threads=None):
+            out_path.write_text(f"extracted text for {out_path.stem}")
+            return [{"text": "A reading-ordered paragraph.", "label": "text", "page": 1}]
+
+        monkeypatch.setitem(pdf_text._EXTRACTORS, "pdftotext", extractor)
+        monkeypatch.setattr(config, "PARSER_WORKERS", 1)
+        assert sync.run() == 0
+        capsys.readouterr()
+        sidecar = passages.sidecar_path("doc_3_2024")
+        sidecar.write_bytes(sidecar.read_bytes()[:20])
+
+        assert sync.run() == 0
+        assert "1 parsed" in capsys.readouterr().out
+        assert passages.sidecar_state(sidecar) == "ok"
+        assert passages.corpus_passages("doc_3_2024")[0].text == "A reading-ordered paragraph."
+
     def test_the_summary_separates_the_two_kinds(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})

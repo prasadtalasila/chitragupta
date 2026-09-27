@@ -31,7 +31,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from chitragupta import ledger, retrieval_expansion, retrieval_iterative
+from chitragupta import ledger, retrieval_cache, retrieval_expansion, retrieval_iterative
 from chitragupta.retrieval import (
     SearchResult,
     _full_text,
@@ -219,6 +219,7 @@ def _run_search(args) -> tuple[int, int]:
             )
     else:
         found = search(args.query, k=args.k, snippet_chars=args.chars, collection=args.collection)
+    retrieval_cache.note_missing_parsed()
     if not found:
         print("No results.")
     chars = _print_results(found)
