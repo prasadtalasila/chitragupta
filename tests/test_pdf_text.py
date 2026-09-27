@@ -377,6 +377,31 @@ class TestAWriteFailureIsTransient:
             pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
         assert caught.value.transient is True
 
+    def test_preparing_the_output_directory(
+        self, isolated_config, fake_docling, tmp_path, monkeypatch
+    ):
+        def denied(citekey):
+            raise PermissionError(13, "Permission denied")
+
+        monkeypatch.setattr(passages, "clear_sidecar", denied)
+        with pytest.raises(pdf_text.ExtractionError, match="Permission denied") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert caught.value.transient is True
+
+    def test_an_oserror_outside_a_write_is_not_reworded_as_one(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        """The guard is on the writes, not the whole parse: an OSError from
+        anything else keeps its own type rather than claiming a write."""
+
+        def extractor(pdf_path, out_path, threads=None):
+            raise FileNotFoundError(2, "No such file or directory", "pdftotext")
+
+        monkeypatch.setitem(pdf_text._EXTRACTORS, "pdftotext", extractor)
+        monkeypatch.setattr(pdf_text, "is_available", lambda: True)
+        with pytest.raises(FileNotFoundError):
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+
     def test_a_backend_failure_is_still_not_transient(
         self, isolated_config, fake_docling, tmp_path
     ):

@@ -16,6 +16,7 @@ from chitragupta import (
     config,
     ledger,
     ledger_upsert,
+    passages,
     pdf_text,
     runlock,
     sync,
@@ -2043,11 +2044,18 @@ class TestFailureReporting:
         The real extract_text runs here, with only the backend faked."""
 
         def extractor(pdf_path, out_path, threads=None):
-            if out_path.stem == "doc_3_2024":
-                raise OSError(28, "No space left on device")
             out_path.write_text(f"extracted text for {out_path.stem}")
+            return []  # a reading-order backend, so the sidecar is written
+
+        real_write_sidecar = passages.write_sidecar
+
+        def write_sidecar(citekey, records):
+            if citekey == "doc_3_2024":
+                raise OSError(28, "No space left on device")
+            return real_write_sidecar(citekey, records)
 
         monkeypatch.setitem(pdf_text._EXTRACTORS, "pdftotext", extractor)
+        monkeypatch.setattr(passages, "write_sidecar", write_sidecar)
         monkeypatch.setattr(config, "PARSER_WORKERS", workers)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
         monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)

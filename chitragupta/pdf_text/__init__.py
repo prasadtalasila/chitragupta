@@ -58,6 +58,19 @@ class ExtractionError(RuntimeError):
     """The backend ran but failed on this particular PDF."""
 
 
+def write_failed(citekey: str, exc: OSError) -> ExtractionError:
+    """A transient ExtractionError for an OSError writing `citekey`'s output.
+
+    Disk full or a permission denied is the machine, not the PDF (#842).
+    Raised bare, the OSError escaped both parse paths -- which catch
+    ExtractionError -- and aborted sync, discarding every other
+    document's result; marked transient, it is recorded and retried.
+    """
+    error = ExtractionError(f"could not write the parsed output for {citekey}: {exc}")
+    error.transient = True
+    return error
+
+
 _INSTALL_HINT = {
     "pdftotext": (
         "'pdftotext' not found on PATH. Install poppler-utils "
@@ -266,33 +279,30 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
         raise exc_cls(unavailable_reason())
 
     out_path = config.PARSED_DIR / f"{citekey}.txt"
-    # An OSError here is the disk or its permissions failing this write
-    # (#842), not the PDF: raised bare, it escaped both parse paths --
-    # which catch ExtractionError -- and aborted sync, discarding every
-    # other document's result. Transient, so the next run retries it.
-    # docling's conversion errors never reach this guard: the backend
-    # has already turned them into ExtractionError.
+    # Each disk write is guarded where it happens -- here, and around the
+    # docling backend's own .txt write -- rather than around the whole
+    # parse, so an OSError from anything else is not misreported as one.
     try:
         config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
         passages.clear_sidecar(citekey)
-        # Annotated here rather than in extract_one, so the serial path --
-        # which runs in the parent and never reaches a pool worker -- is
-        # covered by the same code as the parallel one.
-        with annotated_output(citekey):
-            records = _EXTRACTORS[config.PARSER](pdf_path, out_path, threads)
-        # `is not None`, so a backend that resolved reading order and found
-        # no prose still writes an (empty) sidecar. That keeps the file's
-        # presence a reliable answer to "did a reading-order backend parse
-        # this?" -- which is what chitragupta/ledger.py checks before
-        # skipping a document it believes is already parsed. The ladder is
-        # unaffected: it declines an empty sidecar and falls to the
-        # page-level rung.
-        if records is not None:
-            passages.write_sidecar(citekey, records)
     except OSError as exc:
-        error = ExtractionError(f"could not write the parsed output for {citekey}: {exc}")
-        error.transient = True
-        raise error from exc
+        raise write_failed(citekey, exc) from exc
+    # Annotated here rather than in extract_one, so the serial path --
+    # which runs in the parent and never reaches a pool worker -- is
+    # covered by the same code as the parallel one.
+    with annotated_output(citekey):
+        records = _EXTRACTORS[config.PARSER](pdf_path, out_path, threads)
+    # `is not None`, so a backend that resolved reading order and found no
+    # prose still writes an (empty) sidecar. That keeps the file's
+    # presence a reliable answer to "did a reading-order backend parse
+    # this?" -- which is what chitragupta/ledger.py checks before skipping a
+    # document it believes is already parsed. The ladder is unaffected: it
+    # declines an empty sidecar and falls to the page-level rung.
+    if records is not None:
+        try:
+            passages.write_sidecar(citekey, records)
+        except OSError as exc:
+            raise write_failed(citekey, exc) from exc
     return out_path
 
 
