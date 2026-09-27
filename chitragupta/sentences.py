@@ -11,6 +11,12 @@ would quote one span back to a reviewer and the overlap scan would
 report a finding over a different one, on the same draft, from the same
 prose. So this is the definition, and both import it.
 
+Other callers have joined since, on the same reasoning: the uncited-prose
+aid, the registry, and the topic overview's verbatim snippets
+(`chitragupta/discover/_overview.py`). The overview had kept a second,
+bare `(?<=[.!?])\\s+` rule until #895, and so still cut "Smith et al.
+(2020) found" in two after #835 had fixed it here.
+
 Stdlib only (`re`), like citation_gate.py, references.py and
 passages.py -- it is imported by a module that must run under a bare
 `python` (provenance) *and* by one that only runs where the optional
