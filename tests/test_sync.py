@@ -2034,6 +2034,39 @@ class TestFailureReporting:
         assert sync.run() == 0
         assert "6 parsed" in capsys.readouterr().out
 
+    @pytest.mark.parametrize("workers", [1, 4])
+    def test_one_documents_write_failure_keeps_the_rest_of_the_batch(
+        self, many_corpus, monkeypatch, capsys, workers
+    ):
+        """#842: an OSError writing one document's output used to escape
+        both parse paths and abort sync, discarding every other result.
+        The real extract_text runs here, with only the backend faked."""
+
+        def extractor(pdf_path, out_path, threads=None):
+            if out_path.stem == "doc_3_2024":
+                raise OSError(28, "No space left on device")
+            out_path.write_text(f"extracted text for {out_path.stem}")
+
+        monkeypatch.setitem(pdf_text._EXTRACTORS, "pdftotext", extractor)
+        monkeypatch.setattr(config, "PARSER_WORKERS", workers)
+        monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
+        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+
+        assert sync.run() == 1
+        out = capsys.readouterr().out
+        assert "5 parsed" in out
+        assert "will be retried next run" in out
+        con = ledger.connect()
+        try:
+            rows = {r["citekey"]: r for r in ledger.all_items(con)}
+        finally:
+            con.close()
+        assert rows["doc_3_2024"]["status"] == "parse_failed"
+        assert rows["doc_3_2024"]["failure_kind"] == "transient"
+        assert {k for k, r in rows.items() if r["status"] == "parsed"} == {
+            f"doc_{i}_2024" for i in range(6) if i != 3
+        }
+
     def test_the_summary_separates_the_two_kinds(self, basic_corpus, monkeypatch, capsys):
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"doe_broken_2023"})
