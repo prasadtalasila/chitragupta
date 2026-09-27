@@ -11,10 +11,9 @@ papers' parsed text with their citekeys attached. Nothing here is
 paraphrased.
 """
 
-import re
 from typing import Any
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, sentences
 from chitragupta.discover import _data
 
 # How many verbatim sentences the overview quotes, and the length band a
@@ -22,8 +21,6 @@ from chitragupta.discover import _data
 # dominate, above it block quotes stop being quotable.
 SNIPPET_COUNT = 5
 _SENTENCE_BOUNDS = (40, 400)
-
-_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+")
 
 
 def _load_model() -> "Any":
@@ -57,12 +54,17 @@ def _parsed_texts(citekeys: list) -> dict:
 
 
 def _candidate_sentences(texts: dict) -> list:
+    """Every member sentence inside `_SENTENCE_BOUNDS`, split by
+    `chitragupta/sentences.py`'s rule rather than one of this module's
+    own (#895): a second regex here lacked its citation-abbreviation
+    guards and cut "Smith et al. (2020) found" into a bare "Smith et
+    al." and a subjectless claim."""
     low, high = _SENTENCE_BOUNDS
     return [
-        (citekey, sentence.strip())
+        (citekey, sentence)
         for citekey, text in sorted(texts.items())
-        for sentence in _SENTENCE_SPLIT.split(text)
-        if low <= len(sentence.strip()) <= high
+        for sentence in sentences.split(text)
+        if low <= len(sentence) <= high
     ]
 
 

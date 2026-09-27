@@ -516,6 +516,65 @@ class TestOverviewFile:
         assert "The opening sentence of p1 runs long enough to quote." in text
         assert "`p1`" in text
 
+    def test_a_citation_abbreviation_does_not_cut_a_snippet(
+        self, isolated_config, tmp_path, monkeypatch
+    ):
+        """The #835 reproduction through the overview path (#895): the
+        overview's own splitter broke after "al." before "(2020)", so a
+        snippet could be a bare "Smith et al." and the next a claim with
+        no subject. Lengthened past `_SENTENCE_BOUNDS`' floor so both
+        sentences are quotable at all."""
+        from chitragupta.discover import _overview
+
+        prepare(isolated_config)
+        first = "Smith et al. (2020) found X in every twin they measured."
+        second = "As Dr. Jones vs. Brown noted, Y holds for p1 too."
+        (isolated_config.CONTENT_DIR / "parsed" / "p1.txt").write_text(
+            f"{first} {second}", encoding="utf-8"
+        )
+
+        class SnippetModel:
+            def encode(self, texts, show_progress_bar=False):
+                return [[1.0, 0.0] for _ in texts]
+
+        monkeypatch.setattr(_overview, "_load_model", lambda: SnippetModel())
+        out = tmp_path / "overview.md"
+        assert discover.main(["digital twin", "--out", str(out)]) == 0
+        quoted = [
+            line[2:]
+            for line in out.read_text(encoding="utf-8").splitlines()
+            if line.startswith("> ")
+        ]
+        assert first in quoted
+        assert second in quoted
+        assert not any(line.endswith((" al.", " Dr.", " vs.")) for line in quoted)
+
+    def test_candidates_use_the_shared_sentence_rule(self):
+        """One sentence-splitting rule in the package: the overview's
+        candidates are exactly `sentences.split`'s, length-filtered."""
+        from chitragupta import sentences
+        from chitragupta.discover import _overview
+
+        text = (
+            "\n  Smith et al. (2020) found X in every twin they measured. "
+            "Short one. As Dr. Jones vs. Brown noted, Y holds in practice.\n"
+        )
+        low, high = _overview._SENTENCE_BOUNDS
+        expected = [s for s in sentences.split(text) if low <= len(s) <= high]
+        assert _overview._candidate_sentences({"k": text}) == [("k", s) for s in expected]
+        assert len(expected) == 2
+
+    def test_the_835_reproduction_verbatim_does_not_fragment(self, monkeypatch):
+        """The literal #835 string, with the length floor lowered so no
+        fragment is hidden by it. It comes back whole, exactly as
+        `tests/test_sentences.py` pins for the shared rule: "X." reads as
+        a lone initial. The old overview rule cut it into four."""
+        from chitragupta.discover import _overview
+
+        monkeypatch.setattr(_overview, "_SENTENCE_BOUNDS", (1, 400))
+        text = "Smith et al. (2020) found X. As Dr. Jones vs. Brown noted, Y."
+        assert _overview._candidate_sentences({"k": text}) == [("k", text)]
+
     def test_a_topic_with_no_parsed_text_says_so(self, isolated_config, tmp_path, monkeypatch):
         """Members whose parse never happened leave nothing quotable; the
         overview names that instead of quietly omitting the section."""
