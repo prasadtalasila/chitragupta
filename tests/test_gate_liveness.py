@@ -35,11 +35,29 @@ def as_hook(monkeypatch, paths):
     monkeypatch.delenv(gate_liveness.GATE_CALLER_ENV)
 
 
+def records(cfg):
+    return sorted((cfg.CONTENT_DIR / gate_liveness.RECORD_DIR).iterdir())
+
+
 def test_a_hook_call_records_the_draft(isolated_config, monkeypatch):
     draft = draft_in(isolated_config)
     as_hook(monkeypatch, [draft])
-    seen = json.loads((isolated_config.CONTENT_DIR / ".gate-seen.json").read_text("utf-8"))
-    assert list(seen) == ["drafts/a.md"]
+    (record,) = records(isolated_config)
+    assert record.name == gate_liveness._record_name("drafts/a.md")
+    assert record.read_text("utf-8") == gate_liveness._digest(str(draft))
+
+
+def test_two_hooks_on_different_drafts_keep_both_records(isolated_config, monkeypatch, capsys):
+    # The race one shared file had: parallel subagents writing two drafts
+    # at once, each hook reading and rewriting the record, one lost.
+    configure(isolated_config.CONTENT_DIR.parent)
+    first = draft_in(isolated_config)
+    second = content_draft(isolated_config, "drafts/b.md")
+    second.write_text("y\n", encoding="utf-8")
+    as_hook(monkeypatch, [first])
+    as_hook(monkeypatch, [second])
+    gate_liveness.observe([str(first), str(second)])
+    assert capsys.readouterr().err == ""
 
 
 def test_a_hook_call_prints_nothing(isolated_config, monkeypatch, capsys):
@@ -84,11 +102,16 @@ def test_a_project_with_no_harness_configured_is_quiet(isolated_config, capsys):
     assert capsys.readouterr().err == ""
 
 
-@pytest.mark.parametrize("record", ["{not json", "[1, 2]"])
-def test_a_corrupt_record_is_treated_as_empty(isolated_config, capsys, record):
+def test_a_stale_record_is_treated_as_unseen(isolated_config, capsys):
     configure(isolated_config.CONTENT_DIR.parent)
-    draft = draft_in(isolated_config)  # creates CONTENT_DIR too
-    (isolated_config.CONTENT_DIR / ".gate-seen.json").write_text(record, encoding="utf-8")
+    draft = draft_in(isolated_config)
+    record = (
+        isolated_config.CONTENT_DIR
+        / gate_liveness.RECORD_DIR
+        / gate_liveness._record_name("drafts/a.md")
+    )
+    record.parent.mkdir(parents=True)
+    record.write_text("not the digest of this text", encoding="utf-8")
     gate_liveness.observe([str(draft)])
     assert "no automatic gate has checked" in capsys.readouterr().err
 
@@ -111,7 +134,8 @@ def test_a_path_outside_content_is_keyed_by_its_full_path(isolated_config, tmp_p
 
 def test_a_record_that_cannot_be_written_never_fails_the_gate(isolated_config, monkeypatch):
     draft = draft_in(isolated_config)
-    (isolated_config.CONTENT_DIR / ".gate-seen.json").mkdir()  # a directory: write fails
+    # A plain file where the record directory should be: every write fails.
+    (isolated_config.CONTENT_DIR / gate_liveness.RECORD_DIR).write_text("", encoding="utf-8")
     as_hook(monkeypatch, [draft])  # raises nothing
 
 

@@ -17,9 +17,13 @@ hand-run gate is the one place both can be seen from:
   unfired gate looks exactly like one that passed.
 
 For the second, the gate hook sets `CHITRAGUPTA_GATE_CALLER=hook` and the
-gate records what it checked in `content/.gate-seen.json`; a later run by
+gate records what it checked under `content/.gate-seen/`; a later run by
 hand compares each draft's current text with that record and warns about
-a draft no hook has seen since it last changed. Only in a project with a
+a draft no hook has seen since it last changed. One small file per draft,
+named by a hash of the draft's path and holding a hash of its text, so
+two hooks gating different drafts at once -- parallel subagents writing
+sections -- never read and rewrite the same file and lose each other's
+record. Only in a project with a
 harness configured -- a launcher config or the OpenCode plugin next to
 `content/` -- since elsewhere no hook was ever expected to fire.
 
@@ -29,7 +33,6 @@ hides only this warning. Standard library only, like the gate.
 """
 
 import hashlib
-import json
 import os
 import sys
 from pathlib import Path
@@ -38,7 +41,7 @@ from chitragupta import config, hook_launchers, launcher_configs
 
 GATE_CALLER_ENV = "CHITRAGUPTA_GATE_CALLER"
 PLUGIN = ".opencode/plugins/chitragupta-gate.js"
-RECORD = ".gate-seen.json"
+RECORD_DIR = ".gate-seen"
 DEAD_LAUNCHER = (
     "WARNING: {fault} This gate ran because something invoked it, but it is "
     "no longer running automatically after every write to a draft -- see "
@@ -56,10 +59,11 @@ UNSEEN = (
 def observe(paths: list[str]) -> None:
     """Record `paths` when a hook is the caller; otherwise warn about what it missed."""
     current = {_key(p): _digest(p) for p in paths}
-    record_path = config.CONTENT_DIR / RECORD
-    seen = _read(record_path)
+    records = config.CONTENT_DIR / RECORD_DIR
     if os.environ.get(GATE_CALLER_ENV) == "hook":
-        _write(record_path, {**seen, **{k: v for k, v in current.items() if v is not None}})
+        for key, digest in current.items():
+            if digest is not None:
+                _write(records / _record_name(key), digest)
         return
     # The project this command runs in, found the way hook_launchers has
     # always found it, so a dead launcher is reported exactly where it was.
@@ -68,7 +72,7 @@ def observe(paths: list[str]) -> None:
     if not _harness_configured(config.CONTENT_DIR.parent):
         return
     for key, digest in current.items():
-        if digest is not None and seen.get(key) != digest:
+        if digest is not None and _read(records / _record_name(key)) != digest:
             print(UNSEEN.format(path=key), file=sys.stderr)
 
 
@@ -76,17 +80,21 @@ def _harness_configured(root: Path) -> bool:
     return bool(launcher_configs.present(root)) or (root / PLUGIN).is_file()
 
 
-def _read(path: Path) -> dict:
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}  # missing or corrupt: as if no hook had ever fired
-    return data if isinstance(data, dict) else {}
+def _record_name(key: str) -> str:
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()
 
 
-def _write(path: Path, data: dict) -> None:
+def _read(path: Path) -> "str | None":
     try:
-        path.write_text(json.dumps(data, indent=0, sort_keys=True), encoding="utf-8")
+        return path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None  # missing or unreadable: as if no hook had ever fired
+
+
+def _write(path: Path, digest: str) -> None:
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(digest, encoding="utf-8")
     except OSError:
         # A record that cannot be written costs only a spurious warning on
         # the next hand run; it must never fail the gate the hook is running.

@@ -2270,6 +2270,13 @@ Recorded while building Tasks 1-9, 2026-09-29.
   The first is where `hook_launchers` always looked; the second keeps a
   test whose `CONTENT_DIR` is a temporary directory from seeing this
   checkout's own launchers.
+- **One liveness record per draft, not one shared JSON file.** The code
+  blocks in Task 6 above show `content/.gate-seen.json`; what was built
+  is `content/.gate-seen/<hash of the draft's path>`, holding a hash of
+  the text. A shared file is read and rewritten by every gate hook, so
+  two hooks gating different drafts at once -- parallel subagents writing
+  sections -- could lose one record and raise a false warning. Found in
+  the OpenCodeReview pass.
 - **The `doctor` check reports `[launcher]` lines**, and one `[ok]` line
   when every launcher it found can start.
 - **The skills scan also forbids a backticked `general-purpose`**, the
