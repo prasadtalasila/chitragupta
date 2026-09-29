@@ -409,27 +409,28 @@ class TestCitationGateHookModule:
 class TestLauncherFaults:
     """`session_start_hook.launcher_faults()`, which is now a delegation.
 
-    The cases live in `tests/test_hook_launchers.py`, beside the code that
-    moved to `chitragupta/hook_launchers.py` (#197). What is left to check here is
+    The cases live in `tests/test_hook_launchers.py` and
+    `tests/test_launcher_configs.py`, beside the code that moved to
+    `chitragupta/` (#197, #812). What is left to check here is
     the seam: that the preflight passes *its own* repo root -- the one it
     derived from the hook file's on-disk location, not the one baked into
     the module default -- and reports what comes back as a fault.
     """
 
-    def test_the_settings_file_read_is_the_hooks_own_root(self, preflight, tmp_path, monkeypatch):
+    def test_the_configs_read_are_under_the_hooks_own_root(self, preflight, tmp_path, monkeypatch):
         monkeypatch.setattr(preflight, "REPO", tmp_path)
         seen = []
         monkeypatch.setattr(
-            preflight.hook_launchers, "faults", lambda path: seen.append(path) or ["a fault"]
+            preflight.launcher_configs, "faults", lambda root: seen.append(root) or ["a fault"]
         )
         assert preflight.launcher_faults() == ["a fault"]
-        assert seen == [tmp_path / ".claude" / "settings.json"]
+        assert seen == [tmp_path]
 
     def test_a_fault_is_reported_as_broken(self, preflight, monkeypatch, capsys):
         monkeypatch.setattr(
-            preflight.hook_launchers,
+            preflight.launcher_configs,
             "faults",
-            lambda path: ["`python` is not on PATH, so a hook cannot start."],
+            lambda root: ["`python` is not on PATH, so a hook cannot start."],
         )
         monkeypatch.setattr(preflight, "gate_is_live", lambda: True)
         monkeypatch.setattr(preflight, "corpus_stage", lambda: None)

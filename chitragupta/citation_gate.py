@@ -36,7 +36,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import _code_regions, config, hook_launchers, ledger
+from chitragupta import _code_regions, config, gate_liveness, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -398,21 +398,11 @@ def report(label: str, result: GateResult) -> None:
 
 
 def run(paths: list[str]) -> int:
-    # Said here because here is the only place it can be said. The hook
-    # that runs this gate after every write cannot report its own failure
-    # to start, and neither can the session preflight written to report it
-    # -- that hook is launched by the same interpreter name (#197). This
-    # command runs on an interpreter that has demonstrably started, so it
-    # is the one caller in the chain whose warning survives the launcher
-    # being dead. When the hook is what invoked this, the launcher plainly
-    # resolved and nothing is printed.
-    for fault in hook_launchers.faults():
-        print(
-            f"WARNING: {fault} This gate ran because something invoked it, but "
-            "it is no longer running automatically after every write to a "
-            "draft -- see docs/HOOKS.md.",
-            file=sys.stderr,
-        )
+    # Said here because here is the only place it can be said: whether the
+    # automatic gate is running at all -- a dead launcher, or a hook that
+    # never fired on a draft (gate_liveness.py). When a hook is what
+    # invoked this, it records instead, and nothing is printed.
+    gate_liveness.observe(paths)
 
     # No ledger is not a reason to stop: it fails closed exactly as an
     # empty one does, since every citekey is then unknown, and a

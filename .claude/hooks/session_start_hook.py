@@ -69,22 +69,23 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # the root's own package the one available -- does this line supply it.
 # The hook's *children* are the other half, and `safe_path` decides those.
 sys.path.append(str(REPO))
-from chitragupta import hook_launchers  # noqa: E402  pylint: disable=wrong-import-position
+from chitragupta import launcher_configs  # noqa: E402  pylint: disable=wrong-import-position
 
 FABRICATED = "preflight_probe_not_a_real_citekey"
 
 
 def launcher_faults() -> list[str]:
-    """Registered hook commands that cannot start, read from settings.json.
+    """Registered hook commands that cannot start, from every harness's config.
 
     The check itself is `chitragupta/hook_launchers.py`, shared with
     `python -m chitragupta.draft gate` -- see this module's docstring for why one
-    reporter is not enough. The settings path is passed rather than looked
-    up there so that this hook keeps deriving the repository root from its
-    own on-disk location, which is what lets a test point it at a
-    throwaway tree.
+    reporter is not enough -- run over each config `launcher_configs` knows
+    (Claude Code's settings.json, Codex's hooks.json; #812). The root is
+    passed rather than looked up there so that this hook keeps deriving the
+    repository root from its own on-disk location, which is what lets a
+    test point it at a throwaway tree.
     """
-    return hook_launchers.faults(REPO / ".claude" / "settings.json")
+    return launcher_configs.faults(REPO)
 
 
 def gate_is_live() -> bool:

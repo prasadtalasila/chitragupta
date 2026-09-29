@@ -655,9 +655,11 @@ class TestDeadLauncherWarning:
         self, isolated_config, monkeypatch, capsys
     ):
         monkeypatch.setattr(
-            citation_gate.hook_launchers,
+            citation_gate.gate_liveness.launcher_configs,
             "faults",
-            lambda: ["`python` is not on PATH, so a hook cannot start."],
+            lambda root: [
+                ".claude/settings.json: `python` is not on PATH, so a hook cannot start."
+            ],
         )
         rc = citation_gate.run([self.draft(isolated_config)])
         captured = capsys.readouterr()
@@ -669,7 +671,7 @@ class TestDeadLauncherWarning:
         assert "WARNING" not in captured.out, "the verdict stream stays the verdict"
 
     def test_a_sound_launcher_says_nothing(self, isolated_config, monkeypatch, capsys):
-        monkeypatch.setattr(citation_gate.hook_launchers, "faults", list)
+        monkeypatch.setattr(citation_gate.gate_liveness.launcher_configs, "faults", lambda root: [])
         assert citation_gate.run([self.draft(isolated_config)]) == 0
         assert capsys.readouterr().err == ""
 

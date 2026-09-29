@@ -94,3 +94,51 @@ class TestLauncherContract:
             if "${CLAUDE_PROJECT_DIR}" in arg:
                 target = Path(arg.replace("${CLAUDE_PROJECT_DIR}", str(REPO_ROOT)))
                 assert target.is_file(), f"{arg} does not resolve to a file"
+
+
+CODEX = REPO_ROOT / ".codex" / "hooks.json"
+
+
+def codex_hooks() -> list[tuple[str, str, dict]]:
+    """Every hook entry in the live `.codex/hooks.json`, with its matcher (#812)."""
+    events = json.loads(CODEX.read_text(encoding="utf-8"))["hooks"]
+    return [
+        (event, entry.get("matcher", ""), hook)
+        for event, entries in events.items()
+        for entry in entries
+        for hook in entry.get("hooks", [])
+    ]
+
+
+class TestCodexLauncher:
+    """The same hooks, launched by Codex's config (#812).
+
+    Not held to exec form: Codex documents a `command` string, and whether
+    it accepts `args` has not been measured yet (docs/HARNESS.md, "Not yet
+    measured"). What is held is what matters on any harness: the agreed
+    interpreter, a script that exists, and the gate on the tool that
+    writes drafts."""
+
+    def test_every_hook_launches_python_and_a_script_that_exists(self):
+        hooks = codex_hooks()
+        assert len(hooks) >= 3
+        for _, _, hook in hooks:
+            program, script = hook["command"].split()
+            assert program == INTERPRETER
+            assert (REPO_ROOT / script).is_file(), f"{script} does not exist"
+
+    def test_the_gate_runs_on_apply_patch(self):
+        gated = [
+            matcher
+            for event, matcher, hook in codex_hooks()
+            if event == "PostToolUse" and hook["command"].endswith("citation_gate_hook.py")
+        ]
+        assert gated
+        assert all("apply_patch" in matcher.split("|") for matcher in gated)
+
+    def test_the_same_scripts_as_claude_code(self):
+        """No hook on one harness that the other lacks, bar the code-size
+        hook, which checks this repository's own code rather than a draft."""
+        codex = {Path(h["command"].split()[1]).name for _, _, h in codex_hooks()}
+        claude = {Path(h["args"][0]).name for h in ENTRIES} - {"code_standards_hook.py"}
+        assert codex == claude
