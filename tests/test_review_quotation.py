@@ -30,7 +30,7 @@ import pytest
 from chitragupta import config, dossier, ledger, review
 from chitragupta.review import __main__ as review_main
 from chitragupta.review import _quotation_match as match
-from chitragupta.review import quotation
+from chitragupta.review import _quotation_render, quotation
 from tests.test_review_units import draft_at
 
 KEY = "shao_analysis_2023"
@@ -373,14 +373,18 @@ class TestUnverifiable:
 
 class TestIdentity:
     def test_a_finding_id_is_stable_across_runs(self, isolated_config):
-        assert quotation.finding_id(KEY, SPAN) == quotation.finding_id(KEY, SPAN)
+        assert _quotation_render.finding_id(KEY, SPAN) == _quotation_render.finding_id(KEY, SPAN)
 
     def test_editing_the_quote_or_reattributing_it_renames_the_finding(self, isolated_config):
         """Both halves are wanted. A repaired quote is a different
         assertion about the source and has not been checked, so it must
         not inherit its predecessor's identity."""
-        assert quotation.finding_id(KEY, SPAN) != quotation.finding_id(KEY, SPAN + " here")
-        assert quotation.finding_id(KEY, SPAN) != quotation.finding_id("other_2020", SPAN)
+        assert _quotation_render.finding_id(KEY, SPAN) != _quotation_render.finding_id(
+            KEY, SPAN + " here"
+        )
+        assert _quotation_render.finding_id(KEY, SPAN) != _quotation_render.finding_id(
+            "other_2020", SPAN
+        )
 
 
 class TestOutput:
@@ -399,7 +403,8 @@ class TestOutput:
         a_dossier(draft, block(KEY, SPAN) + "\n" + block("other_paper_2020", "never written"))
         a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
         a_source("other_paper_2020", (1, "Something else."))
-        payload = quotation.quotation_payload(quotation.build_report(draft), "cmd")
+        report = quotation.build_report(draft)
+        payload = _quotation_render.quotation_payload(report, "cmd", quotation.findings(report))
         assert (payload["quotes_total"], payload["found"], payload["absent"]) == (2, 1, 1)
         assert payload["unverifiable"] == 0
         assert [c["tier"] for c in payload["quotes"] if c["verdict"] == "found"] == ["exact"]

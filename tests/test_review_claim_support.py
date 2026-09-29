@@ -439,10 +439,10 @@ class TestOrderingAndId:
 
 class TestFindingId:
     def test_stable_across_runs(self):
-        assert claim_support.finding_id("k", "c") == claim_support.finding_id("k", "c")
+        assert render.finding_id("k", "c") == render.finding_id("k", "c")
 
     def test_differs_for_a_different_claim_on_the_same_citekey(self):
-        assert claim_support.finding_id("k", "c1") != claim_support.finding_id("k", "c2")
+        assert render.finding_id("k", "c1") != render.finding_id("k", "c2")
 
 
 class TestFindings:
@@ -451,10 +451,10 @@ class TestFindings:
         _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
-        found = claim_support.findings(claim_support.build_report(draft, fake))
+        found = render.findings(claim_support.build_report(draft, fake))
         assert found == [
             {
-                "id": claim_support.finding_id("good_2024", "Digital twins close the loop."),
+                "id": render.finding_id("good_2024", "Digital twins close the loop."),
                 "line": 1,
                 "citekey": "good_2024",
                 "claim": "Digital twins close the loop.",
@@ -468,7 +468,7 @@ class TestRenderMarkdown:
     def test_includes_the_ranked_not_banded_caveat(self, isolated_config):
         draft = _draft(config, "No citations here.\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
-        text = render.render_markdown(report, "cmd", claim_support.findings(report))
+        text = render.render_markdown(report, "cmd", render.findings(report))
         assert "ranked" in text.lower()
         assert "not a fact-check" in text.lower()
 
@@ -478,7 +478,7 @@ class TestRenderMarkdown:
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
         report = claim_support.build_report(draft, fake)
-        found = claim_support.findings(report)
+        found = render.findings(report)
         text = render.render_markdown(report, "cmd", found)
         assert "good_2024" in text
         assert "90%" in text
@@ -486,7 +486,7 @@ class TestRenderMarkdown:
     def test_notes_an_unscoreable_citekey(self, isolated_config):
         draft = _draft(config, "A claim citing nothing on record [@missing_2024].\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
-        found = claim_support.findings(report)
+        found = render.findings(report)
         text = render.render_markdown(report, "cmd", found)
         assert "missing_2024" in text
         assert "not in the ledger" in text or "no readable text" in text
@@ -503,7 +503,7 @@ class TestRenderMarkdown:
     ):
         draft = _draft(config, "[@missing_2024]\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
-        found = claim_support.findings(report)
+        found = render.findings(report)
         assert found[0]["claim"] == ""
         text = render.render_markdown(report, "cmd", found)
         assert "(no claim text)" in text
@@ -513,7 +513,7 @@ class TestFormatReport:
     def test_plain_text_has_no_markdown_headings(self, isolated_config):
         draft = _draft(config, "No citations here.\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
-        text = render.format_report(report, claim_support.findings(report))
+        text = render.format_report(report, render.findings(report))
         assert "##" not in text
 
     def test_lists_a_scored_finding_with_its_percentage(self, isolated_config):
@@ -522,14 +522,14 @@ class TestFormatReport:
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
         report = claim_support.build_report(draft, fake)
-        text = render.format_report(report, claim_support.findings(report))
+        text = render.format_report(report, render.findings(report))
         assert "90%" in text
         assert "good_2024" in text
 
     def test_an_unscoreable_finding_does_not_read_as_a_zero_score(self, isolated_config):
         draft = _draft(config, "A claim citing nothing on record [@missing_2024].\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
-        text = render.format_report(report, claim_support.findings(report))
+        text = render.format_report(report, render.findings(report))
         assert "missing_2024" in text
         assert "0%" not in text
         # `format_report` is a flat list with no summary/detail split like
@@ -643,8 +643,8 @@ class TestCli:
             "A second claim citing the same nothing [@missing_2024].\n",
         )
         report = claim_support.build_report(draft, FakeEntailer({}))
-        found = claim_support.findings(report)
-        payload = claim_support.support_payload(report, "cmd")
+        found = render.findings(report)
+        payload = render.support_payload(report, "cmd")
 
         assert payload["scored"] == 0
         assert len(payload["unscoreable"]) == 1

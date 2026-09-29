@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import ledger, references
+from chitragupta import ledger, references, references_renumber, references_section
 
 from tests.conftest import content_draft, make_reference
 
@@ -49,25 +49,25 @@ class TestHasSection:
         ],
     )
     def test_matches_various_heading_styles(self, heading):
-        assert references.has_section(f"Some text\n\n{heading}\n\nmore\n")
+        assert references_section.has_section(f"Some text\n\n{heading}\n\nmore\n")
 
     def test_no_match_for_unrelated_heading(self):
-        assert not references.has_section("## Introduction\n\nSome text.\n")
+        assert not references_section.has_section("## Introduction\n\nSome text.\n")
 
     def test_no_match_for_references_mentioned_in_prose(self):
-        assert not references.has_section("See the references cited above.\n")
+        assert not references_section.has_section("See the references cited above.\n")
 
     def test_no_match_for_a_heading_inside_a_code_fence(self):
         # A tutorial that shows a "## References" line in an example
         # would otherwise have everything below it replaced by apply()
         # and stripped from the render.
         draft = "# Lesson\n\n```markdown\n## References\n- an example\n```\n\nMore lesson.\n"
-        assert not references.has_section(draft)
+        assert not references_section.has_section(draft)
 
     def test_finds_a_real_heading_after_a_code_fence(self):
         draft = "# Lesson\n\n```markdown\n## References\n```\n\n## References\n\n[1] X. `k`\n"
         lines = draft.splitlines(keepends=True)
-        assert lines[references.section_start(lines)].strip() == "## References"
+        assert lines[references_section.section_start(lines)].strip() == "## References"
 
     @pytest.mark.parametrize(
         "heading",
@@ -87,7 +87,7 @@ class TestHasSection:
         ],
     )
     def test_matches_bare_and_numbered_headings(self, heading):
-        assert references.has_section(f"# Draft\n\n{heading}\n\n[1] X. `k`\n")
+        assert references_section.has_section(f"# Draft\n\n{heading}\n\n[1] X. `k`\n")
 
     @pytest.mark.parametrize(
         "heading",
@@ -103,7 +103,7 @@ class TestHasSection:
         ],
     )
     def test_does_not_match_a_heading_that_is_not_the_bibliography(self, heading):
-        assert not references.has_section(f"# Draft\n\n{heading}\n\nProse.\n")
+        assert not references_section.has_section(f"# Draft\n\n{heading}\n\nProse.\n")
 
 
 class TestSectionEnd:
@@ -115,8 +115,8 @@ class TestSectionEnd:
     def test_runs_to_the_next_heading_of_any_level(self):
         draft = "## References\n\n[1] X. `k`\n\n## Appendix\n\nmore\n"
         lines = draft.splitlines(keepends=True)
-        start = references.section_start(lines)
-        end = references.section_end(lines, start)
+        start = references_section.section_start(lines)
+        end = references_section.section_end(lines, start)
         assert lines[start:end] == ["## References\n", "\n", "[1] X. `k`\n", "\n"]
         assert lines[end] == "## Appendix\n"
 
@@ -126,22 +126,22 @@ class TestSectionEnd:
         # one -- belongs to whatever follows, not to References.
         draft = "## References\n\n[1] X. `k`\n\n### Acknowledgments\n\nthanks\n"
         lines = draft.splitlines(keepends=True)
-        start = references.section_start(lines)
-        end = references.section_end(lines, start)
+        start = references_section.section_start(lines)
+        end = references_section.section_end(lines, start)
         assert lines[end] == "### Acknowledgments\n"
 
     def test_runs_to_end_of_file_when_nothing_follows(self):
         draft = "## References\n\n[1] X. `k`\n"
         lines = draft.splitlines(keepends=True)
-        start = references.section_start(lines)
-        end = references.section_end(lines, start)
+        start = references_section.section_start(lines)
+        end = references_section.section_end(lines, start)
         assert end == len(lines)
 
     def test_a_heading_inside_a_code_fence_does_not_end_the_section(self):
         draft = "## References\n\n[1] X. `k`\n\n```markdown\n## Appendix\n```\n\nstill references\n"
         lines = draft.splitlines(keepends=True)
-        start = references.section_start(lines)
-        end = references.section_end(lines, start)
+        start = references_section.section_start(lines)
+        end = references_section.section_end(lines, start)
         assert end == len(lines)
 
 
@@ -269,7 +269,7 @@ class TestFormatNumbers:
         ],
     )
     def test_ieee_contraction_rules(self, numbers, expected):
-        assert references._format_numbers(numbers) == expected
+        assert references_renumber._format_numbers(numbers) == expected
 
 
 class TestRenumber:

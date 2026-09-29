@@ -58,7 +58,6 @@ Usage:
 """
 
 import argparse
-import hashlib
 import json
 import shlex
 import sys
@@ -166,67 +165,6 @@ def _command(assembled: Path, as_json: bool, write: bool) -> str:
     return shlex.join(parts)
 
 
-def finding_id(citekey: str, status: str) -> str:
-    """A finding's name, stable across runs and position-free -- the same
-    convention `citation_coverage.finding_id` and
-    `verbatim_check.finding_id` use."""
-    return hashlib.sha256(f"{citekey}\x00{status}".encode()).hexdigest()[:12]
-
-
-def _findings(result: UnionResult) -> list[dict]:
-    """One object per citekey the report itemises, dropped first: it is
-    the direction that is always answerable, and the one a reader acts
-    on."""
-    findings = [
-        {
-            "id": finding_id(key, "dropped"),
-            "citekey": key,
-            "status": "dropped",
-            "units": units,
-        }
-        for key, units in result.dropped.items()
-    ]
-    findings += [
-        {"id": finding_id(key, "appeared"), "citekey": key, "status": "appeared", "units": []}
-        for key in sorted(result.appeared or ())
-    ]
-    return findings
-
-
-def union_payload(result: UnionResult, command: str) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation.
-
-    `appeared_determinable` is carried explicitly rather than left for a
-    consumer to infer from a null: "no citekey appeared from nowhere" and
-    "this run could not tell" are different answers, and a caller acting
-    on the payload has to be able to distinguish them.
-    """
-    payload = review.envelope(result.assembled, "union", command)
-    payload.update(
-        {
-            "units_checked": [
-                {"unit": entry.unit, "included": entry.included} for entry in result.checked
-            ],
-            "units_unchecked": [
-                {"unit": entry.unit, "state": entry.state, "included": entry.included}
-                for entry in result.unchecked
-            ],
-            "units_omitted": [entry.unit for entry in result.omitted],
-            # What the assembly pulled in besides its units, and what it
-            # named but could not be found. Both reported rather than
-            # dropped: a run that quietly skipped an include would be
-            # claiming coverage of prose it never opened.
-            "includes_outside_units": result.outside_units,
-            "includes_unresolved": result.unresolved,
-            "citekeys_outside_units": len(result.own),
-            "appeared_determinable": result.appeared is not None,
-            "findings": _findings(result),
-        }
-    )
-    return payload
-
-
 def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags, declared once here so chitragupta/review/__main__.py
     never restates them."""
@@ -262,13 +200,11 @@ def main(argv: list[str]) -> int:
     return run(build_parser().parse_args(argv))
 
 
-def run(args: argparse.Namespace) -> int:
-    """Dispatch already-parsed arguments, split from main() so
-    chitragupta/review/__main__.py can hand over args parsed with this
-    module's own build_parser().
+def _read(draft: str) -> tuple[Path, UnionResult] | None:
+    """The assembly and its result, or None once a refusal is on stderr.
 
-    Exit 1 covers both refusals for the reason the layer already gives it
-    that meaning: an input this aid will not read, said once on stderr,
+    Both refusals get the same answer for the reason the layer already
+    gives exit 1: an input this aid will not read, said once on stderr,
     rather than a traceback or a report built on a guess.
 
     `spec.SpecError` is caught alongside `unit.UnitError` because it is a
@@ -276,22 +212,32 @@ def run(args: argparse.Namespace) -> int:
     book at all raised it straight through this handler as a traceback.
     """
     try:
-        assembled = review.require_reviewable(Path(args.draft), "assembled document")
+        assembled = review.require_reviewable(Path(draft), "assembled document")
         refusal = refuse_a_unit(assembled)
         if refusal:
             print(refusal, file=sys.stderr)
-            return 1
-        result = compute(assembled)
+            return None
+        return assembled, compute(assembled)
     except (FileNotFoundError, config.OutsideContentDir, spec.SpecError, unit.UnitError) as exc:
         print(exc, file=sys.stderr)
+        return None
+
+
+def run(args: argparse.Namespace) -> int:
+    """Dispatch already-parsed arguments, split from main() so
+    chitragupta/review/__main__.py can hand over args parsed with this
+    module's own build_parser(). Exit 1 is a refusal (see `_read`)."""
+    read = _read(args.draft)
+    if read is None:
         return 1
+    assembled, result = read
 
     if not (args.json or args.write):
         print(_citekey_union_render.format_report(result))
         return 0
 
     command = _command(assembled, args.json, args.write)
-    payload = union_payload(result, command)
+    payload = _citekey_union_render.union_payload(result, command)
     print(
         json.dumps(payload, indent=2) if args.json else _citekey_union_render.format_report(result)
     )

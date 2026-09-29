@@ -290,14 +290,13 @@ class TestRepeatability:
 
     def test_two_runs_produce_byte_identical_json(self, isolated_config):
         draft = a_draft("One [@A].\n\nTwo [@A] and [@B].\n")
-        payloads = [
-            json.dumps(
-                synthesis.synthesis_payload(
-                    synthesis.build_report(draft, *synthesis.resolve(draft, None)), "cmd"
-                )
-            )
-            for _ in range(2)
-        ]
+
+        def payload() -> str:
+            report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
+            found = synthesis.findings(report)
+            return json.dumps(_synthesis_render.synthesis_payload(report, "cmd", found))
+
+        payloads = [payload() for _ in range(2)]
         assert payloads[0] == payloads[1]
 
     def test_the_report_carries_no_date(self, isolated_config):

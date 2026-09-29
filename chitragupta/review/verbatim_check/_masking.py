@@ -9,7 +9,7 @@ chitragupta/review/verbatim_check/_corpus.py's docstring for the split.
 import re
 from dataclasses import dataclass
 
-from chitragupta import citation_gate, references
+from chitragupta import citation_gate, references_section
 from chitragupta.review.verbatim_check._corpus import WORD
 
 # Straight or curly double-quoted spans, and Markdown blockquote lines --
@@ -69,7 +69,7 @@ def _mask_for_scan(text: str) -> str:
     (titles, venues), so scanning it would flag every source's own title
     page as "verbatim overlap with itself".
 
-    `references.section_start`/`section_end` are handed the *original*
+    `references_section.section_start`/`section_end` are handed the *original*
     lines (their own contract -- they blank internally just to find
     headings) and return indices into them; `_blank_code` never changes
     line count, so those indices still line up with the blanked text's
@@ -81,10 +81,10 @@ def _mask_for_scan(text: str) -> str:
     there must stay scannable rather than reading clean (M-8/m-33/m-34).
     """
     original_lines = text.splitlines(keepends=True)
-    idx = references.section_start(original_lines)
+    idx = references_section.section_start(original_lines)
     lines = citation_gate._blank_code(text).splitlines(keepends=True)
     if idx is not None:
-        end = references.section_end(original_lines, idx)
+        end = references_section.section_end(original_lines, idx)
         lines = lines[:idx] + [re.sub(r"[^\n]", " ", line) for line in lines[idx:end]] + lines[end:]
     return "".join(lines)
 

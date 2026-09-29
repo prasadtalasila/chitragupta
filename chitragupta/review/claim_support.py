@@ -41,7 +41,6 @@ Usage:
 """
 
 import argparse
-import hashlib
 import json
 import shlex
 import sys
@@ -224,32 +223,6 @@ def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report
     return report
 
 
-def finding_id(citekey: str, claim: str) -> str:
-    """A finding's identity, stable across runs (R2) -- keyed on the
-    same (citekey, claim) pair _citation_provenance_render.finding_id uses,
-    because this is the same underlying question asked by a different
-    scorer. Defined locally rather than imported: every aid in this
-    layer owns its own finding_id, even when the formula matches."""
-    digest = hashlib.sha256(f"{citekey}\x00{claim}".encode())
-    return digest.hexdigest()[:12]
-
-
-def findings(report: Report) -> list[dict]:
-    """One object per citation, worst-scoring first -- already the
-    Report's own sort order, so this only shapes the dicts."""
-    return [
-        {
-            "id": finding_id(f.citekey, f.claim),
-            "line": f.line,
-            "citekey": f.citekey,
-            "claim": f.claim,
-            "score": f.score,
-            "note": f.note,
-        }
-        for f in report.findings
-    ]
-
-
 def _command(draft: Path, as_json: bool, write: bool) -> str:
     """The invocation recorded in both the Markdown header and the JSON
     envelope -- `--json`/`--write` in full when given, the same rule
@@ -260,41 +233,6 @@ def _command(draft: Path, as_json: bool, write: bool) -> str:
     if write:
         parts += ["--write"]
     return shlex.join(parts)
-
-
-def support_payload(report: Report, command: str) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation.
-
-    `"scored"` counts findings the entailer actually scored (`note is
-    None`), not `len(report.findings) - len(report.unscoreable)`. The
-    two differ when a single unscoreable citekey is cited more than
-    once: `report.unscoreable` is keyed by citekey, so it gains one
-    entry no matter how many findings that citekey produces, while
-    `build_report` still gives every one of those findings its own
-    `note`. Counting the naive way would let "scored" overcount by the
-    number of repeat citations of an already-unscoreable citekey --
-    inconsistent with `_claim_support_render._scored`, which every
-    rendered report already uses for the same number. Matching that
-    keeps the JSON and the text report agreeing on what "scored"
-    means.
-
-    Deliberately different units, not a second inconsistency:
-    `"scored"` counts findings (one per citation), `"unscoreable"`
-    counts citekeys (one per source), the same split
-    `_claim_support_render._summary` already prints -- a repeated
-    citation of one bad citekey is one line under "Not scored" but two
-    lines under Findings, in the JSON exactly as in the rendered
-    report."""
-    payload = review.envelope(report.draft, "support", command)
-    payload.update(
-        {
-            "scored": len([f for f in report.findings if f.note is None]),
-            "unscoreable": dict(sorted(report.unscoreable.items())),
-            "findings": findings(report),
-        }
-    )
-    return payload
 
 
 def build_parser(parser=None) -> argparse.ArgumentParser:
@@ -332,6 +270,20 @@ def main(argv: list[str] | None = None) -> int:
     return run(build_parser().parse_args(argv))
 
 
+def _scored(draft_path: Path) -> Report | None:
+    """The scored report, or None once "not run" is on stderr because the
+    enrichment layer, and so the entailer, is not installed."""
+    entailer, reason = entailment.open_entailer()
+    if entailer is None:
+        print(f"support: not run -- {reason}", file=sys.stderr)
+        return None
+    # Resolved here rather than defaulted inside `build_report`, so that
+    # the config is what the *CLI* obeys while a caller -- notably
+    # bench/bench_support_topk.py, which sweeps k -- pins it per arm at
+    # the call site instead of mutating a module constant mid-run.
+    return build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
+
+
 def run(args: argparse.Namespace) -> int:
     """Dispatch already-parsed arguments, split from main() so
     chitragupta/review/__main__.py can hand over args parsed with this
@@ -346,24 +298,17 @@ def run(args: argparse.Namespace) -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    entailer, reason = entailment.open_entailer()
-    if entailer is None:
-        print(f"support: not run -- {reason}", file=sys.stderr)
+    report = _scored(draft_path)
+    if report is None:
         return 0
-
-    # Resolved here rather than defaulted inside `build_report`, so that
-    # the config is what the *CLI* obeys while a caller -- notably
-    # bench/bench_support_topk.py, which sweeps k -- pins it per arm at
-    # the call site instead of mutating a module constant mid-run.
-    report = build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
-    found = findings(report)
+    found = _render.findings(report)
 
     if not (args.json or args.write):
         print(_render.format_report(report, found))
         return 0
 
     command = _command(draft_path, args.json, args.write)
-    payload = support_payload(report, command)
+    payload = _render.support_payload(report, command)
     print(json.dumps(payload, indent=2) if args.json else _render.format_report(report, found))
 
     if args.write:

@@ -1,5 +1,5 @@
-"""How a multi-source synthesis report reads: the Markdown document and
-the plain-text stdout form.
+"""How a multi-source synthesis report reads: the Markdown document,
+the plain-text stdout form, and the same findings as a JSON payload.
 
 Split from `chitragupta/review/synthesis.py`, which owns what the numbers
 *are* and passes its `findings()` list in. The two are genuinely
@@ -129,3 +129,25 @@ def format_report(report, found: list[dict]) -> str:
         note = " [declared]" if entry["declared"] else ""
         lines.append(f"  - line {entry['line']}: {entry['kind']} -- {keys}{note}")
     return "\n".join(lines)
+
+
+def synthesis_payload(report, command: str, found: list[dict]) -> dict:
+    """The same findings the report prints, as data -- an additional
+    serialisation, never a second computation."""
+    payload = review.envelope(report.draft, "synthesis", command)
+    payload.update(
+        {
+            "genre": report.genre,
+            "unit": report.kind,
+            "unit_source": report.source,
+            "units_total": len(report.units),
+            "uncited": report.uncited,
+            "single_source": report.single_source,
+            "multi_source": report.multi_source,
+            "declared": report.declared,
+            "undeclared": report.undeclared,
+            "single_source_pct": report.single_source_pct,
+            "findings": found,
+        }
+    )
+    return payload

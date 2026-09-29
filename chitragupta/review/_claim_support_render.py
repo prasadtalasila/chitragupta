@@ -1,5 +1,5 @@
-"""How a claim-support report reads: the Markdown document and the
-plain-text stdout form.
+"""How a claim-support report reads: the Markdown document, the
+plain-text stdout form, and the same findings as a JSON payload.
 
 Split from `claim_support.py` the same way `_uncited_render.py` is split
 from `uncited_prose.py` -- nothing here imports it back, keeping the
@@ -21,6 +21,8 @@ zero" -- exactly the "checked and found wanting" standing
 must not carry. Telling the two apart at render time is this module's
 job; the upstream report has no generic way to do it.
 """
+
+import hashlib
 
 from chitragupta import review
 
@@ -130,3 +132,64 @@ def format_report(report, found: list[dict]) -> str:
     for finding in found:
         lines.append(_format_finding(finding))
     return "\n".join(lines)
+
+
+def finding_id(citekey: str, claim: str) -> str:
+    """A finding's identity, stable across runs (R2) -- keyed on the
+    same (citekey, claim) pair _citation_provenance_render.finding_id uses,
+    because this is the same underlying question asked by a different
+    scorer. Defined locally rather than imported: every aid in this
+    layer owns its own finding_id, even when the formula matches."""
+    digest = hashlib.sha256(f"{citekey}\x00{claim}".encode())
+    return digest.hexdigest()[:12]
+
+
+def findings(report) -> list[dict]:
+    """One object per citation, worst-scoring first -- already the
+    Report's own sort order, so this only shapes the dicts."""
+    return [
+        {
+            "id": finding_id(f.citekey, f.claim),
+            "line": f.line,
+            "citekey": f.citekey,
+            "claim": f.claim,
+            "score": f.score,
+            "note": f.note,
+        }
+        for f in report.findings
+    ]
+
+
+def support_payload(report, command: str) -> dict:
+    """The same findings the report prints, as data -- an additional
+    serialisation, never a second computation.
+
+    `"scored"` counts findings the entailer actually scored (`note is
+    None`), not `len(report.findings) - len(report.unscoreable)`. The
+    two differ when a single unscoreable citekey is cited more than
+    once: `report.unscoreable` is keyed by citekey, so it gains one
+    entry no matter how many findings that citekey produces, while
+    `build_report` still gives every one of those findings its own
+    `note`. Counting the naive way would let "scored" overcount by the
+    number of repeat citations of an already-unscoreable citekey --
+    inconsistent with `_claim_support_render._scored`, which every
+    rendered report already uses for the same number. Matching that
+    keeps the JSON and the text report agreeing on what "scored"
+    means.
+
+    Deliberately different units, not a second inconsistency:
+    `"scored"` counts findings (one per citation), `"unscoreable"`
+    counts citekeys (one per source), the same split
+    `_claim_support_render._summary` already prints -- a repeated
+    citation of one bad citekey is one line under "Not scored" but two
+    lines under Findings, in the JSON exactly as in the rendered
+    report."""
+    payload = review.envelope(report.draft, "support", command)
+    payload.update(
+        {
+            "scored": len([f for f in report.findings if f.note is None]),
+            "unscoreable": dict(sorted(report.unscoreable.items())),
+            "findings": findings(report),
+        }
+    )
+    return payload

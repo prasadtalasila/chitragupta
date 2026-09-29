@@ -88,7 +88,7 @@ quotation. **T** is the candidate threshold, a run length in words.
 
 `_mask_for_scan` blanks the draft's own References section before
 scanning, because two documents citing the same paper share its title and
-venue verbatim. `references.section_start` matched only single-level
+venue verbatim. `references_section.section_start` matched only single-level
 heading numbers, so a book numbering headings per chapter --
 `## 1.14 References` -- was never masked, and the whole bibliography was
 scanned against the corpus. On one chapter that was 97.7% of all findings
