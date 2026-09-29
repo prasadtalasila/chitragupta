@@ -115,6 +115,13 @@ class TestContainment:
         assert dt.target(escape, root) is None
 
 
+class TestNoPath:
+    def test_an_empty_path_is_not_a_draft(self, dt, root):
+        """Reached only by a direct caller: the payload readers never hand
+        `target` an empty string, but a caller with its own path might."""
+        assert dt.target("", root) is None
+
+
 class TestSuffixes:
     @pytest.mark.parametrize("name", ["survey.md", "chapter.tex"])
     def test_the_two_this_pipeline_writes(self, dt, root, name):

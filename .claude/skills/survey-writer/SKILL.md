@@ -298,9 +298,10 @@ collapse them for the sake of a cleaner narrative.
    really your own reading of the source, and is not a cue to keep
    rewording until the warning stops.
 2a. **On a broad topic, put steps 1-2 behind a subagent.** Dispatch one
-   general-purpose subagent per sub-theme, in parallel if your harness can, each told to
-   run the retrieve-and-score loop above and return **only** the kept-evidence
-   packet plus the rejected list -- never the raw candidates.
+   general-purpose subagent per sub-theme, in parallel if your harness
+   can, each told to run the retrieve-and-score loop above and return
+   **only** the kept-evidence packet plus the rejected list -- never the
+   raw candidates.
 
    **The packet itself is `claim:`/`quote:` shaped, not a paste of what the
    subagent read.** Tell each subagent explicitly: write `claim:` in your own

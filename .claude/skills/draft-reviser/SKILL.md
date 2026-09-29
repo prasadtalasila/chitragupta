@@ -519,13 +519,13 @@ before converting, and write the answer to that line as part of the pass.
 A conversion applied against an unrecorded target is one the next session
 cannot repeat or check.
 
-**Still edit in place, never rewrite the whole file, and now for a second reason.** Every
-objection in step 5 holds. The new one is that the PostToolUse citation
-gate runs per write, so editing section by section gives you a mechanical
-check that the rewrite has not mangled a citekey or a `\citep{}` -- the
-safety net that makes an aggressive whole-document rewrite safe to attempt
-at all. One rewrite of the whole file trades that away exactly where the
-risk is highest.
+**Still edit in place, never rewrite the whole file, and now for a
+second reason.** Every objection in step 5 holds. The new one is that
+the PostToolUse citation gate runs per write, so editing section by
+section gives you a mechanical check that the rewrite has not mangled a
+citekey or a `\citep{}` -- the safety net that makes an aggressive
+whole-document rewrite safe to attempt at all. One rewrite of the whole
+file trades that away exactly where the risk is highest.
 
 **One `revisions.md` entry for the whole pass**, not one per section, and
 it names the convention rather than the sections:
@@ -589,9 +589,9 @@ diff, and no mechanical check here reads it. Two edits, not one:
    itself practises about what it can and cannot see.
 
 Same guardrails as copy-edit mode: no claim changed, no citation added or
-dropped, no argument reordered. Edit in place, never rewrite the whole file, for the same
-PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
-naming the term(s) and every file touched:
+dropped, no argument reordered. Edit in place, never rewrite the whole
+file, for the same PostToolUse-gate reason step 5 above gives. One
+`revisions.md` entry, naming the term(s) and every file touched:
 
 ```text
 2026-08-14 -- acronym realignment: DT's recorded expansion changed from

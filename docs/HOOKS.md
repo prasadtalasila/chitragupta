@@ -1,10 +1,12 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-08-27. Four
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-09-29. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`, the first two sharing
-one `draft_target.py` and the first three one `safe_path.py`, all
-launching in exec form, as `python`. The launcher
+one `draft_target.py` (and through it `patch_paths.py`) and the first three
+one `safe_path.py`, all launching as `python` -- in exec form from
+`.claude/settings.json`, and from Codex's `.codex/hooks.json` and
+OpenCode's plugin too since 6.126.0 ([HARNESS.md](HARNESS.md)). The launcher
 hazards are closed: the placeholder is braced, the interpreter name is
 settled below, and a launcher that cannot start is now reported from two
 sides rather than one.
@@ -576,8 +578,27 @@ harnesses has to branch: Claude Code reads
 `additional_context`, and the SDK standard is a top-level
 `additionalContext` -- and Claude Code reads more than one of them without
 deduplicating, so emitting several delivers the payload twice. This
-repository targets Claude Code and does not branch; the branch point is
+repository's hooks still do not branch. Codex documents the same
+`{"decision": "block"}` shape and the same `hookSpecificOutput` field,
+and OpenCode's plugin reads the Claude Code shape and hands it on itself
+(#812, #900), so one envelope serves all three. That rests on Codex's
+documentation until it is measured ([HARNESS.md](HARNESS.md), "Not yet
+measured"); if Codex turns out to read another field, the branch goes
+here, keyed on the harness, and emits only that one. The branch point is
 recorded because it is not guessable from the field names.
+
+**Codex and OpenCode launch the same scripts** (#812, #900).
+`.codex/hooks.json` registers the gate, style and session-start hooks
+on `apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js`
+pipes each file tool's arguments to `citation_gate_hook.py` as a
+payload of the shape the hooks already read. Neither holds any gate
+logic. The one payload shape they added is `apply_patch`'s: the patch
+text in `tool_input.command`, whose file headers `patch_paths.py` reads,
+so one write can name several drafts and every one is gated. A patch
+that mentions a draft but whose headers cannot be read is the one
+exception to malformed stdin failing open: it blocks, because failing
+open there is a silently inert gate. [HARNESS.md](HARNESS.md) has the
+design and what each harness enforces.
 
 ## 📊 What is measured, and what is merely documented
 
@@ -853,7 +874,14 @@ whoever is changing a hook and wants the sources.
 4. **What an older harness does with an unrecognised `if` key.** Decides
    whether conditional spawning is safe for advisory hooks on every host or
    only on recent ones.
-5. **Whether a session-start message is the right register for a fault.**
+5. **Whether the Codex and OpenCode trials hold.** The six trials above
+   were run on Claude Code alone. Codex's payload shape, block delivery
+   and hook trust step, and whether a throw from OpenCode's
+   `tool.execute.after` reaches the model, are read off documentation;
+   [HARNESS.md](HARNESS.md) lists them, and Task 0 of
+   [the #812 plan](https://github.com/prasadtalasila/chitragupta/blob/main/plans/812-harness-neutral-core.md)
+   is how they get measured.
+6. **Whether a session-start message is the right register for a fault.**
    The preflight reports once and cannot re-report: a user who runs
    `python -m chitragupta.corpus sync` two minutes later keeps stale advice in
    context for the rest of the session, which is why the message says so

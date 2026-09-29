@@ -837,8 +837,8 @@ its working state get backed up.
 - **Grounded by default, closed-corpus.** Every claim traces to a real
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
-- **Parallelize, with a cap.** Dispatch same-phase subagents in parallel where your harness can;
-  bound concurrency per `reference.md` §1.
+- **Parallelize, with a cap.** Dispatch same-phase subagents in
+  parallel where your harness can; bound concurrency per `reference.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
   `survey-writer` -- point users there if they want something faster.
 

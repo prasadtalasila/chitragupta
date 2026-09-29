@@ -97,6 +97,24 @@ class TestMainCli:
         assert "[error]" in out
         assert "fabricated2024" in out
 
+    def test_a_key_that_leaves_the_ledger_mid_render_is_an_error_line(
+        self, isolated_config, monkeypatch, capsys
+    ):
+        # The gate passed, then the numbering step found the key gone: a
+        # sync committing between the two reads. Still `[error]`, not a
+        # traceback.
+        from chitragupta import references
+
+        def _gone(*a, **k):
+            raise references.MissingCitekey("citekey(s) cited ... missing: smith2024")
+
+        monkeypatch.setattr(render_output, "render", _gone)
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("See [@smith2024].\n")
+        monkeypatch.setattr(sys, "argv", ["render_output.py", str(draft), "--format", "md"])
+        assert render_output.main() == 1
+        assert "[error] citekey(s) cited ... missing: smith2024" in capsys.readouterr().out
+
     @pytest.mark.parametrize("fmt", ["docx", "pdf", "tex"])
     @pytest.mark.parametrize("fragment", [False, True])
     def test_every_format_refuses_an_unknown_key_before_pandoc(

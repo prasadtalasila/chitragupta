@@ -5,9 +5,13 @@
 > superpowers:executing-plans to carry out this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **design, unbuilt.** Written 2026-09-26 and rescoped
-2026-09-29. Record here which PR closed each task, and what changed
-along the way.
+Status: **Tasks 1-9 built, in one PR; Task 0 and Task 10's recorded
+runs outstanding.** Written 2026-09-26, rescoped and built 2026-09-29.
+The maintainer asked for a single PR rather than one per group. No Codex
+or OpenCode session was available where it was built, so Task 0 was not
+run: the payload fixtures are constructed from the documentation and say
+so, and [docs/HARNESS.md](../docs/HARNESS.md) lists what is still
+unmeasured. See "What changed along the way" at the end.
 
 **Goal:** Drive the pipeline from Claude Code, Codex and OpenCode, with
 the citekey gate just as strong on all three. The model checks its own
@@ -46,6 +50,7 @@ the scope decisions in
 [#812's comment of 2026-09-29](https://github.com/prasadtalasila/chitragupta/issues/812#issuecomment-5886389084).
 
 **Out of scope:**
+
 - Continue ([#901](https://github.com/prasadtalasila/chitragupta/issues/901)).
 - The MCP server. It moves to #901, where it is Continue's enforcement;
   neither Codex nor OpenCode needs it.
@@ -206,6 +211,7 @@ dated 2026. `docs/HOOKS.md`'s rule is that a hook contract is measured,
 not assumed. This task records the real thing.
 
 **Files:**
+
 - Create: `tests/fixtures/harness_payloads/codex_apply_patch.json`
 - Create: `tests/fixtures/harness_payloads/codex_apply_patch_multi.json`
 - Create: `tests/fixtures/harness_payloads/opencode_write_args.json`
@@ -215,6 +221,7 @@ not assumed. This task records the real thing.
   harness versions, and how each payload was captured)
 
 **Interfaces:**
+
 - Produces:
   - the fixture files Tasks 3, 5 and 7 load;
   - the answers to M1-M12 below, written into this plan's "Measured"
@@ -257,6 +264,7 @@ not assumed. This task records the real thing.
 - [ ] **Step 3: Capture OpenCode payloads.**
   1. In the same scratch copy, write
      `.opencode/plugins/probe.js`:
+
      ```js
      import { appendFileSync } from "node:fs";
      export const Probe = async () => ({
@@ -268,6 +276,7 @@ not assumed. This task records the real thing.
        },
      });
      ```
+
   2. Ask OpenCode to create, edit and patch drafts. Patch through a
      model that uses `apply_patch`, e.g. a GPT model.
   3. Save the `args` of each tool as a fixture.
@@ -289,12 +298,14 @@ not assumed. This task records the real thing.
 - [ ] **Step 5: Record and commit.** Fill in the "Measured" section at
   the end of this plan, then commit the fixtures on the Task 1 branch
   or on their own branch:
+
   ```bash
   git add tests/fixtures/harness_payloads plans/812-harness-neutral-core.md
   git commit -m "Record real Codex and OpenCode tool payloads for the hook adapters"
   ```
 
 **Decision rules that follow from Task 0:**
+
 - **M3 (Codex blocking).** If the block reason does not reach the
   model, Codex cannot carry the mandatory check. Stop and raise that on
   #812 before Task 5.
@@ -321,6 +332,7 @@ not assumed. This task records the real thing.
 ### Task 1: `draft render` refuses an unknown key in every format
 
 **Files:**
+
 - Create: `chitragupta/render_output/_gate.py`
 - Modify: `chitragupta/render_output/__init__.py`
   - the import block, L138-142:
@@ -333,21 +345,27 @@ not assumed. This task records the real thing.
   fragment case.
 
 **Interfaces:**
+
 - Consumes:
-  - `citation_gate.check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult`
-  - `citation_gate.extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]`
-  - `ledger.reading()`
-  - `ledger.known_citekeys(con) -> set[str]`
-  - `ledger.NoLedger`
-  - `_substitution._draft_warnings(draft_text: str, input_path: Path) -> list[tuple[str, str]]`
+
+  ```python
+  citation_gate.check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult
+  citation_gate.extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
+  ledger.reading()
+  ledger.known_citekeys(con) -> set[str]
+  ledger.NoLedger
+  _substitution._draft_warnings(draft_text: str, input_path: Path) -> list[tuple[str, str]]
+  ```
+
 - Produces:
   - `render_output._gate.UngatedDraft(ValueError)`. Its `str()` is the
     gate's report.
-  - `render_output._gate.gated_warnings(draft_text: str, input_path: Path) -> list[tuple[str, str]]`.
-    It raises `UngatedDraft` on an unknown key, and otherwise returns
-    exactly what `_draft_warnings` returns.
+  - `render_output._gate.gated_warnings(draft_text, input_path)`, returning
+    `list[tuple[str, str]]`. It raises `UngatedDraft` on an unknown key,
+    and otherwise returns exactly what `_draft_warnings` returns.
 
 **Why the call goes where it does:**
+
 - **Placement.** It sits right after `draft_text` is read, before the
   md early return, so md, docx, pdf, tex, `--fragment` (natbib) and
   every format pandoc infers from the extension are covered by one
@@ -446,7 +464,12 @@ class TestGatedWarnings:
 ```
 
 - [ ] **Step 2: Run the tests and confirm they fail.**
-  Run: `pytest tests/test_render_output_gate.py tests/test_render_output_cli.py -q`
+  Run:
+
+  ```bash
+  pytest tests/test_render_output_gate.py tests/test_render_output_cli.py -q
+  ```
+
   Expected: an `ImportError` for `_gate`, and the docx, pdf and tex
   cases fail with rc 0.
 
@@ -514,7 +537,7 @@ def _report(input_path: Path, result: "citation_gate.GateResult") -> str:
 - [ ] **Step 4: Wire it into `render()`.**
   1. In the `_substitution` import block of
      `chitragupta/render_output/__init__.py`, delete the
-     `    _draft_warnings,` line.
+     `_draft_warnings,` line.
   2. After that block, add
      `from chitragupta.render_output._gate import gated_warnings`.
   3. At L249, change the call to:
@@ -523,11 +546,11 @@ def _report(input_path: Path, result: "citation_gate.GateResult") -> str:
     for prefix, warning in gated_warnings(draft_text, input_path):
 ```
 
-  4. If any test reaches `render_output._draft_warnings` as an
+  1. If any test reaches `render_output._draft_warnings` as an
      attribute, keep it re-exported by adding `_draft_warnings` to
      `_gate`'s import line and to `__init__`'s `_gate` import. Check
      with `grep -rn "render_output._draft_warnings" tests`.
-  5. In `_cli.py`, add this branch next to the `references.MissingCitekey`
+  2. In `_cli.py`, add this branch next to the `references.MissingCitekey`
      one:
 
 ```python
@@ -546,9 +569,13 @@ def _report(input_path: Path, result: "citation_gate.GateResult") -> str:
 - [ ] **Step 5: Run the tests and confirm they pass, and the limits
   hold.**
   Run:
-  - `pytest tests/test_render_output_gate.py tests/test_render_output_cli.py tests/test_render_output.py tests/test_ledger_readers.py tests/test_references.py -q`
-  - `python scripts/code_standards.py chitragupta/render_output`
-  - `pytest tests/test_code_standards_scan.py tests/test_annotation_scan.py -q`
+
+  ```bash
+  pytest tests/test_render_output_gate.py tests/test_render_output_cli.py \
+    tests/test_render_output.py tests/test_ledger_readers.py tests/test_references.py -q
+  python scripts/code_standards.py chitragupta/render_output
+  pytest tests/test_code_standards_scan.py tests/test_annotation_scan.py -q
+  ```
 
   Expected: PASS, with no C1 or C2 finding.
   `test_a_citekey_missing_from_the_ledger_prints_and_returns_1` still
@@ -581,10 +608,12 @@ git commit -m "Refuse to render a draft the citation gate rejects, in every form
 ### Task 2: Read which files an `apply_patch` envelope writes
 
 **Files:**
+
 - Create: `.claude/hooks/patch_paths.py`
 - Test: `tests/test_patch_paths.py`
 
 **Interfaces:**
+
 - Produces:
   - `patch_paths.BEGIN = "*** Begin Patch"`
   - `class patch_paths.UnreadablePatch(ValueError)`
@@ -596,8 +625,12 @@ git commit -m "Refuse to render a draft the citation gate rejects, in every form
 
 The grammar is taken from OpenAI's `apply_patch` (V4A) format:
 
-- `Patch := "*** Begin Patch" NL { FileOp } "*** End Patch" NL`
-- `FileOp := "*** Add File: " path | "*** Delete File: " path | "*** Update File: " path [ NL "*** Move to: " path ]`
+```text
+Patch  := "*** Begin Patch" NL { FileOp } "*** End Patch" NL
+FileOp := "*** Add File: " path
+        | "*** Delete File: " path
+        | "*** Update File: " path [ NL "*** Move to: " path ]
+```
 
 OpenCode's `apply_patch` tool uses the same envelope. The recorded
 fixtures from Task 0 confirm both.
@@ -755,6 +788,7 @@ git commit -m "Read the files an apply_patch envelope writes, for Codex and Open
 ### Task 3: `draft_target` returns every draft in a payload
 
 **Files:**
+
 - Modify: `.claude/hooks/draft_target.py`
   - replace `from_stdin` and `_file_path` (L45-72);
   - `target` (L75-110) stays as it is;
@@ -764,6 +798,7 @@ git commit -m "Read the files an apply_patch envelope writes, for Codex and Open
   instead of `path`, and `[]` instead of `None`.
 
 **Interfaces:**
+
 - Consumes: `patch_paths.written_paths(text) -> list[str]` and
   `patch_paths.UnreadablePatch`.
 - Produces:
@@ -778,6 +813,7 @@ git commit -m "Read the files an apply_patch envelope writes, for Codex and Open
     before.
 
 **Payload rules, all from Task 0's measurements:**
+
 - **`file_path` payloads** (Claude Code; OpenCode through Task 7):
   `tool_input.file_path`, as today.
 - **Patch payloads:**
@@ -944,12 +980,14 @@ git commit -m "Find every draft in a hook payload, including apply_patch envelop
 ### Task 4: The gate and style hooks check every draft in a payload
 
 **Files:**
+
 - Modify: `.claude/hooks/citation_gate_hook.py`, `main` (L127-197)
 - Modify: `.claude/hooks/style_check_hook.py`, `main` (L56-72)
 - Test: `tests/test_hook_modules.py`, `tests/test_citation_gate_hook.py`,
   `tests/test_style_check_hook.py`
 
 **Interfaces:**
+
 - Consumes: `draft_target.targets_from_stdin` and
   `draft_target.UnreadablePatch`.
 - Produces:
@@ -1008,13 +1046,14 @@ git commit -m "Find every draft in a hook payload, including apply_patch envelop
 ```
 
   Add a subprocess test to `tests/test_citation_gate_hook.py`:
-  - use a `HookRepo` that also copies `patch_paths.py`;
-  - write one draft citing `not_a_real_citekey_2026` and one clean
+
+- use a `HookRepo` that also copies `patch_paths.py`;
+- write one draft citing `not_a_real_citekey_2026` and one clean
     draft;
-  - feed a Codex-shaped payload built from
+- feed a Codex-shaped payload built from
     `codex_apply_patch_multi.json`, with its paths pointed at the two
     drafts;
-  - assert `decision == "block"`, and that the reason names the fake
+- assert `decision == "block"`, and that the reason names the fake
     key.
 
   Update `HookRepo` (L100-146): its copy loop becomes
@@ -1043,15 +1082,15 @@ def main() -> int:
         return 0  # not a genre-skill draft -- nothing to gate
 ```
 
-  3. Replace the line bound with the total over all drafts:
+  1. Replace the line bound with the total over all drafts:
      `lines = sum(n for n in map(_line_count, drafts) if n is not None)`.
-  4. Build the env as
+  2. Build the env as
      `env = {**safe_path.child_env(draft_target.REPO_ROOT), GATE_CALLER_ENV: "hook"}`.
-  5. The subprocess command becomes
+  3. The subprocess command becomes
      `[sys.executable, "-m", "chitragupta.draft", "gate", *map(str, drafts)]`.
-  6. In the two failure reasons, change "this draft" and "this file"
+  4. In the two failure reasons, change "this draft" and "this file"
      to "the draft(s) this write changed".
-  7. `main` must stay at or under 25 statements. If it does not, move
+  5. `main` must stay at or under 25 statements. If it does not, move
      the line-bound block into `_too_large(drafts) -> bool`, which
      blocks and returns True.
 
@@ -1075,8 +1114,12 @@ def main() -> int:
 
 - [ ] **Step 5: Run the hook tests, then the whole suite.**
   Run:
-  - `pytest tests/test_hook_modules.py tests/test_citation_gate_hook.py tests/test_style_check_hook.py tests/test_draft_target.py tests/test_patch_paths.py -q`
-  - `pytest -q --cov --cov-branch`
+
+  ```bash
+  pytest tests/test_hook_modules.py tests/test_citation_gate_hook.py \
+    tests/test_style_check_hook.py tests/test_draft_target.py tests/test_patch_paths.py -q
+  pytest -q --cov --cov-branch
+  ```
 
   Expected: PASS at 100% coverage. Also fix the stale docstring at
   `tests/test_citation_gate_hook.py:26-30`, which says the hook
@@ -1098,6 +1141,7 @@ git commit -m "Gate every draft a write changes, including multi-file patches"
 ### Task 5: Codex runs the hooks
 
 **Files:**
+
 - Create: `.codex/hooks.json`
 - Create: `chitragupta/launcher_configs.py`
 - Modify: `.claude/hooks/session_start_hook.py`, `launcher_faults`
@@ -1106,6 +1150,7 @@ git commit -m "Gate every draft a write changes, including multi-file patches"
 - Test: `tests/test_settings_launchers.py`, extended to `.codex/hooks.json`
 
 **Interfaces:**
+
 - Consumes:
   - `hook_launchers.faults(settings_path: Path) -> list[str]`,
     unchanged. It already reads any `{"hooks": {event: [entry]}}`
@@ -1120,6 +1165,7 @@ git commit -m "Gate every draft a write changes, including multi-file patches"
     deduplicated.
 
 **`.codex/hooks.json`.** The `command` form is fixed by M5.
+
 - **Default**, if M5 shows Codex runs hooks with the working directory
   at the project root and accepts a command string:
 
@@ -1247,7 +1293,12 @@ def faults(root: Path) -> list[str]:
 - [ ] **Step 4: Write `.codex/hooks.json`** as decided above.
 
 - [ ] **Step 5: Run the tests and confirm they pass.**
-  Run: `pytest tests/test_launcher_configs.py tests/test_settings_launchers.py tests/test_session_start_hook.py tests/test_hook_modules.py -q`
+  Run:
+
+  ```bash
+  pytest tests/test_launcher_configs.py tests/test_settings_launchers.py \
+    tests/test_session_start_hook.py tests/test_hook_modules.py -q
+  ```
 
 - [ ] **Step 6: Measure on a real Codex session** in a scratch copy of
   the sample project, and record each trial in `docs/HOOKS.md`'s table
@@ -1282,6 +1333,7 @@ place that notices. This also catches a draft written through the
 shell, on any harness.
 
 **Files:**
+
 - Create: `chitragupta/gate_liveness.py`
 - Modify: `chitragupta/citation_gate.py`, `run` (L400-454). Replace
   the `hook_launchers.faults()` warning loop at L409-415 with one call.
@@ -1290,6 +1342,7 @@ shell, on any harness.
   which is re-pointed at `gate_liveness`.
 
 **Interfaces:**
+
 - Consumes:
   - `launcher_configs.present(root)` and `launcher_configs.faults(root)`
     from Task 5;
@@ -1306,6 +1359,7 @@ shell, on any harness.
     or `.opencode/plugins/chitragupta-gate.js`.
 
 **This is detection, never enforcement.**
+
 - It never changes the gate's exit code.
 - A spoofed env variable or a hand-edited `.gate-seen.json` hides the
   warning, and nothing more.
@@ -1492,8 +1546,12 @@ def _digest(path: str) -> "str | None":
 
 - [ ] **Step 6: Run the tests and confirm they pass.**
   Run:
-  - `pytest tests/test_gate_liveness.py tests/test_citation_gate.py tests/test_ledger_readers.py tests/test_feature_workflows.py -q`
-  - `pytest -q --cov --cov-branch`
+
+  ```bash
+  pytest tests/test_gate_liveness.py tests/test_citation_gate.py \
+    tests/test_ledger_readers.py tests/test_feature_workflows.py -q
+  pytest -q --cov --cov-branch
+  ```
 
   Expected: PASS at 100%. Every gate test uses `isolated_config`, so
   its project root holds no launcher config and prints no warning. If a
@@ -1521,6 +1579,7 @@ git commit -m "Warn when a draft changed without any hook gating it"
 ### Task 7: OpenCode runs the same hooks through a plugin (#900)
 
 **Files:**
+
 - Create: `.opencode/plugins/chitragupta-gate.js`. It exports only the
   plugin, since M12 may show OpenCode loads every export as a plugin.
 - Create: `.opencode/chitragupta/gate.js` (the helpers)
@@ -1532,6 +1591,7 @@ git commit -m "Warn when a draft changed without any hook gating it"
   step to the existing Node 20 job (L532-557).
 
 **Interfaces:**
+
 - Consumes:
   - the hook contract from Task 4: a JSON payload on stdin, and one
     JSON document or nothing on stdout;
@@ -1548,6 +1608,7 @@ git commit -m "Warn when a draft changed without any hook gating it"
     as M10 decides.
 
 **Why this shape:**
+
 - **The plugin holds no gate logic.** It turns OpenCode's tool
   arguments into the payload shape the hooks already read, and passes
   the payload to them. So "which writes are drafts", the line bound,
@@ -1743,17 +1804,20 @@ git commit -m "Run the citation gate on OpenCode's file tools through a plugin"
 ### Task 8: Skills in harness-neutral wording, with conformant frontmatter
 
 **Files:**
+
 - Modify: all nine `.claude/skills/*/SKILL.md`, and
   `.claude/skills/deep-research/reference.md`
 - Test: `tests/test_skill_frontmatter.py` (new)
 - Test: `tests/test_skill_harness_neutral.py` (new)
 
 **Interfaces:**
+
 - Consumes: nothing from other tasks.
 - Produces: skills that Claude Code, Codex and OpenCode each load
   unchanged.
 
 **What changes, and what does not:**
+
 - The self-check stays exactly where it is: each skill's existing
   `python -m chitragupta.draft gate` step. No `scripts/` folder is
   added to any skill. The check is already one CLI call, and a script
@@ -1766,6 +1830,7 @@ git commit -m "Run the citation gate on OpenCode's file tools through a plugin"
   pinned step leaves `SKILL.md`.
 
 **Frontmatter** (Agent Skills specification):
+
 - `name` matches the folder name and the pattern
   `^[a-z0-9]+(-[a-z0-9]+)*$`.
 - `description` is 1-1,024 characters.
@@ -1789,21 +1854,25 @@ git commit -m "Run the citation gate on OpenCode's file tools through a plugin"
 | tutorial-writer | 950 |
 
 agenda-reviser:
+
 ```text
 Repairs the unattended findings on an existing draft's review agenda, one item at a time. Reads `python -m chitragupta.review agenda <draft>` and acts only on items whose `unattended` field says so; every other class is surfaced for a person to decide. One R4 cycle is one command, `review agenda <draft> --baseline <stem>.agenda.json --json`; passes continue only while `objective_class_count` strictly falls, and stop at `pass_bound`. Every repair must re-pass `python -m chitragupta.draft gate` and the same baseline recheck before it is kept, and every attempt is logged in revisions.md. Triggers when the user asks to work the review agenda, fix what an agenda run found, or act on unattended findings -- before rendering or submitting, after a sync moved the corpus, or on returning to a draft after weeks away. Judgement calls go to draft-reviser or the human. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
 ```
 
 draft-reviser:
+
 ```text
 Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it: reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
 ```
 
 deep-research:
+
 ```text
 Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review -- citing only real citekeys from content/ledger.sqlite, never a URL and never an invented key. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m chitragupta.draft gate` before presenting. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
 ```
 
 tutorial-writer:
+
 ```text
 Drafts a Diataxis-style tutorial -- a hands-on lesson a learner follows at a keyboard, start to finish, to a working result they can see -- verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they only need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
 ```
@@ -1866,10 +1935,19 @@ def test_no_skill_prescribes_one_harness_tools(path):
 ```
 
   Confirm the list with:
-  `grep -rnE '`(Edit|Write|Read)`|TodoWrite|Agent calls?|in (a single|one) message|`old_string`' .claude/skills`
+
+  ```bash
+  grep -rnE '`(Edit|Write|Read)`|TodoWrite|Agent calls?' .claude/skills
+  grep -rnE 'in (a single|one) message|`old_string`|`general-purpose`' .claude/skills
+  ```
 
 - [ ] **Step 2: Run the tests and confirm they fail.**
-  Run: `pytest tests/test_skill_frontmatter.py tests/test_skill_harness_neutral.py -q`
+  Run:
+
+  ```bash
+  pytest tests/test_skill_frontmatter.py tests/test_skill_harness_neutral.py -q
+  ```
+
   Expected: failures listing four descriptions, nine `tags` keys, and
   the wording hits.
 
@@ -1878,7 +1956,13 @@ def test_no_skill_prescribes_one_harness_tools(path):
   commit per skill keeps the review readable.
 
 - [ ] **Step 4: Run every skill scan.**
-  Run: `pytest tests/test_skill_*.py tests/test_features_doc.py tests/test_command_depth_scan.py tests/test_removed_command_scan.py -q`
+  Run:
+
+  ```bash
+  pytest tests/test_skill_*.py tests/test_features_doc.py \
+    tests/test_command_depth_scan.py tests/test_removed_command_scan.py -q
+  ```
+
   Expected: PASS.
 
 - [ ] **Step 5: Check the skills load.**
@@ -1899,6 +1983,7 @@ git commit -m "Word the skills for any harness, and fit their frontmatter to the
 ### Task 9: `chitragupta init --agent claude|codex|opencode`, and `doctor`
 
 **Files:**
+
 - Modify: `chitragupta/init.py`
   - `COPY_VERBATIM` (L71-80)
   - `TOP_LEVEL` (L135)
@@ -1915,16 +2000,19 @@ git commit -m "Word the skills for any harness, and fit their frontmatter to the
   `tests/test_release.py`
 
 **Interfaces:**
+
 - Consumes:
   - `launcher_configs.faults(root)` from Task 5;
   - `.codex/hooks.json` and `.opencode/` from Tasks 5 and 7.
 - Produces:
-  - `init.AGENT_TREES: dict[str, tuple[str, ...]] = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}`
+  - `init.AGENT_TREES`, a `dict[str, tuple[str, ...]]`: `"claude": ()`,
+    `"codex": (".codex",)`, `"opencode": (".opencode",)`
   - `scaffold(dest, *, force=False, dry_run=False, agents=("claude",)) -> list[str]`
   - The CLI takes `--agent NAME`, repeatable, choosing from
     `sorted(AGENT_TREES)`, with the default `["claude"]`.
 
 **Rules:**
+
 - **`.claude/` is scaffolded for every agent.** It holds the skills
   and the hooks that all three harnesses run. `CLAUDE.md` is scaffolded
   as today; it is a router, harmless elsewhere.
@@ -2009,10 +2097,10 @@ AGENT_TREES = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
 ```
 
-  2. Include the agent trees in the `missing` check, so a wheel built
+  1. Include the agent trees in the `missing` check, so a wheel built
      without `.codex/` refuses rather than scaffolding a Codex project
      with no gate. That is the #509 lesson in `scaffold`'s own comment.
-  3. `build_parser` gains:
+  2. `build_parser` gains:
 
 ```python
     parser.add_argument(
@@ -2021,11 +2109,12 @@ AGENT_TREES = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}
     )
 ```
 
-  4. `main` passes `agents=tuple(args.agents or ["claude"])`.
+  1. `main` passes `agents=tuple(args.agents or ["claude"])`.
 
   If M7 requires it, add the `.agents/skills/` copy as one more
-  `_write_tree(SOURCE_ROOT / ".claude" / "skills", dest / ".agents" / "skills", ...)`
-  when `"codex" in agents`, with its own test.
+  `_write_tree` call, from `SOURCE_ROOT / ".claude" / "skills"` to
+  `dest / ".agents" / "skills"`, when `"codex" in agents`, with its own
+  test.
 
 - [ ] **Step 4: Implement the `doctor` check** as described above,
   keeping `main` under 25 statements.
@@ -2043,7 +2132,13 @@ AGENT_TREES = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}
     `draft render` refuses in every format.
 
 - [ ] **Step 6: Run the tests and confirm they pass.**
-  Run: `pytest tests/test_init.py tests/test_doctor.py tests/test_release.py tests/test_packaging_command_table.py -q`, then `pytest -q --cov --cov-branch`.
+  Run:
+
+  ```bash
+  pytest tests/test_init.py tests/test_doctor.py tests/test_release.py \
+    tests/test_packaging_command_table.py -q
+  pytest -q --cov --cov-branch
+  ```
 
 - [ ] **Step 7: Check from a built wheel.**
   1. `poetry build`
@@ -2065,6 +2160,7 @@ git commit -m "Scaffold Codex and OpenCode launchers with chitragupta init --age
 ### Task 10: Document what each harness enforces, and record local-model runs
 
 **Files:**
+
 - Modify: `docs/HOOKS.md`
   - the measured-trials table (L584-596), with a Harness column added;
   - "Emit only the field this host consumes" (L573-580);
@@ -2151,6 +2247,36 @@ the harness version and the evidence.
 - M10:
 - M11:
 - M12:
+
+## 🔁 What changed along the way
+
+Recorded while building Tasks 1-9, 2026-09-29.
+
+- **Render with no ledger raises `NoLedger`, not `UngatedDraft`.** A
+  citing draft with no ledger at all used to say "No ledger at ... run
+  `sync`", which is more use than every key listed as unknown, and
+  `tests/test_ledger_readers.py` pins it. `_gate.gated_warnings` lets
+  `NoLedger` through to the error the CLI already prints.
+- **The `MissingCitekey` handler in `render_output/_cli.py` stays.** The
+  gate now refuses such a draft first, so the handler is reached only
+  when a sync commits between the gate's read and the numbering step's.
+  It is kept for that race, with a test.
+- **The OpenCode plugin delivers a refusal on both channels.** M10 is
+  unmeasured, so `deliver()` rewrites the tool output *and* throws;
+  whichever OpenCode honours, the model sees the refusal. Keep only the
+  measured one once Task 0 runs.
+- **`gate_liveness` reports dead launchers from the project the command
+  runs in, and unseen drafts only in the project the drafts live in.**
+  The first is where `hook_launchers` always looked; the second keeps a
+  test whose `CONTENT_DIR` is a temporary directory from seeing this
+  checkout's own launchers.
+- **The `doctor` check reports `[launcher]` lines**, and one `[ok]` line
+  when every launcher it found can start.
+- **The skills scan also forbids a backticked `general-purpose`**, the
+  Claude Code subagent type; a skill now says "a general-purpose
+  subagent" in plain words.
+- **`docs/LOCAL-MODELS.md` was not written.** It is a record of runs,
+  and no run has been made; it arrives with the first one.
 
 ## 📚 Sources for the harness facts assumed above
 

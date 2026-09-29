@@ -132,10 +132,10 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **Every call carries `--log`.** The point of choosing the expensive
   path deliberately is that the cost lands in `retrieval.md` and can be
   looked at afterwards, instead of being guessed at.
-- **Edit in place; never rewrite the whole file.** A wide *search* does not imply a wide
-  *rewrite*. Most sections survive a re-check untouched, and rewriting
-  those costs thousands of output tokens to produce a diff nobody can
-  review.
+- **Edit in place; never rewrite the whole file.** A wide *search*
+  does not imply a wide *rewrite*. Most sections survive a re-check
+  untouched, and rewriting those costs thousands of output tokens to
+  produce a diff nobody can review.
 - **Never write a citekey** that isn't already in the draft, in
   `evidence.md`, or in a `search()` result you just read. A fabricated
   citekey is the one failure this whole pipeline exists to prevent, and

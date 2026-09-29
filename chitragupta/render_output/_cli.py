@@ -199,7 +199,10 @@ def main(argv: list[str] | None = None) -> int:
     except references.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a
         # cited key that isn't there stops it (references.build_section's
-        # own error names the keys and what to run). Reported the same way
+        # own error names the keys and what to run). The gate above now
+        # refuses such a draft first (#812), so this is reached only when
+        # the ledger changes between the two reads -- a sync committing
+        # mid-render -- and is kept for that case. Reported the same way
         # as any other render failure rather than as a traceback: a genre
         # skill's documented reaction to `[error]` is to warn and carry on
         # presenting the draft, which is right here too -- the draft is
