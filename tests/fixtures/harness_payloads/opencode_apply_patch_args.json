@@ -1,0 +1,3 @@
+{
+  "patchText": "*** Begin Patch\n*** Update File: content/drafts/a.md\n@@\n-old line\n+new line\n*** Update File: content/drafts/b.md\n@@\n+another line\n*** End Patch\n"
+}

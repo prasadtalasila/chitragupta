@@ -126,6 +126,55 @@ class TestCitationGateHookModule:
         assert gate.main() == 0, why
         assert emitted(capsys) is None
 
+    TWO_DRAFTS = (
+        "*** Begin Patch\n*** Update File: content/drafts/a.md\n"
+        "*** Update File: content/drafts/b.md\n*** End Patch\n"
+    )
+
+    def test_every_draft_in_a_patch_is_gated_in_one_call(self, rooted, monkeypatch, capsys):
+        # Codex's apply_patch, or OpenCode's through its plugin (#812, #900):
+        # one write, several drafts, and every one of them is gated.
+        hook, root = rooted
+        drafts = root / "content" / "drafts"
+        (drafts / "a.md").write_text("x\n")
+        (drafts / "b.md").write_text("y\n")
+        calls = []
+
+        def run(cmd, **kwargs):
+            calls.append((cmd, kwargs))
+            return completed(0)
+
+        monkeypatch.setattr(hook.subprocess, "run", run)
+        payload = {"tool_name": "apply_patch", "tool_input": {"command": self.TWO_DRAFTS}}
+        self.feed(monkeypatch, {**payload, "cwd": str(root)})
+        assert hook.main() == 0
+        cmd, kwargs = calls[0]
+        assert len(calls) == 1
+        assert cmd[-2:] == [str((drafts / "a.md").resolve()), str((drafts / "b.md").resolve())]
+        assert kwargs["env"][hook.GATE_CALLER_ENV] == "hook"
+        assert emitted(capsys) is None
+
+    def test_an_unreadable_patch_on_a_draft_blocks(self, rooted, monkeypatch, capsys):
+        hook, _ = rooted
+        patch = "*** Begin Patch\n*** Frobnicate: content/drafts/a.md\n*** End Patch\n"
+        self.feed(monkeypatch, {"tool_input": {"command": patch}})
+        assert hook.main() == 0
+        response = emitted(capsys)
+        assert response["decision"] == "block"
+        assert "could not be read" in response["reason"]
+
+    def test_the_line_bound_is_the_total_over_every_draft(self, rooted, monkeypatch, capsys):
+        # Each half is under the bound; together they are over it, and it is
+        # the one gate call over both that has to fit the harness's limit.
+        hook, root = rooted
+        drafts = root / "content" / "drafts"
+        half = "x\n" * (hook.MAX_GATED_LINES // 2 + 1)
+        (drafts / "a.md").write_text(half)
+        (drafts / "b.md").write_text(half)
+        self.feed(monkeypatch, {"tool_input": {"command": self.TWO_DRAFTS}, "cwd": str(root)})
+        assert hook.main() == 0
+        assert "too large to gate" in emitted(capsys)["reason"]
+
     def test_a_write_outside_the_drafts_dir_is_ignored(self, rooted, monkeypatch, capsys):
         hook, root = rooted
         elsewhere = root / "notes.md"
@@ -562,6 +611,34 @@ class TestStyleCheckHookModule:
         context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
         assert "defect marker" in context
         assert "§9's decidable rules only" in context
+
+    def test_every_draft_in_a_patch_is_checked_in_one_call(self, rooted, monkeypatch, capsys):
+        hook, root = rooted
+        drafts = root / "content" / "drafts"
+        (drafts / "a.md").write_text("x\n")
+        (drafts / "b.md").write_text("y\n")
+        calls = []
+        monkeypatch.setattr(
+            hook.subprocess, "run", lambda cmd, **k: calls.append(cmd) or completed(0, "{}")
+        )
+        patch = (
+            "*** Begin Patch\n*** Update File: content/drafts/a.md\n"
+            "*** Update File: content/drafts/b.md\n*** End Patch\n"
+        )
+        payload = {"tool_input": {"command": patch}, "cwd": str(root)}
+        monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps(payload)))
+        assert hook.main() == 0
+        assert [Path(p).name for p in calls[0][-2:]] == ["a.md", "b.md"]
+
+    def test_an_unreadable_patch_is_left_to_the_gate(self, rooted, monkeypatch, capsys):
+        # The gate blocks this one; an advisory hook says nothing at all.
+        hook, _ = rooted
+        patch = "*** Begin Patch\n*** Frobnicate: content/drafts/a.md\n*** End Patch\n"
+        monkeypatch.setattr(
+            sys, "stdin", io.StringIO(json.dumps({"tool_input": {"command": patch}}))
+        )
+        assert hook.main() == 0
+        assert emitted(capsys) is None
 
     def test_it_never_emits_a_blocking_decision(self, rooted, monkeypatch, capsys):
         """The rule that separates this hook from the one beside it."""

@@ -1,0 +1,10 @@
+{
+  "session_id": "constructed-812",
+  "transcript_path": "/project/.codex/transcript.jsonl",
+  "cwd": "/project",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "apply_patch",
+  "tool_input": {
+    "command": "*** Begin Patch\n*** Update File: content/drafts/a.md\n@@\n-old line\n+new line\n*** Update File: content/drafts/b.md\n@@\n+another line\n*** End Patch\n"
+  }
+}

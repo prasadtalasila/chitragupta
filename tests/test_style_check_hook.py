@@ -42,7 +42,7 @@ class StyleHookRepo:
         self.root = root
         hooks = root / ".claude" / "hooks"
         hooks.mkdir(parents=True, exist_ok=True)
-        for name in ("style_check_hook.py", "draft_target.py", "safe_path.py"):
+        for name in ("style_check_hook.py", "draft_target.py", "safe_path.py", "patch_paths.py"):
             shutil.copy2(HOOKS / name, hooks / name)
         self.hook = hooks / "style_check_hook.py"
         self.drafts = root / "content" / "drafts"

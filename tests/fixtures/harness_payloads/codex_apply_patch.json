@@ -1,0 +1,10 @@
+{
+  "session_id": "constructed-812",
+  "transcript_path": "/project/.codex/transcript.jsonl",
+  "cwd": "/project",
+  "hook_event_name": "PostToolUse",
+  "tool_name": "apply_patch",
+  "tool_input": {
+    "command": "*** Begin Patch\n*** Add File: content/drafts/probe.md\n+A claim.\n*** End Patch\n"
+  }
+}
