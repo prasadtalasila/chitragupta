@@ -12,15 +12,18 @@ Codex 0.159.0 sent on 2026-09-29, with the project path replaced by
 - `codex_apply_patch_multi.json`: one patch adding two drafts, from the
   project root.
 
-**The OpenCode fixtures are constructed**, because no live OpenCode tool
-call could be driven in the environment that built the adapters. They
-hold the `args` OpenCode's tools take -- `filePath` and `content` for
-`write`; `filePath`, `oldString` and `newString` for `edit`; `patchText`
-for `apply_patch` (<https://opencode.ai/docs/tools/>, and its bundled
-source).
+**`opencode_apply_patch_args.json` is recorded**: the `args` OpenCode
+1.18.33 passed to the plugin for an `apply_patch` call. Its envelope ends
+without a newline after `*** End Patch`. **`opencode_write_args.json` and
+`opencode_edit_args.json`** hold the key sets measured the same way
+(`filePath`, `content`; `filePath`, `oldString`, `newString`), with
+illustrative values.
+
+In every fixture the patch *content* was scripted by the stand-in model
+that drove the harness; the payload's shape is what the harness produced.
 
 The patch text follows OpenAI's `apply_patch` (V4A) envelope, whose Lark
-grammar Codex sends with its tool definition. Replace a constructed file
-with a recorded one when a live session is available, following Task 0
-of [plans/812-harness-neutral-core.md](../../../plans/812-harness-neutral-core.md),
+grammar Codex sends with its tool definition. Re-record the fixtures when
+a harness's payload shape may have changed, following Task 0 of
+[plans/812-harness-neutral-core.md](../../../plans/812-harness-neutral-core.md),
 and record the date, harness version and capture method here.

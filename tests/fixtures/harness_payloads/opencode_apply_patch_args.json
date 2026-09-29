@@ -1,3 +1,3 @@
 {
-  "patchText": "*** Begin Patch\n*** Update File: content/drafts/a.md\n@@\n-old line\n+new line\n*** Update File: content/drafts/b.md\n@@\n+another line\n*** End Patch\n"
+  "patchText": "*** Begin Patch\n*** Add File: content/drafts/clean.md\n+No citations here.\n*** Add File: content/drafts/multi.md\n+A claim [@not_a_real_citekey_2026].\n*** End Patch"
 }

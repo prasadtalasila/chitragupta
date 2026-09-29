@@ -886,11 +886,11 @@ whoever is changing a hook and wants the sources.
 4. **What an older harness does with an unrecognised `if` key.** Decides
    whether conditional spawning is safe for advisory hooks on every host or
    only on recent ones.
-5. **Whether OpenCode's plugin path holds live.** The six trials above
-   were run on Claude Code; Codex's gate was measured end to end on
-   2026-09-29. OpenCode's was read from its source and its skill
-   discovery measured, but no live tool call reached the plugin;
-   [HARNESS.md](HARNESS.md) lists what is left.
+5. **Whether the Codex and OpenCode results hold across versions.** The
+   six trials above were run on Claude Code; Codex 0.159.0's hooks and
+   OpenCode 1.18.33's plugin were measured end to end on 2026-09-29
+   ([HARNESS.md](HARNESS.md)). Both harnesses release often, and nothing
+   re-measures them.
 6. **Whether a session-start message is the right register for a fault.**
    The preflight reports once and cannot re-report: a user who runs
    `python -m chitragupta.corpus sync` two minutes later keeps stale advice in

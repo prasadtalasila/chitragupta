@@ -51,9 +51,10 @@ export function runHook(script, payload, spawn = spawnSync) {
   }
 }
 
-// Both channels, because which one reaches the model has not been measured
-// yet (plans/812-harness-neutral-core.md, M10): the tool's own output,
-// which the model reads as the result of its call, and a thrown error.
+// A throw fails the tool call, and OpenCode hands the model the error's
+// message as the call's result (measured on OpenCode 1.18.33 for write,
+// edit and apply_patch). The output is rewritten too, so the refusal still
+// leads the result if a later OpenCode swallows a hook's error.
 export function deliver(output, message) {
   output.output = `${message}\n\n${output.output ?? ""}`;
   throw new Error(message);

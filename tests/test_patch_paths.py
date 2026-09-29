@@ -87,9 +87,11 @@ def test_the_recorded_two_draft_codex_payload_parses():
     ]
 
 
-def test_the_opencode_patch_parses():
+def test_the_recorded_opencode_patch_parses():
+    """Recorded from OpenCode 1.18.33's `apply_patch`, whose envelope has no
+    newline after `*** End Patch`."""
     args = json.loads((FIXTURES / "opencode_apply_patch_args.json").read_text(encoding="utf-8"))
     assert patch_paths.written_paths(args["patchText"]) == [
-        "content/drafts/a.md",
-        "content/drafts/b.md",
+        "content/drafts/clean.md",
+        "content/drafts/multi.md",
     ]

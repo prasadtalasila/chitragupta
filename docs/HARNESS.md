@@ -279,11 +279,19 @@ call.
   end of an over-long description -- often its "use X instead" routing
   -- would be lost.
 
-**OpenCode**, by its own debug commands and by reading its bundled
-source. Its agent loop made the title request to the stand-in and never
-the main one, in this container, whatever the provider or project, so no
-tool call was driven:
+**OpenCode**, driven end to end the same way:
 
+- **The plugin blocks all three file tools.** A `write` and an `edit`
+  that put a fabricated key in a draft, and an `apply_patch` (the tool
+  OpenCode offers a GPT model in place of `write` and `edit`) adding two
+  drafts, were each refused: the model is handed the gate's report as
+  the tool's result, naming the bad draft and key. A clean `write`
+  passes silently, and the hook's run leaves the liveness record, so a
+  hand-run gate afterwards is quiet.
+- `tool.execute.before` sees `{filePath, content}` for `write`,
+  `{filePath, oldString, newString}` for `edit` and `{patchText}` for
+  `apply_patch`, and `tool.execute.after` receives the same `args` on
+  its input -- so the plugin needs only the after-hook.
 - **Skill discovery.** It reads `.opencode/skills/`, `.claude/skills/`
   and `.agents/skills/` (and the user's global `~/.claude/skills/`),
   and loads one copy per skill name -- **chosen arbitrarily** when a name
@@ -294,17 +302,16 @@ tool call was driven:
   `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` restricts it to `.opencode/skills/`,
   and a project cannot set it.
 - A skill with `tags:` loads, and a long description is kept whole.
-- **The plugin hooks**, read from source: `tool.execute.after` receives
-  the call's `args`, and a plugin that throws fails the tool call, so
-  the error is what the model is handed. `tool.execute.before` runs
-  before the tool executes, so a throw there would stop the write
-  itself.
+- **One environment trap, not OpenCode's or this repository's.** In the
+  container these were measured in, OpenCode's runtime never reaped a
+  `git` child process -- it sat `<defunct>` -- and the agent loop waited on
+  it forever: the title request went out and the turn itself never did.
+  With `git` off `PATH` everything ran. A harness that stalls before its
+  first real model call in a sandbox is worth checking for a zombie
+  child before anything else.
 
 **Still not measured:**
 
-- a live OpenCode tool call through the plugin, and which of the
-  plugin's two refusal channels (the rewritten output, or the throw)
-  OpenCode passes on;
 - whether a Codex `PostToolUse` advisory note (the style hook's) reaches
   the model -- the probe draft had no prose finding to report;
 - local-model runs on either harness.

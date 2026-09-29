@@ -28,9 +28,9 @@ const [plugin, tool, args] = process.argv.slice(2);
 const { ChitraguptaGate } = await import(pathToFileURL(plugin).href);
 const hooks = await ChitraguptaGate();
 const output = { output: "done" };
-await hooks["tool.execute.before"]({ tool, callID: "1" }, { args: JSON.parse(args) });
+// The shape OpenCode 1.18.33 hands the after-hook: the call's args ride on `input`.
 try {
-  await hooks["tool.execute.after"]({ tool, callID: "1" }, output);
+  await hooks["tool.execute.after"]({ tool, callID: "1", args: JSON.parse(args) }, output);
   console.log(JSON.stringify({ refused: false, output: output.output }));
 } catch (error) {
   console.log(JSON.stringify({ refused: true, message: error.message }));

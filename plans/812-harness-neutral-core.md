@@ -5,8 +5,8 @@
 > superpowers:executing-plans to carry out this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **Tasks 1-9 built, in one PR; Task 0 measured for Codex and in
-part for OpenCode; Task 10's local-model runs outstanding.** Written
+Status: **Tasks 1-9 built, in one PR; Task 0 measured for Codex and
+OpenCode; Task 10's local-model runs outstanding.** Written
 2026-09-26, rescoped and built 2026-09-29.
 The maintainer asked for a single PR rather than one per group. Task 0
 was run afterwards against Codex and OpenCode with a stand-in model; see
@@ -2253,17 +2253,19 @@ with scripted tool calls and logged what the harness handed back.
   codex` now copies them. `AGENTS.md` is read natively.
 - **M8.** A `tags:` key loads. A description over 1,024 characters is
   cut at 1,024 in the model's view.
-- **M9.** From source: `tool.execute.after` receives `{tool, sessionID,
-  callID, args}`, so the `before` hook is not needed to see the
-  arguments. Argument keys per the docs; no live call.
-- **M10.** From source: a throw from either hook fails the tool call
-  (`Effect.promise` around the hook); a throw in `before` precedes the
-  write. Not observed live: OpenCode's agent loop never sent its main
-  model request in this container.
+- **M9.** `write` passes `{filePath, content}`, `edit` passes
+  `{filePath, oldString, newString}`, and `apply_patch` -- offered to GPT
+  models in place of both -- passes `{patchText}`. `tool.execute.after`
+  receives the same `args`, so the plugin now uses only that hook.
+- **M10.** A throw from `tool.execute.after` fails the call and the model
+  is handed the gate's report as the result, for all three tools.
+  (OpenCode first stalled here: its runtime never reaped a `git` child in
+  this container. With `git` off `PATH` it ran; see HARNESS.md.)
 - **M11.** One copy per name, chosen arbitrarily across
   `.opencode/skills/`, `.claude/skills/` and `.agents/skills/`; only
   `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` (environment only) restricts it.
-- **M12.** Not measured.
+- **M12.** Not needed: the helpers live outside `plugins/`, so the one
+  plugin file exports one function.
 
 ## 🔁 What changed along the way
 
