@@ -32,7 +32,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import citation_gate, dossier
+from chitragupta import _code_regions, citation_gate, dossier
 
 # The genre-to-unit table, and the whole of the per-genre policy. Keyed by
 # what `dossier init --genre` writes into scope.md, which
@@ -305,7 +305,10 @@ def units(text: str, kind: str, *, latex: bool = False) -> list[Unit]:
     """
     if kind not in KINDS:
         raise ValueError(f"Unknown unit kind {kind!r}; expected one of {sorted(KINDS)}.")
-    lines = citation_gate._blank_code(text).splitlines()
+    # LaTeX pre-blanks verbatim only: Markdown's rules would read a
+    # backtick quote as code, and `%` stays for `_declaration`'s markers.
+    blanked = _code_regions.blank_latex_verbatim(text) if latex else citation_gate._blank_code(text)
+    lines = blanked.splitlines()
     if kind == "document":
         prose = _prose(lines)
         return [Unit("document", 1, prose, _citekeys(lines, prose, latex), _declaration(lines), 0)]

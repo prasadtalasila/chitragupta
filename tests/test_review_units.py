@@ -220,6 +220,13 @@ class TestLatexComments:
         (unit,) = _units.units(text, "paragraph", latex=True)
         assert (unit.citekeys, unit.declared) == (("Foo2019",), "only Foo covers X")
 
+    def test_a_citation_between_latex_quotes_is_counted(self, isolated_config):
+        """A backtick opens a quote in LaTeX, so Markdown's inline-code rule
+        must not blank the span between two quoted phrases (#834)."""
+        text = "As ``twins'' show \\citep{A}, the ``link'' matters.\n"
+        (unit,) = _units.units(text, "paragraph", latex=True)
+        assert unit.citekeys == ("A",)
+
     def test_a_percent_sign_in_markdown_is_not_a_comment(self, isolated_config):
         (unit,) = _units.units("Rose 30% [@A].\n", "paragraph")
         assert unit.citekeys == ("A",)
