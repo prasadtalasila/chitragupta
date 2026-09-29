@@ -5,13 +5,13 @@
 > superpowers:executing-plans to carry out this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **Tasks 1-9 built, in one PR; Task 0 and Task 10's recorded
-runs outstanding.** Written 2026-09-26, rescoped and built 2026-09-29.
-The maintainer asked for a single PR rather than one per group. No Codex
-or OpenCode session was available where it was built, so Task 0 was not
-run: the payload fixtures are constructed from the documentation and say
-so, and [docs/HARNESS.md](../docs/HARNESS.md) lists what is still
-unmeasured. See "What changed along the way" at the end.
+Status: **Tasks 1-9 built, in one PR; Task 0 measured for Codex and in
+part for OpenCode; Task 10's local-model runs outstanding.** Written
+2026-09-26, rescoped and built 2026-09-29.
+The maintainer asked for a single PR rather than one per group. Task 0
+was run afterwards against Codex and OpenCode with a stand-in model; see
+"Measured" below, and [docs/HARNESS.md](../docs/HARNESS.md) for what is
+still not. See "What changed along the way" at the end.
 
 **Goal:** Drive the pipeline from Claude Code, Codex and OpenCode, with
 the citekey gate just as strong on all three. The model checks its own
@@ -2232,21 +2232,38 @@ git commit -m "Document the gate on Codex and OpenCode, with measured local-mode
 
 ## 📏 Measured
 
-Filled in by Task 0 before Task 3 starts. Each answer carries the date,
-the harness version and the evidence.
+2026-09-29, Codex 0.159.0 and OpenCode 1.18.33, in a project scaffolded
+from the built wheel, each driven by a local stand-in model that answered
+with scripted tool calls and logged what the harness handed back.
+[docs/HARNESS.md](../docs/HARNESS.md) has the prose.
 
-- M1:
-- M2:
-- M3:
-- M4:
-- M5:
-- M6:
-- M7:
-- M8:
-- M9:
-- M10:
-- M11:
-- M12:
+- **M1.** `tool_input.command` is a plain string.
+- **M2.** The payload carries `cwd`, and patch paths are relative to it.
+- **M3.** Yes: the block's `reason` replaces the tool output the model
+  reads, naming the key and line.
+- **M4.** `SessionStart` `additionalContext` arrives as a developer
+  message. `PostToolUse` advisory: not measured (no prose finding).
+- **M5.** A hook runs in the session's working directory, with no
+  project-directory variable. The relative launcher failed from a
+  subfolder; the walk-up `python -P -c` launcher replaced it.
+- **M6.** Project hooks are skipped, silently, until trusted
+  (`--dangerously-bypass-hook-trust` exists for the non-interactive
+  case). The liveness warning fired on the untrusted write.
+- **M7.** `.agents/skills/` only, never `.claude/skills/`; `init --agent
+  codex` now copies them. `AGENTS.md` is read natively.
+- **M8.** A `tags:` key loads. A description over 1,024 characters is
+  cut at 1,024 in the model's view.
+- **M9.** From source: `tool.execute.after` receives `{tool, sessionID,
+  callID, args}`, so the `before` hook is not needed to see the
+  arguments. Argument keys per the docs; no live call.
+- **M10.** From source: a throw from either hook fails the tool call
+  (`Effect.promise` around the hook); a throw in `before` precedes the
+  write. Not observed live: OpenCode's agent loop never sent its main
+  model request in this container.
+- **M11.** One copy per name, chosen arbitrarily across
+  `.opencode/skills/`, `.claude/skills/` and `.agents/skills/`; only
+  `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` (environment only) restricts it.
+- **M12.** Not measured.
 
 ## 🔁 What changed along the way
 
@@ -2282,6 +2299,9 @@ Recorded while building Tasks 1-9, 2026-09-29.
 - **The skills scan also forbids a backticked `general-purpose`**, the
   Claude Code subagent type; a skill now says "a general-purpose
   subagent" in plain words.
+- **Two bugs found by Task 0, and fixed.** The relative Codex launcher
+  failed from any subfolder (M5), and a Codex project got no skills
+  (M7). Both are fixed and pinned by tests.
 - **`docs/LOCAL-MODELS.md` was not written.** It is a record of runs,
   and no run has been made; it arrives with the first one.
 

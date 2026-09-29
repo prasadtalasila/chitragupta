@@ -581,11 +581,13 @@ deduplicating, so emitting several delivers the payload twice. This
 repository's hooks still do not branch. Codex documents the same
 `{"decision": "block"}` shape and the same `hookSpecificOutput` field,
 and OpenCode's plugin reads the Claude Code shape and hands it on itself
-(#812, #900), so one envelope serves all three. That rests on Codex's
-documentation until it is measured ([HARNESS.md](HARNESS.md), "Not yet
-measured"); if Codex turns out to read another field, the branch goes
-here, keyed on the harness, and emits only that one. The branch point is
-recorded because it is not guessable from the field names.
+(#812, #900), so one envelope serves all three. Measured on Codex
+0.159.0: the block's `reason` replaces the tool output the model reads,
+and the session-start `additionalContext` arrives as a developer
+message ([HARNESS.md](HARNESS.md), "Measured, and what is still not").
+If a later Codex reads another field, the branch goes here, keyed on
+the harness, and emits only that one. The branch point is recorded
+because it is not guessable from the field names.
 
 **Codex and OpenCode launch the same scripts** (#812, #900).
 `.codex/hooks.json` registers the gate, style and session-start hooks
@@ -599,6 +601,16 @@ that mentions a draft but whose headers cannot be read is the one
 exception to malformed stdin failing open: it blocks, because failing
 open there is a silently inert gate. [HARNESS.md](HARNESS.md) has the
 design and what each harness enforces.
+
+**Codex's launcher cannot be a relative path.** Codex runs a hook in the
+session's working directory -- wherever the user started it -- and sets
+no project-directory placeholder, so `python .claude/hooks/<x>.py` failed
+to start from any subfolder and the draft landed ungated (measured).
+Each `.codex/hooks.json` line is instead a `python -P -c` one-liner that
+walks up to the folder holding `.codex/hooks.json` and runs the hook from
+there; `-P` keeps the working directory off `sys.path`, for the #822
+reason `safe_path.py` exists. `tests/test_settings_launchers.py` runs the
+real line from two levels down.
 
 ## 📊 What is measured, and what is merely documented
 
@@ -874,13 +886,11 @@ whoever is changing a hook and wants the sources.
 4. **What an older harness does with an unrecognised `if` key.** Decides
    whether conditional spawning is safe for advisory hooks on every host or
    only on recent ones.
-5. **Whether the Codex and OpenCode trials hold.** The six trials above
-   were run on Claude Code alone. Codex's payload shape, block delivery
-   and hook trust step, and whether a throw from OpenCode's
-   `tool.execute.after` reaches the model, are read off documentation;
-   [HARNESS.md](HARNESS.md) lists them, and Task 0 of
-   [the #812 plan](https://github.com/prasadtalasila/chitragupta/blob/main/plans/812-harness-neutral-core.md)
-   is how they get measured.
+5. **Whether OpenCode's plugin path holds live.** The six trials above
+   were run on Claude Code; Codex's gate was measured end to end on
+   2026-09-29. OpenCode's was read from its source and its skill
+   discovery measured, but no live tool call reached the plugin;
+   [HARNESS.md](HARNESS.md) lists what is left.
 6. **Whether a session-start message is the right register for a fault.**
    The preflight reports once and cannot re-report: a user who runs
    `python -m chitragupta.corpus sync` two minutes later keeps stale advice in

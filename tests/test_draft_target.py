@@ -271,8 +271,18 @@ class TestPatchPayloads:
     def test_a_command_of_another_type_is_not_a_patch(self, dt, root):
         assert dt.targets_from_stdin(stdin_of({"tool_input": {"command": 7}}), root) == []
 
+    def test_the_recorded_codex_payload_resolves_against_its_cwd(self, dt, root):
+        """The payload Codex 0.159.0 sent from a session started in
+        `content/`, with `/project` standing for the root: `drafts/sub.md`
+        is only a draft once it is resolved against that `cwd`."""
+        payload = json.loads((FIXTURES / "codex_apply_patch.json").read_text("utf-8"))
+        payload["cwd"] = payload["cwd"].replace("/project", str(root))
+        assert dt.targets_from_stdin(stdin_of(payload), root) == [
+            (root / "content" / "drafts" / "sub.md").resolve()
+        ]
+
     def test_the_codex_multi_file_payload_targets_both_drafts(self, dt, root):
         payload = json.loads((FIXTURES / "codex_apply_patch_multi.json").read_text("utf-8"))
-        payload["cwd"] = str(root)
+        payload["cwd"] = payload["cwd"].replace("/project", str(root))
         got = dt.targets_from_stdin(stdin_of(payload), root)
-        assert [p.name for p in got] == ["a.md", "b.md"]
+        assert [p.name for p in got] == ["clean.md", "multi.md"]

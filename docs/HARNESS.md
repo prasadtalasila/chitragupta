@@ -31,7 +31,7 @@ launcher) this extends, and [ARCHITECTURE.md](ARCHITECTURE.md)'s
 - [Designs turned down, and why](#-designs-turned-down-and-why)
 - [Harness facts learned](#-harness-facts-learned)
 - [Decisions a maintainer made](#-decisions-a-maintainer-made)
-- [Not yet measured](#-not-yet-measured)
+- [Measured, and what is still not](#-measured-and-what-is-still-not)
 
 ## 🎯 Why more than one harness
 
@@ -239,24 +239,72 @@ is relied on (the plan's Task 0).
 - **OpenCode is built alongside Codex**, not after it, since it needs
   no MCP server and reuses the same hook scripts.
 
-## 🔬 Not yet measured
+## 🔬 Measured, and what is still not
 
-The code is written against the documented payload shapes. Until the
-plan's Task 0 is run on real Codex and OpenCode sessions, these are
-assumptions, and HOOKS.md's rule is that a hook contract is measured,
-not assumed:
+**Measured on 2026-09-29**, with Codex 0.159.0 and OpenCode 1.18.33
+installed in a scratch copy of a project scaffolded by
+`chitragupta init`. No real model was used: a small local stand-in
+answered each harness's model requests with scripted tool calls, so each
+harness ran its own real tools, hooks and plugins, and the stand-in
+logged exactly what the harness handed back to the model after each tool
+call.
 
-- the exact type of Codex's `tool_input.command` (string or list) and
-  whether the payload carries `cwd`;
-- whether a Codex block reason reaches the model, and whether
-  `hookSpecificOutput.additionalContext` does;
-- the working directory Codex launches a hook with, which decides the
-  launcher's relative path;
-- whether a `throw` from OpenCode's `tool.execute.after` reaches the
-  model as an error;
-- whether OpenCode loads duplicate skills and every exported plugin
-  function.
+**Codex**, driven end to end:
 
-The test fixtures under `tests/fixtures/harness_payloads/` are
-constructed from the documentation and say so in their README; each is
-replaced by a recorded payload when Task 0 runs.
+- The gate hook fires on `apply_patch`, and **the model receives the
+  gate's refusal in place of the tool's output**, naming the bad key and
+  its line. The session-start preflight arrives as a developer message.
+- The payload carries `tool_name: "apply_patch"`, the patch text as a
+  plain string in `tool_input.command`, and the session's `cwd`. Patch
+  paths are relative to that `cwd`.
+  A single patch that adds two drafts is gated as one call and the
+  refusal names the bad one. Both payloads are recorded in
+  `tests/fixtures/harness_payloads/`.
+- **Project hooks do not run until trusted.** In an untrusted project a
+  draft with a fabricated key landed with "Success" and no warning. The
+  hand-run gate then printed the liveness warning, and after a trusted
+  run it printed none.
+- **A hook runs in the session's working directory**, which is wherever
+  Codex was started, and Codex sets no project-directory variable. The
+  first launcher, a relative `python .claude/hooks/<x>.py`, therefore
+  failed to start from any subfolder, and the draft landed ungated. Each
+  launcher line now walks up to the folder holding `.codex/hooks.json`
+  and runs the hook from there, under `python -P`; blocking from
+  `content/` was then measured.
+- **Codex reads project skills only from `.agents/skills/`**, never
+  `.claude/skills/`, so `init --agent codex` copies them there. It reads
+  `AGENTS.md` natively.
+- A skill with a `tags:` key loads. A `description` over 1,024
+  characters loads but is cut at 1,024 in what the model sees, so the
+  end of an over-long description -- often its "use X instead" routing
+  -- would be lost.
+
+**OpenCode**, by its own debug commands and by reading its bundled
+source. Its agent loop made the title request to the stand-in and never
+the main one, in this container, whatever the provider or project, so no
+tool call was driven:
+
+- **Skill discovery.** It reads `.opencode/skills/`, `.claude/skills/`
+  and `.agents/skills/` (and the user's global `~/.claude/skills/`),
+  and loads one copy per skill name -- **chosen arbitrarily** when a name
+  is in more than one folder: four runs picked different mixes, and
+  `.opencode/skills/` does not take precedence. So the copies in those
+  folders must be identical, which `init` guarantees by copying one
+  tree. Only the environment variable
+  `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` restricts it to `.opencode/skills/`,
+  and a project cannot set it.
+- A skill with `tags:` loads, and a long description is kept whole.
+- **The plugin hooks**, read from source: `tool.execute.after` receives
+  the call's `args`, and a plugin that throws fails the tool call, so
+  the error is what the model is handed. `tool.execute.before` runs
+  before the tool executes, so a throw there would stop the write
+  itself.
+
+**Still not measured:**
+
+- a live OpenCode tool call through the plugin, and which of the
+  plugin's two refusal channels (the rewritten output, or the throw)
+  OpenCode passes on;
+- whether a Codex `PostToolUse` advisory note (the style hook's) reaches
+  the model -- the probe draft had no prose finding to report;
+- local-model runs on either harness.

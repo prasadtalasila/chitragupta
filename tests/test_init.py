@@ -72,7 +72,11 @@ class TestScaffold:
     def test_the_default_writes_no_other_harness_tree(self, source, tmp_path):
         dest = tmp_path / "project"
         init.scaffold(dest)
-        assert {p.name for p in dest.iterdir()} == init.TOP_LEVEL - {".codex", ".opencode"}
+        assert {p.name for p in dest.iterdir()} == init.TOP_LEVEL - {
+            ".codex",
+            ".opencode",
+            ".agents",
+        }
 
     def test_the_acronyms_example_seeds_the_projects_own_vocabulary(self, source, tmp_path):
         """`[style].acronyms` ships pointing at `content/acronyms.toml`
@@ -239,7 +243,7 @@ class TestManifestAgreesWithTheReleaseZip:
         } | release.EMPTY_TOP_LEVEL
         renamed = {init.CONFIG_DEST if p == init.CONFIG_EXAMPLE else p for p in zip_top_level}
         assert renamed - init.TOP_LEVEL == init.DELIBERATE_DIFFERENCES
-        assert init.TOP_LEVEL - renamed == set()
+        assert init.TOP_LEVEL - renamed == init.GENERATED_TOP_LEVEL
 
 
 class TestScaffoldedDocLinksResolve:
@@ -373,6 +377,19 @@ class TestAgents:
             line.replace(str(tmp_path / "b"), str(tmp_path / "a"))
             for line in init.scaffold(tmp_path / "b", agents=("claude",))
         ]
+
+    def test_codex_gets_the_skills_where_it_reads_them(self, source, tmp_path):
+        """Codex reads `.agents/skills/` only; without the copy a Codex
+        project offers the model no skill at all (measured, #812)."""
+        init.scaffold(tmp_path, agents=("codex",))
+        copied = tmp_path / ".agents" / "skills" / "survey-writer" / "SKILL.md"
+        assert copied.read_text(encoding="utf-8") == (
+            source / ".claude" / "skills" / "survey-writer" / "SKILL.md"
+        ).read_text(encoding="utf-8")
+
+    def test_no_other_harness_gets_the_codex_copy(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("claude", "opencode"))
+        assert not (tmp_path / ".agents").exists()
 
     def test_codex_adds_its_hooks_beside_the_shared_scripts(self, source, tmp_path):
         init.scaffold(tmp_path, agents=("codex",))

@@ -6,13 +6,13 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/citation_gate_hook.py",
+            "command": "python -P -c \"import pathlib,runpy,sys; c=pathlib.Path.cwd(); h=next(d for d in (c,*c.parents) if (d/'.codex'/'hooks.json').is_file())/'.claude'/'hooks'; sys.path.insert(0,str(h)); sys.argv=[str(h/'citation_gate_hook.py')]; runpy.run_path(sys.argv[0],run_name='__main__')\"",
             "timeout": 30,
             "statusMessage": "Checking citekeys against the ledger..."
           },
           {
             "type": "command",
-            "command": "python .claude/hooks/style_check_hook.py",
+            "command": "python -P -c \"import pathlib,runpy,sys; c=pathlib.Path.cwd(); h=next(d for d in (c,*c.parents) if (d/'.codex'/'hooks.json').is_file())/'.claude'/'hooks'; sys.path.insert(0,str(h)); sys.argv=[str(h/'style_check_hook.py')]; runpy.run_path(sys.argv[0],run_name='__main__')\"",
             "timeout": 30,
             "statusMessage": "Checking the draft's prose..."
           }
@@ -25,7 +25,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/session_start_hook.py",
+            "command": "python -P -c \"import pathlib,runpy,sys; c=pathlib.Path.cwd(); h=next(d for d in (c,*c.parents) if (d/'.codex'/'hooks.json').is_file())/'.claude'/'hooks'; sys.path.insert(0,str(h)); sys.argv=[str(h/'session_start_hook.py')]; runpy.run_path(sys.argv[0],run_name='__main__')\"",
             "timeout": 30,
             "statusMessage": "Checking the project is ready to draft..."
           }

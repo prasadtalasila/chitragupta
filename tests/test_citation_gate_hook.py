@@ -291,8 +291,8 @@ class TestCodexPatchPayloads:
         payload["cwd"] = str(hook_repo.root)
         payload["tool_input"]["command"] = (
             payload["tool_input"]["command"]
-            .replace("content/drafts/a.md", clean.relative_to(hook_repo.root).as_posix())
-            .replace("content/drafts/b.md", bad.relative_to(hook_repo.root).as_posix())
+            .replace("content/drafts/clean.md", clean.relative_to(hook_repo.root).as_posix())
+            .replace("content/drafts/multi.md", bad.relative_to(hook_repo.root).as_posix())
         )
         result = run_hook(
             json.dumps(payload), env=hook_repo.env, cwd=hook_repo.root, hook=hook_repo.hook

@@ -72,12 +72,19 @@ def test_a_header_quoted_in_a_body_line_is_not_read():
     assert patch_paths.written_paths(text) == ["a.md"]
 
 
-@pytest.mark.parametrize("fixture", ["codex_apply_patch.json", "codex_apply_patch_multi.json"])
-def test_the_codex_payloads_parse(fixture):
-    payload = json.loads((FIXTURES / fixture).read_text(encoding="utf-8"))
-    paths = patch_paths.written_paths(payload["tool_input"]["command"])
-    assert paths
-    assert all(p.startswith("content/drafts/") for p in paths)
+def test_the_recorded_codex_payload_parses():
+    """Recorded from Codex 0.159.0, started in `content/`: the patch path is
+    relative to the session's `cwd`, not to the project root."""
+    payload = json.loads((FIXTURES / "codex_apply_patch.json").read_text(encoding="utf-8"))
+    assert patch_paths.written_paths(payload["tool_input"]["command"]) == ["drafts/sub.md"]
+
+
+def test_the_recorded_two_draft_codex_payload_parses():
+    payload = json.loads((FIXTURES / "codex_apply_patch_multi.json").read_text(encoding="utf-8"))
+    assert patch_paths.written_paths(payload["tool_input"]["command"]) == [
+        "content/drafts/clean.md",
+        "content/drafts/multi.md",
+    ]
 
 
 def test_the_opencode_patch_parses():

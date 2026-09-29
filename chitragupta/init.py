@@ -88,6 +88,18 @@ COPY_VERBATIM = (
 AGENT_TREES = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}
 DEFAULT_AGENTS = ("claude",)
 
+# Copies a harness needs of a tree the core already ships, as (source,
+# destination). Codex reads project skills only from `.agents/skills/`,
+# never `.claude/skills/` (measured on Codex 0.159.0, docs/HARNESS.md),
+# so a Codex project without this copy offers the model none of them.
+# OpenCode reads both folders and loads one copy per name, so the two
+# must stay identical -- which a copy of one tree guarantees.
+AGENT_COPIES = {"codex": ((".claude/skills", ".agents/skills"),)}
+
+# Top-level entries `init` writes that the release zip does not carry,
+# because they are copies made at scaffold time rather than tracked files.
+GENERATED_TOP_LEVEL = frozenset({".agents"})
+
 
 class ScaffoldSourceMissing(Exception):
     """An installation that cannot write a complete scaffold -- see
@@ -146,6 +158,7 @@ EMPTY_DIRS = (
 TOP_LEVEL = frozenset(
     {CONFIG_DEST, *COPY_VERBATIM, *(t for trees in AGENT_TREES.values() for t in trees)}
     | {"papers", "content"}
+    | GENERATED_TOP_LEVEL
 )
 
 # Kept separate from the module docstring above and passed to argparse
@@ -306,6 +319,8 @@ def scaffold(
     report = []
     for name in (*COPY_VERBATIM, *trees):
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
+    for src, dst in dict.fromkeys(c for agent in agents for c in AGENT_COPIES.get(agent, ())):
+        report.extend(_write_tree(SOURCE_ROOT / src, dest / dst, force=force, dry_run=dry_run))
     report.append(
         _write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST, force=force, dry_run=dry_run)
     )
