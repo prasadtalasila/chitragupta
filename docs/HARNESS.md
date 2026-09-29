@@ -314,4 +314,5 @@ call.
 
 - whether a Codex `PostToolUse` advisory note (the style hook's) reaches
   the model -- the probe draft had no prose finding to report;
-- local-model runs on either harness.
+- local-model runs on either harness, tracked in
+  [#904](https://github.com/prasadtalasila/chitragupta/issues/904).

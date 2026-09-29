@@ -6,7 +6,7 @@
 > use checkbox (`- [ ]`) syntax for tracking.
 
 Status: **Tasks 1-9 built, in one PR; Task 0 measured for Codex and
-OpenCode; Task 10's local-model runs outstanding.** Written
+OpenCode; Task 10's local-model runs moved to #904.** Written
 2026-09-26, rescoped and built 2026-09-29.
 The maintainer asked for a single PR rather than one per group. Task 0
 was run afterwards against Codex and OpenCode with a stand-in model; see
