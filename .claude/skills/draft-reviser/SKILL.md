@@ -1,7 +1,6 @@
 ---
 name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier (content/dossiers/<same path>/) instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct a draft that already exists, including in a session that did not write it. Also covers whole-document copy-editing that touches no evidence -- triggers on "fix the grammar", "fix the spelling", "convert this to British English", "make it en-GB/en-IN", or rephrasing to meet a style guideline -- in a copy-edit mode that reads scope.md's recorded dialect, skips retrieval and evidence entirely, edits section by section rather than rewriting the file, and logs one revisions.md entry naming the convention applied; it refuses to change a claim, add or drop a citation, or reorder an argument under cover of a style pass. Also handles re-grounding after the corpus moves -- triggers on "re-ground", "the corpus moved", "a cited paper left the corpus", "this draft has drifted", or a `dossier status --all` report naming a draft, and consumes that report as JSON to propose a scoped fix rather than a re-draft. This is the cheap, scoped path and the right default for any change. If the user explicitly wants the whole corpus re-searched -- "re-check the entire draft against the corpus", "search everything, cost regardless" -- that is corpus-reviser, not this skill; hand off and say so. Use the genre skill (survey-writer, thesis-chapter-writer, textbook-chapter-writer, tutorial-writer, deep-research) for a NEW draft, never for a change to an existing one. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
-tags: [revision, dossier, citation]
+description: Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it: reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
 ---
 
 # draft-reviser
@@ -260,7 +259,7 @@ python -m chitragupta.draft dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
-ranges (`Read` with `offset=<start>`, `limit=<lines>`). Do not read the
+ranges (read only lines `<start>` to `<start>+<lines>`). Do not read the
 whole draft to change one section. Consult `sections.md` when you need to
 know which section owns a citation without reading anything.
 
@@ -331,7 +330,7 @@ whether or not anyone asked. See "Re-grounding after the corpus moves".
 
 ### 5. Edit in place, inside the section
 
-Use `Edit` on the specific passage. Do not `Write` the whole file: a
+Edit the specific passage in place. Do not rewrite the whole file: a
 whole-file rewrite of a survey-length draft costs thousands of output
 tokens, re-runs the citation-gate hook over everything, and produces a
 diff the user cannot review.
@@ -520,12 +519,12 @@ before converting, and write the answer to that line as part of the pass.
 A conversion applied against an unrecorded target is one the next session
 cannot repeat or check.
 
-**Still `Edit`, never `Write`, and now for a second reason.** Every
+**Still edit in place, never rewrite the whole file, and now for a second reason.** Every
 objection in step 5 holds. The new one is that the PostToolUse citation
 gate runs per write, so editing section by section gives you a mechanical
 check that the rewrite has not mangled a citekey or a `\citep{}` -- the
 safety net that makes an aggressive whole-document rewrite safe to attempt
-at all. One `Write` of the whole file trades that away exactly where the
+at all. One rewrite of the whole file trades that away exactly where the
 risk is highest.
 
 **One `revisions.md` entry for the whole pass**, not one per section, and
@@ -590,7 +589,7 @@ diff, and no mechanical check here reads it. Two edits, not one:
    itself practises about what it can and cannot see.
 
 Same guardrails as copy-edit mode: no claim changed, no citation added or
-dropped, no argument reordered. `Edit`, never `Write`, for the same
+dropped, no argument reordered. Edit in place, never rewrite the whole file, for the same
 PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
 naming the term(s) and every file touched:
 

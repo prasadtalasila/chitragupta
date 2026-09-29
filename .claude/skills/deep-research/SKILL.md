@@ -1,7 +1,6 @@
 ---
 name: deep-research
-description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review. Adapted from hadufer/claude-storm (MIT), itself an implementation of Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav Toor's 4-prompt adaptation -- retooled here to cite only real citekeys from content/ledger.sqlite (never a URL, never invented) instead of live web sources. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m chitragupta.draft gate` before presenting and refuses to invent a citekey. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
-tags: [deep-research, multi-perspective, storm, citation]
+description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review -- citing only real citekeys from content/ledger.sqlite, never a URL and never an invented key. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m chitragupta.draft gate` before presenting. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
 ---
 
 # deep-research
@@ -18,6 +17,12 @@ This is a heavier, slower alternative to `survey-writer` for when the user
 wants genuine multi-perspective depth (contradiction mapping, ranked
 findings, self peer-review) rather than a single-pass literature survey.
 It reads the same shared corpus layer as the other genre skills.
+
+Adapted from hadufer/claude-storm (MIT), itself an implementation of
+Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav
+Toor's 4-prompt adaptation, and retooled to cite only real citekeys
+instead of live web sources. `reference.md` carries the attribution and
+the adaptation in full.
 
 ## Shared corpus layer (read, don't regenerate)
 
@@ -179,7 +184,7 @@ around it, do not sync, do not cite. Tell the user to run
 
 Tell the user up front that this is a heavy, multi-phase run before
 starting -- it dispatches several subagents and does many retrieval calls.
-Create a TodoWrite list with the 7 phases below and work through them in
+Keep a checklist of the 7 phases below and work through them in
 order.
 
 ## Prose standards
@@ -327,10 +332,11 @@ dispatching.
 ## Phase 2 -- Multi-perspective grounded interviews (parallel)
 
 Dispatch one `deep-research-interviewer` subagent per persona, **all in
-parallel** (multiple Agent calls in a single message). If that subagent
-type isn't available, use `general-purpose` and give it the protocol from
+parallel** if your harness can run subagents in parallel, otherwise one
+after another. If your harness has no subagent of that name, dispatch a
+general-purpose subagent and give it the protocol from
 `reference.md` §3 plus the packet schema from
-`.claude/agents/deep-research-interviewer.md` (or tell it to `Read` that
+`.claude/agents/deep-research-interviewer.md` (or tell it to read that
 file).
 
 Give each subagent: `TOPIC`, its `PERSPECTIVE` (name + focus), `ROUNDS` (per
@@ -442,7 +448,7 @@ dossier" above and `docs/TOKENS.md`. If a writer needs something the
 rows don't carry (a term, a constraint from the user's steering), give it
 that, not the evidence it can read for itself.
 
-If `deep-research-writer` is unavailable, use `general-purpose` with
+If `deep-research-writer` is unavailable, use a general-purpose subagent with
 `.claude/agents/deep-research-writer.md`'s instructions -- the command
 line goes in the prompt either way. For `quick`, write inline: you are
 the writer, the packets are already in your context, and running `brief`
@@ -513,7 +519,7 @@ plus an adversarial reviewer):
   (`content/drafts/deep-research-<slug>.md`, for `--log` -- see
   `.claude/agents/peer-reviewer.md`), and nothing else (no reviewer sees
   another's critique). If that subagent type isn't available, use
-  `general-purpose` with `.claude/agents/peer-reviewer.md`'s instructions
+  a general-purpose subagent with `.claude/agents/peer-reviewer.md`'s instructions
   for the assigned role.
 - **Reconcile under the concession threshold** (this project's own rule,
   not upstream's): any `high`-severity concern from *any* reviewer, or any
@@ -608,7 +614,7 @@ retry and no second critique pass** once the three are done or the list
 runs out first. For each:
 
 1. Keep the pre-edit text of the section you are about to touch.
-2. Edit with `Edit`, inside that section only. Preserve the citekey;
+2. Edit the passage in place, inside that section only. Preserve the citekey;
    reword the claim to match what `claim:` says, or drop a sentence
    that overstates it. Never add a claim `evidence.md` does not already
    record, and never touch a `quote:` span -- a quotation is captured
@@ -831,7 +837,7 @@ its working state get backed up.
 - **Grounded by default, closed-corpus.** Every claim traces to a real
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
-- **Parallelize, with a cap.** Dispatch same-phase subagents in one message;
+- **Parallelize, with a cap.** Dispatch same-phase subagents in parallel where your harness can;
   bound concurrency per `reference.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
   `survey-writer` -- point users there if they want something faster.

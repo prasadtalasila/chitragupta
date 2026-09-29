@@ -1,7 +1,6 @@
 ---
 name: thesis-chapter-writer
 description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m chitragupta.corpus sync` has been run.
-tags: [thesis, dissertation, latex, citation]
 ---
 
 # thesis-chapter-writer
@@ -519,7 +518,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit the passage in place, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is

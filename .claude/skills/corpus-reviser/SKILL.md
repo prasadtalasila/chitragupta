@@ -1,7 +1,6 @@
 ---
 name: corpus-reviser
 description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m chitragupta.draft gate` before presenting.
-tags: [revision, dossier, citation, corpus]
 ---
 
 # corpus-reviser
@@ -133,7 +132,7 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **Every call carries `--log`.** The point of choosing the expensive
   path deliberately is that the cost lands in `retrieval.md` and can be
   looked at afterwards, instead of being guessed at.
-- **`Edit`, never `Write`.** A wide *search* does not imply a wide
+- **Edit in place; never rewrite the whole file.** A wide *search* does not imply a wide
   *rewrite*. Most sections survive a re-check untouched, and rewriting
   those costs thousands of output tokens to produce a diff nobody can
   review.
