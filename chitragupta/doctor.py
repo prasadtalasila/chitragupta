@@ -9,7 +9,7 @@ module's job and not that layer's, can report `missing-binary`. "Probe
 for a toolchain; never assume one, in either direction"
 (DEVELOPER-AGENTS.md).
 
-Four checks, none of them fatal to run without:
+Five checks, none of them fatal to run without:
 
 1. **OS binaries pip cannot supply** -- pandoc, pdflatex, pdftotext, vale.
    `python -m chitragupta.draft render`/`style` already probe these
@@ -30,6 +30,12 @@ Four checks, none of them fatal to run without:
    collision #269 accepts on the condition that it stops being silent --
    `chitragupta` 0.1.1 on PyPI (an unrelated "pytest for prompts" tool)
    declares the same console scripts and the same top-level import name.
+5. **Can each harness's hook launcher start?** (#812) Every launcher
+   config in the project this runs in -- Claude Code's
+   `.claude/settings.json`, Codex's `.codex/hooks.json` -- read through
+   `chitragupta/launcher_configs.py`, plus an OpenCode project with no
+   plugin. The same faults the session preflight and `draft gate`
+   report, asked for by name.
 """
 
 import argparse
@@ -37,12 +43,14 @@ import importlib.metadata
 import importlib.util
 import shutil
 import sys
+from pathlib import Path
 
+from chitragupta import launcher_configs
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
     "Report the toolchain's state -- OS binaries, the enrich "
-    "extra, torch vs. the GPU driver, a competing distribution."
+    "extra, torch vs. the GPU driver, a competing distribution, hook launchers."
 )
 
 # What python -m chitragupta.draft render/style already probe for
@@ -144,6 +152,20 @@ def _check_competing_distribution() -> str:
     )
 
 
+OPENCODE_PLUGIN = Path(".opencode") / "plugins" / "chitragupta-gate.js"
+
+
+def _check_launchers(root: Path) -> list[str]:
+    """Each harness launcher's faults, or one ok line when there are none."""
+    found = [f"[launcher] {fault}" for fault in launcher_configs.faults(root)]
+    if (root / ".opencode").is_dir() and not (root / OPENCODE_PLUGIN).is_file():
+        found.append(
+            f"[launcher] .opencode/ exists but {OPENCODE_PLUGIN.as_posix()} does not, so "
+            "OpenCode runs no citation gate -- chitragupta init --agent opencode"
+        )
+    return found or ["[ok] every hook launcher found can start"]
+
+
 def build_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(prog=prog_for("doctor"), description=DESCRIPTION)
 
@@ -155,6 +177,7 @@ def main(argv=None) -> int:
         _check_enrich_extra(),
         _check_gpu_torch(),
         _check_competing_distribution(),
+        *_check_launchers(Path.cwd()),
     ]
     print("\n".join(lines))
     return 0

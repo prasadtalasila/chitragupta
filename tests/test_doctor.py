@@ -2,6 +2,7 @@
 installs, never exits non-zero (SOUL.md's aid-not-gate rule)."""
 
 import importlib.metadata
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -181,3 +182,39 @@ class TestMain:
     def test_help_does_not_print_the_module_docstring(self):
         assert doctor.DESCRIPTION != doctor.__doc__
         assert "\n\n" not in doctor.DESCRIPTION
+
+
+class TestCheckLaunchers:
+    """#812: a dead launcher on any harness, by name, and never fatal."""
+
+    @staticmethod
+    def codex(root, program):
+        (root / ".codex").mkdir()
+        hooks = {"PostToolUse": [{"hooks": [{"type": "command", "command": f"{program} x.py"}]}]}
+        (root / ".codex" / "hooks.json").write_text(json.dumps({"hooks": hooks}), encoding="utf-8")
+
+    def test_a_project_with_sound_launchers_is_ok(self, tmp_path):
+        assert doctor._check_launchers(tmp_path) == ["[ok] every hook launcher found can start"]
+
+    def test_a_dead_codex_launcher_is_named(self, tmp_path):
+        self.codex(tmp_path, "no-such-interpreter-812")
+        lines = doctor._check_launchers(tmp_path)
+        assert len(lines) == 1
+        assert lines[0].startswith("[launcher] .codex/hooks.json: ")
+        assert "no-such-interpreter-812" in lines[0]
+
+    def test_an_opencode_project_without_the_plugin_is_named(self, tmp_path):
+        (tmp_path / ".opencode").mkdir()
+        lines = doctor._check_launchers(tmp_path)
+        assert "OpenCode runs no citation gate" in lines[0]
+
+    def test_an_opencode_project_with_the_plugin_is_ok(self, tmp_path):
+        (tmp_path / ".opencode" / "plugins").mkdir(parents=True)
+        (tmp_path / ".opencode" / "plugins" / "chitragupta-gate.js").write_text("//")
+        assert doctor._check_launchers(tmp_path)[0].startswith("[ok]")
+
+    def test_main_reports_it_and_still_exits_0(self, tmp_path, monkeypatch, capsys):
+        self.codex(tmp_path, "no-such-interpreter-812")
+        monkeypatch.chdir(tmp_path)
+        assert doctor.main([]) == 0
+        assert "[launcher] .codex/hooks.json" in capsys.readouterr().out
