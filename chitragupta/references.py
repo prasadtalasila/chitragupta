@@ -85,7 +85,7 @@ _HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+(?:\.\d+)*[.)]?\s*)?References\s*$", 
 _ANY_HEADING_RE = re.compile(r"^#{1,6}\s")
 
 
-def used_citekeys(text: str) -> list[str]:
+def used_citekeys(text: str, *, latex: bool = False) -> list[str]:
     """Every citekey cited in `text`, deduped, in order of first appearance.
 
     First-appearance order rather than alphabetical because the numbers
@@ -95,7 +95,7 @@ def used_citekeys(text: str) -> list[str]:
     list whose [4] is the PDF's [7].
     """
     seen: dict[str, None] = {}
-    for _, key in citation_gate.extract_citekeys(text):
+    for _, key in citation_gate.extract_citekeys(text, latex=latex):
         seen.setdefault(key, None)
     return list(seen)
 
@@ -302,7 +302,7 @@ def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
 def apply(path: Path, heading: str = "References") -> str:
     path = config.require_inside_content(path)
     text = path.read_text(encoding="utf-8")
-    keys = used_citekeys(text)
+    keys = used_citekeys(text, latex=path.suffix.lower() == ".tex")
     if not keys:
         return f"{path}: no citekeys cited -- nothing to do"
 

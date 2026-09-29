@@ -64,7 +64,7 @@ class Report:
     unreadable: dict[str, str] = field(default_factory=dict)
 
 
-def claims(draft_text: str) -> list[tuple[int, str, str]]:
+def claims(draft_text: str, *, latex: bool = False) -> list[tuple[int, str, str]]:
     """(line number, citekey, the text carrying it) for every citation.
 
     That text is whatever unit actually makes a claim where the citation
@@ -95,7 +95,7 @@ def claims(draft_text: str) -> list[tuple[int, str, str]]:
     lines = draft_text.splitlines()
     spans = _blocks.spans(lines)
     out = []
-    for line_no, citekey in citation_gate.extract_citekeys(draft_text):
+    for line_no, citekey in citation_gate.extract_citekeys(draft_text, latex=latex):
         block = next(
             (text for start, end, text in spans if start <= line_no <= end),
             lines[line_no - 1] if 0 < line_no <= len(lines) else "",
@@ -211,7 +211,7 @@ def build_report(draft_path: Path) -> Report:
     report = Report(draft=Path(draft_path))
     with ledger.reading() as con:
         cache: dict[str, list[Passage]] = {}
-        for line_no, citekey, claim in claims(text):
+        for line_no, citekey, claim in claims(text, latex=draft_path.suffix.lower() == ".tex"):
             if citekey not in cache:
                 passages, reason = source_passages(con, citekey)
                 cache[citekey] = passages

@@ -32,7 +32,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import citation_gate, dossier
+from chitragupta import _code_regions, citation_gate, dossier
 
 # The genre-to-unit table, and the whole of the per-genre policy. Keyed by
 # what `dossier init --genre` writes into scope.md, which
@@ -196,8 +196,11 @@ def _prose(lines: list[str]) -> str:
     return " ".join(part for part in stripped if part)
 
 
-def _citekeys(prose: str) -> tuple[str, ...]:
-    return tuple(sorted({key for _, key in citation_gate.extract_citekeys(prose)}))
+def _citekeys(lines: list[str], prose: str, latex: bool) -> tuple[str, ...]:
+    # LaTeX reads the unjoined lines: a `%` comment ends at its newline, and
+    # in `prose` it would run on through every line joined after it.
+    text = "\n".join(lines) if latex else prose
+    return tuple(sorted({key for _, key in citation_gate.extract_citekeys(text, latex=latex)}))
 
 
 def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
@@ -222,7 +225,7 @@ def blocks(lines: list[str], offset: int = 1) -> list[tuple[int, list[str]]]:
     return blocks
 
 
-def _paragraph(start: int, lines: list[str]) -> Unit | None:
+def _paragraph(start: int, lines: list[str], latex: bool) -> Unit | None:
     """One paragraph, or None for a block that is only a marker.
 
     A marker split off from its unit by a blank line becomes a block of
@@ -233,7 +236,7 @@ def _paragraph(start: int, lines: list[str]) -> Unit | None:
     prose = _prose(lines)
     if not prose:
         return None
-    return Unit("paragraph", start, prose, _citekeys(prose), _declaration(lines), 0)
+    return Unit("paragraph", start, prose, _citekeys(lines, prose, latex), _declaration(lines), 0)
 
 
 def _longest_run(paragraphs: list[Unit]) -> int:
@@ -282,17 +285,15 @@ def _sections(lines: list[str]) -> list[tuple[int, list[str]]]:
     return sections
 
 
-def _section(start: int, lines: list[str]) -> Unit:
-    paragraphs = [
-        p for p in (_paragraph(at, block) for at, block in blocks(lines, start)) if p is not None
-    ]
+def _section(start: int, lines: list[str], latex: bool) -> Unit:
+    found = (_paragraph(at, block, latex) for at, block in blocks(lines, start))
+    paragraphs = [p for p in found if p is not None]
     prose = _prose(lines)
-    return Unit(
-        "section", start, prose, _citekeys(prose), _declaration(lines), _longest_run(paragraphs)
-    )
+    citekeys = _citekeys(lines, prose, latex)
+    return Unit("section", start, prose, citekeys, _declaration(lines), _longest_run(paragraphs))
 
 
-def units(text: str, kind: str) -> list[Unit]:
+def units(text: str, kind: str, *, latex: bool = False) -> list[Unit]:
     """`text` split into units of `kind`.
 
     Fenced code and LaTeX verbatim are blanked first, by the same
@@ -304,11 +305,14 @@ def units(text: str, kind: str) -> list[Unit]:
     """
     if kind not in KINDS:
         raise ValueError(f"Unknown unit kind {kind!r}; expected one of {sorted(KINDS)}.")
-    lines = citation_gate._blank_code(text).splitlines()
+    # LaTeX pre-blanks verbatim only: Markdown's rules would read a
+    # backtick quote as code, and `%` stays for `_declaration`'s markers.
+    blanked = _code_regions.blank_latex_verbatim(text) if latex else citation_gate._blank_code(text)
+    lines = blanked.splitlines()
     if kind == "document":
         prose = _prose(lines)
-        return [Unit("document", 1, prose, _citekeys(prose), _declaration(lines), 0)]
+        return [Unit("document", 1, prose, _citekeys(lines, prose, latex), _declaration(lines), 0)]
     if kind == "paragraph":
-        found = (_paragraph(at, block) for at, block in blocks(lines))
+        found = (_paragraph(at, block, latex) for at, block in blocks(lines))
         return [unit for unit in found if unit is not None]
-    return [_section(at, block) for at, block in _sections(lines)]
+    return [_section(at, block, latex) for at, block in _sections(lines)]

@@ -202,6 +202,36 @@ class TestDocumentUnits:
         assert unit.citekeys == ()
 
 
+class TestLatexComments:
+    """#873. A unit's lines are joined with spaces, so a `%` comment
+    blanked *after* the join would swallow every line below it."""
+
+    TEXT = "Text \\citep{A}.\n% Dropped in review: \\citep{B}\nMore \\citep{Foo2019}.\n"
+
+    @pytest.mark.parametrize("kind", ["paragraph", "section", "document"])
+    def test_a_commented_out_citation_is_not_counted(self, isolated_config, kind):
+        (unit,) = _units.units(self.TEXT, kind, latex=True)
+        assert unit.citekeys == ("A", "Foo2019")
+
+    def test_a_latex_marker_still_declares_its_unit(self, isolated_config):
+        """The marker is itself a `%` comment; blanking comments must not
+        erase the declaration."""
+        text = "Body text \\citep{Foo2019}.\n% single-source: only Foo covers X\n"
+        (unit,) = _units.units(text, "paragraph", latex=True)
+        assert (unit.citekeys, unit.declared) == (("Foo2019",), "only Foo covers X")
+
+    def test_a_citation_between_latex_quotes_is_counted(self, isolated_config):
+        """A backtick opens a quote in LaTeX, so Markdown's inline-code rule
+        must not blank the span between two quoted phrases (#834)."""
+        text = "As ``twins'' show \\citep{A}, the ``link'' matters.\n"
+        (unit,) = _units.units(text, "paragraph", latex=True)
+        assert unit.citekeys == ("A",)
+
+    def test_a_percent_sign_in_markdown_is_not_a_comment(self, isolated_config):
+        (unit,) = _units.units("Rose 30% [@A].\n", "paragraph")
+        assert unit.citekeys == ("A",)
+
+
 class TestSectionUnits:
     def test_a_markdown_heading_opens_a_section(self, isolated_config):
         text = "## One\n\nText [@A].\n\n## Two\n\nText [@B].\n"

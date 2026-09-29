@@ -143,6 +143,13 @@ class TestFindings:
         assert [f["kind"] for f in findings] == ["single_key_run"]
         assert findings[0]["longest_run"] == 3
 
+    def test_a_commented_out_citation_in_a_tex_draft_is_not_a_second_source(self, isolated_config):
+        """#873: read with Markdown rules, the `%` line made this unit
+        look like it fused two sources."""
+        draft = a_draft("Text \\citep{A}.\n% Dropped in review: \\citep{B}\n", name="survey.tex")
+        report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
+        assert [u.citekeys for u in report.units] == [("A",)]
+
     def test_a_single_source_section_raises_one_finding_not_two(self, isolated_config):
         """Its run is as long as it has paragraphs, by construction --
         reporting that beside the spread says nothing twice."""
