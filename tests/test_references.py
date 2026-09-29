@@ -24,6 +24,12 @@ class TestUsedCitekeys:
     def test_no_citations(self):
         assert references.used_citekeys("just prose") == []
 
+    def test_a_commented_out_latex_citation_is_not_used(self):
+        """#873: `%` opens a comment in LaTeX, and is prose in Markdown."""
+        text = "\\citep{zebra2024}\n% Dropped: \\citep{apple2024}\n"
+        assert references.used_citekeys(text, latex=True) == ["zebra2024"]
+        assert references.used_citekeys("30% [@apple2024]") == ["apple2024"]
+
     def test_ignores_a_citekey_inside_a_code_span(self):
         # This is what lets build_section label each entry with `key`
         # without those labels reading back as citations on a re-run.

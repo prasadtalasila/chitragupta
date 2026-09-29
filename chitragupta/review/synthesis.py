@@ -117,7 +117,8 @@ def resolve(draft: Path, override: str | None) -> tuple[str, str, str | None]:
 
 def build_report(draft: Path, kind: str, source: str, genre: str | None) -> Report:
     text = Path(draft).read_text(encoding="utf-8")
-    return Report(draft, kind, source, genre, _units.units(text, kind))
+    latex = Path(draft).suffix.lower() == ".tex"
+    return Report(draft, kind, source, genre, _units.units(text, kind, latex=latex))
 
 
 def finding_id(kind: str, text: str) -> str:

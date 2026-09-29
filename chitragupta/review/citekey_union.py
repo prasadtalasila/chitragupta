@@ -81,10 +81,11 @@ def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
     return list(record["citekeys"])
 
 
-def _citekeys(text: str) -> set[str]:
-    """Every citekey in `text`, by the extractor the gate and `unit accept`
-    both use -- so the two sides of the subtraction are the same set."""
-    return {key for _, key in citation_gate.extract_citekeys(text)}
+def _citekeys(text: str, name: str | Path) -> set[str]:
+    """Every citekey in `text`, by the extractor and suffix rule `unit accept`
+    uses -- so the two sides of the subtraction are the same set."""
+    latex = Path(name).suffix.lower() == ".tex"
+    return {key for _, key in citation_gate.extract_citekeys(text, latex=latex)}
 
 
 def compute(assembled: Path) -> UnionResult:
@@ -112,7 +113,7 @@ def compute(assembled: Path) -> UnionResult:
         # The assembly's *own* citekeys: its skeleton plus every file it
         # pulls in that no unit owns. Never a unit's -- reading those here
         # would answer the question with its own input.
-        own=_citekeys(text).union(*(_citekeys(body) for _, body in others)),
+        own=_citekeys(text, assembled).union(*(_citekeys(body, name) for name, body in others)),
         outside_units=[name for name, _ in others],
         unresolved=unread,
     )

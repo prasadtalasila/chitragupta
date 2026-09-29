@@ -138,6 +138,15 @@ class TestTheUniverse:
         assert checked(draft) == []
         assert quotation.main([str(draft)]) == 0
 
+    def test_a_quote_for_a_commented_out_tex_citation_is_not_checked(self, isolated_config):
+        """#873: `quoted_spans` read `.tex` with Markdown rules, so a key
+        after `%` still had its quote checked."""
+        draft = draft_at("survey.tex")
+        draft.write_text(f"Layered twins.\n% Dropped: \\citep{{{KEY}}}\n", encoding="utf-8")
+        a_dossier(draft, block(KEY, SPAN))
+        a_source(KEY, (4, f"It has {SPAN} in it."))
+        assert checked(draft) == []
+
     def test_a_quote_the_draft_no_longer_cites_is_not_checked(self, isolated_config):
         draft = a_draft(citekeys="[@other_paper_2020]")
         a_dossier(draft, block(KEY, SPAN))

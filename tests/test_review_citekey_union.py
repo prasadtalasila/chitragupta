@@ -138,7 +138,7 @@ class TestTheInvariantHolds:
         write_record(book, "ch-data", ["jones_2023"])
         assembled = assemble(book, ["ch-model", "ch-data"])
 
-        assert citekey_union._citekeys(assembled.read_text(encoding="utf-8")) == set()
+        assert citekey_union._citekeys(assembled.read_text(encoding="utf-8"), assembled) == set()
         assert citekey_union.compute(assembled).dropped == {}
 
 
@@ -205,6 +205,23 @@ class TestACitekeyFromOutsideEveryUnit:
 
         assert result.appeared == set()
         assert result.outside_units == ["titlepage.tex"]
+
+    def test_a_commented_out_citekey_in_the_front_matter_is_not_reported(self, book):
+        """#873: the `.tex` front matter was read with Markdown rules, so a
+        key after `%` appeared to have entered outside every unit."""
+        write_record(book, "ch-model", ["smith_2024"])
+        write_record(book, "ch-data", ["jones_2023"])
+        assembled = assemble(
+            book,
+            ["ch-model", "ch-data"],
+            beside={"titlepage.tex": "% Dropped: \\citep{nobody_1999}\nA dedication.\n"},
+        )
+
+        assert citekey_union.compute(assembled).appeared == set()
+
+    def test_each_file_is_read_by_its_own_suffix(self):
+        assert citekey_union._citekeys("% \\citep{nobody_1999}\n", "book.tex") == set()
+        assert citekey_union._citekeys("30% [@nobody_1999]\n", "front.md") == {"nobody_1999"}
 
     def test_withheld_while_any_unit_is_unassessed(self, book):
         """That unit may record this very citekey, so attributing it to the
@@ -534,7 +551,7 @@ class TestAnAssemblyUnderRendered:
         assembled = assemble(
             rendered,
             ["ch-model", "ch-data"],
-            beside={"preamble.tex": "% \\citep{house_2020}\n"},
+            beside={"preamble.tex": "\\newcommand{\\house}{\\citep{house_2020}}\n"},
         )
         assembled.write_text(
             assembled.read_text(encoding="utf-8").replace(

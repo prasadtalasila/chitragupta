@@ -85,7 +85,7 @@ _PREAMBLE = (
 )
 
 
-def quoted_spans(draft_text: str, dossier: Path) -> dict[str, str]:
+def quoted_spans(draft_text: str, dossier: Path, *, latex: bool = False) -> dict[str, str]:
     """citekey -> its `quote:`, for keys the draft cites and the dossier
     quotes, in the draft's own first-appearance order.
 
@@ -96,7 +96,7 @@ def quoted_spans(draft_text: str, dossier: Path) -> dict[str, str]:
     """
     blocks = evidence_blocks(dossier)
     found: dict[str, str] = {}
-    for citekey in references.used_citekeys(draft_text):
+    for citekey in references.used_citekeys(draft_text, latex=latex):
         quote = fields(blocks[citekey]).get("quote") if citekey in blocks else None
         if quote:
             found[citekey] = quote
@@ -139,7 +139,7 @@ def _blockquote(quote: str) -> str:
     return "\n".join(f"> {line}" for line in lines)
 
 
-def build(draft_text: str, dossier: Path, con) -> str | None:
+def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | None:
     """The sidecar's Markdown for `draft_text`, or None if there is none.
 
     None -- rather than an empty document -- whenever the draft cites
@@ -151,7 +151,7 @@ def build(draft_text: str, dossier: Path, con) -> str | None:
     same contract `references.build_section` holds: a source this cannot
     name is never printed as an unattributed quotation.
     """
-    spans = quoted_spans(draft_text, dossier)
+    spans = quoted_spans(draft_text, dossier, latex=latex)
     if not spans:
         return None
 
@@ -196,10 +196,11 @@ def write(draft: Path, out_dir: Path, draft_text: str | None = None) -> Path | N
         draft_text = draft.read_text(encoding="utf-8")
     # Checked before the ledger is opened, so a draft with nothing quoted
     # has no sidecar -- and needs no ledger -- rather than a refusal.
-    if not quoted_spans(draft_text, dossier_dir(draft)):
+    latex = draft.suffix.lower() == ".tex"
+    if not quoted_spans(draft_text, dossier_dir(draft), latex=latex):
         return None
     with ledger.reading() as con:
-        text = build(draft_text, dossier_dir(draft), con)
+        text = build(draft_text, dossier_dir(draft), con, latex=latex)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = sidecar_path(draft, out_dir)

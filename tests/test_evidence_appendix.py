@@ -402,6 +402,26 @@ class TestWrite:
         assert evidence_appendix.write(draft, out_dir) is None
         assert not out_dir.exists(), "an empty sidecar must not even make its directory"
 
+    def test_a_commented_out_tex_citation_gets_no_stanza(self, isolated_config):
+        """#873: a `.tex` draft was read with Markdown rules, so a quote for
+        a key after `%` was printed as evidence the prose never cites."""
+        con = ledger.connect()
+        seed(con, "doe_a_2024", "roe_b_2024")
+        con.close()
+        draft = content_draft(isolated_config, "drafts/topic/thesis.tex")
+        draft.write_text(
+            "Body \\citep{doe_a_2024}.\n% Cut: \\citep{roe_b_2024}\n", encoding="utf-8"
+        )
+        write_dossier(
+            draft, "## `doe_a_2024`\n\nquote: span A\n\n## `roe_b_2024`\n\nquote: span B\n"
+        )
+        out_dir = isolated_config.CONTENT_DIR / "rendered" / "topic"
+
+        sidecar = evidence_appendix.write(draft, out_dir).read_text(encoding="utf-8")
+
+        assert "span A" in sidecar
+        assert "span B" not in sidecar
+
     def test_a_text_override_is_used_instead_of_the_file_on_disk(self, isolated_config):
         con = ledger.connect()
         seed(con, "doe_a_2024", "roe_b_2024")

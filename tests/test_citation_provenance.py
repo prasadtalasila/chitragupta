@@ -133,6 +133,19 @@ class TestClaims:
     def test_no_citations_yields_nothing(self, isolated_config):
         assert cp.claims("Plain prose with no citations.\n") == []
 
+    def test_a_percent_sign_in_markdown_is_not_a_comment(self, isolated_config):
+        assert [k for _, k, _ in cp.claims("Accuracy rose 30% [@a_2024].\n")] == ["a_2024"]
+
+    def test_a_commented_out_citation_in_a_tex_draft_is_not_a_claim(self, isolated_config):
+        """#873: the report read `.tex` with Markdown rules, so a key after
+        `%` was reported as cited when the prose cites nothing of it."""
+        _add_item("a_2024")
+        path = config.CONTENT_DIR / "d.tex"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("Layers matter \\citep{a_2024}.\n% Dropped in review: \\citep{b_2024}\n")
+
+        assert [f.citekey for f in cp.build_report(path).findings] == ["a_2024"]
+
 
 class TestBlockShapedClaims:
     """A citation inside a table or a list is not inside a sentence.

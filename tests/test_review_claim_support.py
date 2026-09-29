@@ -389,6 +389,19 @@ class TestBuildReport:
         assert calls == ["shared_2024"]
 
 
+class TestLatexComments:
+    def test_a_commented_out_citation_in_a_tex_draft_is_not_scored(self, isolated_config):
+        """#873: `claims()` read `.tex` with Markdown rules, so a key after
+        `%` reached the entailer as though the prose cited it."""
+        draft = config.DRAFTS_DIR / "topic" / "draft.tex"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text(
+            "A claim \\citep{missing_2024}.\n% Dropped: \\citep{pageonly_2024}\n", encoding="utf-8"
+        )
+        report = claim_support.build_report(draft, FakeEntailer({}))
+        assert [f.citekey for f in report.findings] == ["missing_2024"]
+
+
 class TestUnscoreable:
     def test_a_citekey_with_no_passages_at_all_is_noted_not_scored(self, isolated_config):
         draft = _draft(config, "A claim about nothing on record [@missing_2024].\n")

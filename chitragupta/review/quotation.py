@@ -99,7 +99,8 @@ def build_report(draft: Path) -> Report:
         # aid degrades to an empty report here rather than raising, so
         # this one must too.
         return Report(draft, [])
-    spans = evidence_appendix.quoted_spans(draft.read_text(encoding="utf-8"), directory)
+    text = draft.read_text(encoding="utf-8")
+    spans = evidence_appendix.quoted_spans(text, directory, latex=draft.suffix.lower() == ".tex")
     if not spans:
         return Report(draft, [])
     with ledger.reading() as con:
