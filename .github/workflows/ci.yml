@@ -570,6 +570,14 @@ jobs:
       - name: Test the webapp modules
         run: node --test tests/webapp/*.test.js
 
+      # The OpenCode plugin's helpers (#900), for the same reason as the
+      # webapp: JavaScript pytest cannot measure. tests/test_opencode_plugin.py
+      # also runs this file, and drives the plugin through the real Python
+      # hook, but it skips where node is absent -- this step is what makes
+      # the helpers' tests unskippable in CI.
+      - name: Test the OpenCode plugin helpers
+        run: node --test tests/opencode/*.test.mjs
+
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a
       # contributor's machine. It is one of the two binaries that script
