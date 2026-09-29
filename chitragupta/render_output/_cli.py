@@ -145,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     # choice. `.pylintrc` disables import-outside-toplevel for this
     # pattern, and chitragupta/review/__init__.py reaches this package the same way.
     from chitragupta.render_output import render
+    from chitragupta.render_output._gate import UngatedDraft
 
     try:
         out_path = render(
@@ -186,6 +187,13 @@ def main(argv: list[str] | None = None) -> int:
     except ledger.NoLedger as exc:
         # `--format md` numbers a citing draft from the ledger; with none
         # to read, the same `[error]` a skill warns on and carries past.
+        print(f"[error] {exc}")
+        return 1
+    except UngatedDraft as exc:
+        # The gate refused the draft before any format was produced
+        # (#812): reported like every other render failure, `[error]` and
+        # the gate's own report naming each key and line, so a skill
+        # reacts to it exactly as it does to a failed `draft gate`.
         print(f"[error] {exc}")
         return 1
     except references.MissingCitekey as exc:

@@ -199,11 +199,16 @@ Each skill retrieves from the corpus layer, drafts into
    `[3]-[6]` for a consecutive run, over a numbered bibliography built
    from the citekeys actually cited.
 
-**Grounding is enforced, not requested.** The gate runs twice on the same
-draft, and neither run is the skill's own good intentions. A PostToolUse
-hook runs it on every write under `content/drafts/`, so a draft cannot be
-saved with an unverifiable citation even if a skill forgets to check. The
-skill then runs it again before presenting anything.
+**Grounding is enforced, not requested.** The gate runs on the same
+draft at three points, and only one of them is the skill's own good
+intentions. A hook runs it on every write under `content/drafts/` -- a
+PostToolUse hook on Claude Code and Codex, a plugin on OpenCode -- so a
+draft cannot be saved with an unverifiable citation even if a skill
+forgets to check. The skill then runs it again before presenting
+anything. And `draft render` runs it before producing any format, so a
+draft written around the hook, through a shell command, still cannot
+become a document. [HARNESS.md](HARNESS.md) has what each harness
+enforces.
 
 A second hook checks at session start that the first one can still start
 at all, since a hook that fails to launch cannot report that it failed.

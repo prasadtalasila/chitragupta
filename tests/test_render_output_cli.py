@@ -97,6 +97,26 @@ class TestMainCli:
         assert "[error]" in out
         assert "fabricated2024" in out
 
+    @pytest.mark.parametrize("fmt", ["docx", "pdf", "tex"])
+    @pytest.mark.parametrize("fragment", [False, True])
+    def test_every_format_refuses_an_unknown_key_before_pandoc(
+        self, isolated_config, ledger_con, monkeypatch, capsys, fmt, fragment
+    ):
+        # docx/pdf/tex used to reach pandoc, whose citeproc only warned
+        # and wrote the document anyway (#812). `--fragment` uses natbib
+        # and deferred the key to bibtex, which checked nothing at all.
+        draft = content_draft(isolated_config, "drafts/bad.md")
+        draft.write_text("A claim [@not_a_real_citekey_2026].\n")
+        ran = []
+        monkeypatch.setattr(render_output, "_run_pandoc", lambda *a, **k: ran.append(a))
+        argv = ["render_output.py", str(draft), "--format", fmt]
+        monkeypatch.setattr(sys, "argv", argv + (["--fragment"] if fragment else []))
+        assert render_output.main() == 1
+        out = capsys.readouterr().out
+        assert "[error]" in out
+        assert "not_a_real_citekey_2026" in out
+        assert ran == []  # refused before pandoc, so it needs no pandoc to pass
+
     @pytest.mark.skipif(
         not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
     )
