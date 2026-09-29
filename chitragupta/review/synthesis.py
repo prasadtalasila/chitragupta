@@ -190,28 +190,6 @@ def _command(draft: Path, unit: str | None, as_json: bool, write: bool) -> str:
     return shlex.join(parts)
 
 
-def synthesis_payload(report: Report, command: str) -> dict:
-    """The same findings the report prints, as data -- an additional
-    serialisation, never a second computation."""
-    payload = review.envelope(report.draft, "synthesis", command)
-    payload.update(
-        {
-            "genre": report.genre,
-            "unit": report.kind,
-            "unit_source": report.source,
-            "units_total": len(report.units),
-            "uncited": report.uncited,
-            "single_source": report.single_source,
-            "multi_source": report.multi_source,
-            "declared": report.declared,
-            "undeclared": report.undeclared,
-            "single_source_pct": report.single_source_pct,
-            "findings": findings(report),
-        }
-    )
-    return payload
-
-
 def build_parser(parser=None) -> argparse.ArgumentParser:
     """This aid's flags.
 
@@ -284,7 +262,7 @@ def run(args: argparse.Namespace) -> int:
         return 0
 
     command = _command(draft_path, args.unit, args.json, args.write)
-    payload = synthesis_payload(report, command)
+    payload = _synthesis_render.synthesis_payload(report, command, found)
     print(
         json.dumps(payload, indent=2)
         if args.json

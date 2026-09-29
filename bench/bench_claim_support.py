@@ -54,7 +54,7 @@ never committed; only this script, the fixtures, and (once a human has
 judged) `labels.json` and `crosscheck.json` are. Regenerate it locally with
 the `--extract` invocation below.
 
-**Finding ids are pool-unique, not just `claim_support.finding_id`-unique.**
+**Finding ids are pool-unique, not just `_claim_support_render.finding_id`-unique.**
 That function keys on `(citekey, claim)` alone, with no draft in it, so the
 same sentence citing the same source in two of the four drafts would
 collide. Every id in `candidates.md` and in the `--crosscheck` score map is
@@ -85,7 +85,7 @@ sys.path.insert(0, str(REPO))
 
 from chitragupta import config, entailment  # noqa: E402
 from chitragupta.review import citation_provenance as cp  # noqa: E402
-from chitragupta.review import claim_support  # noqa: E402
+from chitragupta.review import _claim_support_render, claim_support  # noqa: E402
 
 FIXTURE = BENCH_DIR / "fixtures" / "graded-claim-support.md"
 FIXTURE_SOURCES = BENCH_DIR / "fixtures" / "graded-claim-support-sources"
@@ -189,7 +189,7 @@ def _population(drafts_dir, entailer):
         for f in scored:
             pool.append(
                 {
-                    "id": f"{name}#{claim_support.finding_id(f.citekey, f.claim)}",
+                    "id": f"{name}#{_claim_support_render.finding_id(f.citekey, f.claim)}",
                     "draft": name,
                     "line": f.line,
                     "citekey": f.citekey,

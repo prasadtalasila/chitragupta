@@ -27,7 +27,7 @@ exemption and the tier restriction.
 Two arms, because References masking turned out to dominate the answer.
 `verbatim_check._mask_for_scan` blanks the draft's own bibliography
 before scanning, since two documents citing the same paper share its
-title and venue verbatim -- but `references.section_start` matched only
+title and venue verbatim -- but `references_section.section_start` matched only
 single-level heading numbers, so a book numbering its headings per
 chapter ("## 1.14 References") was never masked at all. The unmasked arm
 reproduces that, by making `section_start` return None. It is not a
@@ -70,7 +70,7 @@ REPO = Path(__file__).resolve().parent.parent
 BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
-from chitragupta import config, references  # noqa: E402
+from chitragupta import config, references_section  # noqa: E402
 
 # Below the report-bucket boundary a run is not "long" in any sense the
 # project already uses, and no candidate gate threshold sits there -- so
@@ -156,7 +156,7 @@ def scan_all(drafts, references_masked, allowlist=None):
     """Every finding in `drafts`, tagged with the draft it came from.
 
     `verbatim_check` is imported here rather than at module scope
-    because the unmasked arm patches `references.section_start`, which
+    because the unmasked arm patches `references_section.section_start`, which
     `_mask_for_scan` resolves through the module object at call time --
     the patch has to be in place before the first scan, not before the
     first import, but keeping the import local makes the ordering
@@ -171,10 +171,10 @@ def scan_all(drafts, references_masked, allowlist=None):
     """
     from chitragupta.review import verbatim_check as vc
 
-    original_section = references.section_start
+    original_section = references_section.section_start
     original_allowlist = config.VERBATIM_ALLOWLIST_PATH
     if not references_masked:
-        references.section_start = lambda lines: None
+        references_section.section_start = lambda lines: None
     # A Path that does not exist is how `_load_allowlist_phrases` spells
     # "no suppressions", so the no-allowlist arms need no special case.
     config.VERBATIM_ALLOWLIST_PATH = Path(allowlist) if allowlist else Path("/nonexistent")
@@ -192,7 +192,7 @@ def scan_all(drafts, references_masked, allowlist=None):
             print(f"    {total_suppressed} finding(s) allowlist-suppressed")
         return out, total_suppressed
     finally:
-        references.section_start = original_section
+        references_section.section_start = original_section
         config.VERBATIM_ALLOWLIST_PATH = original_allowlist
 
 

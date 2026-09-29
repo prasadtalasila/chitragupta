@@ -8,7 +8,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from chitragupta import references
+from chitragupta import references_section
 from chitragupta.citation_gate import _PANDOC_CITE_RE
 
 # C0 controls other than the whitespace pdflatex accepts (\t \n \r), plus
@@ -161,10 +161,10 @@ def drop_manual_refs(text: str) -> str:
     of the file would silently delete it from the book.
     """
     lines = text.splitlines(keepends=True)
-    idx = references.section_start(lines)
+    idx = references_section.section_start(lines)
     if idx is None:
         return text
-    tail = "".join(lines[references.section_end(lines, idx) :])
+    tail = "".join(lines[references_section.section_end(lines, idx) :])
     out = "".join(lines[:idx]).rstrip() + "\n"
     if tail.strip():
         out = out + "\n" + tail.lstrip("\n")
@@ -223,7 +223,7 @@ def _swap_manual_refs_for_citeproc(text: str) -> str:
     untitled.
     """
     lines = text.splitlines(keepends=True)
-    idx = references.section_start(lines)
+    idx = references_section.section_start(lines)
     if idx is None:
         return text
     heading = lines[idx] if lines[idx].endswith("\n") else lines[idx] + "\n"
@@ -232,7 +232,7 @@ def _swap_manual_refs_for_citeproc(text: str) -> str:
     # after References is not part of it and must reach pandoc too,
     # or it silently vanishes from tex/pdf/docx output while the md path
     # (references.apply) keeps it.
-    tail = "".join(lines[references.section_end(lines, idx) :])
+    tail = "".join(lines[references_section.section_end(lines, idx) :])
     out = "".join(lines[:idx]).rstrip() + f"\n\n{heading}\n{_REFS_ANCHOR}"
     if tail.strip():
         out = out.rstrip() + "\n\n" + tail.lstrip("\n")

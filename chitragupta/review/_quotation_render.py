@@ -1,5 +1,6 @@
-"""The quotation report's two printed forms: stdout, and the Markdown
-that `--write` files under `content/review/`.
+"""The quotation report's two printed forms -- stdout, and the Markdown
+that `--write` files under `content/review/` -- and its JSON payload,
+with the `finding_id` both the payload and `quotation.findings()` key on.
 
 Split from `chitragupta/review/quotation.py` for the reason
 `_uncited_render.py` was split from `uncited_prose.py` -- the aid stays
@@ -15,6 +16,8 @@ and "nineteen not checked at all" are different reports and a bare
 
 Stdlib-only.
 """
+
+import hashlib
 
 from chitragupta import review
 
@@ -105,3 +108,54 @@ def render_markdown(report, command: str, found) -> str:
     """The written report: the layer's standard header, then the body."""
     header = review.header(report.draft, "quotation", command)
     return "\n".join(header + _body(report, found)) + "\n"
+
+
+def finding_id(citekey: str, quote: str) -> str:
+    """A finding's name, stable across runs and position-free -- the same
+    convention the other six aids' `finding_id` use.
+
+    Keyed on the pair whose truth is in question, so both halves hold and
+    both are wanted. Editing an unrelated block renames nothing, and
+    re-attributing the quote or correcting it to the real span makes the
+    finding disappear, which is what "this finding is gone" should mean
+    (R2). And *any* edit to the quote text is a new finding by
+    construction, a typo fix included: a changed span is a different
+    assertion about the source and has not been checked. Keying on the
+    citekey alone would let a repaired quote inherit its predecessor's
+    identity and read, in a later comparison, as one that was resolved.
+    """
+    return hashlib.sha256(f"{citekey}\n{quote}".encode()).hexdigest()[:12]
+
+
+def quotation_payload(report, command: str, found: list[dict]) -> dict:
+    """The same verdicts the report prints, as data -- an additional
+    serialisation, never a second computation.
+
+    Every checked quote appears, not only the findings: the tier that
+    confirmed a span is what tells a reader the check was contiguous
+    rather than an ordered alignment around an ellipsis, and a count of
+    what was skipped is what separates "seven checked, all clean" from
+    "seven not checked at all".
+    """
+    payload = review.envelope(report.draft, "quotation", command)
+    payload.update(
+        {
+            "quotes_total": len(report.checked),
+            "found": len(report.of("found")),
+            "absent": len(report.of("absent")),
+            "unverifiable": len(report.of("unverifiable")),
+            "quotes": [
+                {
+                    "id": finding_id(c.citekey, c.quote),
+                    "citekey": c.citekey,
+                    "verdict": c.verdict,
+                    "tier": c.tier,
+                    "pages": c.pages,
+                    "reason": c.reason,
+                }
+                for c in report.checked
+            ],
+            "findings": found,
+        }
+    )
+    return payload

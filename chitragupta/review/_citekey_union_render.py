@@ -1,5 +1,5 @@
-"""How a citekey-union report reads: the Markdown document and the
-plain-text stdout form.
+"""How a citekey-union report reads: the Markdown document, the
+plain-text stdout form, and the same findings as a JSON payload.
 
 Split from `chitragupta/review/citekey_union.py`, which reads the book off
 disk, and `_citekey_union_result.py`, which owns the arithmetic and is
@@ -14,6 +14,8 @@ unaccepted compares nothing, and a report that printed "none lost" for it
 would be a clean bill of health for work it never opened -- which is the
 one way an advisory aid does real damage.
 """
+
+import hashlib
 
 from chitragupta import review
 
@@ -168,3 +170,64 @@ def render_markdown(result, command: str) -> str:
     ]
     lines += _unchecked_lines(result, "- ")
     return "\n".join(lines + [""])
+
+
+def finding_id(citekey: str, status: str) -> str:
+    """A finding's name, stable across runs and position-free -- the same
+    convention `citation_coverage.finding_id` and
+    `verbatim_check.finding_id` use."""
+    return hashlib.sha256(f"{citekey}\x00{status}".encode()).hexdigest()[:12]
+
+
+def _findings(result) -> list[dict]:
+    """One object per citekey the report itemises, dropped first: it is
+    the direction that is always answerable, and the one a reader acts
+    on."""
+    findings = [
+        {
+            "id": finding_id(key, "dropped"),
+            "citekey": key,
+            "status": "dropped",
+            "units": units,
+        }
+        for key, units in result.dropped.items()
+    ]
+    findings += [
+        {"id": finding_id(key, "appeared"), "citekey": key, "status": "appeared", "units": []}
+        for key in sorted(result.appeared or ())
+    ]
+    return findings
+
+
+def union_payload(result, command: str) -> dict:
+    """The same findings the report prints, as data -- an additional
+    serialisation, never a second computation.
+
+    `appeared_determinable` is carried explicitly rather than left for a
+    consumer to infer from a null: "no citekey appeared from nowhere" and
+    "this run could not tell" are different answers, and a caller acting
+    on the payload has to be able to distinguish them.
+    """
+    payload = review.envelope(result.assembled, "union", command)
+    payload.update(
+        {
+            "units_checked": [
+                {"unit": entry.unit, "included": entry.included} for entry in result.checked
+            ],
+            "units_unchecked": [
+                {"unit": entry.unit, "state": entry.state, "included": entry.included}
+                for entry in result.unchecked
+            ],
+            "units_omitted": [entry.unit for entry in result.omitted],
+            # What the assembly pulled in besides its units, and what it
+            # named but could not be found. Both reported rather than
+            # dropped: a run that quietly skipped an include would be
+            # claiming coverage of prose it never opened.
+            "includes_outside_units": result.outside_units,
+            "includes_unresolved": result.unresolved,
+            "citekeys_outside_units": len(result.own),
+            "appeared_determinable": result.appeared is not None,
+            "findings": _findings(result),
+        }
+    )
+    return payload

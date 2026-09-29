@@ -15,7 +15,7 @@ import json
 
 import pytest
 
-from chitragupta.review import _blocks, _citation_provenance_render
+from chitragupta.review import _blocks, _citation_provenance_render, _claim_sentence
 from chitragupta.review import citation_provenance as cp
 from chitragupta import config, ledger, passages
 
@@ -788,7 +788,10 @@ class TestEdgeShapes:
     def test_citekey_not_in_any_sentence_falls_back_to_the_paragraph(self, isolated_config):
         """extract_citekeys found it, but sentence splitting put it in no
         part -- return the tidied paragraph rather than nothing."""
-        assert cp._sentence_around("no marker here at all", "ghost_2024") == "no marker here at all"
+        assert (
+            _claim_sentence.sentence_around("no marker here at all", "ghost_2024")
+            == "no marker here at all"
+        )
 
     def test_a_suffixed_sibling_does_not_match_the_bare_key(self, isolated_config):
         """#497: bare substring matching made `smith2020` match text
@@ -797,11 +800,11 @@ class TestEdgeShapes:
         the suffixed sibling and must not win over the second, which
         cites the bare key."""
         text = "First one [@smith2020a]. Second one [@smith2020]."
-        assert cp._sentence_around(text, "smith2020") == "Second one."
+        assert _claim_sentence.sentence_around(text, "smith2020") == "Second one."
 
     def test_the_suffixed_sibling_itself_still_matches(self, isolated_config):
         text = "First one [@smith2020a]. Second one [@smith2020]."
-        assert cp._sentence_around(text, "smith2020a") == "First one."
+        assert _claim_sentence.sentence_around(text, "smith2020a") == "First one."
 
     def test_claim_with_no_matching_words_reports_no_passage(self, isolated_config):
         _add_item("a_2024", parsed_text="ontology metamodel\fresilience safety")

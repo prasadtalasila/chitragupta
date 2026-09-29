@@ -78,7 +78,7 @@ sys.path.insert(0, str(REPO))
 
 from bench.bench_review_cost import DRAFTS, word_count  # noqa: E402
 from chitragupta import config, entailment  # noqa: E402
-from chitragupta.review import claim_support  # noqa: E402
+from chitragupta.review import _claim_support_render, claim_support  # noqa: E402
 
 # None must come first: it is the baseline every other arm is compared
 # against, and it is also the most expensive, so a run that dies partway
@@ -120,7 +120,7 @@ def arm(entailer, draft: Path, top_k) -> dict:
     report = claim_support.build_report(draft, counter, top_k)
     seconds = time.perf_counter() - started
     scored = {
-        claim_support.finding_id(f.citekey, f.claim): {
+        _claim_support_render.finding_id(f.citekey, f.claim): {
             "score": f.score,
             "passage": None if f.passage is None else f.passage.text,
         }
@@ -137,7 +137,7 @@ def arm(entailer, draft: Path, top_k) -> dict:
 
 def worst(scored: dict, count: int) -> list:
     """The `count` worst-scoring finding ids, worst first -- the order
-    `claim_support.findings` publishes and the agenda reads in. Tied
+    `_claim_support_render.findings` publishes and the agenda reads in. Tied
     scores break on the id so the comparison is not itself a source of
     disagreement."""
     return sorted(scored, key=lambda fid: (scored[fid]["score"], fid))[:count]
