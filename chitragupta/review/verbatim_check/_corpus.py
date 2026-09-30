@@ -2,30 +2,41 @@
 every tier and CLI mode in this package reads from.
 
 Split out of what was one 2357-line chitragupta/review/verbatim_check.py
-(#361): `BIB`/`PARSED_DIR` and the functions that read them live here,
-the package root others import from -- mirroring chitragupta/dossier/'s
-own root submodule.
+(#361): the functions that read the bib file and `content/parsed/` live
+here, the package root others import from -- mirroring
+chitragupta/dossier/'s own root submodule.
+
+Both locations are read off `config` at call time (#854). They used to be
+bound once, as module-level `BIB`/`PARSED_DIR`, which froze whichever
+project was current at first import: a later `config` change -- a
+`CHITRAGUPTA_PROJECT` switch, or `tests/conftest.py`'s `isolated_config`
+-- never reached `verbatim locate`/`overlap`.
 """
 
 import re
-import subprocess
+
+# `_run` is the one patch point for this module's external launches
+# (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
+# fakes it here and so fakes this module's subprocess and nobody
+# else's. Patching the global `subprocess.run` reached every launch in
+# the process.
+from subprocess import CalledProcessError, TimeoutExpired
+from subprocess import run as _run
 from pathlib import Path
 
 from chitragupta import citation_gate, config
 from chitragupta.citekey_safety import citekey_problem
 
-BIB = config.BIB_FILE_PATH
-PARSED_DIR = config.PARSED_DIR
-
 
 def bib_entry(citekey: str) -> str:
-    if not BIB.exists():
+    bib = config.BIB_FILE_PATH
+    if not bib.exists():
         # papers/bibliography.bib is gitignored, per-host data (see
         # AGENTS.md) -- absent on a fresh clone/CI checkout until someone
         # exports their own. Treat that the same as "citekey not in the
         # bib file" rather than crashing on a raw FileNotFoundError.
         return ""
-    text = BIB.read_text(encoding="utf-8", errors="replace")
+    text = bib.read_text(encoding="utf-8", errors="replace")
     m = re.search(r"@\w+\{" + re.escape(citekey) + r",", text)
     if not m:
         return ""
@@ -68,7 +79,7 @@ def pdf_path(citekey: str) -> Path | None:
     # wrong the moment BIB_FILE points somewhere outside the checked-out
     # repo (a relative path in the file field is only ever relative to
     # wherever the .bib itself lives).
-    bib_dir = BIB.resolve().parent
+    bib_dir = config.BIB_FILE_PATH.resolve().parent
     for attachment in m.group(1).split(";"):
         parts = attachment.split(":")
         if len(parts) < 3:
@@ -102,7 +113,7 @@ def _parsed_pages(citekey: str) -> list[str]:
     """
     if citekey_problem(citekey):
         return []
-    parsed = PARSED_DIR / f"{citekey}.txt"
+    parsed = config.PARSED_DIR / f"{citekey}.txt"
     if not parsed.exists():
         return []
     # pdftotext leaves stray NUL/control bytes in some files, which
@@ -127,7 +138,7 @@ def pages(citekey: str) -> list[str]:
     if p is None:
         return _parsed_pages(citekey)
     try:  # pragma: no cover-windows
-        out = subprocess.run(
+        out = _run(
             ["pdftotext", "-layout", str(p), "-"],
             capture_output=True,
             text=True,
@@ -138,8 +149,8 @@ def pages(citekey: str) -> list[str]:
         )
     except (  # pragma: no cover-windows
         OSError,
-        subprocess.CalledProcessError,
-        subprocess.TimeoutExpired,
+        CalledProcessError,
+        TimeoutExpired,
     ):
         return _parsed_pages(citekey)
     return out.stdout.split("\f")  # pragma: no cover-windows

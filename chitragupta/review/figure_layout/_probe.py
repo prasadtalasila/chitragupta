@@ -23,7 +23,13 @@ reading documentation.
 
 import os
 import re
-import subprocess
+
+# `_run` is the one patch point for this module's external launches
+# (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
+# fakes it here and so fakes this module's subprocess and nobody
+# else's. Patching the global `subprocess.run` reached every launch in
+# the process.
+from subprocess import run as _run
 import tempfile
 from pathlib import Path
 
@@ -193,7 +199,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
         probe = Path(tmp) / "probe.tex"
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
-        result = subprocess.run(
+        result = _run(
             ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", probe.name],
             cwd=tmp,
             capture_output=True,

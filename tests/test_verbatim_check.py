@@ -3,10 +3,10 @@ whole-corpus scan and page-locator aid -- advisory over a finished
 draft, never a gate. Reached as `python -m chitragupta.review verbatim <mode>`;
 the module has no __main__ block of its own.
 
-BIB/PARSED_DIR are module-level constants resolved from chitragupta.config at
-import time; tests monkeypatch them directly to point at a throwaway
-fixture tree. There was a REPO constant beside them until 5.0.0, when
-the file moved into chitragupta/review/ and no longer needed a
+The bib file and `content/parsed/` are read off `config.BIB_FILE_PATH` and
+`config.PARSED_DIR` at call time (#854), so tests monkeypatch those to
+point at a throwaway fixture tree. There was a REPO constant until 5.0.0,
+when the file moved into chitragupta/review/ and no longer needed a
 Path(__file__)-derived repo root to put on sys.path."""
 
 import argparse
@@ -33,14 +33,14 @@ from tests.conftest import make_reference, parsed_text
 
 @pytest.fixture
 def fixture_repo(tmp_path, monkeypatch):
-    monkeypatch.setattr(vc._corpus, "BIB", tmp_path / "bibliography.bib")
-    monkeypatch.setattr(vc._corpus, "PARSED_DIR", tmp_path / "content" / "parsed")
+    monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "bibliography.bib")
+    monkeypatch.setattr(config, "PARSED_DIR", tmp_path / "content" / "parsed")
     return tmp_path
 
 
 class TestBibEntry:
     def test_finds_entry_by_citekey(self, fixture_repo):
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {A Paper},\n}\n"
             "@article{doe_2023,\n  title = {Another},\n}\n"
         )
@@ -50,11 +50,11 @@ class TestBibEntry:
         assert "doe_2023" not in entry
 
     def test_missing_citekey_returns_empty(self, fixture_repo):
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {A Paper},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {A Paper},\n}\n")
         assert vc.bib_entry("nonexistent_2024") == ""
 
     def test_missing_bib_file_returns_empty_rather_than_raising(self, fixture_repo):
-        assert not vc._corpus.BIB.exists()
+        assert not config.BIB_FILE_PATH.exists()
         assert vc.bib_entry("anything_2024") == ""
 
 
@@ -62,7 +62,7 @@ class TestPdfPath:
     def test_resolves_pdf_from_file_field(self, fixture_repo):
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -71,26 +71,26 @@ class TestPdfPath:
     def test_multiple_attachments_picks_the_pdf(self, fixture_repo):
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {page.html:page.html:text/html;paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
         assert vc.pdf_path("smith_2024") == pdf
 
     def test_no_file_field_returns_none(self, fixture_repo):
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         assert vc.pdf_path("smith_2024") is None
 
     def test_file_field_with_no_pdf_attachment_returns_none(self, fixture_repo):
         html = fixture_repo / "page.html"
         html.write_text("<html></html>")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n  file = {page.html:page.html:text/html},\n}\n"
         )
         assert vc.pdf_path("smith_2024") is None
 
     def test_pdf_referenced_but_missing_on_disk_returns_none(self, fixture_repo):
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -106,7 +106,7 @@ class TestPdfPath:
         """
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n"
             "\ttitle = {T},\n"
             "\tannote = {codebase: https://example.invalid/x\n"
@@ -124,7 +124,7 @@ class TestPdfPath:
         sub.mkdir(parents=True)
         pdf = sub / "Lu et al. - 2023 - EvoCLINICAL.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n\tfile = {arXiv.org Snapshot:pdfs/158/2309.html:text/html;"
             "Submitted Version:pdfs/159/Lu et al. - 2023 - EvoCLINICAL.pdf:application/pdf},\n}\n"
         )
@@ -133,7 +133,7 @@ class TestPdfPath:
     def test_unbalanced_braces_returns_what_it_has(self, fixture_repo):
         """A truncated/corrupt .bib shouldn't hang or raise -- hand back
         the remainder and let the caller find no `file` field."""
-        vc._corpus.BIB.write_text("@article{smith_2024,\n\ttitle = {T},\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n\ttitle = {T},\n")
         assert vc.bib_entry("smith_2024").startswith("@article{smith_2024,")
         assert vc.pdf_path("smith_2024") is None
 
@@ -148,7 +148,7 @@ class TestPdfPath:
         sub.mkdir(parents=True)
         pdf = sub / "Smith - 2024 - Title.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {Smith - 2024 - Title.pdf:pdfs/21/Smith - 2024 - Title.pdf"
             ":application/pdf},\n}\n"
@@ -158,7 +158,7 @@ class TestPdfPath:
     def test_absolute_path_in_file_field(self, fixture_repo, tmp_path):
         pdf = tmp_path / "abs.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             f"  file = {{abs.pdf:{pdf}:application/pdf}},\n}}\n"
         )
@@ -167,7 +167,7 @@ class TestPdfPath:
     def test_malformed_attachment_segment_is_skipped(self, fixture_repo):
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {junk;paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -182,11 +182,11 @@ class TestPdfPath:
         # to find PDFs sitting right next to it.
         bib_dir = tmp_path / "elsewhere"
         bib_dir.mkdir()
-        monkeypatch.setattr(vc._corpus, "BIB", bib_dir / "bibliography.bib")
+        monkeypatch.setattr(config, "BIB_FILE_PATH", bib_dir / "bibliography.bib")
 
         pdf = bib_dir / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -195,7 +195,7 @@ class TestPdfPath:
 
 class TestPages:
     def test_falls_back_to_parsed_text_when_no_pdf(self, fixture_repo):
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True)
         (parsed_dir / "smith_2024.txt").write_text("page one text\x00\x01\fpage two text")
@@ -204,7 +204,7 @@ class TestPages:
         assert result == ["page one text  page two text"] or len(result) == 2
 
     def test_no_pdf_and_no_parsed_text_returns_empty(self, fixture_repo):
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         assert vc.pages("smith_2024") == []
 
     def test_a_traversal_citekey_reads_nothing_outside_parsed_dir(self, fixture_repo):
@@ -213,7 +213,7 @@ class TestPages:
         `\\cite{...}` -- so `\\citep{../secret}` used to read and echo
         `<parsed's parent>/secret.txt`, page excerpts of a file the review
         had no business opening."""
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True)
         (fixture_repo / "content" / "secret.txt").write_text("must stay unread", encoding="utf-8")
@@ -225,13 +225,28 @@ class TestPages:
         # not at a repo-root-relative content/parsed that ignores it.
         # The REPO constant that made that mistake possible is gone as of
         # 5.0.0; this pins the behaviour that outlived it.
-        monkeypatch.setattr(vc._corpus, "BIB", tmp_path / "bibliography.bib")
+        monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "bibliography.bib")
         custom_parsed_dir = tmp_path / "custom-content" / "parsed"
-        monkeypatch.setattr(vc._corpus, "PARSED_DIR", custom_parsed_dir)
+        monkeypatch.setattr(config, "PARSED_DIR", custom_parsed_dir)
         custom_parsed_dir.mkdir(parents=True)
         (custom_parsed_dir / "smith_2024.txt").write_text("page one text")
 
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        assert vc.pages("smith_2024") == ["page one text"]
+
+    def test_a_config_change_made_after_import_reaches_the_lookup(self, tmp_path, monkeypatch):
+        """#854: `config` is read at call time, not bound at import. A
+        `BIB`/`PARSED_DIR` pair snapshotted when `_corpus` was first
+        imported kept pointing at the project that was current then, so a
+        later `CHITRAGUPTA_PROJECT` switch -- or `isolated_config`, which
+        patches `config` itself -- never reached `verbatim locate`."""
+        bib = tmp_path / "bibliography.bib"
+        parsed = tmp_path / "parsed"
+        parsed.mkdir()
+        monkeypatch.setattr(config, "BIB_FILE_PATH", bib)
+        monkeypatch.setattr(config, "PARSED_DIR", parsed)
+        (parsed / "smith_2024.txt").write_text("page one text", encoding="utf-8")
+        bib.write_text("@article{smith_2024,\n  title = {T},\n}\n", encoding="utf-8")
         assert vc.pages("smith_2024") == ["page one text"]
 
     @pytest.mark.skipif(shutil.which("pdftotext") is None, reason="pdftotext not installed")
@@ -249,7 +264,7 @@ class TestPages:
             capture_output=True,
         )
 
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -265,7 +280,7 @@ class TestPages:
         stack trace."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -276,7 +291,7 @@ class TestPages:
         def refuse(*args, **kwargs):
             raise subprocess.CalledProcessError(1, "pdftotext")
 
-        monkeypatch.setattr(vc._corpus.subprocess, "run", refuse)
+        monkeypatch.setattr(vc._corpus, "_run", refuse)
         assert vc.pages("smith_2024") == ["the parsed fallback text"]
 
     def test_a_pdftotext_timeout_falls_through_to_the_parsed_text(self, fixture_repo, monkeypatch):
@@ -285,7 +300,7 @@ class TestPages:
         and running out of it takes the same fallback as a failure."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -299,7 +314,7 @@ class TestPages:
             seen.update(kwargs)
             raise subprocess.TimeoutExpired("pdftotext", kwargs["timeout"])
 
-        monkeypatch.setattr(vc._corpus.subprocess, "run", hang)
+        monkeypatch.setattr(vc._corpus, "_run", hang)
         assert vc.pages("smith_2024") == ["the parsed fallback text"]
         assert seen["timeout"] == 7.0
 
@@ -308,7 +323,7 @@ class TestPages:
         with no poppler actually raises."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        vc._corpus.BIB.write_text(
+        config.BIB_FILE_PATH.write_text(
             "@article{smith_2024,\n  title = {T},\n"
             "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
         )
@@ -316,7 +331,7 @@ class TestPages:
         def refuse(*args, **kwargs):
             raise OSError("pdftotext not found")
 
-        monkeypatch.setattr(vc._corpus.subprocess, "run", refuse)
+        monkeypatch.setattr(vc._corpus, "_run", refuse)
         assert vc.pages("smith_2024") == []
 
 
@@ -467,7 +482,7 @@ class TestCmdOverlap:
 
 class TestCmdLocate:
     def test_reports_best_matching_pages(self, fixture_repo, capsys):
-        vc._corpus.BIB.write_text("@article{smith_2024,\n  title = {T},\n}\n")
+        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True)
         (parsed_dir / "smith_2024.txt").write_text(

@@ -130,19 +130,28 @@ class TestRunVale:
 
     def test_findings_are_flattened_out_of_vales_per_file_payload(self, draft, monkeypatch):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({str(draft): [finding()]}))
+        monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.run_vale(draft, "en-GB")[0]["Match"] == "simply"
+
+    def test_the_launch_goes_through_the_modules_own_seam(self, draft, monkeypatch):
+        """#854: `style_check._run` is the one patch point for the Vale
+        launch, so a test fakes this module's subprocess and nobody
+        else's -- patching the global `subprocess.run` reached every
+        launch in the process for the duration of the test."""
+        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
+        assert style_check.run_vale(draft, None)[0]["Match"] == "simply"
 
     def test_a_clean_run_produces_no_findings(self, draft, monkeypatch):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({}, stdout=""))
+        monkeypatch.setattr(style_check, "_run", fake_run({}, stdout=""))
         assert style_check.run_vale(draft, None) == []
 
     def test_unreadable_output_blames_the_config_not_the_draft(self, draft, monkeypatch):
         """A parse failure means the vendored style is broken. Swallowing
         it would report zero findings, which reads as a clean draft."""
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run(None, stdout="not json"))
+        monkeypatch.setattr(style_check, "_run", fake_run(None, stdout="not json"))
         with pytest.raises(style_check.MissingBinary, match="could not read"):
             style_check.run_vale(draft, None)
 
@@ -170,7 +179,7 @@ class TestRunVale:
         def _run(argv, **kwargs):  # pylint: disable=unused-argument
             return subprocess.CompletedProcess(argv, 1, stdout="", stderr="Fatal: bad filter")
 
-        monkeypatch.setattr(subprocess, "run", _run)
+        monkeypatch.setattr(style_check, "_run", _run)
         with pytest.raises(style_check.MissingBinary, match="Fatal: bad filter"):
             style_check.run_vale(draft, None)
 
@@ -186,7 +195,7 @@ class TestRunVale:
         def _run(argv, **kwargs):  # pylint: disable=unused-argument
             return subprocess.CompletedProcess(argv, 1, stdout=json.dumps(payload), stderr="")
 
-        monkeypatch.setattr(subprocess, "run", _run)
+        monkeypatch.setattr(style_check, "_run", _run)
         assert style_check.run_vale(draft, None)[0]["Match"] == "simply"
 
 
@@ -341,13 +350,13 @@ class TestMain:
         DEVELOPER-AGENTS.md both turn on this check never gating, and a
         non-zero exit is exactly how it would become one."""
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({str(draft): [finding()] * 3}))
+        monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()] * 3}))
         assert style_check.main([str(draft)]) == 0
         assert "not a gate" in capsys.readouterr().out
 
     def test_it_exits_zero_with_no_findings(self, draft, monkeypatch, capsys):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({}))
+        monkeypatch.setattr(style_check, "_run", fake_run({}))
         assert style_check.main([str(draft)]) == 0
         assert "no findings" in capsys.readouterr().out
 
@@ -373,7 +382,7 @@ class TestMain:
         def _raise(*_args, **_kwargs):
             raise OSError("no such file")
 
-        monkeypatch.setattr(subprocess, "run", _raise)
+        monkeypatch.setattr(style_check, "_run", _raise)
         assert style_check.main(["content/drafts/gone.md"]) == 0
         assert "WARNING" in capsys.readouterr().out
 
@@ -383,7 +392,7 @@ class TestMain:
         """The hook and docs/AUTO-IMPROVEMENT.md's agenda both read this
         rather than the printed form."""
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({str(draft): [finding()]}))
+        monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.main([str(draft), "--json"]) == 0
         payload = json.loads(capsys.readouterr().out)
         assert "not a gate" in payload["notice"]
@@ -398,7 +407,7 @@ class TestMain:
 
     def test_check_returns_the_language_it_used(self, draft, monkeypatch):
         monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
-        monkeypatch.setattr(subprocess, "run", fake_run({}))
+        monkeypatch.setattr(style_check, "_run", fake_run({}))
         write_scope(draft, "- language: en-IN")
         assert style_check.check(draft)["language"] == "en-IN"
 
