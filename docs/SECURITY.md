@@ -118,6 +118,13 @@ configured content directory as the pipeline's working boundary; they
 are not an access-control system, and path validation cannot eliminate a
 race with a process that can alter the filesystem concurrently.
 
+The files a draft references get the same treatment. A figure or image
+reference is resolved before it is compiled by the figure-layout aid or
+copied beside a render, and one that lands outside the draft's own
+directory -- absolute, `..`-escaping, or a symlink, of the file or of a
+directory on the way to it -- is ignored. A link that stays inside the
+draft still works.
+
 ### Safer archive restore
 
 `chitragupta.dossier` exports and restores draft records as `tar.gz`
@@ -143,6 +150,25 @@ parser. It does not protect against vulnerabilities or unsafe behaviour
 in the called executable, a malicious executable earlier on `PATH`, or
 dangerous content interpreted by the toolchain. The PDF and rendering
 sections of [CLI.md](CLI.md) identify which commands require local tools.
+
+Every `pdflatex` this codebase starts -- a `pdf` render through Pandoc,
+and the figure-layout aid's probe -- runs with `-no-shell-escape` and
+with kpathsea's `openin_any=p`. The first turns off `\write18` entirely,
+including TeX Live's default restricted allow-list. The second limits
+what TeX may read to the working directory and `TEXINPUTS`: no absolute
+paths, no `..`, no dotfiles. Together they stop draft or bibliography
+text from running a command or reading a file elsewhere on the host. A
+shared `.bib` whose title says `\input{/home/alice/.netrc}` reaches
+`pdflatex` as raw LaTeX through citeproc; with these settings the render
+fails and names the file instead of printing it into the reference list.
+Pandoc's own `--sandbox` is deliberately not used: it confines Pandoc's
+reads, not `pdflatex`'s, and it drops a `docx` render's images.
+
+Two limits follow. A `tex` output and a `--fragment` unit carry the same
+raw LaTeX to whoever compiles them later, with their own engine and
+their own settings, which this project does not control. And an `.eps`
+figure no longer converts, because graphicx converts one through
+`repstopdf` over shell escape; use a PDF or PNG figure instead.
 
 ### Local-first corpus processing
 

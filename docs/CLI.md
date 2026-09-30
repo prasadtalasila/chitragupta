@@ -2396,6 +2396,14 @@ redirected:
 - a topic directory under `content/rendered/` that is a symlink pointing
   off-tree.
 
+The files a draft references are confined the same way. A figure or
+image reference that is absolute, contains `..`, or is a symlink landing
+outside the draft's own directory is neither compiled nor copied beside
+the output. A `pdf` render also runs `pdflatex` without shell escape and
+with `openin_any=p`, so text in a shared `.bib` cannot make it read a
+file outside the draft either -- such a render fails and names the file.
+[SECURITY.md](SECURITY.md) has what this does and does not cover.
+
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
