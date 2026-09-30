@@ -43,8 +43,8 @@ Six checks, none of them fatal to run without:
 
 import argparse
 import importlib.metadata
-import json
 import importlib.util
+import json
 import shutil
 import sys
 from pathlib import Path
