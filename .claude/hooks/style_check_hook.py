@@ -54,11 +54,14 @@ PREAMBLE = (
 
 
 def main() -> int:
-    draft = draft_target.from_stdin(sys.stdin)
-    if draft is None or not draft.is_file():
+    try:
+        drafts = [d for d in draft_target.targets_from_stdin(sys.stdin) if d.is_file()]
+    except draft_target.UnreadablePatch:
+        return 0  # the gate blocks this one; an advisory hook stays silent
+    if not drafts:
         return 0  # not a draft, or gone between the write and this check
 
-    payload = _findings(draft)
+    payload = _findings(drafts)
     if payload:
         print(
             json.dumps(
@@ -73,8 +76,8 @@ def main() -> int:
     return 0
 
 
-def _findings(draft) -> str:
-    """The report for one draft, or "" when there is nothing worth saying.
+def _findings(drafts) -> str:
+    """The report for the drafts one write changed, or "" when there is nothing to say.
 
     A missing `vale` is deliberately silent rather than a warning on every
     write: it is the ordinary state of a checkout that has not run the
@@ -85,7 +88,7 @@ def _findings(draft) -> str:
     stray `chitragupta/` at the root must not be what this imports (#822).
     """
     result = subprocess.run(
-        [sys.executable, "-m", "chitragupta.draft", "style", "--json", str(draft)],
+        [sys.executable, "-m", "chitragupta.draft", "style", "--json", *map(str, drafts)],
         check=False,
         cwd=draft_target.REPO_ROOT,
         capture_output=True,

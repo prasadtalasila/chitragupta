@@ -545,7 +545,7 @@ jobs:
       # because the two fence rules that dominate the baseline there are
       # the same ones that reached docs/ unnoticed.
       - name: markdownlint
-        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
+        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 
       # package.json's one devDependency (acorn), behind
       # scripts/webapp_code_standards.js -- assets/webapp/'s own C1/C2
@@ -569,6 +569,14 @@ jobs:
       # code_standards-register.toml's c1js/c2js tables instead.
       - name: Test the webapp modules
         run: node --test tests/webapp/*.test.js
+
+      # The OpenCode plugin's helpers (#900), for the same reason as the
+      # webapp: JavaScript pytest cannot measure. tests/test_opencode_plugin.py
+      # also runs this file, and drives the plugin through the real Python
+      # hook, but it skips where node is absent -- this step is what makes
+      # the helpers' tests unskippable in CI.
+      - name: Test the OpenCode plugin helpers
+        run: node --test tests/opencode/*.test.mjs
 
       # Vale is installed by the same function the host and Docker use, so
       # a break in that install path fails here rather than on a

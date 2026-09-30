@@ -1,0 +1,263 @@
+---
+name: corpus-reviser-opencode
+description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser-opencode does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser-opencode instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m chitragupta.draft gate` before presenting.
+tags: [revision, dossier, citation, corpus]
+---
+
+# corpus-reviser-opencode
+
+`draft-reviser-opencode` reads the dossier instead of the corpus, and re-searches
+only the sub-theme a change actually touches. That is the right default,
+and it is an economy rather than a rule about what anyone is allowed to
+ask for. This skill is the way out of it.
+
+It exists as a separate skill so the choice is yours and is made once,
+out loud. `draft-reviser-opencode` contains no instructions for a wide search, so
+it cannot drift into one; invoking this skill is how you say the cost is
+worth it. `SOUL.md` is why the distinction is a door rather than a gate:
+how wide a revision should be is a judgment about your draft, and a
+machine does not outrank you on one of those.
+
+**What this is not is a re-run of the genre skill.** That remains the one
+thing that is never right. It throws away the dossier -- every rejection
+and the reason for it, the recorded reader, the glossary, the steering
+you gave in chat -- and then pays to rediscover a worse version of it.
+This keeps all of that and spends tokens only on what is genuinely
+unknown.
+
+## When to invoke
+
+| Situation | Action |
+| --- | --- |
+| User asks in as many words for a whole-corpus pass, cost regardless | Invoke this skill |
+| A scope change the user agreed to has invalidated the recorded queries | Invoke this skill -- the old queries were chosen for the old scope |
+| The draft is being re-targeted at a different reader | Invoke this skill -- what counts as support changes with the reader |
+| Any other change to an existing draft | Use `draft-reviser-opencode` |
+| A sync moved the corpus and citations broke | Use `draft-reviser-opencode`'s re-grounding mode -- repairing what broke is not a wide pass |
+| User asks for a **new** draft | Use the matching genre skill |
+| You are not sure which of the two this is | Use `draft-reviser-opencode`, and say you did |
+
+That last row is not modesty. Being wrongly narrow costs one clarifying
+sentence; being wrongly wide costs the tokens, and the user did not
+agree to spend them.
+
+**Read-only over the corpus layer**, exactly as everywhere else. Never
+run `python -m chitragupta.corpus sync` and never run `python -m
+chitragupta.enrich`: both
+take the
+pipeline's write lock and can run for tens of minutes, and they are the
+user's to run.
+
+## Collection scoping (#195): inherit it, do not re-ask
+
+`scope.md` may carry a `collection:` line, written by the genre skill
+that produced this draft. If it does, **every retrieval call in this pass
+carries the same `--collection`**, and the user is not asked again.
+
+This matters more here than it does at drafting time. A draft grounded
+in one curated shelf that is then revised against the whole library has
+silently changed what it is made of, and the change is invisible in the
+diff: the citekeys are all real, the gate still passes, and nothing in
+`retrieval.md` records that the scope moved (#254).
+
+A missing line, or `- collection: (whole corpus)`, means search
+everything -- exactly as this skill behaved before this section existed.
+
+**This skill is the one exception.** A whole-corpus pass *is* a
+widening, and that is what the user asked for. So it may search outside
+the recorded collection -- but it says so first, in the cost statement,
+naming the collection it is about to search past, and it records the
+widening in `revisions.md` so the next reader knows the draft is no
+longer scoped to what `scope.md` says it is. It does not rewrite the
+`collection:` line: the user chose that, and only the user unchooses it.
+
+## Say what it costs, before you start
+
+One sentence, before the first search, and let them stop you. A wide pass
+re-searches every sub-theme the dossier records and reads the whole draft,
+so it costs roughly what the original drafting run did, minus the
+clustering and the writing.
+
+If the ledger is empty or absent, stop and say so rather than revising
+around it. This skill is defined by going back to the corpus, so there is
+nothing to fall back on.
+
+## The loop
+
+Follow `.opencode/skills/draft-reviser-opencode/SKILL.md`'s `## The loop`, steps
+1 through 7, unchanged except for the two steps below. Read that file; do
+not reconstruct it from memory. It is the same scope check, the same
+edit discipline, the same dossier write-back and the same exit.
+
+**Step 3 becomes a whole-draft read.** `python -m chitragupta.draft dossier sections
+content/drafts/<path>` still gives the outline, but here it is a work
+list rather than a filter: you read every section, because a wide pass
+is judging the whole draft against the corpus, not one claim.
+
+**Step 4 stops being a decision.** In `draft-reviser-opencode` the question is
+whether to search at all, and the answer is usually no. Here it is
+already answered.
+
+Take the sub-themes from `retrieval.md`'s recorded queries where the
+dossier has them -- those are the questions this draft was actually built
+by asking. Fall back to the section headings in `sections.md` where it
+doesn't, which is the case for any draft written before `--log` was
+passed. One search each:
+
+```bash
+python -m chitragupta.draft retrieve search "<sub-theme>" --k 15 --log content/drafts/<path>
+# no --collection: a whole-corpus pass is a widening -- see "Collection scoping" above
+python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --log content/drafts/<path>
+```
+
+`evidence` stays optional and stays for deepening an acceptance -- reach
+for it when a snippet is not enough to decide on a source you are minded
+to cite. Score what you keep the way `survey-writer-opencode` step 2 describes,
+and record both outcomes: kept into `evidence.md`, turned down into
+`rejected.md`. A block from before this run that carries only `support:`
+is never rewritten to `claim:`/`quote:` -- read it as `quote:` (the
+conservative reading) and leave it exactly as it stands.
+
+## What does not relax
+
+The cost is the only thing this skill changes. Everything that makes a
+revision cheaper *to repeat* still holds, and dropping any of it would
+turn a wide pass into the re-run this skill exists to avoid.
+
+- **`rejected.md` is still consulted first, and still honoured.** A
+  candidate listed there with a reason is not re-retrieved and
+  re-judged. A wide search finds what was never weighed; it is not a
+  licence to re-litigate what was. If a recorded reason has genuinely
+  stopped holding -- usually because the scope moved -- say which one and
+  why before re-opening it.
+- **Every call carries `--log`.** The point of choosing the expensive
+  path deliberately is that the cost lands in `retrieval.md` and can be
+  looked at afterwards, instead of being guessed at.
+- **`edit`, never `write`.** A wide *search* does not imply a wide
+  *rewrite*. Most sections survive a re-check untouched, and rewriting
+  those costs thousands of output tokens to produce a diff nobody can
+  review.
+- **Never write a citekey** that isn't already in the draft, in
+  `evidence.md`, or in a `search()` result you just read. A fabricated
+  citekey is the one failure this whole pipeline exists to prevent, and
+  a long run is exactly where the temptation shows up.
+- **The dossier is written back** -- `scope.md` only if the user agreed
+  to a scope change, plus `evidence.md`, `rejected.md`, `sections.md`,
+  `steering.md`, and a `revisions.md` entry saying plainly that this pass
+  was wide and why. **`math.md` too, if the draft has one**: it is keyed
+  on the exact text of a code span (docs/WRITING-STANDARDS.md §12), and a
+  wide rewrite reworders more quantities than a scoped one. Same rule as
+  `draft-reviser-opencode` -- add, drop or re-key a row per quantity, and let the
+  render's `[math]` warnings say what you missed.
+- **A table's id survives a rewrite; the number does not need to.**
+  Same rule as `draft-reviser-opencode`: `docs/WRITING-STANDARDS.md` §13's
+  `<!-- table: id -->` marker renumbers itself, so a wide pass is free
+  to reword the prose around a table without touching its number. What
+  it can still break is the id: a table moved into another section, or
+  dropped while something still points at it with
+  `<!-- tableref: id -->`, is `TableUnreferenced`/`TableUnknownRef`, the
+  same defect a scoped revision could introduce, just more likely here
+  because more sections are in motion at once.
+- **Figures still follow the draft's own genre.** Same rule as
+  `draft-reviser-opencode`: `scope.md`'s `genre:` line names the skill whose
+  drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
+  figures apply -- and a `deep-research-opencode` draft gets none, wide pass or
+  not. `draft-reviser-opencode`'s **touch a figure, touch both forms** rule
+  carries over unchanged: a figure exists as a TikZ picture and as a
+  plain-ASCII diagram, nothing can check that the two still depict the
+  same thing, and a wide pass is the one most likely to edit a figure
+  in passing while re-reading a section for something else. So does its
+  **consult a source figure before redrawing one** rule: a wide pass
+  re-reads every cited paper anyway, and `python -m chitragupta.draft
+  figures <citekey>` is the one way to see what a paper's figure actually
+  shows rather than what its caption claims. Look, never reproduce.
+- **A numbered equation's id survives a rewrite; the number does not
+  need to.** Same rule as `draft-reviser-opencode`: `docs/WRITING-STANDARDS.md`
+  §12's `<!-- equation: id -->` marker renumbers itself, so only the id
+  is a wide pass's concern -- reword the surrounding derivation freely,
+  but a numbered equation moved into another section, or deleted while
+  something still points at it with `<!-- equationref: id -->`, is
+  `EquationUnreferenced`/`EquationUnknownRef`, not a rewrite defect.
+  Whether a *newly*-reworded derivation should now carry a number at
+  all is the same judgment call §12 gives every genre, not one this
+  pass gets to skip because the rewrite was wide.
+- **The gate is the exit.** Never present a draft that hasn't passed
+  `python -m chitragupta.draft gate`.
+- **Re-stamp the draft fingerprint once the gate passes** (#454): `python
+  -m chitragupta.draft dossier stamp content/drafts/<path>`. A wide pass
+  is the one most likely to have touched every section, so skipping this
+  is also the surest way to leave the next revision reading `CHANGED`
+  against a baseline this pass already accounted for.
+- **Run the prose check** -- `python -m chitragupta.draft style
+  content/drafts/<path>` -- after the gate and before presenting.
+  `draft-reviser-opencode`'s numbered steps 1-7 do not reach its unnumbered riders,
+  so this is written out here for the same reason the scan offer is.
+  **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+  -- §2's defect markers, an acronym never expanded at first use, a
+  glossary acronym whose expansion has drifted from the vocabulary, and
+  §8's dialect against `scope.md`'s `language:` line -- and it cannot
+  tell a quotation from the draft's own voice. **Report every finding and fix
+  none of them:** a wide pass rewrites against sources the draft never
+  cited, which makes it the pass most able to import another author's
+  spelling along with their point, and also the pass least entitled to
+  tidy prose nobody asked about. Findings go to `draft-reviser-opencode`'s
+  copy-edit mode, not into this pass.
+- **Run the verbatim scan.** Before presenting, rebuild the section map
+  and scan:
+
+  ```bash
+  python -m chitragupta.draft dossier sections content/drafts/<path> --citekeys --write
+  python -m chitragupta.review verbatim scan content/drafts/<path>
+  ```
+
+  The first command is not optional. A wide pass rewrites against sources
+  the draft may never have cited, so it is the pass most likely to have
+  changed which section leans on which paper -- and the embedding tier
+  compares each section against the citekeys that section's `sections.md`
+  row records. If it exits 1 for a missing dossier, say so and scan
+  anyway.
+
+  The scan reports wording the draft shares with
+  **any** parsed source, cited or not, which earns its place after a wide pass
+  in particular: this skill re-reads the whole corpus and rewrites against
+  sources the draft may never have cited, so it is the pass most able to import
+  someone else's phrasing into a paragraph that credits no one. **A review aid,
+  not a gate: it exits 0 either way, and it is never a condition of
+  presenting.** Show what it found rather than summarising it away, and lead
+  with the `long` and `short` buckets -- a `quoted` run that also cites its
+  source is a legitimate attributed quotation, so give those a count rather
+  than a list. **Say what it did not check:** if `tiers_not_run` is not empty,
+  quote each reason as the scan wrote it, and where the reason names a fix
+  (`poetry install --with enrich`, `python -m chitragupta.enrich`) pass that on
+  once. It sees
+  verbatim and near-verbatim reuse only, and **genuine restatement is only
+  detected where the embedding tier can run**, so a clean scan is not a clean
+  bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
+  `agenda-reviser-opencode`'s job, and only if the user asks. If the user wants
+  the finding kept,
+  add `--write`: the report goes to `content/review/`, mirroring the draft's
+  path, beside any provenance and coverage reports for the same draft.
+
+## Guardrails
+
+- **Never invoke this skill on your own initiative.** It is the user's
+  choice, and an unrequested wide pass is the most expensive thing that
+  can happen without anyone asking for it.
+- **Never re-run the genre skill.** If the request truly needs a new
+  draft, say that and hand off explicitly.
+- **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
+- **Never treat a wide search as permission to re-judge `rejected.md`.**
+- **Never silently change scope, reader or terminology.**
+- **Report what the pass actually changed** -- including the sections you
+  re-checked and left alone, which is the evidence that the cost bought
+  something. Say how many sub-themes were searched and how many sources
+  changed.
+
+## Sources
+
+The prose standards this skill inherits are documented, with
+per-principle attribution, in
+[`docs/WRITING-STANDARDS.md`](../../../docs/WRITING-STANDARDS.md#-sources-and-attribution).
+The reasoning for why the scoped default exists, and why the way out of
+it is a separate skill rather than a paragraph, is in
+[`docs/DRAFT-ITERATION.md`](../../../docs/DRAFT-ITERATION.md).

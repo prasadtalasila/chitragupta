@@ -322,6 +322,9 @@ chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_
 # 9. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
 #    refused, so that one directory stays the whole record of the work.
+#    `render` runs the gate first, in every format: a draft citing a key
+#    the ledger does not hold is refused, naming the key, and nothing is
+#    written.
 chitragupta draft gate content/drafts/<slug>.md
 chitragupta draft references content/drafts/<slug>.md --heading "References"   # --heading default: "References"
 chitragupta draft render content/drafts/<slug>.md --format pdf   # also: --csl, --no-collapse-citations,

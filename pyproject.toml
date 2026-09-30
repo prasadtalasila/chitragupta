@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.125.14"
+version = "6.126.0"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -33,6 +33,10 @@ packages = [{ include = "chitragupta" }]
 include = [
     { path = "assets", format = ["sdist", "wheel"] },
     { path = ".claude", format = ["sdist", "wheel"] },
+    # The Codex and OpenCode launchers (#812, #900), for `init --agent`.
+    { path = ".codex", format = ["sdist", "wheel"] },
+    { path = ".agents", format = ["sdist", "wheel"] },
+    { path = ".opencode", format = ["sdist", "wheel"] },
     { path = "docs", format = ["sdist", "wheel"] },
     { path = "AGENTS.md", format = ["sdist", "wheel"] },
     { path = "CLAUDE.md", format = ["sdist", "wheel"] },

@@ -1,4 +1,4 @@
-"""`chitragupta init [DIR] [--force] [--dry-run]`: scaffold a project directory.
+"""`chitragupta init [DIR] [--force] [--dry-run] [--agent NAME]`: scaffold a project directory.
 
 A wheel installs importable modules. That is not what this project ships:
 a user with only `pip install chitragupta-cli` has no `config.toml`, no
@@ -13,7 +13,8 @@ installed, `chitragupta/config.py`'s `shipped()` already resolves the
 project's vendored assets (the CSL style, the Vale rules, the default
 acronym list) from `PACKAGE_ROOT.parent` -- one level above the installed
 package, wherever that is. `pyproject.toml`'s `[tool.poetry].include`
-ships `.claude/`, `docs/` and the four root `.md` files to that exact
+ships `.claude/`, `.codex/`, `.opencode/`, `docs/` and the four root
+`.md` files to that exact
 sibling location for the same reason, so this module reads from the same
 seam `shipped()` already established rather than inventing a second one.
 
@@ -80,6 +81,17 @@ COPY_VERBATIM = (
 )
 
 
+# The trees each harness adds on top of the shared core (#812, #900).
+# `.claude/` is in COPY_VERBATIM for every harness, not only Claude Code:
+# it holds the hook scripts all three launch, so a Codex or OpenCode
+# project without it would have no gate to run. Each harness's skills are
+# its own copy -- `.claude/skills/`, `.agents/skills/` (the only folder
+# Codex reads) and `.opencode/skills/` with its `opencode.json` deny list
+# -- kept in step by tests/test_skill_harness_copies.py.
+AGENT_TREES = {"claude": (), "codex": (".codex", ".agents"), "opencode": (".opencode",)}
+DEFAULT_AGENTS = ("claude",)
+
+
 class ScaffoldSourceMissing(Exception):
     """An installation that cannot write a complete scaffold -- see
     `scaffold`, which refuses rather than writing a partial one."""
@@ -132,7 +144,12 @@ EMPTY_DIRS = (
     "content/rendered",
 )
 
-TOP_LEVEL = frozenset({CONFIG_DEST, *COPY_VERBATIM, "papers", "content"})
+# Everything a scaffold can write, with every harness named. The default,
+# `--agent claude`, writes all of it bar the other harnesses' trees.
+TOP_LEVEL = frozenset(
+    {CONFIG_DEST, *COPY_VERBATIM, *(t for trees in AGENT_TREES.values() for t in trees)}
+    | {"papers", "content"}
+)
 
 # Kept separate from the module docstring above and passed to argparse
 # rather than `description=__doc__`, for the reason tests/test_cli_help_is_short.py
@@ -142,7 +159,7 @@ TOP_LEVEL = frozenset({CONFIG_DEST, *COPY_VERBATIM, "papers", "content"})
 # I run this".
 DESCRIPTION = (
     "Scaffold a project directory -- config.toml, .claude/, "
-    "papers/, content/, assets/ and the prose docs."
+    "papers/, content/, assets/, the prose docs, and each --agent's launcher."
 )
 
 # What scripts/release.py's zip ships (every git-tracked top-level entry
@@ -248,7 +265,9 @@ def _write_empty_dir(dst: Path, *, dry_run: bool) -> str:
     return f"{'would create' if dry_run else 'created'}: {dst}/"
 
 
-def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[str]:
+def scaffold(
+    dest: Path, *, force: bool = False, dry_run: bool = False, agents=DEFAULT_AGENTS
+) -> list[str]:
     """Write (or, with `dry_run`, describe) the project scaffold into `dest`.
 
     Returns the report `main()` prints -- in every mode, including
@@ -256,9 +275,10 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
     writes, from this one manifest, rather than a second and
     hand-maintained listing of it.
     """
+    trees = list(dict.fromkeys(tree for agent in agents for tree in AGENT_TREES[agent]))
     missing = [
         name
-        for name in (*COPY_VERBATIM, CONFIG_EXAMPLE, ACRONYMS_EXAMPLE)
+        for name in (*COPY_VERBATIM, *trees, CONFIG_EXAMPLE, ACRONYMS_EXAMPLE)
         if not (SOURCE_ROOT / name).exists()
     ]
     if missing:
@@ -287,7 +307,7 @@ def scaffold(dest: Path, *, force: bool = False, dry_run: bool = False) -> list[
         )
 
     report = []
-    for name in COPY_VERBATIM:
+    for name in (*COPY_VERBATIM, *trees):
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
     report.append(
         _write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST, force=force, dry_run=dry_run)
@@ -313,13 +333,25 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run", action="store_true", help="Print the tree that would be written; write nothing"
     )
+    parser.add_argument(
+        "--agent",
+        action="append",
+        choices=sorted(AGENT_TREES),
+        dest="agents",
+        help="Harness to set up (default: claude); repeat for several",
+    )
     return parser
 
 
 def main(argv=None) -> int:
     args = build_parser().parse_args(sys.argv[1:] if argv is None else argv)
     try:
-        report = scaffold(args.dir, force=args.force, dry_run=args.dry_run)
+        report = scaffold(
+            args.dir,
+            force=args.force,
+            dry_run=args.dry_run,
+            agents=tuple(args.agents or DEFAULT_AGENTS),
+        )
     except (ScaffoldSourceMissing, ScaffoldTargetUnsafe) as exc:
         print(f"[error] {exc}", file=sys.stderr)
         return 1

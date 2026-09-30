@@ -41,9 +41,9 @@ Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 by `python -m chitragupta.corpus sync`.
 
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
-`textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
-`.claude/skills/`) must run `python -m chitragupta.draft gate <file>` on its
-own output and only present the draft once it exits 0. So must
+`textbook-chapter-writer`, `tutorial-writer`, `deep-research`) must run
+`python -m chitragupta.draft gate <file>` on its own output and only
+present the draft once it exits 0. So must
 `book-assembler`, which writes no prose but does write a document: the
 LaTeX book it composes is a new file, and this layer has one exit
 whatever produced the file. This is a gate,
@@ -52,18 +52,31 @@ failing test. It binds the two teaching genres too, where citations are
 optional: a draft that cites nothing passes trivially, but a draft that
 cites anything must pass on merit.
 
-A PostToolUse hook (`.claude/hooks/citation_gate_hook.py`, wired up in
-`.claude/settings.json`) also enforces this mechanically: any Write/Edit
-under `content/drafts/*.md` or `*.tex` runs the gate automatically and
-surfaces a blocking `FAIL` naming the offending citekey(s) if it doesn't
-pass. **It is a PostToolUse hook, so it fires *after* the write lands** --
+Each harness has its own copy of every skill, naming its own tools:
+`.claude/skills/` for Claude Code, `.agents/skills/` for Codex, and
+`.opencode/skills/` for OpenCode, where the names carry an `-opencode`
+suffix (`survey-writer-opencode`, `draft-reviser-opencode`, ...). Use the
+copy your harness offers; [docs/HARNESS.md](docs/HARNESS.md) explains
+the layout.
+
+A hook (`.claude/hooks/citation_gate_hook.py`) also enforces this
+mechanically: any write under `content/drafts/*.md` or `*.tex` runs the
+gate automatically and surfaces a blocking `FAIL` naming the offending
+citekey(s) if it doesn't pass. The same script runs on every supported
+harness -- on Claude Code's Write/Edit (`.claude/settings.json`), on
+Codex's `apply_patch` (`.codex/hooks.json`, once you have trusted the
+project's hooks), and on OpenCode's file tools (its plugin in
+`.opencode/`); [docs/HARNESS.md](docs/HARNESS.md) has what each one
+enforces. **It fires *after* the write lands** --
 the file exists, with the bad citekey in it, until the `FAIL` is fixed.
 The block is on the agent continuing as though the draft were sound, not
 on the bytes reaching disk, and a draft abandoned at that point stays
 wrong on disk. Treat the instruction above as belt-and-suspenders, not
 the only line of defense -- and still run the gate by hand before calling
 a draft done, since the hook only fires on the tool call that wrote the
-file, not on demand.
+file, not on demand. A write through a shell command is seen by no hook;
+the gate you run by hand warns when a draft changed with no hook checking
+it, and `draft render` refuses a draft the gate rejects, in every format.
 
 The gate proves every citekey is *real*. Whether each cited paper
 actually *supports* its sentence is a different question, answered by

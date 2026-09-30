@@ -100,8 +100,8 @@ command already has -- this is a front door, not a redesign.
 
 | Command | What it does |
 | --- | --- |
-| `chitragupta init [DIR] [--force] [--dry-run]` | Scaffold a project directory -- `config.toml`, `.claude/` skills and hooks, `papers/`, `content/`, `assets/`, the prose docs. What the release zip ships today |
-| `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution. Exits 0 on findings -- an aid, never a gate |
+| `chitragupta init [DIR] [--force] [--dry-run] [--agent NAME]` | Scaffold a project directory -- `config.toml`, `.claude/` skills and hooks, `papers/`, `content/`, `assets/`, the prose docs. What the release zip ships today. `--agent codex` and `--agent opencode` add that harness's launcher and its own copy of the skills (`.codex/` and `.agents/`, `.opencode/`); repeat for several, default `claude` ([HARNESS.md](HARNESS.md)) |
+| `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution, a hook launcher on any harness that cannot start. Exits 0 on findings -- an aid, never a gate |
 | `chitragupta install os-deps\|gpu-torch` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do. Other stages are refused by name with the pip equivalent |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
 

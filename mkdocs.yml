@@ -117,7 +117,10 @@ markdown_extensions:
 # machinery, or agent instructions that docs/GENRE.md already summarises
 # for a human reader.
 exclude_docs: |
+  /.agents/
   /.claude/
+  /.codex/
+  /.opencode/
   /.github/
   /.venv-full/
   /.venv/
@@ -227,6 +230,7 @@ nav:
       - Changing this repo: DEVELOPER-AGENTS.md
       - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md
+      - Harnesses: docs/HARNESS.md
       - Technical debt: docs/TECHNICAL-DEBT.md
       - Poetry, uv and the lockfile: docs/UV-MIGRATION.md
       - Inspiration and credits: docs/INSPIRATION.md

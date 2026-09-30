@@ -136,11 +136,8 @@ from chitragupta.render_output._pandoc import (
     _run_pandoc,
 )
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
-from chitragupta.render_output._substitution import (
-    _checked_math_mapping,
-    _draft_warnings,
-    _substituted,
-)
+from chitragupta.render_output._gate import gated_warnings
+from chitragupta.render_output._substitution import _checked_math_mapping, _substituted
 
 # Everything above is re-exported deliberately, not incidentally. Every
 # caller in this repository reaches these off the module
@@ -246,7 +243,7 @@ def render(
     # Before the early return below, so a Markdown draft rendered to
     # Markdown -- the one path that never reaches pandoc -- still reports
     # a figure whose marker or twin is wrong.
-    for prefix, warning in _draft_warnings(draft_text, input_path):
+    for prefix, warning in gated_warnings(draft_text, input_path):
         print(f"[{prefix}] {warning}", file=sys.stderr)
     if output_format == "md" and input_path.suffix.lower() in _MARKDOWN_SUFFIXES:
         # Markdown in, Markdown out: this is a citation-numbering job, not

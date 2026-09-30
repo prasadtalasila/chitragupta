@@ -2,6 +2,7 @@
 installs, never exits non-zero (SOUL.md's aid-not-gate rule)."""
 
 import importlib.metadata
+import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -181,3 +182,70 @@ class TestMain:
     def test_help_does_not_print_the_module_docstring(self):
         assert doctor.DESCRIPTION != doctor.__doc__
         assert "\n\n" not in doctor.DESCRIPTION
+
+
+class TestCheckLaunchers:
+    """#812: a dead launcher on any harness, by name, and never fatal."""
+
+    @staticmethod
+    def codex(root, program):
+        (root / ".codex").mkdir()
+        hooks = {"PostToolUse": [{"hooks": [{"type": "command", "command": f"{program} x.py"}]}]}
+        (root / ".codex" / "hooks.json").write_text(json.dumps({"hooks": hooks}), encoding="utf-8")
+
+    def test_a_project_with_sound_launchers_is_ok(self, tmp_path):
+        assert doctor._check_launchers(tmp_path) == ["[ok] every hook launcher found can start"]
+
+    def test_a_dead_codex_launcher_is_named(self, tmp_path):
+        self.codex(tmp_path, "no-such-interpreter-812")
+        lines = doctor._check_launchers(tmp_path)
+        assert len(lines) == 1
+        assert lines[0].startswith("[launcher] .codex/hooks.json: ")
+        assert "no-such-interpreter-812" in lines[0]
+
+    def test_an_opencode_project_without_the_plugin_is_named(self, tmp_path):
+        (tmp_path / ".opencode").mkdir()
+        lines = doctor._check_launchers(tmp_path)
+        assert "OpenCode runs no citation gate" in lines[0]
+
+    def test_an_opencode_project_with_the_plugin_is_ok(self, tmp_path):
+        (tmp_path / ".opencode" / "plugins").mkdir(parents=True)
+        (tmp_path / ".opencode" / "plugins" / "chitragupta-gate.js").write_text("//")
+        assert doctor._check_launchers(tmp_path)[0].startswith("[ok]")
+
+    def test_main_reports_it_and_still_exits_0(self, tmp_path, monkeypatch, capsys):
+        self.codex(tmp_path, "no-such-interpreter-812")
+        monkeypatch.chdir(tmp_path)
+        assert doctor.main([]) == 0
+        assert "[launcher] .codex/hooks.json" in capsys.readouterr().out
+
+
+class TestCheckOpencodeSkills:
+    """#900: OpenCode keys skills by name, so its deny list is what keeps it
+    on its own copies."""
+
+    @staticmethod
+    def project(root, rules):
+        (root / ".opencode" / "skills" / "survey-writer-opencode").mkdir(parents=True)
+        if rules is not None:
+            config = {"permission": {"skill": rules}}
+            (root / ".opencode" / "opencode.json").write_text(json.dumps(config), encoding="utf-8")
+
+    def test_no_opencode_skills_says_nothing(self, tmp_path):
+        assert doctor._check_opencode_skills(tmp_path) == []
+
+    def test_a_complete_deny_list_is_ok(self, tmp_path):
+        self.project(tmp_path, {"*": "allow", "survey-writer": "deny"})
+        assert doctor._check_opencode_skills(tmp_path)[0].startswith("[ok]")
+
+    @pytest.mark.parametrize("rules", [None, {"*": "allow"}, "deny", {"survey-writer": "ask"}])
+    def test_a_missing_or_partial_deny_list_is_named(self, tmp_path, rules):
+        self.project(tmp_path, rules)
+        (line,) = doctor._check_opencode_skills(tmp_path)
+        assert line.startswith("[skills]")
+        assert "survey-writer" in line
+
+    def test_a_config_that_is_not_json_is_named(self, tmp_path):
+        self.project(tmp_path, None)
+        (tmp_path / ".opencode" / "opencode.json").write_text("{not json", encoding="utf-8")
+        assert doctor._check_opencode_skills(tmp_path)[0].startswith("[skills]")

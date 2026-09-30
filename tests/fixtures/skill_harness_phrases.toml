@@ -1,0 +1,169 @@
+# Harness phrase map for the skill copies (#812, #900).
+#
+# Each skill exists once per harness -- .claude/skills/ (Claude Code),
+# .agents/skills/ (Codex), .opencode/skills/*-opencode/ (OpenCode) -- and
+# each copy names its own harness's tools. This table is not shown to any
+# model: tests/test_skill_harness_copies.py replaces each copy's phrases
+# with the entry's key and then requires the three copies to be identical,
+# so a sentence changed in one copy and not the others fails the test.
+#
+# Every value is an exact substring of its copy, line breaks included.
+# Change a phrase here and in every copy that carries it, together.
+# An entry's harness values are its only differences; anything else that
+# differs between copies is drift.
+#
+# Tool vocabulary, as each harness offers it to the model (measured on
+# 2026-09-29, Codex 0.159.0 and OpenCode 1.18.33; docs/HARNESS.md):
+#   Codex    apply_patch (freeform V4A patch), exec_command (shell); no
+#            read, checklist or subagent tool for a gpt-5.5 session
+#   OpenCode edit, write, read (offset/limit), todowrite, task, skill;
+#            apply_patch in place of edit and write for GPT models
+
+[skill_path_draft_reviser]
+claude = "`.claude/skills/draft-reviser/SKILL.md`"
+codex = "`.agents/skills/draft-reviser/SKILL.md`"
+opencode = "`.opencode/skills/draft-reviser-opencode/SKILL.md`"
+
+[agenda_edit_payload]
+claude = "the `draft_text` an `Edit`'s `old_string` needs."
+codex = "the `draft_text` an `apply_patch` hunk must match."
+opencode = "the `draft_text` an `edit`'s `oldString` needs."
+
+[agenda_loop_edit]
+claude = '''
+first, mapping a change onto sections, editing with `Edit` rather than
+`Write`, and writing the dossier back.'''
+codex = '''
+first, mapping a change onto sections, editing with `apply_patch` hunks
+rather than rewriting the file, and writing the dossier back.'''
+opencode = '''
+first, mapping a change onto sections, editing with `edit` rather than
+`write`, and writing the dossier back.'''
+
+[agenda_remove_marker]
+claude = '''
+`Edit`, leaving the sentence standing'''
+codex = '''
+an `apply_patch` hunk, leaving the sentence standing'''
+opencode = '''
+`edit`, leaving the sentence standing'''
+
+[agenda_edit_span]
+claude = "`Edit` the exact span"
+codex = "Patch the exact span"
+opencode = "`edit` the exact span"
+
+[agenda_old_string]
+claude = '''
+use it as `Edit`'s
+`old_string`.'''
+codex = '''
+use it as the
+`-` lines of an `apply_patch` hunk.'''
+opencode = '''
+use it as `edit`'s
+`oldString`.'''
+
+[never_rewrite_draft]
+claude = "- **Never `Write` the whole draft.** `Edit` the passage."
+codex = "- **Never rewrite the whole draft.** Patch the passage with `apply_patch`."
+opencode = "- **Never `write` the whole draft.** `edit` the passage."
+
+[edit_never_write_bold]
+claude = "- **`Edit`, never `Write`.**"
+codex = "- **Patch with `apply_patch`, never rewrite the file.**"
+opencode = "- **`edit`, never `write`.**"
+
+[survey_subagents]
+claude = '''
+Dispatch one
+   `general-purpose` subagent per sub-theme, all in one message, each told to'''
+codex = '''
+If your session
+   offers subagent tools, spawn one per sub-theme, each told to'''
+opencode = '''
+Dispatch one
+   `general` subagent per sub-theme with `task`, all in one message, each told to'''
+
+[edit_inside_section]
+claude = "2. Edit with `Edit`, inside"
+codex = "2. Edit with an `apply_patch` hunk, inside"
+opencode = "2. Edit with `edit`, inside"
+
+[checklist]
+claude = "Create a TodoWrite list with the 7 phases below"
+codex = "Keep a checklist of the 7 phases below in your replies"
+opencode = "Create a `todowrite` list with the 7 phases below"
+
+[interview_dispatch]
+claude = '''
+parallel** (multiple Agent calls in a single message). If that subagent
+type isn't available, use `general-purpose` and give it the protocol from'''
+codex = '''
+parallel** if your session offers subagent tools; otherwise run each
+interview yourself, one after another, following the protocol from'''
+opencode = '''
+parallel** (multiple `task` calls in a single message). OpenCode has no
+subagent of that name, so dispatch the `general` one and give it the protocol from'''
+
+[read_that_file]
+claude = "(or tell it to `Read` that"
+codex = "(or read that"
+opencode = "(or tell it to `read` that"
+
+[writer_fallback]
+claude = "If `deep-research-writer` is unavailable, use `general-purpose` with"
+codex = "If you cannot spawn `deep-research-writer`, write each section yourself with"
+opencode = "OpenCode has no `deep-research-writer`, so use the `general` subagent with"
+
+[reviewer_fallback]
+claude = '''
+If that subagent type isn't available, use
+  `general-purpose` with'''
+codex = '''
+If you cannot spawn subagents, review
+  in turn yourself, with'''
+opencode = '''
+OpenCode has no subagent of that name, so use
+  the `general` one with'''
+
+[parallel_cap]
+claude = "Dispatch same-phase subagents in one message;"
+codex = "Dispatch same-phase subagents together where your session can;"
+opencode = "Dispatch same-phase `task` calls in one message;"
+
+[read_range]
+claude = "(`Read` with `offset=<start>`, `limit=<lines>`)"
+codex = "(`sed -n '<start>,+<lines>p' <draft>` through your shell)"
+opencode = "(`read` with `offset=<start>`, `limit=<lines>`)"
+
+[use_edit_not_write]
+claude = "Use `Edit` on the specific passage. Do not `Write` the whole file:"
+codex = "Patch the specific passage with `apply_patch`. Do not rewrite the whole file:"
+opencode = "Use `edit` on the specific passage. Do not `write` the whole file:"
+
+[still_edit]
+claude = "**Still `Edit`, never `Write`, and now for a second reason.**"
+codex = "**Still `apply_patch` hunks, never a rewrite, and now for a second reason.**"
+opencode = "**Still `edit`, never `write`, and now for a second reason.**"
+
+[gate_per_write]
+claude = "the PostToolUse citation"
+codex = "the PostToolUse citation"
+opencode = "the citation-gate plugin's"
+
+[one_write]
+claude = "One `Write` of the whole file"
+codex = "One rewrite of the whole file"
+opencode = "One `write` of the whole file"
+
+[edit_never_write_gate]
+claude = '''
+`Edit`, never `Write`, for the same
+PostToolUse-gate reason'''
+codex = '''
+`apply_patch` hunks, never a rewrite, for the same
+PostToolUse-gate reason'''
+opencode = '''
+`edit`, never `write`, for the same
+gate-plugin reason'''

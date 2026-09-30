@@ -1,0 +1,584 @@
+---
+name: book-assembler
+description: Assembles accepted, gate-passed units into one LaTeX book -- front matter, parts, chapters, back matter -- from the outline `python -m chitragupta.draft spec` holds and the acceptance records `python -m chitragupta.draft unit` wrote. Triggers when the user asks to assemble, build, compose or "put together" a book from units already drafted, or asks for the whole book as one LaTeX document. Writes no prose of its own and drafts no unit: a missing or unaccepted unit is the relevant genre skill's job, and this skill stops and says which. Runs `python -m chitragupta.draft registry check` and reports every finding before composing, runs `python -m chitragupta.draft gate` on what it composed, and stops at the second of the book track's two human sign-offs rather than declaring a book finished. Never fabricates a citekey and never edits a unit's prose.
+tags: [book, latex, assembly, composition]
+---
+
+# book-assembler
+
+The last step of the book-scale track (`docs/WRITE-A-BOOK.md`), and deliberately
+the smallest. Everything this skill assembles has already passed every
+gate per unit, so assembly is **deterministic composition plus a human
+sign-off** -- not a drafting genre.
+
+Read `docs/WRITE-A-BOOK.md` before the first run. This file is the procedure;
+that one is why the procedure is shaped this way.
+
+## What this skill is not
+
+| Situation | Action |
+| --- | --- |
+| A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's), not this skill's |
+| A unit exists but nobody accepted it | Stop. `python -m chitragupta.draft unit accept` is a human's call, made per unit |
+| The user wants a unit's wording changed | `draft-reviser`. Never edit a unit while assembling it |
+| The outline itself is wrong | `python -m chitragupta.draft spec` and a fresh sign-off. Never rewrite an outline here |
+| The user wants one chapter, not a book | The relevant genre skill. This skill composes what exists; it does not write |
+
+**It writes no prose.** The only file it authors is the book document
+itself -- a preamble, the structure, and one `\input` per unit. If you
+find yourself writing a sentence that will be read by the book's reader,
+you are in the wrong skill.
+
+## Conventions as data
+
+The whole of the composition is this table. The outline
+(`content/specs/<book>/spec.md`) is planned top-down; the book is emitted
+bottom-up from what has been accepted.
+
+| Outline | LaTeX | Label |
+| --- | --- | --- |
+| `# Title` | `\title{...}` in the preamble | -- |
+| `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
+| `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |
+| `#### Section {#sec-1}` | `\input{sec-1.tex}` | the unit's own `\label{sec-1}` |
+
+**The `{#id}` becomes the LaTeX label, unchanged.** That is what makes
+the cross-references the registry checked actually resolve in the built
+PDF: a unit's `\cref{ch-1}` points at the same id the outline declared
+and `python -m chitragupta.draft registry check` verified. Never rename one on
+the way through.
+
+The document skeleton, in order:
+
+```latex
+\documentclass[11pt,a4paper]{book}
+\usepackage[T1]{fontenc}\usepackage{lmodern}\usepackage{textcomp}
+\usepackage[a4paper,margin=80pt]{geometry}   % see "Margins" below
+\usepackage{longtable,booktabs,array,calc}   % what the converted units use
+\setlength{\LTcapwidth}{\textwidth}          % see "Table captions" below
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+\usepackage{fvextra}                         % see "Wide code lines" below
+\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}
+\usepackage[numbers,sort&compress]{natbib}   % see "The bibliography" below
+\setcounter{secnumdepth}{2}                  % see "Numbering" below
+\setcounter{tocdepth}{1}                     % chapters and sections only
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\title{<the outline's own title>}
+\author{<ask the user; never invent one>}
+\date{}
+\input{preamble}                             % only if the book has one
+
+\begin{document}
+\frontmatter
+\maketitle
+\tableofcontents
+
+\mainmatter
+% \part / \input, in outline order
+
+\backmatter
+\bibliographystyle{IEEEtran}
+\addcontentsline{toc}{chapter}{Bibliography}
+\bibliography{bibliography}                  % the .bib render wrote here
+\end{document}
+```
+
+**The two `\setcounter` lines, and which is which.** `secnumdepth{2}` is
+the `book` class's own default, restated here so the book *states* its
+numbering rather than inheriting it silently -- an outline's section
+titles carry no numbers of their own, so LaTeX supplies them and nothing
+is numbered twice. `tocdepth{1}` is the real setting: the class defaults
+to 2, which lists every subsection, and a book's table of contents stops
+at the section. Subsections are still numbered and still `\cref`-able;
+they are simply not listed.
+
+**An authored preamble, if the book has one.** If
+`content/specs/<book>/preamble.tex` exists, copy it beside `book.tex` and
+`\input` it as the **last line of the preamble**, immediately before
+`\begin{document}`, so it overrides every default set above it. It has to
+land there rather than later in the document: a `\setcounter` after
+`\begin{document}` is read too late to change how the body was set. If it does not
+exist, emit no `\input` at all and say nothing -- its absence is the
+ordinary case, not a finding. That file is where a book that does number
+its own headings puts `\setcounter{secnumdepth}{-2}`, and where anything
+else this skeleton gets wrong for one book gets corrected without
+editing the skeleton for every book.
+
+Note the two senses of "preamble" this file uses: the **generated**
+preamble is the block above, written inline into `book.tex`; the
+**authored** preamble is `preamble.tex`, a file the user owns.
+
+**The bibliography is one list at the end of the book, built by one
+`bibtex` pass.** A unit converted `--fragment` emits `\citep{...}` and no
+reference list of its own; `bibtex` numbers every citation in the
+assembled document at once, against `IEEEtran.bst` for IEEE numeric
+markers. `scripts/install_full_pipeline.sh` installs `bibtex` and
+`IEEEtran.bst` for exactly this.
+
+**Why not resolve per unit and move the list.** Citeproc assigns numbers
+in the same pass that builds the list, so a per-unit resolution gives
+chapter 1 and chapter 2 each their own `[1]`, `[2]`, `[3]` for different
+sources. Collecting those into one back-of-book list would leave every
+marker pointing at the wrong entry -- a book that compiles cleanly and
+cites the wrong paper. Measured both ways: deferred, a source cited in
+two chapters carries **one** number in both, and numbering runs
+continuously across the book.
+
+`natbib`'s `[numbers,sort&compress]` is what makes those markers IEEE
+numeric rather than its author-year default, which is not this pipeline's
+house style.
+
+**The `.bib` is written beside `book.tex` by the render**, not by this
+skill -- `draft render --fragment` copies the corpus bibliography into
+`content/rendered/<book>/` with every `--`-bearing citekey aliased to
+match the `\citep{...}` in the fragments. Do not hand-write or edit it.
+
+Standalone renders are untouched by any of this: a draft rendered without
+`--fragment` still resolves its citations with pandoc's citeproc against
+`assets/csl/ieee.csl` and still carries its own reference list, which is
+what every other genre skill produces.
+
+**Wide code lines: the book must supply `fvextra` too**, and for the
+same structural reason as the citeproc macros. A `verbatim` line is one
+unbreakable box, so a code line wider than the page runs into the margin
+-- measured on a real 428-page assembly, the largest single class of
+`Overfull \hbox` warnings it produced. `draft render` loads `fvextra`
+itself for a standalone Markdown draft, but a unit is converted
+`--fragment`, which emits no preamble for that load to land in, so the
+book's own preamble carries it. Only `verbatim` needs redefining here,
+not `Highlighting`: `--fragment` travels with `--no-highlight`, so a
+fragment's fences are always plain `verbatim`.
+
+`breaklines` without `breakanywhere`, deliberately -- a break lands at a
+space rather than mid-identifier, and each continuation is marked `,→`
+so a wrapped line cannot be misread as two. A line over the limit is
+reported as `chitragupta.WideCodeLine`
+([docs/WRITING-STANDARDS.md](../../../docs/WRITING-STANDARDS.md) §14);
+shortening it avoids the marker, and this load is what stops it
+overflowing when nobody does.
+
+**Table captions: `\LTcapwidth`, for the same `--fragment` reason.**
+`longtable.sty` initialises that register to a hardcoded **4in** rather
+than to anything derived from the page, and pandoc writes every
+Markdown table as a `longtable` -- so a caption wraps inside the middle
+half of a 80pt-margin line while the prose around it runs the full
+`\textwidth`. `draft render` sets it for a standalone draft; a unit
+converted `--fragment` has no preamble for that to land in, so the book
+sets it here. Unguarded, unlike the render's own `\ifdefined` form: the
+line above it loads `longtable` unconditionally, so the register always
+exists by this point.
+
+**TikZ libraries: the book must load them, and no figure file may.**
+Same structural reason as `fvextra` and `\LTcapwidth` above --
+`draft render` puts the union of a draft's `\usetikzlibrary` names in its
+own preamble, and a unit converted `--fragment` has no preamble for that
+to land in.
+
+It is not merely a convenience here. A figure file is `\input` **inside a
+`figure` float**, and a float is a group: the library's macros are
+defined locally and die with the float, while
+`\tikz@library@<name>@loaded` is set globally -- so the second figure in
+the book skips the load and finds no macros. Every per-figure workaround
+for that is worse, because `tikzlibrarypositioning.code.tex` appends to
+`\tikz@node@reset@hook` *globally* on every load, so N loads apply every
+node's placement shift N times. Measured on a three-float document:
+71.26pt, then 128.17pt, then 185.07pt, with `pdflatex` exiting 0 and
+nothing but `Overfull \hbox` in the log. That is how figures that fit in
+their single-chapter PDF spilled off the page of this project's own
+assembled book (#781).
+
+**Take the union from the renders, not by guessing.** Each
+`draft render --fragment` prints one line per unit whose figures ask for
+a library:
+
+```text
+[tikz-libraries] fit,positioning -- a fragment has no preamble; load these in the assembling document
+```
+
+Collect those across every unit, deduplicate, and write the result as the
+single `\usetikzlibrary` line in the skeleton above. Never write
+`\usetikzlibrary{}` -- an empty comma list fails fatally rather than
+skipping a name -- so a book whose units draw no figure omits both that
+line and the `\usepackage{tikz}` above it.
+
+A unit's figure file still carries its own plain `\usetikzlibrary` line,
+and that is correct: with the book's preamble load already done it is a
+no-op that appends nothing, and it is what lets the same figure compile
+in `thesis-chapter-writer`'s fragment and in `review figure`'s probe.
+What a figure file must **never** contain is a hand-rolled load -- no
+clearing of `\tikz@library@...@loaded`, no saving or restoring of
+`\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
+one as `loads-library-by-hand`.
+
+**No `citeproc-defs.def`, and no `CSLReferences` block.** A fragment
+used to carry citeproc's own bibliography environment, which
+`--standalone` defines and a fragment's absent preamble does not -- so
+the book had to supply the macros itself, in their own file because the
+block contains `\cite{#1}` and `\@`-internals that the citation gate
+reads as citekeys. Deferred citations emit no `CSLReferences` at all, so
+there is nothing left to define and no file to write. If you are looking
+at an older `book.tex` that `\input`s `citeproc-defs.def`, drop both the
+line and the file when you re-assemble.
+
+**Margins.** `margin=80pt` -- about 28mm, and this project's setting for
+an assembled book. Arrived at by measurement rather than taste: the
+`book` class at a4/11pt leaves 94pt inner and 143pt outer (measured with
+`\the\oddsidemargin`), a 119pt mean, which is generous enough that a
+15-chapter book ran to 546 pages. A third of that was tried first and
+read too tight for a book meant to be printed -- 80pt is that doubled,
+and is the number to keep unless someone measures a better one.
+
+**The bibliography points at the user's own `.bib` file**, the same one
+`python -m chitragupta.corpus sync` read -- not a copy, and never a file this
+skill writes. `render` reads it for you when it converts a unit, so
+nothing here names it: the reference manager is upstream, and this
+pipeline is downstream of it.
+
+**Two files, not one.** Beside `book.tex`, write `book.md`: the same
+structure in Markdown, hyperlinking the chapter files that sit alongside
+it. Parts become `##`; a chapter that is a single unit of the same name
+becomes one link rather than a heading repeating its own link text
+underneath; a chapter with several sections becomes `###` and a list.
+It is the reading copy for anyone who is not building LaTeX.
+
+## Process
+
+1. **Confirm the outline is signed off.** The first of the track's two
+   human gates. Do not compose anything until this exits 0:
+
+   ```bash
+   python -m chitragupta.draft spec status content/drafts/<book>
+   ```
+
+   Non-zero means nobody approved this outline, or it changed after
+   somebody did. Either way, stop and say which -- approving it is the
+   user's act, not yours, and `python -m chitragupta.draft spec sign` is theirs
+   to run.
+
+2. **Confirm every unit is accepted and current.**
+
+   ```bash
+   python -m chitragupta.draft unit status content/drafts/<book>
+   ```
+
+   Report the table as it stands. A unit reading `unwritten`, `drafted`
+   or `stale: ...` is not assemblable, and the reason matters to the
+   user: `stale: inputs changed` means the outline moved under prose
+   somebody already accepted, which is a decision for them and not a
+   thing to paper over by assembling the old text.
+
+3. **Rebuild the registries and report every finding.** This step is not
+   optional and is not summarised away:
+
+   ```bash
+   python -m chitragupta.draft registry build content/drafts/<book>
+   python -m chitragupta.draft registry check content/drafts/<book>
+   ```
+
+   `check` exits 0 whatever it finds -- it is a machine's reading of
+   prose, and `docs/ARCHITECTURE.md`'s "Layer 4" is why it may not
+   block. **What is guaranteed is that it ran and that its findings were
+   seen**, and this step is where that guarantee lives: print every
+   finding to the user, in full, before composing. A term defined twice,
+   the same claim made in two chapters, a cross-reference that resolves
+   to nothing -- each is the user's call. Report the coverage line too:
+   a registry built over units it could not read is a narrower claim
+   than it looks.
+
+4. **Convert each accepted unit to a fragment.** The default output
+   directory is already the right one -- a draft's renders mirror its
+   path, so `content/drafts/<book>/<unit-id>.md` renders to
+   `content/rendered/<book>/<unit-id>.tex`, which is where `book.tex`
+   goes too. So `\input` resolves without copying anything, and no
+   `--output-dir` is needed:
+
+   ```bash
+   python -m chitragupta.draft render content/drafts/<book>/<unit-id>.md \
+       --format tex --fragment
+   ```
+
+   **A unit's mathematics resolves per unit, and that is why this works.**
+   Each unit has its own dossier, so `render` reads *its* `math.md`
+   (docs/WRITING-STANDARDS.md §12) -- there is no book-level mapping to
+   assemble and nothing to merge. Two units may map the same ASCII
+   differently and both stay right. What this step must not do is move or
+   rename a unit's `.md`: a dossier is found by path alone, so a renamed
+   unit loses its mapping and every equation in that chapter silently
+   becomes typewriter text. A `<!-- math -->` marker with no mapping fails
+   this render outright, which is the loud half of that.
+
+   `--fragment` is what makes it assemblable: no preamble, the unit's own
+   `#` heading becomes the book's `\chapter`, and code blocks are left
+   unhighlighted because `Shaded`/`Highlighting` are defined only by the
+   standalone template. Everything else is the ordinary render -- citeproc,
+   the IEEE style, and the citekey aliasing that stops a key containing
+   `--` being truncated -- which is why this is one command and not a
+   pandoc invocation restated here. A unit already drafted as `.tex` by
+   `thesis-chapter-writer` needs no conversion.
+
+   Then add the outline's ids as labels: pandoc emits its own `\label{}`
+   from the heading text, and `\label{<unit-id>}` (plus the chapter's
+   `\label{ch-NN}`) goes immediately after that, so a label binds to the
+   chapter counter rather than to whatever sectioning command follows.
+
+5. **Compose the book.** Write `content/rendered/<book>/book.tex` and
+   `content/rendered/<book>/book.md` from the conventions above, in
+   outline order, covering only units step 2 reported as `accepted`.
+   **That directory is assembly output, not authored material**:
+   `content/drafts/<book>/` holds the chapters a person wrote and nothing
+   else, and step 4's fragments are already here beside what you are
+   about to write.
+
+   **Copy `content/specs/<book>/preamble.tex` beside `book.tex` if it
+   exists**, and `\input` it as the last line of the generated preamble.
+   If it does not exist, write no `\input` and say nothing about it --
+   most books have none, and reporting its absence would read as a
+   finding. Copy it rather than `\input` it across directories: the
+   `\input` paths in `book.tex` are all relative to the book's own
+   directory, and one that reached out of it would break the moment the
+   book was built anywhere else. Ask the user
+   for the author line rather than choosing for them; everything else is
+   mechanical.
+
+6. **Run the gate on what you composed.** Every unit passed it already;
+   the assembled document is a new file, and the gate is this layer's
+   only exit:
+
+   ```bash
+   python -m chitragupta.draft gate content/rendered/<book>/book.tex
+   ```
+
+   A `FAIL` here is a failing test, not a warning. Never "fix" one by
+   inventing or altering a citekey -- correct the reference or take the
+   claim out, in the unit it came from, via `draft-reviser`.
+
+7. **Run the prose check over the units, not the skeleton.** `book.tex`
+   is structure and holds no prose, so scanning it would report nothing
+   and mean nothing. Run it per accepted unit:
+
+   ```bash
+   python -m chitragupta.draft style content/drafts/<book>/<unit-id>.md
+   ```
+
+   **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
+   -- §2's defect markers, an acronym never expanded at first use, a
+   glossary acronym whose expansion has drifted from the vocabulary, and
+   §8's dialect against `scope.md`'s `language:` line. It says nothing
+   about whether a paragraph leads with its point. **Report every
+   finding and fix none of them.** A finding is a place to look, not a
+   defect, and acting on one is `draft-reviser`'s copy-edit mode, in the
+   unit that owns the prose. A review aid, not a gate: it exits 0
+   whatever it finds.
+
+8. **Run the verbatim scan, per unit.** Assembly is the last moment
+   before a whole book is read by somebody else, which makes it the
+   right moment to run this. Per unit, rebuild the section map and scan:
+
+   ```bash
+   python -m chitragupta.draft dossier sections content/drafts/<book>/<unit-id>.md --citekeys --write
+   python -m chitragupta.review verbatim scan content/drafts/<book>/<unit-id>.md
+   ```
+
+   The first command is not optional. The embedding tier compares each
+   section against the citekeys that section's `sections.md` row records,
+   and a unit accepted weeks ago may have been revised since. If it exits
+   1 for a missing dossier, say so and scan that unit anyway.
+
+   It reports wording a unit shares with **any** parsed source, cited or
+   not. **A review aid, not a gate: it exits 0 either way, and it is
+   never a condition of presenting** -- a unit with findings is still an
+   assembled unit, and this step reports rather than withholds. Show what
+   it found rather than summarising it away, and lead with the `long` and
+   `short` buckets -- a `quoted` run that also cites its source is a
+   legitimate attributed quotation, so give those a count rather than a
+   list. **Say what it did not check:** if `tiers_not_run` is not empty,
+   quote each reason as the scan wrote it, and where the reason names a
+   fix (`poetry install --with enrich`, `python -m chitragupta.enrich`)
+   pass that on once. It sees verbatim and
+   near-verbatim reuse only, and **genuine restatement is only detected
+   where the embedding tier can run**, so a clean scan is not a clean
+   bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
+   `agenda-reviser`'s job, one finding at a time, in the unit that owns
+   the wording, and only if the user asks.
+
+   Report the per-unit results as one table rather than a wall: the book
+   has fifteen chapters, and fifteen separate scan reports is how a real
+   finding gets skimmed past.
+
+9. **Build the PDF, if the toolchain is there.** From the book's own
+   directory, because the `\input` paths are relative to it:
+
+   ```bash
+   cd content/rendered/<book>
+   pdflatex -interaction=nonstopmode book.tex
+   bibtex book
+   pdflatex -interaction=nonstopmode book.tex
+   pdflatex -interaction=nonstopmode book.tex
+   ```
+
+   **Four passes, and the `bibtex` one is not optional.** The first
+   `pdflatex` records which keys the document cites; `bibtex` turns those
+   into `book.bbl`; the third pass pulls the bibliography in and the
+   fourth resolves `\cref`, the table of contents and the citation
+   numbers now that the entries exist. Skip `bibtex` and every citation
+   renders as `[?]` -- with `pdflatex` still exiting 0.
+
+   **Read `book.log` before believing the PDF.** A `pdflatex` run that
+   exits 0 can still be missing something -- a dropped citation is
+   reported as a warning, not an error:
+
+   ```bash
+   python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='replace'); \
+       print(sorted(set(re.findall(r\"Citation \`([^']+)' on page\", log))))"
+   ```
+
+   Anything but `[]` means a citekey did not reach the bibliography --
+   go back to the conversion step, do not hand over the PDF. This check
+   became load-bearing when the bibliography moved to the end of the
+   book: before that, citeproc had already resolved every citation and
+   there was nothing for this warning to report.
+
+   **A citekey containing `--` is the case worth knowing about.** The
+   render aliases it (`state---art` becomes `state-x2d-x2d-art`) on both
+   sides -- the `\citep{...}` and the copied `.bib` -- so it resolves.
+   What breaks it is hand-editing either one.
+
+   **Never run `draft gate` on a fragment.** The gate is for the
+   assembled `book.tex` (step 6) and for a unit's authored `.md`, which
+   is what every unit already passed. A fragment is render output: its
+   citekeys may be aliased, and an alias is not a ledger key, so the gate
+   would report a `FAIL` on a book that is perfectly correct. Python
+   rather than `grep -c` deliberately: on the host this was first run,
+   `grep -c` over that log printed nothing at all, and a check that
+   silently reports nothing is worse than no check.
+
+   **Table numbers are the book's, not a unit's, and one thing can break
+   them.** A unit's tables carry
+   `docs/WRITING-STANDARDS.md` §13's markers, which the conversion turns
+   into `\caption{...\label{tab:<id>}}`, so the `book` class numbers them
+   itself. **Which shape it uses follows the `\setcounter{secnumdepth}`
+   the skeleton sets**, and both were measured with `pdflatex` rather
+   than assumed: at the skeleton's `2`, tables read "1.1", "2.1", "2.2"
+   -- reset per chapter, which is what a book gets by default; at `-2`
+   (a book whose units number their own headings, overriding in
+   `preamble.tex`), they read "1", "2", "3" -- flat and continuous.
+   Either way the numbers are unique and every `\ref` resolves, so there
+   is nothing to configure for the tables themselves. What does not
+   survive is a **duplicate id**: two units that
+   each wrote `<!-- table: comparison -->` become two `\label{}`s in one
+   document, and every `\ref` to that id silently resolves to whichever
+   LaTeX saw last. Check for it before composing, and send a collision
+   back to `draft-reviser` rather than renaming a label here:
+
+   ```bash
+   grep -ho '<!-- table: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision. The per-unit prose check reports the
+   same defect (`TableDuplicateId`) but sees one unit at a time -- across
+   units, this is the check.
+
+   **A captioned figure's number is the book's for the same reason, and
+   the same collision risk applies.** Issue 411 gives a figure the same
+   `\label{fig:<id>}` contract, so two units that each wrote
+   `<!-- figure: figures/comparison -->` with a caption below it collide
+   exactly as two same-id tables do. Check before composing:
+
+   ```bash
+   grep -ho '<!-- figure: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision, whether or not every copy is
+   captioned -- an uncaptioned marker sharing the name is still worth
+   catching before whichever unit adds a caption next collides silently.
+   Since #421 an uncaptioned marker is also a `FigureNoCaption` finding
+   in its own unit's prose check, so it should not survive this far.
+   The per-unit prose check (`FigureDuplicateId`) sees one unit at a
+   time; across units, this is the check.
+
+   **A numbered equation's number is the book's for the same reason,
+   and the same collision risk applies.** #457 gives a *numbered*
+   equation the same `\label{eq:<id>}` contract, so two units that each
+   wrote `<!-- equation: comparison -->` collide exactly as two same-id
+   tables do -- most equations across a book carry no id at all, since
+   most stay unnumbered by §12's own rule, so this collision is rarer
+   than the table or figure one but not impossible when two units prove
+   a similarly-named result. Check before composing:
+
+   ```bash
+   grep -ho '<!-- equation: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
+   ```
+
+   Anything printed is a collision. The per-unit prose check
+   (`EquationDuplicateId`) sees one unit at a time; across units, this
+   is the check.
+
+   **If the units number their own *sections*, turn LaTeX's numbering
+   off** -- `\setcounter{secnumdepth}{-2}` in
+   `content/specs/<book>/preamble.tex`, which the skeleton `\input`s
+   last and which therefore wins over its default of `2`. A book whose
+   Markdown says `## 1.0 Before you start` otherwise renders "1.1 1.0
+   Before you start", and worse further in ("10.1510.14"). Which
+   numbering a book shows is a composition decision and belongs to the
+   book; renumbering the author's headings does not, and is
+   `draft-reviser`'s call rather than this skill's.
+
+   **A self-numbered *chapter title* is a different clash, and this is
+   the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
+   Anyone Pays` is numbered twice by the `book` class, but
+   `secnumdepth{-2}` pays a document-level price for a chapter-level
+   problem. Measured on one real book, four `pdflatex` passes each:
+
+   | | `secnumdepth{2}` (the skeleton) | `secnumdepth{-2}` |
+   | --- | --- | --- |
+   | Chapter opening | `Chapter 1` / `Chapter 1: Why Anyone Pays` | correct |
+   | ToC chapter line | `1 Chapter 1: Why Anyone Pays` | correct |
+   | ToC section lines | `1.1`, `1.2`, ... `1.10` | **all numbers lost** |
+   | Table captions | `Table 1.1`, `2.1`, ... | `Table 1`, `2`, ... flat |
+
+   **Nothing is asked of you here: step 4's render drops the prefix
+   already.** `draft render --fragment` emits `\chapter{Why Anyone
+   Pays}` from that heading, so the number comes from the class alone
+   and sections, tables and figures keep theirs. The authored `.md` is
+   untouched, every unit stays `accepted`, and the unit's own standalone
+   pdf keeps the prefix that titles it. If a book already carries
+   `secnumdepth{-2}` for this reason, **remove it** -- it is now costing
+   the section and table numbering for a clash that no longer exists.
+
+   A unit drafted as `.tex` is the exception, because step 4 never
+   converts it: there the prefix is in the file you `\input`, and
+   `draft style` reports it as `chitragupta.ChapterSelfNumbered` in step
+   3 for the author to delete.
+
+   Without TeX Live, say so plainly and stop there rather than working
+   around it -- the `.tex` is the deliverable either way.
+
+10. **Stop at the sign-off.** This is the second of the two human gates,
+   and there is no command for it. Present what you composed: how many
+   units, which the registries could not read, every finding from step 3,
+   and what the gate and the two review aids said. Then stop.
+
+   **Do not say the book is finished.** Nothing here has read the
+   argument. Every check in this pipeline verifies that the book is
+   grounded, consistent and complete -- none of them verifies that it is
+   any good, and that judgement is the user's, deliberately.
+
+## What this skill does not write
+
+**No dossier.** Every drafting skill writes one because it makes
+judgement calls -- what to retrieve, what to keep, what to reject and
+why -- that a later revision has to be able to read. This skill makes
+none of those: it retrieves nothing and decides nothing. The record of a
+book is already on disk, in the artefacts the earlier steps wrote:
+`content/specs/<book>/spec.md` and its `signoff.md`, one acceptance
+record per unit under `units/`, and the three registries under
+`registries/`.
+
+**No acronym vocabulary step**, for the same reason -- there is no prose
+here to expand an acronym in. Each unit's own genre skill handled that
+when the unit was drafted.

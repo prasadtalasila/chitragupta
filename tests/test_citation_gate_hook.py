@@ -24,7 +24,8 @@ consistent -- as they always are in production, where both derive from
 the same repo root.
 
 The hook's own subprocess.run call for `python -m chitragupta.draft gate`
-doesn't pass env=, so it inherits whatever env this test process hands to
+passes `env=safe_path.child_env(...)`, which starts from the hook's own
+environment, so the gate inherits whatever env this test process hands to
 the hook subprocess -- used here for CONTENT_DIR, and for a PYTHONPATH
 that lets the child import this checkout's real `src` while running from
 the temp root.
@@ -46,6 +47,7 @@ from tests.conftest import make_reference
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = REPO_ROOT / ".claude" / "hooks" / "citation_gate_hook.py"
+FIXTURES = REPO_ROOT / "tests" / "fixtures" / "harness_payloads"
 
 
 def run_hook(
@@ -116,7 +118,7 @@ class HookRepo:
         # The helper too, or the copy cannot `import draft_target`: a hook
         # is run by absolute path, so Python puts *its* directory first on
         # sys.path, and that directory is this temporary one.
-        for helper in ("draft_target.py", "safe_path.py"):
+        for helper in ("draft_target.py", "safe_path.py", "patch_paths.py"):
             shutil.copy2(HOOK_PATH.parent / helper, self.hook.parent / helper)
         self.drafts = root / "content" / "drafts"
         self.drafts.mkdir(parents=True, exist_ok=True)
@@ -271,6 +273,35 @@ class TestPathResolution:
         result = hook_repo.run(rel_path, cwd=elsewhere)
         assert result.returncode == 0
         assert result.stdout.strip() == ""  # gate ran and passed -- not silently skipped
+
+
+class TestCodexPatchPayloads:
+    """A Codex `apply_patch` payload through the real hook process (#812).
+
+    The payload is the fixture's shape -- patch text in
+    `tool_input.command`, paths relative to `cwd` -- pointed at two drafts
+    in this throwaway root, one of which cites a key no ledger holds."""
+
+    def test_a_bad_key_in_any_patched_draft_blocks(self, hook_repo):
+        clean, bad = hook_repo.draft(), hook_repo.draft()
+        clean.write_text("No citations in this one.\n")
+        bad.write_text("This claim cites [@not_a_real_citekey_2026].\n")
+        fixture = FIXTURES / "codex_apply_patch_multi.json"
+        payload = json.loads(fixture.read_text(encoding="utf-8"))
+        payload["cwd"] = str(hook_repo.root)
+        payload["tool_input"]["command"] = (
+            payload["tool_input"]["command"]
+            .replace("content/drafts/clean.md", clean.relative_to(hook_repo.root).as_posix())
+            .replace("content/drafts/multi.md", bad.relative_to(hook_repo.root).as_posix())
+        )
+        result = run_hook(
+            json.dumps(payload), env=hook_repo.env, cwd=hook_repo.root, hook=hook_repo.hook
+        )
+        assert result.returncode == 0
+        response = json.loads(result.stdout)
+        assert response["decision"] == "block"
+        assert "not_a_real_citekey_2026" in response["reason"]
+        assert bad.name in response["reason"]
 
 
 class TestGateEnforcement:

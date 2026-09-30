@@ -65,6 +65,11 @@ import safe_path
 
 IMPORT_PROBE_TIMEOUT = 5.0
 
+# Read by chitragupta/gate_liveness.py, which holds the same literal: this
+# adapter must not import layer 1 at load time (docs/HOOKS.md), and a test
+# pins that the two agree.
+GATE_CALLER_ENV = "CHITRAGUPTA_GATE_CALLER"
+
 # Chosen from the gate's measured runtime, not guessed (#824). The whole
 # `python -m chitragupta.draft gate` subprocess, on this project's real
 # ledger, is linear in draft length since the code-region scans stopped
@@ -93,6 +98,26 @@ def _line_count(path) -> "int | None":
 
 def _block(reason: str) -> None:
     print(json.dumps({"decision": "block", "reason": reason}))
+
+
+def _too_large(drafts) -> bool:
+    """Block, and say so, when the drafts this write changed are over the bound.
+
+    The bound is on the total, not per draft: one gate call checks every
+    draft a patch changed, and it is that call's time that must fit.
+    """
+    lines = sum(n for n in map(_line_count, drafts) if n is not None)
+    if lines <= MAX_GATED_LINES:
+        return False
+    _block(
+        f"The draft(s) this write changed are too large to gate: {lines} lines, "
+        f"over the {MAX_GATED_LINES} the citation gate is known to finish on "
+        "inside the hook's time limit. Nothing was checked, so this is blocked "
+        "rather than let through. Split them into smaller files under "
+        "content/drafts/, or run `python -m chitragupta.draft gate` on them "
+        "by hand."
+    )
+    return True
 
 
 def _environment_is_broken(env: dict) -> bool:
@@ -125,8 +150,17 @@ def _environment_is_broken(env: dict) -> bool:
 
 
 def main() -> int:
-    file_path = draft_target.from_stdin(sys.stdin)
-    if file_path is None:
+    try:
+        drafts = draft_target.targets_from_stdin(sys.stdin)
+    except draft_target.UnreadablePatch:
+        _block(
+            "This patch changes something under content/drafts/, but its file "
+            "headers could not be read, so no draft was checked. It is blocked "
+            "rather than let through. Run `python -m chitragupta.draft gate` on "
+            "each draft it changed."
+        )
+        return 0
+    if not drafts:
         return 0  # not a genre-skill draft -- nothing to gate
 
     # sys.executable, not a bare "python"/"python3". This hook is
@@ -139,22 +173,16 @@ def main() -> int:
     # and is the one settings.json chose.
     #
     # One `env` for both launches, decided once: see safe_path.py (#822).
-    lines = _line_count(file_path)
-    if lines is not None and lines > MAX_GATED_LINES:
-        _block(
-            f"This draft is too large to gate: {lines} lines, over the "
-            f"{MAX_GATED_LINES} the citation gate is known to finish on inside "
-            "the hook's time limit. Nothing was checked, so it is blocked "
-            "rather than let through. Split it into smaller files under "
-            "content/drafts/, or run `python -m chitragupta.draft gate` on it "
-            "by hand."
-        )
+    if _too_large(drafts):
         return 0
 
-    env = safe_path.child_env(draft_target.REPO_ROOT)
+    # GATE_CALLER_ENV tells the gate a hook ran it, so it records what it
+    # checked; a later hand-run of the gate uses that to notice a draft no
+    # hook ever saw (chitragupta/gate_liveness.py).
+    env = {**safe_path.child_env(draft_target.REPO_ROOT), GATE_CALLER_ENV: "hook"}
     try:
         result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.draft", "gate", str(file_path)],
+            [sys.executable, "-m", "chitragupta.draft", "gate", *map(str, drafts)],
             check=False,
             cwd=draft_target.REPO_ROOT,
             capture_output=True,

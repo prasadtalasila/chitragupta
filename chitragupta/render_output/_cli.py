@@ -145,6 +145,7 @@ def main(argv: list[str] | None = None) -> int:
     # choice. `.pylintrc` disables import-outside-toplevel for this
     # pattern, and chitragupta/review/__init__.py reaches this package the same way.
     from chitragupta.render_output import render
+    from chitragupta.render_output._gate import UngatedDraft
 
     try:
         out_path = render(
@@ -188,10 +189,20 @@ def main(argv: list[str] | None = None) -> int:
         # to read, the same `[error]` a skill warns on and carries past.
         print(f"[error] {exc}")
         return 1
+    except UngatedDraft as exc:
+        # The gate refused the draft before any format was produced
+        # (#812): reported like every other render failure, `[error]` and
+        # the gate's own report naming each key and line, so a skill
+        # reacts to it exactly as it does to a failed `draft gate`.
+        print(f"[error] {exc}")
+        return 1
     except references.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a
         # cited key that isn't there stops it (references.build_section's
-        # own error names the keys and what to run). Reported the same way
+        # own error names the keys and what to run). The gate above now
+        # refuses such a draft first (#812), so this is reached only when
+        # the ledger changes between the two reads -- a sync committing
+        # mid-render -- and is kept for that case. Reported the same way
         # as any other render failure rather than as a traceback: a genre
         # skill's documented reaction to `[error]` is to warn and carry on
         # presenting the draft, which is right here too -- the draft is

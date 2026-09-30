@@ -44,10 +44,26 @@ def make_source(tmp_path: Path) -> Path:
     (src / "SOUL.md").write_text("why", encoding="utf-8")
     (src / "README.md").write_text("readme", encoding="utf-8")
     (src / "DOCKER.md").write_text("running with docker", encoding="utf-8")
+    make_agent_trees(src)
     (src / "config.toml.example").write_text(
         '[bib]\npath = "papers/bibliography.bib"\n', encoding="utf-8"
     )
     return src
+
+
+def make_agent_trees(src: Path) -> None:
+    """One file under each harness tree `init --agent` adds (#812, #900)."""
+    files = {
+        ".codex/hooks.json": '{"hooks": {}}',
+        ".agents/skills/survey-writer/SKILL.md": "# survey, Codex wording",
+        ".opencode/skills/survey-writer-opencode/SKILL.md": "# survey, OpenCode wording",
+        ".opencode/opencode.json": "{}",
+        ".opencode/plugins/chitragupta-gate.js": "// p",
+        ".opencode/chitragupta/gate.js": "// g",
+    }
+    for rel, text in files.items():
+        (src / rel).parent.mkdir(parents=True, exist_ok=True)
+        (src / rel).write_text(text, encoding="utf-8")
 
 
 @pytest.fixture
@@ -60,8 +76,17 @@ def source(tmp_path, monkeypatch):
 class TestScaffold:
     def test_writes_every_top_level_entry(self, source, tmp_path):
         dest = tmp_path / "project"
-        init.scaffold(dest)
+        init.scaffold(dest, agents=tuple(init.AGENT_TREES))
         assert {p.name for p in dest.iterdir()} == init.TOP_LEVEL
+
+    def test_the_default_writes_no_other_harness_tree(self, source, tmp_path):
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        assert {p.name for p in dest.iterdir()} == init.TOP_LEVEL - {
+            ".codex",
+            ".opencode",
+            ".agents",
+        }
 
     def test_the_acronyms_example_seeds_the_projects_own_vocabulary(self, source, tmp_path):
         """`[style].acronyms` ships pointing at `content/acronyms.toml`
@@ -351,3 +376,71 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
         (dest / "chitragupta.py").write_text("", encoding="utf-8")
         assert init.main([str(dest)]) == 1
         assert "chitragupta.py" in capsys.readouterr().err
+
+
+class TestAgents:
+    """`--agent claude|codex|opencode` (#812, #900): the shared core for
+    every harness, plus each named harness's launcher."""
+
+    def test_the_default_is_claude_and_unchanged(self, source, tmp_path):
+        assert init.scaffold(tmp_path / "a") == [
+            line.replace(str(tmp_path / "b"), str(tmp_path / "a"))
+            for line in init.scaffold(tmp_path / "b", agents=("claude",))
+        ]
+
+    def test_codex_gets_its_own_skills_where_it_reads_them(self, source, tmp_path):
+        """Codex reads `.agents/skills/` only; without that tree a Codex
+        project offers the model no skill at all (measured, #812)."""
+        init.scaffold(tmp_path, agents=("codex",))
+        copied = tmp_path / ".agents" / "skills" / "survey-writer" / "SKILL.md"
+        assert copied.read_text(encoding="utf-8") == "# survey, Codex wording"
+
+    def test_opencode_gets_its_own_skills_and_the_deny_list(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("opencode",))
+        assert (tmp_path / ".opencode" / "skills" / "survey-writer-opencode" / "SKILL.md").is_file()
+        assert (tmp_path / ".opencode" / "opencode.json").is_file()
+
+    def test_no_other_harness_gets_the_codex_copy(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("claude", "opencode"))
+        assert not (tmp_path / ".agents").exists()
+
+    def test_codex_adds_its_hooks_beside_the_shared_scripts(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("codex",))
+        assert (tmp_path / ".codex" / "hooks.json").is_file()
+        assert (tmp_path / ".claude" / "hooks" / "session_start_hook.py").is_file()
+        assert not (tmp_path / ".opencode").exists()
+
+    def test_opencode_adds_its_plugin_and_helpers(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("opencode",))
+        assert (tmp_path / ".opencode" / "plugins" / "chitragupta-gate.js").is_file()
+        assert (tmp_path / ".opencode" / "chitragupta" / "gate.js").is_file()
+        assert (tmp_path / ".claude" / "skills").is_dir()
+
+    def test_agents_repeat(self, source, tmp_path):
+        assert init.main([str(tmp_path), "--agent", "codex", "--agent", "opencode"]) == 0
+        assert (tmp_path / ".codex").is_dir()
+        assert (tmp_path / ".opencode").is_dir()
+
+    def test_an_agent_named_twice_is_written_once(self, source, tmp_path):
+        report = init.scaffold(tmp_path, agents=("codex", "codex"))
+        assert sum("hooks.json" in line for line in report) == 1
+
+    def test_an_unknown_agent_is_a_usage_error(self, tmp_path):
+        with pytest.raises(SystemExit) as exc:
+            init.main([str(tmp_path), "--agent", "continue"])
+        assert exc.value.code == 2
+
+    def test_dry_run_names_the_agent_trees_and_writes_nothing(self, source, tmp_path, capsys):
+        init.main([str(tmp_path / "p"), "--dry-run", "--agent", "codex"])
+        assert "hooks.json" in capsys.readouterr().out
+        assert not (tmp_path / "p").exists()
+
+    def test_a_source_missing_an_agent_tree_is_refused(self, source, tmp_path):
+        """#509's lesson for a harness: a wheel built without `.codex/`
+        must not scaffold a Codex project with no gate launcher."""
+        import shutil
+
+        shutil.rmtree(source / ".codex")
+        with pytest.raises(init.ScaffoldSourceMissing, match=".codex"):
+            init.scaffold(tmp_path / "p", agents=("codex",))
+        init.scaffold(tmp_path / "q")  # the default never needed it

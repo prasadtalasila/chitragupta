@@ -1,0 +1,15 @@
+{
+  "session_id": "01a0ee9a-4584-7d10-ac63-56612e512024",
+  "turn_id": "01a0ee9a-45a7-7ae0-a000-d4f382a0dd2a",
+  "transcript_path": "/home/user/.codex/sessions/2026/09/29/rollout-2026-09-29T19-18-02-01a0ee9a-4584-7d10-ac63-56612e512024.jsonl",
+  "cwd": "/project",
+  "hook_event_name": "PostToolUse",
+  "model": "gpt-5.5",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "apply_patch",
+  "tool_input": {
+    "command": "*** Begin Patch\n*** Add File: content/drafts/clean.md\n+No citations here.\n*** Add File: content/drafts/multi.md\n+A claim [@not_a_real_citekey_2026].\n*** End Patch\n"
+  },
+  "tool_response": "Exit code: 0\nWall time: 0 seconds\nOutput:\nSuccess. Updated the following files:\nA content/drafts/clean.md\nA content/drafts/multi.md\n",
+  "tool_use_id": "call_038534f9"
+}
