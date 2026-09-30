@@ -6,28 +6,19 @@ discipline every other review aid's `*_payload` function documents).
 
 from chitragupta import review
 from chitragupta.review.agenda._items import CLASSES
+from chitragupta.review.agenda._sources import AID_NAMES
 from chitragupta.review.agenda._passages import (
     _passage_lines,
     _verbatim_finding,
 )
 from chitragupta.review.agenda._stale import stale_dicts, stale_lines
 
-# `{aid: review.AIDS[aid] for aid in _sources.AID_NAMES}`, restated
-# rather than derived -- and the restatement is load-bearing to get
-# right, because `_source_notes` below indexes `agenda.sources.aids` by
-# every key here. A key `AID_NAMES` does not have is a `KeyError`
-# mid-report, not a missing line. `TestAidNames` asserts the two against
-# each other for that reason (#573).
-_SOURCE_LABELS = {
-    "provenance": "Citation provenance",
-    "verbatim": "Verbatim scan",
-    "coverage": "Citation coverage",
-    "synthesis": "Multi-source synthesis",
-    "figure": "TikZ layout check",
-    "uncited": "Uncited prose",
-    "quotation": "Quotation integrity",
-    "support": "Claim support",
-}
+# Each aid agenda reads, labelled as `review.AIDS` labels it.
+# `_source_notes` below indexes `agenda.sources.aids` by every key here,
+# so a key `AID_NAMES` lacked would be a `KeyError` mid-report; deriving
+# it from `AID_NAMES` (#850) is what makes that impossible, where the
+# hand-kept copy this replaced could only be asserted against it.
+_SOURCE_LABELS = {aid: review.AIDS[aid] for aid in AID_NAMES}
 
 # Read for header completeness, but neither carries an item class --
 # see `_items.py`'s module docstring for why the two reasons differ.

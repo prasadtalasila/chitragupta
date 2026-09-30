@@ -71,46 +71,9 @@ successful run, findings or not; `1` for a draft the layer will not read
 import argparse
 import sys
 
-from chitragupta import ledger, review
-from chitragupta.review import (
-    agenda,
-    citation_coverage,
-    citation_provenance,
-    citekey_union,
-    claim_support,
-    figure_layout,
-    quotation,
-    synthesis,
-    uncited_prose,
-    verbatim_check,
-)
+from chitragupta import ledger
 from chitragupta.progname import prog_for
-
-# Keyed by review.AIDS, so a new aid cannot appear here without also
-# appearing in the dict that owns the report suffixes.
-AIDS = {
-    "provenance": (citation_provenance, "what in the source supports this claim?"),
-    "verbatim": (verbatim_check, "verbatim overlap with one source, or with the whole corpus"),
-    "coverage": (citation_coverage, "retrieval surfaced it -- did the draft cite it?"),
-    "synthesis": (synthesis, "how many sources does each unit of the draft rest on?"),
-    "figure": (figure_layout, "what a TikZ figure's own geometry says about it"),
-    "uncited": (uncited_prose, "which sentences of the draft carry no citation?"),
-    "quotation": (quotation, "is each quoted span really in the source it cites?"),
-    "agenda": (agenda, "one ranked, deduplicated worklist across every other aid"),
-    "support": (claim_support, "does the cited source entail this claim?"),
-    "union": (citekey_union, "does the assembly still carry every unit's citekeys?"),
-}
-
-# A raise rather than an assert: `python -O` strips assertions, and this
-# is the one check standing between a mistyped subcommand and a report
-# filed under a name the rest of the layer cannot find. An invariant
-# worth stating is worth stating in every interpreter mode.
-if set(AIDS) != set(review.AIDS):
-    raise RuntimeError(
-        "the entry point's subcommands and review.AIDS have drifted apart: "
-        f"{sorted(set(AIDS) ^ set(review.AIDS))}. AIDS owns the report suffixes, "
-        "so a subcommand missing from it would write a report nothing can find."
-    )
+from chitragupta.review._registry import AIDS
 
 
 # What `--help` prints, deliberately *not* this module's docstring (#152)

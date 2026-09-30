@@ -14,20 +14,24 @@ review (the fenced block in the diff looks right), and the stale artefact
 is the one a reader drops into a slide deck.
 
 **What this checks, and what it cannot.** Fenced block against `.mmd` is
-exact and cheap, so that is enforced strictly. SVG freshness is only
-checked for *label text*: a full check would mean rendering every diagram
-here, which needs `mermaid-cli` plus a browser and does not belong in a
-unit suite. So a re-render that changed only layout is invisible to this,
-and that is an accepted gap rather than an oversight -- the labels are
-what go stale when a feature lands, and layout drift harms nobody.
+exact and cheap, so that is enforced strictly. SVG freshness is checked
+through `docs/diagrams/svg/sources.json` (#850), which
+`scripts/render_diagrams.py` writes as it renders: the fingerprint of the
+`.mmd` each export was rendered from. An `.mmd` edited without a
+re-render fails here, naming the command to run. Rendering itself is not
+done here -- it needs `mermaid-cli` plus a browser, which a unit suite
+does not install -- so the manifest is the render's own record, and the
+label-text check below remains as a second line for the aid names.
 """
 
+import json
 import re
 from pathlib import Path
 
 import pytest
 
 from chitragupta import review
+from scripts.render_diagrams import fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DIAGRAMS_MD = REPO_ROOT / "docs" / "DIAGRAMS.md"
@@ -77,6 +81,23 @@ class TestTheScanIsNotVacuous:
         )
 
 
+class TestEachSvgWasRenderedFromItsCurrentSource:
+    """#850: a stale SVG fails with the source to re-render, not only when
+    an aid name happens to be missing from it."""
+
+    MANIFEST = json.loads((DIAGRAMS_DIR / "svg" / "sources.json").read_text(encoding="utf-8"))
+
+    def test_every_export_is_in_the_manifest(self):
+        assert sorted(self.MANIFEST) == sorted(NAMES)
+
+    @pytest.mark.parametrize("name", NAMES)
+    def test_the_svg_was_rendered_from_this_mmd(self, name):
+        assert self.MANIFEST[name] == fingerprint(DIAGRAMS_DIR / f"{name}.mmd"), (
+            f"docs/diagrams/{name}.mmd changed after docs/diagrams/svg/{name}.svg was "
+            f"rendered. Re-render it:\n    python scripts/render_diagrams.py {name}"
+        )
+
+
 class TestEachExportMatchesItsFencedBlock:
     @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
     def test_the_mmd_is_the_block(self, index, name):
@@ -84,8 +105,7 @@ class TestEachExportMatchesItsFencedBlock:
             f"docs/diagrams/{name}.mmd has drifted from its fenced block in "
             "docs/DIAGRAMS.md. The block is the source of truth -- copy it over and "
             f"re-render:\n"
-            f"    mmdc -i docs/diagrams/{name}.mmd -o docs/diagrams/svg/{name}.svg "
-            "-b white -w 1900"
+            f"    python scripts/render_diagrams.py {name}"
         )
 
     @pytest.mark.parametrize("name", NAMES)

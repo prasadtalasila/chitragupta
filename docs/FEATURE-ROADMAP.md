@@ -375,8 +375,8 @@ reach items in this roadmap and are easy to breach by accident:
   is `resolved`, no objective-class finding is `new`, and the total has
   not risen, else the edit reverts.
 - **R10** -- a new aid is registered in *both* `review.AIDS` and
-  `__main__.AIDS`, and appears in AGENTS.md, CLI.md, the README tables
-  and `mkdocs.yml`. `review/__main__.py` raises `RuntimeError` when the
+  `review._registry.AIDS`, and appears in AGENTS.md, CLI.md, the README tables
+  and `mkdocs.yml`. `review/_registry.py` raises `RuntimeError` when the
   two dicts disagree, so a half-registered aid fails at import; the
   `mkdocs.yml` omission is the silent one, since missing nav is INFO
   rather than a `--strict` failure.

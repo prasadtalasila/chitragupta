@@ -37,7 +37,7 @@ def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
 class TestRegistration:
     def test_the_aid_is_in_both_tables(self):
         """R10's machine-checked half -- review.AIDS owns the report
-        suffix, __main__.AIDS owns the subcommand, and the entry point
+        suffix, review._registry.AIDS owns the subcommand, and the entry point
         raises at import if they disagree."""
         assert "synthesis" in review.AIDS
         assert "synthesis" in review_main.AIDS

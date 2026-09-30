@@ -1144,13 +1144,23 @@ one into a slide deck or a paper without copying it out of this document:
 | Topic discovery: the resolution ladder | `t1-discovery-ladder` |
 | Topic discovery: the two graphs | `t2-topic-graphs` |
 
-Those are exports, not a second source. Edit the fenced block first, then
-re-render, or the two drift apart:
+Those are exports, not a second source. Edit the fenced block first, copy
+it into the `.mmd`, then re-render, or the two drift apart:
 
 ```bash
-npm install -g @mermaid-js/mermaid-cli
-mmdc -i docs/diagrams/v1-overview.mmd -o docs/diagrams/svg/v1-overview.svg -b white -w 1900
+npm install -g @mermaid-js/mermaid-cli@11   # 12 dropped the -w flag used here
+python scripts/render_diagrams.py v1-overview   # or no name, for all of them
 ```
+
+The script runs `mmdc -i <name>.mmd -o svg/<name>.svg -b white -w 1900`
+and records the fingerprint of each `.mmd` it rendered in
+`docs/diagrams/svg/sources.json`. `tests/test_diagrams_in_sync.py`
+checks every export against that file, so an `.mmd` edited without a
+re-render fails, naming the diagram to re-render. On a host that cannot
+sandbox Chromium (a container, CI), pass `--puppeteer-config` a JSON
+file holding `{"args": ["--no-sandbox"]}`. mermaid's layout is not
+deterministic run to run, so a re-render of an unchanged source can move
+edges; only the labels and the fingerprint are pinned.
 
 Keep them honest the way the rest of this repository stays honest: if a
 diagram and the code disagree, the diagram is the bug.

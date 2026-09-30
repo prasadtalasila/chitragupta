@@ -1,0 +1,15 @@
+{
+  "00-main-workflow": "f1d72c28e77cba443f2d60e470ceb75eb297f4b47b9dd14308ea01c69ef16cf4",
+  "extra-ledger-state": "fdde41e9f38cd0707c4b555505aa9e9d8fce8629345f87d5dcca7409e8fcd201",
+  "extra-sequence": "ca41c7c2eae4dfbda36c3be8c787c489503037afcf511767392ef50318b1e702",
+  "g1-corpus-led": "35edbe10aa1076bce53a1bfc45a2124295c9cf787743494693999bfd4531e7a6",
+  "g2-teaching": "7b0bb067f472ecf0218703700242edf5d4b6cad2eeeea152d6e3cd91853e0e99",
+  "g3-thesis": "00e2b0410a4dc1a3e6636271e3239d5b1bc2ec37fcfdf4eff9ba4dd110ad8712",
+  "t1-discovery-ladder": "bd1428cf5ae1f80697c9e96ba0e99ac35e5854f4343fab49da1612a5f30e3ab5",
+  "t2-topic-graphs": "f4093ac115966791d261f31125110941a4c2f59340096e29a8266eaec26b58b2",
+  "v1-overview": "a84f14e0936406f0af227a72fff7d265231c739ef3c524f99136c762311ced60",
+  "v2-first-run": "54c2d73c9f23b4b7931b814d8315c53795088e90b1747f5b1459951540bcbc73",
+  "v3-artifacts": "97f1ff458dd09253b4b593dbb45d880c492d9e1898c5ceffe99dda9e2ac58bf2",
+  "v4-gates-and-failure": "f2ac6288daaef2b6fff6bfb5ebdb2087bac3a8bbbb20c6ad5ceaac75f7848351",
+  "v5-parallelism": "6c326cffd24b9e161b20e748636d59d8d485b5c28d60b6b205cac9469150a1e0"
+}

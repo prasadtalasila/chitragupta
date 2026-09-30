@@ -11,17 +11,15 @@ call. Split out of `_recheck.py`, which keeps the comparison, when #837
 made the refresh report per-aid state and the two together crossed the
 250-code-line cap.
 
-**Why the eight aid modules are imported directly here.**
-`chitragupta/review/__main__.py` already owns a name->module mapping, and
-reusing it is impossible: it imports `chitragupta.review.agenda`, which
-imports this module, so reaching back into either is a cycle. The mapping
-is restated below instead, keyed by `_sources.AID_NAMES`' own eight
-strings and checked against them in the tests -- a small, deliberate
-duplication in exchange for an import graph that stays a tree.
-
-Module scope rather than inside `refresh_aids`: measured here, importing
-all eight beside `chitragupta.review.agenda` costs 13 ms against a bare
-`review agenda <draft>` run of ~500 ms -- too little to buy indirection.
+**The aid modules are looked up in `review._registry.AIDS` at call time**
+(#850). `review/__main__.py` imports `chitragupta.review.agenda`, which
+imports this module, so a top-level import of the registry would be a
+cycle; this module used to restate the eight-entry map instead, a copy
+that adding an aid had to edit. Imported inside `refresh_aids`, the
+registry is reached only after every aid module has finished loading.
+It costs nothing a refresh notices: under `python -m chitragupta.review`
+the aids are already loaded, and otherwise loading them is milliseconds
+against the seconds each aid the refresh runs takes.
 """
 
 import contextlib
@@ -30,28 +28,7 @@ from pathlib import Path
 
 from chitragupta import dossier, review
 from chitragupta.dossier._retrieval import recorded_queries
-from chitragupta.review import (
-    citation_coverage,
-    citation_provenance,
-    claim_support,
-    figure_layout,
-    quotation,
-    synthesis,
-    uncited_prose,
-    verbatim_check,
-)
 from chitragupta.review.agenda._sources import AID_NAMES
-
-_AID_MODULES = {
-    "provenance": citation_provenance,
-    "verbatim": verbatim_check,
-    "coverage": citation_coverage,
-    "synthesis": synthesis,
-    "figure": figure_layout,
-    "uncited": uncited_prose,
-    "quotation": quotation,
-    "support": claim_support,
-}
 
 
 def _coverage_queries(draft: Path) -> list[str]:
@@ -150,6 +127,8 @@ def refresh_aids(draft: Path) -> dict[str, bool | None]:
     Discarding it is right rather than convenient: it reports files this
     command asked for on the caller's behalf and never promised to show.
     """
+    from chitragupta.review._registry import AIDS  # cycle: see the module docstring
+
     queries = _coverage_queries(draft)
     refreshed: dict[str, bool | None] = {}
     for aid in AID_NAMES:
@@ -160,6 +139,6 @@ def refresh_aids(draft: Path) -> dict[str, bool | None]:
         path = review.report_path(draft, aid, "json")
         before = _mtime_ns(path)
         with contextlib.redirect_stdout(io.StringIO()):
-            code = _AID_MODULES[aid].main(argv)
+            code = AIDS[aid][0].main(argv)
         refreshed[aid] = code == 0 and _mtime_ns(path) not in (None, before)
     return refreshed

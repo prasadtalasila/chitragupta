@@ -3,6 +3,7 @@ eight aids' `.json`, `style_check`'s prose findings, and the dossier's
 drift report into one ranked, deduplicated worklist. Issue #381.
 """
 
+import ast
 import json
 import os
 import re
@@ -14,7 +15,7 @@ import pytest
 from chitragupta import config, dossier, review, style_check
 from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
-from chitragupta.review import agenda, citation_provenance
+from chitragupta.review import _registry, agenda, citation_provenance
 from chitragupta.review.agenda import (
     _accept,
     _dedup,
@@ -1814,16 +1815,38 @@ def aid_stubs(monkeypatch):
     and real dossiers, none of which a unit test should depend on.
     """
     stubs = {}
-    for name, module in _refresh._AID_MODULES.items():
+    for name in _sources.AID_NAMES:
+        module = _registry.AIDS[name][0]
         stub = _AidStub(name)
         monkeypatch.setattr(module, "main", stub)
         stubs[name] = stub
     return stubs
 
 
-class TestAidModules:
-    def test_keys_are_exactly_the_eight_aid_names(self):
-        assert tuple(_refresh._AID_MODULES) == _sources.AID_NAMES
+class TestOneRegistry:
+    """#850: the aids are named once, in `review.AIDS`, and mapped to
+    their modules once, in `review._registry.AIDS`. `_sources.AID_NAMES`,
+    `_render._SOURCE_LABELS` and `_refresh`'s module map were each a
+    hand-kept copy that adding an aid had to edit; each is now derived."""
+
+    def test_no_agenda_module_restates_the_aid_list(self):
+        """A dict or tuple literal naming three or more aids is a copy of
+        the registry, whatever it is called."""
+        names = set(review.AIDS)
+        offenders = []
+        for path in sorted(Path(_sources.__file__).parent.glob("*.py")):
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                items = node.keys if isinstance(node, ast.Dict) else getattr(node, "elts", [])
+                if not isinstance(node, (ast.Dict, ast.Tuple, ast.List, ast.Set)):
+                    continue
+                named = {i.value for i in items if isinstance(i, ast.Constant)} & names
+                if len(named) >= 3:
+                    offenders.append(f"{path.name}:{node.lineno}")
+        assert offenders == [], f"restated aid registry at {offenders}"
+
+    def test_refresh_runs_each_aid_through_the_registry_module(self):
+        assert not hasattr(_refresh, "_AID_MODULES")
+        assert all(name in _registry.AIDS for name in _sources.AID_NAMES)
 
 
 class TestCoverageQueries:
@@ -1879,7 +1902,7 @@ class TestRefreshAids:
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
         _refresh.refresh_aids(draft)
         for name, stub in aid_stubs.items():
-            parsed = _refresh._AID_MODULES[name].build_parser().parse_args(stub.calls[0])
+            parsed = _registry.AIDS[name][0].build_parser().parse_args(stub.calls[0])
             assert parsed.formats == "md"
             assert getattr(parsed, "write", True) is True
 
@@ -1944,8 +1967,10 @@ class TestRefreshAids:
 
     def test_an_aids_own_stdout_is_swallowed(self, isolated_config, monkeypatch, capsys):
         draft = self._draft(isolated_config)
-        for name, module in _refresh._AID_MODULES.items():
-            monkeypatch.setattr(module, "main", _AidStub(name, chatter="WROTE A FILE"))
+        for name in _sources.AID_NAMES:
+            monkeypatch.setattr(
+                _registry.AIDS[name][0], "main", _AidStub(name, chatter="WROTE A FILE")
+            )
         _refresh.refresh_aids(draft)
         assert "WROTE A FILE" not in capsys.readouterr().out
 
@@ -2277,8 +2302,10 @@ class TestBaselineCli:
 
     def test_json_stdout_is_only_the_payload(self, isolated_config, monkeypatch, capsys, tmp_path):
         draft = self._draft(isolated_config, monkeypatch)
-        for name, module in _refresh._AID_MODULES.items():
-            monkeypatch.setattr(module, "main", _AidStub(name, chatter="WROTE A FILE"))
+        for name in _sources.AID_NAMES:
+            monkeypatch.setattr(
+                _registry.AIDS[name][0], "main", _AidStub(name, chatter="WROTE A FILE")
+            )
         baseline = self._baseline_file(tmp_path, [])
         agenda.main([str(draft), "--baseline", str(baseline), "--json"])
         out = capsys.readouterr().out

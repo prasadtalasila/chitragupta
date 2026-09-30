@@ -52,10 +52,20 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   `verbatim_check/__init__.py` grows by one line, the `_emit` import,
   because its `cmd_scan` call cannot get shorter; `figure_layout/__init__.py`
   shrinks by four in the same PR.
-- **#850, aid registries.** One registry in code. The SVGs are re-rendered
-  with mermaid-cli 11 and fingerprinted by a single manifest,
-  `docs/diagrams/svg/sources.json`, which maps each diagram to its `.mmd`'s
-  sha256. A stale SVG then fails with a message naming its source.
+- **#850, aid registries.** One registry in code. `review.AIDS` names the
+  aids, and a new `review/_registry.py` holds the name->module map that
+  `__main__` used to own. `_refresh` reaches that map through an import
+  at call time rather than a copy, which a lazy import of `__main__`
+  would also have allowed at the cost of loading a second copy of the
+  running entry point. `_sources.AID_NAMES` and a fifth copy the issue
+  did not list, `_render._SOURCE_LABELS`, are derived from `review.AIDS`.
+  The SVGs are re-rendered with mermaid-cli 11 by
+  `scripts/render_diagrams.py` and fingerprinted by a single manifest,
+  `docs/diagrams/svg/sources.json`, which maps each diagram to its
+  `.mmd`'s sha256 (CRLF normalised). A stale SVG then fails with a message
+  naming its source. Seven re-rendered byte-identical. mermaid's layout
+  turned out to be non-deterministic run to run, which is why the other
+  six moved without any label changing.
 - **#851, caches.** Only the two retrieval caches share the new helper,
   `_json_cache.MemoisedJson`. The two enrich caches have no memo or stamp,
   so they are left alone. Each retrieval cache binds its old private names
