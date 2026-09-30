@@ -57,18 +57,16 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
     A relative `path` an image reference doesn't resolve to a real file
     under `input_path`'s own directory is silently skipped here (letting
     pandoc's own missing-resource handling surface it, same as today), as
-    is any reference that would resolve outside `input_path`'s directory
-    (absolute, or `..`-escaping) -- a draft's image references are never a
-    reason to write outside `dest_dir`.
+    is any reference `_resolve_sibling` refuses -- absolute, `..`-escaping,
+    or a symlink that lands outside `input_path`'s directory (#823). A
+    draft's image references are never a reason to read outside its own
+    directory or write outside `dest_dir`.
     """
     for ref in _local_image_refs(input_path.read_text(encoding="utf-8")):
-        ref_path = Path(ref)
-        if ref_path.is_absolute() or ".." in ref_path.parts:
+        src = _resolve_sibling(input_path.parent, ref)
+        if src is None:
             continue
-        src = input_path.parent / ref_path
-        if not src.is_file():
-            continue
-        _copy_beside(src, dest_dir / ref_path)
+        _copy_beside(src, dest_dir / ref)
 
 
 def _copy_beside(src: Path, dst: Path) -> None:
@@ -98,9 +96,9 @@ def _copy_beside(src: Path, dst: Path) -> None:
 def _copy_local_tex_includes(input_path: Path, dest_dir: Path) -> None:
     """Copies every `\\input{...}`/`\\include{...}` file `input_path`
     references alongside the rendered output in `dest_dir`, mirroring
-    `_copy_local_images` exactly -- same skip rules (absolute, or
-    `..`-escaping, or not a real file under `input_path`'s own
-    directory), for the same reason: a `tex` output must be
+    `_copy_local_images` exactly -- same skip rules (absolute,
+    `..`-escaping, a symlink that lands outside `input_path`'s own
+    directory, or not a real file under it), for the same reason: a `tex` output must be
     self-contained and compilable on its own, and a draft's own
     references are never a reason to write outside `dest_dir` (#222).
     """

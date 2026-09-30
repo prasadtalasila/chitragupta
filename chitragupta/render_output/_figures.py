@@ -32,6 +32,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from chitragupta import config
 from chitragupta.citation_gate import _PANDOC_CITE_RE
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._figure_captions import warnings as _caption_warnings
@@ -150,16 +151,27 @@ def _figure_refs(text: str) -> list[str]:
 def _resolve_sibling(draft_dir: Path, ref: str) -> Path | None:
     """`ref` as a real file under `draft_dir`, or None.
 
-    The skip rules are `_copy_local_tex_includes`'s, shared rather than
-    restated: an absolute or `..`-escaping reference is not resolved, for
-    the same reason it is not copied -- a draft's own text is never a
-    reason to read or write outside its own directory.
+    The skip rules are `_copy_local_tex_includes`'s and
+    `_copy_local_images`', shared rather than restated: an absolute or
+    `..`-escaping reference is not resolved, for the same reason it is
+    not copied -- a draft's own text is never a reason to read or write
+    outside its own directory.
+
+    Spelling alone cannot see a symlink, so `resolves_inside` answers for
+    where the file really is (#823): `figures/x.tex -> /anywhere` in a
+    shared tree would otherwise be compiled by the figure aid and copied
+    into `content/rendered/`. Both sides are resolved, so a link that
+    stays inside the draft, or a draft directory that is itself a link,
+    still resolves. What is returned is the unresolved spelling, because
+    the copiers write to `dest_dir / ref`.
     """
     ref_path = Path(ref)
     if ref_path.is_absolute() or ".." in ref_path.parts:
         return None
     candidate = draft_dir / ref_path
-    return candidate if candidate.is_file() else None
+    if not candidate.is_file():
+        return None
+    return candidate if config.resolves_inside(candidate, draft_dir) else None
 
 
 def _require_tikz() -> None:

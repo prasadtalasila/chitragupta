@@ -131,6 +131,23 @@ class TestCopyLocalImages:
 
         assert (dest_dir / "figures" / "figure.png").read_bytes() == b"fake png bytes"
 
+    def test_skips_an_image_symlinked_out_of_the_draft(self, tmp_path):
+        # The image copier used to have its own spelling-only check (#823).
+        outside = tmp_path / "outside" / "secret.png"
+        outside.parent.mkdir()
+        outside.write_bytes(b"not yours")
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        (src_dir / "figure.png").symlink_to(outside)
+        draft = src_dir / "draft.md"
+        draft.write_text("![alt](figure.png)\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_images(draft, dest_dir)
+
+        assert list(dest_dir.iterdir()) == []
+
 
 class TestCopyLocalTexIncludes:
     def test_copies_an_existing_local_include(self, tmp_path):
