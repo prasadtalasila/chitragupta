@@ -92,6 +92,7 @@ from chitragupta.render_output._assets import (
     _copy_local_images,
     _copy_local_tex_includes,
     _local_image_refs,
+    _refuse_escaping_refs,
 )
 from chitragupta.render_output._citeproc import (
     _REFS_ANCHOR,
@@ -264,6 +265,7 @@ def render(
         )
 
     math_mapping = _checked_math_mapping(draft_text, input_path)
+    _refuse_escaping_refs(input_path, draft_text)
 
     # Everything from here on needs the real pandoc/pdflatex/TeX Live
     # toolchain to exercise -- see #291. Marked per-line rather than by

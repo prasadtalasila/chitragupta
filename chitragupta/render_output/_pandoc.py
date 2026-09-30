@@ -11,6 +11,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from chitragupta import config
@@ -236,6 +237,7 @@ def _pandoc_command(
         cmd += ["--variable", _LONGTABLE_CAPTION_WIDTH]
     env = None
     if output_format == "pdf":  # pragma: no cover-windows
+        _require_tex_readable_tmpdir()
         cmd += ["--pdf-engine", "pdflatex"]
         # No `\write18` at all, not even TeX Live's default restricted
         # allow-list (`shell_escape = p`). Nothing a draft legitimately
@@ -268,12 +270,39 @@ def _pandoc_command(
             # render's images (measured on pandoc 3.6.4; see
             # plans/823-tex-read-hardening.md). Paranoid mode checks the
             # name as TeX spells it, so the draft's `figures/x.tex`,
-            # found through TEXINPUTS above, still loads. Set after
-            # `os.environ` so a host's own `openin_any` cannot loosen it.
+            # found through TEXINPUTS above, still loads -- and so a
+            # symlink is invisible to it, which is why `render()` refuses
+            # an escaping one first (`_refuse_escaping_refs`), and why a
+            # dotted TMPDIR is refused up front
+            # (`_require_tex_readable_tmpdir`). Set after `os.environ` so
+            # a host's own `openin_any` cannot loosen it.
             "openin_any": "p",
         }
     cmd += ["-o", str(out_path)]
     return cmd, env
+
+
+def _require_tex_readable_tmpdir() -> None:
+    """Raises `MissingBinary` when pdflatex could not read pandoc's own
+    temp copy of the draft.
+
+    pandoc compiles in `$TMPDIR/tex2pdf.-XXXX/` and names `input.tex` to
+    pdflatex absolutely. `openin_any=p` (below, #823) refuses any name
+    with a dot-directory in it, so `TMPDIR=~/.cache/tmp` -- common on
+    HPC and quota'd homes -- failed every pdf render with an exit 43 that
+    reads as a security refusal. `MissingBinary` for `_render_csl`'s
+    reason: a render input this host does not have, with the same
+    warn-and-continue handling in every genre skill.
+    """
+    tmp = Path(tempfile.gettempdir())
+    dotted = [part for part in tmp.parts if part.startswith(".")]
+    if dotted:
+        raise MissingBinary(
+            f"pdf rendering cannot use the temp directory {tmp}: pdflatex runs "
+            "with openin_any=p (docs/SECURITY.md), which refuses any path with a "
+            f"dot-directory in it ({', '.join(dotted)}), and pandoc compiles "
+            "there. Set TMPDIR to a directory without one, e.g. TMPDIR=/tmp."
+        )
 
 
 def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:

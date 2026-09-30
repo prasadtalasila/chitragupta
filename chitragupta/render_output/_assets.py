@@ -12,7 +12,11 @@ from urllib.parse import unquote
 
 from chitragupta import config
 from chitragupta.render_output._citeproc import aliased_bib_text
-from chitragupta.render_output._figures import _figure_refs, _resolve_sibling
+from chitragupta.render_output._figures import (
+    _figure_refs,
+    _local_tex_include_refs,
+    _resolve_sibling,
+)
 
 
 # Matches Markdown image syntax: ![alt](path) or ![alt](path "title"), and
@@ -67,6 +71,46 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
         if src is None:
             continue
         _copy_beside(src, dest_dir / ref)
+
+
+def _escapes(draft_dir: Path, ref: str) -> bool:
+    """Whether `ref` is spelled inside `draft_dir` but lands outside it.
+
+    The case `_resolve_sibling` refuses and pandoc/pdflatex would not:
+    both open the spelled name themselves, and `openin_any=p` judges the
+    name, not where a symlink on the way takes it (#823). Absolute and
+    `..` spellings are not this question -- TeX's paranoid mode refuses
+    those itself -- so they answer False here.
+    """
+    ref_path = Path(ref)
+    if ref_path.is_absolute() or ".." in ref_path.parts:
+        return False
+    candidate = draft_dir / ref_path
+    return candidate.is_file() and not config.resolves_inside(candidate, draft_dir)
+
+
+def _refuse_escaping_refs(input_path: Path, text: str) -> None:
+    """Raises `OutsideContentDir` when the draft names a file that is a
+    symlink out of its own directory, before pandoc or pdflatex runs.
+
+    The copiers above skip such a file, but skipping is not enough on the
+    render itself: pandoc embeds a draft's images and pdflatex `\\input`s
+    its figures by the name the draft spells, so `figures/x.tex -> /anywhere`
+    was compiled into the PDF anyway (#823's review, measured). Refused
+    rather than skipped because the draft really does ask for the file --
+    leaving it out would be a quietly wrong render. An `\\input` is checked
+    as TeX finds it, with and without `.tex`.
+    """
+    refs = [(ref, (ref, f"{ref}.tex")) for ref in _local_tex_include_refs(text)]
+    refs += [(ref, (ref,)) for ref in _local_image_refs(text)]
+    for ref, spellings in refs:
+        if any(_escapes(input_path.parent, spelling) for spelling in spellings):
+            raise config.OutsideContentDir(
+                f"{input_path} references {ref}, which resolves outside "
+                f"{input_path.parent} through a symlink. pandoc and pdflatex "
+                "would read it wherever it points; copy the file into the "
+                "draft's directory instead."
+            )
 
 
 def _copy_beside(src: Path, dst: Path) -> None:

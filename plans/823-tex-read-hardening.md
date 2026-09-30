@@ -1,7 +1,14 @@
 # #823: stop TeX reading outside the draft, and figure siblings following symlinks
 
-Status: **plan, not started.** Written 2026-09-30 against `origin/main`
-at `3e54222`. Closes #823.
+Status: **closed by PR #906 (6.126.1).** Written 2026-09-30 against
+`origin/main` at `3e54222`. Closes #823. Two things were added on the
+way, both from the final branch review: `render()` now refuses a draft
+whose `\input` or image reference is a symlink out of its directory
+(`_refuse_escaping_refs`), because pandoc and pdflatex follow such a
+link themselves and `openin_any=p` cannot see it. A `pdf` render also
+reports a `TMPDIR` with a dot-directory up front
+(`_require_tex_readable_tmpdir`), because paranoid mode refuses pandoc's
+own temp copy of the draft there.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use
 > superpowers:subagent-driven-development (recommended) or

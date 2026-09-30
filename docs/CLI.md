@@ -2397,11 +2397,14 @@ redirected:
   off-tree.
 
 The files a draft references are confined the same way. A figure or
-image reference that is absolute, contains `..`, or is a symlink landing
-outside the draft's own directory is neither compiled nor copied beside
-the output. A `pdf` render also runs `pdflatex` without shell escape and
-with `openin_any=p`, so text in a shared `.bib` cannot make it read a
-file outside the draft either -- such a render fails and names the file.
+image reference that is absolute or contains `..` is not copied beside
+the output. One that is a symlink landing outside the draft's own
+directory fails the render with `[error]`, naming it, because pandoc and
+`pdflatex` would otherwise read it wherever it points. A `pdf` render
+also runs `pdflatex` without shell escape and with `openin_any=p`, so a
+shared `.bib` cannot make it read an absolute path either: such a render
+fails and names the file. That same setting needs a `TMPDIR` with no
+dot-directory in its path, and says so if it has one.
 [SECURITY.md](SECURITY.md) has what this does and does not cover.
 
 | Flag | Default | What it does |

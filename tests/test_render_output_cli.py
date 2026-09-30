@@ -573,6 +573,26 @@ class TestPdflatexHardening:
             assert "--sandbox" not in cmd
 
 
+class TestTexReadableTmpdir:
+    """#823 review: pandoc hands pdflatex `$TMPDIR/tex2pdf.-XXXX/input.tex`
+    as an absolute name, and `openin_any=p` refuses any name with a
+    dot-directory in it -- so `TMPDIR=~/.cache/tmp` would fail every pdf
+    render with what reads as a security refusal. Said up front instead."""
+
+    def test_a_dot_directory_in_the_temp_path_is_named(self, tmp_path, monkeypatch):
+        dotted = tmp_path / ".cache" / "tmp"
+        dotted.mkdir(parents=True)
+        monkeypatch.setattr(render_output._pandoc.tempfile, "tempdir", str(dotted))
+        with pytest.raises(render_output.MissingBinary, match="TMPDIR"):
+            render_output._pandoc._require_tex_readable_tmpdir()
+
+    def test_an_ordinary_temp_path_passes(self, tmp_path, monkeypatch):
+        plain = tmp_path / "tmp"
+        plain.mkdir()
+        monkeypatch.setattr(render_output._pandoc.tempfile, "tempdir", str(plain))
+        render_output._pandoc._require_tex_readable_tmpdir()  # must not raise
+
+
 class TestLongtableCaptionWidth:
     """`\\LTcapwidth`, which `longtable.sty` initialises to a hardcoded
     4in. pandoc writes every Markdown table as a `longtable`, so without
