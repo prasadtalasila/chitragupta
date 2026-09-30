@@ -29,13 +29,22 @@ OVER_C1 = "def f():\n" + "\n".join(f"    x{i} = {i}" for i in range(30)) + "\n"
 
 
 class HookRepo:
-    """A throwaway repo root with the hook, the scanner and the register."""
+    """A throwaway repo root with the hook, the scanner and the register.
 
-    def __init__(self, root: Path, with_scanner: bool = True):
+    `installed` picks which shape `safe_path.py` will see, and sets it
+    through `PYTHONPATH` rather than trusting whatever this interpreter
+    happens to have installed -- a local venv with nothing installed and
+    CI's editable `poetry install` would otherwise disagree. A checkout
+    is a `chitragupta` resolving inside the root; an installed project is
+    one resolving to the real package, outside it.
+    """
+
+    def __init__(self, root: Path, with_scanner: bool = True, installed: bool = False):
         self.root = root
         hooks = root / ".claude" / "hooks"
         hooks.mkdir(parents=True, exist_ok=True)
         shutil.copy2(HOOKS / "code_standards_hook.py", hooks / "code_standards_hook.py")
+        shutil.copy2(HOOKS / "safe_path.py", hooks / "safe_path.py")
         self.hook = hooks / "code_standards_hook.py"
         if with_scanner:
             (root / "scripts").mkdir(parents=True, exist_ok=True)
@@ -46,7 +55,12 @@ class HookRepo:
             )
         self.package = root / "chitragupta"
         self.package.mkdir(parents=True, exist_ok=True)
-        self.env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
+        if not installed:
+            (self.package / "__init__.py").write_text("", encoding="utf-8")
+        self.env = {
+            **{k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)},
+            "PYTHONPATH": str(REPO_ROOT if installed else root),
+        }
 
     def run(self, file_path):
         return subprocess.run(
@@ -123,3 +137,22 @@ class TestAScaffoldedProject:
         target.write_text(OVER_C1, encoding="utf-8")
         result = repo.run(target)
         assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
+
+    def test_a_planted_scanner_is_never_run(self, tmp_path):
+        """Issue 890. `init` scaffolds no `scripts/`, so a
+        `scripts/code_standards.py` in an installed-package project was
+        committed by someone else -- and the hook used to run it by path,
+        with the user's privileges, on the next `.py` write under a
+        watched root. The same shape #822 closed for `-m`."""
+        repo = HookRepo(tmp_path, with_scanner=False, installed=True)
+        sentinel = tmp_path / "planted_scanner_ran"
+        (tmp_path / "scripts").mkdir()
+        (tmp_path / "scripts" / "code_standards.py").write_text(
+            f"from pathlib import Path\nPath({str(sentinel)!r}).touch()\n",
+            encoding="utf-8",
+        )
+        target = repo.package / "big.py"
+        target.write_text(OVER_C1, encoding="utf-8")
+        result = repo.run(target)
+        assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
+        assert not sentinel.exists()

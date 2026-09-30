@@ -32,15 +32,22 @@ contains no logic anyone could want to run by hand -- is what puts the
 scan there rather than here, and that module's docstring says why
 `scripts/` rather than `chitragupta/`.
 
-**Inert, not broken, in a scaffolded project.** `chitragupta/init.py`'s
-`COPY_VERBATIM` begins `".claude"`, so this hook and its settings entry
-are copied into every `chitragupta init` directory -- which deliberately
-has no `chitragupta/`, `scripts/` or `tests/` tree
-(docs/PACKAGING.md). Nothing there is ever under a watched root, so
-`source_target` returns None on every write; and if a path somehow were,
-a missing scanner is silence rather than a fault. That is the same
-distinction `session_start_hook.py` draws when it reports an unsynced
-corpus as a stage rather than a failure.
+**Inert, not broken, in a scaffolded project -- and never trusting.**
+`chitragupta/init.py`'s `COPY_VERBATIM` begins `".claude"`, so this hook
+and its settings entry are copied into every `chitragupta init`
+directory -- which deliberately has no `chitragupta/`, `scripts/` or
+`tests/` tree (docs/PACKAGING.md). So a `scripts/code_standards.py`
+found there is not this repository's scanner: someone committed it to a
+shared or cloned project, along with whatever watched-root file makes the
+next write reach it. Running it by path would execute it with the user's
+privileges, which is the planted-file shape #822 closed for `-m` and
+issue 890 closed here. So the scanner runs only in the checkout shape,
+decided by the same `safe_path.installed_elsewhere` the other hooks use
+for their children; in an installed-package project this hook starts no
+process at all. A missing scanner is silence rather than a fault, the
+same distinction `session_start_hook.py` draws when it reports an
+unsynced corpus as a stage rather than a failure. `safe_path.py` records
+the one shape this cannot tell apart from a checkout.
 
 **It does not share `draft_target.py`.** That module answers "was this
 write a draft?" and its docstring is explicit that what must be shared
@@ -53,6 +60,8 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+
+import safe_path
 
 # This file's own location, never the target path and never the working
 # directory: a hook is run from wherever the harness happens to be. The
@@ -109,14 +118,14 @@ def source_target(stdin) -> "Path | None":
 def _findings(path: Path) -> list:
     """What the scanner says about `path`, or nothing at all.
 
-    Every failure mode is silence, deliberately: an absent scanner (the
-    scaffolded-project case in the module docstring), a non-zero exit, or
-    output this cannot parse. The hook is reading another command's
-    stdout, which is exactly where `style_check_hook.py` records the same
-    posture -- a checker that failed or changed shape must cost the
-    reader nothing.
+    Every failure mode is silence, deliberately: an installed-package
+    project, whose scanner is never run (the module docstring), an absent
+    scanner, a non-zero exit, or output this cannot parse. The hook is
+    reading another command's stdout, which is exactly where
+    `style_check_hook.py` records the same posture -- a checker that
+    failed or changed shape must cost the reader nothing.
     """
-    if not SCANNER.is_file():
+    if safe_path.installed_elsewhere(REPO_ROOT) or not SCANNER.is_file():
         return []
     result = subprocess.run(
         [sys.executable, str(SCANNER), str(path), "--json"],

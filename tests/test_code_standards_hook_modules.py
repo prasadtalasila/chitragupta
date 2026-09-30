@@ -153,6 +153,17 @@ class TestRunningTheScanner:
         monkeypatch.setattr(hook, "SCANNER", tmp_path / "absent.py")
         assert hook._findings(tmp_path / "m.py") == []
 
+    def test_an_installed_project_never_launches_its_scanner(self, hook, monkeypatch):
+        """Issue 890: outside the checkout, a `scripts/code_standards.py`
+        is not this repository's scanner, so nothing under the root runs."""
+
+        def launched(*args, **kwargs):
+            raise AssertionError("the scanner was launched")
+
+        monkeypatch.setattr(hook.safe_path, "installed_elsewhere", lambda root: True)
+        monkeypatch.setattr(hook.subprocess, "run", launched)
+        assert hook._findings(Path("m.py")) == []
+
     def test_unreadable_scanner_output_is_silent(self, hook, monkeypatch):
         """Reading another command's stdout defensively, the same posture
         `style_check_hook.py` documents: a checker that failed or changed
