@@ -237,6 +237,13 @@ def _pandoc_command(
     env = None
     if output_format == "pdf":  # pragma: no cover-windows
         cmd += ["--pdf-engine", "pdflatex"]
+        # No `\write18` at all, not even TeX Live's default restricted
+        # allow-list (`shell_escape = p`). Nothing a draft legitimately
+        # needs calls out to a shell, and the allow-list is still code
+        # execution chosen by the document (#823). The one casualty is
+        # graphicx's `.eps` -> `repstopdf` conversion; docs/SECURITY.md
+        # says to use PDF or PNG figures instead.
+        cmd += ["--pdf-engine-opt=-no-shell-escape"]
         # LaTeX's own \input/\include search path is separate from
         # --resource-path above (that's pandoc's, for images pandoc
         # reads itself). Without TEXINPUTS, pdflatex looks for
@@ -248,7 +255,23 @@ def _pandoc_command(
         # its own style files. Merges with os.environ rather than
         # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
         # the subprocess can't find pandoc at all.
-        env = {**os.environ, "TEXINPUTS": f"{input_path.resolve().parent}:"}
+        env = {
+            **os.environ,
+            "TEXINPUTS": f"{input_path.resolve().parent}:",
+            # kpathsea's paranoid read mode: no absolute paths, no `..`,
+            # no dotfiles, only the working directory and TEXINPUTS
+            # (#823). Without it, a `.bib` title of
+            # `\input{/home/alice/.netrc}` reaches pdflatex as raw LaTeX
+            # through citeproc and the file is typeset into the reference
+            # list. pandoc's own `--sandbox` does not help: it confines
+            # pandoc's reads, not pdflatex's, and it drops a docx
+            # render's images (measured on pandoc 3.6.4; see
+            # plans/823-tex-read-hardening.md). Paranoid mode checks the
+            # name as TeX spells it, so the draft's `figures/x.tex`,
+            # found through TEXINPUTS above, still loads. Set after
+            # `os.environ` so a host's own `openin_any` cannot loosen it.
+            "openin_any": "p",
+        }
     cmd += ["-o", str(out_path)]
     return cmd, env
 
