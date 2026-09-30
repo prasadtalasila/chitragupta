@@ -200,12 +200,22 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         probe = Path(tmp) / "probe.tex"
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
         result = _run(
-            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", probe.name],
+            [
+                "pdflatex",
+                "-no-shell-escape",
+                "-interaction=nonstopmode",
+                "-halt-on-error",
+                probe.name,
+            ],
             cwd=tmp,
             capture_output=True,
             text=True,
             check=False,
-            env={**os.environ, "max_print_line": _MAX_PRINT_LINE},
+            # `openin_any=p` and `-no-shell-escape`: the figure file is
+            # draft text, and a shared tree's draft text is someone
+            # else's (#823). Same two settings, same reasons, as
+            # render_output/_pandoc.py's pdf path.
+            env={**os.environ, "max_print_line": _MAX_PRINT_LINE, "openin_any": "p"},
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))

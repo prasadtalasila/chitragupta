@@ -118,6 +118,17 @@ configured content directory as the pipeline's working boundary; they
 are not an access-control system, and path validation cannot eliminate a
 race with a process that can alter the filesystem concurrently.
 
+The files a draft references get the same treatment. A figure or image
+reference is resolved before the figure-layout aid compiles it or a
+render copies it beside the output, and one that lands outside the
+draft's own directory -- absolute, `..`-escaping, or a symlink, of the
+file or of a directory on the way to it -- is skipped. A render goes
+further for the symlink case: pandoc and `pdflatex` open a draft's
+images and `\input` files by the name the draft spells, so a draft that
+names one through a symlink out of its directory is refused with
+`[error]` before either tool runs, rather than rendered without it. A
+link that stays inside the draft still works.
+
 ### Safer archive restore
 
 `chitragupta.dossier` exports and restores draft records as `tar.gz`
@@ -143,6 +154,36 @@ parser. It does not protect against vulnerabilities or unsafe behaviour
 in the called executable, a malicious executable earlier on `PATH`, or
 dangerous content interpreted by the toolchain. The PDF and rendering
 sections of [CLI.md](CLI.md) identify which commands require local tools.
+
+Every `pdflatex` this codebase starts -- a `pdf` render through Pandoc,
+and the figure-layout aid's probe -- runs with `-no-shell-escape` and
+with kpathsea's `openin_any=p`. The first turns off `\write18` entirely,
+including TeX Live's default restricted allow-list. The second is
+kpathsea's paranoid read mode: TeX may not open a name with a `..` or a
+dot-directory in it, nor an absolute name outside the output directory,
+though a relative name it finds on its search paths -- `TEXINPUTS`, the
+TeX installation -- is still allowed. A shared `.bib` whose title says
+`\input{/home/alice/.netrc}` reaches `pdflatex` as raw LaTeX through
+citeproc; with these settings the render fails and names the file
+instead of printing it into the reference list. Pandoc's own `--sandbox`
+is deliberately not used: it confines Pandoc's reads, not `pdflatex`'s,
+and it drops a `docx` render's images.
+
+Paranoid mode judges a name as TeX spells it and follows symlinks, which
+is why the render refuses a draft's own symlinked references itself
+(above). Four limits follow:
+
+- A name that is not in the draft's text -- one in a bibliography field,
+  say -- that points at a symlink someone planted in the draft's
+  directory is still followed.
+- A `tex` output and a `--fragment` unit carry the same raw LaTeX to
+  whoever compiles them later, with their own engine and their own
+  settings, which this project does not control.
+- An `.eps` figure no longer converts, because graphicx converts one
+  through `repstopdf` over shell escape; use a PDF or PNG figure instead.
+- Pandoc compiles in the system temp directory, so a `pdf` render needs
+  a `TMPDIR` with no dot-directory in its path (not `~/.cache/tmp`). One
+  that has one is reported before Pandoc runs.
 
 ### Local-first corpus processing
 

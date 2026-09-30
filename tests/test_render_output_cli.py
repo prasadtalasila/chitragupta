@@ -520,6 +520,79 @@ class TestTikzLibraryPreamble:
         assert "[tikz-libraries]" not in capsys.readouterr().err
 
 
+class TestPdflatexHardening:
+    """#823. A `.bib` title such as `See \\input{~/.netrc}` passes
+    through pandoc's BibTeX reader as raw LaTeX, and `pdflatex` reads it
+    at compile time, since kpathsea's default `openin_any = a` allows any
+    readable file. `openin_any=p` limits reads to the working directory
+    and TEXINPUTS, and `-no-shell-escape` also turns off the restricted
+    `\\write18` allow-list."""
+
+    def _cmd(self, output_format):
+        return render_output._pandoc_command(
+            Path("in.md"),
+            Path("bib.bib"),
+            Path("ieee.csl"),
+            Path(f"out.{output_format}"),
+            Path("in.md"),
+            output_format,
+            "article",
+            "12pt",
+            "a4",
+            "1in",
+            [],
+            False,
+            False,
+        )
+
+    def test_a_pdf_render_turns_shell_escape_off(self):
+        cmd, _ = self._cmd("pdf")
+        assert "--pdf-engine-opt=-no-shell-escape" in cmd
+
+    def test_a_pdf_render_runs_pdflatex_paranoid_about_reads(self):
+        _, env = self._cmd("pdf")
+        assert env["openin_any"] == "p"
+
+    def test_the_hosts_own_openin_any_does_not_win(self, monkeypatch):
+        monkeypatch.setenv("openin_any", "a")
+        _, env = self._cmd("pdf")
+        assert env["openin_any"] == "p"
+
+    @pytest.mark.parametrize("output_format", ["html", "docx", "tex"])
+    def test_a_format_that_runs_no_pdflatex_is_untouched(self, output_format):
+        cmd, env = self._cmd(output_format)
+        assert env is None
+        assert not any(flag.startswith("--pdf-engine-opt") for flag in cmd)
+
+    def test_pandoc_itself_is_not_sandboxed(self):
+        # Measured on pandoc 3.6.4: `--sandbox` silently drops a docx
+        # render's images and does not stop the pdf-path leak. See
+        # plans/823-tex-read-hardening.md.
+        for output_format in ("pdf", "docx"):
+            cmd, _ = self._cmd(output_format)
+            assert "--sandbox" not in cmd
+
+
+class TestTexReadableTmpdir:
+    """#823 review: pandoc hands pdflatex `$TMPDIR/tex2pdf.-XXXX/input.tex`
+    as an absolute name, and `openin_any=p` refuses any name with a
+    dot-directory in it -- so `TMPDIR=~/.cache/tmp` would fail every pdf
+    render with what reads as a security refusal. Said up front instead."""
+
+    def test_a_dot_directory_in_the_temp_path_is_named(self, tmp_path, monkeypatch):
+        dotted = tmp_path / ".cache" / "tmp"
+        dotted.mkdir(parents=True)
+        monkeypatch.setattr(render_output._pandoc.tempfile, "tempdir", str(dotted))
+        with pytest.raises(render_output.MissingBinary, match="TMPDIR"):
+            render_output._pandoc._require_tex_readable_tmpdir()
+
+    def test_an_ordinary_temp_path_passes(self, tmp_path, monkeypatch):
+        plain = tmp_path / "tmp"
+        plain.mkdir()
+        monkeypatch.setattr(render_output._pandoc.tempfile, "tempdir", str(plain))
+        render_output._pandoc._require_tex_readable_tmpdir()  # must not raise
+
+
 class TestLongtableCaptionWidth:
     """`\\LTcapwidth`, which `longtable.sty` initialises to a hardcoded
     4in. pandoc writes every Markdown table as a `longtable`, so without

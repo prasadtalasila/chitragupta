@@ -10,6 +10,7 @@ import.
 import shutil
 import subprocess
 import sys
+import tempfile
 import pytest
 from chitragupta import ledger
 from chitragupta import render_output
@@ -223,6 +224,46 @@ class TestRenderReal:
         out_path = render_output.render(str(draft), output_format="pdf")
         assert out_path.exists()
         assert out_path == isolated_config.RENDERED_DIR / "draft.pdf"
+
+    def test_a_bib_field_cannot_make_pdflatex_read_outside_the_draft(
+        self, isolated_config, tmp_path
+    ):
+        # #823: a shared (e.g. Zotero group) .bib is collaborator text.
+        secret = tmp_path / "outside" / "secret.txt"
+        secret.parent.mkdir()
+        secret.write_text("NOT-FOR-THE-PDF\n")
+        con = ledger.connect()
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith_2024", title="An Example Paper", year="2024")
+        )
+        con.close()
+        isolated_config.BIB_FILE_PATH.write_text(
+            "@article{smith_2024,\n"
+            f"  title={{See \\input{{{secret}}} here}},\n"
+            "  year={2024},\n}\n"
+        )
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("# Title\n\nSome claim [@smith_2024].\n")
+
+        with pytest.raises(subprocess.CalledProcessError) as raised:
+            render_output.render(str(draft), output_format="pdf")
+
+        assert "openin_any" in raised.value.stderr
+        assert not (isolated_config.RENDERED_DIR / "draft.pdf").exists()
+
+    def test_a_dotted_tmpdir_is_reported_not_run_into(self, isolated_config, tmp_path, monkeypatch):
+        # Without the up-front check pandoc's pdflatex exits 43 on its own
+        # temp copy of the draft (#823 review).
+        dotted = tmp_path / ".cache" / "tmp"
+        dotted.mkdir(parents=True)
+        monkeypatch.setenv("TMPDIR", str(dotted))
+        monkeypatch.setattr(tempfile, "tempdir", None)
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("# Title\n\nNo citations here.\n")
+
+        with pytest.raises(render_output.MissingBinary, match="TMPDIR"):
+            render_output.render(str(draft), output_format="pdf")
 
     @pytest.mark.parametrize("output_format", ["tex", "pdf"])
     def test_every_pandoc_format_lands_beside_the_draft(self, isolated_config, output_format):

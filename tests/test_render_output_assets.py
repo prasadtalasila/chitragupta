@@ -7,6 +7,10 @@ so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
 """
 
+from pathlib import Path
+
+import pytest
+
 from chitragupta import render_output
 from tests.conftest import ASCII_FIGURE, MARKED_MD, TIKZ_FIGURE, figure_pair
 
@@ -130,6 +134,23 @@ class TestCopyLocalImages:
         render_output._copy_local_images(draft, dest_dir)
 
         assert (dest_dir / "figures" / "figure.png").read_bytes() == b"fake png bytes"
+
+    def test_skips_an_image_symlinked_out_of_the_draft(self, tmp_path):
+        # The image copier used to have its own spelling-only check (#823).
+        outside = tmp_path / "outside" / "secret.png"
+        outside.parent.mkdir()
+        outside.write_bytes(b"not yours")
+        src_dir = tmp_path / "drafts"
+        src_dir.mkdir()
+        (src_dir / "figure.png").symlink_to(outside)
+        draft = src_dir / "draft.md"
+        draft.write_text("![alt](figure.png)\n")
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_images(draft, dest_dir)
+
+        assert list(dest_dir.iterdir()) == []
 
 
 class TestCopyLocalTexIncludes:
@@ -313,3 +334,66 @@ class TestTheBookBibliographyBesideAFragment:
         fragment.mkdir()
         render_output._copy_local_assets(draft, fragment, True)
         assert (fragment / name).is_file()
+
+
+class TestRenderRefusesEscapingReferences:
+    """#823 review: `_resolve_sibling` guards only chitragupta's own reads.
+    pandoc and pdflatex open a draft's `\\input` and image references
+    themselves, and `openin_any=p` checks the name as TeX spells it, so a
+    `figures/x.tex` that is a symlink out of the draft was still compiled
+    into the PDF. The render refuses such a draft before either tool runs."""
+
+    def _draft(self, isolated_config, tmp_path, name, text, link, target_name):
+        isolated_config.BIB_FILE_PATH.write_text("")
+        outside = tmp_path / "outside" / target_name
+        outside.parent.mkdir(exist_ok=True)
+        outside.write_text("NOT-FOR-THE-PDF\n")
+        draft = isolated_config.DRAFTS_DIR / "dt" / name
+        (draft.parent / Path(link).parent).mkdir(parents=True, exist_ok=True)
+        (draft.parent / link).symlink_to(outside)
+        draft.write_text(text)
+        return draft
+
+    @pytest.mark.parametrize("output_format", ["pdf", "docx", "html", "tex"])
+    def test_a_latex_input_symlinked_out_of_the_draft_is_refused(
+        self, isolated_config, tmp_path, output_format
+    ):
+        draft = self._draft(
+            isolated_config,
+            tmp_path,
+            "ch.tex",
+            "\\input{figures/x.tex}\n",
+            "figures/x.tex",
+            "x.tex",
+        )
+        with pytest.raises(render_output.OutsideContentDir, match="figures/x.tex"):
+            render_output.render(str(draft), output_format=output_format)
+
+    def test_a_suffixless_input_is_checked_as_tex_finds_it(self, isolated_config, tmp_path):
+        # `\input{figures/x}` is `figures/x.tex` to TeX.
+        draft = self._draft(
+            isolated_config, tmp_path, "ch.tex", "\\input{figures/x}\n", "figures/x.tex", "x.tex"
+        )
+        with pytest.raises(render_output.OutsideContentDir, match="figures/x"):
+            render_output.render(str(draft), output_format="pdf")
+
+    def test_a_raw_latex_block_in_markdown_is_refused(self, isolated_config, tmp_path):
+        text = "# T\n\n```{=latex}\n\\input{figures/x.tex}\n```\n"
+        draft = self._draft(isolated_config, tmp_path, "s.md", text, "figures/x.tex", "x.tex")
+        with pytest.raises(render_output.OutsideContentDir, match="figures/x.tex"):
+            render_output.render(str(draft), output_format="pdf")
+
+    def test_an_image_symlinked_out_of_the_draft_is_refused(self, isolated_config, tmp_path):
+        draft = self._draft(
+            isolated_config, tmp_path, "s.md", "# T\n\n![c](img.png)\n", "img.png", "secret.png"
+        )
+        with pytest.raises(render_output.OutsideContentDir, match="img.png"):
+            render_output.render(str(draft), output_format="docx")
+
+    def test_a_link_that_stays_inside_the_draft_is_not_refused(self, isolated_config):
+        draft_dir = isolated_config.DRAFTS_DIR / "dt"
+        (draft_dir / "figures").mkdir(parents=True)
+        (draft_dir / "figures" / "v3.tex").write_text("x\n")
+        (draft_dir / "figures" / "current.tex").symlink_to(draft_dir / "figures" / "v3.tex")
+        text = "\\input{figures/current.tex}\n![c](missing.png)\n\\input{../up.tex}\n"
+        render_output._assets._refuse_escaping_refs(draft_dir / "ch.tex", text)  # must not raise

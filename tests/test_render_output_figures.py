@@ -79,6 +79,40 @@ class TestResolveSibling:
     def test_returns_none_for_a_reference_that_is_not_a_file(self, tmp_path):
         assert render_output._resolve_sibling(tmp_path, "figures/absent.tex") is None
 
+    def test_refuses_a_symlink_that_lands_outside_the_draft(self, tmp_path):
+        secret = tmp_path / "outside" / "secret.tex"
+        secret.parent.mkdir()
+        secret.write_text("marker")
+        draft_dir = tmp_path / "drafts"
+        (draft_dir / "figures").mkdir(parents=True)
+        (draft_dir / "figures" / "x.tex").symlink_to(secret)
+        assert render_output._resolve_sibling(draft_dir, "figures/x.tex") is None
+
+    def test_refuses_a_symlinked_directory_that_lands_outside(self, tmp_path):
+        (tmp_path / "outside").mkdir()
+        (tmp_path / "outside" / "x.tex").write_text("marker")
+        draft_dir = tmp_path / "drafts"
+        draft_dir.mkdir()
+        (draft_dir / "figures").symlink_to(tmp_path / "outside", target_is_directory=True)
+        assert render_output._resolve_sibling(draft_dir, "figures/x.tex") is None
+
+    def test_keeps_a_symlink_that_stays_inside_the_draft(self, tmp_path):
+        # `current.tex -> fig1.tex` is ordinary versioning, not an escape.
+        figure_pair(tmp_path)
+        link = tmp_path / "figures" / "current.tex"
+        link.symlink_to(tmp_path / "figures" / "fig1.tex")
+        assert render_output._resolve_sibling(tmp_path, "figures/current.tex") == link
+
+    def test_a_draft_directory_that_is_itself_a_symlink_still_resolves(self, tmp_path):
+        # Both sides are resolved, so the link cancels out.
+        real = tmp_path / "real"
+        real.mkdir()
+        figure_pair(real)
+        link = tmp_path / "link"
+        link.symlink_to(real, target_is_directory=True)
+        resolved = render_output._resolve_sibling(link, "figures/fig1.tex")
+        assert resolved == link / "figures" / "fig1.tex"
+
 
 class TestSubstituteTikzForAscii:
     def test_a_marker_becomes_an_input(self, tmp_path):

@@ -644,6 +644,36 @@ class TestMaxPrintLineEnv:
         assert calls[0]["env"]["A_MARKER_ONLY_THE_HOST_SETS"] == "yes"
 
 
+class TestProbeTexHardening:
+    """#823: the probe compiles a user's figure file, so it gets the
+    same two settings as the pdf render path."""
+
+    def _run(self, tmp_path, monkeypatch):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append((cmd, kwargs))
+            return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+        monkeypatch.setattr(_probe, "_run", fake_run)
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"
+        )
+        figure_layout.node_boxes(figure)
+        assert len(calls) == 1
+        return calls[0]
+
+    def test_shell_escape_is_off(self, tmp_path, monkeypatch):
+        cmd, _ = self._run(tmp_path, monkeypatch)
+        assert "-no-shell-escape" in cmd
+
+    def test_reads_are_paranoid_even_if_the_host_says_otherwise(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("openin_any", "a")
+        _, kwargs = self._run(tmp_path, monkeypatch)
+        assert kwargs["env"]["openin_any"] == "p"
+
+
 @needs_tikz
 class TestProbeAgainstRealPdflatex:
     """The one assumption everything else rests on, pinned against a real

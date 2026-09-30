@@ -251,7 +251,13 @@ def rasterize_tikz(tex_source, dpi=150):
         doc_path = tmp / "fig.tex"
         doc_path.write_text(_TEX_WRAP % tex_source, encoding="utf-8")
         result = subprocess.run(
-            ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", doc_path.name],
+            [
+                "pdflatex",
+                "-no-shell-escape",
+                "-interaction=nonstopmode",
+                "-halt-on-error",
+                doc_path.name,
+            ],
             cwd=tmp,
             capture_output=True,
             text=True,
