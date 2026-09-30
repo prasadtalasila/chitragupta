@@ -69,7 +69,7 @@ class TestBuild:
         )
 
         assert '> "models drift apart without synchronisation"' in out
-        # Attributed: the IEEE entry references.format_entry builds, and
+        # Attributed: the IEEE entry references_ieee.format_entry builds, and
         # the citekey in a code span so it can never read as a citation.
         assert 'J. Doe, "Paper A," *J. Things*, 2024.' in out
         assert "`doe_a_2024`" in out

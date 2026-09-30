@@ -72,18 +72,26 @@ def built_collection(chromadb_module) -> Any:
     """
     if not config.CHROMA_DIR.is_dir():
         return None
+    collection = existing_collection(chromadb_module.PersistentClient(path=str(config.CHROMA_DIR)))
+    return collection if collection is not None and collection.count() else None
+
+
+def existing_collection(client) -> Any:
+    """The configured model's collection through `client`, or `None` when
+    it does not exist -- asked rather than created, and without the
+    empty-means-absent rule `built_collection` adds on top.
+
+    Shared with `embed_index.search()` (#853), which has a client of its
+    own and must not create the collection it reads either.
+    """
     from chitragupta.enrich import embed_index
 
-    client = chromadb_module.PersistentClient(path=str(config.CHROMA_DIR))
     wanted = embed_index.collection_name()
     # chromadb 0.5 lists collection objects and 1.0 lists bare names;
     # both are handled here rather than pinning a client version this
     # repo does not otherwise care about.
     names = {getattr(existing, "name", existing) for existing in client.list_collections()}
-    if wanted not in names:
-        return None
-    collection = client.get_collection(wanted)
-    return collection if collection.count() else None
+    return client.get_collection(wanted) if wanted in names else None
 
 
 def corpus_key() -> str:

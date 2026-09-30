@@ -5,7 +5,7 @@ import subprocess
 
 from pathlib import Path
 
-from chitragupta import config, ledger, references
+from chitragupta import config, ledger, reference_entries
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir
 from chitragupta.render_output._figures import _figure_refs
 from chitragupta.render_output._math import MathMappingError
@@ -196,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         # reacts to it exactly as it does to a failed `draft gate`.
         print(f"[error] {exc}")
         return 1
-    except references.MissingCitekey as exc:
+    except reference_entries.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a
         # cited key that isn't there stops it (references.build_section's
         # own error names the keys and what to run). The gate above now

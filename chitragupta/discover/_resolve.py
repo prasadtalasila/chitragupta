@@ -25,7 +25,7 @@ import difflib
 from dataclasses import dataclass
 from typing import Any
 
-from chitragupta import config, retrieval
+from chitragupta import config, reranker, retrieval
 from chitragupta.discover import _data
 
 # Cormack et al. (2009)'s constant. Rank-based fusion: each ranking
@@ -104,9 +104,7 @@ def _load_model() -> "Any":
 def _load_reranker() -> "Any":
     """The same cross-encoder loader the embed index reranks with --
     one model, one cache, one config key (`[enrich].rerank_model`)."""
-    from chitragupta.enrich import _rerank  # pylint: disable=import-outside-toplevel
-
-    return _rerank._load_reranker(config.RERANK_MODEL)
+    return reranker.load_reranker(config.RERANK_MODEL)
 
 
 def _rescored(phrase: str, fused: list, vocab: dict) -> list:
@@ -120,10 +118,10 @@ def _rescored(phrase: str, fused: list, vocab: dict) -> list:
     rung already practises, and no second knob to explain.
     """
     try:
-        reranker = _load_reranker()
+        scorer = _load_reranker()
     except ImportError:
         return fused
-    scores = reranker.predict([(phrase, vocab.get(label, label)) for label in fused])
+    scores = scorer.predict([(phrase, vocab.get(label, label)) for label in fused])
     # Stable: equal scores keep the fused order, so an indifferent
     # scorer changes nothing.
     return [label for _score, label in sorted(zip(scores, fused), key=lambda pair: -pair[0])]

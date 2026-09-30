@@ -69,7 +69,7 @@ class TestMainCli:
     def test_an_unrelated_keyerror_is_not_swallowed(self, isolated_config, monkeypatch):
         # m-60: the old bare `except KeyError` around the whole pipeline
         # would have reported a genuine bug here as though it were a
-        # missing citekey. Narrowed to references.MissingCitekey, so a
+        # missing citekey. Narrowed to reference_entries.MissingCitekey, so a
         # plain KeyError from anywhere else in render() must propagate.
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("text\n")
@@ -103,10 +103,10 @@ class TestMainCli:
         # The gate passed, then the numbering step found the key gone: a
         # sync committing between the two reads. Still `[error]`, not a
         # traceback.
-        from chitragupta import references
+        from chitragupta import reference_entries
 
         def _gone(*a, **k):
-            raise references.MissingCitekey("citekey(s) cited ... missing: smith2024")
+            raise reference_entries.MissingCitekey("citekey(s) cited ... missing: smith2024")
 
         monkeypatch.setattr(render_output, "render", _gone)
         draft = content_draft(isolated_config, "draft.md")

@@ -25,7 +25,7 @@ import re
 from typing import Any
 
 from chitragupta import chroma_paging, config, logging_setup
-from chitragupta.enrich import _rerank
+from chitragupta.enrich import _index_reader, _rerank
 from chitragupta.enrich.corpus import CorpusDoc
 from chitragupta.enrich.embed_text import chunk_text, get_text, hash_text, strip_image_refs
 
@@ -302,8 +302,10 @@ def search(query: str, k: "int | None" = None, snippet_chars: int = 500) -> list
     CPU, and buys ordering rather than recall -- see
     `docs/CORPUS-SEARCH.md` before turning it on.
     """
-    client, model = get_client_and_model()
-    collection = client.get_or_create_collection(collection_name())
+    opened = _index_reader.open_for_search()
+    if opened is None:
+        return []
+    collection, model = opened
     k = config.EMBED_TOP_K if k is None else k
     query_embedding = model.encode([query], show_progress_bar=False).tolist()
     raw = collection.query(

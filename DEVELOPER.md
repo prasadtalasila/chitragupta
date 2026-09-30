@@ -282,6 +282,8 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
   draft.py                  the drafting layer's single entry point, `python -m chitragupta.draft
                           gate|dossier|retrieve|references|render`; same rule, same reasons
   dedup.py                  advisory near-duplicate citekey detection (shared DOI/title), called from sync
+  reranker.py               the cross-encoder loader, cached per model id; shared by enrich's search rerank
+                          and discover's ladder, so neither imports the other's privates
   retrieval.py              BM25 search over the corpus layer, backed by a cached term-frequency index.
                           `search` ranks and returns a snippet -- the best-covering passage for the
                           query, and the same one every run; `evidence` reads more of one document
@@ -301,6 +303,8 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           candidates, steering, revision log) as Markdown under content/dossiers/,
                           mirroring the draft's path; plus tar.gz backup/restore. Read-only over the
                           corpus layer, never a gate -- see docs/DRAFT-ITERATION.md
+  reference_entries.py      citekey -> formatted IEEE entry from the ledger, and the refusal of a key it lacks;
+                          shared by references.py, evidence_appendix.py and discover
   references.py             auto-generates a draft's "## References" section from its own cited citekeys,
                           as numbered IEEE entries ordered by first appearance -- the same order (and
                           so the same numbers) pandoc's citeproc assigns when the draft is rendered

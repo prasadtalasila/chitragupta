@@ -55,8 +55,16 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   corpus-layer `chitragupta/reranker.py`, imported by both `discover` and
   `enrich`. `references.entries()` and `MissingCitekey` move down into
   `chitragupta/reference_entries.py`, so `discover` no longer imports the
-  drafting layer. `embed_index.search()` caches the client and model on
-  their config values and uses `get_collection`.
+  drafting layer; callers import it directly, with no re-export.
+  `embed_index.search()` caches its client and model on
+  `(CHROMA_DIR, EMBEDDING_MODEL)`, and it returns `[]` with a logged
+  reason, creating nothing, when the index directory or the collection is
+  absent. That read-side opening lives in `enrich/_index_reader.py`,
+  because adding it to `embed_index.py` put the module at 268 code lines
+  and `search()` at 26 statements, and this epic adds no register entry.
+  The existence check is `overlap_chroma.existing_collection`, factored
+  out of `built_collection` so there is one way to ask.
+  `tests/test_layer_imports.py` pins both boundaries.
 - **#854, seams and shims.** The `references._format_numbers` shim was
   already gone. `extract_citekeys_from_line` scans whatever string it is
   handed, so `_claims`, which passes whole blocks, never had the

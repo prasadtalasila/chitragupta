@@ -7,7 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import ledger, references, references_renumber, references_section
+from chitragupta import (
+    ledger,
+    reference_entries,
+    references,
+    references_ieee,
+    references_renumber,
+    references_section,
+)
 
 from tests.conftest import content_draft, make_reference
 
@@ -147,7 +154,7 @@ class TestSectionEnd:
 
 class TestFormatEntry:
     def test_article_is_quoted_inside_an_italic_journal(self):
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k",
             "A Study",
             "2024",
@@ -158,13 +165,13 @@ class TestFormatEntry:
         assert entry == 'J. Doe, "A Study," *J. Things*, vol. 2, pp. 1–9, 2024.'
 
     def test_work_with_no_container_is_italic_and_unquoted(self):
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "A Whole Book", "2020", {"author": "Doe, Jane", "publisher": "MIT Press"}
         )
         assert entry == "J. Doe, *A Whole Book*, MIT Press, 2020."
 
     def test_proceedings_paper_gets_in_prefix(self):
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "A Paper", "2021", {"author": "Doe, Jane", "booktitle": "Proc. Conf."}
         )
         assert "in *Proc. Conf.*" in entry
@@ -184,19 +191,19 @@ class TestFormatEntry:
         ],
     )
     def test_author_lists(self, author, expected):
-        assert references.format_entry(
+        assert references_ieee.format_entry(
             "k", "T", "2024", {"author": author, "journal": "J"}
         ).startswith(expected + ",")
 
     def test_more_than_six_authors_collapses_to_et_al(self):
         author = " and ".join(f"Last{i}, First{i}" for i in range(7))
-        entry = references.format_entry("k", "T", "2024", {"author": author, "journal": "J"})
+        entry = references_ieee.format_entry("k", "T", "2024", {"author": author, "journal": "J"})
         assert entry.startswith("F. Last0 et al.,")
 
     def test_bibtex_and_others_truncation_renders_as_et_al(self):
         # BibTeX's own truncation marker is a literal trailing "others"
         # name, not a real author -- it must not render as one.
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "T", "2024", {"author": "Doe, Jane and others", "journal": "J"}
         )
         assert entry.startswith("J. Doe et al.,")
@@ -205,50 +212,52 @@ class TestFormatEntry:
         # bibtexparser preserves an author field's original line wrapping
         # in the ledger's bib_fields column, so the separator itself can
         # fall on a line break rather than being a plain " and ".
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "T", "2024", {"author": "Smith, Jane\n  and Doe, John", "journal": "J"}
         )
         assert entry.startswith("J. Smith and J. Doe,")
 
     def test_page_range_with_a_single_hyphen_gets_an_en_dash(self):
-        entry = references.format_entry("k", "T", "2024", {"journal": "J", "pages": "1-10"})
+        entry = references_ieee.format_entry("k", "T", "2024", {"journal": "J", "pages": "1-10"})
         assert "pp. 1–10," in entry
 
     def test_title_ending_in_an_abbreviation_keeps_its_period(self):
-        entry = references.format_entry("k", "A Report on the U.S.", "2024", {})
+        entry = references_ieee.format_entry("k", "A Report on the U.S.", "2024", {})
         assert "*A Report on the U.S.*" in entry
 
     def test_title_ending_in_an_ordinary_period_has_it_stripped(self):
-        entry = references.format_entry("k", "A Study.", "2024", {})
+        entry = references_ieee.format_entry("k", "A Study.", "2024", {})
         assert "*A Study*" in entry
 
     def test_booktitle_wins_over_journal_for_a_dual_field_entry(self):
         # An @inbook entry can carry both; the journal-shaped field is the
         # wrong one for it, so the container title comes from booktitle.
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "A Chapter", "2024", {"journal": "J. Stray", "booktitle": "Proc. Conf."}
         )
         assert "in *Proc. Conf.*" in entry
         assert "J. Stray" not in entry
 
     def test_editor_is_used_when_there_is_no_author(self):
-        entry = references.format_entry(
+        entry = references_ieee.format_entry(
             "k", "A Volume", "2015", {"editor": "Ed, One", "publisher": "Springer"}
         )
         assert entry.startswith("O. Ed, Eds.,")
 
     def test_single_page_uses_p_not_pp(self):
-        assert "p. 7," in references.format_entry("k", "T", "2024", {"journal": "J", "pages": "7"})
+        assert "p. 7," in references_ieee.format_entry(
+            "k", "T", "2024", {"journal": "J", "pages": "7"}
+        )
 
     def test_markdown_emphasis_in_a_value_is_escaped(self):
         # An unescaped underscore or asterisk would italicize part of the
         # reference list, making the rendered entry differ from the bib.
-        entry = references.format_entry("k", "The C_str_ and A*B Problem", "2024", {})
+        entry = references_ieee.format_entry("k", "The C_str_ and A*B Problem", "2024", {})
         assert r"C\_str\_" in entry
         assert r"A\*B" in entry
 
     def test_entry_with_nothing_but_a_citekey_still_renders(self):
-        assert references.format_entry("k", "", "", {}) == "k."
+        assert references_ieee.format_entry("k", "", "", {}) == "k."
 
 
 class TestFormatNumbers:
@@ -604,7 +613,7 @@ class TestBuildSection:
         # m-60: a caller that wants to catch *this* refusal specifically
         # (render_output._cli.main, so a genuine bug elsewhere doesn't get
         # misreported as it) needs a type narrower than bare KeyError.
-        with pytest.raises(references.MissingCitekey):
+        with pytest.raises(reference_entries.MissingCitekey):
             references.build_section(["fabricated2024"], ledger_con)
 
 
