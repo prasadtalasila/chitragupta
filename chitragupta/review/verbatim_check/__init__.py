@@ -74,6 +74,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.review import _emit
 from chitragupta.review.verbatim_check._allowlist import (
     _load_allowlist_phrases,
     _mask_allowlisted,
@@ -286,7 +287,7 @@ def run(args: argparse.Namespace) -> int:
                 args.gap,
                 args.limit,
                 write=args.write,
-                formats=[f.strip() for f in args.formats.split(",") if f.strip()],
+                formats=_emit.formats(args),
                 as_json=args.json,
             )
     except ValueError as exc:

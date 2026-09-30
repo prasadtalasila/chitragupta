@@ -35,13 +35,13 @@ Usage:
 """
 
 import argparse
-import json
 import shlex
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import citation_gate, config, ledger, review
+from chitragupta.review import _emit
 from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _blocks, _citation_provenance_render, _claim_sentence
 
@@ -265,17 +265,12 @@ def run(args: argparse.Namespace) -> int:
         print(exc, file=sys.stderr)
         return 1
 
-    formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     report = build_report(draft_path)
-    written = write_report(draft_path, formats, report)
+    written = write_report(draft_path, _emit.formats(args), report)
     payload = _citation_provenance_render.provenance_payload(
         report, _command(draft_path, args.json)
     )
     written["json"] = review.write_json(draft_path, "provenance", payload)
 
-    if args.json:
-        print(json.dumps(payload, indent=2))
-        review.print_written(written, stream=sys.stderr)
-    else:
-        review.print_written(written)
+    _emit.announce(payload, written, as_json=args.json)
     return 0

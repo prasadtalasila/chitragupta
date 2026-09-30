@@ -43,6 +43,15 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   `importlib.reload(config)` does not re-run a module it only imports.
 - **#849, review output.** Covers every aid that repeats the
   formats/write/print sequence, which by now is ten, not eight.
+  `review/_emit.py` has three pieces: `formats(args)`, which all ten use;
+  `emit()`, the full print-or-write sequence, which the seven print-only
+  aids use; and `announce()`, the tail of the two aids that always file
+  their report (provenance, agenda). `emit` takes its pieces as callables,
+  so the text, command line, payload and Markdown are built only for the
+  flag combination that needs them, as each aid did inline. The registered
+  `verbatim_check/__init__.py` grows by one line, the `_emit` import,
+  because its `cmd_scan` call cannot get shorter; `figure_layout/__init__.py`
+  shrinks by four in the same PR.
 - **#850, aid registries.** One registry in code. The SVGs are re-rendered
   with mermaid-cli 11 and fingerprinted by a single manifest,
   `docs/diagrams/svg/sources.json`, which maps each diagram to its `.mmd`'s

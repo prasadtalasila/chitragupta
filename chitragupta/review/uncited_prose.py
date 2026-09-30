@@ -55,13 +55,13 @@ Usage:
 
 import argparse
 import hashlib
-import json
 import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.review import _emit
 from chitragupta.review import _claims, _uncited_render, _units
 
 
@@ -226,21 +226,12 @@ def run(args: argparse.Namespace) -> int:
     report = build_report(draft_path, *resolve(draft_path, args.genre))
     found = findings(report)
 
-    if not (args.json or args.write):
-        print(_uncited_render.format_report(report, found))
-        return 0
-
-    command = _command(draft_path, args.genre, args.json, args.write)
-    payload = uncited_payload(report, command)
-    print(
-        json.dumps(payload, indent=2) if args.json else _uncited_render.format_report(report, found)
+    return _emit.emit(
+        draft_path,
+        "uncited",
+        args,
+        text=lambda: _uncited_render.format_report(report, found),
+        command=lambda: _command(draft_path, args.genre, args.json, args.write),
+        payload=lambda command: uncited_payload(report, command),
+        markdown=lambda command: _uncited_render.render_markdown(report, command, found),
     )
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        written = review.write(
-            draft_path, "uncited", _uncited_render.render_markdown(report, command, found), formats
-        )
-        written["json"] = review.write_json(draft_path, "uncited", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0

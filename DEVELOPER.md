@@ -335,6 +335,7 @@ chitragupta/review/                the review layer -- one command, `python -m c
                           routing, illegible type, ...), not a gate -- see docs/TIKZ-STYLE.md
   _blocks.py                what a *block* is -- a table row, a list item, a heading -- in both
                           markups. Shared by provenance and uncited_prose; neither owns it
+  _emit.py                  how an aid prints and files its report under --json/--write, shared by every aid
   _claims.py                which sentences of a draft carry a claim, and which are scaffolding.
                           Split from uncited_prose so the roadmap's C2 can share it
   _units.py                 what a "unit" is per genre, and how each genre treats uncited prose --
