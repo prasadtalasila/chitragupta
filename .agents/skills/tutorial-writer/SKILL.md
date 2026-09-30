@@ -579,8 +579,8 @@ the lesson design is the part worth keeping either way.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside "Where to go next" only. Preserve the
-       citekey; reword the claim to match what `claim:` says, or drop a
+    2. Edit with an `apply_patch` hunk, inside "Where to go next" only. Preserve
+       the citekey; reword the claim to match what `claim:` says, or drop a
        sentence that overstates it. Never add a claim `evidence.md`
        does not already record, and never touch a `quote:` span -- a
        quotation is captured when the evidence is judged, never

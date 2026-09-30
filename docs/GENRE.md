@@ -392,6 +392,13 @@ blocks.
 These are not per-skill choices. They are the same rules restated in
 nine `SKILL.md` files, and a skill that broke one would be the bug.
 
+Each of those files exists once per harness -- `.claude/skills/`,
+`.agents/skills/` and `.opencode/skills/*-opencode/` -- differing only in
+the tool phrases `tests/fixtures/skill_harness_phrases.toml` lists.
+**Change every copy**, and add a phrase-map entry for any wording meant
+to differ; `tests/test_skill_harness_copies.py` fails on anything else
+and names the copy that moved ([HARNESS.md](HARNESS.md)).
+
 One of the nine is not a drafting skill: `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing* --
 the dossier, the acronym vocabulary -- it says how that skill differs and

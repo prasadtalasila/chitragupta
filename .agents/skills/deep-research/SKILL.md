@@ -185,7 +185,7 @@ around it, do not sync, do not cite. Tell the user to run
 
 Tell the user up front that this is a heavy, multi-phase run before
 starting -- it dispatches several subagents and does many retrieval calls.
-Create a TodoWrite list with the 7 phases below and work through them in
+Keep a checklist of the 7 phases below in your replies and work through them in
 order.
 
 ## Prose standards
@@ -333,10 +333,10 @@ dispatching.
 ## Phase 2 -- Multi-perspective grounded interviews (parallel)
 
 Dispatch one `deep-research-interviewer` subagent per persona, **all in
-parallel** (multiple Agent calls in a single message). If that subagent
-type isn't available, use `general-purpose` and give it the protocol from
+parallel** if your session offers subagent tools; otherwise run each
+interview yourself, one after another, following the protocol from
 `reference.md` §3 plus the packet schema from
-`.claude/agents/deep-research-interviewer.md` (or tell it to `Read` that
+`.claude/agents/deep-research-interviewer.md` (or read that
 file).
 
 Give each subagent: `TOPIC`, its `PERSPECTIVE` (name + focus), `ROUNDS` (per
@@ -448,7 +448,7 @@ dossier" above and `docs/TOKENS.md`. If a writer needs something the
 rows don't carry (a term, a constraint from the user's steering), give it
 that, not the evidence it can read for itself.
 
-If `deep-research-writer` is unavailable, use `general-purpose` with
+If you cannot spawn `deep-research-writer`, write each section yourself with
 `.claude/agents/deep-research-writer.md`'s instructions -- the command
 line goes in the prompt either way. For `quick`, write inline: you are
 the writer, the packets are already in your context, and running `brief`
@@ -518,8 +518,8 @@ plus an adversarial reviewer):
   `devils-advocate` -- each given the full draft, the `DRAFT PATH`
   (`content/drafts/deep-research-<slug>.md`, for `--log` -- see
   `.claude/agents/peer-reviewer.md`), and nothing else (no reviewer sees
-  another's critique). If that subagent type isn't available, use
-  `general-purpose` with `.claude/agents/peer-reviewer.md`'s instructions
+  another's critique). If you cannot spawn subagents, review
+  in turn yourself, with `.claude/agents/peer-reviewer.md`'s instructions
   for the assigned role.
 - **Reconcile under the concession threshold** (this project's own rule,
   not upstream's): any `high`-severity concern from *any* reviewer, or any
@@ -614,7 +614,7 @@ retry and no second critique pass** once the three are done or the list
 runs out first. For each:
 
 1. Keep the pre-edit text of the section you are about to touch.
-2. Edit with `Edit`, inside that section only. Preserve the citekey;
+2. Edit with an `apply_patch` hunk, inside that section only. Preserve the citekey;
    reword the claim to match what `claim:` says, or drop a sentence
    that overstates it. Never add a claim `evidence.md` does not already
    record, and never touch a `quote:` span -- a quotation is captured
@@ -837,8 +837,8 @@ its working state get backed up.
 - **Grounded by default, closed-corpus.** Every claim traces to a real
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
-- **Parallelize, with a cap.** Dispatch same-phase subagents in one message;
-  bound concurrency per `reference.md` §1.
+- **Parallelize, with a cap.** Dispatch same-phase subagents together where your
+  session can; bound concurrency per `reference.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
   `survey-writer` -- point users there if they want something faster.
 

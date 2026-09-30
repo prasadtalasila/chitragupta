@@ -2304,6 +2304,16 @@ Recorded while building Tasks 1-9, 2026-09-29.
 - **Two bugs found by Task 0, and fixed.** The relative Codex launcher
   failed from any subfolder (M5), and a Codex project got no skills
   (M7). Both are fixed and pinned by tests.
+- **Skills: one copy per harness, not one neutral wording** (maintainer
+  decision, 2026-09-30). Task 8's neutral wording gave up Claude Code's
+  exact tool names and gave Codex and OpenCode nothing specific. Each
+  harness now has its own copy -- `.claude/skills/`, `.agents/skills/`,
+  `.opencode/skills/*-opencode/` with a deny list in
+  `.opencode/opencode.json` -- kept aligned by
+  `tests/test_skill_harness_copies.py` against the phrase map in
+  `tests/fixtures/skill_harness_phrases.toml`. `tags:` is back: all three
+  harnesses load it. docs/HARNESS.md, "Skills: one copy per harness", has
+  the layout and the measurements behind it.
 - **`docs/LOCAL-MODELS.md` was not written.** It is a record of runs,
   and no run has been made; it arrives with the first one.
 

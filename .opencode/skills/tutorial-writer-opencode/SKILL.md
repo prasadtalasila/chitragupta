@@ -1,10 +1,10 @@
 ---
-name: tutorial-writer
-description: Drafts a Diataxis-style tutorial -- a hands-on lesson a learner follows at a keyboard, start to finish, to a working result they can see -- verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer`, and if they only need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citation must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
+name: tutorial-writer-opencode
+description: Drafts a Diataxis-style tutorial -- a hands-on lesson a learner follows at a keyboard, start to finish, to a working result they can see -- verified to actually run before it is presented. Not a textbook chapter and not a how-to guide; if the reader is studying rather than doing, use `textbook-chapter-writer-opencode`, and if they only need the steps, say so rather than writing a tutorial. May cite the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) only in a closing "Where to go next" section, never mid-lesson. Triggers when the user asks for a tutorial, a hands-on lesson, a getting-started walkthrough, a lab exercise, or a "teach someone X by having them build Y" document. To change a tutorial that already exists in content/drafts/, use draft-reviser-opencode instead -- never re-run this skill to make a change. Any citation must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [tutorial, diataxis, hands-on, lesson, teaching]
 ---
 
-# tutorial-writer
+# tutorial-writer-opencode
 
 Genre-specific drafting agent for tutorial output, in the Diataxis sense: a
 **lesson**, in which a learner does something under your guidance and comes
@@ -26,14 +26,14 @@ rule below follows from that.
 
 | Genre | Reader's state | Skill |
 | --- | --- | --- |
-| **Tutorial** (this one) | Doesn't know what they don't know; needs a guided first success | `tutorial-writer` |
-| **Textbook chapter** | Studying the topic; reading, not typing | `textbook-chapter-writer` |
+| **Tutorial** (this one) | Doesn't know what they don't know; needs a guided first success | `tutorial-writer-opencode` |
+| **Textbook chapter** | Studying the topic; reading, not typing | `textbook-chapter-writer-opencode` |
 | **How-to guide** | Already competent; has a specific goal in mind | Not a skill here -- say so, and write it as a short procedure |
 | **Reference** | Needs a fact, fast | Not a skill here |
-| **Survey / thesis chapter** | Academic reader | `survey-writer` / `thesis-chapter-writer` |
+| **Survey / thesis chapter** | Academic reader | `survey-writer-opencode` / `thesis-chapter-writer-opencode` |
 
 Changing a tutorial that **already exists** in `content/drafts/` is not a
-genre question at all: use `draft-reviser`, never another run of this
+genre question at all: use `draft-reviser-opencode`, never another run of this
 skill. Re-running it rewrites a lesson that already works, and throws
 away the dossier that recorded why each step is the way it is.
 
@@ -147,7 +147,7 @@ Scoping is a **narrowing**, and a narrowing cannot surface a paper the
 shelf does not hold. If retrieval inside the shelf comes back thin for a
 sub-theme, say so -- in the draft and in `rejected.md` -- rather than
 quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser`, which is the one skill allowed to widen.
+with `corpus-reviser-opencode`, which is the one skill allowed to widen.
 
 ## The dossier: write down what produced the draft
 
@@ -512,7 +512,7 @@ the lesson design is the part worth keeping either way.
     carries every key in the file, and often there are none at all. A row
     with an empty cell is the honest result, and it comes out that way
     without a judgement call. The outline is the real payload here. It is
-    what lets `draft-reviser` repair one step of the lesson, at its recorded
+    what lets `draft-reviser-opencode` repair one step of the lesson, at its recorded
     line range, without reading the whole thing.
 
 12. **Critique against the evidence packet, before gating.** Skip this
@@ -558,7 +558,7 @@ the lesson design is the part worth keeping either way.
     python -m chitragupta.draft style content/drafts/<slug>.md --json
     ```
 
-    The first two are `agenda-reviser`'s own baseline discipline
+    The first two are `agenda-reviser-opencode`'s own baseline discipline
     (uncapped, never `--limit`): they file
     `content/review/<topic>/<stem>.verbatim.json`, the file every edit
     below is rechecked against. The third's finding count -- not the
@@ -579,7 +579,7 @@ the lesson design is the part worth keeping either way.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside "Where to go next" only. Preserve the
+    2. Edit with `edit`, inside "Where to go next" only. Preserve the
        citekey; reword the claim to match what `claim:` says, or drop a
        sentence that overstates it. Never add a claim `evidence.md`
        does not already record, and never touch a `quote:` span -- a
@@ -648,7 +648,7 @@ the lesson design is the part worth keeping either way.
     them. Skip entirely if there are no citations.
 
     Keep the default `## References` heading -- the same contract as
-    `textbook-chapter-writer` (#699). `render_output` recognises the
+    `textbook-chapter-writer-opencode` (#699). `render_output` recognises the
     section only by a heading whose text is `References`, bare or
     number-prefixed, and swaps its entries for citeproc's own
     bibliography; any other heading (an earlier draft of this skill said
@@ -692,7 +692,7 @@ the lesson design is the part worth keeping either way.
     built from no quotes is no sidecar.
 
     If you find yourself wanting one, that is a signal you have written a
-    textbook chapter -- see `textbook-chapter-writer`, whose reader is
+    textbook chapter -- see `textbook-chapter-writer-opencode`, whose reader is
     studying rather than doing.
 
 16. **Record any steering.** If the user shaped this lesson in chat -- "use
@@ -722,7 +722,7 @@ the lesson design is the part worth keeping either way.
     **Report every finding and fix none of them.** A finding is a place to
     look, not a defect: the first pass of this check over this
     repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser`'s
+    the user wants any of them acted on, that is `draft-reviser-opencode`'s
     copy-edit mode, which reads the recorded dialect and logs one
     `revisions.md` entry -- never an edit made here. Report the header
     lines too: `dialect: not checked` means nobody ever recorded one, so a
@@ -760,7 +760,7 @@ the lesson design is the part worth keeping either way.
     that on once. It sees verbatim and near-verbatim reuse only, and
     **genuine restatement is only detected where the embedding tier can
     run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser`'s job,
+    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser-opencode`'s job,
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
@@ -776,8 +776,8 @@ the lesson design is the part worth keeping either way.
     Then **present**, reporting: the draft path, the render outcome (or warning),
     and -- explicitly -- whether step 8 verification passed in full, in part,
     or not at all. Then say where the dossier is, that changes to this
-    tutorial should go through `draft-reviser` rather than another run of
-    this skill, and that `content/drafts/` and `content/dossiers/` are
+    tutorial should go through `draft-reviser-opencode` rather than another run
+    of this skill, and that `content/drafts/` and `content/dossiers/` are
     gitignored -- so `python -m chitragupta.draft dossier export <slug>` is how
     a lesson
     and its working state get backed up.

@@ -1,10 +1,10 @@
 ---
-name: thesis-chapter-writer
-description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m chitragupta.corpus sync` has been run.
+name: thesis-chapter-writer-opencode
+description: Drafts a thesis/dissertation chapter in LaTeX, with narrative framing tied to a specific research question, grounded in citekeys pulled from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) -- never a fabricated one. Triggers when the user asks to write or draft a thesis chapter, dissertation section, or an RQ-driven narrative chapter. To change one that already exists in content/drafts/, use draft-reviser-opencode instead -- never re-run this skill to make a change. Outputs a standalone .tex fragment (\citep/\citet, no document preamble) intended to be \input by the user's own thesis document, plus a rendered .md/.pdf preview when pandoc/pdflatex are available. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses if the ledger is empty until `python -m chitragupta.corpus sync` has been run.
 tags: [thesis, dissertation, latex, citation]
 ---
 
-# thesis-chapter-writer
+# thesis-chapter-writer-opencode
 
 Genre-specific drafting agent for thesis-chapter output. The drafting
 layer (generative, on-demand, user-reviewed) -- distinct from
@@ -80,7 +80,7 @@ Scoping is a **narrowing**, and a narrowing cannot surface a paper the
 shelf does not hold. If retrieval inside the shelf comes back thin for a
 sub-theme, say so -- in the draft and in `rejected.md` -- rather than
 quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser`, which is the one skill allowed to widen.
+with `corpus-reviser-opencode`, which is the one skill allowed to widen.
 
 ## The dossier: write down what produced the draft
 
@@ -129,10 +129,10 @@ around it, do not sync, do not cite. Tell the user to run
 | Situation | Action |
 | --- | --- |
 | User asks for a thesis chapter / dissertation section tied to an RQ | Invoke this skill |
-| User asks for a survey paper / lit review, not chapter-specific | Use `survey-writer` instead |
-| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer` instead |
-| User asks for a hands-on tutorial | Use `tutorial-writer` instead |
-| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
+| User asks for a survey paper / lit review, not chapter-specific | Use `survey-writer-opencode` instead |
+| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer-opencode` instead |
+| User asks for a hands-on tutorial | Use `tutorial-writer-opencode` instead |
+| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser-opencode` instead -- never re-run this skill to make a change |
 | Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 ## Prose standards
@@ -498,7 +498,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     python -m chitragupta.draft style content/drafts/<slug>.tex --json
     ```
 
-    The first two are `agenda-reviser`'s own baseline discipline
+    The first two are `agenda-reviser-opencode`'s own baseline discipline
     (uncapped, never `--limit`): they file
     `content/review/<topic>/<stem>.verbatim.json`, the file every edit
     below is rechecked against. The third's finding count -- not the
@@ -519,7 +519,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit with `edit`, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is
@@ -673,7 +673,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     **Report every finding and fix none of them.** A finding is a place to
     look, not a defect: the first pass of this check over this
     repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser`'s
+    the user wants any of them acted on, that is `draft-reviser-opencode`'s
     copy-edit mode, which reads the recorded dialect and logs one
     `revisions.md` entry -- never an edit made here. Report the header
     lines too: `dialect: not checked` means nobody ever recorded one, so a
@@ -709,7 +709,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     that on once. It sees verbatim and near-verbatim reuse only, and
     **genuine restatement is only detected where the embedding tier can
     run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser`'s job,
+    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser-opencode`'s job,
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
@@ -724,10 +724,10 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     Then present the `.tex` fragment (the deliverable to `\input`) plus, if
     rendering succeeded, the `.md`/`.pdf` preview paths -- or the warning if
     it didn't. Tell the user where the dossier is, that changes to this
-    chapter should go through `draft-reviser` rather than another run of this
-    skill, and that `content/drafts/` and `content/dossiers/` are gitignored
-    -- so `python -m chitragupta.draft dossier export <slug>` is how a draft and
-    its
+    chapter should go through `draft-reviser-opencode` rather than another run
+    of this skill, and that `content/drafts/` and `content/dossiers/` are
+    gitignored -- so `python -m chitragupta.draft dossier export <slug>` is how
+    a draft and its
     working state get backed up.
 
 ## Sources

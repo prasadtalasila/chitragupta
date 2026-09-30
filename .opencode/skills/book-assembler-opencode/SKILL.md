@@ -1,10 +1,10 @@
 ---
-name: book-assembler
+name: book-assembler-opencode
 description: Assembles accepted, gate-passed units into one LaTeX book -- front matter, parts, chapters, back matter -- from the outline `python -m chitragupta.draft spec` holds and the acceptance records `python -m chitragupta.draft unit` wrote. Triggers when the user asks to assemble, build, compose or "put together" a book from units already drafted, or asks for the whole book as one LaTeX document. Writes no prose of its own and drafts no unit: a missing or unaccepted unit is the relevant genre skill's job, and this skill stops and says which. Runs `python -m chitragupta.draft registry check` and reports every finding before composing, runs `python -m chitragupta.draft gate` on what it composed, and stops at the second of the book track's two human sign-offs rather than declaring a book finished. Never fabricates a citekey and never edits a unit's prose.
 tags: [book, latex, assembly, composition]
 ---
 
-# book-assembler
+# book-assembler-opencode
 
 The last step of the book-scale track (`docs/WRITE-A-BOOK.md`), and deliberately
 the smallest. Everything this skill assembles has already passed every
@@ -18,9 +18,9 @@ that one is why the procedure is shaped this way.
 
 | Situation | Action |
 | --- | --- |
-| A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer`'s job (or another genre's), not this skill's |
+| A unit named in the outline has no prose | Stop. Say which. Drafting it is `thesis-chapter-writer-opencode`'s job (or another genre's), not this skill's |
 | A unit exists but nobody accepted it | Stop. `python -m chitragupta.draft unit accept` is a human's call, made per unit |
-| The user wants a unit's wording changed | `draft-reviser`. Never edit a unit while assembling it |
+| The user wants a unit's wording changed | `draft-reviser-opencode`. Never edit a unit while assembling it |
 | The outline itself is wrong | `python -m chitragupta.draft spec` and a fresh sign-off. Never rewrite an outline here |
 | The user wants one chapter, not a book | The relevant genre skill. This skill composes what exists; it does not write |
 
@@ -209,7 +209,7 @@ line and the `\usepackage{tikz}` above it.
 A unit's figure file still carries its own plain `\usetikzlibrary` line,
 and that is correct: with the book's preamble load already done it is a
 no-op that appends nothing, and it is what lets the same figure compile
-in `thesis-chapter-writer`'s fragment and in `review figure`'s probe.
+in `thesis-chapter-writer-opencode`'s fragment and in `review figure`'s probe.
 What a figure file must **never** contain is a hand-rolled load -- no
 clearing of `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
@@ -319,7 +319,7 @@ It is the reading copy for anyone who is not building LaTeX.
    the IEEE style, and the citekey aliasing that stops a key containing
    `--` being truncated -- which is why this is one command and not a
    pandoc invocation restated here. A unit already drafted as `.tex` by
-   `thesis-chapter-writer` needs no conversion.
+   `thesis-chapter-writer-opencode` needs no conversion.
 
    Then add the outline's ids as labels: pandoc emits its own `\label{}`
    from the heading text, and `\label{<unit-id>}` (plus the chapter's
@@ -355,7 +355,7 @@ It is the reading copy for anyone who is not building LaTeX.
 
    A `FAIL` here is a failing test, not a warning. Never "fix" one by
    inventing or altering a citekey -- correct the reference or take the
-   claim out, in the unit it came from, via `draft-reviser`.
+   claim out, in the unit it came from, via `draft-reviser-opencode`.
 
 7. **Run the prose check over the units, not the skeleton.** `book.tex`
    is structure and holds no prose, so scanning it would report nothing
@@ -371,7 +371,7 @@ It is the reading copy for anyone who is not building LaTeX.
    §8's dialect against `scope.md`'s `language:` line. It says nothing
    about whether a paragraph leads with its point. **Report every
    finding and fix none of them.** A finding is a place to look, not a
-   defect, and acting on one is `draft-reviser`'s copy-edit mode, in the
+   defect, and acting on one is `draft-reviser-opencode`'s copy-edit mode, in the
    unit that owns the prose. A review aid, not a gate: it exits 0
    whatever it finds.
 
@@ -403,7 +403,7 @@ It is the reading copy for anyone who is not building LaTeX.
    near-verbatim reuse only, and **genuine restatement is only detected
    where the embedding tier can run**, so a clean scan is not a clean
    bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-   `agenda-reviser`'s job, one finding at a time, in the unit that owns
+   `agenda-reviser-opencode`'s job, one finding at a time, in the unit that owns
    the wording, and only if the user asks.
 
    Report the per-unit results as one table rather than a wall: the book
@@ -473,7 +473,7 @@ It is the reading copy for anyone who is not building LaTeX.
    each wrote `<!-- table: comparison -->` become two `\label{}`s in one
    document, and every `\ref` to that id silently resolves to whichever
    LaTeX saw last. Check for it before composing, and send a collision
-   back to `draft-reviser` rather than renaming a label here:
+   back to `draft-reviser-opencode` rather than renaming a label here:
 
    ```bash
    grep -ho '<!-- table: [^ ]* -->' content/drafts/<book>/*.md | sort | uniq -d
@@ -526,7 +526,7 @@ It is the reading copy for anyone who is not building LaTeX.
    Before you start", and worse further in ("10.1510.14"). Which
    numbering a book shows is a composition decision and belongs to the
    book; renumbering the author's headings does not, and is
-   `draft-reviser`'s call rather than this skill's.
+   `draft-reviser-opencode`'s call rather than this skill's.
 
    **A self-numbered *chapter title* is a different clash, and this is
    the wrong lever for it** (#804). A unit headed `# Chapter 1: Why

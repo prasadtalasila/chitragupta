@@ -9,7 +9,7 @@ module's job and not that layer's, can report `missing-binary`. "Probe
 for a toolchain; never assume one, in either direction"
 (DEVELOPER-AGENTS.md).
 
-Five checks, none of them fatal to run without:
+Six checks, none of them fatal to run without:
 
 1. **OS binaries pip cannot supply** -- pandoc, pdflatex, pdftotext, vale.
    `python -m chitragupta.draft render`/`style` already probe these
@@ -36,10 +36,14 @@ Five checks, none of them fatal to run without:
    `chitragupta/launcher_configs.py`, plus an OpenCode project with no
    plugin. The same faults the session preflight and `draft gate`
    report, asked for by name.
+6. **Does OpenCode see only its own skill copies?** (#900) An OpenCode
+   project's `.opencode/opencode.json` must deny the unsuffixed skill
+   names, or OpenCode picks among the three harnesses' copies.
 """
 
 import argparse
 import importlib.metadata
+import json
 import importlib.util
 import shutil
 import sys
@@ -153,6 +157,9 @@ def _check_competing_distribution() -> str:
 
 
 OPENCODE_PLUGIN = Path(".opencode") / "plugins" / "chitragupta-gate.js"
+OPENCODE_SKILLS = Path(".opencode") / "skills"
+OPENCODE_CONFIG = Path(".opencode") / "opencode.json"
+OPENCODE_SUFFIX = "-opencode"
 
 
 def _check_launchers(root: Path) -> list[str]:
@@ -164,6 +171,33 @@ def _check_launchers(root: Path) -> list[str]:
             "OpenCode runs no citation gate -- chitragupta init --agent opencode"
         )
     return found or ["[ok] every hook launcher found can start"]
+
+
+def _check_opencode_skills(root: Path) -> list[str]:
+    """Does OpenCode see only its own skill copies?
+
+    OpenCode also reads `.claude/skills/` and `.agents/skills/`, and keys
+    skills by name, so without `.opencode/opencode.json` denying the
+    unsuffixed names it would load the other harnesses' wording
+    (docs/HARNESS.md). Silent on a project with no OpenCode skills.
+    """
+    skills = root / OPENCODE_SKILLS
+    if not skills.is_dir():
+        return []
+    names = sorted(p.name.removesuffix(OPENCODE_SUFFIX) for p in skills.iterdir() if p.is_dir())
+    try:
+        config = json.loads((root / OPENCODE_CONFIG).read_text(encoding="utf-8"))
+        rules = config["permission"]["skill"]
+    except (OSError, ValueError, KeyError, TypeError):
+        rules = {}
+    allowed = [name for name in names if not isinstance(rules, dict) or rules.get(name) != "deny"]
+    if not allowed:
+        return ["[ok] OpenCode sees only its own skill copies"]
+    return [
+        f"[skills] {OPENCODE_CONFIG.as_posix()} does not deny {', '.join(allowed)}, so OpenCode "
+        "may load the Claude Code or Codex wording of those skills -- restore the deny list "
+        "chitragupta init --agent opencode writes"
+    ]
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -178,6 +212,7 @@ def main(argv=None) -> int:
         _check_gpu_torch(),
         _check_competing_distribution(),
         *_check_launchers(Path.cwd()),
+        *_check_opencode_skills(Path.cwd()),
     ]
     print("\n".join(lines))
     return 0

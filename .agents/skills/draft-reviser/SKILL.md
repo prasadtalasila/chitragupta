@@ -260,7 +260,7 @@ python -m chitragupta.draft dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
-ranges (`Read` with `offset=<start>`, `limit=<lines>`). Do not read the
+ranges (`sed -n '<start>,+<lines>p' <draft>` through your shell). Do not read the
 whole draft to change one section. Consult `sections.md` when you need to
 know which section owns a citation without reading anything.
 
@@ -331,7 +331,7 @@ whether or not anyone asked. See "Re-grounding after the corpus moves".
 
 ### 5. Edit in place, inside the section
 
-Use `Edit` on the specific passage. Do not `Write` the whole file: a
+Patch the specific passage with `apply_patch`. Do not rewrite the whole file: a
 whole-file rewrite of a survey-length draft costs thousands of output
 tokens, re-runs the citation-gate hook over everything, and produces a
 diff the user cannot review.
@@ -520,12 +520,12 @@ before converting, and write the answer to that line as part of the pass.
 A conversion applied against an unrecorded target is one the next session
 cannot repeat or check.
 
-**Still `Edit`, never `Write`, and now for a second reason.** Every
+**Still `apply_patch` hunks, never a rewrite, and now for a second reason.** Every
 objection in step 5 holds. The new one is that the PostToolUse citation
 gate runs per write, so editing section by section gives you a mechanical
 check that the rewrite has not mangled a citekey or a `\citep{}` -- the
 safety net that makes an aggressive whole-document rewrite safe to attempt
-at all. One `Write` of the whole file trades that away exactly where the
+at all. One rewrite of the whole file trades that away exactly where the
 risk is highest.
 
 **One `revisions.md` entry for the whole pass**, not one per section, and
@@ -590,7 +590,7 @@ diff, and no mechanical check here reads it. Two edits, not one:
    itself practises about what it can and cannot see.
 
 Same guardrails as copy-edit mode: no claim changed, no citation added or
-dropped, no argument reordered. `Edit`, never `Write`, for the same
+dropped, no argument reordered. `apply_patch` hunks, never a rewrite, for the same
 PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
 naming the term(s) and every file touched:
 

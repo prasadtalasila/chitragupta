@@ -92,7 +92,7 @@ before the worklist is rendered.
 
 **The agenda's own `detail` field is thin by design and is not the repair
 payload.** A `verbatim-run` item's `detail` carries `verbatim_id`, not
-the `draft_text` an `Edit`'s `old_string` needs. **Look the id up in the
+the `draft_text` an `apply_patch` hunk must match. **Look the id up in the
 raising aid's own filed JSON** instead:
 
 | Class | `detail` key | Look it up in |
@@ -109,11 +109,11 @@ decision, asked rather than taken.
 
 ## The loop
 
-Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop` for the
+Follow `.agents/skills/draft-reviser/SKILL.md`'s `## The loop` for the
 parts this skill does not restate -- reading `scope.md` and `steering.md`
-first, mapping a change onto sections, editing with `Edit` rather than
-`Write`, and writing the dossier back. Read that file; do not reconstruct
-it from memory.
+first, mapping a change onto sections, editing with `apply_patch` hunks
+rather than rewriting the file, and writing the dossier back. Read that file; do
+not reconstruct it from memory.
 
 ### 1. Snapshot, and mark the revision
 
@@ -212,11 +212,11 @@ rejected.
 **Repair a `missing-citekey` item.** The only unattended repair available
 is a deletion: this skill may not run `corpus sync` (the user's write
 lock) and may not fabricate a citekey. Remove the `[@citekey]` marker with
-`Edit`, leaving the sentence standing -- never delete the sentence itself.
-**Also drop the citekey from `evidence.md`** (and from `sections.md`'s row
-for the section, on the next `dossier sections --citekeys --write`) --
-`missing-citekey` is detected off the dossier's own record of what it
-cites, not off the draft's live markers, so a repair that only edits the
+an `apply_patch` hunk, leaving the sentence standing -- never delete the
+sentence itself. **Also drop the citekey from `evidence.md`** (and from
+`sections.md`'s row for the section, on the next `dossier sections --citekeys
+--write`) -- `missing-citekey` is detected off the dossier's own record of what
+it cites, not off the draft's live markers, so a repair that only edits the
 draft leaves the item unresolved on the next agenda. This is the "writing
 the dossier back" half of `draft-reviser`'s loop, referenced above, made
 explicit here because it is easy to miss for this one class. The now-
@@ -239,7 +239,7 @@ an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or
 `<!-- figureref: -->` marker a `TableNoCaption`/`TableUnreferenced`/
 `FigureNoCaption`/`FigureUnreferenced` finding names, correct a glossary
 term drifted from `scope.md`'s vocabulary, fix a dialect slip against
-`scope.md`'s `language:` line. `Edit` the exact span `detail.message` or
+`scope.md`'s `language:` line. Patch the exact span `detail.message` or
 the item's `summary` names.
 
 **`ChapterSelfNumbered`** (a `.tex` draft only) is the one rule whose
@@ -268,11 +268,11 @@ job, not a reason to loosen it.
 **Repair a `verbatim-run` item at severity `short`.** Look up
 `detail.verbatim_id` in `content/review/<topic>/<stem>.verbatim.json`'s
 `findings` for `draft_text`, the exact passage including casing,
-punctuation and any mid-run citation marker -- use it as `Edit`'s
-`old_string`. If it does not match, the draft almost certainly has CRLF
-line endings and the run spans a line break: the payload carries the
-`\n` the file was read with, not the `\r\n` on disk. Re-read the line and
-edit it by hand rather than widening the search.
+punctuation and any mid-run citation marker -- use it as the
+`-` lines of an `apply_patch` hunk. If it does not match, the draft almost
+certainly has CRLF line endings and the run spans a line break: the payload
+carries the `\n` the file was read with, not the `\r\n` on disk. Re-read the
+line and edit it by hand rather than widening the search.
 
 **Paraphrase** -- the default, and the only option for a `short` run:
 
@@ -476,7 +476,7 @@ copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
   no similarity-based relocation, no best-effort application near where
   the passage used to be. The author's own edit wins by default (R12).
 - **Never decide paraphrase-or-quote on a long run.** Ask.
-- **Never `Write` the whole draft.** `Edit` the passage.
+- **Never rewrite the whole draft.** Patch the passage with `apply_patch`.
 - **Never add a claim, and never fabricate a citekey.** A fabricated
   citekey is the one failure this whole pipeline exists to prevent, and a
   repair that needs a page-anchored citation is exactly where the

@@ -1,10 +1,10 @@
 ---
-name: agenda-reviser
-description: Repairs the unattended findings on an existing draft's review agenda, one item at a time. Reads `python -m chitragupta.review agenda <draft>` and acts only on items whose `unattended` field says so; every other class is surfaced for a person to decide. One R4 cycle is one command, `review agenda <draft> --baseline <stem>.agenda.json --json`; passes continue only while `objective_class_count` strictly falls, and stop at `pass_bound`. Every repair must re-pass `python -m chitragupta.draft gate` and the same baseline recheck before it is kept, and every attempt is logged in revisions.md. Triggers when the user asks to work the review agenda, fix what an agenda run found, or act on unattended findings -- before rendering or submitting, after a sync moved the corpus, or on returning to a draft after weeks away. Judgement calls go to draft-reviser or the human. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
+name: agenda-reviser-opencode
+description: Repairs the unattended findings on an existing draft's review agenda, one item at a time. Reads `python -m chitragupta.review agenda <draft>` and acts only on items whose `unattended` field says so; every other class is surfaced for a person to decide. One R4 cycle is one command, `review agenda <draft> --baseline <stem>.agenda.json --json`; passes continue only while `objective_class_count` strictly falls, and stop at `pass_bound`. Every repair must re-pass `python -m chitragupta.draft gate` and the same baseline recheck before it is kept, and every attempt is logged in revisions.md. Triggers when the user asks to work the review agenda, fix what an agenda run found, or act on unattended findings -- before rendering or submitting, after a sync moved the corpus, or on returning to a draft after weeks away. Judgement calls go to draft-reviser-opencode or the human. Never edits the allowlist, never adds a claim, never fabricates a citekey, and never runs unless a person asked for it.
 tags: [revision, review, agenda, dossier, citation]
 ---
 
-# agenda-reviser
+# agenda-reviser-opencode
 
 `python -m chitragupta.review agenda <draft>` merges every review aid's own report
 -- provenance, verbatim, coverage, synthesis, figure layout, uncited prose,
@@ -53,10 +53,10 @@ is a defect.
 | An agenda was just run and the user asks "what do I do about these" | Invoke this skill |
 | The user wants the draft's agenda **run** but says nothing about fixing it | Run `review agenda <draft>` and show them. Do not start repairing |
 | The finding is real but the user disagrees that it needs changing | They are right by default -- record it and move on. `SOUL.md`: a machine does not outrank a person on a judgment call |
-| Any other change to an existing draft -- shorten, expand, restructure, re-ground | Use `draft-reviser` |
-| User asks to re-check the whole draft against the corpus | Use `corpus-reviser` |
+| Any other change to an existing draft -- shorten, expand, restructure, re-ground | Use `draft-reviser-opencode` |
+| User asks to re-check the whole draft against the corpus | Use `corpus-reviser-opencode` |
 | User asks for a **new** draft | Use the matching genre skill |
-| The draft has no dossier | Bootstrap one as `draft-reviser` describes, then continue here. `revisions.md` is where this skill's record goes, so it has to exist |
+| The draft has no dossier | Bootstrap one as `draft-reviser-opencode` describes, then continue here. `revisions.md` is where this skill's record goes, so it has to exist |
 | The ledger is empty or absent | Stop and say so. A repair that converts a lift into a quotation needs a citekey the gate will accept |
 
 **Read-only over the corpus layer.** Never run `python -m chitragupta.corpus
@@ -92,7 +92,7 @@ before the worklist is rendered.
 
 **The agenda's own `detail` field is thin by design and is not the repair
 payload.** A `verbatim-run` item's `detail` carries `verbatim_id`, not
-the `draft_text` an `Edit`'s `old_string` needs. **Look the id up in the
+the `draft_text` an `edit`'s `oldString` needs. **Look the id up in the
 raising aid's own filed JSON** instead:
 
 | Class | `detail` key | Look it up in |
@@ -109,10 +109,10 @@ decision, asked rather than taken.
 
 ## The loop
 
-Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop` for the
+Follow `.opencode/skills/draft-reviser-opencode/SKILL.md`'s `## The loop` for the
 parts this skill does not restate -- reading `scope.md` and `steering.md`
-first, mapping a change onto sections, editing with `Edit` rather than
-`Write`, and writing the dossier back. Read that file; do not reconstruct
+first, mapping a change onto sections, editing with `edit` rather than
+`write`, and writing the dossier back. Read that file; do not reconstruct
 it from memory.
 
 ### 1. Snapshot, and mark the revision
@@ -212,13 +212,13 @@ rejected.
 **Repair a `missing-citekey` item.** The only unattended repair available
 is a deletion: this skill may not run `corpus sync` (the user's write
 lock) and may not fabricate a citekey. Remove the `[@citekey]` marker with
-`Edit`, leaving the sentence standing -- never delete the sentence itself.
+`edit`, leaving the sentence standing -- never delete the sentence itself.
 **Also drop the citekey from `evidence.md`** (and from `sections.md`'s row
 for the section, on the next `dossier sections --citekeys --write`) --
 `missing-citekey` is detected off the dossier's own record of what it
 cites, not off the draft's live markers, so a repair that only edits the
 draft leaves the item unresolved on the next agenda. This is the "writing
-the dossier back" half of `draft-reviser`'s loop, referenced above, made
+the dossier back" half of `draft-reviser-opencode`'s loop, referenced above, made
 explicit here because it is easy to miss for this one class. The now-
 uncited claim becomes an `uncited-claim` item on the next agenda, a
 **surfaced** class, so it is reported rather than silently dropped. Where
@@ -239,7 +239,7 @@ an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or
 `<!-- figureref: -->` marker a `TableNoCaption`/`TableUnreferenced`/
 `FigureNoCaption`/`FigureUnreferenced` finding names, correct a glossary
 term drifted from `scope.md`'s vocabulary, fix a dialect slip against
-`scope.md`'s `language:` line. `Edit` the exact span `detail.message` or
+`scope.md`'s `language:` line. `edit` the exact span `detail.message` or
 the item's `summary` names.
 
 **`ChapterSelfNumbered`** (a `.tex` draft only) is the one rule whose
@@ -268,8 +268,8 @@ job, not a reason to loosen it.
 **Repair a `verbatim-run` item at severity `short`.** Look up
 `detail.verbatim_id` in `content/review/<topic>/<stem>.verbatim.json`'s
 `findings` for `draft_text`, the exact passage including casing,
-punctuation and any mid-run citation marker -- use it as `Edit`'s
-`old_string`. If it does not match, the draft almost certainly has CRLF
+punctuation and any mid-run citation marker -- use it as `edit`'s
+`oldString`. If it does not match, the draft almost certainly has CRLF
 line endings and the run spans a line break: the payload carries the
 `\n` the file was read with, not the `\r\n` on disk. Re-read the line and
 edit it by hand rather than widening the search.
@@ -454,15 +454,15 @@ ends. Before presenting, run one more `review agenda content/drafts/<path>
 --json` (its default `--formats md,tex,pdf`, and still no `--baseline`),
 so the final artefacts on disk are the ones the human reads.
 
-`agenda-reviser` repairs a style finding **that appears as an agenda
-item**; every other change to wording -- including `draft-reviser`'s own
-copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
+`agenda-reviser-opencode` repairs a style finding **that appears as an agenda
+item**; every other change to wording -- including `draft-reviser-opencode`'s own
+copy-edit mode, which also edits prose -- belongs to `draft-reviser-opencode`.
 
 ## Guardrails
 
 - **Never start this on your own initiative.** Not from a hook, not from
   a scheduled job, not at the end of a genre skill's run, and not from
-  `draft-reviser`. A person asking is the only trigger.
+  `draft-reviser-opencode`. A person asking is the only trigger.
 - **Never edit anything but the draft and `revisions.md`.** Not
   `content/verbatim_allowlist.toml`, not `assets/vale/styles/chitragupta/*.yml`
   (prose became work under Decision 1, which puts the Vale rule
@@ -476,7 +476,7 @@ copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
   no similarity-based relocation, no best-effort application near where
   the passage used to be. The author's own edit wins by default (R12).
 - **Never decide paraphrase-or-quote on a long run.** Ask.
-- **Never `Write` the whole draft.** `Edit` the passage.
+- **Never `write` the whole draft.** `edit` the passage.
 - **Never add a claim, and never fabricate a citekey.** A fabricated
   citekey is the one failure this whole pipeline exists to prevent, and a
   repair that needs a page-anchored citation is exactly where the
@@ -490,7 +490,7 @@ copy-edit mode, which also edits prose -- belongs to `draft-reviser`.
   is already forbidden to touch (#454). Leaving the draft fingerprint
   stale after a repair is correct, not a gap: the next `dossier status`
   will read `CHANGED since last stamp`, which is the honest signal that
-  an automated pass -- not a person's own `draft-reviser` session --
+  an automated pass -- not a person's own `draft-reviser-opencode` session --
   touched the draft since it was last confirmed. A de-cited sentence in
   particular can leave `evidence.md` carrying an orphaned block, which is
   exactly the kind of finding a human should see, not one this skill

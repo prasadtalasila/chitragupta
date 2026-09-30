@@ -28,6 +28,7 @@ launcher) this extends, and [ARCHITECTURE.md](ARCHITECTURE.md)'s
 - [The problem](#-the-problem)
 - [The design: three checks over one gate](#-the-design-three-checks-over-one-gate)
 - [What each harness enforces](#-what-each-harness-enforces)
+- [Skills: one copy per harness](#-skills-one-copy-per-harness)
 - [Designs turned down, and why](#-designs-turned-down-and-why)
 - [Harness facts learned](#-harness-facts-learned)
 - [Decisions a maintainer made](#-decisions-a-maintainer-made)
@@ -79,8 +80,9 @@ copied into a skill, a hook launcher or a plugin.
 
 1. **Self-check (asked).** Before presenting, each skill runs
    `python -m chitragupta.draft gate` on its own draft and fixes what it
-   reports. This step already existed in every skill; the work only
-   made its wording harness-neutral.
+   reports. This step already existed in every skill; each harness now
+   gets its own copy of the skill, naming its own tools (see "Skills:
+   one copy per harness" below).
 2. **Mandatory check (enforced).** A thin per-harness launcher runs the
    existing hook scripts on every write to a draft. The model cannot
    skip it, and it is told to fix the key before it moves on.
@@ -127,6 +129,79 @@ on Claude Code today as on the other two. `draft render` refuses the
 draft, and the skill's own `draft gate` run warns that no hook checked
 it. A person copying text straight out of the raw draft file is outside
 every check; nothing can see that.
+
+## 📂 Skills: one copy per harness
+
+Each skill exists once per harness, and each copy names that harness's
+own tools. A model then reads a complete instruction at the step where
+it acts -- "use `Edit`, never `Write`" on Claude Code, "patch with
+`apply_patch`" on Codex, "`edit`, never `write`" on OpenCode -- rather
+than a harness-neutral phrase it has to translate.
+
+```text
+<project root>
+├── AGENTS.md                      # all harnesses read it
+├── .claude/
+│   ├── settings.json              # Claude Code's hook launchers
+│   ├── hooks/                     # the hook scripts all three harnesses run
+│   ├── agents/                    # Claude Code subagents
+│   └── skills/<name>/             # Claude Code wording
+│       └── SKILL.md               #   (deep-research also has reference.md)
+├── .agents/
+│   └── skills/<name>/             # Codex wording
+├── .codex/
+│   └── hooks.json                 # Codex's hook launchers → .claude/hooks/
+└── .opencode/
+    ├── opencode.json              # denies the unsuffixed skill names
+    ├── plugins/chitragupta-gate.js
+    ├── chitragupta/gate.js
+    └── skills/<name>-opencode/    # OpenCode wording
+```
+
+| Harness | Skills it sees | Why only those |
+| --- | --- | --- |
+| Claude Code | `.claude/skills/*` | the only skills folder it reads |
+| Codex | `.agents/skills/*` | the only project skills folder it reads (measured) |
+| OpenCode | `.opencode/skills/*-opencode` | it also scans `.claude/skills/` and `.agents/skills/`, but `.opencode/opencode.json` denies those names (measured, 3 of 3 runs) |
+
+**Why OpenCode's copies carry a suffix.** OpenCode keys skills by name
+and loads every folder it scans concurrently, so among same-named copies
+the last to load wins -- in practice, at random. Its own names cannot
+collide with the other copies, and the `skill` permission in
+`.opencode/opencode.json`, which filters the list the model is shown,
+denies the nine unsuffixed names. That holds per project, with no
+environment variable. The OpenCode copies refer to one another by the
+suffixed names; `AGENTS.md` says so in one line.
+
+**What `init --agent` writes.** `claude` (the default) writes `.claude/`
+and the shared core; `codex` adds `.codex/` and `.agents/`; `opencode`
+adds `.opencode/`. `.claude/` is written for every harness because it
+holds the hook scripts Codex and OpenCode launch too; Codex never reads
+its skills and OpenCode denies them.
+
+**How the copies are kept from drifting.** They are edited by hand, and
+`tests/test_skill_harness_copies.py` keeps them aligned.
+`tests/fixtures/skill_harness_phrases.toml` lists every place the
+copies are meant to differ, as one entry per phrase with a value per
+harness. The test replaces each copy's phrases with the entry's key,
+drops OpenCode's suffix, and requires the three results to be
+identical. A sentence changed in one copy and not the others fails,
+naming the skill, the copy and the first line that moved. The same test
+also checks:
+
+- every entry is used in every copy;
+- no copy names another harness's tools;
+- the OpenCode copies refer to suffixed skill names;
+- the deny list names exactly the unsuffixed skills.
+
+`chitragupta doctor` reports an OpenCode project whose deny list is
+missing or incomplete. The phrase map is never shown to a model; it
+exists only for the test.
+
+**To change a skill**, change every copy, and add or edit a phrase-map
+entry for any wording that is meant to differ. The step scans
+(`tests/test_skill_*_step.py`) read only `.claude/skills/`; once the
+copies agree, a required step present in one is present in all three.
 
 ## 🚫 Designs turned down, and why
 
@@ -181,10 +256,29 @@ Every refusal names the bad key and its line, and nothing else.
 **A git pre-commit hook.** `content/drafts/` is gitignored, so a draft
 is never committed.
 
-**One copy of each skill per harness.** Nine skills of 2,500-7,700
-words each, copied three ways, would drift, and a copy that drifts on
-the gate step is a fabrication path. There is one copy, in
-`.claude/skills/`.
+**Hand-kept copies of each skill with no check between them.** Nine
+skills of 2,500-7,700 words each, copied three ways, would drift, and a
+copy that drifts on the gate step is a fabrication path. The copies
+exist, but only because the phrase-map test fails on any drift outside
+the entries meant to differ.
+
+**One harness-neutral wording, with a tool glossary in `AGENTS.md`.**
+Built first and replaced. "Edit the passage in place" gives up Claude
+Code's exact tool names and gives Codex and OpenCode nothing specific,
+and a glossary in `AGENTS.md` asks the model to connect a phrase to a
+table in another file -- one Claude Code does not even load (it loads
+`CLAUDE.md`, which only points there).
+
+**Generating the copies from one templated source.** It gives the same
+protection as the phrase-map test, at the cost of a build step and a
+source nobody reads. The copies are plain files instead, each editable
+where it is read.
+
+**Relying on OpenCode's folder order, or `OPENCODE_DISABLE_EXTERNAL_SKILLS`.**
+There is no folder order: OpenCode picks among same-named copies at
+random. The environment variable restricts it to `.opencode/skills/`,
+but a project cannot set it, and a user who forgets it gets a random
+mix. The suffix and the deny list are per project.
 
 ## 📚 Harness facts learned
 
@@ -205,10 +299,9 @@ is relied on (the plan's Task 0).
 - **Codex reads skills from `.agents/skills/`.**
   ([Codex skills](https://developers.openai.com/codex/skills))
 - **OpenCode reads skills from `.opencode/skills/`, and also from
-  `.claude/skills/` and `.agents/skills/` for compatibility.** So the
-  existing skills load on OpenCode unchanged. Whether a skill found in
-  two of those folders loads twice is not yet known.
-  ([OpenCode skills](https://opencode.ai/docs/it/skills/))
+  `.claude/skills/` and `.agents/skills/` for compatibility**
+  ([OpenCode skills](https://opencode.ai/docs/it/skills/)). How it
+  handles one name in several folders is measured below.
 - **OpenCode plugins** hook `tool.execute.before` and
   `tool.execute.after`. Its `edit` tool takes `filePath`, `oldString`,
   `newString` and `replaceAll`; its `apply_patch` tool takes
@@ -221,8 +314,9 @@ is relied on (the plan's Task 0).
 - **The Agent Skills specification** limits `description` to 1,024
   characters and allows only `name`, `description`, `license`,
   `compatibility`, `metadata` and `allowed-tools` in the frontmatter.
-  Four skills' descriptions were over the limit, and every skill
-  carried an unread `tags:` key.
+  Four skills' descriptions were over the limit. Every skill carries a
+  `tags:` key outside that list, which all three harnesses load anyway
+  (measured).
   ([agentskills.io](https://agentskills.io))
 
 ## ⚖ Decisions a maintainer made
@@ -272,7 +366,7 @@ call.
   and runs the hook from there, under `python -P`; blocking from
   `content/` was then measured.
 - **Codex reads project skills only from `.agents/skills/`**, never
-  `.claude/skills/`, so `init --agent codex` copies them there. It reads
+  `.claude/skills/`, which is where its own copy lives. It reads
   `AGENTS.md` natively.
 - A skill with a `tags:` key loads. A `description` over 1,024
   characters loads but is cut at 1,024 in what the model sees, so the
@@ -296,12 +390,20 @@ call.
   and `.agents/skills/` (and the user's global `~/.claude/skills/`),
   and loads one copy per skill name -- **chosen arbitrarily** when a name
   is in more than one folder: four runs picked different mixes, and
-  `.opencode/skills/` does not take precedence. So the copies in those
-  folders must be identical, which `init` guarantees by copying one
-  tree. Only the environment variable
-  `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` restricts it to `.opencode/skills/`,
-  and a project cannot set it.
+  `.opencode/skills/` does not take precedence. Its source shows why:
+  skills land in one map keyed by name, loaded concurrently. The list
+  the model is shown is filtered by the `skill` permission, per name, so
+  OpenCode-only names plus a project-level deny list for the others give
+  it exactly its own copy -- measured in 3 of 3 runs. The environment
+  variable `OPENCODE_DISABLE_EXTERNAL_SKILLS=1` restricts it to
+  `.opencode/skills/` too, but a project cannot set it.
 - A skill with `tags:` loads, and a long description is kept whole.
+- **The per-harness layout, end to end** (2026-09-30, a project
+  scaffolded from the built wheel with `--agent claude --agent codex
+  --agent opencode`): Codex listed the nine skills from `.agents/skills/`;
+  OpenCode, in two runs, listed only the nine `-opencode` skills, handed
+  the model the OpenCode wording when it loaded `survey-writer-opencode`,
+  and refused `survey-writer` under the deny list.
 - **One environment trap, not OpenCode's or this repository's.** In the
   container these were measured in, OpenCode's runtime never reaped a
   `git` child process -- it sat `<defunct>` -- and the agent loop waited on

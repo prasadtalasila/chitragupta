@@ -218,3 +218,34 @@ class TestCheckLaunchers:
         monkeypatch.chdir(tmp_path)
         assert doctor.main([]) == 0
         assert "[launcher] .codex/hooks.json" in capsys.readouterr().out
+
+
+class TestCheckOpencodeSkills:
+    """#900: OpenCode keys skills by name, so its deny list is what keeps it
+    on its own copies."""
+
+    @staticmethod
+    def project(root, rules):
+        (root / ".opencode" / "skills" / "survey-writer-opencode").mkdir(parents=True)
+        if rules is not None:
+            config = {"permission": {"skill": rules}}
+            (root / ".opencode" / "opencode.json").write_text(json.dumps(config), encoding="utf-8")
+
+    def test_no_opencode_skills_says_nothing(self, tmp_path):
+        assert doctor._check_opencode_skills(tmp_path) == []
+
+    def test_a_complete_deny_list_is_ok(self, tmp_path):
+        self.project(tmp_path, {"*": "allow", "survey-writer": "deny"})
+        assert doctor._check_opencode_skills(tmp_path)[0].startswith("[ok]")
+
+    @pytest.mark.parametrize("rules", [None, {"*": "allow"}, "deny", {"survey-writer": "ask"}])
+    def test_a_missing_or_partial_deny_list_is_named(self, tmp_path, rules):
+        self.project(tmp_path, rules)
+        (line,) = doctor._check_opencode_skills(tmp_path)
+        assert line.startswith("[skills]")
+        assert "survey-writer" in line
+
+    def test_a_config_that_is_not_json_is_named(self, tmp_path):
+        self.project(tmp_path, None)
+        (tmp_path / ".opencode" / "opencode.json").write_text("{not json", encoding="utf-8")
+        assert doctor._check_opencode_skills(tmp_path)[0].startswith("[skills]")

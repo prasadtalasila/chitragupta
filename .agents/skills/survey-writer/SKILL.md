@@ -298,8 +298,8 @@ collapse them for the sake of a cleaner narrative.
    -- merge them. A reword warning means re-read whether that claim is
    really your own reading of the source, and is not a cue to keep
    rewording until the warning stops.
-2a. **On a broad topic, put steps 1-2 behind a subagent.** Dispatch one
-   `general-purpose` subagent per sub-theme, all in one message, each told to
+2a. **On a broad topic, put steps 1-2 behind a subagent.** If your session
+   offers subagent tools, spawn one per sub-theme, each told to
    run the retrieve-and-score loop above and return **only** the kept-evidence
    packet plus the rejected list -- never the raw candidates.
 
@@ -578,7 +578,7 @@ collapse them for the sake of a cleaner narrative.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit with an `apply_patch` hunk, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is

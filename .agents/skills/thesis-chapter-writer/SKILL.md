@@ -519,7 +519,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit with an `apply_patch` hunk, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is

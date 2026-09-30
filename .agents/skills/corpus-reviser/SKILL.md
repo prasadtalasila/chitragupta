@@ -84,7 +84,7 @@ nothing to fall back on.
 
 ## The loop
 
-Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
+Follow `.agents/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
 through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
 edit discipline, the same dossier write-back and the same exit.
@@ -133,9 +133,9 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **Every call carries `--log`.** The point of choosing the expensive
   path deliberately is that the cost lands in `retrieval.md` and can be
   looked at afterwards, instead of being guessed at.
-- **`Edit`, never `Write`.** A wide *search* does not imply a wide
-  *rewrite*. Most sections survive a re-check untouched, and rewriting
-  those costs thousands of output tokens to produce a diff nobody can
+- **Patch with `apply_patch`, never rewrite the file.** A wide *search* does not
+  imply a wide *rewrite*. Most sections survive a re-check untouched, and
+  rewriting those costs thousands of output tokens to produce a diff nobody can
   review.
 - **Never write a citekey** that isn't already in the draft, in
   `evidence.md`, or in a `search()` result you just read. A fabricated

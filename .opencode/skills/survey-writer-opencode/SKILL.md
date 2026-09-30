@@ -1,10 +1,10 @@
 ---
-name: survey-writer
-description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via chitragupta.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m chitragupta.corpus sync` first) if the ledger is empty.
+name: survey-writer-opencode
+description: Drafts a topic-clustered literature survey / background section / "state of the art" from the synced corpus, with a comparison table and a gap analysis. Every claim is grounded in a citekey pulled from content/ledger.sqlite via chitragupta.retrieval -- never a fabricated one. Triggers when the user asks to write or draft a survey paper, literature review, background section, or related-work section for a given topic. To change or update a survey that already exists in content/drafts/, use draft-reviser-opencode instead -- never re-run this skill to make a change. Must run `python -m chitragupta.draft gate` on its own output and only present the draft once it passes. Refuses (and tells the user to run `python -m chitragupta.corpus sync` first) if the ledger is empty.
 tags: [survey, literature-review, citation]
 ---
 
-# survey-writer
+# survey-writer-opencode
 
 Genre-specific drafting agent for survey-style output. This is the "generative
 drafting" half of the pipeline (the drafting layer) -- it runs on demand and its
@@ -81,7 +81,7 @@ Scoping is a **narrowing**, and a narrowing cannot surface a paper the
 shelf does not hold. If retrieval inside the shelf comes back thin for a
 sub-theme, say so -- in the draft and in `rejected.md` -- rather than
 quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser`, which is the one skill allowed to widen.
+with `corpus-reviser-opencode`, which is the one skill allowed to widen.
 
 ## The dossier: write down what produced the draft
 
@@ -123,10 +123,10 @@ around it, do not sync, do not cite. Tell the user to run
 | Situation | Action |
 | --- | --- |
 | User asks for a survey / lit review / background / related-work section on topic X | Invoke this skill |
-| User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
-| User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer` instead |
-| User asks for a hands-on tutorial the reader follows at a keyboard | Use `tutorial-writer` instead |
-| User asks to change a survey that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
+| User asks for a thesis chapter | Use `thesis-chapter-writer-opencode` instead |
+| User asks for a textbook chapter / lecture notes / worked examples | Use `textbook-chapter-writer-opencode` instead |
+| User asks for a hands-on tutorial the reader follows at a keyboard | Use `tutorial-writer-opencode` instead |
+| User asks to change a survey that **already exists** in `content/drafts/` | Use `draft-reviser-opencode` instead -- never re-run this skill to make a change |
 | Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 ## Prose standards
@@ -147,7 +147,7 @@ teach the topic and not to advocate a position. Two failure directions:
 - **Drifting into a textbook chapter.** You start explaining the concepts for
   a reader who doesn't know them. A survey's reader is a researcher entering
   the area; they need the map, not the lesson. If the user actually wants the
-  lesson, `textbook-chapter-writer` exists -- say so.
+  lesson, `textbook-chapter-writer-opencode` exists -- say so.
 - **Drifting into an argument.** You start defending one approach as correct.
   Weighing alternatives is the deliverable here; picking a winner is the
   thesis chapter's job, and doing it in a survey hides the disagreement the
@@ -299,7 +299,7 @@ collapse them for the sake of a cleaner narrative.
    really your own reading of the source, and is not a cue to keep
    rewording until the warning stops.
 2a. **On a broad topic, put steps 1-2 behind a subagent.** Dispatch one
-   `general-purpose` subagent per sub-theme, all in one message, each told to
+   `general` subagent per sub-theme with `task`, all in one message, each told to
    run the retrieve-and-score loop above and return **only** the kept-evidence
    packet plus the rejected list -- never the raw candidates.
 
@@ -557,7 +557,7 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.draft style content/drafts/<slug>.md --json
     ```
 
-    The first two are `agenda-reviser`'s own baseline discipline
+    The first two are `agenda-reviser-opencode`'s own baseline discipline
     (uncapped, never `--limit`): they file
     `content/review/<topic>/<stem>.verbatim.json`, the file every edit
     below is rechecked against. The third's finding count -- not the
@@ -578,7 +578,7 @@ collapse them for the sake of a cleaner narrative.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit with `edit`, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is
@@ -723,7 +723,7 @@ collapse them for the sake of a cleaner narrative.
     **Report every finding and fix none of them.** A finding is a place to
     look, not a defect: the first pass of this check over this
     repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser`'s
+    the user wants any of them acted on, that is `draft-reviser-opencode`'s
     copy-edit mode, which reads the recorded dialect and logs one
     `revisions.md` entry — never an edit made here. Report the header
     lines too: `dialect: not checked` means nobody ever recorded one, so a
@@ -759,7 +759,7 @@ collapse them for the sake of a cleaner narrative.
     that on once. It sees verbatim and near-verbatim reuse only, and
     **genuine restatement is only detected where the embedding tier can
     run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser`'s job,
+    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser-opencode`'s job,
     and only if the user asks. If the user wants the
     finding kept, add `--write`: the report goes to `content/review/`,
     mirroring the draft's path, beside any provenance and coverage reports for
@@ -776,9 +776,9 @@ collapse them for the sake of a cleaner narrative.
     any unresolved cross-source disagreement, and report the render outcome
     (paths to the `.tex`/`.pdf` if they succeeded, or the warning if not).
     Tell the user where the dossier is, that changes to this draft should go
-    through `draft-reviser` rather than another run of this skill, and that
-    `content/drafts/` and `content/dossiers/` are gitignored -- so `python -m
-    chitragupta.draft dossier export <slug>` is how a draft and its working
+    through `draft-reviser-opencode` rather than another run of this skill, and
+    that `content/drafts/` and `content/dossiers/` are gitignored -- so `python
+    -m chitragupta.draft dossier export <slug>` is how a draft and its working
     state get
     backed up.
 

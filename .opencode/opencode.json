@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "agenda-reviser": "deny",
+      "book-assembler": "deny",
+      "corpus-reviser": "deny",
+      "deep-research": "deny",
+      "draft-reviser": "deny",
+      "survey-writer": "deny",
+      "textbook-chapter-writer": "deny",
+      "thesis-chapter-writer": "deny",
+      "tutorial-writer": "deny"
+    }
+  }
+}

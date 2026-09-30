@@ -81,24 +81,15 @@ COPY_VERBATIM = (
 )
 
 
-# The trees each harness adds on top of the shared core (#812). `.claude/`
-# is in COPY_VERBATIM for every harness, not only Claude Code: it holds
-# the skills all three read and the hook scripts all three launch, so a
-# Codex or OpenCode project without it would have no gate to run.
-AGENT_TREES = {"claude": (), "codex": (".codex",), "opencode": (".opencode",)}
+# The trees each harness adds on top of the shared core (#812, #900).
+# `.claude/` is in COPY_VERBATIM for every harness, not only Claude Code:
+# it holds the hook scripts all three launch, so a Codex or OpenCode
+# project without it would have no gate to run. Each harness's skills are
+# its own copy -- `.claude/skills/`, `.agents/skills/` (the only folder
+# Codex reads) and `.opencode/skills/` with its `opencode.json` deny list
+# -- kept in step by tests/test_skill_harness_copies.py.
+AGENT_TREES = {"claude": (), "codex": (".codex", ".agents"), "opencode": (".opencode",)}
 DEFAULT_AGENTS = ("claude",)
-
-# Copies a harness needs of a tree the core already ships, as (source,
-# destination). Codex reads project skills only from `.agents/skills/`,
-# never `.claude/skills/` (measured on Codex 0.159.0, docs/HARNESS.md),
-# so a Codex project without this copy offers the model none of them.
-# OpenCode reads both folders and loads one copy per name, so the two
-# must stay identical -- which a copy of one tree guarantees.
-AGENT_COPIES = {"codex": ((".claude/skills", ".agents/skills"),)}
-
-# Top-level entries `init` writes that the release zip does not carry,
-# because they are copies made at scaffold time rather than tracked files.
-GENERATED_TOP_LEVEL = frozenset({".agents"})
 
 
 class ScaffoldSourceMissing(Exception):
@@ -158,7 +149,6 @@ EMPTY_DIRS = (
 TOP_LEVEL = frozenset(
     {CONFIG_DEST, *COPY_VERBATIM, *(t for trees in AGENT_TREES.values() for t in trees)}
     | {"papers", "content"}
-    | GENERATED_TOP_LEVEL
 )
 
 # Kept separate from the module docstring above and passed to argparse
@@ -319,8 +309,6 @@ def scaffold(
     report = []
     for name in (*COPY_VERBATIM, *trees):
         report.extend(_write_tree(SOURCE_ROOT / name, dest / name, force=force, dry_run=dry_run))
-    for src, dst in dict.fromkeys(c for agent in agents for c in AGENT_COPIES.get(agent, ())):
-        report.extend(_write_tree(SOURCE_ROOT / src, dest / dst, force=force, dry_run=dry_run))
     report.append(
         _write_one(SOURCE_ROOT / CONFIG_EXAMPLE, dest / CONFIG_DEST, force=force, dry_run=dry_run)
     )

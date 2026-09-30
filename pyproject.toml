@@ -35,6 +35,7 @@ include = [
     { path = ".claude", format = ["sdist", "wheel"] },
     # The Codex and OpenCode launchers (#812, #900), for `init --agent`.
     { path = ".codex", format = ["sdist", "wheel"] },
+    { path = ".agents", format = ["sdist", "wheel"] },
     { path = ".opencode", format = ["sdist", "wheel"] },
     { path = "docs", format = ["sdist", "wheel"] },
     { path = "AGENTS.md", format = ["sdist", "wheel"] },

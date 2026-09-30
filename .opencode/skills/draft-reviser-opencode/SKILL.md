@@ -1,10 +1,10 @@
 ---
-name: draft-reviser
-description: Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it: reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
+name: draft-reviser-opencode
+description: Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it: reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser-opencode; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
-# draft-reviser
+# draft-reviser-opencode
 
 Revising a draft by re-running the genre skill that wrote it is the most
 expensive mistake available in this repository. A fresh run re-retrieves,
@@ -23,11 +23,11 @@ is shaped that way.
 | --- | --- |
 | User asks to shorten, expand, restructure, correct or update an existing draft | Invoke this skill |
 | User asks for a grammar pass, a spelling fix, a dialect conversion (en-US -> en-GB/en-IN), or rephrasing to meet a style guideline | This skill, in **copy-edit mode** (below) -- the loop's search and evidence steps short-circuit |
-| User asks to re-target the draft at a **different reader** | Hand off to `corpus-reviser` -- what counts as support changes with the reader, so the kept set has to be re-judged, not extended |
+| User asks to re-target the draft at a **different reader** | Hand off to `corpus-reviser-opencode` -- what counts as support changes with the reader, so the kept set has to be re-judged, not extended |
 | User asks for a **new** draft on a topic | Use the matching genre skill |
 | The draft exists but has no dossier | Bootstrap one (below), then continue here |
 | A sync moved the corpus, or `dossier status --all` names this draft | Re-grounding mode (below), not the ordinary loop |
-| User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser` -- not this skill, and never the genre skill |
+| User asks to re-check the **whole** draft against the corpus, cost regardless | Hand off to `corpus-reviser-opencode` -- not this skill, and never the genre skill |
 | User asks for a different genre of the same topic | That's a new draft -- use the genre skill |
 | Ledger is empty or absent | Revise anyway if the change touches no citations; say so. **Never** run `python -m chitragupta.corpus sync`. In re-grounding mode, stop instead -- the ledger *is* the request |
 
@@ -50,12 +50,12 @@ break:
   notices.
 - **Figures follow the draft's own genre, not a fixed rule of this
   skill's own.** `scope.md`'s `genre:` line records one of `survey`,
-  `thesis-chapter`, `textbook-chapter`, `tutorial` or `deep-research` --
-  the matching skill's own drafting process (`survey-writer`,
-  `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
-  or `deep-research`) says how freely that genre calibrates
+  `thesis-chapter`, `textbook-chapter`, `tutorial` or `deep-research-opencode` --
+  the matching skill's own drafting process (`survey-writer-opencode`,
+  `thesis-chapter-writer-opencode`, `textbook-chapter-writer-opencode`, `tutorial-writer-opencode`,
+  or `deep-research-opencode`) says how freely that genre calibrates
   `docs/WRITING-STANDARDS.md` §10's figures, from most (`tutorial`) to
-  least (`survey`) to none at all (`deep-research`).
+  least (`survey`) to none at all (`deep-research-opencode`).
 - **You may consult a source figure before redrawing one of your own.**
   `python -m chitragupta.draft figures <citekey>` lists a synced paper's
   figures -- caption, page, the string to cite each by, and the path to a
@@ -82,7 +82,7 @@ break:
   house-style decision under `docs/WRITING-STANDARDS.md` §8, read before
   the edit rather than re-decided during it.
   **One difference survives by genre, and it is not about where the
-  files are**: `thesis-chapter-writer`'s TikZ additionally stays inline
+  files are**: `thesis-chapter-writer-opencode`'s TikZ additionally stays inline
   via a real `\input` -- that fragment is what the user `\input`s
   directly into their own thesis, so editing it means editing the
   fragment itself, not just `figures/<name>.tex` beside it. Every other
@@ -145,7 +145,7 @@ break:
   -- read those rather than eyeballing the markers. An unattached
   `<!-- equation: id -->` left behind by a deleted or reflowed `<!--
   math -->` block is `EquationOrphanMarker`; delete the stray marker,
-  the same conservative repair `agenda-reviser` uses, rather than
+  the same conservative repair `agenda-reviser-opencode` uses, rather than
   guessing which block it meant.
 
 ## Collection scoping (#195): inherit it, do not re-ask
@@ -260,7 +260,7 @@ python -m chitragupta.draft dossier sections content/drafts/<path>
 ```
 
 Read **only** the sections the change touches, using the printed line
-ranges (`Read` with `offset=<start>`, `limit=<lines>`). Do not read the
+ranges (`read` with `offset=<start>`, `limit=<lines>`). Do not read the
 whole draft to change one section. Consult `sections.md` when you need to
 know which section owns a citation without reading anything.
 
@@ -271,7 +271,7 @@ by definition -- see "Copy-edit mode" below for the rest of what that
 changes. Recognise either case and pay for it deliberately, rather than
 defaulting to it. Note that reading the whole draft is still not
 re-searching it -- if the evidence also has to be re-judged, that is
-`corpus-reviser`.
+`corpus-reviser-opencode`.
 
 ### 4. Decide whether you need to search at all
 
@@ -314,7 +314,7 @@ ordinary `declared` or `extended` call.
 (or `chitragupta.enrich.embed_index.search()` in place of `search` where the
 embedding stack has been built). `evidence` is optional -- reach for it
 when a snippet is not enough to decide on a source you are minded to
-cite. Score what you keep as `survey-writer` step 2 describes, and record
+cite. Score what you keep as `survey-writer-opencode` step 2 describes, and record
 both outcomes: kept into `evidence.md`, turned down into `rejected.md`.
 
 `--log` keeps `retrieval.md` honest about what this revision actually
@@ -331,7 +331,7 @@ whether or not anyone asked. See "Re-grounding after the corpus moves".
 
 ### 5. Edit in place, inside the section
 
-Use `Edit` on the specific passage. Do not `Write` the whole file: a
+Use `edit` on the specific passage. Do not `write` the whole file: a
 whole-file rewrite of a survey-length draft costs thousands of output
 tokens, re-runs the citation-gate hook over everything, and produces a
 diff the user cannot review.
@@ -411,7 +411,7 @@ assume:
   carries two bibliographies). Look at the draft's own heading before
   running this. Skip the command entirely for a `.tex` fragment, which
   manages its own bibliography.
-- **A tutorial must still run.** `tutorial-writer`'s governing rule is
+- **A tutorial must still run.** `tutorial-writer-opencode`'s governing rule is
   that a tutorial which doesn't work is worse than none, because a
   learner who follows it exactly and hits an error concludes they are the
   problem. The citation gate does not check that -- a tutorial often has
@@ -483,7 +483,7 @@ reason as the scan wrote it, and where the reason names a fix (`poetry install
 verbatim and near-verbatim reuse only, and **genuine restatement is
 only detected where the embedding tier can run**, so a clean scan is not a
 clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-`agenda-reviser`'s job, and only if the user asks. If the user wants the
+`agenda-reviser-opencode`'s job, and only if the user asks. If the user wants the
 finding kept, add `--write`: the report goes to `content/review/`, mirroring
 the draft's path, beside any provenance and coverage reports for the same
 draft.
@@ -520,12 +520,12 @@ before converting, and write the answer to that line as part of the pass.
 A conversion applied against an unrecorded target is one the next session
 cannot repeat or check.
 
-**Still `Edit`, never `Write`, and now for a second reason.** Every
-objection in step 5 holds. The new one is that the PostToolUse citation
+**Still `edit`, never `write`, and now for a second reason.** Every
+objection in step 5 holds. The new one is that the citation-gate plugin's
 gate runs per write, so editing section by section gives you a mechanical
 check that the rewrite has not mangled a citekey or a `\citep{}` -- the
 safety net that makes an aggressive whole-document rewrite safe to attempt
-at all. One `Write` of the whole file trades that away exactly where the
+at all. One `write` of the whole file trades that away exactly where the
 risk is highest.
 
 **One `revisions.md` entry for the whole pass**, not one per section, and
@@ -590,8 +590,8 @@ diff, and no mechanical check here reads it. Two edits, not one:
    itself practises about what it can and cannot see.
 
 Same guardrails as copy-edit mode: no claim changed, no citation added or
-dropped, no argument reordered. `Edit`, never `Write`, for the same
-PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
+dropped, no argument reordered. `edit`, never `write`, for the same
+gate-plugin reason step 5 above gives. One `revisions.md` entry,
 naming the term(s) and every file touched:
 
 ```text
@@ -762,7 +762,7 @@ Everything above optimises for the common case: a change touches one
 sub-theme, so one sub-theme gets re-searched. That default is right often
 enough to be the default, and wrong often enough to need a way out.
 
-The way out is a different skill. **`corpus-reviser`** re-searches every
+The way out is a different skill. **`corpus-reviser-opencode`** re-searches every
 sub-theme in `sections.md` and reads the whole draft, and it keeps the
 dossier while doing it. Hand off to it when the user asks for a wide pass
 in as many words, when a scope change they agreed to in step 2 has
@@ -802,7 +802,7 @@ citekey.
 
 - **Never re-run the genre skill to make a change.** If the request truly
   needs a new draft, say that and hand off explicitly. Wanting a wide
-  re-search is not that case -- that is `corpus-reviser`, which keeps the
+  re-search is not that case -- that is `corpus-reviser-opencode`, which keeps the
   dossier.
 - **Never turn this into a wide pass.** Searching every sub-theme because
   the change felt big is the failure this skill is scoped to prevent, and
@@ -810,7 +810,7 @@ citekey.
   you think the request needs and let the user pick.
 - **Never refuse a wide pass either.** The scoped default is an economy,
   not a rule about what the user is allowed to want. Hand off to
-  `corpus-reviser` rather than arguing.
+  `corpus-reviser-opencode` rather than arguing.
 - **Never run `python -m chitragupta.corpus sync` or `python -m chitragupta.enrich`.**
 - **Never fabricate a citekey**, and never "fix" a gate failure by
   inventing a plausible-looking key -- correct it or remove the claim.

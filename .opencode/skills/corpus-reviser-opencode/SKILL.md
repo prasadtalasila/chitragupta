@@ -1,18 +1,18 @@
 ---
-name: corpus-reviser
-description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m chitragupta.draft gate` before presenting.
+name: corpus-reviser-opencode
+description: Revises an existing draft in content/drafts/ by re-searching the whole corpus, instead of working from the dossier alone as draft-reviser-opencode does -- re-searches every sub-theme the dossier records, reads the whole draft, and says what it will cost before it starts. Triggers ONLY when the user explicitly asks for a whole-corpus pass ("re-check the entire draft against the corpus", "search everything, cost regardless"), when a scope change they agreed to has invalidated the recorded queries, or when a draft is being re-targeted at a different reader. For every other change to an existing draft -- including repairing citations after a sync moved the corpus -- use draft-reviser-opencode instead, which is far cheaper and is the right default. Never re-runs the genre skill, never discards the dossier, honours rejected.md, and must pass `python -m chitragupta.draft gate` before presenting.
 tags: [revision, dossier, citation, corpus]
 ---
 
-# corpus-reviser
+# corpus-reviser-opencode
 
-`draft-reviser` reads the dossier instead of the corpus, and re-searches
+`draft-reviser-opencode` reads the dossier instead of the corpus, and re-searches
 only the sub-theme a change actually touches. That is the right default,
 and it is an economy rather than a rule about what anyone is allowed to
 ask for. This skill is the way out of it.
 
 It exists as a separate skill so the choice is yours and is made once,
-out loud. `draft-reviser` contains no instructions for a wide search, so
+out loud. `draft-reviser-opencode` contains no instructions for a wide search, so
 it cannot drift into one; invoking this skill is how you say the cost is
 worth it. `SOUL.md` is why the distinction is a door rather than a gate:
 how wide a revision should be is a judgment about your draft, and a
@@ -32,10 +32,10 @@ unknown.
 | User asks in as many words for a whole-corpus pass, cost regardless | Invoke this skill |
 | A scope change the user agreed to has invalidated the recorded queries | Invoke this skill -- the old queries were chosen for the old scope |
 | The draft is being re-targeted at a different reader | Invoke this skill -- what counts as support changes with the reader |
-| Any other change to an existing draft | Use `draft-reviser` |
-| A sync moved the corpus and citations broke | Use `draft-reviser`'s re-grounding mode -- repairing what broke is not a wide pass |
+| Any other change to an existing draft | Use `draft-reviser-opencode` |
+| A sync moved the corpus and citations broke | Use `draft-reviser-opencode`'s re-grounding mode -- repairing what broke is not a wide pass |
 | User asks for a **new** draft | Use the matching genre skill |
-| You are not sure which of the two this is | Use `draft-reviser`, and say you did |
+| You are not sure which of the two this is | Use `draft-reviser-opencode`, and say you did |
 
 That last row is not modesty. Being wrongly narrow costs one clarifying
 sentence; being wrongly wide costs the tokens, and the user did not
@@ -84,8 +84,8 @@ nothing to fall back on.
 
 ## The loop
 
-Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
-through 7, unchanged except for the two steps below. Read that file; do
+Follow `.opencode/skills/draft-reviser-opencode/SKILL.md`'s `## The loop`, steps
+1 through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
 edit discipline, the same dossier write-back and the same exit.
 
@@ -94,7 +94,7 @@ content/drafts/<path>` still gives the outline, but here it is a work
 list rather than a filter: you read every section, because a wide pass
 is judging the whole draft against the corpus, not one claim.
 
-**Step 4 stops being a decision.** In `draft-reviser` the question is
+**Step 4 stops being a decision.** In `draft-reviser-opencode` the question is
 whether to search at all, and the answer is usually no. Here it is
 already answered.
 
@@ -112,7 +112,7 @@ python -m chitragupta.draft retrieve evidence "<sub-theme>" --citekey <key> --lo
 
 `evidence` stays optional and stays for deepening an acceptance -- reach
 for it when a snippet is not enough to decide on a source you are minded
-to cite. Score what you keep the way `survey-writer` step 2 describes,
+to cite. Score what you keep the way `survey-writer-opencode` step 2 describes,
 and record both outcomes: kept into `evidence.md`, turned down into
 `rejected.md`. A block from before this run that carries only `support:`
 is never rewritten to `claim:`/`quote:` -- read it as `quote:` (the
@@ -133,7 +133,7 @@ turn a wide pass into the re-run this skill exists to avoid.
 - **Every call carries `--log`.** The point of choosing the expensive
   path deliberately is that the cost lands in `retrieval.md` and can be
   looked at afterwards, instead of being guessed at.
-- **`Edit`, never `Write`.** A wide *search* does not imply a wide
+- **`edit`, never `write`.** A wide *search* does not imply a wide
   *rewrite*. Most sections survive a re-check untouched, and rewriting
   those costs thousands of output tokens to produce a diff nobody can
   review.
@@ -147,10 +147,10 @@ turn a wide pass into the re-run this skill exists to avoid.
   was wide and why. **`math.md` too, if the draft has one**: it is keyed
   on the exact text of a code span (docs/WRITING-STANDARDS.md §12), and a
   wide rewrite reworders more quantities than a scoped one. Same rule as
-  `draft-reviser` -- add, drop or re-key a row per quantity, and let the
+  `draft-reviser-opencode` -- add, drop or re-key a row per quantity, and let the
   render's `[math]` warnings say what you missed.
 - **A table's id survives a rewrite; the number does not need to.**
-  Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md` §13's
+  Same rule as `draft-reviser-opencode`: `docs/WRITING-STANDARDS.md` §13's
   `<!-- table: id -->` marker renumbers itself, so a wide pass is free
   to reword the prose around a table without touching its number. What
   it can still break is the id: a table moved into another section, or
@@ -159,10 +159,10 @@ turn a wide pass into the re-run this skill exists to avoid.
   same defect a scoped revision could introduce, just more likely here
   because more sections are in motion at once.
 - **Figures still follow the draft's own genre.** Same rule as
-  `draft-reviser`: `scope.md`'s `genre:` line names the skill whose
+  `draft-reviser-opencode`: `scope.md`'s `genre:` line names the skill whose
   drafting process decides how freely `docs/WRITING-STANDARDS.md` §10's
-  figures apply -- and a `deep-research` draft gets none, wide pass or
-  not. `draft-reviser`'s **touch a figure, touch both forms** rule
+  figures apply -- and a `deep-research-opencode` draft gets none, wide pass or
+  not. `draft-reviser-opencode`'s **touch a figure, touch both forms** rule
   carries over unchanged: a figure exists as a TikZ picture and as a
   plain-ASCII diagram, nothing can check that the two still depict the
   same thing, and a wide pass is the one most likely to edit a figure
@@ -172,7 +172,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   figures <citekey>` is the one way to see what a paper's figure actually
   shows rather than what its caption claims. Look, never reproduce.
 - **A numbered equation's id survives a rewrite; the number does not
-  need to.** Same rule as `draft-reviser`: `docs/WRITING-STANDARDS.md`
+  need to.** Same rule as `draft-reviser-opencode`: `docs/WRITING-STANDARDS.md`
   §12's `<!-- equation: id -->` marker renumbers itself, so only the id
   is a wide pass's concern -- reword the surrounding derivation freely,
   but a numbered equation moved into another section, or deleted while
@@ -190,7 +190,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   against a baseline this pass already accounted for.
 - **Run the prose check** -- `python -m chitragupta.draft style
   content/drafts/<path>` -- after the gate and before presenting.
-  `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,
+  `draft-reviser-opencode`'s numbered steps 1-7 do not reach its unnumbered riders,
   so this is written out here for the same reason the scan offer is.
   **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
   -- §2's defect markers, an acronym never expanded at first use, a
@@ -200,7 +200,7 @@ turn a wide pass into the re-run this skill exists to avoid.
   none of them:** a wide pass rewrites against sources the draft never
   cited, which makes it the pass most able to import another author's
   spelling along with their point, and also the pass least entitled to
-  tidy prose nobody asked about. Findings go to `draft-reviser`'s
+  tidy prose nobody asked about. Findings go to `draft-reviser-opencode`'s
   copy-edit mode, not into this pass.
 - **Run the verbatim scan.** Before presenting, rebuild the section map
   and scan:
@@ -233,8 +233,8 @@ turn a wide pass into the re-run this skill exists to avoid.
   verbatim and near-verbatim reuse only, and **genuine restatement is only
   detected where the embedding tier can run**, so a clean scan is not a clean
   bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-  `agenda-reviser`'s job, and only if the user asks. If the user wants the
-  finding kept,
+  `agenda-reviser-opencode`'s job, and only if the user asks. If the user wants
+  the finding kept,
   add `--write`: the report goes to `content/review/`, mirroring the draft's
   path, beside any provenance and coverage reports for the same draft.
 

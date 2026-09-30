@@ -44,16 +44,26 @@ def make_source(tmp_path: Path) -> Path:
     (src / "SOUL.md").write_text("why", encoding="utf-8")
     (src / "README.md").write_text("readme", encoding="utf-8")
     (src / "DOCKER.md").write_text("running with docker", encoding="utf-8")
-    (src / ".codex").mkdir()
-    (src / ".codex" / "hooks.json").write_text('{"hooks": {}}', encoding="utf-8")
-    (src / ".opencode" / "plugins").mkdir(parents=True)
-    (src / ".opencode" / "plugins" / "chitragupta-gate.js").write_text("// p", encoding="utf-8")
-    (src / ".opencode" / "chitragupta").mkdir()
-    (src / ".opencode" / "chitragupta" / "gate.js").write_text("// g", encoding="utf-8")
+    make_agent_trees(src)
     (src / "config.toml.example").write_text(
         '[bib]\npath = "papers/bibliography.bib"\n', encoding="utf-8"
     )
     return src
+
+
+def make_agent_trees(src: Path) -> None:
+    """One file under each harness tree `init --agent` adds (#812, #900)."""
+    files = {
+        ".codex/hooks.json": '{"hooks": {}}',
+        ".agents/skills/survey-writer/SKILL.md": "# survey, Codex wording",
+        ".opencode/skills/survey-writer-opencode/SKILL.md": "# survey, OpenCode wording",
+        ".opencode/opencode.json": "{}",
+        ".opencode/plugins/chitragupta-gate.js": "// p",
+        ".opencode/chitragupta/gate.js": "// g",
+    }
+    for rel, text in files.items():
+        (src / rel).parent.mkdir(parents=True, exist_ok=True)
+        (src / rel).write_text(text, encoding="utf-8")
 
 
 @pytest.fixture
@@ -243,7 +253,7 @@ class TestManifestAgreesWithTheReleaseZip:
         } | release.EMPTY_TOP_LEVEL
         renamed = {init.CONFIG_DEST if p == init.CONFIG_EXAMPLE else p for p in zip_top_level}
         assert renamed - init.TOP_LEVEL == init.DELIBERATE_DIFFERENCES
-        assert init.TOP_LEVEL - renamed == init.GENERATED_TOP_LEVEL
+        assert init.TOP_LEVEL - renamed == set()
 
 
 class TestScaffoldedDocLinksResolve:
@@ -378,14 +388,17 @@ class TestAgents:
             for line in init.scaffold(tmp_path / "b", agents=("claude",))
         ]
 
-    def test_codex_gets_the_skills_where_it_reads_them(self, source, tmp_path):
-        """Codex reads `.agents/skills/` only; without the copy a Codex
+    def test_codex_gets_its_own_skills_where_it_reads_them(self, source, tmp_path):
+        """Codex reads `.agents/skills/` only; without that tree a Codex
         project offers the model no skill at all (measured, #812)."""
         init.scaffold(tmp_path, agents=("codex",))
         copied = tmp_path / ".agents" / "skills" / "survey-writer" / "SKILL.md"
-        assert copied.read_text(encoding="utf-8") == (
-            source / ".claude" / "skills" / "survey-writer" / "SKILL.md"
-        ).read_text(encoding="utf-8")
+        assert copied.read_text(encoding="utf-8") == "# survey, Codex wording"
+
+    def test_opencode_gets_its_own_skills_and_the_deny_list(self, source, tmp_path):
+        init.scaffold(tmp_path, agents=("opencode",))
+        assert (tmp_path / ".opencode" / "skills" / "survey-writer-opencode" / "SKILL.md").is_file()
+        assert (tmp_path / ".opencode" / "opencode.json").is_file()
 
     def test_no_other_harness_gets_the_codex_copy(self, source, tmp_path):
         init.scaffold(tmp_path, agents=("claude", "opencode"))

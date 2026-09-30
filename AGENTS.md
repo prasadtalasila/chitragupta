@@ -41,9 +41,9 @@ Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 by `python -m chitragupta.corpus sync`.
 
 All five genre skills (`survey-writer`, `thesis-chapter-writer`,
-`textbook-chapter-writer`, `tutorial-writer`, `deep-research` in
-`.claude/skills/`) must run `python -m chitragupta.draft gate <file>` on its
-own output and only present the draft once it exits 0. So must
+`textbook-chapter-writer`, `tutorial-writer`, `deep-research`) must run
+`python -m chitragupta.draft gate <file>` on its own output and only
+present the draft once it exits 0. So must
 `book-assembler`, which writes no prose but does write a document: the
 LaTeX book it composes is a new file, and this layer has one exit
 whatever produced the file. This is a gate,
@@ -51,6 +51,13 @@ not a lint suggestion -- treat a `FAIL` the same way you'd treat a
 failing test. It binds the two teaching genres too, where citations are
 optional: a draft that cites nothing passes trivially, but a draft that
 cites anything must pass on merit.
+
+Each harness has its own copy of every skill, naming its own tools:
+`.claude/skills/` for Claude Code, `.agents/skills/` for Codex, and
+`.opencode/skills/` for OpenCode, where the names carry an `-opencode`
+suffix (`survey-writer-opencode`, `draft-reviser-opencode`, ...). Use the
+copy your harness offers; [docs/HARNESS.md](docs/HARNESS.md) explains
+the layout.
 
 A hook (`.claude/hooks/citation_gate_hook.py`) also enforces this
 mechanically: any write under `content/drafts/*.md` or `*.tex` runs the

@@ -1,10 +1,10 @@
 ---
-name: deep-research
-description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review -- citing only real citekeys from content/ledger.sqlite, never a URL and never an invented key. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Heavier and slower than survey-writer by design. Must run `python -m chitragupta.draft gate` before presenting. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
+name: deep-research-opencode
+description: Runs a multi-perspective, corpus-grounded deep-research pipeline over the synced bibliography -- perspective discovery, parallel simulated interviews, contradiction mapping, outline, cited section writing, synthesis briefing, and self peer-review -- citing only real citekeys from content/ledger.sqlite, never a URL and never an invented key. Triggers when the user asks for "deep research", a multi-perspective analysis, or an in-depth grounded report on a topic, as distinct from survey-writer-opencode's single-pass literature survey. To change a report that already exists in content/drafts/, use draft-reviser-opencode instead -- never re-run this skill to make a change. Heavier and slower than survey-writer-opencode by design. Must run `python -m chitragupta.draft gate` before presenting. Stops and tells the user to run `python -m chitragupta.corpus sync` if the ledger is empty, rather than syncing itself.
 tags: [deep-research, multi-perspective, storm, citation]
 ---
 
-# deep-research
+# deep-research-opencode
 
 Every claim must resolve to one of:
 
@@ -14,7 +14,7 @@ Every claim must resolve to one of:
 - stated plainly as "not found in the corpus" -- never invented, never
   smoothed over.
 
-This is a heavier, slower alternative to `survey-writer` for when the user
+This is a heavier, slower alternative to `survey-writer-opencode` for when the user
 wants genuine multi-perspective depth (contradiction mapping, ranked
 findings, self peer-review) rather than a single-pass literature survey.
 It reads the same shared corpus layer as the other genre skills.
@@ -42,7 +42,7 @@ Every other genre skill offers to scope retrieval to one curated Zotero
 collection and threads `--collection` through its searches. **This skill
 does not, and neither do its agents.** That is a decision, not an
 oversight -- do not "fix" it by copying the section in from
-`survey-writer`.
+`survey-writer-opencode`.
 
 The reason is what this skill is for. Its whole method is to attack a
 question from several perspectives at once, each interviewer chasing a
@@ -176,16 +176,16 @@ around it, do not sync, do not cite. Tell the user to run
 | Situation | Action |
 | --- | --- |
 | User asks for "deep research", a multi-perspective analysis, or an in-depth report with contradiction mapping / peer review | Invoke this skill |
-| User asks for a standard literature survey / background section | Use `survey-writer` instead -- faster, single-pass |
-| User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
-| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer` instead |
-| User asks for a hands-on tutorial | Use `tutorial-writer` instead |
-| User asks to change a report that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
+| User asks for a standard literature survey / background section | Use `survey-writer-opencode` instead -- faster, single-pass |
+| User asks for a thesis chapter | Use `thesis-chapter-writer-opencode` instead |
+| User asks for a textbook chapter / lecture notes | Use `textbook-chapter-writer-opencode` instead |
+| User asks for a hands-on tutorial | Use `tutorial-writer-opencode` instead |
+| User asks to change a report that **already exists** in `content/drafts/` | Use `draft-reviser-opencode` instead -- never re-run this skill to make a change |
 | Ledger is empty, or nothing is `parsed` | Say so and stop. **Never** run `python -m chitragupta.corpus sync` yourself |
 
 Tell the user up front that this is a heavy, multi-phase run before
 starting -- it dispatches several subagents and does many retrieval calls.
-Create a TodoWrite list with the 7 phases below and work through them in
+Create a `todowrite` list with the 7 phases below and work through them in
 order.
 
 ## Prose standards
@@ -333,10 +333,10 @@ dispatching.
 ## Phase 2 -- Multi-perspective grounded interviews (parallel)
 
 Dispatch one `deep-research-interviewer` subagent per persona, **all in
-parallel** (multiple Agent calls in a single message). If that subagent
-type isn't available, use `general-purpose` and give it the protocol from
+parallel** (multiple `task` calls in a single message). OpenCode has no
+subagent of that name, so dispatch the `general` one and give it the protocol from
 `reference.md` §3 plus the packet schema from
-`.claude/agents/deep-research-interviewer.md` (or tell it to `Read` that
+`.claude/agents/deep-research-interviewer.md` (or tell it to `read` that
 file).
 
 Give each subagent: `TOPIC`, its `PERSPECTIVE` (name + focus), `ROUNDS` (per
@@ -448,7 +448,7 @@ dossier" above and `docs/TOKENS.md`. If a writer needs something the
 rows don't carry (a term, a constraint from the user's steering), give it
 that, not the evidence it can read for itself.
 
-If `deep-research-writer` is unavailable, use `general-purpose` with
+OpenCode has no `deep-research-writer`, so use the `general` subagent with
 `.claude/agents/deep-research-writer.md`'s instructions -- the command
 line goes in the prompt either way. For `quick`, write inline: you are
 the writer, the packets are already in your context, and running `brief`
@@ -518,8 +518,8 @@ plus an adversarial reviewer):
   `devils-advocate` -- each given the full draft, the `DRAFT PATH`
   (`content/drafts/deep-research-<slug>.md`, for `--log` -- see
   `.claude/agents/peer-reviewer.md`), and nothing else (no reviewer sees
-  another's critique). If that subagent type isn't available, use
-  `general-purpose` with `.claude/agents/peer-reviewer.md`'s instructions
+  another's critique). OpenCode has no subagent of that name, so use
+  the `general` one with `.claude/agents/peer-reviewer.md`'s instructions
   for the assigned role.
 - **Reconcile under the concession threshold** (this project's own rule,
   not upstream's): any `high`-severity concern from *any* reviewer, or any
@@ -595,7 +595,7 @@ python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.m
 python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
 ```
 
-The first two are `agenda-reviser`'s own baseline discipline (uncapped,
+The first two are `agenda-reviser-opencode`'s own baseline discipline (uncapped,
 never `--limit`): they file
 `content/review/<topic>/<stem>.verbatim.json`, the file every edit below
 is rechecked against. The third's finding count -- not the file, `style`
@@ -614,7 +614,7 @@ retry and no second critique pass** once the three are done or the list
 runs out first. For each:
 
 1. Keep the pre-edit text of the section you are about to touch.
-2. Edit with `Edit`, inside that section only. Preserve the citekey;
+2. Edit with `edit`, inside that section only. Preserve the citekey;
    reword the claim to match what `claim:` says, or drop a sentence
    that overstates it. Never add a claim `evidence.md` does not already
    record, and never touch a `quote:` span -- a quotation is captured
@@ -768,7 +768,7 @@ writer was placed to notice.
 **Report every finding and fix none of them.** A finding is a place to
 look, not a defect: the first pass of this check over this repository's
 own docs kept 59 of its 73 marker hits on inspection. If the user wants
-any acted on, that is `draft-reviser`'s copy-edit mode, which logs one
+any acted on, that is `draft-reviser-opencode`'s copy-edit mode, which logs one
 `revisions.md` entry -- never an edit made here. Report the header lines
 too: `dialect: not checked` means nobody ever recorded one, so a short
 list is not a clean report. A review aid, not a gate -- it exits 0
@@ -806,7 +806,7 @@ reason as the scan wrote it, and where the reason names a fix (`poetry install
 verbatim and near-verbatim reuse only, and **genuine
 restatement is only detected where the embedding tier can run**, so a clean
 scan is not a clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding
-is `agenda-reviser`'s job, and only if the user asks. If the user wants
+is `agenda-reviser-opencode`'s job, and only if the user asks. If the user wants
 the finding kept, add `--write`: the report goes to `content/review/`,
 mirroring the draft's path, beside any provenance and coverage reports for the
 same draft.
@@ -824,7 +824,7 @@ important contradiction, the actionable insight, the overall grade, any
 unresolved peer-review concern left in the scorecard, the citekey count,
 the saved path, and the render outcome (paths to the `.tex`/`.pdf` if they
 succeeded, or the warning if not). Then tell them where the dossier is,
-that changes to this report should go through `draft-reviser` rather than
+that changes to this report should go through `draft-reviser-opencode` rather than
 another run of this skill -- seven phases and a dozen subagents is the
 wrong price for an edit -- and that `content/drafts/` and
 `content/dossiers/` are gitignored, so
@@ -837,10 +837,10 @@ its working state get backed up.
 - **Grounded by default, closed-corpus.** Every claim traces to a real
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
-- **Parallelize, with a cap.** Dispatch same-phase subagents in one message;
+- **Parallelize, with a cap.** Dispatch same-phase `task` calls in one message;
   bound concurrency per `reference.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
-  `survey-writer` -- point users there if they want something faster.
+  `survey-writer-opencode` -- point users there if they want something faster.
 
 ## Sources
 

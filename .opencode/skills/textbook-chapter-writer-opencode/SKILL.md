@@ -1,21 +1,21 @@
 ---
-name: textbook-chapter-writer
-description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
+name: textbook-chapter-writer-opencode
+description: Drafts an undergraduate textbook chapter -- learning objectives, motivation, worked examples, exercises -- for a student who is studying the topic, not yet doing it. Diataxis-wise this is explanation with worked application, not a tutorial; if the user wants a hands-on lesson the reader follows at a keyboard, use `tutorial-writer-opencode` instead. May cite grounding papers from the synced corpus (content/ledger.sqlite via chitragupta.retrieval.search()) for motivation/background, but is not citation-dense; most content is original worked examples and exercises. Triggers when the user asks to draft a textbook chapter, lecture notes, course reader, teaching material, or worked-examples handout for students. To change one that already exists in content/drafts/, use draft-reviser-opencode instead -- never re-run this skill to make a change. Any citations it does include must pass `python -m chitragupta.draft gate` before the draft is presented -- never a fabricated citekey.
 tags: [textbook, teaching, undergraduate, pedagogy, explanation]
 ---
 
-# textbook-chapter-writer
+# textbook-chapter-writer-opencode
 
 Genre-specific drafting agent for undergraduate textbook-chapter output. The
 drafting layer (generative, on-demand, user-reviewed).
 
 Its register is teaching, not persuading a reviewer, which is what separates
-it from `survey-writer` and `thesis-chapter-writer`. Its reader is *studying*
--- sitting with the text, following an argument, working problems -- which is
-what separates it from `tutorial-writer`, whose reader is at a keyboard
-producing a working result. Both are teaching genres; they are not
-interchangeable, and the most common failure is writing this genre when the
-user asked for the other one. See "When to invoke".
+it from `survey-writer-opencode` and `thesis-chapter-writer-opencode`. Its
+reader is *studying* -- sitting with the text, following an argument, working
+problems -- which is what separates it from `tutorial-writer-opencode`, whose
+reader is at a keyboard producing a working result. Both are teaching genres;
+they are not interchangeable, and the most common failure is writing this genre
+when the user asked for the other one. See "When to invoke".
 
 ## Shared corpus layer (read, don't regenerate)
 
@@ -102,7 +102,7 @@ Scoping is a **narrowing**, and a narrowing cannot surface a paper the
 shelf does not hold. If retrieval inside the shelf comes back thin for a
 sub-theme, say so -- in the draft and in `rejected.md` -- rather than
 quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser`, which is the one skill allowed to widen.
+with `corpus-reviser-opencode`, which is the one skill allowed to widen.
 
 ## The dossier: write down what produced the draft
 
@@ -147,14 +147,14 @@ exist whether or not a single `[@citekey]` does.
 | Situation | Action |
 | --- | --- |
 | User asks for a textbook chapter / course reader / lecture notes / worked-examples handout | Invoke this skill |
-| User asks for a hands-on lesson the reader follows step by step to a working result | Use `tutorial-writer` instead |
-| User asks for a survey or lit review | Use `survey-writer` instead |
-| User asks for a thesis chapter | Use `thesis-chapter-writer` instead |
-| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser` instead -- never re-run this skill to make a change |
+| User asks for a hands-on lesson the reader follows step by step to a working result | Use `tutorial-writer-opencode` instead |
+| User asks for a survey or lit review | Use `survey-writer-opencode` instead |
+| User asks for a thesis chapter | Use `thesis-chapter-writer-opencode` instead |
+| User asks to change a chapter that **already exists** in `content/drafts/` | Use `draft-reviser-opencode` instead -- never re-run this skill to make a change |
 
 If the request is genuinely ambiguous ("write something teaching X"), ask one
 question: *will the reader be reading this, or doing it?* Reading is this
-skill; doing is `tutorial-writer`. Don't guess -- the two genres have opposite
+skill; doing is `tutorial-writer-opencode`. Don't guess -- the two genres have opposite
 rules about explanation, and a wrong guess produces a document that fails at
 both.
 
@@ -163,9 +163,9 @@ both.
 `docs/WRITING-STANDARDS.md` holds the cross-genre rules and all of them apply.
 The genre-specific additions are below.
 
-Where this genre departs from `tutorial-writer`: explanation is welcome here
-and belongs here. Digression into *why* is a feature of a textbook chapter and
-a defect in a tutorial.
+Where this genre departs from `tutorial-writer-opencode`: explanation is welcome
+here and belongs here. Digression into *why* is a feature of a textbook chapter
+and a defect in a tutorial.
 
 ## Audience first
 
@@ -515,7 +515,7 @@ candidate for the chapter.
     python -m chitragupta.draft style content/drafts/<slug>.md --json
     ```
 
-    The first two are `agenda-reviser`'s own baseline discipline
+    The first two are `agenda-reviser-opencode`'s own baseline discipline
     (uncapped, never `--limit`): they file
     `content/review/<topic>/<stem>.verbatim.json`, the file every edit
     below is rechecked against. The third's finding count -- not the
@@ -536,7 +536,7 @@ candidate for the chapter.
     list runs out first. For each:
 
     1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `Edit`, inside that section only. Preserve the citekey;
+    2. Edit with `edit`, inside that section only. Preserve the citekey;
        reword the claim to match what `claim:` says, or drop a sentence
        that overstates it. Never add a claim `evidence.md` does not
        already record, and never touch a `quote:` span -- a quotation is
@@ -681,7 +681,7 @@ candidate for the chapter.
     **Report every finding and fix none of them.** A finding is a place to
     look, not a defect: the first pass of this check over this
     repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser`'s
+    the user wants any of them acted on, that is `draft-reviser-opencode`'s
     copy-edit mode, which reads the recorded dialect and logs one
     `revisions.md` entry -- never an edit made here. Report the header
     lines too: `dialect: not checked` means nobody ever recorded one, so a
@@ -717,7 +717,7 @@ candidate for the chapter.
     that on once. It sees verbatim and near-verbatim reuse only, and
     **genuine restatement is only detected where the embedding tier can
     run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser`'s job,
+    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser-opencode`'s job,
     and only if the user asks. If the user wants the finding kept, add
     `--write`: the report goes to `content/review/`, mirroring the draft's
     path, beside any provenance and coverage reports for the same draft.
@@ -733,8 +733,8 @@ candidate for the chapter.
     knowledge, what it deliberately leaves out, and where a student is meant
     to go next -- and report the render outcome (paths to the `.tex`/`.pdf` if
     they succeeded, or the warning if not). Tell the user where the dossier
-    is, that changes to this chapter should go through `draft-reviser` rather
-    than another run of this skill, and that `content/drafts/` and
+    is, that changes to this chapter should go through `draft-reviser-opencode`
+    rather than another run of this skill, and that `content/drafts/` and
     `content/dossiers/` are gitignored -- so `python -m chitragupta.draft dossier
     export <slug>` is how a draft and its working state get backed up.
 

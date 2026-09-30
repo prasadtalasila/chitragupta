@@ -1,10 +1,12 @@
-"""Every skill loads on Claude Code, Codex and OpenCode alike (#812).
+"""Every skill copy loads on its harness (#812, #900).
 
-All three read the Agent Skills format (https://agentskills.io): a
+Claude Code, Codex and OpenCode all read the Agent Skills format: a
 `SKILL.md` whose frontmatter holds a `name` matching its folder and a
-`description` of at most 1,024 characters, from a fixed set of keys. Four
-skills' descriptions were over that and every skill carried an unread
-`tags:` key; this keeps them from growing back.
+`description`. Codex cuts a description at 1,024 characters in what the
+model sees (measured, docs/HARNESS.md), so an over-long one loses its end
+-- often the "use X instead" routing -- which is why four were shortened.
+`tags:` is outside the Agent Skills field list, but all three harnesses
+load a skill that carries it (measured), so it stays.
 """
 
 import re
@@ -12,9 +14,14 @@ from pathlib import Path
 
 import pytest
 
-SKILLS = Path(__file__).resolve().parent.parent / ".claude" / "skills"
-SKILL_FILES = sorted(SKILLS.glob("*/SKILL.md"))
-ALLOWED = {"name", "description", "license", "compatibility", "metadata", "allowed-tools"}
+REPO_ROOT = Path(__file__).resolve().parent.parent
+ROOTS = (
+    REPO_ROOT / ".claude" / "skills",
+    REPO_ROOT / ".agents" / "skills",
+    REPO_ROOT / ".opencode" / "skills",
+)
+SKILL_FILES = sorted(path for root in ROOTS for path in root.glob("*/SKILL.md"))
+ALLOWED = {"name", "description", "license", "compatibility", "metadata", "allowed-tools", "tags"}
 NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 MAX_DESCRIPTION = 1024
 
@@ -30,14 +37,16 @@ def frontmatter(path: Path) -> dict[str, str]:
     return fields
 
 
-def test_every_skill_is_found():
-    assert len(SKILL_FILES) == 9
+def test_every_copy_of_every_skill_is_found():
+    assert len(SKILL_FILES) == 27  # nine skills, three harnesses
 
 
-@pytest.mark.parametrize("path", SKILL_FILES, ids=lambda p: p.parent.name)
-def test_frontmatter_follows_the_agent_skills_spec(path):
+@pytest.mark.parametrize(
+    "path", SKILL_FILES, ids=lambda p: f"{p.parent.parent.parent.name}/{p.parent.name}"
+)
+def test_frontmatter_loads_on_every_harness(path):
     fields = frontmatter(path)
-    assert set(fields) <= ALLOWED, f"keys outside the spec: {set(fields) - ALLOWED}"
+    assert set(fields) <= ALLOWED, f"keys no harness expects: {set(fields) - ALLOWED}"
     assert fields["name"] == path.parent.name
     assert NAME_RE.match(fields["name"])
     assert 1 <= len(fields["description"]) <= MAX_DESCRIPTION, len(fields["description"])

@@ -545,7 +545,7 @@ jobs:
       # because the two fence rules that dominate the baseline there are
       # the same ones that reached docs/ unnoticed.
       - name: markdownlint
-        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
+        run: markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 
       # package.json's one devDependency (acorn), behind
       # scripts/webapp_code_standards.js -- assets/webapp/'s own C1/C2
