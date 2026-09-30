@@ -1357,8 +1357,8 @@ class TestTheIndexIsParsedOncePerProcess:
         retrieval.search("digital")
 
         reads = []
-        real = retrieval_cache._read_cache_file
-        monkeypatch.setattr(retrieval_cache, "_read_cache_file", lambda: reads.append(1) or real())
+        real = retrieval_cache._CACHE.read_file
+        monkeypatch.setattr(retrieval_cache._CACHE, "read_file", lambda: reads.append(1) or real())
         retrieval_cache._load_cache()
         retrieval_cache._load_cache()
         assert reads == []
@@ -1397,9 +1397,9 @@ class TestTheIndexIsParsedOncePerProcess:
         not a constant across a test session, so it is in the key."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
         retrieval_cache._save_cache({"a2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
-        first = retrieval_cache._index_stamp()
+        first = retrieval_cache._CACHE.stamp()
         monkeypatch.setattr(config, "RETRIEVAL_INDEX_PATH", tmp_path / "elsewhere.json")
-        assert retrieval_cache._index_stamp() != first
+        assert retrieval_cache._CACHE.stamp() != first
         assert retrieval_cache._load_cache() == {}
 
     def test_an_absent_index_stamps_without_raising(self, tmp_path, monkeypatch):
