@@ -50,6 +50,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, dossier, review
+from chitragupta.review import _emit
 from chitragupta.review.agenda import (
     _accept,
     _dedup,
@@ -213,11 +214,10 @@ def _file_report(draft_path: Path, args, refreshed=None) -> tuple[dict, dict]:
     draft's *current* state is the same artefact either way, and is what
     the next run reads as a baseline.
     """
-    formats = [f.strip() for f in args.formats.split(",") if f.strip()]
     agenda = build_agenda(draft_path, refreshed)
     command = _command(draft_path, args.json)
     body = _render.render_markdown(agenda, command)
-    written = review.write(draft_path, "agenda", body, formats)
+    written = review.write(draft_path, "agenda", body, _emit.formats(args))
     payload = _render.agenda_payload(agenda, command)
     written["json"] = review.write_json(draft_path, "agenda", payload)
     return payload, written
@@ -315,9 +315,6 @@ def run(args: argparse.Namespace) -> int:
 
     if baseline is not None:
         _print_recheck(draft_path, args, payload, baseline, written)
-    elif args.json:
-        print(json.dumps(payload, indent=2))
-        review.print_written(written, stream=sys.stderr)
     else:
-        review.print_written(written)
+        _emit.announce(payload, written, as_json=args.json)
     return 0

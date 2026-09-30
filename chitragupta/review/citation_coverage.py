@@ -34,13 +34,13 @@ Usage:
 
 import argparse
 import hashlib
-import json
 import shlex
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, retrieval, review
+from chitragupta.review import _emit
 from chitragupta.citation_gate import extract_citekeys_from_line
 from chitragupta.review import _citation_coverage_render
 
@@ -224,24 +224,14 @@ def run(args: argparse.Namespace) -> int:
 
     result = compute_coverage(draft_path, args.queries, k=args.k)
 
-    if not (args.json or args.write):
-        print(_citation_coverage_render.format_report(draft_path, args.queries, result))
-        return 0
-
-    command = _command(draft_path, args.queries, args.k, args.json, args.write)
-    payload = coverage_payload(draft_path, args.queries, args.k, result, command)
-    print(
-        json.dumps(payload, indent=2)
-        if args.json
-        else _citation_coverage_render.format_report(draft_path, args.queries, result)
-    )
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        body = _citation_coverage_render.render_markdown(
+    return _emit.emit(
+        draft_path,
+        "coverage",
+        args,
+        text=lambda: _citation_coverage_render.format_report(draft_path, args.queries, result),
+        command=lambda: _command(draft_path, args.queries, args.k, args.json, args.write),
+        payload=lambda command: coverage_payload(draft_path, args.queries, args.k, result, command),
+        markdown=lambda command: _citation_coverage_render.render_markdown(
             draft_path, args.queries, args.k, result, command
-        )
-        written = review.write(draft_path, "coverage", body, formats)
-        written["json"] = review.write_json(draft_path, "coverage", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0
+        ),
+    )

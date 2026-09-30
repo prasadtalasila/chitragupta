@@ -39,13 +39,13 @@ Usage:
 
 import argparse
 import hashlib
-import json
 import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.review import _emit
 from chitragupta.review import _synthesis_render, _units
 
 # The run length at which a section's block structure is worth itemising.
@@ -257,26 +257,12 @@ def run(args: argparse.Namespace) -> int:
 
     found = findings(report)
 
-    if not (args.json or args.write):
-        print(_synthesis_render.format_report(report, found))
-        return 0
-
-    command = _command(draft_path, args.unit, args.json, args.write)
-    payload = _synthesis_render.synthesis_payload(report, command, found)
-    print(
-        json.dumps(payload, indent=2)
-        if args.json
-        else _synthesis_render.format_report(report, found)
+    return _emit.emit(
+        draft_path,
+        "synthesis",
+        args,
+        text=lambda: _synthesis_render.format_report(report, found),
+        command=lambda: _command(draft_path, args.unit, args.json, args.write),
+        payload=lambda command: _synthesis_render.synthesis_payload(report, command, found),
+        markdown=lambda command: _synthesis_render.render_markdown(report, command, found),
     )
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        written = review.write(
-            draft_path,
-            "synthesis",
-            _synthesis_render.render_markdown(report, command, found),
-            formats,
-        )
-        written["json"] = review.write_json(draft_path, "synthesis", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0

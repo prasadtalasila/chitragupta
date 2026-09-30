@@ -60,13 +60,13 @@ Usage:
 """
 
 import argparse
-import json
 import shlex
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import config, evidence_appendix, ledger, passages, review
+from chitragupta.review import _emit
 from chitragupta.dossier import DossierError, dossier_dir
 from chitragupta.review import _quotation_render
 from chitragupta.review._quotation_match import Checked, check_one
@@ -210,26 +210,12 @@ def run(args: argparse.Namespace) -> int:
     report = build_report(draft_path)
     found = findings(report)
 
-    if not (args.json or args.write):
-        print(_quotation_render.format_report(report, found))
-        return 0
-
-    command = _command(draft_path, args.json, args.write)
-    payload = _quotation_render.quotation_payload(report, command, found)
-    print(
-        json.dumps(payload, indent=2)
-        if args.json
-        else _quotation_render.format_report(report, found)
+    return _emit.emit(
+        draft_path,
+        "quotation",
+        args,
+        text=lambda: _quotation_render.format_report(report, found),
+        command=lambda: _command(draft_path, args.json, args.write),
+        payload=lambda command: _quotation_render.quotation_payload(report, command, found),
+        markdown=lambda command: _quotation_render.render_markdown(report, command, found),
     )
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        written = review.write(
-            draft_path,
-            "quotation",
-            _quotation_render.render_markdown(report, command, found),
-            formats,
-        )
-        written["json"] = review.write_json(draft_path, "quotation", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0

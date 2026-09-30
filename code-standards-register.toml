@@ -57,11 +57,11 @@ name = "chitragupta/style_check.py"
 code_lines = 274
 
 [[c2]]
-name = "chitragupta/review/figure_layout/__init__.py"
-code_lines = 261
+name = "chitragupta/review/verbatim_check/__init__.py"
+code_lines = 258
 
 [[c2]]
-name = "chitragupta/review/verbatim_check/__init__.py"
+name = "chitragupta/review/figure_layout/__init__.py"
 code_lines = 257
 
 # C1 (JS): at most 25 statements per function, assets/webapp/ only.

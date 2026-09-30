@@ -64,6 +64,7 @@ import sys
 from pathlib import Path
 
 from chitragupta import citation_gate, config, review, spec, unit
+from chitragupta.review import _emit
 from chitragupta.review import _book_paths, _citekey_union_includes, _citekey_union_render
 from chitragupta.review._citekey_union_result import UnionResult, UnitInput
 
@@ -232,20 +233,12 @@ def run(args: argparse.Namespace) -> int:
         return 1
     assembled, result = read
 
-    if not (args.json or args.write):
-        print(_citekey_union_render.format_report(result))
-        return 0
-
-    command = _command(assembled, args.json, args.write)
-    payload = _citekey_union_render.union_payload(result, command)
-    print(
-        json.dumps(payload, indent=2) if args.json else _citekey_union_render.format_report(result)
+    return _emit.emit(
+        assembled,
+        "union",
+        args,
+        text=lambda: _citekey_union_render.format_report(result),
+        command=lambda: _command(assembled, args.json, args.write),
+        payload=lambda command: _citekey_union_render.union_payload(result, command),
+        markdown=lambda command: _citekey_union_render.render_markdown(result, command),
     )
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        body = _citekey_union_render.render_markdown(result, command)
-        written = review.write(assembled, "union", body, formats)
-        written["json"] = review.write_json(assembled, "union", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0

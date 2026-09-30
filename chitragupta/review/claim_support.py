@@ -41,13 +41,13 @@ Usage:
 """
 
 import argparse
-import json
 import shlex
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, entailment, ledger, review
+from chitragupta.review import _emit
 from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _claim_support_render as _render
 from chitragupta.review import citation_provenance
@@ -303,19 +303,12 @@ def run(args: argparse.Namespace) -> int:
         return 0
     found = _render.findings(report)
 
-    if not (args.json or args.write):
-        print(_render.format_report(report, found))
-        return 0
-
-    command = _command(draft_path, args.json, args.write)
-    payload = _render.support_payload(report, command)
-    print(json.dumps(payload, indent=2) if args.json else _render.format_report(report, found))
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        written = review.write(
-            draft_path, "support", _render.render_markdown(report, command, found), formats
-        )
-        written["json"] = review.write_json(draft_path, "support", payload)
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0
+    return _emit.emit(
+        draft_path,
+        "support",
+        args,
+        text=lambda: _render.format_report(report, found),
+        command=lambda: _command(draft_path, args.json, args.write),
+        payload=lambda command: _render.support_payload(report, command),
+        markdown=lambda command: _render.render_markdown(report, command, found),
+    )

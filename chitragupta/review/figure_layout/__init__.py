@@ -84,6 +84,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta import config, review
+from chitragupta.review import _emit
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._figures import (
     _figure_refs,
@@ -284,22 +285,15 @@ def run(args: argparse.Namespace) -> int:
         return 1
 
     results = check_draft(draft_path)
-    command = _command(draft_path, args.json, args.write)
-
-    if args.json:
-        print(json.dumps(payload(draft_path, results, command), indent=2))
-    else:
-        print(format_report(draft_path, results))
-
-    if args.write:
-        formats = [f.strip() for f in args.formats.split(",") if f.strip()]
-        body = render_markdown(draft_path, results, command)
-        written = review.write(draft_path, "figure", body, formats)
-        written["json"] = review.write_json(
-            draft_path, "figure", payload(draft_path, results, command)
-        )
-        review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
-    return 0
+    return _emit.emit(
+        draft_path,
+        "figure",
+        args,
+        text=lambda: format_report(draft_path, results),
+        command=lambda: _command(draft_path, args.json, args.write),
+        payload=lambda command: payload(draft_path, results, command),
+        markdown=lambda command: render_markdown(draft_path, results, command),
+    )
 
 
 def _command(draft_path: Path, as_json: bool, write: bool) -> str:
