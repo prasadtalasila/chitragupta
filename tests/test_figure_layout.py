@@ -606,7 +606,7 @@ class TestMaxPrintLineEnv:
             calls.append(kwargs)
             return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
-        monkeypatch.setattr(_probe.subprocess, "run", fake_run)
+        monkeypatch.setattr(_probe, "_run", fake_run)
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"
@@ -633,7 +633,7 @@ class TestMaxPrintLineEnv:
             calls.append(kwargs)
             return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
-        monkeypatch.setattr(_probe.subprocess, "run", fake_run)
+        monkeypatch.setattr(_probe, "_run", fake_run)
         figure = tmp_path / "fig.tex"
         figure.write_text(
             "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8"

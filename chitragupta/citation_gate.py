@@ -275,16 +275,20 @@ class GateResult:
 
 
 def extract_citekeys_from_line(line: str) -> list[str]:
-    """Back-compat, single-line-scoped wrapper around extract_citekeys().
+    """The keys extract_citekeys() finds in `line`, without their line numbers.
 
-    Kept for chitragupta/review/citation_coverage.py (the remaining caller that only ever
-    hands this one line at a time -- chitragupta/references.py was switched to
-    call extract_citekeys() directly in this same change) and for the
-    existing test suite, which exercises this shape extensively.
+    It scans whatever string it is handed, newlines included, so the
+    whole-document guarantees below hold for a caller that passes a whole
+    document. The name records the one caller that does not:
+    chitragupta/review/citation_coverage.py hands this one line at a time.
+    The others -- review/_claim_sentence.py (a sentence's parts) and
+    review/verbatim_check/_corpus.py (a passage) -- want only the keys.
+    review/_claims.py, which holds whole blocks, calls extract_citekeys()
+    directly since #854.
 
-    This is NOT complete in two ways, both stemming from the same cause:
-    a caller feeding one line at a time only ever hands this wrapper text
-    that already had its newlines cut out by something like str.splitlines().
+    A caller that splits a document into lines first loses two things,
+    both from the same cause -- its newlines were cut out by something
+    like str.splitlines() before this ever saw them:
     - False positive: a fenced code block spanning multiple lines needs
       both its opening and closing ``` in the same string for _blank_code
       to recognize it, so an in-code @token on its own line can still read
@@ -292,17 +296,15 @@ def extract_citekeys_from_line(line: str) -> list[str]:
     - False negative: TeX allows whitespace -- including a newline --
       between a control word and its argument (\\citep\n{key} is valid,
       equivalent to \\citep{key}), but a command on one line and its
-      {key} argument on the next arrive at this wrapper as two separate,
+      {key} argument on the next arrive as two separate,
       independently-unmatchable calls; neither one contains the whole
       pattern. extract_citekeys(text) run on the whole document catches
       this (see test_whitespace_including_newline_between_command_and_brace)
       because the newline between them is still present in its input.
-    citation_coverage.py (the only remaining per-line caller) is
-    informational-only, never a gate, so both gaps are known and
-    low-stakes rather than worth complicating this wrapper's contract to
-    close. See extract_citekeys() for the whole-document scan that gets
-    all of this right -- prefer it for any new caller that has the whole
-    document available.
+    citation_coverage.py is informational-only, never a gate, so both
+    gaps are known and low-stakes rather than worth complicating its
+    per-line loop to close. Prefer extract_citekeys() for any new caller
+    that has the whole document available.
     """
     return [key for _, key in extract_citekeys(line)]
 

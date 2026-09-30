@@ -131,6 +131,13 @@ class TestBlockCites:
         draft = a_draft("Three failure modes recur.\nClocks are the first [@Frasheri2022].\n")
         assert uncited_prose.findings(report_for(draft))[0]["block_cites"] is True
 
+    def test_a_citation_split_across_a_line_break_still_cites(self):
+        """TeX allows a newline between `\\citep` and its `{key}`. A
+        per-line scan matches neither half; `claim_sentences` hands the
+        extractor whole blocks, so the pair is seen as one citation (#854)."""
+        sentences = _claims.claim_sentences("Clocks drift \\citep\n{Frasheri2022}.\n")
+        assert [(s.cites, s.block_cites) for s in sentences] == [(True, True)]
+
     def test_the_counts_separate_the_two(self, isolated_config):
         draft = a_draft("A bare claim.\n\nA framed claim.\nIts evidence [@Frasheri2022].\n")
         report = report_for(draft)

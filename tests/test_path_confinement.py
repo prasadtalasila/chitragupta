@@ -306,5 +306,5 @@ class TestBibFileFieldIsConfined:
             f"  file = {{Private:{outside}:application/pdf}},\n}}\n",
             encoding="utf-8",
         )
-        monkeypatch.setattr(verbatim_corpus, "BIB", bib)
+        monkeypatch.setattr(config, "BIB_FILE_PATH", bib)
         assert verbatim_corpus.pdf_path("leaky2024") is None

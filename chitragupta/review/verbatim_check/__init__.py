@@ -81,8 +81,6 @@ from chitragupta.review.verbatim_check._allowlist import (
 )
 from chitragupta.review.verbatim_check._baseline import _BASELINE_FIELDS, load_baseline
 from chitragupta.review.verbatim_check._corpus import (
-    BIB,
-    PARSED_DIR,
     bib_entry,
     norm,
     pages,

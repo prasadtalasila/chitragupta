@@ -57,6 +57,11 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   `chitragupta/reference_entries.py`, so `discover` no longer imports the
   drafting layer. `embed_index.search()` caches the client and model on
   their config values and uses `get_collection`.
-- **#854, seams and shims.** The `references._format_numbers` shim is
-  already gone. `_claims` switches to `extract_citekeys()`; the per-line
-  wrapper stays for its per-line callers.
+- **#854, seams and shims.** The `references._format_numbers` shim was
+  already gone. `extract_citekeys_from_line` scans whatever string it is
+  handed, so `_claims`, which passes whole blocks, never had the
+  line-break false negative the issue feared. It switches to
+  `extract_citekeys()` for an honest name, and a test pins the split
+  citation. The launch seam is `from subprocess import run as _run` in
+  each module. That replaces the `import subprocess` line instead of
+  adding one, so the registered `style_check.py` does not grow.

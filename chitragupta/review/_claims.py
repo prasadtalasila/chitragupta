@@ -199,7 +199,7 @@ def claim_sentences(text: str) -> list[Sentence]:
         raw_block = lines[start - 1 : end]
         if not block.strip() or _excluded(raw_block, after):
             continue
-        block_cites = bool(citation_gate.extract_citekeys_from_line(block))
+        block_cites = bool(citation_gate.extract_citekeys(block))
         # No empty-sentence guard: `sentences.spans` tightens past a
         # span's leading and trailing whitespace and drops any that come
         # back empty, so a block with any content in it yields only
@@ -216,7 +216,7 @@ def claim_sentences(text: str) -> list[Sentence]:
                 Sentence(
                     _blocks.line_of_offset(start, raw_block, sent_start),
                     block[sent_start:sent_end],
-                    bool(citation_gate.extract_citekeys_from_line(block[sent_start:sent_end])),
+                    bool(citation_gate.extract_citekeys(block[sent_start:sent_end])),
                     block_cites,
                 )
             )

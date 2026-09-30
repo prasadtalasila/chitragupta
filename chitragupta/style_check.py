@@ -48,7 +48,13 @@ running this over a real 178,000-word book rather than chosen up front:
 
 import json
 import shutil
-import subprocess
+
+# `_run` is the one patch point for this module's external launches
+# (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
+# fakes it here and so fakes this module's subprocess and nobody
+# else's. Patching the global `subprocess.run` reached every launch in
+# the process.
+from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
@@ -167,7 +173,7 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             "assets/vale/README.md for the pinned version. The draft is "
             "unaffected -- this check is advisory."
         )
-    result = subprocess.run(
+    result = _run(
         _vale_argv(draft, language),
         capture_output=True,
         text=True,
