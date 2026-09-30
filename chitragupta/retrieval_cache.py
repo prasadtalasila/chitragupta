@@ -16,12 +16,10 @@ two are already defined, to avoid the circular import a top-of-file
 import would make) rather than this module importing `search`.
 """
 
-import json
-import os
 import sys
-import uuid
 
 from chitragupta import config
+from chitragupta._json_cache import MemoisedJson
 
 # 2 since #768: every entry written before it counted the tokens of the
 # document's own reference list, and nothing else in the fingerprint says
@@ -91,98 +89,22 @@ def _fingerprint(item) -> list:
     return [item["title"] or "", item["parsed_path"] or "", item["status"], exists, size, mtime_ns]
 
 
-# (path, size, mtime_ns) -> the parsed "items" mapping, for the one file
-# this process last read. Deliberately one entry, not an LRU: a process
-# reads one index, and a dict of every index ever seen would hold the
-# whole 14 MB payload per path for the life of the run.
-_MEMO: "tuple[tuple, dict] | None" = None
-
-
-def _index_stamp() -> tuple:
-    """What identifies the on-disk index right now: its path and the two
-    stat fields that move whenever it is rewritten. The path is in the key
-    because `config.RETRIEVAL_INDEX_PATH` is not a constant across a test
-    session, and a memo keyed on size and mtime alone could carry one
-    tree's index into another's."""
-    path = config.RETRIEVAL_INDEX_PATH
-    try:
-        st = path.stat()
-        return (str(path), st.st_size, st.st_mtime_ns)
-    except OSError:
-        return (str(path), None, None)
-
-
-def _load_cache() -> dict:
-    """The cached term-frequency index, memoized per process (#511/m-74).
-
-    `search()` json-parses this file, which is 14 MB live on the corpus
-    this was measured against, and deep-research dispatches several
-    parallel subagents that each call `search()` more than once. Re-parsing
-    it per call is the single largest fixed cost in a retrieval run and
-    buys nothing: within one process the file only changes when
-    `_save_cache` writes it, and `_save_cache` refreshes the memo itself.
-
-    Staleness across processes is bounded by more than the stamp. A
-    concurrent writer that produced a byte-identical size at the same
-    nanosecond is already vanishingly unlikely -- but even then, every
-    entry `_load_index` reuses must still match `_fingerprint(item)`, and
-    that fingerprint carries the parsed file's own size and mtime. So a
-    stale memo can only ever serve an entry that is still valid; it cannot
-    serve superseded text, which is the invariant #490 added and this must
-    not weaken.
-
-    The returned dict is shared, not copied. Every caller here and in
-    `chitragupta/dossier/_drift.py` only reads it -- that module's own
-    docstring says so ("`_load_cache` only reads") -- and copying 14 MB to
-    guard against a mutation nobody makes would give back the saving.
-    """
-    global _MEMO
-    stamp = _index_stamp()
-    if _MEMO is not None and _MEMO[0] == stamp:
-        return _MEMO[1]
-    items = _read_cache_file()
-    _MEMO = (stamp, items)
-    return items
-
-
-def _read_cache_file() -> dict:
-    try:
-        with open(config.RETRIEVAL_INDEX_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(data, dict) or data.get("version") != _INDEX_SCHEMA_VERSION:
-        return {}
-    items = data.get("items")
-    return items if isinstance(items, dict) else {}
-
-
-def _forget_cache() -> None:
-    """Drop the memo. For tests that write the index file behind this
-    module's back, where the stamp check is not the thing under test."""
-    global _MEMO
-    _MEMO = None
-
-
-def _save_cache(items_index: dict) -> None:
-    config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"version": _INDEX_SCHEMA_VERSION, "items": items_index}
-    # Write to a per-process/per-call-unique temp file in the same
-    # directory, then os.replace (atomic on POSIX) -- deep-research
-    # dispatches several parallel subagents that may all call search()
-    # concurrently, and a shared fixed temp filename would let one
-    # writer's partial write collide with another's.
-    tmp_path = config.RETRIEVAL_INDEX_PATH.with_name(
-        f"{config.RETRIEVAL_INDEX_PATH.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}"
-    )
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f)
-    os.replace(tmp_path, config.RETRIEVAL_INDEX_PATH)
-    # Refresh the memo from what was just written, rather than dropping it
-    # and re-parsing 14 MB on the next call. Read after `os.replace`, so
-    # the stamp is the one a later `_load_cache` will compute.
-    global _MEMO
-    _MEMO = (_index_stamp(), items_index)
+# The memo, its stamp, the version check and the atomic write, shared with
+# the passage index (#851, chitragupta/_json_cache.py). The names below
+# are the ones this module's callers -- `_load_index`, `dossier/_drift.py`,
+# the tests -- already use, bound to the shared object's own methods.
+#
+# Staleness across processes is bounded by more than the stamp. Every
+# entry `_load_index` reuses must still match `_fingerprint(item)`, which
+# carries the parsed file's own size and mtime, so a stale memo can only
+# ever serve an entry that is still valid; it cannot serve superseded
+# text, which is the invariant #490 added. And `_load_cache`'s dict is
+# shared, not copied: `dossier/_drift.py` only reads it ("`_load_cache`
+# only reads", its own docstring says).
+_CACHE = MemoisedJson(lambda: config.RETRIEVAL_INDEX_PATH, _INDEX_SCHEMA_VERSION)
+_load_cache = _CACHE.load
+_save_cache = _CACHE.save
+_forget_cache = _CACHE.forget
 
 
 def _load_index(items: list, tokenize_item) -> dict:

@@ -47,8 +47,11 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   with mermaid-cli 11 and fingerprinted by a single manifest,
   `docs/diagrams/svg/sources.json`, which maps each diagram to its `.mmd`'s
   sha256. A stale SVG then fails with a message naming its source.
-- **#851, caches.** Only the two retrieval caches share the new helper.
-  The two enrich caches have no memo or stamp, so they are left alone.
+- **#851, caches.** Only the two retrieval caches share the new helper,
+  `_json_cache.MemoisedJson`. The two enrich caches have no memo or stamp,
+  so they are left alone. Each retrieval cache binds its old private names
+  (`_load_cache`, `_save_cache`, `_forget_cache`) to the shared object's
+  methods, so `dossier/_drift.py` and the tests keep calling them.
 - **#852, style rules.** A tuple registry in `style_rules.py`, using the
   `repair` field #836 already added.
 - **#853, enrich seams.** The reranker loader moves down into a public

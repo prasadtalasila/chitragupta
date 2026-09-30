@@ -10,20 +10,19 @@ answers *how a query is ranked against them*. The split was forced by
 docs/CODE-STANDARDS.md's 250-line C2 limit rather than chosen, which is
 the kind that belongs in the same PR.
 
-Not shared with `retrieval_cache.py`, deliberately. The two look alike
-and are invalidated by different things -- that one by the parsed `.txt`,
-this one by the passage sidecar beside it -- and `chitragupta/dossier/
-_drift.py` composes `retrieval_cache._load_cache`/`_fingerprint`/
-`_tokenize_item` directly, so generalising them would have two callers
-pulling one abstraction in opposite directions. A parallel file is the
-cheaper honesty.
+What differs from `retrieval_cache.py` stays separate, deliberately:
+the two are invalidated by different things -- that one by the parsed
+`.txt`, this one by the passage sidecar beside it -- and
+`chitragupta/dossier/_drift.py` composes `retrieval_cache._load_cache`/
+`_fingerprint`/`_tokenize_item` directly, so a shared fingerprint or
+index builder would have two callers pulling one abstraction in opposite
+directions. The file plumbing under them has no caller-specific
+behaviour at all, and since #851 both use `chitragupta/_json_cache.py`
+for it rather than a copy each.
 """
 
-import json
-import os
-import uuid
-
 from chitragupta import _reference_cut, config, passages
+from chitragupta._json_cache import MemoisedJson
 from chitragupta.retrieval import _tokenize
 
 # What may be ranked. `section_header` and `title` are in
@@ -99,73 +98,16 @@ def _fingerprint(item) -> list:
     return [item["parsed_path"] or "", item["status"], config.MIN_PASSAGE_TOKENS, *stamp]
 
 
-# (path, size, mtime_ns) -> the parsed "items" mapping, for the one file
-# this process last read. One entry rather than an LRU, like the document
-# index's memo: a process reads one index.
-_MEMO: "tuple[tuple, dict] | None" = None
-
-
-def _index_stamp() -> tuple:
-    path = config.RETRIEVAL_PASSAGE_INDEX_PATH
-    try:
-        st = path.stat()
-        return (str(path), st.st_size, st.st_mtime_ns)
-    except OSError:
-        return (str(path), None, None)
-
-
-def _forget_cache() -> None:
-    """Drop the per-process memo. For tests that write the index file
-    behind this module's back, and for a caller that has rewritten a
-    sidecar in the same process."""
-    global _MEMO
-    _MEMO = None
-
-
-def _load_cache() -> dict:
-    """The cached passage stats, memoized per process.
-
-    Same arrangement, and the same safety argument, as
-    `retrieval_cache._load_cache`: a stale memo can only ever serve an
-    entry that still matches `_fingerprint(item)`, so it cannot serve
-    superseded text.
-    """
-    global _MEMO
-    stamp = _index_stamp()
-    if _MEMO is not None and _MEMO[0] == stamp:
-        return _MEMO[1]
-    items = _read_cache_file()
-    _MEMO = (stamp, items)
-    return items
-
-
-def _read_cache_file() -> dict:
-    try:
-        with open(config.RETRIEVAL_PASSAGE_INDEX_PATH, encoding="utf-8") as f:
-            data = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return {}
-    if not isinstance(data, dict) or data.get("version") != _INDEX_SCHEMA_VERSION:
-        return {}
-    items = data.get("items")
-    return items if isinstance(items, dict) else {}
-
-
-def _save_cache(items_index: dict) -> None:
-    config.RETRIEVAL_PASSAGE_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
-    payload = {"version": _INDEX_SCHEMA_VERSION, "items": items_index}
-    # Temp file then os.replace, for the reason the document index does
-    # it: deep-research dispatches parallel subagents that may all search
-    # at once, and a shared fixed temp name lets one writer's partial
-    # write collide with another's.
-    tmp_path = config.RETRIEVAL_PASSAGE_INDEX_PATH.with_name(
-        f"{config.RETRIEVAL_PASSAGE_INDEX_PATH.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}"
-    )
-    with open(tmp_path, "w", encoding="utf-8") as f:
-        json.dump(payload, f)
-    os.replace(tmp_path, config.RETRIEVAL_PASSAGE_INDEX_PATH)
-    global _MEMO
-    _MEMO = (_index_stamp(), items_index)
+# The memo, its stamp, the version check and the atomic write, shared with
+# the document index (#851, chitragupta/_json_cache.py) -- and so the same
+# safety argument: a stale memo can only ever serve an entry that still
+# matches `_fingerprint(item)`, so it cannot serve superseded text.
+# `_forget_cache` is also for a caller that has rewritten a sidecar in the
+# same process, which the index file's own stamp cannot see.
+_CACHE = MemoisedJson(lambda: config.RETRIEVAL_PASSAGE_INDEX_PATH, _INDEX_SCHEMA_VERSION)
+_load_cache = _CACHE.load
+_save_cache = _CACHE.save
+_forget_cache = _CACHE.forget
 
 
 def _cached_entry(entry, fp: list) -> "dict | None":
