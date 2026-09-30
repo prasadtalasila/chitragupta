@@ -259,7 +259,8 @@ mkdocs.yml                the documentation site published at prasad.talasila.in
                           (`poetry install --only docs`). Read its header before editing
 chitragupta/                      the corpus and drafting layers (sync needs bibtexparser;
                           citation_gate/references need nothing)
-  config.py                 loads config.toml, env var overrides
+  config.py                 every setting, as config.NAME; env var overrides
+  config_load.py            the config.toml load and the typed getters config.py reads each setting through
   runlock.py                one-writer-at-a-time lock over content/, held by `chitragupta.corpus sync` and
                           `chitragupta.enrich` -- the only two commands that write to it;
                           a dedicated sqlite file, so a killed holder releases it with no

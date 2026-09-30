@@ -6,62 +6,62 @@ import os
 
 import pytest
 
-from chitragupta import config
+from chitragupta import config, config_load
 
 
 class TestGetHelpers:
     def test_env_var_wins_over_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"section": {"key": "from-toml"}})
+        monkeypatch.setattr(config_load, "_toml", {"section": {"key": "from-toml"}})
         monkeypatch.setenv("MY_VAR", "from-env")
         assert config._get("MY_VAR", "section", "key", default="fallback") == "from-env"
 
     def test_falls_back_to_toml_path(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"section": {"key": "from-toml"}})
+        monkeypatch.setattr(config_load, "_toml", {"section": {"key": "from-toml"}})
         monkeypatch.delenv("MY_VAR", raising=False)
         assert config._get("MY_VAR", "section", "key", default="fallback") == "from-toml"
 
     def test_default_when_toml_path_missing(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"section": {}})
+        monkeypatch.setattr(config_load, "_toml", {"section": {}})
         monkeypatch.delenv("MY_VAR", raising=False)
         assert config._get("MY_VAR", "section", "key", default="fallback") == "fallback"
 
     def test_default_when_toml_path_not_a_dict(self, monkeypatch):
         # "section" resolves to a string, not a dict -- the next path
         # segment ("key") can't be looked up in it.
-        monkeypatch.setattr(config, "_toml", {"section": "not-a-dict"})
+        monkeypatch.setattr(config_load, "_toml", {"section": "not-a-dict"})
         monkeypatch.delenv("MY_VAR", raising=False)
         assert config._get("MY_VAR", "section", "key", default="fallback") == "fallback"
 
     def test_raises_when_leaf_is_not_a_string(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"section": {"key": 123}})
+        monkeypatch.setattr(config_load, "_toml", {"section": {"key": 123}})
         monkeypatch.delenv("MY_VAR", raising=False)
         with pytest.raises(ValueError, match="must be a string"):
             config._get("MY_VAR", "section", "key", default="fallback")
 
     def test_float_env_var_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3.0}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"timeout": 3.0}})
         monkeypatch.setenv("MY_TIMEOUT", "9.5")
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.0) == 9.5
 
     def test_float_falls_back_to_toml_number(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"timeout": 3}})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.0) == 3.0
 
     def test_float_default_when_missing(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5) == 1.5
 
     def test_float_default_when_not_a_dict(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": "nope"})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": "nope"})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         assert config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5) == 1.5
 
     def test_float_raises_when_bool_in_toml(self, monkeypatch):
         # bool is a subclass of int in Python -- must not be silently
         # accepted as a numeric timeout.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": True}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"timeout": True}})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         with pytest.raises(ValueError, match="must be a number"):
             config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
@@ -69,7 +69,7 @@ class TestGetHelpers:
     def test_float_raises_when_string_in_toml(self, monkeypatch):
         # A quoted number in TOML used to silently default instead of
         # signalling the value was never read as a float.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": "3.0"}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"timeout": "3.0"}})
         monkeypatch.delenv("MY_TIMEOUT", raising=False)
         with pytest.raises(ValueError, match="must be a number"):
             config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
@@ -79,7 +79,7 @@ class TestGetHelpers:
         # with no indication of which setting was misconfigured -- this
         # getter's own error names the key and env var like every other
         # wrong-value case here does.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"timeout": 3.0}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"timeout": 3.0}})
         monkeypatch.setenv("MY_TIMEOUT", "not-a-number")
         with pytest.raises(ValueError, match="MY_TIMEOUT.*must be a number"):
             config._get_float("MY_TIMEOUT", "enrich", "timeout", default=1.5)
@@ -105,49 +105,49 @@ class TestGetHelpers:
         ],
     )
     def test_bool_env_var_parses_words_not_truthiness(self, monkeypatch, raw, expected):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"flag": not expected}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"flag": not expected}})
         monkeypatch.setenv("MY_FLAG", raw)
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=not expected) is expected
 
     def test_bool_falls_back_to_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"flag": False}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"flag": False}})
         monkeypatch.delenv("MY_FLAG", raising=False)
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is False
 
     def test_bool_default_when_missing(self, monkeypatch):
         monkeypatch.delenv("MY_FLAG", raising=False)
-        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is True
-        monkeypatch.setattr(config, "_toml", {"enrich": "nope"})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": "nope"})
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=True) is True
 
     def test_bool_raises_when_toml_leaf_is_not_a_bool(self, monkeypatch):
         # A quoted `collapse_citations = "false"` used to silently mean
         # `default` (often True) instead of the False actually written.
         monkeypatch.delenv("MY_FLAG", raising=False)
-        monkeypatch.setattr(config, "_toml", {"enrich": {"flag": "yes"}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"flag": "yes"}})
         with pytest.raises(ValueError, match="must be true or false"):
             config._get_bool("MY_FLAG", "enrich", "flag", default=False)
 
     def test_int_env_var_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": 3}})
         monkeypatch.setenv("MY_COUNT", "9")
         assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 9
 
     def test_int_falls_back_to_toml_number(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": 3}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
 
     def test_int_default_when_missing(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         assert config._get_int("MY_COUNT", "enrich", "count", default=5) == 5
 
     def test_int_accepts_a_whole_valued_float(self, monkeypatch):
         # TOML's own `count = 3.0` and a whole-number env var string both
         # denote an integer; only the fractional case is rejected below.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3.0}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": 3.0}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
 
@@ -155,26 +155,26 @@ class TestGetHelpers:
         # Matches _get_positive_int and _get_workers, which have always
         # accepted a quoted integer -- the same value spelled either way
         # in a config file is intentionally not a type error here.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": "3"}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": "3"}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         assert config._get_int("MY_COUNT", "enrich", "count", default=1) == 3
 
     def test_int_raises_on_fractional_toml_value(self, monkeypatch):
         # int(_get_float(...)) used to silently truncate 3.9 to 3; this
         # is the defect the getter exists to close.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3.9}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": 3.9}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)
 
     def test_int_raises_on_fractional_env_var(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": 3}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": 3}})
         monkeypatch.setenv("MY_COUNT", "3.5")
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)
 
     def test_int_raises_on_bool_in_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": True}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": True}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)
@@ -185,13 +185,13 @@ class TestGetHelpers:
         # a whole number only by a much looser standard than the PR's
         # own "quoted whole number" contract, and float(str(huge_int))
         # can lose precision that int() never would.
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": raw}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": raw}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)
 
     def test_int_raises_on_non_numeric_string(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"count": "many"}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"count": "many"}})
         monkeypatch.delenv("MY_COUNT", raising=False)
         with pytest.raises(ValueError, match="must be a whole number"):
             config._get_int("MY_COUNT", "enrich", "count", default=1)
@@ -253,17 +253,17 @@ class TestGetWorkers:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {}})
 
     def test_missing_key_uses_default(self):
         assert config._get_workers("W", "parser", "workers", default=1) == 1
 
     def test_int_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"workers": 8}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"workers": 8}})
         assert config._get_workers("W", "parser", "workers", default=1) == 8
 
     def test_auto_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"workers": "auto"}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"workers": "auto"}})
         assert config._get_workers("W", "parser", "workers", default=1) == "auto"
 
     @pytest.mark.parametrize("raw", ["auto", "AUTO", " Auto "])
@@ -272,7 +272,7 @@ class TestGetWorkers:
         assert config._get_workers("W", "parser", "workers", default=1) == "auto"
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"workers": 8}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"workers": 8}})
         monkeypatch.setenv("W", "3")
         assert config._get_workers("W", "parser", "workers", default=1) == 3
 
@@ -291,7 +291,7 @@ class TestGetWorkers:
         """TOML `workers = true` parses as a bool, and bool is an int
         subclass in Python -- so without an explicit check this would
         silently mean "1 worker" instead of being called out."""
-        monkeypatch.setattr(config, "_toml", {"parser": {"workers": True}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"workers": True}})
         with pytest.raises(ValueError, match="positive integer"):
             config._get_workers("W", "parser", "workers", default=1)
 
@@ -305,17 +305,17 @@ class TestGetPositiveInt:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
 
     def test_missing_key_uses_default(self):
         assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 5
 
     def test_int_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 9}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"embed_top_k": 9}})
         assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 9
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 9}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"embed_top_k": 9}})
         monkeypatch.setenv("N", "2")
         assert config._get_positive_int("N", "enrich", "embed_top_k", default=5) == 2
 
@@ -334,14 +334,14 @@ class TestGetPositiveInt:
             config._get_positive_int("N", "enrich", "embed_top_k", default=5)
 
     def test_bool_is_rejected(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": True}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"embed_top_k": True}})
         with pytest.raises(ValueError, match="whole number >= 1"):
             config._get_positive_int("N", "enrich", "embed_top_k", default=5)
 
     def test_a_float_is_rejected_rather_than_truncated(self, monkeypatch):
         """2.7 passages is not a thing, and int(2.7) == 2 would silently
         honour a value nobody wrote."""
-        monkeypatch.setattr(config, "_toml", {"enrich": {"embed_top_k": 2.7}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"embed_top_k": 2.7}})
         with pytest.raises(ValueError, match="whole number >= 1"):
             config._get_positive_int("N", "enrich", "embed_top_k", default=5)
 
@@ -354,13 +354,13 @@ class TestGetStartMethod:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {}})
 
     def test_missing_key_uses_default(self):
         assert config._get_start_method("M", "parser", "start_method", default="auto") == "auto"
 
     def test_value_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"start_method": "spawn"}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"start_method": "spawn"}})
         assert config._get_start_method("M", "parser", "start_method", default="auto") == "spawn"
 
     @pytest.mark.parametrize("raw", ["FORKSERVER", " forkserver "])
@@ -371,7 +371,7 @@ class TestGetStartMethod:
         )
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"start_method": "spawn"}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"start_method": "spawn"}})
         monkeypatch.setenv("M", "forkserver")
         assert (
             config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
@@ -398,13 +398,13 @@ class TestGetLogLevel:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"logging": {}})
+        monkeypatch.setattr(config_load, "_toml", {"logging": {}})
 
     def test_missing_key_uses_default(self):
         assert config._get_log_level("M", "logging", "level", default="INFO") == "INFO"
 
     def test_value_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"logging": {"level": "DEBUG"}})
+        monkeypatch.setattr(config_load, "_toml", {"logging": {"level": "DEBUG"}})
         assert config._get_log_level("M", "logging", "level", default="INFO") == "DEBUG"
 
     @pytest.mark.parametrize("raw", ["warning", " WARNING "])
@@ -413,7 +413,7 @@ class TestGetLogLevel:
         assert config._get_log_level("M", "logging", "level", default="INFO") == "WARNING"
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"logging": {"level": "DEBUG"}})
+        monkeypatch.setattr(config_load, "_toml", {"logging": {"level": "DEBUG"}})
         monkeypatch.setenv("M", "ERROR")
         assert config._get_log_level("M", "logging", "level", default="INFO") == "ERROR"
 
@@ -704,27 +704,27 @@ class TestGetOptionalPositiveInt:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
 
     def test_missing_key_is_uncapped(self):
         assert config._get_optional_positive_int("K", "enrich", "k") is None
 
     def test_number_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 32}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 32}})
         assert config._get_optional_positive_int("K", "enrich", "k") == 32
 
     @pytest.mark.parametrize("raw", ["", "off", "none", "false", "OFF", " off "])
     def test_off_words_work_from_either_source(self, monkeypatch, raw):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": raw}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": raw}})
         assert config._get_optional_positive_int("K", "enrich", "k") is None
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 32}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 32}})
         monkeypatch.setenv("K", "8")
         assert config._get_optional_positive_int("K", "enrich", "k") == 8
 
     def test_a_quoted_integer_is_accepted(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": "16"}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": "16"}})
         assert config._get_optional_positive_int("K", "enrich", "k") == 16
 
     @pytest.mark.parametrize("raw", ["0", "-5"])
@@ -744,12 +744,12 @@ class TestGetOptionalPositiveInt:
     def test_bool_in_toml_is_rejected(self, monkeypatch):
         """bool is an int subclass, so `k = true` would quietly mean a
         cap of 1 -- one premise per citation, near-total recall loss."""
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": True}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": True}})
         with pytest.raises(ValueError, match=">= 1"):
             config._get_optional_positive_int("K", "enrich", "k")
 
     def test_a_float_is_rejected(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"enrich": {"k": 8.5}})
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 8.5}})
         with pytest.raises(ValueError, match=">= 1"):
             config._get_optional_positive_int("K", "enrich", "k")
 
@@ -761,23 +761,23 @@ class TestGetOptionalFloat:
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {}})
 
     def test_missing_key_is_off(self):
         assert config._get_optional_float("T", "parser", "t") is None
 
     def test_number_from_toml(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"t": 600}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"t": 600}})
         assert config._get_optional_float("T", "parser", "t") == 600.0
 
     @pytest.mark.parametrize("raw", ["", "off", "none", "false", "OFF"])
     def test_env_can_switch_it_off(self, monkeypatch, raw):
-        monkeypatch.setattr(config, "_toml", {"parser": {"t": 600}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"t": 600}})
         monkeypatch.setenv("T", raw)
         assert config._get_optional_float("T", "parser", "t") is None
 
     def test_env_override_wins(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"t": 600}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"t": 600}})
         monkeypatch.setenv("T", "90")
         assert config._get_optional_float("T", "parser", "t") == 90.0
 
@@ -793,7 +793,7 @@ class TestGetOptionalFloat:
             config._get_optional_float("T", "parser", "t")
 
     def test_bool_in_toml_is_rejected(self, monkeypatch):
-        monkeypatch.setattr(config, "_toml", {"parser": {"t": True}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"t": True}})
         with pytest.raises(ValueError, match="positive number"):
             config._get_optional_float("T", "parser", "t")
 
@@ -803,7 +803,7 @@ class TestGetOptionalFloat:
         "off"`, so this is the path every new user takes. Handling the
         off-words only on the env path made the example itself fail to
         load."""
-        monkeypatch.setattr(config, "_toml", {"parser": {"t": raw}})
+        monkeypatch.setattr(config_load, "_toml", {"parser": {"t": raw}})
         assert config._get_optional_float("T", "parser", "t", default=1800.0) is None
 
     def test_default_applies_when_absent(self):
