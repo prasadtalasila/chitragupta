@@ -1,6 +1,6 @@
 # #823: stop TeX reading outside the draft, and figure siblings following symlinks
 
-Status: **closed by PR #906 (6.126.1).** Written 2026-09-30 against
+Status: **closed by PR #906 (6.126.7).** Written 2026-09-30 against
 `origin/main` at `3e54222`. Closes #823. Two things were added on the
 way, both from the final branch review: `render()` now refuses a draft
 whose `\input` or image reference is a symlink out of its directory
