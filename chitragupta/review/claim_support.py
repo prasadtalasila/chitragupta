@@ -170,7 +170,7 @@ def _ranked(claim: str, passages: list[Passage], top_k: int | None) -> list[Pass
 #
 # `_ranked` preserves that invariant, because it only ever shortens a
 # non-empty list, and never to zero: `top_k` is at least 1 wherever it
-# is not None, which `config._get_optional_positive_int` enforces at
+# is not None, which `config_load._get_optional_positive_int` enforces at
 # load rather than here.
 def _score_claim(
     entailer, claim: str, passages: list[Passage], top_k: int | None = None

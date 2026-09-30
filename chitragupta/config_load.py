@@ -285,3 +285,27 @@ def _get_workers(env_var: str, *toml_path: str, default: int) -> "int | str":
     if workers < 1:
         raise complaint
     return workers
+
+
+def _get_choice(env_var: str, *toml_path: str, default: str, choices: tuple[str, ...]) -> str:
+    """One of `choices`, matched ignoring case and surrounding space, and
+    returned as `choices` spells it -- so `"WARNING"` for a written
+    `warning`, and `"forkserver"` for a written `FORKSERVER`.
+
+    Its own loader rather than a bare `_get`, so a typo ("forkserv",
+    "WARN") is reported here, naming the alternatives, instead of
+    surfacing later as a `ValueError` out of
+    `multiprocessing.get_context()` or the logging module, once a pool or
+    a handler is already being built. Same reasoning as `_get_workers`.
+
+    One loader for both enum settings, `[parser].start_method` and
+    `[logging].level`, which had a copy each that differed only in the
+    case they folded to (#848).
+    """
+    raw = _get(env_var, *toml_path, default=default).strip()
+    for choice in choices:
+        if choice.lower() == raw.lower():
+            return choice
+    raise ValueError(
+        f"{'/'.join(toml_path)} (or {env_var}) must be one of {', '.join(choices)}, not {raw!r}."
+    )
