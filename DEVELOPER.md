@@ -210,8 +210,9 @@ docs/                     reference docs that ship in the release zip -- everyth
   DIAGRAMS.md               the workflow drawn eleven ways; the fenced mermaid blocks are the source
   diagrams/                 the same eleven as standalone files, for use outside this repo
     *.mmd                     mermaid sources with a title line
-    svg/*.svg                 rendered exports (mmdc -b white -w 1900). Exports only -- edit the
+    svg/*.svg                 rendered exports, by scripts/render_diagrams.py. Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
+    svg/sources.json          which .mmd fingerprint each export was rendered from; pinned by a test
   CITATION-PROVENANCE.md    what chitragupta/review/citation_provenance.py reports and how to read it
   PLAGIARISM.md             what chitragupta/review/verbatim_check/'s overlap/scan modes catch and don't
                             (verbatim reuse only, paraphrase is a later tier), the n-gram
@@ -336,6 +337,7 @@ chitragupta/review/                the review layer -- one command, `python -m c
   _blocks.py                what a *block* is -- a table row, a list item, a heading -- in both
                           markups. Shared by provenance and uncited_prose; neither owns it
   _emit.py                  how an aid prints and files its report under --json/--write, shared by every aid
+  _registry.py              which module runs each aid -- the one name->module map, keyed by review.AIDS
   _claims.py                which sentences of a draft carry a claim, and which are scaffolding.
                           Split from uncited_prose so the roadmap's C2 can share it
   _units.py                 what a "unit" is per genre, and how each genre treats uncited prose --

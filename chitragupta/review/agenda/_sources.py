@@ -28,6 +28,8 @@ from chitragupta.review.agenda import _accept
 
 # The review aids agenda reads, in `review.AIDS`'s own order -- not all
 # of `review.AIDS`: `agenda` itself is excluded, and so is `union`.
+# Derived rather than listed (#850), so adding an aid to `review.AIDS`
+# adds it here unless it is one of the two named exclusions.
 #
 # `union` is excluded because of *what its findings are about*, not
 # because they could not be found: it takes a reviewable path under
@@ -54,16 +56,7 @@ from chitragupta.review.agenda import _accept
 # (docs/CODE-STANDARDS.md) is not in tension with reading it here.
 # `synthesis` and `figure` carry no item class (see `_items.py`) but are
 # still named in the header as read, not silently dropped.
-AID_NAMES = (
-    "provenance",
-    "verbatim",
-    "coverage",
-    "synthesis",
-    "figure",
-    "uncited",
-    "quotation",
-    "support",
-)
+AID_NAMES = tuple(aid for aid in review.AIDS if aid not in ("agenda", "union"))
 
 # The item classes raised from an aid's `.json`, and which aid. The three
 # classes missing here (`missing-citekey`, `recorded-but-uncited`,

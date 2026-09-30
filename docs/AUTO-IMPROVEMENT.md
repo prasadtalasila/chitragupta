@@ -397,7 +397,7 @@ says where each comes from.
 | **R7** | Two attempts per item, one pass per invocation, then hand back. |
 | **R8** | Where a deletion and a rewrite both pass, the smaller diff wins. |
 | **R9** | The agenda taken before the pass is the recorded baseline, and the closing report is stated against it. |
-| **R10** | The aid is registered in both `review.AIDS` and `__main__.AIDS`; the skill's `description` names its triggers; and both appear in AGENTS.md's layer bullets, CLI.md, the README tables and `mkdocs.yml`. |
+| **R10** | The aid is registered in both `review.AIDS` and `review._registry.AIDS`; the skill's `description` names its triggers; and both appear in AGENTS.md's layer bullets, CLI.md, the README tables and `mkdocs.yml`. |
 | **R11** | No hook, no scheduled job and no other skill invokes the `agenda-reviser` skill. Its only trigger is a person asking. |
 | **R12** | An item whose draft text has changed since the aid found it is **dropped and reported, never repaired**. No merge, no similarity-based relocation, no best-effort application. The finding is re-derived on the next run against the current text. |
 
@@ -484,7 +484,7 @@ registered is dead code.
 
 | Piece | How it is found | Consequence of omitting it |
 | --- | --- | --- |
-| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `__main__.AIDS` | `chitragupta/review/__main__.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
+| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS` | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |

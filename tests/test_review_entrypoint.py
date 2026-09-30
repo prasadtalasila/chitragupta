@@ -27,6 +27,7 @@ import pytest
 
 from chitragupta import review
 from chitragupta.review import __main__ as entrypoint
+from chitragupta.review import _registry
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -78,8 +79,9 @@ def _run(*argv):
 
 
 class TestTheSubcommandsAreTheAids:
-    # No "the sets are equal" test here, deliberately. `__main__.py`
-    # raises on drift at import time, so the import at the top of this
+    # No "the sets are equal" test here, deliberately. `_registry.py`,
+    # which the entry point imports its subcommands from (#850), raises
+    # on drift at import time, so the import at the top of this
     # file would fail during collection and such an assertion could
     # never be the thing that reports it. What follows tests the guard
     # instead, which is the only falsifiable form of that claim.
@@ -98,12 +100,12 @@ class TestTheSubcommandsAreTheAids:
         monkeypatch.setitem(review.AIDS, "invented", "Not a real aid")
         try:
             with pytest.raises(RuntimeError, match="drifted apart"):
-                importlib.reload(entrypoint)
+                importlib.reload(_registry)
         finally:
             # Undo before the final reload, so the module is left importable
             # for every test after this one.
             monkeypatch.undo()
-            importlib.reload(entrypoint)
+            importlib.reload(_registry)
 
     @pytest.mark.parametrize("aid", ["provenance", "verbatim", "coverage"])
     def test_every_aid_is_reachable_and_declares_its_own_flags(self, aid):
