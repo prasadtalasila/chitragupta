@@ -101,7 +101,7 @@ it is on a register it left is not.
 ## 🧱 Tier 1: the debt the ratchet already holds
 
 `code-standards-register.toml` freezes **3 functions** over C1 (25
-statements) and **5 modules** over C2 (250 code lines), each with its
+statements) and **4 modules** over C2 (250 code lines), each with its
 current size recorded beside it, which
 `test_every_registered_offender_records_its_current_count` keeps honest.
 `tests/test_code_standards_scan.py` reads that file and is still what
@@ -342,8 +342,9 @@ them. Each is a
 with no detector, checked by hand against the tree:
 
 - **Over-configurability** ("a `config.toml` key with one caller and no
-  user asking for it"). 63 public constants in `chitragupta/config.py`; the
-  five with no external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
+  user asking for it"). 63 public constants in `chitragupta/config.py`,
+  26 of them re-exported from `config_enrich.py`; the five with no
+  external caller (`LOG_LEVELS`, `PARSER_START_METHODS`,
   `PACKAGE_ROOT`, `PROJECT_MARKER`, `CONFIG_PATH`) are all internal
   validation tuples or intermediate values used within `config.py` itself.
   No speculative key.

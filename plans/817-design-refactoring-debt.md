@@ -29,9 +29,18 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   test change beyond the register, and it is why the old header said the
   split could not be mechanical. `config.py` calls `config_load.load()` on
   every import, so `importlib.reload(config)` still re-reads the file.
-  The setting-specific validators stay in `config.py`. No `_get_choice` is
-  added. The second PR moves the `[enrich]`/`[discover]` settings out and
-  delists `config.py`.
+  The setting-specific validators stay in `config.py`. The second PR
+  moves the 26 `[enrich]`/`[discover]` knobs into `config_enrich.py`,
+  which imports only `config_load`. The paths those stages write stay in
+  `config.py`, because they are derived from `CONTENT_DIR` and moving them
+  would save nothing: each moved line costs a re-export line. That move
+  alone left `config.py` at 274 code lines. Folding `_get_start_method`
+  and `_get_log_level`, which differed only in the case they folded to,
+  into one `config_load._get_choice` brought it to 247 and delisted it. A
+  star re-export would have been shorter, but `.pylintrc` sets
+  `allow-wildcard-with-all=no` and the codebase has none. `config.py`
+  reloads `config_enrich` when it is itself reloaded, because
+  `importlib.reload(config)` does not re-run a module it only imports.
 - **#849, review output.** Covers every aid that repeats the
   formats/write/print sequence, which by now is ten, not eight.
 - **#850, aid registries.** One registry in code. The SVGs are re-rendered

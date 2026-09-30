@@ -261,6 +261,7 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           citation_gate/references need nothing)
   config.py                 every setting, as config.NAME; env var overrides
   config_load.py            the config.toml load and the typed getters config.py reads each setting through
+  config_enrich.py          the [enrich]/[discover] knobs, re-exported by config.py as config.NAME
   runlock.py                one-writer-at-a-time lock over content/, held by `chitragupta.corpus sync` and
                           `chitragupta.enrich` -- the only two commands that write to it;
                           a dedicated sqlite file, so a killed holder releases it with no

@@ -357,30 +357,48 @@ class TestGetStartMethod:
         monkeypatch.setattr(config_load, "_toml", {"parser": {}})
 
     def test_missing_key_uses_default(self):
-        assert config._get_start_method("M", "parser", "start_method", default="auto") == "auto"
+        assert (
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
+            == "auto"
+        )
 
     def test_value_from_toml(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"parser": {"start_method": "spawn"}})
-        assert config._get_start_method("M", "parser", "start_method", default="auto") == "spawn"
+        assert (
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
+            == "spawn"
+        )
 
     @pytest.mark.parametrize("raw", ["FORKSERVER", " forkserver "])
     def test_case_and_space_insensitive(self, monkeypatch, raw):
         monkeypatch.setenv("M", raw)
         assert (
-            config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
+            == "forkserver"
         )
 
     def test_env_override_wins(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"parser": {"start_method": "spawn"}})
         monkeypatch.setenv("M", "forkserver")
         assert (
-            config._get_start_method("M", "parser", "start_method", default="auto") == "forkserver"
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
+            == "forkserver"
         )
 
     def test_a_typo_is_rejected_with_the_alternatives(self, monkeypatch):
         monkeypatch.setenv("M", "forkserv")
         with pytest.raises(ValueError, match="auto, forkserver, spawn"):
-            config._get_start_method("M", "parser", "start_method", default="auto")
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
 
     def test_fork_is_rejected(self, monkeypatch):
         """Not an accepted value: this process holds the run lock and the
@@ -388,39 +406,53 @@ class TestGetStartMethod:
         must not inherit."""
         monkeypatch.setenv("M", "fork")
         with pytest.raises(ValueError, match="auto, forkserver, spawn"):
-            config._get_start_method("M", "parser", "start_method", default="auto")
+            config._get_choice(
+                "M", "parser", "start_method", default="auto", choices=config.PARSER_START_METHODS
+            )
 
 
 class TestGetLogLevel:
     """[logging].level decides how much python -m chitragupta.corpus sync writes to
     logs/pipeline.log. A typo has to be rejected at load, naming the
-    alternatives, same reasoning as _get_start_method above."""
+    alternatives, same reasoning as [parser].start_method above."""
 
     @pytest.fixture(autouse=True)
     def _toml(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"logging": {}})
 
     def test_missing_key_uses_default(self):
-        assert config._get_log_level("M", "logging", "level", default="INFO") == "INFO"
+        assert (
+            config._get_choice("M", "logging", "level", default="INFO", choices=config.LOG_LEVELS)
+            == "INFO"
+        )
 
     def test_value_from_toml(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"logging": {"level": "DEBUG"}})
-        assert config._get_log_level("M", "logging", "level", default="INFO") == "DEBUG"
+        assert (
+            config._get_choice("M", "logging", "level", default="INFO", choices=config.LOG_LEVELS)
+            == "DEBUG"
+        )
 
     @pytest.mark.parametrize("raw", ["warning", " WARNING "])
     def test_case_and_space_insensitive(self, monkeypatch, raw):
         monkeypatch.setenv("M", raw)
-        assert config._get_log_level("M", "logging", "level", default="INFO") == "WARNING"
+        assert (
+            config._get_choice("M", "logging", "level", default="INFO", choices=config.LOG_LEVELS)
+            == "WARNING"
+        )
 
     def test_env_override_wins(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"logging": {"level": "DEBUG"}})
         monkeypatch.setenv("M", "ERROR")
-        assert config._get_log_level("M", "logging", "level", default="INFO") == "ERROR"
+        assert (
+            config._get_choice("M", "logging", "level", default="INFO", choices=config.LOG_LEVELS)
+            == "ERROR"
+        )
 
     def test_a_typo_is_rejected_with_the_alternatives(self, monkeypatch):
         monkeypatch.setenv("M", "WARN")
         with pytest.raises(ValueError, match="DEBUG, INFO, WARNING, ERROR, CRITICAL"):
-            config._get_log_level("M", "logging", "level", default="INFO")
+            config._get_choice("M", "logging", "level", default="INFO", choices=config.LOG_LEVELS)
 
 
 class TestModuleReloadWithEnvOverrides:
@@ -707,25 +739,25 @@ class TestGetOptionalPositiveInt:
         monkeypatch.setattr(config_load, "_toml", {"enrich": {}})
 
     def test_missing_key_is_uncapped(self):
-        assert config._get_optional_positive_int("K", "enrich", "k") is None
+        assert config_load._get_optional_positive_int("K", "enrich", "k") is None
 
     def test_number_from_toml(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 32}})
-        assert config._get_optional_positive_int("K", "enrich", "k") == 32
+        assert config_load._get_optional_positive_int("K", "enrich", "k") == 32
 
     @pytest.mark.parametrize("raw", ["", "off", "none", "false", "OFF", " off "])
     def test_off_words_work_from_either_source(self, monkeypatch, raw):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": raw}})
-        assert config._get_optional_positive_int("K", "enrich", "k") is None
+        assert config_load._get_optional_positive_int("K", "enrich", "k") is None
 
     def test_env_override_wins(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 32}})
         monkeypatch.setenv("K", "8")
-        assert config._get_optional_positive_int("K", "enrich", "k") == 8
+        assert config_load._get_optional_positive_int("K", "enrich", "k") == 8
 
     def test_a_quoted_integer_is_accepted(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": "16"}})
-        assert config._get_optional_positive_int("K", "enrich", "k") == 16
+        assert config_load._get_optional_positive_int("K", "enrich", "k") == 16
 
     @pytest.mark.parametrize("raw", ["0", "-5"])
     def test_non_positive_is_rejected(self, monkeypatch, raw):
@@ -734,24 +766,24 @@ class TestGetOptionalPositiveInt:
         batch and `max()` over no scores raises."""
         monkeypatch.setenv("K", raw)
         with pytest.raises(ValueError, match=">= 1"):
-            config._get_optional_positive_int("K", "enrich", "k")
+            config_load._get_optional_positive_int("K", "enrich", "k")
 
     def test_nonsense_is_rejected(self, monkeypatch):
         monkeypatch.setenv("K", "lots")
         with pytest.raises(ValueError, match=">= 1"):
-            config._get_optional_positive_int("K", "enrich", "k")
+            config_load._get_optional_positive_int("K", "enrich", "k")
 
     def test_bool_in_toml_is_rejected(self, monkeypatch):
         """bool is an int subclass, so `k = true` would quietly mean a
         cap of 1 -- one premise per citation, near-total recall loss."""
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": True}})
         with pytest.raises(ValueError, match=">= 1"):
-            config._get_optional_positive_int("K", "enrich", "k")
+            config_load._get_optional_positive_int("K", "enrich", "k")
 
     def test_a_float_is_rejected(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"k": 8.5}})
         with pytest.raises(ValueError, match=">= 1"):
-            config._get_optional_positive_int("K", "enrich", "k")
+            config_load._get_optional_positive_int("K", "enrich", "k")
 
 
 class TestGetOptionalFloat:
