@@ -120,10 +120,10 @@ def _findings(path: Path) -> list:
 
     Every failure mode is silence, deliberately: an installed-package
     project, whose scanner is never run (the module docstring), an absent
-    scanner, a non-zero exit, or output this cannot parse. The hook is reading another command's
-    stdout, which is exactly where `style_check_hook.py` records the same
-    posture -- a checker that failed or changed shape must cost the
-    reader nothing.
+    scanner, a non-zero exit, or output this cannot parse. The hook is
+    reading another command's stdout, which is exactly where
+    `style_check_hook.py` records the same posture -- a checker that
+    failed or changed shape must cost the reader nothing.
     """
     if safe_path.installed_elsewhere(REPO_ROOT) or not SCANNER.is_file():
         return []
