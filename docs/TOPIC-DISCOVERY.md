@@ -290,8 +290,9 @@ chitragupta corpus discover "A" --hops 2 --family overlap  # ...over one family
 ```
 
 The reader computes no topic and no edge. It resolves, joins ledger
-detail (through `references.entries()`, the one citekey-to-entry
-formatter this project has), and displays -- which is what lets it sit
+detail (through `reference_entries.entries()`, the one citekey-to-entry
+formatter this project has, which sits beneath the drafting layer's
+`references.py` rather than in it), and displays -- which is what lets it sit
 in the corpus layer at tier 1, upgrading its semantic rung only when
 the enrich extra is installed.
 

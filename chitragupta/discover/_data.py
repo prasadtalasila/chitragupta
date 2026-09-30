@@ -11,7 +11,7 @@ module's job is to open files and refuse clearly when one is missing.
 import json
 import sqlite3
 
-from chitragupta import config, ledger, references
+from chitragupta import config, ledger, reference_entries
 
 
 class MissingArtefact(ValueError):
@@ -99,7 +99,7 @@ def centred_cosine(vector: list, mean: list, centroid: list) -> float:
 
 def entries_for(citekeys: list) -> dict:
     """citekey -> formatted IEEE entry, via the one formatter this
-    project has (`references.entries`).
+    project has (`reference_entries.entries`).
 
     A member citekey missing from the ledger is re-raised as this
     module's refusal: the topic artefacts were derived from an older
@@ -109,8 +109,8 @@ def entries_for(citekeys: list) -> dict:
         return {}
     con = read_only_connection()
     try:
-        return references.entries(list(citekeys), con)
-    except references.MissingCitekey as missing:
+        return reference_entries.entries(list(citekeys), con)
+    except reference_entries.MissingCitekey as missing:
         raise MissingArtefact(
             f"{missing} -- the topic artefacts name papers this ledger no longer "
             "holds; re-run `python -m chitragupta.corpus sync` and the enrich "

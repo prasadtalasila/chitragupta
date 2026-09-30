@@ -17,8 +17,8 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import chroma_paging, config
-from chitragupta.enrich import _rerank, embed_index
+from chitragupta import chroma_paging, config, reranker
+from chitragupta.enrich import _index_reader, _rerank, embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -132,12 +132,22 @@ class FakeChromaClient:
     def get_or_create_collection(self, name):
         return self.collections.setdefault(name, FakeCollection())
 
+    def list_collections(self):
+        # chromadb 1.x lists bare names; `overlap_chroma` handles both shapes.
+        return list(self.collections)
+
+    def get_collection(self, name):
+        return self.collections[name]
+
 
 @pytest.fixture
 def fake_enrich_deps(monkeypatch):
     FakeSentenceTransformer.instances.clear()
     FakeChromaClient.instances.clear()
     FakeChromaClient._stores_by_path.clear()
+    # search() caches its client and model; a handle built over the last
+    # test's fakes must not be served to this one.
+    _index_reader._handles.cache_clear()
 
     fake_st_module = types.ModuleType("sentence_transformers")
     fake_st_module.SentenceTransformer = FakeSentenceTransformer
@@ -778,6 +788,56 @@ class TestSearch:
         assert len(results[0]["snippet"]) == 10
 
 
+class TestSearchIsAReader:
+    """#853: `search()` loads its client and model once per
+    (`CHROMA_DIR`, `EMBEDDING_MODEL`) and never creates what it reads."""
+
+    def seed(self):
+        client, _ = embed_index.get_client_and_model()
+        collection = client.get_or_create_collection(embed_index.collection_name())
+        collection.query_response = {
+            "documents": [["text"]],
+            "metadatas": [[{"citekey": "a2024", "title": "A"}]],
+            "distances": [[0.1]],
+        }
+
+    def test_repeated_searches_load_the_model_once(self, isolated_config, fake_enrich_deps):
+        """`review coverage` calls search() once per claim; a model load
+        each time is seconds, plus a torch import, per claim."""
+        self.seed()
+        before = len(fake_enrich_deps.model_cls.instances)
+        for _ in range(3):
+            assert embed_index.search("query", k=1)
+        assert len(fake_enrich_deps.model_cls.instances) - before == 1
+
+    def test_a_changed_model_is_loaded_rather_than_served_stale(
+        self, isolated_config, fake_enrich_deps, monkeypatch
+    ):
+        self.seed()
+        embed_index.search("query", k=1)
+        monkeypatch.setattr(config, "EMBEDDING_MODEL", "another/model")
+        embed_index.search("query", k=1)
+        assert fake_enrich_deps.model_cls.instances[-1].model_name == "another/model"
+
+    def test_no_index_directory_is_an_empty_result_and_creates_nothing(
+        self, isolated_config, fake_enrich_deps, caplog
+    ):
+        assert not config.CHROMA_DIR.exists()
+        assert embed_index.search("query") == []
+        assert not config.CHROMA_DIR.exists()
+        assert "embed" in caplog.text
+
+    def test_a_missing_collection_is_an_empty_result_and_is_not_created(
+        self, isolated_config, fake_enrich_deps, caplog
+    ):
+        config.CHROMA_DIR.mkdir(parents=True)
+        assert embed_index.search("query") == []
+        assert embed_index.collection_name() not in fake_enrich_deps.client_cls._stores_by_path.get(
+            str(config.CHROMA_DIR), {}
+        )
+        assert embed_index.collection_name() in caplog.text
+
+
 class TestSearchCapsPerSource:
     """Issue #305: one paper's chunks must not own every slot in the top k."""
 
@@ -934,7 +994,7 @@ class TestSearchReranks:
         scorer = types.SimpleNamespace(
             predict=lambda pairs: [by_snippet[snippet] for _query, snippet in pairs]
         )
-        monkeypatch.setattr(_rerank, "_load_reranker", lambda _model_id: scorer)
+        monkeypatch.setattr(reranker, "load_reranker", lambda _model_id: scorer)
         return scorer
 
     # The pool below is the one bench/bench_rerank_position.py's own
@@ -1002,7 +1062,7 @@ class TestSearchReranks:
         def explode(_model_id):
             raise AssertionError("a cross-encoder was constructed while rerank was off")
 
-        monkeypatch.setattr(_rerank, "_load_reranker", explode)
+        monkeypatch.setattr(reranker, "load_reranker", explode)
         monkeypatch.setattr(config, "EMBED_MAX_PASSAGES_PER_SOURCE", 2)
         client, _ = embed_index.get_client_and_model()
         collection = client.get_or_create_collection(embed_index.collection_name())
@@ -1020,7 +1080,7 @@ class TestSearchReranks:
         def explode(_model_id):
             raise AssertionError("scored an empty pool")
 
-        monkeypatch.setattr(_rerank, "_load_reranker", explode)
+        monkeypatch.setattr(reranker, "load_reranker", explode)
         assert _rerank.rerank("query", []) == []
 
 
@@ -1029,12 +1089,12 @@ class TestLoadReranker:
 
     @pytest.fixture(autouse=True)
     def clear_cache(self):
-        """`_load_reranker` is `lru_cache`d, so a model loaded (or a
+        """`load_reranker` is `lru_cache`d, so a model loaded (or a
         failure raised) in one test would otherwise be served to the
         next."""
-        _rerank._load_reranker.cache_clear()
+        reranker.load_reranker.cache_clear()
         yield
-        _rerank._load_reranker.cache_clear()
+        reranker.load_reranker.cache_clear()
 
     def test_a_model_that_will_not_load_raises_naming_the_key_and_the_model(self, monkeypatch):
         def exploding_cross_encoder(model_id):
@@ -1045,7 +1105,7 @@ class TestLoadReranker:
         monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
 
         with pytest.raises(RuntimeError) as excinfo:
-            _rerank._load_reranker("nonexistent/model")
+            reranker.load_reranker("nonexistent/model")
 
         # Naming both is the whole point: silently falling back to
         # un-reranked results would be invisible, since they look
@@ -1065,8 +1125,8 @@ class TestLoadReranker:
         fake_st.CrossEncoder = counting_cross_encoder
         monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
 
-        _rerank._load_reranker("some/model")
-        _rerank._load_reranker("some/model")
+        reranker.load_reranker("some/model")
+        reranker.load_reranker("some/model")
 
         # A reranked drafting session makes many search() calls; paying
         # the ~2s construction on each one would dwarf the rerank itself.

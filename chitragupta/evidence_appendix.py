@@ -59,7 +59,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import config, ledger, references
+from chitragupta import config, ledger, reference_entries, references
 from chitragupta.dossier import citekeys_by_section, dossier_dir
 from chitragupta.dossier._citekeys import evidence_blocks
 from chitragupta.dossier._evidence_check import fields
@@ -147,7 +147,7 @@ def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | 
     `quote:`. A caller writes a file only when this returns a string.
 
     A cited citekey with no ledger row raises `KeyError` through
-    `references.entries`, which is AGENTS.md's citekey invariant and the
+    `reference_entries.entries`, which is AGENTS.md's citekey invariant and the
     same contract `references.build_section` holds: a source this cannot
     name is never printed as an unattributed quotation.
     """
@@ -155,7 +155,7 @@ def build(draft_text: str, dossier: Path, con, *, latex: bool = False) -> str | 
     if not spans:
         return None
 
-    attributions = references.entries(list(spans), con)
+    attributions = reference_entries.entries(list(spans), con)
     out = [f"# {SUFFIX.capitalize()}", "", _PREAMBLE]
     for title, citekeys in grouped(spans, dossier):
         out.append(f"## {title}")
