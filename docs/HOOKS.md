@@ -1,9 +1,9 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-09-29. Four
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-09-30. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`, the first two sharing
-one `draft_target.py` (and through it `patch_paths.py`) and the first three
+one `draft_target.py` (and through it `patch_paths.py`) and all four
 one `safe_path.py`, all launching as `python` -- in exec form from
 `.claude/settings.json`, and from Codex's `.codex/hooks.json` and
 OpenCode's plugin too since 6.126.0 ([HARNESS.md](HARNESS.md)). The launcher
@@ -401,6 +401,12 @@ hook process itself sees: it runs as `python <path>`, so its
 `chitragupta` outside the root, it is installed, and every child gets
 `PYTHONSAFEPATH=1`. Inside the root (an editable install) or nowhere (a
 checkout run from its own tree) leaves the launch as it was.
+`code_standards_hook.py` needs the same answer for a different launch
+(issue 890): it runs `scripts/code_standards.py` by path, and `init`
+scaffolds no `scripts/`, so one found in an installed project was planted
+and would run with the user's privileges on the next `.py` write under
+`chitragupta/` or `scripts/`. There it starts no process at all; only the
+checkout runs its scanner.
 `hook_launchers.py`'s import probe makes the same call from its own side,
 by whether it is itself running from inside the project whose settings
 it reads. `session_start_hook.py`'s own in-process import appends the root
@@ -417,7 +423,8 @@ not the pipeline's own commands: a skill that runs `python -m
 chitragupta.draft gate` from the project root still searches it first.
 And a checkout whose venv also holds a non-editable `chitragupta-cli`
 reads as an installed project, so its hooks run that copy rather than
-the working tree -- install the checkout editable, or not at all.
+the working tree, and `code_standards_hook.py` reports nothing -- install
+the checkout editable, or not at all.
 `chitragupta init` covers the other end: it refuses to scaffold into a
 directory already holding `chitragupta/` or `chitragupta.py`, with or
 without `--force`.
