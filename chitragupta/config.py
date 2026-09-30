@@ -6,42 +6,40 @@ BIB_FILE=/path/to/other.bib python -m chitragupta.corpus sync) without editing t
 tomllib is stdlib since Python 3.11, so this adds no dependency.
 """
 
-# Only the path-containment class/functions moved out (#441, ->
-# chitragupta/config_path.py) -- this module stays registered on C2,
-# smaller than before but not under the limit. Two constraints rule out
-# the rest of the obvious split:
+# Two pieces have moved out, each re-exported so every `config.NAME` still
+# resolves: path containment (#441, -> chitragupta/config_path.py) and the
+# TOML load with the typed getters (#848, -> chitragupta/config_load.py).
+# What stays is project-root discovery and the settings themselves.
 #
-# 1. `_toml` and every `_get*` getter must stay in one module.
-#    `tests/test_config.py` monkeypatches `_toml` directly (~30 call
-#    sites) and then calls the getters as `config._get(...)`; a getter
-#    that read `_toml` from a different module's globals would silently
-#    stop seeing those patches -- the same failure class `sync_pool.py`
-#    and `overlap_index_doc.py` were split to *fix*, reintroduced by
-#    moving the wrong half. That floor alone is already ~200 lines.
-# 2. Every setting this module resolves is read elsewhere as
-#    `config.NAME`, and `chitragupta/render_output.py`,
-#    `chitragupta/citation_gate.py`, `chitragupta/style_check.py` and
-#    `chitragupta/acronyms.py` are tier-1, stdlib-only commands
-#    (docs/ARCHITECTURE.md) committed to importing only `config`
-#    alongside each other -- not a second settings module. Moving a
-#    tier-1-read setting out and re-exporting it back costs as many
-#    lines as it saves (one assignment line traded for one import-name
-#    line); moving it out *without* re-exporting it would give the same
-#    setting two spellings across the codebase, which
-#    docs/CODE-STANDARDS.md calls out as the highest-value kind of
-#    finding to avoid, not commit.
+# The getters moved together with `_toml`, because a getter reads `_toml`
+# from its own module's globals: `tests/test_config.py` patches
+# `config_load._toml` and then calls the getters as `config._get(...)`,
+# which works because the name below is the same function object. The
+# setting-specific validators (`_get_field_weight`, `_get_bm25_constant`,
+# `_get_start_method`, `_get_log_level`) stay here beside the one setting
+# each exists for.
 #
-# Splitting further from here means either hollowing out a getter's own
-# "why" docstring (which C2 counts on purpose, to make that trade
-# visible rather than free) or accepting the two-spellings cost above --
-# both changes to a documented contract, not a mechanical extraction,
-# so left to a deliberate decision rather than folded into this pass.
+# Every setting is still read as `config.NAME`: `render_output`,
+# `citation_gate`, `style_check` and `acronyms` are tier-1, stdlib-only
+# commands (docs/ARCHITECTURE.md) committed to importing only `config`
+# alongside each other, not a second settings module.
 
 import math
 import os
-import tomllib
 from pathlib import Path
-from typing import Any
+
+from chitragupta import config_load
+
+from chitragupta.config_load import (
+    _get,
+    _get_bool,
+    _get_float,
+    _get_int,
+    _get_optional_float,
+    _get_optional_positive_int,
+    _get_positive_int,
+    _get_workers,
+)
 
 # Two roots, because `REPO_ROOT` was doing two unrelated jobs under one
 # name and they stop being the same directory the moment this code is
@@ -124,227 +122,10 @@ def discover_project_root(
 # points somewhere the reader recognises.
 PROJECT_ROOT = discover_project_root() or PACKAGE_ROOT.parent
 CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(PROJECT_ROOT / PROJECT_MARKER)))
-
-# config.toml is gitignored per-host data (every user edits the parser
-# backend, the paths, the worker count), so a fresh clone genuinely does
-# not have one -- this is the first thing a new user hits, not an edge
-# case. Deliberately a hard failure rather than a silent fallback to
-# config.toml.example: a host quietly running settings its owner never
-# chose is a worse failure than one that refuses to start, and it is the
-# kind that surfaces days later as "why did it parse with the wrong
-# backend". The message carries the literal command because nothing about
-# a bare FileNotFoundError traceback suggests the fix.
-try:
-    with open(CONFIG_PATH, "rb") as _f:
-        _toml = tomllib.load(_f)
-except FileNotFoundError as _exc:
-    raise FileNotFoundError(
-        f"No config file at {CONFIG_PATH}. This repo tracks "
-        "config.toml.example and gitignores config.toml, so a fresh clone "
-        "has to make its own:\n"
-        "    cp config.toml.example config.toml\n"
-        "then edit it (parser backend, paths, worker count) to suit this "
-        "host. Set the CONFIG_PATH env var to use a file somewhere else."
-    ) from _exc
-
-
-def _get(env_var: str, *toml_path: str, default: str = "") -> str:
-    """A string setting. Raises if the TOML node is present with a
-    non-string type instead of silently falling back to `default` --
-    `path = 123` in `[bib]` used to mean the default path with no signal
-    that the value written was never read."""
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    if not isinstance(raw, str):
-        raise ValueError(f"{'/'.join(toml_path)} (or {env_var}) must be a string, not {raw!r}.")
-    return raw
-
-
-def _get_float(env_var: str, *toml_path: str, default: float) -> float:
-    """A numeric setting. Raises if the TOML node is present with a
-    non-numeric type -- previously silently defaulted, the same
-    wrong-typed-value hazard `_get`/`_get_bool` had."""
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a number, not {raw!r}."
-    if env_var in os.environ:
-        try:
-            return float(raw)
-        except ValueError:
-            raise ValueError(problem) from None
-    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
-        raise ValueError(problem)
-    return float(raw)
-
-
-def _get_int(env_var: str, *toml_path: str, default: int) -> int:
-    """A whole-number setting, exact. Rejects a fractional value instead
-    of silently truncating it: `int(_get_float(...))` used to turn
-    `min_tokens = 0.5` into 0 and `topic_min_cluster_size = 3.9` into 3
-    with no signal that the config was never an integer.
-
-    A string is parsed with `int()`, not `float()` -- matching
-    `_get_positive_int`/`_get_workers`'s existing tolerance for a quoted
-    integer, but rejecting `"3.0"`/`"1e3"` as too permissive a reading of
-    "whole number", and never losing precision on a large integer string
-    the way a float round-trip would.
-    """
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a whole number, not {raw!r}."
-    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
-        raise ValueError(problem)
-    if isinstance(raw, str):
-        try:
-            return int(raw.strip())
-        except ValueError:
-            raise ValueError(problem) from None
-    if isinstance(raw, float):
-        if not raw.is_integer():
-            raise ValueError(problem)
-        return int(raw)
-    return raw
-
-
-def _get_positive_int(env_var: str, *toml_path: str, default: int) -> int:
-    """A whole number of at least 1, validated at load.
-
-    Validated rather than silently defaulted -- unlike `_get_float` --
-    because the three settings that use it size
-    `chitragupta.enrich.embed_index.search()`'s stages, and every
-    nonsense value there fails as a *quietly wrong result set* rather
-    than as an error: `embed_top_k = 0` returns nothing at all,
-    `embed_overfetch_multiplier = 0` asks Chroma for zero rows, and a
-    cap of 0 admits no passage from any source. A silent fallback to the
-    default would hide all three behind a plausible-looking search.
-
-    `bool` is rejected explicitly for the same reason `_get_workers`
-    rejects it: TOML's `embed_top_k = true` parses as a bool, and bool
-    is an int subclass, so without this it would quietly mean 1.
-    """
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    problem = f"{'/'.join(toml_path)} (or {env_var}) must be a whole number >= 1, not {raw!r}."
-    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
-        raise ValueError(problem)
-    try:
-        value = int(str(raw).strip())
-    except ValueError:
-        raise ValueError(problem) from None
-    if value < 1:
-        raise ValueError(problem)
-    return value
-
-
-# The integer counterpart of `_get_optional_float` below, off by the same
-# explicit word rather than by 0 for the same reason: a
-# `support_premise_topk = 0` reads as "score zero premises", which is not
-# what "uncapped" means and would empty every premise set if it were ever
-# honoured literally. Absent means None too -- unlike
-# `_get_optional_float`, no setting using this has a real default, so
-# there is no `default` parameter to keep the two cases apart.
-#
-# A wrapper rather than a fourth hand-rolled validator, because this
-# module is a registered C2 offender (see the header) and a copy of
-# `_get_positive_int`'s bool/float/parse rules would grow it by three
-# times as much for no behaviour that getter does not already have --
-# including the bool-before-int check TOML's `= true` needs.
-def _get_optional_positive_int(env_var: str, *toml_path: str) -> "int | None":
-    """A whole number of at least 1, or None for "no cap"."""
-    raw = _raw_setting(env_var, toml_path)
-    if isinstance(raw, str) and raw.strip().lower() in ("", "off", "none", "false"):
-        return None
-    # `default=0` is a value the setting may never take, which is exactly
-    # what makes it usable as "absent": `_get_positive_int` returns its
-    # default unvalidated and rejects every *written* value below 1, so a
-    # 0 coming back out cannot have come from the config.
-    return _get_positive_int(env_var, *toml_path, default=0) or None
-
-
-def _get_optional_float(
-    env_var: str, *toml_path: str, default: "float | None" = None
-) -> "float | None":
-    """A positive duration in seconds, or None for "no limit".
-
-    _get_float can't express this: it requires a float default, and
-    spelling "off" as 0 in a config file reads as "zero seconds", which
-    is the opposite of what it means. The off switch is therefore an
-    explicit word -- an empty value, "off", "none" or "false" -- and 0 is
-    rejected outright rather than quietly reinterpreted.
-
-    `default` applies when the setting is absent entirely. An explicit
-    "off" still means off -- the two cases have to stay distinguishable,
-    or a setting with a non-None default could never be switched off.
-
-    Validated at load, like _get_workers, so a bad value is reported
-    where it was written rather than as a strange timeout much later.
-    """
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    # Checked for both sources, not just the environment: the shipped
-    # config.toml.example writes `document_timeout = "off"`, so the TOML
-    # path is the one every new user actually takes.
-    if isinstance(raw, str):
-        raw = raw.strip()
-        if raw.lower() in ("", "off", "none", "false"):
-            return None  # explicitly off, regardless of `default`
-    # Built once, raised from three places: the three failure modes -- a
-    # non-numeric type, an unparseable string, a non-positive or infinite
-    # number -- all deserve the same message, and stating it three times
-    # is how the copies drift.
-    complaint = ValueError(
-        f"{'/'.join(toml_path)} (or {env_var}) must be a positive number of "
-        f'seconds, or "off", not {raw!r}.'
-    )
-    if isinstance(raw, bool) or not isinstance(raw, (int, float, str)):
-        raise complaint
-    try:
-        seconds = float(raw)
-    except ValueError:
-        raise complaint from None
-    if not math.isfinite(seconds) or seconds <= 0:
-        raise complaint
-    return seconds
-
-
-def _raw_setting(env_var: str, toml_path: tuple[str, ...]) -> Any:
-    """The unparsed value of one setting: the env var if set, else the
-    TOML node at `toml_path`, else None. Shared lookup for the getters
-    that need to distinguish "absent" from every real value."""
-    if env_var in os.environ:
-        return os.environ[env_var]
-    node = _toml
-    for key in toml_path:
-        if not isinstance(node, dict):
-            return None
-        node = node.get(key)
-    return node
-
-
-def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:
-    """Env vars arrive as strings, so "false"/"0"/"no" have to be read as
-    False -- bool("false") is True, which would make every documented way
-    of turning a setting off via the environment silently turn it on.
-
-    Raises if the TOML node is present with a non-bool type: a quoted
-    `collapse_citations = "false"` used to silently mean the default
-    (often True) rather than the False the user wrote."""
-    raw = _raw_setting(env_var, toml_path)
-    if raw is None:
-        return default
-    if env_var in os.environ:
-        return raw.strip().lower() in ("1", "true", "yes", "on")
-    if not isinstance(raw, bool):
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be true or false, not {raw!r}."
-        )
-    return raw
-
+# Called here, on every import of this module, rather than at
+# config_load's own import: `importlib.reload(config)` has to re-read the
+# file, and a reload re-runs this body but not config_load's.
+config_load.load(CONFIG_PATH)
 
 # PROJECT_ROOT / <absolute path> correctly collapses to the absolute path
 # (pathlib behavior), so env var overrides may be absolute or relative.
@@ -576,52 +357,6 @@ PARSER_OCR = _get_bool("PARSER_OCR", "parser", "ocr", default=False)
 # skill can read. Measured before #651: 148 of 497 documents carried the
 # marker and none carried decoded LaTeX.
 PARSER_FORMULAS = _get_bool("PARSER_FORMULAS", "parser", "formulas", default=False)
-
-
-def _get_workers(env_var: str, *toml_path: str, default: int) -> "int | str":
-    """A positive int, or the literal "auto" -- the only setting here
-    that isn't a plain str/float/bool.
-
-    Validated at load rather than where the pool is built, because the
-    symptom of a bad value there ("0 workers", "-1 workers") surfaces far
-    from its cause. `bool` is rejected explicitly: TOML's `workers = true`
-    parses as a bool, and bool is an int subclass in Python, so without
-    this it would quietly mean "1 worker" instead of being called out.
-    """
-    if env_var in os.environ:
-        raw = os.environ[env_var]
-    else:
-        node = _toml
-        for key in toml_path:
-            if not isinstance(node, dict):
-                node = None
-                break
-            node = node.get(key)
-        raw = node
-    if raw is None:
-        return default
-    if isinstance(raw, str):
-        if raw.strip().lower() == "auto":
-            return "auto"
-        raw = raw.strip()
-    if isinstance(raw, bool) or not isinstance(raw, (int, str)):
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive integer "
-            f'or "auto", not {raw!r}.'
-        )
-    try:
-        workers = int(raw)
-    except ValueError:
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive integer "
-            f'or "auto", not {raw!r}.'
-        ) from None
-    if workers < 1:
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be a positive integer "
-            f'or "auto", not {raw!r}.'
-        )
-    return workers
 
 
 # How many documents sync parses at once. 1 keeps the historical, strictly
