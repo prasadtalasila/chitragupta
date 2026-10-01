@@ -12,6 +12,7 @@ the dangling links it exists to catch.
 
 from pathlib import Path
 import re
+import sys
 
 import pytest
 
@@ -407,6 +408,22 @@ class TestAnExistingNonFileAtTheMarkerPathRefuses:
         (dest / init.SCAFFOLD_MARKER).mkdir(parents=True)
         with pytest.raises(init.ScaffoldTargetUnsafe):
             init.scaffold(dest, **flags)
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="symlinks need elevated privileges on Windows"
+    )
+    def test_a_symlink_at_the_marker_path_refuses(self, source, tmp_path):
+        """#891 review: `Path.exists()` follows a symlink, so a *dangling*
+        one would otherwise pass this check and reach `_write_marker`'s
+        `touch()`, which follows it too -- writing a new file wherever
+        the link points, possibly outside `dest` entirely."""
+        dest = tmp_path / "project"
+        dest.mkdir()
+        (dest / init.SCAFFOLD_MARKER).symlink_to(tmp_path / "nowhere")
+        with pytest.raises(init.ScaffoldTargetUnsafe) as raised:
+            init.scaffold(dest)
+        assert init.SCAFFOLD_MARKER in str(raised.value)
+        assert not (tmp_path / "nowhere").exists()
 
 
 class TestAgents:

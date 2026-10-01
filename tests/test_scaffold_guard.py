@@ -167,6 +167,75 @@ class TestRefuseIfShadowed:
         assert "scaffolded" in err
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="symlinks need elevated privileges on Windows")
+class TestScaffoldedAncestorThroughASymlink:
+    """#891 review: a symlinked package directory must still be checked
+    at the lexical path Python's import actually selected, not wherever
+    the link resolves to."""
+
+    def test_a_symlinked_package_under_a_marked_root_is_still_caught(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        real = tmp_path / "vendor" / "chitragupta"
+        real.mkdir(parents=True)
+        (real / "config.py").write_text("", encoding="utf-8")
+        linked = root / "chitragupta"
+        linked.symlink_to(real, target_is_directory=True)
+        # Python imports through the top-level, marked entry -- the
+        # symlink itself -- so that is the path handed to the check.
+        assert scaffold_guard.scaffolded_ancestor(linked / "config.py") == root
+
+    def test_a_symlinked_package_outside_any_marked_root_is_not_flagged(self, tmp_path):
+        real = tmp_path / "vendor" / "chitragupta"
+        real.mkdir(parents=True)
+        (real / "config.py").write_text("", encoding="utf-8")
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        linked = elsewhere / "chitragupta"
+        linked.symlink_to(real, target_is_directory=True)
+        assert scaffold_guard.scaffolded_ancestor(linked / "config.py") is None
+
+
+class TestUnsafeMarkerReason:
+    def test_none_for_a_path_with_nothing_there(self, tmp_path):
+        assert scaffold_guard.unsafe_marker_reason(tmp_path / "new-marker") is None
+
+    def test_none_for_an_existing_regular_file(self, tmp_path):
+        marker = tmp_path / "marker"
+        marker.write_text("", encoding="utf-8")
+        assert scaffold_guard.unsafe_marker_reason(marker) is None
+
+    def test_a_directory_is_unsafe(self, tmp_path):
+        marker = tmp_path / "marker"
+        marker.mkdir()
+        reason = scaffold_guard.unsafe_marker_reason(marker)
+        assert reason is not None
+        assert "not a regular file" in reason
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="symlinks need elevated privileges on Windows"
+    )
+    def test_a_dangling_symlink_is_unsafe(self, tmp_path):
+        marker = tmp_path / "marker"
+        marker.symlink_to(tmp_path / "nowhere")
+        reason = scaffold_guard.unsafe_marker_reason(marker)
+        assert reason is not None
+        assert "symlink" in reason
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="symlinks need elevated privileges on Windows"
+    )
+    def test_a_symlink_to_a_real_file_is_still_unsafe(self, tmp_path):
+        target = tmp_path / "real-file"
+        target.write_text("", encoding="utf-8")
+        marker = tmp_path / "marker"
+        marker.symlink_to(target)
+        reason = scaffold_guard.unsafe_marker_reason(marker)
+        assert reason is not None
+        assert "symlink" in reason
+
+
 def test_marker_literal_matches_init_pys_own_copy():
     """`chitragupta/init.py` duplicates this literal rather than
     importing it (see both modules' docstrings for why); this is the

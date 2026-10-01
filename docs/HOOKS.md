@@ -415,57 +415,64 @@ it reads. `session_start_hook.py`'s own in-process import appends the root
 to `sys.path` rather than prepending it, so an installed package wins
 there too.
 
-**What this closed as of issue 822, and what issue 891 closed further.**
-This protected the hooks' launches alone, not the pipeline's own
+**What this narrows as of issue 891, and the structural limit on how
+far.** This protected the hooks' launches alone, not the pipeline's own
 commands: a skill that runs `python -m chitragupta.draft gate` from the
 project root searched the working tree first regardless, with no hook
-and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` narrows
-that gap (891 gap 1): `chitragupta init` now writes a marker into every
-project it scaffolds, and `chitragupta/config.py` -- the one module every
-`python -m chitragupta.<layer> ...` invocation imports before running any
-verb -- refuses at import time, the same fail-closed shape a hook's
-protected child already gets, if its own location resolves *inside* a
-root that marker names. `chitragupta init` covers the other end, as
-before: it refuses to scaffold into a directory already holding
-`chitragupta/` or `chitragupta.py`, with or without `--force`. The check
-is keyed to the *module's own location*, walked up from `__file__` --
+and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` adds
+one narrow detector for part of that gap: `chitragupta init` now writes
+a marker into every project it scaffolds, and `chitragupta/config.py` --
+the one module every `python -m chitragupta.<layer> ...` invocation
+imports before running any verb -- refuses at import time, the same
+fail-closed shape a hook's protected child already gets, if its own
+location sits *directly* under a root that marker names. The check is
+keyed to the *module's own lexical location* (never symlink-resolved),
 never to `config.PROJECT_ROOT` or `CHITRAGUPTA_PROJECT`, which answer
 "where does the user's data live" and must not also decide which
-`chitragupta` is trusted, since a `CHITRAGUPTA_PROJECT` override pointed
-elsewhere would otherwise have blinded the check to a package physically
-shadowing cwd (raised in review).
+`chitragupta` is trusted -- both traps were caught in review, the second
+alongside a project-local venv install being misread as planted when an
+earlier version checked every ancestor instead of only the one directly
+above the package. `chitragupta init` covers the scaffold-time end, as
+before: it refuses to scaffold over a directory already holding
+`chitragupta/` or `chitragupta.py`, or over a non-regular file (or
+symlink) already sitting at the marker's own path.
 
-**Protects a newly- or re-scaffolded project.** `chitragupta init`
-writes the marker unconditionally if it is missing, with no `--force`
-needed, so a project scaffolded by an older `chitragupta-cli` picks up
-the protection the moment `chitragupta init` is re-run against it --
-every other file's "exists, unchanged" path is untouched by that rerun.
-A project nobody ever re-initialises after upgrading stays unmarked, and
-the guard stays silent for it, the same as for a checkout.
+**Read this before trusting that "891 gap 1" means more than it does.**
+The check above runs *from inside* the very `chitragupta` module Python
+already selected and started executing -- it is reached only if that
+module's own `config.py` already contains the call to it. Issue 891's
+own example is "a `chitragupta/` ... someone committed to a shared
+project"; a `chitragupta/` committed *before this fix existed* -- every
+real-world stale or cloned duplicate, hostile or not -- carries no such
+call at all, so Python runs it without this code ever running. The only
+shape this can structurally ever catch is a planted `chitragupta/` that
+happens to already carry this exact check (e.g. copied from a
+`chitragupta-cli` release built after this fix shipped) -- a narrower
+claim than "protects a passive duplicate", which is what an earlier
+revision of this section said and was corrected in review. Closing the
+general case needs a trusted bootstrap outside the package being
+selected entirely: a `sitecustomize.py` (or a `.pth` file's exec lines)
+the installed distribution ships, run by Python's own site
+initialisation before `-m` resolves its target at all -- global to every
+Python invocation in the venv, not only `chitragupta`'s, and a materially
+larger, more invasive mechanism than issue 891's surgical scope calls
+for. It is not implemented here. A single top-level `chitragupta.py` is
+a second, distinct shape this cannot reach, for an unrelated reason: no
+`__path__`, so no `chitragupta.config` submodule ever exists for the
+check to live in -- `-m chitragupta.draft` imports the file (its own
+top-level code already runs) and only then fails resolving
+`chitragupta.draft`. `chitragupta/scaffold_guard.py`'s own docstring
+carries this same reasoning in full, since it is the file most likely to
+be read in isolation from this page.
 
-**Sized for the shape issue 891 names, not for an adversary who targets
-this exact check.** The guard runs from *inside* the `chitragupta` that
-was already selected and partly executed -- it cannot run before Python
-has picked one. Against "a `chitragupta/` or `chitragupta.py` someone
-committed to a shared project" (891's own words: a stale or cloned
-duplicate, not purpose-built to evade detection), that is exact for the
-*directory* shape -- no false positive on a checkout or a properly
-installed scaffold, and a refusal on the planted copy. It is not exact
-for the *single-file* shape: a lone top-level `chitragupta.py` has no
-`__path__`, so it can never have a `chitragupta.config` submodule for
-this check to live in -- `-m chitragupta.draft` imports that file (its
-own top-level code already runs) and only then fails resolving
-`chitragupta.draft`, with `chitragupta/config.py` never reached at all.
-Against a package deliberately written to omit the check -- whose
-`config.py` never calls `refuse_if_shadowed`, or whose payload sits in
-`__init__.py` before `config.py` is even reached -- no self-check from
-inside the package can close it either; that would need a trusted
-bootstrap outside the package entirely (a `sitecustomize.py` the
-distribution ships, run by Python's own site initialisation before `-m`
-resolves its target), global to every Python invocation in the venv, not
-only `chitragupta`'s -- a materially larger mechanism than this issue's
-surgical scope calls for. `chitragupta/scaffold_guard.py`'s own
-docstring carries the same reasoning, including this residue.
+**Protects a newly- or re-scaffolded project, for the narrow shape
+above.** `chitragupta init` writes the marker unconditionally if it is
+missing, with no `--force` needed, so a project scaffolded by an older
+`chitragupta-cli` picks up the marker the moment `chitragupta init` is
+re-run against it -- every other file's "exists, unchanged" path is
+untouched by that rerun. A project nobody ever re-initialises after
+upgrading stays unmarked, and the guard stays silent for it, the same as
+for a checkout.
 
 **What else still cannot close**, recorded so nobody assumes it does: an
 interpreter that finds no installed `chitragupta` at all -- the

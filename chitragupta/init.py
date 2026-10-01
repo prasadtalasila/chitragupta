@@ -45,6 +45,7 @@ import shutil
 import sys
 from pathlib import Path
 
+from chitragupta import scaffold_guard
 from chitragupta.progname import prog_for
 
 # Deliberately not `from chitragupta.config import PACKAGE_ROOT`: that
@@ -119,22 +120,17 @@ CONFIG_DEST = "config.toml"
 
 # An empty file, present if and only if this directory was written by
 # `scaffold()` -- never by `cp config.toml.example config.toml`, the
-# checkout setup step, which writes no such file. `chitragupta/config.py`
-# reads the same literal name (duplicated rather than imported, for the
-# reason `PACKAGE_ROOT` above is: importing `chitragupta.config` here
-# would run its whole body, including the `config.toml`-or-raise at the
-# bottom, on a directory `init` exists to create because that file is not
-# there yet; `tests/test_init.py` pins the two copies equal). It closes
-# #891 gap 1: `SHADOWING_NAMES` above stops `init` from scaffolding *over*
-# a planted `chitragupta/`, but says nothing about one added afterwards,
-# which a skill's own `python -m chitragupta.draft gate` would import with
-# no hook in between to refuse it (#822's `safe_path.py` only protects a
-# hook's own children). With this marker, `chitragupta.config` can tell
-# "I am the real install, imported via a scaffolded project's cwd
-# fallback" from "I am a planted copy inside a project `init` marked as
-# scaffolded" -- the second is only possible if a `chitragupta/` or
-# `chitragupta.py` was committed there after scaffolding, since `init`
-# itself never writes one.
+# checkout setup step, which writes no such file. `chitragupta/
+# scaffold_guard.py` reads the same literal name (duplicated rather than
+# imported, for the reason `PACKAGE_ROOT` above is: importing
+# `chitragupta.config` here would run its whole body, including the
+# `config.toml`-or-raise at the bottom, on a directory `init` exists to
+# create because that file is not there yet; `tests/test_init.py` pins
+# the two copies equal). `SHADOWING_NAMES` above stops `init` from
+# scaffolding *over* a planted `chitragupta/` directory; this marker lets
+# `chitragupta/scaffold_guard.py` detect one added afterwards, for the
+# narrow shape it can actually reach -- that module's own docstring has
+# the full reasoning and the limit (#891).
 SCAFFOLD_MARKER = ".chitragupta-scaffold"
 
 # The second entry that changes name on the way in, and the only one
@@ -341,21 +337,15 @@ def scaffold(
             "would install could import in place of the installed chitragupta. "
             "Move it aside, or scaffold into another directory."
         )
-    marker = dest / SCAFFOLD_MARKER
-    if marker.exists() and not marker.is_file():
-        # Caught in review (#891): `Path.touch()` on an existing directory
-        # just updates its mtime and succeeds, so `_write_marker` would
-        # have reported "created" while writing no actual marker file --
-        # `scaffold_guard.scaffolded_ancestor` checks `is_file()`, so the
-        # guard stays silently disabled under a report that claims
-        # success. Refused up front, same as `shadowing` above, rather
-        # than discovered after everything else has already been written.
-        raise ScaffoldTargetUnsafe(
-            f"{marker} exists but is not a regular file, so the scaffold "
-            "marker this would write there could never actually protect "
-            "this project (#891). Move it aside, or scaffold into another "
-            "directory."
-        )
+    # Checked by `scaffold_guard` -- a symlink (dangling or not) or a
+    # directory at this path would make `_write_marker` below report
+    # "created" while writing no real marker, or writing somewhere else
+    # entirely. See that function's own docstring for why. Refused up
+    # front, same as `shadowing` above, rather than discovered after
+    # everything else has already been written.
+    reason = scaffold_guard.unsafe_marker_reason(dest / SCAFFOLD_MARKER)
+    if reason:
+        raise ScaffoldTargetUnsafe(f"{reason} Move it aside, or scaffold into another directory.")
 
     report = []
     for name in (*COPY_VERBATIM, *trees):
