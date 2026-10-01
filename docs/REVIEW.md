@@ -137,7 +137,9 @@ stays advisory -- [ARCHITECTURE.md](ARCHITECTURE.md) works it through.
 Today it will tell you there is nothing to check: no dossier in this
 project carries a `quote:` yet, because A2's contract makes one a
 deliberate act rather than the residue of retrieval. That is the
-expected answer, not a clean bill of health, and the report says so.
+expected answer, not a clean bill of health, and the report says so:
+its `universe` is `no-quotes`, or `no-dossier` for a draft with no
+dossier at all, and only `checked` means a quote was looked at.
 
 **`review agenda` -- one ranked, deduplicated worklist across the eight
 it reads.** [AGENDA.md](AGENDA.md) walks one report section by

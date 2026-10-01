@@ -4,6 +4,7 @@
   "draft": "content/drafts/dt-overview/survey.md",
   "command": "python -m chitragupta.review quotation content/drafts/dt-overview/survey.md --write",
   "version": "6.61.7",
+  "universe": "checked",
   "quotes_total": 5,
   "found": 0,
   "absent": 0,

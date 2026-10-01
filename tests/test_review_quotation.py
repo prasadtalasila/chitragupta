@@ -440,6 +440,44 @@ class TestOutput:
         assert [c["tier"] for c in payload["quotes"] if c["verdict"] == "found"] == ["exact"]
         assert "timestamp" not in json.dumps(payload)
 
+    @pytest.mark.parametrize(
+        "setup, universe, says",
+        [
+            ("none", "no-dossier", "No dossier for this draft"),
+            ("bare", "no-quotes", "No `quote:` in this draft's dossier"),
+            ("quoted", "checked", "Quotes checked: 1"),
+        ],
+    )
+    def test_each_universe_is_named_in_json_and_markdown(
+        self, isolated_config, setup, universe, says
+    ):
+        """#838: three reports that all have no findings must be told
+        apart from either form, by a machine and by a reader."""
+        draft = a_draft()
+        if setup == "bare":
+            a_dossier(draft, f"## `{KEY}`\n\nSome prose.\n")
+        if setup == "quoted":
+            a_dossier(draft, block(KEY, SPAN))
+            a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        report = quotation.build_report(draft)
+        found = quotation.findings(report)
+        assert _quotation_render.quotation_payload(report, "cmd", found)["universe"] == universe
+        markdown = _quotation_render.render_markdown(report, "cmd", found)
+        assert f"- Universe: `{universe}`" in markdown
+        assert says in markdown
+        assert f"- Universe: `{universe}`" in quotation.run_text(draft)
+
+    def test_all_unverifiable_does_not_claim_every_quote_was_found(self, isolated_config):
+        """Zero absent and zero found is not "every checked quote was
+        found" -- the sample's staleness-chapter report said exactly that
+        over two unverifiable quotes."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, SPAN))
+        a_page_level_source(KEY, f"It has {SPAN} in it.")
+        text = quotation.run_text(draft)
+        assert "Every checked quote was found" not in text
+        assert "1 could not be checked from this parse" in text
+
     def test_write_files_the_report_and_its_json_sibling(self, isolated_config):
         draft = a_draft()
         a_dossier(draft, block(KEY, SPAN))

@@ -1947,7 +1947,9 @@ the measurement.
 No dossier carries a `quote:` yet: A2's contract makes capturing one a
 deliberate act rather than the residue of retrieval. That is the
 expected answer and the report says so -- it is not a clean bill of
-health.
+health. Its first line, `- Universe:`, says which empty answer it is:
+`no-dossier` (no dossier to read), `no-quotes` (a dossier that publishes
+no quote the draft cites) or `checked`.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -1964,9 +1966,10 @@ chitragupta review quotation content/drafts/survey.md
 ```
 
 **`--json`** carries the envelope every review aid's JSON carries, plus
-`quotes_total`, `found`, `absent`, `unverifiable`, a `quotes` object per
-checked span (`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`) and
-a `findings` object per absent one (`id`, `citekey`, `quote`,
+`universe` (`no-dossier`, `no-quotes` or `checked`: which of the three
+zero-findings situations a run is), `quotes_total`, `found`, `absent`,
+`unverifiable`, a `quotes` object per checked span (`id`, `citekey`,
+`verdict`, `tier`, `pages`, `reason`) and a `findings` object per absent one (`id`, `citekey`, `quote`,
 `near_miss_page`, `near_miss_score`). The `tier` is `exact`,
 `exact-pair`, `elided` or `elided-pair`: a reader deciding whether to
 trust a rendered quotation should be able to see that the check was
