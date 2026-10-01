@@ -71,9 +71,8 @@ def _append(path: Path, titles: list[str]) -> None:
     path.write_text(text + body, encoding="utf-8")
 
 
-def seed_chapter(book: Path, chapter: dict, declared: list[dict], genre: str, write: bool) -> dict:
+def seed_chapter(chapter: dict, declared: list[dict], draft: Path, genre: str, write: bool) -> dict:
     """One chapter's handover: what is missing, and what was done."""
-    draft = chapter_draft(book, chapter["id"])
     path = dossier_dir(draft) / OUTLINE_MD
     missing = _missing(declared, path)
     report = {
@@ -95,10 +94,19 @@ def seed(book: Path, parsed: dict, genre: str, write: bool = True) -> list[dict]
     worth handing over -- the retrofitted shape -- so it is skipped for
     the same reason `spec align` does not check it.
     """
-    return [
-        seed_chapter(book, chapter, declared, genre, write)
+    described = [
+        (chapter, declared)
         for chapter, declared in chapters(parsed)
         if section_described(chapter, declared)
+    ]
+    # Every chapter's path is confined *before* any dossier is written:
+    # `chapter_draft` refuses one that leaves its book, and a refusal
+    # half-way through the loop would leave the earlier chapters seeded
+    # with no report saying so.
+    drafts = [chapter_draft(book, chapter["id"]) for chapter, _ in described]
+    return [
+        seed_chapter(chapter, declared, draft, genre, write)
+        for (chapter, declared), draft in zip(described, drafts)
     ]
 
 

@@ -2675,8 +2675,8 @@ chitragupta draft spec seed   content/drafts/<book> --genre <genre> [--dry-run]
 | `show` | the outline as a tree, or `--unit <id>` for one unit's slice | 1 on an unknown unit or a spec that does not parse |
 | `sign` | record that a human approved this outline, by whole-file digest and one per chapter | 1 on a spec that does not parse |
 | `status` | what the outline holds, whether it is signed off, and which chapters moved | 1 when unsigned or changed since sign-off |
-| `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding |
-| `seed` | write each chapter's declared sections into its dossier `outline.md`, as bare headings | 1 on an unsigned or unparseable outline |
+| `align` | whether each authored chapter still matches the sections the outline declares | 1 on any finding, or on a chapter file symlinked out of its book |
+| `seed` | write each chapter's declared sections into its dossier `outline.md`, as bare headings | 1 on an unsigned or unparseable outline, or on a chapter file symlinked out of its book |
 
 Four heading levels: `#` the book, `##` a part, `###` a chapter, `####` a
 section -- and a **chapter** is one authored document whose sections are
@@ -2815,7 +2815,7 @@ chitragupta draft figures smith2024 --json
 
 | Command | Does | Exit |
 | --- | --- | --- |
-| `<citekey> [--json]` | list that paper's figures | 1 only if the citekey isn't in the ledger; **0** otherwise |
+| `<citekey> [--json]` | list that paper's figures | 1 if the citekey isn't in the ledger, or its figure index names an image outside `content/docling/`; **0** otherwise |
 
 **Consider, never replicate.** The crops are a reading aid for checking a
 draft against its sources. Having a paper in your library grants no right
@@ -2829,6 +2829,11 @@ Three answers, kept distinct because only one of them is actionable:
 | a list of figures | that paper's figures, from its docling parse |
 | `no figures recorded in its docling parse` | the paper genuinely has none |
 | `no figure index for <citekey> …` | the docling stage has not run for it -- run `chitragupta enrich --stages docling`, with `[enrich].docling_images` on |
+
+An index whose `image` name lands outside `content/docling/` -- a `..`
+escape, an absolute path -- is none of the three. It is refused on
+stderr with exit 1, naming the value, because the index is no longer
+what the docling stage wrote; re-run that stage for the citekey.
 
 Reads the enrichment layer's `content/docling/<citekey>.figures.json` as
 a path, never by importing that layer, so an ordinary drafting run needs

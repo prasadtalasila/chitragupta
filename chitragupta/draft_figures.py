@@ -55,6 +55,47 @@ _NOT_ENRICHED = (
 )
 
 
+class FigureIndexError(ValueError):
+    """A figure index names an image outside `content/docling/`.
+
+    Raised, not skipped and not rewritten (issue 875). The index is a
+    file on disk like any other -- a restored backup, a hand edit, a
+    shared `content/` -- and its `image` value used to be joined into a
+    path unchecked, so a tampered one pointed `image_path` at any file
+    on the host and this command offered it as a figure to look at.
+    Dropping the one record would hide that the index is no longer what
+    the enrichment layer wrote, and sanitising the name would invent a
+    figure nobody recorded; refusing says which, and the remedy is to
+    re-run the docling stage for that citekey.
+    """
+
+
+def _image_path(name: str, citekey: str) -> str:
+    """`name` joined under `content/docling/`, once it is certain it
+    lands there.
+
+    Where it *lands* is the rule, not its shape: the enrichment layer
+    writes `<stem>_artifacts/picture_N.png`, two components, so "one
+    path component" would refuse every real index. Resolving can raise
+    rather than answer -- a NUL byte gives `ValueError`, a name the
+    platform will not accept gives `OSError`, and a symlink loop gives
+    `RuntimeError` on Python 3.12 -- and all three are refusals.
+    """
+    path = config.DOCLING_DIR / name
+    try:
+        inside = config.resolves_inside(path, config.DOCLING_DIR)
+    except (OSError, RuntimeError, ValueError):
+        inside = False
+    if not inside:
+        raise FigureIndexError(
+            f"{citekey}.figures.json names the image {name!r}, which lands outside "
+            f"{config.DOCLING_DIR}. The index is not what the enrichment layer "
+            f"wrote; re-run `python -m chitragupta.enrich --stages docling` for "
+            f"{citekey} rather than trusting it."
+        )
+    return str(path)
+
+
 def figures(citekey: str) -> "tuple[list | None, str | None]":
     """`(records, None)` for a citekey whose figure index exists, or
     `(None, reason)` for one whose does not.
@@ -75,6 +116,10 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
     the `.md`'s own directory, which is what keeps `content/docling/`
     movable as a unit, and a caller handed that raw cannot open it
     without knowing so.
+
+    Raises `FigureIndexError` for an index whose `image` lands outside
+    `content/docling/` -- a fourth answer, and the only one that says
+    the index itself cannot be trusted.
     """
     with ledger.reading() as con:
         row = con.execute("SELECT title FROM items WHERE citekey = ?", (citekey,)).fetchone()
@@ -88,7 +133,7 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
     records = json.loads(index.read_text(encoding="utf-8"))
     for record in records:
         name = record.get("image")
-        record["image_path"] = str(config.DOCLING_DIR / name) if name else None
+        record["image_path"] = _image_path(name, citekey) if name else None
     return records, None
 
 
@@ -129,6 +174,11 @@ def main(argv: "list[str] | None" = None) -> int:
         # error and not a fact about the corpus.
         print(f"[error] {exc}", file=sys.stderr)
         return 1
+    except FigureIndexError as exc:
+        # Nothing on stdout: a `--json` caller must not be handed a
+        # half-trusted list of figures.
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
 
     if args.json:
         print(json.dumps({"citekey": args.citekey, "figures": records, "reason": reason}, indent=2))
@@ -139,6 +189,8 @@ def main(argv: "list[str] | None" = None) -> int:
     # Zero either way once the citekey is real: "not enriched yet" and "no
     # figures" are both true answers about the corpus, and this layer's
     # read-only lookups never fail a caller for what the corpus contains.
+    # The refused index above is not such an answer -- it says the index
+    # cannot be believed about anything.
     return 0
 
 
