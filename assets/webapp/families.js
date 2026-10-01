@@ -18,17 +18,20 @@
 
    Never fused. One partition over a merged graph, or one path over a
    combined weight, destroys the disagreement this module exists to
-   surface. Tested without a DOM by tests/webapp/families.test.js. */
+   surface. Reads every edge through payload.js, which index.html loads
+   first. Tested without a DOM by tests/webapp/families.test.js. */
 "use strict";
 
 (function (root, factory) {
-  var api = factory();
+  var api = typeof module === "object" && module.exports
+    ? factory(require("./payload.js"))
+    : factory(root.CHITRAGUPTA_APP);
   if (typeof module === "object" && module.exports) {
     module.exports = api;
   } else {
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (payload) {
   var MAX_ITERATIONS = 40;
   var EPSILON = 1e-6;
   // The disagreement lists are pairs, so they grow with the square of a
@@ -36,17 +39,9 @@
   // all there is". Whatever is dropped is counted and reported.
   var MAX_PAIRS = 200;
 
-  function edgesOf(data, family) {
-    return family === "overlap" ? data.edges_overlap : data.edges_semantic;
-  }
-
-  function weightOf(family, edge) {
-    return family === "overlap" ? edge.overlap_coeff : edge.similarity;
-  }
-
-  function evidenceOf(family, edge) {
-    return family === "overlap" ? edge.shared : edge.bridge;
-  }
+  var edgesOf = payload.edgesOf;
+  var weightOf = payload.weightOf;
+  var evidenceOf = payload.evidenceOf;
 
   /* ---------- Markov clustering, one family at a time ----------
 
@@ -291,7 +286,14 @@
       });
     }
     if (best[to] === undefined) { return { labels: null, hops: [], family: family }; }
+    return backtrack(cameFrom, family, from, to);
+  }
 
+  /* The search above only records how each topic was first reached at
+     its best cost; this walks those records back from `to`, so the hops
+     come out in reading order, each carrying the evidence that
+     justifies it. */
+  function backtrack(cameFrom, family, from, to) {
     var labels = [to];
     var hops = [];
     var cursor = to;

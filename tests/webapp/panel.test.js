@@ -212,3 +212,21 @@ test("the brokerage caption says where the numbers came from", () => {
   assert.match(view, /worked out\s+in your browser/);
   assert.match(view, /Not a corpus claim/);
 });
+
+// ---------- the two shared pieces of markup (#860) ----------
+
+test("a goto link escapes both the label it targets and the text it shows", () => {
+  const html = panel.gotoLink(HOSTILE.label);
+  assert.equal(
+    html,
+    '<a tabindex="0" role="link" data-goto="__proto__ &lt;&quot;hostile&quot;&gt;">' +
+      "__proto__ &lt;&quot;hostile&quot;&gt;</a>"
+  );
+  assert.match(panel.gotoLink("b", "a → <b>"), /data-goto="b">a → &lt;b&gt;<\/a>$/);
+});
+
+test("a count is pluralised everywhere but one", () => {
+  assert.equal(panel.plural(0, "paper"), "0 papers");
+  assert.equal(panel.plural(1, "paper"), "1 paper");
+  assert.equal(panel.plural(2, "topic"), "2 topics");
+});

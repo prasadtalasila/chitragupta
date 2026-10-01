@@ -122,9 +122,11 @@
 </main>
 <!--
   Classic scripts, and this order matters: data.js assigns the payload,
-  absence.js, graph.js, ego.js, families.js, panel.js and cy_style.js
-  publish window.CHITRAGUPTA_APP in dependency order (graph.js reads
-  absence.js's arithmetic, panel.js reads both), then search.js and
+  payload.js, absence.js, graph.js, ego.js, families.js, panel.js and
+  cy_style.js publish window.CHITRAGUPTA_APP in dependency order
+  (payload.js's edge accessors come first because graph.js, ego.js,
+  families.js and panel.js all read them; graph.js reads absence.js's
+  arithmetic, panel.js reads both), then search.js and
   pickers.js publish their own globals (window.CHITRAGUPTA_SEARCH,
   window.CHITRAGUPTA_PICKERS) -- plain DOM wiring, not part of that
   shared namespace -- and app.js wires everything to the canvas last.
@@ -133,6 +135,7 @@
 -->
 <script src="./data.js"></script>
 <script src="./vendor/cytoscape.min.js"></script>
+<script src="./payload.js"></script>
 <script src="./absence.js"></script>
 <script src="./graph.js"></script>
 <script src="./ego.js"></script>

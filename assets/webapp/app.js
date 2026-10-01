@@ -23,6 +23,21 @@
   var DATA = window.CHITRAGUPTA_TOPICS;
   var app = window.CHITRAGUPTA_APP;
 
+  /* Checked before anything reads the payload (#855). A missing,
+     truncated or hand-edited data.js used to throw on the next line,
+     before any handler was wired, and the reader was left with help
+     text describing controls that did nothing. The message goes where
+     `say` puts one, written directly because `say` and its element are
+     set up further down, past the reads this check exists to stop. */
+  var problems = app.payloadProblems(DATA);
+  if (problems.length) {
+    var notice = document.getElementById("hint");
+    notice.textContent = "data.js is missing or incomplete: " + problems.join(", ") +
+      ". Re-export it with `chitragupta corpus discover --app`.";
+    notice.hidden = false;
+    return;
+  }
+
   var topicsByLabel = app.byLabel(DATA.topics);
 
   /* The state search.js and pickers.js mutate as well as this file. A
@@ -288,22 +303,30 @@
      first, the same mechanism `disagreementShown` relies on. */
   var panelFamily = null;
 
+  /* Bumped by every panel write, so a write deferred to a later task
+     can tell it has been overtaken. The disagreement grid paints a
+     "clustering…" line and fills itself in after a `setTimeout`; a node
+     tap already queued when the button was pressed runs in between, and
+     without this the timeout overwrote that topic's card and set
+     `disagreementShown`, so the next inflation change re-clustered over
+     a panel the reader had pointed elsewhere (#860). */
+  var renderToken = 0;
+
   function clearHint() {
     hint.hidden = true;
     hint.textContent = HELP;
     disagreementShown = false;
     panelFamily = null;
+    renderToken += 1;
   }
 
   /* Back to the standing help text, with nothing selected in the panel:
      the state the app opens in, and where a panel whose subject has
      just left the canvas has to return to. */
   function showHelp() {
+    clearHint();
     detail.innerHTML = "";
-    hint.textContent = HELP;
     hint.hidden = false;
-    disagreementShown = false;
-    panelFamily = null;
   }
 
   function say(message) {
@@ -411,8 +434,7 @@
       return;
     }
     var overlap = DATA.edges_overlap[edge.data("index")];
-    showTip(event, "shares " + overlap.shared.length + " paper" +
-      (overlap.shared.length === 1 ? "" : "s") + ": " + overlap.shared.join(", "));
+    showTip(event, app.linkWhy("overlap", overlap));
   });
   cy.on("mouseout", "edge", hideTip);
 
@@ -650,9 +672,11 @@
 
   function renderDisagreement() {
     clearHint();
+    var token = renderToken;
     detail.innerHTML = "<p>clustering both families…</p>";
     // Yield once so the message paints before the matrices run.
     window.setTimeout(function () {
+      if (token !== renderToken) { return; }
       detail.innerHTML = app.disagreementHtml(
         app.disagreement(DATA, inflation(), state.ALL_LABELS)
       );
@@ -761,6 +785,17 @@
       showControlsForSelection();
       redraw();
     },
+  });
+
+  /* Click-away, one policy for both pop-ups the way Esc below is one:
+     a click outside the search box shuts its suggestions, and one
+     outside every picker shuts the pickers. One listener rather than
+     one per module, so the order the two are asked in is written here
+     instead of following from which module happened to be created
+     first. */
+  document.addEventListener("click", function (event) {
+    search.clickAway(event.target);
+    pickers.clickAway(event.target);
   });
 
   /* Esc's precedence: the type-ahead, when open, always wins --

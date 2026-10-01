@@ -33,6 +33,7 @@ from chitragupta.discover import _data, _origin, _page
 APP_FILES = (
     "index.html",
     "style.css",
+    "payload.js",
     "absence.js",
     "graph.js",
     "ego.js",

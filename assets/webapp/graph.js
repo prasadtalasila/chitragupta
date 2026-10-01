@@ -15,14 +15,14 @@
 
 (function (root, factory) {
   var api = typeof module === "object" && module.exports
-    ? factory(require("./absence.js"))
-    : factory(root.CHITRAGUPTA_APP);
+    ? factory(require("./absence.js"), require("./payload.js"))
+    : factory(root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP);
   if (typeof module === "object" && module.exports) {
     module.exports = api;
   } else {
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
-})(typeof self !== "undefined" ? self : this, function (absence) {
+})(typeof self !== "undefined" ? self : this, function (absence, payload) {
   /* Null prototypes on every table keyed by data-derived strings
      (topic labels, origins): on a plain object a topic literally
      labelled "__proto__" reads back Object.prototype -- truthy, so it
@@ -64,10 +64,6 @@
     semantic: "dashed",
   });
 
-  function familyEdges(data, family) {
-    return (family === "overlap" ? data.edges_overlap : data.edges_semantic) || [];
-  }
-
   /* Which families this corpus actually has edges for, and so which the
      app opens with. A family with no edges anywhere is not something
      the reader switched off, and a picker row that merely does nothing
@@ -78,7 +74,7 @@
      filter, and every row dead with no row saying why is worse. */
   function shippedFamilies(data) {
     var held = FAMILY_CLASSES.filter(function (family) {
-      return familyEdges(data, family).length > 0;
+      return payload.edgesOf(data, family).length > 0;
     });
     return held.length ? held : FAMILY_CLASSES.slice();
   }
@@ -93,7 +89,7 @@
         family: family,
         name: FAMILY_LABELS[family],
         key: FAMILY_KEYS[family],
-        count: familyEdges(data, family).length,
+        count: payload.edgesOf(data, family).length,
         shipped: shipped.indexOf(family) >= 0,
         checked: active.has(family),
       };
@@ -274,8 +270,10 @@
   /* The threshold that yields as close to `target` groups as the tree
      allows. Every distinct merge distance is a candidate cut and there
      are at most one per topic, so this walks them rather than
-     bisecting: at 131 topics it is 130 comparisons, once per slider
-     release. The target is a target -- a tree that never joins an
+     bisecting. Each candidate is a whole `cutTree`, so the walk is
+     quadratic -- 130 cuts over 131 topics is some 17,000 steps at the
+     corpus this was sized on -- and affordable only because app.js
+     runs it once, at load, to choose the opening cut. The target is a target -- a tree that never joins an
      outlying topic cannot reach one group, and says so by returning the
      nearest cut rather than pretending. */
   function thresholdForGroups(hierarchy, topics, target) {
@@ -559,12 +557,6 @@
     };
   }
 
-  /* `visible` is the reader's focus -- the pinned topics and what
-     relates to them. With `view.context === "dim"` it stops being a
-     filter and becomes an *emphasis* set: everything in `view.all`
-     stays on the canvas and the rest is drawn faint, so the reader
-     keeps their sense of how much of the corpus they are looking at.
-     "hide" is the old hard filter, kept as a toggle. */
   /* ---------- papers as nodes ----------
 
      Membership is the pipeline's most concrete fact and the app has
@@ -679,6 +671,12 @@
     return Object.keys(nodes).map(function (id) { return nodes[id]; }).concat(edges);
   }
 
+  /* `visible` is the reader's focus -- the pinned topics and what
+     relates to them. With `view.context === "dim"` it stops being a
+     filter and becomes an *emphasis* set: everything in `view.all`
+     stays on the canvas and the rest is drawn faint, so the reader
+     keeps their sense of how much of the corpus they are looking at.
+     "hide" is the old hard filter, kept as a toggle. */
   function elementsFor(data, visible, selected, view) {
     var pinned = selected.length > 0;
     var dimming = pinned && view && view.context === "dim" && Boolean(view.all);

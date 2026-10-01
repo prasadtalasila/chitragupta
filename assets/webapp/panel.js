@@ -8,19 +8,22 @@
    is most of what it is for.
 
    Depends on graph.js for the origin vocabulary and the member lookup,
-   and on absence.js for the containment reading and the withheld-edge
-   arithmetic; index.html loads both before this file. */
+   on absence.js for the containment reading and the withheld-edge
+   arithmetic, and on payload.js for which edge list is which family's;
+   index.html loads all three before this file. */
 "use strict";
 
 (function (root, factory) {
   if (typeof module === "object" && module.exports) {
-    module.exports = factory(require("./graph.js"), require("./absence.js"));
-  } else {
-    root.CHITRAGUPTA_APP = Object.assign(
-      root.CHITRAGUPTA_APP || {}, factory(root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP)
+    module.exports = factory(
+      require("./graph.js"), require("./absence.js"), require("./payload.js")
     );
+  } else {
+    root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, factory(
+      root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP
+    ));
   }
-})(typeof self !== "undefined" ? self : this, function (graph, absence) {
+})(typeof self !== "undefined" ? self : this, function (graph, absence, payload) {
   /* An explicit five-character replace, not the textContent/innerHTML
      trick: serializing a text node escapes & < > but never quotes, and
      this function's output also lands inside double-quoted attributes
@@ -36,6 +39,30 @@
       .replace(/'/g, "&#39;");
   }
 
+  /* The one way the panel links to a topic: a keyboard-reachable anchor
+     the click and Enter handlers in app.js find by `data-goto`. `text`
+     is what the reader sees when it is not the label itself -- a path
+     hop reads "a → b" and goes to b. Both are escaped here, so no
+     caller can forget one of them. */
+  function gotoLink(label, text) {
+    return '<a tabindex="0" role="link" data-goto="' + escapeHtml(label) + '">' +
+      escapeHtml(text === undefined ? label : text) + "</a>";
+  }
+
+  function plural(count, noun) {
+    return count + " " + noun + (count === 1 ? "" : "s");
+  }
+
+  /* Why two topics are linked, one sentence per family: the same words
+     in a topic's linked list, a bundle's rows and, for an overlap edge,
+     the canvas tooltip. Unescaped: the caller escapes for its context. */
+  function linkWhy(family, e) {
+    return family === "overlap"
+      ? "shares " + plural(e.shared.length, "paper") + ": " + e.shared.join(", ")
+      : "semantically near (" + e.similarity.toFixed(2) + "), bridged by " +
+        e.bridge.join(" and ");
+  }
+
   function paperCard(member) {
     var pct = Math.max(0, Math.min(100, Math.round(member.score * 100)));
     return '<div class="paper">' +
@@ -47,21 +74,13 @@
 
   function linkedRows(data, topic) {
     var rows = "";
-    data.edges_overlap.forEach(function (e) {
-      var other = e.a === topic.label ? e.b : e.b === topic.label ? e.a : null;
-      if (!other) { return; }
-      rows += '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(other) + '">' +
-        escapeHtml(other) + "</a><div class=\"why\">shares " + e.shared.length +
-        " paper" + (e.shared.length === 1 ? "" : "s") + ": " +
-        escapeHtml(e.shared.join(", ")) + "</div></div>";
-    });
-    data.edges_semantic.forEach(function (e) {
-      var other = e.a === topic.label ? e.b : e.b === topic.label ? e.a : null;
-      if (!other) { return; }
-      rows += '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(other) + '">' +
-        escapeHtml(other) + "</a><div class=\"why\">semantically near (" +
-        e.similarity.toFixed(2) + "), bridged by " +
-        escapeHtml(e.bridge.join(" and ")) + "</div></div>";
+    graph.FAMILY_CLASSES.forEach(function (family) {
+      payload.edgesOf(data, family).forEach(function (e) {
+        var other = e.a === topic.label ? e.b : e.b === topic.label ? e.a : null;
+        if (!other) { return; }
+        rows += '<div class="linked-topic">' + gotoLink(other) +
+          '<div class="why">' + escapeHtml(linkWhy(family, e)) + "</div></div>";
+      });
     });
     return rows || '<div class="linked-topic">no linked topics</div>';
   }
@@ -83,13 +102,13 @@
      click handler would leave the panel dead (#859). */
   function edgeHtml(data, family, index) {
     if (graph.FAMILY_CLASSES.indexOf(family) < 0) { return null; }
-    var edges = family === "overlap" ? data.edges_overlap : data.edges_semantic;
+    var edges = payload.edgesOf(data, family);
     if (!Number.isInteger(index) || index < 0 || index >= edges.length) { return null; }
     var e = edges[index], papers, why;
     if (family === "overlap") {
       papers = e.shared;
-      why = "These topics share " + papers.length + " paper" +
-        (papers.length === 1 ? "" : "s") + " (jaccard " + e.jaccard.toFixed(2) +
+      why = "These topics share " + plural(papers.length, "paper") +
+        " (jaccard " + e.jaccard.toFixed(2) +
         ", p = " + e.p_value.toExponential(1) + ").";
       // Both coefficients travel on every overlap edge for a reason;
       // naming the reading is the point, not printing two decimals.
@@ -122,14 +141,13 @@
      The members are real topic labels and link straight through. */
   function groupHtml(group) {
     return "<h2>" + escapeHtml(group.label) + "</h2>" +
-      '<p class="terms">' + group.members.length + " topic" +
-      (group.members.length === 1 ? "" : "s") + ", grouped in your browser " +
+      '<p class="terms">' + plural(group.members.length, "topic") +
+      ", grouped in your browser " +
       "by cutting the stored merge tree. Not a corpus claim: nothing is " +
       "written back, and <code>--json</code> reports no grouping.</p>" +
       "<h3>Topics in this group</h3>" +
       group.members.map(function (label) {
-        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(label) + '">' +
-          escapeHtml(label) + "</a></div>";
+        return '<div class="linked-topic">' + gotoLink(label) + "</div>";
       }).join("");
   }
 
@@ -139,17 +157,11 @@
   function bundleHtml(data, pairs) {
     var overlap = pairs.filter(function (p) { return p.family === "overlap"; });
     var semantic = pairs.filter(function (p) { return p.family === "semantic"; });
-    var rows = overlap.map(function (p) {
-      var e = data.edges_overlap[p.index];
-      return bundleRow(p, e, "shares " + e.shared.length + " paper" +
-        (e.shared.length === 1 ? "" : "s") + ": " + e.shared.join(", "));
-    }).concat(semantic.map(function (p) {
-      var e = data.edges_semantic[p.index];
-      return bundleRow(p, e, "semantically near (" + e.similarity.toFixed(2) +
-        "), bridged by " + e.bridge.join(" and "));
-    }));
-    return "<h2>" + pairs.length + " link" + (pairs.length === 1 ? "" : "s") +
-      ", bundled</h2>" +
+    var rows = overlap.concat(semantic).map(function (p) {
+      var e = payload.edgesOf(data, p.family)[p.index];
+      return bundleRow(p, e, linkWhy(p.family, e));
+    });
+    return "<h2>" + plural(pairs.length, "link") + ", bundled</h2>" +
       '<p class="terms">' + overlap.length + " over shared papers, " +
       semantic.length + " over semantic nearness. Counted apart because " +
       "they answer different questions.</p>" + rows.join("");
@@ -183,7 +195,7 @@
     var citekeys = verdict.shared.map(function (citekey) {
       return "<code>" + escapeHtml(citekey) + "</code>";
     }).join(", ");
-    var count = verdict.shared.length + " paper" + (verdict.shared.length === 1 ? "" : "s");
+    var count = plural(verdict.shared.length, "paper");
     return heading + '<p class="terms">' +
       (verdict.p >= 0.01
         ? "These share " + citekeys + ", but sharing " + count +
@@ -279,8 +291,8 @@
           "one paper-sharing cluster, different semantic clusters"
         )) +
       (grid.dropped
-        ? '<p class="terms">' + grid.dropped + " more pair" +
-          (grid.dropped === 1 ? " is" : "s are") + " not listed; the lists are " +
+        ? '<p class="terms">' + plural(grid.dropped, "more pair") +
+          (grid.dropped === 1 ? " is" : " are") + " not listed; the lists are " +
           "capped so a large cluster cannot fill the panel.</p>"
         : "");
   }
@@ -289,12 +301,10 @@
     if (!pairs.length) { return ""; }
     return "<h3>" + title + "</h3>" + '<p class="terms">' + why + "</p>" +
       pairs.map(function (pair) {
-        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(pair.a) + '">' +
-          escapeHtml(pair.a) + "</a> — <a tabindex=\"0\" role=\"link\" data-goto=\"" + escapeHtml(pair.b) + '">' +
-          escapeHtml(pair.b) + "</a>" + '<div class="why">' +
-          (pair.shared
-            ? pair.shared + " shared paper" + (pair.shared === 1 ? "" : "s")
-            : "no shared papers at all") + "</div></div>";
+        return '<div class="linked-topic">' + gotoLink(pair.a) + " — " + gotoLink(pair.b) +
+          '<div class="why">' +
+          (pair.shared ? plural(pair.shared, "shared paper") : "no shared papers at all") +
+          "</div></div>";
       }).join("");
   }
 
@@ -321,16 +331,14 @@
     var offCanvas = visible
       ? result.labels.filter(function (label) { return !visible.has(label); })
       : [];
-    return "<h3>Over " + family + ", " + result.hops.length + " hop" +
-      (result.hops.length === 1 ? "" : "s") + "</h3>" +
+    return "<h3>Over " + family + ", " + plural(result.hops.length, "hop") + "</h3>" +
       (offCanvas.length
         ? '<p class="terms">This route leaves your origin filter: ' +
           offCanvas.map(escapeHtml).join(", ") +
           (offCanvas.length === 1 ? " is" : " are") + " named here but not drawn.</p>"
         : "") +
       result.hops.map(function (hop) {
-        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(hop.b) + '">' +
-          escapeHtml(hop.a) + " → " + escapeHtml(hop.b) + "</a>" +
+        return '<div class="linked-topic">' + gotoLink(hop.b, hop.a + " → " + hop.b) +
           '<div class="why">' + hop.strength.toFixed(2) + " · " +
           hop.evidence.map(function (citekey) {
             return "<code>" + escapeHtml(citekey) + "</code>";
@@ -351,14 +359,13 @@
     });
     return "<h2>" + escapeHtml(member.title || citekey) + "</h2>" +
       paperCard(member) +
-      "<h3>In " + holders.length + " topic" + (holders.length === 1 ? "" : "s") + "</h3>" +
+      "<h3>In " + plural(holders.length, "topic") + "</h3>" +
       (holders.length > 1
         ? '<p class="terms">This paper bridges them: it is a member of every ' +
           "one, which is why it is drawn once with a line to each.</p>"
         : "") +
       holders.map(function (t) {
-        return '<div class="linked-topic"><a tabindex="0" role="link" data-goto="' + escapeHtml(t.label) + '">' +
-          escapeHtml(t.label) + "</a></div>";
+        return '<div class="linked-topic">' + gotoLink(t.label) + "</div>";
       }).join("");
   }
 
@@ -549,6 +556,9 @@
 
   return {
     escapeHtml: escapeHtml,
+    gotoLink: gotoLink,
+    plural: plural,
+    linkWhy: linkWhy,
     paperCard: paperCard,
     linkedRows: linkedRows,
     topicHtml: topicHtml,

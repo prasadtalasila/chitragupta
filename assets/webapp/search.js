@@ -100,11 +100,12 @@ window.CHITRAGUPTA_SEARCH = (function () {
         event.preventDefault();
       }
     });
-    document.addEventListener("click", function (event) {
-      if (!document.getElementById("search-wrap").contains(event.target)) {
+    // app.js's one document click listener calls this for every click.
+    function clickAway(target) {
+      if (!document.getElementById("search-wrap").contains(target)) {
         suggestions.hidden = true;
       }
-    });
+    }
 
     /* A pinned topic whose class has just gone out cannot stay pinned:
        the chip would name a node no longer on the canvas, and the ego
@@ -126,6 +127,7 @@ window.CHITRAGUPTA_SEARCH = (function () {
       // bubble-phase handler on searchInput, unchanged.
       isOpen: function () { return !suggestions.hidden; },
       pruneChips: pruneChips,
+      clickAway: clickAway,
     };
   }
 
