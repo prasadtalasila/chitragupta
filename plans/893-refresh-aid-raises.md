@@ -1,7 +1,7 @@
 # #893: an aid that raises during `agenda --baseline`'s refresh
 
 Status: **closed by PR #916 (6.127.0).** Written 2026-10-01 against
-`origin/main` at `12c58bf`. Closes #893, a follow-up to #837. Three
+`origin/main` at `12c58bf`. Closes #893, a follow-up to #837. Four
 things changed on the way:
 
 - **The version is MINOR, not PATCH**, as the user asked: the payloads
@@ -12,9 +12,16 @@ things changed on the way:
 - **`agenda-reviser` got a rule for a raise**, from the follow-up
   discussion, not only a wording change. When an aid raises, it reverts
   the repair and runs the recheck once on the reverted draft. If the
-  aid no longer raises, the edit caused it and stays reverted. If it
-  still raises, the host caused it, and the attempt does not count.
-  The skill also stops the pass on the ledger refusal's exit 1.
+  aid no longer raises, the repair stays reverted. If it still raises,
+  it is a standing failure, and the attempt does not count. The PR
+  review pointed out that one retry cannot prove the cause either way,
+  so the skill now decides only what to do and reports what happened,
+  without naming a cause. The skill also stops the pass on the ledger
+  refusal's exit 1.
+- **A raising aid's sidecar is restored** (`_refresh._restore`), also
+  from the PR review. An aid can write its `.json` and then raise.
+  Leaving that file would label a failed run's output as an earlier
+  run's, and the next bare `agenda` would trust it.
 
 **Written for** whoever implements #893. **Assumed:** the
 `DEVELOPER-AGENTS.md` shipping cycle (TDD, 100% line and branch coverage,
@@ -98,7 +105,8 @@ except Exception as exc:  # noqa: BLE001 -- see docstring: one aid must not sink
   `noqa` is required, and `RUF100` checks that it stays justified.
 - **A raised aid is `False` whatever is on disk.** An aid that wrote
   its `.json` and then raised has not reported a result. Do not check
-  the mtime in that case.
+  the mtime in that case. (As built, what it wrote is also undone; see
+  the status note.)
 - **`_one_line(exc)` is `f"{type(exc).__name__}: {first line of str(exc)}"`**,
   or just the type name when the message is empty. `NoLedger`'s message
   is two lines, and the second one is the sync instruction, which

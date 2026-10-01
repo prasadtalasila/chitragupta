@@ -2116,9 +2116,42 @@ class TestRefreshAids:
         draft = self._draft(isolated_config)
         aid_stubs["support"].raises = OSError("disk went away")
         refreshed, errors = _refresh.refresh_aids(draft)
-        assert review.report_path(draft, "support", "json").is_file()
         assert refreshed["support"] is False
         assert errors["support"] == "OSError: disk went away"
+
+    def test_a_sidecar_written_before_a_raise_is_put_back(self, isolated_config, aid_stubs):
+        """PR #916 review: what a failed run wrote must not stand in for
+        the earlier run's findings -- the header would call it that, and
+        the next bare `agenda` would trust it. The earlier `.json` comes
+        back byte for byte, with its own mtime, so the stale-against-the-
+        draft check still sees its real age."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        earlier = old.read_bytes()
+        aid_stubs["support"].payload = {"findings": ["half-written"]}
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert old.read_bytes() == earlier
+        assert old.stat().st_mtime_ns == 1_000_000_000
+
+    def test_a_sidecar_first_written_by_a_raising_run_is_removed(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert not review.report_path(draft, "support", "json").exists()
+
+    def test_a_raise_that_wrote_nothing_leaves_the_earlier_sidecar_alone(
+        self, isolated_config, aid_stubs
+    ):
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        aid_stubs["support"].writes = False
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert json.loads(old.read_text()) == {"findings": ["earlier"]}
+        assert old.stat().st_mtime_ns == 1_000_000_000
 
     def test_a_raise_with_no_message_is_named_by_its_type(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)

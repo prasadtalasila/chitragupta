@@ -24,6 +24,7 @@ against the seconds each aid the refresh runs takes.
 
 import contextlib
 import io
+import os
 import sys
 from pathlib import Path
 
@@ -90,6 +91,35 @@ def _mtime_ns(path: Path) -> int | None:
         return path.stat().st_mtime_ns
     except FileNotFoundError:
         return None
+
+
+def _snapshot(path: Path) -> tuple[int | None, bytes | None]:
+    """`path`'s mtime and bytes before an aid runs, or `(None, None)`."""
+    try:
+        return path.stat().st_mtime_ns, path.read_bytes()
+    except FileNotFoundError:
+        return None, None
+
+
+def _restore(path: Path, snapshot: tuple[int | None, bytes | None]) -> None:
+    """Put back what `_snapshot` saw, if a raising aid changed it.
+
+    The PR #916 review: an aid can write its `.json` and then raise, and
+    what it wrote is a failed run's output. Left in place, the header
+    would call it "an earlier run's findings", and the next bare
+    `agenda` -- which carries no refresh state -- would read it as
+    trusted. So the earlier bytes come back, with their own mtime, so
+    `_sources._read_aid_json`'s stale-against-the-draft check still sees
+    their real age; a file the failed run created is removed.
+    """
+    mtime, content = snapshot
+    if _mtime_ns(path) == mtime:
+        return
+    if content is None:
+        path.unlink(missing_ok=True)
+        return
+    path.write_bytes(content)
+    os.utime(path, ns=(mtime, mtime))
 
 
 # `--baseline`'s one up-front ledger check (#893), which `agenda.run`
@@ -159,7 +189,8 @@ def refresh_aids(draft: Path) -> tuple[dict[str, bool | None], dict[str, str]]:
     **An aid that raises is caught, and only `Exception` is** (#893).
     Before this one aid's bug, or a ledger that vanished mid-run, took
     down the whole recheck: no agenda filed, and the seven aids that had
-    refreshed wasted. Its one-line reason goes in the second map, which
+    refreshed wasted. Anything it wrote before raising is undone
+    (`_restore`), and its one-line reason goes in the second map, which
     the header and the comparison payload both carry, and to stderr as a
     `[warn]` -- without the warning a crash would surface only as a word
     in a header. `SystemExit` is deliberately not caught: a wrong argv
@@ -185,14 +216,17 @@ def refresh_aids(draft: Path) -> tuple[dict[str, bool | None], dict[str, str]]:
             refreshed[aid] = None
             continue
         path = review.report_path(draft, aid, "json")
-        before = _mtime_ns(path)
+        # The bytes are read for every aid, not only one that raises: by
+        # the time it has raised, they are gone.
+        snapshot = _snapshot(path)
         try:
             with contextlib.redirect_stdout(io.StringIO()):
                 code = AIDS[aid][0].main(argv)
         except Exception as exc:  # noqa: BLE001 -- see docstring: one aid must not sink the recheck
             errors[aid] = _one_line(exc)
+            _restore(path, snapshot)
             print(f"[warn] {aid} raised during refresh: {errors[aid]}", file=sys.stderr)
             refreshed[aid] = False
             continue
-        refreshed[aid] = code == 0 and _mtime_ns(path) not in (None, before)
+        refreshed[aid] = code == 0 and _mtime_ns(path) not in (None, snapshot[0])
     return refreshed, errors

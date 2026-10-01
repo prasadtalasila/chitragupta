@@ -1382,7 +1382,9 @@ fresh `.json` (as `support` does without the enrich stack), or an
 exception. That aid's items are an earlier run's, so they sit out every
 group and both counts, and the filed report marks it `refreshed: false`
 and leaves its items out of `objective_class_count`. An aid that raised
-does not stop the run: `refresh_errors` maps it to the exception's
+does not stop the run. Anything it wrote before raising is put back to
+the earlier `.json`, so a failed run's output is never read as a
+finding, and `refresh_errors` maps it to the exception's
 one-line reason, the filed report carries the same line as
 `sources.aids.<aid>.refresh_error`, and a `[warn]` line on stderr says
 so as it happens. A skipped `coverage` (no recorded query) is

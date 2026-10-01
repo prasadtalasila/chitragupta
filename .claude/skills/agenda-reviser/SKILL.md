@@ -317,18 +317,22 @@ show progress on them, and a quiet list is not evidence that they went
 away.
 
 **An aid in `refresh_errors` comes first, because the edit may have
-caused it.** The draft is the only thing that changed since the last
-cycle, and a malformed citation or a broken fence can make an aid's
-parser fail. Revert the repair, re-file the baseline as below, and run
-the recheck once on the reverted draft:
+caused it.** A malformed citation or a broken fence can make an aid's
+parser fail, but so can a transient fault on the host, and one retry
+cannot tell the two apart for certain. So decide what to *do*, and do
+not claim to know the cause. Revert the repair, re-file the baseline as
+below, and run the recheck once on the reverted draft:
 
-- **It no longer raises:** the edit caused it. Keep the repair
-  reverted, count the attempt, and report the aid and its reason in
-  step 7.
-- **It still raises:** the edit did not cause it. Record the aid as a
-  standing failure for this pass, do not count the attempt, and try the
-  repair again. From then on, handle that aid by the rules below and do
-  not repeat this check for it.
+- **It no longer raises:** keep the repair reverted and count the
+  attempt. Keeping an edit that no aid could check is the risk this
+  avoids, and losing a sound repair is the cheaper mistake. In step 7,
+  report the aid, its reason, and that it raised after the edit but not
+  on the reverted draft: the edit, or a fault that cleared.
+- **It still raises:** this edit is not what it fails on, since the
+  draft no longer has it. Record the aid as a standing failure for this
+  pass, do not count the attempt, and try the repair again. From then
+  on, handle that aid by the rules below and do not repeat this check
+  for it.
 
 Then, for every aid still in `not_refreshed`:
 
@@ -406,7 +410,7 @@ against the baseline agenda from step 2: `objective_class_count` before
 and after, what was repaired per class, what was escalated and why,
 and every aid any cycle's `not_refreshed` named, with a note that its
 items went unverified. For an aid that raised, quote its
-`refresh_errors` reason and say whether the edit or the host caused it.
+`refresh_errors` reason and say which of the two outcomes above it had.
 That reason is what tells a known gap, such as `support` without the
 enrich stack, apart from a bug worth reporting.
 
