@@ -1,6 +1,7 @@
 # 🎬 Demo recording
 
-Status: **reference.** Re-recorded 2026-09-18 against `main`.
+Status: **reference.** Terminal segment recorded 2026-09-18 against
+`main`; browser segment re-recorded 2026-10-01 (#809).
 
 **Written for** anyone who wants to see the pipeline run before reading
 the rest of the documentation. One pass through the spine -- corpus sync,
@@ -86,7 +87,24 @@ asserts the number of rendered topic circles against the topic count the
 page itself embeds, and fails the run on a mismatch, rather than letting
 a selector that has moved yield a video of the same establishing shot
 repeated -- which is exactly what the viewer's markup change since the
-first recording would otherwise have produced.
+first recording would otherwise have produced. It also checks, after
+every click, that the panel names the topic just clicked.
+
+The browser segment was re-recorded on its own on 2026-10-01, when the
+sample page was re-emitted in merge-tree leaf order (#809) and its
+circle moved. Only the browser segment shows that circle, so the
+terminal segment was kept as it was: the first 40.4 seconds of
+`demo.mp4` are stream-copied from the previous file, cut on the
+keyframe where the browser segment starts, and decode to the same
+frames. The new browser segment was encoded with the same `libx264
+-crf 20` settings and joined on after them. `demo.webm` (`libvpx-vp9
+-crf 32 -b:v 0`) and `demo.gif` (`fps=10`, `scale=640`, a single
+`palettegen`/`paletteuse` pass) were then re-encoded from the new
+`demo.mp4`. The GIF chain reproduces the previous `demo.gif` byte for
+byte from the previous `demo.mp4`; the VP9 encode does not, though its
+keyframe layout and size match to within 1%. `demo-webapp.png` is the
+topic-1 frame of the new capture. `demo.svg` is terminal-only and did
+not change.
 
 Nothing in either segment touched a real project. The sample project's
 committed drafts, dossiers and reviews were only read; the commands that
