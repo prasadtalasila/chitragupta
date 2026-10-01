@@ -92,7 +92,7 @@ BENCH_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO))
 
 from chitragupta import ledger, retrieval, retrieval_scoring  # noqa: E402
-from chitragupta._passage_words import _CORE_STOPWORDS  # noqa: E402
+from chitragupta._tokens import CORE_STOPWORDS as _CORE_STOPWORDS  # noqa: E402
 from chitragupta.porter_stemmer import stem  # noqa: E402
 from bench_retrieval_compare import ndcg_at_k, recall_at_k  # noqa: E402
 from bench_retrieval_keyword_selfretrieval import build_keyword_ground_truth  # noqa: E402

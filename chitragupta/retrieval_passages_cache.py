@@ -21,7 +21,7 @@ behaviour at all, and since #851 both use `chitragupta/_json_cache.py`
 for it rather than a copy each.
 """
 
-from chitragupta import _reference_cut, config, passages
+from chitragupta import _reference_cut, _tokens, config, passages
 from chitragupta._json_cache import MemoisedJson
 from chitragupta.retrieval import _tokenize
 
@@ -43,7 +43,11 @@ _INDEXED_LABELS = frozenset({"text", "list_item", "table", "formula"})
 # fingerprints (docs/RETRIEVAL.md says so), so invalidating one says
 # nothing about the other, and a stale passage index would keep ranking
 # paragraphs on the old vocabulary while the document index used the new.
-_INDEX_SCHEMA_VERSION = 2
+#
+# That second bump is now automatic (issue 845): the same
+# `_tokens.index_version` digest `retrieval_cache` carries is joined to
+# this number, so a vocabulary edit invalidates both indexes at once.
+_INDEX_SCHEMA_VERSION = _tokens.index_version(2)
 
 
 def _passage_stats(found: list) -> list[dict]:
