@@ -101,8 +101,10 @@ class TestTheProseStatesTheRealFloor:
             _stated_floors("Both legs are measured against one number.")
 
 
-# Built from two pieces so this file does not match itself.
-_BARE_PRAGMA = re.compile("pragma: no " + r"cover(?!-windows)")
+# Coverage's own default exclusion pattern, so every spelling it would
+# have honoured is caught; built from two pieces so this file does not
+# match itself.
+_BARE_PRAGMA = re.compile(r"#\s*pragma[:\s]?\s*no\s*" + r"cover(?!-windows)", re.IGNORECASE)
 _SCANNED = ("chitragupta", "scripts", ".claude/hooks", "tests", "bench")
 
 
@@ -121,6 +123,12 @@ def test_no_bare_no_cover_pragma_is_left_in_the_tree():
     assert not found, "inert coverage pragma(s):\n  " + "\n  ".join(found)
 
 
+@pytest.mark.parametrize(
+    "comment", ["# pragma: no ", "#pragma:no ", "# pragma: no  ", "# PRAGMA: NO "]
+)
+def test_the_bare_pragma_pattern_sees_every_spelling_coverage_did(comment):
+    assert _BARE_PRAGMA.search(f"x  {comment}" + "cover - why")
+
+
 def test_the_bare_pragma_pattern_spares_the_windows_marker():
-    assert _BARE_PRAGMA.search("x  # pragma: no " + "cover - why")
     assert not _BARE_PRAGMA.search("x  # pragma: no " + "cover-windows")

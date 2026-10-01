@@ -47,7 +47,8 @@ def _bench_readme():
 #
 # Each is a "now" claim -- true of the tree today, re-measured rather
 # than a frozen record of a past baseline -- the same shape
-# `_stated_sizes` above already pins for the C1/C2 register sizes.
+# `tests/test_technical_debt_scan.py`'s `_stated_sizes` pins for the
+# C1/C2 register sizes.
 # `_regex_pin` is that shape made generic, so #348 (PACKAGING.md) and
 # #345 (ARCHITECTURE.md) can reuse it instead of reinventing it. Two
 # claims that were once pinned here no longer are, each for the same
@@ -71,7 +72,8 @@ def _regex_pin(pattern: re.Pattern, text: str, what: str) -> tuple[str, ...]:
     """Search `pattern` in a whitespace-normalised copy of `text` and
     return its captured groups, failing loudly rather than returning
     nothing if the sentence has been reworded past the pattern -- the
-    same guarantee `_stated_sizes` gives the register-size claim, made
+    same guarantee `tests/test_technical_debt_scan.py`'s `_stated_sizes`
+    gives the register-size claim, made
     reusable for the claims below and for future documents."""
     match = pattern.search(" ".join(text.split()))
     assert match, (
@@ -179,7 +181,8 @@ class TestTheOtherDriftProneClaimsArePinned:
 class TestTheNewPinsFailLoudlyWhenReworded:
     """The same guarantee
     `test_a_reworded_size_sentence_fails_loudly_rather_than_silently`
-    pins for `_stated_sizes`, extended to the new patterns above: a pin
+    pins for `_stated_sizes` in `tests/test_technical_debt_scan.py`,
+    extended to the patterns above: a pin
     that silently stops matching is worse than no pin."""
 
     def test_a_lint_target_no_longer_quoted_fails_loudly(self):

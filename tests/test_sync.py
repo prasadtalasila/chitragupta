@@ -1971,8 +1971,11 @@ class TestStallWatchdog:
             # Joins every worker thread, so a job left queued rather than
             # cancelled has run by the time this returns. Deterministic
             # where a sleep was a race the test could lose by passing.
-            executors[0].shutdown(wait=True)
-        assert not any(t.is_alive() for t in executors[0]._threads)
+            # Every executor actually built, so a sync.run() that raised
+            # before building one keeps its own exception.
+            for executor in executors:
+                executor.shutdown(wait=True)
+        assert not any(t.is_alive() for ex in executors for t in ex._threads)
 
         assert len(at_stall) < 6, "nothing was left queued when the run gave up -- test is vacuous"
         assert started == at_stall, (
