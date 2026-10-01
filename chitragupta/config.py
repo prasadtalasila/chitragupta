@@ -327,9 +327,13 @@ PIPELINE_LOCK_PATH = CONTENT_DIR / "pipeline.lock.db"
 
 # Which backend chitragupta/pdf_text.py dispatches to -- see config.toml's
 # [parser] comment for the tradeoffs (speed, page-boundary loss) before
-# switching off the default.
+# switching off the default. Folded to its spelling at load like the
+# other enums, because sync.py, sync_pool.py and ledger_upsert.py compare
+# it to "docling" by string: a written `Docling` used to load verbatim
+# and compare unequal in each, rather than fail at load naming the
+# alternatives as a typo in the other enums does (#847).
 PARSER_BACKENDS = ("pdftotext", "docling")
-PARSER = _get("PARSER", "parser", "backend", default="pdftotext")
+PARSER = _get_choice("PARSER", "parser", "backend", default="pdftotext", choices=PARSER_BACKENDS)
 # Whether the docling backend runs its OCR stage. Docling's own default
 # is on; this project's is off -- a speed/completeness trade-off, not a
 # free win. Measured over the full corpus, OCR costs 2.08x serially but

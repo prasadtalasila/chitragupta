@@ -271,6 +271,35 @@ class TestReport:
         sync_residue.report(["x_2000"])
         assert "NOTE: chroma vectors:" in capsys.readouterr().out
 
+    @pytest.mark.parametrize(
+        ("artefact", "path_of", "torn"),
+        [
+            (
+                sync_residue.TOPIC_GRAPH,
+                lambda cfg: cfg.TOPIC_GRAPH_PATH,
+                b'{"edges_overlap": [{"sh',
+            ),
+            (sync_residue.TOPIC_MEMBERSHIP, lambda cfg: cfg.TOPIC_SET_PATH, b'{"topics": ['),
+            (
+                sync_residue.OVERLAP,
+                lambda cfg: cfg.OVERLAP_DIR / "index.json",
+                b'{"citekeys": ["\xe2',
+            ),
+        ],
+    )
+    def test_a_torn_artefact_is_noted_and_the_report_still_prints(
+        self, residue_corpus, capsys, artefact, path_of, torn
+    ):
+        """A killed enrich run leaves a truncated file behind, and `sync`
+        used to die on it with a traceback after every upsert had
+        committed, before saying which citekeys were stale (#846)."""
+        path_of(residue_corpus).write_bytes(torn)
+        sync_residue.report(["smith_gone_2020"])
+        out = capsys.readouterr().out
+        assert f"NOTE: {artefact}: {path_of(residue_corpus)} could not be read" in out
+        assert "dossiers         2 mention(s):" in out
+        assert "Reported, not repaired" in out
+
     def test_it_modifies_no_artefact(self, residue_corpus, capsys):
         before = {
             path: path.read_bytes()

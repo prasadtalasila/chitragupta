@@ -76,7 +76,24 @@ def _pattern(citekey: str) -> "re.Pattern[str]":
     return re.compile(rf"(?<!{edge}){re.escape(citekey)}(?!{edge})")
 
 
-def _scan_overlap(citekeys: list[str]) -> dict[str, Hit]:
+def _read_json(path: Path, artefact: str, notes: list[str]) -> dict:
+    """`path`'s JSON, or `{}` when it is absent or cannot be read."""
+    # An unreadable file is noted rather than raised (#846). Enrichment
+    # writes these with a bare `write_text`, so a killed run leaves one
+    # truncated, and this runs after every upsert has committed and
+    # before the stale list is printed: a traceback here would hide the
+    # one thing the person needed to see, over an artefact `sync` does
+    # not own.
+    if not path.is_file():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        notes.append(f"{artefact}: {path} could not be read ({exc}), so it was not scanned.")
+        return {}
+
+
+def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Per-document fingerprints and the merged corpus index."""
     # Which index named it, not merely that one did: the two tiers are
     # built independently, so unioning them would report a citekey that
@@ -85,9 +102,8 @@ def _scan_overlap(citekeys: list[str]) -> dict[str, Hit]:
     indexed: dict[str, list[str]] = {}
     for name in ("index.json", "skipgram_index.json"):
         path = config.OVERLAP_DIR / name
-        if path.is_file():
-            for key in json.loads(path.read_text(encoding="utf-8")).get("citekeys", []):
-                indexed.setdefault(key, []).append(str(path))
+        for key in _read_json(path, OVERLAP, notes).get("citekeys", []):
+            indexed.setdefault(key, []).append(str(path))
     hits = {}
     for citekey in citekeys:
         where = [
@@ -120,12 +136,10 @@ def _graph_edge_citekeys(graph: dict) -> list[list[str]]:
     return edges
 
 
-def _scan_topic_graph(citekeys: list[str]) -> dict[str, Hit]:
+def _scan_topic_graph(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Edges whose shared-document or bridge list names the citekey."""
     path = config.TOPIC_GRAPH_PATH
-    if not path.is_file():
-        return {}
-    edges = _graph_edge_citekeys(json.loads(path.read_text(encoding="utf-8")))
+    edges = _graph_edge_citekeys(_read_json(path, TOPIC_GRAPH, notes))
     hits = {}
     for citekey in citekeys:
         count = sum(1 for edge in edges if citekey in edge)
@@ -158,7 +172,7 @@ def _topics_citekeys(data: dict) -> list[str]:
     return list(data.get("assignments", {})) + list(data.get("memberships", {}))
 
 
-def _scan_topic_membership(citekeys: list[str]) -> dict[str, Hit]:
+def _scan_topic_membership(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Which topic each paper belongs to, across the two files that
     record it.
 
@@ -168,13 +182,13 @@ def _scan_topic_membership(citekeys: list[str]) -> dict[str, Hit]:
     regenerated wholesale by the next enrichment run, so a hit here is a
     staleness that expires rather than one a human must go and remove.
     """
-    named = []
-    for path, extract in (
-        (config.TOPIC_SET_PATH, _topic_set_citekeys),
-        (config.TOPICS_PATH, _topics_citekeys),
-    ):
-        if path.is_file():
-            named.append((path, extract(json.loads(path.read_text(encoding="utf-8")))))
+    named = [
+        (path, extract(_read_json(path, TOPIC_MEMBERSHIP, notes)))
+        for path, extract in (
+            (config.TOPIC_SET_PATH, _topic_set_citekeys),
+            (config.TOPICS_PATH, _topics_citekeys),
+        )
+    ]
     hits = {}
     for citekey in citekeys:
         counts = [(path, keys.count(citekey)) for path, keys in named]
@@ -252,20 +266,21 @@ def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
     A citekey with no residue is present with an empty list, because
     "nothing else references this" is the answer the caller most wants
     to be able to say out loud. The notes are the artefact classes that
-    could not be scanned on this host.
+    could not be scanned on this host, and the files that could not be read.
     """
+    notes: list[str] = []
     chroma, note = _scan_chroma(citekeys)
     by_class = [
-        _scan_overlap(citekeys),
-        _scan_topic_graph(citekeys),
-        _scan_topic_membership(citekeys),
+        _scan_overlap(citekeys, notes),
+        _scan_topic_graph(citekeys, notes),
+        _scan_topic_membership(citekeys, notes),
         _scan_dossiers(citekeys),
         chroma,
     ]
     found = {
         citekey: [hits[citekey] for hits in by_class if citekey in hits] for citekey in citekeys
     }
-    return found, [note] if note else []
+    return found, notes + ([note] if note else [])
 
 
 def report(citekeys: list[str]) -> None:

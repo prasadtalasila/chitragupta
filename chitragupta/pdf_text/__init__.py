@@ -87,33 +87,16 @@ _INSTALL_HINT = {
 }
 
 
-def _check_parser(parser: str) -> None:
-    # Deliberately left to propagate uncaught out of sync.run() rather
-    # than caught-and-printed like MissingBinary/MissingDependency below:
-    # this is a misconfiguration (a typo'd PARSER value), not a host
-    # missing an optional dependency, and sync.run() already has the same
-    # shape for the other fundamental-misconfiguration case -- a missing
-    # bib file raises FileNotFoundError uncaught from bib_reader.read_library(),
-    # before this function's own try block even starts.
-    if parser not in config.PARSER_BACKENDS:
-        raise ValueError(
-            f"Unknown parser backend {parser!r} (config.toml's [parser].backend, "
-            f"or the PARSER env var) -- expected one of {config.PARSER_BACKENDS}."
-        )
-
-
 def unavailable_reason() -> str:
     """Human-readable explanation of why config.PARSER's backend isn't
     usable right now, and how to fix it. Meaningful when is_available()
     is False, and also reused as MissingDependency's message when a
     backend's import fails despite that probe passing (a broken
     transitive dependency -- see _backends._extract_docling)."""
-    _check_parser(config.PARSER)
     return _INSTALL_HINT[config.PARSER]
 
 
 def is_available() -> bool:
-    _check_parser(config.PARSER)
     if config.PARSER == "pdftotext":
         return shutil.which("pdftotext") is not None
     return importlib.util.find_spec(config.PARSER) is not None

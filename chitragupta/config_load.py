@@ -298,9 +298,9 @@ def _get_choice(env_var: str, *toml_path: str, default: str, choices: tuple[str,
     `multiprocessing.get_context()` or the logging module, once a pool or
     a handler is already being built. Same reasoning as `_get_workers`.
 
-    One loader for both enum settings, `[parser].start_method` and
-    `[logging].level`, which had a copy each that differed only in the
-    case they folded to (#848).
+    One loader for every enum setting -- `[parser].start_method`,
+    `[logging].level` and, since #847, `[parser].backend`; the first two
+    had a copy each that differed only in the case they folded to (#848).
     """
     raw = _get(env_var, *toml_path, default=default).strip()
     for choice in choices:

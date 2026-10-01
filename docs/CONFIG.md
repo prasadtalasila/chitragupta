@@ -26,6 +26,7 @@ this document can stay a reference rather than an argument.
   - [`[provenance]` -- citation-support bands](#-provenance----citation-support-bands)
   - [`[retrieval]` -- BM25's field weights, cap and floor](#-retrieval----bm25s-field-weights-cap-and-floor)
   - [`[enrich]` -- the optional enrichment layer](#-enrich----the-optional-enrichment-layer)
+  - [`[discover]` -- from a phrase to a topic](#-discover----from-a-phrase-to-a-topic)
 - [How values are parsed](#-how-values-are-parsed)
 - [Notes on individual settings](#-notes-on-individual-settings)
 - [Choosing an embedding model](#-choosing-an-embedding-model)
@@ -275,8 +276,8 @@ The values in full:
 
 - **`backend`** -- `"pdftotext"` needs the `pdftotext` binary on `PATH`
   and no Python package; `"docling"` needs the `enrich` dependency group.
-  Any other value is rejected, naming the valid ones. See
-  [notes](#-backend-pdftotext-or-docling).
+  Case-insensitive; any other value is rejected at load, naming the
+  valid ones. See [notes](#-backend-pdftotext-or-docling).
 - **`ocr`** -- only `docling` has an OCR stage; `pdftotext` ignores this.
 - **`formulas`** -- only `docling` recognises formulae; `pdftotext`
   ignores this. Off, an equation reaches `content/parsed/<citekey>.txt`
@@ -606,6 +607,23 @@ between the k values above. Note also what it cannot say: it compares a
 capped run to the uncapped one, and agreeing with the uncapped scorer is
 not the same as being right -- that needs the human ratings issue #757
 tracks.
+
+### 🧭 `[discover]` -- from a phrase to a topic
+
+Read by `python -m chitragupta.corpus discover`'s resolution ladder.
+
+| Key | Env var | Accepts | Default in code | In `config.toml.example` |
+| --- | --- | --- | --- | --- |
+| `min_similarity` | `DISCOVER_MIN_SIMILARITY` | number, cosine similarity | `0.35` | `0.35` |
+
+How close the best topic centroid must sit to a free phrase before the
+hybrid rung claims the phrase for that topic instead of falling back to
+paper search. It gates only the semantic evidence: a BM25 hit on the
+topic's own vocabulary claims the phrase regardless, and without the
+`enrich` group there is no semantic evidence, so the floor has no
+effect. 0.35 is a starting point, not a measurement;
+[TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) has the ladder and the gold set
+meant to tune it.
 
 ## 🔤 How values are parsed
 

@@ -815,3 +815,30 @@ topic_distribution = true
 #                                                       Defaults: 0.5 / 8
 topic_membership_ratio = 0.5
 topic_membership_max = 8
+
+# How surprising a shared-member count must be before two topics get an
+# overlap edge in content/topic_graph.json -- the hypergeometric tail
+# against the corpus size. A significance level rather than a weight
+# floor, so it needs no re-tuning as the corpus grows, and it refuses the
+# edge two large topics would otherwise get merely for both being large.
+#                                                           Default: 0.01
+topic_graph_p_value = 0.01
+
+# Semantic edges in the topic graph survive only between mutual top-k
+# neighbours. Mutual, because a global similarity floor either floods the
+# dense region of the topic space or starves the sparse one.
+#                                                              Default: 5
+topic_graph_neighbors = 5
+
+[discover]
+# `corpus discover`'s ladder from a free phrase to a topic that exists.
+
+# How close the best topic centroid must sit to a free phrase before the
+# hybrid rung claims the phrase for that topic rather than falling back
+# to paper search. Gates only the semantic evidence: a BM25 hit on the
+# topic's own vocabulary claims it regardless, and without the `enrich`
+# group there is no semantic evidence, so this has no effect. 0.35 is a
+# starting point, not a measurement -- docs/TOPIC-DISCOVERY.md's gold set
+# is what will tune it.
+#                                                           Default: 0.35
+min_similarity = 0.35
