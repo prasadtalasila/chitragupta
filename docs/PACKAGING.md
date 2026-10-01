@@ -209,11 +209,11 @@ starting a child and, in an installed-package project, run it with
 `PYTHONSAFEPATH=1` ([HOOKS.md](HOOKS.md) has how, and the one case it
 cannot close); `chitragupta init` refuses to scaffold into a
 directory that already holds `chitragupta/` or `chitragupta.py`, even
-with `--force`; and the skills `init` scaffolds say `python -P -m`, which
-keeps the working directory off `sys.path`, so a `chitragupta/` committed
-afterwards is not what a skill runs either. That is still the module
-form, resolved from whichever interpreter runs it, so nothing above
-changes.
+with `--force`; and the prose `init` scaffolds says `python -P -m`,
+which keeps the working directory off `sys.path`, so a `chitragupta/`
+committed afterwards is not what a scaffolded skill's command runs
+either. That is still the module form, resolved from whichever
+interpreter runs it, so nothing above changes.
 
 ## ⚖ What the decision answers
 

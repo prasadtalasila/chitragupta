@@ -379,83 +379,87 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
         assert "chitragupta.py" in capsys.readouterr().err
 
 
-# Any module-form run of the package not already preceded by `-P`.
-UNSAFE_MODULE_FORM = re.compile(r"(?<!-P)\s-m\s+chitragupta\b")
+# A run of the package, or any `-c` snippet, not already preceded by `-P`.
+UNSAFE_RUN = re.compile(r"(?<!-P)\s(-m\s+chitragupta\b|-c\s)")
 
 
-class TestAgentRunFilesSayDashP:
+class TestScaffoldedProseSaysDashP:
     """#891. A `chitragupta/` committed to a scaffolded project *after*
     `init` is beyond the refusal above, and a skill's `python -m
     chitragupta.draft gate` would import it from the project directory.
-    So the copies `init` writes of what an agent runs say `python -P -m`,
-    which keeps that directory off `sys.path` -- a property of the text
-    the install wrote, so it holds whatever the plant's age or contents."""
+    So the prose `init` writes says `python -P`, which keeps that
+    directory off `sys.path` -- a property of the text the install
+    wrote, so it holds whatever the plant's age or contents."""
 
     COMMANDS = (
         "Run `python -m chitragupta.draft gate x.md`, then `python\n"
         "  -m chitragupta.corpus sync`, or `.venv-full/bin/python -m chitragupta.review`"
-        " or `python3 -m chitragupta.corpus ledger`. Not `python -m pytest`.\n"
+        ' or `python3 -m chitragupta.corpus ledger` or `python -c "import chitragupta"`.'
+        " Not `python -m pytest`, and `python -P -m chitragupta.draft` stays as it is.\n"
     )
     SAFE = (
         "Run `python -P -m chitragupta.draft gate x.md`, then `python\n"
         "  -P -m chitragupta.corpus sync`, or `.venv-full/bin/python -P -m chitragupta.review`"
-        " or `python3 -P -m chitragupta.corpus ledger`. Not `python -m pytest`.\n"
+        ' or `python3 -P -m chitragupta.corpus ledger` or `python -P -c "import chitragupta"`.'
+        " Not `python -m pytest`, and `python -P -m chitragupta.draft` stays as it is.\n"
     )
-    AGENT_RUN = (
+    REWRITTEN = (
         ".claude/skills/survey-writer/SKILL.md",
         ".claude/agents/writer.md",
         ".agents/skills/survey-writer/SKILL.md",
         ".opencode/skills/survey-writer-opencode/SKILL.md",
         "AGENTS.md",
+        "docs/CLI.md",
+        "README.md",
     )
-    LEFT_ALONE = ("docs/CLI.md", "README.md", ".claude/hooks/session_start_hook.py")
+    LEFT_ALONE = (*init.KEEPS_PLAIN_M, ".claude/hooks/session_start_hook.py")
 
     @pytest.fixture
     def commands(self, source):
-        for rel in (*self.AGENT_RUN, *self.LEFT_ALONE):
+        for rel in (*self.REWRITTEN, *self.LEFT_ALONE):
             (source / rel).parent.mkdir(parents=True, exist_ok=True)
             (source / rel).write_text(self.COMMANDS, encoding="utf-8")
         return source
 
-    def test_agent_run_copies_get_dash_p_and_nothing_else_changes(self, commands, tmp_path):
+    def test_prose_gets_dash_p_and_nothing_else_changes(self, commands, tmp_path):
         dest = tmp_path / "project"
         init.scaffold(dest, agents=tuple(init.AGENT_TREES))
-        for rel in self.AGENT_RUN:
+        for rel in self.REWRITTEN:
             assert (dest / rel).read_text(encoding="utf-8") == self.SAFE, rel
         for rel in self.LEFT_ALONE:
             assert (dest / rel).read_text(encoding="utf-8") == self.COMMANDS, rel
 
     def test_force_overwrites_with_the_same_rewrite(self, commands, tmp_path):
-        """The upgrade path: an older scaffold's plain `-m` skills are
-        replaced by `init --force`, and the rewrite is not doubled."""
+        """A file edited back to plain `-m` is rewritten again on
+        `--force`, and text already carrying `-P` (the last clause of
+        `COMMANDS`) is not given a second one."""
         dest = tmp_path / "project"
         init.scaffold(dest)
-        skill = dest / self.AGENT_RUN[0]
+        skill = dest / self.REWRITTEN[0]
         skill.write_text(self.COMMANDS, encoding="utf-8")
-        init.scaffold(dest, force=True)
         init.scaffold(dest, force=True)
         assert skill.read_text(encoding="utf-8") == self.SAFE
 
     def test_line_endings_and_non_ascii_survive(self, source, tmp_path):
-        skill = source / self.AGENT_RUN[0]
+        skill = source / self.REWRITTEN[0]
         skill.write_bytes("Gate — `python -m chitragupta.draft gate`\r\n".encode("utf-8"))
         dest = tmp_path / "project"
         init.scaffold(dest)
-        assert (dest / self.AGENT_RUN[0]).read_bytes() == (
+        assert (dest / self.REWRITTEN[0]).read_bytes() == (
             "Gate — `python -P -m chitragupta.draft gate`\r\n".encode("utf-8")
         )
 
-    def test_no_real_agent_run_file_keeps_a_plain_module_form(self, tmp_path):
+    def test_no_real_scaffolded_prose_keeps_a_plain_run(self, tmp_path):
         """Against the real tree, every harness: catches an invocation
         shape `MODULE_FORM` does not know (`"$PY" -m chitragupta...`)
-        the day a skill first uses one."""
+        the day the prose first uses one."""
         dest = tmp_path / "project"
         init.scaffold(dest, agents=tuple(init.AGENT_TREES))
         unsafe = [
             f"{path.relative_to(dest)}: {match.group(0)!r}"
             for path in sorted(dest.rglob("*.md"))
-            if init._is_agent_run(init.SOURCE_ROOT / path.relative_to(dest))  # pylint: disable=protected-access
-            for match in UNSAFE_MODULE_FORM.finditer(path.read_text(encoding="utf-8"))
+            if init.gets_dash_p(init.SOURCE_ROOT / path.relative_to(dest))
+            for match in UNSAFE_RUN.finditer(path.read_text(encoding="utf-8"))
         ]
         assert not unsafe, "\n".join(unsafe)
 

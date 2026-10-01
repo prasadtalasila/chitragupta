@@ -110,22 +110,22 @@ class ScaffoldTargetUnsafe(Exception):
 SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
 
 
-# The text an agent executes, rather than reads about: every skill, every
-# subagent definition, and AGENTS.md. Each runs `python -m chitragupta.<layer>`
-# from inside the project, and `-m` puts that directory first on
+# Every command the scaffolded prose spells out -- a skill's, a
+# subagent's, AGENTS.md's, and the docs/ pages the skills send an agent
+# to -- is run from inside the project. `python -m chitragupta.<layer>`
+# and `python -c "from chitragupta ..."` both put that directory first on
 # `sys.path`, so a `chitragupta/` committed there after `init` would be
-# imported in place of the install on the very next skill step (#891).
-# A scaffold has no `chitragupta/` of its own -- the package is installed
-# -- so its copies say `python -P -m`, which leaves the directory off
+# imported in place of the install on the very next step (#891). A
+# scaffold has no `chitragupta/` of its own -- the package is installed
+# -- so its copies say `python -P`, which leaves the directory off
 # `sys.path` and imports the install whatever sits beside it. The fix
 # lives in text the installed package wrote, not in the code a plant
 # replaces, so it holds for a plant of any age. A checkout keeps plain
 # `-m`: its own `chitragupta/` is the real one, and may not be installed.
-# docs/ is left alone: it is for people, who use the console script
-# (docs/PACKAGING.md), and parts of it describe `-m`'s search order.
-AGENT_RUN_TREES = (".claude", ".agents", ".opencode")
-AGENT_RUN_FILES = ("AGENTS.md",)
-MODULE_FORM = re.compile(r"\b(python3?)(\s+)-m(\s+)chitragupta\b")
+# The two pages below are copied unchanged because they explain `-m`'s
+# search order, and `-P` would make what they say about it false.
+KEEPS_PLAIN_M = ("docs/HOOKS.md", "docs/PACKAGING.md")
+MODULE_FORM = re.compile(r"\b(python3?)(\s+)(-m\s+chitragupta\b|-c\s)")
 
 
 # The one entry that changes name on the way in. config.toml is
@@ -231,24 +231,21 @@ DELIBERATE_DIFFERENCES = frozenset(
 )
 
 
-def _is_agent_run(src: Path) -> bool:
-    """Is `src` one of the files `AGENT_RUN_TREES`/`AGENT_RUN_FILES` name?"""
-    rel = src.relative_to(SOURCE_ROOT)
-    if rel.as_posix() in AGENT_RUN_FILES:
-        return True
-    return src.suffix == ".md" and rel.parts[0] in AGENT_RUN_TREES
+def gets_dash_p(src: Path) -> bool:
+    """Is `src` prose whose commands `_copy` rewrites (`KEEPS_PLAIN_M`)?"""
+    return src.suffix == ".md" and src.relative_to(SOURCE_ROOT).as_posix() not in KEEPS_PLAIN_M
 
 
 def _copy(src: Path, dst: Path) -> None:
-    """`shutil.copy2`, with an agent-run file's module form made `-P`.
+    """`shutil.copy2`, with a prose file's `python -m`/`-c` made `-P`.
 
     Bytes in and out, so a file's own line endings and encoding survive;
     the pattern is ASCII, so it cannot split a multi-byte character.
     """
     shutil.copy2(src, dst)
-    if _is_agent_run(src):
+    if gets_dash_p(src):
         text = dst.read_bytes().decode("utf-8")
-        dst.write_bytes(MODULE_FORM.sub(r"\1\2-P -m\3chitragupta", text).encode("utf-8"))
+        dst.write_bytes(MODULE_FORM.sub(r"\1\2-P \3", text).encode("utf-8"))
 
 
 def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
