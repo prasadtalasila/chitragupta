@@ -19,8 +19,9 @@ this test is what gives the shapes their meaning:
 - `need "<step name>" <tool>[==<pin>|@<pin>] ...` -- an install step.
   CI installs into a throwaway runner; locally that would write into the
   contributor's own environment, so the script checks the tool is on
-  PATH instead (`py:<package>` is checked by import). Its pins and CI's
-  must be the same set, so a bumped pin or a new package in `ci.yml`
+  PATH instead (`py:<package>` is checked by import). What it checks
+  and what CI installs must be the same targets, pins included, so a
+  bumped pin, a new package or a swapped install stage in `ci.yml`
   reddens here too.
 - `instead "<step name>" <command>` -- a step whose CI form would do
   harm locally (overwrite a per-host `config.toml`, make a full clone
@@ -42,7 +43,6 @@ CI_WORKFLOW = REPO_ROOT / ".github" / "workflows" / "ci.yml"
 SCRIPT = REPO_ROOT / "scripts" / "check_local.sh"
 
 _STEP_LINE_RE = re.compile(r'^(run|need|instead) "([^"]+)" (.+)$')
-_PIN_RE = re.compile(r"^([A-Za-z0-9_.-]+)(?:==|@)(\S+)$")
 
 # Actions that provision the runner the script is already standing in.
 # Any other `uses:` step would be a check the script cannot run, so it
@@ -73,7 +73,11 @@ _PULL_REQUEST_ONLY = "github.event_name == 'pull_request'"
 # A key outside these changes what a step does (`env:`,
 # `working-directory:`, `continue-on-error:`) in a way the script's line
 # cannot show, so it has to be taught here before it can be pinned.
+# `with:` is the provisioning actions' own configuration (which Python,
+# which node), and the script runs on whatever the contributor has; an
+# `if:` or `env:` on one of them would change what the job does.
 _STEP_KEYS = {"name", "run", "if", "shell"}
+_ACTION_KEYS = {"name", "uses", "with"}
 
 
 def _collapse(text: str) -> str:
@@ -85,10 +89,11 @@ def _unpinnable_steps(steps: list[dict]) -> list[str]:
     problems = []
     for step in steps:
         label = step.get("name") or step.get("uses")
-        if "uses" in step:
-            if not step["uses"].startswith(_PROVISIONING_ACTIONS):
-                problems.append(f"{label!r}: an action the script cannot run locally")
-        elif set(step) - _STEP_KEYS or step.get("shell", "bash") != "bash":
+        if "uses" in step and not step["uses"].startswith(_PROVISIONING_ACTIONS):
+            problems.append(f"{label!r}: an action the script cannot run locally")
+        elif "uses" in step and set(step) - _ACTION_KEYS:
+            problems.append(f"{label!r}: keys this test does not pin: {sorted(step)}")
+        elif "run" in step and (set(step) - _STEP_KEYS or step.get("shell", "bash") != "bash"):
             problems.append(f"{label!r}: keys this test does not pin: {sorted(step)}")
     return problems
 
@@ -122,37 +127,53 @@ def _divergences(workflow_text: str, script_text: str) -> list[str]:
 
 
 def _need_divergences(name: str, ci_run: str, rest: str) -> list[str]:
-    """A `need` stands in for an install, and checks exactly CI's pins --
-    both directions, so a package CI adds reaches the script too. `py:`
+    """A `need` stands in for an install, and checks exactly what CI
+    installs -- every target, pinned or not, in both directions, so a
+    package CI adds or a stage it swaps (`... actionlint` to `... vale`)
+    reaches the script too. Flags such as `--ignore-scripts` say how to
+    install, which a check never does, so they are not targets. `py:`
     marks a Python package the script checks by import, not on PATH."""
-    if not ci_run.startswith(_INSTALL_PREFIXES):
+    prefix = next((p for p in _INSTALL_PREFIXES if ci_run.startswith(p)), None)
+    if prefix is None:
         return [f"{name!r}: `need` stands in for an install, but ci.yml runs `{ci_run}`"]
-    script_pins = {spec.removeprefix("py:") for spec in rest.split() if "==" in spec or "@" in spec}
-    ci_pins = {token for token in ci_run.split() if _PIN_RE.match(token)}
-    if script_pins != ci_pins:
-        return [f"{name!r}: script checks {sorted(script_pins)}, ci.yml installs {sorted(ci_pins)}"]
+    ci_targets = {
+        token for token in ci_run.removeprefix(prefix).split() if not token.startswith("-")
+    }
+    script_targets = {spec.removeprefix("py:") for spec in rest.split()}
+    if script_targets != ci_targets:
+        return [
+            f"{name!r}: script checks {sorted(script_targets)}, ci.yml installs {sorted(ci_targets)}"
+        ]
+    return []
+
+
+def _guard_divergences(ci: dict, verb: str, name: str, guarded: bool) -> list[str]:
+    """CI's `if:` has one local spelling, `off_main` on a `run` step, and
+    only for the pull_request-only condition. Every other `if:` -- on a
+    `need` or `instead` step too -- is a step the script cannot mirror."""
+    condition = ci.get("if")
+    if condition is not None and (condition != _PULL_REQUEST_ONLY or verb != "run"):
+        return [f"{name!r}: no local form for ci.yml's `if: {condition}`"]
+    if guarded != (condition is not None):
+        return [f"{name!r}: `off_main` must match ci.yml's `if:` ({condition!r})"]
     return []
 
 
 def _step_divergences(ci: dict, verb: str, name: str, rest: str) -> list[str]:
     ci_run = _collapse(ci["run"])
+    guarded = verb == "run" and rest.startswith("off_main ")
+    problems = _guard_divergences(ci, verb, name, guarded)
     if verb == "need":
-        return _need_divergences(name, ci_run, rest)
+        return problems + _need_divergences(name, ci_run, rest)
     if verb == "instead":
         if _INSTEAD_STEPS.get(name) != ci_run:
-            return [
+            problems.append(
                 f"{name!r}: `instead` is reserved for {sorted(_INSTEAD_STEPS)} at their CI form"
-            ]
-        return []
-    guarded = rest.startswith("off_main ")
+            )
+        return problems
     command = rest.removeprefix("off_main ") if guarded else rest
-    problems = []
     if _collapse(command) != ci_run:
         problems.append(f"{name!r}: script runs `{command}`, ci.yml runs `{ci_run}`")
-    if ci.get("if", _PULL_REQUEST_ONLY) != _PULL_REQUEST_ONLY:
-        problems.append(f"{name!r}: no local form for ci.yml's `if: {ci['if']}`")
-    elif guarded != ("if" in ci):
-        problems.append(f"{name!r}: `off_main` must match ci.yml's `if:` ({ci.get('if')!r})")
     return problems
 
 
@@ -183,8 +204,13 @@ jobs:
   lint:
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
       - name: Install ruff
         run: python -m pip install ruff==0.16.4
+      - name: Install actionlint
+        run: bash scripts/install_full_pipeline.sh actionlint
       - name: Version check
         if: github.event_name == 'pull_request'
         run: python3 scripts/check_version_bump.py
@@ -196,6 +222,7 @@ jobs:
 
 _MATCHING_SCRIPT = """
 need "Install ruff" ruff==0.16.4
+need "Install actionlint" actionlint
 run "Version check" off_main python3 scripts/check_version_bump.py
 run "ruff" ruff check   chitragupta scripts
 instead "Create config.toml from the tracked example" copy_config_if_absent
@@ -244,6 +271,23 @@ class TestEachDriftShapeReddens:
             ),
             ("'pull_request'", "'push'", "no local form"),
             ("actions/checkout@v4", "reviewdog/action-ruff@v1", "cannot run locally"),
+            ("actions/checkout@v4", "actions/checkout@v4\n        env: {X: 1}", "keys this test"),
+            (
+                "actions/checkout@v4",
+                "actions/checkout@v4\n        if: github.event_name == 'push'",
+                "keys this test",
+            ),
+            ("pipeline.sh actionlint", "pipeline.sh vale", "script checks"),
+            (
+                "run: bash scripts/install_full_pipeline.sh",
+                "if: github.event_name == 'pull_request'\n        run: bash scripts/install_full_pipeline.sh",
+                "no local form",
+            ),
+            (
+                "run: cp config.toml.example",
+                "if: github.event_name == 'pull_request'\n        run: cp config.toml.example",
+                "no local form",
+            ),
         ],
     )
     def test_a_ci_side_change_is_reported(self, old, new, expect):
