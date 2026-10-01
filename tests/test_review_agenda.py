@@ -1580,6 +1580,35 @@ class TestStalePartition:
             }
         ]
 
+    def test_a_rewritten_prose_sentence_is_re_derived_not_refused(
+        self, isolated_config, monkeypatch
+    ):
+        """#839: `prose` is recomputed from the draft on every run, so it
+        never holds text the author has since rewritten. Rewriting the
+        sentence a finding came from moves the item to the occurrence
+        that survives, under the same id, and refuses nothing -- which
+        is right, because that occurrence is a live finding. If `prose`
+        is ever read from a filed report instead, this goes red and the
+        span has to become something a rewrite removes."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nWe simply start.\n\nIt simply ends.\n")
+
+        def vale(path, language):
+            lines = Path(path).read_text().splitlines()
+            return [
+                {"Check": "chitragupta.DefectMarkers", "Match": "simply", "Line": n}
+                for n, line in enumerate(lines, start=1)
+                if "simply" in line
+            ]
+
+        monkeypatch.setattr(style_check, "run_vale", vale)
+        before = agenda.build_agenda(draft)
+        draft.write_text("# Survey\n\nThe author rewrote this.\n\nIt simply ends.\n")
+        after = agenda.build_agenda(draft)
+        assert after.stale == []
+        assert [(i.id, i.line) for i in after.items] == [(before.items[0].id, 5)]
+        assert before.items[0].line == 3
+
     def test_nothing_refused_renders_no_section(self):
         assert _stale.stale_lines([]) == []
 
@@ -2463,6 +2492,35 @@ class TestRecheckPayloadAndText:
         assert "`r` [prose]: a finding" in text
         assert "3 -> 1 (-2)" in text
 
+    def test_a_swap_is_visible_from_the_payload(self):
+        """#839: one unattended item resolved and another appeared holds
+        the total level, so `objective_delta` alone reads a swap as no
+        change. `objective_new` counts the unattended arrivals, and only
+        those -- a surfaced newcomer is the human's, not a regression."""
+        groups = (
+            [_item_dict("r")],
+            [],
+            [_item_dict("n"), _item_dict("s", cls="candidate", unattended=False)],
+            [],
+        )
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", groups, (1, 1), []
+        )
+        assert payload["objective_delta"] == 0
+        assert payload["objective_new"] == 1
+
+    def test_no_unattended_arrival_gives_zero_new(self):
+        groups = ([_item_dict("r")], [], [_item_dict("s", unattended=False)], [])
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", groups, (1, 0), []
+        )
+        assert payload["objective_new"] == 0
+
+    def test_text_states_the_unattended_arrivals(self):
+        groups = ([_item_dict("r")], [], [_item_dict("n")], [])
+        text = _recheck.format_recheck("b.json", groups, (1, 1))
+        assert "1 -> 1 (+0), 1 new" in text
+
     def test_text_marks_an_empty_group(self):
         text = _recheck.format_recheck("b.json", ([], [], [], []), (0, 0))
         assert text.count("      -") == 4
@@ -2573,6 +2631,26 @@ class TestBaselineCli:
         assert "--baseline" in payload["command"]
         assert "json" in out.err  # the written-files summary is still on stderr
         assert all(len(stub.calls) == 1 for stub in aid_stubs.values() if stub.calls)
+
+    def test_json_reports_a_swap_as_one_new_objective_item(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """#839, end to end: the baseline's unattended item is gone and a
+        different one has appeared, so the delta is 0 and only
+        `objective_new` says the edit made a new problem."""
+        draft = self._draft(isolated_config, monkeypatch)
+        finding = {"rule": "chitragupta.DefectMarkers", "match": "prose", "line": 3, "count": 1}
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [finding], "vale_error": None},
+        )
+        baseline = self._baseline_file(tmp_path, [_item_dict("gone")])
+        assert agenda.main([str(draft), "--baseline", str(baseline), "--json"]) == 0
+        payload = json.loads(capsys.readouterr().out)
+        assert [item["id"] for item in payload["resolved"]] == ["gone"]
+        assert payload["objective_delta"] == 0
+        assert payload["objective_new"] == 1
 
     def test_json_stdout_is_only_the_payload(self, isolated_config, monkeypatch, capsys, tmp_path):
         draft = self._draft(isolated_config, monkeypatch)

@@ -317,10 +317,11 @@ An aid that raised does not stop the run. It is listed in
 exception's one-line reason. The filed report has the same line under
 `sources.aids.<aid>.refresh_error`, and the header quotes it.
 
-**Read the `new` list, not just the delta.** A repair that resolves one
+**Read `objective_new`, not just the delta.** A repair that resolves one
 finding and introduces another leaves `objective_delta` at 0, which is
-indistinguishable from having changed nothing unless you look at what is
-in `new`.
+indistinguishable from having changed nothing. `objective_new` counts
+the unattended items in `new`, so that swap shows as 1. The plain-text
+form prints it at the end of the objective line, as `3 -> 3 (+0), 1 new`.
 
 Under `--baseline --json`, stdout carries the comparison payload and no
 `items` key at all; the worklist still lands in the filed `.json` report

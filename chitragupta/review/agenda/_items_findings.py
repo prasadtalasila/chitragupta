@@ -159,7 +159,10 @@ def prose_items(source: StyleSource, sections: list[Section]) -> list[Item]:
                     "count": finding.get("count"),
                 },
                 # Vale's `Match` alone -- the id hashes `rule\x00match`,
-                # which is not draft text (R12).
+                # which is not draft text (R12). Never refused in
+                # practice, since `prose` is re-derived from the current
+                # draft on every build; `_stale`'s docstring has why that
+                # is correct (#839).
                 span=finding.get("match") or None,
             )
         )

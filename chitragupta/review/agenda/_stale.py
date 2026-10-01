@@ -43,7 +43,23 @@ aid guarantees it is an exact substring of the draft -- `verbatim`'s
 `draft_text` (`draft[char_start:char_end]` by construction, which is
 what makes it usable as an `Edit` `old_string`) and `style_check`'s Vale
 `Match`. Those two are exactly the classes that carry `unattended: true`
-*and* a position in the draft, so the hazard is covered end to end.
+*and* a position in the draft.
+
+**Only `verbatim-run` can actually be refused, and that is correct
+rather than a gap** (#839). Its items come from `<stem>.verbatim.json`,
+a report filed by an earlier run, so they can describe text the author
+has since rewritten. `prose` items cannot: `_sources._read_style` runs
+`style_check.check()` on the draft as it stands on every build, so a
+`prose` item's `Match` was found in this very text and the check never
+fires for it. Rewriting the sentence a `prose` finding came from does
+not leave a stale item behind. The finding moves to whichever
+occurrence survives, under the same id, and that occurrence is a live
+finding to repair. Carrying the matched line instead of the token, as
+#839 first proposed, would change nothing for the same reason.
+`TestStalePartition` pins the re-derivation, so reading `prose` from a
+filed report later turns that test red rather than quietly reopening the
+window. The window between a fresh read and the reviser's `Edit` is the
+skill's to close (step 4 of `agenda-reviser`), not this module's.
 
 `span` is `None` on every other class, and a `None` span is never
 refused. That is not caution, it is correctness: `missing-citekey` and

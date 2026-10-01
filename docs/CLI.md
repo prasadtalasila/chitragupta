@@ -1375,8 +1375,11 @@ against an invented query. Under `--baseline` the aids are refreshed at
 
 Under `--baseline --json`, stdout carries the comparison payload, not
 the worklist -- `resolved`/`persisting`/`new`/`accepted`/
-`objective_before`/`objective_after`/`objective_delta`/`not_refreshed`/
-`refresh_errors`, and no `items` key at all. `not_refreshed` names each
+`objective_before`/`objective_after`/`objective_delta`/`objective_new`/
+`not_refreshed`/`refresh_errors`, and no `items` key at all.
+`objective_new` counts the unattended items in `new`: a repair that
+resolves one objective finding and introduces another leaves the delta
+at 0, and this is what shows the swap. `not_refreshed` names each
 aid whose refresh failed -- a non-zero exit, an exit 0 that wrote no
 fresh `.json` (as `support` does without the enrich stack), or an
 exception. That aid's items are an earlier run's, so they sit out every

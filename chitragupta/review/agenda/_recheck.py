@@ -128,11 +128,15 @@ def compare(
     persisting = [item for item in new_items if item["id"] in baseline_ids]
     appeared = [item for item in new_items if item["id"] not in baseline_ids]
 
-    def objective(items: list[dict]) -> int:
-        return sum(1 for item in items if item["unattended"])
-
-    before, after = objective(baseline_items), objective(new_items)
+    before, after = _unattended(baseline_items), _unattended(new_items)
     return resolved, persisting, appeared, accepted, before, after
+
+
+def _unattended(items: list[dict]) -> int:
+    """How many of `items` are `unattended` -- the one definition of
+    "objective" that `compare`'s two counts and the payload's
+    `objective_new` all share."""
+    return sum(1 for item in items if item["unattended"])
 
 
 def recheck_command(draft: str | Path, baseline: str | Path) -> str:
@@ -175,6 +179,13 @@ def recheck_payload(
             "objective_before": before,
             "objective_after": after,
             "objective_delta": after - before,
+            # The unattended items in `new` (#839). The delta is a total,
+            # and a total holds level when an edit resolves one finding
+            # and introduces another, so a swap reads as no change from
+            # it alone. Counted here so a driver reads it rather than
+            # re-deriving it from `new` -- the rule it serves is that
+            # this must be 0 for a repair to be kept.
+            "objective_new": _unattended(appeared),
             "resolved": resolved,
             "persisting": persisting,
             "new": appeared,
@@ -219,7 +230,11 @@ def format_recheck(
         for item in items:
             lines.append(f"      `{item['id']}` [{item['class']}]: {item['summary']}")
         lines.append("")
-    lines.append(f"objective items (unattended): {before} -> {after} ({after - before:+d})")
+    appeared = groups[2]  # (resolved, persisting, new, accepted)
+    lines.append(
+        f"objective items (unattended): {before} -> {after} ({after - before:+d}), "
+        f"{_unattended(appeared)} new"
+    )
     if refresh_failed:
         errors = refresh_errors or {}
         names = [
