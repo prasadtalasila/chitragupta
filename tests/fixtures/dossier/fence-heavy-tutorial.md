@@ -161,8 +161,10 @@ def run(hours):
             watered = True
 
         status = "WATERED" if watered else ""
-        print(f"hour {hour:2d}  sensor={reading:5.1f}  "
-              f"predicted_next={twin.predict_next():5.1f}  {status}")
+        print(
+            f"hour {hour:2d}  sensor={reading:5.1f}  "
+            f"predicted_next={twin.predict_next():5.1f}  {status}"
+        )
 
 
 if __name__ == "__main__":
