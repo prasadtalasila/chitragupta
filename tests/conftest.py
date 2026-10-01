@@ -103,9 +103,10 @@ def _no_real_resolver_models(request, monkeypatch):
 
     A failure rather than a quiet stand-in, so the test says which
     geometry it is asserting on instead of inheriting one from here.
-    `pytest.fail` rather than an exception, because the discover CLI
-    catches `OSError` and a refusal test asserting exit code 1 would
-    pass on it. A test patching the loaders afterwards wins
+    `pytest.fail` rather than raising `ImportError`, the stand-in the
+    "enrich extra absent" tests use: the ladder catches that and
+    degrades to lexical-only matching, so a refusal test asserting exit
+    code 1 would pass on it. A test patching the loaders afterwards wins
     (monkeypatch is last-write-wins); one testing the loaders
     themselves opts out with `@pytest.mark.real_resolver_loaders`.
     """

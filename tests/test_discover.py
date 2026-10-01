@@ -136,9 +136,10 @@ class IndifferentReranker:
         return [0.0] * len(pairs)
 
 
-# Raw zero sits at (-0.5, -0.5) from the fixtures' shared corpus mean of
-# (0.5, 0.5): perpendicular to digital twin and machine learning, and
-# pointing away from formal methods, so no centroid is near it.
+# Raw zero sits at (-0.5, -0.5) from the (0.5, 0.5) corpus mean GRAPH
+# and WHY_GRAPH share: perpendicular to digital twin and machine
+# learning, and pointing away from formal methods, so no centroid is
+# near it. A graph without centroids ranks nothing semantically anyway.
 NOWHERE = [0.0, 0.0]
 
 
