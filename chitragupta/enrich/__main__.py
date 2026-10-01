@@ -180,9 +180,8 @@ def main(configure_logging: bool = False) -> int:
         if error is not None:
             return error
     # Same lock as `python -m chitragupta.corpus sync`: every stage here writes a corpus
-    # artefact, and
-    # sync's parsed-text writes are not atomic, so an enrichment run
-    # overlapping a sync can read a half-written .txt. One lock rather
+    # artefact, and a sync re-parsing a document mid-run would hand this
+    # run two versions of its .txt, one per stage. One lock rather
     # than two, because the unsafe overlap is any-writer-vs-any-writer,
     # not just sync-vs-sync.
     try:

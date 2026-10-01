@@ -13,9 +13,25 @@ import subprocess
 from pathlib import Path
 
 from chitragupta import config, passages
+from chitragupta._atomic_write import write_atomically
 from chitragupta.pdf_text import ExtractionError, write_failed
 from chitragupta.pdf_text._converter import _docling_converter, check_docling_status
 from chitragupta.pdf_text._worker import _demote_to_cpu, is_cuda_oom, worker_device
+
+
+def _write_parsed(out_path: Path, data: bytes | str) -> None:
+    """Write the parsed text whole or not at all (#894), for both backends.
+
+    `_parse_outputs_present` takes the file's existence for a finished
+    parse, so a truncated one would never be re-parsed -- see
+    `chitragupta/_atomic_write.py`. Bytes are pdftotext's stdout, text is
+    docling's Markdown. An `OSError` -- a full disk under *either* backend
+    -- is the transient failure #842 defined, not a parse failure.
+    """
+    try:
+        write_atomically(out_path, data)
+    except OSError as exc:
+        raise write_failed(out_path, exc) from exc
 
 
 def _extract_pdftotext(pdf_path: str, out_path: Path, threads: int | None = None) -> None:
@@ -29,12 +45,15 @@ def _extract_pdftotext(pdf_path: str, out_path: Path, threads: int | None = None
     # quoted. The distinction matters to extract_text: None means "this
     # backend resolves no reading order", where an empty list would mean
     # "it did, and this document has no prose in it".
+    #
+    # To stdout, not to `out_path`: a file pdftotext writes itself is
+    # neither atomic nor distinguishable on a full disk from a PDF it
+    # cannot read, so `_write_parsed` writes it instead (#894).
     try:
-        subprocess.run(
-            ["pdftotext", "-layout", pdf_path, str(out_path)],
+        completed = subprocess.run(
+            ["pdftotext", "-layout", pdf_path, "-"],
             check=True,
             capture_output=True,
-            text=True,
             # The one backend where a hang can genuinely be stopped:
             # this is a hard kill of an external process, not the
             # cooperative between-stages check docling offers.
@@ -51,7 +70,9 @@ def _extract_pdftotext(pdf_path: str, out_path: Path, threads: int | None = None
         error.timed_out = True
         raise error from exc
     except subprocess.CalledProcessError as exc:
-        raise ExtractionError(exc.stderr or str(exc)) from exc
+        stderr = exc.stderr.decode("utf-8", errors="replace") if exc.stderr else ""
+        raise ExtractionError(stderr or str(exc)) from exc
+    _write_parsed(out_path, completed.stdout)
 
 
 def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) -> list[dict]:
@@ -117,11 +138,5 @@ def _extract_docling(pdf_path: str, out_path: Path, threads: int | None = None) 
             # document that cannot be parsed.
             error.transient = True
         raise error from exc
-    try:
-        out_path.write_text(
-            result.document.export_to_markdown(page_break_placeholder="\f"),
-            encoding="utf-8",
-        )
-    except OSError as exc:
-        raise write_failed(out_path, exc) from exc
+    _write_parsed(out_path, result.document.export_to_markdown(page_break_placeholder="\f"))
     return passages.passage_records(result.document)

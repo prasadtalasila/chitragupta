@@ -13,11 +13,10 @@ Stdlib-only, like its parent.
 """
 
 import json
-import os
-import uuid
 from pathlib import Path
 
 from chitragupta import config
+from chitragupta._atomic_write import write_atomically
 
 
 def sidecar_path(citekey: str) -> Path:
@@ -36,24 +35,16 @@ def sidecar_path(citekey: str) -> Path:
 def write_sidecar(citekey: str, records: list[dict]) -> Path:
     """Write `records` whole or not at all.
 
-    Through a temp file and `os.replace`, the shape `retrieval_cache.
-    _save_cache` and `enrich/_docling_cache.py` already use: a bare
-    `write_text` killed mid-write left a torn file that every reader took
-    for "no passages" (issue 844). The temp name is unique per process and
-    call, so two writers cannot interleave into one file, and it does not
-    end in `.passages.json`, so debris from a killed write is never read
-    as a sidecar. An `OSError` still reaches the caller unchanged --
+    Through `_atomic_write.write_atomically`, shared with the parsed text
+    (#894): a bare `write_text` killed mid-write left a torn file that
+    every reader took for "no passages" (issue 844). Its temp name does
+    not end in `.passages.json`, so debris from a killed write is never
+    read as a sidecar. An `OSError` still reaches the caller unchanged --
     `pdf_text.extract_text` reports it as a transient failure (#842).
     """
     path = sidecar_path(citekey)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.tmp-{os.getpid()}-{uuid.uuid4().hex}")
-    try:
-        tmp.write_text(json.dumps(records, indent=2), encoding="utf-8")
-        os.replace(tmp, path)
-    except OSError:
-        tmp.unlink(missing_ok=True)
-        raise
+    write_atomically(path, json.dumps(records, indent=2))
     return path
 
 

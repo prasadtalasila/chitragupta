@@ -257,8 +257,12 @@ would remove documents from the corpus permanently.
 ### 🔒 One writer at a time
 
 `sync` and the enrichment layer share a lock over `content/`, because the
-unsafe overlap is any-writer-against-any-writer: `sync` writes parsed
-text non-atomically and the enrichment layer reads those same files.
+unsafe overlap is any-writer-against-any-writer: `sync` rewrites the
+parsed text the enrichment layer reads. Each `.txt` is replaced whole --
+a temp sibling, then `os.replace`, under both backends -- so no reader
+sees a torn file, and a full disk is a transient failure rather than an
+unreadable PDF. But a document re-parsed mid-run would still reach an
+enrichment run as two versions, one per stage.
 
 It is a dedicated sqlite file held under `BEGIN IMMEDIATE`, chosen from
 measurement rather than taste. A `BEGIN IMMEDIATE` holder takes a

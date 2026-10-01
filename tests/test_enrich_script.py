@@ -770,9 +770,9 @@ class TestLogging:
 
 class TestPipelineLock:
     def test_a_concurrent_run_is_refused_with_its_own_exit_code(self, monkeypatch, capsys):
-        """The enrichment stage writes content/ too, and sync's parsed-text
-        writes are not atomic -- so an enrichment run overlapping a sync can
-        read a half-written .txt. Exit code 2, distinct from 1, so an
+        """The enrichment stage writes content/ too, and a sync re-parsing
+        a document mid-run would hand an overlapping enrichment run two
+        versions of its .txt. Exit code 2, distinct from 1, so an
         unattended caller can tell "skipped" from "failed"."""
         from chitragupta import runlock
 

@@ -514,7 +514,7 @@ flowchart TB
   Q6 -- "complete" --> OK["status <code>parsed</code><br/><small>content/parsed/&lt;citekey&gt;.txt written</small>"]
   Q6 -- "partial success" --> PF
   Q6 -- "backend can't read it" --> PF["status <code>parse_failed</code> · <i>deterministic</i><br/><small>never retried — same minutes, same answer —<br/>but fails every run until fixed</small>"]
-  Q6 -- "worker died · timeout · CUDA OOM" --> PT2["status <code>parse_failed</code> · <i>transient</i><br/><small>retried automatically next run</small>"]
+  Q6 -- "worker died · timeout · CUDA OOM · write failed" --> PT2["status <code>parse_failed</code> · <i>transient</i><br/><small>retried automatically next run</small>"]
 
   OK --> AGG
   SN --> AGG
@@ -990,7 +990,7 @@ stateDiagram-v2
 
     parsing --> parsed : text extracted in full
     parsing --> failed_deterministic : backend cannot read this<br/>PDF, or parsed it only partly
-    parsing --> failed_transient : worker died, timeout,<br/>CUDA OOM, broken pool
+    parsing --> failed_transient : worker died, timeout,<br/>CUDA OOM, broken pool,<br/>write failed (disk full)
 
     failed_transient --> parsing : retried automatically<br/>on the next sync
     failed_deterministic --> parsing : only on<br/>sync --reparse
