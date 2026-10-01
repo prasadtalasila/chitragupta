@@ -3,7 +3,8 @@
 Status: **reference.** Written 2026-09-01. Updated 2026-09-02, adding
 the SonarQube scan action and its token to the release controls -- a
 credential-bearing third-party action the first version of that section
-did not name.
+did not name. Updated 2026-10-01: every action is now SHA-pinned, and
+the release workflow installs Poetry wheels-only (#829).
 
 How chitragupta protects the locally managed research corpus and its
 derived artefacts, where its trust boundaries are, and what remains the
@@ -229,19 +230,28 @@ workflow-level `contents: write`, then narrows the `publish-pypi` job to
 `id-token: write` only. PyPI Trusted Publishing exchanges that OIDC token
 for a short-lived token instead of storing a long-lived PyPI API token.
 
-Sensitive third-party actions that publish releases, publish to PyPI, or
-upload external analysis are commit-SHA pinned. There are **four**:
-`softprops/action-gh-release`, `pypa/gh-action-pypi-publish`,
-`codecov/codecov-action`, and `SonarSource/sonarqube-scan-action`. A tag
-can be moved to point at different code, which is the whole reason;
-`ci.yml`'s own comment at the Sonar step records it, and records why
-`actions/checkout` is deliberately left on `@v4` at every call site --
-it is GitHub's own action, and Sonar's S7637 did not flag it. So not
-every action here is SHA-pinned, and that is a decision rather than an
-oversight.
+Every action the workflows use is commit-SHA pinned, with a `# vX.Y.Z`
+comment naming the release the SHA was resolved from. Four of them are
+third-party actions that publish releases, publish to PyPI, or upload
+external analysis: `softprops/action-gh-release`,
+`pypa/gh-action-pypi-publish`, `codecov/codecov-action`, and
+`SonarSource/sonarqube-scan-action`. The rest are GitHub's own
+`actions/*`. These were left on major tags such as `@v4` until #829,
+because Sonar's S7637 did not flag them. But a tag can be moved to point
+at different code whoever owns the action, and
+`actions/download-artifact` is the one step between the built wheel and
+the PyPI publish. So `.github/dependabot.yml` proposes the pin bumps as
+one grouped weekly PR, and DEVELOPER-AGENTS.md's "Issues and pull
+requests" says how to finish one.
 
-**Two of the four consume a long-lived repository secret** rather than
-an OIDC token exchanged per run: `secrets.CODECOV_TOKEN` and
+The release workflow installs Poetry wheels-only
+(`--only-binary=:all:`), like the CI and documentation workflows. A
+pinned version fixes which release is installed, not whether pip builds
+it, or a dependency, from source when no wheel matches.
+
+**Two of the four third-party actions consume a long-lived repository
+secret** rather than an OIDC token exchanged per run:
+`secrets.CODECOV_TOKEN` and
 `secrets.SONAR_TOKEN`, both in `ci.yml`. Those two are the part of this
 section worth re-auditing when a maintainer leaves, when a service is
 dropped, or on any schedule your organisation applies to third-party

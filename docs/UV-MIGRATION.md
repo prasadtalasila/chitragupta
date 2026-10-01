@@ -127,8 +127,9 @@ with them. Ten test files mention Poetry.
 
 **Two installation paths change.** Poetry arrives here as
 `python3-poetry` from apt (in the `os-deps` stage) and as
-`pipx install poetry==2.4.1` in the release workflow. This is the
-cheapest cost to absorb: `scripts/install_full_pipeline.sh` already
+`pipx install --pip-args='--only-binary=:all:' poetry==2.4.1` in the
+release workflow. This is the cheapest cost to absorb:
+`scripts/install_full_pipeline.sh` already
 downloads pinned, **SHA256-verified** binaries by `curl` for `actionlint`
 and `vale`, verifying the digest before unpacking. A pinned uv binary
 fits that established pattern exactly.

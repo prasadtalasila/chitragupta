@@ -731,9 +731,10 @@ jobs:
       # Pinned to a commit SHA rather than the `v8` tag: this is a
       # third-party action handling a credential, and a tag can be moved to
       # point at different code. Sonar's own S7637 makes the same point
-      # about the Codecov action above, which is now pinned too.
-      # `actions/checkout` is left on `@v4` at every call site in this file
-      # -- it is GitHub's own action, and S7637 did not flag it.
+      # about the Codecov action above, which is now pinned too. The
+      # first-party `actions/*` uses are pinned the same way since #829:
+      # S7637 did not flag them, but being GitHub's own does not stop a
+      # tag from being moved. .github/dependabot.yml proposes the bumps.
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@7006c4492b2e0ee0f816d36501671557c97f5995 # v8.1.0
         env:
