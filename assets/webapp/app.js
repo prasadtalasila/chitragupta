@@ -33,7 +33,7 @@
   if (problems.length) {
     var notice = document.getElementById("hint");
     notice.textContent = "data.js is missing or incomplete: " + problems.join(", ") +
-      ". Re-export it with `chitragupta corpus discover --app`.";
+      ". Re-export it with `chitragupta corpus discover --app DIR`.";
     notice.hidden = false;
     return;
   }

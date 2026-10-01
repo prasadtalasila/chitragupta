@@ -273,9 +273,10 @@
      bisecting. Each candidate is a whole `cutTree`, so the walk is
      quadratic -- 130 cuts over 131 topics is some 17,000 steps at the
      corpus this was sized on -- and affordable only because app.js
-     runs it once, at load, to choose the opening cut. The target is a target -- a tree that never joins an
-     outlying topic cannot reach one group, and says so by returning the
-     nearest cut rather than pretending. */
+     runs it once, at load, to choose the opening cut. The target is a
+     target -- a tree that never joins an outlying topic cannot reach one
+     group, and says so by returning the nearest cut rather than
+     pretending. */
   function thresholdForGroups(hierarchy, topics, target) {
     var best = 0;
     var bestMiss = Math.abs(topics.length - target);
