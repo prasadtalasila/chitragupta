@@ -470,11 +470,17 @@ the same ones this document already gives elsewhere:
 Only a span an aid guarantees to be exact draft text is checked --
 `verbatim`'s `draft_text` and `style_check`'s Vale match, which are
 exactly the two classes that are both unattended and positioned in the
-draft. `missing-citekey`, `recorded-but-uncited` and `misquoted` are
-derived from the dossier rather than the draft's text and are never
-refused on this basis; `recorded-but-uncited` by construction names a
-citekey the draft does not cite, so a text check would refuse it on every
-run. This adds no gate: the aid still exits 0 whatever it finds.
+draft. Only `verbatim-run` can actually be refused. Its items come from
+a report filed by an earlier run, while `prose` is recomputed from the
+draft as it stands on every build, so its match is always present.
+Rewriting the sentence a `prose` finding came from moves the finding to
+whichever occurrence survives, and that occurrence is a live finding to
+repair, not a stale one (#839). `missing-citekey`,
+`recorded-but-uncited` and `misquoted` are derived from the dossier
+rather than the draft's text and are never refused on this basis;
+`recorded-but-uncited` by construction names a citekey the draft does
+not cite, so a text check would refuse it on every run. This adds no
+gate: the aid still exits 0 whatever it finds.
 
 ## 🪝 How the loop is reached
 
