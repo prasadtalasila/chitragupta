@@ -72,10 +72,6 @@ code_lines = 257
 # C2 (JS): at most 250 code lines per module, assets/webapp/ only.
 
 [[c2js]]
-name = "assets/webapp/app.js"
-code_lines = 485
-
-[[c2js]]
 name = "assets/webapp/graph.js"
 code_lines = 527
 

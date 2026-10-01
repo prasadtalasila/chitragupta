@@ -28,8 +28,9 @@ from chitragupta.discover import _data, _origin, _page
 # Order is not load order (index.html decides that); this is just the
 # copy list. The interaction code is several files rather than one so
 # that everything except the wiring can be tested without a browser --
-# `node --test tests/webapp/*.test.js` -- leaving app.js, search.js and
-# pickers.js as the cytoscape instance and the DOM events around them.
+# `node --test tests/webapp/*.test.js` -- leaving search.js, pickers.js,
+# canvas.js, sidepanel.js and app.js as the cytoscape instance and the
+# DOM events around them.
 APP_FILES = (
     "index.html",
     "style.css",
@@ -42,6 +43,8 @@ APP_FILES = (
     "cy_style.js",
     "search.js",
     "pickers.js",
+    "canvas.js",
+    "sidepanel.js",
     "app.js",
     "vendor/cytoscape.min.js",
     "vendor/README.md",

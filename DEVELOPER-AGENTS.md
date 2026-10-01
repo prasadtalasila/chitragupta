@@ -558,13 +558,13 @@ Before saying so, actually run, in this repo:
   in the report, and held to the bar, from the commit that adds it to
   the page. `tests/test_discover_app.py` can only pin source-level
   tripwires over the shipped text.
-  Every module in that directory except `app.js`, `search.js` and
-  `pickers.js` is written to run without a DOM and without cytoscape so
-  that this command can exercise the real functions; those three are
-  the DOM wiring left over, split by #857 so each piece stays under
-  the C2 limit (see `code-standards-register.toml`'s `c2js` table for
-  the one file still over it), and the only three outside the coverage
-  bar, because no test loads them. CI runs
+  Every module in that directory except `search.js`, `pickers.js`,
+  `canvas.js`, `sidepanel.js` and `app.js` is written to run without a
+  DOM and without cytoscape so that this command can exercise the real
+  functions; those five are the DOM wiring left over, split out of
+  `app.js` (search and pickers by #857, the canvas and the side panel
+  after it) so each piece stays under the C2 limit, and the only five
+  outside the coverage bar, because no test loads them. CI runs
   it in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration. `tests/webapp/code_standards.test.js` rides

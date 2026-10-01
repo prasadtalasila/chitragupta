@@ -126,10 +126,11 @@
   cy_style.js publish window.CHITRAGUPTA_APP in dependency order
   (payload.js's edge accessors come first because graph.js, ego.js,
   families.js and panel.js all read them; graph.js reads absence.js's
-  arithmetic, panel.js reads both), then search.js and
-  pickers.js publish their own globals (window.CHITRAGUPTA_SEARCH,
-  window.CHITRAGUPTA_PICKERS) -- plain DOM wiring, not part of that
-  shared namespace -- and app.js wires everything to the canvas last.
+  arithmetic, panel.js reads both), then search.js, pickers.js,
+  canvas.js and sidepanel.js publish their own globals
+  (window.CHITRAGUPTA_SEARCH, _PICKERS, _CANVAS, _SIDEPANEL) -- plain
+  DOM wiring, not part of that shared namespace -- and app.js wires
+  everything together last.
   Not ES modules -- `import` from file:// is a blocked cross-origin
   request, and this directory has to open with no server.
 -->
@@ -144,6 +145,8 @@
 <script src="./cy_style.js"></script>
 <script src="./search.js"></script>
 <script src="./pickers.js"></script>
+<script src="./canvas.js"></script>
+<script src="./sidepanel.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>
