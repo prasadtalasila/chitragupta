@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/survey.md`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/survey.md --write`
-- chitragupta 6.61.7
+- chitragupta 6.126.12
 
 - Universe: `checked`
 - Quotes checked: 5
