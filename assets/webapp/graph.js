@@ -239,6 +239,7 @@
       }
     });
 
+    var clusterPrefix = idPrefix(topics, "cluster-");
     var byRoot = Object.create(null);
     var groupOf = Object.create(null);
     var groups = [];
@@ -246,7 +247,7 @@
       var root = find(t.label);
       var group = byRoot[root];
       if (!group) {
-        group = byRoot[root] = { id: "cluster-" + groups.length, members: [], label: "" };
+        group = byRoot[root] = { id: clusterPrefix + groups.length, members: [], label: "" };
         groups.push(group);
       }
       group.members.push(t.label);
@@ -369,6 +370,11 @@
      counting shared papers together with cosine nearness would be the
      one number this design refuses to compute. */
   function bundleEdges(data, drawnAs, collapsedIds, families) {
+    var bundlePrefix = idPrefix(data.topics, "bd-");
+    var plainPrefix = {
+      overlap: edgePrefix(data.topics, "overlap"),
+      semantic: edgePrefix(data.topics, "semantic"),
+    };
     var bundles = Object.create(null);
     var order = [];
     function fold(family, i, a, b, width, surprise) {
@@ -380,7 +386,7 @@
         bundle = bundles[key] = {
           group: "edges",
           data: {
-            id: "bd-" + order.length, source: source, target: target,
+            id: bundlePrefix + order.length, source: source, target: target,
             family: family, bundled: 1, count: 0, width: 0, pairs: [],
           },
         };
@@ -396,13 +402,13 @@
       bundle.data.pairs.push({ family: family, index: i });
     }
     /* A family the picker has switched off is skipped whole, and its
-       edge list is never rebuilt: the plain-edge id below is "ov-" or
-       "se-" plus an index into `data.edges_overlap` /
-       `data.edges_semantic`, and that is how the panel finds a clicked
-       edge again in the payload. Filtering by copying the array into a
-       shorter one would leave every id pointing at its neighbour's
-       evidence -- the panel would name the wrong shared papers and
-       nothing would look wrong. */
+       edge list is never rebuilt: the plain-edge id below is the
+       family's prefix ("ov-" or "se-", see edgeId) plus an index into
+       `data.edges_overlap` / `data.edges_semantic`, and that is how the
+       panel finds a clicked edge again in the payload. Filtering by
+       copying the array into a shorter one would leave every id pointing
+       at its neighbour's evidence -- the panel would name the wrong
+       shared papers and nothing would look wrong. */
     var enabled = families || FAMILY_CLASSES;
     if (enabled.indexOf("overlap") >= 0) {
       data.edges_overlap.forEach(function (e, i) {
@@ -428,7 +434,7 @@
       var plain = {
         group: "edges",
         data: {
-          id: (pair.family === "overlap" ? "ov-" : "se-") + pair.index,
+          id: plainPrefix[pair.family] + pair.index,
           source: bundle.data.source, target: bundle.data.target,
           family: pair.family, width: bundle.data.width, index: pair.index,
         },
@@ -573,18 +579,39 @@
      label is only semi-trusted -- a topic literally called
      "paper:dt2022" must not become the same node as the paper. */
 
-  /* The prefix has to be one no topic label carries, because a topic
-     labelled "paper:dt2022" would otherwise *be* the node for the paper
-     dt2022 -- and a topic label is only semi-trusted data that can
-     arrive from a PDF's extracted keywords. So it is computed from the
-     payload rather than fixed: lengthen it until nothing collides. It
-     terminates because the label set is finite. */
-  function paperPrefix(topics) {
-    var prefix = "paper:";
+  /* Every id the app makes up shares one namespace with the topic
+     labels, because a topic node's id *is* its label and cytoscape
+     keeps nodes and edges in a single id space -- it skips a second
+     element claiming an existing id, so a collision loses a node or a
+     line without a word on the canvas (#859). A topic labelled
+     "paper:dt2022" would otherwise *be* the node for the paper dt2022,
+     and one labelled "cluster-0" would vanish under the first group
+     box; a topic label is only semi-trusted data that can arrive from a
+     PDF's extracted keywords or the user's own topics.toml. So each
+     prefix is computed from the payload rather than fixed: lengthen it
+     until no label starts with it. It terminates because the label set
+     is finite. The bases ("paper:", "cluster-", "bd-", "ov-", "se-",
+     "mb-") are distinct and none starts another, so two generated ids
+     from different bases cannot meet either. */
+  function idPrefix(topics, base) {
+    var prefix = base;
     while (topics.some(function (t) { return t.label.indexOf(prefix) === 0; })) {
-      prefix = "paper:" + prefix;
+      prefix = base + prefix;
     }
     return prefix;
+  }
+
+  function paperPrefix(topics) {
+    return idPrefix(topics, "paper:");
+  }
+
+  function edgePrefix(topics, family) {
+    return idPrefix(topics, family === "overlap" ? "ov-" : "se-");
+  }
+
+  /* A plain edge's canvas id: how a path hop finds its line again. */
+  function edgeId(data, family, index) {
+    return edgePrefix(data.topics, family) + index;
   }
 
   function paperId(data, citekey) {
@@ -612,6 +639,7 @@
       });
     });
     var prefix = paperPrefix(data.topics);
+    var memberPrefix = idPrefix(data.topics, "mb-");
     var nodes = Object.create(null);
     var edges = [];
     open.forEach(function (t) {
@@ -638,7 +666,9 @@
         edges.push({
           group: "edges",
           data: {
-            id: "mb-" + t.label + "-" + m.citekey,
+            // JSON rather than a separator: labels and citekeys both
+            // carry hyphens, and "a-b" + "c" must not meet "a" + "b-c".
+            id: memberPrefix + JSON.stringify([t.label, m.citekey]),
             source: t.label,
             target: id,
             family: "member",
@@ -768,6 +798,7 @@
     elementsFor: elementsFor,
     EXPANSION_CAP: EXPANSION_CAP,
     paperId: paperId,
+    edgeId: edgeId,
     citekeyOf: citekeyOf,
     cutTree: cutTree,
     positionsFor: positionsFor,

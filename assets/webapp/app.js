@@ -332,8 +332,10 @@
   }
 
   function showEdge(family, index) {
+    var html = app.edgeHtml(DATA, family, index);
+    if (!html) { showHelp(); return; }
     clearHint();
-    detail.innerHTML = app.edgeHtml(DATA, family, index);
+    detail.innerHTML = html;
     panelFamily = family;
   }
 
@@ -392,8 +394,12 @@
     tip.hidden = true;
   }
 
+  /* A membership line carries no payload index -- it is neither family
+     -- so both edge handlers leave it alone rather than look one up
+     (#859): the paper node at its end is what answers a click. */
   cy.on("mouseover", "edge", function (event) {
     var edge = event.target;
+    if (edge.data("family") === "member") { return; }
     if (edge.data("bundled")) {
       showTip(event, edge.data("count") + " links bundled — click to see them");
       return;
@@ -472,6 +478,7 @@
   });
   cy.on("tap", "edge", function (event) {
     var edge = event.target;
+    if (edge.data("family") === "member") { return; }
     if (edge.data("bundled")) {
       showBundle(edge.data("pairs"));
     } else {
@@ -620,8 +627,7 @@
     cy.batch(function () {
       cy.elements().removeClass("on-path");
       result.hops.forEach(function (hop) {
-        var id = (hop.family === "overlap" ? "ov-" : "se-") + hop.index;
-        cy.$id(id).addClass("on-path");
+        cy.$id(app.edgeId(DATA, hop.family, hop.index)).addClass("on-path");
       });
       (result.labels || []).forEach(function (label) { cy.$id(label).addClass("on-path"); });
     });

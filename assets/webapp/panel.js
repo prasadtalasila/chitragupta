@@ -78,10 +78,15 @@
       "<h3>Linked topics</h3>" + linkedRows(data, topic);
   }
 
+  /* Null, not a throw, for a family or index the payload does not hold:
+     `data-edge` is re-parsed from markup, and a TypeError inside the
+     click handler would leave the panel dead (#859). */
   function edgeHtml(data, family, index) {
-    var e, papers, why;
+    if (graph.FAMILY_CLASSES.indexOf(family) < 0) { return null; }
+    var edges = family === "overlap" ? data.edges_overlap : data.edges_semantic;
+    if (!Number.isInteger(index) || index < 0 || index >= edges.length) { return null; }
+    var e = edges[index], papers, why;
     if (family === "overlap") {
-      e = data.edges_overlap[index];
       papers = e.shared;
       why = "These topics share " + papers.length + " paper" +
         (papers.length === 1 ? "" : "s") + " (jaccard " + e.jaccard.toFixed(2) +
@@ -94,7 +99,6 @@
           ", Jaccard " + e.jaccard.toFixed(2) + ") — it reads as a sub-topic.";
       }
     } else {
-      e = data.edges_semantic[index];
       papers = e.bridge;
       why = "These topics are semantically near (similarity " +
         e.similarity.toFixed(2) + "); the closest paper pair bridges them.";

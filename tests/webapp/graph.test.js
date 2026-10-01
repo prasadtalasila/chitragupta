@@ -204,3 +204,76 @@ test("filtering a family does not re-index the other one's edges", () => {
   assert.equal(outer.data.index, 1);
   assert.equal(outer.data.width, 1 + 3 * 0.61);
 });
+
+// ---------- generated ids against hostile labels (#859) ----------
+
+/* Cytoscape keeps nodes and edges in one id space and skips a second
+   element claiming an id already taken, so a topic labelled like a
+   generated id would lose a node or a line with no sign on the canvas.
+   Each label below is exactly the id the app used to generate for the
+   element beside it; the citekeys are the fixture's own. */
+const COLLIDING = ["cluster-0", "bd-0", "ov-0", "se-0", "mb-digital twin-dt2022"];
+
+function collidingPayload() {
+  return {
+    ...DATA,
+    topics: DATA.topics.slice(0, 3).concat(
+      COLLIDING.map((label) => ({ label, origin: "seed", terms: [], members: [] }))
+    ),
+  };
+}
+
+function idsOf(els) {
+  return els.map((e) => e.data.id);
+}
+
+function assertUnique(ids) {
+  assert.equal(new Set(ids).size, ids.length, "two elements claimed one id: " + ids);
+}
+
+test("no topic label can collide with a group, bundle or plain-edge id", () => {
+  const hostile = collidingPayload();
+  const all = new Set(hostile.topics.map((t) => t.label));
+  const cut = graph.cutTree(hostile.hierarchy, hostile.topics, 0.31);
+  const joined = cut.groups.find((g) => g.members.length > 1);
+
+  // Collapsed: the group is a meta-node and the semantic edge into it a bundle.
+  const collapsed = graph.elementsFor(hostile, all, [], {
+    cut, collapsed: new Set([joined.id]),
+  });
+  assert.ok(collapsed.some((e) => e.data.bundled), "non-vacuity: no bundle drawn");
+  // Expanded: a group box, both plain edges, and one topic's papers.
+  const expanded = graph.elementsFor(hostile, all, [], {
+    cut, collapsed: new Set(), expanded: new Set(["digital twin"]),
+  });
+  assert.ok(expanded.some((e) => e.data.isGroup), "non-vacuity: no group box drawn");
+  assert.ok(expanded.some((e) => e.data.family === "member"), "non-vacuity: no member line");
+
+  [collapsed, expanded].forEach((els) => {
+    const ids = idsOf(els);
+    assertUnique(ids);
+    COLLIDING.forEach((label) => assert.ok(ids.includes(label), label + " vanished"));
+  });
+  // And a path hop still finds its plain edge by the id the app computes.
+  const overlap = expanded.find((e) => e.data.family === "overlap");
+  assert.equal(graph.edgeId(hostile, "overlap", 0), overlap.data.id);
+});
+
+test("a membership line's id names its topic and citekey unambiguously", () => {
+  /* A separator would let "a-b" holding "c" and "a" holding "b-c" share
+     one id, and hyphenated BibTeX keys are common. The id decodes back
+     to exactly the pair it was built from, which no separator-joined
+     id can promise. */
+  const els = graph.elementsFor(DATA, new Set(DATA.topics.map((t) => t.label)), [], {
+    expanded: new Set(["digital twin", "machine learning"]),
+  });
+  const lines = els.filter((e) => e.data.family === "member");
+  assert.ok(lines.length >= 4, "non-vacuity");
+  assertUnique(idsOf(els));
+  lines.forEach((line) => {
+    const id = line.data.id;
+    const pair = JSON.parse(id.slice(id.indexOf("[")));
+    assert.equal(pair[0], line.data.source);
+    assert.equal(graph.paperId(DATA, pair[1]), line.data.target);
+  });
+});
