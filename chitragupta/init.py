@@ -41,11 +41,11 @@ unnoticed on both sides.
 """
 
 import argparse
+import re
 import shutil
 import sys
 from pathlib import Path
 
-from chitragupta import scaffold_guard
 from chitragupta.progname import prog_for
 
 # Deliberately not `from chitragupta.config import PACKAGE_ROOT`: that
@@ -110,6 +110,24 @@ class ScaffoldTargetUnsafe(Exception):
 SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
 
 
+# The text an agent executes, rather than reads about: every skill, every
+# subagent definition, and AGENTS.md. Each runs `python -m chitragupta.<layer>`
+# from inside the project, and `-m` puts that directory first on
+# `sys.path`, so a `chitragupta/` committed there after `init` would be
+# imported in place of the install on the very next skill step (#891).
+# A scaffold has no `chitragupta/` of its own -- the package is installed
+# -- so its copies say `python -P -m`, which leaves the directory off
+# `sys.path` and imports the install whatever sits beside it. The fix
+# lives in text the installed package wrote, not in the code a plant
+# replaces, so it holds for a plant of any age. A checkout keeps plain
+# `-m`: its own `chitragupta/` is the real one, and may not be installed.
+# docs/ is left alone: it is for people, who use the console script
+# (docs/PACKAGING.md), and parts of it describe `-m`'s search order.
+AGENT_RUN_TREES = (".claude", ".agents", ".opencode")
+AGENT_RUN_FILES = ("AGENTS.md",)
+MODULE_FORM = re.compile(r"\b(python3?)(\s+)-m(\s+)chitragupta\b")
+
+
 # The one entry that changes name on the way in. config.toml is
 # gitignored per-user data (chitragupta/config.py's PROJECT_MARKER), so
 # init writes the user's own starting copy, never the tracked template
@@ -117,19 +135,6 @@ SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
 # draws with `cp config.toml.example config.toml`.
 CONFIG_EXAMPLE = "config.toml.example"
 CONFIG_DEST = "config.toml"
-
-# An empty file, present if and only if this directory was written by
-# `scaffold()` -- never by `cp config.toml.example config.toml`, the
-# checkout setup step, which writes no such file. Owned by
-# `chitragupta/scaffold_guard.py` (imported above, unlike
-# `chitragupta.config`: it is standard-library only and never raises
-# without a `config.toml`, so there is no trap here to avoid).
-# `SHADOWING_NAMES` above stops `init` from scaffolding *over* a planted
-# `chitragupta/` directory; this marker lets `scaffold_guard.py` detect
-# one added afterwards, for the narrow shape it can actually reach --
-# that module's own docstring has the full reasoning and the limit
-# (#891).
-SCAFFOLD_MARKER = scaffold_guard.SCAFFOLD_MARKER
 
 # The second entry that changes name on the way in, and the only one
 # copied *into* `content/`. `[style].acronyms` ships pointing at
@@ -161,12 +166,7 @@ EMPTY_DIRS = (
 # Everything a scaffold can write, with every harness named. The default,
 # `--agent claude`, writes all of it bar the other harnesses' trees.
 TOP_LEVEL = frozenset(
-    {
-        CONFIG_DEST,
-        SCAFFOLD_MARKER,
-        *COPY_VERBATIM,
-        *(t for trees in AGENT_TREES.values() for t in trees),
-    }
+    {CONFIG_DEST, *COPY_VERBATIM, *(t for trees in AGENT_TREES.values() for t in trees)}
     | {"papers", "content"}
 )
 
@@ -231,6 +231,26 @@ DELIBERATE_DIFFERENCES = frozenset(
 )
 
 
+def _is_agent_run(src: Path) -> bool:
+    """Is `src` one of the files `AGENT_RUN_TREES`/`AGENT_RUN_FILES` name?"""
+    rel = src.relative_to(SOURCE_ROOT)
+    if rel.as_posix() in AGENT_RUN_FILES:
+        return True
+    return src.suffix == ".md" and rel.parts[0] in AGENT_RUN_TREES
+
+
+def _copy(src: Path, dst: Path) -> None:
+    """`shutil.copy2`, with an agent-run file's module form made `-P`.
+
+    Bytes in and out, so a file's own line endings and encoding survive;
+    the pattern is ASCII, so it cannot split a multi-byte character.
+    """
+    shutil.copy2(src, dst)
+    if _is_agent_run(src):
+        text = dst.read_bytes().decode("utf-8")
+        dst.write_bytes(MODULE_FORM.sub(r"\1\2-P -m\3chitragupta", text).encode("utf-8"))
+
+
 def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
     """One file: create, report-as-existing, or (with force) overwrite.
 
@@ -241,13 +261,13 @@ def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
         verb = "would create" if dry_run else "created"
         if not dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+            _copy(src, dst)
         return f"{verb}: {dst}"
     if not force:
         return f"exists, unchanged: {dst}"
     verb = "would overwrite" if dry_run else "overwrote"
     if not dry_run:
-        shutil.copy2(src, dst)
+        _copy(src, dst)
     return f"{verb}: {dst}"
 
 
@@ -282,17 +302,6 @@ def _write_empty_dir(dst: Path, *, dry_run: bool) -> str:
     if not dry_run:
         dst.mkdir(parents=True)
     return f"{'would create' if dry_run else 'created'}: {dst}/"
-
-
-def _write_marker(dst: Path, *, dry_run: bool) -> str:
-    """`SCAFFOLD_MARKER`: an empty sentinel, present once and never
-    rewritten -- its existence is the whole signal, so a rerun must not
-    even touch its mtime."""
-    if dst.is_file():
-        return f"exists, unchanged: {dst}"
-    if not dry_run:
-        dst.touch()
-    return f"{'would create' if dry_run else 'created'}: {dst}"
 
 
 def scaffold(
@@ -335,15 +344,6 @@ def scaffold(
             "would install could import in place of the installed chitragupta. "
             "Move it aside, or scaffold into another directory."
         )
-    # Checked by `scaffold_guard` -- a symlink (dangling or not) or a
-    # directory at this path would make `_write_marker` below report
-    # "created" while writing no real marker, or writing somewhere else
-    # entirely. See that function's own docstring for why. Refused up
-    # front, same as `shadowing` above, rather than discovered after
-    # everything else has already been written.
-    reason = scaffold_guard.unsafe_marker_reason(dest / SCAFFOLD_MARKER)
-    if reason:
-        raise ScaffoldTargetUnsafe(f"{reason} Move it aside, or scaffold into another directory.")
 
     report = []
     for name in (*COPY_VERBATIM, *trees):
@@ -358,7 +358,6 @@ def scaffold(
     )
     for rel in EMPTY_DIRS:
         report.append(_write_empty_dir(dest / rel, dry_run=dry_run))
-    report.append(_write_marker(dest / SCAFFOLD_MARKER, dry_run=dry_run))
     return report
 
 

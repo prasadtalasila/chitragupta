@@ -32,7 +32,7 @@ import os
 import sys
 from pathlib import Path
 
-from chitragupta import config_load, scaffold_guard
+from chitragupta import config_load
 
 from chitragupta.config_load import (
     _get,
@@ -119,18 +119,6 @@ def discover_project_root(
         return beside_package
     return None
 
-
-# #891 gap 1: refuses, before anything below, if this copy was imported
-# from the command's own directory (`sys.path[0]`) inside a project
-# `chitragupta init` marked -- the planted-package shape. Run before
-# PROJECT_ROOT is discovered below, and handed the same walk with
-# CHITRAGUPTA_PROJECT ignored: that variable says where the user's data
-# lives and must not also decide which `chitragupta` is trusted.
-# chitragupta/scaffold_guard.py's docstring has the three conditions and
-# what this cannot close.
-scaffold_guard.refuse_if_shadowed(
-    Path(__file__), lambda start: discover_project_root(cwd=start, environ={})
-)
 
 # Falls back to the directory above the package when no project was
 # found, so the error below names the path a checkout would have used --

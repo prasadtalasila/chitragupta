@@ -1,6 +1,6 @@
 # 📦 Packaging: the installable distribution and its command surface
 
-Status: **reference.** Written 2026-08-19. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-19. Updated 2026-10-01.
 
 What `chitragupta-cli` installs, what you type once it is installed, and
 which of the three names that look identical is actually registered
@@ -200,16 +200,20 @@ Both are supported, deliberately, and they are for different callers:
 
 So the two forms are not redundancy to be tidied away later. Keep both.
 
-The module form has one cost, and it is paid for in two places. `python
+The module form has one cost, and it is paid for in three places. `python
 -m` puts its working directory first on `sys.path`, and a hook's child
 runs from the project root -- which a checkout relies on, and which in
 an `init`-ed project would let a committed `chitragupta/` shadow the
 installed package. So the hooks decide which shape a project is before
 starting a child and, in an installed-package project, run it with
 `PYTHONSAFEPATH=1` ([HOOKS.md](HOOKS.md) has how, and the one case it
-cannot close); and `chitragupta init` refuses to scaffold into a
+cannot close); `chitragupta init` refuses to scaffold into a
 directory that already holds `chitragupta/` or `chitragupta.py`, even
-with `--force`.
+with `--force`; and the skills `init` scaffolds say `python -P -m`, which
+keeps the working directory off `sys.path`, so a `chitragupta/` committed
+afterwards is not what a skill runs either. That is still the module
+form, resolved from whichever interpreter runs it, so nothing above
+changes.
 
 ## ⚖ What the decision answers
 
