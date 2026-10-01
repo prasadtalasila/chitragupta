@@ -43,10 +43,10 @@ the equivalent keyword string:
 | question form vs keyword form | **4.7 / 10** | 2 of 6 |
 
 Less than half the same papers. The cause is visible in the tokenizer:
-`_STOPWORDS` holds nineteen function words and **no interrogatives**
--- `chitragupta/retrieval.py` imports the set from
-`chitragupta/_passage_words.py`, which defines it as `_CORE_STOPWORDS`
-so the corpus and review layers can share it -- and the length filter
+the stopword set holds nineteen function words and **no interrogatives**
+-- it is `CORE_STOPWORDS` in `chitragupta/_tokens.py`, which
+`chitragupta/retrieval.py` reads as the `INDEX` setting and the review
+layer extends as `DISTINCTIVE` -- and the length filter
 passes `how`, `why`, `who` and `can`, every one of them longer than the
 floor, whatever the floor is:
 

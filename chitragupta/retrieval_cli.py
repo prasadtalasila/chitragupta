@@ -272,8 +272,8 @@ def _log_call(args, results: int, chars: int, expanded: str) -> None:
 # Single-character, not 1-2 character, since #790 lowered
 # `retrieval._tokenize`'s floor to 2: "AI" and "5G" rank now, and naming
 # one here would send a reader hunting for a cause that is not there.
-# `retrieval.short_query_terms` owns the number; this only prints what it
-# returns, so the two cannot disagree. Said as a comment rather than in
+# `retrieval.short_query_terms` reads the number from `_tokens.INDEX`;
+# this only prints what it returns, so the two cannot disagree. Said as a comment rather than in
 # the docstring below because this module sits at
 # docs/CODE-STANDARDS.md's 250-line ceiling and comments do not count.
 # Names any single-character query word that ranking can never see. A

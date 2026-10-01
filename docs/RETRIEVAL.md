@@ -108,6 +108,14 @@ keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
 
+**A tokenizer edit rebuilds the index without anyone remembering to.**
+The cache's version is a hand-bumped number joined to a digest of the
+floor and stopwords in `chitragupta/_tokens.py`'s `INDEX` setting, and
+`content/retrieval_passage_index.json` carries the same digest, so
+editing either invalidates both files together (issue 845). The number
+is kept for rule changes that are not vocabulary, such as the decoding
+rule below.
+
 **A document whose parsed file is missing is counted, not hidden.** A row
 the ledger calls `parsed` whose `.txt` is gone -- a `content/parsed/`
 restored from a partial backup, say -- is indexed on its title alone, and

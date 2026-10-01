@@ -18,7 +18,7 @@ import would make) rather than this module importing `search`.
 
 import sys
 
-from chitragupta import config
+from chitragupta import _tokens, config
 from chitragupta._json_cache import MemoisedJson
 
 # 2 since #768: every entry written before it counted the tokens of the
@@ -50,7 +50,14 @@ from chitragupta._json_cache import MemoisedJson
 # rather than "ignore", so a parsed file with a stray non-UTF-8 byte now
 # splits the words either side of it where it used to fuse them. Same
 # shape as 2-4: the file is byte-identical and only the rule moved.
-_INDEX_SCHEMA_VERSION = 5
+#
+# Since issue 845 the number covers only that kind of change, and 4's
+# kind is no longer a bump at all: `_tokens.index_version` joins it to a
+# digest of `_tokens.INDEX`, the floor and stopwords `retrieval._tokenize`
+# reads, so editing either moves this version with nobody remembering to.
+# A cache file written under the bare integer reads as another version
+# and is rebuilt once.
+_INDEX_SCHEMA_VERSION = _tokens.index_version(5)
 
 # How many rows the last `_load_index` saw marked `parsed` whose parsed
 # file is not on disk, so were indexed on their title alone. Held here

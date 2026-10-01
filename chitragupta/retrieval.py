@@ -60,6 +60,7 @@ from typing import Any
 
 from chitragupta import (
     _reference_cut,
+    _tokens,
     bib_collections,
     config,
     ledger,
@@ -68,7 +69,6 @@ from chitragupta import (
     retrieval_scoring,
     retrieval_tables,
 )
-from chitragupta._passage_words import _CORE_STOPWORDS as _STOPWORDS
 
 # Question words and question-forming auxiliaries -- rare in academic
 # PDFs, so they carry high IDF and out-compete the terms a question is
@@ -103,27 +103,17 @@ class SearchResult:
     snippet: str
 
 
-# `> 1`, not `> 2`, since #790: a two-character token is a content word
-# in a technical bibliography ("AI", "DT", "5G", "ML") and the old floor
-# put every one of them outside both the index and the query, so a search
-# for "5G" returned nothing with no ranking it could have contributed to.
-# Measured before it moved, on this project's own corpus
-# (bench/RESULTS.md, 2026-09-16): on the 32 of 258 self-retrieval queries
-# whose terms the floor actually changes, recall@5 goes 0.8438 -> 0.9062
-# and nDCG@5 0.7335 -> 0.8130, six queries better against one worse.
-# Stopping at 2 rather than 1 is measured too, not assumed: floor 1 wins
-# nothing floor 2 had not already won and costs 13.5% more tokens per
-# document. The stopword list is consulted independently of the length,
-# so "of" and "in" stay out at either floor.
+# The `INDEX` setting: `chitragupta/_tokens.py` has the floor's measurement
+# (#790) and why editing it needs no version bump (issue 845).
 def _tokenize(text: str) -> list[str]:
-    return [w for w in re.findall(r"[a-z0-9]+", text.lower()) if len(w) > 1 and w not in _STOPWORDS]
+    return _tokens.words(text, _tokens.INDEX)
 
 
 def short_query_terms(query: str) -> list[str]:
     """Single-character words in `query` dropped *only* by the length floor.
 
     A stopword this short ("a") is excluded -- it is dropped by
-    `_STOPWORDS` regardless of length, so naming it explains nothing.
+    `INDEX`'s stopwords regardless of length, so naming it explains nothing.
     What's left is a word that can never contribute to ranking, letting a
     caller (the CLI) warn instead of a query built from only such terms
     returning empty unexplained.
@@ -131,11 +121,14 @@ def short_query_terms(query: str) -> list[str]:
     **One character, not two, since #790.** This used to name "AI" and
     "5G", which now rank; a warning about a word that *did* reach ranking
     is worse than no warning, because it sends the reader looking for a
-    cause that is not there. The floor and this function are two readings
-    of one number and have to move together.
+    cause that is not there. Both read `_tokens.INDEX`, so the floor and
+    this cannot drift apart (issue 845).
     """
+    rule = _tokens.INDEX
     return [
-        w for w in re.findall(r"[a-z0-9]+", query.lower()) if len(w) <= 1 and w not in _STOPWORDS
+        w
+        for w in _tokens.WORD.findall(query.lower())
+        if len(w) < rule.floor and w not in rule.stopwords
     ]
 
 

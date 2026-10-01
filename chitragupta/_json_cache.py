@@ -27,7 +27,7 @@ class MemoisedJson:
     and `CHITRAGUPTA_PROJECT` can move them in a real run.
     """
 
-    def __init__(self, path: Callable[[], Path], version: int) -> None:
+    def __init__(self, path: Callable[[], Path], version: int | str) -> None:
         self._path = path
         self._version = version
         # (stamp, items) for the one file this process last read.
