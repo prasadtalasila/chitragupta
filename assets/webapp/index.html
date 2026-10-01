@@ -13,6 +13,16 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<!--
+  A second layer behind panel.js's escaping (#856): labels and titles are
+  corpus-derived, and markup that gets past the escape still cannot run
+  an inline handler. Ahead of the stylesheet and every script, because a
+  meta policy governs only what the parser meets after it. 'self' admits
+  this directory's own scripts under file:// in Chrome and Firefox both.
+  'unsafe-inline' on style only: panel.js writes width and background
+  style attributes, and cytoscape injects a style element of its own.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Topic graph</title>
 <link rel="stylesheet" href="./style.css">

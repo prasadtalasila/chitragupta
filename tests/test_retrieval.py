@@ -1373,7 +1373,7 @@ class TestTheIndexIsParsedOncePerProcess:
         retrieval_cache._save_cache({"b2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
         assert set(retrieval_cache._load_cache()) == {"b2024"}
 
-    def test_a_rewrite_behind_this_modules_back_is_picked_up(self, tmp_path):
+    def test_a_rewrite_behind_this_modules_back_is_picked_up(self, isolated_config):
         """The stamp is `(path, size, mtime_ns)`, so a file replaced by
         something else -- another process, a test -- is re-read."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1391,7 +1391,7 @@ class TestTheIndexIsParsedOncePerProcess:
         retrieval_cache._forget_cache()
         assert set(retrieval_cache._load_cache()) == {"c2024"}
 
-    def test_the_path_is_part_of_the_stamp(self, tmp_path, monkeypatch):
+    def test_the_path_is_part_of_the_stamp(self, isolated_config, tmp_path, monkeypatch):
         """Two trees' indexes can be the same size, and `mtime_ns` is not
         a guarantee across filesystems. `config.RETRIEVAL_INDEX_PATH` is
         not a constant across a test session, so it is in the key."""

@@ -7,6 +7,7 @@ import pytest
 
 
 from chitragupta import config, ledger
+from tests import content_guard
 
 
 def pytest_sessionstart(session):
@@ -22,6 +23,13 @@ def pytest_sessionstart(session):
     from chitragupta import pdf_text
 
     pdf_text.drop_stdlib_shadowing_path_entries()
+    content_guard.record(session, config.CONTENT_DIR)
+
+
+def pytest_sessionfinish(session):
+    """Fail a session that wrote into the real content/ -- see
+    tests/content_guard.py for why the effect is checked, not the code."""
+    content_guard.verify(session)
 
 
 @pytest.fixture(autouse=True)

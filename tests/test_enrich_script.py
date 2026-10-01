@@ -252,6 +252,13 @@ class TestParseArgs:
 
 
 class TestMain:
+    @pytest.fixture(autouse=True)
+    def _isolated(self, isolated_config):
+        """main() takes the pipeline lock at config.PIPELINE_LOCK_PATH,
+        which without this is the checkout's real one (#862): the suite
+        left a lock and a holder record in content/, and on a host with
+        a real `enrich` running it would raise AlreadyRunning instead."""
+
     def test_runs_only_selected_stages_and_prints_summary(self, monkeypatch, capsys):
         docs = [CorpusDoc(citekey="a", title="t", pdf_path=None)]
         monkeypatch.setattr(enrich_script.corpus, "build_corpus", lambda: docs)
@@ -407,7 +414,9 @@ class TestMain:
             enrich_script.STAGE_FUNCS, "embed", lambda d, a: {"status": "ok", "detail": "e"}
         )
         assert enrich_script.main() == 0
-        assert "errored" not in capsys.readouterr().out
+        # The summary line's own wording: a bare "errored" also matches
+        # the tmp_path this test's name puts in the printed bib path.
+        assert "stage(s) errored" not in capsys.readouterr().out
 
 
 class TestForDraftScope:
@@ -425,6 +434,12 @@ class TestForDraftScope:
     scope that selects nothing says so rather than running a stage over
     an empty corpus.
     """
+
+    @pytest.fixture(autouse=True)
+    def _isolated(self, isolated_config):
+        """A scope that resolves runs main() into the real pipeline lock,
+        as TestMain's does (#862); the refusals stop before it, but which
+        side of the lock a case lands on is the code under test."""
 
     @pytest.fixture
     def corpus_of_three(self, monkeypatch):
