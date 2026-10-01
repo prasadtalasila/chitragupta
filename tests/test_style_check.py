@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, dossier, style_check
+from chitragupta import config, dossier, style_check, style_rules
 from tests.conftest import content_draft
 
 
@@ -488,6 +488,31 @@ class TestSetLanguageRoundTrip:
         assert "BCP-47" in capsys.readouterr().err
 
 
+class TestTheRuleRegistry:
+    """#852: a Python-side style rule is a module with a `findings(draft)`
+    function, registered once in `style_rules.PYTHON_CHECKS`. Adding one
+    used to mean editing the sum in `check()`, a registered C2 offender."""
+
+    def test_every_style_module_with_findings_is_registered(self):
+        """An unregistered rule would run nowhere and report nothing --
+        the silent half of forgetting it."""
+        package = Path(style_check.__file__).parent
+        modules = sorted(
+            f"chitragupta.{path.stem}"
+            for path in package.glob("style_*.py")
+            if "\ndef findings(" in path.read_text(encoding="utf-8")
+        )
+        assert modules, "the scan found no style rule modules"
+        registered = sorted(check.__module__ for check in style_rules.PYTHON_CHECKS)
+        assert registered == modules
+
+    def test_check_runs_whatever_the_registry_holds(self, draft, monkeypatch):
+        mine = {"rule": "demo", "match": "x", "line": 1, "repair": "review"}
+        monkeypatch.setattr(style_check, "PYTHON_CHECKS", (lambda path: [mine],))
+        monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [])
+        assert style_check.check(draft, propose=False)["findings"] == [mine]
+
+
 class TestCheckWiring:
     def test_an_unset_draft_gets_a_proposal(self, draft, monkeypatch):
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
@@ -535,10 +560,10 @@ class TestCheckWiring:
         see chitragupta/style_acronym_drift.py."""
         write_scope(draft, "- language: en-GB")
         monkeypatch.setattr(style_check, "run_vale", lambda d, lang: [finding()])
-        monkeypatch.setattr(
-            style_check,
-            "acronym_drift_findings",
-            lambda d: [
+
+        # The acronym-drift check stood in for, the rest of the registry kept (#852).
+        def drift(_draft):
+            return [
                 {
                     "rule": "chitragupta.AcronymDrift",
                     "match": "DT",
@@ -547,8 +572,9 @@ class TestCheckWiring:
                     "severity": "suggestion",
                     "count": 1,
                 }
-            ],
-        )
+            ]
+
+        monkeypatch.setattr(style_check, "PYTHON_CHECKS", (drift, *style_rules.PYTHON_CHECKS[1:]))
         findings = style_check.check(draft)["findings"]
         assert {f["rule"] for f in findings} == {
             "chitragupta.DefectMarkers",

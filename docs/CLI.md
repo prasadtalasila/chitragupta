@@ -2461,7 +2461,10 @@ drifted from the current `[style].acronyms` vocabulary (§9;
 *not* sourced from Vale, and they are computed in plain Python -- the
 id-validity and reference-problem logic behind the table, figure and
 equation checks is shared in `chitragupta/style_elements.py` rather than
-copied per kind.
+copied per kind. They are listed once, in reporting order, in
+`chitragupta/style_rules.py`'s `PYTHON_CHECKS`: a new check is a
+`style_*.py` module with a `findings(draft)` function plus a line there,
+and each finding carries its own `repair` mode.
 **A review aid: it exits 0 whatever it finds**, and nothing in this
 pipeline reads its output back or blocks on it.
 
