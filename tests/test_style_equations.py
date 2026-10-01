@@ -11,17 +11,10 @@ that cannot resolve, not one that resolves to an equation nobody
 explains.
 """
 
-from pathlib import Path
-
 from chitragupta import style_equations
+from tests.conftest import draft_with
 
 EQUATION = "<!-- equation: energy -->\n<!-- math -->\n```\nE = m * c^2\n```\n"
-
-
-def draft_with(body: str, tmp_path: Path) -> Path:
-    path = tmp_path / "survey.md"
-    path.write_text(body, encoding="utf-8")
-    return path
 
 
 def rules(findings: list[dict]) -> list[str]:

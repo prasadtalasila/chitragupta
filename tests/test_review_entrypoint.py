@@ -19,8 +19,6 @@ doc or a skill introduces a `python -m chitragupta.a.b` invocation in prose.
 
 import importlib
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -28,6 +26,7 @@ import pytest
 from chitragupta import review
 from chitragupta.review import __main__ as entrypoint
 from chitragupta.review import _registry
+from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -69,15 +68,6 @@ def _aid_sources(module: str) -> list[Path]:
     return sorted(base.glob("*.py")) if base.is_dir() else [base.with_suffix(".py")]
 
 
-def _run(*argv):
-    return subprocess.run(
-        [sys.executable, *argv],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
-
-
 class TestTheSubcommandsAreTheAids:
     # No "the sets are equal" test here, deliberately. `_registry.py`,
     # which the entry point imports its subcommands from (#850), raises
@@ -111,21 +101,21 @@ class TestTheSubcommandsAreTheAids:
     def test_every_aid_is_reachable_and_declares_its_own_flags(self, aid):
         """--help rather than a run: this pins that the aid's parser was
         wired in, without needing a corpus."""
-        result = _run("-m", "chitragupta.review", aid, "--help")
+        result = run_python("-m", "chitragupta.review", aid, "--help")
         assert result.returncode == 0
         assert f"usage: python -m chitragupta.review {aid}" in result.stdout
 
     def test_no_aid_prints_the_layers_usage_and_exits_zero(self):
         """ "Tell me how to use this" is not an error -- the same rule
         each aid already applies to a missing mode."""
-        result = _run("-m", "chitragupta.review")
+        result = run_python("-m", "chitragupta.review")
         assert result.returncode == 0
         assert "provenance" in result.stdout
         assert "verbatim" in result.stdout
         assert "coverage" in result.stdout
 
     def test_an_unknown_aid_is_a_usage_error(self):
-        result = _run("-m", "chitragupta.review", "bogus")
+        result = run_python("-m", "chitragupta.review", "bogus")
         assert result.returncode == 2
         assert "invalid choice: 'bogus'" in result.stderr
 
@@ -162,7 +152,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         than the silent version does: the trap the docstring above calls
         "silent and harmless" is not even reachable.
         """
-        result = _run("-m", f"chitragupta.review.{module}")
+        result = run_python("-m", f"chitragupta.review.{module}")
 
         assert result.stdout == ""
         if (REPO_ROOT / "chitragupta" / "review" / module).is_dir():
@@ -191,22 +181,22 @@ class TestTheExitCodeContractSurvivesTheDispatch:
     def test_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
-        result = _run("-m", "chitragupta.review", "provenance", str(outside))
+        result = run_python("-m", "chitragupta.review", "provenance", str(outside))
         assert result.returncode == 1
 
     def test_a_missing_draft_exits_one(self):
-        result = _run("-m", "chitragupta.review", "provenance", "content/drafts/nope.md")
+        result = run_python("-m", "chitragupta.review", "provenance", "content/drafts/nope.md")
         assert result.returncode == 1
 
     def test_a_missing_required_flag_exits_two(self):
         """`coverage` without --query: argparse's own error, reached
         through the subparser rather than a top-level parser."""
-        result = _run("-m", "chitragupta.review", "coverage", "content/drafts/x.md")
+        result = run_python("-m", "chitragupta.review", "coverage", "content/drafts/x.md")
         assert result.returncode == 2
         assert "--query" in result.stderr
 
     def test_an_out_of_range_flag_value_exits_two(self):
-        result = _run(
+        result = run_python(
             "-m", "chitragupta.review", "verbatim", "scan", "content/drafts/x.md", "--gap", "-1"
         )
         assert result.returncode == 2
@@ -215,12 +205,14 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         """`--baseline` is required: there is nothing to compare against
         without one, and defaulting to the report's usual path would
         silently compare against whatever happened to be lying there."""
-        result = _run("-m", "chitragupta.review", "verbatim", "recheck", "content/drafts/x.md")
+        result = run_python(
+            "-m", "chitragupta.review", "verbatim", "recheck", "content/drafts/x.md"
+        )
         assert result.returncode == 2
         assert "--baseline" in result.stderr
 
     def test_recheck_on_a_draft_outside_content_exits_one(self):
-        result = _run(
+        result = run_python(
             "-m",
             "chitragupta.review",
             "verbatim",
@@ -232,6 +224,6 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert result.returncode == 1
 
     def test_recheck_is_listed_as_a_verbatim_mode(self):
-        result = _run("-m", "chitragupta.review", "verbatim", "--help")
+        result = run_python("-m", "chitragupta.review", "verbatim", "--help")
         assert result.returncode == 0
         assert "recheck" in result.stdout

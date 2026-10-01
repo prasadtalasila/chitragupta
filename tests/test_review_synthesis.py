@@ -18,20 +18,13 @@ import pytest
 from chitragupta import config, review
 from chitragupta.review import __main__ as review_main
 from chitragupta.review import _synthesis_render, synthesis
-from tests.test_review_units import draft_at, write_scope
+from tests.test_review_units import a_draft
 
 
 def _render(draft: Path) -> str:
     """The Markdown report for `draft`, at whatever unit its genre binds at."""
     report = synthesis.build_report(draft, *synthesis.resolve(draft, None))
     return _synthesis_render.render_markdown(report, "cmd", synthesis.findings(report))
-
-
-def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
-    draft = draft_at(name)
-    draft.write_text(text, encoding="utf-8")
-    write_scope(draft, genre)
-    return draft
 
 
 class TestRegistration:

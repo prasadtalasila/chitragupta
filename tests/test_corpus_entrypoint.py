@@ -25,15 +25,13 @@ and have no counterpart there:
 """
 
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from chitragupta import corpus as entrypoint
 from chitragupta import runlock
-from tests.conftest import make_reference
+from tests.conftest import make_reference, run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -62,15 +60,6 @@ SILENT_NO_OP_MODULES = ["ledger_cli", "seed_topics"]
 _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 
 
-def _run(*argv):
-    return subprocess.run(
-        [sys.executable, *argv],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
-
-
 class TestTheVerbsAreTheCorpusLayersCommands:
     def test_the_verb_set_is_exactly_the_backing_modules(self):
         assert set(entrypoint.VERBS) == set(BACKING_MODULES)
@@ -79,20 +68,20 @@ class TestTheVerbsAreTheCorpusLayersCommands:
     def test_every_verb_is_reachable_and_declares_its_own_flags(self, verb):
         """--help rather than a run: this pins that the verb's own parser
         was wired in, without touching a corpus or taking a lock."""
-        result = _run("-m", "chitragupta.corpus", verb, "--help")
+        result = run_python("-m", "chitragupta.corpus", verb, "--help")
         assert result.returncode == 0, result.stderr
         assert f"chitragupta.corpus {verb}" in result.stdout
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
         """ "Tell me how to use this" is not an error -- the same rule
         chitragupta/draft.py and chitragupta/review/__main__.py already apply."""
-        result = _run("-m", "chitragupta.corpus")
+        result = run_python("-m", "chitragupta.corpus")
         assert result.returncode == 0
         for verb in BACKING_MODULES:
             assert verb in result.stdout
 
     def test_an_unknown_verb_is_a_usage_error(self):
-        result = _run("-m", "chitragupta.corpus", "bogus")
+        result = run_python("-m", "chitragupta.corpus", "bogus")
         assert result.returncode == 2
         assert "invalid choice: 'bogus'" in result.stderr
 
@@ -113,7 +102,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
     @pytest.mark.parametrize("module", sorted(SILENT_NO_OP_MODULES))
     def test_running_a_backing_module_directly_does_nothing(self, module):
         """The observable half of the assertion above."""
-        result = _run("-m", f"chitragupta.{module}")
+        result = run_python("-m", f"chitragupta.{module}")
         assert result.returncode == 0
         assert result.stdout == ""
 
@@ -134,7 +123,7 @@ class TestTheRemovedSyncCommandRefuses:
     exit code."""
 
     def test_it_exits_nonzero_and_names_the_replacement(self):
-        result = _run("-m", "chitragupta.sync")
+        result = run_python("-m", "chitragupta.sync")
         assert result.returncode != 0
         assert "chitragupta corpus sync" in result.stderr
 
@@ -143,20 +132,20 @@ class TestTheRemovedSyncCommandRefuses:
         tells an unattended caller that `2` -- the lock is held -- means
         do nothing. A refusal wearing that number would be ignored by the
         very crontab this change exists to reach."""
-        result = _run("-m", "chitragupta.sync")
+        result = run_python("-m", "chitragupta.sync")
         assert result.returncode not in (0, 1, runlock.EXIT_ALREADY_RUNNING)
 
     def test_it_says_nothing_on_stdout(self):
         """A refusal belongs on stderr. `sync`'s stdout is a documented,
         diffable contract, and anything parsing it must see an empty one
         rather than a line that reads like a result."""
-        result = _run("-m", "chitragupta.sync")
+        result = run_python("-m", "chitragupta.sync")
         assert result.stdout == ""
 
     def test_the_real_command_is_unaffected(self):
         """The refusal lives in the `__main__` block, so dispatching
         through chitragupta/corpus.py must not trip it."""
-        result = _run("-m", "chitragupta.corpus", "sync", "--help")
+        result = run_python("-m", "chitragupta.corpus", "sync", "--help")
         assert result.returncode == 0
         assert "python -m chitragupta.corpus sync" in result.stdout
 
@@ -173,7 +162,7 @@ class TestLedgerKeepsItsBarePythonTier:
     """
 
     def test_importing_the_dispatcher_imports_neither_verb(self):
-        result = _run(
+        result = run_python(
             "-c",
             "import sys; from chitragupta import corpus; "
             "print('chitragupta.sync' in sys.modules, 'chitragupta.ledger_cli' in sys.modules)",
@@ -182,7 +171,7 @@ class TestLedgerKeepsItsBarePythonTier:
         assert result.stdout.strip() == "False False"
 
     def test_dispatching_ledger_does_not_drag_in_syncs_dependency(self):
-        result = _run(
+        result = run_python(
             "-c",
             "import sys\n"
             "from chitragupta import corpus\n"
@@ -251,6 +240,6 @@ class TestTheExitCodeContractSurvivesTheDispatch:
         assert seen == {"remove_stale": False, "reparse": False}
 
     def test_a_malformed_sync_invocation_exits_two(self):
-        result = _run("-m", "chitragupta.corpus", "sync", "--bogus-flag")
+        result = run_python("-m", "chitragupta.corpus", "sync", "--bogus-flag")
         assert result.returncode == 2
         assert "--bogus-flag" in result.stderr

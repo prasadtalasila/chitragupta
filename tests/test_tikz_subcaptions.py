@@ -33,13 +33,12 @@ example, which is a different and much weaker claim.
 """
 
 import re
-import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from chitragupta.review import figure_layout
+from tests.conftest import needs_tikz
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STYLE_DOC = REPO_ROOT / "docs" / "TIKZ-STYLE.md"
@@ -77,22 +76,6 @@ def _panel_example() -> str:
     fence = _FENCE_RE.search(body)
     assert fence is not None, "the panelled-figure section carries no ```latex example"
     return fence.group("body")
-
-
-def _has_tikz() -> bool:
-    """Whether this host can compile a TikZ figure at all.
-
-    The same probe `tests/test_tikz_scaffolds.py` uses, and for the same
-    reason: CI's Windows leg installs no `os-deps`, so the geometry half
-    of this file has to self-skip rather than fail there.
-    """
-    if shutil.which("pdflatex") is None or shutil.which("kpsewhich") is None:
-        return False
-    probe = subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False)
-    return probe.returncode == 0
-
-
-needs_tikz = pytest.mark.skipif(not _has_tikz(), reason="needs pdflatex with tikz.sty")
 
 
 @pytest.fixture(name="example")

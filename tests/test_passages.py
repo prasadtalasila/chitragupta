@@ -16,32 +16,7 @@ import types
 import pytest
 
 from chitragupta import _atomic_write, config, ledger, passages
-
-
-def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
-    """Insert a ledger row, optionally with parsed text on disk."""
-    parsed_path = None
-    if parsed_text is not None:
-        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-        parsed_path = config.PARSED_DIR / f"{citekey}.txt"
-        parsed_path.write_text(parsed_text, encoding="utf-8")
-        parsed_path = str(parsed_path)
-    con = ledger.connect()
-    try:
-        con.execute(
-            "INSERT OR REPLACE INTO items"
-            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
-            " VALUES (?, ?, 'parsed', ?, ?, '2026-01-01')",
-            (citekey, title, parsed_path, pdf_path),
-        )
-        con.commit()
-    finally:
-        con.close()
-
-
-def _sidecar(citekey, records):
-    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
-    (config.DOCLING_DIR / f"{citekey}.passages.json").write_text(json.dumps(records))
+from tests.conftest import add_item, plant_sidecar
 
 
 class TestDistinctive:
@@ -64,8 +39,8 @@ class TestQuotable:
 
 class TestSourcePassages:
     def test_prefers_the_docling_sidecar(self, isolated_config):
-        _add_item("a_2024", parsed_text="page one\fpage two")
-        _sidecar(
+        add_item("a_2024", parsed_text="page one\fpage two")
+        plant_sidecar(
             "a_2024", [{"text": "A real reading-ordered paragraph.", "label": "text", "page": 4}]
         )
         con = ledger.connect()
@@ -81,7 +56,7 @@ class TestSourcePassages:
         assert found[0].label == "text"
 
     def test_falls_back_to_form_feed_pages_and_refuses_to_quote(self, isolated_config):
-        _add_item("a_2024", parsed_text="first page text\fsecond page text")
+        add_item("a_2024", parsed_text="first page text\fsecond page text")
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "a_2024")
@@ -127,7 +102,7 @@ class TestSourcePassages:
         assert "ledger" in reason
 
     def test_no_parsed_text_and_no_pdf_reports_why(self, isolated_config):
-        _add_item("a_2024")
+        add_item("a_2024")
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "a_2024")
@@ -137,7 +112,7 @@ class TestSourcePassages:
         assert "no readable PDF" in reason
 
     def test_corrupt_sidecar_falls_through_instead_of_raising(self, isolated_config):
-        _add_item("a_2024", parsed_text="page one\fpage two")
+        add_item("a_2024", parsed_text="page one\fpage two")
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
         (config.DOCLING_DIR / "a_2024.passages.json").write_text("{not json")
         con = ledger.connect()
@@ -151,7 +126,7 @@ class TestSourcePassages:
     def test_blank_pages_are_dropped(self, isolated_config):
         """A trailing form feed would otherwise contribute an empty page
         that matches nothing and shifts no numbering."""
-        _add_item("a_2024", parsed_text="first page\f   \fthird page")
+        add_item("a_2024", parsed_text="first page\f   \fthird page")
         con = ledger.connect()
         try:
             found, _ = passages.source_passages(con, "a_2024")
@@ -282,8 +257,8 @@ class TestTableAndFormulaRecords:
         assert passages.passage_records(doc) == []
 
     def test_a_table_record_reads_back_as_a_quotable_passage(self, isolated_config):
-        _sidecar("smith_2024", [{"text": "| a | b |", "label": "table", "page": 9}])
-        _add_item("smith_2024", parsed_text="page one\fpage two")
+        plant_sidecar("smith_2024", [{"text": "| a | b |", "label": "table", "page": 9}])
+        add_item("smith_2024", parsed_text="page one\fpage two")
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "smith_2024")
@@ -297,7 +272,7 @@ class TestCorpusLayerSidecar:
     """Rung 2: the sidecar the corpus layer writes beside its parsed text."""
 
     def test_is_used_when_the_enrichment_layer_has_not_run(self, isolated_config):
-        _add_item("smith_2024", parsed_text="page one\fpage two")
+        add_item("smith_2024", parsed_text="page one\fpage two")
         passages.write_sidecar(
             "smith_2024",
             [
@@ -317,8 +292,8 @@ class TestCorpusLayerSidecar:
     def test_the_enrichment_sidecar_still_wins_when_both_exist(self, isolated_config):
         """Rung 1 is a second, independent parse under its own OCR and
         figure settings, so it outranks the corpus layer's."""
-        _add_item("smith_2024", parsed_text="page one\fpage two")
-        _sidecar("smith_2024", [{"text": "From the enrichment layer.", "page": 1}])
+        add_item("smith_2024", parsed_text="page one\fpage two")
+        plant_sidecar("smith_2024", [{"text": "From the enrichment layer.", "page": 1}])
         passages.write_sidecar("smith_2024", [{"text": "From the corpus layer.", "page": 1}])
         con = ledger.connect()
         try:
@@ -328,7 +303,7 @@ class TestCorpusLayerSidecar:
         assert [p.text for p in found] == ["From the enrichment layer."]
 
     def test_a_corrupt_one_falls_through_to_the_page_rung(self, isolated_config):
-        _add_item("smith_2024", parsed_text="page one\fpage two")
+        add_item("smith_2024", parsed_text="page one\fpage two")
         passages.sidecar_path("smith_2024").write_text("{ not json")
         con = ledger.connect()
         try:
@@ -422,7 +397,7 @@ class TestSidecarRobustness:
         ],
     )
     def test_unusable_sidecar_shapes_fall_through_to_pages(self, isolated_config, payload):
-        _add_item("a_2024", parsed_text="page one\fpage two")
+        add_item("a_2024", parsed_text="page one\fpage two")
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
         (config.DOCLING_DIR / "a_2024.passages.json").write_text(payload)
         con = ledger.connect()
@@ -436,7 +411,7 @@ class TestSidecarRobustness:
     def test_truncated_utf8_sidecar_falls_through_instead_of_raising(self, isolated_config):
         """A process killed mid-write can split a multi-byte character,
         which fails to decode before json ever sees it."""
-        _add_item("a_2024", parsed_text="page one\fpage two")
+        add_item("a_2024", parsed_text="page one\fpage two")
         config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
         # Valid JSON prefix, then a lone UTF-8 continuation byte.
         (config.DOCLING_DIR / "a_2024.passages.json").write_bytes(
@@ -451,8 +426,8 @@ class TestSidecarRobustness:
         assert [p.page for p in found] == [1, 2]
 
     def test_mixed_sidecar_keeps_the_usable_records(self, isolated_config):
-        _add_item("a_2024", parsed_text="ignored\fignored")
-        _sidecar("a_2024", ["junk", {"text": ""}, {"text": "Real paragraph here.", "page": 3}])
+        add_item("a_2024", parsed_text="ignored\fignored")
+        plant_sidecar("a_2024", ["junk", {"text": ""}, {"text": "Real paragraph here.", "page": 3}])
         con = ledger.connect()
         try:
             found, _ = passages.source_passages(con, "a_2024")
@@ -468,8 +443,8 @@ class TestSidecarRobustness:
         anything here, and this sidecar may have been hand-edited -- so a
         value that isn't a 1-based page number becomes None rather than
         propagating as one."""
-        _add_item("a_2024", parsed_text="ignored\fignored")
-        _sidecar("a_2024", [{"text": "Real paragraph.", "page": bad_page}])
+        add_item("a_2024", parsed_text="ignored\fignored")
+        plant_sidecar("a_2024", [{"text": "Real paragraph.", "page": bad_page}])
         con = ledger.connect()
         try:
             found, _ = passages.source_passages(con, "a_2024")
@@ -479,8 +454,8 @@ class TestSidecarRobustness:
         assert found[0].quotable, "the text is still fine -- only the locator was junk"
 
     def test_a_real_page_number_survives(self, isolated_config):
-        _add_item("a_2024", parsed_text="ignored\fignored")
-        _sidecar("a_2024", [{"text": "Real paragraph.", "page": 4}])
+        add_item("a_2024", parsed_text="ignored\fignored")
+        plant_sidecar("a_2024", [{"text": "Real paragraph.", "page": 4}])
         con = ledger.connect()
         try:
             found, _ = passages.source_passages(con, "a_2024")
@@ -489,8 +464,8 @@ class TestSidecarRobustness:
         assert found[0].page == 4
 
     def test_a_label_that_is_not_a_string_is_dropped(self, isolated_config):
-        _add_item("a_2024", parsed_text="ignored\fignored")
-        _sidecar("a_2024", [{"text": "Real paragraph.", "label": 7}])
+        add_item("a_2024", parsed_text="ignored\fignored")
+        plant_sidecar("a_2024", [{"text": "Real paragraph.", "label": 7}])
         con = ledger.connect()
         try:
             found, _ = passages.source_passages(con, "a_2024")
@@ -507,7 +482,7 @@ class TestPdfFallback:
         all be 1 -- go back to the PDF rather than report that."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="one continuous document, no form feeds", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="one continuous document, no form feeds", pdf_path=str(pdf))
 
         class FakeRun:
             stdout = "page one hysteresis\fpage two relay"
@@ -525,7 +500,7 @@ class TestPdfFallback:
     def test_pdftotext_failure_is_reported_not_raised(self, isolated_config, monkeypatch, tmp_path):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
 
         def boom(*a, **k):
             raise OSError("pdftotext not on PATH")
@@ -553,7 +528,7 @@ class TestPdfFallback:
         enforces -- and a timeout takes the same fallback as a failure."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
         monkeypatch.setattr(passages.config, "PARSER_DOCUMENT_TIMEOUT", 7.0)
         seen = {}
 
@@ -577,7 +552,7 @@ class TestPdfFallback:
     ):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
+        add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
 
         def boom(*a, **k):
             raise OSError("pdftotext not on PATH")
@@ -599,7 +574,7 @@ class TestPdfFallback:
         with no text layer is the ordinary way to get here."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
+        add_item("a_2024", parsed_text=None, pdf_path=str(pdf))
         monkeypatch.setattr(
             passages.subprocess,
             "run",
@@ -618,7 +593,7 @@ class TestPdfFallback:
     ):
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
         monkeypatch.setattr(
             passages.subprocess,
             "run",
@@ -636,7 +611,7 @@ class TestPdfFallback:
         """The other half: rung 3 held one page and there is no rung 4 to
         try, so returning `[]` reported "no parsed text with page breaks
         and no readable PDF" -- false about the first half."""
-        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=None)
+        add_item("a_2024", parsed_text="no form feeds here", pdf_path=None)
         con = ledger.connect()
         try:
             found, reason = passages.source_passages(con, "a_2024")
@@ -665,7 +640,7 @@ class TestPdfFallback:
         """
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="no form feeds here", pdf_path=str(pdf))
 
         real_run = subprocess.run
         # \xff\xfe is not valid UTF-8 in any position; \f is the page break.
@@ -694,7 +669,7 @@ class TestPdfFallback:
         be gone (a cleaned content/ against a kept ledger)."""
         pdf = tmp_path / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        _add_item("a_2024", parsed_text="page one\fpage two", pdf_path=str(pdf))
+        add_item("a_2024", parsed_text="page one\fpage two", pdf_path=str(pdf))
         config.PARSED_DIR.joinpath("a_2024.txt").unlink()
 
         class FakeRun:

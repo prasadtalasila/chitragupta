@@ -7,15 +7,12 @@ it (docs/PACKAGING.md), because the hooks and skills depend on that and a
 launcher that stops resolving fails silently.
 """
 
-import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
 from chitragupta import __main__ as entry
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
+from tests.conftest import run_python
 
 
 class TestDispatch:
@@ -95,23 +92,11 @@ class TestTheModuleFormSurvives:
 
     @pytest.mark.parametrize("layer", ["corpus", "draft", "review"])
     def test_python_m_still_reaches_each_layer(self, layer):
-        result = subprocess.run(
-            [sys.executable, "-m", f"chitragupta.{layer}", "--help"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
+        result = run_python("-m", f"chitragupta.{layer}", "--help", check=False)
         assert result.returncode == 0
         assert f"python -m chitragupta.{layer}" in result.stdout
 
     def test_the_package_itself_is_runnable_as_a_module(self):
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
+        result = run_python("-m", "chitragupta", check=False)
         assert result.returncode == 0
         assert "corpus" in result.stdout

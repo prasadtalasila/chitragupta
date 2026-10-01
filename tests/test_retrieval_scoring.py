@@ -10,14 +10,13 @@ frequency is the plain one by construction -- and the tests below pin it
 at both ends: the delta list, and the score.
 """
 
-import json
 import math
 
 import pytest
 
 from chitragupta import _abstract, config, ledger, passages, retrieval, retrieval_scoring
 
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_text, plant_sidecar
 
 ABSTRACT = (
     "This paper studies greenhouse humidity control in a commercial incubator, and "
@@ -27,20 +26,6 @@ ABSTRACT = (
     "so that the result can be checked independently by other groups."
 )
 BODY = "The incubator was installed in a glasshouse and ran unattended for six months.\n"
-
-
-def parsed_file(text: str, citekey: str = "a2024"):
-    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-    path = config.PARSED_DIR / f"{citekey}.txt"
-    path.write_text(text, encoding="utf-8")
-    return path
-
-
-def corpus_sidecar(records: list[dict], citekey: str = "a2024"):
-    """A rung-2 (corpus layer) passage sidecar -- the only rung BM25 reads."""
-    path = config.PARSED_DIR / f"{citekey}.passages.json"
-    path.write_text(json.dumps(records), encoding="utf-8")
-    return path
 
 
 def abstract_records(abstract: str = ABSTRACT):
@@ -65,7 +50,7 @@ def as_passages(records: "list[dict] | None" = None):
 
 
 def seeded(con, citekey="a2024", title="An Incubator Study", text=None):
-    path = parsed_file(text if text is not None else f"{ABSTRACT}\n{BODY}", citekey)
+    path = parsed_text(citekey, text if text is not None else f"{ABSTRACT}\n{BODY}")
     ledger.upsert_reference(con, make_reference(citekey=citekey, title=title))
     ledger.mark_parsed(con, citekey, path)
     return path
@@ -157,7 +142,7 @@ class TestFieldTexts:
 
     def test_the_abstract_comes_from_the_corpus_sidecar(self, ledger_con):
         seeded(ledger_con)
-        corpus_sidecar(abstract_records())
+        plant_sidecar("a2024", abstract_records(), docling=False)
         row = ledger.all_items(ledger_con)[0]
         assert retrieval_scoring.field_texts(row)["abstract"] == ABSTRACT
 
@@ -172,7 +157,7 @@ class TestFieldTexts:
 
     def test_a_sidecar_with_no_detectable_abstract_yields_no_field(self, ledger_con):
         seeded(ledger_con)
-        corpus_sidecar([{"text": BODY.strip(), "label": "text", "page": 1}])
+        plant_sidecar("a2024", [{"text": BODY.strip(), "label": "text", "page": 1}], docling=False)
         row = ledger.all_items(ledger_con)[0]
         assert "abstract" not in retrieval_scoring.field_texts(row)
 
@@ -220,7 +205,7 @@ class TestTokenisingTheFieldsSeparatelyIsConsistent:
         rather than a hand-built entry: the title's tokens are part of
         `_full_text`, so every field count sits inside the full count."""
         seeded(ledger_con, title="Greenhouse Humidity In A Greenhouse")
-        corpus_sidecar(abstract_records())
+        plant_sidecar("a2024", abstract_records(), docling=False)
         row = ledger.all_items(ledger_con)[0]
         entry = retrieval._tokenize_item(row)
 
@@ -284,7 +269,7 @@ class TestSearchHonoursTheWeights:
         docs/RETRIEVAL.md is read against a baseline that drifted."""
         seeded(ledger_con, citekey="a2024", title="Greenhouse Humidity Control")
         seeded(ledger_con, citekey="b2024", title="Humidity In Passing")
-        corpus_sidecar(abstract_records(), citekey="a2024")
+        plant_sidecar("a2024", abstract_records(), docling=False)
 
         weights(monkeypatch)
         weighted = [(r.citekey, r.score) for r in retrieval.search("humidity")]

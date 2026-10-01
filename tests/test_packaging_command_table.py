@@ -11,9 +11,8 @@ live-parser check.
 """
 
 import re
-import subprocess
-import sys
 from pathlib import Path
+from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PACKAGING_TEXT = (REPO_ROOT / "docs" / "PACKAGING.md").read_text(encoding="utf-8")
@@ -122,13 +121,7 @@ def _leaf_terms() -> tuple[int, ...]:
 
 
 def _help(*module_args) -> str:
-    result = subprocess.run(
-        [sys.executable, "-m", "chitragupta", *module_args, "--help"],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+    result = run_python("-m", "chitragupta", *module_args, "--help", check=False)
     assert result.returncode == 0, result.stderr
     return result.stdout
 

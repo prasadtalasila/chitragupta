@@ -19,9 +19,8 @@ repository -- see that helper's docstring.
 
 import json
 
-import pytest
 
-from chitragupta import spec, unit
+from chitragupta import unit
 from chitragupta.review import citekey_union
 
 
@@ -52,15 +51,8 @@ The wiring half.
 """
 
 
-@pytest.fixture
-def book(isolated_config):
-    """A two-unit book with its outline in place and nothing written yet."""
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(SPEC_MD, encoding="utf-8")
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+# conftest's `book` writes this two-unit outline, with nothing written yet.
+BOOK_SPEC = SPEC_MD
 
 
 def write_record(book, unit_id, citekeys, *, draft_text=None):

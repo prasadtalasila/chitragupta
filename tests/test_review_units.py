@@ -316,3 +316,10 @@ class TestAnUnknownKind:
     def test_is_refused(self, isolated_config):
         with pytest.raises(ValueError, match="Unknown unit kind"):
             _units.units("Text.\n", "chapter")
+
+
+def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
+    draft = draft_at(name)
+    draft.write_text(text, encoding="utf-8")
+    write_scope(draft, genre)
+    return draft

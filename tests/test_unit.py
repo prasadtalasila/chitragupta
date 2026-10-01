@@ -44,13 +44,8 @@ The unreliable half.
 """
 
 
-@pytest.fixture
-def book(isolated_config):
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(GOOD_SPEC, encoding="utf-8")
-    return path
+# conftest's `book` writes this as the outline.
+BOOK_SPEC = GOOD_SPEC
 
 
 # A second chapter, so "one chapter moved" and "the book moved" are
@@ -106,17 +101,6 @@ def write_unit_draft(book, unit_id, body=None):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
     return path
-
-
-@pytest.fixture
-def corpus(ledger_con, make_ref):
-    """One real ledger row, so the citation gate `accept` runs has
-    something to check a citekey against."""
-    from chitragupta import ledger
-
-    ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
-    ledger_con.commit()
-    return ledger_con
 
 
 # --- the contract --------------------------------------------------------
@@ -228,7 +212,7 @@ def test_contract_refuses_a_unit_the_outline_does_not_hold(book, capsys):
 # --- accept --------------------------------------------------------------
 
 
-def test_accept_records_the_unit_and_what_it_cites(book, corpus, capsys):
+def test_accept_records_the_unit_and_what_it_cites(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     capsys.readouterr()
@@ -242,7 +226,7 @@ def test_accept_records_the_unit_and_what_it_cites(book, corpus, capsys):
     )
 
 
-def test_accept_does_not_record_a_commented_out_citation(book, corpus, capsys):
+def test_accept_does_not_record_a_commented_out_citation(book, example_ledger, capsys):
     """The permanent record says what the unit stands on (#834).
 
     A `% \\citep{...}` is not a citation, so recording it would have the
@@ -268,14 +252,14 @@ def test_accept_does_not_record_a_commented_out_citation(book, corpus, capsys):
     assert record["citekeys"] == ["smith_example_2024"]
 
 
-def test_accept_refuses_an_outline_nobody_signed_off(book, corpus, capsys):
+def test_accept_refuses_an_outline_nobody_signed_off(book, example_ledger, capsys):
     write_unit_draft(book, "ch-model")
     assert unit.main(["accept", str(book), "ch-model"]) == 1
     assert "signed off" in capsys.readouterr().err
     assert not unit.record_path(book, "ch-model").exists()
 
 
-def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus, capsys):
+def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, example_ledger, capsys):
     """Issue #465. Revising one chapter's brief used to flip `signed_off`
     for every unit in the book, so a 15-chapter book froze acceptance
     everywhere while one chapter sat half-revised."""
@@ -294,7 +278,9 @@ def test_accept_still_works_on_a_chapter_nobody_edited(two_chapter_book, corpus,
     assert unit.record_path(book, "ch-cost").is_file()
 
 
-def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(two_chapter_book, corpus, capsys):
+def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(
+    two_chapter_book, example_ledger, capsys
+):
     book = two_chapter_book
     sign_off(book)
     write_unit_draft(book, "ch-model")
@@ -311,7 +297,7 @@ def test_accept_refuses_a_unit_in_the_chapter_that_was_edited(two_chapter_book, 
 
 
 def test_a_book_signed_before_chapter_digests_existed_still_accepts(
-    two_chapter_book, corpus, capsys
+    two_chapter_book, example_ledger, capsys
 ):
     """The retrofitted books on disk carry a whole-book digest and no
     chapter lines. They must keep working, and keep refusing once the
@@ -334,7 +320,7 @@ def test_accept_refuses_a_unit_that_has_no_draft(book, capsys):
     assert "no draft" in capsys.readouterr().err
 
 
-def test_accept_refuses_a_draft_the_citation_gate_rejects(book, corpus, capsys):
+def test_accept_refuses_a_draft_the_citation_gate_rejects(book, example_ledger, capsys):
     """The gate is invoked, not re-implemented: an unaccepted unit is one
     the project's one gate already refuses."""
     sign_off(book)
@@ -345,7 +331,7 @@ def test_accept_refuses_a_draft_the_citation_gate_rejects(book, corpus, capsys):
     assert not unit.record_path(book, "ch-model").exists()
 
 
-def test_accepting_the_same_unit_twice_writes_the_same_bytes(book, corpus):
+def test_accepting_the_same_unit_twice_writes_the_same_bytes(book, example_ledger):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     unit.main(["accept", str(book), "ch-model"])
@@ -374,7 +360,7 @@ def test_a_written_unit_nobody_accepted_reads_as_drafted(book, capsys):
     assert "drafted" in capsys.readouterr().out
 
 
-def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
+def test_a_book_whose_units_are_all_accepted_passes(book, example_ledger, capsys):
     sign_off(book)
     for unit_id in ("ch-model", "ch-data"):
         write_unit_draft(book, unit_id)
@@ -390,7 +376,7 @@ def test_a_book_whose_units_are_all_accepted_passes(book, corpus, capsys):
     assert "2 of 2 unit(s) accepted and current." in out
 
 
-def test_an_edited_brief_makes_an_accepted_unit_stale(book, corpus, capsys):
+def test_an_edited_brief_makes_an_accepted_unit_stale(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     unit.main(["accept", str(book), "ch-model"])
@@ -403,7 +389,7 @@ def test_an_edited_brief_makes_an_accepted_unit_stale(book, corpus, capsys):
     assert "inputs changed" in capsys.readouterr().out
 
 
-def test_an_edited_draft_makes_an_accepted_unit_stale(book, corpus, capsys):
+def test_an_edited_draft_makes_an_accepted_unit_stale(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     unit.main(["accept", str(book), "ch-model"])
@@ -413,7 +399,7 @@ def test_an_edited_draft_makes_an_accepted_unit_stale(book, corpus, capsys):
     assert "changed since accepted" in capsys.readouterr().out
 
 
-def test_a_deleted_draft_makes_an_accepted_unit_unwritten_again(book, corpus, capsys):
+def test_a_deleted_draft_makes_an_accepted_unit_unwritten_again(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     unit.main(["accept", str(book), "ch-model"])
@@ -423,7 +409,7 @@ def test_a_deleted_draft_makes_an_accepted_unit_unwritten_again(book, corpus, ca
     assert "unwritten" in capsys.readouterr().out
 
 
-def test_a_record_that_is_not_readable_json_reads_as_drafted(book, corpus, capsys):
+def test_a_record_that_is_not_readable_json_reads_as_drafted(book, example_ledger, capsys):
     """Hand-edited or half-written: a record nothing can read is not
     evidence that anybody accepted anything."""
     sign_off(book)
@@ -466,7 +452,7 @@ def test_a_spec_whose_id_escapes_its_directory_does_not_parse(book, capsys):
     assert ESCAPE_ID in capsys.readouterr().err
 
 
-def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, corpus, capsys):
+def test_accept_refuses_a_unit_whose_id_escapes_and_writes_nothing(book, example_ledger, capsys):
     """The reproducer end to end, with every other refusal `accept`
     makes taken out of the way first -- the outline is signed by hand
     (`spec sign` now refuses it) and the draft is written where the
@@ -550,7 +536,7 @@ def test_no_subcommand_is_a_malformed_invocation():
 # --- #506/m-69: what accept may record, and what it gated ----------------
 
 
-def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, corpus, capsys):
+def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, example_ledger, capsys):
     """The permanent acceptance record names the papers a unit is
     grounded in, and `--source` went into it unchecked -- a record
     asserting grounding in a citekey no real parse ever produced, which
@@ -563,7 +549,7 @@ def test_accept_refuses_a_source_that_is_not_in_the_ledger(book, corpus, capsys)
     assert not unit.record_path(book, "ch-model").exists()
 
 
-def test_accept_names_every_unknown_source_not_just_the_first(book, corpus, capsys):
+def test_accept_names_every_unknown_source_not_just_the_first(book, example_ledger, capsys):
     sign_off(book)
     write_unit_draft(book, "ch-model")
     capsys.readouterr()
@@ -586,7 +572,7 @@ def test_accept_names_every_unknown_source_not_just_the_first(book, corpus, caps
     assert "invented_two_2031" in err
 
 
-def test_accept_gates_the_very_text_it_records(book, corpus, monkeypatch, capsys):
+def test_accept_gates_the_very_text_it_records(book, example_ledger, monkeypatch, capsys):
     """The draft is read once. `accept` used to gate the *path* (the gate
     opened the file itself) and then re-read it to hash and record, so a
     write landing between the two calls produced a permanent record --
@@ -613,7 +599,7 @@ def test_accept_gates_the_very_text_it_records(book, corpus, monkeypatch, capsys
     assert record["output_digest"] == spec.digest(gated[0])
 
 
-def test_accept_prints_the_gates_own_verdict(book, corpus, capsys):
+def test_accept_prints_the_gates_own_verdict(book, example_ledger, capsys):
     """The gate is still invoked rather than re-implemented, and still
     reports in its own shape -- `report()` is the one printer, so a
     document gated in memory reads identically to `draft gate <file>`."""

@@ -9,8 +9,6 @@ What is worth pinning is that it cannot destroy work. Seeding is safe to
 re-run, and a heading somebody has already filled in is never rewritten.
 """
 
-import pytest
-
 from chitragupta import spec
 from chitragupta.dossier import OUTLINE_MD, dossier_dir
 
@@ -36,14 +34,8 @@ One chapter, one unit, drafted before this outline existed.
 """
 
 
-@pytest.fixture
-def book(isolated_config):
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(SPEC, encoding="utf-8")
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+# conftest's `book` writes this as the outline.
+BOOK_SPEC = SPEC
 
 
 def outline_of(book, chapter_id):

@@ -10,7 +10,7 @@ judgement however mechanical the arithmetic.
 
 import pytest
 
-from chitragupta import citation_gate, registry, spec, unit
+from chitragupta import citation_gate, registry, unit
 
 
 GOOD_SPEC = """# Composable Digital Twins
@@ -51,18 +51,15 @@ See [the data half](#ch-data) for the other half.
 """
 
 
-@pytest.fixture
-def book(isolated_config, ledger_con, make_ref):
-    from chitragupta import ledger
+# conftest's `signed_book` writes and signs this as the outline.
+BOOK_SPEC = GOOD_SPEC
 
-    ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
-    ledger_con.commit()
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(GOOD_SPEC, encoding="utf-8")
-    spec.main(["sign", str(path)])
-    return path
+
+@pytest.fixture
+def book(signed_book):
+    """conftest's `signed_book` under the name these tests use: every
+    registry check reads a signed outline."""
+    return signed_book
 
 
 # What each chapter declares, so an accepted draft matches its outline.

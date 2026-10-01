@@ -1,27 +1,16 @@
 """.claude/hooks/patch_paths.py: the files an apply_patch envelope writes (#812, #900)."""
 
-import importlib.util
 import json
-import sys
 from pathlib import Path
 
 import pytest
+from tests.conftest import load_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HOOKS = REPO_ROOT / ".claude" / "hooks"
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "harness_payloads"
 
 
-def load(name: str):
-    if str(HOOKS) not in sys.path:
-        sys.path.insert(0, str(HOOKS))
-    spec = importlib.util.spec_from_file_location(name, HOOKS / f"{name}.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-patch_paths = load("patch_paths")
+patch_paths = load_hook("patch_paths")
 
 PATCH = """*** Begin Patch
 *** Add File: content/drafts/new.md

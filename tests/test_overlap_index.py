@@ -7,25 +7,13 @@ from pathlib import Path
 import pytest
 
 from chitragupta import config, ledger, overlap_index, overlap_index_doc
-from tests.conftest import parsed_text
+from tests.conftest import add_parsed_item, parsed_text
 
 from tests.conftest import (
     WRITE_LOCK_HOLD,
     make_reference,
     read_under_a_held_write_lock,
 )
-
-
-def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
-    """A ledger row with status='parsed', a real pdf_hash (from a
-    throwaway PDF file, so upsert_reference actually computes one), and
-    parsed_path pointing at real text on disk."""
-    pdf = tmp_path / f"{citekey}.pdf"
-    pdf.write_bytes(pdf_bytes)
-    parsed = parsed_text(citekey, text)
-    ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
-    ledger.mark_parsed(ledger_con, citekey, parsed)
-    return parsed
 
 
 class TestGramHashes:
@@ -219,7 +207,7 @@ class TestLedgerItem:
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_recorded_but_missing_file_returns_none(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
         row = ledger_con.execute(
             "SELECT parsed_path FROM items WHERE citekey = ?", ("smith_2024",)
         ).fetchone()
@@ -227,7 +215,7 @@ class TestLedgerItem:
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_valid_item_returns_pdf_hash_and_parsed_path(self, ledger_con, tmp_path):
-        parsed = _add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
+        parsed = add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
         result = overlap_index.ledger_item("smith_2024")
         assert result is not None
         pdf_hash, parsed_path = result
@@ -243,7 +231,7 @@ class TestLedgerItemUnderAWriteLock:
         in the middle of -- the same loud failure `ledger_cli` had before
         m-72, on a path a review aid reaches while a sync may well be
         running."""
-        parsed = _add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
+        parsed = add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
 
         result, waited = read_under_a_held_write_lock(
             lambda: overlap_index.ledger_item("smith_2024")
@@ -261,8 +249,8 @@ class TestBuildCorpusIndex:
         assert len(index.grams) == 0
 
     def test_index_is_sorted_and_lookup_finds_a_known_gram(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta epsilon")
-        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "wholly unrelated word sequence here")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta epsilon")
+        add_parsed_item(ledger_con, tmp_path, "doe_2023", "wholly unrelated word sequence here")
 
         index = overlap_index.build_corpus_index(n=4)
         assert index.citekeys == ["doe_2023", "smith_2024"]
@@ -274,13 +262,13 @@ class TestBuildCorpusIndex:
         assert overlap_index.pages_for_gram(index, shared_hash, citekey="doe_2023") == []
 
     def test_recorded_but_deleted_parsed_file_is_skipped(self, ledger_con, tmp_path):
-        parsed = _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        parsed = add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         parsed.unlink()
         index = overlap_index.build_corpus_index(n=4)
         assert index.citekeys == []
 
     def test_unchanged_corpus_is_a_full_cache_hit(self, ledger_con, tmp_path, monkeypatch):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta epsilon")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta epsilon")
         overlap_index.build_corpus_index(n=4)
 
         def _boom(*a, **kw):
@@ -291,8 +279,8 @@ class TestBuildCorpusIndex:
         assert second.citekeys == ["smith_2024"]
 
     def test_only_the_changed_document_is_refingerprinted(self, ledger_con, tmp_path, monkeypatch):
-        parsed_a = _add_parsed_item(ledger_con, tmp_path, "aaa_2024", "alpha beta gamma delta")
-        _add_parsed_item(ledger_con, tmp_path, "bbb_2024", "wholly unrelated words entirely")
+        parsed_a = add_parsed_item(ledger_con, tmp_path, "aaa_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "bbb_2024", "wholly unrelated words entirely")
         overlap_index.build_corpus_index(n=4)
 
         parsed_a.write_text("alpha beta gamma delta changed content now")
@@ -316,21 +304,21 @@ class TestBuildCorpusIndex:
         assert calls == ["aaa_2024"]
 
     def test_corrupt_header_json_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         config.OVERLAP_DIR.mkdir(parents=True)
         (config.OVERLAP_DIR / "index.json").write_text("{not valid json")
         index = overlap_index.build_corpus_index(n=4)
         assert index.citekeys == ["smith_2024"]
 
     def test_header_not_a_dict_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         config.OVERLAP_DIR.mkdir(parents=True)
         (config.OVERLAP_DIR / "index.json").write_text("[1, 2, 3]")
         index = overlap_index.build_corpus_index(n=4)
         assert index.citekeys == ["smith_2024"]
 
     def test_header_version_mismatch_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         overlap_index.build_corpus_index(n=4)
         header_path = config.OVERLAP_DIR / "index.json"
         header = json.loads(header_path.read_text())
@@ -340,7 +328,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_missing_index_bin_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         overlap_index.build_corpus_index(n=4)
         (config.OVERLAP_DIR / "index.bin").unlink()
         index = overlap_index.build_corpus_index(n=4)
@@ -348,7 +336,7 @@ class TestBuildCorpusIndex:
         assert (config.OVERLAP_DIR / "index.bin").exists()
 
     def test_truncated_index_bin_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         overlap_index.build_corpus_index(n=4)
         bin_path = config.OVERLAP_DIR / "index.bin"
         bin_path.write_bytes(bin_path.read_bytes()[:-1])
@@ -356,7 +344,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_header_citekeys_not_a_list_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         overlap_index.build_corpus_index(n=4)
         header_path = config.OVERLAP_DIR / "index.json"
         header = json.loads(header_path.read_text())
@@ -368,14 +356,14 @@ class TestBuildCorpusIndex:
 
 class TestPagesForGram:
     def test_unknown_gram_returns_empty(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         index = overlap_index.build_corpus_index(n=4)
         assert overlap_index.pages_for_gram(index, 0xDEADBEEF) == []
 
     def test_a_gram_repeated_on_one_page_is_not_duplicated(self, ledger_con, tmp_path):
         # "alpha beta gamma delta" occurs twice on page 1 -- two postings,
         # same page, must collapse to one entry.
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
@@ -391,8 +379,8 @@ class TestPagesForGram:
         # smith_2024's (merged in second) is on page 1. Insertion order
         # alone would come back [2, 1]; pages_for_gram must still return
         # [1, 2].
-        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "zzz filler\falpha beta gamma delta")
-        _add_parsed_item(
+        add_parsed_item(ledger_con, tmp_path, "doe_2023", "zzz filler\falpha beta gamma delta")
+        add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta\funrelated content here"
         )
 
@@ -403,7 +391,7 @@ class TestPagesForGram:
 
 class TestPostingsForGram:
     def test_unknown_gram_returns_empty(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         index = overlap_index.build_corpus_index(n=4)
         assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
 
@@ -412,7 +400,7 @@ class TestPostingsForGram:
         assert overlap_index.postings_for_gram(index, 0xDEADBEEF) == []
 
     def test_a_single_posting_carries_citekey_page_and_position(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         index = overlap_index.build_corpus_index(n=4)
         gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
         assert overlap_index.postings_for_gram(index, gram_hash) == [("smith_2024", 1, 0)]
@@ -423,7 +411,7 @@ class TestPostingsForGram:
         # Unlike pages_for_gram, nothing here is deduplicated: scan mode
         # needs every occurrence (and its own token_position) to align a
         # run, not just "this page has a match".
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
@@ -435,8 +423,8 @@ class TestPostingsForGram:
         assert sorted(postings) == [("smith_2024", 1, 0), ("smith_2024", 1, 6)]
 
     def test_postings_from_multiple_citekeys_are_all_returned(self, ledger_con, tmp_path):
-        _add_parsed_item(ledger_con, tmp_path, "doe_2023", "alpha beta gamma delta")
-        _add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "doe_2023", "alpha beta gamma delta")
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "alpha beta gamma delta")
         index = overlap_index.build_corpus_index(n=4)
         gram_hash = overlap_index.gram_hashes(["alpha", "beta", "gamma", "delta"], 4)[0]
         postings = overlap_index.postings_for_gram(index, gram_hash)

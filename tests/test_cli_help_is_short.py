@@ -18,18 +18,14 @@ string here is a description nobody will improve; what matters is that it
 is short, and that it is not the docstring.
 """
 
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
 
 from chitragupta import corpus, draft
 from chitragupta import __main__ as package_main
 from chitragupta.enrich import __main__ as enrich_main
 from chitragupta.review import __main__ as review_main
+from tests.conftest import run_python
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Every entry point, and the module whose docstring it must not print.
 ENTRY_POINTS = {
@@ -55,12 +51,7 @@ _MAX_HELP_LINES = 30
 
 
 def _help(module_path):
-    result = subprocess.run(
-        [sys.executable, "-m", module_path, "--help"],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
+    result = run_python("-m", module_path, "--help")
     assert result.returncode == 0, result.stderr
     return result.stdout
 

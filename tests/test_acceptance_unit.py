@@ -78,15 +78,6 @@ def retrofit(isolated_config):
     return make_book(isolated_config, RETROFIT)
 
 
-@pytest.fixture
-def corpus(ledger_con, make_ref):
-    from chitragupta import ledger
-
-    ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
-    ledger_con.commit()
-    return ledger_con
-
-
 # --- which unit gets accepted --------------------------------------------
 
 
@@ -165,7 +156,7 @@ def test_editing_one_chapter_does_not_unsign_another(isolated_config):
 # --- accepting a chapter --------------------------------------------------
 
 
-def test_a_chapter_is_accepted_as_one_document(fresh, corpus, capsys):
+def test_a_chapter_is_accepted_as_one_document(fresh, example_ledger, capsys):
     spec.main(["sign", str(fresh)])
     (fresh / "ch-what.md").write_text(CHAPTER, encoding="utf-8")
     capsys.readouterr()

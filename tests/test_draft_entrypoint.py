@@ -14,13 +14,12 @@ invariant for the review layer first and caught the two-level form
 """
 
 import re
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from chitragupta import draft as entrypoint
+from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -48,15 +47,6 @@ BACKING_MODULES = {
 _MAIN_BLOCK = re.compile(r'^if __name__ == ["\']__main__["\']:', re.MULTILINE)
 
 
-def _run(*argv):
-    return subprocess.run(
-        [sys.executable, *argv],
-        cwd=str(REPO_ROOT),
-        capture_output=True,
-        text=True,
-    )
-
-
 class TestTheVerbsAreTheDraftingCommands:
     def test_the_verb_set_is_exactly_the_backing_modules(self):
         assert set(entrypoint.VERBS) == set(BACKING_MODULES)
@@ -66,20 +56,20 @@ class TestTheVerbsAreTheDraftingCommands:
         """--help rather than a run: this pins that the verb's own parser
         (or, for `gate`, its own usage text) was wired in, without
         needing a corpus."""
-        result = _run("-m", "chitragupta.draft", verb, "--help")
+        result = run_python("-m", "chitragupta.draft", verb, "--help")
         assert result.returncode == 0
         assert f"chitragupta.draft {verb}" in result.stdout
 
     def test_no_verb_prints_the_layers_usage_and_exits_zero(self):
         """ "Tell me how to use this" is not an error -- the same rule
         each of the commands already applies to a missing mode."""
-        result = _run("-m", "chitragupta.draft")
+        result = run_python("-m", "chitragupta.draft")
         assert result.returncode == 0
         for verb in BACKING_MODULES:
             assert verb in result.stdout
 
     def test_an_unknown_verb_is_a_usage_error(self):
-        result = _run("-m", "chitragupta.draft", "bogus")
+        result = run_python("-m", "chitragupta.draft", "bogus")
         assert result.returncode == 2
         assert "invalid choice: 'bogus'" in result.stderr
 
@@ -117,7 +107,7 @@ class TestTheCommandSurfaceStaysOneLevelDeep:
         Still nothing a drafting-layer command does -- checked here,
         not assumed, the same as the flat-module case below it.
         """
-        result = _run("-m", f"chitragupta.{module}")
+        result = run_python("-m", f"chitragupta.{module}")
         if (REPO_ROOT / "chitragupta" / module / "__init__.py").is_file():
             assert result.returncode == 1
             assert "cannot be directly executed" in result.stderr
@@ -138,37 +128,37 @@ class TestTheExitCodeContractSurvivesTheDispatch:
     def test_gate_on_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
-        result = _run("-m", "chitragupta.draft", "gate", str(outside))
+        result = run_python("-m", "chitragupta.draft", "gate", str(outside))
         assert result.returncode == 1
 
     def test_gate_with_no_files_exits_two(self):
-        result = _run("-m", "chitragupta.draft", "gate")
+        result = run_python("-m", "chitragupta.draft", "gate")
         assert result.returncode == 2
 
     def test_references_on_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
-        result = _run("-m", "chitragupta.draft", "references", str(outside))
+        result = run_python("-m", "chitragupta.draft", "references", str(outside))
         assert result.returncode == 1
 
     def test_references_with_no_input_exits_two(self):
-        result = _run("-m", "chitragupta.draft", "references")
+        result = run_python("-m", "chitragupta.draft", "references")
         assert result.returncode == 2
         assert "input" in result.stderr
 
     def test_render_on_a_draft_outside_content_exits_one(self, tmp_path):
         outside = tmp_path / "not-in-content.md"
         outside.write_text("# draft\n")
-        result = _run("-m", "chitragupta.draft", "render", str(outside))
+        result = run_python("-m", "chitragupta.draft", "render", str(outside))
         assert result.returncode == 1
 
     def test_render_with_no_input_exits_two(self):
-        result = _run("-m", "chitragupta.draft", "render")
+        result = run_python("-m", "chitragupta.draft", "render")
         assert result.returncode == 2
         assert "input" in result.stderr
 
     def test_dossier_status_on_a_nonexistent_draft_exits_one(self):
-        result = _run(
+        result = run_python(
             "-m", "chitragupta.draft", "dossier", "status", "content/drafts/does-not-exist-nope.md"
         )
         assert result.returncode == 1
@@ -176,11 +166,11 @@ class TestTheExitCodeContractSurvivesTheDispatch:
     def test_dossier_init_without_required_genre_exits_two(self, tmp_path):
         draft = tmp_path / "x.md"
         draft.write_text("# draft\n")
-        result = _run("-m", "chitragupta.draft", "dossier", "init", str(draft))
+        result = run_python("-m", "chitragupta.draft", "dossier", "init", str(draft))
         assert result.returncode == 2
         assert "--genre" in result.stderr
 
     def test_retrieve_search_without_required_query_exits_two(self):
-        result = _run("-m", "chitragupta.draft", "retrieve", "search")
+        result = run_python("-m", "chitragupta.draft", "retrieve", "search")
         assert result.returncode == 2
         assert "query" in result.stderr

@@ -9,25 +9,17 @@ authors wrote it, and a fabricated fixture cannot tell you whether the
 guards are aimed at shapes that actually occur.
 """
 
-import json
-
 from chitragupta import _abstract, config, passages
+from tests.conftest import plant_sidecar
 
 ABSTRACT_WORDS = " ".join(f"word{i}" for i in range(60))
 
 
 def _sidecar(citekey, records, docling=False):
-    """A structural passage sidecar on rung 1 or rung 2 of
-    chitragupta/passages.py's ladder."""
-    directory = config.DOCLING_DIR if docling else config.PARSED_DIR
-    directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"{citekey}.passages.json"
-    path.write_text(_records_json(records), encoding="utf-8")
-    return path
-
-
-def _records_json(records):
-    return json.dumps([{"text": t, "label": lbl, "page": 1} for t, lbl in records])
+    """conftest's `plant_sidecar`, from `(text, label)` pairs on page 1,
+    and on rung 2 (beside the parsed text) unless `docling` says rung 1."""
+    rows = [{"text": t, "label": lbl, "page": 1} for t, lbl in records]
+    return plant_sidecar(citekey, rows, docling=docling)
 
 
 class TestTheTwoWaysAnAbstractIsMarked:

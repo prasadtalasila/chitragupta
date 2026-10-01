@@ -11,15 +11,8 @@ enough. The renderer sees a marker that cannot resolve; only this sees a
 table nobody explains.
 """
 
-from pathlib import Path
-
 from chitragupta import style_tables
-
-
-def draft_with(body: str, tmp_path: Path) -> Path:
-    path = tmp_path / "survey.md"
-    path.write_text(body, encoding="utf-8")
-    return path
+from tests.conftest import draft_with
 
 
 TABLE = "| Starting point | Core idea |\n|---|---|\n| DTaaS | One platform |\n"
