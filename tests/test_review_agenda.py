@@ -1136,7 +1136,10 @@ class TestRenderMarkdown:
 
     @pytest.mark.parametrize(
         "universe, says",
-        [("no-dossier", "no dossier for this draft"), ("no-quotes", "dossier publishes no quote")],
+        [
+            ("no-dossier", "nothing checked -- no dossier"),
+            ("no-quotes", "no quote the draft cites"),
+        ],
     )
     def test_a_nothing_checked_quotation_run_says_why(self, universe, says):
         """#838: an agenda showing no `misquoted` items must say whether

@@ -7,7 +7,11 @@ hand-edited as Task 2 says, because DEVELOPER-AGENTS.md forbids that.
 All four samples carried the false "every checked quote was found"
 line, not only `staleness-chapter`. The "nothing to check today"
 paragraphs in `docs/CLI.md`, `docs/REVIEW.md` and the module docstring
-were rewritten, because the sample dossiers do carry quotes.
+were rewritten, because the sample dossiers do carry quotes. After the
+rebase onto #916, `agenda/_render.py` was at 253 code lines, so Task
+3's note table became one line and the guard a walrus: the agenda
+now reads `nothing checked -- no dossier` / `-- no quote the draft
+cites`.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
