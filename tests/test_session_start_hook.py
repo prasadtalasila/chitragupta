@@ -91,9 +91,9 @@ class PreflightRepo:
         (self.root / "chitragupta" / f"{module}.py").write_text(body)
         self.env["PYTHONPATH"] = str(self.root)
 
-    def run(self):
+    def run(self, *python_args):
         return subprocess.run(
-            [sys.executable, str(self.hook)],
+            [sys.executable, *python_args, str(self.hook)],
             input=json.dumps({"hook_event_name": "SessionStart", "source": "startup"}),
             cwd=str(self.root),
             capture_output=True,
@@ -317,16 +317,25 @@ class TestAPlantedPackageIsNeverImported:
 class TestNoInstalledPackageVisibleAtAll:
     """#891 gap 2: the unactivated-venv shape #563 names -- this hook's
     *own* interpreter has no `chitragupta` visible to it, cwd fallback
-    included (no `PYTHONPATH`, and `synced.root` is not a checkout, so
-    `sys.path.append(REPO)` supplies nothing either). Before this fix the
-    module-level `from chitragupta import launcher_configs` crashed with
-    an uncaught `ModuleNotFoundError` -- exit nonzero, no JSON on stdout,
-    nothing a reader could act on. Now it is caught and named through the
-    hook's own advisory channel, like every other fault here."""
+    included. Before this fix the module-level `from chitragupta import
+    launcher_configs` crashed with an uncaught `ModuleNotFoundError` --
+    exit nonzero, no JSON on stdout, nothing a reader could act on. Now
+    it is caught and named through the hook's own advisory channel, like
+    every other fault here.
+
+    `-S` (skip `site.py`), not merely an absent `PYTHONPATH`, is what
+    actually hides `chitragupta` here: on a host whose venv registers the
+    package through an editable install's `.pth` file -- CI's, not only
+    this checkout's hand-built one that leans on `PYTHONPATH` instead --
+    the package stays visible without `PYTHONPATH` at all, and the first
+    version of this test passed locally and failed on CI for exactly that
+    reason. `synced.root` is not a checkout either, so
+    `sys.path.append(REPO)` supplies nothing to fall back on.
+    """
 
     def test_reports_by_name_instead_of_crashing(self, synced):
         del synced.env["PYTHONPATH"]
-        result = synced.run()
+        result = synced.run("-S")
         assert result.returncode == 0
         context = PreflightRepo.context(result)
         assert "no installed chitragupta visible to" in context
