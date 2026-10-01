@@ -534,19 +534,37 @@ Before saying so, actually run, in this repo:
   run them alone after touching `assets/webapp/`:
 
   ```bash
-  npm install --ignore-scripts   # once per checkout: acorn, behind the C1/C2 scan below
+  npm ci --ignore-scripts   # once per checkout: acorn, behind the C1/C2 scan below
   node --test tests/webapp/*.test.js
   ```
 
-  `pytest` reaches none of that directory -- it is JavaScript, so the
-  100% coverage bar says nothing about it, and `tests/test_discover_app.py`
-  can only pin source-level tripwires over the shipped text.
+  Without `npm ci` the C1/C2 scan's tests skip, with that command as
+  the reason, rather than fail -- so a missing install cannot be
+  mistaken for a ratchet breach. On CI they fail, since the install
+  step ran there.
+
+  `pytest` reaches none of that directory -- it is JavaScript -- so it
+  holds its own coverage bar, at the same 100% of lines. CI's form of
+  the command, which `check_local.sh` runs too and which needs node
+  22.8 or later:
+
+  ```bash
+  node --test --experimental-test-coverage --test-coverage-include="assets/webapp/*.js" --test-coverage-lines=100 tests/webapp/*.test.js
+  ```
+
+  Node's report lists only files a test loaded, so
+  `tests/webapp/browser_load.test.js` loads every script `index.html`
+  names except the DOM wiring, the way the page does; a new module is
+  in the report, and held to the bar, from the commit that adds it to
+  the page. `tests/test_discover_app.py` can only pin source-level
+  tripwires over the shipped text.
   Every module in that directory except `app.js`, `search.js` and
   `pickers.js` is written to run without a DOM and without cytoscape so
   that this command can exercise the real functions; those three are
   the DOM wiring left over, split by #857 so each piece stays under
   the C2 limit (see `code-standards-register.toml`'s `c2js` table for
-  the one file still over it). CI runs
+  the one file still over it), and the only three outside the coverage
+  bar, because no test loads them. CI runs
   it in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration. `tests/webapp/code_standards.test.js` rides

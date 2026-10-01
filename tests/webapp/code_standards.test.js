@@ -9,7 +9,24 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const scan = require("../../scripts/webapp_code_standards.js");
+/* acorn is package.json's one devDependency, so a checkout that has not
+   run `npm ci` cannot load the scan at all. Off CI that is a skip with
+   the fix in its reason, so a contributor running the glob can tell a
+   missing install from a ratchet breach; on CI it stays a failure,
+   because the install step ran and a missing acorn there is a broken
+   install, not an unprepared host. */
+function loadScan() {
+  try {
+    return [require("../../scripts/webapp_code_standards.js"), false];
+  } catch (error) {
+    if (error.code !== "MODULE_NOT_FOUND" || process.env.CI || !error.message.includes("'acorn'")) {
+      throw error;
+    }
+    return [null, "acorn not installed -- run npm ci --ignore-scripts"];
+  }
+}
+
+const [scan, skip] = loadScan();
 
 function newOffenders(found, registered) {
   return Object.keys(found)
@@ -23,7 +40,7 @@ function fixedOffenders(found, registered) {
     .sort();
 }
 
-test("no function in assets/webapp/ over C1 that the register does not already hold", () => {
+test("no function in assets/webapp/ over C1 that the register does not already hold", { skip }, () => {
   const [c1Register] = scan.register();
   const found = scan.longFunctions();
   const added = newOffenders(found, c1Register);
@@ -36,7 +53,7 @@ test("no function in assets/webapp/ over C1 that the register does not already h
   );
 });
 
-test("no module in assets/webapp/ over C2 that the register does not already hold", () => {
+test("no module in assets/webapp/ over C2 that the register does not already hold", { skip }, () => {
   const [, c2Register] = scan.register();
   const found = scan.longFiles();
   const added = newOffenders(found, c2Register);
@@ -49,7 +66,7 @@ test("no module in assets/webapp/ over C2 that the register does not already hol
   );
 });
 
-test("the c1js register holds no entry that is already fixed", () => {
+test("the c1js register holds no entry that is already fixed", { skip }, () => {
   const [c1Register] = scan.register();
   const fixed = fixedOffenders(scan.longFunctions(), c1Register);
   assert.deepStrictEqual(
@@ -59,7 +76,7 @@ test("the c1js register holds no entry that is already fixed", () => {
   );
 });
 
-test("the c2js register holds no entry that is already fixed", () => {
+test("the c2js register holds no entry that is already fixed", { skip }, () => {
   const [, c2Register] = scan.register();
   const fixed = fixedOffenders(scan.longFiles(), c2Register);
   assert.deepStrictEqual(
@@ -69,7 +86,7 @@ test("the c2js register holds no entry that is already fixed", () => {
   );
 });
 
-test("every c1js/c2js register entry names a path that still exists", () => {
+test("every c1js/c2js register entry names a path that still exists", { skip }, () => {
   const path = require("node:path");
   const fs = require("node:fs");
   const [c1Register, c2Register] = scan.register();
@@ -81,7 +98,7 @@ test("every c1js/c2js register entry names a path that still exists", () => {
   assert.deepStrictEqual(missing, [], `register entries for files that no longer exist: ${missing}`);
 });
 
-test("every registered offender records its current count", () => {
+test("every registered offender records its current count", { skip }, () => {
   const [c1Register, c2Register] = scan.register();
   const recorded = { ...c1Register, ...c2Register };
   const counts = { ...scan.longFunctions(), ...scan.longFiles() };
@@ -98,7 +115,7 @@ test("every registered offender records its current count", () => {
   );
 });
 
-test("the scan reaches assets/webapp/ and skips vendor/", () => {
+test("the scan reaches assets/webapp/ and skips vendor/", { skip }, () => {
   // Non-vacuity, the same reason test_the_scan_reaches_the_source_tree
   // exists on the Python side: a glob that silently matched nothing
   // would make every assertion above pass for the wrong reason.
