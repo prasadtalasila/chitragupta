@@ -12,7 +12,9 @@ which of these quotations is not in the paper it names -- and the
 confirmed spans are the answer to a different one. The confirmed and
 unverifiable counts still print, because "nineteen checked, all clean"
 and "nineteen not checked at all" are different reports and a bare
-"no findings" cannot tell them apart.
+"no findings" cannot tell them apart. The `- Universe:` line above them
+is the other half (#838): it says whether there was a dossier, and a
+quote in it, to check at all.
 
 Stdlib-only.
 """
@@ -75,21 +77,47 @@ def _skipped_lines(report) -> list[str]:
     return [f"- `{c.citekey}` -- {c.reason}" for c in report.of("unverifiable")]
 
 
+_EMPTY = {
+    "no-dossier": [
+        "No dossier for this draft, so there is nothing to check.",
+        "",
+        "A draft outside `content/drafts/`, or one no genre skill wrote a "
+        "dossier for, has no `quote:` to read. It is not a clean bill of health.",
+    ],
+    "no-quotes": [
+        "No `quote:` in this draft's dossier, so there is nothing to check.",
+        "",
+        "That is the expected answer for a dossier written before A2's "
+        "`claim:`/`quote:` contract, and for any genre that captures no "
+        "deliberate quotation. It is not a clean bill of health.",
+    ],
+}
+
+
+def _clean(report) -> list[str]:
+    """The no-absent-span paragraph, which must not claim a quote the
+    parse could not check was found."""
+    skipped = len(report.of("unverifiable"))
+    if not skipped:
+        return ["Every checked quote was found in its cited source."]
+    return [
+        f"None was absent; {len(report.of('found'))} found, "
+        f"{skipped} could not be checked from this parse."
+    ]
+
+
 def _body(report, found) -> list[str]:
-    """Everything below the header, shared by both printed forms."""
-    if not report.checked:
-        return [
-            "No `quote:` in this draft's dossier, so there is nothing to check.",
-            "",
-            "That is the expected answer for a dossier written before A2's "
-            "`claim:`/`quote:` contract, and for any genre that captures no "
-            "deliberate quotation. It is not a clean bill of health.",
-        ]
-    out = _tally(report) + ["", _NOT_A_VERDICT, ""]
+    """Everything below the header, shared by both printed forms. The
+    universe line leads, so `grep '^- Universe:'` says which of #838's
+    three zero-findings situations a report is."""
+    universe = f"- Universe: `{report.universe}`"
+    if report.universe in _EMPTY:
+        return [universe, ""] + _EMPTY[report.universe]
+    out = [universe] + _tally(report) + ["", _NOT_A_VERDICT, ""]
     if found:
         out += ["## Absent from the source they cite", ""] + _finding_lines(report)
     else:
-        out += ["## No absent span", "", "Every checked quote was found in its cited source.", ""]
+        out += ["## No absent span", ""] + _clean(report) + [""]
     for title, lines in (
         ("Confirmed", _confirmed_lines(report)),
         ("Not checkable from this parse", _skipped_lines(report)),
@@ -135,11 +163,14 @@ def quotation_payload(report, command: str, found: list[dict]) -> dict:
     confirmed a span is what tells a reader the check was contiguous
     rather than an ordered alignment around an ellipsis, and a count of
     what was skipped is what separates "seven checked, all clean" from
-    "seven not checked at all".
+    "seven not checked at all". `universe` is what separates "no
+    dossier", "no quote" and "checked" when all three have zero
+    findings (#838).
     """
     payload = review.envelope(report.draft, "quotation", command)
     payload.update(
         {
+            "universe": report.universe,
             "quotes_total": len(report.checked),
             "found": len(report.of("found")),
             "absent": len(report.of("absent")),

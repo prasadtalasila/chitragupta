@@ -24,6 +24,13 @@ _SOURCE_LABELS = {aid: review.AIDS[aid] for aid in AID_NAMES}
 # see `_items.py`'s module docstring for why the two reasons differ.
 _NO_CLASS_AIDS = ("synthesis", "figure")
 
+# The quotation aid's two nothing-checked universes (#838), so a header
+# above zero `misquoted` items says whether any quote was looked at.
+# `checked`, and a sidecar older than the field, add nothing; no other
+# aid's `.json` carries a `universe`, so the lookup needs no aid guard.
+# Pinned against `quotation.UNIVERSES` by TestRenderMarkdown.
+_QUOTATION_UNIVERSE_NOTES = {"no-dossier": "no dossier", "no-quotes": "no quote the draft cites"}
+
 
 def _aid_note(aid: str, label: str, source) -> str:
     # An aid that raised during `--baseline`'s refresh (#893) did run, so
@@ -39,6 +46,8 @@ def _aid_note(aid: str, label: str, source) -> str:
             return f"- {label}: not run -- {source.reason}"
         return f"- {label}: not run"
     state = "read, no item class defined" if aid in _NO_CLASS_AIDS else "read"
+    if universe := _QUOTATION_UNIVERSE_NOTES.get((source.data or {}).get("universe")):
+        state += f", nothing checked -- {universe}"
     if source.stale:
         state += ", **stale** (older than the draft)"
     if source.refreshed is False:

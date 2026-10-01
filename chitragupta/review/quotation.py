@@ -42,11 +42,14 @@ looks. docs/ARCHITECTURE.md's Layer 4 has the argument: which side a
 check falls on is decided by what it is measured against -- here, the
 parse, a derived artefact -- not by how decidable its answer is.
 
-**Today it checks nothing on any real draft**, and that is correct
-rather than a gap. No dossier in this repository carries a `quote:` yet;
-`quote:` is optional and absent by default, because a captured quote is
-a quote in the drafter's context and A2's contract exists to remove
-those. This aid is what makes the first one safe to publish.
+**It often checks nothing, and says so.** `quote:` is optional and
+absent by default, because a captured quote is a quote in the drafter's
+context and A2's contract exists to remove those; a dossier written
+before that contract carries none, and this aid is what makes the first
+one safe to publish. So the report says which answer it gave
+(`UNIVERSES`, #838) -- no dossier, a dossier that publishes no quote,
+or quotes checked -- and a run that checked nothing does not read as
+one that checked and found it clean.
 
 One of the seven commands in the **review layer**, beside
 citation_provenance.py, citation_coverage.py, verbatim_check/,
@@ -72,10 +75,19 @@ from chitragupta.review import _quotation_render
 from chitragupta.review._quotation_match import Checked, check_one
 
 
+# What `build_report` could see, before any verdict (#838). Three
+# reports that all say "no findings" are three different statements --
+# no dossier to read, a dossier that publishes no quote, and quotes
+# checked -- and only the last is a clean bill of health.
+# agenda/_render.py's `_QUOTATION_UNIVERSE_NOTES` is pinned against it.
+UNIVERSES = ("no-dossier", "no-quotes", "checked")
+
+
 @dataclass
 class Report:
     draft: Path
     checked: list[Checked]
+    universe: str
 
     def of(self, verdict: str) -> list[Checked]:
         return [c for c in self.checked if c.verdict == verdict]
@@ -97,11 +109,15 @@ def build_report(draft: Path) -> Report:
         # documented flat fallback for this layer (#496). Every sibling
         # aid degrades to an empty report here rather than raising, so
         # this one must too.
-        return Report(draft, [])
+        return Report(draft, [], "no-dossier")
+    if not directory.is_dir():
+        # `dossier_dir` names the mirror without checking it exists;
+        # agenda's `_read_drift` treats this as "no dossier" too (#838).
+        return Report(draft, [], "no-dossier")
     text = draft.read_text(encoding="utf-8")
     spans = evidence_appendix.quoted_spans(text, directory, latex=draft.suffix.lower() == ".tex")
     if not spans:
-        return Report(draft, [])
+        return Report(draft, [], "no-quotes")
     with ledger.reading() as con:
         return Report(
             draft,
@@ -109,6 +125,7 @@ def build_report(draft: Path) -> Report:
                 check_one(citekey, quote, *passages.source_passages(con, citekey))
                 for citekey, quote in spans.items()
             ],
+            "checked",
         )
 
 

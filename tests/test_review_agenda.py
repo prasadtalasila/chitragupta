@@ -16,7 +16,7 @@ import pytest
 from chitragupta import config, dossier, review, style_check
 from chitragupta.dossier import _retrieval
 from chitragupta.dossier._drift import Candidate, Drift
-from chitragupta.review import _registry, agenda, citation_provenance
+from chitragupta.review import _registry, agenda, citation_provenance, quotation
 from chitragupta.review.agenda import (
     _accept,
     _dedup,
@@ -1124,6 +1124,40 @@ class TestRenderMarkdown:
         assert "no item class defined" in rendered
         assert "vale not on PATH" in rendered
         assert "corpus ledger is unavailable" in rendered
+
+    @staticmethod
+    def _quotation_line(data):
+        sources = _sources_stub(aids={"quotation": _sources.AidSource(available=True, data=data)})
+        rendered = _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[]),
+            "cmd",
+        )
+        return next(line for line in rendered.splitlines() if "Quotation integrity" in line)
+
+    @pytest.mark.parametrize(
+        "universe, says",
+        [
+            ("no-dossier", "nothing checked -- no dossier"),
+            ("no-quotes", "no quote the draft cites"),
+        ],
+    )
+    def test_a_nothing_checked_quotation_run_says_why(self, universe, says):
+        """#838: an agenda showing no `misquoted` items must say whether
+        any quote was checked at all."""
+        line = self._quotation_line({"universe": universe, "findings": []})
+        assert "nothing checked" in line and says in line
+
+    def test_a_checked_quotation_run_reads_as_before(self):
+        assert self._quotation_line({"universe": "checked", "findings": []}) == (
+            "- Quotation integrity: read"
+        )
+
+    def test_a_quotation_sidecar_without_a_universe_renders_as_before(self):
+        """A `.quotation.json` written before #838 carries no key."""
+        assert self._quotation_line({"findings": []}) == "- Quotation integrity: read"
+
+    def test_the_notes_cover_every_nothing_checked_universe(self):
+        assert set(_render._QUOTATION_UNIVERSE_NOTES) == set(quotation.UNIVERSES) - {"checked"}
 
     def test_an_unavailable_source_with_a_reason_names_it(self):
         """A truncated aid sidecar (#496) degrades to unavailable with a

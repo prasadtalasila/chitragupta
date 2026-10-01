@@ -1943,11 +1943,14 @@ marker is stripped from the source (a passage reads "...and hypotheses
 similarity score in it anywhere. `plans/c3-quotation-integrity.md` has
 the measurement.
 
-**Today it reports nothing to check**, on every draft in this project.
-No dossier carries a `quote:` yet: A2's contract makes capturing one a
-deliberate act rather than the residue of retrieval. That is the
-expected answer and the report says so -- it is not a clean bill of
-health.
+**It often has nothing to check.** `quote:` is optional: A2's contract
+makes capturing one a deliberate act rather than the residue of
+retrieval, so a dossier written before it, or by a genre that quotes
+nothing, carries none. The first line of the report's body,
+`- Universe:`, says which answer a run gave: `no-dossier` (no dossier
+to read), `no-quotes` (a dossier that publishes no quote the draft
+cites) or `checked`. Only `checked` means a quote was looked at; the
+other two are not a clean bill of health.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -1964,10 +1967,12 @@ chitragupta review quotation content/drafts/survey.md
 ```
 
 **`--json`** carries the envelope every review aid's JSON carries, plus
-`quotes_total`, `found`, `absent`, `unverifiable`, a `quotes` object per
-checked span (`id`, `citekey`, `verdict`, `tier`, `pages`, `reason`) and
-a `findings` object per absent one (`id`, `citekey`, `quote`,
-`near_miss_page`, `near_miss_score`). The `tier` is `exact`,
+`universe` (`no-dossier`, `no-quotes` or `checked`: which of the three
+zero-findings situations a run is), `quotes_total`, `found`, `absent`,
+`unverifiable`, a `quotes` object per checked span (`id`, `citekey`,
+`verdict`, `tier`, `pages`, `reason`) and a `findings` object per
+absent one (`id`, `citekey`, `quote`, `near_miss_page`,
+`near_miss_score`). The `tier` is `exact`,
 `exact-pair`, `elided` or `elided-pair`: a reader deciding whether to
 trust a rendered quotation should be able to see that the check was
 contiguous rather than an alignment around an ellipsis.

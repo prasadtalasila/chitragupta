@@ -88,6 +88,10 @@ def checked(draft: Path) -> list[quotation.Checked]:
     return quotation.build_report(draft).checked
 
 
+def universe_of(draft: Path) -> str:
+    return quotation.build_report(draft).universe
+
+
 def verdict_of(draft: Path) -> str:
     return checked(draft)[0].verdict
 
@@ -114,6 +118,7 @@ class TestTheUniverse:
         draft = a_draft()
         a_dossier(draft, "# Kept evidence\n\n## `%s`\n\nSome prose.\n" % KEY)
         assert checked(draft) == []
+        assert universe_of(draft) == "no-quotes"
         assert quotation.main([str(draft)]) == 0
 
     def test_a_legacy_support_block_is_not_a_quote(self, isolated_config):
@@ -136,6 +141,7 @@ class TestTheUniverse:
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text(f"Layered twins are the norm [@{KEY}].\n", encoding="utf-8")
         assert checked(draft) == []
+        assert universe_of(draft) == "no-dossier"
         assert quotation.main([str(draft)]) == 0
 
     def test_a_quote_for_a_commented_out_tex_citation_is_not_checked(self, isolated_config):
@@ -152,6 +158,30 @@ class TestTheUniverse:
         a_dossier(draft, block(KEY, SPAN))
         a_source(KEY, (4, f"It has {SPAN} in it."))
         assert checked(draft) == []
+        assert universe_of(draft) == "no-quotes"
+
+    def test_the_three_universes_are_the_published_vocabulary(self):
+        assert quotation.UNIVERSES == ("no-dossier", "no-quotes", "checked")
+
+    def test_a_draft_with_no_dossier_directory_is_no_dossier(self, isolated_config):
+        """#838: under content/drafts/, so `dossier_dir` names a
+        directory without raising -- but nothing was ever written there.
+        Reporting `no-quotes` would claim a dossier exists."""
+        draft = a_draft()
+        assert not dossier.dossier_dir(draft).exists()
+        assert universe_of(draft) == "no-dossier"
+        assert checked(draft) == []
+
+    def test_a_dossier_without_evidence_md_is_no_quotes(self, isolated_config):
+        draft = a_draft()
+        dossier.dossier_dir(draft).mkdir(parents=True)
+        assert universe_of(draft) == "no-quotes"
+
+    def test_a_checked_run_is_checked(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, block(KEY, SPAN))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        assert universe_of(draft) == "checked"
 
 
 class TestFoundAndAbsent:
@@ -409,6 +439,44 @@ class TestOutput:
         assert payload["unverifiable"] == 0
         assert [c["tier"] for c in payload["quotes"] if c["verdict"] == "found"] == ["exact"]
         assert "timestamp" not in json.dumps(payload)
+
+    @pytest.mark.parametrize(
+        "setup, universe, says",
+        [
+            ("none", "no-dossier", "No dossier for this draft"),
+            ("bare", "no-quotes", "No `quote:` in this draft's dossier"),
+            ("quoted", "checked", "Quotes checked: 1"),
+        ],
+    )
+    def test_each_universe_is_named_in_json_and_markdown(
+        self, isolated_config, setup, universe, says
+    ):
+        """#838: three reports that all have no findings must be told
+        apart from either form, by a machine and by a reader."""
+        draft = a_draft()
+        if setup == "bare":
+            a_dossier(draft, f"## `{KEY}`\n\nSome prose.\n")
+        if setup == "quoted":
+            a_dossier(draft, block(KEY, SPAN))
+            a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        report = quotation.build_report(draft)
+        found = quotation.findings(report)
+        assert _quotation_render.quotation_payload(report, "cmd", found)["universe"] == universe
+        markdown = _quotation_render.render_markdown(report, "cmd", found)
+        assert f"- Universe: `{universe}`" in markdown
+        assert says in markdown
+        assert f"- Universe: `{universe}`" in quotation.run_text(draft)
+
+    def test_all_unverifiable_does_not_claim_every_quote_was_found(self, isolated_config):
+        """Zero absent and zero found is not "every checked quote was
+        found" -- the sample's staleness-chapter report said exactly that
+        over two unverifiable quotes."""
+        draft = a_draft()
+        a_dossier(draft, block(KEY, SPAN))
+        a_page_level_source(KEY, f"It has {SPAN} in it.")
+        text = quotation.run_text(draft)
+        assert "Every checked quote was found" not in text
+        assert "1 could not be checked from this parse" in text
 
     def test_write_files_the_report_and_its_json_sibling(self, isolated_config):
         draft = a_draft()

@@ -4,8 +4,9 @@
 
 - Draft: `content/drafts/dt-overview/trust-chapter.tex`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write`
-- chitragupta 6.61.7
+- chitragupta 6.127.1
 
+- Universe: `checked`
 - Quotes checked: 4
 - Confirmed in the cited source: 0
 - Absent from the cited source: 0
@@ -15,7 +16,7 @@ A span reported absent is evidence for a human judgement, never proof of a fabri
 
 ## No absent span
 
-Every checked quote was found in its cited source.
+None was absent; 0 found, 4 could not be checked from this parse.
 
 ## Not checkable from this parse
 
