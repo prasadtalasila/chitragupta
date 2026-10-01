@@ -207,10 +207,12 @@ So every string that is built into markup goes through a five-character
 escape (`&`, `<`, `>`, `"` and `'`) in both pages, and the `--app`
 directory's `index.html` also declares a Content-Security-Policy
 (`default-src 'none'; script-src 'self'; style-src 'self'
-'unsafe-inline'; img-src data:`). Under that policy, markup that gets
-past the escaping still cannot run an inline handler. The single-file
-`--html` page carries no policy: its script is inline by design, so
-`script-src 'self'` would block the page itself.
+'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`).
+Under that policy, markup that gets past the escaping still cannot run an
+inline handler, re-point the page's relative URLs with a `<base>`, or
+submit a form. The single-file `--html` page carries no policy: its
+script is inline by design, so `script-src 'self'` would block the page
+itself.
 
 ### One writer at a time
 

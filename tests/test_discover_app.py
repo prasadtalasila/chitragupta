@@ -277,6 +277,11 @@ class TestContentSecurityPolicy:
         "script-src": ["'self'"],
         "style-src": ["'self'", "'unsafe-inline'"],
         "img-src": ["data:"],
+        # Neither falls back to default-src, so without them an injected
+        # <base> re-points the page's relative URLs and an injected <form>
+        # can post what it holds anywhere.
+        "base-uri": ["'none'"],
+        "form-action": ["'none'"],
     }
 
     @staticmethod
@@ -285,9 +290,7 @@ class TestContentSecurityPolicy:
 
     @staticmethod
     def policy_of(page: str) -> dict:
-        meta = re.search(
-            r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page
-        )
+        meta = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page)
         assert meta, "index.html declares no Content-Security-Policy"
         directives = (d.split() for d in meta.group(1).split(";") if d.strip())
         return {name: values for name, *values in directives}
@@ -317,7 +320,9 @@ class TestContentSecurityPolicy:
         # `onclick="` with no space is markup; `only = "` is a JS assignment.
         assert not re.search(r"\son[a-z]+=", page), "inline event handler in index.html"
         scripts = TestShippedAppScriptHardening.app_js()
-        assert not re.search(r"\son[a-z]+=[\"'\\]", scripts), "handler in built markup"
+        assert not re.search(r"\son[a-z]+=", scripts), "handler in built markup"
+        assert not re.search(r"setAttribute\(\s*[\"']on", scripts), "handler set as an attribute"
+        assert not re.search(r"set(Timeout|Interval)\(\s*[\"'`]", scripts), "string-form timer"
         assert "javascript:" not in scripts
         assert not re.search(r"\beval\(|new Function\(", scripts)
 

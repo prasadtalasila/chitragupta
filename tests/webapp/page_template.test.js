@@ -19,6 +19,9 @@ const TEMPLATE = fs.readFileSync(
   "utf8"
 );
 
+// Read from the .py source, not Python's evaluated TEMPLATE: the two are
+// the same text only while esc() holds no backslash, which a "\\" in a
+// future regex would change.
 function templateEsc() {
   const source = TEMPLATE.match(/function esc\(text\) \{[\s\S]*?\n\}/);
   assert.ok(source, "the --html page's esc() is gone or renamed");

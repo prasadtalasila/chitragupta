@@ -20,6 +20,7 @@ touching, and a hash of a 14 MB index on every session is not free.
 """
 
 import os
+import stat
 from pathlib import Path
 
 import pytest
@@ -35,16 +36,25 @@ def snapshot(root: Path) -> "dict[str, tuple[int, int]]":
     `mkdir(parents=True)` still counts as a change. A missing root is
     an empty snapshot, not an error: a fresh `chitragupta init` project
     has no content/ until something writes one.
+
+    `lstat`, so a symlink is an entry of its own and a dangling one is
+    not a FileNotFoundError at sessionstart; and an entry deleted
+    between os.walk listing it and the stat -- a concurrent real run's
+    SQLite journal -- is skipped rather than raised over the report.
     """
     entries = {}
     for dirpath, dirnames, filenames in os.walk(root):
-        base = Path(dirpath)
-        for name in dirnames:
-            relative = (base / name).relative_to(root).as_posix() + "/"
-            entries[relative] = (-1, (base / name).stat().st_mtime_ns)
-        for name in filenames:
-            stat = (base / name).stat()
-            entries[(base / name).relative_to(root).as_posix()] = (stat.st_size, stat.st_mtime_ns)
+        for name in dirnames + filenames:
+            path = Path(dirpath) / name
+            try:
+                info = os.lstat(path)
+            except FileNotFoundError:
+                continue
+            relative = path.relative_to(root).as_posix()
+            if stat.S_ISDIR(info.st_mode):
+                entries[relative + "/"] = (-1, info.st_mtime_ns)
+            else:
+                entries[relative] = (info.st_size, info.st_mtime_ns)
     return entries
 
 
@@ -77,9 +87,13 @@ def verify(session) -> None:
 
     Only an otherwise-passing session is turned red: an interrupted or
     already-failing run keeps the exit code that says so, and still
-    gets the paths reported.
+    gets the paths reported. No baseline means sessionstart raised
+    first, and pytest is already reporting that.
     """
-    root, before = session.stash[_BASELINE]
+    baseline = session.stash.get(_BASELINE, None)
+    if baseline is None:
+        return
+    root, before = baseline
     found = changes(before, snapshot(root))
     if not found:
         return

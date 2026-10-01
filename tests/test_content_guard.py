@@ -74,9 +74,7 @@ class TestChanges:
         tracked_tree(tmp_path)
         before = content_guard.snapshot(tmp_path)
         (tmp_path / "parsed").mkdir()
-        assert "created parsed/" in content_guard.changes(
-            before, content_guard.snapshot(tmp_path)
-        )
+        assert "created parsed/" in content_guard.changes(before, content_guard.snapshot(tmp_path))
 
     def test_content_created_from_nothing_is_named(self, tmp_path):
         """CI's checkout has tracked files under content/, but a project
@@ -89,6 +87,32 @@ class TestChanges:
         assert content_guard.changes(before, content_guard.snapshot(root)) == [
             "created ledger.sqlite"
         ]
+
+    @pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges on Windows")
+    def test_a_dangling_symlink_is_an_entry_not_a_crash(self, tmp_path):
+        """A user's content/ can hold a link to a moved drive; following
+        it raised FileNotFoundError at sessionstart and broke every run."""
+        tracked_tree(tmp_path)
+        before = content_guard.snapshot(tmp_path)
+        (tmp_path / "parsed").symlink_to(tmp_path / "moved-away")
+        assert content_guard.changes(before, content_guard.snapshot(tmp_path)) == ["created parsed"]
+
+    def test_a_file_that_vanishes_mid_walk_is_skipped(self, tmp_path, monkeypatch):
+        """A concurrent real run's SQLite journal can be listed by
+        os.walk and deleted before it is stat'ed; that has to read as
+        "not there", not as a traceback in place of the report."""
+        tracked_tree(tmp_path)
+        journal = tmp_path / "ledger.sqlite-journal"
+        journal.write_bytes(b"")
+        real_lstat = os.lstat
+
+        def vanish(path, *args, **kwargs):
+            if Path(path) == journal:
+                raise FileNotFoundError(path)
+            return real_lstat(path, *args, **kwargs)
+
+        monkeypatch.setattr(os, "lstat", vanish)
+        assert "ledger.sqlite-journal" not in content_guard.snapshot(tmp_path)
 
 
 class FakeReporter:
@@ -147,6 +171,17 @@ class TestSessionHooks:
 
         assert session.exitstatus == pytest.ExitCode.INTERRUPTED
         assert any("created pipeline.lock.db" in line for line in reporter.lines)
+
+    def test_no_baseline_adds_no_second_traceback(self):
+        """If sessionstart raised before `record`, pytest is already
+        reporting that; a KeyError here would bury it under another."""
+        reporter = FakeReporter()
+        session = fake_session(reporter, exitstatus=pytest.ExitCode.INTERNAL_ERROR)
+
+        content_guard.verify(session)
+
+        assert session.exitstatus == pytest.ExitCode.INTERNAL_ERROR
+        assert reporter.lines == []
 
 
 def test_conftest_wires_the_guard_to_the_real_content_dir():

@@ -21,8 +21,10 @@
   this directory's own scripts under file:// in Chrome and Firefox both.
   'unsafe-inline' on style only: panel.js writes width and background
   style attributes, and cytoscape injects a style element of its own.
+  base-uri and form-action are spelled out because neither falls back to
+  default-src.
 -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Topic graph</title>
 <link rel="stylesheet" href="./style.css">
