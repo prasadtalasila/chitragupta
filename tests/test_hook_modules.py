@@ -420,6 +420,37 @@ class TestLauncherFaults:
         context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
         assert "BROKEN: `python` is not on PATH" in context
 
+    def test_no_installed_chitragupta_is_named_rather_than_silent(self, preflight, monkeypatch):
+        """#891 gap 2, at the `launcher_configs is None` branch
+        `launcher_faults()` takes when the module-level import itself
+        failed -- see `TestModuleImportFailsCleanly` below for that
+        branch, which this one assumes already happened."""
+        monkeypatch.setattr(preflight, "launcher_configs", None)
+        monkeypatch.setattr(preflight.sys, "executable", "/fake/python3")
+        faults = preflight.launcher_faults()
+        assert len(faults) == 1
+        assert "no installed chitragupta visible to /fake/python3" in faults[0]
+
+
+class TestModuleImportFailsCleanly:
+    """#891 gap 2: the module-level `from chitragupta import
+    launcher_configs` is wrapped in `try/except ImportError` so the
+    unactivated-venv shape (#563) -- this interpreter has no `chitragupta`
+    visible to it at all -- leaves `launcher_configs` as `None` instead of
+    crashing the whole hook before it can report anything."""
+
+    def test_import_error_leaves_launcher_configs_none(self, monkeypatch):
+        real_import = __import__
+
+        def fake_import(name, *args, **kwargs):
+            if name == "chitragupta":
+                raise ImportError("no chitragupta")
+            return real_import(name, *args, **kwargs)
+
+        monkeypatch.setattr("builtins.__import__", fake_import)
+        preflight = load("session_start_hook")
+        assert preflight.launcher_configs is None
+
 
 class TestCorpusStage:
     """`session_start_hook.corpus_stage()`: three answers, one of which is
