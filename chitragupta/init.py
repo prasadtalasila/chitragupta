@@ -120,18 +120,16 @@ CONFIG_DEST = "config.toml"
 
 # An empty file, present if and only if this directory was written by
 # `scaffold()` -- never by `cp config.toml.example config.toml`, the
-# checkout setup step, which writes no such file. `chitragupta/
-# scaffold_guard.py` reads the same literal name (duplicated rather than
-# imported, for the reason `PACKAGE_ROOT` above is: importing
-# `chitragupta.config` here would run its whole body, including the
-# `config.toml`-or-raise at the bottom, on a directory `init` exists to
-# create because that file is not there yet; `tests/test_init.py` pins
-# the two copies equal). `SHADOWING_NAMES` above stops `init` from
-# scaffolding *over* a planted `chitragupta/` directory; this marker lets
-# `chitragupta/scaffold_guard.py` detect one added afterwards, for the
-# narrow shape it can actually reach -- that module's own docstring has
-# the full reasoning and the limit (#891).
-SCAFFOLD_MARKER = ".chitragupta-scaffold"
+# checkout setup step, which writes no such file. Owned by
+# `chitragupta/scaffold_guard.py` (imported above, unlike
+# `chitragupta.config`: it is standard-library only and never raises
+# without a `config.toml`, so there is no trap here to avoid).
+# `SHADOWING_NAMES` above stops `init` from scaffolding *over* a planted
+# `chitragupta/` directory; this marker lets `scaffold_guard.py` detect
+# one added afterwards, for the narrow shape it can actually reach --
+# that module's own docstring has the full reasoning and the limit
+# (#891).
+SCAFFOLD_MARKER = scaffold_guard.SCAFFOLD_MARKER
 
 # The second entry that changes name on the way in, and the only one
 # copied *into* `content/`. `[style].acronyms` ships pointing at

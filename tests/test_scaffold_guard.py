@@ -100,15 +100,14 @@ class TestScaffoldedAncestor:
         assert scaffold_guard.scaffolded_ancestor(planted) == shadowed_root
 
     def test_a_project_local_venv_install_is_not_flagged(self, tmp_path):
-        """#891 review, round 3: a real regression the unbounded-walk-up
-        version of this check had. `<root>/.venv/lib/pythonX.Y/
-        site-packages/chitragupta/config.py` is a properly installed
-        package that happens to sit several directories under a marked
-        `<root>` -- not planted at `<root>/chitragupta/` directly. Only
-        the directory immediately above the package's own `chitragupta/`
-        ancestor is checked (here, `site-packages`), and `chitragupta
-        init` never marks a venv's own `site-packages` as scaffolded, so
-        this must stay silent."""
+        """#891 review, round 3: a real regression an unbounded
+        walk-every-ancestor version of this check had.
+        `<root>/.venv/lib/pythonX.Y/site-packages/chitragupta/config.py`
+        is a properly installed package that happens to sit several
+        directories under a marked `<root>` -- not planted at
+        `<root>/chitragupta/` directly. The package's immediate parent is
+        named `site-packages`, an install-directory name, so this must
+        stay silent regardless of the marker several levels above."""
         root = tmp_path / "root"
         root.mkdir()
         (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
@@ -125,20 +124,44 @@ class TestScaffoldedAncestor:
         installed.write_text("", encoding="utf-8")
         assert scaffold_guard.scaffolded_ancestor(installed) is None
 
+    def test_a_debian_dist_packages_install_is_not_flagged(self, tmp_path):
+        """The other mainstream install-directory name (system Python on
+        a Debian-family host), same reasoning as `site-packages` above."""
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        installed = root / "usr" / "lib" / "python3" / "dist-packages" / "chitragupta" / "config.py"
+        installed.parent.mkdir(parents=True)
+        installed.write_text("", encoding="utf-8")
+        assert scaffold_guard.scaffolded_ancestor(installed) is None
 
-class TestShadowed:
-    def test_false_when_no_ancestor_is_marked(self, tmp_path):
-        package = tmp_path / "chitragupta" / "config.py"
-        package.parent.mkdir(parents=True)
-        package.write_text("", encoding="utf-8")
-        assert scaffold_guard.shadowed(package) is False
+    def test_a_plant_in_a_project_subdirectory_is_still_caught(self, tmp_path):
+        """#891 review, round 8: the real bug the round-3 fix (checking
+        only the one directory immediately above the package) left open.
+        docs/CONFIG.md's project-root discovery walks up for `config.toml`
+        from wherever a command runs, so `python -m chitragupta.draft
+        gate` from `<root>/content/` is a supported shape, not an
+        exotic one -- and a `chitragupta/` planted at
+        `<root>/content/chitragupta/` has an immediate parent (`content/`)
+        that is not an install-directory name, so the walk continues
+        upward and still finds `<root>`'s marker. Reproduced live before
+        the fix: the old one-level-only check returned `None` here."""
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        planted = root / "content" / "chitragupta" / "config.py"
+        planted.parent.mkdir(parents=True)
+        planted.write_text("", encoding="utf-8")
+        assert scaffold_guard.scaffolded_ancestor(planted) == root
 
-    def test_true_when_an_ancestor_is_marked(self, tmp_path):
-        (tmp_path / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
-        package = tmp_path / "chitragupta" / "config.py"
-        package.parent.mkdir(parents=True)
-        package.write_text("", encoding="utf-8")
-        assert scaffold_guard.shadowed(package) is True
+    def test_a_plant_several_subdirectories_deep_is_still_caught(self, tmp_path):
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        planted = root / "content" / "drafts" / "some-topic" / "chitragupta" / "config.py"
+        planted.parent.mkdir(parents=True)
+        planted.write_text("", encoding="utf-8")
+        assert scaffold_guard.scaffolded_ancestor(planted) == root
 
 
 class TestRefuseIfShadowed:
@@ -259,15 +282,6 @@ class TestUnsafeMarkerReason:
         assert "symlink" in reason
 
 
-def test_marker_literal_matches_init_pys_own_copy():
-    """`chitragupta/init.py` duplicates this literal rather than
-    importing it (see both modules' docstrings for why); this is the
-    test that keeps the two from drifting apart silently."""
-    import chitragupta.init as init  # pylint: disable=import-outside-toplevel
-
-    assert scaffold_guard.SCAFFOLD_MARKER == init.SCAFFOLD_MARKER
-
-
 class TestWiredIntoConfig:
     """End to end, through a real subprocess running this checkout's own
     (fixed) `chitragupta/config.py` -- not a mock of it -- as the planted
@@ -303,4 +317,19 @@ class TestWiredIntoConfig:
         shutil.copytree(REPO_ROOT / "chitragupta", root / "chitragupta")
         result = run_python("-m", "chitragupta.corpus", "ledger", cwd=root)
         assert "[fatal]" not in result.stderr
-        assert result.returncode != 1 or "scaffolded" not in result.stderr
+
+    def test_a_planted_real_copy_in_a_subdirectory_still_refuses(self, planted_checkout):
+        """#891 review, round 8: the real subdirectory-plant bug, proven
+        end to end through the real, installed `config.py` -- not only
+        through `scaffolded_ancestor()` directly (see
+        `TestScaffoldedAncestor::test_a_plant_in_a_project_subdirectory_is_still_caught`).
+        Moves the planted copy from the project root to `content/`,
+        matching docs/CONFIG.md's supported "run from any subdirectory"
+        shape, and runs from there instead of from the project root."""
+        subdir = planted_checkout / "content"
+        subdir.mkdir()
+        shutil.move(str(planted_checkout / "chitragupta"), str(subdir / "chitragupta"))
+        result = run_python("-m", "chitragupta.corpus", "ledger", cwd=subdir)
+        assert result.returncode == 1
+        assert "[fatal]" in result.stderr
+        assert "scaffolded" in result.stderr

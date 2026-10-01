@@ -55,14 +55,12 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # the hook is run as a script by the harness, from a directory that is not
 # the repository, so `chitragupta` is only importable once the root it derived from
 # its own location is on the path. Module level rather than inside a
-# function on purpose, same as before -- but as of #891 gap 2, caught
-# rather than left to crash: the earlier `except ImportError: return []`
-# this comment used to warn against is still the wrong shape (silence),
-# but a *named* report through this hook's own advisory channel is not
-# the silence that argument was about -- it is this hook doing, for its
-# own interpreter, exactly what `launcher_faults` below already does for
-# every *other* one it probes. `scripts/release.py` ships every
-# git-tracked path bar tests/, .github/ and bench/, so `chitragupta/` and
+# function, so a genuine breakage is never silently swallowed as "no
+# faults" -- the narrow `except ModuleNotFoundError` below catches only
+# the one case `launcher_faults` can turn into a *named* report
+# (#891 gap 2), the same thing it already does for every *other*
+# interpreter it probes. `scripts/release.py` ships every git-tracked
+# path bar tests/, .github/ and bench/, so `chitragupta/` and
 # `.claude/hooks/` always travel together in a release bundle.
 #
 # Appended rather than prepended, and that is a security property now

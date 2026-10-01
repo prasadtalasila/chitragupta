@@ -418,24 +418,25 @@ there too.
 **What this narrows as of issue 891, and the structural limit on how
 far.** This protected the hooks' launches alone, not the pipeline's own
 commands: a skill that runs `python -m chitragupta.draft gate` from the
-project root searched the working tree first regardless, with no hook
-and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` adds
-one narrow detector for part of that gap: `chitragupta init` now writes
-a marker into every project it scaffolds, and `chitragupta/config.py` --
-the one module every `python -m chitragupta.<layer> ...` invocation
-imports before running any verb -- refuses at import time, the same
-fail-closed shape a hook's protected child already gets, if its own
-location sits *directly* under a root that marker names. The check is
-keyed to the *module's own lexical location* (never symlink-resolved),
-never to `config.PROJECT_ROOT` or `CHITRAGUPTA_PROJECT`, which answer
-"where does the user's data live" and must not also decide which
-`chitragupta` is trusted -- both traps were caught in review, the second
-alongside a project-local venv install being misread as planted when an
-earlier version checked every ancestor instead of only the one directly
-above the package. `chitragupta init` covers the scaffold-time end, as
-before: it refuses to scaffold over a directory already holding
-`chitragupta/` or `chitragupta.py`, or over a non-regular file (or
-symlink) already sitting at the marker's own path.
+project root (or any subdirectory of it, which docs/CONFIG.md's own
+project-root discovery supports) searched the working tree first
+regardless, with no hook and no `safe_path.py` in between.
+`chitragupta/scaffold_guard.py` adds one narrow detector for part of that
+gap: `chitragupta init` now writes a marker into every project it
+scaffolds, and `chitragupta/config.py` -- the one module every `python -m
+chitragupta.<layer> ...` invocation imports before running any verb --
+refuses at import time, the same fail-closed shape a hook's protected
+child already gets, if its own `chitragupta/` ancestor directory sits
+anywhere under a root that marker names and is not itself an install
+location (a `site-packages`/`dist-packages` directory, wherever that
+happens to live -- including nested inside the project, a project-local
+venv). The check is keyed to the *module's own lexical location* (never
+symlink-resolved, never `config.PROJECT_ROOT`/`CHITRAGUPTA_PROJECT`,
+which answer "where does the user's data live" and must not also decide
+which `chitragupta` is trusted). `chitragupta init` covers the
+scaffold-time end, as before: it refuses to scaffold over a directory
+already holding `chitragupta/` or `chitragupta.py`, or over a non-regular
+file (or symlink) already sitting at the marker's own path.
 
 **Read this before trusting that "891 gap 1" means more than it does.**
 The check above runs *from inside* the very `chitragupta` module Python
@@ -472,22 +473,24 @@ missing, with no `--force` needed, so a project scaffolded by an older
 re-run against it -- every other file's "exists, unchanged" path is
 untouched by that rerun. A project nobody ever re-initialises after
 upgrading stays unmarked, and the guard stays silent for it, the same as
-for a checkout.
+for a checkout. Nothing about this check depends on whether
+`chitragupta` is "installed" anywhere visible to the running interpreter
+-- it only needs the currently-running module's own path and the marker,
+and works the same with or without a visible install (confirmed with
+`python -S`, which hides every site-packages install and changes nothing
+here).
 
-**What else still cannot close**, recorded so nobody assumes it does: an
+**891 gap 2 is a separate mechanism, with its own, genuine residue**: an
 interpreter that finds no installed `chitragupta` at all -- the
-unactivated venv of issue 563 -- has no planted package to resolve
-*inside* a marked root either, so `scaffold_guard` sees nothing to
-refuse; nor does any marker tell such an interpreter apart from a
-checkout that also resolves `chitragupta` through cwd alone. There the
-gate still fails closed on its own, but a planted package would run
-unnoticed by this mechanism specifically. 891 gap 2 narrows that: where
-this is detectable -- a hook launcher's own interpreter, probed by
-`chitragupta/hook_launchers.py`, or the SessionStart hook's own
-in-process import -- it is now reported by name ("no installed
-chitragupta visible to ...") instead of staying silent or crashing with
-a bare traceback, even though nothing can yet *prevent* the run in that
-state.
+unactivated venv of issue 563 -- cannot be told apart from a checkout
+that also resolves `chitragupta` through cwd alone, by
+`chitragupta/hook_launchers.py`'s probe of a hook launcher's own
+interpreter, or by the SessionStart hook's own in-process import. Both
+are now caught and reported by name ("no installed chitragupta visible to
+...") instead of staying silent or crashing with a bare traceback, even
+though nothing can yet *prevent* the run in that state -- unlike
+`scaffold_guard.py` above, which these two do not feed into and are not
+limited by.
 And a checkout whose venv also holds a non-editable `chitragupta-cli`
 reads as an installed project, so its hooks run that copy rather than
 the working tree, and `code_standards_hook.py` reports nothing -- install
