@@ -180,3 +180,34 @@ def test_seeding_refuses_a_spec_that_does_not_parse(book, capsys):
     spec.spec_path(book).write_text("# Book\n\n## Part I\n", encoding="utf-8")
     assert seed(book) == 1
     assert "{#id}" in capsys.readouterr().err
+
+
+# --- a chapter path that leaves its book (issue 875) ---------------------
+
+SECOND_DESCRIBED = """
+### What a twin decides {#ch-decide}
+
+#### The question {#sec-question}
+
+Establish the question.
+
+#### The answer {#sec-answer}
+
+Establish the answer.
+"""
+
+
+def test_a_later_escaping_chapter_refuses_before_any_chapter_is_seeded(book, tmp_path, capsys):
+    """Every chapter path is confined before the first dossier write. A
+    refusal at the second chapter must not leave the first one seeded
+    with no report saying so -- the refusal is the only thing printed."""
+    spec_file = spec.spec_path(book)
+    spec_file.write_text(SPEC + SECOND_DESCRIBED, encoding="utf-8")
+    spec.main(["sign", str(book)])
+    outside = tmp_path / "elsewhere.md"
+    outside.write_text("# What a twin decides\n", encoding="utf-8")
+    (book / "ch-decide.md").symlink_to(outside)
+    capsys.readouterr()
+    assert seed(book) == 1
+    assert "ch-decide.md" in capsys.readouterr().err
+    assert not outline_of(book, "ch-what").exists()

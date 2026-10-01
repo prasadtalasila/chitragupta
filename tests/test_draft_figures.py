@@ -111,6 +111,15 @@ class TestFigures:
         with pytest.raises(draft_figures.FigureIndexError, match="outside"):
             draft_figures.figures("a2024")
 
+    def test_an_image_name_in_a_symlink_loop_is_refused_rather_than_crashing(self, seeded):
+        """A loop resolves with `RuntimeError` on Python 3.12, which is
+        neither of the two exceptions a bad name usually raises."""
+        (config.DOCLING_DIR / "loop_a.png").symlink_to(config.DOCLING_DIR / "loop_b.png")
+        (config.DOCLING_DIR / "loop_b.png").symlink_to(config.DOCLING_DIR / "loop_a.png")
+        _write_index([{**RECORDS[0], "image": "loop_a.png"}])
+        with pytest.raises(draft_figures.FigureIndexError, match="outside"):
+            draft_figures.figures("a2024")
+
     def test_a_nested_name_inside_the_directory_is_not_refused(self, seeded):
         """The enrichment layer writes `<stem>_artifacts/picture_N.png`,
         two components, so "one path component" would be the wrong rule:

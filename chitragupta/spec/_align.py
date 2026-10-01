@@ -87,13 +87,22 @@ def chapter_draft(book: Path, chapter_id: str) -> Path:
 
 
 def _inside_book(path: Path, book: Path) -> Path:
-    """`path`, once it is certain it lands under `book`."""
-    if config.resolves_inside(path, book):
-        return path
+    """`path`, once it is certain it lands under `book`.
+
+    A path that cannot be resolved at all is refused too: a NUL byte
+    gives `ValueError`, a name the platform rejects `OSError`, and a
+    symlink loop `RuntimeError` on Python 3.12. None of them is a
+    chapter anyone can read, and a traceback would name nothing.
+    """
+    try:
+        if config.resolves_inside(path, book):
+            return path
+    except (OSError, RuntimeError, ValueError):
+        pass
     raise SpecError(
-        f"{path} resolves to {path.resolve()}, outside {book}: a chapter id is one "
-        "path component, not a path, and a chapter file may not be a symlink out of "
-        "its book."
+        f"{path} does not resolve inside {book}: a chapter id is one path "
+        "component, not a path, and a chapter file may not be a symlink out of "
+        "its book or a symlink loop."
     )
 
 

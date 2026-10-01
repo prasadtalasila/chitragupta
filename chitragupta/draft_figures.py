@@ -78,13 +78,13 @@ def _image_path(name: str, citekey: str) -> str:
     writes `<stem>_artifacts/picture_N.png`, two components, so "one
     path component" would refuse every real index. Resolving can raise
     rather than answer -- a NUL byte gives `ValueError`, a name the
-    platform will not accept gives `OSError` -- and both are refusals,
-    the way `config.confined_path` treats them.
+    platform will not accept gives `OSError`, and a symlink loop gives
+    `RuntimeError` on Python 3.12 -- and all three are refusals.
     """
     path = config.DOCLING_DIR / name
     try:
         inside = config.resolves_inside(path, config.DOCLING_DIR)
-    except (OSError, ValueError):
+    except (OSError, RuntimeError, ValueError):
         inside = False
     if not inside:
         raise FigureIndexError(

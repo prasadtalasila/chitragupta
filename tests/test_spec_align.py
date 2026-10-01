@@ -200,13 +200,13 @@ def test_chapter_draft_refuses_an_id_that_leaves_the_book(book, escaping):
     """`spec.parse` refuses such an id before it gets here, so this pins
     the join on its own: a later id source -- a machine-written outline,
     a caller handing in an id -- cannot reopen the hole one layer up."""
-    with pytest.raises(spec.SpecError, match="outside"):
+    with pytest.raises(spec.SpecError, match="does not resolve inside"):
         chapter_draft(book, escaping)
 
 
 def test_chapter_draft_refuses_an_absolute_id(book, tmp_path):
     """`Path(book) / "/abs"` is `/abs`: the book is dropped without a word."""
-    with pytest.raises(spec.SpecError, match="outside"):
+    with pytest.raises(spec.SpecError, match="does not resolve inside"):
         chapter_draft(book, str(tmp_path / "evil"))
 
 
@@ -221,3 +221,13 @@ def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, 
     err = capsys.readouterr().err
     assert "[error]" in err
     assert "ch-what.md" in err
+
+
+def test_a_chapter_file_in_a_symlink_loop_is_refused_rather_than_crashing(book, capsys):
+    """Python 3.12 resolves a loop with `RuntimeError`, which is neither
+    `OSError` nor `ValueError`; it must still be a named refusal and not a
+    traceback out of `spec align`."""
+    (book / "ch-what.md").symlink_to(book / "loop")
+    (book / "loop").symlink_to(book / "ch-what.md")
+    assert spec.main(["align", str(book)]) == 1
+    assert "ch-what.md" in capsys.readouterr().err
