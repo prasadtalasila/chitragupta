@@ -33,11 +33,36 @@ does not write it), so this adds no false positive there, and a project
 that was scaffolded and then properly `pip install`-ed resolves outside
 the root regardless of the marker, so it is silent there too.
 
-**What this still cannot close**, the same residue `safe_path.py`
-documents: an interpreter that finds no installed `chitragupta` at all
-sees nothing inside the project root to flag, however this imported --
-there is no marker a checkout could not also carry. `chitragupta doctor`
-and the SessionStart preflight name that state instead (#891 gap 2).
+**What this still cannot close, and why.** This check runs *from inside*
+the very `chitragupta` that was imported -- it is reached only once
+Python has already selected a module and started executing it. Against
+an adversarial planted package that is written to defeat this exact
+check -- one whose `config.py` never calls `refuse_if_shadowed` at all,
+or whose malicious behaviour sits in `__init__.py` or another module
+reached before `config.py` is -- there is no version of "the package
+checks itself" that can close the gap: by the time any code here runs,
+an uncooperating planted package has already had the chance to act.
+Closing *that* would need a trusted bootstrap outside the package being
+selected entirely -- a `sitecustomize.py` the installed distribution
+ships, run by Python's own site initialisation before `-m` resolves its
+target -- which is a materially larger, more invasive mechanism (global
+to every Python invocation in the venv, not only `chitragupta`'s) than
+this issue's surgical scope calls for, and is not implemented here.
+
+What this *does* catch, and is sized for: the shape issue 891 actually
+names -- "a `chitragupta/` or `chitragupta.py` someone committed to a
+shared project", a passive duplicate (stale, cloned, or accidentally
+co-located) that is not specifically hostile to this detector. For that
+shape, and for the shape #822 already closes (a hook's own children),
+this guard is exact: no false positive on a checkout or a properly
+installed scaffold, and a refusal on every planted copy that is not
+purpose-built to evade it.
+
+A second, narrower residue, the same one `safe_path.py` documents: an
+interpreter that finds no installed `chitragupta` at all sees nothing
+inside the project root to flag, however this imported -- there is no
+marker a checkout could not also carry. `chitragupta doctor` and the
+SessionStart preflight name that state instead (#891 gap 2).
 
 Standard library only, and `config.py` is the only caller: like
 `config_load`/`config_path`/`config_enrich`, this cannot import `config`

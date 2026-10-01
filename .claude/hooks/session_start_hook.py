@@ -74,13 +74,20 @@ REPO = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(REPO))
 try:
     from chitragupta import launcher_configs
-except ImportError:
-    # The unactivated-venv shape #563 and #891 gap 2 name: this
-    # interpreter -- the one the harness actually launched -- has no
-    # installed `chitragupta` visible to it at all, cwd fallback included.
-    # `None` rather than re-raising, so the two checks below it still run;
-    # `launcher_faults` is the one that turns this into a report.
-    launcher_configs = None
+except ModuleNotFoundError as exc:
+    # Narrowed to the one case #891 gap 2 names: `chitragupta` itself --
+    # not `chitragupta.launcher_configs` or one of its own dependencies --
+    # could not be found at all, the unactivated-venv shape #563 names.
+    # `exc.name` is which module the failed import was actually looking
+    # for; re-raising anything else is what keeps a genuine breakage (a
+    # broken `hook_launchers.py`, a real missing dependency inside an
+    # otherwise-installed package) crashing loudly instead of being
+    # misreported as "nothing installed". `None` rather than swallowing,
+    # so the two checks below it still run; `launcher_faults` is the one
+    # that turns this into a report.
+    if exc.name != "chitragupta":
+        raise
+    launcher_configs = None  # pylint: disable=invalid-name  # a module binding, not a constant
 
 FABRICATED = "preflight_probe_not_a_real_citekey"
 

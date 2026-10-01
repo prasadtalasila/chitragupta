@@ -419,7 +419,7 @@ there too.
 This protected the hooks' launches alone, not the pipeline's own
 commands: a skill that runs `python -m chitragupta.draft gate` from the
 project root searched the working tree first regardless, with no hook
-and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` closes
+and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` narrows
 that gap (891 gap 1): `chitragupta init` now writes a marker into every
 project it scaffolds, and `chitragupta/config.py` -- the one module every
 `python -m chitragupta.<layer> ...` invocation imports before running any
@@ -429,7 +429,25 @@ root that marker names. `chitragupta init` covers the other end, as
 before: it refuses to scaffold into a directory already holding
 `chitragupta/` or `chitragupta.py`, with or without `--force`.
 
-**What still cannot close**, recorded so nobody assumes it does: an
+**Sized for the shape issue 891 names, not for an adversary who targets
+this exact check.** The guard runs from *inside* the `chitragupta` that
+was already selected and partly executed -- it cannot run before Python
+has picked one. Against "a `chitragupta/` or `chitragupta.py` someone
+committed to a shared project" (891's own words: a stale or cloned
+duplicate, not purpose-built to evade detection), that is exact: no
+false positive on a checkout or a properly installed scaffold, and a
+refusal on the planted copy. Against a package deliberately written to
+omit the check -- whose `config.py` never calls `refuse_if_shadowed`, or
+whose payload sits in `__init__.py` before `config.py` is even reached --
+no self-check from inside the package can close it; that would need a
+trusted bootstrap outside the package entirely (a `sitecustomize.py` the
+distribution ships, run by Python's own site initialisation before `-m`
+resolves its target), global to every Python invocation in the venv, not
+only `chitragupta`'s -- a materially larger mechanism than this issue's
+surgical scope calls for. `chitragupta/scaffold_guard.py`'s own
+docstring carries the same reasoning.
+
+**What else still cannot close**, recorded so nobody assumes it does: an
 interpreter that finds no installed `chitragupta` at all -- the
 unactivated venv of issue 563 -- has no planted package to resolve
 *inside* a marked root either, so `scaffold_guard` sees nothing to

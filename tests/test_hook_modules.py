@@ -434,22 +434,54 @@ class TestLauncherFaults:
 
 class TestModuleImportFailsCleanly:
     """#891 gap 2: the module-level `from chitragupta import
-    launcher_configs` is wrapped in `try/except ImportError` so the
-    unactivated-venv shape (#563) -- this interpreter has no `chitragupta`
-    visible to it at all -- leaves `launcher_configs` as `None` instead of
-    crashing the whole hook before it can report anything."""
+    launcher_configs` is wrapped in `try/except ModuleNotFoundError`, so
+    the unactivated-venv shape (#563) -- this interpreter has no
+    `chitragupta` visible to it at all -- leaves `launcher_configs` as
+    `None` instead of crashing the whole hook before it can report
+    anything. Narrowed to `exc.name == "chitragupta"` rather than every
+    `ImportError`, so a real breakage inside an otherwise-installed
+    `chitragupta` -- a broken `hook_launchers.py`, one of its own missing
+    dependencies -- still crashes loudly instead of being misreported as
+    "nothing installed"."""
 
-    def test_import_error_leaves_launcher_configs_none(self, monkeypatch):
+    def test_chitragupta_itself_missing_leaves_launcher_configs_none(self, monkeypatch):
         real_import = __import__
 
         def fake_import(name, *args, **kwargs):
             if name == "chitragupta":
-                raise ImportError("no chitragupta")
+                raise ModuleNotFoundError("no chitragupta", name="chitragupta")
             return real_import(name, *args, **kwargs)
 
         monkeypatch.setattr("builtins.__import__", fake_import)
-        preflight = load("session_start_hook")
+        preflight = load_hook("session_start_hook")
         assert preflight.launcher_configs is None
+
+    def test_a_different_missing_module_still_crashes(self, monkeypatch):
+        """`chitragupta` itself imports fine; one of its own dependencies
+        does not -- `exc.name` names that other module
+        (`chitragupta.hook_launchers`), not `chitragupta`, so this is not
+        the case the except clause exists to swallow. `sys.modules[name]
+        = None` is the standard-library way to make the next `import
+        name` raise `ModuleNotFoundError` deterministically, rather than
+        patching `__import__` -- the nested `from chitragupta import
+        launcher_configs` resolves its submodule through
+        `importlib._bootstrap` directly, not through a second call to the
+        patched `builtins.__import__`."""
+        import chitragupta  # pylint: disable=import-outside-toplevel
+
+        monkeypatch.setitem(sys.modules, "chitragupta.hook_launchers", None)
+        monkeypatch.delitem(sys.modules, "chitragupta.launcher_configs", raising=False)
+        # `chitragupta` already carries both as cached attributes from
+        # earlier imports elsewhere in the suite; the `sys.modules`
+        # deletion above is not enough on its own -- `from chitragupta
+        # import launcher_configs`, and that module's own `from
+        # chitragupta import hook_launchers`, would each find a cached
+        # attribute first and never re-trigger the import this test needs
+        # to fail.
+        monkeypatch.delattr(chitragupta, "launcher_configs", raising=False)
+        monkeypatch.delattr(chitragupta, "hook_launchers", raising=False)
+        with pytest.raises(ModuleNotFoundError, match="chitragupta.hook_launchers"):
+            load_hook("session_start_hook")
 
 
 class TestCorpusStage:
