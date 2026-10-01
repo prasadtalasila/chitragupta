@@ -188,6 +188,42 @@ class TestWriteApp:
             _app.write_app(str(tmp_path / "app"))
 
 
+class TestPayloadContract:
+    """The exporter and the app's own check name the same keys (#855).
+
+    `payload.js` refuses a data.js missing any of its `REQUIRED_KEYS`
+    and says so in the panel, instead of throwing before a handler is
+    wired. That list is only right while it matches what the exporter
+    cannot do without -- a key it reads with `.get` is one an older
+    artefact may lack, and the app has to cope with its absence, not
+    refuse it. So the exporter's side is measured rather than listed:
+    every graph key whose deletion makes `build_app_payload` raise, and
+    which then travels into the payload under the same name."""
+
+    @staticmethod
+    def app_required() -> list:
+        source = config.shipped("assets", "webapp", "payload.js").read_text(encoding="utf-8")
+        listed = re.search(r"REQUIRED_KEYS = \[([^\]]*)\]", source)
+        assert listed, "payload.js no longer declares REQUIRED_KEYS"
+        return re.findall(r'"([a-z_]+)"', listed.group(1))
+
+    def test_the_app_requires_exactly_what_the_exporter_cannot_do_without(self, isolated_config):
+        prepare(isolated_config)
+        exported = _app.build_app_payload(GRAPH, TOPIC_SET, {})
+        required = set()
+        for key in GRAPH:
+            partial = {name: value for name, value in GRAPH.items() if name != key}
+            try:
+                _app.build_app_payload(partial, TOPIC_SET, {})
+            except KeyError:
+                required.add(key)
+        # Non-vacuity: a fixture the builder never subscripted would
+        # find nothing and agree with an empty list.
+        assert len(required) >= 4, required
+        assert required <= set(exported), "a required graph key is renamed in the payload"
+        assert sorted(self.app_required()) == sorted(required)
+
+
 class TestShippedAppScriptHardening:
     """Source tripwires on the shipped interaction code (#636).
 

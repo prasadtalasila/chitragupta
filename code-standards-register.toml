@@ -66,20 +66,15 @@ code_lines = 257
 
 # C1 (JS): at most 25 statements per function, assets/webapp/ only.
 
-[[c1js]]
-name = "assets/webapp/families.js::<anonymous@31>.computePath"
-statements = 27
+# None registered: the last offender, families.js's computePath, was
+# split by #860.
 
 # C2 (JS): at most 250 code lines per module, assets/webapp/ only.
 
 [[c2js]]
-name = "assets/webapp/app.js"
-code_lines = 472
-
-[[c2js]]
 name = "assets/webapp/graph.js"
-code_lines = 530
+code_lines = 527
 
 [[c2js]]
 name = "assets/webapp/panel.js"
-code_lines = 399
+code_lines = 397

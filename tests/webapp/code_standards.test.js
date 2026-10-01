@@ -126,5 +126,5 @@ test("the scan reaches assets/webapp/ and skips vendor/", { skip }, () => {
   // A file over C2 today, named directly rather than only implied by a
   // count -- if this ever comes back under 250 lines, this line (and the
   // matching code-standards-register.toml entry) needs deleting together.
-  assert.ok(Object.keys(scan.longFiles()).includes("assets/webapp/app.js"));
+  assert.ok(Object.keys(scan.longFiles()).includes("assets/webapp/graph.js"));
 });

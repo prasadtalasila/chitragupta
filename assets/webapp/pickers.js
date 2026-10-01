@@ -141,9 +141,10 @@ window.CHITRAGUPTA_PICKERS = (function () {
       });
     });
 
-    document.addEventListener("click", function (event) {
-      if (!event.target.closest(".picker")) { closeAllPickers(null); }
-    });
+    // app.js's one document click listener calls this for every click.
+    function clickAway(target) {
+      if (!target.closest(".picker")) { closeAllPickers(null); }
+    }
 
     renderOrigins();
     renderFamilies();
@@ -152,6 +153,7 @@ window.CHITRAGUPTA_PICKERS = (function () {
       anyPickerOpen: anyPickerOpen,
       openPicker: openPicker,
       closeAllPickers: closeAllPickers,
+      clickAway: clickAway,
     };
   }
 

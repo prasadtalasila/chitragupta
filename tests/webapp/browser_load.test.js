@@ -33,7 +33,7 @@ const WEBAPP = path.join(__dirname, "..", "..", "assets", "webapp");
 // project's code. The wiring is last in the page, after every module it
 // reads from; the order test below holds it there.
 const NOT_LOADED = new Set(["data.js", "vendor/cytoscape.min.js"]);
-const DOM_WIRING = ["search.js", "pickers.js", "app.js"];
+const DOM_WIRING = ["search.js", "pickers.js", "canvas.js", "sidepanel.js", "app.js"];
 
 function pageScripts() {
   const html = fs.readFileSync(path.join(WEBAPP, "index.html"), "utf8");

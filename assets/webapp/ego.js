@@ -11,18 +11,21 @@
 
    Split out of graph.js rather than added to it because it is a
    different job: graph.js turns a payload into elements, this turns a
-   selection into a reading of the neighbourhood around it. Tested
+   selection into a reading of the neighbourhood around it. Reads every
+   edge through payload.js, which index.html loads first. Tested
    without a DOM by tests/webapp/ego.test.js. */
 "use strict";
 
 (function (root, factory) {
-  var api = factory();
+  var api = typeof module === "object" && module.exports
+    ? factory(require("./payload.js"))
+    : factory(root.CHITRAGUPTA_APP);
   if (typeof module === "object" && module.exports) {
     module.exports = api;
   } else {
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
-})(typeof self !== "undefined" ? self : this, function () {
+})(typeof self !== "undefined" ? self : this, function (payload) {
   /* The union, used only as the default for a caller that names no
      families -- every call site here predates the reader being able to
      switch one off, and "not said" has to mean both or the rings lose
@@ -32,13 +35,8 @@
   var RING_GAP = 240;
   var NODE_SPACING = 110;
   var ROOT_RADIUS = 70;
-  function edgesOf(data, family) {
-    return family === "overlap" ? data.edges_overlap : data.edges_semantic;
-  }
-
-  function weightOf(family, edge) {
-    return family === "overlap" ? edge.overlap_coeff : edge.similarity;
-  }
+  var edgesOf = payload.edgesOf;
+  var weightOf = payload.weightOf;
 
   /* Adjacency over just the families asked for, with weights. Built per
      call rather than cached: it is a few hundred edges, and a stale

@@ -582,8 +582,9 @@ jobs:
       # test loads (#858). Node reports only files a test loaded, so the
       # include glob alone would let a new module with no test go
       # unmeasured; tests/webapp/browser_load.test.js loads every script
-      # index.html names except the DOM wiring (app.js, search.js,
-      # pickers.js), which is what puts each DOM-free module in the report.
+      # index.html names except the DOM wiring (search.js, pickers.js,
+      # canvas.js, sidepanel.js, app.js), which is what puts each DOM-free
+      # module in the report.
       # The wiring has no test and is therefore not in it.
       - name: Test the webapp modules
         run: >-

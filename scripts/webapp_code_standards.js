@@ -33,12 +33,12 @@
  *   25 top-level statements, which is a fact about the module, not about a
  *   function anyone reads as one unit. A *named* function is always
  *   reported however deeply it sits inside that wrapper (`families.js`'s
- *   `computePath` is the one real offender today), and an anonymous
+ *   `computePath` was the last real offender, split by #860), and an anonymous
  *   function nested inside a *named* one is reported too, keyed by its
  *   line for uniqueness -- only a function with no named ancestor at all is
  *   exempt. The gap this leaves: a genuinely long anonymous callback sitting
  *   directly at a file's top level, outside any module wrapper, would not
- *   be caught. None of the six files here have one.
+ *   be caught. None of the files here has one.
  * - **C2's line count is real, scanned code, not `wc -l`.** Blank lines and
  *   whole-line comments are excluded the same way C2 excludes them, which
  *   matters more here than on the Python side: these files open with long
