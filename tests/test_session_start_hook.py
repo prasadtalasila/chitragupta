@@ -312,3 +312,23 @@ class TestAPlantedPackageIsNeverImported:
         result = synced.run()
         assert sentinel.exists()
         assert result.stdout.strip() == ""
+
+
+class TestNoInstalledPackageVisibleAtAll:
+    """#891 gap 2: the unactivated-venv shape #563 names -- this hook's
+    *own* interpreter has no `chitragupta` visible to it, cwd fallback
+    included (no `PYTHONPATH`, and `synced.root` is not a checkout, so
+    `sys.path.append(REPO)` supplies nothing either). Before this fix the
+    module-level `from chitragupta import launcher_configs` crashed with
+    an uncaught `ModuleNotFoundError` -- exit nonzero, no JSON on stdout,
+    nothing a reader could act on. Now it is caught and named through the
+    hook's own advisory channel, like every other fault here."""
+
+    def test_reports_by_name_instead_of_crashing(self, synced):
+        del synced.env["PYTHONPATH"]
+        result = synced.run()
+        assert result.returncode == 0
+        context = PreflightRepo.context(result)
+        assert "no installed chitragupta visible to" in context
+        assert sys.executable in context
+        assert "Traceback" not in result.stderr

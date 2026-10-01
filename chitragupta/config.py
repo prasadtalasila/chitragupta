@@ -32,7 +32,7 @@ import os
 import sys
 from pathlib import Path
 
-from chitragupta import config_load
+from chitragupta import config_load, scaffold_guard
 
 from chitragupta.config_load import (
     _get,
@@ -125,6 +125,13 @@ def discover_project_root(
 # `cp config.toml.example config.toml` is only actionable if the message
 # points somewhere the reader recognises.
 PROJECT_ROOT = discover_project_root() or PACKAGE_ROOT.parent
+# #891 gap 1: refuses before the config load below if this module's own
+# location is the planted-package shape `chitragupta/init.py`'s
+# SCAFFOLD_MARKER exists to catch. Split out rather than inlined, like
+# config_load/config_path/config_enrich above -- see that module's
+# docstring for why it cannot import this one back.
+scaffold_guard.refuse_if_shadowed(Path(__file__), PROJECT_ROOT)
+
 CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(PROJECT_ROOT / PROJECT_MARKER)))
 # Called here, on every import of this module, rather than at
 # config_load's own import: `importlib.reload(config)` has to re-read the

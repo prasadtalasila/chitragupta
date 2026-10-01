@@ -117,6 +117,26 @@ SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
 CONFIG_EXAMPLE = "config.toml.example"
 CONFIG_DEST = "config.toml"
 
+# An empty file, present if and only if this directory was written by
+# `scaffold()` -- never by `cp config.toml.example config.toml`, the
+# checkout setup step, which writes no such file. `chitragupta/config.py`
+# reads the same literal name (duplicated rather than imported, for the
+# reason `PACKAGE_ROOT` above is: importing `chitragupta.config` here
+# would run its whole body, including the `config.toml`-or-raise at the
+# bottom, on a directory `init` exists to create because that file is not
+# there yet; `tests/test_init.py` pins the two copies equal). It closes
+# #891 gap 1: `SHADOWING_NAMES` above stops `init` from scaffolding *over*
+# a planted `chitragupta/`, but says nothing about one added afterwards,
+# which a skill's own `python -m chitragupta.draft gate` would import with
+# no hook in between to refuse it (#822's `safe_path.py` only protects a
+# hook's own children). With this marker, `chitragupta.config` can tell
+# "I am the real install, imported via a scaffolded project's cwd
+# fallback" from "I am a planted copy inside a project `init` marked as
+# scaffolded" -- the second is only possible if a `chitragupta/` or
+# `chitragupta.py` was committed there after scaffolding, since `init`
+# itself never writes one.
+SCAFFOLD_MARKER = ".chitragupta-scaffold"
+
 # The second entry that changes name on the way in, and the only one
 # copied *into* `content/`. `[style].acronyms` ships pointing at
 # `content/acronyms.toml`, and `[retrieval].acronym_expansion` is on, so
@@ -147,7 +167,12 @@ EMPTY_DIRS = (
 # Everything a scaffold can write, with every harness named. The default,
 # `--agent claude`, writes all of it bar the other harnesses' trees.
 TOP_LEVEL = frozenset(
-    {CONFIG_DEST, *COPY_VERBATIM, *(t for trees in AGENT_TREES.values() for t in trees)}
+    {
+        CONFIG_DEST,
+        SCAFFOLD_MARKER,
+        *COPY_VERBATIM,
+        *(t for trees in AGENT_TREES.values() for t in trees),
+    }
     | {"papers", "content"}
 )
 
@@ -265,6 +290,17 @@ def _write_empty_dir(dst: Path, *, dry_run: bool) -> str:
     return f"{'would create' if dry_run else 'created'}: {dst}/"
 
 
+def _write_marker(dst: Path, *, dry_run: bool) -> str:
+    """`SCAFFOLD_MARKER`: an empty sentinel, present once and never
+    rewritten -- its existence is the whole signal, so a rerun must not
+    even touch its mtime."""
+    if dst.is_file():
+        return f"exists, unchanged: {dst}"
+    if not dry_run:
+        dst.touch()
+    return f"{'would create' if dry_run else 'created'}: {dst}"
+
+
 def scaffold(
     dest: Path, *, force: bool = False, dry_run: bool = False, agents=DEFAULT_AGENTS
 ) -> list[str]:
@@ -319,6 +355,7 @@ def scaffold(
     )
     for rel in EMPTY_DIRS:
         report.append(_write_empty_dir(dest / rel, dry_run=dry_run))
+    report.append(_write_marker(dest / SCAFFOLD_MARKER, dry_run=dry_run))
     return report
 
 

@@ -54,13 +54,16 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # Not at the top, because the path this import needs is the line above it:
 # the hook is run as a script by the harness, from a directory that is not
 # the repository, so `chitragupta` is only importable once the root it derived from
-# its own location is on the path. Module level rather than inside the
-# function on purpose -- a local `try: ... except ImportError: return []`
-# would turn a genuine breakage into the exact silence this hook exists to
-# notice, and a crashed advisory hook (which can never block) is the safer
-# half of that trade. `scripts/release.py` ships every git-tracked path bar
-# tests/, .github/ and bench/, so `chitragupta/` and `.claude/hooks/` always travel
-# together in a release bundle.
+# its own location is on the path. Module level rather than inside a
+# function on purpose, same as before -- but as of #891 gap 2, caught
+# rather than left to crash: the earlier `except ImportError: return []`
+# this comment used to warn against is still the wrong shape (silence),
+# but a *named* report through this hook's own advisory channel is not
+# the silence that argument was about -- it is this hook doing, for its
+# own interpreter, exactly what `launcher_faults` below already does for
+# every *other* one it probes. `scripts/release.py` ships every
+# git-tracked path bar tests/, .github/ and bench/, so `chitragupta/` and
+# `.claude/hooks/` always travel together in a release bundle.
 #
 # Appended rather than prepended, and that is a security property now
 # (#822), not only a tidiness one: an installed `chitragupta` is found in
@@ -69,7 +72,15 @@ REPO = Path(__file__).resolve().parent.parent.parent
 # the root's own package the one available -- does this line supply it.
 # The hook's *children* are the other half, and `safe_path` decides those.
 sys.path.append(str(REPO))
-from chitragupta import launcher_configs  # noqa: E402  pylint: disable=wrong-import-position
+try:
+    from chitragupta import launcher_configs
+except ImportError:
+    # The unactivated-venv shape #563 and #891 gap 2 name: this
+    # interpreter -- the one the harness actually launched -- has no
+    # installed `chitragupta` visible to it at all, cwd fallback included.
+    # `None` rather than re-raising, so the two checks below it still run;
+    # `launcher_faults` is the one that turns this into a report.
+    launcher_configs = None
 
 FABRICATED = "preflight_probe_not_a_real_citekey"
 
@@ -84,7 +95,18 @@ def launcher_faults() -> list[str]:
     passed rather than looked up there so that this hook keeps deriving the
     repository root from its own on-disk location, which is what lets a
     test point it at a throwaway tree.
+
+    When `launcher_configs` itself failed to import (#891 gap 2), none of
+    that can run -- so this says so by name instead of silently reporting
+    a clean launcher set it was never able to check.
     """
+    if launcher_configs is None:
+        return [
+            f"no installed chitragupta visible to {sys.executable} -- this preflight "
+            "could not import its own checks, so nothing below could run either. "
+            "Activate the virtualenv chitragupta is installed into before starting "
+            "this session."
+        ]
     return launcher_configs.faults(REPO)
 
 
