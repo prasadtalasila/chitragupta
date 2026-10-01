@@ -189,7 +189,7 @@ def _unchanged(source: str) -> str:
 
 
 class TestEditingTheSourceInvalidatesTheCaches:
-    def test_an_unedited_copy_reports_this_processs_versions(self, tmp_path):
+    def test_an_unedited_copy_reports_this_process_versions(self, tmp_path):
         """The control: without it, the two tests below would pass for any
         probe that merely ran in a different interpreter."""
         assert _versions_under(tmp_path, _unchanged) == [
