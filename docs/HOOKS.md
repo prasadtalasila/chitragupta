@@ -428,13 +428,17 @@ chitragupta.<layer> ...` invocation imports before running any verb --
 refuses at import time, the same fail-closed shape a hook's protected
 child already gets, when the copy running was imported from the
 command's own directory -- `sys.path[0]`, the mechanism that lets a plant
-win -- that directory is not also elsewhere on `sys.path`, and the
-project it belongs to (the nearest `config.toml` above it, by config.py's
-own walk with `CHITRAGUPTA_PROJECT` ignored) carries the marker. An
-install anywhere, a project-local venv's included, is never imported from
-`sys.path[0]`; an editable checkout is reached through its `.pth` entry;
-a plain checkout has its own, unmarked `config.toml`. Paths are compared
-without resolving symlinks. `chitragupta init` covers the scaffold-time
+win -- that directory is not also elsewhere on `sys.path` *for a reason
+other than `PYTHONPATH`* (`PYTHONPATH=.`, a common shell/`direnv` habit,
+otherwise duplicates `sys.path[0]` there too and turned the check off
+entirely -- caught in review), and the project it belongs to (the nearest
+`config.toml` above it, by config.py's own walk with `CHITRAGUPTA_PROJECT`
+ignored) carries the marker. An install anywhere, a project-local venv's
+included, is never imported from `sys.path[0]`; an editable checkout is
+reached through its `.pth` entry, which `PYTHONPATH` does not account
+for, so it stays exempt; a plain checkout has its own, unmarked
+`config.toml`. Paths are compared without resolving symlinks. `chitragupta
+init` covers the scaffold-time
 end, as before: it refuses to scaffold over a directory already holding
 `chitragupta/` or `chitragupta.py`, or over a non-regular file (or
 symlink) already sitting at the marker's own path.

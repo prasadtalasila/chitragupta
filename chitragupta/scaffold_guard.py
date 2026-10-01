@@ -37,7 +37,8 @@ running copy is refused when all three hold:
 
 1. the directory it was imported from -- the parent of its `chitragupta/`
    -- is `sys.path[0]` (`''` meaning the current directory);
-2. that directory is not also elsewhere on `sys.path`; and
+2. that directory is not also elsewhere on `sys.path` *for a reason other
+   than `PYTHONPATH`*; and
 3. the project that directory belongs to -- the nearest `config.toml`
    above it, found by `config.discover_project_root`'s own walk with no
    `CHITRAGUPTA_PROJECT` -- carries `SCAFFOLD_MARKER`.
@@ -46,15 +47,29 @@ An install anywhere -- a venv's `site-packages` (including one nested
 inside the project), `--target`, or an editable checkout reached through
 its `.pth` file -- is never imported from `sys.path[0]` (1). `cd`-ing into
 an editable checkout and running there is exempt because the `.pth` file
-also puts it later on `sys.path` (2). A plain checkout run from its own
-tree has its own, unmarked `config.toml` (3), even when the checkout sits
-inside a marked directory such as a scaffolded `~`. Paths are made
-absolute without resolving symlinks, so a symlinked `<root>/chitragupta`
-is judged, and named in the `[fatal]` message, at the path Python
-imported, not at the link's target. Earlier versions of this check keyed
-on `config.PROJECT_ROOT`, on the one directory above the package, on
-every ancestor, and on the name `site-packages`; each missed a plant or
-refused an install, and review on #928 records which.
+also puts it later on `sys.path` (2), and that entry did not come from
+`PYTHONPATH`. A plain checkout run from its own tree has its own,
+unmarked `config.toml` (3), even when the checkout sits inside a marked
+directory such as a scaffolded `~`. Paths are made absolute without
+resolving symlinks, so a symlinked `<root>/chitragupta` is judged, and
+named in the `[fatal]` message, at the path Python imported, not at the
+link's target. Earlier versions of this check keyed on
+`config.PROJECT_ROOT`, on the one directory above the package, on every
+ancestor, on the name `site-packages`, and on any `sys.path[1:]` entry
+regardless of its source; each missed a plant or refused an install, and
+review on #928 records which.
+
+**Why `PYTHONPATH` entries are excluded from condition 2.** `PYTHONPATH=.`
+(or `PYTHONPATH=$PWD`, the same shell or `direnv` habit) adds the current
+directory to `sys.path` a second time, which used to satisfy condition 2
+and switch the whole check off for a plant sitting in plain sight
+(raised, and reproduced, in review). Condition 2 exists only for the
+editable-checkout shape, and that shape is still exempt without counting
+`PYTHONPATH`: an editable install's own `.pth` file is processed by
+`site.py`, not by the `PYTHONPATH` environment variable, so its entry
+survives the exclusion. `PYTHONPATH` entries are found by splitting
+`os.environ.get("PYTHONPATH", "")` on `os.pathsep`, the same splitting
+Python's own interpreter start-up does.
 
 `init` writes the marker into every project it scaffolds, and writes it
 on any rerun if it is missing, with no `--force`, so re-running `chitragupta
@@ -63,6 +78,19 @@ re-initialised stays unmarked, and this check stays silent for it. Nothing
 here depends on whether `chitragupta` is installed anywhere visible --
 that residue belongs to `chitragupta/hook_launchers.py`'s probe of a
 different interpreter, and to the SessionStart hook (#891 gap 2).
+
+**A known, accepted misfire, not fixed here.** An *unconfigured* checkout
+(no `config.toml` of its own yet) reached only through `PYTHONPATH` --
+not a real `.pth` entry -- sitting under a marked directory and run from
+inside itself is refused rather than exempted: condition 2 cannot tell
+that shape apart from the actual bypass it exists to close, and condition
+3's walk passes straight through a directory with no `config.toml` to the
+marked one above it. A checkout that already has its own `config.toml`
+is unaffected (condition 3 stops there regardless), so this is narrower
+than it sounds, and it trades the actionable
+`cp config.toml.example config.toml` error for a `[fatal] ... planted
+chitragupta/` one -- a worse message for a case this project considers
+rare enough not to special-case.
 
 Standard library only, and it imports nothing from `chitragupta`.
 """
@@ -91,7 +119,19 @@ def _import_root(package_file: Path) -> "Path | None":
     return None
 
 
-def scaffolded_ancestor(package_file: Path, find_project_root, search_path=None) -> "Path | None":
+def _pythonpath_entries(environ) -> set:
+    """`PYTHONPATH`'s own entries, lexically normalised -- the same
+    splitting Python's interpreter start-up does, so a `PYTHONPATH`-only
+    duplicate of `sys.path[0]` can be told apart from one a `.pth` file
+    put there (see "why PYTHONPATH entries are excluded" in the module
+    docstring)."""
+    raw = environ.get("PYTHONPATH", "")
+    return {_lexical(entry) for entry in raw.split(os.pathsep) if entry}
+
+
+def scaffolded_ancestor(
+    package_file: Path, find_project_root, search_path=None, environ=None
+) -> "Path | None":
     """The marked project root a planted `package_file` was imported
     from, or `None` -- the three conditions in the module docstring.
 
@@ -99,15 +139,17 @@ def scaffolded_ancestor(package_file: Path, find_project_root, search_path=None)
     belongs to, or `None`; `config.py` passes its own
     `discover_project_root` with `CHITRAGUPTA_PROJECT` ignored, so this
     module needs no second copy of that walk. `search_path` defaults to
-    `sys.path`.
+    `sys.path`, `environ` to `os.environ`.
     """
     search_path = sys.path if search_path is None else search_path
+    environ = os.environ if environ is None else environ
     import_root = _import_root(package_file)
     if import_root is None or not search_path:
         return None
     if import_root != _lexical(search_path[0]):
         return None
-    if import_root in {_lexical(entry) for entry in search_path[1:]}:
+    rest = {_lexical(entry) for entry in search_path[1:]} - _pythonpath_entries(environ)
+    if import_root in rest:
         return None
     project = find_project_root(import_root)
     if project is not None and (project / SCAFFOLD_MARKER).is_file():
@@ -115,11 +157,13 @@ def scaffolded_ancestor(package_file: Path, find_project_root, search_path=None)
     return None
 
 
-def refuse_if_shadowed(package_file: Path, find_project_root, search_path=None) -> None:
+def refuse_if_shadowed(
+    package_file: Path, find_project_root, search_path=None, environ=None
+) -> None:
     """Fail closed, the way a hook's protected child already does,
     instead of silently running the planted copy `scaffolded_ancestor`
     found."""
-    root = scaffolded_ancestor(package_file, find_project_root, search_path)
+    root = scaffolded_ancestor(package_file, find_project_root, search_path, environ)
     if root is None:
         return
     print(

@@ -49,8 +49,8 @@ def package(parent: Path, module: str = "config.py") -> Path:
     return path
 
 
-def ancestor(path: Path, search_path) -> "Path | None":
-    return scaffold_guard.scaffolded_ancestor(path, find, [str(p) for p in search_path])
+def ancestor(path: Path, search_path, environ=None) -> "Path | None":
+    return scaffold_guard.scaffolded_ancestor(path, find, [str(p) for p in search_path], environ)
 
 
 class TestAPlantRunFromItsOwnDirectoryIsCaught:
@@ -109,10 +109,46 @@ class TestAnInstallOrACheckoutIsNotCaught:
         assert ancestor(package(source), [root, source]) is None
 
     def test_running_from_inside_that_editable_checkout(self, tmp_path):
-        """Condition 2: the `.pth` entry also puts it later on the path."""
+        """Condition 2: the `.pth` entry also puts it later on the path --
+        isolated from the real environment's own `PYTHONPATH` with an
+        explicit, empty `environ`, since this models a `.pth`-sourced
+        duplicate, not a `PYTHONPATH`-sourced one (see the two
+        `..._but_only_via_pythonpath` tests below for that distinction)."""
         root = project(tmp_path / "root")
         source = root / "tools" / "chitragupta-src"
-        assert ancestor(package(source), [source, root / "lib", source]) is None
+        assert ancestor(package(source), [source, root / "lib", source], environ={}) is None
+
+    def test_a_pythonpath_dot_does_not_disable_the_guard(self, tmp_path, monkeypatch):
+        """#891 review: `PYTHONPATH=.` (a common shell/direnv habit) used
+        to satisfy condition 2 and turn the check off for a plant sitting
+        in plain sight. `.` is relative to this *process's* cwd, so the
+        test chdirs into `root` first, matching what a real `-m` child
+        run from there would see. Reproduced live before the fix: no
+        refusal."""
+        root = project(tmp_path / "root")
+        planted = package(root)
+        monkeypatch.chdir(root)
+        environ = {"PYTHONPATH": "."}
+        assert ancestor(planted, [root, root], environ=environ) == root.resolve()
+
+    def test_a_pythonpath_naming_the_import_root_directly_does_not_disable_it(self, tmp_path):
+        root = project(tmp_path / "root")
+        planted = package(root)
+        environ = {"PYTHONPATH": str(root)}
+        assert ancestor(planted, [root, root], environ=environ) == root.resolve()
+
+    def test_an_editable_checkout_reached_only_through_pythonpath_is_still_caught(self, tmp_path):
+        """The accepted cost the suggested fix names: an *unconfigured*
+        checkout (no config.toml of its own yet) put on the path only via
+        PYTHONPATH, under a marked root, and run from inside itself, is
+        refused rather than exempted -- condition 3 would have exempted a
+        properly configured one regardless."""
+        root = project(tmp_path / "root")
+        source = root / "tools" / "chitragupta-src"
+        source.mkdir(parents=True)
+        planted = package(source)
+        environ = {"PYTHONPATH": str(source)}
+        assert ancestor(planted, [source, source], environ=environ) == root.resolve()
 
     def test_a_checkout_inside_a_marked_directory(self, tmp_path):
         """#891 review: `chitragupta init ~` must not block every checkout
@@ -262,10 +298,10 @@ class TestWiredIntoConfig:
         result = run_python("-m", "chitragupta.corpus", "ledger", cwd=root)
         assert "[fatal]" not in result.stderr
 
-    def test_an_editable_style_install_inside_the_marked_project_is_not_refused(self, tmp_path):
+    def test_a_target_style_install_reached_through_pythonpath_is_not_refused(self, tmp_path):
         """#891 review, reproduced end to end: the package reached through
-        PYTHONPATH (what an editable install's `.pth` amounts to) from a
-        directory inside the marked project, run from the project root."""
+        PYTHONPATH from a directory other than cwd -- a `--target` install
+        -- run from the project root."""
         root = project(tmp_path / "project")
         source = root / "tools" / "chitragupta-src"
         source.mkdir(parents=True)
@@ -273,3 +309,15 @@ class TestWiredIntoConfig:
         env = {**os.environ, "PYTHONPATH": str(source)}
         result = run_python("-m", "chitragupta.corpus", "ledger", cwd=root, env=env)
         assert "[fatal]" not in result.stderr
+
+    def test_pythonpath_dot_does_not_disable_the_guard(self, tmp_path):
+        """#891 review: `PYTHONPATH=.` (a common shell/direnv habit) used
+        to satisfy condition 2 and turn this check off entirely for a
+        plant sitting directly at the project root -- reproduced live
+        before the fix: no refusal at all with this env var set."""
+        root = project(tmp_path / "project")
+        self.plant(root)
+        env = {**os.environ, "PYTHONPATH": "."}
+        result = run_python("-m", "chitragupta.corpus", "ledger", cwd=root, env=env)
+        assert result.returncode == 1
+        assert "[fatal]" in result.stderr
