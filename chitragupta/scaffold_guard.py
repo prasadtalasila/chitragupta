@@ -75,7 +75,12 @@ losing track of `<root>` entirely and checking `vendor/` instead, where
 no marker exists (also raised in review). `package_file.absolute()` is
 used instead: makes the path absolute without resolving any symlink in
 it, so the check stays keyed to the lexical path Python's import actually
-selected.
+selected. `refuse_if_shadowed`'s own `[fatal]` message uses `.absolute()`
+for the same reason: naming `package_file.resolve()`'s fully-resolved
+target in that message, for the same symlinked-package case, would have
+pointed a reader's "remove it" at the symlink's target rather than the
+planted entry actually sitting under the scaffolded root (also raised in
+review).
 
 **Keyed to the one directory immediately above `package_file`'s own
 `chitragupta/` ancestor, never to every ancestor above that.** An
@@ -176,7 +181,7 @@ def refuse_if_shadowed(package_file: Path) -> None:
     if root is None:
         return
     print(
-        f"[fatal] {package_file.resolve()} is running from inside a project "
+        f"[fatal] {package_file.absolute()} is running from inside a project "
         f"`chitragupta init` marked as scaffolded ({root}) -- this is a "
         "planted chitragupta/, not the installed package (#822, #891). "
         "Remove it, or reinstall chitragupta-cli and activate that "
@@ -208,7 +213,13 @@ def unsafe_marker_reason(marker: Path) -> "str | None":
       `scaffolded_ancestor` above requires `is_file()`, so the guard
       stays silently disabled under a report that claims success.
     """
-    if marker.is_symlink():
+    # Creating a symlink on CI's Windows leg needs Developer Mode or an
+    # elevated process, neither available there, so the tests that would
+    # exercise this branch are structurally unrunnable on that platform
+    # (tests/test_scaffold_guard.py and tests/test_init.py both skip
+    # their symlink cases on win32) -- the same "platform" category
+    # coveragerc-windows.toml's own module docstring names.
+    if marker.is_symlink():  # pragma: no cover-windows
         return (
             f"{marker} is a symlink, which this would follow when writing "
             "the scaffold marker (#891)."

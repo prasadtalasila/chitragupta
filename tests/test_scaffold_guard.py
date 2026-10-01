@@ -13,9 +13,7 @@ that one call would be caught here rather than only by the unit tests
 below, which exercise `scaffold_guard` in isolation.
 """
 
-import os
 import shutil
-import subprocess
 import sys
 from pathlib import Path
 
@@ -23,7 +21,7 @@ import pytest
 
 from chitragupta import scaffold_guard
 
-from tests.conftest import _IS_COVERAGE_BOOTSTRAP
+from tests.conftest import run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -162,9 +160,34 @@ class TestRefuseIfShadowed:
             scaffold_guard.refuse_if_shadowed(planted)
         assert raised.value.code == 1
         err = capsys.readouterr().err
-        assert str(planted.resolve()) in err
+        assert str(planted.absolute()) in err
         assert str(root) in err
         assert "scaffolded" in err
+
+    @pytest.mark.skipif(
+        sys.platform == "win32", reason="symlinks need elevated privileges on Windows"
+    )
+    def test_the_fatal_message_names_the_planted_entry_not_a_symlinks_target(
+        self, tmp_path, capsys
+    ):
+        """#891 review: `package_file.resolve()` would have named
+        `vendor/config.py` here -- the symlink's target, not the planted
+        entry actually sitting under the scaffolded root -- pointing a
+        reader's "remove it" at the wrong path entirely."""
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        real = tmp_path / "vendor" / "chitragupta"
+        real.mkdir(parents=True)
+        (real / "config.py").write_text("", encoding="utf-8")
+        linked = root / "chitragupta"
+        linked.symlink_to(real, target_is_directory=True)
+        planted = linked / "config.py"
+        with pytest.raises(SystemExit):
+            scaffold_guard.refuse_if_shadowed(planted)
+        err = capsys.readouterr().err
+        assert str(planted.absolute()) in err
+        assert str((real / "config.py").resolve()) not in err
 
 
 @pytest.mark.skipif(sys.platform == "win32", reason="symlinks need elevated privileges on Windows")
@@ -265,7 +288,7 @@ class TestWiredIntoConfig:
         return root
 
     def test_a_planted_real_copy_refuses(self, planted_checkout):
-        result = _run_corpus_ledger(planted_checkout)
+        result = run_python("-m", "chitragupta.corpus", "ledger", cwd=planted_checkout)
         assert result.returncode == 1
         assert "[fatal]" in result.stderr
         assert "scaffolded" in result.stderr
@@ -278,37 +301,6 @@ class TestWiredIntoConfig:
         root = tmp_path / "project"
         root.mkdir()
         shutil.copytree(REPO_ROOT / "chitragupta", root / "chitragupta")
-        result = _run_corpus_ledger(root)
+        result = run_python("-m", "chitragupta.corpus", "ledger", cwd=root)
         assert "[fatal]" not in result.stderr
         assert result.returncode != 1 or "scaffolded" not in result.stderr
-
-
-def _run_corpus_ledger(cwd: Path):
-    """`python -m chitragupta.corpus ledger` from `cwd`, with no
-    `PYTHONPATH` -- `-m` already puts `cwd` first on `sys.path`
-    regardless, so the copied `chitragupta/` there is what resolves,
-    exactly as a skill's real invocation would find a planted one. No
-    `-S`: the real corpus layer's own third-party imports (bibtexparser)
-    still need the real venv's site-packages for the "runs normally"
-    control case below to mean anything. Not routed through
-    `tests.conftest.run_python`, which always appends this checkout to
-    `PYTHONPATH` and would make the child see the real, un-shadowed
-    package instead of the planted one under test -- see this file's
-    `EXEMPT` entry in `tests/test_subprocess_launch_scan.py`. Coverage
-    bootstrap variables are stripped for the same reason
-    `tests.conftest.run_python` strips them from any cwd that is not the
-    repository root: a child without this checkout's own `pyproject.toml`
-    on its path records statement-only coverage, which kills the combine
-    step after every test has already passed.
-    """
-    env = {
-        k: v for k, v in os.environ.items() if k != "PYTHONPATH" and not _IS_COVERAGE_BOOTSTRAP(k)
-    }
-    return subprocess.run(
-        [sys.executable, "-m", "chitragupta.corpus", "ledger"],
-        cwd=str(cwd),
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
