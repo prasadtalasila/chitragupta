@@ -535,6 +535,24 @@ class TestModuleReloadWithEnvOverrides:
         monkeypatch.delenv("RETRIEVAL_WEIGHT_TITLE")
         importlib.reload(config)
 
+    def test_a_parser_backend_is_folded_to_its_spelling_at_load(
+        self, monkeypatch, _empty_config_toml
+    ):
+        """`Docling` used to load verbatim, so every `config.PARSER ==
+        "docling"` comparison was false and enrichment silently
+        re-converted every PDF instead of reusing sync's parse (#847)."""
+        monkeypatch.setenv("PARSER", "Docling")
+        importlib.reload(config)
+        assert config.PARSER == "docling"
+
+    def test_an_unknown_parser_backend_is_rejected_at_load(self, monkeypatch, _empty_config_toml):
+        monkeypatch.setenv("PARSER", "ocrmypdf")
+        with pytest.raises(ValueError, match="pdftotext, docling, not 'ocrmypdf'"):
+            importlib.reload(config)
+        # Cleared before the class teardown reloads, as above.
+        monkeypatch.delenv("PARSER")
+        importlib.reload(config)
+
     def test_acronyms_unset_falls_back_to_the_vendored_floor(self, _empty_config_toml):
         """The *code's* default, which the shipped config.toml no longer
         exercises now that it names `content/acronyms.toml`: a project

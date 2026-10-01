@@ -632,23 +632,6 @@ class TestCorpusLayerPassageSidecar:
         assert passages._from_sidecar(passages.sidecar_path("smith_2024")) is None
 
 
-class TestUnknownParser:
-    def test_is_available_raises_on_unknown_backend(self, isolated_config, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "ocrmypdf")
-        with pytest.raises(ValueError, match="Unknown parser backend 'ocrmypdf'"):
-            pdf_text.is_available()
-
-    def test_extract_text_raises_on_unknown_backend(self, isolated_config, monkeypatch, tmp_path):
-        monkeypatch.setattr(config, "PARSER", "ocrmypdf")
-        with pytest.raises(ValueError, match="Unknown parser backend"):
-            pdf_text.extract_text(str(tmp_path / "in.pdf"), "key")
-
-    def test_unavailable_reason_raises_on_unknown_backend(self, isolated_config, monkeypatch):
-        monkeypatch.setattr(config, "PARSER", "ocrmypdf")
-        with pytest.raises(ValueError, match="Unknown parser backend"):
-            pdf_text.unavailable_reason()
-
-
 class TestIsAvailable:
     def test_true_when_pdftotext_on_path(self, monkeypatch):
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")

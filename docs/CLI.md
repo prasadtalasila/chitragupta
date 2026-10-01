@@ -643,6 +643,12 @@ chroma collection is namespaced by `[embedding].model`, so a corpus
 embedded under a different model reads as zero vectors here; that is a
 true statement about the collection this configuration would use.
 
+**A file the scan cannot read is noted, not fatal.** A killed enrichment
+run can leave `topic_graph.json`, `topic_set.json`, `topics.json` or an
+overlap index truncated. The scan names that file on a `NOTE:` line and
+carries on, so the stale list still prints; its hits are then missing
+from the report, which is what the note is there to say.
+
 **Not every hit is equally durable, and the classes differ in kind.** A
 dossier mention was transcribed by a human and stays stale until a human
 removes it -- that is the hit to act on. The **topic membership** and

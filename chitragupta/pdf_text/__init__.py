@@ -87,33 +87,16 @@ _INSTALL_HINT = {
 }
 
 
-def _check_parser(parser: str) -> None:
-    # Deliberately left to propagate uncaught out of sync.run() rather
-    # than caught-and-printed like MissingBinary/MissingDependency below:
-    # this is a misconfiguration (a typo'd PARSER value), not a host
-    # missing an optional dependency, and sync.run() already has the same
-    # shape for the other fundamental-misconfiguration case -- a missing
-    # bib file raises FileNotFoundError uncaught from bib_reader.read_library(),
-    # before this function's own try block even starts.
-    if parser not in config.PARSER_BACKENDS:
-        raise ValueError(
-            f"Unknown parser backend {parser!r} (config.toml's [parser].backend, "
-            f"or the PARSER env var) -- expected one of {config.PARSER_BACKENDS}."
-        )
-
-
 def unavailable_reason() -> str:
     """Human-readable explanation of why config.PARSER's backend isn't
     usable right now, and how to fix it. Meaningful when is_available()
     is False, and also reused as MissingDependency's message when a
     backend's import fails despite that probe passing (a broken
     transitive dependency -- see _backends._extract_docling)."""
-    _check_parser(config.PARSER)
     return _INSTALL_HINT[config.PARSER]
 
 
 def is_available() -> bool:
-    _check_parser(config.PARSER)
     if config.PARSER == "pdftotext":
         return shutil.which("pdftotext") is not None
     return importlib.util.find_spec(config.PARSER) is not None
@@ -293,8 +276,16 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     # Annotated here rather than in extract_one, so the serial path --
     # which runs in the parent and never reaches a pool worker -- is
     # covered by the same code as the parallel one.
+    #
+    # The disable below is for pylint's inference, not a defect. Since
+    # config.PARSER is loaded through _get_choice (#847), pylint (under
+    # Python 3.13, as CI runs it) resolves it to "pdftotext", whose
+    # extractor returns None on purpose -- "this backend resolves no
+    # reading order" -- and the `is not None` below is what reads that.
     with annotated_output(citekey):
+        # pylint: disable=assignment-from-no-return
         records = _EXTRACTORS[config.PARSER](pdf_path, out_path, threads)
+        # pylint: enable=assignment-from-no-return
     # `is not None`, so a backend that resolved reading order and found no
     # prose still writes an (empty) sidecar. That keeps the file's
     # presence a reliable answer to "did a reading-order backend parse
