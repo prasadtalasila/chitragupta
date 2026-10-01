@@ -1,6 +1,6 @@
 # #893: an aid that raises during `agenda --baseline`'s refresh
 
-Status: **implemented, as 6.127.0.** Written 2026-10-01 against
+Status: **closed by PR #916 (6.127.0).** Written 2026-10-01 against
 `origin/main` at `12c58bf`. Closes #893, a follow-up to #837. Three
 things changed on the way:
 
