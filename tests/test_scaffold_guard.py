@@ -245,7 +245,6 @@ def test_marker_literal_matches_init_pys_own_copy():
     assert scaffold_guard.SCAFFOLD_MARKER == init.SCAFFOLD_MARKER
 
 
-@pytest.mark.skipif(sys.platform == "win32", reason="chmod/exec-bit semantics differ")
 class TestWiredIntoConfig:
     """End to end, through a real subprocess running this checkout's own
     (fixed) `chitragupta/config.py` -- not a mock of it -- as the planted
