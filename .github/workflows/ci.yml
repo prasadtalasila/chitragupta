@@ -216,8 +216,15 @@ jobs:
       # legs hold pyproject's/that file's own fail_under = 100. A floor
       # under 100 couldn't tell "a render test self-skipped" from
       # "Windows-only code that nothing reaches at all"; this can.
+      # HF_HUB_OFFLINE: no test may fetch a Hugging Face model (#861).
+      # tests/conftest.py already fails a test that reaches the
+      # resolver's real loaders; this catches any other path, as an
+      # OSError naming huggingface.co, instead of a ~420 MB download
+      # that turns a Hugging Face outage into a red build.
       - name: Run test suite with coverage
         shell: bash
+        env:
+          HF_HUB_OFFLINE: "1"
         run: |
           export VIRTUAL_ENV="$PWD/.venv-full"
           set -o pipefail

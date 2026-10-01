@@ -19,7 +19,7 @@ import pytest
 from chitragupta import config, discover
 from chitragupta.discover import _origin
 
-from tests.test_discover import GRAPH, TOPIC_SET, prepare
+from tests.test_discover import GRAPH, TOPIC_SET, place_nowhere, prepare
 from tests.test_discover_app import payload_of, write_phrase_files
 
 
@@ -223,11 +223,14 @@ class TestCli:
         data = json.loads(capsys.readouterr().out)
         assert [t["label"] for t in data["topics"]] == ["digital twin", "machine learning"]
 
-    def test_a_topic_the_filter_dropped_is_no_longer_resolvable(self, isolated_config, capsys):
+    def test_a_topic_the_filter_dropped_is_no_longer_resolvable(
+        self, isolated_config, capsys, monkeypatch
+    ):
         """The filter applies to the artefacts, not to one view, so a
         phrase that names a filtered-out topic falls through the
         resolution ladder exactly as an unknown phrase does."""
         prepare(isolated_config)
+        place_nowhere(monkeypatch, "digital twin")
         assert discover.main(["--origins", "emergent", "digital twin", "--json"]) == 1
         assert "digital twin" in capsys.readouterr().err
 

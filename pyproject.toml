@@ -320,6 +320,9 @@ mkdocs-same-dir = "0.1.5"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "real_resolver_loaders: run discover's real model loaders instead of tests/conftest.py's refusal",
+]
 
 [tool.coverage.run]
 # .claude/hooks is in scope because those two files enforce the citekey
