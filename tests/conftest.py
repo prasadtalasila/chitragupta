@@ -90,6 +90,40 @@ def _no_real_forkserver(monkeypatch):
     monkeypatch.setattr(forkserver, "ensure_running", lambda: None)
 
 
+@pytest.fixture(autouse=True)
+def _no_real_resolver_models(request, monkeypatch):
+    """Fail a test that reaches the resolution ladder's real models.
+
+    `discover`'s ladder loads a sentence-transformers model on its
+    semantic rung and a cross-encoder in `_rescored`. Any phrase that
+    misses the exact and fuzzy rungs reaches them, so a test that forgot
+    to fake them loaded the real thing: ~2.5 s from a warm Hugging Face
+    cache here, a ~420 MB download on CI, and a red build whenever
+    Hugging Face is down (#861). Seven tests did, silently.
+
+    A failure rather than a quiet stand-in, so the test says which
+    geometry it is asserting on instead of inheriting one from here.
+    `pytest.fail` rather than raising `ImportError`, the stand-in the
+    "enrich extra absent" tests use: the ladder catches that and
+    degrades to lexical-only matching, so a refusal test asserting exit
+    code 1 would pass on it. A test patching the loaders afterwards wins
+    (monkeypatch is last-write-wins); one testing the loaders
+    themselves opts out with `@pytest.mark.real_resolver_loaders`.
+    """
+    if request.node.get_closest_marker("real_resolver_loaders"):
+        return
+
+    def refuse():
+        pytest.fail(
+            "reached the real resolver model: monkeypatch _resolve._load_model "
+            "and _resolve._load_reranker with a fake",
+            pytrace=False,
+        )
+
+    monkeypatch.setattr("chitragupta.discover._resolve._load_model", refuse)
+    monkeypatch.setattr("chitragupta.discover._resolve._load_reranker", refuse)
+
+
 @pytest.fixture
 def isolated_config(tmp_path, monkeypatch):
     """Point every chitragupta.config path constant at a throwaway tmp_path tree.

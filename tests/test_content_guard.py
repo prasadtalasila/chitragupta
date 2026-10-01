@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from tests import content_guard
+from tests.conftest import run_python
 
 
 def tracked_tree(root):
@@ -190,3 +191,36 @@ def test_conftest_wires_the_guard_to_the_real_content_dir():
     source = (Path(__file__).parent / "conftest.py").read_text(encoding="utf-8")
     assert "content_guard.record(session, config.CONTENT_DIR)" in source
     assert "content_guard.verify(session)" in source
+
+
+class TestTheRealHooksEndToEnd:
+    """The fake session above proves `verify`'s logic, and the source
+    check proves conftest names it; neither proves pytest itself exits
+    non-zero. A nested pytest loads conftest as a plugin against a
+    throwaway `CONTENT_DIR` (config's environment override), so the
+    checkout is never the tree written."""
+
+    def _run(self, tmp_path, body: str):
+        content = tmp_path / "content"
+        content.mkdir()
+        probe = tmp_path / "test_probe.py"
+        probe.write_text(
+            f"from chitragupta import config\n\n\ndef test_probe():\n    {body}\n",
+            encoding="utf-8",
+        )
+        args = ["-m", "pytest", "-p", "no:cacheprovider", "-p", "tests.conftest", "-q"]
+        return run_python(
+            *args, str(probe), env={**os.environ, "CONTENT_DIR": str(content)}, check=False
+        )
+
+    def test_a_passing_run_that_wrote_content_exits_one_naming_the_path(self, tmp_path):
+        done = self._run(tmp_path, '(config.CONTENT_DIR / "leak.txt").write_text("x")')
+        assert done.returncode == pytest.ExitCode.TESTS_FAILED, done.stdout + done.stderr
+        assert "1 passed" in done.stdout
+        assert "created leak.txt" in done.stdout
+
+    def test_a_run_that_wrote_nothing_exits_zero(self, tmp_path):
+        """The control: without it, the exit 1 above could be anything."""
+        done = self._run(tmp_path, "assert config.CONTENT_DIR")
+        assert done.returncode == pytest.ExitCode.OK, done.stdout + done.stderr
+        assert "(#862)" not in done.stdout

@@ -19,7 +19,7 @@
 # checkout, Docker and CI.
 [tool.poetry]
 name = "chitragupta-cli"
-version = "6.127.8"
+version = "6.127.9"
 packages = [{ include = "chitragupta" }]
 # Everything below is not Python, so `packages` above doesn't reach it --
 # `poetry build` includes only what `packages`/`include` name. Each entry
@@ -320,6 +320,9 @@ mkdocs-same-dir = "0.1.5"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = [
+    "real_resolver_loaders: run discover's real model loaders instead of tests/conftest.py's refusal",
+]
 
 [tool.coverage.run]
 # .claude/hooks is in scope because those two files enforce the citekey

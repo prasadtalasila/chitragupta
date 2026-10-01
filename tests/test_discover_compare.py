@@ -8,7 +8,7 @@ phrases that collapse onto one topic.
 
 import json
 
-from test_discover import make_ledger, write_artefacts
+from test_discover import make_ledger, place_nowhere, write_artefacts
 from test_discover_why import WHY_GRAPH, WHY_TOPIC_SET
 
 from chitragupta import discover
@@ -108,7 +108,8 @@ class TestCompareCli:
         assert discover.main(["stray phrase", "--compare", "a", "b"]) == 2
         assert "--compare is its own view" in capsys.readouterr().err
 
-    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
+    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys, monkeypatch):
         prepare_three(isolated_config)
+        place_nowhere(monkeypatch, "quantum blockchain")
         assert discover.main(["--compare", "digital twin", "quantum blockchain"]) == 1
         assert "quantum blockchain" in capsys.readouterr().err

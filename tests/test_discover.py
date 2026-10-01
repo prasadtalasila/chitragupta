@@ -127,6 +127,29 @@ class FakeModel:
         return [self.VECTORS[t] for t in texts]
 
 
+class IndifferentReranker:
+    """Scores every candidate alike, so `_rescored` keeps the fused
+    order and a test about the rungs is not also a test of the
+    cross-encoder."""
+
+    def predict(self, pairs):
+        return [0.0] * len(pairs)
+
+
+# Raw zero sits at (-0.5, -0.5) from the (0.5, 0.5) corpus mean GRAPH
+# and WHY_GRAPH share: perpendicular to digital twin and machine
+# learning, and pointing away from formal methods, so no centroid is
+# near it. A graph without centroids ranks nothing semantically anyway.
+NOWHERE = [0.0, 0.0]
+
+
+def place_nowhere(monkeypatch, phrase: str) -> None:
+    """Fake the semantic rung so `phrase` lands near no topic, for a
+    refusal test whose phrase already misses every lexical rung."""
+    FakeModel.VECTORS = {phrase: NOWHERE}
+    monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
+
+
 class TestResolveLadder:
     LABELS = ("digital twin", "machine learning")
 
@@ -185,6 +208,7 @@ class TestResolveLadder:
         semantic ranking places it -- next to the digital-twin centroid."""
         FakeModel.VECTORS = {"cyber replica": [1.0, 0.0]}
         monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
+        monkeypatch.setattr(_resolve, "_load_reranker", lambda: IndifferentReranker())
         resolution = _resolve.resolve("cyber replica", GRAPH, TOPIC_SET, {}, min_similarity=0.2)
         assert resolution.via == "hybrid"
         assert resolution.label == "digital twin"
@@ -201,6 +225,7 @@ class TestResolveLadder:
             raise ImportError("no sentence_transformers")
 
         monkeypatch.setattr(_resolve, "_load_model", refuse)
+        monkeypatch.setattr(_resolve, "_load_reranker", refuse)
         resolution = _resolve.resolve(
             "simulation twin", GRAPH, TOPIC_SET, {"digital twin": ["twin", "simulation"]}
         )
@@ -209,6 +234,7 @@ class TestResolveLadder:
         assert "semantic" in (resolution.note or "")
 
 
+@pytest.mark.real_resolver_loaders
 class TestModelLoading:
     def test_both_lazy_loaders_construct_the_configured_model(self, monkeypatch):
         """Patched at sys.modules so the `from sentence_transformers
@@ -225,6 +251,16 @@ class TestModelLoading:
         assert _resolve._load_model() == "model"
         assert _overview._load_model() == "model"
         assert seen == [config.EMBEDDING_MODEL] * 2
+
+    def test_the_reranker_loader_asks_for_the_configured_cross_encoder(self, monkeypatch):
+        """Patched one level down, at the shared loader, so the line
+        under test is the shipped `_load_reranker` and no model loads."""
+        from chitragupta import reranker
+
+        seen = []
+        monkeypatch.setattr(reranker, "load_reranker", lambda name: seen.append(name) or "scorer")
+        assert _resolve._load_reranker() == "scorer"
+        assert seen == [config.RERANK_MODEL]
 
 
 class TestDataLoading:

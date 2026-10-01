@@ -4,7 +4,7 @@
 
 import json
 
-from test_discover import write_artefacts
+from test_discover import place_nowhere, write_artefacts
 from test_enrich_topic_paths import cases, graph_for
 
 from chitragupta import discover
@@ -57,8 +57,9 @@ class TestPathCli:
         assert discover.main(["--path", "A", "Z"]) == 2
         assert "never one fused weight" in capsys.readouterr().err
 
-    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
+    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys, monkeypatch):
         prepare(isolated_config)
+        place_nowhere(monkeypatch, "quantum blockchain")
         assert discover.main(["--path", "quantum blockchain", "Z", "--family", "overlap"]) == 1
         assert "quantum blockchain" in capsys.readouterr().err
 

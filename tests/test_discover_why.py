@@ -9,7 +9,7 @@ the artefact stores and the app payload drops.
 
 import json
 
-from test_discover import GRAPH, TOPIC_SET, prepare, write_artefacts
+from test_discover import GRAPH, TOPIC_SET, place_nowhere, prepare, write_artefacts
 from test_webapp_hypergeometric import cases
 
 from chitragupta import discover
@@ -223,6 +223,7 @@ class TestWhyCli:
             raise ImportError("no sentence_transformers")
 
         monkeypatch.setattr(_resolve, "_load_model", refuse)
+        monkeypatch.setattr(_resolve, "_load_reranker", refuse)
         write_artefacts(
             isolated_config,
             graph=WHY_GRAPH,
@@ -241,8 +242,9 @@ class TestWhyCli:
         assert discover.main(["--json", "--why", "simulation twin", "machine learning"]) == 0
         assert "note:" not in capsys.readouterr().out
 
-    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys):
+    def test_an_unresolvable_topic_refuses(self, isolated_config, capsys, monkeypatch):
         self.prepare_why(isolated_config)
+        place_nowhere(monkeypatch, "quantum blockchain")
         assert discover.main(["--why", "quantum blockchain", "machine learning"]) == 1
         assert "quantum blockchain" in capsys.readouterr().err
 
