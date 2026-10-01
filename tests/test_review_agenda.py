@@ -2135,6 +2135,37 @@ class TestRefreshAids:
         assert old.read_bytes() == earlier
         assert old.stat().st_mtime_ns == 1_000_000_000
 
+    def test_a_rewrite_that_kept_the_old_mtime_is_still_put_back(
+        self, isolated_config, aid_stubs, monkeypatch
+    ):
+        """PR #916's second review: on a filesystem too coarse to tell two
+        writes apart, a raising aid can change the bytes and leave the
+        mtime where it was -- so the restore compares bytes, not only the
+        mtime."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        earlier = old.read_bytes()
+
+        def same_tick_then_raise(argv):
+            review.write_json(draft, "support", {"findings": ["half-written"]})
+            os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+            raise OSError("disk went away")
+
+        monkeypatch.setattr(_registry.AIDS["support"][0], "main", same_tick_then_raise)
+        _refresh.refresh_aids(draft)
+        assert old.read_bytes() == earlier
+
+    def test_a_byte_identical_rewrite_gets_its_old_mtime_back(self, isolated_config, aid_stubs):
+        """Same bytes, new mtime: the file would read as newer than the
+        draft, and so not stale, when it is an earlier run's."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": []})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert old.stat().st_mtime_ns == 1_000_000_000
+
     def test_a_sidecar_first_written_by_a_raising_run_is_removed(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         aid_stubs["support"].raises = OSError("disk went away")

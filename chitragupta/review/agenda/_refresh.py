@@ -111,9 +111,15 @@ def _restore(path: Path, snapshot: tuple[int | None, bytes | None]) -> None:
     trusted. So the earlier bytes come back, with their own mtime, so
     `_sources._read_aid_json`'s stale-against-the-draft check still sees
     their real age; a file the failed run created is removed.
+
+    "Changed" is the bytes *or* the mtime, never the mtime alone (the
+    review's second round): on a filesystem coarser than two consecutive
+    writes -- the case `refresh_aids`' docstring already allows for -- a
+    rewrite can keep the old mtime, and an mtime-only check would leave
+    the failed output standing.
     """
     mtime, content = snapshot
-    if _mtime_ns(path) == mtime:
+    if _snapshot(path) == snapshot:
         return
     if content is None:
         path.unlink(missing_ok=True)
