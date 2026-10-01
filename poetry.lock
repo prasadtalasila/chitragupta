@@ -5290,7 +5290,7 @@ version = "6.0.3"
 description = "YAML parser and emitter for Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["main", "docs", "enrich"]
+groups = ["main", "dev", "docs", "enrich"]
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -5366,7 +5366,7 @@ files = [
     {file = "pyyaml-6.0.3-cp39-cp39-win_amd64.whl", hash = "sha256:2e71d11abed7344e42a8849600193d15b6def118602c4c176f748e4583246007"},
     {file = "pyyaml-6.0.3.tar.gz", hash = "sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f"},
 ]
-markers = {main = "extra == \"enrich\" or extra == \"docs\""}
+markers = {main = "extra == \"enrich\" or extra == \"dev\" or extra == \"docs\""}
 
 [[package]]
 name = "pyyaml-env-tag"
@@ -7224,11 +7224,11 @@ multidict = ">=4.0"
 propcache = ">=0.2.1"
 
 [extras]
-dev = ["pytest", "pytest-cov"]
+dev = ["pytest", "pytest-cov", "pyyaml"]
 docs = ["mkdocs-material", "mkdocs-same-dir"]
 enrich = ["adapters", "bertopic", "chromadb", "docling", "networkx", "pypdfium2", "scipy", "sentence-transformers", "torch", "torchvision"]
 
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.14.1 || >3.14.1,<3.15"
-content-hash = "6b899d292cf67b397c3f032ded79ba588c18973a4acc53e820f37b1f0306a819"
+content-hash = "cf4a8c5cea52350163dc1465d9506d02e15b54bb06fcffc164211c0dba9a5e42"

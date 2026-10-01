@@ -12,8 +12,11 @@ the kind of duplication that drifts silently if nothing pins it, the same
 shape `test_pyproject_extras.py` polices for the extras/group lists.
 """
 
+import re
 import tomllib
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -49,3 +52,50 @@ class TestTheTwoConfigsAgreeOnWhatTheyMeasure:
         with open(WINDOWS_CONFIG, "rb") as f:
             windows_exclude = set(tomllib.load(f)["tool"]["coverage"]["report"]["exclude_lines"])
         assert linux_exclude < windows_exclude
+
+
+DEVELOPER_AGENTS = REPO_ROOT / "DEVELOPER-AGENTS.md"
+
+# "Linux holds the full 100", "the Windows leg ... holds 95", "both legs
+# hold 100": every shape the coverage bullet has used to state a floor.
+_STATED_FLOOR_RE = re.compile(r"\bholds? (?:the (?:full|same) )?(\d+)\b")
+
+
+def _stated_floors(text: str) -> list[int]:
+    """Every coverage floor `text` states in prose. Asserts it found one,
+    so a rewording that drops the sentence's shape fails loudly instead
+    of leaving nothing to compare."""
+    floors = [int(n) for n in _STATED_FLOOR_RE.findall(" ".join(text.split()))]
+    assert floors, (
+        "DEVELOPER-AGENTS.md no longer states the coverage floor in the shape "
+        f"this test reads ({_STATED_FLOOR_RE.pattern!r}). Rewording it is fine; "
+        "teach this pattern the new shape in the same change."
+    )
+    return floors
+
+
+class TestTheProseStatesTheRealFloor:
+    """#863: the configs moved to one floor in #291, and the prose kept
+    saying the Windows leg "holds 95" for months afterwards, with nothing
+    to catch a reader who lowered the floor back "because the docs say so"."""
+
+    def test_developer_agents_states_the_configs_floor(self):
+        with open(WINDOWS_CONFIG, "rb") as f:
+            floor = tomllib.load(f)["tool"]["coverage"]["report"]["fail_under"]
+        stated = _stated_floors(DEVELOPER_AGENTS.read_text(encoding="utf-8"))
+        assert set(stated) == {floor}, (
+            f"DEVELOPER-AGENTS.md states coverage floor(s) {stated}; both "
+            f"coverage configs say fail_under = {floor}."
+        )
+
+    def test_the_pre_863_sentence_is_caught(self):
+        """The exact text #863 reported, so the pin is known to see it."""
+        old = (
+            "Linux holds the full 100, and the Windows leg -- which installs no "
+            "`os-deps` and so self-skips the render and pdf tests -- holds 95"
+        )
+        assert _stated_floors(old) == [100, 95]
+
+    def test_a_reworded_sentence_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer states the coverage floor"):
+            _stated_floors("Both legs are measured against one number.")

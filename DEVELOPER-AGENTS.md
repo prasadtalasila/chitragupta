@@ -499,24 +499,39 @@ Before saying so, actually run, in this repo:
   so the run exits non-zero on a drop. It assumes the full toolchain:
   without pandoc/TeX Live/poppler the render tests self-skip and the
   total falls short for a missing binary rather than a missing test --
-  pass `--cov-fail-under=0` on such a host. CI runs both legs against a
-  floor rather than exempting either: Linux holds the full 100, and the
-  Windows leg -- which installs no `os-deps` and so self-skips the render
-  and pdf tests -- holds 95, low enough not to need re-tuning whenever
-  toolchain-only code is added and high enough to catch a real collapse.
-- **All three linters and the formatter, at their full paths** (see "The
-  linters, which are enforced" below). They are not optional and not
-  CI's job alone -- `markdownlint` in particular fails on prose that no
-  test touches, so a green suite says nothing about it:
+  pass `--cov-fail-under=0` on such a host. CI exempts neither leg, and
+  both legs hold 100. The Windows leg installs no `os-deps`, so its
+  render and pdf tests self-skip; rather than budget for that under a
+  lower number, it reads `coveragerc-windows.toml`, which excludes
+  exactly the lines that leg cannot reach (`pragma: no cover-windows`),
+  so a self-skipped render test and Windows code nothing reaches stay
+  distinguishable (#291). `tests/test_coverage_configs_agree.py` pins
+  the two configs to one floor, and this sentence to it.
+- **CI's whole `lint` job, in one command**, with your dev venv active
+  so `python`, `pylint` and `ruff` resolve to the pinned ones:
 
   ```bash
-  pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
-  ruff check chitragupta scripts .claude/hooks
-  ruff format --check chitragupta scripts tests bench .claude/hooks
-  markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
+  bash scripts/check_local.sh
   ```
 
-- **The webapp's own tests, if you touched `assets/webapp/`**:
+  It runs every step of `ci.yml`'s `lint` job in CI's order and stops
+  at the first failure: the version-bump check (off `main` only, as in
+  CI), pylint, `ruff check`, `ruff format --check`, shellcheck,
+  actionlint, markdownlint, `npm ci` and the webapp and OpenCode node
+  tests, and the Vale exemptions check. CI's install steps become
+  checks that the tool is installed, with a warning when a pip or npm
+  tool's version is not CI's pin (actionlint and Vale are pinned inside
+  `install_full_pipeline.sh` instead). `npm ci` is the exception and
+  runs as in CI: it writes only this checkout's `node_modules/`.
+  `tests/test_check_local.py` reads both files and fails
+  when they part, so a step added to the job reaches the script in the
+  same change (#865). None of it is optional or CI's job alone --
+  `markdownlint` in particular fails on prose that no test touches, so
+  a green suite says nothing about it. "The linters, which are
+  enforced" below explains the four linters' roots.
+
+- **The webapp's own tests**, which the script above already runs; to
+  run them alone after touching `assets/webapp/`:
 
   ```bash
   npm install --ignore-scripts   # once per checkout: acorn, behind the C1/C2 scan below
@@ -601,7 +616,8 @@ than post a wrong number.
 [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) takes its standards
 from. `pyproject.toml`'s `[tool.ruff]` is not: DTaaS carries no ruff
 config to inherit, so its `select` and `per-file-ignores` were decided
-fresh, the way the paragraph below states. Run all four before you push;
+fresh, the way the paragraph below states. Run all four before you push
+(`scripts/check_local.sh` runs them with the rest of the lint job);
 `ci.yml`'s `lint` job runs exactly these, and the paths are part of the
 command rather than a detail -- a narrower glob is how a tree stops being
 checked without anyone deciding it should. `ruff format --check`'s roots
@@ -614,7 +630,7 @@ to match would only relocate the gap:
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 ruff format --check chitragupta scripts tests bench .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"   # npm i -g markdownlint-cli2
 ```
 
 Both negations are stated in the command for the same
@@ -828,10 +844,9 @@ v1.9.9: `.py`, `.json`, `.yml`/`.yaml`, `.sh` and `.toml` are reviewed;
 entirely -- a clean OCR run says nothing about them.
 
 What *does* cover Markdown, so "OCR came back clean" is never read as
-"the standing instructions were reviewed": `markdownlint-cli2 "*.md"
-"docs/**/*.md" ".claude/**/*.md" "plans/**/*.md"
-"!docs/examples/sample-project" "!.claude/worktrees"` (see
-["The linters, which are enforced"](#-the-linters-which-are-enforced)) for
+"the standing instructions were reviewed": markdownlint, at the globs
+`ci.yml`'s lint job and `scripts/check_local.sh` run it with (see
+["The linters, which are enforced"](#-the-linters-which-are-enforced)), for
 style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
 test, for the one class of factual claim that has a machine-readable
 source of truth to check against; and a human reading the diff for
