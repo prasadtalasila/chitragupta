@@ -382,6 +382,33 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
         assert "chitragupta.py" in capsys.readouterr().err
 
 
+class TestAnExistingNonFileAtTheMarkerPathRefuses:
+    """#891, caught in review: `Path.touch()` on an existing directory
+    just updates its mtime and succeeds, so `_write_marker` would have
+    reported "created" while writing no actual marker file --
+    `chitragupta/scaffold_guard.py`'s `scaffolded_ancestor` checks
+    `is_file()`, so the guard would stay silently disabled under a
+    report that claims success. Refused up front instead, the same
+    shape `TestADirectoryThatWouldShadowThePackageRefuses` already
+    uses for `chitragupta`/`chitragupta.py`."""
+
+    def test_a_directory_at_the_marker_path_refuses_before_writing_anything(self, source, tmp_path):
+        dest = tmp_path / "project"
+        dest.mkdir()
+        (dest / init.SCAFFOLD_MARKER).mkdir()
+        with pytest.raises(init.ScaffoldTargetUnsafe) as raised:
+            init.scaffold(dest)
+        assert init.SCAFFOLD_MARKER in str(raised.value)
+        assert sorted(p.name for p in dest.iterdir()) == [init.SCAFFOLD_MARKER]
+
+    @pytest.mark.parametrize("flags", [{"force": True}, {"dry_run": True}])
+    def test_neither_force_nor_dry_run_gets_past_it(self, source, tmp_path, flags):
+        dest = tmp_path / "project"
+        (dest / init.SCAFFOLD_MARKER).mkdir(parents=True)
+        with pytest.raises(init.ScaffoldTargetUnsafe):
+            init.scaffold(dest, **flags)
+
+
 class TestAgents:
     """`--agent claude|codex|opencode` (#812, #900): the shared core for
     every harness, plus each named harness's launcher."""

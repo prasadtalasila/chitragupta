@@ -341,6 +341,21 @@ def scaffold(
             "would install could import in place of the installed chitragupta. "
             "Move it aside, or scaffold into another directory."
         )
+    marker = dest / SCAFFOLD_MARKER
+    if marker.exists() and not marker.is_file():
+        # Caught in review (#891): `Path.touch()` on an existing directory
+        # just updates its mtime and succeeds, so `_write_marker` would
+        # have reported "created" while writing no actual marker file --
+        # `scaffold_guard.scaffolded_ancestor` checks `is_file()`, so the
+        # guard stays silently disabled under a report that claims
+        # success. Refused up front, same as `shadowing` above, rather
+        # than discovered after everything else has already been written.
+        raise ScaffoldTargetUnsafe(
+            f"{marker} exists but is not a regular file, so the scaffold "
+            "marker this would write there could never actually protect "
+            "this project (#891). Move it aside, or scaffold into another "
+            "directory."
+        )
 
     report = []
     for name in (*COPY_VERBATIM, *trees):
