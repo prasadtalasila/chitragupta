@@ -1,11 +1,24 @@
 # #893: an aid that raises during `agenda --baseline`'s refresh
 
-Status: **planned.** Written 2026-10-01 against `origin/main` at
-`12c58bf`. Closes #893, a follow-up to #837.
+Status: **implemented, as 6.127.0.** Written 2026-10-01 against
+`origin/main` at `12c58bf`. Closes #893, a follow-up to #837. Three
+things changed on the way:
+
+- **The version is MINOR, not PATCH**, as the user asked: the payloads
+  gain new fields (`refresh_errors`, `sources.aids.<aid>.refresh_error`).
+- **The ledger check is `_refresh.ledger_refusal`, not a function in
+  `agenda/__init__.py`.** Putting it there took that module to 270 code
+  lines, over the 250 cap. This split was forced, not chosen.
+- **`agenda-reviser` got a rule for a raise**, from the follow-up
+  discussion, not only a wording change. When an aid raises, it reverts
+  the repair and runs the recheck once on the reverted draft. If the
+  aid no longer raises, the edit caused it and stays reverted. If it
+  still raises, the host caused it, and the attempt does not count.
+  The skill also stops the pass on the ledger refusal's exit 1.
 
 **Written for** whoever implements #893. **Assumed:** the
 `DEVELOPER-AGENTS.md` shipping cycle (TDD, 100% line and branch coverage,
-ruff, markdownlint, OCR review, PATCH bump). **Not covered here:** what
+ruff, markdownlint, OCR review, version bump). **Not covered here:** what
 any aid should do differently when it fails. Each aid keeps its own
 failure behaviour; this plan changes only how `refresh_aids` records it.
 
@@ -195,7 +208,7 @@ refuse. Add the existing `ledger_con` fixture to them, or wrap it in a
    `_recheck.recheck_payload`/`format_recheck`, and `run`'s threading.
 3. Tests 10–12 and any existing-test ledger setup, then Decision 1.
 4. Test 9.
-5. Docs, then the PATCH bump, full suite and coverage, ruff,
+5. Docs, then the version bump, full suite and coverage, ruff,
    markdownlint, OCR.
 
 ## Out of scope
