@@ -4,12 +4,19 @@
    derived once by `chitragupta enrich` -- so the app cannot disagree
    with the terminal views. Colour vocabulary mirrors style.css.
 
-   What is left in this file is the wiring: the cytoscape instance, the
-   DOM events, and the selection state they mutate. The logic they call
-   lives in graph.js (payload -> what is visible, what cytoscape is
-   handed) and panel.js (data -> HTML), which index.html loads first;
-   both are testable without a browser and are tested under
-   tests/webapp/. */
+   What is left in this file is the wiring that doesn't belong to its
+   own module: the cytoscape instance, the node-focus/panel/resolution/
+   path/hierarchy events, and `state`, the selection and filter fields
+   search.js and pickers.js need to reach across the split. The logic
+   those DOM events call lives in graph.js (payload -> what is visible,
+   what cytoscape is handed) and panel.js (data -> HTML); search.js
+   (type-ahead and chips) and pickers.js (the origin and family
+   widgets) hold the DOM wiring #857 split out of here, each taking
+   `state` and a few of this file's own callbacks rather than reading
+   its module-level variables directly; cy_style.js holds the
+   cytoscape stylesheet as data. index.html loads all of them before
+   this file, and everything except the DOM wiring is testable without
+   a browser and tested under tests/webapp/. */
 "use strict";
 
 (function () {
@@ -17,7 +24,38 @@
   var app = window.CHITRAGUPTA_APP;
 
   var topicsByLabel = app.byLabel(DATA.topics);
-  var selected = []; // chip order preserved
+
+  /* The state search.js and pickers.js mutate as well as this file. A
+     plain object rather than four more module-level `var`s, so the two
+     extracted modules can share it by reference instead of each
+     needing its own copy wired back here.
+
+     `selected` is the reader's own pinned-topic chips (chip order
+     preserved).
+
+     The origin filter. `activeOrigins` opens as whatever the export
+     shipped, so the app's first frame is exactly what the same
+     `--origins` run showed in the terminal; `ALL_LABELS` is derived
+     from it and re-derived whenever a picker row moves.
+
+     The edge-family filter. `activeFamilies` was a module constant no
+     element read, and the cost was not a missing control: `hopsFrom`
+     walks whatever adjacency it is handed, so the ego rings measured
+     distance over the union of both families and a topic one shared
+     paper plus one cosine hop away sat on ring 2 beside a topic two
+     shared papers out. The reader could not ask "how far is this over
+     shared papers" -- a question `discover --path --family` has always
+     answered in the terminal.
+
+     A Set here and a list at the call sites, because `familiesOf` in
+     graph.js and `hopsFrom` in ego.js both want an ordered list and
+     order is the legend's. */
+  var state = {
+    selected: [],
+    activeOrigins: new Set(app.shippedOrigins(DATA)),
+    activeFamilies: new Set(app.shippedFamilies(DATA)),
+  };
+  state.ALL_LABELS = app.labelsWithOrigins(DATA, state.activeOrigins);
 
   /* Grouping state. The app opens at a cut of the stored merge tree
      yielding roughly eight groups, all collapsed, because 131 topics
@@ -34,27 +72,6 @@
      their sense of where they are in a corpus this size. `maxHops`
      bounds the ring view: one hop answers "what is next to this", two
      answers "what would a chapter around this have to cover". */
-  /* The origin filter. `activeOrigins` opens as whatever the export
-     shipped, so the app's first frame is exactly what the same
-     `--origins` run showed in the terminal; ALL_LABELS is derived from
-     it and re-derived whenever a picker row moves. */
-  var activeOrigins = new Set(app.shippedOrigins(DATA));
-  var ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
-
-  /* The edge-family filter. This was a module constant no element read,
-     and the cost was not a missing control: `hopsFrom` walks whatever
-     adjacency it is handed, so the ego rings measured distance over the
-     union of both families and a topic one shared paper plus one cosine
-     hop away sat on ring 2 beside a topic two shared papers out. The
-     reader could not ask "how far is this over shared papers" -- a
-     question `discover --path --family` has always answered in the
-     terminal.
-
-     A Set here and a list at the call sites, because `familiesOf` in
-     graph.js and `hopsFrom` in ego.js both want an ordered list and
-     order is the legend's. */
-  var activeFamilies = new Set(app.shippedFamilies(DATA));
-
   var context = "dim";
   var maxHops = 2;
   /* Papers on the canvas, opt-in and capped: a paper in three topics is
@@ -71,7 +88,7 @@
 
   function families() {
     return app.FAMILY_CLASSES.filter(function (family) {
-      return activeFamilies.has(family);
+      return state.activeFamilies.has(family);
     });
   }
 
@@ -85,156 +102,13 @@
     hideEdgesOnViewport: true,
     textureOnViewport: true,
     pixelRatio: 1,
-    style: [
-      { selector: "node", style: {
-        "background-color": "data(color)",
-        "width": "data(size)",
-        "height": "data(size)",
-        "label": "data(label)",
-        "font-size": 12,
-        "color": "#1c2733",
-        "text-valign": "bottom",
-        "text-margin-y": 5,
-        "text-wrap": "wrap",
-        "text-max-width": 140,
-        "border-width": 0,
-      } },
-      { selector: "node[picked = 1]", style: {
-        "border-width": 4,
-        "border-color": "#1c2733",
-      } },
-      /* Width is strength; opacity is *surprise*, the hypergeometric
-         that let the edge exist at all and that nothing has ever shown.
-         Only on this family -- semantic edges never ran that test and
-         are not given a borrowed value. */
-      { selector: "edge[family = 'overlap']", style: {
-        "width": "data(width)",
-        "line-color": "#5c6bc0",
-        "curve-style": "bezier",
-        "opacity": "data(surprise)",
-      } },
-      { selector: "edge[family = 'semantic']", style: {
-        "width": "data(width)",
-        "line-color": "#8e24aa",
-        "line-style": "dashed",
-        "curve-style": "bezier",
-        "opacity": 0.65,
-      } },
-      { selector: ".highlighted", style: { "opacity": 1, "line-color": "#e53935" } },
-      // A group is grey on purpose: colour means provenance on this
-      // canvas, and a group has no provenance of its own -- it is the
-      // reader's cut of the merge tree, not something the corpus says.
-      { selector: "node[isGroup = 1]", style: {
-        "background-color": "#eef1f5",
-        "background-opacity": 0.6,
-        "border-width": 1,
-        "border-style": "dashed",
-        "border-color": "#8a97a8",
-        "text-valign": "top",
-        "text-margin-y": -4,
-        "font-size": 11,
-        "color": "#5b6879",
-        "padding": 12,
-      } },
-      // The label goes inside a collapsed group rather than under it:
-      // eight meta-nodes carry eight long labels, and underneath they
-      // collide with each other and with the edges between them.
-      { selector: "node[collapsed = 1]", style: {
-        "background-color": "#8a97a8",
-        "shape": "round-rectangle",
-        "border-width": 2,
-        "border-color": "#5b6879",
-        "font-size": 11,
-        "color": "#fff",
-        "text-valign": "center",
-        "text-margin-y": 0,
-        "text-max-width": "data(size)",
-      } },
-      { selector: "edge[bundled = 1]", style: { "line-style": "solid", "opacity": 0.85 } },
-      { selector: "edge[bundled = 1][family = 'semantic']", style: { "line-style": "dashed" } },
-      /* Moved ahead of its usual place beside the other paper-related
-         rules below: `edge.focus-near` sets the same two properties
-         (`width`, `opacity`) and has to win over this family styling
-         when a paper's membership line is in a latched neighbourhood --
-         `elementsFor` never marks a member edge `dim` (paperElements is
-         concatenated after the dimming pass), so member and dim never
-         compete for the same element and reordering the two is safe. */
-      { selector: "edge[family = 'member']", style: {
-        "width": 1,
-        "line-color": "#90a4ae",
-        "line-style": "dotted",
-        "curve-style": "haystack",
-        "opacity": 0.7,
-      } },
-      /* Node focus (click-to-latch, hover-to-preview): an outline
-         rather than a border, so it never fights `node[picked = 1]`'s
-         4px border or `.on-path`'s for the same channel. Teal is a
-         fresh hue nothing else on this canvas uses. Placed after the
-         member rule above (so a latched paper's membership lines still
-         get the highlight) and before the dim rules below (so a dim
-         node inside a latched neighbourhood still reads as context,
-         not as newly emphasised) -- dim must keep winning. */
-      { selector: "node.focused", style: {
-        "outline-width": 3, "outline-color": "#00897b", "outline-offset": 2,
-      } },
-      { selector: "node.focus-near", style: {
-        "outline-width": 2, "outline-color": "#4db6ac", "outline-offset": 1,
-      } },
-      // Undoes a family's partial opacity (surprise, or the semantic
-      // 0.65) and adds a flat width bump on top of `data(width)`'s
-      // strength encoding -- a function, not a fixed number, so a
-      // strong edge still reads as stronger than a weak one among the
-      // ones highlighted. Family colour is kept throughout: only
-      // opacity and width change, so the two families stay legible as
-      // a *set*, not just as not-faded.
-      { selector: "edge.focus-near", style: {
-        "opacity": 1,
-        "width": function (ele) { return (ele.data("width") || 1) + 1.5; },
-      } },
-      /* Focus plus context. The context is pushed back rather than
-         deleted, and `events: no` keeps it from taking clicks or
-         stealing hover -- a dimmed node that still answers the mouse
-         reads as a bug, not as background. */
-      { selector: "node[dim = 1]", style: {
-        "opacity": 0.12, "text-opacity": 0, "events": "no",
-      } },
-      { selector: "edge[dim = 1]", style: { "opacity": 0.06, "events": "no" } },
-      /* `.faded` is the third channel, separate from `dim` (the chips')
-         and from `.focused`/`.focus-near` (the click/hover target and
-         its neighbourhood): it is everything outside whatever is
-         currently focused, whether that focus is a hover preview or a
-         click latch. */
-      { selector: ".faded", style: { "opacity": 0.15, "text-opacity": 0.15 } },
-      /* A paper is a different *kind* of thing, so it gets the one
-         channel nothing else uses: shape. Its line to a topic is
-         membership -- neither of the two families -- and is drawn thin
-         and grey so it cannot be mistaken for either. */
-      { selector: "node[kind = 'paper']", style: {
-        "shape": "diamond",
-        "background-color": "#455a64",
-        "width": "mapData(score, 0, 1, 16, 34)",
-        "height": "mapData(score, 0, 1, 16, 34)",
-        "label": "data(label)",
-        "font-size": 9,
-        "color": "#455a64",
-      } },
-      { selector: "node[kind = 'paper'][drawn > 1]", style: {
-        "background-color": "#c2185b",
-        "border-width": 2,
-        "border-color": "#880e4f",
-      } },
-      { selector: ".on-path", style: {
-        "line-color": "#e53935", "target-arrow-color": "#e53935",
-        "border-width": 3, "border-color": "#e53935",
-        "opacity": 1, "z-index": 10,
-      } },
-    ],
+    style: app.CY_STYLE,
   });
 
   function view() {
     return {
       cut: cut, collapsed: collapsed, context: context,
-      all: ALL_LABELS, expanded: expanded, families: families(),
+      all: state.ALL_LABELS, expanded: expanded, families: families(),
     };
   }
 
@@ -261,13 +135,15 @@
     // emphasised and where it is drawn: the hop control moves them
     // together, so nothing is ever placed on a ring and dimmed to
     // background at the same time.
-    var hops = selected.length ? app.hopsFrom(DATA, selected, families()) : null;
+    var hops = state.selected.length
+      ? app.hopsFrom(DATA, state.selected, families())
+      : null;
     // The rings are walked over the whole payload, so a neighbour can be
     // a topic the origin filter has taken off the canvas.
     var visible = hops
-      ? app.restrictTo(app.withinHops(hops, maxHops), ALL_LABELS)
-      : ALL_LABELS;
-    var elements = app.elementsFor(DATA, visible, selected, view());
+      ? app.restrictTo(app.withinHops(hops, maxHops), state.ALL_LABELS)
+      : state.ALL_LABELS;
+    var elements = app.elementsFor(DATA, visible, state.selected, view());
     cy.batch(function () {
       cy.elements().remove();
       cy.add(elements);
@@ -283,7 +159,7 @@
       // an extension of the "a circle is legible" argument rather than
       // a contradiction of it. elementsFor has already suspended the
       // cut, so there are no boxes to lay out here.
-      var at = app.ringPositions(DATA, selected, hops, maxHops, families());
+      var at = app.ringPositions(DATA, state.selected, hops, maxHops, families());
       var outside = app.contextRing(
         cy.nodes().map(function (n) { return n.id(); }), hops, maxHops
       );
@@ -726,11 +602,11 @@
   };
 
   function showPath(family) {
-    var result = app.path(DATA, family, selected[0], selected[1]);
+    var result = app.path(DATA, family, state.selected[0], state.selected[1]);
     if (!result) { return; }
     clearHint();
-    detail.innerHTML = "<h2>" + app.escapeHtml(selected[0]) + " — " +
-      app.escapeHtml(selected[1]) + "</h2>" + app.pathHtml(DATA, result, ALL_LABELS);
+    detail.innerHTML = "<h2>" + app.escapeHtml(state.selected[0]) + " — " +
+      app.escapeHtml(state.selected[1]) + "</h2>" + app.pathHtml(DATA, result, state.ALL_LABELS);
     panelFamily = family;
     highlightPath(result);
   }
@@ -772,7 +648,7 @@
     // Yield once so the message paints before the matrices run.
     window.setTimeout(function () {
       detail.innerHTML = app.disagreementHtml(
-        app.disagreement(DATA, inflation(), ALL_LABELS)
+        app.disagreement(DATA, inflation(), state.ALL_LABELS)
       );
       disagreementShown = true;
     }, 0);
@@ -800,7 +676,7 @@
   var hideContext = document.getElementById("hide-context");
 
   function showControlsForSelection() {
-    var pinned = selected.length > 0;
+    var pinned = state.selected.length > 0;
     focusControls.hidden = !pinned;
     var resolution = document.getElementById("resolution");
     if (resolution) { resolution.hidden = pinned || !DATA.hierarchy.length; }
@@ -810,7 +686,7 @@
        reader has just taken off the canvas would answer a question
        about a graph they are not looking at. */
     Object.keys(pathButtons).forEach(function (family) {
-      pathButtons[family].hidden = selected.length !== 2 || !activeFamilies.has(family);
+      pathButtons[family].hidden = state.selected.length !== 2 || !state.activeFamilies.has(family);
     });
   }
 
@@ -830,7 +706,7 @@
      The stored tree itself is never recut -- that would invent a
      grouping no stage computed. */
   function renderHierarchy() {
-    var body = app.hierarchyHtml(DATA.hierarchy, ALL_LABELS);
+    var body = app.hierarchyHtml(DATA.hierarchy, state.ALL_LABELS);
     document.getElementById("hierarchy").hidden = !body;
     document.getElementById("hierarchy-body").innerHTML = body;
   }
@@ -850,262 +726,60 @@
     document.getElementById("uncovered-body").innerHTML = app.uncoveredHtml(uncovered);
   })();
 
-  // ---------- search: typeahead, chips, filtering ----------
+  // ---------- search and the two filter pickers: cross-module wiring ----------
 
-  var searchInput = document.getElementById("search");
-  var suggestions = document.getElementById("suggestions");
-  var chips = document.getElementById("chips");
-  var activeIndex = -1;
+  /* Both modules take `state` by reference (so a write to e.g.
+     `state.selected` here is visible to them and vice versa) plus
+     whichever of this file's own functions their own event handlers
+     have to call -- see search.js/pickers.js for what each does with
+     them. */
+  var search = window.CHITRAGUPTA_SEARCH.create({
+    DATA: DATA, app: app, state: state, topicsByLabel: topicsByLabel,
+    redraw: redraw, showControlsForSelection: showControlsForSelection,
+    showPair: showPair, showTopic: showTopic,
+  });
 
-  function renderSuggestions() {
-    var found = app.candidatesFor(DATA, selected, searchInput.value, activeOrigins);
-    suggestions.innerHTML = app.suggestionsHtml(found, activeIndex);
-    suggestions.hidden = !found.length;
-    return found;
-  }
-
-  function addChip(label) {
-    if (!topicsByLabel[label] || selected.indexOf(label) >= 0) { return; }
-    selected.push(label);
-    var topic = topicsByLabel[label];
-    var chip = document.createElement("span");
-    chip.className = "chip";
-    chip.style.background =
-      app.ORIGIN_COLORS[topic.origin] || app.ORIGIN_COLORS.emergent;
-    chip.dataset.label = label;
-    chip.appendChild(document.createTextNode(label));
-    var close = document.createElement("button");
-    close.textContent = "×";
-    close.setAttribute("aria-label", "remove " + label);
-    close.addEventListener("click", function () {
-      selected = selected.filter(function (s) { return s !== label; });
-      chip.remove();
-      // Removing the last chip hands the canvas back to the grouped
-      // view, which is where it started.
+  var pickers = window.CHITRAGUPTA_PICKERS.create({
+    DATA: DATA, app: app, state: state,
+    originsRow: document.getElementById("origins"),
+    familiesRow: document.getElementById("families"),
+    pruneChips: search.pruneChips,
+    onOriginsChanged: function () { renderHierarchy(); redraw(); },
+    onFamiliesChanged: function (next) {
+      /* The panel first: a path or an edge card belonging to the family
+         that has just gone off is describing lines no longer drawn.
+         Then the buttons, then the canvas -- where the edge set, the hop
+         distances and the ring placement all move together, because
+         `redraw` reads `families()` for all three. */
+      if (panelFamily && !next.has(panelFamily)) { showHelp(); }
       showControlsForSelection();
       redraw();
-    });
-    chip.appendChild(close);
-    chips.appendChild(chip);
-    searchInput.value = "";
-    activeIndex = -1;
-    suggestions.hidden = true;
-    showControlsForSelection();
-    redraw();
-    if (selected.length === 2 && showPair(selected[0], selected[1])) { return; }
-    showTopic(label);
-  }
-
-  searchInput.addEventListener("input", function () {
-    activeIndex = -1;
-    renderSuggestions();
-  });
-  searchInput.addEventListener("keydown", function (event) {
-    var found = app.candidatesFor(DATA, selected, searchInput.value, activeOrigins);
-    if (event.key === "ArrowDown") {
-      activeIndex = Math.min(activeIndex + 1, found.length - 1);
-      renderSuggestions();
-      event.preventDefault();
-    } else if (event.key === "ArrowUp") {
-      activeIndex = Math.max(activeIndex - 1, 0);
-      renderSuggestions();
-      event.preventDefault();
-    } else if (event.key === "Enter" && found.length) {
-      addChip(found[activeIndex >= 0 ? activeIndex : 0].label);
-    } else if (event.key === "Escape") {
-      searchInput.value = "";
-      activeIndex = -1;
-      suggestions.hidden = true;
-    } else if (event.key === "Backspace" && !searchInput.value && selected.length) {
-      var last = chips.querySelector(".chip:last-of-type button");
-      if (last) { last.click(); }
-    }
-  });
-  suggestions.addEventListener("mousedown", function (event) {
-    var item = event.target.closest("li[data-label]");
-    if (item) {
-      addChip(item.getAttribute("data-label"));
-      event.preventDefault();
-    }
-  });
-  document.addEventListener("click", function (event) {
-    if (!document.getElementById("search-wrap").contains(event.target)) {
-      suggestions.hidden = true;
-    }
+    },
   });
 
   /* Esc's precedence: the type-ahead, when open, always wins --
-     that is the searchInput handler above, unchanged. Registered on
-     `document` in the *capture* phase so it observes `suggestions`
-     before this keystroke's own bubble-phase handler (searchInput's)
-     has run and possibly closed it -- capture fires top-down, ahead of
-     the target's own listeners. Chips are never touched here: clearing
-     them is a destructive act the request gives its own gesture, not a
-     fall-through from Esc. */
+     that is search.js's own bubble-phase handler on its input,
+     unchanged. Registered on `document` in the *capture* phase so it
+     observes search's suggestions list before this keystroke's own
+     bubble-phase handler has run and possibly closed it -- capture
+     fires top-down, ahead of the target's own listeners. Chips are
+     never touched here: clearing them is a destructive act the request
+     gives its own gesture, not a fall-through from Esc. */
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") { return; }
-    var action = app.escapeAction(!suggestions.hidden, latched, anyPickerOpen());
+    var action = app.escapeAction(search.isOpen(), latched, pickers.anyPickerOpen());
     if (action === "closePicker") {
       // Focus goes back to the button that opened it: without this it
       // is left on a checkbox inside a hidden panel, and the next Tab
       // starts from nowhere the reader can see.
-      var row = openPicker();
-      closeAllPickers(null);
+      var row = pickers.openPicker();
+      pickers.closeAllPickers(null);
       row.querySelector(".picker-summary").focus();
       return;
     }
     if (action === "releaseLatch") { releaseLatch(); }
   }, true);
 
-  // ---------- the two filter pickers ----------
-
-  /* Origin classes and edge families, one widget each. Both are the
-     reader's view and not the corpus's: they change what is on the
-     canvas, never what any stage computed -- the absence verdict, the
-     withheld-edge count and the panel's per-family brokerage figures
-     stay corpus-wide for that reason, and the caption in the header
-     says so.
-
-     Only the summary is rewritten when a row moves, never the panel:
-     re-rendering the whole control would close it under the reader's
-     pointer, and the second of two families is exactly the tick they
-     most often want to move straight after the first. */
-  var originsRow = document.getElementById("origins");
-  var familiesRow = document.getElementById("families");
-
-  function renderOrigins() {
-    originsRow.innerHTML = app.originsHtml(app.originControls(DATA, activeOrigins), DATA);
-  }
-
-  function renderFamilies() {
-    familiesRow.innerHTML = app.familiesHtml(app.familyControls(DATA, activeFamilies));
-  }
-
-  function updateSummary(row, text) {
-    var state = row.querySelector(".picker-state");
-    if (state) { state.textContent = text; }
-  }
-
-  /* A pinned topic whose class has just gone out cannot stay pinned:
-     the chip would name a node no longer on the canvas, and the ego
-     view would be laid out around nothing. Removing the chip through
-     its own close button keeps one code path for un-pinning. */
-  function pruneChips() {
-    Array.prototype.forEach.call(chips.querySelectorAll(".chip"), function (chip) {
-      if (ALL_LABELS.has(chip.dataset.label)) { return; }
-      var close = chip.querySelector("button");
-      if (close) { close.click(); }
-    });
-  }
-
-  originsRow.addEventListener("change", function (event) {
-    var box = event.target.closest("input[data-origin]");
-    if (!box) { return; }
-    var next = app.nextSelection(activeOrigins, box.dataset.origin, box.checked);
-    if (!next) {
-      // The last class. An empty canvas reads as an empty corpus, so
-      // the tick goes back rather than the graph going away.
-      box.checked = true;
-      return;
-    }
-    activeOrigins = next;
-    ALL_LABELS = app.labelsWithOrigins(DATA, activeOrigins);
-    updateSummary(
-      originsRow,
-      app.originsSummary(app.originControls(DATA, activeOrigins), DATA)
-    );
-    pruneChips();
-    renderHierarchy();
-    redraw();
-  });
-
-  familiesRow.addEventListener("change", function (event) {
-    var box = event.target.closest("input[data-family]");
-    if (!box) { return; }
-    var next = app.nextSelection(activeFamilies, box.dataset.family, box.checked);
-    if (!next) {
-      /* The last family. With neither on there is no graph at all --
-         not even the union the rings used to walk -- so the tick goes
-         back, the same refusal the origin axis makes. */
-      box.checked = true;
-      return;
-    }
-    activeFamilies = next;
-    updateSummary(
-      familiesRow, app.familiesSummary(app.familyControls(DATA, activeFamilies))
-    );
-    /* The panel first: a path or an edge card belonging to the family
-       that has just gone off is describing lines no longer drawn.
-       Then the buttons, then the canvas -- where the edge set, the hop
-       distances and the ring placement all move together, because
-       `redraw` reads `families()` for all three. */
-    if (panelFamily && !activeFamilies.has(panelFamily)) { showHelp(); }
-    showControlsForSelection();
-    redraw();
-  });
-
-  /* Opening and shutting, for both pickers. A native <button> already
-     answers Enter and Space, so this is the toggle, the escape hatch
-     and the click-away -- the same three the type-ahead's popover has.
-     Arrow-down opens and steps into the rows; inside the panel, Tab and
-     Space are the browser's own and are left alone, which is why the
-     rows are real checkboxes and not list items pretending to be. */
-  function panelOf(row) { return row.querySelector(".picker-panel"); }
-
-  /* Which picker is open, if either. Esc's policy lives in one place
-     (`escapeAction`, with the type-ahead ahead of this and the latch
-     behind it), so what the pickers owe that policy is this question
-     and nothing more. */
-  function openPicker() {
-    var rows = [originsRow, familiesRow];
-    for (var i = 0; i < rows.length; i++) {
-      if (!panelOf(rows[i]).hidden) { return rows[i]; }
-    }
-    return null;
-  }
-
-  function anyPickerOpen() { return openPicker() !== null; }
-
-  function setOpen(row, open) {
-    var button = row.querySelector(".picker-summary");
-    panelOf(row).hidden = !open;
-    button.setAttribute("aria-expanded", open ? "true" : "false");
-  }
-
-  function closeAllPickers(except) {
-    [originsRow, familiesRow].forEach(function (row) {
-      if (row !== except && panelOf(row)) { setOpen(row, false); }
-    });
-  }
-
-  [originsRow, familiesRow].forEach(function (row) {
-    row.addEventListener("click", function (event) {
-      var button = event.target.closest(".picker-summary");
-      if (!button) { return; }
-      var open = panelOf(row).hidden;
-      closeAllPickers(row);
-      setOpen(row, open);
-    });
-    /* Esc is not handled here: it is one policy for the whole app, in
-       the capture-phase handler above, because with a panel open it has
-       to outrank releasing the latch and be outranked by closing the
-       type-ahead. Two handlers would be two policies. */
-    row.addEventListener("keydown", function (event) {
-      if (event.key === "ArrowDown" && event.target.closest(".picker-summary")) {
-        setOpen(row, true);
-        var first = row.querySelector('.picker-row input:not([disabled])');
-        if (first) { first.focus(); }
-        event.preventDefault();
-      }
-    });
-  });
-
-  document.addEventListener("click", function (event) {
-    if (!event.target.closest(".picker")) { closeAllPickers(null); }
-  });
-
-  renderOrigins();
-  renderFamilies();
   showControlsForSelection();
   redraw();
 })();

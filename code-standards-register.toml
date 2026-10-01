@@ -74,7 +74,7 @@ statements = 27
 
 [[c2js]]
 name = "assets/webapp/app.js"
-code_lines = 716
+code_lines = 469
 
 [[c2js]]
 name = "assets/webapp/graph.js"
