@@ -1969,8 +1969,9 @@ chitragupta review quotation content/drafts/survey.md
 `universe` (`no-dossier`, `no-quotes` or `checked`: which of the three
 zero-findings situations a run is), `quotes_total`, `found`, `absent`,
 `unverifiable`, a `quotes` object per checked span (`id`, `citekey`,
-`verdict`, `tier`, `pages`, `reason`) and a `findings` object per absent one (`id`, `citekey`, `quote`,
-`near_miss_page`, `near_miss_score`). The `tier` is `exact`,
+`verdict`, `tier`, `pages`, `reason`) and a `findings` object per
+absent one (`id`, `citekey`, `quote`, `near_miss_page`,
+`near_miss_score`). The `tier` is `exact`,
 `exact-pair`, `elided` or `elided-pair`: a reader deciding whether to
 trust a rendered quotation should be able to see that the check was
 contiguous rather than an alignment around an ellipsis.
