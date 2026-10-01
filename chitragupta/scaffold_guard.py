@@ -32,8 +32,8 @@ does not write it), so this adds no false positive there, and a project
 that was scaffolded and then properly `pip install`-ed resolves outside
 the root regardless of the marker, so it is silent there too.
 
-**Walks up from `package_file`'s own location, never from `PROJECT_ROOT`
-or `CHITRAGUPTA_PROJECT`.** An earlier version of this check took
+**Keyed to `package_file`'s own location, never to `PROJECT_ROOT` or
+`CHITRAGUPTA_PROJECT`.** An earlier version of this check took
 `config.PROJECT_ROOT` and asked whether `package_file` resolved inside
 *that* -- which answers "where does the user's data live", not "where
 does the code I am actually running live", and `CHITRAGUPTA_PROJECT`
@@ -43,13 +43,17 @@ marked, shadowed root with `CHITRAGUPTA_PROJECT` pointed elsewhere would
 have checked the override's root for the marker and found nothing,
 silently running the planted copy anyway (raised in review). Deriving
 the relevant root from `package_file` itself removes the dependency on
-`PROJECT_ROOT` altogether: the nearest ancestor of `package_file` that
-carries `SCAFFOLD_MARKER`, if any, is definitive on its own -- the walk
-started at `package_file`, so it is inside whatever ancestor carries the
-marker, independent of what the user configured as their data root. A
-real install resolves somewhere under `site-packages`, whose ancestors
-`chitragupta init` never writes the marker into, so this adds no false
-positive there either.
+`PROJECT_ROOT` altogether, and is also *not* every ancestor of
+`package_file`: a second review round caught that shape rejecting a
+project-local venv's own install (`<root>/.venv/lib/.../site-packages/
+chitragupta/` -- a real install that merely sits *somewhere* under a
+marked `<root>`, several directories down). What is checked instead is
+the one directory immediately above `package_file`'s own `chitragupta/`
+ancestor -- exact for the planted shape (`<root>/chitragupta/` directly)
+and silent for an install nested arbitrarily deep below `<root>`, whose
+immediate parent (a venv's `site-packages`) `chitragupta init` never
+marks either. `scaffolded_ancestor`'s own docstring has the full
+reasoning.
 
 **What this still cannot close, and why.** This check runs *from inside*
 the very `chitragupta` that was imported -- it is reached only once
@@ -118,8 +122,25 @@ SCAFFOLD_MARKER = ".chitragupta-scaffold"
 
 
 def scaffolded_ancestor(package_file: Path) -> "Path | None":
-    """The nearest ancestor of `package_file` that `init` marked as
-    scaffolded, or `None` if there is none.
+    """The project root `package_file`'s own `chitragupta/` directory
+    sits *directly* under, if `init` marked that root as scaffolded, or
+    `None` if there is none.
+
+    Finds the nearest ancestor of `package_file` named `chitragupta` --
+    its own package directory -- and checks only *that* directory's
+    immediate parent for `SCAFFOLD_MARKER`, deliberately not every
+    ancestor above it. An earlier version walked all the way up, and
+    flagged a project-local venv's own install: `<root>/.venv/lib/.../
+    site-packages/chitragupta/` is a real, properly installed package
+    that merely happens to sit *somewhere* under a marked `<root>` --
+    checking every ancestor read that as planted and refused every
+    command, a regression caught in review. Checking only the one
+    directory immediately above the package itself is exact: it is the
+    planted shape (`<root>/chitragupta/`, `init` having scaffolded
+    `<root>` and written no `chitragupta/` of its own into it) and not
+    the installed one (`chitragupta/` several directories below `<root>`,
+    inside a venv's own `site-packages`, where `init` never wrote a
+    marker either).
 
     Walked from `package_file`'s own directory, deliberately never from
     `config.PROJECT_ROOT` or `CHITRAGUPTA_PROJECT` -- see the module
@@ -127,10 +148,11 @@ def scaffolded_ancestor(package_file: Path) -> "Path | None":
     have let that override blind this check to a package actually
     shadowing cwd.
     """
-    start = package_file.resolve().parent
-    for candidate in (start, *start.parents):
-        if (candidate / SCAFFOLD_MARKER).is_file():
-            return candidate
+    resolved = package_file.resolve()
+    for ancestor in resolved.parents:
+        if ancestor.name == "chitragupta":
+            root = ancestor.parent
+            return root if (root / SCAFFOLD_MARKER).is_file() else None
     return None
 
 

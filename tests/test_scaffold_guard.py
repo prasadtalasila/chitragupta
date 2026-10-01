@@ -29,6 +29,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 class TestScaffoldedAncestor:
+    def test_none_when_no_ancestor_is_even_named_chitragupta(self, tmp_path):
+        """The walk finds nothing to check at all: `package_file` itself
+        is not under a directory named `chitragupta` -- not a shape any
+        real caller produces (every caller here passes a module's own
+        `__file__` from inside the package), but the loop must still
+        terminate and answer `None` rather than loop forever or raise."""
+        stray = tmp_path / "somewhere" / "else.py"
+        stray.parent.mkdir(parents=True)
+        stray.write_text("", encoding="utf-8")
+        assert scaffold_guard.scaffolded_ancestor(stray) is None
+
     def test_none_with_no_marker_anywhere(self, tmp_path):
         """A plain, unmarked directory -- a checkout, or any directory
         `init` never touched -- is never flagged, whatever it contains."""
@@ -89,6 +100,32 @@ class TestScaffoldedAncestor:
         planted.write_text("", encoding="utf-8")
         monkeypatch.setenv("CHITRAGUPTA_PROJECT", str(tmp_path / "elsewhere"))
         assert scaffold_guard.scaffolded_ancestor(planted) == shadowed_root
+
+    def test_a_project_local_venv_install_is_not_flagged(self, tmp_path):
+        """#891 review, round 3: a real regression the unbounded-walk-up
+        version of this check had. `<root>/.venv/lib/pythonX.Y/
+        site-packages/chitragupta/config.py` is a properly installed
+        package that happens to sit several directories under a marked
+        `<root>` -- not planted at `<root>/chitragupta/` directly. Only
+        the directory immediately above the package's own `chitragupta/`
+        ancestor is checked (here, `site-packages`), and `chitragupta
+        init` never marks a venv's own `site-packages` as scaffolded, so
+        this must stay silent."""
+        root = tmp_path / "root"
+        root.mkdir()
+        (root / scaffold_guard.SCAFFOLD_MARKER).write_text("", encoding="utf-8")
+        installed = (
+            root
+            / ".venv-full"
+            / "lib"
+            / "python3.12"
+            / "site-packages"
+            / "chitragupta"
+            / "config.py"
+        )
+        installed.parent.mkdir(parents=True)
+        installed.write_text("", encoding="utf-8")
+        assert scaffold_guard.scaffolded_ancestor(installed) is None
 
 
 class TestShadowed:
