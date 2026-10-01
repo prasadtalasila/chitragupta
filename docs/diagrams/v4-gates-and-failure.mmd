@@ -32,7 +32,7 @@ flowchart TB
   Q6 -- "complete" --> OK["status <code>parsed</code><br/><small>content/parsed/&lt;citekey&gt;.txt written</small>"]
   Q6 -- "partial success" --> PF
   Q6 -- "backend can't read it" --> PF["status <code>parse_failed</code> · <i>deterministic</i><br/><small>never retried — same minutes, same answer —<br/>but fails every run until fixed</small>"]
-  Q6 -- "worker died · timeout · CUDA OOM" --> PT2["status <code>parse_failed</code> · <i>transient</i><br/><small>retried automatically next run</small>"]
+  Q6 -- "worker died · timeout · CUDA OOM · write failed" --> PT2["status <code>parse_failed</code> · <i>transient</i><br/><small>retried automatically next run</small>"]
 
   OK --> AGG
   SN --> AGG

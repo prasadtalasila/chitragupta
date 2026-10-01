@@ -13,7 +13,7 @@ stateDiagram-v2
 
     parsing --> parsed : text extracted in full
     parsing --> failed_deterministic : backend cannot read this<br/>PDF, or parsed it only partly
-    parsing --> failed_transient : worker died, timeout,<br/>CUDA OOM, broken pool
+    parsing --> failed_transient : worker died, timeout,<br/>CUDA OOM, broken pool,<br/>write failed (disk full)
 
     failed_transient --> parsing : retried automatically<br/>on the next sync
     failed_deterministic --> parsing : only on<br/>sync --reparse

@@ -2,9 +2,11 @@
 
 `sync` and `chitragupta/enrich/__main__.py` both write there, and the planned
 cron job makes overlap a matter of time rather than bad luck. Two runs
-overlapping is not merely wasteful: sync's parsed-text writes are not
-atomic, so a concurrent enrichment run can read a half-written
-content/parsed/<citekey>.txt, and both can contend for the same GPUs.
+overlapping is not merely wasteful. Each parsed text is now replaced
+whole (#894), so no reader sees a torn content/parsed/<citekey>.txt --
+but a sync that re-parses a document mid-run still hands a concurrent
+enrichment run two versions of it, one per stage, and both runs can
+contend for the same GPUs.
 
 The mutex is a dedicated sqlite file, held under `BEGIN IMMEDIATE` by its
 own connection. That choice was made from measurement, not taste --

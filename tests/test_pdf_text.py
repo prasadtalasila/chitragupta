@@ -46,17 +46,15 @@ class TestExtractTextPdftotext:
 
         def fake_run(cmd, **kwargs):
             calls.append(cmd)
-            # pdftotext writes the output file itself; simulate that.
-            out_path = cmd[-1]
-            with open(out_path, "w") as f:
-                f.write("extracted text")
-            return subprocess.CompletedProcess(cmd, 0)
+            # pdftotext writes to stdout (#894); Python writes the file.
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"extracted text", stderr=b"")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         result = pdf_text.extract_text(str(tmp_path / "in.pdf"), "smith_2024")
 
         assert calls[0][0] == "pdftotext"
         assert "-layout" in calls[0]
+        assert calls[0][-1] == "-"
         assert result == isolated_config.PARSED_DIR / "smith_2024.txt"
         assert result.read_text() == "extracted text"
 
@@ -64,10 +62,7 @@ class TestExtractTextPdftotext:
         assert not isolated_config.PARSED_DIR.exists()
 
         def fake_run(cmd, **kwargs):
-            Path_out = cmd[-1]
-            with open(Path_out, "w"):
-                pass
-            return subprocess.CompletedProcess(cmd, 0)
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         pdf_text.extract_text(str(tmp_path / "in.pdf"), "key")
@@ -77,7 +72,7 @@ class TestExtractTextPdftotext:
         self, isolated_config, monkeypatch, tmp_path
     ):
         def fake_run(cmd, **kwargs):
-            raise subprocess.CalledProcessError(1, cmd, stderr="pdftotext: bad PDF")
+            raise subprocess.CalledProcessError(1, cmd, stderr=b"pdftotext: bad PDF")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         with pytest.raises(pdf_text.ExtractionError, match="bad PDF"):
@@ -358,7 +353,7 @@ class TestAWriteFailureIsTransient:
         real_write_text = Path.write_text
 
         def full_disk(self, *args, **kwargs):
-            if self.suffix == ".txt":
+            if ".txt" in self.name:
                 raise OSError(28, "No space left on device")
             return real_write_text(self, *args, **kwargs)
 
@@ -411,6 +406,93 @@ class TestAWriteFailureIsTransient:
         with pytest.raises(pdf_text.ExtractionError) as caught:
             pdf_text.extract_text(str(tmp_path / "explode.pdf"), "key")
         assert getattr(caught.value, "transient", False) is False
+
+
+class TestTheParsedTextIsWrittenWholeOrNotAtAll:
+    """#894: the parsed `.txt` goes through a temp sibling and `os.replace`
+    under both backends. pdftotext used to write it itself, so a kill
+    mid-write left a truncated file `_parse_outputs_present` accepted, and
+    a full disk surfaced as a failed pdftotext run -- a *permanent* parse
+    failure -- rather than as #842's transient write failure."""
+
+    @pytest.fixture
+    def pdftotext_prints(self, isolated_config, monkeypatch):
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
+
+        def fake_run(cmd, **kwargs):
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"page one\f", stderr=b"")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+
+    @pytest.fixture(params=["pdftotext", "docling"])
+    def either_backend(self, request, isolated_config):
+        return request.getfixturevalue(
+            "pdftotext_prints" if request.param == "pdftotext" else "fake_docling"
+        )
+
+    @staticmethod
+    def _torn_write(monkeypatch):
+        """Half the bytes land, then the disk fills: what a kill or ENOSPC
+        mid-write leaves behind in a non-atomic writer."""
+        real_bytes, real_text = Path.write_bytes, Path.write_text
+
+        def torn(real, half):
+            def write(self, data, *args, **kwargs):
+                if ".txt" in self.name:
+                    real(self, half(data), *args, **kwargs)
+                    raise OSError(28, "No space left on device")
+                return real(self, data, *args, **kwargs)
+
+            return write
+
+        monkeypatch.setattr(Path, "write_bytes", torn(real_bytes, lambda d: d[: len(d) // 2]))
+        monkeypatch.setattr(Path, "write_text", torn(real_text, lambda d: d[: len(d) // 2]))
+
+    def test_pdftotext_output_is_written_byte_for_byte(self, pdftotext_prints, tmp_path):
+        out = pdf_text.extract_text(str(tmp_path / "in.pdf"), "smith_2024")
+        assert out.read_bytes() == b"page one\f"
+
+    def test_a_full_disk_is_transient_under_either_backend(
+        self, either_backend, monkeypatch, tmp_path
+    ):
+        self._torn_write(monkeypatch)
+        with pytest.raises(pdf_text.ExtractionError, match="No space left") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert caught.value.transient is True
+
+    def test_a_torn_write_leaves_no_text_and_no_debris(self, either_backend, monkeypatch, tmp_path):
+        self._torn_write(monkeypatch)
+        with pytest.raises(pdf_text.ExtractionError):
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert [p.name for p in config.PARSED_DIR.iterdir() if ".txt" in p.name] == []
+
+    def test_a_failed_rewrite_keeps_the_previous_text_whole(
+        self, either_backend, monkeypatch, tmp_path
+    ):
+        """The previous parse's text is replaced whole or not at all -- never
+        truncated in place, as opening the final path for writing did."""
+        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+        previous = config.PARSED_DIR / "smith_2024.txt"
+        previous.write_text("the previous parse", encoding="utf-8")
+        self._torn_write(monkeypatch)
+        with pytest.raises(pdf_text.ExtractionError):
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert previous.read_bytes() == b"the previous parse"
+
+    def test_a_failed_pdftotext_run_is_still_permanent(
+        self, isolated_config, monkeypatch, tmp_path
+    ):
+        """A PDF pdftotext cannot read is the PDF, not the machine."""
+        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
+
+        def fake_run(cmd, **kwargs):
+            raise subprocess.CalledProcessError(1, cmd, stderr=b"Syntax Error: bad xref")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        with pytest.raises(pdf_text.ExtractionError, match="bad xref") as caught:
+            pdf_text.extract_text(str(tmp_path / "paper.pdf"), "smith_2024")
+        assert getattr(caught.value, "transient", False) is False
+        assert not (config.PARSED_DIR / "smith_2024.txt").exists()
 
 
 class TestDoclingPageBreaks:
@@ -2036,8 +2118,7 @@ class TestDocumentTimeout:
 
         def fake_run(cmd, **kwargs):
             captured.update(kwargs)
-            open(cmd[-1], "w").close()
-            return subprocess.CompletedProcess(cmd, 0)
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
@@ -2052,8 +2133,7 @@ class TestDocumentTimeout:
 
         def fake_run(cmd, **kwargs):
             captured.update(kwargs)
-            open(cmd[-1], "w").close()
-            return subprocess.CompletedProcess(cmd, 0)
+            return subprocess.CompletedProcess(cmd, 0, stdout=b"", stderr=b"")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         pdf_text.extract_text(str(tmp_path / "a.pdf"), "a")
@@ -2114,7 +2194,7 @@ class TestTimeoutIsRecordedAsSuch:
         monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
 
         def fake_run(cmd, **kwargs):
-            raise subprocess.CalledProcessError(1, cmd, stderr="Syntax Error: Couldn't read xref")
+            raise subprocess.CalledProcessError(1, cmd, stderr=b"Syntax Error: Couldn't read xref")
 
         monkeypatch.setattr(subprocess, "run", fake_run)
         with pytest.raises(pdf_text.ExtractionError) as excinfo:

@@ -15,7 +15,7 @@ import types
 
 import pytest
 
-from chitragupta import _passage_sidecar, config, ledger, passages
+from chitragupta import _atomic_write, config, ledger, passages
 
 
 def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
@@ -374,7 +374,7 @@ class TestCorpusLayerSidecar:
         def full_disk(src, dst):
             raise OSError(28, "No space left on device")
 
-        monkeypatch.setattr(_passage_sidecar.os, "replace", full_disk)
+        monkeypatch.setattr(_atomic_write.os, "replace", full_disk)
         with pytest.raises(OSError, match="No space left"):
             passages.write_sidecar("smith_2024", [{"text": "New.", "page": 2}])
         assert json.loads(passages.sidecar_path("smith_2024").read_text())[0]["text"] == "Old."
