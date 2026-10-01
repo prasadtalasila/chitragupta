@@ -75,6 +75,16 @@ def not_refreshed(payload: dict) -> list[str]:
     return [aid for aid in AID_NAMES if (aids.get(aid) or {}).get("refreshed") is False]
 
 
+def refresh_errors(payload: dict) -> dict[str, str]:
+    """`{aid: one-line reason}` for each aid whose refresh raised (#893),
+    in `AID_NAMES` order -- `not_refreshed`'s companion, read off the
+    same `sources.aids` entries, and empty for a payload filed before
+    the field existed."""
+    aids = (payload.get("sources") or {}).get("aids") or {}
+    errors = {aid: (aids.get(aid) or {}).get("refresh_error") for aid in AID_NAMES}
+    return {aid: error for aid, error in errors.items() if error}
+
+
 def compare(
     new_items: list[dict],
     baseline_items: list[dict],
@@ -147,10 +157,11 @@ def recheck_payload(
     groups: tuple[list[dict], list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
     refresh_failed: list[str],
+    refresh_errors: "dict[str, str] | None" = None,
 ) -> dict:
     """The comparison as data -- `verbatim recheck`'s payload shape, key
-    for key, plus the `accepted` group and `not_refreshed` list that
-    shape has no counterpart for. Carries the baseline's path too: a
+    for key, plus the `accepted` group, the `not_refreshed` list and the
+    `refresh_errors` map that shape has no counterpart for. Carries the baseline's path too: a
     verdict whose basis is not recorded beside it is one nobody can
     check later. The envelope's command is `recheck_command`'s, always."""
     resolved, persisting, appeared, accepted = groups
@@ -173,6 +184,11 @@ def recheck_payload(
             # group above and neither count: a driver must stop or
             # surface them, never read a quiet list as progress.
             "not_refreshed": refresh_failed,
+            # The reason for each of those that raised (#893). A map
+            # beside the list rather than objects inside it: a driver
+            # branches on which names are in `not_refreshed`, and an
+            # object there would quietly stop matching.
+            "refresh_errors": refresh_errors or {},
         }
     )
     return payload
@@ -183,6 +199,7 @@ def format_recheck(
     groups: tuple[list[dict], list[dict], list[dict], list[dict]],
     counts: tuple[int, int],
     refresh_failed: "list[str] | tuple[str, ...]" = (),
+    refresh_errors: "dict[str, str] | None" = None,
 ) -> str:
     """The plain-text form, for stdout. Lists each item by `id`, `class`
     and `summary` -- an agenda item's own fields, where `verbatim
@@ -203,8 +220,12 @@ def format_recheck(
         lines.append("")
     lines.append(f"objective items (unattended): {before} -> {after} ({after - before:+d})")
     if refresh_failed:
+        errors = refresh_errors or {}
+        names = [
+            f"{aid} (raised: {errors[aid]})" if aid in errors else aid for aid in refresh_failed
+        ]
         lines.append(
-            f"not refreshed: {', '.join(refresh_failed)} -- their items are "
+            f"not refreshed: {', '.join(names)} -- their items are "
             "an earlier run's, and are left out of every group and count above"
         )
     return "\n".join(lines)

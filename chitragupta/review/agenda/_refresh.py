@@ -24,9 +24,10 @@ against the seconds each aid the refresh runs takes.
 
 import contextlib
 import io
+import sys
 from pathlib import Path
 
-from chitragupta import dossier, review
+from chitragupta import dossier, ledger, review
 from chitragupta.dossier._retrieval import recorded_queries
 from chitragupta.review.agenda._sources import AID_NAMES
 
@@ -91,17 +92,52 @@ def _mtime_ns(path: Path) -> int | None:
         return None
 
 
-def refresh_aids(draft: Path) -> dict[str, bool | None]:
+# `--baseline`'s one up-front ledger check (#893), which `agenda.run`
+# makes before refreshing, accepting or filing anything. Every aid that
+# reads the ledger would otherwise raise `NoLedger` in turn -- caught one
+# by one in `refresh_aids` below, which is the fallback for a ledger that
+# goes away mid-run, not the way to report one that was never there.
+# `read_connection` rather than an existence check, so a ledger needing
+# a sync to migrate (`StaleLedger`, a `NoLedger`) is refused too. The
+# `[error]` line and exit 1 are `review/__main__.py`'s own for this
+# refusal, so nothing reading the CLI changes.
+def ledger_refusal() -> int | None:
+    """`1`, with the sync instruction on stderr, when there is no
+    ledger to read or it needs a sync; `None` when there is one."""
+    try:
+        ledger.read_connection().close()
+    except ledger.NoLedger as exc:
+        print(f"[error] {exc}", file=sys.stderr)
+        return 1
+    return None
+
+
+def _one_line(exc: Exception) -> str:
+    """`exc` as `Type: first line of its message`, or the bare type name
+    when there is no message (`KeyError()`).
+
+    One line because it goes into a report header beside **not
+    refreshed**, and the first because a multi-line message leads with
+    what happened: `ledger.NoLedger`'s second line is the sync
+    instruction, which `agenda.run` prints once up front instead.
+    """
+    lines = str(exc).strip().splitlines()
+    return f"{type(exc).__name__}: {lines[0]}" if lines else type(exc).__name__
+
+
+def refresh_aids(draft: Path) -> tuple[dict[str, bool | None], dict[str, str]]:
     """Re-run the eight aids over `draft`, so the rebuild that follows
     reads this edit's findings and not the last one's, and return
-    `{aid: refreshed}` for all eight.
+    `({aid: refreshed}, {aid: error})` -- the first for all eight, the
+    second only for the aids that raised.
 
     `True` means the aid exited 0 **and** its `.json` was (re)written by
     this call. `False` is every other outcome of running it: a non-zero
-    exit (`verbatim` and `coverage` return 1 on a refusal), or an exit 0
+    exit (`verbatim` and `coverage` return 1 on a refusal), an exit 0
     that wrote nothing -- `claim_support` without the enrich stack does
-    exactly that, by design. `None` is an aid deliberately not run:
-    `coverage` with no recorded query to run it with.
+    exactly that, by design -- or an exception, whatever is on disk
+    afterwards (#893). `None` is an aid deliberately not run: `coverage`
+    with no recorded query to run it with.
 
     The exit code alone cannot carry this, which is why the value is a
     verdict rather than the raw code #837's proposal named: the silent
@@ -120,6 +156,17 @@ def refresh_aids(draft: Path) -> dict[str, bool | None]:
     refresh can read as not refreshed -- the safe direction, which costs
     a cycle rather than counting stale findings as current.
 
+    **An aid that raises is caught, and only `Exception` is** (#893).
+    Before this one aid's bug, or a ledger that vanished mid-run, took
+    down the whole recheck: no agenda filed, and the seven aids that had
+    refreshed wasted. Its one-line reason goes in the second map, which
+    the header and the comparison payload both carry, and to stderr as a
+    `[warn]` -- without the warning a crash would surface only as a word
+    in a header. `SystemExit` is deliberately not caught: a wrong argv
+    from `_aid_argv` is argparse's `SystemExit(2)`, a bug in this module
+    that must stay loud rather than be filed as an aid that did not
+    refresh. Nor is `KeyboardInterrupt`.
+
     **Each `main()` runs with stdout redirected into a throwaway buffer.**
     All eight print a written-files summary of their own, which under
     `agenda --baseline ... --json` would land on stdout ahead of the
@@ -131,6 +178,7 @@ def refresh_aids(draft: Path) -> dict[str, bool | None]:
 
     queries = _coverage_queries(draft)
     refreshed: dict[str, bool | None] = {}
+    errors: dict[str, str] = {}
     for aid in AID_NAMES:
         argv = _aid_argv(aid, draft, queries)
         if argv is None:
@@ -138,7 +186,13 @@ def refresh_aids(draft: Path) -> dict[str, bool | None]:
             continue
         path = review.report_path(draft, aid, "json")
         before = _mtime_ns(path)
-        with contextlib.redirect_stdout(io.StringIO()):
-            code = AIDS[aid][0].main(argv)
+        try:
+            with contextlib.redirect_stdout(io.StringIO()):
+                code = AIDS[aid][0].main(argv)
+        except Exception as exc:  # noqa: BLE001 -- see docstring: one aid must not sink the recheck
+            errors[aid] = _one_line(exc)
+            print(f"[warn] {aid} raised during refresh: {errors[aid]}", file=sys.stderr)
+            refreshed[aid] = False
+            continue
         refreshed[aid] = code == 0 and _mtime_ns(path) not in (None, before)
-    return refreshed
+    return refreshed, errors

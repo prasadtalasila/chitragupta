@@ -93,6 +93,12 @@ class AidSource:
     was and failed, which leaves the `.json` read here an earlier run's.
     Unlike `stale` it does change something: that aid's items are
     listed but left out of `Agenda.objective_class_count` (#837).
+
+    `refresh_error` is the one-line reason when that refresh *raised*
+    (#893), and `None` otherwise. It is not `reason`, which already means
+    "this `.json` could not be read" and which the header prints as
+    `not run -- <reason>`: an aid that raised did run, usually over a
+    readable earlier `.json`, and the two can both be true at once.
     """
 
     available: bool = False
@@ -100,10 +106,16 @@ class AidSource:
     data: dict | None = None
     reason: str | None = None
     refreshed: bool | None = None
+    refresh_error: str | None = None
 
     def flags(self) -> dict:
         """The payload's `sources.aids.<aid>` entry."""
-        return {"available": self.available, "stale": self.stale, "refreshed": self.refreshed}
+        return {
+            "available": self.available,
+            "stale": self.stale,
+            "refreshed": self.refreshed,
+            "refresh_error": self.refresh_error,
+        }
 
 
 @dataclass
@@ -221,13 +233,20 @@ def _read_recorded(draft: Path) -> RecordedSource:
     return RecordedSource(available=True, data=recorded_but_uncited(draft))
 
 
-def collect(draft: Path, refreshed: "dict[str, bool | None] | None" = None) -> Sources:
+def collect(
+    draft: Path,
+    refreshed: "dict[str, bool | None] | None" = None,
+    errors: "dict[str, str] | None" = None,
+) -> Sources:
     """Every input `agenda` reads for `draft`, each degraded rather than
-    raised where it is absent. `refreshed` is `_refresh.refresh_aids`'
-    map under `--baseline`, and `None` on the bare path."""
+    raised where it is absent. `refreshed` and `errors` are
+    `_refresh.refresh_aids`' two maps under `--baseline`, and `None` on
+    the bare path."""
     aids = {aid: _read_aid_json(draft, aid) for aid in AID_NAMES}
     for aid, state in (refreshed or {}).items():
         aids[aid].refreshed = state
+    for aid, error in (errors or {}).items():
+        aids[aid].refresh_error = error
     return Sources(
         aids=aids,
         style=_read_style(draft),

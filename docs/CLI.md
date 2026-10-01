@@ -1375,14 +1375,24 @@ against an invented query. Under `--baseline` the aids are refreshed at
 
 Under `--baseline --json`, stdout carries the comparison payload, not
 the worklist -- `resolved`/`persisting`/`new`/`accepted`/
-`objective_before`/`objective_after`/`objective_delta`/`not_refreshed`,
-and no `items` key at all. `not_refreshed` names each aid whose refresh
-failed -- a non-zero exit, or an exit 0 that wrote no fresh `.json`, as
-`support` does without the enrich stack. That aid's items are an
-earlier run's, so they sit out every group and both counts, and the
-filed report marks it `refreshed: false` and leaves its items out of
-`objective_class_count`. A skipped `coverage` (no recorded query) is
+`objective_before`/`objective_after`/`objective_delta`/`not_refreshed`/
+`refresh_errors`, and no `items` key at all. `not_refreshed` names each
+aid whose refresh failed -- a non-zero exit, an exit 0 that wrote no
+fresh `.json` (as `support` does without the enrich stack), or an
+exception. That aid's items are an earlier run's, so they sit out every
+group and both counts, and the filed report marks it `refreshed: false`
+and leaves its items out of `objective_class_count`. An aid that raised
+does not stop the run: `refresh_errors` maps it to the exception's
+one-line reason, the filed report carries the same line as
+`sources.aids.<aid>.refresh_error`, and a `[warn]` line on stderr says
+so as it happens. A skipped `coverage` (no recorded query) is
 `refreshed: null`, not a failure.
+
+`--baseline` needs a ledger, and checks for one after loading the
+baseline and before re-running anything. With none, or one that needs
+a sync to migrate, it prints the sync instruction once and exits 1,
+having refreshed, accepted and filed nothing. A bad baseline is still
+reported first, with exit 2. The bare command does not need a ledger.
 
 `accepted` is why an accepted item is not reported as `resolved`:
 suppression removes it from this run's worklist, and without
@@ -1393,7 +1403,7 @@ worklist itself is unaffected: it still lands in the filed `.json`
 report, written unconditionally either way, same as always.
 
 **`--json`** carries the same envelope every review aid's JSON does, plus
-`sources` (`available`/`stale`/`refreshed` per aid, `available`/`partial`
+`sources` (`available`/`stale`/`refreshed`/`refresh_error` per aid, `available`/`partial`
 for the prose check, `available`/`corpus_available` for the dossier drift,
 `available`/`count` for the acceptance record) and
 one `items` object per worklist entry -- `id`, `class`, `section`,

@@ -300,13 +300,37 @@ python -m chitragupta.review agenda content/drafts/<path> \
     --baseline content/review/<topic>/<stem>.agenda.json --json
 ```
 
+**If the command exits 1 with the sync instruction, stop the pass.**
+The ledger went missing, or needs a sync, since the pass began, and the
+command refused before re-running anything. Revert the repair this
+cycle was checking, keep every earlier accepted one, and tell the user
+to run `python -m chitragupta.corpus sync`. Never run it yourself.
+
 **Read `not_refreshed` first.** It names the aids whose refresh
-failed this cycle: a refusal, or an exit 0 that wrote nothing, which is
-what `support` does on every cycle on a host without the enrich stack.
-Their items are an earlier run's findings, so the command leaves them
-out of `resolved`, `persisting` and `new` and out of both objective
-counts. Nothing in the comparison can show progress on them, and a
-quiet list is not evidence that they went away:
+failed this cycle: a refusal, an exit 0 that wrote nothing (which is
+what `support` does on every cycle on a host without the enrich stack),
+or an exception. An aid that raised is also a key in `refresh_errors`,
+whose value is the one-line reason. Their items are an earlier run's
+findings, so the command leaves them out of `resolved`, `persisting` and
+`new` and out of both objective counts. Nothing in the comparison can
+show progress on them, and a quiet list is not evidence that they went
+away.
+
+**An aid in `refresh_errors` comes first, because the edit may have
+caused it.** The draft is the only thing that changed since the last
+cycle, and a malformed citation or a broken fence can make an aid's
+parser fail. Revert the repair, re-file the baseline as below, and run
+the recheck once on the reverted draft:
+
+- **It no longer raises:** the edit caused it. Keep the repair
+  reverted, count the attempt, and report the aid and its reason in
+  step 7.
+- **It still raises:** the edit did not cause it. Record the aid as a
+  standing failure for this pass, do not count the attempt, and try the
+  repair again. From then on, handle that aid by the rules below and do
+  not repeat this check for it.
+
+Then, for every aid still in `not_refreshed`:
 
 - **`verbatim` listed: stop the pass and surface it.** It is the only
   aid whose items can be unattended, so no `verbatim-run` repair can be
@@ -381,7 +405,10 @@ Show the diff and the `revisions.md` entries, and state the outcome
 against the baseline agenda from step 2: `objective_class_count` before
 and after, what was repaired per class, what was escalated and why,
 and every aid any cycle's `not_refreshed` named, with a note that its
-items went unverified.
+items went unverified. For an aid that raised, quote its
+`refresh_errors` reason and say whether the edit or the host caused it.
+That reason is what tells a known gap, such as `support` without the
+enrich stack, apart from a bug worth reporting.
 
 The human accepts. Nothing here merges, commits or renders on its own.
 
