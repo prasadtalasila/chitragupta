@@ -1,0 +1,42 @@
+name: Commit message
+
+# Checks the squash-commit body a PR carries in its description's
+# `## Commit message` section, with the same code `scripts/merge_pr.py`
+# runs at merge time (#827). Required on `main`, so a malformed body is
+# visible while the PR is open rather than at the end of a long session.
+#
+# A workflow of its own, not a job in ci.yml, because of `edited`: the
+# body lives in the description, so editing the description has to
+# re-run the check -- and adding `edited` to ci.yml would re-run the whole
+# suite on every description edit. This job needs the stdlib and nothing
+# else, so it takes seconds.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commit-message:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # The description is text anyone opening a PR controls, so it
+      # reaches the script through `env:` and is never interpolated into
+      # the `run:` line, where `${{ }}` would paste it into the shell
+      # script itself -- the documented Actions script-injection hole.
+      - name: Check the commit message section
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: printf '%s' "$BODY" | python scripts/merge_pr.py --check

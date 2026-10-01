@@ -19,6 +19,19 @@ squashed commit title on `main`; don't add the PR number by hand.]
 the reasoning behind the approach taken over the alternatives. Reference an
 issue number where one exists.]
 
+<!-- Commit message: the squash commit body, exactly as it will land on
+main. Write it inside the fence below: "- Verb ..." bullets (Fix, Add,
+Remove), continuation lines indented two spaces, every line at most 72
+characters, no closing keywords (put "Closes #N" in the Description).
+Keep the section to the fence alone; CI checks it with
+`python scripts/merge_pr.py --check`. Nothing else in this description
+is copied into the commit. -->
+
+## Commit message
+
+```text
+```
+
 ## What changed, from the user's point of view
 
 [Bulleted, concrete, from the reader's perspective -- command examples where

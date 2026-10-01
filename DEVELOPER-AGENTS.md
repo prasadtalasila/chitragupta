@@ -893,46 +893,53 @@ applied 2026-08-18.
 Body: a blank line, then a bulleted list of the specific, concrete changes,
 each bullet starting with a present-tense verb (Fix, Add, Remove, Migrate,
 Upgrade) and naming what actually changed, not vague summaries. No
-preamble paragraph before the bullets. For example (style, not this repo's
-literal content):
+preamble paragraph before the bullets. Lines wrap at 72 characters, with
+continuation lines indented two spaces. No closing keyword (`Closes #N`):
+it closes whichever issue it names when the commit lands, so it belongs
+in the PR description. For example (style, not this repo's literal
+content):
 
 ```text
 Fix reconcile drift detection, secret handling, and stale config warnings
 
-- Fix reconcile to detect and reprovision users whose containers are gone,
-  refuse `--fix` when Docker is unreachable or `--output-dir` differs
-  from cwd.
+- Fix reconcile to detect and reprovision users whose containers are
+  gone, refuse `--fix` when Docker is unreachable or `--output-dir`
+  differs from cwd.
 - Restore secret-file exclusion in build.py, consolidate
   SECRET_FILENAMES, and chmod secret files 0600 unconditionally.
 - Warn on stale root `.env` from install/update/generate paths; remove
   dead code no longer reachable after the above.
 ```
 
-**This body shape is still not what lands by default, and you still have
-to state it at merge time.** The title half of that problem is fixed; the
-body half is not, and it is worth being exact about why, because the
-obvious fix does not work and has already been tried.
+**You write the body, in the PR description's `## Commit message`
+section**, as one ```` ```text ```` fence holding exactly the text above
+minus the title -- the template carries the empty fence. That text lands
+on `main` byte for byte, or the merge is refused. It is checked twice,
+by the same code (`CommitBody` in `scripts/merge_pr.py`, whose docstring
+is the grammar):
 
-Historically the repository ran GitHub's default,
-`squash_merge_commit_message = COMMIT_MESSAGES`, which builds the body by
-concatenating the branch's commit messages with `*` bullets. Measured over
-the 30 commits before 2026-08-18: 14 carried a leading `* <branch commit
-title>` line and 8 had a prose body rather than bullets, neither of them
-an authoring mistake.
+- **While the PR is open**, by `.github/workflows/commit-message.yml`,
+  which re-runs whenever the description is edited. It is meant to be a
+  required check (see [the settings](#-what-the-repository-settings-fixed-and-what-they-could-not)
+  for its status), so a malformed body is red before review rather than
+  at merge.
+- **At merge**, by `python scripts/merge_pr.py <N>` -- see
+  [Merging](#-merging).
 
-It is now `PR_BODY`, which lands **the pull request description, verbatim**
--- and that is not this shape either. `.github/pull_request_template.md`
-is a *review* document: `## Type of Change`, `## Test plan`, `##
-Checklist`, all of it with tick-boxes. Merged unedited it puts those
-tick-boxes in `main`'s history. **No setting turns one into the other.**
+Nothing else in the description reaches the commit. Until #827 the
+script assembled the body by scraping every bullet out of the
+description, and `main` shows the result: #910, #912 and #913 each
+carry every change twice (once from `## Description`, once from `## What
+changed`), and #906's body includes reviewer notes. The template is a
+*review* document -- `## Type of Change`, `## Test plan`, `##
+Checklist` -- and a commit body is a piece of writing for a different
+reader, so it is written, not extracted.
+
+No repository setting could do this instead.
 `squash_merge_commit_message` takes exactly three values -- `PR_BODY`,
-`COMMIT_MESSAGES`, `BLANK` -- and none of them transforms the text; there
-is no templating step between a PR description and a commit body for a
-setting to hook into.
-
-So the body is supplied at merge time, by `--body-file` -- see
-[Merging](#-merging). Not a workaround for an unapplied setting any more;
-the setting that would replace it does not exist.
+`COMMIT_MESSAGES`, `BLANK` -- and none of them transforms the text. #827
+moves it to `BLANK`, which only decides what a merge that bypasses the
+script lands: a title and no body, rather than the raw description.
 
 ## 🔀 Merging
 
@@ -944,12 +951,16 @@ repository offers. Merge with:
 python scripts/merge_pr.py <N>
 ```
 
-It composes the squash body from the PR's own description (falling back
-to the branch's commit subjects only when the description carries no
-bullets at all), prints what it composed, and calls
-`gh pr merge <N> --squash --body-file -` for you --
-`--dry-run` prints the composed body without merging, for a look before
-committing to it.
+It reads the body from the PR description's `## Commit message` fence,
+checks it against the format in ["Commit messages"](#-commit-messages),
+prints it, and calls `gh pr merge <N> --squash --body-file -` for you.
+A body that breaks the format is refused with the line number, the rule
+and the offending line (shown escaped, so an invisible character is
+visible); a description with no such section is refused with the empty
+section to paste in. Nothing is stripped, joined or rewritten, and there
+is no fallback to the branch's commit subjects. `--dry-run` does
+everything but merge; `--check` reads a description on stdin and only
+checks it, which is what CI runs.
 
 ### 🚦 It refuses a merge that would lose the version bump
 
@@ -1014,24 +1025,20 @@ which means re-solving a problem that is now solved and getting `(#42)
 (#42)` if you also write the number in -- and the script does not offer
 the flag, so this cannot happen by way of it.
 
-**A body on stdin is still needed, and is not a leftover.** The body
-setting is `PR_BODY`, which lands the PR description verbatim -- review
-tick-boxes and all -- so without it `main`'s history gets
-`.github/pull_request_template.md` rather than a commit message. As
-["Commit messages"](#-commit-messages) sets out, no value of
-`squash_merge_commit_message` produces the documented shape, because none
-of them transforms the text. The script composes the bullets itself
-rather than piping raw branch commits through, which would just
-reproduce the old `*`-concatenated default by another route --
-`scripts/merge_pr.py`'s own docstring has why the source is the PR's
-description rather than its commits, and why that choice is enforced by
-being the one documented command rather than by a CI check
-(producer-is-enforcement, the same standing the OpenCodeReview step below
-already has).
+**A body on stdin is still needed, and is not a leftover.** With the
+body setting at `BLANK`, a squash commit without `--body-file` has a
+title and no body. As ["Commit messages"](#-commit-messages) sets out, no
+value of `squash_merge_commit_message` produces the documented shape,
+because none of them transforms the text.
+`plans/827-commit-message-format.md` has why the body is checked rather
+than assembled, and why the merge side is enforced by being the one documented command
+(producer-is-enforcement, the same standing the OpenCodeReview step
+below already has) while the pull-request side is a required check.
 
 The point is not the exact incantation. It is that the format becomes
-something a command produces, not something a person has to remember at
-the end of a long session, in a browser, after CI has gone green. That is
+something a check holds you to while the PR is open, not something a
+person has to remember at the end of a long session, in a browser, after
+CI has gone green. That is
 this project's standing answer to guidance that does not stick: the
 ratchet, the citation gate, and this are the same move
 ([docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md#-why-a-ratchet-suits-this-project-specifically)).
@@ -1065,6 +1072,30 @@ gh api -X PATCH repos/prasadtalasila/chitragupta \
   about the repository rather than a sentence in this file, which is the
   one of the three that needed no follow-up.
 
+Issue #827 closed the body by having the author write it (["Commit
+messages"](#-commit-messages)), and changes two settings to match. Both
+need the repository owner, and both are applied only after #827 merges:
+a required check can be selected only once it has reported at least
+once, and the session token here gets HTTP 403 from branch protection.
+
+```bash
+gh api -X PATCH repos/prasadtalasila/chitragupta \
+  -f squash_merge_commit_message=BLANK
+```
+
+- **`BLANK` replaces `PR_BODY`.** A merge that bypasses `merge_pr.py`
+  -- the web UI's button -- now lands a title and no body, instead of
+  the raw description with its tick-boxes and anything a bullet smuggled
+  in (a `Co-authored-by:` trailer, a live `Closes #N`, an escape
+  sequence; #827 has the probes). Still wrong, but empty rather than
+  wrong in ways that cannot be rewritten out of history.
+- **`commit-message` becomes a required status check** on `main`, in
+  the repository's `main` ruleset or in branch protection.
+
+**Status: pending.** Until the owner applies both, the body setting is
+still `PR_BODY` and the check is advisory. Replace this paragraph with
+the date each was applied.
+
 The general lesson, since this file is where process claims live: a
 setting closes a gap only where a machine can do the whole job. Titles
 are mechanical, so a setting finished them. A commit body is a piece of
@@ -1088,11 +1119,12 @@ title on `main` whatever the branch's commits are called. The template's
 actually ran (see "Before claiming a task complete" above), not from what
 you intended to run.
 
-The template stays a review document and is not written to double as a
-commit message. That is a deliberate split, not an oversight: a reviewer
-needs the test plan and the checklist, and `main`'s history does not.
-[Merging](#-merging)'s `--body-file` is what keeps them apart -- omit it
-and the whole template, tick-boxes included, becomes the commit body.
+The template is a review document with one exception: its `## Commit
+message` section, whose fence is the commit body and is the only part of
+the description that reaches `main`. That is a deliberate split: a
+reviewer needs the test plan and the checklist, and `main`'s history
+does not. [Merging](#-merging)'s `--body-file` is what carries the fence
+across -- a merge without it lands a title and no body.
 
 Merge method: squash, enforced by the repository rather than by this
 sentence -- see [Merging](#-merging). Each PR becomes exactly one commit
