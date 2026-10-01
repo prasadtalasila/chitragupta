@@ -112,7 +112,7 @@ def _version() -> str:
         from importlib.metadata import PackageNotFoundError, version
 
         return version("chitragupta-cli")
-    except (ImportError, PackageNotFoundError):  # pragma: no cover - see tests
+    except (ImportError, PackageNotFoundError):
         return "unknown"
 
 

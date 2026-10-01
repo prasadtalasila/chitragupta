@@ -112,7 +112,7 @@ class TestMigrationIsOneTransaction:
         def connect_a():
             try:
                 ledger.connect().close()
-            except sqlite3.Error as exc:  # pragma: no cover - the failure being guarded
+            except sqlite3.Error as exc:  # the failure being guarded
                 errors.append(exc)
 
         thread = threading.Thread(target=connect_a)
@@ -133,7 +133,7 @@ class TestMigrationIsOneTransaction:
             barrier.wait()
             try:
                 ledger.connect().close()
-            except sqlite3.Error as exc:  # pragma: no cover - the failure being guarded
+            except sqlite3.Error as exc:  # the failure being guarded
                 errors.append(exc)
 
         threads = [threading.Thread(target=first_touch) for _ in range(2)]

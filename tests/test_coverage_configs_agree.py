@@ -99,3 +99,28 @@ class TestTheProseStatesTheRealFloor:
     def test_a_reworded_sentence_fails_loudly(self):
         with pytest.raises(AssertionError, match="no longer states the coverage floor"):
             _stated_floors("Both legs are measured against one number.")
+
+
+# Built from two pieces so this file does not match itself.
+_BARE_PRAGMA = re.compile("pragma: no " + r"cover(?!-windows)")
+_SCANNED = ("chitragupta", "scripts", ".claude/hooks", "tests", "bench")
+
+
+def test_no_bare_no_cover_pragma_is_left_in_the_tree():
+    """Both configs set `exclude_lines`, which *replaces* coverage's
+    default list, so a bare no-cover pragma is honoured on neither leg
+    (#868): it reads as an exclusion and is not one. Under `tests/` and
+    `bench/` it is inert twice over, since neither is measured."""
+    found = [
+        f"{path.relative_to(REPO_ROOT)}:{n}"
+        for root in _SCANNED
+        for path in sorted((REPO_ROOT / root).rglob("*.py"))
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if _BARE_PRAGMA.search(line)
+    ]
+    assert not found, "inert coverage pragma(s):\n  " + "\n  ".join(found)
+
+
+def test_the_bare_pragma_pattern_spares_the_windows_marker():
+    assert _BARE_PRAGMA.search("x  # pragma: no " + "cover - why")
+    assert not _BARE_PRAGMA.search("x  # pragma: no " + "cover-windows")

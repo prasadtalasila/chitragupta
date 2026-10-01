@@ -193,7 +193,7 @@ class TestWrite:
         (or under it, depending on which ran last)."""
         from chitragupta import render_output
 
-        def fail(*a, **k):  # pragma: no cover - the point is it is never called
+        def fail(*a, **k):  # never called: that is the point
             raise AssertionError("json reached render_output.render")
 
         monkeypatch.setattr(render_output, "render", fail)
