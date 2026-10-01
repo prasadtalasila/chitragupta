@@ -526,9 +526,12 @@ Before saying so, actually run, in this repo:
   `pytest` reaches none of that directory -- it is JavaScript, so the
   100% coverage bar says nothing about it, and `tests/test_discover_app.py`
   can only pin source-level tripwires over the shipped text.
-  Every module in that directory except `app.js` is written to run
-  without a DOM and without cytoscape so that this command can exercise
-  the real functions; `app.js` is the wiring left over. CI runs
+  Every module in that directory except `app.js`, `search.js` and
+  `pickers.js` is written to run without a DOM and without cytoscape so
+  that this command can exercise the real functions; those three are
+  the DOM wiring left over, split by #857 so each piece stays under
+  the C2 limit (see `code-standards-register.toml`'s `c2js` table for
+  the one file still over it). CI runs
   it in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration. `tests/webapp/code_standards.test.js` rides
