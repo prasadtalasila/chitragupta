@@ -1,12 +1,16 @@
+import json
 import multiprocessing
+import os
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 
 from chitragupta import config, ledger
+from tests import content_guard
 
 
 def pytest_sessionstart(session):
@@ -22,6 +26,13 @@ def pytest_sessionstart(session):
     from chitragupta import pdf_text
 
     pdf_text.drop_stdlib_shadowing_path_entries()
+    content_guard.record(session, config.CONTENT_DIR)
+
+
+def pytest_sessionfinish(session):
+    """Fail a session that wrote into the real content/ -- see
+    tests/content_guard.py for why the effect is checked, not the code."""
+    content_guard.verify(session)
 
 
 @pytest.fixture(autouse=True)
@@ -265,6 +276,265 @@ def make_ref():
     return make_reference
 
 
+def add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
+    """A `parsed` ledger row, optionally with its text on disk where a
+    real parse puts it. One helper rather than the four module copies it
+    replaced (#867), which differed only in whether they accepted a
+    `pdf_path`; taking it always and storing NULL by default covers all
+    four."""
+    parsed_path = None
+    if parsed_text is not None:
+        path = parsed_file(citekey)
+        path.write_text(parsed_text, encoding="utf-8")
+        parsed_path = str(path)
+    con = ledger.connect()
+    try:
+        con.execute(
+            "INSERT OR REPLACE INTO items"
+            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
+            " VALUES (?, ?, 'parsed', ?, ?, '2026-01-01')",
+            (citekey, title, parsed_path, pdf_path),
+        )
+        con.commit()
+    finally:
+        con.close()
+
+
+def plant_sidecar(citekey, records, *, docling=True) -> Path:
+    """A structural passage sidecar, `<citekey>.passages.json`, holding
+    `records` as written.
+
+    Rung 1 of chitragupta/passages.py's ladder (the Docling directory)
+    by default, which is where three of the four copies this replaced
+    wrote; `docling=False` is rung 2, beside the parsed text.
+    """
+    directory = config.DOCLING_DIR if docling else config.PARSED_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{citekey}.passages.json"
+    path.write_text(json.dumps(records), encoding="utf-8")
+    return path
+
+
+def add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
+    """A ledger row with status='parsed', a real pdf_hash (from a
+    throwaway PDF file, so upsert_reference actually computes one), and
+    parsed_path pointing at real text on disk."""
+    pdf = tmp_path / f"{citekey}.pdf"
+    pdf.write_bytes(pdf_bytes)
+    parsed = parsed_text(citekey, text)
+    ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
+    ledger.mark_parsed(ledger_con, citekey, parsed)
+    return parsed
+
+
+def make_docs(tmp_path, texts: dict):
+    """One CorpusDoc per `citekey -> text`, each text on disk under
+    tmp_path: the enrichment corpus with no ledger behind it."""
+    from chitragupta.enrich.corpus import CorpusDoc
+
+    docs = []
+    for citekey, text in texts.items():
+        path = tmp_path / f"{citekey}.txt"
+        path.write_text(text, encoding="utf-8")
+        docs.append(CorpusDoc(citekey=citekey, title=citekey, pdf_path=None, text_path=str(path)))
+    return docs
+
+
+def draft_with(body: str, tmp_path: Path) -> Path:
+    """`body` as `tmp_path/survey.md`, for the style checks, which read a
+    draft from anywhere."""
+    path = tmp_path / "survey.md"
+    path.write_text(body, encoding="utf-8")
+    return path
+
+
+def retrieval_cost(target):
+    """(calls, chars) over a whole `retrieval.md`, as the sum of its
+    per-revision segments.
+
+    `dossier.retrieval_cost` used to answer this directly and was deleted
+    in #515: `_status` computes the lifetime figures this same way, and a
+    second whole-file reader was surface nothing production called. These
+    cases are about `log_retrieval`'s row format -- pipe escaping, a
+    hand-edited row, a file created before `init` -- so they need *a*
+    reader, and using the one production uses is the point.
+    """
+    from chitragupta.dossier import _retrieval
+
+    segments = _retrieval.retrieval_cost_by_revision(target)
+    return sum(s.calls for s in segments), sum(s.chars for s in segments)
+
+
+def thread_executor(workers):
+    """A real ProcessPoolExecutor would run parse_one in a child
+    interpreter, where this process's sys.modules fakes don't exist -- the
+    fake docling would silently not be used. Swapping the executor keeps
+    the concurrency real while leaving the fakes visible."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    return ThreadPoolExecutor(max_workers=workers)
+
+
+HOOKS = Path(__file__).resolve().parent.parent / ".claude" / "hooks"
+
+
+def load_hook(name: str):
+    """A fresh module object for `.claude/hooks/<name>.py`, so one test's
+    monkeypatching cannot leak.
+
+    `.claude/hooks` goes on `sys.path` first because a hook is run by
+    absolute path in production, which puts its own directory there --
+    that is what makes `import draft_target` resolve with no path
+    manipulation inside the hook. Loading by spec does not reproduce it,
+    so the test harness has to.
+    """
+    import importlib.util
+
+    if str(HOOKS) not in sys.path:
+        sys.path.insert(0, str(HOOKS))
+    spec = importlib.util.spec_from_file_location(name, HOOKS / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# --- Books: the three shapes the book-track tests start from --------------
+# A bare path, a path with its outline written, and that outline signed.
+# The outline text is each module's own -- the chapters under test differ
+# -- so `book` reads it from the requesting module's BOOK_SPEC rather than
+# taking it as an argument a fixture cannot be given.
+
+
+def _book_spec_of(request) -> str:
+    """The requesting module's BOOK_SPEC, or a refusal that says so
+    rather than an AttributeError on a module object."""
+    text = getattr(request.module, "BOOK_SPEC", None)
+    if text is None:
+        pytest.fail(f"{request.module.__name__} requests a book but defines no BOOK_SPEC outline")
+    return text
+
+
+@pytest.fixture
+def book_dir(isolated_config):
+    """content/drafts/twins, not created: an outline is written before
+    any prose, so a test of the outline starts from nothing."""
+    return isolated_config.DRAFTS_DIR / "twins"
+
+
+def write_book_spec(book_path: Path, text: str) -> Path:
+    """`text` as `book_path`'s outline, with the book directory made."""
+    from chitragupta import spec
+
+    spec_file = spec.spec_path(book_path)
+    spec_file.parent.mkdir(parents=True, exist_ok=True)
+    spec_file.write_text(text, encoding="utf-8")
+    book_path.mkdir(parents=True, exist_ok=True)
+    return book_path
+
+
+@pytest.fixture
+def book(book_dir, request):
+    """`book_dir` with the module's BOOK_SPEC written as its outline."""
+    return write_book_spec(book_dir, _book_spec_of(request))
+
+
+@pytest.fixture
+def example_ledger(ledger_con):
+    """A ledger holding the one reference the book tests' outlines and
+    drafts cite, so a unit citing it can be accepted."""
+    ledger.upsert_reference(ledger_con, make_reference(citekey="smith_example_2024"))
+    ledger_con.commit()
+    return ledger_con
+
+
+@pytest.fixture
+def signed_book(book_dir, example_ledger, request):
+    """The module's BOOK_SPEC outline, signed, over `example_ledger`, so a
+    unit can be accepted against it.
+
+    Built from `book_dir` rather than from `book`: a module that renames
+    this fixture to `book` for its own tests would otherwise make it
+    request itself.
+    """
+    from chitragupta import spec
+
+    write_book_spec(book_dir, _book_spec_of(request))
+    spec.main(["sign", str(book_dir)])
+    return book_dir
+
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _IS_COVERAGE_BOOTSTRAP(name: str) -> bool:
+    """Whether an env var would make a child process start its own coverage.
+
+    `run_python` strips these from any child it starts outside the
+    repository root, and the hook tests strip them from the hook's
+    environment, for the same reason. The hook runs
+    `python -m chitragupta.draft gate` with `cwd` set to *its* repo root --
+    a temporary one in those tests. Coverage started there finds no
+    config file, so it records statement-only data while the parent
+    records branch data, and the run dies at combine time with
+    "Can't combine statement coverage data with branch data" *after*
+    every test has passed.
+
+    Whether it happens at all depends on the pytest-cov version and on
+    what `python` resolves to: pytest-cov 6.x ships a `.pth` that
+    instruments every subprocess, 7.x does not, and the hook spawns a
+    literal `python` rather than `sys.executable`, so a venv on PATH
+    (what `poetry run` gives CI) is instrumented while a bare system
+    interpreter is not. Stripping these makes every combination behave
+    the same. Nothing is lost: the in-process tests already cover
+    `chitragupta/citation_gate.py` fully, which is why the total is 100% on a
+    host where these children were never measured.
+    """
+    return name.startswith("COV_CORE") or name in (
+        "COVERAGE_PROCESS_START",
+        "COVERAGE_FILE",
+        "COVERAGE_RCFILE",
+    )
+
+
+def run_python(*argv, python=None, cwd=None, env=None, **kwargs):
+    """`python *argv` in a child process, with this checkout's
+    chitragupta importable whatever the child's cwd (#867).
+
+    Every launch of the package under test goes through here, which
+    `tests/test_subprocess_launch_scan.py` holds to. Before, each launch
+    imported whichever chitragupta the child found first: a `-m` child
+    finds this one only because its cwd is the repository root and `-m`
+    puts the cwd on sys.path, which stops being true the moment a test
+    passes `cwd=tmp_path`.
+
+    The checkout is *appended* to the caller's PYTHONPATH, never
+    prepended, so a test that deliberately imports another copy of the
+    package (tests/test_tokens.py edits one under tmp_path) still gets
+    it. `env`, when given, is the child's whole environment, exactly as
+    the caller wrote it: the `system_python` tests pass a minimal one on
+    purpose. cwd stays the repository root by default because that is
+    where the child finds this checkout's config.toml.
+
+    Anywhere else, coverage's bootstrap variables are dropped: a child
+    started from a cwd with no pyproject.toml measures statement-only and
+    the session dies at combine time, after every test has passed (see
+    `_IS_COVERAGE_BOOTSTRAP`). From the root the child is still measured.
+    """
+    child_env = dict(os.environ if env is None else env)
+    if Path(cwd or REPO_ROOT).resolve() != REPO_ROOT:
+        child_env = {k: v for k, v in child_env.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
+    paths = [child_env.get("PYTHONPATH"), str(REPO_ROOT)]
+    child_env["PYTHONPATH"] = os.pathsep.join(p for p in paths if p)
+    return subprocess.run(
+        [python or sys.executable, *argv],
+        cwd=str(cwd or REPO_ROOT),
+        env=child_env,
+        capture_output=True,
+        text=True,
+        **kwargs,
+    )
+
+
 @pytest.fixture
 def system_python():
     """A python3 that can't import bibtexparser, to verify the documented
@@ -319,6 +589,13 @@ tikz_available = (
 # where a caption actually wrapped on the page, which is a question no
 # assertion over the `.tex` can answer.
 pdftotext_available = shutil.which("pdftotext") is not None
+# Whether this host can compile a TikZ figure at all: the two facts
+# `render_output/_figures.py::_require_tikz()` checks. A skip, not a
+# failure, because CI's Windows leg installs no `os-deps`. One marker for
+# the three geometry modules that each used to probe for it themselves.
+needs_tikz = pytest.mark.skipif(
+    not (pdflatex_available and tikz_available), reason="needs pdflatex with tikz.sty"
+)
 
 # A figure is two forms -- a TikZ picture and the same diagram in
 # WRITING-STANDARDS.md §10's plain ASCII -- and both are always files.

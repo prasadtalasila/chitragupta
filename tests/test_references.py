@@ -1,9 +1,7 @@
 """chitragupta/references.py: auto-generated References sections, built only
 from citekeys a draft already cites (never inventing one)."""
 
-import subprocess
 import sys
-from pathlib import Path
 
 import pytest
 
@@ -16,7 +14,7 @@ from chitragupta import (
     references_section,
 )
 
-from tests.conftest import content_draft, make_reference
+from tests.conftest import content_draft, make_reference, run_python
 
 
 class TestUsedCitekeys:
@@ -726,12 +724,12 @@ class TestMainCli:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Citing [@smith2024] here.\n")
 
-        repo_root = Path(__file__).resolve().parent.parent
-        result = subprocess.run(
-            [system_python, "-m", "chitragupta.draft", "references", str(draft)],
-            cwd=str(repo_root),
-            capture_output=True,
-            text=True,
+        result = run_python(
+            "-m",
+            "chitragupta.draft",
+            "references",
+            str(draft),
+            python=system_python,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},
         )
         assert result.returncode == 0, result.stderr

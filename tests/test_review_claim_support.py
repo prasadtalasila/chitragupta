@@ -11,6 +11,7 @@ from chitragupta import config, entailment, ledger, review
 from chitragupta.review import _claim_support_render as render
 from chitragupta.review import claim_support
 from chitragupta.review import __main__ as review_main
+from tests.conftest import add_item, plant_sidecar
 
 
 @pytest.fixture(autouse=True)
@@ -20,31 +21,6 @@ def _a_synced_ledger(isolated_config):
     so a test that never synced has to say so rather than lean on the
     reader to make one."""
     ledger.connect().close()
-
-
-def _add_item(citekey, parsed_text=None, title="T"):
-    parsed_path = None
-    if parsed_text is not None:
-        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-        parsed_path = config.PARSED_DIR / f"{citekey}.txt"
-        parsed_path.write_text(parsed_text, encoding="utf-8")
-        parsed_path = str(parsed_path)
-    con = ledger.connect()
-    try:
-        con.execute(
-            "INSERT OR REPLACE INTO items"
-            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
-            " VALUES (?, ?, 'parsed', ?, NULL, '2026-01-01')",
-            (citekey, title, parsed_path),
-        )
-        con.commit()
-    finally:
-        con.close()
-
-
-def _sidecar(citekey, records):
-    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
-    (config.DOCLING_DIR / f"{citekey}.passages.json").write_text(json.dumps(records))
 
 
 class FakeEntailer:
@@ -76,8 +52,8 @@ class TestSectionHeadingsAreNotPremises:
         winner: a test that only checked which passage won would still
         pass if the heading were scored and merely lost, which is not
         what this change claims."""
-        _add_item("heading_2024")
-        _sidecar(
+        add_item("heading_2024")
+        plant_sidecar(
             "heading_2024",
             [
                 {"text": "3. Closing the loop", "page": 1, "label": "section_header"},
@@ -98,8 +74,8 @@ class TestSectionHeadingsAreNotPremises:
         """The heading is deliberately the higher-scoring pair, so a
         filter that is not actually applied fails this by reporting the
         heading as the claim's support."""
-        _add_item("winner_2024")
-        _sidecar(
+        add_item("winner_2024")
+        plant_sidecar(
             "winner_2024",
             [
                 {"text": "Digital twins close the loop", "page": 1, "label": "section_header"},
@@ -123,8 +99,8 @@ class TestSectionHeadingsAreNotPremises:
         without one -- every sidecar written before labelling. Dropping
         those would empty the premise set for those sources and move
         their citations from `scored` to `unscoreable`."""
-        _add_item("unlabelled_2024")
-        _sidecar("unlabelled_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        add_item("unlabelled_2024")
+        plant_sidecar("unlabelled_2024", [{"text": "Twins close the control loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@unlabelled_2024].\n")
         fake = FakeEntailer(
             {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
@@ -139,8 +115,8 @@ class TestSectionHeadingsAreNotPremises:
         real assertion, and a table cell can support a numeric claim --
         dropping either would lose genuine support with no measurement
         saying it does not."""
-        _add_item("kept_2024")
-        _sidecar(
+        add_item("kept_2024")
+        plant_sidecar(
             "kept_2024",
             [
                 {"text": "The loop closes in 40 ms.", "page": 1, "label": "list_item"},
@@ -159,8 +135,8 @@ class TestSectionHeadingsAreNotPremises:
     def test_a_source_that_is_all_headings_says_so(self, isolated_config):
         """The pre-existing "page-level only" reason would be false here:
         the source has readable text, it just has no premise in it."""
-        _add_item("allheadings_2024")
-        _sidecar(
+        add_item("allheadings_2024")
+        plant_sidecar(
             "allheadings_2024",
             [{"text": "1. Introduction", "page": 1, "label": "section_header"}],
         )
@@ -183,8 +159,8 @@ class TestPremiseCap:
         """The default is the pre-#693 behaviour exactly. Asserted so a
         cap that leaked into the default fails here rather than silently
         changing every recorded score."""
-        _add_item("uncapped_2024")
-        _sidecar(
+        add_item("uncapped_2024")
+        plant_sidecar(
             "uncapped_2024",
             [{"text": f"Passage {i} on loops.", "page": 1} for i in range(6)],
         )
@@ -198,8 +174,8 @@ class TestPremiseCap:
         """The kept premise is the one sharing the claim's distinctive
         words, not the first on the page -- the ranking is what makes a
         cap survivable, so document order winning would be the bug."""
-        _add_item("ranked_2024")
-        _sidecar(
+        add_item("ranked_2024")
+        plant_sidecar(
             "ranked_2024",
             [
                 {"text": "The plant was instrumented in 2019.", "page": 1},
@@ -217,8 +193,8 @@ class TestPremiseCap:
         assert report.findings[0].score == pytest.approx(0.9)
 
     def test_a_cap_above_the_premise_count_changes_nothing(self, isolated_config):
-        _add_item("small_2024")
-        _sidecar("small_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        add_item("small_2024")
+        plant_sidecar("small_2024", [{"text": "Twins close the control loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@small_2024].\n")
         fake = FakeEntailer(
             {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
@@ -233,8 +209,8 @@ class TestPremiseCap:
         heading ranking highest on overlap, a cap applied *before* the
         filter would send nothing at all and report the source
         unscoreable."""
-        _add_item("order_2024")
-        _sidecar(
+        add_item("order_2024")
+        plant_sidecar(
             "order_2024",
             [
                 {"text": "Digital twins close the loop", "page": 1, "label": "section_header"},
@@ -255,8 +231,8 @@ class TestPremiseCap:
         """Two premises with identical overlap must resolve the same way
         on every run, or a capped re-run reports a different best passage
         for an unchanged draft and corpus (R2's stable-identity rule)."""
-        _add_item("tied_2024")
-        _sidecar(
+        add_item("tied_2024")
+        plant_sidecar(
             "tied_2024",
             [
                 {"text": "Twins close the loop.", "page": 1},
@@ -275,8 +251,8 @@ class TestPremiseCap:
         every premise ties at zero overlap. The cap must still send `k`
         of them rather than an empty batch, which `_score_claim`'s
         documented no-empty-result invariant depends on."""
-        _add_item("stopwords_2024")
-        _sidecar(
+        add_item("stopwords_2024")
+        plant_sidecar(
             "stopwords_2024",
             [
                 {"text": "Twins close the control loop.", "page": 1},
@@ -293,8 +269,8 @@ class TestPremiseCap:
 
 class TestBuildReport:
     def test_scores_a_claim_against_its_citekeys_best_passage(self, isolated_config):
-        _add_item("good_2024")
-        _sidecar("good_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        add_item("good_2024")
+        plant_sidecar("good_2024", [{"text": "Twins close the control loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer(
             {("Twins close the control loop.", "Digital twins close the loop."): 0.91}
@@ -314,8 +290,8 @@ class TestBuildReport:
         *second* in the sidecar list, so a `scores[0]`-shaped bug (or a
         stray `min` in place of `max`) would fail this by returning the
         loser instead."""
-        _add_item("twopassage_2024")
-        _sidecar(
+        add_item("twopassage_2024")
+        plant_sidecar(
             "twopassage_2024",
             [
                 {"text": "An irrelevant passage about something else.", "page": 1},
@@ -363,8 +339,8 @@ class TestBuildReport:
         """The per-citekey passage cache: a draft citing the same source
         twice must not re-fetch (and, once a real Entailer is in the
         loop, re-embed) its passages a second time."""
-        _add_item("shared_2024")
-        _sidecar("shared_2024", [{"text": "Twins close the control loop.", "page": 1}])
+        add_item("shared_2024")
+        plant_sidecar("shared_2024", [{"text": "Twins close the control loop.", "page": 1}])
         calls = []
         real_source_passages = claim_support.source_passages
 
@@ -410,7 +386,7 @@ class TestUnscoreable:
         assert "missing_2024" in report.unscoreable
 
     def test_a_citekey_with_only_page_level_passages_is_noted_not_scored(self, isolated_config):
-        _add_item("pageonly_2024", parsed_text="whole page one text\fwhole page two text")
+        add_item("pageonly_2024", parsed_text="whole page one text\fwhole page two text")
         draft = _draft(config, "A claim citing a page scan [@pageonly_2024].\n")
         report = claim_support.build_report(draft, FakeEntailer({}))
         assert report.findings[0].passage is None
@@ -419,10 +395,10 @@ class TestUnscoreable:
 
 class TestOrderingAndId:
     def test_worst_scoring_claim_sorts_first(self, isolated_config):
-        _add_item("weak_2024")
-        _sidecar("weak_2024", [{"text": "Unrelated source text.", "page": 1}])
-        _add_item("strong_2024")
-        _sidecar("strong_2024", [{"text": "Twins close the loop.", "page": 1}])
+        add_item("weak_2024")
+        plant_sidecar("weak_2024", [{"text": "Unrelated source text.", "page": 1}])
+        add_item("strong_2024")
+        plant_sidecar("strong_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(
             config,
             "Weak claim here [@weak_2024]. Strong claim here [@strong_2024].\n",
@@ -447,8 +423,8 @@ class TestFindingId:
 
 class TestFindings:
     def test_one_dict_per_finding_no_band(self, isolated_config):
-        _add_item("good_2024")
-        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        add_item("good_2024")
+        plant_sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
         found = render.findings(claim_support.build_report(draft, fake))
@@ -473,8 +449,8 @@ class TestRenderMarkdown:
         assert "not a fact-check" in text.lower()
 
     def test_lists_a_finding_with_its_score_and_claim(self, isolated_config):
-        _add_item("good_2024")
-        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        add_item("good_2024")
+        plant_sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
         report = claim_support.build_report(draft, fake)
@@ -517,8 +493,8 @@ class TestFormatReport:
         assert "##" not in text
 
     def test_lists_a_scored_finding_with_its_percentage(self, isolated_config):
-        _add_item("good_2024")
-        _sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
+        add_item("good_2024")
+        plant_sidecar("good_2024", [{"text": "Twins close the loop.", "page": 1}])
         draft = _draft(config, "Digital twins close the loop [@good_2024].\n")
         fake = FakeEntailer({("Twins close the loop.", "Digital twins close the loop."): 0.9})
         report = claim_support.build_report(draft, fake)
@@ -594,8 +570,8 @@ class TestCli:
         """The CLI is the one caller that reads `SUPPORT_PREMISE_TOPK`;
         `build_report`'s own default stays uncapped so a bench arm can
         pin k per call instead of mutating this constant mid-run."""
-        _add_item("clipath_2024")
-        _sidecar(
+        add_item("clipath_2024")
+        plant_sidecar(
             "clipath_2024",
             [{"text": f"Passage {i} on loops.", "page": 1} for i in range(5)],
         )

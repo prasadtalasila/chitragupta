@@ -21,14 +21,7 @@ import pytest
 from chitragupta import config, dossier, review
 from chitragupta.review import __main__ as review_main
 from chitragupta.review import _blocks, _claims, _uncited_render, _units, uncited_prose
-from tests.test_review_units import draft_at, write_scope
-
-
-def a_draft(text: str, genre: str = "survey", name: str = "survey.md") -> Path:
-    draft = draft_at(name)
-    draft.write_text(text, encoding="utf-8")
-    write_scope(draft, genre)
-    return draft
+from tests.test_review_units import a_draft, draft_at
 
 
 def report_for(draft: Path, genre: str | None = None) -> uncited_prose.Report:

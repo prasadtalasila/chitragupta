@@ -8,7 +8,6 @@ statements about one artifact rather than two.
 
 import json
 
-import pytest
 
 from chitragupta import spec, unit
 
@@ -49,23 +48,8 @@ More prose.
 """
 
 
-@pytest.fixture
-def book(isolated_config):
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(SPEC, encoding="utf-8")
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-@pytest.fixture
-def corpus(ledger_con, make_ref):
-    from chitragupta import ledger
-
-    ledger.upsert_reference(ledger_con, make_ref(citekey="smith_example_2024"))
-    ledger_con.commit()
-    return ledger_con
+# conftest's `book` writes this as the outline.
+BOOK_SPEC = SPEC
 
 
 def write(book, name, text):
@@ -79,7 +63,7 @@ def accept(book, unit_id):
 # --- alignment binds acceptance ------------------------------------------
 
 
-def test_accept_refuses_a_chapter_whose_headings_drifted(book, corpus, capsys):
+def test_accept_refuses_a_chapter_whose_headings_drifted(book, example_ledger, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER.replace("## The data half", "## Something else entirely"))
     capsys.readouterr()
@@ -88,7 +72,7 @@ def test_accept_refuses_a_chapter_whose_headings_drifted(book, corpus, capsys):
     assert not unit.record_path(book, "ch-what").is_file()
 
 
-def test_accept_takes_a_chapter_that_aligns(book, corpus, capsys):
+def test_accept_takes_a_chapter_that_aligns(book, example_ledger, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER)
     capsys.readouterr()
@@ -96,7 +80,7 @@ def test_accept_takes_a_chapter_that_aligns(book, corpus, capsys):
     assert unit.record_path(book, "ch-what").is_file()
 
 
-def test_another_chapter_being_unwritten_does_not_block_this_one(book, corpus, capsys):
+def test_another_chapter_being_unwritten_does_not_block_this_one(book, example_ledger, capsys):
     """A book is drafted chapter by chapter. `align` reports `ch-cost` as
     not written yet, and that must not hold up the chapter that is."""
     spec.main(["sign", str(book)])
@@ -105,7 +89,7 @@ def test_another_chapter_being_unwritten_does_not_block_this_one(book, corpus, c
     assert accept(book, "ch-what") == 0
 
 
-def test_reordered_sections_are_named_in_the_refusal(book, corpus, capsys):
+def test_reordered_sections_are_named_in_the_refusal(book, example_ledger, capsys):
     spec.main(["sign", str(book)])
     write(
         book,
@@ -121,7 +105,7 @@ def test_reordered_sections_are_named_in_the_refusal(book, corpus, capsys):
 # --- status cross-reports the dossier ------------------------------------
 
 
-def test_status_names_what_the_dossier_says_about_the_same_prose(book, corpus, capsys):
+def test_status_names_what_the_dossier_says_about_the_same_prose(book, example_ledger, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER)
     accept(book, "ch-what")
@@ -130,7 +114,7 @@ def test_status_names_what_the_dossier_says_about_the_same_prose(book, corpus, c
     assert "dossier: no dossier" in capsys.readouterr().out
 
 
-def test_status_as_json_carries_the_same_answer(book, corpus, capsys):
+def test_status_as_json_carries_the_same_answer(book, example_ledger, capsys):
     spec.main(["sign", str(book)])
     write(book, "ch-what", CHAPTER)
     accept(book, "ch-what")
@@ -142,7 +126,7 @@ def test_status_as_json_carries_the_same_answer(book, corpus, capsys):
     assert entry["fingerprint"] == "no dossier"
 
 
-def test_status_says_when_a_stamped_fingerprint_agrees(book, corpus, capsys):
+def test_status_says_when_a_stamped_fingerprint_agrees(book, example_ledger, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])
@@ -154,7 +138,7 @@ def test_status_says_when_a_stamped_fingerprint_agrees(book, corpus, capsys):
     assert "dossier: agrees" in capsys.readouterr().out
 
 
-def test_status_says_when_a_stamped_fingerprint_disagrees(book, corpus, capsys):
+def test_status_says_when_a_stamped_fingerprint_disagrees(book, example_ledger, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])
@@ -167,7 +151,7 @@ def test_status_says_when_a_stamped_fingerprint_disagrees(book, corpus, capsys):
     assert "dossier: disagrees" in capsys.readouterr().out
 
 
-def test_status_says_when_a_dossier_exists_but_nobody_stamped(book, corpus, capsys):
+def test_status_says_when_a_dossier_exists_but_nobody_stamped(book, example_ledger, capsys):
     from chitragupta.dossier import _create
 
     spec.main(["sign", str(book)])
@@ -178,7 +162,7 @@ def test_status_says_when_a_dossier_exists_but_nobody_stamped(book, corpus, caps
     assert "dossier: not stamped" in capsys.readouterr().out
 
 
-def test_status_says_when_a_stamped_draft_has_since_been_deleted(book, corpus, capsys):
+def test_status_says_when_a_stamped_draft_has_since_been_deleted(book, example_ledger, capsys):
     from chitragupta.dossier import _create, _draft_fingerprint
 
     spec.main(["sign", str(book)])

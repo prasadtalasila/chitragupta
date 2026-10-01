@@ -2,16 +2,13 @@
 only be used if it's actually in the ledger. This is the single most
 important module in the repo to test thoroughly."""
 
-import subprocess
-import sys
 import time
-from pathlib import Path
 
 import pytest
 
 from chitragupta import citation_gate, ledger
 
-from tests.conftest import content_draft, make_reference
+from tests.conftest import content_draft, make_reference, run_python
 
 
 class TestExtractLatexCitations:
@@ -678,12 +675,7 @@ class TestDeadLauncherWarning:
 
 class TestCliEntrypoint:
     def test_no_args_prints_usage_and_exits_2(self, isolated_config):
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.draft", "gate"],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
-        )
+        result = run_python("-m", "chitragupta.draft", "gate")
         assert result.returncode == 2
         assert "usage:" in result.stderr
 
@@ -694,12 +686,7 @@ class TestCliEntrypoint:
         and the write hook invoke, i.e. the first one anyone tries it on.
         Help goes to stdout and exits 0; the no-args *error* keeps
         stderr and exit 2."""
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.draft", "gate", flag],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
-        )
+        result = run_python("-m", "chitragupta.draft", "gate", flag)
         assert result.returncode == 0
         assert "usage:" in result.stdout
         assert "Traceback" not in result.stderr
@@ -716,12 +703,12 @@ class TestCliEntrypoint:
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("[@smith2024]\n")
 
-        repo_root = Path(__file__).resolve().parent.parent
-        result = subprocess.run(
-            [system_python, "-m", "chitragupta.draft", "gate", str(draft)],
-            cwd=str(repo_root),
-            capture_output=True,
-            text=True,
+        result = run_python(
+            "-m",
+            "chitragupta.draft",
+            "gate",
+            str(draft),
+            python=system_python,
             env={"PATH": "/usr/bin:/bin", "CONTENT_DIR": str(isolated_config.CONTENT_DIR)},
         )
         assert "bibtexparser" not in (result.stderr or "").lower()

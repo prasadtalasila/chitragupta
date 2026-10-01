@@ -19,16 +19,11 @@ in step.
 from pathlib import Path
 
 from chitragupta import style_typeset
+from tests.conftest import draft_with
 
 WIDE = "x" * (style_typeset.MAX_CODE_COLUMNS + 1)
 FITS = "x" * style_typeset.MAX_CODE_COLUMNS
 URL = "https://github.com/INTO-CPS-Association/plant-controller"
-
-
-def draft_with(body: str, tmp_path: Path) -> Path:
-    path = tmp_path / "survey.md"
-    path.write_text(body, encoding="utf-8")
-    return path
 
 
 def rules(findings: list[dict]) -> list[str]:

@@ -17,33 +17,8 @@ import pytest
 
 from chitragupta.review import _blocks, _citation_provenance_render, _claim_sentence
 from chitragupta.review import citation_provenance as cp
-from chitragupta import config, ledger, passages
-
-
-def _add_item(citekey, parsed_text=None, pdf_path=None, title="T"):
-    """Insert a ledger row, optionally with parsed text on disk."""
-    parsed_path = None
-    if parsed_text is not None:
-        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-        parsed_path = config.PARSED_DIR / f"{citekey}.txt"
-        parsed_path.write_text(parsed_text, encoding="utf-8")
-        parsed_path = str(parsed_path)
-    con = ledger.connect()
-    try:
-        con.execute(
-            "INSERT OR REPLACE INTO items"
-            " (citekey, title, status, parsed_path, pdf_path, last_synced)"
-            " VALUES (?, ?, 'parsed', ?, ?, '2026-01-01')",
-            (citekey, title, parsed_path, pdf_path),
-        )
-        con.commit()
-    finally:
-        con.close()
-
-
-def _sidecar(citekey, records):
-    config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
-    (config.DOCLING_DIR / f"{citekey}.passages.json").write_text(json.dumps(records))
+from chitragupta import config, passages
+from tests.conftest import add_item, plant_sidecar
 
 
 class TestClaims:
@@ -139,7 +114,7 @@ class TestClaims:
     def test_a_commented_out_citation_in_a_tex_draft_is_not_a_claim(self, isolated_config):
         """#873: the report read `.tex` with Markdown rules, so a key after
         `%` was reported as cited when the prose cites nothing of it."""
-        _add_item("a_2024")
+        add_item("a_2024")
         path = config.CONTENT_DIR / "d.tex"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Layers matter \\citep{a_2024}.\n% Dropped in review: \\citep{b_2024}\n")
@@ -193,7 +168,7 @@ class TestBlockShapedClaims:
         """Whole-table claims inflate the denominator -- measured at ~4x on
         a real draft -- pushing a genuinely supported citation under the
         band thresholds."""
-        _add_item(
+        add_item(
             "a_2024", parsed_text="known structural equations simulating a bridge deck\fpage two"
         )
         path = config.CONTENT_DIR / "d.md"
@@ -205,8 +180,8 @@ class TestBlockShapedClaims:
         assert row.score >= config.PROVENANCE_GOOD_SCORE
 
     def test_the_report_quotes_the_row_not_the_table(self, isolated_config):
-        _add_item("a_2024", parsed_text="known structural equations\fpage two")
-        _add_item("b_2024", parsed_text="measured hysteresis data\fpage two")
+        add_item("a_2024", parsed_text="known structural equations\fpage two")
+        add_item("b_2024", parsed_text="measured hysteresis data\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.TABLE)
@@ -366,7 +341,7 @@ class TestLatexBlockShapedClaims:
         assert "models" not in found["a_2024"]
 
     def test_a_row_scores_on_its_own_words(self, isolated_config):
-        _add_item("a_2024", parsed_text="shared semantic model heavy modelling effort\fpage two")
+        add_item("a_2024", parsed_text="shared semantic model heavy modelling effort\fpage two")
         path = config.CONTENT_DIR / "chapter.tex"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(self.TABULAR)
@@ -463,8 +438,8 @@ class TestScoring:
 
 class TestReport:
     def test_orders_worst_match_first(self, isolated_config):
-        _add_item("good_2024", parsed_text="hysteresis band relay switching\fpage two")
-        _add_item("poor_2024", parsed_text="entirely unrelated ontology material\fpage two")
+        add_item("good_2024", parsed_text="hysteresis band relay switching\fpage two")
+        add_item("poor_2024", parsed_text="entirely unrelated ontology material\fpage two")
         draft = (
             "The hysteresis band stops relay switching [@good_2024].\n"
             "\n"
@@ -480,7 +455,7 @@ class TestReport:
         assert report.findings[0].score < report.findings[1].score
 
     def test_markdown_states_it_is_not_a_gate(self, isolated_config):
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -491,12 +466,12 @@ class TestReport:
         assert "does not adjudicate" in text
 
     def test_markdown_quotes_only_when_reading_order_exists(self, isolated_config):
-        _add_item("quotable_2024", parsed_text="ignored\fignored")
-        _sidecar(
+        add_item("quotable_2024", parsed_text="ignored\fignored")
+        plant_sidecar(
             "quotable_2024",
             [{"text": "Hysteresis prevents relay chatter.", "label": "text", "page": 7}],
         )
-        _add_item("paged_2024", parsed_text="hysteresis relay chatter\fpage two")
+        add_item("paged_2024", parsed_text="hysteresis relay chatter\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -535,7 +510,7 @@ class TestReport:
 
 class TestWriteReportAndCli:
     def test_writes_markdown_into_the_review_dir(self, isolated_config):
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -554,7 +529,7 @@ class TestWriteReportAndCli:
             raise render_output.MissingBinary("pandoc not found")
 
         monkeypatch.setattr(render_output, "render", raise_missing)
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -579,7 +554,7 @@ class TestWriteReportAndCli:
             raise render_output.OutsideContentDir("content/rendered resolves to /elsewhere")
 
         monkeypatch.setattr(render_output, "render", raise_outside)
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -608,7 +583,7 @@ class TestWriteReportAndCli:
             )
 
         monkeypatch.setattr(render_output, "render", raise_called_process_error)
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -638,7 +613,7 @@ class TestWriteReportAndCli:
             raise subprocess.CalledProcessError(43, ["pandoc"])
 
         monkeypatch.setattr(render_output, "render", raise_called_process_error)
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -654,7 +629,7 @@ class TestWriteReportAndCli:
         assert "No such draft" in capsys.readouterr().err
 
     def test_cli_writes_and_lists_outputs(self, isolated_config, capsys):
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -671,7 +646,7 @@ class TestJsonPayload:
         """Provenance already writes its Markdown unconditionally -- the
         `.json` sibling follows the same policy, so `agenda` never finds
         it missing just because nobody happened to pass `--json`."""
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -693,8 +668,8 @@ class TestJsonPayload:
         assert payload["findings"] == []
 
     def test_json_findings_match_the_markdown_report_one_for_one(self, isolated_config, capsys):
-        _add_item("a_2024", parsed_text="alpha content")
-        _add_item("b_2024", parsed_text="beta content")
+        add_item("a_2024", parsed_text="alpha content")
+        add_item("b_2024", parsed_text="beta content")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Alpha claim [@a_2024]. Beta claim [@b_2024].\n")
@@ -710,8 +685,8 @@ class TestJsonPayload:
     def test_finding_ids_are_stable_across_runs_and_distinct_from_each_other(
         self, isolated_config, capsys
     ):
-        _add_item("a_2024", parsed_text="alpha content")
-        _add_item("b_2024", parsed_text="beta content")
+        add_item("a_2024", parsed_text="alpha content")
+        add_item("b_2024", parsed_text="beta content")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Alpha claim [@a_2024]. Beta claim [@b_2024].\n")
@@ -725,7 +700,7 @@ class TestJsonPayload:
         assert len(set(first_ids)) == len(first_ids)
 
     def test_two_runs_over_unchanged_input_write_byte_identical_json(self, isolated_config):
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -740,7 +715,7 @@ class TestJsonPayload:
     def test_json_flag_moves_the_written_summary_to_stderr(self, isolated_config, capsys):
         """So `provenance --json > findings.json` stays a valid JSON file,
         the same discipline `verbatim scan --json` already follows."""
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("The hysteresis band matters [@a_2024].\n")
@@ -777,7 +752,7 @@ class TestEdgeShapes:
     def test_draft_ending_without_a_trailing_blank_line(self, isolated_config):
         """The last paragraph has no blank line closing it, so the span
         builder has to flush what it is still holding."""
-        _add_item("a_2024", parsed_text="hysteresis relay\fpage two")
+        add_item("a_2024", parsed_text="hysteresis relay\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Intro paragraph.\n\nThe hysteresis relay matters [@a_2024].")
@@ -807,7 +782,7 @@ class TestEdgeShapes:
         assert _claim_sentence.sentence_around(text, "smith2020a") == "First one."
 
     def test_claim_with_no_matching_words_reports_no_passage(self, isolated_config):
-        _add_item("a_2024", parsed_text="ontology metamodel\fresilience safety")
+        add_item("a_2024", parsed_text="ontology metamodel\fresilience safety")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Hysteresis prevents chatter [@a_2024].\n")
@@ -816,7 +791,7 @@ class TestEdgeShapes:
         assert "No passage in the source matched" in text
 
     def test_md_only_request_skips_the_render_import(self, isolated_config):
-        _add_item("a_2024", parsed_text="hysteresis\fpage two")
+        add_item("a_2024", parsed_text="hysteresis\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Hysteresis matters [@a_2024].\n")
@@ -828,7 +803,7 @@ class TestEdgeShapes:
         out = tmp_path / "r.tex"
         out.write_text("tex")
         monkeypatch.setattr(render_output, "render", lambda *a, **k: out)
-        _add_item("a_2024", parsed_text="hysteresis\fpage two")
+        add_item("a_2024", parsed_text="hysteresis\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("Hysteresis matters [@a_2024].\n")
@@ -851,7 +826,7 @@ class TestEdgeShapes:
     def test_same_citekey_cited_twice_reads_the_source_once(self, isolated_config, monkeypatch):
         """The passage cache: re-reading a 40-page source per citation
         would make a heavily-cited draft needlessly slow."""
-        _add_item("a_2024", parsed_text="hysteresis relay chatter\fpage two")
+        add_item("a_2024", parsed_text="hysteresis relay chatter\fpage two")
         path = config.CONTENT_DIR / "d.md"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -884,7 +859,7 @@ class TestReportPathMirrorsTheDraft:
     """
 
     def test_two_drafts_sharing_a_filename_write_separate_reports(self, isolated_config):
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         paths = {}
         for topic in ("topic-a", "topic-b"):
             draft = config.DRAFTS_DIR / topic / "survey.md"
@@ -904,7 +879,7 @@ class TestReportPathMirrorsTheDraft:
         """The mirrored part is only what sits *below* `DRAFTS_DIR`, so a
         draft directly in `content/drafts/` is unchanged by this -- which is
         what keeps the fix from moving anyone's existing output."""
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         draft = config.DRAFTS_DIR / "survey.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("The hysteresis band matters [@a_2024].\n")
@@ -917,7 +892,7 @@ class TestReportPathMirrorsTheDraft:
         """Same fallback `render_output._output_dir` documents: nothing under
         `DRAFTS_DIR` to be relative to, so the flat directory stands rather
         than the command refusing a draft it is allowed to read."""
-        _add_item("a_2024", parsed_text="hysteresis band\fpage two")
+        add_item("a_2024", parsed_text="hysteresis band\fpage two")
         draft = config.CONTENT_DIR / "loose.md"
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text("The hysteresis band matters [@a_2024].\n")

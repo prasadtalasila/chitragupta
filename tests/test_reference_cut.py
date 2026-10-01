@@ -15,40 +15,26 @@ from chitragupta import (
     retrieval_cli,
 )
 
-from tests.conftest import make_reference
+from tests.conftest import make_reference, parsed_text, plant_sidecar
 
 BODY = "this chapter measures greenhouse humidity with an incubator\n\n"
 REFS = "References\n\nSmith 2020. Blockchain consensus for supply chains.\n"
 
 
-def parsed_file(text: str, citekey: str = "a2024"):
-    """`text` written where the corpus layer would have parsed it to."""
-    config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
-    path = config.PARSED_DIR / f"{citekey}.txt"
-    path.write_text(text, encoding="utf-8")
-    return path
-
-
-def sidecar(records: list[dict], citekey: str = "a2024"):
-    """A corpus-layer passage sidecar (rung 2) for `citekey`."""
-    path = config.PARSED_DIR / f"{citekey}.passages.json"
-    path.write_text(json.dumps(records), encoding="utf-8")
-    return path
-
-
 def refs_sidecar(header: str = "References", citekey: str = "a2024"):
-    return sidecar(
+    return plant_sidecar(
+        citekey,
         [
             {"text": BODY.strip(), "label": "text", "page": 1},
             {"text": header, "label": "section_header", "page": 2},
         ],
-        citekey=citekey,
+        docling=False,
     )
 
 
 def seeded(con, text: str, citekey: str = "a2024", title: str = "An Incubator Study"):
     """A ledger row whose parsed text is `text`."""
-    path = parsed_file(text, citekey)
+    path = parsed_text(citekey, text)
     ledger.upsert_reference(con, make_reference(citekey=citekey, title=title))
     ledger.mark_parsed(con, citekey, path)
     return path
@@ -56,26 +42,26 @@ def seeded(con, text: str, citekey: str = "a2024", title: str = "An Incubator St
 
 class TestStripReferences:
     def test_text_from_the_header_onward_is_dropped(self, isolated_config):
-        path = parsed_file(BODY + REFS)
+        path = parsed_text("a2024", BODY + REFS)
         refs_sidecar()
 
         assert _reference_cut.strip_references(BODY + REFS, str(path)) == BODY
 
     def test_a_document_with_no_reference_header_is_unchanged(self, isolated_config):
-        path = parsed_file(BODY)
-        sidecar([{"text": BODY.strip(), "label": "text", "page": 1}])
+        path = parsed_text("a2024", BODY)
+        plant_sidecar("a2024", [{"text": BODY.strip(), "label": "text", "page": 1}], docling=False)
 
         assert _reference_cut.strip_references(BODY, str(path)) == BODY
 
     def test_no_sidecar_leaves_the_text_unchanged(self, isolated_config):
         # A `pdftotext` parse writes no sidecar, so there is no reading
         # order to cut on and the item keeps today's behaviour.
-        path = parsed_file(BODY + REFS)
+        path = parsed_text("a2024", BODY + REFS)
 
         assert _reference_cut.strip_references(BODY + REFS, str(path)) == BODY + REFS
 
     def test_a_corrupt_sidecar_leaves_the_text_unchanged(self, isolated_config):
-        path = parsed_file(BODY + REFS)
+        path = parsed_text("a2024", BODY + REFS)
         (config.PARSED_DIR / "a2024.passages.json").write_text("{not valid json", encoding="utf-8")
 
         assert _reference_cut.strip_references(BODY + REFS, str(path)) == BODY + REFS
@@ -86,14 +72,16 @@ class TestStripReferences:
         # chapter's references stay indexed -- stated by a test rather
         # than left as an assumption about the corpus.
         text = BODY + REFS + "chapter two on calibration\n\n" + REFS
-        path = parsed_file(text)
-        sidecar(
+        path = parsed_text("a2024", text)
+        plant_sidecar(
+            "a2024",
             [
                 {"text": BODY.strip(), "label": "text", "page": 1},
                 {"text": "References", "label": "section_header", "page": 2},
                 {"text": "chapter two on calibration", "label": "text", "page": 3},
                 {"text": "References", "label": "section_header", "page": 4},
-            ]
+            ],
+            docling=False,
         )
 
         assert _reference_cut.strip_references(text, str(path)) == (
@@ -105,14 +93,14 @@ class TestStripReferences:
     )
     def test_the_header_spellings_this_corpus_actually_uses(self, isolated_config, header):
         text = BODY + header + "\n\nSmith 2020.\n"
-        path = parsed_file(text)
+        path = parsed_text("a2024", text)
         refs_sidecar(header)
 
         assert _reference_cut.strip_references(text, str(path)) == BODY
 
     def test_a_heading_that_merely_starts_with_the_word_is_not_a_cut_point(self, isolated_config):
         text = BODY + "Reference architecture\n\nthe layered view of an incubator\n"
-        path = parsed_file(text)
+        path = parsed_text("a2024", text)
         refs_sidecar("Reference architecture")
 
         assert _reference_cut.strip_references(text, str(path)) == text
@@ -123,12 +111,14 @@ class TestStripReferences:
         # Position after a *heading* is what carries the signal. A
         # running-head or a caption reading "References" is not one.
         text = BODY + "References\n\nsee the incubator's own manual\n"
-        path = parsed_file(text)
-        sidecar(
+        path = parsed_text("a2024", text)
+        plant_sidecar(
+            "a2024",
             [
                 {"text": BODY.strip(), "label": "text", "page": 1},
                 {"text": "References", "label": "caption", "page": 2},
-            ]
+            ],
+            docling=False,
         )
 
         assert _reference_cut.strip_references(text, str(path)) == text
@@ -139,7 +129,7 @@ class TestStripReferences:
         # The sidecar and the .txt come from one parse, so this should not
         # happen -- but a hand-edited sidecar must not silently truncate a
         # document at position zero.
-        path = parsed_file(BODY)
+        path = parsed_text("a2024", BODY)
         refs_sidecar()
 
         assert _reference_cut.strip_references(BODY, str(path)) == BODY

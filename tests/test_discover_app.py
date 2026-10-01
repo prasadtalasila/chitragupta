@@ -243,6 +243,96 @@ class TestShippedAppScriptHardening:
 
         assert inspect.getsource(_page_template).count("Object.create(null)") >= 2
 
+    def test_page_template_escaper_covers_attribute_contexts(self):
+        # The --html page's esc() escaped & < > only. Every call site is
+        # in text position today, which is exactly what panel.js's was
+        # before #636 put a label inside an attribute (#856).
+        from chitragupta.discover import _page_template
+
+        esc = re.search(r"function esc\(text\) \{.*?\n\}", _page_template.TEMPLATE, re.S)
+        assert esc, "the --html page's esc() is gone or renamed"
+        for entity in ("&amp;", "&lt;", "&gt;", "&quot;", "&#39;"):
+            assert entity in esc.group(0), f"esc() no longer escapes {entity}"
+
+
+class TestContentSecurityPolicy:
+    """The exported index.html declares a CSP (#856).
+
+    Without one, panel.js's escaping is the only layer between a
+    corpus-derived string and script execution in a file a reader opens
+    from disk and shares on: one concatenation into an attribute, which
+    is what #636 was, and the page runs whatever the label says. With
+    `script-src 'self'` and no `'unsafe-inline'`, markup injected into the
+    panel cannot run an inline handler -- checked in Chrome 154 and
+    Firefox 153 against the exported directory from file://, where
+    `'self'` admits the page's own scripts in both.
+
+    `'unsafe-inline'` stays on style, and not only for panel.js's three
+    `style="..."` attributes: cytoscape injects a <style> element of its
+    own, which the same browser check showed blocked without it.
+    """
+
+    POLICY = {
+        "default-src": ["'none'"],
+        "script-src": ["'self'"],
+        "style-src": ["'self'", "'unsafe-inline'"],
+        "img-src": ["data:"],
+        # Neither falls back to default-src, so without them an injected
+        # <base> re-points the page's relative URLs and an injected <form>
+        # can post what it holds anywhere.
+        "base-uri": ["'none'"],
+        "form-action": ["'none'"],
+    }
+
+    @staticmethod
+    def page() -> str:
+        return config.shipped("assets", "webapp", "index.html").read_text(encoding="utf-8")
+
+    @staticmethod
+    def policy_of(page: str) -> dict:
+        meta = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', page)
+        assert meta, "index.html declares no Content-Security-Policy"
+        directives = (d.split() for d in meta.group(1).split(";") if d.strip())
+        return {name: values for name, *values in directives}
+
+    def test_the_page_declares_exactly_the_policy(self):
+        """Pinned whole, so loosening it -- an `'unsafe-inline'` on
+        script to make one handler work -- is a red test and a decision
+        rather than a one-word diff."""
+        assert self.policy_of(self.page()) == self.POLICY
+
+    def test_the_policy_precedes_everything_it_governs(self):
+        """A <meta> policy applies only to what the parser meets after
+        it: a stylesheet or script above it loads unchecked."""
+        page = self.page()
+        meta = page.index('http-equiv="Content-Security-Policy"')
+        assert meta < page.index("<link")
+        assert meta < page.index("<script")
+
+    def test_the_shipped_code_needs_nothing_the_policy_forbids(self):
+        """The failure the policy would cause is silent -- a blocked
+        script is a console line and a blank canvas -- so the forbidden
+        shapes are pinned at the source: no inline <script> and no
+        inline handler in the page, and no handler, `javascript:` URL or
+        eval in the strings the scripts build."""
+        page = self.page()
+        assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", page), "inline <script>"
+        # `onclick="` with no space is markup; `only = "` is a JS assignment.
+        assert not re.search(r"\son[a-z]+=", page), "inline event handler in index.html"
+        scripts = TestShippedAppScriptHardening.app_js()
+        assert not re.search(r"\son[a-z]+=", scripts), "handler in built markup"
+        assert not re.search(r"setAttribute\(\s*[\"']on", scripts), "handler set as an attribute"
+        assert not re.search(r"set(Timeout|Interval)\(\s*[\"'`]", scripts), "string-form timer"
+        assert "javascript:" not in scripts
+        assert not re.search(r"\beval\(|new Function\(", scripts)
+
+    def test_the_exported_directory_carries_the_policy(self, isolated_config, tmp_path):
+        prepare(isolated_config)
+        app_dir = tmp_path / "app"
+        _app.write_app(str(app_dir))
+        exported = (app_dir / "index.html").read_text(encoding="utf-8")
+        assert self.policy_of(exported) == self.POLICY
+
 
 class TestCli:
     def test_app_flag_writes_the_directory_and_reports_it(self, isolated_config, tmp_path, capsys):

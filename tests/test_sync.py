@@ -5,9 +5,6 @@ import contextlib
 import json
 import logging
 import multiprocessing
-import subprocess
-import sys
-from pathlib import Path
 
 import pytest
 
@@ -24,7 +21,7 @@ from chitragupta import (
     sync_pool,
     sync_residue,
 )
-from tests.conftest import make_reference
+from tests.conftest import make_reference, run_python, thread_executor
 
 
 def write_bib(path, body):
@@ -953,22 +950,12 @@ class TestExitCodesAreDistinguishable:
 
 class TestCliEntrypoint:
     def test_remove_stale_flag_is_registered(self, isolated_config):
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
-        )
+        result = run_python("-m", "chitragupta.corpus", "sync", "--help")
         assert result.returncode == 0
         assert "--remove-stale" in result.stdout
 
     def test_unknown_flag_is_rejected(self, isolated_config):
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta.corpus", "sync", "--bogus-flag"],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
-        )
+        result = run_python("-m", "chitragupta.corpus", "sync", "--bogus-flag")
         assert result.returncode == 2
         assert "unrecognized arguments" in result.stderr
 
@@ -1218,12 +1205,6 @@ def many_corpus(isolated_config):
     return isolated_config
 
 
-def _thread_executor(workers):
-    from concurrent.futures import ThreadPoolExecutor
-
-    return ThreadPoolExecutor(max_workers=workers)
-
-
 def _recording_executor(submitted):
     """A thread executor that records each job's citekey when it is
     *submitted*.
@@ -1282,7 +1263,7 @@ class TestWorkerCount:
         monkeypatch.setattr(config, "PARSER_WORKERS", 64)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 8)
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
         sync.run()
         assert "[parser].workers=64" in caplog.text
@@ -1301,7 +1282,7 @@ class TestParallelParsing:
         # would drive the real docling. Swapping the executor (the seam
         # TestExecutorChoice covers separately) keeps the concurrency
         # real while leaving the patches visible.
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_every_document_is_parsed_and_recorded(self, many_corpus, monkeypatch, capsys):
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
@@ -1701,7 +1682,7 @@ class TestInterrupt:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_pending_work_is_cancelled_not_drained(self, many_corpus, monkeypatch, capsys):
         """The bug: `with executor` shuts down with wait=True, draining
@@ -1715,7 +1696,7 @@ class TestInterrupt:
         recorded = []
 
         def recording_executor(workers):
-            inner = _thread_executor(workers)
+            inner = thread_executor(workers)
             real_shutdown = inner.shutdown
 
             def shutdown(*args, **kwargs):
@@ -1758,7 +1739,7 @@ class TestProgressReporting:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_each_completion_is_reported_as_it_lands(self, many_corpus, monkeypatch, caplog):
         caplog.set_level(logging.INFO)
@@ -1796,7 +1777,7 @@ class TestStallWatchdog:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_a_stalled_pool_is_abandoned_and_its_documents_reported(
         self, many_corpus, monkeypatch, capsys, caplog
@@ -2021,14 +2002,8 @@ class TestReparse:
         assert "2 parsed, 0 unchanged" in capsys.readouterr().out
 
     def test_reparse_is_registered_on_the_cli(self, isolated_config):
-        import subprocess
 
-        out = subprocess.run(
-            [sys.executable, "-m", "chitragupta.corpus", "sync", "--help"],
-            capture_output=True,
-            text=True,
-            cwd=str(config.PROJECT_ROOT),
-        ).stdout
+        out = run_python("-m", "chitragupta.corpus", "sync", "--help").stdout
         assert "--reparse" in out
 
 
@@ -2058,7 +2033,7 @@ class TestFailureReporting:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
         monkeypatch.setattr(
             pdf_text,
             "extract_one",
@@ -2095,7 +2070,7 @@ class TestFailureReporting:
         monkeypatch.setattr(passages, "write_sidecar", write_sidecar)
         monkeypatch.setattr(config, "PARSER_WORKERS", workers)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
         assert sync.run() == 1
         out = capsys.readouterr().out
@@ -2291,7 +2266,7 @@ class TestTimeoutReporting:
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(config, "PARSER_DOCUMENT_TIMEOUT", 30.0)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
         def timing_out_extract_one(job):
             _pdf_path, citekey, _threads = job
@@ -2321,7 +2296,7 @@ class TestStallWarning:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(sync_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(sync_pool, "_executor_for", thread_executor)
 
     def test_it_warns_at_half_time_before_killing(self, many_corpus, monkeypatch, caplog):
         import threading

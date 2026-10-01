@@ -16,8 +16,6 @@ for the wrong reason.
 import json
 import os
 import shutil
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -25,7 +23,7 @@ import pytest
 from chitragupta import _tokens, overlap_index, passages, retrieval
 from chitragupta import retrieval_cache, retrieval_passages_cache
 
-from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
+from tests.conftest import run_python
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -166,21 +164,11 @@ def _versions_under(tmp_path: Path, edit) -> list[str]:
     edited = edit(original)
     assert edited != original or edit is _unchanged, "the edit did not apply"
     source.write_text(edited, encoding="utf-8")
-    # Coverage's bootstrap variables are dropped: the child measures a
-    # copy of the package from a directory with no pyproject.toml, so it
-    # would write statement-only data that the parent's branch-coverage
-    # combine refuses outright.
-    env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
-    env.update(PYTHONPATH=str(tmp_path), CHITRAGUPTA_PROJECT=str(REPO))
-    out = subprocess.run(
-        [sys.executable, "-c", _PROBE],
-        cwd=tmp_path,
-        env=env,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        check=True,
-    )
+    # tmp_path ahead of the checkout on the child's path, so the edited
+    # copy is the one imported; run_python appends the checkout after it,
+    # and drops coverage's variables because this cwd is not the root.
+    env = {**os.environ, "PYTHONPATH": str(tmp_path), "CHITRAGUPTA_PROJECT": str(REPO)}
+    out = run_python("-c", _PROBE, cwd=tmp_path, env=env, encoding="utf-8", check=True)
     return json.loads(out.stdout)
 
 

@@ -16,15 +16,7 @@ import pytest
 from chitragupta import seed_topics
 from chitragupta.enrich import keyword_extract
 from chitragupta.enrich.corpus import CorpusDoc
-
-
-def make_docs(tmp_path, texts: dict):
-    docs = []
-    for citekey, text in texts.items():
-        path = tmp_path / f"{citekey}.txt"
-        path.write_text(text, encoding="utf-8")
-        docs.append(CorpusDoc(citekey=citekey, title=citekey, pdf_path=None, text_path=str(path)))
-    return docs
+from tests.conftest import make_docs
 
 
 class TestDeclaredPhrases:

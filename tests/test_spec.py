@@ -34,10 +34,10 @@ Establish the link, and why it is the hard half.
 
 
 @pytest.fixture
-def book(isolated_config):
-    """A book directory under content/drafts/, which need not exist yet --
-    the outline is written before any prose, which is the whole point."""
-    return isolated_config.DRAFTS_DIR / "twins"
+def book(book_dir):
+    """conftest's bare `book_dir` under the name these tests use: the
+    outline is written before any prose, so they start from nothing."""
+    return book_dir
 
 
 def write_spec(book, text=GOOD):

@@ -4,8 +4,6 @@ embeddings-based upgrade (chitragupta/enrich/embed_index.py)."""
 
 import json
 import os
-import subprocess
-import sys
 from pathlib import Path
 
 import pytest
@@ -19,24 +17,8 @@ from chitragupta import (
     retrieval_cli,
     retrieval_tables,
 )
-from chitragupta.dossier import _retrieval
 
-from tests.conftest import make_reference, parsed_file
-
-
-def retrieval_cost(target):
-    """(calls, chars) over a whole `retrieval.md`, as the sum of its
-    per-revision segments.
-
-    `dossier.retrieval_cost` used to answer this directly and was deleted
-    in #515: `_status` computes the lifetime figures this same way, and a
-    second whole-file reader was surface nothing production called. These
-    cases are about `log_retrieval`'s row format -- pipe escaping, a
-    hand-edited row, a file created before `init` -- so they need *a*
-    reader, and using the one production uses is the point.
-    """
-    segments = _retrieval.retrieval_cost_by_revision(target)
-    return sum(s.calls for s in segments), sum(s.chars for s in segments)
+from tests.conftest import make_reference, parsed_file, retrieval_cost, run_python
 
 
 class TestTokenize:
@@ -164,19 +146,8 @@ class TestSnippet:
         )
         outputs = set()
         for seed in ("0", "1", "2", "3", "4"):
-            env = {
-                **os.environ,
-                "PYTHONHASHSEED": seed,
-                "PYTHONPATH": str(config.PACKAGE_ROOT.parent),
-            }
-            result = subprocess.run(
-                [sys.executable, "-c", program],
-                capture_output=True,
-                text=True,
-                env=env,
-                cwd=config.PROJECT_ROOT,
-                check=True,
-            )
+            env = {**os.environ, "PYTHONHASHSEED": seed}
+            result = run_python("-c", program, env=env, check=True)
             outputs.add(result.stdout.strip())
         assert len(outputs) == 1, f"snippet varied with hash seed: {outputs}"
 
@@ -1373,7 +1344,7 @@ class TestTheIndexIsParsedOncePerProcess:
         retrieval_cache._save_cache({"b2024": {"fingerprint": [], "length": 1, "term_freqs": {}}})
         assert set(retrieval_cache._load_cache()) == {"b2024"}
 
-    def test_a_rewrite_behind_this_modules_back_is_picked_up(self, tmp_path):
+    def test_a_rewrite_behind_this_modules_back_is_picked_up(self, isolated_config):
         """The stamp is `(path, size, mtime_ns)`, so a file replaced by
         something else -- another process, a test -- is re-read."""
         config.RETRIEVAL_INDEX_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1391,7 +1362,7 @@ class TestTheIndexIsParsedOncePerProcess:
         retrieval_cache._forget_cache()
         assert set(retrieval_cache._load_cache()) == {"c2024"}
 
-    def test_the_path_is_part_of_the_stamp(self, tmp_path, monkeypatch):
+    def test_the_path_is_part_of_the_stamp(self, isolated_config, tmp_path, monkeypatch):
         """Two trees' indexes can be the same size, and `mtime_ns` is not
         a guarantee across filesystems. `config.RETRIEVAL_INDEX_PATH` is
         not a constant across a test session, so it is in the key."""

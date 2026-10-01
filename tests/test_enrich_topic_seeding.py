@@ -21,6 +21,7 @@ import pytest
 from chitragupta import config
 from chitragupta.enrich import doc_vectors, embed_index, topic_seeding
 from chitragupta.enrich.corpus import CorpusDoc
+from tests.conftest import make_docs
 
 
 class FakeArray(list):
@@ -47,15 +48,6 @@ def fake_model(monkeypatch):
     model = FakeModel()
     monkeypatch.setattr(embed_index, "get_client_and_model", lambda: (None, model))
     return model
-
-
-def make_docs(tmp_path, texts: dict):
-    docs = []
-    for citekey, text in texts.items():
-        path = tmp_path / f"{citekey}.txt"
-        path.write_text(text, encoding="utf-8")
-        docs.append(CorpusDoc(citekey=citekey, title=citekey, pdf_path=None, text_path=str(path)))
-    return docs
 
 
 class TestCosine:

@@ -11,15 +11,19 @@ import os
 import re
 import shutil
 import subprocess
-import sys
-from pathlib import Path
 
 import pytest
 
 from chitragupta import bib_reader, citation_gate, config, dossier, ledger, references, sync
 from chitragupta import render_output
 
-from tests.conftest import content_draft, make_reference, real_bibliography_path
+from tests.conftest import (
+    _IS_COVERAGE_BOOTSTRAP,
+    content_draft,
+    make_reference,
+    real_bibliography_path,
+    run_python,
+)
 
 pandoc_available = shutil.which("pandoc") is not None
 pdflatex_available = shutil.which("pdflatex") is not None
@@ -676,20 +680,9 @@ def _run_verbatim(mode, *args):
     """Any `verbatim` mode in a child process, with `_run_scan`'s
     environment discipline (see its docstring for why the coverage
     variables are stripped)."""
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.startswith("COV_CORE_")
-        and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
-    }
+    env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
     env["CONTENT_DIR"] = str(config.CONTENT_DIR)
-    return subprocess.run(
-        [sys.executable, "-m", "chitragupta.review", "verbatim", mode, *args],
-        cwd=str(Path(__file__).resolve().parent.parent),
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    return run_python("-m", "chitragupta.review", "verbatim", mode, *args, env=env)
 
 
 class TestVerbatimScanEndToEnd:
@@ -1017,19 +1010,16 @@ class TestVerbatimScanEndToEnd:
         `citation_gate`/`references`/`render_output` already get, applied
         to the command this change is adding to that list.
         """
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if not key.startswith("COV_CORE_")
-            and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
-        }
+        env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
-        result = subprocess.run(
-            [system_python, "-m", "chitragupta.review", "verbatim", "scan", str(planted_draft)],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
+        result = run_python(
+            "-m",
+            "chitragupta.review",
+            "verbatim",
+            "scan",
+            str(planted_draft),
+            python=system_python,
             env=env,
         )
 
@@ -1145,28 +1135,18 @@ class TestOverlapRemediationEndToEnd:
         """docs/CLI.md files the whole verbatim aid in interpreter tier 1,
         and a mode added to it inherits that claim."""
         path, _ = self._baseline(draft)
-        env = {
-            key: value
-            for key, value in os.environ.items()
-            if not key.startswith("COV_CORE_")
-            and key not in {"COVERAGE_PROCESS_START", "COVERAGE_FILE", "COVERAGE_RCFILE"}
-        }
+        env = {k: v for k, v in os.environ.items() if not _IS_COVERAGE_BOOTSTRAP(k)}
         env["CONTENT_DIR"] = str(config.CONTENT_DIR)
 
-        result = subprocess.run(
-            [
-                system_python,
-                "-m",
-                "chitragupta.review",
-                "verbatim",
-                "recheck",
-                str(draft),
-                "--baseline",
-                str(path),
-            ],
-            cwd=str(Path(__file__).resolve().parent.parent),
-            capture_output=True,
-            text=True,
+        result = run_python(
+            "-m",
+            "chitragupta.review",
+            "verbatim",
+            "recheck",
+            str(draft),
+            "--baseline",
+            str(path),
+            python=system_python,
             env=env,
         )
 

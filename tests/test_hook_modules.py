@@ -31,7 +31,6 @@ Neither is redundant. A refactor that broke the stdin envelope would pass
 this file and fail the other two.
 """
 
-import importlib.util
 import io
 import json
 import subprocess
@@ -39,26 +38,9 @@ import sys
 from pathlib import Path
 
 import pytest
+from tests.conftest import load_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-HOOKS = REPO_ROOT / ".claude" / "hooks"
-
-
-def load(name: str):
-    """A fresh module object, so one test's monkeypatching cannot leak.
-
-    `.claude/hooks` goes on `sys.path` first because a hook is run by
-    absolute path in production, which puts its own directory there --
-    that is what makes `import draft_target` resolve with no path
-    manipulation inside the hook. Loading by spec does not reproduce it,
-    so the test harness has to.
-    """
-    if str(HOOKS) not in sys.path:
-        sys.path.insert(0, str(HOOKS))
-    spec = importlib.util.spec_from_file_location(name, HOOKS / f"{name}.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
 
 
 def completed(returncode=0, stdout="", stderr=""):
@@ -67,17 +49,17 @@ def completed(returncode=0, stdout="", stderr=""):
 
 @pytest.fixture
 def gate():
-    return load("citation_gate_hook")
+    return load_hook("citation_gate_hook")
 
 
 @pytest.fixture
 def preflight():
-    return load("session_start_hook")
+    return load_hook("session_start_hook")
 
 
 @pytest.fixture
 def style():
-    return load("style_check_hook")
+    return load_hook("style_check_hook")
 
 
 def emitted(capsys) -> dict | None:

@@ -118,8 +118,16 @@ function show(index) {
     `<h3>Shared members</h3><ul>${overlap || "<li>none</li>"}</ul>` +
     `<h3>Semantically near</h3><ul>${semantic || "<li>none</li>"}</ul>`;
 }
-function esc(s) {
-  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+/* panel.js's escapeHtml, verbatim (#856): every call here is in text
+   position today, which is what panel.js's were until #636 put a label
+   in an attribute and a `"` closed it. */
+function esc(text) {
+  return String(text == null ? "" : text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 DATA.topics.forEach((t, index) => {
   const c = document.createElementNS(NS, "circle");

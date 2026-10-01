@@ -31,12 +31,12 @@ Two things it guards that are easy to miss:
 
 import re
 import shutil
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from chitragupta.review import figure_layout
+from tests.conftest import needs_tikz
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCAFFOLD_DIR = REPO_ROOT / "assets" / "tikz"
@@ -73,21 +73,6 @@ def _slug(metaphor: str) -> str:
 def _scaffolds() -> list[Path]:
     return sorted(SCAFFOLD_DIR.glob("*.tex"))
 
-
-def _has_tikz() -> bool:
-    """Whether this host can compile a TikZ figure at all.
-
-    The same probe tests/test_figure_layout.py uses, and for the same
-    reason: CI's Windows leg installs no `os-deps`, so the geometry half
-    of this file has to self-skip rather than fail there.
-    """
-    if shutil.which("pdflatex") is None or shutil.which("kpsewhich") is None:
-        return False
-    probe = subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False)
-    return probe.returncode == 0
-
-
-needs_tikz = pytest.mark.skipif(not _has_tikz(), reason="needs pdflatex with tikz.sty")
 
 # Parametrised by file rather than by metaphor so a failure names the
 # scaffold a reader would go and open.

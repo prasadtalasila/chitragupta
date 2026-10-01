@@ -198,6 +198,22 @@ the model and package source before enabling that layer. See
 [CONFIG.md](CONFIG.md#-choosing-an-embedding-model) and
 [CONFIG.md](CONFIG.md#-choosing-an-entailment-model).
 
+### Exported topic-graph pages
+
+`corpus discover --html FILE` and `--app DIR` write pages a reader opens
+from `file://` and may pass on. Topic labels, titles and citekeys in them
+are corpus-derived, and a label can come from a PDF's extracted keywords.
+So every string that is built into markup goes through a five-character
+escape (`&`, `<`, `>`, `"` and `'`) in both pages, and the `--app`
+directory's `index.html` also declares a Content-Security-Policy
+(`default-src 'none'; script-src 'self'; style-src 'self'
+'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`).
+Under that policy, markup that gets past the escaping still cannot run an
+inline handler, re-point the page's relative URLs with a `<base>`, or
+submit a form. The single-file `--html` page carries no policy: its
+script is inline by design, so `script-src 'self'` would block the page
+itself.
+
 ### One writer at a time
 
 `sync` and `chitragupta enrich` use the same SQLite-backed mutex at

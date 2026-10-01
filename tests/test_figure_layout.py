@@ -18,7 +18,6 @@ Two kinds of test here, and the split is the module's own:
 """
 
 import json
-import shutil
 import subprocess
 from pathlib import Path
 
@@ -27,24 +26,7 @@ import pytest
 from chitragupta import review
 from chitragupta.review import figure_layout
 from chitragupta.review.figure_layout import _probe
-
-
-def _has_tikz() -> bool:
-    """Whether this host can compile a TikZ figure at all.
-
-    The same two facts `render_output/_figures.py::_require_tikz()`
-    checks, asked here as a boolean so the geometry tests can skip
-    rather than fail on a host without TeX Live -- CI's Windows leg
-    installs no `os-deps`, and the render tests there already self-skip
-    for exactly this reason.
-    """
-    if shutil.which("pdflatex") is None or shutil.which("kpsewhich") is None:
-        return False
-    probe = subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False)
-    return probe.returncode == 0
-
-
-needs_tikz = pytest.mark.skipif(not _has_tikz(), reason="needs pdflatex with tikz.sty")
+from tests.conftest import needs_tikz
 
 
 class TestFiguresIn:

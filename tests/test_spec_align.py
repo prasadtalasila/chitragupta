@@ -61,14 +61,8 @@ Prose.
 """
 
 
-@pytest.fixture
-def book(isolated_config):
-    path = isolated_config.DRAFTS_DIR / "twins"
-    spec_file = spec.spec_path(path)
-    spec_file.parent.mkdir(parents=True, exist_ok=True)
-    spec_file.write_text(SPEC, encoding="utf-8")
-    path.mkdir(parents=True, exist_ok=True)
-    return path
+# conftest's `book` writes this as the outline.
+BOOK_SPEC = SPEC
 
 
 def write_chapter(book: Path, chapter_id: str, text: str, suffix: str = ".md") -> Path:

@@ -12,9 +12,6 @@ two reasons that are both about what a *reader* needs:
     references do.
 """
 
-import subprocess
-import sys
-
 import pytest
 
 from chitragupta import config, ledger, ledger_cli
@@ -23,16 +20,12 @@ from tests.conftest import (
     make_reference,
     parsed_text,
     read_under_a_held_write_lock,
+    run_python,
 )
 
 
 def _run(args=(), cwd=None):
-    return subprocess.run(
-        [sys.executable, "-m", "chitragupta.corpus", "ledger", *args],
-        capture_output=True,
-        text=True,
-        cwd=str(cwd or config.PROJECT_ROOT),
-    )
+    return run_python("-m", "chitragupta.corpus", "ledger", *args, cwd=cwd)
 
 
 @pytest.fixture

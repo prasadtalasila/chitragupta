@@ -27,6 +27,7 @@ from chitragupta.enrich import (
     docling_parse,
 )
 from chitragupta.enrich.corpus import CorpusDoc
+from tests.conftest import thread_executor
 
 
 # What `_docling_crops` writes: the picture's index in
@@ -1312,23 +1313,13 @@ class TestParseCorpus:
         assert "[2/2] d1" in out
 
 
-def _thread_executor(workers):
-    """A real ProcessPoolExecutor would run parse_one in a child
-    interpreter, where this process's sys.modules fakes don't exist -- the
-    fake docling would silently not be used. Swapping the executor keeps
-    the concurrency real while leaving the fakes visible."""
-    from concurrent.futures import ThreadPoolExecutor
-
-    return ThreadPoolExecutor(max_workers=workers)
-
-
 class TestParseCorpusParallel:
     @pytest.fixture(autouse=True)
     def _four_workers(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
     def _docs(self, tmp_path, n=5):
         docs = []
@@ -1464,7 +1455,7 @@ class TestParseCorpusParallelBrokenPool:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
     def _docs(self, tmp_path, n=4):
         docs = []
@@ -1774,7 +1765,7 @@ class TestABrokenPoolIsRebuiltRatherThanAbandoned:
         one bad file."""
         from chitragupta.enrich import stages
 
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
         (tmp_path / "explode.pdf").write_bytes(b"%PDF explode")
         docs = self._docs(tmp_path)
         docs.append(CorpusDoc(citekey="bad", title="t", pdf_path=str(tmp_path / "explode.pdf")))
@@ -1963,7 +1954,7 @@ class TestParseCorpusParallelEdges:
     @pytest.fixture(autouse=True)
     def _pool(self, isolated_config, monkeypatch):
         monkeypatch.setattr(config, "PARSER", "docling")
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
     def test_already_cached_docs_are_still_reported_in_a_parallel_run(
         self, isolated_config, fake_docling, monkeypatch, tmp_path
@@ -2108,7 +2099,7 @@ class TestParseCorpusInterrupt:
         monkeypatch.setattr(config, "PARSER", "docling")
         monkeypatch.setattr(config, "PARSER_WORKERS", 4)
         monkeypatch.setattr(pdf_text._sizing, "allowed_cpus", lambda: 48)
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
     def _docs(self, tmp_path, n=6):
         docs = []
@@ -2330,7 +2321,7 @@ class TestUrlOnlyEntryIsSkippedNotAnError:
         # Threads rather than processes, as TestParseCorpusParallelEdges
         # does: the fake docling lives in this process's sys.modules and
         # a spawned worker would import the real one.
-        monkeypatch.setattr(_docling_pool, "_executor_for", _thread_executor)
+        monkeypatch.setattr(_docling_pool, "_executor_for", thread_executor)
 
         status = docling_parse.parse_corpus(self._docs(tmp_path, 3))
 

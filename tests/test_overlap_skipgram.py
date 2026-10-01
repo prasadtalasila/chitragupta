@@ -5,19 +5,10 @@ disk-cached, family-split analogue of chitragupta/overlap_index.py's exact
 
 import json
 
-from chitragupta import config, ledger, overlap_skipgram
-from tests.conftest import parsed_text
+import pytest
 
-from tests.conftest import make_reference
-
-
-def _add_parsed_item(ledger_con, tmp_path, citekey, text, pdf_bytes=b"%PDF-1.4 dummy"):
-    pdf = tmp_path / f"{citekey}.pdf"
-    pdf.write_bytes(pdf_bytes)
-    parsed = parsed_text(citekey, text)
-    ledger.upsert_reference(ledger_con, make_reference(citekey=citekey, pdf_path=str(pdf)))
-    ledger.mark_parsed(ledger_con, citekey, parsed)
-    return parsed
+from chitragupta import config, overlap_skipgram
+from tests.conftest import add_parsed_item
 
 
 class TestStemFilter:
@@ -188,19 +179,8 @@ class TestGradedParaphraseDetection:
             edited[i] = f"{replacement}{i}"
         return edited
 
-    def test_every_fourth_word_swap_is_caught(self):
-        self._assert_caught(4)
-
-    def test_every_sixth_word_swap_is_caught(self):
-        self._assert_caught(6)
-
-    def test_every_eighth_word_swap_is_caught(self):
-        self._assert_caught(8)
-
-    def test_every_tenth_word_swap_is_caught(self):
-        self._assert_caught(10)
-
-    def _assert_caught(self, stride):
+    @pytest.mark.parametrize("stride", [4, 6, 8, 10])
+    def test_every_nth_word_swap_is_caught(self, stride):
         n = overlap_skipgram.DEFAULT_N
         edited = self._swap_every_nth_word(self.SOURCE, stride)
         source_hashes = {h for h, _s, _e in overlap_skipgram.skipgram_postings(self.SOURCE, n)}
@@ -344,14 +324,14 @@ class TestBuildCorpusIndex:
         assert len(index.grams) == 0
 
     def test_index_is_sorted_and_lookup_finds_a_known_gram(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
             "the validation of a digital twin requires continuous comparison "
             "against measurements taken from the physical asset",
         )
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "doe_2023",
@@ -363,7 +343,7 @@ class TestBuildCorpusIndex:
         assert list(index.grams) == sorted(index.grams)
 
     def test_unchanged_corpus_is_a_full_cache_hit(self, ledger_con, tmp_path, monkeypatch):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
@@ -379,7 +359,7 @@ class TestBuildCorpusIndex:
         assert second.citekeys == ["smith_2024"]
 
     def test_header_not_a_dict_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
         )
         overlap_skipgram.build_corpus_index(n=5)
@@ -388,7 +368,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_header_version_mismatch_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
         )
         overlap_skipgram.build_corpus_index(n=5)
@@ -400,7 +380,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_header_citekeys_not_a_list_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
         )
         overlap_skipgram.build_corpus_index(n=5)
@@ -412,7 +392,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_missing_index_bin_triggers_rebuild(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con, tmp_path, "smith_2024", "digital twins require continuous validation"
         )
         overlap_skipgram.build_corpus_index(n=5)
@@ -426,7 +406,7 @@ class TestBuildCorpusIndex:
         # words split into two families of 2-3 each never reaches
         # DEFAULT_N=5 in either family, so a *shorter* text than this
         # produces zero postings and an empty (un-truncatable) file.
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
@@ -442,7 +422,7 @@ class TestBuildCorpusIndex:
         assert index.citekeys == ["smith_2024"]
 
     def test_postings_for_gram_returns_citekey_page_position(self, ledger_con, tmp_path):
-        _add_parsed_item(
+        add_parsed_item(
             ledger_con,
             tmp_path,
             "smith_2024",
