@@ -626,13 +626,17 @@ wrong for the one-commit case.
 instead.** `squash_merge_commit_message` takes exactly three values --
 `PR_BODY`, `COMMIT_MESSAGES`, `BLANK` -- and none transforms the text,
 because there is no templating step between a PR description and a
-commit body for a setting to hook into. `scripts/merge_pr.py` composes
-the body from the PR's own description (falling back to the branch's
-commits only when the description has no bullets to pull from) and calls
-`gh pr merge --squash --body-file -`, which
+commit body for a setting to hook into. `scripts/merge_pr.py` takes
+the body the author wrote in the PR description's `## Commit message`
+fence, checks it against the documented format, refuses it if it does
+not conform, and calls `gh pr merge --squash --body-file -`, which
 `DEVELOPER-AGENTS.md`'s Merging section
 documents as the standing way to merge rather than as an incantation to
-still be remembered at the end of a session.
+still be remembered at the end of a session. Until #827 it *assembled*
+the body by scraping the description's bullets, which duplicated every
+change on PRs that filled in both `## Description` and `## What
+changed`, and copied anything a bullet carried -- trailers, live closing
+keywords, escape sequences -- into `main`.
 
 The estimate this section carried -- "roughly 15 of the ~20 violations
 closed by configuration" -- was too optimistic for that reason, at the
@@ -657,8 +661,12 @@ invoke it" -- over a CI job with a deeper checkout that re-scans `main`'s
 recent history, which was considered and rejected: it would only catch a
 bypass after it had already landed, and it costs a dedicated job plus a
 bounded-window policy to avoid false negatives past that window.
-`scripts/merge_pr.py`'s own docstring carries the same argument, kept
-next to the code it decides for.
+`plans/827-commit-message-format.md` carries the rest of the argument
+for the current design. #827 added the pull-request-time half
+the history scan could not be: `.github/workflows/commit-message.yml`
+runs the same check on the description itself, before anything lands,
+and is made a required check -- prevention rather than detection, which
+is the property the rejected scan lacked.
 
 ## 🚫 What is not debt
 
