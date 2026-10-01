@@ -120,17 +120,17 @@ def discover_project_root(
     return None
 
 
-# #891 gap 1: refuses before anything below if this module's own location
-# sits inside a root `chitragupta/init.py`'s SCAFFOLD_MARKER names as
-# scaffolded -- the planted-package shape. Checked against this module's
-# own `__file__` alone, deliberately before PROJECT_ROOT is discovered
-# below: that discovery follows CHITRAGUPTA_PROJECT, which answers "where
-# does the user's data live" and must not also decide which `chitragupta`
-# is trusted (see chitragupta/scaffold_guard.py's own docstring). Split
-# out rather than inlined, like config_load/config_path/config_enrich
-# below -- see that module's docstring for why it cannot import this one
-# back.
-scaffold_guard.refuse_if_shadowed(Path(__file__))
+# #891 gap 1: refuses, before anything below, if this copy was imported
+# from the command's own directory (`sys.path[0]`) inside a project
+# `chitragupta init` marked -- the planted-package shape. Run before
+# PROJECT_ROOT is discovered below, and handed the same walk with
+# CHITRAGUPTA_PROJECT ignored: that variable says where the user's data
+# lives and must not also decide which `chitragupta` is trusted.
+# chitragupta/scaffold_guard.py's docstring has the three conditions and
+# what this cannot close.
+scaffold_guard.refuse_if_shadowed(
+    Path(__file__), lambda start: discover_project_root(cwd=start, environ={})
+)
 
 # Falls back to the directory above the package when no project was
 # found, so the error below names the path a checkout would have used --

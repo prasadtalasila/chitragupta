@@ -426,17 +426,18 @@ gap: `chitragupta init` now writes a marker into every project it
 scaffolds, and `chitragupta/config.py` -- the one module every `python -m
 chitragupta.<layer> ...` invocation imports before running any verb --
 refuses at import time, the same fail-closed shape a hook's protected
-child already gets, if its own `chitragupta/` ancestor directory sits
-anywhere under a root that marker names and is not itself an install
-location (a `site-packages`/`dist-packages` directory, wherever that
-happens to live -- including nested inside the project, a project-local
-venv). The check is keyed to the *module's own lexical location* (never
-symlink-resolved, never `config.PROJECT_ROOT`/`CHITRAGUPTA_PROJECT`,
-which answer "where does the user's data live" and must not also decide
-which `chitragupta` is trusted). `chitragupta init` covers the
-scaffold-time end, as before: it refuses to scaffold over a directory
-already holding `chitragupta/` or `chitragupta.py`, or over a non-regular
-file (or symlink) already sitting at the marker's own path.
+child already gets, when the copy running was imported from the
+command's own directory -- `sys.path[0]`, the mechanism that lets a plant
+win -- that directory is not also elsewhere on `sys.path`, and the
+project it belongs to (the nearest `config.toml` above it, by config.py's
+own walk with `CHITRAGUPTA_PROJECT` ignored) carries the marker. An
+install anywhere, a project-local venv's included, is never imported from
+`sys.path[0]`; an editable checkout is reached through its `.pth` entry;
+a plain checkout has its own, unmarked `config.toml`. Paths are compared
+without resolving symlinks. `chitragupta init` covers the scaffold-time
+end, as before: it refuses to scaffold over a directory already holding
+`chitragupta/` or `chitragupta.py`, or over a non-regular file (or
+symlink) already sitting at the marker's own path.
 
 **Read this before trusting that "891 gap 1" means more than it does.**
 The check above runs *from inside* the very `chitragupta` module Python
