@@ -1,6 +1,6 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-09-30. Four
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-10-01. Four
 hooks exist -- `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`, the first two sharing
 one `draft_target.py` (and through it `patch_paths.py`) and all four
@@ -293,6 +293,7 @@ chitragupta/
 ├── draft.py                    `python -m chitragupta.draft <gate|style|...>`
 ├── citation_gate.py            what the gate hook shells out to
 ├── hook_launchers.py           can the registered launchers start?
+├── scaffold_guard.py           a planted package inside a scaffolded root (#891)
 └── style_check.py              what the style hook shells out to
 
 scripts/
@@ -302,6 +303,7 @@ tests/
 ├── test_draft_target.py        the shared helper, both classes of caller
 ├── test_safe_path.py           checkout or installed project, every shape
 ├── test_hook_launchers.py      the launcher check, every shape
+├── test_scaffold_guard.py      the config.py-side guard, every shape (#891)
 ├── test_settings_launchers.py  the real settings.json, against the contract
 ├── test_citation_gate_hook.py  the model the other two follow
 └── test_style_check_hook.py    the process contract, not the branches
@@ -413,21 +415,40 @@ it reads. `session_start_hook.py`'s own in-process import appends the root
 to `sys.path` rather than prepending it, so an installed package wins
 there too.
 
-**What this cannot close**, recorded so nobody assumes it does: an
-interpreter that finds no installed `chitragupta` at all -- the unactivated
-venv of issue 563 -- looks exactly like a checkout, and no marker a
-checkout carries could not also be committed to a shared directory. There
-the gate still fails closed, but a planted package would run.
-Two more follow from the same rule. This protects the hooks' launches,
-not the pipeline's own commands: a skill that runs `python -m
-chitragupta.draft gate` from the project root still searches it first.
+**What this closed as of issue 822, and what issue 891 closed further.**
+This protected the hooks' launches alone, not the pipeline's own
+commands: a skill that runs `python -m chitragupta.draft gate` from the
+project root searched the working tree first regardless, with no hook
+and no `safe_path.py` in between. `chitragupta/scaffold_guard.py` closes
+that gap (891 gap 1): `chitragupta init` now writes a marker into every
+project it scaffolds, and `chitragupta/config.py` -- the one module every
+`python -m chitragupta.<layer> ...` invocation imports before running any
+verb -- refuses at import time, the same fail-closed shape a hook's
+protected child already gets, if its own location resolves *inside* a
+root that marker names. `chitragupta init` covers the other end, as
+before: it refuses to scaffold into a directory already holding
+`chitragupta/` or `chitragupta.py`, with or without `--force`.
+
+**What still cannot close**, recorded so nobody assumes it does: an
+interpreter that finds no installed `chitragupta` at all -- the
+unactivated venv of issue 563 -- has no planted package to resolve
+*inside* a marked root either, so `scaffold_guard` sees nothing to
+refuse; nor does any marker tell such an interpreter apart from a
+checkout that also resolves `chitragupta` through cwd alone. There the
+gate still fails closed on its own, but a planted package would run
+unnoticed by this mechanism specifically. 891 gap 2 narrows that: where
+this is detectable -- a hook launcher's own interpreter, probed by
+`chitragupta/hook_launchers.py`, or the SessionStart hook's own
+in-process import -- it is now reported by name ("no installed
+chitragupta visible to ...") instead of staying silent or crashing with
+a bare traceback, even though nothing can yet *prevent* the run in that
+state.
 And a checkout whose venv also holds a non-editable `chitragupta-cli`
 reads as an installed project, so its hooks run that copy rather than
 the working tree, and `code_standards_hook.py` reports nothing -- install
-the checkout editable, or not at all.
-`chitragupta init` covers the other end: it refuses to scaffold into a
-directory already holding `chitragupta/` or `chitragupta.py`, with or
-without `--force`.
+the checkout editable, or not at all (DEVELOPER-AGENTS.md's own
+environment-constraints section states this for someone running this
+repository's test suite, not only a reader of this page).
 
 ## 📜 The launcher contract
 
