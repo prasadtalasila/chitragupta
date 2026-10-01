@@ -64,7 +64,7 @@ jobs:
     # forkserver/shebang support at all), rather than budgeting for the
     # gap under a lower floor.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # config.toml is gitignored per-host data, so a checkout never has
       # one -- and chitragupta/config.py reads it at *import* time and fails hard
@@ -112,7 +112,7 @@ jobs:
       # install) without this workflow needing to know that.
       - name: Restore the .venv-full cache
         id: venv-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .venv-full
           key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
@@ -155,7 +155,8 @@ jobs:
       # and an sdist fallback would run arbitrary setup scripts at install
       # time). 2.4.1 is what "latest" resolved to while this leg was
       # green; bump it deliberately, the way the pinned action SHAs below
-      # are bumped, rather than tracking latest silently.
+      # are bumped, rather than tracking latest silently -- and bump
+      # docs.yml's and release.yml's installs with it, all three together.
       - name: Install Poetry (non-Linux only -- os-deps' apt-get is Linux-specific)
         if: runner.os != 'Linux'
         shell: bash
@@ -196,7 +197,7 @@ jobs:
       # #512/m-87 is the only kind that restores anything at all.
       - name: Save the .venv-full cache (main only, on a miss)
         if: github.ref == 'refs/heads/main' && steps.venv-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: .venv-full
           key: ${{ steps.venv-cache.outputs.cache-primary-key }}
@@ -262,7 +263,7 @@ jobs:
       # report, not two disagreeing ones from legs with different floors.
       - name: Upload coverage.xml for the SonarQube job
         if: ${{ !cancelled() && runner.os == 'Linux' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage-xml
           path: coverage.xml
@@ -370,7 +371,7 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # No `actions/setup-python`, on purpose. That step prepends a
       # tool-cache interpreter to PATH under both names, which would
@@ -411,7 +412,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Same reason as the test job: chitragupta/config.py reads config.toml at
       # import time, and pylint imports what it lints.
@@ -419,7 +420,7 @@ jobs:
         shell: bash
         run: cp config.toml.example config.toml
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
         with:
           python-version: "3.13"
 
@@ -527,7 +528,7 @@ jobs:
       - name: actionlint
         run: actionlint
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
 
@@ -663,7 +664,7 @@ jobs:
     name: Docker build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: docker build -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu .
         run: docker build -f docker/Dockerfile --build-arg TORCH_VARIANT=cpu -t chitragupta:ci .
@@ -686,7 +687,7 @@ jobs:
       # the git history. A shallow clone doesn't fail the scan; it quietly
       # costs new-code detection and blame, which is most of what the PR
       # comment is worth reading for.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
 
@@ -700,7 +701,7 @@ jobs:
       # `new_coverage` data, which SonarCloud reports as its own
       # condition rather than as a broken analysis.
       - name: Download coverage.xml from the test job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         continue-on-error: true
         with:
           name: coverage-xml

@@ -1130,6 +1130,22 @@ Merge method: squash, enforced by the repository rather than by this
 sentence -- see [Merging](#-merging). Each PR becomes exactly one commit
 on `main`.
 
+**Dependabot PRs.** `.github/dependabot.yml` opens one grouped PR a
+week that bumps the workflows' pinned action SHAs (#829). It arrives
+red, and that is expected: Dependabot neither raises
+`pyproject.toml`'s version nor writes a `## Commit message` section,
+so `lint`'s version-bump check and the `commit-message` check both fail
+on it. Finish it like any other PR. Check out its branch, push a PATCH
+bump ("Versioning and releases" below: CI/workflow-only), add the
+commit-message fence to the description, and merge it with
+`scripts/merge_pr.py`. Dependabot-triggered runs do not get the
+repository's Actions secrets, so the Codecov and SonarQube steps may
+fail on its first run too. Your push re-runs CI as you, with the
+secrets, and that run is the one to read. Check the new `# vX.Y.Z`
+comments against the action's release notes before merging. Moving a
+pin is the point of the PR, and a major-version jump can change
+behaviour.
+
 ## 📦 Versioning and releases
 
 Semantic versioning (`pyproject.toml`'s `[tool.poetry].version`), bumped

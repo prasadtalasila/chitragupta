@@ -21,7 +21,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       # Catches the plausible human mistake of tagging a release before
       # bumping pyproject.toml's version (or vice versa) -- scripts/release.py
@@ -52,8 +52,16 @@ jobs:
       # for someone who wants to run a container without the rest of the
       # repository. The wheel installs the code and the CLI, and is what
       # `publish-pypi` below hands to PyPI.
+      #
+      # Poetry is pinned and wheels-only, like docs.yml's and ci.yml's
+      # Windows-leg installs (Sonar S8544/S8541: an sdist fallback runs
+      # arbitrary setup scripts at install time) -- and here more than
+      # anywhere, since this Poetry builds what reaches PyPI. `==2.4.1`
+      # fixes the version, not the form: without `--only-binary` pip
+      # still builds Poetry or any dependency from source when no wheel
+      # matches. Bump all three sites together.
       - name: Install Poetry
-        run: pipx install poetry==2.4.1
+        run: pipx install --pip-args='--only-binary=:all:' poetry==2.4.1
 
       # pyproject.toml's `readme` stays README.md (poetry install reads
       # it too, not just poetry build, so it has to be a file every
@@ -77,21 +85,25 @@ jobs:
       - name: Show what will be attached
         run: ls -l release/chitragupta-*.zip dist/chitragupta_cli-*
 
-      # Pinned to a commit SHA rather than the `v2` tag (which currently
-      # resolves to this same commit, v2.6.2), for the reason ci.yml's
-      # Codecov pin states: S7637 -- a movable tag on a third-party action
-      # running with `contents: write` is exactly the dependency to pin.
-      # Bump it deliberately, by resolving the tag again.
       # Handed to the publish job rather than rebuilt there, so what
       # reaches PyPI is byte-identical to what is attached to the
       # release. Two `poetry build` runs are not guaranteed to agree.
       - name: Keep the built distributions for the publish job
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist
           path: dist/
           if-no-files-found: error
 
+      # Pinned to a commit SHA rather than the `v2` tag (which currently
+      # resolves to this same commit, v2.6.2), for the reason ci.yml's
+      # Codecov pin states: S7637 -- a movable tag on an action running
+      # with `contents: write` is exactly the dependency to pin. The
+      # first-party `actions/*` steps in this file are pinned the same way
+      # (#829): being GitHub's own does not stop a tag from being moved,
+      # and `download-artifact` is the one step between the built wheel
+      # and the OIDC publish below. .github/dependabot.yml proposes the
+      # bumps; take them deliberately rather than tracking a tag.
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
@@ -129,7 +141,7 @@ jobs:
       id-token: write   # the OIDC token Trusted Publishing exchanges
     steps:
       - name: Fetch the distributions the release job built
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: dist
           path: dist/
