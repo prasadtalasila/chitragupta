@@ -119,6 +119,21 @@ test("a semantic edge panel reports the similarity and the bridging pair", () =>
   assert.match(html, /<code>rv2018<\/code>/);
 });
 
+test("an edge the payload does not hold yields null, not a throw (#859)", () => {
+  /* `data-edge` is re-parsed from markup; the app shows help on null
+     rather than dying inside the click handler. */
+  [
+    ["member", 3],
+    ["__proto__", 0],
+    ["overlap", 1],
+    ["semantic", -1],
+    ["overlap", NaN],
+    ["overlap", 0.5],
+  ].forEach(([family, index]) => {
+    assert.equal(panel.edgeHtml(DATA, family, index), null, family + ":" + index);
+  });
+});
+
 test("a citekey with no member record still renders as a citekey", () => {
   const orphan = {
     topics: [],

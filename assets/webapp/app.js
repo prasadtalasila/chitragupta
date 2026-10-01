@@ -332,8 +332,10 @@
   }
 
   function showEdge(family, index) {
+    var html = app.edgeHtml(DATA, family, index);
+    if (!html) { showHelp(); return; }
     clearHint();
-    detail.innerHTML = app.edgeHtml(DATA, family, index);
+    detail.innerHTML = html;
     panelFamily = family;
   }
 
@@ -620,8 +622,7 @@
     cy.batch(function () {
       cy.elements().removeClass("on-path");
       result.hops.forEach(function (hop) {
-        var id = (hop.family === "overlap" ? "ov-" : "se-") + hop.index;
-        cy.$id(id).addClass("on-path");
+        cy.$id(app.edgeId(DATA, hop.family, hop.index)).addClass("on-path");
       });
       (result.labels || []).forEach(function (label) { cy.$id(label).addClass("on-path"); });
     });

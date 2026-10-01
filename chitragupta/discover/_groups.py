@@ -62,7 +62,10 @@ def _join_below(hierarchy: list, labels: list, threshold: float) -> Callable[[st
 
 def cut_tree(hierarchy: list, topics: list, threshold: float) -> dict:
     """The cut: which group each topic lands in, with the app's own
-    group ids (payload order) and labels."""
+    group ids (payload order) and labels. The app also lengthens the
+    `cluster-` prefix past any topic label starting with it (#859), as a
+    cytoscape element id must not collide; these ids never leave this
+    module, so the fixed prefix is kept here."""
     find = _join_below(hierarchy, [t["label"] for t in topics], threshold)
     by_root: dict = {}
     group_of: dict = {}
