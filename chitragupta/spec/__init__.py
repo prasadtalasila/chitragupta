@@ -74,7 +74,8 @@ _HEADING = re.compile(r"^(#{1,6})\s+(.*?)\s*(?:\{#([^}\s]+)\})?\s*$")
 
 
 class SpecError(Exception):
-    """A book path outside `content/drafts/`, or a book with no spec yet."""
+    """A book path outside `content/drafts/`, a book with no spec yet, or a
+    chapter path that leaves its book."""
 
 
 def spec_dir(book: Path) -> Path:

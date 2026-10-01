@@ -90,6 +90,36 @@ class TestFigures:
         with pytest.raises(KeyError, match="not in the ledger"):
             draft_figures.figures("nosuchkey_2024")
 
+    @pytest.mark.parametrize(
+        "name", ["../../outside.png", "a2024_artifacts/../../../outside.png", "/etc/passwd"]
+    )
+    def test_an_image_name_that_leaves_the_docling_directory_is_refused(self, seeded, name):
+        """Issue 875. The sidecar is a file on disk like any other, and its
+        `image` value was joined into a path unchecked -- so a tampered one
+        pointed `image_path` anywhere on the host, which this command then
+        printed as a figure to look at. Refused, not rewritten: a
+        sanitised name would hide that the index is not what was written.
+        """
+        _write_index([{**RECORDS[0], "image": name}])
+        with pytest.raises(draft_figures.FigureIndexError, match="outside"):
+            draft_figures.figures("a2024")
+
+    def test_an_image_name_with_a_nul_byte_is_refused_rather_than_crashing(self, seeded):
+        """Resolving such a name raises `ValueError`; that is a refusal of
+        the index, not a traceback."""
+        _write_index([{**RECORDS[0], "image": "a\u0000b.png"}])
+        with pytest.raises(draft_figures.FigureIndexError, match="outside"):
+            draft_figures.figures("a2024")
+
+    def test_a_nested_name_inside_the_directory_is_not_refused(self, seeded):
+        """The enrichment layer writes `<stem>_artifacts/picture_N.png`,
+        two components, so "one path component" would be the wrong rule:
+        it would refuse every real index. Where the name *lands* is the
+        rule."""
+        _write_index(RECORDS)
+        found, _ = draft_figures.figures("a2024")
+        assert found[0]["image_path"].endswith("picture_000002.png")
+
 
 class TestCli:
     def test_it_prints_each_figure_with_its_citation(self, seeded, capsys):
@@ -121,6 +151,16 @@ class TestCli:
     def test_an_unknown_citekey_is_an_error_on_stderr(self, seeded, capsys):
         assert draft_figures.main(["nosuchkey_2024"]) == 1
         assert "not in the ledger" in capsys.readouterr().err
+
+    def test_a_refused_index_is_an_error_on_stderr_naming_the_value(self, seeded, capsys):
+        """Named and non-zero, and nothing on stdout: a `--json` caller
+        must not get a half-trusted list of figures."""
+        _write_index([{**RECORDS[0], "image": "../../outside.png"}])
+        assert draft_figures.main(["a2024", "--json"]) == 1
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert "[error]" in captured.err
+        assert "../../outside.png" in captured.err
 
     def test_json_reports_an_unenriched_citekey_too(self, seeded, capsys):
         """A machine caller must not read "no index yet" as "no figures"."""

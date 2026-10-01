@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import spec
+from chitragupta.spec._align import chapter_draft
 
 
 # Chapter 1 is described at section level: three sections, none of them
@@ -189,3 +190,34 @@ def test_align_as_json_is_what_a_skill_reads(book, capsys):
     assert described["not_declared"] == ["An afterthought"]
     retrofit = [c for c in payload["chapters"] if c["id"] == "ch-cost"][0]
     assert retrofit["section_described"] is False
+
+
+# --- the join itself (issue 875) -----------------------------------------
+
+
+@pytest.mark.parametrize("escaping", ["../../x", "a/../../b"])
+def test_chapter_draft_refuses_an_id_that_leaves_the_book(book, escaping):
+    """`spec.parse` refuses such an id before it gets here, so this pins
+    the join on its own: a later id source -- a machine-written outline,
+    a caller handing in an id -- cannot reopen the hole one layer up."""
+    with pytest.raises(spec.SpecError, match="outside"):
+        chapter_draft(book, escaping)
+
+
+def test_chapter_draft_refuses_an_absolute_id(book, tmp_path):
+    """`Path(book) / "/abs"` is `/abs`: the book is dropped without a word."""
+    with pytest.raises(spec.SpecError, match="outside"):
+        chapter_draft(book, str(tmp_path / "evil"))
+
+
+def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, capsys):
+    """The one shape that reaches the join through `spec align` itself,
+    since the id is clean and only the file it names is not. Refused on
+    stderr rather than read, the same answer `unit.draft_path` gives."""
+    outside = tmp_path / "elsewhere.md"
+    outside.write_text(ALIGNED, encoding="utf-8")
+    (book / "ch-what.md").symlink_to(outside)
+    assert spec.main(["align", str(book)]) == 1
+    err = capsys.readouterr().err
+    assert "[error]" in err
+    assert "ch-what.md" in err

@@ -21,8 +21,9 @@ wrong, only described at chapter granularity, and a check like that is the
 first thing anyone turns off. So a chapter is compared only when its spec
 says something a draft could contradict.
 
-Reads and refuses nothing. Whether a misalignment withholds acceptance is
-`unit accept`'s question, not this module's.
+Reads, and refuses nothing about what a chapter says -- only a chapter
+path that leaves its book (`chapter_draft`). Whether a misalignment
+withholds acceptance is `unit accept`'s question, not this module's.
 """
 
 import difflib
@@ -30,8 +31,9 @@ import json
 import re
 from pathlib import Path
 
+from chitragupta import config
 from chitragupta.dossier._sections import sections as _draft_sections
-from chitragupta.spec import spec_path
+from chitragupta.spec import SpecError, spec_path
 from chitragupta.spec._read import read_spec, report_problems
 
 # `3.`, `3.1`, `3.1.2 ` at the start of a heading. A genre skill numbers
@@ -61,18 +63,38 @@ def normalise(title: str) -> str:
 def chapter_draft(book: Path, chapter_id: str) -> Path:
     """Where a chapter's prose lives -- `<book>/<chapter-id>.md`.
 
-    The two suffixes the genre skills emit, checked in the order
-    `unit.draft_path` already checks them, and the `.md` name returned
-    when neither exists so a caller can say what is missing. No search and
-    no fallback to a section's own filename: a retrofitted chapter is
-    never section-described, so nothing here ever has to guess at the
-    legacy naming.
+    The two suffixes the genre skills emit, checked in the same order as
+    `unit.draft_path`, and the `.md` name returned when neither exists so
+    a caller can say what is missing. No search and no fallback to a
+    section's own filename: a retrofitted chapter is never
+    section-described, so nothing here ever has to guess at the legacy
+    naming.
+
+    Every candidate is confined to the book here, by this function, and
+    is not left to a check somewhere else (issue 875). `spec.parse`
+    already refuses an id that is not one path component, so a `..` id
+    does not reach this join today -- but that is a guard on one id
+    source, and this join would trust the next one as well. The same
+    check also answers for a chapter file that is itself a symlink out
+    of the book, which no id rule can see. Raises `SpecError` naming the
+    path rather than reading what it points at.
     """
     for suffix in (".md", ".tex"):
-        candidate = Path(book) / f"{chapter_id}{suffix}"
+        candidate = _inside_book(Path(book) / f"{chapter_id}{suffix}", book)
         if candidate.is_file():
             return candidate
-    return Path(book) / f"{chapter_id}.md"
+    return _inside_book(Path(book) / f"{chapter_id}.md", book)
+
+
+def _inside_book(path: Path, book: Path) -> Path:
+    """`path`, once it is certain it lands under `book`."""
+    if config.resolves_inside(path, book):
+        return path
+    raise SpecError(
+        f"{path} resolves to {path.resolve()}, outside {book}: a chapter id is one "
+        "path component, not a path, and a chapter file may not be a symlink out of "
+        "its book."
+    )
 
 
 def chapters(parsed: dict) -> list[tuple[dict, list[dict]]]:
