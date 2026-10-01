@@ -4,7 +4,7 @@
 
 - Draft: `content/drafts/dt-overview/staleness-tutorial.md`
 - Command: `python -m chitragupta.review quotation content/drafts/dt-overview/staleness-tutorial.md --write`
-- chitragupta 6.126.12
+- chitragupta 6.127.1
 
 - Universe: `checked`
 - Quotes checked: 3

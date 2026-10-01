@@ -3,7 +3,7 @@
   "aid": "quotation",
   "draft": "content/drafts/dt-overview/trust-chapter.tex",
   "command": "python -m chitragupta.review quotation content/drafts/dt-overview/trust-chapter.tex --write",
-  "version": "6.126.12",
+  "version": "6.127.1",
   "universe": "checked",
   "quotes_total": 4,
   "found": 0,
