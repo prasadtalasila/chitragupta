@@ -537,7 +537,10 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "20"
+          # 24, not 20: the webapp step's coverage threshold needs node's
+          # --test-coverage-include (22.5) and --test-coverage-lines (22.8),
+          # and 24 is the current LTS.
+          node-version: "24"
 
       # Pinned (Sonar S8543) and `--ignore-scripts` (S6505): npm runs any
       # package's install/postinstall hooks by default, which is arbitrary
@@ -575,8 +578,19 @@ jobs:
       # picks up: assets/webapp/'s own function-size/module-size ratchet,
       # same standing as C1/C2's pylint-adjacent check above but scoped to
       # code_standards-register.toml's c1js/c2js tables instead.
+      # The coverage bar is pytest's, 100% of lines, over the modules a
+      # test loads (#858). Node reports only files a test loaded, so the
+      # include glob alone would let a new module with no test go
+      # unmeasured; tests/webapp/browser_load.test.js loads every script
+      # index.html names except the DOM wiring (app.js, search.js,
+      # pickers.js), which is what puts each DOM-free module in the report.
+      # The wiring has no test and is therefore not in it.
       - name: Test the webapp modules
-        run: node --test tests/webapp/*.test.js
+        run: >-
+          node --test --experimental-test-coverage
+          --test-coverage-include="assets/webapp/*.js"
+          --test-coverage-lines=100
+          tests/webapp/*.test.js
 
       # The OpenCode plugin's helpers (#900), for the same reason as the
       # webapp: JavaScript pytest cannot measure. tests/test_opencode_plugin.py

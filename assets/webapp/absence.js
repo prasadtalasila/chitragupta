@@ -44,10 +44,9 @@
     -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7,
   ];
 
+  // No reflection branch for z < 0.5: the one caller, logChoose, refuses
+  // k < 0 and k > n first, so every argument here is at least 1.
   function logGamma(z) {
-    if (z < 0.5) {
-      return Math.log(Math.PI / Math.sin(Math.PI * z)) - logGamma(1 - z);
-    }
     z -= 1;
     var x = LANCZOS[0];
     for (var i = 1; i < LANCZOS.length; i++) { x += LANCZOS[i] / (z + i); }

@@ -107,6 +107,24 @@ test("a family with no edges at all gives every topic its own cluster", () => {
   assert.equal(families.cluster(bare, "overlap", 2).clusters.length, TOPICS.length);
 });
 
+// chitragupta/discover/_app.py writes data.js with json.dumps, whose
+// default writes a float inf as a bare `Infinity`, and data.js is a
+// script rather than JSON, so the page evaluates it. An infinite weight
+// normalises its columns to NaN, no attractor holds them, and
+// readClusters' "anything unclaimed stands alone" is what keeps those
+// topics in the cluster view instead of out of every cluster.
+test("a topic no attractor claims still lands in a cluster of its own", () => {
+  const infinite = {
+    n_docs: 20, topics: TOPICS,
+    edges_overlap: TWO_WAYS.edges_overlap.concat([overlap("A", "Z", Infinity)]),
+    edges_semantic: [],
+  };
+  const partition = families.cluster(infinite, "overlap", 2);
+  const seen = partition.clusters.flatMap((c) => c.members);
+  assert.deepEqual(seen.slice().sort(), TOPICS.map((t) => t.label).sort());
+  assert.equal(partition.clusters.find((c) => c.members.includes("A")).members.length, 1);
+});
+
 // ---------- where the two disagree ----------
 
 test("the grid finds topics that talk alike and share no papers", () => {
@@ -281,6 +299,12 @@ test("no path is reported as an answer, per family", () => {
   };
   const html = panel.pathHtml(split, families.path(split, "overlap", "A", "Z"));
   assert.match(html, /no path/i);
+  assert.match(html, /shared papers/i);
+});
+
+test("a path from a topic to itself is reported as the same topic", () => {
+  const html = panel.pathHtml(TWO_WAYS, families.path(TWO_WAYS, "overlap", "A", "A"));
+  assert.match(html, /Same topic/);
   assert.match(html, /shared papers/i);
 });
 

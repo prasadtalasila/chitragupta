@@ -45,6 +45,8 @@
 # What it cannot reproduce: CI lints under Python 3.13, and pylint's
 # inference can differ across interpreters on an unchanged line, so
 # a pylint run under another version is weaker evidence, not equal.
+# And it needs node 22.8 or later: the webapp step's coverage flags do not
+# exist before it, and an older node refuses them as bad options.
 
 set -euo pipefail
 
@@ -142,7 +144,7 @@ run "actionlint" actionlint
 need "Install markdownlint-cli2" markdownlint-cli2@0.23.2
 run "markdownlint" markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
 run "Install webapp dev dependencies (acorn)" npm ci --ignore-scripts
-run "Test the webapp modules" node --test tests/webapp/*.test.js
+run "Test the webapp modules" node --test --experimental-test-coverage --test-coverage-include="assets/webapp/*.js" --test-coverage-lines=100 tests/webapp/*.test.js
 run "Test the OpenCode plugin helpers" node --test tests/opencode/*.test.mjs
 need "Install Vale" vale
 run "Vale config parses and the exemptions hold" bash scripts/check_style_exemptions.sh
