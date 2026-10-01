@@ -227,8 +227,8 @@ quality gate to keep in sync -- the same idiom as
 
 | | Rule | Scope | Counted as |
 | --- | --- | --- | --- |
-| **C1** | A function body holds at most **25 statements** | `chitragupta/`, `scripts/`, `tests/` | `ast` statement nodes in the body, not descending into nested definitions |
-| **C2** | A module holds at most **250 lines of code** | `chitragupta/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment |
+| **C1** | A function body holds at most **25 statements** | `chitragupta/`, `scripts/`, `tests/` | `ast` statement nodes in the body, not descending into nested definitions. A docstring is one statement (an `Expr`); a lambda or comprehension is an expression and counts zero however large it is |
+| **C2** | A module holds at most **250 lines of code** | `chitragupta/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment. A line inside a triple-quoted string that begins with `#` is dropped as though it were a comment |
 
 **Why the scopes differ.** C1 covers the tests because the tests already
 hold it -- 1 offender in 1926 -- so including them locks in a bar that is
