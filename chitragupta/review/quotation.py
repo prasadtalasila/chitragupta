@@ -42,14 +42,14 @@ looks. docs/ARCHITECTURE.md's Layer 4 has the argument: which side a
 check falls on is decided by what it is measured against -- here, the
 parse, a derived artefact -- not by how decidable its answer is.
 
-**Today it checks nothing on any real draft**, and that is correct
-rather than a gap. No dossier in this repository carries a `quote:` yet;
-`quote:` is optional and absent by default, because a captured quote is
-a quote in the drafter's context and A2's contract exists to remove
-those. This aid is what makes the first one safe to publish. The
-report says which empty answer it gave (`UNIVERSES`, #838), so a run
-that checked nothing does not read as one that checked and found it
-clean.
+**It often checks nothing, and says so.** `quote:` is optional and
+absent by default, because a captured quote is a quote in the drafter's
+context and A2's contract exists to remove those; a dossier written
+before that contract carries none, and this aid is what makes the first
+one safe to publish. So the report says which answer it gave
+(`UNIVERSES`, #838) -- no dossier, a dossier that publishes no quote,
+or quotes checked -- and a run that checked nothing does not read as
+one that checked and found it clean.
 
 One of the seven commands in the **review layer**, beside
 citation_provenance.py, citation_coverage.py, verbatim_check/,

@@ -134,12 +134,12 @@ draft of something it did not do, so the aid says it measured nothing
 instead. That third outcome is also why this check, binary as it is,
 stays advisory -- [ARCHITECTURE.md](ARCHITECTURE.md) works it through.
 
-Today it will tell you there is nothing to check: no dossier in this
-project carries a `quote:` yet, because A2's contract makes one a
-deliberate act rather than the residue of retrieval. That is the
-expected answer, not a clean bill of health, and the report says so:
-its `universe` is `no-quotes`, or `no-dossier` for a draft with no
-dossier at all, and only `checked` means a quote was looked at.
+It often has nothing to check: `quote:` is optional, because A2's
+contract makes one a deliberate act rather than the residue of
+retrieval. The report says which answer it gave -- its `universe` is
+`no-dossier` for a draft with no dossier, `no-quotes` for a dossier
+that publishes no quote the draft cites, and `checked` otherwise -- and
+only `checked` means a quote was looked at.
 
 **`review agenda` -- one ranked, deduplicated worklist across the eight
 it reads.** [AGENDA.md](AGENDA.md) walks one report section by

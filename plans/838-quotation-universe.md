@@ -1,6 +1,13 @@
 # 838: say which empty answer the quotation aid gave
 
-Status: **planned, unbuilt.** Written 2026-10-01 for issue #838.
+Status: **built** on `fix/838-quotation-universe`, released as
+6.127.1. Written 2026-10-01 for issue #838. What changed on the way:
+the sample reports were regenerated with the real pipeline, not
+hand-edited as Task 2 says, because DEVELOPER-AGENTS.md forbids that.
+All four samples carried the false "every checked quote was found"
+line, not only `staleness-chapter`. The "nothing to check today"
+paragraphs in `docs/CLI.md`, `docs/REVIEW.md` and the module docstring
+were rewritten, because the sample dossiers do carry quotes.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
