@@ -26,6 +26,14 @@ _NO_CLASS_AIDS = ("synthesis", "figure")
 
 
 def _aid_note(aid: str, label: str, source) -> str:
+    # An aid that raised during `--baseline`'s refresh (#893) did run, so
+    # with no readable earlier `.json` it is not "not run" -- and there
+    # are no earlier findings to call stale either.
+    if not source.available and source.refresh_error:
+        note = f"- {label}: **not refreshed** -- raised: {source.refresh_error}"
+        if source.reason:
+            note += f" (and the earlier report is unreadable: {source.reason})"
+        return note
     if not source.available:
         if source.reason:
             return f"- {label}: not run -- {source.reason}"
@@ -34,7 +42,8 @@ def _aid_note(aid: str, label: str, source) -> str:
     if source.stale:
         state += ", **stale** (older than the draft)"
     if source.refreshed is False:
-        state += ", **not refreshed** (an earlier run's findings; not counted)"
+        raised = f"raised: {source.refresh_error}; " if source.refresh_error else ""
+        state += f", **not refreshed** ({raised}an earlier run's findings; not counted)"
     return f"- {label}: {state}"
 
 

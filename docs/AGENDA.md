@@ -295,17 +295,27 @@ follows). It reports every finding as `resolved`, `persisting`, `new` or
 `accepted`, with `objective_before`, `objective_after` and
 `objective_delta`.
 
+Re-running the aids needs the ledger, so this mode checks for one
+first. With no ledger, or one that needs a sync, it says to run
+`chitragupta corpus sync` and exits 1 without changing anything. The
+plain `review agenda` does not need one.
+
 **Read `not_refreshed` before either.** It lists the aids whose
-refresh failed this run: a refusal, or an exit 0 that wrote nothing, as
-`support` does without the enrich stack. Their `.json` on disk is an
-earlier run's. So their items are left out of all four groups and both
-counts, on the baseline's side as well as this run's. A driver must
-stop or surface such an aid, and never count the missing items as
-progress. `verbatim` is the one that matters for the count, being the
-only aid whose items can be unattended. The filed report marks each
-one `refreshed: false` under `sources.aids`, and its header calls it
-**not refreshed**. The items are still listed there, but they do not
-count towards `objective_class_count`.
+refresh failed this run: a refusal, an exit 0 that wrote nothing (as
+`support` does without the enrich stack), or an exception. Their `.json`
+on disk is an earlier run's. So their items are left out of all four
+groups and both counts, on the baseline's side as well as this run's. A
+driver must stop or surface such an aid, and never count the missing
+items as progress. `verbatim` is the one that matters for the count,
+being the only aid whose items can be unattended. The filed report
+marks each one `refreshed: false` under `sources.aids`, and its header
+calls it **not refreshed**. The items are still listed there, but they
+do not count towards `objective_class_count`.
+
+An aid that raised does not stop the run. It is listed in
+`not_refreshed` like the others, and `refresh_errors` maps it to the
+exception's one-line reason. The filed report has the same line under
+`sources.aids.<aid>.refresh_error`, and the header quotes it.
 
 **Read the `new` list, not just the delta.** A repair that resolves one
 finding and introduces another leaves `objective_delta` at 0, which is

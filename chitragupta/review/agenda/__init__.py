@@ -107,7 +107,11 @@ class Agenda:
         return sum(1 for item in self.items if item.unattended and item.cls not in skipped)
 
 
-def build_agenda(draft: Path, refreshed: "dict[str, bool | None] | None" = None) -> Agenda:
+def build_agenda(
+    draft: Path,
+    refreshed: "dict[str, bool | None] | None" = None,
+    errors: "dict[str, str] | None" = None,
+) -> Agenda:
     """Everything this aid does, as data: collect the eight sources,
     extract one item per finding, merge, order, refuse whatever the draft
     no longer says, then set aside the ones a person has already
@@ -136,7 +140,7 @@ def build_agenda(draft: Path, refreshed: "dict[str, bool | None] | None" = None)
     # alone, and `_accept.ACCEPTABLE` holds neither.
     # `TestStaleAndAcceptedDoNotOverlap` pins that, so a later class
     # carrying both has to decide rather than inherit this.
-    sources = _sources.collect(draft, refreshed)
+    sources = _sources.collect(draft, refreshed, errors)
     text = draft.read_text(encoding="utf-8")
     sections = dossier.sections(text)
     items = _items.all_items(sources, sections)
@@ -205,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
     return run(build_parser().parse_args(argv))
 
 
-def _file_report(draft_path: Path, args, refreshed=None) -> tuple[dict, dict]:
+def _file_report(draft_path: Path, args, refreshed=None, errors=None) -> tuple[dict, dict]:
     """Build the agenda for `draft_path` and file its `.md` (plus any
     renders) and `.json`, returning `(payload, written)`.
 
@@ -214,7 +218,7 @@ def _file_report(draft_path: Path, args, refreshed=None) -> tuple[dict, dict]:
     draft's *current* state is the same artefact either way, and is what
     the next run reads as a baseline.
     """
-    agenda = build_agenda(draft_path, refreshed)
+    agenda = build_agenda(draft_path, refreshed, errors)
     command = _command(draft_path, args.json)
     body = _render.render_markdown(agenda, command)
     written = review.write(draft_path, "agenda", body, _emit.formats(args))
@@ -241,18 +245,20 @@ def _print_recheck(draft_path: Path, args, payload: dict, baseline: dict, writte
     # but only this run's failures are reported: the baseline's were
     # reported by the run that filed it.
     suppressed_ids = {row["id"] for row in payload["accepted"] if row["suppressed"]}
-    failed = _recheck.not_refreshed(payload)
+    failed, errors = _recheck.not_refreshed(payload), _recheck.refresh_errors(payload)
     unverified = {*failed, *_recheck.not_refreshed(baseline)}
     resolved, persisting, appeared, accepted, before, after = _recheck.compare(
         payload["items"], baseline["items"], suppressed_ids, unverified
     )
     groups, counts = (resolved, persisting, appeared, accepted), (before, after)
     if args.json:
-        recheck = _recheck.recheck_payload(draft_path, args.baseline, groups, counts, failed)
+        recheck = _recheck.recheck_payload(
+            draft_path, args.baseline, groups, counts, failed, errors
+        )
         print(json.dumps(recheck, indent=2))
         review.print_written(written, stream=sys.stderr)
     else:
-        print(_recheck.format_recheck(args.baseline, groups, counts, failed))
+        print(_recheck.format_recheck(args.baseline, groups, counts, failed, errors))
         review.print_written(written)
 
 
@@ -267,13 +273,15 @@ def run(args: argparse.Namespace) -> int:
     --json` and `verbatim scan --json` already follow.
 
     `--baseline` adds a refresh in front and a comparison behind, and
-    changes nothing between them. Two orderings in it are load-bearing:
+    changes nothing between them. Three orderings in it are load-bearing:
 
     - **The baseline is loaded before anything is refreshed.** A bad one
       is a usage error, and paying ~21 s of aid runs before saying so
       would be gratuitous. It is also what makes the natural invocation
       safe -- the baseline a caller reaches for is usually
       `<stem>.agenda.json`, which is the very file this run overwrites.
+    - **The ledger is checked next**, still before anything is
+      refreshed, accepted or filed (`_refresh.ledger_refusal`, #893).
     - **The filed report still records `_command`'s bare invocation**,
       not the `--baseline` one. That `.json` is the *next* run's
       baseline, so its envelope has to name a command that regenerates
@@ -304,14 +312,21 @@ def run(args: argparse.Namespace) -> int:
         except ValueError as exc:
             print(exc, file=sys.stderr)
             return 2
+        # A bad baseline keeps its exit 2 even with no ledger: it is the
+        # caller's mistake and costs nothing to report. The bare mode is
+        # not checked at all -- it runs no aid, and degrades a missing
+        # corpus to a header note.
+        refusal = _refresh.ledger_refusal()
+        if refusal is not None:
+            return refusal
 
     if args.accept:
         refusal = _accept.apply(draft_path, build_agenda(draft_path), args)
         if refusal is not None:
             return refusal
 
-    refreshed = _refresh.refresh_aids(draft_path) if baseline is not None else None
-    payload, written = _file_report(draft_path, args, refreshed)
+    refreshed, errors = _refresh.refresh_aids(draft_path) if baseline is not None else (None, None)
+    payload, written = _file_report(draft_path, args, refreshed, errors)
 
     if baseline is not None:
         _print_recheck(draft_path, args, payload, baseline, written)

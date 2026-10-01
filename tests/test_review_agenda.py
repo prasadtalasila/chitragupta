@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shlex
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -287,6 +288,25 @@ class TestCollect:
         assert set(sources.aids) == set(_sources.AID_NAMES)
         assert sources.style.available is True
         assert sources.drift == _sources.DriftSource()
+
+    def test_a_refresh_error_is_carried_onto_its_source_and_its_flags(
+        self, isolated_config, monkeypatch
+    ):
+        """#893: the reason an aid raised during `--baseline`'s refresh
+        rides on its `AidSource`, and from there into the filed payload's
+        `sources.aids.<aid>` -- every other aid's stays `None`."""
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n")
+        monkeypatch.setattr(
+            _sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        refreshed = {**dict.fromkeys(_sources.AID_NAMES, True), "support": False}
+        sources = _sources.collect(draft, refreshed, {"support": "RuntimeError: boom"})
+        assert sources.aids["support"].refresh_error == "RuntimeError: boom"
+        assert sources.aids["support"].flags()["refresh_error"] == "RuntimeError: boom"
+        assert all(sources.aids[aid].refresh_error is None for aid in _sources.AID_NAMES[:-1])
 
 
 # --------------------------------------------------------------------------
@@ -1122,6 +1142,53 @@ class TestRenderMarkdown:
         )
         assert "not run -- content/review/t/survey.provenance.json: bad JSON" in rendered
 
+    def _rendered(self, source) -> str:
+        sources = _sources_stub(aids={"quotation": source})
+        return _render.render_markdown(
+            agenda.Agenda(draft=Path("content/drafts/t/survey.md"), sources=sources, items=[]),
+            "cmd",
+        )
+
+    def test_a_raised_refresh_names_its_reason_beside_not_refreshed(self):
+        """#893: the earlier `.json` was read, the refresh raised -- the
+        header says both, and why."""
+        rendered = self._rendered(
+            _sources.AidSource(
+                available=True, data={}, refreshed=False, refresh_error="ValueError: bad page"
+            )
+        )
+        assert (
+            "**not refreshed** (raised: ValueError: bad page; an earlier run's findings; "
+            "not counted)" in rendered
+        )
+
+    def test_a_raised_refresh_with_no_earlier_report_is_not_called_not_run(self):
+        """`not run` would be false: the aid ran, and raised. With no
+        earlier `.json` there are no findings to call an earlier run's."""
+        rendered = self._rendered(
+            _sources.AidSource(refreshed=False, refresh_error="ValueError: bad page")
+        )
+        assert "Quotation integrity: **not refreshed** -- raised: ValueError: bad page" in rendered
+        assert "Quotation integrity: not run" not in rendered
+
+    def test_an_unreadable_report_and_a_raised_refresh_are_both_named(self):
+        rendered = self._rendered(
+            _sources.AidSource(
+                reason="survey.quotation.json: bad JSON",
+                refreshed=False,
+                refresh_error="ValueError: bad page",
+            )
+        )
+        assert (
+            "**not refreshed** -- raised: ValueError: bad page "
+            "(and the earlier report is unreadable: survey.quotation.json: bad JSON)" in rendered
+        )
+
+    def test_a_refresh_that_failed_without_raising_keeps_its_wording(self):
+        rendered = self._rendered(_sources.AidSource(available=True, data={}, refreshed=False))
+        assert "**not refreshed** (an earlier run's findings; not counted)" in rendered
+        assert "raised" not in rendered
+
     def test_no_dossier_is_named(self):
         rendered = _render.render_markdown(
             agenda.Agenda(
@@ -1782,7 +1849,8 @@ class _AidStub:
     checks for (#837): a stub that wrote nothing would read as a refresh
     that did not happen. `returncode` and `writes` are the two ways a
     real refresh fails -- a refusal, and `claim_support`'s exit 0 with no
-    entailer installed.
+    entailer installed. `raises` is the third (#893): an aid that
+    raises, after any write, instead of returning at all.
     """
 
     def __init__(self, aid: str = "", chatter: str = "", returncode: int = 0, writes: bool = True):
@@ -1791,6 +1859,7 @@ class _AidStub:
         self.chatter = chatter
         self.returncode = returncode
         self.writes = writes
+        self.raises: BaseException | None = None
         # What a successful refresh files; a test that needs the aid to
         # re-find what an earlier run found sets it to that payload.
         self.payload: dict = {"findings": []}
@@ -1803,6 +1872,8 @@ class _AidStub:
             # `verbatim` is the one aid called through a subcommand.
             draft = Path(argv[1] if argv[0] == "scan" else argv[0])
             review.write_json(draft, self.aid, self.payload)
+        if self.raises is not None:
+            raise self.raises
         return self.returncode
 
 
@@ -1977,14 +2048,14 @@ class TestRefreshAids:
     def test_a_full_refresh_reports_every_aid_refreshed(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         dossier.log_retrieval(draft, "draft", "digital twin", 5, 3, 100)
-        assert _refresh.refresh_aids(draft) == dict.fromkeys(_sources.AID_NAMES, True)
+        assert _refresh.refresh_aids(draft) == (dict.fromkeys(_sources.AID_NAMES, True), {})
 
     def test_a_skipped_coverage_is_none_not_a_failure(self, isolated_config, aid_stubs):
         """No recorded query means nothing to refresh `coverage` with --
         by design, on every draft without a dossier, so it must not read
         as a failure every cycle."""
         draft = self._draft(isolated_config)
-        refreshed = _refresh.refresh_aids(draft)
+        refreshed, _ = _refresh.refresh_aids(draft)
         assert refreshed["coverage"] is None
         assert all(refreshed[aid] for aid in _sources.AID_NAMES if aid != "coverage")
 
@@ -1992,12 +2063,12 @@ class TestRefreshAids:
         draft = self._draft(isolated_config)
         aid_stubs["verbatim"].returncode = 1
         aid_stubs["verbatim"].writes = False
-        assert _refresh.refresh_aids(draft)["verbatim"] is False
+        assert _refresh.refresh_aids(draft)[0]["verbatim"] is False
 
     def test_a_nonzero_exit_is_not_refreshed_even_if_it_wrote(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         aid_stubs["verbatim"].returncode = 1
-        assert _refresh.refresh_aids(draft)["verbatim"] is False
+        assert _refresh.refresh_aids(draft)[0]["verbatim"] is False
 
     def test_exit_zero_writing_nothing_over_an_old_sidecar_is_not_refreshed(
         self, isolated_config, aid_stubs
@@ -2009,20 +2080,137 @@ class TestRefreshAids:
         old = review.write_json(draft, "support", {"findings": []})
         os.utime(old, (1_000_000, 1_000_000))
         aid_stubs["support"].writes = False
-        assert _refresh.refresh_aids(draft)["support"] is False
+        assert _refresh.refresh_aids(draft)[0]["support"] is False
 
     def test_exit_zero_writing_nothing_and_no_sidecar_is_not_refreshed(
         self, isolated_config, aid_stubs
     ):
         draft = self._draft(isolated_config)
         aid_stubs["support"].writes = False
-        assert _refresh.refresh_aids(draft)["support"] is False
+        assert _refresh.refresh_aids(draft)[0]["support"] is False
 
     def test_rewriting_an_existing_sidecar_is_refreshed(self, isolated_config, aid_stubs):
         draft = self._draft(isolated_config)
         old = review.write_json(draft, "support", {"findings": []})
         os.utime(old, (1_000_000, 1_000_000))
-        assert _refresh.refresh_aids(draft)["support"] is True
+        assert _refresh.refresh_aids(draft)[0]["support"] is True
+
+    def test_an_aid_that_raises_is_not_refreshed_and_the_rest_still_run(
+        self, isolated_config, aid_stubs
+    ):
+        """#893: one aid raising must not take the recheck down with it --
+        it is recorded with its one-line reason, and every later aid in
+        `AID_NAMES` is still called."""
+        draft = self._draft(isolated_config)
+        aid_stubs["provenance"].raises = RuntimeError("boom\nsecond line")
+        refreshed, errors = _refresh.refresh_aids(draft)
+        assert refreshed["provenance"] is False
+        assert errors == {"provenance": "RuntimeError: boom"}
+        assert all(aid_stubs[aid].calls for aid in _sources.AID_NAMES if aid != "coverage")
+        assert refreshed["verbatim"] is True
+
+    def test_an_aid_that_wrote_and_then_raised_is_still_not_refreshed(
+        self, isolated_config, aid_stubs
+    ):
+        """The mtime moved, but an aid that raised reported no result."""
+        draft = self._draft(isolated_config)
+        aid_stubs["support"].raises = OSError("disk went away")
+        refreshed, errors = _refresh.refresh_aids(draft)
+        assert refreshed["support"] is False
+        assert errors["support"] == "OSError: disk went away"
+
+    def test_a_sidecar_written_before_a_raise_is_put_back(self, isolated_config, aid_stubs):
+        """PR #916 review: what a failed run wrote must not stand in for
+        the earlier run's findings -- the header would call it that, and
+        the next bare `agenda` would trust it. The earlier `.json` comes
+        back byte for byte, with its own mtime, so the stale-against-the-
+        draft check still sees its real age."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        earlier = old.read_bytes()
+        aid_stubs["support"].payload = {"findings": ["half-written"]}
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert old.read_bytes() == earlier
+        assert old.stat().st_mtime_ns == 1_000_000_000
+
+    def test_a_rewrite_that_kept_the_old_mtime_is_still_put_back(
+        self, isolated_config, aid_stubs, monkeypatch
+    ):
+        """PR #916's second review: on a filesystem too coarse to tell two
+        writes apart, a raising aid can change the bytes and leave the
+        mtime where it was -- so the restore compares bytes, not only the
+        mtime."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        earlier = old.read_bytes()
+
+        def same_tick_then_raise(argv):
+            review.write_json(draft, "support", {"findings": ["half-written"]})
+            os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+            raise OSError("disk went away")
+
+        monkeypatch.setattr(_registry.AIDS["support"][0], "main", same_tick_then_raise)
+        _refresh.refresh_aids(draft)
+        assert old.read_bytes() == earlier
+
+    def test_a_byte_identical_rewrite_gets_its_old_mtime_back(self, isolated_config, aid_stubs):
+        """Same bytes, new mtime: the file would read as newer than the
+        draft, and so not stale, when it is an earlier run's."""
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": []})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert old.stat().st_mtime_ns == 1_000_000_000
+
+    def test_a_sidecar_first_written_by_a_raising_run_is_removed(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert not review.report_path(draft, "support", "json").exists()
+
+    def test_a_raise_that_wrote_nothing_leaves_the_earlier_sidecar_alone(
+        self, isolated_config, aid_stubs
+    ):
+        draft = self._draft(isolated_config)
+        old = review.write_json(draft, "support", {"findings": ["earlier"]})
+        os.utime(old, ns=(1_000_000_000, 1_000_000_000))
+        aid_stubs["support"].writes = False
+        aid_stubs["support"].raises = OSError("disk went away")
+        _refresh.refresh_aids(draft)
+        assert json.loads(old.read_text()) == {"findings": ["earlier"]}
+        assert old.stat().st_mtime_ns == 1_000_000_000
+
+    def test_a_raise_with_no_message_is_named_by_its_type(self, isolated_config, aid_stubs):
+        draft = self._draft(isolated_config)
+        aid_stubs["uncited"].raises = KeyError()
+        assert _refresh.refresh_aids(draft)[1] == {"uncited": "KeyError"}
+
+    @pytest.mark.parametrize("exc", [SystemExit(2), KeyboardInterrupt()], ids=["exit", "ctrl-c"])
+    def test_an_argparse_exit_or_an_interrupt_still_propagates(
+        self, isolated_config, aid_stubs, exc
+    ):
+        """`SystemExit(2)` is what a wrong argv from `_aid_argv` looks like
+        -- this module's bug, which must stay loud -- and Ctrl-C must
+        still stop the run."""
+        draft = self._draft(isolated_config)
+        aid_stubs["quotation"].raises = exc
+        with pytest.raises(type(exc)):
+            _refresh.refresh_aids(draft)
+
+    def test_a_raise_is_warned_on_stderr_and_stdout_stays_clean(
+        self, isolated_config, aid_stubs, capsys
+    ):
+        draft = self._draft(isolated_config)
+        aid_stubs["quotation"].chatter = "WROTE A FILE"
+        aid_stubs["quotation"].raises = ValueError("bad page")
+        _refresh.refresh_aids(draft)
+        out = capsys.readouterr()
+        assert out.out == ""
+        assert "[warn] quotation raised during refresh: ValueError: bad page" in out.err
 
 
 class TestLoadBaseline:
@@ -2154,6 +2342,22 @@ class TestNotRefreshed:
         assert _recheck.not_refreshed({"aid": "agenda", "items": []}) == []
         assert _recheck.not_refreshed({"sources": {"aids": {"verbatim": {}}}}) == []
 
+    def test_an_agenda_payload_names_each_raised_aids_reason(self):
+        payload = {
+            "sources": {
+                "aids": {
+                    "verbatim": {"refreshed": False, "refresh_error": "OSError: gone"},
+                    "support": {"refreshed": False, "refresh_error": None},
+                    "uncited": {"refreshed": True},
+                }
+            }
+        }
+        assert _recheck.refresh_errors(payload) == {"verbatim": "OSError: gone"}
+
+    def test_a_payload_from_an_older_release_names_no_errors(self):
+        assert _recheck.refresh_errors({"aid": "agenda", "items": []}) == {}
+        assert _recheck.refresh_errors({"sources": {"aids": {"verbatim": {}}}}) == {}
+
 
 class TestClassAids:
     def test_every_mapped_class_is_a_real_class_raised_by_a_real_aid(self):
@@ -2242,7 +2446,43 @@ class TestRecheckPayloadAndText:
     def test_text_says_nothing_about_refreshing_when_every_aid_was(self):
         assert "not refreshed" not in _recheck.format_recheck("b.json", self._groups(), (3, 1))
 
+    def test_payload_carries_each_raised_aids_reason_beside_the_list(self):
+        """#893: `not_refreshed` stays a list of names -- agenda-reviser
+        branches on membership -- and the reasons ride in a parallel key."""
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"),
+            "b.json",
+            self._groups(),
+            (3, 1),
+            ["verbatim", "support"],
+            {"verbatim": "OSError: gone"},
+        )
+        assert payload["not_refreshed"] == ["verbatim", "support"]
+        assert payload["refresh_errors"] == {"verbatim": "OSError: gone"}
 
+    def test_payload_has_an_empty_error_map_when_nothing_raised(self):
+        payload = _recheck.recheck_payload(
+            Path("content/drafts/t/s.md"), "b.json", self._groups(), (3, 1), []
+        )
+        assert payload["refresh_errors"] == {}
+
+    def test_text_names_a_raised_aids_reason(self):
+        text = _recheck.format_recheck(
+            "b.json", self._groups(), (3, 1), ["verbatim", "support"], {"verbatim": "OSError: gone"}
+        )
+        assert "not refreshed: verbatim (raised: OSError: gone), support --" in text
+
+
+@pytest.fixture
+def refreshable(ledger_con):
+    """A synced (if empty) ledger, which `agenda --baseline` now checks
+    for before refreshing anything (#893). Kept apart from `aid_stubs`,
+    which stands in for the aids rather than for this precondition, so
+    `TestBaselineNeedsALedger` can stub the aids with no ledger at all."""
+    return ledger_con
+
+
+@pytest.mark.usefixtures("refreshable")
 class TestBaselineCli:
     def _draft(self, isolated_config, monkeypatch) -> Path:
         draft = content_draft(isolated_config, "drafts/t/survey.md")
@@ -2389,6 +2629,7 @@ class TestBaselineCli:
         assert payload["objective_after"] == 1
 
 
+@pytest.mark.usefixtures("refreshable")
 class TestBaselineCliNotRefreshed:
     """#837: an aid whose refresh failed is named, and its items -- last
     run's, still on disk -- are never counted or compared as current."""
@@ -2520,6 +2761,91 @@ class TestBaselineCliNotRefreshed:
         baseline = self._baseline_file(tmp_path, {"aid": "agenda", "items": []})
         assert agenda.main([str(draft), "--baseline", str(baseline)]) == 0
         assert "not refreshed: verbatim" in capsys.readouterr().out
+
+    def test_an_aid_that_raises_is_recorded_and_the_recheck_completes(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """#893: before, the exception escaped `refresh_aids` and no
+        agenda was filed at all."""
+        draft = self._draft(isolated_config, monkeypatch)
+        self._old_sidecar(draft, "verbatim", self._short_run())
+        aid_stubs["verbatim"].raises = RuntimeError("scan blew up")
+        baseline = self._baseline_file(tmp_path, {"aid": "agenda", "items": []})
+        payload = self._recheck(draft, baseline, capsys)
+
+        assert payload["not_refreshed"] == ["verbatim"]
+        assert payload["refresh_errors"] == {"verbatim": "RuntimeError: scan blew up"}
+        assert payload["objective_after"] == 0
+        assert payload["new"] == []
+        filed = json.loads(review.report_path(draft, "agenda", "json").read_text())
+        assert filed["sources"]["aids"]["verbatim"]["refresh_error"] == (
+            "RuntimeError: scan blew up"
+        )
+        assert filed["objective_class_count"] == 0
+        rendered = review.report_path(draft, "agenda", "md").read_text()
+        assert "raised: RuntimeError: scan blew up" in rendered
+
+
+class TestBaselineNeedsALedger:
+    """#893: with no ledger, or one needing a sync, `--baseline` refuses
+    once, up front, with the sync instruction -- instead of every aid
+    that reads the ledger raising it in turn, and before anything is
+    refreshed, accepted or filed."""
+
+    def _draft(self, isolated_config, monkeypatch) -> Path:
+        draft = content_draft(isolated_config, "drafts/t/survey.md")
+        draft.write_text("# Survey\n\nSome prose here.\n")
+        monkeypatch.setattr(
+            agenda._sources.style_check,
+            "check",
+            lambda d, override=None, propose=True: {"findings": [], "vale_error": None},
+        )
+        return draft
+
+    def _baseline(self, tmp_path) -> Path:
+        path = tmp_path / "baseline.agenda.json"
+        path.write_text(json.dumps({"aid": "agenda", "items": []}))
+        return path
+
+    def _stale_ledger(self) -> None:
+        # A file with `user_version` 0 is behind every migration, which
+        # `read_connection` refuses as `StaleLedger`.
+        config.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+        sqlite3.connect(config.LEDGER_PATH).close()
+
+    @pytest.mark.parametrize("stale", [False, True], ids=["no-ledger", "stale-ledger"])
+    def test_refuses_once_with_the_sync_instruction_and_touches_nothing(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, stale
+    ):
+        draft = self._draft(isolated_config, monkeypatch)
+        if stale:
+            self._stale_ledger()
+        argv = [str(draft), "--baseline", str(self._baseline(tmp_path))]
+        assert agenda.main([*argv, "--accept", "deadbeef0000"]) == 1
+        err = capsys.readouterr().err
+        assert err.count("python -m chitragupta.corpus sync") == 1
+        assert err.startswith("[error] ")
+        assert all(stub.calls == [] for stub in aid_stubs.values())
+        assert not review.report_path(draft, "agenda", "json").exists()
+        assert _accept.load(draft).records == []
+
+    def test_a_bad_baseline_is_still_reported_first(
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+    ):
+        """A usage error costs nothing to report and is the caller's to
+        fix first, so it keeps exit 2 even with no ledger."""
+        draft = self._draft(isolated_config, monkeypatch)
+        assert agenda.main([str(draft), "--baseline", str(tmp_path / "nope.json")]) == 2
+        assert "sync" not in capsys.readouterr().err
+
+    def test_the_bare_mode_still_runs_without_a_ledger(
+        self, isolated_config, monkeypatch, capsys, aid_stubs
+    ):
+        """It runs no aid, and degrades a missing corpus to a header note
+        -- refusing there would be a regression."""
+        draft = self._draft(isolated_config, monkeypatch)
+        assert agenda.main([str(draft)]) == 0
+        assert review.report_path(draft, "agenda", "json").is_file()
 
 
 # --------------------------------------------------------------------------
@@ -3039,7 +3365,7 @@ class TestAcceptedAgendaEndToEnd:
         assert agenda.build_agenda(draft).objective_class_count == before
 
     def test_baseline_reports_an_accepted_item_as_accepted_not_resolved(
-        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, refreshable
     ):
         """The failure this guards is silent: suppression removes the
         item from the new list, so a set difference would call a finding
@@ -3067,7 +3393,7 @@ class TestAcceptedAgendaEndToEnd:
         assert [row["id"] for row in payload["accepted"]] == [item_id]
 
     def test_accepting_under_baseline_records_the_id_the_caller_could_see(
-        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs
+        self, isolated_config, monkeypatch, capsys, tmp_path, aid_stubs, refreshable
     ):
         """`--accept` resolves before the refresh, so an id copied off the
         report in front of the caller is always resolvable. If the refresh
@@ -3086,7 +3412,7 @@ class TestAcceptedAgendaEndToEnd:
                     "uncited",
                     {"findings": [{"id": "u1", "line": 3, "sentence": "A quite different claim."}]},
                 )
-                and dict.fromkeys(_sources.AID_NAMES, True)
+                and (dict.fromkeys(_sources.AID_NAMES, True), {})
             ),
         )
         baseline = tmp_path / "baseline.agenda.json"
