@@ -71,8 +71,13 @@ PRs), then #854, #853, #851, #849, #850 and #852.
   so they are left alone. Each retrieval cache binds its old private names
   (`_load_cache`, `_save_cache`, `_forget_cache`) to the shared object's
   methods, so `dossier/_drift.py` and the tests keep calling them.
-- **#852, style rules.** A tuple registry in `style_rules.py`, using the
-  `repair` field #836 already added.
+- **#852, style rules.** A tuple registry, `style_rules.PYTHON_CHECKS`,
+  using the `repair` field #836 already added. A test fails on any
+  `style_*.py` that defines `findings` and is missing from the tuple. That
+  is a stronger guard than the issue's proposed "every check is exercised
+  by a fixture draft", because it catches exactly the forgotten rule.
+  `style_check.py` drops from 274 to 261 code lines; it stays on the
+  register.
 - **#853, enrich seams.** The reranker loader moves down into a public
   corpus-layer `chitragupta/reranker.py`, imported by both `discover` and
   `enrich`. `references.entries()` and `MissingCitekey` move down into

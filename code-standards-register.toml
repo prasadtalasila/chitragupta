@@ -54,7 +54,7 @@ code_lines = 288
 
 [[c2]]
 name = "chitragupta/style_check.py"
-code_lines = 274
+code_lines = 261
 
 [[c2]]
 name = "chitragupta/review/verbatim_check/__init__.py"
