@@ -88,6 +88,10 @@ def checked(draft: Path) -> list[quotation.Checked]:
     return quotation.build_report(draft).checked
 
 
+def universe_of(draft: Path) -> str:
+    return quotation.build_report(draft).universe
+
+
 def verdict_of(draft: Path) -> str:
     return checked(draft)[0].verdict
 
@@ -114,6 +118,7 @@ class TestTheUniverse:
         draft = a_draft()
         a_dossier(draft, "# Kept evidence\n\n## `%s`\n\nSome prose.\n" % KEY)
         assert checked(draft) == []
+        assert universe_of(draft) == "no-quotes"
         assert quotation.main([str(draft)]) == 0
 
     def test_a_legacy_support_block_is_not_a_quote(self, isolated_config):
@@ -136,6 +141,7 @@ class TestTheUniverse:
         draft.parent.mkdir(parents=True, exist_ok=True)
         draft.write_text(f"Layered twins are the norm [@{KEY}].\n", encoding="utf-8")
         assert checked(draft) == []
+        assert universe_of(draft) == "no-dossier"
         assert quotation.main([str(draft)]) == 0
 
     def test_a_quote_for_a_commented_out_tex_citation_is_not_checked(self, isolated_config):
@@ -152,6 +158,30 @@ class TestTheUniverse:
         a_dossier(draft, block(KEY, SPAN))
         a_source(KEY, (4, f"It has {SPAN} in it."))
         assert checked(draft) == []
+        assert universe_of(draft) == "no-quotes"
+
+    def test_the_three_universes_are_the_published_vocabulary(self):
+        assert quotation.UNIVERSES == ("no-dossier", "no-quotes", "checked")
+
+    def test_a_draft_with_no_dossier_directory_is_no_dossier(self, isolated_config):
+        """#838: under content/drafts/, so `dossier_dir` names a
+        directory without raising -- but nothing was ever written there.
+        Reporting `no-quotes` would claim a dossier exists."""
+        draft = a_draft()
+        assert not dossier.dossier_dir(draft).exists()
+        assert universe_of(draft) == "no-dossier"
+        assert checked(draft) == []
+
+    def test_a_dossier_without_evidence_md_is_no_quotes(self, isolated_config):
+        draft = a_draft()
+        dossier.dossier_dir(draft).mkdir(parents=True)
+        assert universe_of(draft) == "no-quotes"
+
+    def test_a_checked_run_is_checked(self, isolated_config):
+        draft = a_draft()
+        a_dossier(draft, block(KEY, SPAN))
+        a_source(KEY, (7, f"ISO 23247 defines {SPAN}."))
+        assert universe_of(draft) == "checked"
 
 
 class TestFoundAndAbsent:
