@@ -120,18 +120,23 @@ def discover_project_root(
     return None
 
 
+# #891 gap 1: refuses before anything below if this module's own location
+# sits inside a root `chitragupta/init.py`'s SCAFFOLD_MARKER names as
+# scaffolded -- the planted-package shape. Checked against this module's
+# own `__file__` alone, deliberately before PROJECT_ROOT is discovered
+# below: that discovery follows CHITRAGUPTA_PROJECT, which answers "where
+# does the user's data live" and must not also decide which `chitragupta`
+# is trusted (see chitragupta/scaffold_guard.py's own docstring). Split
+# out rather than inlined, like config_load/config_path/config_enrich
+# below -- see that module's docstring for why it cannot import this one
+# back.
+scaffold_guard.refuse_if_shadowed(Path(__file__))
+
 # Falls back to the directory above the package when no project was
 # found, so the error below names the path a checkout would have used --
 # `cp config.toml.example config.toml` is only actionable if the message
 # points somewhere the reader recognises.
 PROJECT_ROOT = discover_project_root() or PACKAGE_ROOT.parent
-# #891 gap 1: refuses before the config load below if this module's own
-# location is the planted-package shape `chitragupta/init.py`'s
-# SCAFFOLD_MARKER exists to catch. Split out rather than inlined, like
-# config_load/config_path/config_enrich above -- see that module's
-# docstring for why it cannot import this one back.
-scaffold_guard.refuse_if_shadowed(Path(__file__), PROJECT_ROOT)
-
 CONFIG_PATH = Path(os.environ.get("CONFIG_PATH", str(PROJECT_ROOT / PROJECT_MARKER)))
 # Called here, on every import of this module, rather than at
 # config_load's own import: `importlib.reload(config)` has to re-read the

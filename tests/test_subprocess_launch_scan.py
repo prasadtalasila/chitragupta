@@ -89,6 +89,12 @@ EXEMPT = {
         "which specifically needs run_python's always-appended PYTHONPATH "
         "absent to simulate that state."
     ),
+    "test_scaffold_guard.py::_run_corpus_ledger": (
+        "Deliberately probes a planted copy of the package shadowing cwd "
+        "(#891 gap 1's TestWiredIntoConfig); run_python would put this "
+        "checkout on PYTHONPATH and the child would import the real, "
+        "un-shadowed chitragupta instead of the planted one under test."
+    ),
 }
 
 _LAUNCHERS = {"run", "Popen", "call", "check_call", "check_output"}

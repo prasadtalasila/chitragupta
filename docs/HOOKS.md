@@ -427,25 +427,45 @@ verb -- refuses at import time, the same fail-closed shape a hook's
 protected child already gets, if its own location resolves *inside* a
 root that marker names. `chitragupta init` covers the other end, as
 before: it refuses to scaffold into a directory already holding
-`chitragupta/` or `chitragupta.py`, with or without `--force`.
+`chitragupta/` or `chitragupta.py`, with or without `--force`. The check
+is keyed to the *module's own location*, walked up from `__file__` --
+never to `config.PROJECT_ROOT` or `CHITRAGUPTA_PROJECT`, which answer
+"where does the user's data live" and must not also decide which
+`chitragupta` is trusted, since a `CHITRAGUPTA_PROJECT` override pointed
+elsewhere would otherwise have blinded the check to a package physically
+shadowing cwd (raised in review).
+
+**Protects a newly- or re-scaffolded project.** `chitragupta init`
+writes the marker unconditionally if it is missing, with no `--force`
+needed, so a project scaffolded by an older `chitragupta-cli` picks up
+the protection the moment `chitragupta init` is re-run against it --
+every other file's "exists, unchanged" path is untouched by that rerun.
+A project nobody ever re-initialises after upgrading stays unmarked, and
+the guard stays silent for it, the same as for a checkout.
 
 **Sized for the shape issue 891 names, not for an adversary who targets
 this exact check.** The guard runs from *inside* the `chitragupta` that
 was already selected and partly executed -- it cannot run before Python
 has picked one. Against "a `chitragupta/` or `chitragupta.py` someone
 committed to a shared project" (891's own words: a stale or cloned
-duplicate, not purpose-built to evade detection), that is exact: no
-false positive on a checkout or a properly installed scaffold, and a
-refusal on the planted copy. Against a package deliberately written to
-omit the check -- whose `config.py` never calls `refuse_if_shadowed`, or
-whose payload sits in `__init__.py` before `config.py` is even reached --
-no self-check from inside the package can close it; that would need a
-trusted bootstrap outside the package entirely (a `sitecustomize.py` the
+duplicate, not purpose-built to evade detection), that is exact for the
+*directory* shape -- no false positive on a checkout or a properly
+installed scaffold, and a refusal on the planted copy. It is not exact
+for the *single-file* shape: a lone top-level `chitragupta.py` has no
+`__path__`, so it can never have a `chitragupta.config` submodule for
+this check to live in -- `-m chitragupta.draft` imports that file (its
+own top-level code already runs) and only then fails resolving
+`chitragupta.draft`, with `chitragupta/config.py` never reached at all.
+Against a package deliberately written to omit the check -- whose
+`config.py` never calls `refuse_if_shadowed`, or whose payload sits in
+`__init__.py` before `config.py` is even reached -- no self-check from
+inside the package can close it either; that would need a trusted
+bootstrap outside the package entirely (a `sitecustomize.py` the
 distribution ships, run by Python's own site initialisation before `-m`
 resolves its target), global to every Python invocation in the venv, not
 only `chitragupta`'s -- a materially larger mechanism than this issue's
 surgical scope calls for. `chitragupta/scaffold_guard.py`'s own
-docstring carries the same reasoning.
+docstring carries the same reasoning, including this residue.
 
 **What else still cannot close**, recorded so nobody assumes it does: an
 interpreter that finds no installed `chitragupta` at all -- the

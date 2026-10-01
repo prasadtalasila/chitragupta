@@ -9,14 +9,13 @@ to live beside that call rather than inside it.
 **The gap this closes (#891 gap 1, following #822).** A hook's own
 children are already protected: `.claude/hooks/safe_path.py` sets
 `PYTHONSAFEPATH=1` on a child whose interpreter resolves `chitragupta` to
-somewhere outside the project root, so a `chitragupta/` or
-`chitragupta.py` planted in a `chitragupta init`-scaffolded project can
-never shadow the install there. But the genre skills and the drafting
-`AGENTS.md` run `python -m chitragupta.draft gate`, `python -m
-chitragupta.corpus sync`, etc. directly from the project root, with no
-hook and no `safe_path.py` in between -- `-m` puts cwd first on
-`sys.path` regardless, so a planted package shadows the install the
-moment one of those commands runs.
+somewhere outside the project root, so a `chitragupta/` planted in a
+`chitragupta init`-scaffolded project can never shadow the install there.
+But the genre skills and the drafting `AGENTS.md` run `python -m
+chitragupta.draft gate`, `python -m chitragupta.corpus sync`, etc.
+directly from the project root, with no hook and no `safe_path.py` in
+between -- `-m` puts cwd first on `sys.path` regardless, so a planted
+package shadows the install the moment one of those commands runs.
 
 **How this is told apart from the many legitimate shapes.** Not by
 whether `<root>/chitragupta/` exists -- in the case that matters, that
@@ -32,6 +31,25 @@ checkout never carries the marker (`cp config.toml.example config.toml`
 does not write it), so this adds no false positive there, and a project
 that was scaffolded and then properly `pip install`-ed resolves outside
 the root regardless of the marker, so it is silent there too.
+
+**Walks up from `package_file`'s own location, never from `PROJECT_ROOT`
+or `CHITRAGUPTA_PROJECT`.** An earlier version of this check took
+`config.PROJECT_ROOT` and asked whether `package_file` resolved inside
+*that* -- which answers "where does the user's data live", not "where
+does the code I am actually running live", and `CHITRAGUPTA_PROJECT`
+(`config.discover_project_root`'s first, overriding source) can point
+those two questions at different directories entirely: running from a
+marked, shadowed root with `CHITRAGUPTA_PROJECT` pointed elsewhere would
+have checked the override's root for the marker and found nothing,
+silently running the planted copy anyway (raised in review). Deriving
+the relevant root from `package_file` itself removes the dependency on
+`PROJECT_ROOT` altogether: the nearest ancestor of `package_file` that
+carries `SCAFFOLD_MARKER`, if any, is definitive on its own -- the walk
+started at `package_file`, so it is inside whatever ancestor carries the
+marker, independent of what the user configured as their data root. A
+real install resolves somewhere under `site-packages`, whose ancestors
+`chitragupta init` never writes the marker into, so this adds no false
+positive there either.
 
 **What this still cannot close, and why.** This check runs *from inside*
 the very `chitragupta` that was imported -- it is reached only once
@@ -49,14 +67,30 @@ target -- which is a materially larger, more invasive mechanism (global
 to every Python invocation in the venv, not only `chitragupta`'s) than
 this issue's surgical scope calls for, and is not implemented here.
 
-What this *does* catch, and is sized for: the shape issue 891 actually
-names -- "a `chitragupta/` or `chitragupta.py` someone committed to a
-shared project", a passive duplicate (stale, cloned, or accidentally
-co-located) that is not specifically hostile to this detector. For that
-shape, and for the shape #822 already closes (a hook's own children),
-this guard is exact: no false positive on a checkout or a properly
-installed scaffold, and a refusal on every planted copy that is not
-purpose-built to evade it.
+**A single top-level `chitragupta.py` is one shape of that same
+limitation, not a separate bug.** `-m chitragupta.draft` imports
+`chitragupta` first either way, but a plain module (no `__path__`) can
+never have a `chitragupta.config` submodule to reach -- Python fails
+resolving `chitragupta.draft` right after, with the planted file's own
+top-level code already having run. No check placed inside
+`chitragupta/config.py` can be reached through a shape that has no
+`chitragupta/config.py` in it at all; this is the same "a self-check
+cannot run before the code hosting it does" limit above, concretely.
+What this guard closes is the `chitragupta/` *directory* shape -- the
+one a shared or cloned project directory actually produces, and the one
+#891 names first. `chitragupta/init.py`'s `ScaffoldTargetUnsafe` still
+refuses to scaffold *over* either shape at `init` time, single file or
+directory alike; that half is unchanged.
+
+**Protects a newly- or freshly-re-scaffolded project; an existing one
+needs one `chitragupta init` re-run to pick it up.** `scaffold()` writes
+`SCAFFOLD_MARKER` unconditionally if it is missing, with no `--force`
+needed (`_write_marker` in `chitragupta/init.py`), so re-running
+`chitragupta init` on a project scaffolded by an older `chitragupta-cli`
+adds only the marker -- every other file's "exists, unchanged" path is
+untouched. A project that is never re-initialised after upgrading stays
+unmarked, and this guard stays silent for it, same as it does for a
+checkout.
 
 A second, narrower residue, the same one `safe_path.py` documents: an
 interpreter that finds no installed `chitragupta` at all sees nothing
@@ -83,29 +117,40 @@ from pathlib import Path
 SCAFFOLD_MARKER = ".chitragupta-scaffold"
 
 
-def shadowed(package_file: Path, project_root: Path) -> bool:
-    """Is `package_file` the planted copy inside a scaffolded `project_root`?
+def scaffolded_ancestor(package_file: Path) -> "Path | None":
+    """The nearest ancestor of `package_file` that `init` marked as
+    scaffolded, or `None` if there is none.
 
-    True only when `project_root` carries `SCAFFOLD_MARKER` *and*
-    `package_file` resolves to somewhere inside it -- see the module
-    docstring for why each half is necessary.
+    Walked from `package_file`'s own directory, deliberately never from
+    `config.PROJECT_ROOT` or `CHITRAGUPTA_PROJECT` -- see the module
+    docstring for why mixing in the user's configured data root would
+    have let that override blind this check to a package actually
+    shadowing cwd.
     """
-    if not (project_root / SCAFFOLD_MARKER).is_file():
-        return False
-    return package_file.resolve().is_relative_to(project_root.resolve())
+    start = package_file.resolve().parent
+    for candidate in (start, *start.parents):
+        if (candidate / SCAFFOLD_MARKER).is_file():
+            return candidate
+    return None
 
 
-def refuse_if_shadowed(package_file: Path, project_root: Path) -> None:
+def shadowed(package_file: Path) -> bool:
+    """Is `package_file` the planted copy inside some scaffolded project?"""
+    return scaffolded_ancestor(package_file) is not None
+
+
+def refuse_if_shadowed(package_file: Path) -> None:
     """Fail closed, the way a hook's protected child already does,
     instead of silently running the planted copy `shadowed` found."""
-    if not shadowed(package_file, project_root):
+    root = scaffolded_ancestor(package_file)
+    if root is None:
         return
     print(
         f"[fatal] {package_file.resolve()} is running from inside a project "
-        f"`chitragupta init` marked as scaffolded ({project_root}) -- this is a "
-        "planted chitragupta/ or chitragupta.py, not the installed package "
-        "(#822, #891). Remove it, or reinstall chitragupta-cli and activate "
-        "that virtualenv.",
+        f"`chitragupta init` marked as scaffolded ({root}) -- this is a "
+        "planted chitragupta/, not the installed package (#822, #891). "
+        "Remove it, or reinstall chitragupta-cli and activate that "
+        "virtualenv.",
         file=sys.stderr,
     )
     raise SystemExit(1)
