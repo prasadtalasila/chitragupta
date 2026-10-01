@@ -1,6 +1,10 @@
 # Design and refactoring debt (epic #817)
 
-Status: **building.** Written 2026-09-30.
+Status: **done.** Written 2026-09-30. Closed by PRs #907 and #908
+(issue #848), PR #909 (#854), PR #910 (#853), PR #911 (#851), PR #912
+(#849), PR #913 (#850) and PR #914 (#852), released as 6.126.2 through
+6.126.10. 6.126.7 went to #906, which is not part of this epic. What
+changed on the way is recorded per sub-issue below.
 
 **Written for** whoever picks up a sub-issue of #817 part-way through, or
 reviews one of its PRs and wants to know which choices were decisions.
