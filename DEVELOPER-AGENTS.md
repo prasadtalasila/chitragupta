@@ -865,11 +865,12 @@ What *does* cover Markdown, so "OCR came back clean" is never read as
 "the standing instructions were reviewed": markdownlint, at the globs
 `ci.yml`'s lint job and `scripts/check_local.sh` run it with (see
 ["The linters, which are enforced"](#-the-linters-which-are-enforced)), for
-style and structure; `tests/test_technical_debt_scan.py`, the doc-drift
-test, for the one class of factual claim that has a machine-readable
-source of truth to check against; and a human reading the diff for
-everything else -- content, argument, whether a stale sentence is still
-true -- which is the one check with no detector and stays that way.
+style and structure; `tests/test_technical_debt_scan.py` and
+`tests/test_docs_pins.py`, the doc-drift tests, for the factual claims
+that have a machine-readable source of truth to check against; and a
+human reading the diff for everything else -- content, argument,
+whether a stale sentence is still true -- which is the one check with no
+detector and stays that way.
 
 Two traps, both of which have already caught someone:
 

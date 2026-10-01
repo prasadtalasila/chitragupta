@@ -99,7 +99,7 @@ class TestConfinedPath:
         link = root / "inside.txt"
         try:
             link.symlink_to(outside)
-        except OSError:  # pragma: no cover  # Windows without developer mode
+        except OSError:  # Windows without developer mode
             pytest.skip("this host cannot create a symlink")
         assert config.confined_path(link, root) is None
 

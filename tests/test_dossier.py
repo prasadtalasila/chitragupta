@@ -7,8 +7,8 @@ save:
 - the mirroring rule (`content/drafts/x/y.md` <-> `content/dossiers/x/y/`),
   since nothing else ties a draft to its dossier;
 - outline extraction, since a wrong line range hands a reviser a slice
-  that cuts a section in half -- and the shipped example tutorial is
-  mostly fenced code full of `#` comments;
+  that cuts a section in half -- and a tutorial is mostly fenced code,
+  whose `#` comments read as headings to anything that ignores fences;
 - restore, the one destructive operation, which must refuse an unsafe
   archive outright and must not write at all without --force.
 """
@@ -200,19 +200,27 @@ class TestSections:
     def test_a_draft_with_no_headings_yields_nothing(self):
         assert dossier.sections("just prose\nover two lines\n") == []
 
-    def test_the_shipped_example_tutorial_outlines_cleanly(self):
-        """Regression guard against the fence bug on real content: the
-        example tutorial is mostly shell and Python whose comments start
-        with `#`."""
-        example = (
-            config.PROJECT_ROOT / "content/drafts/digital-twins-for-software-engineers/tutorial.md"
-        )
-        if not example.is_file():  # pragma: no cover - example content is optional
-            pytest.skip("example content not present in this checkout")
-        titles = [s.title for s in dossier.sections(example.read_text())]
-        assert titles[0] == "Build a Digital Twin for a Potted Plant"
-        assert "Step 1: Create the project folder" in titles
-        assert not any(t.startswith("!") or t.startswith("/") for t in titles)
+    def test_a_fence_heavy_tutorial_outlines_cleanly(self):
+        """Regression guard against the fence bug on real-shaped content:
+        the shipped sample tutorial, frozen, with a `#` line (a shebang, a
+        `# Step N` comment) added at the top of each of its twelve fenced
+        blocks. The sample itself has none, so pointing at it guarded
+        nothing; a copy also means revising the sample cannot redden this
+        test for a content reason (#868)."""
+        fixture = Path(__file__).parent / "fixtures" / "dossier" / "fence-heavy-tutorial.md"
+        titles = [s.title for s in dossier.sections(fixture.read_text(encoding="utf-8"))]
+        assert titles == [
+            "Build a Digital Twin for a Potted Plant",
+            "Step 1: Create the project folder",
+            "Step 2: Simulate the pot",
+            "Step 3: Write the digital twin",
+            "Step 4: Close the loop",
+            "Step 5: Run it",
+            "Step 6: Change the twin's behavior without touching the pot",
+            "What you built",
+            "Where to go next",
+            "References",
+        ]
 
 
 class TestInit:

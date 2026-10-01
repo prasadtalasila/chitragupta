@@ -2201,7 +2201,7 @@ class TestFindingLocators:
         neither of which the printed form uses."""
         draft = self._planted(ledger_con, tmp_path)
 
-        def unexpected(*a, **k):  # pragma: no cover - the point is it is never called
+        def unexpected(*a, **k):  # never called: that is the point
             raise AssertionError("the text path built a payload")
 
         monkeypatch.setattr(vc._scan_cmd, "scan_payload", unexpected)

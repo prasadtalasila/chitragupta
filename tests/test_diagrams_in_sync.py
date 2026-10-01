@@ -38,26 +38,29 @@ DIAGRAMS_MD = REPO_ROOT / "docs" / "DIAGRAMS.md"
 DIAGRAMS_DIR = REPO_ROOT / "docs" / "diagrams"
 DIAGRAMS_TEXT = DIAGRAMS_MD.read_text(encoding="utf-8")
 
-# The order the fenced blocks appear in, mapped to the export names
-# docs/DIAGRAMS.md's own "Editing these" table gives. Order is what ties a
-# block to a file, so a diagram inserted in the middle without updating
-# this list fails the count check below rather than silently comparing
-# every later diagram against the wrong export.
-NAMES = [
-    "v1-overview",
-    "v2-first-run",
-    "00-main-workflow",
-    "v3-artifacts",
-    "v4-gates-and-failure",
-    "v5-parallelism",
-    "g1-corpus-led",
-    "g2-teaching",
-    "g3-thesis",
-    "extra-sequence",
-    "extra-ledger-state",
-    "t1-discovery-ladder",
-    "t2-topic-graphs",
-]
+_EDITING_HEADING = "## ✏ Editing these"
+_NAME_ROW = re.compile(r"^\| [^|]+ \| `([\w-]+)` \|$", re.MULTILINE)
+
+
+def _export_names(text: str) -> list[str]:
+    """The `<name>` column of DIAGRAMS.md's "Editing these" table, in
+    order. That table is the one hand-kept list of diagrams (#866), and
+    its order is what ties fenced block i to export i -- so a diagram
+    inserted in the middle without its row fails the agreement check
+    below rather than silently comparing every later block against the
+    wrong export. Refuses to return an empty list: an empty NAMES would
+    make every parametrised test below vanish while the run stayed
+    green."""
+    _, found, tail = text.partition(_EDITING_HEADING)
+    names = _NAME_ROW.findall(tail) if found else []
+    assert names, (
+        f"docs/DIAGRAMS.md no longer has a {_EDITING_HEADING!r} table this test can "
+        "read. Rewording it is fine; teach _NAME_ROW the new shape in the same change."
+    )
+    return names
+
+
+NAMES = _export_names(DIAGRAMS_TEXT)
 
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
 BLOCKS = re.findall(r"```mermaid\n(.*?)```", DIAGRAMS_TEXT, re.DOTALL)
@@ -73,12 +76,30 @@ class TestTheScanIsNotVacuous:
     def test_there_are_diagrams_to_check(self):
         assert len(BLOCKS) >= 10
 
-    def test_the_block_count_matches_the_export_list(self):
-        assert len(BLOCKS) == len(NAMES), (
-            f"docs/DIAGRAMS.md has {len(BLOCKS)} fenced blocks but this test knows "
-            f"{len(NAMES)} export names. A diagram was added or removed: update NAMES "
-            "here and docs/DIAGRAMS.md's own 'Editing these' table together."
+    def test_the_table_the_exports_and_the_blocks_agree(self):
+        on_disk = sorted(p.stem for p in DIAGRAMS_DIR.glob("*.mmd"))
+        assert sorted(NAMES) == on_disk, (
+            "docs/DIAGRAMS.md's 'Editing these' table and docs/diagrams/*.mmd disagree. "
+            f"Only in the table: {sorted(set(NAMES) - set(on_disk))}; "
+            f"only on disk: {sorted(set(on_disk) - set(NAMES))}."
         )
+        assert len(BLOCKS) == len(NAMES), (
+            f"docs/DIAGRAMS.md has {len(BLOCKS)} fenced blocks but its 'Editing these' "
+            f"table lists {len(NAMES)}. Add or remove the row with the diagram."
+        )
+
+
+class TestTheNameListReadsTheTable:
+    def test_a_reworded_table_fails_loudly(self):
+        with pytest.raises(AssertionError, match="no longer has"):
+            _export_names("# Diagrams\n\nno table here\n")
+
+    def test_it_reads_names_in_order_and_skips_the_header(self):
+        text = (
+            f"{_EDITING_HEADING}\n\n| Diagram | `<name>` |\n| --- | --- |\n"
+            "| B | `b-two` |\n| A | `a-one` |\n"
+        )
+        assert _export_names(text) == ["b-two", "a-one"]
 
 
 class TestEachSvgWasRenderedFromItsCurrentSource:

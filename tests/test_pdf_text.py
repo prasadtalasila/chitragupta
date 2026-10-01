@@ -1806,7 +1806,7 @@ class TestProcessPoolContext:
         everything themselves."""
 
         class FakeContext:
-            def set_forkserver_preload(self, names):  # pragma: no cover
+            def set_forkserver_preload(self, names):
                 raise AssertionError("spawn has no forkserver to preload")
 
         monkeypatch.setattr(pdf_text._pool, "start_method", lambda: ("spawn", "  NOTE why"))

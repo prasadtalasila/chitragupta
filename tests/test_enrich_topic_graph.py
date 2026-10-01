@@ -277,7 +277,7 @@ class TestBuild:
 
 
 class FakeModel:
-    def encode(self, texts, show_progress_bar=False):  # pragma: no cover - unused
+    def encode(self, texts, show_progress_bar=False):  # never called
         raise AssertionError("the graph stage embeds nothing new")
 
 

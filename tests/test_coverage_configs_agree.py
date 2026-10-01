@@ -99,3 +99,36 @@ class TestTheProseStatesTheRealFloor:
     def test_a_reworded_sentence_fails_loudly(self):
         with pytest.raises(AssertionError, match="no longer states the coverage floor"):
             _stated_floors("Both legs are measured against one number.")
+
+
+# Coverage's own default exclusion pattern, so every spelling it would
+# have honoured is caught; built from two pieces so this file does not
+# match itself.
+_BARE_PRAGMA = re.compile(r"#\s*pragma[:\s]?\s*no\s*" + r"cover(?!-windows)", re.IGNORECASE)
+_SCANNED = ("chitragupta", "scripts", ".claude/hooks", "tests", "bench")
+
+
+def test_no_bare_no_cover_pragma_is_left_in_the_tree():
+    """Both configs set `exclude_lines`, which *replaces* coverage's
+    default list, so a bare no-cover pragma is honoured on neither leg
+    (#868): it reads as an exclusion and is not one. Under `tests/` and
+    `bench/` it is inert twice over, since neither is measured."""
+    found = [
+        f"{path.relative_to(REPO_ROOT)}:{n}"
+        for root in _SCANNED
+        for path in sorted((REPO_ROOT / root).rglob("*.py"))
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
+        if _BARE_PRAGMA.search(line)
+    ]
+    assert not found, "inert coverage pragma(s):\n  " + "\n  ".join(found)
+
+
+@pytest.mark.parametrize(
+    "comment", ["# pragma: no ", "#pragma:no ", "# pragma: no  ", "# PRAGMA: NO "]
+)
+def test_the_bare_pragma_pattern_sees_every_spelling_coverage_did(comment):
+    assert _BARE_PRAGMA.search(f"x  {comment}" + "cover - why")
+
+
+def test_the_bare_pragma_pattern_spares_the_windows_marker():
+    assert not _BARE_PRAGMA.search("x  # pragma: no " + "cover-windows")

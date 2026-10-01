@@ -1808,11 +1808,13 @@ class TestStallWatchdog:
         assert any("WARNING" in r.getMessage() for r in caplog.records)
 
     def test_progress_resets_the_clock(self, many_corpus, monkeypatch, capsys):
-        """A slow-but-moving run must never be killed: the timeout is
-        between completions, not for the run as a whole."""
+        """A slow-but-moving run completes end to end through the real
+        pool. The between-completions reset itself is pinned without a
+        clock by TestTheWatchdogClock; this is the smoke check that the
+        real `wait` and real threads agree with it, at a 15x margin."""
         import time
 
-        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.5)
+        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 3.0)
 
         def slow_but_steady(job):
             time.sleep(0.2)
@@ -1939,11 +1941,17 @@ class TestStallWatchdog:
         those documents as failed -- writing content/parsed/<citekey>.txt
         for citekeys the ledger says failed."""
         import threading
-        import time
 
         started = []
+        executors = []
         blocked = threading.Event()
         monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.3)
+
+        def factory(workers):
+            executors.append(thread_executor(workers))
+            return executors[-1]
+
+        monkeypatch.setattr(sync_pool, "_executor_for", factory)
 
         def fake(job):
             started.append(job[1])
@@ -1958,11 +1966,16 @@ class TestStallWatchdog:
             # stall was reported -- exactly the citekeys the cancel must
             # have dropped, whatever the worker count turns out to be.
             at_stall = list(started)
-            # Give a still-queued (uncancelled) job a chance to start.
-            time.sleep(0.5)
         finally:
             blocked.set()
-            time.sleep(0.2)
+            # Joins every worker thread, so a job left queued rather than
+            # cancelled has run by the time this returns. Deterministic
+            # where a sleep was a race the test could lose by passing.
+            # Every executor actually built, so a sync.run() that raised
+            # before building one keeps its own exception.
+            for executor in executors:
+                executor.shutdown(wait=True)
+        assert not any(t.is_alive() for ex in executors for t in ex._threads)
 
         assert len(at_stall) < 6, "nothing was left queued when the run gave up -- test is vacuous"
         assert started == at_stall, (
@@ -2317,24 +2330,75 @@ class TestStallWarning:
         # for why this checks the raw message, not caplog.text.
         assert any("WARNING" in r.getMessage() for r in caplog.records)
 
-    def test_a_run_that_finishes_between_warning_and_kill_is_not_killed(
-        self, many_corpus, monkeypatch, capsys
-    ):
-        """Slow but moving must survive: the warning is a warning."""
-        import time
-
-        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 0.6)
-
-        def slow(job):
-            time.sleep(0.4)
-            return fake_extract_one_factory()(job)
-
-        monkeypatch.setattr(pdf_text, "extract_one", slow)
-        assert sync.run() == 0
-        assert "6 parsed" in capsys.readouterr().out
-
     def test_no_warning_when_nothing_stalls(self, many_corpus, monkeypatch, capsys):
         monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 30.0)
         monkeypatch.setattr(pdf_text, "extract_one", fake_extract_one_factory())
         sync.run()
         assert "no completions in" not in capsys.readouterr().err.lower()
+
+
+class _ScriptedWait:
+    """Stands in for `concurrent.futures.wait` inside `sync_pool`: each
+    call consumes one entry of `script`, the number of pending futures
+    that complete in that window (0 is a silent window). Deterministic,
+    so the reset logic is tested without a clock."""
+
+    def __init__(self, script):
+        self.script = list(script)
+        self.timeouts = []
+
+    def __call__(self, pending, timeout=None, return_when=None):
+        self.timeouts.append(timeout)
+        ordered = sorted(pending)
+        n = self.script.pop(0)
+        return set(ordered[:n]), set(ordered[n:])
+
+
+class _RecordingExecutor:
+    def __init__(self):
+        self.calls = []
+
+    def shutdown(self, wait=True, *, cancel_futures=False):
+        self.calls.append(("shutdown", cancel_futures))
+
+
+class TestTheWatchdogClock:
+    """The between-completions rule, driven window by window. These
+    replace wall-clock versions that could not hold a 3x margin: a run
+    that finishes between the warning and the kill needs a job longer
+    than half the timeout and shorter than all of it (#868)."""
+
+    @pytest.fixture(autouse=True)
+    def _record_terminate(self, monkeypatch):
+        monkeypatch.setattr(config, "PARSER_STALL_TIMEOUT", 10.0)
+        monkeypatch.setattr(
+            pdf_text, "terminate_workers", lambda ex: ex.calls.append(("terminate",))
+        )
+
+    @staticmethod
+    def _run(monkeypatch, script):
+        wait = _ScriptedWait(script)
+        monkeypatch.setattr(sync_pool, "wait", wait)
+        executor, stalled = _RecordingExecutor(), []
+        landed = list(sync_pool._as_they_land(range(6), executor, stalled))
+        return landed, executor, stalled, wait
+
+    def test_a_completion_after_the_warning_resets_it(self, monkeypatch, caplog):
+        landed, executor, stalled, wait = self._run(monkeypatch, [0, 1, 0, 1, 0, 4])
+        assert sorted(landed) == list(range(6))
+        assert stalled == [] and executor.calls == []
+        assert wait.timeouts == [5.0] * 6
+        assert caplog.text.lower().count("no completions in") == 3
+
+    def test_two_silent_windows_in_a_row_stall_the_pool(self, monkeypatch, caplog):
+        landed, executor, stalled, _ = self._run(monkeypatch, [1, 0, 0])
+        assert landed == [0]
+        assert stalled == [True]
+        assert executor.calls == [("terminate",), ("shutdown", True)]
+        assert "giving up on the 5 still outstanding" in caplog.text
+
+    def test_a_run_that_finishes_between_warning_and_kill_is_not_killed(self, monkeypatch):
+        """Slow but moving must survive: the warning is a warning."""
+        landed, executor, stalled, _ = self._run(monkeypatch, [0, 6])
+        assert sorted(landed) == list(range(6))
+        assert stalled == [] and executor.calls == []
