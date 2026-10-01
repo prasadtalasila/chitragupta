@@ -276,8 +276,16 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
     # Annotated here rather than in extract_one, so the serial path --
     # which runs in the parent and never reaches a pool worker -- is
     # covered by the same code as the parallel one.
+    #
+    # The disable below is for pylint's inference, not a defect. Since
+    # config.PARSER is loaded through _get_choice (#847), pylint (under
+    # Python 3.13, as CI runs it) resolves it to "pdftotext", whose
+    # extractor returns None on purpose -- "this backend resolves no
+    # reading order" -- and the `is not None` below is what reads that.
     with annotated_output(citekey):
+        # pylint: disable=assignment-from-no-return
         records = _EXTRACTORS[config.PARSER](pdf_path, out_path, threads)
+        # pylint: enable=assignment-from-no-return
     # `is not None`, so a backend that resolved reading order and found no
     # prose still writes an (empty) sidecar. That keeps the file's
     # presence a reliable answer to "did a reading-order backend parse
