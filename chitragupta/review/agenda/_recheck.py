@@ -161,9 +161,10 @@ def recheck_payload(
 ) -> dict:
     """The comparison as data -- `verbatim recheck`'s payload shape, key
     for key, plus the `accepted` group, the `not_refreshed` list and the
-    `refresh_errors` map that shape has no counterpart for. Carries the baseline's path too: a
-    verdict whose basis is not recorded beside it is one nobody can
-    check later. The envelope's command is `recheck_command`'s, always."""
+    `refresh_errors` map that shape has no counterpart for. Carries the
+    baseline's path too: a verdict whose basis is not recorded beside it
+    is one nobody can check later. The envelope's command is
+    `recheck_command`'s, always."""
     resolved, persisting, appeared, accepted = groups
     before, after = counts
     command = recheck_command(draft, baseline_path)
