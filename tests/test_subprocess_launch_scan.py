@@ -81,6 +81,14 @@ EXEMPT = {
         "this checkout on its path; run_python would put it there and make "
         "the probe pass for the wrong reason."
     ),
+    "test_session_start_hook.py::run": (
+        "PreflightRepo.run() launches the SessionStart hook script by path "
+        "(not the package itself) with a *python_args splat for interpreter "
+        "flags like -S, and this file's tests manage their own env/PYTHONPATH "
+        "per case -- including #891 gap 2's no-installed-chitragupta test, "
+        "which specifically needs run_python's always-appended PYTHONPATH "
+        "absent to simulate that state."
+    ),
 }
 
 _LAUNCHERS = {"run", "Popen", "call", "check_call", "check_output"}
