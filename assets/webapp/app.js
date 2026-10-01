@@ -394,8 +394,12 @@
     tip.hidden = true;
   }
 
+  /* A membership line carries no payload index -- it is neither family
+     -- so both edge handlers leave it alone rather than look one up
+     (#859): the paper node at its end is what answers a click. */
   cy.on("mouseover", "edge", function (event) {
     var edge = event.target;
+    if (edge.data("family") === "member") { return; }
     if (edge.data("bundled")) {
       showTip(event, edge.data("count") + " links bundled — click to see them");
       return;
@@ -474,6 +478,7 @@
   });
   cy.on("tap", "edge", function (event) {
     var edge = event.target;
+    if (edge.data("family") === "member") { return; }
     if (edge.data("bundled")) {
       showBundle(edge.data("pairs"));
     } else {
