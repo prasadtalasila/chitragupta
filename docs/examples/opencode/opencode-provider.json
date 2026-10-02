@@ -1,0 +1,22 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "local": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "llama.cpp (local)",
+      "options": { "baseURL": "{env:BASE_URL}" },
+      "models": {
+        "qwen3.6-35b-a3b": {
+          "name": "Qwen3.6-35B-A3B Q4_K_M",
+          "tool_call": true,
+          "reasoning": true,
+          "limit": { "context": 131072, "output": 16384 }
+        }
+      }
+    }
+  },
+  "model": "local/qwen3.6-35b-a3b",
+  "small_model": "local/qwen3.6-35b-a3b",
+  "autoupdate": false,
+  "share": "disabled"
+}

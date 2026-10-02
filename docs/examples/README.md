@@ -28,6 +28,15 @@ They are the files *you* fill in, shown filled in, for the five
 start-to-finish tutorials under Writing. Nothing in them was produced by
 a run, and they contain no citekeys.
 
+Two more directories, [`codex/`](codex/README.md) and
+[`opencode/`](opencode/README.md), each hold one survey drafted end to
+end by that harness driving a **local model**, over the same five
+papers. Each is self-contained: the inputs, the prompt, the script
+that ran, and everything the run wrote, unedited. They record what one
+real model did, including where it left the skill's path, so they are
+samples of a harness's behaviour rather than of a well-formed dossier.
+[LOCAL-MODELS.md](../LOCAL-MODELS.md) compares them.
+
 ## 🗺 The sample project, artefact by artefact
 
 | Path (under `sample-project/`) | What it is | The document that explains it |

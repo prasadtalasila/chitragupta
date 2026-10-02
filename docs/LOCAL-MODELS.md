@@ -1,135 +1,157 @@
 # 🖥 Local models: recorded runs on Codex, OpenCode and Continue
 
-Status: **one run recorded, two blocked.** Written 2026-10-02 for
+Status: **two runs recorded.** Written 2026-10-02 for
 [issue 904](https://github.com/prasadtalasila/chitragupta/issues/904),
 with the Continue facts
 [issue 901](https://github.com/prasadtalasila/chitragupta/issues/901)
 asked to confirm before building.
 
 [HARNESS.md](HARNESS.md) measured the plumbing with a scripted stand-in
-model. This file records what a real local model did with it. Each
-record states the setup, where each of the three checks fired, and
-whether the skill fitted in context. It makes no general quality claim:
-one run on one model over the five-paper sample corpus says what
-happened, not what usually happens.
+model. This file records what a real local model did with it: one
+survey drafted end to end through Codex, and one through OpenCode. Each
+run is committed whole as a self-contained example, with its inputs,
+its script and everything it wrote:
+[`examples/codex/`](examples/codex/README.md) and
+[`examples/opencode/`](examples/opencode/README.md). This page compares
+them and records what they showed about each harness. It makes no
+general quality claim: one run on one model over the five-paper sample
+corpus says what happened, not what usually happens.
 
 ## 🧭 Table of contents
 
-- [The setup every run shared](#-the-setup-every-run-shared)
-- [OpenCode: one survey, end to end](#-opencode-one-survey-end-to-end)
-- [Codex: blocked by the sandbox in this container](#-codex-blocked-by-the-sandbox-in-this-container)
+- [The setup both runs shared](#-the-setup-both-runs-shared)
+- [Where each check fired](#-where-each-check-fired)
+- [OpenCode: the plugin refused a write, and the model fixed it](#-opencode-the-plugin-refused-a-write-and-the-model-fixed-it)
+- [Codex: the gate hook never fired](#-codex-the-gate-hook-never-fired)
+- [Did the skill fit in context?](#-did-the-skill-fit-in-context)
 - [Continue: what a real session showed](#-continue-what-a-real-session-showed)
 - [Still to record](#-still-to-record)
 
-## 🧪 The setup every run shared
+## 🧪 The setup both runs shared
 
 | Item | Value |
 | --- | --- |
 | Date | 2026-10-02 |
+| chitragupta | 6.128.0 from PyPI, `pip install chitragupta-cli` |
+| Codex | 0.159.3 |
+| OpenCode | 1.18.34 |
 | Model | Qwen3.6-35B-A3B, Unsloth `UD-Q4_K_M` GGUF |
 | Server | llama.cpp `llama-server` b11321, CPU, one slot |
 | Context | 131,072 tokens |
 | Speed | about 88 tokens/s prompt, 14 tokens/s output |
-| chitragupta | 6.128.5, installed from the checkout into a clean venv |
 
-Each project was scaffolded with `chitragupta init --agent <harness>`,
-given `docs/examples/sample-project/`'s `papers/` and `config.toml`,
-and synced with a real `python -m chitragupta.corpus sync`: five PDFs
-parsed. A logging proxy between the harness and the server recorded
-every request, so the tool lists and context sizes below are measured,
-not inferred.
+Each run scaffolded a fresh project with `chitragupta init --agent
+<harness>`, copied in the sample project's papers and `config.toml`,
+ran a real `corpus sync`, and sent the same prompt: draft a survey with
+the harness's own copy of `survey-writer`, with the skill's scoping
+questions answered up front. Both examples' `run.sh` is exactly what
+ran. A logging proxy between each harness and the server recorded every
+request, which is where the tool lists and context sizes come from.
 
-## ✅ OpenCode: one survey, end to end
+## 📊 Where each check fired
 
-**OpenCode 1.18.34.** The provider was `@ai-sdk/openai-compatible`
-pointing at the server, passed through `OPENCODE_CONFIG` so the
-project's own `.opencode/opencode.json` stayed as scaffolded. `git` was
-kept off `PATH`, for the zombie-child stall HARNESS.md records.
+| Check | Codex | OpenCode |
+| --- | --- | --- |
+| Self-check, `draft gate` run by the model | ran twice, passed, warned twice that no hook had seen the draft | ran once, passed |
+| Mandatory check, the hook or plugin | **never fired**: no `apply_patch` call was made | fired on every draft write, and **refused one** |
+| Last check, `draft render` | passed, wrote a PDF | passed, wrote `.tex`, `.pdf` and `.md` |
+| Unknown citekeys in the final draft | none | none |
 
-The prompt asked for `survey-writer-opencode` and answered its scoping
-questions up front, since `opencode run` cannot stop to ask: the slug,
-the reader, what it covers and excludes, no collection, `en-GB`, and
-about 1,000 words.
+Neither model wrote a citekey that is not in the ledger into the final
+draft. The one unknown key either run produced was a placeholder, and
+the OpenCode plugin caught it.
 
-| Measure | Value |
-| --- | --- |
-| Wall time | 38 minutes |
-| Model requests | 30 |
-| Tool calls | 45: 27 `bash`, 8 `edit`, 6 `read`, 3 `write`, 1 `skill` |
-| Prompt before the skill loads | 17,816 tokens |
-| Prompt once the skill is loaded | 29,790 tokens |
-| Largest prompt | 49,161 tokens |
-| Draft | 1,459 words, 9 citations of all 5 sample papers |
+## ✅ OpenCode: the plugin refused a write, and the model fixed it
 
-**What the model did.** It followed the skill in order. It checked the
-ledger and its collections, ran `dossier init` and `outline --check`,
-searched four sub-themes with `--log`, read evidence for each paper,
-and filled `scope.md`, `evidence.md` and `rejected.md`. It wrote the
-draft, ran `draft gate`, `references`, `render`, `dossier sections`,
-`review verbatim scan`, `dossier stamp`, `draft evidence` and
-`draft style`, and presented. It used `write` once to create the draft
-and `edit` for every later change, as the OpenCode copy of the skill
-asks. One `edit` failed because its old and new strings were identical.
-The model moved on, and nothing else went wrong with the file tools.
+[The example](examples/opencode/README.md) has the run step by step.
+In short: the model followed the skill in order, wrote every file it
+authored through OpenCode's `write` and `edit` tools, and finished in 34
+minutes.
 
-**Where each check fired.**
+**The mandatory check worked as designed on a real model.** The first
+`write` of the draft carried a placeholder `[@citekey]` in an HTML
+comment above the reference list. The plugin returned `Citation gate
+FAILED`, naming the line and the key, as the tool's result. The model
+read the line and wrapped the placeholder in a code span. It did not
+replace it with a real key, which is the failure the refusal's wording
+is written to avoid.
 
-- **Self-check.** The model ran `draft gate` twice, and both runs
-  passed with 9 citations verified. It never wrote an unknown key, so
-  nothing had to be fixed.
-- **Mandatory check.** The plugin ran on every `write` and `edit` to the
-  draft. A pass is silent, so the proof is the liveness record:
-  `content/.gate-seen/` held the hash of the final draft, and a gate
-  run by hand afterwards printed no warning. The style hook's advisory
-  notes reached the model inside the tool result of four of the six
-  successful draft writes.
-- **Last check.** `draft render` produced `.tex`, `.pdf` and `.md`.
-  Its first run warned that the comparison table had no caption line.
-  The model fixed the caption and rendered again without the warning.
+**The liveness warning fired on the pipeline's own write.** `draft
+references` rewrote the draft after the plugin's last check, so a gate
+run by hand afterwards warns that no automatic gate saw the current
+text. The warning cannot tell a pipeline command from a shell write.
+It never changes the gate's verdict, but it makes a correctly drafted
+survey look ungated.
 
-**Did the skill fit?** Yes. The largest prompt used 38% of the
-131,072-token window. It would not fit an 8k or 16k window: the
-system prompt with `AGENTS.md` and the skill list is about 18,000
-tokens before the skill loads. A 32k window would overflow within the
-first few retrievals.
+**The skill's reporting step was half followed.** The verbatim scan
+found passages of 27 to 54 words copied almost exactly from sources.
+The final summary said overlaps were found but listed none.
 
-**What the model got wrong.** The verbatim scan found passages of 47
-to 62 words copied almost exactly from three sources, some of them in
-paragraphs that do not cite the source. Step 17 of the skill says to
-show those findings rather than summarise them away. The model ran the
-scan and left the findings out of its final summary. That is not a
-gate failure, since the scan is a review aid, but a person reading only
-the summary would not know about the copied passages.
+An earlier OpenCode run, on the same model with chitragupta 6.128.5
+installed from a checkout, went the same way apart from the refusal: it
+wrote no placeholder, the plugin passed every write, and its summary
+left the verbatim findings out entirely. It is not committed.
 
-## ⛔ Codex: blocked by the sandbox in this container
+## ⛔ Codex: the gate hook never fired
 
-**Codex 0.159.3**, with a custom provider on the Responses API. No
-survey was drafted.
+[The example](examples/codex/README.md) has the run step by step.
 
-- **Codex's own sandbox cannot run a command here.** Its Linux sandbox
-  uses bubblewrap, and this container's kernel refuses unprivileged user
-  namespaces. Every shell command failed with `bwrap: No permissions to
-  create new namespace`, so the model could not run retrieval, the
-  gate or render.
-- **Running without the sandbox was not attempted.** That needs
-  `--dangerously-bypass-approvals-and-sandbox`, and the environment
-  this was recorded in does not allow an unsandboxed agent on a live
-  model without a person's explicit approval.
-- **A model Codex does not know gets no `apply_patch`.** Under the name
-  `qwen3.6-35b-a3b`, Codex offered only its shell tools. A draft
-  written through the shell is invisible to the gate hook, which fires
-  on `apply_patch`. A `model_catalog_json` file with an entry for the
-  model, copied from a built-in model's entry with
-  `"apply_patch_tool_type": "freeform"`, made Codex offer `apply_patch`.
-  Asked to create a file with it, the model never called it and tried
-  the shell instead. So a local-model
-  setup on Codex needs that catalog entry, or the mandatory check is
-  bypassed by default.
-- **Skills and context.** Codex listed the nine project skills from
-  `.agents/skills/` and read `AGENTS.md` natively. Its first request
-  was about 14,000 tokens.
-- **Hooks.** The run did not trust the project's hooks, so none fired;
-  no session-start message reached the model.
+**Codex's sandbox could not run anything on the recording host.** Its
+bubblewrap sandbox needs unprivileged user namespaces, and the host
+refuses them, so every sandboxed command fails with `bwrap: No
+permissions to create new namespace`. The run therefore used
+`--dangerously-bypass-approvals-and-sandbox`, and
+`--dangerously-bypass-hook-trust` so the project's hooks would run.
+
+**The model was never offered `apply_patch`.** Codex sends
+`apply_patch` as a Responses tool of type `custom`, and llama.cpp's
+server skips that type with a warning. Under a model name Codex does
+not know, it offers no `apply_patch` at all. A `model_catalog_json`
+entry cloned from a built-in model makes Codex offer it, but only with
+`"apply_patch_tool_type": "freeform"` -- Codex 0.159.3 accepts no other
+value -- so llama.cpp still drops it. Codex no longer offers a
+chat-completions wire API to fall back on.
+
+So the model wrote every file with a shell here-document, and **the
+gate hook, which fires on `apply_patch`, never ran.** The liveness
+warning is what showed it: both of the model's own `draft gate` runs
+printed it, and the model read past it both times. The gate itself
+passed, with 16 citations, all real. Render would have refused an
+unknown key, so nothing ungated could have become a document, but
+nothing would have told the model to fix a bad key while drafting.
+
+**The run cut corners the skill does not allow.** It skipped `dossier
+init` and made the dossier folder by hand. It passed the slug rather
+than the draft's path to `retrieve search --log`, so nothing was
+logged, and then wrote `retrieval.md` itself. It typed the reference
+list rather than running `draft references`. It did rewrite the
+passages its first verbatim scan flagged, until a second scan was
+clean.
+
+An earlier Codex run with the same prompt kept closer to the skill: it
+ran `dossier init`, logged its searches, ran `draft references` and
+rendered three formats. It also wrote everything through the shell, and
+its gate passed with the same liveness warning. The model server ran out
+of memory during its final edits, so it never finished, and it is not
+committed.
+
+## 📏 Did the skill fit in context?
+
+Yes, on both, with room to spare at 131,072 tokens.
+
+| Measure | Codex | OpenCode |
+| --- | --- | --- |
+| Model requests | 22 | 19 |
+| Largest prompt | 30,297 tokens | 44,486 tokens |
+| Share of the window | 23% | 34% |
+| Wall time | 20 minutes | 34 minutes |
+
+It would not fit a small window. OpenCode's prompt is about 18,000
+tokens before the skill loads and about 30,000 once it has, so a 32k
+window overflows within the first few retrievals and an 8k or 16k one
+cannot hold the skill at all. Splitting the skill would not change that
+much: most of the base prompt is the harness's own system prompt,
+`AGENTS.md` and the skill list.
 
 ## 🔎 Continue: what a real session showed
 
@@ -164,9 +186,10 @@ tools reliably, since the MCP server is not built.
 
 ## 📋 Still to record
 
-- **A Codex survey on a local model**, on a host where Codex's sandbox
-  works or with a person's approval to run it unsandboxed. Use the
-  model catalog entry above, or the run measures the shell path only.
-- **The same OpenCode run on a smaller window**, 32k, to see where it
-  overflows and how OpenCode compacts.
-- **A Continue survey**, once the MCP server from issue 901 exists.
+- **Codex with a server that accepts `custom` tools**, so the model is
+  offered `apply_patch` and the gate hook can fire. Ollama's and LM
+  Studio's Responses support, through `--oss`, are the ones issue 904
+  named.
+- **A smaller window**, 32k, to see where each harness overflows and
+  how it compacts.
+- **A Continue survey**, once issue 901's MCP server exists.

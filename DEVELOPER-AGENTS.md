@@ -192,6 +192,14 @@ playground. The one carve-out is markdownlint -- see the negated glob in
 pipeline output is not lint-shaped and may not be hand-edited to become
 so.
 
+The harness examples beside it, `docs/examples/codex/` and
+`docs/examples/opencode/`, follow the same two rules, with one
+difference: their `content/` is what one harness and one local model
+did, so it is replaced only by re-running that example's `run.sh`,
+never edited, and never "corrected" where the model left the skill's
+path. The record of that departure is the point of the example
+([LOCAL-MODELS.md](docs/LOCAL-MODELS.md)).
+
 ## 🖥 Environment constraints on this host
 
 `pip install` outside a venv is blocked (PEP 668) -- unconditionally, on
@@ -648,21 +656,24 @@ to match would only relocate the gap:
 pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks
 ruff check chitragupta scripts .claude/hooks   # config: pyproject.toml's [tool.ruff]
 ruff format --check chitragupta scripts tests bench .claude/hooks
-markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"   # npm i -g markdownlint-cli2
+markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!docs/examples/*/content" "!.claude/worktrees"   # npm i -g markdownlint-cli2
 ```
 
-Both negations are stated in the command for the same
+All three negations are stated in the command for the same
 narrower-glob-is-a-decision reason. `docs/examples/sample-project/` is
 pipeline *output* -- drafts, dossiers, review reports -- which is never
 lint-shaped and may not be hand-edited to become so (see "The committed
-sample project is pipeline output"). `docs/examples/README.md`, the
-hand-written page beside it, stays inside the glob.
+sample project is pipeline output"). `docs/examples/*/content` is the
+same kind of output from the harness examples beside it
+(`docs/examples/codex/`, `docs/examples/opencode/`), whose `README.md`
+files are hand-written and stay inside the glob, as does
+`docs/examples/README.md`.
 
-`.claude/worktrees/` is the second, and it is a *local*-only problem
+`.claude/worktrees/` is the third, and it is a *local*-only problem
 that CI structurally cannot see. It holds throwaway checkouts of this
 same repository, so `.claude/**/*.md` reaches entire nested copies of
 the tree -- copies of `docs/examples/sample-project/` among them, which
-the first negation does **not** exclude, because that pattern is
+the first two negations do **not** exclude, because those patterns are
 anchored at the repo root and the nested copy sits several directories
 down. Measured on 2026-09-03: 40,026 findings across 1,250 files, every
 one of them inside `.claude/worktrees/`, against 0 in the tracked tree.

@@ -416,7 +416,8 @@ call.
 
 - whether a Codex `PostToolUse` advisory note (the style hook's) reaches
   the model -- the probe draft had no prose finding to report;
-- a Codex run on a local model: in the container measured so far,
-  Codex's sandbox cannot run a command. The OpenCode run, and what
-  blocked Codex, are in [LOCAL-MODELS.md](LOCAL-MODELS.md), tracked in
-  [#904](https://github.com/prasadtalasila/chitragupta/issues/904).
+- Codex's gate hook on a local model. In the recorded run, llama.cpp
+  dropped Codex's `apply_patch` tool, so the model wrote through the
+  shell and the hook never fired; OpenCode's plugin did fire and
+  refused a write. Both runs are in [LOCAL-MODELS.md](LOCAL-MODELS.md),
+  tracked in [#904](https://github.com/prasadtalasila/chitragupta/issues/904).
