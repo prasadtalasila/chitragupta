@@ -231,6 +231,7 @@ nav:
       - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md
       - Harnesses: docs/HARNESS.md
+      - Local models, recorded runs: docs/LOCAL-MODELS.md
       - Technical debt: docs/TECHNICAL-DEBT.md
       - Poetry, uv and the lockfile: docs/UV-MIGRATION.md
       - Inspiration and credits: docs/INSPIRATION.md

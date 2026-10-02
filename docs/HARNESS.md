@@ -416,5 +416,7 @@ call.
 
 - whether a Codex `PostToolUse` advisory note (the style hook's) reaches
   the model -- the probe draft had no prose finding to report;
-- local-model runs on either harness, tracked in
+- a Codex run on a local model: in the container measured so far,
+  Codex's sandbox cannot run a command. The OpenCode run, and what
+  blocked Codex, are in [LOCAL-MODELS.md](LOCAL-MODELS.md), tracked in
   [#904](https://github.com/prasadtalasila/chitragupta/issues/904).
