@@ -59,7 +59,7 @@ LAYERS = {
     "draft": ("chitragupta.draft", "work on one draft -- gate it, cite it, render it"),
     "review": (
         "chitragupta.review.__main__",
-        "read-only aids over a finished draft; never a gate",
+        "four read-only aids over a finished draft; never a gate",
     ),
     "enrich": (
         "chitragupta.enrich.__main__",
@@ -77,7 +77,7 @@ COMMANDS = {
     "init": (
         "chitragupta.init",
         "scaffold a project directory -- config.toml, .claude/, "
-        "papers/, content/, the prose docs and each --agent's launcher",
+        "papers/, content/ and the prose docs",
     ),
     "doctor": (
         "chitragupta.doctor",
@@ -87,7 +87,7 @@ COMMANDS = {
     "install": (
         "chitragupta.install",
         "run the install_full_pipeline.sh stages a pip install "
-        "cannot do itself -- os-deps, gpu-torch -- or the enrich extra",
+        "cannot do itself -- os-deps, gpu-torch",
     ),
 }
 
