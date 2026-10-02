@@ -142,7 +142,7 @@ run "shellcheck" shellcheck scripts/*.sh git-hooks/pre-commit docker/*.sh
 need "Install actionlint" actionlint
 run "actionlint" actionlint
 need "Install markdownlint-cli2" markdownlint-cli2@0.23.2
-run "markdownlint" markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!.claude/worktrees"
+run "markdownlint" markdownlint-cli2 "*.md" "docs/**/*.md" ".claude/**/*.md" ".agents/**/*.md" ".opencode/**/*.md" "plans/**/*.md" "!docs/examples/sample-project" "!docs/examples/*/content" "!.claude/worktrees"
 run "Install webapp dev dependencies (acorn)" npm ci --ignore-scripts
 run "Test the webapp modules" node --test --experimental-test-coverage --test-coverage-include="assets/webapp/*.js" --test-coverage-lines=100 tests/webapp/*.test.js
 run "Test the OpenCode plugin helpers" node --test tests/opencode/*.test.mjs

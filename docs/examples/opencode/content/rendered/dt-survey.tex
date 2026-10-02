@@ -1,0 +1,370 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+  12pt,
+  a4paper,
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newlength{\csllabelwidth}
+\setlength{\csllabelwidth}{3em}
+\newlength{\cslentryspacingunit} % times entry-spacing
+\setlength{\cslentryspacingunit}{\parskip}
+\newenvironment{CSLReferences}[2] % #1 hanging-ident, #2 entry spacing
+ {% don't indent paragraphs
+  \setlength{\parindent}{0pt}
+  % turn on hanging indent if param 1 is 1
+  \ifodd #1
+  \let\oldpar\par
+  \def\par{\hangindent=\cslhangindent\oldpar}
+  \fi
+  % set entry spacing
+  \setlength{\parskip}{#2\cslentryspacingunit}
+ }%
+ {}
+\usepackage{calc}
+\newcommand{\CSLBlock}[1]{#1\hfill\break}
+\newcommand{\CSLLeftMargin}[1]{\parbox[t]{\csllabelwidth}{#1}}
+\newcommand{\CSLRightInline}[1]{\parbox[t]{\linewidth - \csllabelwidth}{#1}\break}
+\newcommand{\CSLIndent}[1]{\hspace{\cslhangindent}#1}
+\ifdefined\LTcapwidth\setlength{\LTcapwidth}{\textwidth}\fi
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\author{}
+\date{}
+
+\begin{document}
+
+\hypertarget{digital-twins-in-manufacturing-a-survey}{%
+\section{Digital Twins in Manufacturing: A
+Survey}\label{digital-twins-in-manufacturing-a-survey}}
+
+This survey maps the literature on digital twins as they apply to
+manufacturing. It covers what a digital twin is and how it is
+distinguished from related concepts; how the twin is kept synchronised
+with its physical counterpart; how twins are deployed on the factory
+floor; and the interoperability standards that determine whether a twin
+project survives integration. It does not cover machine-learning anomaly
+detection except where a source ties it to a twin. The reader is assumed
+to be familiar with manufacturing systems at a general level and to need
+a structured map of the twin literature rather than an introduction to
+manufacturing itself.
+
+\hypertarget{definitions-and-a-three-level-taxonomy}{%
+\subsection{Definitions and a Three-Level
+Taxonomy}\label{definitions-and-a-three-level-taxonomy}}
+
+The term \emph{digital twin} is used loosely across the literature, and
+much of the early literature disagrees about where a simulation ends and
+a twin begins. Author and Builder {[}1{]} resolve this by fixing the
+vocabulary around integration depth. They distinguish three levels.
+
+At the lowest level, a \textbf{digital model} exchanges data with its
+physical counterpart only through manual steps: an engineer updates the
+model when the plant changes, and nothing flows back automatically. This
+is indistinguishable from a conventional CAD or CAE model and falls
+short of twin status.
+
+A \textbf{digital shadow} adds an automatic data flow in one direction,
+from the physical object to the virtual one. The representation updates
+without human intervention, but the virtual side cannot influence the
+physical. This is still not a twin in the strict sense.
+
+A \textbf{digital twin} completes the loop with bidirectional data flow:
+the virtual model can send commands or schedules back to the physical
+asset, and the twin is kept consistent with the physical system for the
+length of its operating life. This bidirectional coupling is the
+defining property that separates a twin from a shadow or a model.
+
+These three levels are not merely terminological. They map onto a
+deployment trajectory: a site typically begins with a digital shadow,
+earns operator trust, and only then opens the feedback loop.
+
+\hypertarget{synchronisation-strategies}{%
+\subsection{Synchronisation
+Strategies}\label{synchronisation-strategies}}
+
+A digital twin is only as trustworthy as its last synchronisation. The
+engineering question underneath every twin deployment is how to keep the
+virtual state current without overwhelming the network or accepting
+stale data. Chen and Devi {[}2{]} compare three synchronisation
+strategies.
+
+\textbf{Periodic pull} is the simplest: a central system polls the asset
+at a fixed interval, regardless of what the asset is doing. The
+advantage is implementation simplicity; the disadvantage is that quiet
+assets are polled as often as busy ones, wasting bandwidth on unchanged
+readings.
+
+\textbf{Threshold push} reverses the initiative. The asset transmits
+only when a sensed value moves beyond a configured delta. Bandwidth
+follows activity, but a mis-set delta can hide slow drift entirely -- a
+subtle failure mode because the twin appears live while its data is
+stale.
+
+\textbf{Event-driven flow} ties synchronisation to domain events: a job
+start, a valve close, a product passing a sensor. The twin's state
+history then reads as a process log rather than a time series. Operators
+in Chen and Devi's trials strongly preferred this representation, and in
+a synthetic benchmark across nine simulated production cells,
+event-driven flows reduced transmitted volume by 71 per cent against
+one-second periodic pull while keeping worst-case staleness bounded.
+
+The choice of synchronisation strategy is not purely technical. It
+shapes how operators read the twin's state and, by extension, whether
+they trust it enough to act on it.
+
+\hypertarget{factory-floor-applications}{%
+\subsection{Factory-Floor
+Applications}\label{factory-floor-applications}}
+
+The factory floor is where digital twins move from pilots to production
+value. Eriksen {[}3{]} documents an eighteen-month deployment of a
+digital twin of a packaging line -- three filling stations, two
+labellers, one palletiser -- at a mid-size beverage plant. The twin
+began as a monitoring dashboard and ended as the plant's scheduling
+authority.
+
+The first six months deliberately stopped at a digital shadow: sensor
+data flowed to the model automatically, and nothing flowed back. This
+was an explicit trust-building decision. Operators could compare the
+shadow against the line they could see, and its one visible product -- a
+per-station utilisation display -- was checked against manual logs. Only
+after the shadow was trusted did the deployment open the feedback loop.
+
+The progression from shadow to twin is not unique to this case. It
+reflects a broader pattern: sites that attempt bidirectional control
+before earning trust tend to revert to monitoring, because operators
+will not follow a twin's instructions if they do not believe the twin.
+
+\hypertarget{interoperability-standards}{%
+\subsection{Interoperability
+Standards}\label{interoperability-standards}}
+
+Digital-twin pilots rarely die of modelling problems; they die of
+integration. Every asset on a real site speaks the protocol its vendor
+shipped a decade ago, and the cost of a twin is dominated by the
+adapters between those dialects and the twin's own model. Havel and
+Ismail {[}4{]} argue that standards are how that cost is paid once
+instead of per project.
+
+Interoperability requires agreement at three distinct layers. At the
+\textbf{conceptual layer}, the parties agree what the asset model
+represents -- which physical components are in scope and what boundaries
+the model draws. At the \textbf{semantic layer}, they agree what the
+fields mean: that two systems' ``temperature'' is the same sensor, the
+same unit, and the same sampling discipline. At the \textbf{transport
+and syntax layer}, they agree how a message is structured -- a schema
+language and a serialisation format.
+
+Transport and syntax standards are mature and plentiful. Semantic
+agreement is where projects stall, because it cannot be bought, only
+negotiated. The practical instrument of semantic agreement is a shared
+asset-model registry: a versioned catalogue mapping every signal to a
+definition, a unit, and a provenance trail. When a new asset arrives on
+site, its signals are looked up in the registry rather than
+reverse-engineered from a vendor manual.
+
+The three-layer model is not specific to digital twins, but it explains
+a recurring pattern: twin projects that invest in semantic agreement
+early survive integration, while those that treat it as a
+post-deployment afterthought accumulate adapter debt that no amount of
+modelling sophistication can offset.
+
+\hypertarget{anomaly-detection-on-twin-state-streams}{%
+\subsection{Anomaly Detection on Twin State
+Streams}\label{anomaly-detection-on-twin-state-streams}}
+
+Machine-learning anomaly detection falls outside this survey's scope,
+but one source ties it directly to the twin and is worth noting briefly.
+Farah and Gupta {[}5{]} observe that a digital twin's state stream is a
+natural place to detect anomalies because it is already cleaned, aligned
+and semantically labelled -- which constitutes most of the work in
+industrial anomaly detection. The question their paper examines is how
+minimal a detection model can be when it operates on a twin's state
+stream rather than on raw sensor data. This is a narrow but instructive
+example of how twin infrastructure can reduce the cost of downstream
+analytics.
+
+\hypertarget{comparison-of-approaches}{%
+\subsection{Comparison of Approaches}\label{comparison-of-approaches}}
+
+The following table summarises the papers surveyed, on the axis of what
+each contributes to the twin literature.
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+\caption{Where to start when building a first
+twin.\label{tab:start-here}}\tabularnewline
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Starting point
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Citekey
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Core idea
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Stated limitation
+\end{minipage} \\
+\midrule\noalign{}
+\endfirsthead
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Starting point
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Citekey
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Core idea
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Stated limitation
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Definition & {[}1{]} & Three-level taxonomy (model, shadow, twin) based
+on integration depth & Taxonomy is illustrative; no empirical
+validation \\
+Synchronisation & {[}2{]} & Three synchronisation strategies compared;
+event-driven preferred by operators & Synthetic benchmark across
+simulated cells only \\
+Factory deployment & {[}3{]} & Eighteen-month case study showing
+shadow-to-twin progression & Single site; beverage packaging domain \\
+Interoperability & {[}4{]} & Three-layer standards model; semantic
+agreement as negotiation & Standards landscape simplified for
+illustration \\
+Anomaly detection & {[}5{]} & Twin state stream as natural
+anomaly-detection input & Minimal model requirements unquantified \\
+\end{longtable}
+
+Table~\ref{tab:start-here}
+
+The table reveals a pattern: every paper that focuses on a single
+technical layer (synchronisation, interoperability, anomaly detection)
+is strongest at that layer but does not address the others. The overview
+paper {[}1{]} is the only one that attempts a cross-cutting taxonomy,
+and its limitation -- illustrative rather than empirical -- is the
+limitation of the field at large: few papers sit at the intersection of
+definition, deployment, and standards.
+
+\hypertarget{gaps}{%
+\subsection{Gaps}\label{gaps}}
+
+The retrieved corpus is small and covers the four scope themes, but
+several gaps remain. First, there is no empirical comparison of
+synchronisation strategies outside a synthetic benchmark; the
+event-driven preference reported by Chen and Devi {[}2{]} has not been
+validated on a live production line. Second, the interoperability
+literature surveyed here is conceptual; there is no paper in the corpus
+that measures the integration cost of a twin project before and after
+adopting an asset-model registry. Third, the factory-floor case study by
+Eriksen {[}3{]} is a single-site study in one domain; whether the
+shadow-to-twin progression generalises to discrete manufacturing or
+process industries is unknown.
+
+These gaps are not failures of retrieval. The declared scope --
+definitions, synchronisation, factory applications, and interoperability
+-- is covered by the corpus. What the corpus does not contain is
+empirical, multi-site validation of the patterns it describes, or a
+quantitative study of integration cost as a function of standards
+adoption. A later revision that widens the corpus should look for these
+explicitly.
+
+\hypertarget{references}{%
+\subsection{References}\label{references}}
+
+\hypertarget{refs}{}
+\begin{CSLReferences}{0}{0}
+\leavevmode\vadjust pre{\hypertarget{ref-sample_dt_overview_2024}{}}%
+\CSLLeftMargin{{[}1{]} }%
+\CSLRightInline{A. Author and B. Builder, {``Digital twins: Definitions,
+distinctions, and a short taxonomy,''} \emph{Synthetic Sample Papers},
+vol. 1, pp. 1--5, 2024.}
+
+\leavevmode\vadjust pre{\hypertarget{ref-sample_dt_sync_2023}{}}%
+\CSLLeftMargin{{[}2{]} }%
+\CSLRightInline{C. Chen and D. Devi, {``State synchronisation strategies
+for operational digital twins,''} \emph{Synthetic Sample Papers}, vol.
+1, pp. 6--11, 2023.}
+
+\leavevmode\vadjust pre{\hypertarget{ref-sample_dt_factory_2022}{}}%
+\CSLLeftMargin{{[}3{]} }%
+\CSLRightInline{E. Eriksen, {``A digital twin on the factory floor: An
+eighteen-month case study,''} \emph{Synthetic Sample Papers}, vol. 1,
+pp. 12--17, 2022.}
+
+\leavevmode\vadjust pre{\hypertarget{ref-sample_std_interop_2021}{}}%
+\CSLLeftMargin{{[}4{]} }%
+\CSLRightInline{H. Havel and I. Ismail, {``Interoperability standards
+for industrial asset models: A field guide,''} \emph{Synthetic Sample
+Papers}, vol. 1, pp. 24--29, 2021.}
+
+\leavevmode\vadjust pre{\hypertarget{ref-sample_ml_anomaly_2023}{}}%
+\CSLLeftMargin{{[}5{]} }%
+\CSLRightInline{F. Farah and G. Gupta, {``Lightweight anomaly detection
+over digital-twin state streams,''} \emph{Synthetic Sample Papers}, vol.
+1, pp. 18--23, 2023.}
+
+\end{CSLReferences}
+
+\end{document}

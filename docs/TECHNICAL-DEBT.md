@@ -3,27 +3,26 @@
 Status: **register, not a standard.** Written 2026-08-13. Updated 2026-08-24,
 from a full-tree review of `chitragupta/`, `scripts/`, `bench/`, `docker/` and
 `.github/`. Nothing here is enforced. The one part of this project's debt that
-*is* enforced -- the C1/C2 ratchet -- lives in
+*is* enforced, the C1/C2 ratchet, lives in
 `tests/test_code_standards_scan.py` and is [pointed
 at](#-tier-1-the-debt-the-ratchet-already-holds), never restated.
 
-**Reconciled 2026-08-18** against the tree as it now stands, since a
-register that only shrinks the way it says it should is one this
-document's own prose has to keep up with too: three items had been closed
-without ever being marked done, and `bench/` and the test suite were both
-re-measured, having grown substantially.
+Reconciled 2026-08-18 against the tree as it then stood. A register
+only shrinks the way it says it should if this document's own prose
+keeps up: three items had been closed without ever being marked done,
+and `bench/` and the test suite were both re-measured, having grown
+substantially.
 
-**Compacted in its own pull request.** Thirteen closed items each kept a
-full section --
-four fifths of this document was history, and this file is loaded to
-answer "what is owed", not "what was". They are gone, and the record of
-each is the pull request that closed it. Nothing was re-opened, and every
-item left open below was re-checked against the current code first. The
-surviving items were renumbered to close the gaps, so a number here means
-what this document says it means today and nothing else.
+Compacted in its own pull request. Thirteen closed items each kept a
+full section, so four fifths of this document was history, and this file
+is loaded to answer "what is owed", not "what was". They are gone, and
+the record of each is the pull request that closed it. Nothing was
+re-opened, and every item left open below was re-checked against the
+current code first. The surviving items were renumbered to close the gaps, so a
+number here means what this document says it means today and nothing else.
 
 [CODE-STANDARDS.md](CODE-STANDARDS.md) says what the code must look like.
-This document says where it currently doesn't, and -- just as important --
+This document says where it currently doesn't and, just as important,
 where it looks like it doesn't but is right.
 
 **Written for** someone deciding what to take next, and for the agent that
@@ -34,7 +33,7 @@ change and [CODE-STANDARDS.md](CODE-STANDARDS.md) for the standard itself.
 
 **Not covered here:** anything about drafts ([AGENTS.md](../AGENTS.md)),
 prose standards ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)), or
-features not yet built --
+features not yet built:
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) owns the roadmap and this
 document owns the arrears. A thing that was never built is not a debt.
 
@@ -52,17 +51,17 @@ document owns the arrears. A thing that was never built is not a debt.
 
 ## 📋 How something gets on this list
 
-Three conditions, all of them:
+An item must meet all three conditions:
 
 1. **It is a cost already incurred**, not a feature not yet written.
    "`chitragupta/dossier.py` is 1605 code lines" qualifies. "There is no citation
-   graph" does not -- that is [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
+   graph" does not; that is [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s
    agenda, and confusing the two turns a debt register into a wish list,
    which is how registers stop being read.
 2. **It names a file, a count, or a call site.** "The code could be
    cleaner" is a score, and
-   [R3](AUTO-IMPROVEMENT.md#-the-requirements) -- the rule
-   CODE-STANDARDS.md is built on -- rules out driving a score to zero.
+   [R3](AUTO-IMPROVEMENT.md#-the-requirements), the rule
+   CODE-STANDARDS.md is built on, rules out driving a score to zero.
    Every entry below carries a number or a path someone can open.
 3. **Someone would be worse off if it were left.** A stylistic
    disagreement is not debt.
@@ -73,30 +72,30 @@ against this file. That is the same discipline
 imposes on C1/C2, applied by hand to the items no detector covers.
 
 **Coming off means the section is deleted**, not marked done and kept.
-That changed in the compaction pass, after thirteen closed items had grown to four
-fifths of this file. The pull request that closed an item is the record
-of why it was owed and what paying it cost, and it is a better record
-than a section here: it carries the diff. So cite a PR number for
-history, and cite a section number here only for something still open --
-and expect the numbers to be **closed up when an item goes**, since a
-register whose numbering is mostly gaps is a register still carrying its
+That changed in the compaction pass, after thirteen closed items had
+grown to four fifths of this file. The pull request that closed an item
+is the record of why it was owed and what paying it cost, and it is a
+better record than a section here because it carries the diff. So cite
+a PR number for history, and cite a section number here only for
+something still open. Expect the numbers to be **closed up when an item
+goes**: a register whose numbering is mostly gaps is still carrying its
 history in the one place it said it wouldn't.
 
 **The debt on this list is not a gate.** `python -m chitragupta.draft gate`
 remains the only gate in the project ([SOUL.md](../SOUL.md)), and a debt
 list that could fail a build would be a threshold tuned to today's worst
-code -- exactly what the ratchet exists to avoid. Nothing here goes red
+code, which is what the ratchet exists to avoid. Nothing here goes red
 because an item is unpaid, and the arrival of the scan test did not
 change that.
 
-What that change added -- `tests/test_technical_debt_scan.py` -- checks
-something else entirely: whether this document *describes the C1/C2
-register correctly*. A wrong sentence about the register is a factual
-error in prose, not an outstanding cost, and it is the one class of claim
-here with a machine-readable source of truth to check against. The
-distinction is the whole reason the test could be added without making
-the debt itself a gate: leaving an entry open forever is fine, and saying
-it is on a register it left is not.
+What that change added, `tests/test_technical_debt_scan.py`, checks
+something else entirely: whether this document *describes the C1/C2 register
+correctly*. A wrong sentence about the register is a factual error in
+prose, not an outstanding cost, and it is the one class of claim here
+with a machine-readable source of truth to check against. That
+distinction is the whole reason the test could be added without making the debt
+itself a gate: leaving an entry open forever is fine, and saying it is
+on a register it left is not.
 
 ## 🧱 Tier 1: the debt the ratchet already holds
 
@@ -108,52 +107,50 @@ current size recorded beside it, which
 fails a build; the register moved out of it in issue 431, and the size
 was a trailing comment until then.
 
-Those two counts had drifted badly -- this section claimed 26 and 13
-until a dedicated PR corrected them -- which is
-[build order](CODE-STANDARDS.md#-build-order) item
-4, the doc-drift detector, demonstrating the exact failure it was
-proposed for. CODE-STANDARDS.md's copy of the same pair stayed correct
-throughout, because a test pinned it and nothing pinned this one.
+Those two counts had drifted badly (this section claimed 26 and 13
+until a dedicated PR corrected them), which is
+[build order](CODE-STANDARDS.md#-build-order) item 4, the doc-drift
+detector, demonstrating the failure it was proposed for.
+CODE-STANDARDS.md's copy of the same pair stayed correct throughout,
+because a test pinned it and nothing pinned this one.
 
-**Something pins this one now**, as of the scan test's introduction:
+Something pins this one now, as of the scan test's introduction:
 `tests/test_technical_debt_scan.py` fails if the two numbers above stop
 matching `len(LEGACY_LONG_FUNCTIONS)`/`len(LEGACY_LONG_FILES)`, and also
 if any Tier 1 subsection heading or `[Tier 1]` item in [What to take
 first](#-what-to-take-first) names an entry the register no longer holds.
-That is the narrow, checkable half of build order item 4 -- claims *about
+That is the narrow, checkable half of build order item 4: claims *about
 the register*, which has a machine-readable source of truth. Free prose
-about anything else is still nobody's detector, deliberately.
+about anything else deliberately has no detector.
 
-**That register is the authority. This section does not copy it** -- a
-debt stated in two places is a debt that will eventually be stated two
-different ways, and only one of the two is checked on every run. So this
-tier holds no subsections at all: both of its named entries are closed
+**That register is the authority, and this section does not copy it.** A
+debt stated in two places will eventually be stated two different ways,
+and only one of the two is checked on every run. So this tier holds no
+subsections at all: both of its named entries are closed
 (`chitragupta/sync.py::run` and `chitragupta/dossier.py`, each in its
-own pull request),
-and what each was measured against is in the pull request that split it.
-A later issue covering the C1 register's four splittable functions has
-also closed, and its sibling covering the C2 register's `pdf_text.py`
-and `verbatim_check.py`
-closed with the second split landing -- the counts above already reflect
-both.
+own pull request), and what each was measured against is in the pull
+request that split it. A later issue covering the C1 register's four
+splittable functions has also closed, and its sibling covering the C2
+register's `pdf_text.py` and `verbatim_check.py` closed with the second
+split landing; the counts above already reflect both.
 
 ## 🧱 Tier 2: the debt CODE-STANDARDS.md already named
 
 [Build order](CODE-STANDARDS.md#-build-order) lists four things that would
-extend the enforced half. All are built now -- item 1 as `pylint`, item 2
+extend the enforced half. All are built now: item 1 as `pylint`, item 2
 as `ruff` (`docs/TECHNICAL-DEBT.md`'s ruff subsection under
 [Tier 5](#-tier-5-continuous-integration-and-the-linters)), item 3 (type
-annotations and a checker) in its own PR. **This tier holds no subsections at
-all**, the same shape [Tier 1](#-tier-1-the-debt-the-ratchet-already-holds)
-is in once its own two named entries closed: nothing named by build order
-currently costs anything to leave, so there is nothing left to measure
-below.
+annotations and a checker) in its own PR. This tier holds no subsections
+at all, the same shape [Tier 1](#-tier-1-the-debt-the-ratchet-already-holds)
+is in once its own two named entries closed. Nothing named by build
+order currently costs anything to leave, so there is nothing left to
+measure below.
 
 ## 🧱 Tier 3: found by review, tracked nowhere
 
-**This tier holds no subsections at all.** Its one entry, `bench/`'s
+This tier holds no subsections at all. Its one entry, `bench/`'s
 exclusion from C1/C2, coverage, the release archive and the linter, was
-reaffirmed as a decision rather than arrears in a recorded issue -- see
+reaffirmed as a decision rather than arrears in a recorded issue; see
 `bench/README.md`'s self-check section for the reasoning behind each of
 the four, and the current self-check count.
 
@@ -161,29 +158,27 @@ the four, and the current self-check count.
 
 *Still "Tier 5", not renumbered to 4 now that Tier 4 (the test suite) has
 closed. "How something gets on this list" above asks for numbers to
-close up when an item leaves -- the deliberate exception here is that
+close up when an item leaves. The deliberate exception here is that
 the linter-adoption issue, in the same ten-PR batch as the issue that
-closed Tier 4,
-cites "5.1" and "5.2" below; renumbering mid-batch would collide with a
-PR editing this same document concurrently.*
+closed Tier 4, cites "5.1" and "5.2" below; renumbering mid-batch would
+collide with a PR editing this same document concurrently.*
 
 ### 📊 5.1 `pylint`: a measured baseline
 
-**Adopted and enforced in 5.8.0.** `ci.yml`'s `lint` job runs
+Adopted and enforced in 5.8.0. `ci.yml`'s `lint` job runs
 `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
-zero-messages bar.
-The residue below is fixed rather than suppressed, in this order: 3.1's
-encoding sites first -- the whole item, not pylint's visible seven --
-then the long lines, then the two context-manager names into `good-names`
-and the four miscellaneous findings.
+zero-messages bar. The residue below was fixed rather than suppressed,
+in this order: 3.1's encoding sites first (the whole item, not pylint's
+visible seven), then the long lines, then the two context-manager names
+into `good-names` and the four miscellaneous findings.
 
 The categories listed as decisions now live in `.pylintrc`'s own
 `disable=`, each with its reason beside it, so this table and that file
 cannot drift into disagreeing.
 
-Two consequences worth carrying forward. Wrapping the long lines **grew
-ten registered files** -- `line-too-long` and the C2 length ratchet pull
-against each other, and C0301 won; the counts in
+Two consequences are worth carrying forward. Wrapping the long lines
+**grew ten registered files**: `line-too-long` and the C2 length ratchet
+pull against each other, and C0301 won; the counts in
 `tests/test_code_standards_scan.py` moved with it. And the enrich group's
 third-party imports are in `ignored-modules`, because they are lazy
 imports that pylint still resolves statically, so a lint job that does not
@@ -205,30 +200,30 @@ already decided against leaves **44 real findings**:
 | Category | Count | Disposition |
 | --- | --- | --- |
 | `line-too-long` (>100) | 31 | Real. "Keep lines short" is a review standard here with no detector; this is it, measured |
-| `unspecified-encoding` | 7 | Fixed as part of the locale-codec item (closed 2026-08-13) -- pylint saw only the `open()` calls, 7 of that item's 32 original sites |
-| `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard` -- deliberate lowercase context managers; belongs in `good-names` |
+| `unspecified-encoding` | 7 | Fixed as part of the locale-codec item (closed 2026-08-13); pylint saw only the `open()` calls, 7 of that item's 32 original sites |
+| `invalid-name` | 2 | `pipeline_lock`, `interrupt_guard`: deliberate lowercase context managers; belongs in `good-names` |
 | Miscellaneous | 4 | `unused-import`, `trailing-newlines`, `use-maxsplit-arg`, `consider-using-with` |
 
-**The `line-too-long` row's residue has since closed**, alongside
-[build order](CODE-STANDARDS.md#-build-order) item 1's missing formatter
--- see the ruff-format subsection below. This baseline table itself
-stays as measured, the historical record 5.8.0's adoption sequence was
-carried out against.
+The `line-too-long` row's residue has since closed, alongside
+[build order](CODE-STANDARDS.md#-build-order) item 1's missing formatter;
+see the ruff-format subsection below. This baseline table itself stays
+as measured, the historical record 5.8.0's adoption sequence was carried
+out against.
 
 The categories disabled, and why, since each is a decision rather than an
 oversight:
 
-- `import-outside-toplevel` (24) -- the documented lazy-import pattern
+- `import-outside-toplevel` (24): the documented lazy-import pattern
   that keeps tier-1 modules stdlib-only at import time.
-- `missing-function-docstring`/`missing-class-docstring` (71) -- this
+- `missing-function-docstring`/`missing-class-docstring` (71): this
   project requires *why*-comments, and a docstring on every small private
   helper is the "obvious noise" the same checklist bans.
-- `too-many-*` (35) -- C1/C2 already measure size, more strictly, and two
+- `too-many-*` (35): C1/C2 already measure size, more strictly, and two
   detectors for one rule is the two-debt-lists problem build-order item 2
   names.
-- `duplicate-code` (4) -- two are deliberate and documented, one is now
+- `duplicate-code` (4): two are deliberate and documented, one is now
   the duplicated BibTeX author-name grammar (since closed).
-- `broad-exception-caught` (10) -- each carries a stated cause.
+- `broad-exception-caught` (10): each carries a stated cause.
 - `protected-access`, `global-statement`, `unused-argument`,
   `attribute-defined-outside-init`, `redefined-outer-name` and
   `cyclic-import`.
@@ -238,50 +233,50 @@ the four residue rows are the two things that must not be papered over.
 Fixing pylint's 7 `unspecified-encoding` sites while leaving 3.1's other
 25 would close the detector on the register's top item without closing the
 item. And DEVELOPER-AGENTS.md forbids shipping a check that has not been
-made to pass. So the honest sequence was
-the locale-codec item first, then the 31 long lines, then
-pylint enabled at a **binary** bar -- zero messages, never a `fail-under`
-score, because [R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out
-driving a number. That sequence is what 5.8.0 carried out, in that order.
+made to pass. So the sequence had to be the locale-codec item first,
+then the 31 long lines, then pylint enabled at a **binary** bar: zero
+messages, never a `fail-under` score, because
+[R3](AUTO-IMPROVEMENT.md#-the-requirements) rules out driving a number.
+That sequence is what 5.8.0 carried out, in that order.
 
-**Neither of the two side effects this paragraph predicted actually
-happened at the time, and `.pylintrc` said why:** both
+Neither of the two side effects this paragraph predicted happened at
+the time, and `.pylintrc` said why: both
 `broad-exception-caught` and `duplicate-code` are in its `disable=` list,
 category-wide, the same as every other row this section's own residue
 table calls a "decision rather than an oversight." So the `# noqa:
-BLE001` markers stayed exactly that -- `pylint` never asked for a
+BLE001` markers stayed exactly that; `pylint` never asked for a
 `# pylint: disable=broad-exception-caught` at any of them, because the
-category itself never fired. **That half is closed now**, by
+category itself never fired. That half is closed now, by
 [5.4](#-54-ruff-a-measured-baseline): `ruff`'s `BLE001` reads the markers
-`pylint` couldn't. The other half is not --
-`duplicate-code` found the four instances the baseline measurement used
-to surface the duplicated author-name grammar, then
-was turned off rather than kept running, so a fifth duplication
+`pylint` couldn't. The other half is not. `duplicate-code` found the
+four instances the baseline measurement used to surface the duplicated
+author-name grammar, then was turned off rather than kept running, so a
+fifth duplication
 introduced today would still not be caught by anything. No tool this
 project runs re-implements it; that remains open.
 
 ### 📊 5.2 `markdownlint`: a measured baseline
 
-**Adopted and enforced in 5.8.0**, at the same binary bar, over the same
-globs. The judgement this section left open -- what to do about `MD060` --
+Adopted and enforced in 5.8.0, at the same binary bar, over the same
+globs. The judgement this section left open, what to do about `MD060`,
 was taken as **disable** then: 839 of the 947 findings, table cell
 padding, and the alternative was a diff touching every table in the
 documentation to move spaces around, changing no rendered output.
 Everything else was fixed, including four prose lines that began with a
-literal issue reference -- a `#` and a number at the start of the line --
-which a naive `--fix` rewrote
-into H1 headings before the corruption was caught and reverted.
+literal issue reference (a `#` and a number at the start of the line),
+which a naive `--fix` rewrote into H1 headings before the corruption was
+caught and reverted.
 
-**Reversed later, once a formatter made it a machine edit.**
-`.markdownlint.yaml`'s `MD060: false` is gone; `default: true` now covers
-it like everything else. `markdownlint-cli2 --fix` closed 825 of the
-(re-measured) 850 findings in one symmetric, 58-file diff -- no diff
-touching every table by hand, because the tool now does that pass. The
+That decision was reversed later, once a formatter made it a machine
+edit. `.markdownlint.yaml`'s `MD060: false` is gone; `default: true` now
+covers it like everything else. `markdownlint-cli2 --fix` closed 825 of
+the (re-measured) 850 findings in one symmetric, 58-file diff. Nobody
+touched every table by hand, because the tool now does that pass. The
 remaining 25 findings, across three tables in three files, didn't
 auto-fix, for two different reasons:
 
 - `docs/CONFIG.md`'s `[logging]` table and `docs/PACKAGING.md`'s `enrich`
-  table each have one data row containing a `\|` -- an escaped literal
+  table each have one data row containing a `\|`: an escaped literal
   pipe, an enum-of-values cell in one, a CLI flag's own `host|docker`
   syntax in the other. `MD060`'s own width arithmetic counts an escaped
   pipe as the two characters it is in the source rather than the one it
@@ -292,18 +287,18 @@ auto-fix, for two different reasons:
   recomputed at the escape's actual width.
 - `docs/LADDERS.md`'s CUDA fallback-ladder table has no escaped pipe at
   all and still didn't auto-fix, for a reason this adoption didn't
-  isolate -- `--fix` left it exactly as untouched as the two escaped
+  isolate. `--fix` left it exactly as untouched as the two escaped
   ones, with no shared trait found between it and them beyond "small
-  table". Recomputed by hand from each cell's real length, the same
-  arithmetic `--fix` uses everywhere else, and it passed once the
+  table". It was recomputed by hand from each cell's real length, the
+  same arithmetic `--fix` uses everywhere else, and it passed once the
   padding was exact. The fix these three needed is recorded here; the
   fixer's own remaining bug is not diagnosed.
 
 One inherited config bug fell out of the adoption: the `overrides:` block
 was **inert**. It is a markdownlint-**cli2** feature read from
 `.markdownlint-cli2.yaml`, and a plain `.markdownlint.yaml` ignores the
-key silently -- doubly inert here, since it named `.github/` paths the
-lint globs never reach. Per-file exceptions are inline directives now, at
+key silently. It was doubly inert here, since it named `.github/` paths
+the lint globs never reach. Per-file exceptions are inline directives now, at
 the single site that needs one.
 
 The measurement follows, unchanged apart from the count: the baseline was
@@ -311,9 +306,9 @@ re-taken at **947** on the current tree, against the 927 recorded when
 this section was written.
 
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
-over this repository's own prose -- root `*.md`, `docs/**/*.md`,
-`.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step
-(`DEVELOPER-AGENTS.md`'s "The linters, which are enforced");
+over this repository's own prose (root `*.md`, `docs/**/*.md`,
+`.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step;
+see `DEVELOPER-AGENTS.md`'s "The linters, which are enforced").
 `content/` is the user's drafts and out of scope:
 
 **927 findings**, of which:
@@ -321,7 +316,7 @@ over this repository's own prose -- root `*.md`, `docs/**/*.md`,
 | Rule | Count | Note |
 | --- | --- | --- |
 | `MD060/table-column-style` | 827 | Table cell padding. Cosmetic, and 89% of the total |
-| `MD013/line-length` | 37 | Genuinely low -- this repository already wraps prose short |
+| `MD013/line-length` | 37 | Low; this repository already wraps prose short |
 | `MD040/fenced-code-language` | 30 | Real: fenced blocks with no language tag |
 | Everything else | 33 | Blank lines around headings and lists, trailing newlines, emphasis style |
 
@@ -330,14 +325,15 @@ The distribution is the finding. Strip `MD060` and the repository is at
 enough to adopt. `MD060` alone would either produce a 827-line diff that
 touches every table in the documentation or be disabled; that is a
 judgement for whoever adopts it, not something to decide inside a debt
-register. Adoption is otherwise cheap and should follow 5.2. **Taken in
-the linter-adoption issue, above** -- this measurement itself stays as the historical
-record of the question as it stood before that judgement was made.
+register. Adoption is otherwise cheap and should follow 5.2. The
+judgement was taken in the linter-adoption issue, above; this
+measurement itself stays as the historical record of the question as it
+stood before that judgement was made.
 
 ### ✅ 5.3 Checks that came back clean
 
-Recorded so the next reviewer does not spend the afternoon re-running
-them. Each is a
+These are recorded so the next reviewer does not spend the afternoon
+re-running them. Each is a
 [CODE-STANDARDS.md review standard](CODE-STANDARDS.md#-the-rest-of-the-checklist)
 with no detector, checked by hand against the tree:
 
@@ -361,30 +357,30 @@ with no detector, checked by hand against the tree:
   in a `finally`; no leak. The repetition of that pattern was
   the repeated `connect()`/`finally: close()` block, now
   resolved into one `ledger.connection()` context manager for the
-  writer and one `ledger.reading()` for every reader -- it was a
+  writer and one `ledger.reading()` for every reader. It was a
   tidiness item, not a correctness one.
 
 ### 📊 5.4 `ruff`: a measured baseline
 
-**Adopted and enforced.** `ci.yml`'s `lint` job runs
+Adopted and enforced. `ci.yml`'s `lint` job runs
 `ruff check chitragupta scripts .claude/hooks` at the same binary
 zero-messages bar as pylint and markdownlint, closing
-[build order item 2](CODE-STANDARDS.md#-build-order) -- the `# noqa`-free
+[build order item 2](CODE-STANDARDS.md#-build-order): the `# noqa`-free
 policy [5.1](#-51-pylint-a-measured-baseline) named as still open, because
 `pylint` disables `broad-exception-caught` category-wide rather than
 requiring a per-site suppression.
 
 Unlike `.pylintrc` and `.markdownlint.yaml`, there was no DTaaS config to
 inherit: `pyproject.toml`'s `[tool.ruff.lint]` `select` was decided
-fresh, and deliberately narrower than ruff's own (much broader) default
--- `["E", "F", "BLE", "RUF100"]`, not the ~400-rule catalogue a bare
+fresh, and deliberately narrower than ruff's own (much broader)
+default: `["E", "F", "BLE", "RUF100"]`, not the ~400-rule catalogue a bare
 `ruff check` enables with no config at all. `BLE` is the rule this
 adoption exists for; `E`/`F` are pyflakes/pycodestyle's core correctness
 checks plus the "keep lines short" review rule build order already named
 for `ruff` (`E501`, closing the gap [5.1](#-51-pylint-a-measured-baseline)
 left: line length was a hand-fixed wrap, not an enforced check); `RUF100`
 is what makes a `# noqa: BLE001` a checked claim instead of a comment
-nothing reads -- the actual mechanism that turns the suppression list and
+nothing reads. It is the mechanism that turns the suppression list and
 the register into one list, which is what build order item 2 asked for.
 
 **Baseline, that selection, no `per-file-ignores`: 60 findings across
@@ -392,56 +388,56 @@ the register into one list, which is what build order item 2 asked for.
 
 | Rule | Count | Disposition |
 | --- | --- | --- |
-| `F401` unused-import | 41 | All in six `__init__.py` re-exports (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`, `review/figure_layout/`) -- `per-file-ignores` |
-| `E402` module-import-not-at-top | 11 | Same four of those six `__init__.py` files, importing late on purpose to dodge a circular import -- `per-file-ignores` |
-| `F821` undefined-name | 4 | `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated three fields `"array[int]"` with no `array` import in the module -- real, fixed by adding it |
-| `BLE001` blind-except | 2 | `style_check.language_of`/`style_acronym_drift.findings`, each catching a blind `Exception` where `dossier.dossier_dir` only ever raises `dossier.DossierError` -- real, fixed by narrowing rather than suppressing |
-| `E501` line-too-long | 1 | `chitragupta/dossier/_create.py:33`, a 125-column Markdown table row inside an f-string template -- real, and pylint's own blind spot: `unspecified-encoding`'s checker does not see inside a multi-line string literal, so a 10.00/10 `pylint` run says nothing about it |
-| `RUF100` unused-noqa | 1 | `chitragupta/pdf_text/_backends.py`'s `_extract_docling` -- fixed by removing the marker |
+| `F401` unused-import | 41 | All in six `__init__.py` re-exports (`registry/`, `spec/`, `unit/`, `dossier/`, `render_output/`, `review/figure_layout/`); `per-file-ignores` |
+| `E402` module-import-not-at-top | 11 | Same four of those six `__init__.py` files, importing late on purpose to dodge a circular import; `per-file-ignores` |
+| `F821` undefined-name | 4 | `chitragupta/overlap_skipgram.py`'s `CorpusSkipgramIndex` annotated three fields `"array[int]"` with no `array` import in the module; real, fixed by adding it |
+| `BLE001` blind-except | 2 | `style_check.language_of`/`style_acronym_drift.findings`, each catching a blind `Exception` where `dossier.dossier_dir` only ever raises `dossier.DossierError`; real, fixed by narrowing rather than suppressing |
+| `E501` line-too-long | 1 | `chitragupta/dossier/_create.py:33`, a 125-column Markdown table row inside an f-string template; real, and pylint's own blind spot: `unspecified-encoding`'s checker does not see inside a multi-line string literal, so a 10.00/10 `pylint` run says nothing about it |
+| `RUF100` unused-noqa | 1 | `chitragupta/pdf_text/_backends.py`'s `_extract_docling`; fixed by removing the marker |
 
 The `per-file-ignores` entry is `"__init__.py" = ["F401", "E402"]`,
 wholesale rather than 52 per-line `noqa`s, because that pattern is
 identical at all six sites and ruff's own per-file-ignores mechanism is
-built for exactly this shape.
+built for this shape.
 
 **The 12 `chitragupta`/`scripts` markers this adoption exists for
 (`docs/TECHNICAL-DEBT.md`'s former "11 inert" count, plus
 `scripts/check_version_bump.py`'s, added after that count was taken)
 turned out to split 11/1.** Eleven are confirmed live: `ruff` would
 report `BLE001` at each without its `# noqa`, checked directly rather
-than assumed. The twelfth, `pdf_text/`'s, was not -- `_extract_docling`
+than assumed. The twelfth, `pdf_text/`'s, was not: `_extract_docling`
 re-raises via `raise ... from exc`, which `BLE001`'s own definition of
 "blind" exempts, so the marker suppressed nothing and was removed (the
 *why*-comment beside it stayed; only the `noqa:` tag was dead weight).
 That is `RUF100` doing the job build order item 2 asked for: proving the
 suppressed set was the *right* set, rather than leaving it asserted.
 
-**`bench/`'s two markers were checked the same way and are genuine.**
+`bench/`'s two markers were checked the same way and are genuine.
 `bench/make_corpus.py` and `bench/bench_docling.py` would both report
 `BLE001` without their `# noqa`, verified directly (neither except block
 re-raises). They stay exactly as written. `bench/` itself is not in
-`ci.yml`'s `ruff` invocation -- `bench/README.md` records that
-exclusion as a decision, unchanged by this adoption, so the tag
-is inert in practice (nothing runs `ruff` over `bench/`) but correct on
-the evidence, which is the more honest state than stripping a
-suppression a real check would still need.
+`ci.yml`'s `ruff` invocation, and `bench/README.md` records that
+exclusion as a decision, unchanged by this adoption. So the tag is inert
+in practice (nothing runs `ruff` over `bench/`) but correct on the
+evidence, which is more accurate than stripping a suppression a real
+check would still need.
 
-**`ruff`'s pin is exact for a reason beyond Sonar S8544.** `RUF100`'s
+`ruff`'s pin is exact for a reason beyond Sonar S8544. `RUF100`'s
 verdict on a given `except` block depends on carve-outs like the
 re-raise one above, which are undocumented and narrower than `BLE001`
-looks on its own -- an unpinned bump could move that verdict and redden
+looks on its own. An unpinned bump could move that verdict and redden
 `ci.yml` on a rule this project never touched. `.pylintrc` and
 `.markdownlint.yaml` don't carry this risk the same way; `ruff`'s pin in
 `ci.yml` is where the next reader bumping it will meet the reason.
 
 ### 📊 5.5 `ruff format`: the whole-tree reformat
 
-**Adopted and enforced.** `ci.yml`'s `lint` job runs
+Adopted and enforced. `ci.yml`'s `lint` job runs
 `ruff format --check chitragupta scripts tests bench .claude/hooks` at the
 same binary bar, closing [build order](CODE-STANDARDS.md#-build-order)
-item 1's other half -- the formatter the linter landed without.
+item 1's other half: the formatter the linter landed without.
 
-**Wider roots than either linter.** `tests/` and `bench/` are formatted
+Its roots are wider than either linter's. `tests/` and `bench/` are formatted
 though neither is linted (`bench/` stays outside every check by its own
 standing decision). A style rule and a suppression check are
 different things: `pylint`/`ruff check` read for correctness and
@@ -450,37 +446,38 @@ while indentation and wrapping are cheap enough, and disruptive enough
 to leave inconsistent, that narrowing the roots would only relocate the
 same gap this item names rather than close it.
 
-**The reformat measured far larger than 5.1's line-wrap precedent, and
-the register absorbed it the same way anyway.** This codebase's existing
+The reformat measured far larger than 5.1's line-wrap precedent, and
+the register absorbed it the same way anyway. This codebase's existing
 style hand-aligns a wrapped call's continuation lines to the opening
 paren's column; `ruff format` (`black`'s style, which it is built to
-match) never does -- it always uses a fixed hanging indent instead, one
+match) never does. It always uses a fixed hanging indent instead, one
 level, regardless of where the call opened. That is a wholesale
-mismatch with almost every multi-line construct in the tree, not a
-config knob (`skip-magic-trailing-comma` was tried; it changed the diff
-by under 3%). The real numbers: **222 of 259 Python files, +9,052/-5,153
-lines**, against 5.1's 31 lines hand-wrapped into ten registered files.
-Six modules crossed the C2 250-code-line limit from the reformat alone
--- `chitragupta/render_output/__init__.py`, `chitragupta/enrich/__main__.py`,
+mismatch with almost every multi-line construct in the tree, and no
+config knob fixes it (`skip-magic-trailing-comma` was tried; it changed
+the diff by under 3%). The numbers: **222 of 259 Python files,
++9,052/-5,153 lines**, against 5.1's 31 lines hand-wrapped into ten
+registered files. Six modules crossed the C2 250-code-line limit from
+the reformat alone (`chitragupta/render_output/__init__.py`,
+`chitragupta/enrich/__main__.py`,
 `chitragupta/review/citation_coverage.py`,
 `chitragupta/review/verbatim_check/__init__.py`, `chitragupta/passages.py`,
-`chitragupta/dossier/_retrieval.py` -- none of them a real complexity
-increase, all of them the same trade 5.1 already made at a tenth the
+`chitragupta/dossier/_retrieval.py`). None of them is a real complexity
+increase; all of them are the same trade 5.1 already made at a tenth the
 scale: `LEGACY_LONG_FILES` in `tests/test_code_standards_scan.py` grew by
 six rather than the change being papered over or the check disabled.
 Every existing entry's trailing count also moved, because the same
 paren-alignment-to-hanging-indent rewrite touches files already on the
 register too.
 
-**`.git-blame-ignore-revs` lands with this**, at the repository root, so
+`.git-blame-ignore-revs` lands with this, at the repository root, so
 `git blame` (and GitHub's own blame view, which reads the file with no
 config needed) skips the reformat commit rather than attributing every
-line it touched to it. Empty of entries in this PR and filled in a small
-follow-up once the squash-merge SHA exists -- see the file's own header
-for why a squash-merge repository cannot record that SHA in the same PR
-that creates the commit. Added to `scripts/release.py`'s
-`EXCLUDE_TOP_LEVEL`: meaningful only against this repository's own commit
-history, which an unzipped release doesn't carry.
+line it touched to it. It was empty of entries in this PR and filled in
+a small follow-up once the squash-merge SHA existed; the file's own
+header explains why a squash-merge repository cannot record that SHA in
+the same PR that creates the commit. It is in `scripts/release.py`'s
+`EXCLUDE_TOP_LEVEL`, because it is meaningful only against this repository's
+own commit history, which an unzipped release doesn't carry.
 
 ## 💰 The standing-instruction budget
 
@@ -491,7 +488,7 @@ documents too long to be followed?**
 
 | Document | Words | ~Tokens | When loaded |
 | --- | --- | --- | --- |
-| `CLAUDE.md` | 533 | 710 | Always -- it is the router |
+| `CLAUDE.md` | 533 | 710 | Always; it is the router |
 | `SOUL.md` | 613 | 820 | As the stated tie-breaker |
 | `AGENTS.md` | 1,529 | 2,040 | Drafting sessions only |
 | `DEVELOPER-AGENTS.md` | 3,772 | 5,030 | Code sessions only |
@@ -499,18 +496,18 @@ documents too long to be followed?**
 
 A code session that follows the router reads roughly **11,900 tokens**
 before it reads a line of code. The whole prose corpus, if something
-loaded all of it, is about 141,000 tokens -- which is why the router
+loaded all of it, is about 141,000 tokens, which is why the router
 exists.
 
 ### 💡 The answer is: not on the axis you would expect
 
-**It is not a capacity problem.** 11,900 tokens is about 5% of a modern
+It is not a capacity problem. 11,900 tokens is about 5% of a modern
 context window. Nothing is being pushed out, and the split by task
-already prevents the worst case -- a drafting session does not carry the
+already prevents the worst case: a drafting session does not carry the
 release process, and a refactoring session does not carry the dossier
 format. That design is sound and should not be undone.
 
-**It is a position problem, and the evidence is in the git log.** Rank
+It is a position problem, and the evidence is in the git log. Rank
 the sections of `DEVELOPER-AGENTS.md` by where they sit, then by whether
 they are actually obeyed:
 
@@ -521,33 +518,31 @@ they are actually obeyed:
 | Commit messages | 73% | Body shape: 22 of 30 |
 | Issues and pull requests | 81% | Mixed |
 | Versioning | 86% | Yes |
-| Shipping cycle | 92% | Partly -- 4 of 28 landed without a PR |
+| Shipping cycle | 92% | Partly; 4 of 28 landed without a PR |
 
 Everything in the first two-thirds holds. The wobble is concentrated in
 the last quarter. That correlation is real and worth knowing.
 
-**But it is not the cause of the symptom that prompted the question, and
-saying so is more useful than agreeing.** The single worst-adhered rule
--- the commit body shape, missing from 14 of the last 30 -- is not
-forgotten. It is *unreachable* by reading: GitHub composes that body from
-the repository's `squash_merge_commit_message` setting, and no amount of
-reading a document changes what a server-side default produces. See
+But it is not the cause of the symptom that prompted the question. The
+single worst-adhered rule, the commit body shape, missing from 14 of the
+last 30, is not forgotten. It is *unreachable* by reading: GitHub
+composes that body from the repository's `squash_merge_commit_message`
+setting, and no amount of reading a document changes what a server-side
+default produces. See
 [Process debt](#-process-debt-the-formats-that-are-not-adhered-to). A
 shorter `DEVELOPER-AGENTS.md` would not have moved that number by one.
 
-There is a sharper version of this, which the settings change has since
-shown: the rule
+The settings change has since shown a sharper version of this: the rule
 is not reachable by *configuration* either, since no value of that
 setting produces a commit body from a PR description. It is reachable
-only by a step at merge time, which is what point 3 below actually asks
-for.
+only by a step at merge time, which is what point 3 below asks for.
 
 ### ➡ What follows from that
 
-1. **Do not shorten by deleting rationale.** It is the same trap
+1. **Do not shorten by deleting rationale.** It is the same mistake
    [the comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)
    describe: the *why* is the part that cannot be reconstructed, and an
-   agent that "tightens" these files destroys the most valuable thing in
+   agent that "tightens" these files destroys the most useful thing in
    them. Length is not the defect.
 2. **Watch the trend, not the total.** This PR grew
    `DEVELOPER-AGENTS.md` by 26% (2,983 to 3,772 words). That is a real
@@ -555,18 +550,18 @@ for.
    not working with a command and a setting. It would not be worth paying
    twice.
 
-Two further conclusions this assessment drew -- shorten by moving a
+This assessment drew two further conclusions: shorten by moving a
 late-firing rule into a command, and prefer a mechanism to a sentence,
-applied beyond the Merging section they had already produced -- are paid
-off rather than restated here: a later PR turned the commit-body rule into
+applied beyond the Merging section they had already produced. Both are
+paid off rather than restated here: a later PR turned the commit-body rule into
 `scripts/merge_pr.py`, so what they asked for is now [Process
 debt](#-process-debt-the-formats-that-are-not-adhered-to)'s history
 rather than this section's open item.
 
 **Not recommended:** a word budget. It is a continuous score, and
-[R3](AUTO-IMPROVEMENT.md#-the-requirements) rules those out for exactly
-the reason that applies here -- it would be met by deleting the
-explanations rather than by moving the rules.
+[R3](AUTO-IMPROVEMENT.md#-the-requirements) rules those out for the
+reason that applies here: it would be met by deleting the explanations
+rather than by moving the rules.
 
 ## 🤝 Process debt: the formats that are not adhered to
 
@@ -580,17 +575,16 @@ Measured over the **last 30 commits on `main`**:
 
 **Resolved by a settings change and a merge command** (settings applied
 2026-08-18; the merge command in a later PR). The table above is the
-measurement as taken on
-2026-08-13 and is kept as the baseline for the three title-side rows
-still open in it; what follows is what every cause -- title and body
-alike -- turned into. Two rows from that original measurement are not in
-the table above at all: "Body is a bulleted list, no preamble", 14 with a
-leading `* <title>` and 8 prose paragraphs. Paid off by the merge
-command's PR, they are
-deleted rather than kept and marked done, per
+measurement as taken on 2026-08-13 and is kept as the baseline for the
+three title-side rows still open in it; what follows is what every
+cause, title and body alike, turned into. Two rows from that original
+measurement are not in the table above at all: "Body is a bulleted list,
+no preamble", 14 with a leading `* <title>` and 8 prose paragraphs. Paid
+off by the merge command's PR, they are deleted rather than kept and
+marked done, per
 ["How something gets on this list"](#-how-something-gets-on-this-list).
 
-**The dominant cause was a repository setting, not discipline.**
+The dominant cause was a repository setting, not discipline.
 `squash_merge_commit_message` was `COMMIT_MESSAGES`, which builds the
 squash body by concatenating the branch's commit messages with `*`
 bullets. The documented shape therefore survived only if whoever merged
@@ -598,33 +592,33 @@ hand-edited the body in the web UI, every time. Restating the rule more
 firmly could not fix a default; that is why this was debt and not a
 lapse.
 
-A second, quieter defect: `squash_merge_commit_title` was
+A second, less visible defect: `squash_merge_commit_title` was
 `COMMIT_OR_PR_TITLE`, so GitHub used the PR title on a multi-commit
 branch and the *commit's* title on a single-commit one.
 `DEVELOPER-AGENTS.md` asserted the PR title unconditionally, which was
 wrong for the one-commit case.
 
-**All three settings are now applied:**
+All three settings are now applied:
 
-- `squash_merge_commit_title=PR_TITLE` -- **closed the title outright.**
+- `squash_merge_commit_title=PR_TITLE` **closed the title outright.**
   The PR title is the commit title unconditionally, GitHub appends the
   `(#N)` itself, and the "add it by hand when you pass `--subject`"
   exception is retired. The first two rows of the table above cannot
   recur by this route.
-- `allow_merge_commit=false`, `allow_rebase_merge=false` -- "Merge
+- `allow_merge_commit=false`, `allow_rebase_merge=false`: "Merge
   method: squash" is a property of the repository rather than a sentence.
-- `squash_merge_commit_message=PR_BODY` -- **did not close the body, and
+- `squash_merge_commit_message=PR_BODY` **did not close the body, and
   the claim that it would was wrong.** This section previously said
   `.github/pull_request_template.md` "already shapes that body". It
-  shapes it into a *review* document -- `## Test plan`, `## Checklist`,
-  tick-boxes -- which is a different artefact from a commit message, so
+  shapes it into a *review* document (`## Test plan`, `## Checklist`,
+  tick-boxes), which is a different artefact from a commit message, so
   merging unedited now lands the template on `main` instead of
   `*`-concatenated commit titles. Both are wrong; the new one is at
   least conspicuous.
 
-**No setting closed the body, so a command supplies it
-instead.** `squash_merge_commit_message` takes exactly three values --
-`PR_BODY`, `COMMIT_MESSAGES`, `BLANK` -- and none transforms the text,
+No setting closed the body, so a command supplies it instead.
+`squash_merge_commit_message` takes exactly three values (`PR_BODY`,
+`COMMIT_MESSAGES`, `BLANK`), and none transforms the text,
 because there is no templating step between a PR description and a
 commit body for a setting to hook into. `scripts/merge_pr.py` takes
 the body the author wrote in the PR description's `## Commit message`
@@ -635,71 +629,71 @@ documents as the standing way to merge rather than as an incantation to
 still be remembered at the end of a session. Until #827 it *assembled*
 the body by scraping the description's bullets, which duplicated every
 change on PRs that filled in both `## Description` and `## What
-changed`, and copied anything a bullet carried -- trailers, live closing
-keywords, escape sequences -- into `main`.
+changed`, and copied anything a bullet carried (trailers, live closing
+keywords, escape sequences) into `main`.
 
-The estimate this section carried -- "roughly 15 of the ~20 violations
-closed by configuration" -- was too optimistic for that reason, at the
-time it was written. The title-side rows are closed permanently by a
+The estimate this section carried, "roughly 15 of the ~20 violations
+closed by configuration", was too optimistic for that reason at the time
+it was written. The title-side rows are closed permanently by a
 setting; the body-side rows needed a command instead, because no setting
 could reach them.
 
-**The enforcement question, decided.** A test over `git log` was
-considered for the title-side rows and rejected: it is the obvious move
-in this repository's idiom, and it does not work here --
+The enforcement question is decided. A test over `git log` was
+considered for the title-side rows and rejected. It is the obvious move
+in this repository's idiom, and it does not work here:
 `actions/checkout` fetches depth 1, so CI has no history to walk, and a
 scan that self-skipped when history is absent would be green on the one
 host that never has it. The title-side settings do not need that
-argument to hold anyway -- they prevent rather than detect, mechanically,
+argument to hold anyway: they prevent rather than detect, mechanically,
 and cannot be bypassed by merging a different way. `scripts/merge_pr.py`
-cannot make that claim: a command, unlike a repository setting, can be
-skipped by merging through the web UI instead. The choice made there is
-**producer-is-enforcement** -- the script becomes the one documented way
-to merge, the same standing the OpenCodeReview step already has as "not
-in CI and not a dependency, so it is the developing agent that has to
-invoke it" -- over a CI job with a deeper checkout that re-scans `main`'s
-recent history, which was considered and rejected: it would only catch a
+cannot make that claim, because a command, unlike a repository setting,
+can be skipped by merging through the web UI instead. The choice made
+there is **producer-is-enforcement**. The script becomes the one
+documented way to merge, the same standing the OpenCodeReview step
+already has as "not in CI and not a dependency, so it is the developing
+agent that has to invoke it". The alternative, a CI job with a deeper
+checkout that re-scans `main`'s recent history, was considered and
+rejected: it would only catch a
 bypass after it had already landed, and it costs a dedicated job plus a
 bounded-window policy to avoid false negatives past that window.
 `plans/827-commit-message-format.md` carries the rest of the argument
 for the current design. #827 added the pull-request-time half
 the history scan could not be: `.github/workflows/commit-message.yml`
 runs the same check on the description itself, before anything lands,
-and is made a required check -- prevention rather than detection, which
-is the property the rejected scan lacked.
+and is made a required check. That is prevention rather than detection,
+the property the rejected scan lacked.
 
 ## 🚫 What is not debt
 
-The other half of this document's job. Every item below looks like a
+This is the other half of this document's job. Every item below looks like a
 finding to a reviewer applying a checklist, and every one is a decision
 with its reasoning attached. Changing any of them makes the codebase
 worse.
 
 | Looks like | Actually |
 | --- | --- |
-| Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid) -- *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
-| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:137`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)` -- this module's own constant. The comment above it says exactly that |
-| `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names them: retrieval needs a per-writer-unique temp name for concurrent subagents, and since a later optimisation a per-process memo on the index file's `(path, size, mtime_ns)` -- its payload is 14 MB and is read many times per run. Docling's is neither, and says why |
-| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline) -- confirmed live, not assumed so |
+| Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid): *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
+| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:137`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
+| `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names them: retrieval needs a per-writer-unique temp name for concurrent subagents, and since a later optimisation a per-process memo on the index file's `(path, size, mtime_ns)`, because its payload is 14 MB and is read many times per run. Docling's is neither, and says why |
+| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline): confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
 | C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#-what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
 | Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#-tests): a test that reads top to bottom is worth more than a DRY one |
 | `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
-| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift -- see `.opencodereview/rule.json`'s `tests` entry. The assert-free five are documented "does not raise" tests |
-| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring -- it is a sanity check on the constants as actually computed. Unlike the two cases `tests/test_unversioned_data_scan.py` guards against, it does not claim to be testing a *default*, which is why it is that scan's one registered exception rather than a fixed test |
-| `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed -- a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
+| Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift; see `.opencodereview/rule.json`'s `tests` entry. The assert-free five are documented "does not raise" tests |
+| `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring: it is a sanity check on the constants as actually computed. Unlike the two cases `tests/test_unversioned_data_scan.py` guards against, it does not claim to be testing a *default*, which is why it is that scan's one registered exception rather than a fixed test |
+| `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed. It is a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |
 | `chitragupta/citation_gate.py` reading the draft with no `encoding=` (true when this row was written; fixed since, in the locale-codec pass) | Was never a way to break the gate regardless. Citekeys are ASCII, so extraction returns the same result from mojibake as from correct text. Verified, because the opposite conclusion is the natural one |
 
 ## 🎯 What to take first
 
 Ordered by what breaks if it is left, not by size.
 
-Short, and deliberately so. Everything the 2026-08-18 reconciliation
-found open is resolved as of a five-PR batch under one umbrella issue,
-and `bench/`'s "pattern of one" closed in the compaction PR, which gave
-`bench_drift.py` and `sweep_sync.py` a `self_check()` each and wrote the
-convention down in `bench/README.md`, and a later issue closed the
-list's last
-item by reaffirming `bench/`'s exclusions as a decision rather than
-scheduling further work.
+This list is deliberately short. Everything the 2026-08-18
+reconciliation found open is resolved as of a five-PR batch under one
+umbrella issue. `bench/`'s "pattern of one" closed in the compaction PR,
+which gave `bench_drift.py` and `sweep_sync.py` a `self_check()` each and
+wrote the convention down in `bench/README.md`, and a later issue closed
+the list's last item by reaffirming `bench/`'s exclusions as a decision
+rather than scheduling further work.

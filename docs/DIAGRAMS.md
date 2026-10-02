@@ -4,17 +4,17 @@ Status: **reference.** Written 2026-08-06. Updated 2026-09-02.
 
 Every diagram here describes the same pipeline. They come in four groups:
 
-- **[The ladder](#-the-ladder)** -- six views of the whole workflow, ordered
+- [The ladder](#-the-ladder): six views of the whole workflow, ordered
   by how much you already know, from one that assumes nothing to one that
   assumes you are about to change the worker pool.
-- **[By genre](#-by-genre)** -- three views of how the *writing* skills
+- [By genre](#-by-genre): three views of how the *writing* skills
   differ in what they ask of the pipeline. The five genre skills are not
   variations on one template; they disagree about how much of it is worth
   running.
-- **[Appendix](#-appendix)** -- the same workflow in time order, and the
+- [Appendix](#-appendix): the same workflow in time order, and the
   ledger's state machine for one citekey.
-- **[Topic discovery](#-topic-discovery)** -- two views of the corpus's
-  topic structure and the reader over it, the one group here that lives
+- [Topic discovery](#-topic-discovery): two views of the corpus's
+  topic structure and the reader over it, the one group here that applies
   *before* any draft exists ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)).
 
 Read the one that matches your question and ignore the rest.
@@ -30,7 +30,7 @@ The fenced `mermaid` blocks below are the source of truth, and GitHub
 renders them inline, so a change to the pipeline and a change to its
 diagram land in the same diff. `docs/diagrams/` carries the same thirteen as
 standalone `.mmd` sources and `.svg` exports, for slides, a paper, or a
-viewer that doesn't render Mermaid -- see [Editing these](#-editing-these)
+viewer that doesn't render Mermaid; see [Editing these](#-editing-these)
 at the end.
 
 ---
@@ -51,35 +51,35 @@ at the end.
 **Written for:** Someone who has never heard of this.
 **Answers:** what are the steps, and who does each one?
 
-Deliberately the least detailed diagram here. Two properties do all the
-work: phase 1 is the only entrance -- citekeys come from your BibTeX
-export and nowhere else -- and phase 4 is the only exit, with no arrow
+This is deliberately the least detailed diagram here. Two properties do
+all the work: phase 1 is the only entrance (citekeys come from your
+BibTeX export and nowhere else), and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#-how-it-works).
 
 The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
 gate is normally invisible: the skill discards the unsupported claim,
 rewrites it and runs the gate again. You only get involved in the rarer
-case where the paper genuinely isn't in the corpus yet, and that means
-going back to phase 1 and adding it.
+case where the paper isn't in the corpus yet, and that means going back
+to phase 1 and adding it.
 
-It carries no commands and no file paths on purpose -- this is the diagram
-for someone who has not decided to install anything yet, and a reader who
+It carries no commands and no file paths on purpose, because it is for
+someone who has not decided to install anything yet. A reader who
 wants either has [CLI.md](CLI.md) for the commands and
 [the artifacts diagram](#-4-everything-on-disk) for the paths.
 
-**Two enclosures carry the division of labour.** `LLM` holds drafting,
+Two enclosures show the division of labour. `LLM` holds drafting,
 the gate and the dossier: the part a model runs, loops over on its own,
 and keeps its working state in. `Author Proofs` holds publishing and
 review: the part you run once a draft is finished. Nothing crosses
 between them except a draft that has passed the gate.
 
-The two dashed boxes are stores and reports rather than steps.
-**`DOSSIER`** ([DOSSIER.md](DOSSIER.md)) is written while a draft is
-written and read back to change it -- the reason revision does not
-re-run the genre skill. **`REVIEW`** ([REVIEW.md](REVIEW.md)) is seven
-advisory aids for a finished draft; its arrow back to drafting is dotted
-for the same reason the gate's is solid, namely that a review finding is
-yours to weigh rather than something that blocks the pipeline.
+The two dashed boxes are stores and reports, not steps.
+`DOSSIER` ([DOSSIER.md](DOSSIER.md)) is written while a draft is
+written and read back to change it, which is why revision does not
+re-run the genre skill. `REVIEW` ([REVIEW.md](REVIEW.md)) is seven
+advisory aids for a finished draft. Its arrow back to drafting is dotted
+where the gate's is solid, because a review finding is yours to weigh
+and does not block the pipeline.
 
 ```mermaid
 flowchart LR
@@ -137,7 +137,7 @@ flowchart LR
 **Answers:** what do I type, in what order, and what does each step tell me?
 
 The same path as [the Quickstart](../README.md#-quickstart), drawn with
-the two checkpoints that actually catch people. The first is the **Export
+the two checkpoints where people most often go wrong. The first is the **Export
 Files** tick box, which silently produces a bibliography with no PDFs
 attached. The second is the first `python -m chitragupta.corpus ledger` after a
 sync, which is where you find out whether anything became citable.
@@ -204,19 +204,19 @@ flowchart TB
 I'm looking at fit?
 
 The reference diagram. Everything in `chitragupta/` appears here exactly once.
-[ARCHITECTURE.md](ARCHITECTURE.md) is the prose companion to it -- the
+[ARCHITECTURE.md](ARCHITECTURE.md) is the prose companion to it: the
 same system in words, plus what each part needs to run.
 
-Three things it is drawn to make unmissable. The thick edge from
-`content/ledger.sqlite` to the gate is the entire safety argument -- the
+It is drawn to make three things obvious. The thick edge from
+`content/ledger.sqlite` to the gate is the entire safety argument: the
 gate consults the ledger and nothing else. The gate sits on the only path
 from a draft to `content/rendered/`. And the `FAIL` edge does not leave
 the system: it runs back into the skill, which re-drafts and re-runs the
 gate until it exits 0.
 
-Note that the enrichment layer's `docling` stage reads **the PDF itself**,
+The enrichment layer's `docling` stage reads **the PDF itself**,
 not `content/parsed/`. It is a second, independent extraction of the same
-source, not a refinement of the first one -- which is why it can produce
+source, not a refinement of the first one, which is why it can produce
 figures and layout-aware passages that `pdftotext` cannot.
 
 Dotted edges are optional or conditional: the enrichment layer is opt-in,
@@ -353,9 +353,9 @@ flowchart TB
 **Answers:** what are all these files, who wrote them, and what is safe to delete?
 
 Same pipeline, but the files are the nodes and the modules are the edge
-labels -- the inverse of the full workflow diagram.
+labels: the inverse of the full workflow diagram.
 
-The split that matters: everything under `content/` is disposable. Delete
+Everything under `content/` is disposable. Delete
 the directory and one `sync` plus one enrichment run rebuilds all of it.
 Nothing under `papers/` is disposable, and neither is `config.toml`; both
 are gitignored and per-host, so they are also the only things a backup
@@ -363,8 +363,8 @@ needs to contain.
 
 With `[enrich].docling_images` on, `docling` also writes each document's
 figure bitmaps into `<doc>_artifacts/` and an index of them in
-`<doc>.figures.json` -- page, caption, bounding box and
-the string to cite each figure by, for each picture that is actually a
+`<doc>.figures.json`: page, caption, bounding box and
+the string to cite each figure by, for each picture that is a real
 figure ([CONFIG.md](CONFIG.md#-docling_images) has what that excludes and
 why). Those are a reading aid for checking a draft against its sources.
 Having a paper in your library grants no right to reproduce its figures;
@@ -472,12 +472,12 @@ Exit codes are the API for unattended callers: `0` corpus in sync, `1`
 corpus not in sync and a human is needed, `2` cycle skipped and no work
 was lost.
 
-The distinction worth reading twice is in the failure branch. A document
-the backend genuinely cannot read is **never retried** -- re-reading it
-every run would spend the same minutes to reach the same answer -- but it
-**never goes quiet either**, failing the run until someone deals with it.
-A failure caused by the *run* rather than the *document* -- a dead worker,
-a timeout, a CUDA OOM -- retries itself next time without being asked.
+Read the failure branch carefully. A document the backend cannot read
+is **never retried**, since re-reading it every run would spend the same
+minutes to reach the same answer, but it **never goes quiet either**: it
+fails the run until someone deals with it. A failure caused by the *run*
+instead of the *document* (a dead worker, a timeout, a CUDA OOM) retries
+itself next time without being asked.
 
 The gate's `exit 1` is the one failure on this diagram that usually
 reaches nobody, because the skill loops on it itself.
@@ -554,10 +554,10 @@ flowchart TB
 part of it dies?
 
 The deepest view, and the only part of the repository that runs work in
-parallel. Everything else -- retrieval, gating, rendering -- is
+parallel. Everything else (retrieval, gating, rendering) is
 deliberately serial.
 
-The through-line: **the pool is clamped to the host, not to the
+**The pool is clamped to the host, not to the
 request.** The ceiling counts the CPUs *this process* may run on
 (`os.sched_getaffinity`), not the machine's. An over-large request is
 clamped *and said out loud*: silently obeying thrashes, and silently
@@ -567,7 +567,7 @@ not.
 Five failure modes hang off the pool, each handled where it can be, and
 the parent process keeps everything only it can do: sqlite has a single
 writer, and the parent is the only place that can order results
-deterministically. Full component-by-component write-up in
+deterministically. The full component-by-component write-up is in
 [docs/PARALLELISM.md](PARALLELISM.md); the reasoning behind the lock is in
 [docs/DESIGN.md](DESIGN.md).
 
@@ -653,8 +653,9 @@ flowchart TB
 
 ## 🎭 By genre
 
-The ladder above draws the pipeline as one thing. It isn't, quite -- the
-five genre skills in `.claude/skills/` use very different amounts of it.
+The ladder above draws the pipeline as one thing. It is not quite one:
+the five genre skills in `.claude/skills/` use very different amounts of
+it.
 The enrichment layer in particular is worth building for two of them,
 largely wasted on two others, and reduced to a preview step for the fifth.
 
@@ -662,7 +663,7 @@ largely wasted on two others, and reduced to a preview step for the fifth.
 | --- | --- | --- | --- | --- |
 | [Genre A: corpus-led](#-genre-a-corpus-led) | `survey-writer`, `deep-research` | BM25 **or** `embed_index` | `docling` + `embed`, both worth it | yes |
 | [Genre B: teaching](#-genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
-| [Genre C: LaTeX-native](#-genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no -- skipped** |
+| [Genre C: LaTeX-native](#-genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no, skipped** |
 
 All five run the same gate, in the same loop, with the same wording.
 
@@ -670,24 +671,24 @@ All five run the same gate, in the same loop, with the same wording.
 
 **Skills:** `survey-writer`, `deep-research`
 
-**The corpus is the content.** Nearly every sentence is a cited claim, so
+The corpus is the content. Nearly every sentence is a cited claim, so
 these are the two skills that pay off the enrichment layer. `docling`
 gives passages good enough to survive review; `embed` gives semantic
 recall, finding the paper that makes your point in words you did not
-search for. They are also the only two skills whose SKILL.md names
-`chitragupta.enrich.embed_index.search()` as an alternative to BM25.
+search for. They are also the two genre skills whose SKILL.md names
+`chitragupta.enrich.embed_index` as an alternative to BM25.
 
 Both read the same corpus the rest of the pipeline does, and that corpus
-is the bibliography and nothing else -- so every document either skill can
+is the bibliography and nothing else, so every document either skill can
 reach carries a citekey the gate will accept, and there is no class of
 source that has to be discussed by title because it may not be cited.
 
 `bertopic` sits off to one side because **no skill calls it.** It is for
 you, deciding what the survey should be about before anything is drafted.
 
-Same reason, other direction: `chitragupta.review`'s `coverage` aid ("retrieval
-surfaced
-this paper -- did the draft actually cite it?") is only a meaningful
+For the same reason, in the other direction, `chitragupta.review`'s
+`coverage` aid ("retrieval surfaced
+this paper -- did the draft actually cite it?") only asks a meaningful
 question in this genre.
 
 ```mermaid
@@ -742,27 +743,28 @@ flowchart LR
 
 **Skills:** `tutorial-writer`, `textbook-chapter-writer`
 
-**The corpus is a garnish.** Most of the content is original -- worked
-examples, exercises, a lesson that has to actually run. Citations are
+The corpus plays a minor part. Most of the content is original: worked
+examples, exercises, a lesson that has to run. Citations are
 deliberately confined: `tutorial-writer` bans them mid-lesson and allows
 them only in a closing "Where to go next", and `textbook-chapter-writer`
 uses them for motivation and background.
 
 So the enrichment layer is mostly wasted here. Neither SKILL.md mentions
 `embed_index`; both use `chitragupta.retrieval.search()`, which is stdlib BM25.
-Building a semantic index to place four citations is effort in the wrong
-place. The rendering they do want at the end is not an enrichment stage
-at all -- `render_output` is the drafting layer's own publish step, and
+Building a semantic index to place four citations is not worth the
+effort. The rendering they do want at the end is not an enrichment stage
+at all: `render_output` is the drafting layer's own publish step, and
 needs no package from the `enrich` group.
 
 This is also the one genre where **the gate can legitimately pass with
 zero citations**, and both SKILL.md files say so. An empty reference list
 is a correct outcome for a tutorial.
 
-Which points at the real risk: the failure mode in this genre is not a bad
-citekey, it is writing the wrong genre -- a tutorial that explains instead
-of instructing. Both skills open by warning about exactly that, and no
-gate in this repository can catch it.
+The real risk in this genre is writing the wrong genre, such as a
+tutorial that explains instead of instructing; a bad citekey is the
+lesser risk.
+Both skills open by warning about that, and no gate in this repository
+can catch it.
 
 ```mermaid
 flowchart LR
@@ -814,9 +816,9 @@ flowchart LR
 
 **Skills:** `thesis-chapter-writer`
 
-**The output isn't the deliverable.** This skill emits a standalone `.tex`
+The output isn't the deliverable. This skill emits a standalone `.tex`
 fragment with `\citep`/`\citet` and no preamble, meant to be `\input` by
-your own thesis document -- so rendering produces a *preview*, not the
+your own thesis document, so rendering produces a *preview*, not the
 artifact that matters. A rendering failure
 never blocks presenting the draft.
 
@@ -885,13 +887,13 @@ separate for that reason.
 
 ### ⏱ One draft, in time order
 
-The full workflow with time on the vertical axis instead of dependency.
-Useful for two things in particular. The first is seeing that **the gate
-runs twice**: the PostToolUse hook fires on every write under
-`content/drafts/`, so a bad citekey cannot reach disk even if a skill
-forgets, and the skill then runs the gate itself, because the hook fires
-only on the tool call that wrote the file. The second is seeing the
-**loop** that wraps both of them.
+The full workflow with time on the vertical axis instead of dependency. It
+shows two things. The first is that **the gate runs
+twice**: the PostToolUse hook fires on every write under `content/drafts/`, so
+a bad citekey written to disk is refused straight back to the model even if a
+skill forgets, and the skill then runs the gate itself, because the hook fires
+only on the tool call that wrote the file. The second is the **loop**
+that wraps both of them.
 
 ```mermaid
 sequenceDiagram
@@ -1025,11 +1027,11 @@ stateDiagram-v2
 Two views of the discovery feature
 ([TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md)), the one group here that
 lives before any draft exists: how a free phrase becomes a topic that
-actually exists in the corpus, and what the two topic graphs are.
+exists in the corpus, and what the two topic graphs are.
 
 ### 🪜 12. The resolution ladder
 
-Which rung answered is part of the answer -- the output's
+Which rung answered is part of the answer. The output's
 `resolved_via` field names it, because a topic membership and a
 plausible guess must never look alike.
 
@@ -1074,8 +1076,9 @@ flowchart TB
 ### 🕸 13. The two graphs
 
 Two relations, two files, and the edge families are never merged into
-one score -- their disagreement (many shared papers but different
-subjects, or the same subject with none) is itself a discovery cue.
+one score. Where they disagree (many shared papers but different
+subjects, or the same subject with none), the disagreement is itself a
+discovery cue.
 
 ```mermaid
 flowchart TB
@@ -1162,5 +1165,4 @@ file holding `{"args": ["--no-sandbox"]}`. mermaid's layout is not
 deterministic run to run, so a re-render of an unchanged source can move
 edges; only the labels and the fingerprint are pinned.
 
-Keep them honest the way the rest of this repository stays honest: if a
-diagram and the code disagree, the diagram is the bug.
+If a diagram and the code disagree, the diagram is the bug.

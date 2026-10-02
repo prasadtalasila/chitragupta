@@ -139,7 +139,11 @@ bench/results/*/_table_field_index.json
 config.toml
 # ...except the sample project's, which is a shipped input of the
 # worked examples, not per-host data (committed with `git add -f`).
+# The harness examples beside it (docs/examples/codex/, opencode/) ship
+# the same inputs, so each one re-runs on its own.
 !docs/examples/sample-project/config.toml
+!docs/examples/codex/config.toml
+!docs/examples/opencode/config.toml
 
 # The `papers/` rule above ignores the user's own bibliography wherever
 # it lives -- but the sample project's five synthetic CC0 papers and
@@ -149,6 +153,8 @@ config.toml
 # builds kept passing off the working tree while every clean checkout
 # lacked them.
 !docs/examples/sample-project/papers/
+!docs/examples/codex/papers/
+!docs/examples/opencode/papers/
 
 # Built documentation site (mkdocs.yml -> .github/workflows/docs.yml).
 # Generated from the repository itself; nothing here is a source file.

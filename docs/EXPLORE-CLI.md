@@ -7,8 +7,8 @@ documents every flag; [EXPLORE-WEB.md](EXPLORE-WEB.md) is this page's
 interactive twin, and records
 [which computations live in the pipeline and which in the app](EXPLORE-WEB.md#-what-the-pipeline-computes-and-what-the-app-computes).
 Every answer below comes from the same stored artefacts the app reads,
-so the two surfaces can never disagree -- and every command honours
-`--json` for scripts and the drafting skills.
+so the two surfaces can never disagree. Every command honours `--json`
+for scripts and the drafting skills.
 
 **Written for** you at a terminal with a synced corpus, asking "what is
 my corpus about, and where should the next draft start?" without
@@ -26,12 +26,12 @@ $ chitragupta corpus discover
   ...
 ```
 
-*Real corpus, trimmed.* Every topic with its provenance (`seed` or
-`emergent`, which is all the artefact records -- `--origins` is what
-tells a hand-written seed from an extracted keyword and from a
-corroborated phrase both files name), size and top terms -- plus the
-seed phrases no topic covers, which is the "literature that has not met
-itself" observation worth noticing first.
+*Real corpus, trimmed.* This lists every topic with its provenance,
+size and top terms, plus the seed phrases no topic covers. Provenance is
+`seed` or `emergent`, which is all the artefact records; `--origins` is
+what tells a hand-written seed from an extracted keyword and from a
+corroborated phrase both files name. The uncovered seed phrases are the
+"literature that has not met itself" observation worth noticing first.
 
 ## 🔍 One topic
 
@@ -42,16 +42,16 @@ chitragupta corpus discover "digital twin"
 The topic's papers with full ledger entries and each paper's *other*
 topics, both linked-topic families with their evidence (shared citekeys
 on one side, the bridging pair on the other), and the topic's stored
-brokerage numbers -- neighbours, ego density, Burt's effective size and
+brokerage numbers: neighbours, ego density, Burt's effective size and
 constraint, per family, with the theme-or-bridge reading. Any free
 phrase resolves through the ladder (exact, fuzzy, hybrid BM25+cosine,
 then paper search), and the output names which rung answered.
 
 Add `--out overview.md` for an extractive Markdown overview grounded in
 verbatim member-paper snippets, or `--hops N` to see the neighbourhood
-as rings by hop distance instead of the flat lists -- ring one typed by
-which family reached each neighbour, with an honest count of what the
-topic cannot reach:
+as rings by hop distance instead of the flat lists. Ring one is typed by
+which family reached each neighbour, and the output counts what the topic
+cannot reach:
 
 ```console
 $ chitragupta corpus discover "digital twin" --hops 1
@@ -68,10 +68,10 @@ unreached from here: 65 topics
 Add `--family overlap` or `--family semantic` to measure over one
 relation instead of both. Without it the walk is over the union, so a
 topic one shared paper plus one cosine hop away sits on the same ring as
-a topic two shared papers out -- and "two hops" means "two hops over
-whichever family got there first". With it the question is the one you
-asked, the header says which family answered, and a neighbour both
-families reach is typed by the one you walked rather than as `both`:
+a topic two shared papers out, and "two hops" means "two hops over
+whichever family got there first". With it the walk answers the question
+you asked, the header says which family answered, and a neighbour both
+families reach is typed by the one you walked instead of as `both`:
 
 ```console
 $ chitragupta corpus discover "digital twin" --hops 1 --family overlap
@@ -109,11 +109,10 @@ topic-23 +23
   ...
 ```
 
-*Real corpus, trimmed.* The stored merge tree cut into as close to
-eight groups as it allows --
-the app's resolution slider as a view, with the same labels (biggest
-member leads, the rest counted) and the same honesty when the target is
-unreachable.
+*Real corpus, trimmed.* The stored merge tree is cut into as close to
+eight groups as it allows. This is the app's resolution slider as a view,
+with the same labels (biggest member leads, the rest counted), and it
+reports an unreachable target the same way the app does.
 
 ## 🤝 Where the families disagree
 
@@ -147,10 +146,10 @@ path over shared papers: model-driven engineering -> topic-60 -> physical twin
 ```
 
 *Real corpus, evidence lists trimmed.* The strongest chain over one
-family, hop by hop, each hop with its
-evidence -- walked from the artefact's stored next-hop matrices.
-`--family` is required: never one fused weight. "No path over this
-family" is a real answer, and often the interesting one.
+family, hop by hop, each hop with its evidence, walked from the
+artefact's stored next-hop matrices. `--family` is required, because the
+walk never uses one fused weight. "No path over this family" is a real
+answer, and often the interesting one.
 
 ## 🚫 Why is there no edge here?
 
@@ -164,9 +163,9 @@ edge was drawn.
 ```
 
 *Real corpus, citekey list trimmed.* The shared citekeys, both topic
-sizes, the corpus size, the
-hypergeometric tail the gate weighed, and the verdict -- including the
-gate's stored threshold, which the app cannot show.
+sizes, the corpus size, the hypergeometric tail the gate weighed, and the
+verdict, including the gate's stored threshold, which the app cannot
+show.
 
 ## ⚖ Several topics side by side
 
@@ -182,11 +181,11 @@ pairwise shared papers:
 ...
 ```
 
-*Real corpus, trimmed.* Pairwise shared papers, the papers held by
-all of the named topics, the
-bridge papers held by two or more (with full ledger entries), and the
-edges among them with their evidence. Two to six topics; past six it
-refuses with the count named rather than truncating silently.
+*Real corpus, trimmed.* Pairwise shared papers, the papers held by all
+of the named topics, the bridge papers held by two or more (with full
+ledger entries), and the edges among them with their evidence. It takes
+two to six topics; past six it refuses and names the count instead of
+truncating silently.
 
 ## 💠 One paper, and the exports
 
@@ -196,7 +195,7 @@ chitragupta corpus discover --html topics.html
 chitragupta corpus discover --app topicapp/
 ```
 
-`--paper` inverts the question -- every topic one paper belongs to,
+`--paper` inverts the question: every topic one paper belongs to,
 with scores. `--html` writes the one-file static page and `--app` the
 interactive app directory; [EXPLORE-WEB.md](EXPLORE-WEB.md) is the tour
 of what the app then shows.

@@ -12,16 +12,15 @@ genre skills write prose against, this one is the standard an agent
 changes *this repository's own code* against.
 
 **Written for** someone changing code in `chitragupta/`, `scripts/` or
-`assets/webapp/`, or deciding whether a proposed rule is worth enforcing. It assumes
-`DEVELOPER-AGENTS.md` for the process around a
-change -- test policy, the local check suite, commit/PR/release
-conventions -- and states only what the code itself must look like.
+`assets/webapp/`, or deciding whether a proposed rule is worth enforcing.
+It assumes `DEVELOPER-AGENTS.md` for the process around a change (test
+policy, the local check suite, commit/PR/release conventions) and states
+only what the code itself must look like.
 
 **Not covered here:** prose standards for drafts
-([WRITING-STANDARDS.md](WRITING-STANDARDS.md)), module boundaries and
-which layer owns what ([ARCHITECTURE.md](ARCHITECTURE.md), and
-`DEVELOPER-AGENTS.md`'s "Module boundaries"),
-and the drafting loop this document borrows its shape from
+([WRITING-STANDARDS.md](WRITING-STANDARDS.md)), module boundaries and which
+layer owns what ([ARCHITECTURE.md](ARCHITECTURE.md), and `DEVELOPER-AGENTS.md`'s
+"Module boundaries"), and the drafting loop this document borrows its shape from
 ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
 ## 🧭 Table of contents
@@ -43,7 +42,7 @@ and the drafting loop this document borrows its shape from
 
 The source standard is the widely-circulated
 [clean-code summary](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29)
-of Robert C. Martin's *Clean Code* (Prentice Hall, 2008) --
+of Robert C. Martin's *Clean Code* (Prentice Hall, 2008);
 [INSPIRATION.md](INSPIRATION.md#-code-standards) records the provenance.
 Its nine sections are the checklist this document is written against, and
 [The rest of the checklist](#-the-rest-of-the-checklist) maps every rule in
@@ -57,9 +56,10 @@ under a different name, the table points at it instead of repeating it. A
 rule stated twice is a rule that will eventually be stated two different
 ways.
 
-**Nothing is adopted unread.** Two of the nine sections land differently
-here than a quick reading suggests -- the comment rules and the Boy Scout
-Rule -- and both get their own section below rather than a row in a table.
+**Nothing is adopted unread.** Two of the nine sections, the comment
+rules and the Boy Scout Rule, land differently here than a quick reading
+suggests, and both get their own section below rather than a row in a
+table.
 A checklist applied without noticing where it collides with the codebase
 is how a standard produces worse code than none.
 
@@ -78,18 +78,18 @@ statements" is binary and is enforced. "This code is clean" is a score.
 A score invites the same Goodhart failure
 [HOUSE-STYLE.md](HOUSE-STYLE.md#-why-a-readability-index-is-a-trap)
 describes for readability indices. A maintainability metric is minimised
-by splitting functions past the point where the logic survives the break
--- and every one of those edits passes its own re-check.
+by splitting functions past the point where the logic survives the
+break, and every one of those edits passes its own re-check.
 
-So: a small number of binary rules with a detector and a register, and a
-larger number of judgement rules with neither. The judgement rules are
-not weaker -- they are what review is for. They are not things a
-machine may drive to zero.
+The result is a small number of binary rules with a detector and a
+register, and a larger number of judgement rules with neither. The
+judgement rules are not weaker; they are what review is for. They are
+not things a machine may drive to zero.
 
 **The loop stays open.** This document borrows AUTO-IMPROVEMENT.md's
 shape, not its automation. Nothing here proposes a code-fixing loop;
-[R11](AUTO-IMPROVEMENT.md#-the-requirements) -- "its only trigger is a
-person asking" -- is the reason, and it applies with more force to code
+[R11](AUTO-IMPROVEMENT.md#-the-requirements) ("its only trigger is a
+person asking") is the reason, and it applies with more force to code
 than to prose.
 
 ## 💬 The comment rules, and the misreading to avoid
@@ -103,7 +103,7 @@ The clean-code comment rules are eight, and they split cleanly in two:
 | 4. Don't use closing brace comments | 8. Use as warning of consequences |
 | 5. Don't comment out code. Just remove | |
 
-Rule 1 -- "always try to explain yourself in code" -- governs both: reach
+Rule 1, "always try to explain yourself in code", governs both: reach
 for a better name or an explanatory variable before reaching for a
 comment.
 
@@ -117,7 +117,7 @@ question a future reader would otherwise re-litigate. An agent that
 "cleans up" those comments has destroyed the most valuable thing in the
 file, while believing it applied a clean-code rule.
 
-The canon does not say that. It says don't be **redundant** -- and a
+The canon does not say that. It says don't be **redundant**, and a
 comment recording why a version pin is load-bearing is the opposite of
 redundant, because that information exists nowhere in the code.
 
@@ -127,7 +127,7 @@ So, stated for this repository:
   (`# increment the counter`) is noise. So is a commented-out block:
   delete it, git remembers.
 - **Required: the *why*-comment**, wherever a reader could reasonably ask
-  "why this way?" -- a non-obvious constraint, a rejected alternative, a
+  "why this way?": a non-obvious constraint, a rejected alternative, a
   bug that produced the current shape, a version pin that is
   load-bearing. Absence of one on a surprising decision is a review
   finding.
@@ -136,7 +136,7 @@ This is [SOUL.md](../SOUL.md)'s "**Judgment is logged, not just made**" in
 executable form, and SOUL.md is the tie-break if the two ever seem to
 conflict.
 
-**This is also why the size rules count statements** -- a physical-line
+This is also why the size rules count statements: a physical-line
 limit taxes exactly the thing this section requires.
 
 ## 💡 Why statements, not lines
@@ -149,8 +149,8 @@ Here that proxy mostly measures comment discipline:
 | `chitragupta/` (383 functions) | 128 | 26 |
 | `tests/` (1926 functions) | 63 | 1 |
 
-*Measured at 5.7.1.* These four numbers are dated rather than pinned by a
-test, unlike the register sizes below, and deliberately: the
+*Measured at 5.7.1.* Unlike the register sizes below, these four numbers
+are deliberately dated rather than pinned by a test: the
 physical-line column moves whenever any function gains a comment, so
 pinning it would make this document churn on unrelated PRs. The
 conclusion it supports is an order-of-magnitude gap, which is stable; the
@@ -164,23 +164,23 @@ attached. Counting physical lines puts the size rule and the comment rules
 in direct conflict and rewards deleting the rationale, which is the one
 edit this project least wants.
 
-Counting **statements** measures what "do one thing" is actually about --
-how much a function *does* -- and is blind to how well it is explained. On
-that measure the codebase is in good shape: 26 offenders in `chitragupta/`, not
-128, and the tests hold the bar almost perfectly at 1 in 1926.
+Counting **statements** measures what "do one thing" is about, how much
+a function *does*, and is blind to how well it is explained. On that
+measure the codebase is in good shape: 26 offenders in `chitragupta/`,
+not 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
-The same correction applies to files: `chitragupta/config.py` is 941 physical
-lines and 453 lines of code, the difference being 488 lines of
-per-setting rationale. The file rule counts code lines -- non-blank,
-non-comment -- for the same reason.
+The same correction applies to files: `chitragupta/config.py` is 941
+physical lines and 453 lines of code, the difference being 488 lines of
+per-setting rationale. The file rule counts code lines (non-blank,
+non-comment) for the same reason.
 
 **This is a re-expression, not a relaxation.** One outlier got stricter
 under it, not looser: at 5.7.1, `chitragupta/sync.py::run` was 322 physical lines
 but **117 statements**, 4.7× the next worst function in the repository.
 Physical lines ranked it 2.4× the next worst and understated how far out
-it was. (It has since been split back under the limit and delisted -- the
-ratchet doing its job -- but the measurement is what justified counting
-statements, so it stays.)
+it was. (It has since been split back under the limit and delisted,
+which is the ratchet doing its job, but the measurement is what
+justified counting statements, so it stays.)
 
 ## 🧹 The Boy Scout Rule, and surgical changes
 
@@ -196,7 +196,7 @@ code rather than deleting it in the same diff
 Both cannot be followed at the level of a single edit.
 
 They are reconciled by moving the Boy Scout Rule up one level. **The
-ratchet is this project's Boy Scout Rule** -- applied to the repository
+ratchet is this project's Boy Scout Rule**, applied to the repository
 across pull requests rather than to whatever file you happen to have
 open:
 
@@ -205,13 +205,13 @@ open:
   on its merits, rather than smuggled into an unrelated diff where a
   reviewer is looking at something else.
 
-That keeps what the rule is *for* -- decay is not permitted -- while
+That keeps what the rule is *for* (decay is not permitted) while
 keeping diffs reviewable. Concretely: noticing that a module is on the
 register while fixing something unrelated in it is a reason to say so in
 the PR, not a licence to refactor it there. `chitragupta/dossier.py` was
 this example until a dedicated PR split it and delisted it, and
 `chitragupta/review/verbatim_check.py` was this example until another did
-the same -- the ratchet doing exactly what it's for.
+the same, which is the ratchet doing exactly what it's for.
 
 The one case where the rule applies to your own edit unchanged is the
 orphan you created: an import, variable or helper that *your* change made
@@ -221,7 +221,7 @@ unused is yours to remove.
 
 Two rules. Both are enforced by `tests/test_code_standards_scan.py`,
 which rides the existing `pytest --cov` run rather than adding a second
-quality gate to keep in sync -- the same idiom as
+quality gate to keep in sync, the same idiom as
 `tests/test_command_depth_scan.py`, `tests/test_cli_help_is_short.py` and
 `tests/test_removed_command_scan.py`.
 
@@ -231,7 +231,7 @@ quality gate to keep in sync -- the same idiom as
 | **C2** | A module holds at most **250 lines of code** | `chitragupta/`, `scripts/` | Physical lines that are neither blank nor a whole-line comment. A line inside a triple-quoted string that begins with `#` is dropped as though it were a comment |
 
 **Why the scopes differ.** C1 covers the tests because the tests already
-hold it -- 1 offender in 1926 -- so including them locks in a bar that is
+hold it (1 offender in 1926), so including them locks in a bar that is
 met rather than declaring one that is not. C2 does not cover the tests
 because a test module here is one-per-source-module by convention, and
 its length tracks the surface of the module under test rather than a count
@@ -246,15 +246,14 @@ cap.
 **`bench/` is out of scope for both.** It is the parser measurement
 harness, it is one of the four trees `scripts/release.py` deliberately
 excludes from the release archive, and its scripts are one-shot analysis
-code whose `main()` reads top to bottom on purpose. Stating that plainly
-is better than the alternative reading, which is that its long
-functions were quietly not counted -- see
-`bench/README.md` for the current self-check count
-and the reasoning behind each of the four things `bench/` sits outside.
+code whose `main()` reads top to bottom on purpose. It is stated here
+so that nobody reads its long functions as silently left uncounted; see
+`bench/README.md` for the current self-check count and the reasoning
+behind each of the four things `bench/` sits outside.
 
 **`assets/webapp/` holds both rules too, scanned separately.** This
-table's scope is Python-only -- `ast` has no notion of a `.js` file --
-so `scripts/webapp_code_standards.js` re-derives C1 and C2 over
+table's scope is Python-only (`ast` has no notion of a `.js` file), so
+`scripts/webapp_code_standards.js` re-derives C1 and C2 over
 `assets/webapp/` (excluding `vendor/`, the one third-party file there)
 with its own small parser, ratcheted against
 `code-standards-register.toml`'s `c1js`/`c2js` tables and enforced by
@@ -263,19 +262,19 @@ with its own small parser, ratcheted against
 script's own docstring has why: a function is a C1 candidate only when it
 has a real, derivable name (every file here is a UMD module whose
 top-level anonymous wrapper holds the *entire* file as its own
-statements, which is the JS analogue of Python module-level code -- C1
+statements, which is the JS analogue of Python module-level code, and C1
 never counted that either); and C2's line count excludes real comment
 spans the same way the Python side does, not `wc -l`'s raw count, which
 would count every line of the rationale banners these files open with.
 
 ### 📊 Cognitive complexity: the bar is 25, not SonarQube's default 15
 
-SonarQube's Python analysis ships S3776 -- "Cognitive Complexity of
-functions should not be too high" -- with a default threshold of **15**.
+SonarQube's Python analysis ships S3776 ("Cognitive Complexity of
+functions should not be too high") with a default threshold of **15**.
 That default is not this project's standard. **The standard here is
 25**, deliberately aligned with C1's 25-statement rule. The two measure
-different things -- how much a function *does* against how hard its
-control flow is to *follow* -- but they draw the line at the same
+different things (how much a function *does* against how hard its
+control flow is to *follow*), but they draw the line at the same
 altitude.
 
 A complexity bar lower than the statement bar would drive exactly the
@@ -289,7 +288,7 @@ Operationally:
   offence: split it along its natural seams, or say in the PR why it
   cannot be split.
 - A SonarCloud S3776 finding **at 25 or below** is marked *Accepted* in
-  the SonarCloud UI, not "fixed" -- splitting a 16-complexity function
+  the SonarCloud UI, not "fixed": splitting a 16-complexity function
   to satisfy a tool's default is churn, not cleanup.
 - The threshold itself lives in SonarCloud's **quality profile**, which
   is server-side configuration: set `python:S3776`'s `threshold`
@@ -301,21 +300,21 @@ Operationally:
 
 A **ratchet** is a mechanical pawl that lets a wheel turn one way and
 blocks it turning back. As a software check it means: measure something,
-freeze today's number, and fail the build if it gets *worse* -- while
+freeze today's number, and fail the build if it gets *worse*, while
 saying nothing about it being imperfect today.
 
-It exists because of the gap between the two options a new rule normally
+It exists to fill the gap between the two options a new rule normally
 has, both of which fail:
 
 | Option | What happens here |
 | --- | --- |
-| Enforce the rule outright | 28 functions and 12 modules fail on day one. The build is red for reasons nobody in this PR caused, so the rule gets disabled or the threshold raised until it passes -- and a threshold tuned to today's worst code is not a standard |
+| Enforce the rule outright | 28 functions and 12 modules fail on day one. The build is red for reasons nobody in this PR caused, so the rule gets disabled or the threshold raised until it passes, and a threshold tuned to today's worst code is not a standard |
 | Write it down as guidance | It is followed until the first deadline. Nothing detects the drift, and two years later the document describes a codebase that no longer exists |
 
-The ratchet takes the useful half of each. Concretely, here:
+The ratchet takes the useful half of each. Here:
 
 - Today's offenders are frozen in `code-standards-register.toml`'s
-  `[[c1]]` and `[[c2]]` tables -- **3
+  `[[c1]]` and `[[c2]]` tables: **3
   functions** and **4 modules**. Those two counts are themselves pinned
   by `test_the_registers_are_the_size_this_document_says`, so a shrinking
   register cannot leave this sentence stale. The register moved out of
@@ -337,11 +336,11 @@ The ratchet takes the useful half of each. Concretely, here:
 
 ### 💡 Why a ratchet suits this project specifically
 
-Three reasons beyond the general argument.
+Three reasons apply beyond the general argument.
 
 1. **It matches the one invariant's shape.** This project already
    believes that the way to prevent a bad outcome is a mechanical check
-   that cannot be argued with, rather than a resolution to be careful --
+   that cannot be argued with, rather than a resolution to be careful;
    that is the citation gate. The ratchet is the same move applied to
    code decay: an agent cannot talk its way past a failing test, and a
    future session that has never read this document still cannot land a
@@ -352,14 +351,13 @@ Three reasons beyond the general argument.
    failing test reaches a session that read nothing.
 3. **It makes the debt legible instead of ambient.** "The code quality is
    poor" is unactionable and, measured properly, was not even true here.
-   "`chitragupta/sync.py::run` is 117 statements and `chitragupta/dossier.py` is
-   1605
-   code lines" -- the register's two worst entries on the day it was
-   written -- is a worklist, ordered, with the entries worth taking
-   first at the top.
+   "`chitragupta/sync.py::run` is 117 statements and
+   `chitragupta/dossier.py` is 1605 code lines" (the register's two worst
+   entries on the day it was written) is a worklist, ordered, with the
+   entries worth taking first at the top.
 
 The register is a debt list, not an allowance. Neither of those two is
-taken in the change that introduces this document -- refactoring them is a
+taken in the change that introduces this document: refactoring them is a
 code change, this is a standard, and "several small, reviewable PRs over
 one large one" applies to the project's own housekeeping.
 
@@ -382,7 +380,7 @@ should not get one.
 | --- | --- |
 | Follow standard conventions | Already here: DEVELOPER-AGENTS.md's "Conventions a new stage has to follow" |
 | Keep it simple; reduce complexity | Already here: the "Simplicity first" behavioural rule |
-| Boy scout rule | [Reconciled above](#-the-boy-scout-rule-and-surgical-changes) -- the ratchet is this project's form of it |
+| Boy scout rule | [Reconciled above](#-the-boy-scout-rule-and-surgical-changes); the ratchet is this project's form of it |
 | Always find root cause | Already here, in a sharp form: "Classify a failure by cause on the exception, not by matching its message." Adding a cause means adding a mark, not a string match |
 
 ### 🏗 Design rules
@@ -390,7 +388,7 @@ should not get one.
 | Rule | Fate |
 | --- | --- |
 | Keep configurable data at high levels | Already here: `config.toml` is the single source, every key overridable by an env var |
-| Prefer polymorphism to if/else | **N/A as stated** -- `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
+| Prefer polymorphism to if/else | **N/A as stated**: `chitragupta/` is classless. Its functional equivalent *is* used: `review.AIDS` is a dispatch table, and a new aid is added by registering it rather than by editing a branch |
 | Separate multi-threading code | Already here: the process pool lives in `chitragupta/pdf_text/` and `sync._parse_parallel`, and nothing else in the codebase knows about it |
 | Prevent over-configurability | Review. A `config.toml` key with one caller and no user asking for it is a maintenance cost, not flexibility |
 | Use dependency injection | Already here as **the probe pattern**: a stage depends on "is pandoc on PATH?", answered at run time, never on a `--target` flag naming its environment |
@@ -415,9 +413,9 @@ inversion is the probe pattern.
 
 ### 🏷 Names
 
-All six -- descriptive and unambiguous, meaningful distinction,
+All six (descriptive and unambiguous, meaningful distinction,
 pronounceable, searchable, named constants instead of magic numbers, no
-type prefixes -- are **review** standards, adopted as written. The house
+type prefixes) are **review** standards, adopted as written. The house
 example is `unguarded(text)` in `test_command_depth_scan.py`: it says what
 the thing is for, not what type it returns. `MAX_STATEMENTS` and
 `_GUARD_WINDOW` are the magic-number rule as practised.
@@ -427,7 +425,7 @@ the thing is for, not what type it returns. `MAX_STATEMENTS` and
 | Rule | Fate |
 | --- | --- |
 | Small | **Enforced** as C1, counted in statements |
-| Do one thing | Review, and the reason C1 works as a proxy. The common smell here is a `main()` that parses arguments, does the work, and formats the output -- most of the C1 register has that shape |
+| Do one thing | Review, and the reason C1 works as a proxy. The common smell here is a `main()` that parses arguments, does the work, and formats the output; most of the C1 register has that shape |
 | Use descriptive names | Review (see Names) |
 | Prefer fewer arguments | Review |
 | Have no side effects | Review. Note the deliberate exception: the corpus layer's whole job is a side effect, and it is confined to the one layer that takes the write lock |
@@ -447,9 +445,9 @@ indentation.
 
 ### 🧱 Objects and data structures
 
-Largely **N/A**, and the reason is worth stating rather than leaving as
-an omission. `chitragupta/` has almost no classes, and the few it has --
-`interrupt_guard`, `_AnnotatedStream` -- are small context managers and
+Largely **N/A**, and the reason is stated so the gap does not read as an
+omission. `chitragupta/` has almost no classes, and the few it has
+(`interrupt_guard`, `_AnnotatedStream`) are small context managers and
 wrappers.
 
 "Prefer data structures" and "hide internal structure" are what the
@@ -463,10 +461,10 @@ already covers its methods.
 | Rule | Fate |
 | --- | --- |
 | One assert per test | **Adopted in spirit, not literally.** One *behaviour* per test, named for it. A literal single assert would split `test_a_deeper_path_is_flagged_and_reported_in_full` into two tests that mean nothing apart |
-| Readable | Review -- and the reason the tests duplicate setup freely rather than DRYing it. A test that reads top to bottom is worth more than a DRY one |
+| Readable | Review, and the reason the tests duplicate setup freely rather than DRYing it. A test that reads top to bottom is worth more than a DRY one |
 | Fast | Already held: the whole suite runs in well under a minute |
 | Independent | Already held, and load-bearing: `tests/conftest.py` isolates per-test state |
-| Repeatable | Already held, and it is a *product* rule here too -- the review layer's reports carry no timestamp, so two runs over unchanged input produce byte-identical output |
+| Repeatable | Already held, and it is a *product* rule here too: the review layer's reports carry no timestamp, so two runs over unchanged input produce byte-identical output |
 
 ## 🔍 Code smells: the review vocabulary
 
@@ -476,12 +474,12 @@ agree or disagree with.
 
 | Smell | What it looks like here |
 | --- | --- |
-| **Rigidity** -- a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
-| **Fragility** -- one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than seven aids each writing their own path |
-| **Immobility** -- code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
+| **Rigidity**: a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
+| **Fragility**: one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than seven aids each writing their own path |
+| **Immobility**: code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |
-| **Opacity** -- hard to understand | Usually a missing *why*-comment rather than bad code |
+| **Opacity**: hard to understand | Usually a missing *why*-comment rather than bad code |
 
 ## 🎯 Behaviour before code
 
@@ -496,67 +494,67 @@ goal-driven execution. The third is the one
 
 What would extend the enforced half, cheapest first, as proposed when
 this document was written. All four items have since landed, each in a
-different shape than proposed here -- see their own notes.
+different shape than proposed here; see their own notes.
 
 1. ~~**A linter and formatter (`ruff`).**~~ **Both halves are landed now,
    in two separate steps.** The linter landed first, as `pylint`, not
    `ruff`: `ci.yml`'s `lint` job runs
    `pylint --rcfile=.pylintrc chitragupta scripts .claude/hooks` at a binary
    zero-messages bar (`docs/TECHNICAL-DEBT.md §5.1`), measured and
-   enforced the way this item asked for -- a baseline first, a
+   enforced the way this item asked for: a baseline first, a
    `.pylintrc` `disable=` register of the same shape this item wanted for
    `ruff`. It still subsumes what this rung was for: the Names rules,
    unused imports (`unused-import`), and `too-many-*` overlapping C1 from
-   a different angle. `ruff` itself landed after, in two more rounds --
-   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; a later change as the formatter,
-   `ruff format --check` over `chitragupta`/`scripts`/`tests`/`bench`/
-   `.claude/hooks` (wider than either linter's roots -- see
-   `docs/TECHNICAL-DEBT.md`'s ruff-format subsection for why). Line
-   length -- `docs/TECHNICAL-DEBT.md §5.1`'s "31 long lines", hand-fixed
-   at the time -- is enforced now on both counts: `E501` from item 2, and
-   the formatter refusing a line its own wrapping would have shortened.
+   a different angle. `ruff` itself landed after, in two more rounds:
+   item 2 as the linter, `BLE`/`E`/`F`/`RUF100`; a later change as the
+   formatter, `ruff format --check` over
+   `chitragupta`/`scripts`/`tests`/`bench`/`.claude/hooks` (wider than
+   either linter's roots; `docs/TECHNICAL-DEBT.md`'s ruff-format
+   subsection says why). Line length (`docs/TECHNICAL-DEBT.md §5.1`'s
+   "31 long lines", hand-fixed at the time) is enforced now on both
+   counts: `E501` from item 2, and the formatter refusing a line its own
+   wrapping would have shortened.
 2. ~~**A `# noqa`-free policy for the ratchet.**~~ **Landed as `ruff`**
    (`docs/TECHNICAL-DEBT.md`'s ruff subsection), at the same binary bar
    pylint and markdownlint hold. `ci.yml`'s `lint` job runs
    `ruff check chitragupta scripts .claude/hooks`, `pyproject.toml`'s
    `[tool.ruff.lint]` selects `BLE` (this item's own reason for existing)
    plus `E`/`F` (which subsumes item 1's remaining `E501` gap) and
-   `RUF100` -- the rule that makes a `# noqa: BLE001` a checked claim
+   `RUF100`, the rule that makes a `# noqa: BLE001` a checked claim
    rather than a comment nothing reads, which is what makes this a
    `# noqa`-free *policy* rather than just a second linter. One of the 12
    existing markers turned out to be unneeded on that evidence
-   (`chitragupta/pdf_text/_backends.py`'s re-raising `except` -- BLE001's own
-   definition exempts a block that ends in `raise`) and was removed;
-   the rest were confirmed live, not assumed so.
-3. ~~**Type annotations and a checker.**~~ **Annotated in full --
-   and the checker declined, not deferred.** Every `def` under
+   (`chitragupta/pdf_text/_backends.py`'s re-raising `except`; BLE001's
+   own definition exempts a block that ends in `raise`) and was removed.
+   The rest were each confirmed live rather than assumed so.
+3. ~~**Type annotations and a checker.**~~ **Annotated in full, and
+   the checker declined, not deferred.** Every `def` under
    `chitragupta/` now carries a return annotation, and
    `tests/test_annotation_scan.py` ratchets it the way C1/C2 are
    ratcheted: today's zero gaps are frozen, and a new one fails the
    suite. Its `ast`-walk is the count's own source of truth, not a figure
-   copied here to go stale. What stayed unbuilt is a real type checker --
+   copied here to go stale. What stayed unbuilt is a real type checker:
    `mypy` over a 100%-covered stdlib codebase is still worth having and
    is still its own project, not a step in this one, which is the same
    call this item made when it was written rather than a reopened
    question.
-4. **A doc-drift detector.** **Half built** -- and the half
-   that is worth naming is the half that was left, because it is not a
-   matter of effort.
+4. **A doc-drift detector.** **Half built**, and the half that was left
+   is the one worth naming, because effort would not close it.
 
    **Built:** every claim about the *registers* is now binary.
    `test_the_registers_are_the_size_this_document_says` pins this
    document's copy of the two sizes;
    `tests/test_technical_debt_scan.py` pins TECHNICAL-DEBT.md's copy,
-   and additionally fails when that document names a function or module
+   and also fails when that document names a function or module
    as currently-open C1/C2 debt that the register no longer lists. Both
    incidents on record are caught by it, checked against the real
    historical files: the C1/C2 counts that read 26/13 against a real
    10/11 until the drift was repaired, and `chitragupta/sync.py::run`,
-   delisted and still
-   named as the second-highest-priority open item four days later.
+   delisted and still named as the second-highest-priority open item
+   four days later.
 
    **Not built, and not a backlog item:** `docs/DESIGN.md`'s "Three
-   layers", against ARCHITECTURE.md's and AGENTS.md's four -- the
+   layers", against ARCHITECTURE.md's and AGENTS.md's four: the
    staleness this document's own PR fixed, found by reading. That is a
    free-standing factual claim with no register behind it, so there is
    nothing binary to check it against, and
@@ -573,9 +571,9 @@ different shape than proposed here -- see their own notes.
 
 ## 🚫 What this does not change
 
-- **No new gate.** `python -m chitragupta.draft gate` remains the only gate in
-  the project. C1 and C2 are a test, and a test is not a gate on a
-  draft -- [SOUL.md](../SOUL.md)'s review-layer rule is untouched.
+- **No new gate.** `python -m chitragupta.draft gate` remains the only
+  gate in the project. C1 and C2 are a test, and a test is not a gate on
+  a draft; [SOUL.md](../SOUL.md)'s review-layer rule is untouched.
 - **No refactor.** The register freezes today's code exactly as it
   stands.
 - **No new dependency.** The scanner is stdlib `ast`, like every other

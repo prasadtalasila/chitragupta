@@ -2,8 +2,8 @@
 
 Status: **reference.** Written 2026-08-13. Updated 2026-09-13.
 
-Every external idea this project took, what was taken, and -- where it
-matters -- what was deliberately *not* taken. Credit is the first purpose;
+Every external idea this project took, what was taken, and, where it
+matters, what was deliberately *not* taken. Credit is the first purpose;
 the second is that knowing which upstream a design came from is the fastest
 way to understand why it has the shape it does.
 
@@ -29,14 +29,14 @@ came from.
 ## ✍ The drafting layer's method
 
 - **[hadufer/claude-storm](https://github.com/hadufer/claude-storm)** (MIT
-  License) -- the `.claude/skills/deep-research/` skill and its
+  License): the `.claude/skills/deep-research/` skill and its
   `deep-research-interviewer`/`deep-research-writer` subagents adapt its
   7-phase pipeline (perspective discovery, parallel grounded interviews,
   contradiction mapping, outline, cited writing, synthesis, self peer-review).
   Retooled here for a closed, citekey-grounded local corpus instead of live
-  web sources -- see `reference.md` in that skill's directory for exactly
-  what changed and why.
-- **[stanford-oval/storm](https://github.com/stanford-oval/storm)** -- the
+  web sources; see `reference.md` in that skill's directory for what
+  changed and why.
+- **[stanford-oval/storm](https://github.com/stanford-oval/storm)**: the
   original STORM method claude-storm implements: "Assisting in Writing
   Wikipedia-like Articles From Scratch with Large Language Models" (Shao,
   Jiang, Kanell, Xu, Khattab, Lam; NAACL 2024; arXiv:2402.14207).
@@ -45,7 +45,7 @@ came from.
   and single-reviewer (`quick` depth) peer-review phases.
 - **[K-Dense-AI/scientific-agent-skills](https://github.com/K-Dense-AI/scientific-agent-skills)**
   (MIT at the repository root, (c) 2025 K-Dense Inc.; **per-skill
-  `license:` frontmatter diverges from it** -- four skills declare none
+  `license:` frontmatter diverges from it**: four skills declare none
   and two are non-commercial, so check the skill rather than the root
   before reusing anything). Read 2026-08-28 as a peer project: a skills
   repository in the same format family as `.claude/skills/`. Three ideas
@@ -62,13 +62,13 @@ came from.
     [REVIEW.md](REVIEW.md) adopts the distinction for this project's
     aids.
   - **Publish a score, then show its fragility.** Its weight-sensitivity
-    pass perturbs each weight and reports whether the *ordering* flips --
+    pass perturbs each weight and reports whether the *ordering* flips:
     a way to let a number exist without it becoming the thing optimised.
 
   Two things were read and deliberately not taken. Its citation
-  verification is a **human attestation** -- two booleans in a JSON file
+  verification is a **human attestation** (two booleans in a JSON file
   the agent itself writes, with the reference checker network-free and
-  syntax-only by design -- so it is an evidence *bookkeeping* system
+  syntax-only by design), so it is an evidence *bookkeeping* system
   where this project has an enforcement one. And its claim hash is
   format-checked but never recomputed from the manuscript, so it cannot
   detect a claim edited after verification: the same
@@ -76,17 +76,17 @@ came from.
   author provenance
   ([DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies)) and
   avoids by regenerating `sections.md` rather than trusting it.
-- **ITER-RETGEN** -- Shao, Gong, Shen, Huang, Duan and Chen, *"Enhancing
+- **ITER-RETGEN**: Shao, Gong, Shen, Huang, Duan and Chen, *"Enhancing
   Retrieval-Augmented Large Language Models with Iterative
   Retrieval-Generation Synergy"*, Findings of EMNLP 2023, pp. 9248-9274.
   The idea behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s E4: form the
   next retrieval query by concatenating the previous generation with the
   question, so **no model call is needed to write a query**. Credited as
-  a published method rather than a codebase; the adaptation -- a person's
-  own draft standing in for the generation -- is not something the paper
+  a published method rather than a codebase; the adaptation (a person's
+  own draft standing in for the generation) is not something the paper
   proposes, and the paper explicitly does not cover long-form generation.
-- **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT)
-  -- read as a reproduction surface rather than for code. Two mechanisms
+- **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT):
+  read as a reproduction surface rather than for code. Two mechanisms
   credited: its `IRCoT` pipeline's cross-round document merge (dedupe by
   id, `max(old, new)` on the score, re-sort) which E4 adopts **with the
   cap that implementation is missing**, and its habit of writing every
@@ -96,26 +96,26 @@ came from.
   sampling was on by default, batching was composition-dependent and the
   inference backend changed the result.
 - **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
-  (MIT core, read at v0.14.24) -- read only for its response-synthesis
+  (MIT core, read at v0.14.24): read only for its response-synthesis
   shapes. [C5](FEATURE-ROADMAP.md)'s citekey-union invariant comes from
   the observation that four of its five modes can drop a source with no
   error and no log, and that only the mode keeping one output slot per
   input can say *which* source went missing. The invariant itself is not
-  theirs -- it is what their failure modes imply.
-- **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**
-  -- the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
+  theirs; it is what their failure modes imply.
+- **[Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)**:
+  the *idea* behind `deep-research`'s `standard`/`deep`-depth peer review
   (an independent multi-reviewer panel including a dedicated adversarial
   reviewer, reconciled against a concession threshold) is credited to that
   project's Stage-3 peer-review design. That project is licensed CC-BY-NC
-  4.0; **no text from it was copied** -- `.claude/agents/peer-reviewer.md`
+  4.0; **no text from it was copied**: `.claude/agents/peer-reviewer.md`
   and `.claude/skills/deep-research/reference.md` §7 are written from
   scratch, adapting only the concept of an independent panel plus a
   Devil's Advocate role, not its implementation.
 
 ## 🤝 Code standards
 
-- **[wojteklu/clean_code.md](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29)**
-  -- the widely-circulated summary of Robert C. Martin's *Clean Code:
+- **[wojteklu/clean_code.md](https://gist.github.com/wojteklu/73c6914cc446146b8b533c0988cf8d29)**:
+  the widely-circulated summary of Robert C. Martin's *Clean Code:
   A Handbook of Agile Software Craftsmanship* (Prentice Hall, 2008). This
   is the source standard behind [CODE-STANDARDS.md](CODE-STANDARDS.md):
   its section structure (general rules, design, names, functions,
@@ -124,25 +124,25 @@ came from.
   which rules are enforced, which are left to review, and which do not
   apply to a stdlib-heavy, classless Python codebase.
 
-  Two of its rules are load-bearing here in a way worth naming:
+  Two of its rules are load-bearing here:
 
-  - Its comment rules -- *explain intent*, *clarify*, *warn of
-    consequences* -- are the canonical support for this repository's
-    house style of dense rationale comments. The rule the canon actually
-    states is "don't be **redundant**", not "don't comment", and the
-    difference is the whole of
-    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid).
-  - Its **code smells** vocabulary -- rigidity, fragility, immobility,
-    needless complexity, needless repetition, opacity -- is adopted
+  - Its comment rules (*explain intent*, *clarify*, *warn of
+    consequences*) are the canonical support for this repository's
+    house style of dense rationale comments. The rule the canon states
+    is "don't be **redundant**", not "don't comment", and
+    [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)
+    is about that difference and nothing else.
+  - Its **code smells** vocabulary (rigidity, fragility, immobility,
+    needless complexity, needless repetition, opacity) is adopted
     directly as the review vocabulary, because naming a smell is what
     turns "this feels wrong" into a reviewable claim.
 
 ## 🪝 Harness engineering
 
-- **[walkinglabs/awesome-harness-engineering](https://github.com/walkinglabs/awesome-harness-engineering)**
-  -- a curated list for *harness engineering*: "the practice of shaping
+- **[walkinglabs/awesome-harness-engineering](https://github.com/walkinglabs/awesome-harness-engineering)**:
+  a curated list for *harness engineering*: "the practice of shaping
   the environment around AI agents so they can work reliably." That is a
-  fair description of what most of this repository actually is. The
+  fair description of what most of this repository is. The
   categories it tracks map onto parts of this project closely enough to be
   worth stating, both as credit and as a reading list for whichever part
   you are about to change:
@@ -171,7 +171,7 @@ came from.
   | --- | --- | --- |
   | [obra/superpowers](https://github.com/obra/superpowers) | The fail-silent contract for a context injection, and the caution that the advisory-context field name differs per host | The polyglot `run-hook.cmd`, which needs shell form and so cannot coexist with exec form |
   | [addyosmani/agent-skills](https://github.com/addyosmani/agent-skills) | The standard-envelope rule, and testing that a hook's payload parses | Its `jq` dependency, against the stdlib-only posture |
-  | [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | The survey of hook events, output fields and version-gated options behind this project's `if` and `async` notes | Its per-hook enable/disable config -- the gate must not be individually disableable |
+  | [shanraisshan/claude-code-best-practice](https://github.com/shanraisshan/claude-code-best-practice) | The survey of hook events, output fields and version-gated options behind this project's `if` and `async` notes | Its per-hook enable/disable config; the gate must not be individually disableable |
   | [affaan-m/ECC](https://github.com/affaan-m/ECC) | The principle that paths are resolved in the interpreter, not in the shell | The dispatcher process, which trades away fault isolation |
 
   The refusals matter as much as the borrowings. Three of the four are
@@ -180,16 +180,16 @@ came from.
 
 ### 🪝 Hook architecture as a first-class layer
 
-- **[jcode](https://jcode.sh/docs)** -- hooks as shell commands fired at
+- **[jcode](https://jcode.sh/docs)**: hooks as shell commands fired at
   turn, session and tool boundaries, alongside skills and memory, rather
   than as an add-on. Read against this repository's own hook layer in
   2026-08, which is what surfaced the asymmetry issue 431 fixes: every
   registry row was keyed on a write under `content/drafts/`, and nothing
   hooked a change to `chitragupta/`. Nothing of jcode's own architecture
-  is adopted -- its daemon/client split, its semantic skill matching and
+  is adopted: its daemon/client split, its semantic skill matching and
   its lane-aware queue all answer questions this project does not have.
-- **OpenClaw** -- the same observation from the other direction: hooks on
-  gateway events, and a four-tier memory stack. Its **heartbeat**, a
+- **OpenClaw**: the same observation from the other direction, with hooks on
+  gateway events and a four-tier memory stack. Its **heartbeat**, a
   periodic agent turn driven by a checklist, was considered as the
   "driver" the developer loop was said to lack and **rejected on this
   project's own terms**:
@@ -198,35 +198,35 @@ came from.
   to pay is a ranked worklist with a clock on it. Recorded in
   `plans/f-auto-improvement-adoption.md`, which retires that loop.
 
-Both were read as secondary sources -- jcode's published documentation,
-and third-party write-ups of OpenClaw rather than its own docs -- so what
+Both were read as secondary sources (jcode's published documentation,
+and third-party write-ups of OpenClaw rather than its own docs), so what
 is credited here is the *idea* each made visible, not a claim about
 either implementation's detail.
 
 ## 🗺 The feature roadmap
 
 Two upstreams behind [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md). Both are
-Apache-2.0, and **copying from both was offered and declined** -- the
+Apache-2.0, and **copying from both was offered and declined**; the
 cost of declining was measured at roughly one PR, and that document's
 "borrowing posture" section has the working. Nothing is copied from
 either; where the roadmap quotes them it quotes them as evidence for a
 design claim, and every implementation is written here from scratch.
-Which makes this the ordinary case for this file, not an exception to
+That makes this the ordinary case for this file, not an exception to
 it.
 
 - **[AkariAsai/OpenScholar](https://github.com/AkariAsai/OpenScholar)**
-  (Apache-2.0) -- "OpenScholar: Synthesizing Scientific Literature with
+  (Apache-2.0): "OpenScholar: Synthesizing Scientific Literature with
   Retrieval-Augmented Language Models" (Asai, He, Shao, Shi, Singh,
   Chang, Lo, Soldaini, et al.; arXiv:2411.14199). Four ideas behind the
   roadmap's synthesis half:
-  - **Cap passages per source, then truncate** -- the ordering is what
+  - **Cap passages per source, then truncate**: the ordering is what
     produces source diversity, because dropping one paper's fourth-best
     passage promotes another paper's into the window the drafter sees.
   - **Instruct synthesis across sources explicitly**, rather than a
     paper-by-paper summary, so a paragraph fuses several sources.
   - **A feedback pass before the final artefact**, and the observation
     that its safety guard has to be something other than a length ratio.
-  - **Post-hoc citation attribution as a repair pass** -- taken chiefly
+  - **Post-hoc citation attribution as a repair pass**: taken chiefly
     as a *negative* result: it is a prompt, not a verifier, which is why
     the roadmap plans a real entailment check as new work rather than a
     port.
@@ -238,11 +238,11 @@ it.
 
 - **[dwzhu-pku/PaperBanana](https://github.com/dwzhu-pku/PaperBanana)**
   (Apache-2.0), and the Google Research project it forks,
-  [PaperVizAgent](https://github.com/google-research/papervizagent) --
+  [PaperVizAgent](https://github.com/google-research/papervizagent):
   a multi-agent framework for academic illustration. Three ideas behind
   the roadmap's figure half:
-  - **Commit to a layout metaphor before drawing** -- pipeline, layered
-    stack, control loop, branching tree, hub-and-spoke -- which is the
+  - **Commit to a layout metaphor before drawing** (pipeline, layered
+    stack, control loop, branching tree, hub-and-spoke), which is the
     idea most likely to fix figure sprawl at its source.
   - **A defect catalogue is more useful than a style guide** for layout.
     Its evaluation rubric, not its style guide, is where the concrete
@@ -269,19 +269,19 @@ file: ideas taken, no text or code copied, and the refusals are as
 load-bearing as the borrowings.
 
 - **[HKUDS/MiniRAG](https://github.com/HKUDS/MiniRAG)** (MIT; Fan,
-  Wang, Ren and Huang, arXiv:2501.06713) -- the heterogeneous graph:
-  documents and concepts in one structure, so a single traversal
+  Wang, Ren and Huang, arXiv:2501.06713): the heterogeneous graph, with
+  documents and concepts in one structure so that a single traversal
   answers "which papers" and "which topics relate" together, plus
   topology-based scoring (personalised PageRank from resolved seed
   topics, G7) in place of LLM reasoning at query time. *Not taken:*
-  its (S)LM entity extraction at index time -- BERTopic and c-TF-IDF
-  already supply the concept layer statistically -- its LLM
+  its (S)LM entity extraction at index time (BERTopic and c-TF-IDF
+  already supply the concept layer statistically), its LLM
   answer-type prediction at query time, and its Neo4j/PostgreSQL
   backends, all scale or generative machinery a 500-paper corpus does
   not want.
 - **[AkariAsai/OpenScholar](https://github.com/AkariAsai/OpenScholar)**
   (Apache-2.0; arXiv:2411.14199), a second borrowing from a repository
-  the roadmap section above already credits -- this time its
+  the roadmap section above already credits, this time for its
   *retrieval* half: the bi-encoder-recall-then-cross-encoder-precision
   cascade (G7's rerank tier), candidate-pool union with one scorer as
   the common scale, and capping passages per paper so one long source
@@ -291,7 +291,7 @@ load-bearing as the borrowings.
   45M-paper serving infrastructure, and its citation-count prior, which
   needs a live API against a corpus that is deliberately closed.
 - **[Marker-Inc-Korea/AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG)**
-  (Apache-2.0), the *archived 1.x tool only* -- the evaluation
+  (Apache-2.0), the *archived 1.x tool only*, for the evaluation
   methodology behind G8: a small hand-labelled gold set
   (query -> expected ids), node-wise greedy sweeps, and Recall@k/MRR/
   NDCG per pipeline stage, so every knob change is a measured decision.
@@ -299,15 +299,15 @@ load-bearing as the borrowings.
   LLM-generated QA datasets (hand-writing ~40 gold queries is more
   trustworthy at this scale), and the framework itself.
 - **[run-llama/llama_index](https://github.com/run-llama/llama_index)**
-  (MIT) -- the fusion-retriever pattern (lexical and dense rankings
+  (MIT): the fusion-retriever pattern (lexical and dense rankings
   fused by Reciprocal Rank Fusion; Cormack, Clarke and Büttcher, SIGIR
   2009) and the property-graph data model persisted as one JSON store.
-  *Not taken:* the framework as a dependency -- at this scale RRF and
-  the graph store are each a page of code -- and every LLM-driven
+  *Not taken:* the framework as a dependency (at this scale RRF and
+  the graph store are each a page of code), and every LLM-driven
   retriever beside the borrowed one (synonym expansion, text-to-Cypher,
   multi-query generation).
 - **[RUC-NLPIR/FlashRAG](https://github.com/RUC-NLPIR/FlashRAG)** (MIT;
-  arXiv:2405.13576) -- the component taxonomy (retriever / reranker /
+  arXiv:2405.13576): the component taxonomy (retriever / reranker /
   refiner as swappable seams) and, chiefly, the **extractive refiner**:
   compress by *selecting* the most relevant sentences rather than
   generating a summary, which is what `--out`'s verbatim snippets are.
@@ -315,34 +315,34 @@ load-bearing as the borrowings.
   perplexity-based refiners, and the iterative LLM pipelines
   (Self-RAG, FLARE, IRCoT).
 - **[PrithivirajDamodaran/FlashRank](https://github.com/PrithivirajDamodaran/FlashRank)**
-  (Apache-2.0) -- the licence, so to speak, for G7's precision tier:
+  (Apache-2.0), the licence, so to speak, for G7's precision tier:
   tiny CPU cross-encoders are a legitimate last-mile scorer with no
   generative model and no GPU, and capping the scored pair length is
   the latency lever. *Not taken:* its 7B generative listwise reranker,
-  and the package itself -- `sentence_transformers.CrossEncoder` is
+  and the package itself: `sentence_transformers.CrossEncoder` is
   already in the enrich group, so borrowing the idea costs zero
   dependencies.
 - **[NovaSearch-Team/RAG-Retrieval](https://github.com/NovaSearch-Team/RAG-Retrieval)**
-  (MIT) -- the uniform `score(query, candidates)` seam over
+  (MIT): the uniform `score(query, candidates)` seam over
   heterogeneous scorers, and max-score splitting for documents longer
   than an encoder's window (score chunks, pool the best) rather than
-  first-512-token truncation -- a trap the enrich layer had already
-  measured and fixed independently
+  first-512-token truncation. That is a trap the enrich layer had
+  already measured and fixed independently
   ([TOPIC-MODELLING.md](TOPIC-MODELLING.md) §4), which is why this
   entry corroborates rather than introduces it. *Not taken:* the whole
-  training/distillation stack -- there is no labelled relevance data in
-  a personal corpus, and fine-tuning is out of scope.
+  training/distillation stack, since there is no labelled relevance
+  data in a personal corpus, and fine-tuning is out of scope.
 
 ## 🧱 A local wiki builder, read under GPL-3.0
 
-- **[nashsu/llm_wiki](https://github.com/nashsu/llm_wiki)** -- a desktop
+- **[nashsu/llm_wiki](https://github.com/nashsu/llm_wiki)**: a desktop
   application that ingests documents and builds a linked local wiki from
   them. Read on **2026-09-13** at commit
   **`e8082119649e6a8e1cf85eaf289adcabfdf39d4e`** (2026-08-25), and the
   reading is the reason this entry exists before any of the adaptations
   it lists.
 
-**The licence, stated precisely.** llm_wiki is **GPL-3.0**. GitHub's own
+llm_wiki's licence is **GPL-3.0**. GitHub's own
 licence detector reports `NOASSERTION` for the repository, which is a
 detector artefact rather than a disagreement: the `LICENSE` file is the
 GPL-3.0 text with a `Copyright (C) 2024-2026 Yong Su` line prepended, so
@@ -353,7 +353,7 @@ rather than left to be rediscovered as a doubt.
 That licence is why this is the most careful entry in the file. This
 project is MIT. GPL-3.0 is copyleft, so **no file, function, prompt
 string, constant, identifier set or documentation paragraph may move
-between the two projects in either direction** -- and none has. Every
+between the two projects in either direction**, and none has. Every
 mechanism below was read as a description of a behaviour and
 reimplemented here from scratch, against this project's own artefacts,
 tests and layering. Where a borrowed idea arrives with a number attached
@@ -365,7 +365,7 @@ Mechanisms taken **as concept only**:
 | Upstream mechanism | Taken here as | Issue |
 | --- | --- | --- |
 | A flat title-match bonus added on top of the lexical score | Field-weighted BM25, scoring title and abstract above body | [#762](https://github.com/prasadtalasila/chitragupta/issues/762) |
-| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt -- report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
+| Cascade delete: prune a removed source from surviving pages, clean the index, drop dead links | A residue **report** before `sync --remove-stale`'s confirmation prompt: report, never repair. Shipped; see [CLI.md](CLI.md#-what-else-still-references-a-citekey-you-are-about-to-remove) | [#763](https://github.com/prasadtalasila/chitragupta/issues/763) |
 | A pure function dividing the context window into named per-section budgets | A deterministic allocator the genre skills call in place of prose budgets | [#765](https://github.com/prasadtalasila/chitragupta/issues/765) |
 | Merging a regenerated page with the existing one | Its *problem*, not its answer: `agenda-reviser` refuses a stale span outright rather than merging into it | [#766](https://github.com/prasadtalasila/chitragupta/issues/766) |
 | Per-item resolved state, with reopening and a bulk resolve | An acceptance record keyed by an item's existing stable identity, so reopening needs no mechanism of its own | [#767](https://github.com/prasadtalasila/chitragupta/issues/767) |
@@ -385,7 +385,7 @@ refusal gets for free.
 clips), the browser clipper, the two-step LLM ingest and deep research
 over the open web all break the invariant that a `.bib` export is the
 only entrance to this corpus ([SOUL.md](../SOUL.md)). Louvain community
-detection is duplication -- the merge-tree cut answers the same question
+detection is duplication: the merge-tree cut answers the same question
 and is already measured
 ([TOPIC-MODELLING.md](TOPIC-MODELLING.md)). Multi-conversation chat and
 thinking-block display are interface features for a different product.
@@ -406,8 +406,8 @@ without it.
 
 *Not from here, despite arriving alongside.* Several retrieval issues
 were raised while planning [#762](https://github.com/prasadtalasila/chitragupta/issues/762)
-and are **not** llm_wiki adaptations -- excluding the reference list
-from the index, a passage-level index, caption and table fields, query
+and are **not** llm_wiki adaptations: excluding the reference list
+from the index, a passage-level index, caption and table fields, and query
 expansion from this corpus's own topic vocabulary. They are recorded
 here only so that a later reader does not credit them upstream by
 association. Capping passages per paper, which one of them uses, is
@@ -419,8 +419,8 @@ Stated once, because it is the same rule the pipeline applies to drafts:
 
 **Attribute the idea, and never copy the text.** Where an upstream is
 permissively licensed the adaptation is still written from scratch, and
-where it is not -- `academic-research-skills` (CC-BY-NC 4.0) and
-`llm_wiki` (GPL-3.0) -- only the concept is taken and the entry above
+where it is not, as with `academic-research-skills` (CC-BY-NC 4.0) and
+`llm_wiki` (GPL-3.0), only the concept is taken and the entry above
 says so explicitly. The rule held
 when it was tested: copying from two permissively-licensed upstreams was
 offered for the feature roadmap and declined, at a measured cost of

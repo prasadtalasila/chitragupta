@@ -3,8 +3,8 @@
 Status: **tutorial.** Written 2026-09-15.
 
 **Written for** a lecturer or course author who wants a chapter of
-teaching material -- learning objectives, motivation, worked examples,
-exercises -- and who has not used this pipeline before. **Assumed:**
+teaching material (learning objectives, motivation, worked examples,
+exercises) and who has not used this pipeline before. **Assumed:**
 nothing. This page repeats what other documents also say, deliberately.
 **Not covered here:** why each prose rule exists
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)) and how a whole book is
@@ -32,7 +32,7 @@ Sister tutorials: [a survey](WRITE-A-SURVEY.md),
 
 ## ⚖ Is this the genre you want?
 
-A textbook chapter is for a student who is **studying** the topic, not
+A textbook chapter is for a student who is studying the topic, not
 yet doing it. It explains, then shows worked applications.
 
 If your reader will be sitting at a keyboard following your steps to a
@@ -40,10 +40,10 @@ working result, you want [a tutorial](WRITE-A-TUTORIAL.md) instead.
 If your reader is a researcher mapping a field, you want
 [a survey](WRITE-A-SURVEY.md).
 
-This genre is **not citation-dense**. Most of the content is your own
+This genre is not citation-dense. Most of the content is your own
 worked examples and exercises; the corpus is there for motivation and
-background. Citations are still gated -- any that appear must be real --
-but a chapter with three citations is normal, not thin.
+background. Citations are still gated, so any that appear must be real,
+but a chapter with three citations is normal and is not a thin one.
 
 ## 🎯 What you will have at the end
 
@@ -51,7 +51,7 @@ For a chapter you decide to call `course/ch3-state-estimation`:
 
 | Path | What it is |
 | --- | --- |
-| `content/drafts/course/ch3-state-estimation.md` | the chapter -- the canonical copy |
+| `content/drafts/course/ch3-state-estimation.md` | the chapter (the canonical copy) |
 | `content/dossiers/course/ch3-state-estimation/` | scope, objectives, any evidence kept, every search run |
 | `content/rendered/course/ch3-state-estimation.pdf` | the typeset chapter |
 | `content/rendered/course/ch3-state-estimation.tex` | the same, as LaTeX, for your course template |
@@ -74,7 +74,7 @@ chitragupta corpus ledger
 Or clone the repository and `cp config.toml.example config.toml` instead
 of the first two lines.
 
-A textbook chapter can be written against a small corpus -- you need
+A textbook chapter can be written against a small corpus. You need
 enough to motivate the topic and point students onward, not a full
 literature map. If you have no library at all, the chapter can still be
 drafted; it simply cites nothing, and the gate has nothing to check.
@@ -85,8 +85,8 @@ drafted; it simply cites nothing, and the gate has nothing to check.
 
 **The student** is your reader, stated concretely: "second-year
 undergraduates who have had one linear-algebra course and no signals
-course". Everything -- what is assumed, what is recapped, how fast the
-worked examples move -- follows from that sentence.
+course". What is assumed, what is recapped and how fast the worked
+examples move all follow from that sentence.
 
 **The learning objectives** are three to five, each concrete and
 testable. "By the end of this chapter a student can..."
@@ -116,8 +116,8 @@ chitragupta draft dossier init \
 ```
 
 That writes eight files. **Exactly one is yours to fill in: `scope.md`.**
-The rest -- `evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
-`steering.md`, `revisions.md`, `README.md` -- are written for you as the
+The rest (`evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
+`steering.md`, `revisions.md`, `README.md`) are written for you as the
 chapter is produced.
 
 ### What goes in `scope.md`
@@ -140,8 +140,8 @@ chitragupta draft dossier set-language \
     content/drafts/course/ch3-state-estimation.md en-GB
 ```
 
-A filled-in textbook-chapter `scope.md` -- the whole file is at
-[`examples/dossiers/textbook-chapter/scope.md`](examples/dossiers/textbook-chapter/scope.md):
+A filled-in textbook-chapter `scope.md` (the whole file is at
+[`examples/dossiers/textbook-chapter/scope.md`](examples/dossiers/textbook-chapter/scope.md)):
 
 ```markdown
 # Scope
@@ -193,8 +193,8 @@ build one are pointed at the lab, which is a tutorial.
 ```
 
 Putting the objectives in `## Covers` is the convention for this genre:
-they are scope, they are what the exercises test, and a later revision
-that quietly drops one is then visible.
+they are scope, the exercises test them, and a later revision that
+quietly drops one is then visible.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -212,17 +212,17 @@ fields per section:
 
 | Field | What goes in it | What the skill does with it |
 | --- | --- | --- |
-| `brief:` | steering in your own words -- what to emphasise, what to leave out, how long | consumed once, **never appears in the chapter** |
+| `brief:` | steering in your own words: what to emphasise, what to leave out, how long | consumed once, **never appears in the chapter** |
 | `claim:` | your own prose, where you want a specific statement made | rewritten and grounded; anything the corpus cannot support is reported rather than shipped |
 | `queries:` | a `-` list of search terms | run **verbatim** instead of the skill inventing sub-themes |
 
-A section needs at least a `brief:` or a `claim:`. **In this genre most
-sections have only a `brief:` and no `queries:` at all** -- a worked
+A section needs at least a `brief:` or a `claim:`. In this genre most
+sections have only a `brief:` and no `queries:` at all, because a worked
 example and a set of exercises are yours to design, not the corpus'. An
-outline here that is almost all briefs is correct, not thin.
+outline here that is almost all briefs is correct, and is not thin.
 
-A worked example -- the whole file is at
-[`examples/dossiers/textbook-chapter/outline.md`](examples/dossiers/textbook-chapter/outline.md):
+A worked example (the whole file is at
+[`examples/dossiers/textbook-chapter/outline.md`](examples/dossiers/textbook-chapter/outline.md)):
 
 ```markdown
 ## Learning objectives
@@ -295,8 +295,8 @@ only.
 chitragupta draft gate content/drafts/course/ch3-state-estimation.md
 ```
 
-If the chapter cites nothing, the gate passes trivially -- that is
-expected for this genre, not a warning sign.
+If the chapter cites nothing, the gate passes trivially. That is
+expected for this genre and is no warning sign.
 
 If it does cite, build the references section from exactly the gated
 keys:
@@ -338,12 +338,13 @@ What each is for here:
 
 | Aid | Reads for | Why it matters in teaching material |
 | --- | --- | --- |
-| `review verbatim` | wording shared with any parsed source, cited or not | **the one that matters most.** A chapter that reuses a source's wording is a copyright problem in a way a private research note is not |
+| `review verbatim` | wording shared with any parsed source, cited or not | the one that matters most. A chapter that reuses a source's wording is a copyright problem in a way a private research note is not |
 | `draft style` | defect markers, an acronym never expanded at first use, dialect | a student meets every acronym for the first time; an unexpanded one costs them the paragraph |
-| `review figure` | overlapping nodes, overlong labels, and the edge list | confirm the edge list against your own prose -- a diagram that wires the concepts up wrongly teaches the wrong thing convincingly |
+| `review figure` | overlapping nodes, overlong labels, and the edge list | confirm the edge list against your own prose: a diagram that wires the concepts up wrongly teaches the wrong thing convincingly |
 
-`review uncited` is deliberately gentler on this genre: prose with no
-citation is the normal state of a textbook, not a finding.
+`review uncited` is deliberately gentler on this genre, since prose
+with no citation is the normal state of a textbook and is not a
+finding.
 
 ### The agenda: all of them as one worklist
 
@@ -406,11 +407,11 @@ expected shape here:
   10-word verbatim run citing `bar_shalom_estimation_2001`
 ```
 
-**How to read that as the author.** All four are `[unattended]`, which
+Reading that as the author: all four are `[unattended]`, which
 is typical for a chapter whose content is mostly your own: an acronym a
 student meets before its expansion, a hedge word, a US spelling in a
 chapter that declared `en-GB`, and one phrase that matches a textbook you
-cited. Hand them off -- ask to "work the review agenda" and
+cited. Hand them off: ask to "work the review agenda" and
 `agenda-reviser` repairs them one at a time, re-running the gate after
 each and logging every attempt in `revisions.md`.
 
@@ -426,7 +427,7 @@ chitragupta review agenda content/drafts/course/ch3-state-estimation.md \
 ```
 
 That re-runs the aids and reports each finding as `resolved`,
-`persisting`, `new` or `accepted` -- read the `new` list, not just the
+`persisting`, `new` or `accepted`. Read the `new` list as well as the
 count.
 
 ## 📝 Step 7: change something
@@ -448,7 +449,7 @@ chitragupta draft dossier stamp \
     content/drafts/course/ch3-state-estimation.md
 ```
 
-Back it up -- `content/drafts/` is gitignored:
+Back it up, because `content/drafts/` is gitignored:
 
 ```bash
 chitragupta draft dossier export course/ch3-state-estimation
@@ -461,7 +462,7 @@ signed outline (`chitragupta draft spec`), per-chapter acceptance records
 (`chitragupta draft unit`), a cross-reference check
 (`chitragupta draft registry check`) and an assembly step that produces
 one LaTeX book. Start at [WRITE-A-BOOK.md](WRITE-A-BOOK.md) before drafting chapter
-two -- retrofitting the outline afterwards costs more than declaring it
+two: retrofitting the outline afterwards costs more than declaring it
 now.
 
 ## 🚑 When something goes wrong
