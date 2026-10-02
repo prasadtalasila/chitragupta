@@ -16,6 +16,8 @@ its script and everything it wrote:
 them and records what they showed about each harness. It makes no
 general quality claim: one run on one model over the five-paper sample
 corpus says what happened, not what usually happens.
+[LLM-AGENTS.md](LLM-AGENTS.md) turns these runs into setup advice for
+each agent.
 
 ## 🧭 Table of contents
 

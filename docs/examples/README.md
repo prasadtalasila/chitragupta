@@ -35,7 +35,8 @@ papers. Each is self-contained: the inputs, the prompt, the script
 that ran, and everything the run wrote, unedited. They record what one
 real model did, including where it left the skill's path, so they are
 samples of a harness's behaviour rather than of a well-formed dossier.
-[LOCAL-MODELS.md](../LOCAL-MODELS.md) compares them.
+[LOCAL-MODELS.md](../LOCAL-MODELS.md) compares them, and
+[LLM-AGENTS.md](../LLM-AGENTS.md) says how to set up each agent.
 
 ## 🗺 The sample project, artefact by artefact
 
