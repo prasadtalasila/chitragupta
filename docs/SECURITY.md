@@ -74,8 +74,8 @@ and, ultimately, the author remain responsible for those judgements; see
 
 The deterministic corpus layer does not fetch papers or call an LLM API.
 It processes the bibliography and attachment paths you provide. The
-optional drafting workflow uses an agent harness's skills -- Claude Code,
-Codex or OpenCode ([LLM-AGENTS.md](LLM-AGENTS.md)) -- so any information
+optional drafting workflow uses the skills of an agent harness (Claude
+Code, Codex or OpenCode; see [LLM-AGENTS.md](LLM-AGENTS.md)), so any information
 placed in that session is subject to the AI service, account, client, and
 network controls selected by the operator. The repository itself contains
 no LLM API key requirement.

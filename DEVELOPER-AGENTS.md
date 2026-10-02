@@ -195,10 +195,10 @@ so.
 The harness examples beside it, `docs/examples/codex/` and
 `docs/examples/opencode/`, follow the same two rules, with one
 difference: their `content/` is what one harness and one local model
-did, so it is replaced only by re-running that example's `run.sh`,
-never edited, and never "corrected" where the model left the skill's
-path. The record of that departure is the point of the example
-([LOCAL-MODELS.md](docs/LOCAL-MODELS.md)).
+did, so it is replaced only by re-running that example's `run.sh`. It
+is never edited, and never "corrected" where the model left the
+skill's path, because recording what the model did is why the example
+exists ([LOCAL-MODELS.md](docs/LOCAL-MODELS.md)).
 
 ## 🖥 Environment constraints on this host
 

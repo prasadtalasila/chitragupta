@@ -12,8 +12,8 @@
 #     ".opencode/**/*.md" "plans/**/*.md" \
 #     "!docs/examples/sample-project" "!docs/examples/*/content" "!.claude/worktrees"
 #
-# All three negations matter locally. The first two are pipeline output
-# -- the sample project, and the content/ of each harness example beside
+# All three negations matter locally. The first two are pipeline output:
+# the sample project, and the content/ of each harness example beside
 # it (see DEVELOPER-AGENTS.md's "The linters, which are enforced"); the
 # third excludes throwaway checkouts of this same repository, which
 # `.claude/**/*.md` otherwise pulls in wholesale -- 40,026 findings from

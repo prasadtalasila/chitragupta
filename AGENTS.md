@@ -196,7 +196,7 @@ enrichment layer is optional and nothing above it needs it.
   the same edit discipline over a full retrieval pass -- it still keeps
   the dossier. And if what you want repaired is what a review scan
   queued, that is `agenda-reviser`: it works the agenda's unattended
-  items -- short verbatim runs, `prose` findings, `missing-citekey` --
+  items (short verbatim runs, `prose` findings, `missing-citekey`)
   one at a time, asks you before deciding paraphrase-or-quote on a long
   run, and keeps no repair unless `python -m chitragupta.draft gate`
   passes and the `python -m chitragupta.review agenda --baseline`

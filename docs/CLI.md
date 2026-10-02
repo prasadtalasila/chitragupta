@@ -97,11 +97,11 @@ the checkout path's own `install_full_pipeline.sh` already creates
 `chitragupta init DIR` writes the same project directory a checkout
 gives you -- `config.toml` from `config.toml.example`, `.claude/`,
 `papers/`, `content/{drafts,dossiers,specs,review,rendered}/`, `assets/`
-and the prose docs. `--agent codex` and `--agent opencode`, repeatable,
-also write `.codex/` and `.agents/`, or `.opencode/`
-([LLM-AGENTS.md](LLM-AGENTS.md)) -- so everything from
+and the prose docs -- so everything from
 [step 1](#-the-full-first-run-step-by-step) onward reads the same
-regardless of which path got you here.
+regardless of which path got you here. Add `--agent codex` or `--agent
+opencode` to write `.codex/` and `.agents/`, or `.opencode/`, as well;
+the option can be repeated ([LLM-AGENTS.md](LLM-AGENTS.md)).
 
 **The base `pip install chitragupta-cli` above already covers tiers 1
 and 2** ([Which interpreter](#-which-interpreter) below) -- everything

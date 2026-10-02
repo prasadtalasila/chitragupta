@@ -30,7 +30,7 @@ a run, and they contain no citekeys.
 
 Two more directories, [`codex/`](codex/README.md) and
 [`opencode/`](opencode/README.md), each hold one survey drafted end to
-end by that harness driving a **local model**, over the same five
+end by that harness driving a local model, over the same five
 papers. Each is self-contained: the inputs, the prompt, the script
 that ran, and everything the run wrote, unedited. They record what one
 real model did, including where it left the skill's path, so their

@@ -85,9 +85,10 @@ copied into a skill, a hook launcher or a plugin.
    one copy per harness" below).
 2. **Mandatory check (enforced).** A thin per-harness launcher runs the
    existing hook scripts on every write to a draft. The model cannot
-   skip it, and it is told to fix the key before it moves on -- as long
-   as it writes through the harness's own file tools, which Codex behind
-   llama.cpp does not offer it ([LOCAL-MODELS.md](LOCAL-MODELS.md)).
+   skip it, and it is told to fix the key before it moves on. That holds
+   only while it writes through the harness's own file tools, which
+   Codex behind llama.cpp does not offer it
+   ([LOCAL-MODELS.md](LOCAL-MODELS.md)).
 3. **Last check.** `draft render` runs the gate before producing any
    format, so no draft with an unknown key becomes a document on any
    harness.
