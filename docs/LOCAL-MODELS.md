@@ -44,8 +44,9 @@ Each run scaffolded a fresh project with `chitragupta init --agent
 <harness>`, copied in the sample project's papers and `config.toml`,
 ran a real `corpus sync`, and sent the same prompt: draft a survey with
 the harness's own copy of `survey-writer`, with the skill's scoping
-questions answered up front. Both examples' `run.sh` is exactly what
-ran. A logging proxy between each harness and the server recorded every
+questions answered up front. Both examples' `run.sh` is what ran,
+plus a guard, added afterwards, that refuses to re-run into an existing
+directory. A logging proxy between each harness and the server recorded every
 request, which is where the tool lists and context sizes come from.
 
 ## 📊 Where each check fired
@@ -54,7 +55,7 @@ request, which is where the tool lists and context sizes come from.
 | --- | --- | --- |
 | Self-check, `draft gate` run by the model | ran twice, passed, warned twice that no hook had seen the draft | ran once, passed |
 | Mandatory check, the hook or plugin | **never fired**: no `apply_patch` call was made | fired on every draft write, and **refused one** |
-| Last check, `draft render` | passed, wrote a PDF | passed, wrote `.tex`, `.pdf` and `.md` |
+| Last check, `draft render` | passed, wrote a PDF and a `.markdown` file | passed, wrote `.tex`, `.pdf` and `.md` |
 | Unknown citekeys in the final draft | none | none |
 
 Neither model wrote a citekey that is not in the ledger into the final
@@ -76,15 +77,17 @@ read the line and wrapped the placeholder in a code span. It did not
 replace it with a real key, which is the failure the refusal's wording
 is written to avoid.
 
-**The liveness warning fired on the pipeline's own write.** `draft
-references` rewrote the draft after the plugin's last check, so a gate
-run by hand afterwards warns that no automatic gate saw the current
+**The liveness warning fires on the pipeline's own write.** `draft
+references` rewrote the draft after the plugin's last check. The
+model's own gate run came before that, so it saw no warning, but a gate
+run by hand after the run warns that no automatic gate saw the current
 text. The warning cannot tell a pipeline command from a shell write.
 It never changes the gate's verdict, but it makes a correctly drafted
 survey look ungated.
 
 **The skill's reporting step was half followed.** The verbatim scan
-found passages of 27 to 54 words copied almost exactly from sources.
+found 25 overlaps with the sources, the longest six running 27 to 54
+words.
 The final summary said overlaps were found but listed none.
 
 An earlier OpenCode run, on the same model with chitragupta 6.128.5

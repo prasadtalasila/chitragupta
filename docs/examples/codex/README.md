@@ -99,7 +99,8 @@ offered it.
 - It typed the References list into the draft rather than running
   `draft references`.
 - It asked for `--format markdown`, which pandoc accepts and names
-  `dt-survey.markdown`, rather than `--format md`.
+  `dt-survey.markdown`, rather than the skill's `--format md`. The
+  prompt's "render the draft to markdown" invited that reading.
 
 **What it did well.** The first verbatim scan found passages copied
 from the sources. The model rewrote them and scanned again, and the

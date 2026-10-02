@@ -100,8 +100,9 @@ own pipeline's write from a shell write.
 
 **Where it left the skill.**
 
-- The verbatim scan found passages of 27 to 54 words copied almost
-  exactly from the sources, some in paragraphs that do not cite them.
+- The verbatim scan found 25 overlaps with the sources, from 8 to 54
+  words, the longest six running 27 words or more, some in paragraphs
+  that do not cite them.
   The final summary says overlaps were found "across all 5 papers" but
   lists none. The skill asks for the long and short findings to be
   shown, not summarised.
