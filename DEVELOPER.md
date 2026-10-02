@@ -1,7 +1,7 @@
 # 🛠 Developer guide
 
 Material for working on this repository itself, as opposed to using it to
-draft content -- test running, the full source layout, and known gaps.
+draft content: test running, the full source layout, and known gaps.
 See [README.md](README.md) for the user-facing Quickstart/Configuration/
 Architecture docs and [DOCKER.md](DOCKER.md) for running a container;
 [DOCKER-DEVELOPER.md](DOCKER-DEVELOPER.md) here is this repo's own
@@ -32,23 +32,23 @@ bash scripts/install_full_pipeline.sh dev-deps
     --cov-fail-under=0
 ```
 
-`tests/` covers both the corpus layer and `chitragupta/enrich/*` -- the enrich group's
-dependencies (docling, chromadb, bertopic,
+`tests/` covers both the corpus layer and `chitragupta/enrich/*`. The
+enrich group's dependencies (docling, chromadb, bertopic,
 sentence-transformers) are mocked via `sys.modules` for fast,
-deterministic unit tests, so the
-`dev-deps` group alone is *not* enough on its own: the `enrich` group
+deterministic unit tests, so the `dev-deps` group alone is *not*
+enough: the `enrich` group
 (`python-deps`, step 1 of Quickstart) must already be installed too, since
 `tests/test_bib_reader.py` needs `bibtexparser` and the `chitragupta/enrich/` test
 modules need docling/chromadb/bertopic/sentence-transformers.
 
-**One module is the deliberate exception.**
+One module is the deliberate exception.
 `tests/test_enrich_real_libraries.py` drives the *real* `chromadb` through
 `build_index()`/`search()`, and asks the real
 `sentence_transformers`/`bertopic` classes whether they still accept the
 keywords the fakes accept (#514). The fakes are faithful enough that the
-expensive failure is the day they quietly stop being; that module is what
-notices. It does not download an embedding model -- its own docstring has
-why -- so it stays as fast and as offline as the rest.
+expensive failure is the day they stop being; that module is what
+notices. It does not download an embedding model (its own docstring says
+why), so it stays as fast and as offline as the rest.
 
 A handful of tests run real dependencies end to end rather than mocking
 them, and skip automatically when the dependency is absent:
@@ -66,28 +66,26 @@ hours, needs real PDFs and a GPU, and answers a "how long / what's the
 bottleneck" question rather than a pass/fail one. It is excluded from the
 release zip for the same reason `tests/` is.
 
-- [docs/PERFORMANCE.md](docs/PERFORMANCE.md) -- what each setting costs,
+- [docs/PERFORMANCE.md](docs/PERFORMANCE.md): what each setting costs,
   organised by setting. Ships in the release archive, unlike `bench/`
-- [docs/PARALLELISM.md](docs/PARALLELISM.md) -- parallel parse design:
-  architecture, components, and the roadmap
+- [docs/PARALLELISM.md](docs/PARALLELISM.md): parallel parse design
+  (architecture, components, and the roadmap)
 - [bench/README.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/README.md)
-  -- how to run it, and what each
-  switch measures
+  covers how to run it, and what each switch measures
 - [bench/RESULTS.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/RESULTS.md)
-  -- the dated measurement record,
-  newest last, with raw per-run data in `bench/results/`. Read its
-  "Which sections are current" table first: several early conclusions
-  were overturned by later runs and are kept, marked, rather than deleted
+  is the dated measurement record, newest last, with raw per-run data
+  in `bench/results/`. Read its "Which sections are current" table
+  first: several early conclusions were overturned by later runs and
+  are kept, marked, rather than deleted
 - [bench/PARALLELISM-PLAN.md](https://github.com/prasadtalasila/chitragupta/blob/main/bench/PARALLELISM-PLAN.md)
-  -- what is still
-  unknown, and what to measure before changing it
+  records what is still unknown, and what to measure before changing it
 
 The headline, in the order it was found:
 
 1. Parsing all 501 bib PDFs with `docling` took ~1.6 hours (later
    measured at 1h 56m), with the A40 at ~7% utilization and three CPU
-   cores of 48 busy. The GPU was worth only 1.79x over CPU-only -- the
-   work was CPU-bound.
+   cores of 48 busy. The GPU was worth only 1.79x over CPU-only, because
+   the work was CPU-bound.
 2. Turning OCR off (v0.12.0) was worth more than the GPU: **2.08x
    serially, 3.91x at 12 workers and 4.79x at 24**, since OCR competes
    for the same CPU the parallelism needs. (An earlier 2.46x, from a
@@ -98,32 +96,32 @@ The headline, in the order it was found:
    resolves to `cuda:0` in every worker, so GPU 0 ran at 100% while
    GPUs 1-3 idled.
 5. Giving each worker its own card (v1.1.0) was worth a further **1.62x**
-   on the full corpus -- 528s to 326s at twelve workers. The whole
+   on the full corpus (528s to 326s at twelve workers). The whole
    501-PDF corpus now parses in **5m 10s**, against 1h 56m where this
    started.
 6. Per-worker startup (v2.1.0) turned out to be 3.2s of importing torch
    and docling plus ~5s of loading Docling's models, and only the first
    is shareable between processes. A forkserver pool with those modules
    preloaded, started before the bibliography is read, takes a fixed
-   ~1.5-2s off pool startup -- 9.6% of an 8-document run, 2.5% of a
+   ~1.5-2s off pool startup: 9.6% of an 8-document run, 2.5% of a
    60-document one.
 7. Measuring the **whole** corpus instead of extrapolating from a 16-PDF
    sample (2026-08-04) found the serial baseline was 55m 30s, not the
-   ~39m every document had quoted -- **41% low**. Correcting it showed
-   12-worker efficiency is 89%, not the 60% previously reported, and that
+   ~39m every document had quoted, which was **41% low**. Correcting it
+   showed 12-worker efficiency is 89%, not the 60% previously reported, and that
    `worker_ceiling()`'s `cpus // 4` clamp costs **1.41x**: 32 workers
    beat the 12 it allows.
 8. Asking whether a *quotable passage* survives a re-parse (2026-08-07,
    `bench/repro_check.py`) found that ~1% of documents come back with a
-   different passage text, and -- correcting what this project had
-   asserted twice -- that two runs of the **same** configuration are not
+   different passage text, and, correcting what this project had
+   asserted twice, that two runs of the **same** configuration are not
    exempt either. The artifact-by-artifact contract that came out of it
    is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
-The lesson worth carrying: every one of those steps was measured, and
-seven intermediate conclusions were wrong until the next measurement
-corrected them -- including two that sat in the code as stated fact, and
-one that had been written into three documents. `bench/` exists so that
+Every one of those steps was measured, and seven intermediate
+conclusions were wrong until the next measurement corrected them,
+including two that sat in the code as stated fact and one that had been
+written into three documents. `bench/` exists so that
 the next one is checked too.
 
 ## 🧠 Writing a script that drives the enrichment layer
@@ -131,7 +129,7 @@ the next one is checked too.
 `chitragupta.enrich.docling_parse.parse_corpus` and `python -m
 chitragupta.corpus sync` both use
 a worker pool when `[parser].workers` is above 1, and every start method
-they can pick (`forkserver` or `spawn` -- see `[parser].start_method`)
+they can pick (`forkserver` or `spawn`; see `[parser].start_method`)
 re-imports the calling program's `__main__` in each worker. Any script of
 your own that calls them must guard its top level:
 
@@ -394,10 +392,10 @@ index of them to `content/docling/<doc>.figures.json`.
 **Those images are a reading aid, not draft content.** Nothing in this
 repo inserts them into `content/drafts/`, and nothing should start doing
 so. A figure's copyright belongs to the publisher or the authors, and
-citing a paper grants no right to reproduce its figures -- `citation_gate`
+citing a paper grants no right to reproduce its figures. `citation_gate`
 gates *citekeys*, and there is deliberately no equivalent gate for
-images. The ledger also has no license column, so the pipeline genuinely
-cannot tell a CC BY paper from an all-rights-reserved one; that judgment
+images. The ledger also has no license column, so the pipeline cannot
+tell a CC BY paper from an all-rights-reserved one; that judgment
 stays with you, per figure.
 
 The supported way to reference a figure is therefore **textually**, and
@@ -417,14 +415,14 @@ Two details worth knowing about that `cite` string:
 
 - The number comes from the **caption's own text**, never from the
   picture's position. Publisher logos and licence badges are pictures
-  too -- on a real 17-page MDPI paper, 6 of the 13 extracted pictures
-  were furniture rather than figures -- so the Nth picture is routinely
+  too (on a real 17-page MDPI paper, 6 of the 13 extracted pictures
+  were furniture rather than figures), so the Nth picture is routinely
   not the paper's Figure N.
 - The number is captured *whole*, including chapter-scoped forms
   (`Fig. 1.1` ... `Fig. 1.4`, the convention in edited book chapters)
   and sub-figure letters (`Figure 2a`). Matching only the leading
   integer would collapse a chapter's four distinct figures onto one
-  `Figure 1` -- a citation pointing at the wrong picture.
+  `Figure 1`, giving a citation that points at the wrong picture.
 - A picture whose caption carries no number is cited by page instead
   (`"the figure on p.1 of [@key]"`), rather than being given a number
   this repo would have to invent. Two panels of one figure (captions
@@ -435,8 +433,8 @@ Every figure's `cite` string is a real `[@citekey]`, because every
 document the enrichment layer parses comes from the bib file (see
 `chitragupta/enrich/corpus.py`).
 
-A wholly original diagram -- not derived from any source paper's figure
--- is a different case this section doesn't restrict; see
+A wholly original diagram (not derived from any source paper's figure)
+is a different case this section doesn't restrict; see
 [docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) §10 for the
 supported form and why it's plain ASCII rather than Unicode
 box-drawing.
@@ -444,14 +442,13 @@ box-drawing.
 ## 📖 Citation provenance
 
 `python -m chitragupta.review provenance content/drafts/<slug>.md` reports, for
-every citation in a draft, what in the cited source supports it and where
--- ordered worst match first. It writes
+every citation in a draft, what in the cited source supports it and
+where, ordered worst match first. It writes
 `content/review/<the draft's path minus its suffix>.provenance.md` plus
 `.tex`/`.pdf` renders beside it. The report mirrors the draft's own place
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
-(`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that contract
-for every
-review-layer command.
+(`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that
+contract for every review-layer command.
 
 Run it directly rather than wrapping it in an enrichment stage: that
 would have the enrichment layer importing the review layer, and would
@@ -465,7 +462,7 @@ something exact (ledger membership); this reports because it doesn't.
 Passage quality depends on what has been parsed. With the Docling stage
 run, `content/docling/<citekey>.passages.json` supplies reading-ordered
 paragraphs and the report quotes them. Without it, `pdftotext` output is
-used and the report gives a page number **without quoting** -- on a
+used and the report gives a page number **without quoting**: on a
 two-column paper that text splices two columns onto every line, so any
 excerpt would be a collage of two arguments.
 
@@ -475,15 +472,15 @@ Full design rationale, including the measurements behind those choices:
 ## ❓ Open questions and unbuilt features
 
 Running this pipeline on a schedule was the long-standing goal here.
-**Most of it now exists**: a rotating `logs/pipeline.log`, shared by the
+Most of it now exists: a rotating `logs/pipeline.log`, shared by the
 corpus and enrichment layers (see `chitragupta/logging_setup.py`), a pages/s
 throughput figure, exit codes an unattended caller can branch
 on, and worked cron and systemd units in
-[docs/CLI.md](docs/CLI.md#-running-sync-on-a-schedule) -- including the
+[docs/CLI.md](docs/CLI.md#-running-sync-on-a-schedule), including the
 absolute-interpreter-path detail that cron's minimal environment
 requires.
 
-**One blocker is left, and it is not a coding task.** With no continuous
+One blocker is left, and it is not a coding task. With no continuous
 auto-export, `bibliography.bib` is a manual, point-in-time snapshot: a
 scheduled `sync` re-reads whatever was last exported, so it keeps the
 corpus consistent with the bib file but cannot keep the bib file
@@ -502,5 +499,5 @@ step"). That is defensible today: clustering is whole-corpus, so assignments
 are not stable between runs, and on a small corpus every document legitimately
 lands in the outlier topic. If it is ever wired in, `survey-writer`'s "Cluster
 by judgment" step is the seam, gated on the file existing and on there being
-non-`-1` assignments -- the same shape the existing skills use to gate on
+non-`-1` assignments, the same shape the existing skills use to gate on
 `content/chroma/`.

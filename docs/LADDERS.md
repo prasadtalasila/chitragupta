@@ -14,10 +14,10 @@ claim?" is one such question. "How do I turn a draft into a PDF?" is
 another.
 
 There are six such places. Three pick for you, silently, at run time.
-Three you pick yourself, in a config file or on a command line. Telling
-those two apart is the whole point of the page, because they fail
-differently: the first kind degrades quietly and you may not notice for
-weeks, the second kind stops and names what is missing.
+Three you pick yourself, in a config file or on a command line. This
+page tells those two kinds apart, because they fail differently: the
+first kind degrades without warning and you may not notice for weeks;
+the second kind stops and names what is missing.
 
 Read [docs/ARCHITECTURE.md](ARCHITECTURE.md) first if you want to know
 *what the parts are*, and [docs/DIAGRAMS.md](DIAGRAMS.md) if you want to
@@ -57,8 +57,8 @@ them and what they are allowed to do*.
 | --- | --- | --- |
 | **1. Corpus** | `python -m chitragupta.corpus sync` and the ledger it maintains. Deterministic, unattended-safe. | On demand or on a schedule |
 | **2. Drafting** | The genre skills in `.claude/skills/`, and the gate/references/render chain each runs on its own output. Generative, reviewed by you. | When you ask for a draft |
-| **3. Enrichment** | `python -m chitragupta.enrich` -- Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
-| **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`, `synthesis`, `figure_layout`, `uncited_prose`. Advisory over a finished draft -- never a gate. | When you ask, and at the end of a drafting skill's run |
+| **3. Enrichment** | `python -m chitragupta.enrich`: Docling, embeddings, topic modelling. Optional, opt-in, and nothing above depends on it. | Never, unless you choose to |
+| **4. Review** | `citation_provenance`, `verbatim_check`, `citation_coverage`, `synthesis`, `figure_layout`, `uncited_prose`. Advisory over a finished draft; never a gate. | When you ask, and at the end of a drafting skill's run |
 
 The numbers are introduction order, not a dependency rank.
 
@@ -67,14 +67,14 @@ The enrichment layer is the only one that literally enumerates them
 (`--stages docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph`,
 each reporting `ok`, `partial`,
 `skipped` or `error`). There are seven, and every one
-of them writes a corpus artefact -- which is why the layer takes the same
+of them writes a corpus artefact, which is why the layer takes the same
 write lock as `sync`, and why its unit of work is the corpus rather than
 a draft.
 
 Those four words are also the run's exit code, which is the whole of what
 an unattended caller gets: **`error` in any stage exits `1`, and every
-other combination exits `0`** -- `partial` and `skipped` included. That is
-deliberate rather than an oversight in the mapping. `skipped` is the
+other combination exits `0`**, `partial` and `skipped` included. That is
+deliberate, not an oversight in the mapping. `skipped` is the
 honest answer on a host without the enrich extra, and `partial` is the
 honest steady state of a corpus holding two PDFs that will never parse; a
 nightly job that failed forever over either would teach its reader to
@@ -101,13 +101,13 @@ always means *most faithful to the source*, never fastest.
 you picked is unavailable, the pipeline says so and stops that piece of
 work. It does not quietly substitute a neighbour.
 
-The distinction between the last two is the one worth holding on to:
+The distinction between the last two matters most:
 
 > A **ladder** answers "this is the best I could do." A **tier** answers
 > "you asked for something this host cannot give you."
 
-Drawn side by side, because the shapes are what separate them -- one
-descends on its own, the other doesn't descend at all:
+Drawn side by side, the shapes show the difference: one descends on its
+own, the other doesn't descend at all:
 
 ```mermaid
 flowchart TB
@@ -155,8 +155,8 @@ flowchart TB
   class T1,T3 dim
 ```
 
-The asymmetry in those two shapes is the whole reason to name them apart.
-A ladder always reaches an answer, so its worst rung is silent -- the
+The two are named apart because of the asymmetry in those shapes. A
+ladder always reaches an answer, so its worst rung is silent: the
 output still looks like output, and nothing in the run says which rung
 produced it. A tier can only give you what you asked for or nothing, so
 its failure is loud and self-describing. Everything below is one or the
@@ -164,8 +164,8 @@ other.
 
 A ladder that silently reaches its worst rung is the failure mode this
 repository worries about most, because the output still looks like output.
-That is why each ladder below states what its bottom rung costs you, not
-just what it is.
+That is why each ladder below states what its bottom rung costs you as
+well as what it is.
 
 ## 🔭 The pipeline in one pass
 
@@ -216,8 +216,8 @@ Every command above and the flags it takes are in
 
 ### 🧠 What the enrichment layer works on
 
-Worth stating plainly, because the natural assumption is the expensive
-one and it is wrong. **By default the enrichment layer parses your whole
+The natural assumption here is the expensive one, and it is wrong.
+**By default the enrichment layer parses your whole
 corpus, not the papers a draft happens to cite.** One flag changes that,
 for one of the seven stages. The rest of this section is its reach.
 
@@ -246,10 +246,10 @@ nothing filters it by draft, by reference list, or by citation: a draft
 citing eleven papers does not cause eleven papers to be parsed. The
 default unit of work is the corpus.
 
-Only the documents that have a PDF get parsed, though, which is worth
-knowing before reading a stage's counts. Measured on this project's own
+Only the documents that have a PDF get parsed, which matters when you
+read a stage's counts. Measured on this project's own
 corpus: `build_corpus()` returns **642 documents, of which 497 have a PDF
-to parse** -- the remaining 145 are ledger entries with no attachment.
+to parse**; the remaining 145 are ledger entries with no attachment.
 
 That is why the enrichment layer is opt-in and why its cost is quoted
 per-corpus rather than per-draft: on this project's own 501-PDF corpus, a
@@ -270,14 +270,13 @@ on one chapter and judge before committing the machine to the whole
 library. Flags and worked output are in
 [docs/CLI.md](CLI.md#-enriching-one-drafts-papers).
 
-Which stages it reaches is the part worth being precise about, because it
-is fewer than it sounds:
+It reaches fewer stages than it sounds:
 
 | Stage | Under `--for-draft` | Why |
 | --- | --- | --- |
 | `docling` | scoped | Per-document by nature. Its artefacts are keyed by citekey and its cache is per-document, so eleven of them is a subset of the corpus-wide result, not a different one |
 | `embed` | **refused** | The Chroma collection records nothing about how much of the corpus it covers, and every skill that reads it decides by asking only whether `content/chroma/` exists. A partial index would answer as though it were complete |
-| `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus -- one added document can move every assignment -- so a scoped run would replace a topic model with something that isn't one |
+| `bertopic` | **refused** | Overwrites `content/topics.json` whole. Clustering is inherently whole-corpus (one added document can move every assignment), so a scoped run would replace a topic model with something that isn't one |
 | `extract-keywords` | **refused** | Overwrites `content/keywords.toml` whole. A keywords list extracted from one draft's papers would silently replace the corpus-wide one, and nothing that reads it could tell |
 | `seed-topics`, `converge`, `topic-graph` | **refused** | The same shape as `bertopic`, downstream of it: each overwrites one whole-corpus artefact (`content/topic_seeds.json`, `content/topic_set.json`, `content/topic_graph.json`), derived from the whole topic model above it |
 
@@ -288,12 +287,12 @@ The refusals are a **tier**, not a ladder, in this page's vocabulary,
 and they are the reason the flag is safe to offer at all. Asked to scope
 `embed`, the run stops and prints the two commands to use instead.
 
-It does not descend to a neighbouring answer. Not "run it over the whole
-corpus anyway", which is the hour of work `--for-draft` exists to avoid.
-And not "index the eleven", which is the silently-partial artefact this
-page's opening worries about. Allowing the second would need the Chroma
-collection to record its own coverage first. Until it does, the honest
-answer is to refuse.
+It does not descend to a neighbouring answer: neither "run it over the
+whole corpus anyway", which is the hour of work `--for-draft` exists to
+avoid, nor "index the eleven", which is the silently-partial artefact
+this page's opening worries about. Allowing the second would need the
+Chroma collection to record its own coverage first, and until it does,
+the run refuses.
 
 What makes the scoped `docling` run safe in the other direction is that
 its cache is per-document, and is never rewritten to match the scope. A
@@ -309,8 +308,8 @@ corpus layer neither knows nor cares that it does.
 
 Reuse is refused in three cases:
 
-- a document the corpus layer wrote no parsed text for -- a bib entry
-  with no PDF attached, or one whose parse failed;
+- a document the corpus layer wrote no parsed text for (a bib entry
+  with no PDF attached, or one whose parse failed);
 - a run with figures on, because the corpus layer writes no bitmaps;
 - artefacts older than their PDF.
 
@@ -318,26 +317,26 @@ Reuse is refused in three cases:
 
 ### 📖 Ladder 1: Evidence passages
 
-**The question:** a claim cites `smith_2024` -- which part of that source
+**The question:** a claim cites `smith_2024`; which part of that source
 supports it, and may it be quoted?
 
 **Where:**
 [`chitragupta/passages.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/passages.py),
 read by
-`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`
--- which does now read **rung 2 alone**, through
+`chitragupta.review provenance` and (not yet) `chitragupta.draft retrieve`,
+which does now read **rung 2 alone**, through
 `passages.corpus_passages`, to find where a document's reference list
 starts ([RETRIEVAL.md](RETRIEVAL.md#-a-papers-own-bibliography-is-not-indexed)),
 but still cuts its own snippets as character windows out of the flat text.
-Rung 2 alone, not the ladder, because rung 1 is the enrichment layer's
+It reads rung 2 alone, not the ladder, because rung 1 is the enrichment layer's
 parse and what BM25 ranks may not depend on whether that layer has run.
 
 | # | Rung | Written by | Quotable? |
 | --- | --- | --- | --- |
 | 1 | `content/docling/<citekey>.passages.json` | enrichment layer's `docling` stage | **yes** |
 | 2 | `content/parsed/<citekey>.passages.json` | corpus layer, when `[parser].backend = "docling"` | **yes** |
-| 3 | `content/parsed/<citekey>.txt` split on form feeds | corpus layer, either backend | no -- page only |
-| 4 | `pdftotext -layout` run fresh on the PDF | nobody; computed on demand | no -- page only |
+| 3 | `content/parsed/<citekey>.txt` split on form feeds | corpus layer, either backend | no; page only |
+| 4 | `pdftotext -layout` run fresh on the PDF | nobody; computed on demand | no; page only |
 
 Rungs 1 and 2 hold the same kind of record, from
 `passages.passage_records()`: one entry per prose text item, carrying the
@@ -362,7 +361,7 @@ every run.
 **What the bottom two rungs cost you.** `pdftotext -layout` preserves a
 page's *visual* arrangement rather than its reading order. On a
 two-column paper a single output line can therefore splice together two
-unrelated columns -- 82%-89% of long lines on 4 of the 10 papers in this
+unrelated columns: 82%-89% of long lines on 4 of the 10 papers in this
 project's sample.
 
 Ranking survives that. Quoting does not, because an excerpt cut from
@@ -385,20 +384,20 @@ also used by
 | --- | --- | --- |
 | 1 | `content/docling/<citekey>.md` | the enrichment layer's own parse; image references are stripped before embedding |
 | 2 | the ledger's `parsed_path` `.txt` | whatever the corpus layer produced, verbatim |
-| 3 | `pdftotext -layout` into a temp file | for a bib item the corpus layer has not parsed -- a parse that failed, or one not re-run since the PDF was attached |
+| 3 | `pdftotext -layout` into a temp file | for a bib item the corpus layer has not parsed: a parse that failed, or one not re-run since the PDF was attached |
 
 This ladder is why the enrichment layer's `embed` stage does not *require*
 its `docling` stage: running `--stages embed` alone works, but on
 plainer text.
 
-**What the bottom rungs cost you.** Less than in ladder 1, and for a
-reason worth naming: embedding is bag-of-words-ish enough that column
-splicing moves words around *within* a page rather than between pages. The
+**What the bottom rungs cost you.** Less than in ladder 1, because
+embedding is bag-of-words-ish enough that column splicing moves words
+around *within* a page rather than between pages. The
 cost is quality of retrieval, not correctness of attribution.
 
 **One thing to know before you change it.** `build_index()` skips
 re-encoding a document whose text hashes the same as last run. The hash is
-taken over whatever this ladder returned -- so a change to any rung's
+taken over whatever this ladder returned, so a change to any rung's
 *output* invalidates that cache and re-encodes the corpus. Restoring page
 breaks to the corpus layer's `.txt` (see ladder 1's rung 3) did exactly
 that, once.
@@ -423,8 +422,8 @@ which is why this reads as three mechanisms rather than one:
 - `usable_devices()` refuses a card with less than 2560 MiB free. A
   docling worker holding the layout, table and OCR models sits at ~1.7 GiB
   plus a CUDA context of its own, so a card already full would give every
-  worker assigned to it a model load that cannot succeed. That matters
-  more than it sounds: a poisoned worker fails in ~19s where a working one
+  worker assigned to it a model load that cannot succeed. This matters
+  because a poisoned worker fails in ~19s where a working one
   takes minutes, so the pool feeds it work *preferentially*. One real run
   had four such workers claim and fail 334 of 456 documents.
 - `_parse_visible_devices()` maps `CUDA_VISIBLE_DEVICES` to physical
@@ -433,7 +432,7 @@ which is why this reads as three mechanisms rather than one:
   does not exist in its own view.
 
 **What the bottom rung costs you.** Time, and nothing else. The demotion
-is deliberately permanent for the run rather than retried per document --
+is deliberately permanent for the run rather than retried per document:
 a card that just ran out is likely to do it again, and thrashing between
 devices costs more than finishing slowly. See
 [docs/PERFORMANCE.md](PERFORMANCE.md) for what a GPU is and isn't worth
@@ -446,8 +445,8 @@ Three here, four in
 and both are right. The fourth is the **detection tiers** behind
 `chitragupta/review/verbatim_check/`'s `scan`.
 
-It has no section here because this page's question -- *where does the
-pipeline choose, and what does it choose between?* -- has no answer for
+It has no section here because this page's question (*where does the
+pipeline choose, and what does it choose between?*) has no answer for
 it. Nothing picks a detection tier: every available one runs, and the
 findings are unioned. It is a tier set only in the sense the table's
 third column asks about, namely what happens when an option is
@@ -462,12 +461,12 @@ unavailable.
 
 | Option | Needs | Page breaks | Quotable passages | Speed |
 | --- | --- | --- | --- | --- |
-| `pdftotext` (default) | `poppler-utils` on `PATH` | yes -- form feeds | no | fastest |
-| `docling` | the `enrich` Poetry group, in a venv | yes -- form feeds | **yes**, writes ladder 1's rung 2 | ~6.65s/PDF serial |
+| `pdftotext` (default) | `poppler-utils` on `PATH` | yes (form feeds) | no | fastest |
+| `docling` | the `enrich` Poetry group, in a venv | yes (form feeds) | **yes**, writes ladder 1's rung 2 | ~6.65s/PDF serial |
 
 **If the one you picked is unavailable:** `sync` warns and skips parsing.
-It does **not** silently substitute the other backend -- a corpus half
-parsed by each would be impossible to reason about afterwards.
+It does **not** silently substitute the other backend, because a corpus
+half parsed by each would be impossible to reason about afterwards.
 
 Two backends were evaluated and removed on 2026-08-01 (`markitdown`,
 `grobid`); [docs/PDF-PARSER.md](PDF-PARSER.md) keeps the comparison as a
@@ -510,11 +509,11 @@ worked. A `.pdf` you asked for and did not get is a fact you need to see.
 ## 🚫 What is deliberately not a ladder
 
 Naming three ladders implies the rest of the pipeline doesn't fall back,
-and mostly that is true by design. Two near-misses are worth stating so
+and mostly that is true by design. Two near-misses are listed here so
 they aren't mistaken for rungs:
 
 - **The ledger's change detection** (`chitragupta/ledger.py`) checks size and
-  mtime before hashing a PDF. That is an *optimisation* with one answer --
+  mtime before hashing a PDF. That is an *optimisation* with one answer:
   hashing is the fallback that stat merely defers, and both agree. A
   ladder's rungs disagree; these don't.
 - **The enrichment layer's Docling cache** re-parses when a PDF's
@@ -593,16 +592,16 @@ flowchart LR
   class O3,O5 none
 ```
 
-Two things that diagram makes visible and the table below does not.
+That diagram makes two things visible that the table below does not.
 
 The parser backend is the only decision that reaches into two others. It
 decides whether the evidence ladder has a rung 2 to land on, and it
 shares `chitragupta/pdf_text/` with the accelerator ladder.
 
 And two decisions leave nothing on disk at all. They change what you are
-*allowed to do* with the files, or how long it takes to get them. That is
-exactly why neither shows up in a backup, and neither can be inspected
-after the fact.
+*allowed to do* with the files, or how long it takes to get them. So
+neither shows up in a backup, and neither can be inspected after the
+fact.
 
 The same thing as a table. Read a row as: *this decision selects this
 thing, is made here, is implemented there, and shows up on disk as that.*
@@ -611,7 +610,7 @@ thing, is made here, is implemented there, and shows up on disk as that.*
 | --- | --- | --- | --- | --- | --- |
 | Evidence passages | ladder, 4 rungs | what may be quoted | at read time, per citekey | `chitragupta/passages.py` | `*.passages.json`, else nothing |
 | Enrichment text source | ladder, 3 rungs | what gets embedded | at index time, per doc | `chitragupta/enrich/embed_index.py` | `content/chroma/` |
-| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text/` | none -- affects time only |
+| Accelerator | ladder, 2 rungs (+2 pre-flight checks) | which device parses | per worker, per run | `chitragupta/pdf_text/` | none; affects time only |
 | Parser backend | tier | how PDFs become text | `[parser].backend` | `chitragupta/pdf_text/` | `content/parsed/*.txt` |
 | Interpreter | tier | what can run at all | the command you type | `pyproject.toml` groups | none |
 | Render format | tier | what the draft becomes | `--format` | `chitragupta/render_output/` | `content/rendered/` |
@@ -634,19 +633,19 @@ read-only over the corpus and must keep working during a `sync`.
 It is also the row easiest to make false by accident. An enrichment stage
 wrapping `provenance` or `render` would sit inside that layer's lock, so
 a review aid and a drafting-layer render would each take a lock their own
-layer says they do not. Keeping those two out of the stage list is what
-keeps this table true rather than aspirational.
+layer says they do not. Keeping those two out of the stage list keeps
+this table true.
 
 ## 🔗 See also
 
-- [docs/ARCHITECTURE.md](ARCHITECTURE.md) -- what the parts are, and which
+- [docs/ARCHITECTURE.md](ARCHITECTURE.md): what the parts are, and which
   interpreter each needs
-- [docs/DIAGRAMS.md](DIAGRAMS.md) -- the same workflow drawn eleven ways
-- [docs/CONFIG.md](CONFIG.md) -- every setting these tiers read
-- [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md) -- what ladder 1
+- [docs/DIAGRAMS.md](DIAGRAMS.md): the same workflow drawn eleven ways
+- [docs/CONFIG.md](CONFIG.md): every setting these tiers read
+- [docs/CITATION-PROVENANCE.md](CITATION-PROVENANCE.md): what ladder 1
   is ultimately for
-- [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) -- the detection
+- [docs/PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md): the detection
   tiers in full: what the exact tier catches, what it cannot, and why the
   other two are not mutually exclusive with it
-- [docs/PDF-PARSER.md](PDF-PARSER.md) -- how the parser tier was chosen
-- [docs/PERFORMANCE.md](PERFORMANCE.md) -- what each of these costs
+- [docs/PDF-PARSER.md](PDF-PARSER.md): how the parser tier was chosen
+- [docs/PERFORMANCE.md](PERFORMANCE.md): what each of these costs

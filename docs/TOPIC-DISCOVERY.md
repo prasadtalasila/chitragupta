@@ -1,29 +1,29 @@
 # 🕸 Topic discovery: from a phrase to the papers, the graph, and an overview
 
 Status: **reference.** Written 2026-09-02. Updated 2026-09-07. All
-parts documented here -- the `topic-graph` enrichment stage and the
-analytics it stores in the artefact, the `corpus discover` reader and
+parts documented here are built: the `topic-graph` enrichment stage and
+the analytics it stores in the artefact, the `corpus discover` reader and
 its graph-exploration views, the precision tier, the gold-set benchmark,
-the HTML graph page and the interactive app -- are built; the design
-they implement is
+the HTML graph page and the interactive app. The design they implement
+is
 `plans/g5-topic-discovery.md` (G5-G9 in
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s numbering).
 [TOPIC-MODELLING.md](TOPIC-MODELLING.md) covers how topics come to
-exist at all; this document covers what happens next -- relating them,
+exist at all; this document covers what happens next: relating them,
 finding them, and reading them.
 
 **Written for** you, before a draft exists: someone with a synced
 library asking "what is my corpus actually about, and where should the
-next draft start?" The how-it-is-computed passages carry their
-reasoning for the curious and are safe to skim -- the worked session
-below is the part to read first.
+next draft start?" Read the worked session below first. The
+how-it-is-computed passages carry their reasoning for the curious and
+are safe to skim.
 
 > **On the sources quoted below.** None of the systems and papers this
 > feature borrows from is in `content/ledger.sqlite`, so none has a
 > citekey; each is named inline with a link and listed in full at the
 > end, the same rule TOPIC-MODELLING.md follows and for the same reason
-> ([AGENTS.md](../AGENTS.md)). What was taken from each -- and,
-> as importantly, what was deliberately not -- is recorded in
+> ([AGENTS.md](../AGENTS.md)). What was taken from each, and what
+> was deliberately not, is recorded in
 > [INSPIRATION.md](INSPIRATION.md#-topic-discovery); this document
 > quotes a source only where a specific mechanism came from it.
 
@@ -51,19 +51,18 @@ below is the part to read first.
 Start from a phrase, find the corpus's real topics near it, see each
 topic's papers with their bibliographic details, walk to the linked
 topics, and take away an extractive overview grounded enough to seed a
-draft. Scripted (`--json` everywhere) and interactive (successive
-invocations, or the `--html` graph page), and with no generative model
+draft. It is scripted (`--json` everywhere) and interactive (successive
+invocations, or the `--html` graph page), and uses no generative model
 anywhere: embeddings, BM25, classic statistics and a cross-encoder
-scorer. Every citekey shown comes from the ledger via the
-topic artefacts -- the same rule that binds every other part of this
-project.
+scorer. Every citekey shown comes from the ledger via the topic
+artefacts, the same rule that binds every other part of this project.
 
-Two relations, kept distinct on purpose, and drawn side by side in
-figure 13:
+The feature keeps two relations distinct on purpose; figure 13 draws
+them side by side:
 
-- **topic -> papers** -- already recorded in `content/topic_set.json`'s
+- **topic -> papers**: already recorded in `content/topic_set.json`'s
   members; discovery displays it, annotated with ledger detail.
-- **topic <-> topic** -- derived by the `topic-graph` stage, with two
+- **topic <-> topic**: derived by the `topic-graph` stage, with two
   typed edge families that are never merged into one score, because
   they answer different questions and their disagreement is itself a
   discovery cue: two topics can share many papers while saying
@@ -74,8 +73,8 @@ figure 13:
 The "keep papers and concepts in one graph and walk it" shape follows
 MiniRAG (Fan et al., 2025), whose heterogeneous index puts text chunks
 and entities in a single graph so one traversal answers "which
-documents" and "which concepts relate" together -- with its LLM-driven
-entity extraction replaced by the topic model this project already has,
+documents" and "which concepts relate" together. Here its LLM-driven
+entity extraction is replaced by the topic model this project already has,
 and its Neo4j-scale storage replaced by one JSON file, because a
 personal corpus is hundreds of papers, not millions.
 
@@ -90,12 +89,13 @@ the offline page
 ([`topic_map.html`](examples/sample-project/content/topic_map.html)),
 and a measured gold set with its per-rung scores
 ([`topic_gold.toml`](examples/sample-project/content/topic_gold.toml),
-[`topic_gold_results.json`](examples/sample-project/content/topic_gold_results.json))
--- including one deliberately misspelled query the fuzzy rung has to
-catch and one out-of-corpus query that must fall through to search.
+[`topic_gold_results.json`](examples/sample-project/content/topic_gold_results.json)).
+The gold set includes one deliberately misspelled query the fuzzy rung
+has to catch and one out-of-corpus query that must fall through to
+search.
 
-Below, real output from a four-paper fixture (two seed papers about
-digital twins, three about machine learning, one -- `dt2022` -- in
+Below is real output from a four-paper fixture (two seed papers about
+digital twins, three about machine learning, one of them, `dt2022`, in
 both). First, the map:
 
 ```console
@@ -106,9 +106,9 @@ $ chitragupta corpus discover
   machine learning  emergent   3 papers
 ```
 
-Then one topic. Every member carries its ledger entry and, crucially,
-the *other* topics it belongs to -- a paper is always shown inside its
-neighbourhood -- and both linked-topic families arrive with their
+Then one topic. Every member carries its ledger entry and the *other*
+topics it belongs to, so a paper is always shown inside its
+neighbourhood, and both linked-topic families arrive with their
 evidence:
 
 ```console
@@ -125,7 +125,7 @@ linked topics:
 
 Note what is *absent*: no overlap edge, although the topics share
 `dt2022`. Sharing one paper between topics of size 2 and 3 in a 4-paper
-corpus is arithmetic, not affinity -- the hypergeometric gate
+corpus is arithmetic, not affinity: the hypergeometric gate
 (below) computed p = 1.0 and withheld the edge. On a toy corpus that
 looks strict; on a real one it is what keeps two large topics from
 being "linked" merely for both being large.
@@ -142,10 +142,10 @@ $ chitragupta corpus discover "digital twin" --json | jq .resolved_via
 "exact"
 ```
 
-And a phrase the corpus cannot place falls back honestly -- labelled a
-search result, never dressed up as a topic membership, with each hit
-still annotated by its topics so the reader can step back onto the
-graph:
+A phrase the corpus cannot place falls back to search. The output is
+labelled a search result, never presented as a topic membership, and
+each hit is still annotated by its topics so the reader can step back
+onto the graph:
 
 ```console
 $ chitragupta corpus discover "cyber replica of a physical system" --json
@@ -159,7 +159,7 @@ $ chitragupta corpus discover "cyber replica of a physical system" --json
 
 ## 📦 The topic graph file, and when to look inside it
 
-You normally never open `content/topic_graph.json` -- `corpus discover`
+You normally never open `content/topic_graph.json`; `corpus discover`
 and the `--html` page read it for you. It is documented here for the
 day you script against it with `--json`, or wonder why the tool asked
 you to re-run a stage. One enrichment run
@@ -197,41 +197,42 @@ Keys are topic **labels**, never topic ids: ids are unstable across
 runs, and the topic model's own documentation says anything downstream
 must key on labels or citekeys. The single-artefact,
 derive-once-read-many split follows the corpus convention FlashRAG
-(Jin et al., 2024) makes explicit -- one canonical corpus, every index
-a derived artefact keyed back to it -- which this repository already
+(Jin et al., 2024) makes explicit (one canonical corpus, every index
+a derived artefact keyed back to it), which this repository already
 practises with the ledger.
 
 ## 🔗 Overlap edges: shared members, gated by surprise
 
 An overlap edge exists between two topics when they share more papers
-than chance would predict. Three decisions, each with its reason:
+than chance would predict. Three decisions shape it, each with its
+reason:
 
 - **Both Jaccard and the overlap coefficient travel on every edge.**
   Jaccard (`|A∩B| / |A∪B|`) punishes size imbalance: a seed topic
   rank-truncated at `[enrich].seed_topic_max_papers` sitting entirely
   inside a 40-paper emergent cluster scores 0.15 despite full
   containment. The overlap coefficient (`|A∩B| / min(|A|,|B|)`) reads
-  that case as what it is -- a sub-topic, scoring 1.0. Theme G's topic
+  that case as what it is, a sub-topic, scoring 1.0. Theme G's topic
   sizes are systematically unequal by construction, so the imbalance is
   routine, not exotic; but overlap alone loses the symmetric-similarity
   reading, so both are reported and neither is the edge's gate.
 - **The gate is a hypergeometric tail test, not a weight floor.** The
   edge survives when the probability of sharing at least this many
-  papers by chance -- drawing `|B|` papers from `n_docs` with `|A|` of
-  them marked -- is below `[enrich].topic_graph_p_value`. This is the
-  test gene-set enrichment analysis runs on exactly this shape of
+  papers by chance (drawing `|B|` papers from `n_docs` with `|A|` of
+  them marked) is below `[enrich].topic_graph_p_value`. This is the
+  test gene-set enrichment analysis runs on this shape of
   question ("do these two sets overlap more than sampling would
   explain?"). A weight floor is a knob someone must re-tune per corpus;
   a significance level is not, and it also refuses the edge two large
-  topics would otherwise get merely for both being large -- the worked
-  session above shows it doing so.
+  topics would otherwise get merely for both being large, as the worked
+  session above shows.
 - **`shared` names the citekeys.** Every overlap edge is explainable by
-  pointing at real papers. That is the difference between a discovery
-  aid and a black box, and it is the property the tests pin first.
+  pointing at real papers, which separates a discovery aid from a black
+  box. It is the property the tests pin first.
 
 ## 🧲 Semantic edges: best-match cosine, mutual top-k
 
-Two topics can be about the same thing and share no papers -- a seed
+Two topics can be about the same thing and share no papers: a seed
 topic that matched review articles and an emergent cluster of case
 studies, say. Semantic edges catch that, and three decisions shape
 them:
@@ -240,8 +241,8 @@ them:
   are non-convex, and a non-convex cluster's centroid can sit outside
   the cluster it summarises. Instead, each member of topic A is scored
   by its best cosine against B's members and the direction averages are
-  symmetrised -- the greedy-matching idea BERTScore (Zhang et al.,
-  2020) applies to tokens, applied here to papers. At this corpus's
+  symmetrised. This is the greedy-matching idea BERTScore (Zhang et
+  al., 2020) applies to tokens, applied here to papers. At this corpus's
   scale (hundreds of documents, tens of topics) the exact computation
   costs nothing, so the approximation the centroid would be is all
   downside.
@@ -254,25 +255,25 @@ them:
 - **Mutual top-k selection** (`[enrich].topic_graph_neighbors`): an
   edge survives only when each topic ranks the other within its top k.
   A global similarity floor either floods the dense region of the topic
-  space or starves the sparse one; mutual k-NN adapts to both. And each
-  edge carries `bridge` -- the single closest pair of papers across it
-  -- so even semantic edges answer "show me why" with citekeys.
+  space or starves the sparse one; mutual k-NN adapts to both. Each
+  edge also carries `bridge`, the single closest pair of papers across
+  it, so even semantic edges answer "show me why" with citekeys.
 
 ## 🌳 The hierarchy
 
 An agglomerative merge tree over the topic centroids
 (`scipy.cluster.hierarchy.linkage`, average linkage, cosine distance),
 stored for the G9 tree view: which topics are siblings under a broader
-theme. Not BERTopic's `hierarchical_topics()`, for two reasons: that
-needs the fitted model object, which no stage persists -- re-fitting to
-read a tree would repeat expensive work a derivation stage's contract
-forbids -- and it covers emergent topics only, where a centroid exists
-here for every topic, seed and emergent alike.
+theme. It does not use BERTopic's `hierarchical_topics()`, for two
+reasons. That needs the fitted model object, which no stage persists,
+and re-fitting to read a tree would repeat expensive work a derivation
+stage's contract forbids. It also covers emergent topics only, whereas a
+centroid exists here for every topic, seed and emergent alike.
 
 ## 📖 The reader: `corpus discover`
 
-One corpus-layer verb with many views, all with `--json`, all
-lock-free -- [CLI.md](CLI.md#-chitragupta-corpus-discover) is the
+One corpus-layer verb has many views, all with `--json`, all
+lock-free. [CLI.md](CLI.md#-chitragupta-corpus-discover) is the
 per-flag reference and [EXPLORE-CLI.md](EXPLORE-CLI.md) the worked
 tour:
 
@@ -292,8 +293,8 @@ chitragupta corpus discover "A" --hops 2 --family overlap  # ...over one family
 The reader computes no topic and no edge. It resolves, joins ledger
 detail (through `reference_entries.entries()`, the one citekey-to-entry
 formatter this project has, which sits beneath the drafting layer's
-`references.py` rather than in it), and displays -- which is what lets it sit
-in the corpus layer at tier 1, upgrading its semantic rung only when
+`references.py` rather than in it), and displays. That is what lets it
+sit in the corpus layer at tier 1, upgrading its semantic rung only when
 the enrich extra is installed.
 
 ## 🪜 The resolution ladder
@@ -304,60 +305,60 @@ Four rungs, best first, and the output names which one fired
 (`resolved_via`), because "which mechanism answered" is the difference
 between a topic membership and a plausible guess:
 
-1. **exact** -- case-insensitive equality against topic labels.
-2. **fuzzy** -- `difflib` near-match at a 0.75 cutoff, for typos and
+1. **exact**: case-insensitive equality against topic labels.
+2. **fuzzy**: `difflib` near-match at a 0.75 cutoff, for typos and
    near-forms only; the default 0.6 accepts matches a reader would call
    wrong.
-3. **hybrid** -- two rankings fused by Reciprocal Rank Fusion: BM25
+3. **hybrid**: two rankings fused by Reciprocal Rank Fusion: BM25
    over each topic's own vocabulary (its label plus its c-TF-IDF
    terms, one small document per topic, scored by the same tokenizer
    and arithmetic as `chitragupta/retrieval.py`) beside cosine of the
    query's embedding against the stored centroids. RRF
    (`score = Σ 1/(60 + rank)`; Cormack, Clarke and Büttcher, 2009) is
    rank-based, so the two scores never need calibrating against each
-   other -- their paper's finding is that this "simple ranked list
+   other. Their paper's finding is that this "simple ranked list
    fusion" beats individual rankers and learned fusion methods, and it
    is ~10 lines of code. The rung claims the phrase when the best
    centroid cosine clears `[discover].min_similarity` *or* the query
    hit a topic's own vocabulary lexically; the floor gates only the
    semantic evidence.
-4. **search** -- nothing above answered; `retrieval.search()` over
+4. **search**: nothing above answered; `retrieval.search()` over
    papers, clearly labelled, each hit annotated with its topics.
 
 Two provenance notes on the rung structure itself. Fusing a lexical and
 a dense ranking by rank is the `QueryFusionRetriever` pattern from
-LlamaIndex, minus its optional LLM query expansion -- with `num_queries`
+LlamaIndex, minus its optional LLM query expansion. With `num_queries`
 set to one, that whole path is LLM-free, which is what made it
-borrowable. OpenScholar (Asai et al., 2024) fuses differently --
-it *unions* candidate pools and lets one trained cross-encoder be the
-sole common scale -- and that is exactly the shape the precision tier
-below adds on top of this rung: RRF orders the candidates, the
-cross-encoder rescores the fused list.
+borrowable. OpenScholar (Asai et al., 2024) fuses differently: it
+*unions* candidate pools and lets one trained cross-encoder be the sole
+common scale. That is the shape the precision tier below adds on top of
+this rung: RRF orders the candidates, the cross-encoder rescores the
+fused list.
 
 Without the enrich extra the semantic half is skipped with a one-line
-note and the rung degrades to BM25 alone -- the same honest-degradation
-posture every enrich stage's self-probe takes, never a silent
+note and the rung degrades to BM25 alone. Every enrich stage's
+self-probe degrades the same way, with a note and never a silent
 substitution. An unresolvable phrase whose fallback also returns
-nothing exits 1 naming the known topics -- on **stderr**, like every
+nothing exits 1 naming the known topics, on **stderr**, like every
 other refusal this verb raises (an absent artefact, a citekey in no
 topic). A refusal is diagnostics, not a payload, so stdout carries a
 document or nothing at all and `--json` never has to parse English.
 
 ## 🎯 The precision tier
 
-Two additions sit on top of the hybrid rung, both enrich-tier and both
-degrading exactly as the semantic rung does -- silently reordering
-nothing, saying nothing false:
+Two additions sit on top of the hybrid rung. Both are enrich-tier and
+both degrade as the semantic rung does: they silently reorder nothing
+and say nothing false:
 
 - **Cross-encoder rescoring.** The fused candidates are rescored by
   the same cross-encoder the embed index reranks with (one model, one
   cache, one config key: `[enrich].rerank_model`), over
   (phrase, topic-vocabulary) pairs. A cross-encoder reads the query and
   the candidate *jointly*, so it catches term-overlap-without-relevance
-  failures a bi-encoder's two separate vectors cannot -- OpenScholar's
-  recall-then-precision cascade (110M-parameter retriever, 340M
-  reranker) sized down to a topic list, where scoring every candidate
-  costs milliseconds. It reorders only: the scorer sees exactly what
+  failures a bi-encoder's two separate vectors cannot. This is
+  OpenScholar's recall-then-precision cascade (110M-parameter retriever,
+  340M reranker) sized down to a topic list, where scoring every
+  candidate costs milliseconds. It reorders only: the scorer sees exactly what
   the ladder fused and can promote or demote but never add a candidate.
 - **A topology-ranked neighbourhood.** When the hybrid rung places a
   phrase near *several* topics, the view carries a `neighbourhood`
@@ -365,13 +366,14 @@ nothing, saying nothing false:
   every matched candidate, with each edge weighing the stronger of its
   overlap and semantic readings. This is MiniRAG's topology-based
   scoring with its LLM step deleted. A singular resolution gets no
-  walk -- the linked-topics lists already answer "what is next to this
-  one", and a one-seed walk would restate them.
+  walk, because the linked-topics lists already answer "what is next to
+  this one" and a one-seed walk would restate them.
 
 ## 📝 The overview file (`--out`)
 
-The topic view plus **representative snippets**, written as Markdown --
-the raw material for a new draft. From the worked session:
+The overview is the topic view plus **representative snippets**,
+written as Markdown as the raw material for a new draft. From the worked
+session:
 
 ```markdown
 # digital twin
@@ -397,35 +399,35 @@ A seed topic covering 2 papers.
 Snippets are *selected, never generated*: candidate sentences from
 member papers' parsed text, ranked by cosine to the topic centroid in
 the same centred space, quoted verbatim with their citekeys. That is
-the extractive-refiner idea from FlashRAG's component taxonomy --
-compression by selection rather than by an LLM -- chosen here because
+the extractive-refiner idea from FlashRAG's component taxonomy
+(compression by selection rather than by an LLM), chosen here because
 Theme G's roadmap declines abstractive summaries on the record:
-a summary asserting a claim no paper made is the fabricated citekey's
-failure class wearing different clothes. When the enrich extra is
-absent the section says snippets cannot be ranked, rather than quietly
-vanishing; when no member has parsed text it says that instead.
+a summary asserting a claim no paper made is in the same failure class
+as a fabricated citekey. When the enrich extra is absent, the section
+says snippets cannot be ranked instead of vanishing; when no member has
+parsed text it says that instead.
 
 ## 📏 The gold set
 
 `bench/topic_discovery_eval.py` scores the whole ladder against a gold
 file you write yourself (`content/topic_gold.toml`, template at
 `assets/style/topic_gold.toml.example`): phrases you would actually
-type, each with the topics -- and optionally the citekeys -- it should
+type, each with the topics (and optionally the citekeys) it should
 reach. It reports hit@1, recall@5, MRR and NDCG@5 for query->topic and
 member-recall for topic->paper, **overall and per resolution rung**,
 because a floor change moves queries *between* rungs and an overall
-mean would hide exactly that movement.
+mean would hide that movement.
 
 The same file carries a second kind of record, read by a second script.
-`[[group]]` records name **topics that belong together** -- the sets you
-would put in one section of a survey, topic labels only -- and
+`[[group]]` records name **topics that belong together** (the sets you
+would put in one section of a survey, topic labels only), and
 `bench/topic_cluster_eval.py` scores the app's Markov clustering against
 them, once per edge family across the inflation slider's own range, so
 the default the slider opens at is a measurement rather than a feel.
 
 Two things about that score are deliberate. It is **pairwise over the
-gold-covered topics only**: grouping gold is partial by design -- a
-handful of groupings, silent about the rest of the graph -- so you are
+gold-covered topics only**: grouping gold is partial by design (a
+handful of groupings, silent about the rest of the graph), so you are
 never asked to partition a whole corpus, and a metric like adjusted Rand
 that wants a complete reference partition would be the wrong tool. And
 the partition it scores is **`assets/webapp/families.js`'s own**, driven
@@ -433,14 +435,14 @@ through `node`, not a Python re-implementation: a second version of the
 numbers the browser shows would be free to disagree with it.
 
 On the real 131-topic corpus, with 21 topics named across six groupings,
-the two families do not agree about the best inflation -- paper-sharing
-peaks well above the shipped 2.0, semantic nearness at 2.0 itself. That
-disagreement is the per-family design talking, and it is exactly why the
+the two families do not agree about the best inflation: paper-sharing
+peaks well above the shipped 2.0, semantic nearness at 2.0 itself. The
+per-family design is what exposes that disagreement, and it is why the
 app never fuses the two.
 
 This is legacy AutoRAG's methodology pointed at one corpus: measure
 every retrieval configuration against a small labelled set, never tune
-by feel. Its LLM-generated QA datasets were deliberately not borrowed --
+by feel. Its LLM-generated QA datasets were deliberately not borrowed:
 hand-writing ~40 queries for a corpus you know is cheaper and more
 trustworthy, and an invented expectation measures nothing. The gold set
 is what turns `[discover].min_similarity`'s "0.35 is a starting point,
@@ -457,65 +459,63 @@ app's toolbar and wants to know what they are moving.
 connection between topics, and never mixes them:
 
 - An **overlap** edge (drawn solid) means two topics *share actual
-  papers* -- three of your PDFs belong to both. Its evidence is a list
-  of citekeys.
+  papers*: three of your PDFs belong to both, say. Its evidence is a
+  list of citekeys.
 - A **semantic** edge (drawn dashed) means two topics *talk about
-  similar things*, even if no paper belongs to both -- a topic of
-  review articles and a topic of case studies can use nearly the same
-  vocabulary while sharing nothing. Its evidence is the closest pair
-  of papers across the gap.
+  similar things*, even if no paper belongs to both. A topic of review
+  articles and a topic of case studies can use nearly the same
+  vocabulary while sharing nothing. Its evidence is the closest pair of
+  papers across the gap.
 
-They answer different questions -- "which literatures actually meet?"
-against "which literatures sound alike?" -- and the mismatch between
+They answer different questions ("which literatures actually meet?"
+against "which literatures sound alike?"), and the mismatch between
 them is the interesting part: two topics that sound alike but share no
 papers are a literature that has not met itself yet.
 
 **MCL, the grouping method.** Markov CLustering finds the natural
-clumps in a network. The intuition: drop a random walker onto the
-graph and let it step along edges, preferring strong ones. The walker
-gets *trapped* inside densely connected regions -- easy to wander
-within a clump, rare to escape it. MCL simulates that flow and calls
-each trap a cluster. Its appeal here: no cluster count to guess in
-advance, and the same input always gives the same answer.
+clumps in a network. Drop a random walker onto the graph and let it
+step along edges, preferring strong ones. The walker gets *trapped*
+inside densely connected regions, because it is easy to wander within a
+clump and rare to escape it. MCL simulates that flow and calls each trap
+a cluster. It needs no cluster count guessed in advance, and the same
+input always gives the same answer.
 
 **Inflation, MCL's one dial.** During the simulation MCL repeatedly
-*sharpens* the flow -- strong routes boosted, weak ones suppressed --
-and inflation is how aggressively. High inflation shatters the network
+*sharpens* the flow, boosting strong routes and suppressing weak ones,
+and inflation sets how aggressively. High inflation shatters the network
 into many small, tight clusters; low inflation leaves fewer, bigger,
 looser ones. It is a granularity dial: 131 topics sorted into ten
 broad areas, or forty fine-grained ones.
 
 **Why the app clusters twice, at one dial.** The clustering runs once
-per edge family -- never on a merged graph, for the mismatch reason
-above -- and the gold measurement (previous section) found the two
-families do not even agree about the best inflation: paper-sharing
-clusters score best well above 2.0, semantic clusters at 2.0 itself.
-That disagreement is the per-family design talking, and it is why any
-stored default would need one value per family, not one value.
+per edge family, never on a merged graph, for the mismatch reason
+above. The gold measurement (previous section) found the two families
+do not even agree about the best inflation: paper-sharing clusters score
+best well above 2.0, semantic clusters at 2.0 itself. So any stored
+default would need one value per family.
 
 ## 🖼 The graph page
 
 `chitragupta corpus discover --html topics.html` writes the whole graph
 as **one static file**: inline CSS and JavaScript, the data embedded as
 a JSON island (with `<` escaped, so no topic label can close the script
-tag early), and no reference to the network anywhere -- the page keeps
+tag early), and no reference to the network anywhere. The page keeps
 working from `file://` after the corpus that produced it has moved on.
 Topics sit on a circle (a deliberate non-choice of force layout: at
 tens of topics a circle is legible, renders identically every run, and
 costs no physics code) **in the stored merge tree's leaf order**, so
 that neighbouring positions hold similar topics and the chords come out
-short and clustered rather than sweeping across the whole diagram --
-the circle is a weak but real encoding, not an arbitrary one, and it
-stays deterministic because the tree is read from the artefact rather
-than settled by a simulation. A topic the tree does not mention (it had
+short and clustered rather than sweeping across the whole diagram.
+The circle is therefore a weak but real encoding, and it stays
+deterministic because the tree is read from the artefact rather than
+settled by a simulation. A topic the tree does not mention (it had
 no vector, or the corpus has fewer than two topics that did) keeps its
 artefact order and follows the leaves. Overlap edges are drawn solid
-and semantic edges dashed, seed topics green and emergent blue;
-clicking a topic opens its
-papers, both linked-topic lists with their evidence, and the stored
-hierarchy is a collapsible tree. It is a pure renderer of the same
-artefacts `--json` reads, so the page cannot disagree with the
-terminal.
+and semantic edges dashed, seed topics green and emergent blue.
+Clicking a topic opens its papers and both linked-topic lists with their
+evidence, and the stored hierarchy is a collapsible tree. It is a pure
+renderer of the same artefacts `--json` reads, so the page cannot
+disagree with the terminal.
 
 Being one more view of those artefacts is also why the flag composes
 with `--json` rather than refusing it: `--html FILE --json` reports the
@@ -526,31 +526,32 @@ plain sentence it cannot parse.
 One deviation from the plan, recorded there too: the plan named a
 `discover graph` subcommand, but the reader's positional argument is a
 free phrase, and a reserved word would shadow any topic literally
-labelled "graph" -- so it shipped as the `--html` flag.
+labelled "graph", so it shipped as the `--html` flag.
 
 ## 🕸 The interactive app
 
 `chitragupta corpus discover --app topicapp/` writes the graph as a
-self-contained **directory** -- `index.html`, the interaction code, a
-vendored and pinned cytoscape.js, and `data.js`, the same joined
-payload the `--html` page embeds, shipped as a JavaScript assignment
-because `fetch()` of a local JSON file is blocked under `file://`. The
+self-contained **directory**: `index.html`, the interaction code, a
+vendored and pinned cytoscape.js, and `data.js`. `data.js` is the same
+joined payload the `--html` page embeds, shipped as a JavaScript
+assignment because `fetch()` of a local JSON file is blocked under
+`file://`. The
 whole directory can be handed to a reader as a download and opened with
 no server, no install and no network.
 
 What each view is for, what it looks like on a real corpus, and which
 terminal command answers the same question is
-[EXPLORE-WEB.md](EXPLORE-WEB.md)'s job -- including
+[EXPLORE-WEB.md](EXPLORE-WEB.md)'s job, including
 [which computations run once in the pipeline and which stay in the
 browser](EXPLORE-WEB.md#-what-the-pipeline-computes-and-what-the-app-computes).
-The short version of that split: the analytics a reader could quote --
-the withheld-edge verdicts, per-topic brokerage, the MCL partitions at
-every inflation the slider can take, and the typed path matrices -- are
-computed by the `topic-graph` stage and stored in the artefact, so the
-app and `--json` can never disagree about them; what remains in the
-browser is rendering, interaction, and the layouts that depend on what
-the reader has pinned, cut or expanded, plus honest fallbacks for an
-export made from an older artefact.
+In short, the analytics a reader could quote (the withheld-edge
+verdicts, per-topic brokerage, the MCL partitions at every inflation the
+slider can take, and the typed path matrices) are computed by the
+`topic-graph` stage and stored in the artefact, so the app and `--json`
+can never disagree about them. What remains in the browser is
+rendering, interaction, and the layouts that depend on what the reader
+has pinned, cut or expanded, plus fallbacks for an export made from an
+older artefact.
 
 ## 🚫 Alternatives considered
 

@@ -32,7 +32,7 @@ Sister tutorials: [a survey](WRITE-A-SURVEY.md),
 
 Deep research is the heavy option. It runs seven phases, dispatches
 several subagents in parallel, and does many retrieval calls. Reach for
-it when the *disagreement in the corpus is the point*:
+it when *disagreement in the corpus* is what you want to find:
 
 - "What does my library actually claim about X, and where does it
   contradict itself?"
@@ -40,13 +40,13 @@ it when the *disagreement in the corpus is the point*:
   from the sources I hold."
 
 If you want a topic-clustered map of a field, you want
-[a survey](WRITE-A-SURVEY.md) -- faster, single-pass, and the right
-default. Tell the difference this way: a survey answers *what has been
+[a survey](WRITE-A-SURVEY.md), which is faster, single-pass, and the
+right default. Tell the difference this way: a survey answers *what has been
 written*; deep research answers *what is in tension, and what nobody has
 asked*.
 
 It is adapted from Stanford OVAL's STORM method, retooled so every claim
-cites a real citekey from your own corpus rather than a live web source.
+cites a real citekey from your own corpus instead of a live web source.
 
 ## 🎯 What you will have at the end
 
@@ -54,7 +54,7 @@ For a report you decide to call `deep-research-fidelity`:
 
 | Path | What it is |
 | --- | --- |
-| `content/drafts/deep-research-fidelity.md` | the report -- the canonical copy |
+| `content/drafts/deep-research-fidelity.md` | the report (the canonical copy) |
 | `content/dossiers/deep-research-fidelity/` | the reader, scope, kept evidence per perspective, what was rejected, and where the corpus disagreed with itself |
 | `content/rendered/deep-research-fidelity.pdf` | the typeset report |
 | `content/rendered/deep-research-fidelity.evidence.pdf` | the evidence sidecar |
@@ -82,8 +82,8 @@ Or clone the repository and `cp config.toml.example config.toml`.
 **This genre needs a real corpus.** Perspectives that cannot find
 sources produce thin interviews, and the contradiction map needs enough
 material to have contradictions in it. If `ledger` shows nothing
-`parsed`, the skill will say so and stop -- it will not sync for you, by
-design.
+`parsed`, the skill will say so and stop. By design, it will not sync
+for you.
 
 > Every command here also works as `python -m chitragupta.<layer> ...`.
 
@@ -107,7 +107,7 @@ something larger.
 | deep | 6-7 + basic | 4 | parallel subagents |
 
 Start at standard. Use quick when you want the shape of the disagreement
-rather than the full argument; use deep only when a decision rests on it.
+without the full argument; use deep only when a decision rests on it.
 
 ## 🗂 Step 2: open the dossier
 
@@ -117,7 +117,7 @@ chitragupta draft dossier init \
 ```
 
 That writes eight files. **Exactly one is yours to fill in: `scope.md`.**
-The rest are written as the phases run -- and in this genre the main run
+The rest are written as the phases run, and in this genre the main run
 transcribes what its subagents hand back, because each subagent's context
 is gone the moment it returns.
 
@@ -138,8 +138,8 @@ chitragupta draft dossier set-language \
     content/drafts/deep-research-fidelity.md en-GB
 ```
 
-A filled-in deep-research `scope.md` -- the whole file is at
-[`examples/dossiers/deep-research/scope.md`](examples/dossiers/deep-research/scope.md):
+A filled-in deep-research `scope.md` (the whole file is at
+[`examples/dossiers/deep-research/scope.md`](examples/dossiers/deep-research/scope.md)):
 
 ```markdown
 # Scope
@@ -186,14 +186,14 @@ Where the corpus is silent the report says so rather than reaching.
   and does not answer.
 ```
 
-Those last two glossary entries are not decoration: a report whose whole
-value is "here is where the sources conflict" has to be able to tell a
-real conflict from two authors using one word differently.
+Those last two glossary entries do real work. A report whose purpose is
+to show where the sources conflict has to be able to tell a real conflict
+from two authors using one word differently.
 
 ### An `outline.md` is optional here, and constrains Phase 4
 
 Deep research builds its own outline in Phase 4 from the contradiction
-map. Writing one first does not skip that phase -- it constrains it:
+map. Writing one first does not skip that phase; it constrains it:
 
 ```bash
 chitragupta draft dossier init \
@@ -205,10 +205,10 @@ printed), `claim:` (your prose, grounded or reported), `queries:` (run
 verbatim). A complete example is at
 [`examples/dossiers/deep-research/outline.md`](examples/dossiers/deep-research/outline.md).
 Leave the file out entirely if you would rather see what the corpus
-suggests -- that is the normal choice for a first run on a question.
+suggests. That is the normal choice for a first run on a question.
 
 Give the skill the draft path when you ask, so its phases write into the
-dossier you just made rather than creating a second one.
+dossier you just made instead of creating a second one.
 
 ## 🗣 Step 3: ask for the report
 
@@ -220,8 +220,8 @@ dossier you just made rather than creating a second one.
 "Deep research", "multi-perspective analysis" or "in-depth report with
 contradiction mapping" selects the `deep-research` skill.
 
-Expect it to tell you up front that this is a heavy run. That is the
-skill behaving correctly, not a warning about your question.
+Expect it to tell you up front that this is a heavy run. That is
+expected behaviour, and not a warning about your question.
 
 ## 🔭 Step 4: the seven phases, and what you do during them
 
@@ -229,13 +229,13 @@ You are not idle here. Two phases have a decision in them that is yours.
 
 | Phase | What happens | What you do |
 | --- | --- | --- |
-| **1. Perspective discovery** | Names the perspectives to interview -- typically the Practitioner, the Academic, the Skeptic, the Adoption/Incentives analyst, the Historian, plus a basic-fact pass | **Read the list and change it.** A perspective that does not fit your question wastes a whole interview; one you add can be the report's best section |
-| **2. Grounded interviews** | One subagent per perspective, in parallel, each searching the corpus and citing only real citekeys | Nothing -- but watch for a perspective reporting that it found nothing |
+| **1. Perspective discovery** | Names the perspectives to interview: typically the Practitioner, the Academic, the Skeptic, the Adoption/Incentives analyst, the Historian, plus a basic-fact pass | **Read the list and change it.** A perspective that does not fit your question wastes a whole interview; one you add can be the report's best section |
+| **2. Grounded interviews** | One subagent per perspective, in parallel, each searching the corpus and citing only real citekeys | Nothing, but watch for a perspective reporting that it found nothing |
 | **3. Contradiction map** | Direct contradictions, strongest vs weakest evidence, the resolving question, universal agreement, and the blind spot nobody's searches reached | **Read this closely.** It is the most useful artefact of the whole run, whatever the report ends up saying |
 | **4. Outline** | Turns the map into a section plan | **Approve or redirect it** before writing starts. Cheap now, expensive after five sections exist |
 | **5. Cited section writing** | One writer per section, in parallel, from pre-vetted citekeys | Nothing |
 | **6. Polish + synthesis briefing** | A synthesis pass over the assembled sections | Nothing |
-| **7. Peer review + assembly** | A panel -- domain accuracy, methodology rigour, clarity, devil's advocate -- critiques the draft, then it is saved and gated | **Read the critiques**, including the ones not acted on |
+| **7. Peer review + assembly** | A panel (domain accuracy, methodology rigour, clarity, devil's advocate) critiques the draft, then it is saved and gated | **Read the critiques**, including the ones not acted on |
 
 Throughout, the main run writes the dossier; the subagents never do.
 Their kept claims land in `evidence.md`, their rejects in `rejected.md`,
@@ -271,8 +271,8 @@ chitragupta review uncited content/drafts/deep-research-fidelity.md
 
 | Aid | Reads for | Why it matters in this genre |
 | --- | --- | --- |
-| `review synthesis` | paragraphs that summarise sources in sequence instead of synthesising them | a report assembled from parallel section writers is exactly where this creeps in -- each writer summarises its own sources honestly, and the seams show |
-| `review support` | whether each citation actually entails its claim | a contradiction map makes strong claims about who said what; this is what checks them |
+| `review synthesis` | paragraphs that summarise sources in sequence instead of synthesising them | a report assembled from parallel section writers is exactly where this creeps in: each writer summarises its own sources honestly, and the seams show |
+| `review support` | whether each citation entails its claim | a contradiction map makes strong claims about who said what; this is what checks them |
 | `review quotation` | whether a quoted span matches its source | a report that quotes both sides of a disagreement must quote both correctly |
 | `review verbatim` | wording shared with any parsed source | several writers drawing on one paper can converge on its phrasing |
 | `review uncited` | claims with no source | the synthesis phase is where an unsourced connecting sentence appears |
@@ -360,21 +360,20 @@ claims. For the fidelity report:
   examines what happens when the twin's decision is itself revised
 ```
 
-**How to read that as the author.** Three items deserve attention before
-anything else:
+As the author, look at three items before anything else:
 
-- The **`misquoted`** item changes a source's meaning -- "must be fixed"
+- The `misquoted` item changes a source's meaning: "must be fixed"
   is a much stronger claim than "is typically fixed", and the report's
   central contradiction may rest on it. Fix this first.
-- The **`recorded-but-uncited`** item means a perspective kept a source
+- The `recorded-but-uncited` item means a perspective kept a source
   and the report never used it. Either it belongs in the report, or the
   contradiction map is thinner than the evidence behind it.
-- The **`unsupported-claim` in section 5** is the resolving question,
+- The `unsupported-claim` in section 5 is the resolving question,
   which is where a deep-research report is most tempted to overreach.
 
 Note the `[surfaced]`/`[unattended]` ratio: this genre's findings are
-overwhelmingly judgement calls, which is exactly what you would expect
-from a report whose value is its argument.
+overwhelmingly judgement calls, as you would expect from a report whose
+value lies in its argument.
 
 To check a round of edits helped:
 
@@ -384,7 +383,7 @@ chitragupta review agenda content/drafts/deep-research-fidelity.md \
 ```
 
 That re-runs the aids and reports each finding as `resolved`,
-`persisting`, `new` or `accepted`. Read the `new` list -- a repair that
+`persisting`, `new` or `accepted`. Read the `new` list: a repair that
 resolves one claim and weakens another leaves the count flat.
 
 Where you have considered a surfaced item and decided it stands:
@@ -400,22 +399,22 @@ accepted; anything else is refused with exit code 2.
 ## 📝 Step 7: change something
 
 **Never re-run this skill to make a change.** It is the most expensive
-mistake available in this pipeline -- seven phases and a dozen subagents
+mistake available in this pipeline: seven phases and a dozen subagents
 to alter a paragraph. Ask for a revision instead:
 
 > The Skeptic's section overstates the disagreement. Soften it to what
 > the two cited sources actually support, and keep the rest.
 
-That selects `draft-reviser`, which reads the dossier -- including the
-contradiction map and what each perspective rejected -- and edits only
+That selects `draft-reviser`, which reads the dossier (including the
+contradiction map and what each perspective rejected) and edits only
 what is affected.
 
-If you genuinely need the whole corpus re-searched (you added thirty
+If you need the whole corpus re-searched (you added thirty
 papers, or you are re-targeting the report at a different reader), say so
 explicitly and `corpus-reviser` handles it. That is still cheaper than
 re-running deep research.
 
-Back it up -- `content/drafts/` is gitignored:
+Back it up, because `content/drafts/` is gitignored:
 
 ```bash
 chitragupta draft dossier export deep-research-fidelity
@@ -427,7 +426,7 @@ chitragupta draft dossier export deep-research-fidelity
 | --- | --- | --- |
 | The skill says the ledger is empty and stops | no corpus, and it will not sync for you | `chitragupta corpus sync`, then ask again |
 | A perspective's interview comes back empty | the corpus has nothing for that angle | drop that perspective, or add papers and re-sync before re-running |
-| The contradiction map is empty | the corpus agrees, or it is too small | that is a finding; say it in the report rather than manufacturing tension |
-| The run feels too heavy for the question | it probably is | ask for a survey instead -- [WRITE-A-SURVEY.md](WRITE-A-SURVEY.md) |
+| The contradiction map is empty | the corpus agrees, or it is too small | that is a finding; say it in the report instead of manufacturing tension |
+| The run feels too heavy for the question | it probably is | ask for a survey instead; see [WRITE-A-SURVEY.md](WRITE-A-SURVEY.md) |
 | `gate` says `FAIL` after a hand edit | a citekey is not in the corpus | correct it or drop the claim |
 | You want one section changed | -- | ask for a revision; never re-run the skill |

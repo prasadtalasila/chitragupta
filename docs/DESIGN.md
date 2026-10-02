@@ -5,7 +5,7 @@ Status: **reasoning document.** Written 2026-08-02. Updated 2026-08-28.
 Why this pipeline refuses what it refuses.
 
 **Written for** someone changing how runs interact, fail, or reject each
-other -- adding a stage, a failure mode, or a form of concurrency -- who
+other (adding a stage, a failure mode, or a form of concurrency) who
 needs the rule a change should be checked against rather than a map of
 what exists.
 
@@ -63,7 +63,7 @@ architecture:
 5. **Parallelism is opt-in, and bounded by the host rather than by the
    request**
    - `[parser].workers` defaults to `1`, so the default run is strictly
-     serial -- no pool, no subprocesses. Incremental skipping means a
+     serial, with no pool and no subprocesses. Incremental skipping means a
      routine run has almost nothing to do, and pool setup would cost more
      than it saves.
    - The resolved count is `min(requested, host ceiling, work available)`.
@@ -95,7 +95,7 @@ this order of precedence:
    until resolved.
 3. **Every abnormal exit releases the lock, kills its children, and
    leaves the ledger stating what did not complete.** A run may be
-   refused, fail, or succeed -- never end ambiguously.
+   refused, fail, or succeed; it may never end ambiguously.
 4. **Because writers are serialised, no serial section may be
    unbounded.** Anything holding the lock must be observably making
    progress or be subject to a watchdog, and anything that kills work
@@ -117,16 +117,16 @@ never silent, but also never pointlessly expensive).
 ## ⚡ Parallelism and resource design
 
 The parse path is the only part of this repository that runs work in
-**parallel** -- several documents at once, to cut the wall clock of a
+**parallel**: several documents at once, to cut the wall clock of a
 single run. That is a different mechanism from the **concurrency
 control** below, which stops two separate runs colliding; PARALLELISM.md
-defines both and describes the components. The design rules the parse
-path settled on are worth stating here.
+defines both and describes the components. This section states the
+design rules the parse path settled on.
 
 ### ⚙ Opt-in, and clamped rather than obeyed
 
-`[parser].workers` defaults to `1`, which takes a genuinely serial path
--- no executor, no pickling, no subprocess. Incremental skipping means a
+`[parser].workers` defaults to `1`, which takes a serial path with no
+executor, no pickling and no subprocess. Incremental skipping means a
 routine run has almost nothing to do, so pool setup would usually cost
 more than it saves.
 
@@ -134,17 +134,17 @@ The resolved count is `min(requested, host ceiling, work available)`,
 never below 1. Two parts of that are easy to get wrong:
 
 - **The host ceiling counts `len(os.sched_getaffinity(0))`, not
-  `os.cpu_count()`.** On a shared or containerised host these differ --
-  96 and 48 on the development machine -- and sizing off the larger
-  number spawns workers that only deschedule each other. `sched_getaffinity`
-  is Linux-only, so there is a guarded fallback for the Windows CI leg.
+  `os.cpu_count()`.** On a shared or containerised host these differ (96
+  and 48 on the development machine), and sizing off the larger number
+  spawns workers that only deschedule each other. `sched_getaffinity` is
+  Linux-only, so there is a guarded fallback for the Windows CI leg.
   Neither sees a cgroup CPU *quota*, which throttles without narrowing
   the affinity mask; an explicit worker count is the answer there.
 - **A worker is not one CPU.** One Docling worker was measured holding
-  ~300% CPU, so the ceiling divides by 4 -- a divisor a later
-  full-corpus sweep found too conservative by roughly 2.5x (see
-  docs/PERFORMANCE.md). Docling's own thread count is
-  then divided down to match, keeping workers x threads inside the host.
+  ~300% CPU, so the ceiling divides by 4, a divisor a later full-corpus
+  sweep found too conservative by roughly 2.5x (see docs/PERFORMANCE.md).
+  Docling's own thread count is then divided down to match, keeping
+  workers x threads inside the host.
 
 An over-large request is clamped *and reported*. Silently obeying
 thrashes; silently ignoring leaves someone believing they configured
@@ -155,13 +155,13 @@ something they did not.
 Processes for `docling`, which runs in-process and holds the GIL; threads
 for `pdftotext`, an external subprocess that releases it. A process pool
 around `pdftotext` would add pickling and spawn cost to buy the same
-OS-level concurrency; threads around `docling` would serialise exactly
-the work being overlapped.
+OS-level concurrency; threads around `docling` would serialise the very
+work being overlapped.
 
 The Docling pool uses the `spawn` start method, because counting GPUs
 initialises CUDA in the parent and a forked child inherits a broken CUDA
-context from such a parent. The cost -- each worker re-imports torch and
-docling -- is why parallelism buys nothing on a small corpus and a great
+context from such a parent. The cost (each worker re-imports torch and
+docling) is why parallelism buys nothing on a small corpus and a great
 deal on a large one.
 
 ### 🧵 The parent keeps what only the parent can do
@@ -169,21 +169,22 @@ deal on a large one.
 Every ledger and cache write stays on the parent process: sqlite has a
 single writer, and the parent is the only place that can order results
 deterministically. Workers receive `(path, citekey, threads)` and return
-`(citekey, out_path, exception)` -- the exception is *returned* rather
-than raised so that both the value and its type survive pickling, since
+`(citekey, out_path, exception)`. The exception is *returned* instead of
+raised so that both the value and its type survive pickling, since
 `sync` reports `ExtractionError` and `BackendUnavailable` differently.
 
 Work is submitted longest-file-first. One 675-page document in this
 corpus is 5% of all its pages; picked up last it would define the wall
-clock by itself. File size rather than page count, because counting pages
-needs a PDF library the corpus layer deliberately does not depend on.
+clock by itself. The order uses file size and not page count, because
+counting pages needs a PDF library the corpus layer deliberately does
+not depend on.
 
 ### 🖥 Device assignment
 
 Docling's `AcceleratorDevice.AUTO` resolves to `cuda:0` in *every*
 process, so N workers contend for one card while the rest idle. Each
 worker claims a device round-robin from a shared counter handed out under
-a lock in the pool initialiser -- not from a PID or a worker index,
+a lock in the pool initialiser, and not from a PID or a worker index,
 because a `ProcessPoolExecutor` neither numbers its workers nor
 guarantees it starts all of them.
 
@@ -196,16 +197,16 @@ Five distinct failure modes, each handled where it can be:
   a pool that dies while the largest document is still running keeps the
   smaller ones that already finished. In the enrichment pool the run then
   **rebuilds the pool and hands the unfinished documents back to it**, up
-  to twice, narrower each time and smallest-document-first -- a dead
-  worker costs the document it was holding rather than the rest of the
+  to twice, narrower each time and smallest-document-first. A dead
+  worker costs the document it was holding and not the rest of the
   corpus (one death used to fail 460 of 642 documents, most of
   which had never been opened). Only what no pool landed is reported a
   failure. `chitragupta/sync_pool.py` does not rebuild: there an
   unfinished document is marked *transient* and retried on the next run,
   which costs seconds rather than the minutes a docling parse costs.
 - **A hung pool.** A stall watchdog gives up when *no* document completes
-  for `[parser].stall_timeout`. Deliberately not a per-document deadline:
-  no single threshold separates a hung worker from the legitimate 246s
+  for `[parser].stall_timeout`. It is deliberately not a per-document
+  deadline: no single threshold separates a hung worker from the legitimate 246s
   document, but with several workers, total silence does. It uses
   `wait(FIRST_COMPLETED)` rather than `as_completed(timeout=...)`, whose
   timeout is measured from the original call and would fire on a healthy
@@ -215,13 +216,14 @@ Five distinct failure modes, each handled where it can be:
 - **A slow document.** `[parser].document_timeout` is honoured by each
   backend's own mechanism, and they are not equally strong: a real kill
   for `pdftotext`, a cooperative between-stages check for `docling`.
-  Reported apart from the failure below, and named citekey by citekey in
-  the summary, because the two want opposite fixes: this one is the
-  setting being too low for the host, not the PDF being unreadable. When
-  a run produces any, the deterministic line stops offering its usual
-  "fix or remove the PDF" remedy and defers to the per-cause warning
-  instead -- printing both would leave the reader with two instructions
-  that contradict each other. Which of the two a failure is comes from
+  It is reported apart from the failure below, and named citekey by
+  citekey in the summary, because the two want opposite fixes: this one
+  is the setting being too low for the host, not the PDF being
+  unreadable. When a run produces any, the deterministic line stops
+  offering its usual "fix or remove the PDF" remedy and defers to the
+  per-cause warning instead, since printing both would leave the reader
+  with two instructions that contradict each other. Which of the two a
+  failure is comes from
   the backend, not from parsing its message: `pdftotext`'s
   `TimeoutExpired` and `docling`'s `FailureCategory.TIMEOUT` both set a
   `timed_out` mark on the exception, the same idiom the `transient` mark
@@ -231,15 +233,15 @@ Five distinct failure modes, each handled where it can be:
   backend already read this PDF and could not parse it, so re-reading it
   every run would spend the same minutes to reach the same answer, and a
   run that exits nonzero forever trains its reader to ignore that. It
-  stays reported, with a nonzero exit, until fixed or removed --
+  stays reported, with a nonzero exit, until fixed or removed;
   `sync --reparse` is the override.
 - **Ctrl+C.** Handled by an explicit SIGINT handler, because an
   `except KeyboardInterrupt` around `as_completed()` never fires. The
-  handler terminates workers -- with a grace period then `kill()`, since
-  native code does not honour SIGTERM promptly -- and calls `os._exit`,
-  skipping the atexit hook that would *join* those workers. Safe only
-  because the ledger commits incrementally, so finished work is already
-  on disk.
+  handler terminates workers (with a grace period then `kill()`, since
+  native code does not honour SIGTERM promptly) and calls `os._exit`,
+  skipping the atexit hook that would *join* those workers. This is safe
+  only because the ledger commits incrementally, so finished work is
+  already on disk.
 
 ### ⚖ Partial success is a failure
 
@@ -251,23 +253,23 @@ raise *before* anything is written, so a partial parse leaves no output
 and never enters the incremental cache.
 
 Correspondingly, a `parse_failed` document is retried on the next run
-rather than skipped until its bytes change -- otherwise one dead worker
+instead of skipped until its bytes change; otherwise one dead worker
 would remove documents from the corpus permanently.
 
 ### 🔒 One writer at a time
 
 `sync` and the enrichment layer share a lock over `content/`, because the
 unsafe overlap is any-writer-against-any-writer: `sync` rewrites the
-parsed text the enrichment layer reads. Each `.txt` is replaced whole --
-a temp sibling, then `os.replace`, under both backends -- so no reader
-sees a torn file, and a full disk is a transient failure rather than an
+parsed text the enrichment layer reads. Each `.txt` is replaced whole (a
+temp sibling, then `os.replace`, under both backends), so no reader sees
+a torn file, and a full disk is a transient failure and not an
 unreadable PDF. But a document re-parsed mid-run would still reach an
 enrichment run as two versions, one per stage.
 
-It is a dedicated sqlite file held under `BEGIN IMMEDIATE`, chosen from
-measurement rather than taste. A `BEGIN IMMEDIATE` holder takes a
-RESERVED lock, which **does not block readers** -- so `citation_gate`,
-retrieval and the drafting skills keep working during a run. A second
+It is a dedicated sqlite file held under `BEGIN IMMEDIATE`, chosen by
+measurement. A `BEGIN IMMEDIATE` holder takes a RESERVED lock, which
+**does not block readers**, so `citation_gate`, retrieval and the
+drafting skills keep working during a run. A second
 writer gets `SQLITE_BUSY`. And a killed holder releases the lock
 immediately, so staleness needs no PID liveness check and no
 platform-specific branch.
@@ -275,7 +277,7 @@ platform-specific branch.
 Two rejected alternatives: an `O_EXCL` lock file needs exactly that
 staleness heuristic, and locking the ledger itself would force a run into
 one transaction, discarding the incremental commit points on a crash.
-There are six of those -- four in `chitragupta/ledger.py`, one in
+There are six of those: four in `chitragupta/ledger.py`, one in
 `chitragupta/ledger_upsert.py`, and one in `chitragupta/sync_decide.py`
 that closes the whole bibliography-upsert loop in a single transaction
 (the change that stopped a no-op sync being 646 fsync'd
@@ -285,88 +287,87 @@ finished is on disk. A row is written whole or not at all, and the parse
 phase that follows still commits per document.
 
 Contention is detected by `sqlite_errorcode ==
-SQLITE_BUSY` rather than by message, since `OperationalError` also covers
-a full disk and a corrupt file, and the lock file is never deleted --
-unlinking an open file fails on Windows, and a delete-then-recreate race
-on POSIX gives two processes locks on different inodes.
+SQLITE_BUSY` and not by message, since `OperationalError` also covers a
+full disk and a corrupt file. The lock file is never deleted: unlinking
+an open file fails on Windows, and a delete-then-recreate race on POSIX
+gives two processes locks on different inodes.
 
 ### 🚫 What this does not cover
 
 The lock serialises writers only; readers see mid-run state by design.
 
-Nor does serialising writers make output reproducible: Docling groups
-dense reference blocks differently under load, so parsed text and the
-passage sidecar both vary at high worker counts. What that costs, artifact
-by artifact, is
-[ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not)
--- the single statement of it, measured rather than asserted.
+Nor does serialising writers make output reproducible: Docling groups dense
+reference blocks differently under load, so parsed text and the passage sidecar
+both vary at high worker counts. What that costs, artifact by artifact, is
+[ARCHITECTURE.md's reproducibility contract](ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
+That is the single statement of it, and it is measured, not asserted.
 
 ## ✍ What happens to prose a person supplies
 
-The concrete case: **you hand the pipeline an outline and one of its
-sections contains two paragraphs of your own prose. What are they?** A
-*brief* -- steering, to be read and written from -- or text you want to
-appear? The two are indistinguishable as prose, so a skill must guess,
-and either guess is wrong half the time. **That ambiguity is the
-defect**, not the presence of prose: intent has to be declared rather
-than inferred.
+The concrete case: you hand the pipeline an outline and one of its
+sections contains two paragraphs of your own prose. Are they a *brief*
+(steering, to be read and written from) or text you want to appear? The
+two are indistinguishable as prose, so a skill must guess, and either
+guess is wrong half the time. The defect is that ambiguity, not the
+presence of prose: intent has to be declared, not inferred.
 
 ### 🚫 Why the answer is not "record who wrote it"
 
-The obvious fix is to mark your paragraphs as yours -- a provenance span
-the review aids skip. **It is the wrong fix, and the reason generalises
-past this feature.**
+The obvious fix is to mark your paragraphs as yours, with a provenance
+span the review aids skip. It is the wrong fix, and the reason
+generalises past this feature.
 
 A draft is revised. The drafting layer rewrites, shortens, re-scopes and
-copy-edits the prose inside those markers, and it does so legitimately --
+copy-edits the prose inside those markers, and it does so legitimately:
 that is what `draft-reviser` is *for*. After one revision the span is
 part your wording and part the model's, after two nobody can say which
-part, and the marker still asserts a single author. **The record does not
-decay gracefully; it becomes false while continuing to look
-authoritative** -- and a review aid instructed to skip it would then be
+part, and the marker still asserts a single author. The record does not
+decay gracefully. It becomes false while continuing to look
+authoritative, and a review aid instructed to skip it would then be
 skipping the model's prose on the strength of a stale claim.
 
-This repository already treats exactly that failure as the serious one.
-`sections.md` is regenerated immediately before a scan rather than
+This repository already treats that failure as the serious one.
+`sections.md` is regenerated immediately before a scan instead of being
 trusted, and `math.md` desyncing on a reworded span is called out as a
 hazard, both for the same reason: **recorded state that a later edit can
 silently falsify is worse than no record**, because the check that reads
 it now reports confidently about a document that no longer exists.
-Authorship is the least recoverable instance of it -- a citekey can be
+Authorship is the least recoverable instance of it. A citekey can be
 re-derived from the draft and a section map rebuilt from its headings,
 but nothing can recompute who wrote a sentence after the fact.
 
-So: **no author provenance, and no aid exemption built on one.** Every
+So there is **no author provenance, and no aid exemption built on
+one.** Every
 sentence in a draft is measured the same way regardless of who typed it
 first, which is also the honest position after any revision at all.
 
 ### ✅ What is declared instead: a brief, or a claim
 
 Intent is declared *about the input*, where it is checked once and then
-discharged -- not attached to the output, where it would have to survive
-every later edit:
+discharged. It is not attached to the output, where it would have to
+survive every later edit:
 
 | Declared as | In the draft? | What the pipeline owes you |
 | --- | --- | --- |
 | a **brief** | no | write the section from it; your wording is not preserved |
-| a **claim** | no -- it is rewritten | find a citekey supporting each assertion, and **report every sentence that could not be grounded** rather than shipping it |
+| a **claim** | no; it is rewritten | find a citekey supporting each assertion, and **report every sentence that could not be grounded** rather than shipping it |
 
 Neither leaves a marker behind, because neither needs to: a brief has
 been consumed by the time the draft exists, and a claim's grounding is
-**re-checkable at any point** against the ledger. That is the property
-authorship lacks and the reason this split survives revision.
+**re-checkable at any point** against the ledger. Authorship lacks that
+property, and it is why this split survives revision.
 
 `claim` is the one worth building deliberately. It turns your paragraphs
 into an obligation the pipeline can discharge honestly, and *"I could not
-ground your third sentence in this corpus"* is precisely the output this
-project exists to produce -- unavailable if the same two paragraphs are
-copied through as text to be preserved.
+ground your third sentence in this corpus"* is the output this project
+exists to produce. That output is unavailable if the same two paragraphs
+are copied through as text to be preserved.
 
 **If you want your exact words in the draft, put them in the draft.**
 They are then draft prose like any other: the gate checks any citekey in
-them, and the advisory aids measure them alongside everything else. That
-is not a gap to close. It is what is true of every sentence in a
-revised document.
+them, and the advisory aids measure them alongside everything else.
+That is not a gap to close; it is true of every sentence in a revised
+document.
 
 None of this is built. The proposal is
 `plans/outline-driven-drafting-and-manual-edits.md`.
@@ -376,21 +377,21 @@ None of this is built. The proposal is
 This document describes what the pipeline does and why. **Proposals for
 what it should do next are tracked in
 [a standing issue](https://github.com/prasadtalasila/chitragupta/issues/54)**,
-not here -- a design document that also carries a wish list stops being
+not here. A design document that also carries a wish list stops being
 readable as a statement of current behaviour, and the wish list goes
 stale faster than the design does.
 
 An earlier revision of this file ended with five unowned improvement
 recommendations. Four became sequenced items in that issue (splitting
 `retrieval.py`, section-aware chunking over hierarchical document
-representations, reranking, and platform portability) and the fifth --
-preserving richer per-document metadata -- is partly delivered by
-`chitragupta/passages.py` and the Docling sidecar. The parse path's own roadmap,
-which is narrower and measured, is in
+representations, reranking, and platform portability), and the fifth,
+preserving richer per-document metadata, is partly delivered by
+`chitragupta/passages.py` and the Docling sidecar. The parse path's own
+roadmap, which is narrower and measured, is in
 [PARALLELISM.md](PARALLELISM.md#-roadmap).
 
 ## 📄 Parser backends
 
-[PDF-PARSER.md](PDF-PARSER.md) owns the backend comparison -- the
+[PDF-PARSER.md](PDF-PARSER.md) owns the backend comparison: the
 tradeoffs, the two backends evaluated and removed, and the measured
 speed figures. It is not restated here.

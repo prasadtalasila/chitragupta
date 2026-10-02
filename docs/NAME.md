@@ -9,11 +9,11 @@ A divine record keeper who keeps the ledger of deeds and audits souls against it
 Chitragupta is the registrar of the Hindu cosmos: the deity who
 maintains the complete record of every action of every being, from
 birth to death. When a soul arrives in Yama's court, it is Chitragupta
-who produces the account — not an impression or a summary, but the
-itemized record, on the strength of which judgment is passed.
+who produces the account. It is the itemized record, not an impression
+or a summary, and judgment is passed on the strength of it.
 
 He is depicted holding a pen (*lekhani*), an inkpot, and the ledger
-itself. His name is usually parsed as *chitra* + *gupta* — "the one in
+itself. His name is usually parsed as *chitra* + *gupta*: "the one in
 whom all the records reside, kept safe."
 
 ## 💡 Why the name fits this project
@@ -22,14 +22,13 @@ This pipeline turns a curated BibTeX bibliography into grounded survey
 papers, thesis chapters, and tutorial chapters, with every citation
 mechanically verified against a ledger of real, parsed PDFs. Its one
 hard invariant is that a citekey is never fabricated. The
-correspondence with Chitragupta is point-for-point rather than a loose
-theme:
+correspondence with Chitragupta holds point for point:
 
 1. **The ledger is the whole identity.** Other knowledge deities
    preside over learning broadly; Chitragupta *is* his ledger. This
-   project's center of gravity is `content/ledger.sqlite` — a
-   complete, per-citekey record of what actually exists and what state
-   it is in. The project shares his essential character, not just his
+   project's center of gravity is `content/ledger.sqlite`, a
+   complete, per-citekey record of what exists and what state it is
+   in. The project shares his essential character as well as his
    domain.
 
 2. **He records; he never composes.** Chitragupta's authority comes
@@ -42,19 +41,19 @@ theme:
 3. **Judgment happens against the record.** In Yama's court, claims
    about a life are checked against the book, and the book wins. That
    is `citation gate` exactly: a draft's claims are checked against
-   the ledger at the moment of reckoning, and a `FAIL` is final — a
+   the ledger at the moment of reckoning, and a `FAIL` is final. It is a
    gate, not a suggestion.
 
 4. **The audit is incorruptible, not well-intentioned.** Chitragupta
    is characterized as impartial: the record cannot be argued with or
-   flattered. This project's enforcement is likewise mechanical — a
+   flattered. This project's enforcement is likewise mechanical: a
    PostToolUse hook runs the gate on every write under
    `content/drafts/`, so grounding does not depend on anyone
    remembering to be honest. "Enforced mechanically, not by good
    intentions" (README) could be his epithet.
 
 5. **Evidence, quoted.** Judgment in the stories is not a bare
-   verdict; the deeds are read out. `citation_provenance` quoting the
-   actual supporting passage from each cited source is the same move:
-   the record does not just establish *that* a source exists, it can
-   produce *what in it* supports the claim.
+   verdict; the deeds are read out. `citation_provenance`, which quotes
+   the supporting passage from each cited source, does the same: the
+   record can establish *that* a source exists and can also produce
+   *what in it* supports the claim.

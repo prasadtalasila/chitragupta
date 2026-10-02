@@ -53,7 +53,7 @@ the browser segment pictured here -- as video and GIF.</sub>
 ## 🔑 The one rule
 
 Asked to write a literature review, language models fabricate citations
-at rates measured in the double digits -- and fabricated placeholder
+at rates measured in the double digits, and fabricated placeholder
 references have reached real published papers. Most tools answer this
 with retrieval, which makes fabrication *unlikely*. Unlikely is a
 different property from impossible: in a conventional
@@ -66,7 +66,7 @@ rendered document. Chitragupta puts something there:
 
 That sentence is enforced by architecture, not by prompt: the
 bibliography you export is the only way a source gets in, and one
-blocking check -- the citation gate -- is the only way a draft gets
+blocking check, the citation gate, is the only way a draft gets
 out. A gate failure loops back to drafting, not to you.
 
 - [What it is](#-what-it-is)
@@ -96,18 +96,17 @@ than a rhetorical one:
   run verbatim instead of letting the model invent sub-themes.
 - **Write prose directly.** A section written by hand is a first-class
   input: the pipeline grounds it against the corpus, and any sentence
-  it cannot ground is dropped *and named back to you* -- this is the
-  opposite of a tool that edits your draft, and it is the point.
+  it cannot ground is dropped *and named back to you*. That is the
+  opposite of a tool that edits your draft.
 - **Edit what the model produced.** A text fingerprint notices the
-  draft moved, surfaces what went stale, and offers -- never applies --
+  draft moved, surfaces what went stale, and offers (never applies)
   one further retrieval round in which your own new wording *is* the
   query.
 
-The honest cost of the design, stated up front: the pipeline cannot
-cite a paper you have not catalogued, and *"the corpus does not contain
-this"* is a frequent and deliberate answer. You supply the argument and
-the corpus supplies the warrant; where it cannot, the sentence does not
-ship.
+The design has a cost: the pipeline cannot cite a paper you have not
+catalogued, and *"the corpus does not contain this"* is a frequent and
+deliberate answer. You supply the argument and the corpus supplies the
+warrant; where it cannot, the sentence does not ship.
 
 ## 🏗 How it works
 
@@ -125,12 +124,12 @@ nothing reaches phase 5 without passing phase 4.
        width="100%">
 </p>
 
-Two properties of the spine do all the work, and both are structural
-rather than procedural:
+Two properties of the spine make the guarantee hold, and both are
+structural rather than procedural:
 
 - **Phase 1 is the only entrance.** Citekeys come from your reference
   manager's BibTeX export, synced into a small local ledger by a
-  deterministic run -- no LLM, no judgement calls, the same
+  deterministic run: no LLM, no judgement calls, and the same
   bibliography in yields the same citekeys out. The pipeline never
   fetches a paper, never invents a citekey, and never renames one.
 - **Phase 4 is the only exit.** `chitragupta draft gate` sits on the
@@ -140,24 +139,24 @@ rather than procedural:
   *real*; whether each cited paper actually *supports* its sentence is
   the review layer's business, below.
 
-The two layers beside the spine are where the pipeline keeps its memory
-and its conscience:
+The two layers beside the spine hold the draft's working memory and
+its advisory checks:
 
 - **The dossier** is the draft's externalised working memory, written
-  *as* the draft is written -- scope, who the reader is, the evidence
+  *as* the draft is written: scope, who the reader is, the evidence
   kept, the candidates rejected and why, and what you steered in chat
-  that the prose does not show. It is what makes the next revision
-  scoped rather than a re-run, and why "shorten section 3" three weeks
+  that the prose does not show. It makes the next revision scoped
+  instead of a re-run, and is why "shorten section 3" three weeks
   later costs an edit instead of a rebuild
   ([docs/DOSSIER.md](docs/DOSSIER.md)).
-- **The review layer** is ten advisory aids for a finished draft --
+- **The review layer** is ten advisory aids for a finished draft:
   does the cited paper say this (provenance), how much wording came
   from the sources (verbatim), what did retrieval surface that you
   never cited (coverage), and seven more, merged into one ranked
   worklist (agenda). None of them is a gate, and none may be promoted
-  to one: each is measured against something -- a parse, a retrieval
-  ranking -- that can itself be imperfect, and a check like that must
-  inform you, not block you ([docs/REVIEW.md](docs/REVIEW.md)).
+  to one. Each is measured against something that can itself be
+  imperfect (a parse, a retrieval ranking), and a check like that must
+  inform you instead of blocking you ([docs/REVIEW.md](docs/REVIEW.md)).
 
 Nine skills sit behind phase 3, all obeying the same grounding rules:
 five that write a draft (survey, thesis chapter, undergraduate textbook
@@ -165,34 +164,34 @@ chapter, hands-on tutorial, and a heavier multi-perspective
 deep-research mode), three that change a draft that already exists, and
 one that assembles accepted units into a book
 ([docs/GENRE.md](docs/GENRE.md)). Before any draft exists,
-`chitragupta corpus discover` maps what your corpus is actually about
--- its topics, their papers, and the links between them
+`chitragupta corpus discover` maps what your corpus is about: its
+topics, their papers, and the links between them
 ([docs/TOPIC-DISCOVERY.md](docs/TOPIC-DISCOVERY.md); worked tours in
 [docs/EXPLORE-CLI.md](docs/EXPLORE-CLI.md) and
 [docs/EXPLORE-WEB.md](docs/EXPLORE-WEB.md)).
 
 [docs/DIAGRAMS.md](docs/DIAGRAMS.md) draws this workflow thirteen ways
--- by depth, by genre, and in time order -- and is where the figure
+(by depth, by genre, and in time order) and is where the figure
 above comes from. [docs/GLOSSARY.md](docs/GLOSSARY.md) defines the
 working vocabulary in one page.
 
 ### 🚫 One thing the corpus layer does not promise
 
-The corpus layer is deterministic in the sense that matters most -- no
-LLM, no judgement calls, same bibliography in, same citekeys out -- but
+The corpus layer is deterministic in the sense that matters most (no
+LLM, no judgement calls, same bibliography in, same citekeys out), but
 it is **not** bit-reproducible with every parser. With the default
 `pdftotext` backend it is: parsed text comes back byte-identical, every
 ledger column stable except the `last_synced` timestamp.
 
-With the opt-in `docling` backend *and* a worker pool, it isn't -- and
+With the opt-in `docling` backend *and* a worker pool, it isn't, and
 the instability reaches the *quotable passage*, so the exact span
 quoted from a source can change between runs. A snippet is the evidence
 a judgement is recorded against, so an irreproducible snippet means an
-irreproducible rejection -- which is why this is stated here rather
-than buried. It is Docling's behaviour under load rather than something
-this pipeline adds; serial parsing (`[parser].workers = 1`, the
-default) has not been observed to vary. The artifact-by-artifact
-contract and the measured rates are in
+irreproducible rejection; that is why this README states it. The cause
+is Docling's behaviour under load, which this pipeline does not add;
+serial parsing (`[parser].workers = 1`, the default) has not been
+observed to vary. The artifact-by-artifact contract and the measured
+rates are in
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#-what-is-reproducible-and-what-is-not).
 
 Every artefact this README describes exists, committed, as pipeline
@@ -271,8 +270,8 @@ chitragupta corpus ledger
 Every command that chain runs, every way to re-run one by hand, and all
 ten review-layer commands for checking a finished draft against its
 sources are in
-[docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
-step](docs/CLI.md#-the-full-first-run-step-by-step), which walks the whole
+[docs/CLI.md](docs/CLI.md). Its section [The full first run, step by
+step](docs/CLI.md#-the-full-first-run-step-by-step) walks the whole
 sequence above and everything that follows it, in order.
 
 ## 🧠 The enrichment layer
@@ -289,14 +288,14 @@ chitragupta enrich --stages docling,embed      # or: python -m chitragupta.enric
 chitragupta enrich                             # all seven stages
 ```
 
-It costs real time and disk -- a first full-corpus parse is measured in
-tens of minutes, and the enrich dependency group is several gigabytes
--- so you build it deliberately. **No genre skill builds it for you.**
+It costs real time and disk (a first full-corpus parse is measured in
+tens of minutes, and the enrich dependency group is several gigabytes),
+so you build it deliberately. **No genre skill builds it for you.**
 The skills read what is already there and fall back to the lightweight
-default when it isn't; the same honesty runs through the layer itself,
-where every stage probes its own prerequisites and reports `ok`,
-`partial`, `skipped` or `error` rather than assuming. No stage needs an
-LLM API key -- this repository intentionally has none.
+default when it isn't. Inside the layer, every stage probes its own
+prerequisites and reports `ok`, `partial`, `skipped` or `error` rather
+than assuming. No stage needs an LLM API key; this repository
+intentionally has none.
 
 Which stage is worth the cost is [docs/RETRIEVAL.md](docs/RETRIEVAL.md)'s
 question; what the topic stages produce and how to explore it is
@@ -304,30 +303,30 @@ question; what the topic stages produce and how to explore it is
 
 ## 💻 Hardware requirements
 
-What the pipeline needs, not what it was developed on. The split below is
-the one that matters: the **corpus layer** -- `sync`, the citation gate,
-keyword retrieval -- is light enough for any laptop, and the optional
-**enrichment layer** is what costs real disk and real time.
+What the pipeline needs, not what it was developed on. The split that
+matters is between layers: the **corpus layer** (`sync`, the citation
+gate, keyword retrieval) is light enough for any laptop, and the
+optional **enrichment layer** is what costs real disk and real time.
 
 | Resource | Minimum (corpus layer only) | Recommended (enrichment layer in regular use) |
 | --- | --- | --- |
-| Disk | ~1GB | **10-20GB+** -- the full venv alone is **6.0GB** (torch pulled in twice over via sentence-transformers/docling, plus docling's own layout/OCR models); TeX Live adds several GB more |
-| RAM | ~1-2GB | **8GB minimum, 16GB+ better**. At ~3GB free, Docling on a 17-page PDF pushed the process to 3.6GB RSS and the host swapped 6.3GB -- it finished, just slowly |
-| CPU | 1-2 cores | **4+ cores** -- without a GPU, Docling's layout inference and BERTopic's UMAP/HDBSCAN are CPU-bound, and more cores directly cut wall-clock time |
-| GPU | none needed | **none required.** If one is present the installer detects it and torch is set up to use it automatically -- worth ~4.7x on the parse |
+| Disk | ~1GB | **10-20GB+**. The full venv alone is **6.0GB** (torch pulled in twice over via sentence-transformers/docling, plus docling's own layout/OCR models); TeX Live adds several GB more |
+| RAM | ~1-2GB | **8GB minimum, 16GB+ better**. At ~3GB free, Docling on a 17-page PDF pushed the process to 3.6GB RSS and the host swapped 6.3GB; it finished, just slowly |
+| CPU | 1-2 cores | **4+ cores**. Without a GPU, Docling's layout inference and BERTopic's UMAP/HDBSCAN are CPU-bound, and more cores directly cut wall-clock time |
+| GPU | none needed | **none required.** If one is present the installer detects it and torch is set up to use it automatically, worth ~4.7x on the parse |
 | Network | once, for `poetry install` | also for first-run model downloads (the embedding model, Docling's layout/OCR models) |
 
-**For a sense of scale at the top end:** this project's own bibliography
--- 501 PDFs, 13,400 pages, 1.54GB -- parses in **about 4 minutes** on a
+For a sense of scale at the top end, this project's own bibliography
+(501 PDFs, 13,400 pages, 1.54GB) parses in **about 4 minutes** on a
 96-core machine with four A40s, against **1h 56m** serially on that same
 host. On ordinary hardware a first full Docling parse is measured in tens
 of minutes. A *second* run over an unchanged corpus costs close to
-nothing either way, because every stage skips what hasn't changed -- which
+nothing either way, because every stage skips what hasn't changed. That
 is what makes it safe to put `sync` on a schedule.
 
 Every measured figure in this project comes from one of two reference
 machines: **the small machine** (4 cores, 9.7GB RAM, no GPU) and **the
-multi-GPU machine** (96 cores, 251GB RAM, 4x NVIDIA A40 -- the one in the
+multi-GPU machine** (96 cores, 251GB RAM, 4x NVIDIA A40; the one in the
 paragraph above). **Treat each figure as that machine's, and expect yours
 to differ.** [docs/PERFORMANCE.md](docs/PERFORMANCE.md) has their full
 specifications, what each setting costs, and the two install-time traps
@@ -353,10 +352,10 @@ publisher = {GitHub}
 
 This file is the overview: what the pipeline is, how to get it running,
 and what it needs. Everything else lives in one document per question,
-split by what you are doing -- using the pipeline, or working on it.
-Which of those you are doing can change within a session, and the split
+split by what you are doing: using the pipeline, or working on it.
+Which of those you are doing can change within a session, so the split
 follows the task rather than the person; [CLAUDE.md](CLAUDE.md) is the
-one-screen router for exactly that.
+one-screen router for that.
 
 ### ▶ Using it
 
@@ -365,9 +364,9 @@ one-screen router for exactly that.
 | Document | Answers |
 | --- | --- |
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
-| [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits -- from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
-| [docs/DEMO.md](docs/DEMO.md) | What does actually running it look like? A short recorded pass through the spine, as video and GIF, made against the committed sample project |
-| [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary -- citekey, ledger, dossier, gate, topic, review aid -- each defined by what it is *to you*, grouped by when you first meet it. Read once and every other document gets easier |
+| [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits: from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
+| [docs/DEMO.md](docs/DEMO.md) | What does running it look like? A short recorded pass through the spine, as video and GIF, made against the committed sample project |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Reading it once makes every other document easier to follow |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
@@ -380,14 +379,14 @@ one-screen router for exactly that.
 | Document | Answers |
 | --- | --- |
 | [CLAUDE.md](CLAUDE.md) | One screen: which of the two agent guides applies to the task you are about to start, and the one rule that binds both |
-| [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow -- above all, never fabricate a citekey |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What actually runs, what does each part write, which parts are optional, and why do some commands need the venv? |
-| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn thirteen ways -- six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
+| [AGENTS.md](AGENTS.md) | The rules an agent *drafting with* this pipeline must follow; above all, never fabricate a citekey |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | What runs, what does each part write, which parts are optional, and why do some commands need the venv? |
+| [docs/DIAGRAMS.md](docs/DIAGRAMS.md) | The workflow drawn thirteen ways: six by depth, three by genre, two in an appendix, two for topic discovery. Pick the one that matches what you already know |
 | [docs/LADDERS.md](docs/LADDERS.md) | Where does the pipeline choose between two ways of doing one job? Every ladder it walks for you and every tier you pick yourself, and what the bottom rung costs |
 | [docs/RETRIEVAL.md](docs/RETRIEVAL.md) | BM25, embeddings, topic models -- which one answers my question, and which is worth building? |
 | [docs/DRAFT-ITERATION.md](docs/DRAFT-ITERATION.md) | What does a draft's dossier hold, and how do I change a draft weeks later without re-running the pipeline that produced it? |
-| [docs/USER-EDITS.md](docs/USER-EDITS.md) | I edited a draft myself, by hand -- how do I hand it back so the pipeline picks the edit up cleanly, and what does it check for when I do? |
-| [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model actually contain, layer by layer -- for a single-context genre skill and for the multi-agent `deep-research` skill -- and why don't the two look the same? |
+| [docs/USER-EDITS.md](docs/USER-EDITS.md) | I edited a draft myself, by hand. How do I hand it back so the pipeline picks the edit up cleanly, and what does it check for when I do? |
+| [docs/PROMPTS.md](docs/PROMPTS.md) | What does the prompt sent to the model contain, layer by layer, for a single-context genre skill and for the multi-agent `deep-research` skill, and why don't the two look the same? |
 
 #### ⚙ Choosing settings
 
@@ -401,43 +400,43 @@ one-screen router for exactly that.
 | Document | Answers |
 | --- | --- |
 | [docs/CITATION-PROVENANCE.md](docs/CITATION-PROVENANCE.md) | What does the provenance report say, and how do I read it? |
-| [docs/PLAGIARISM.md](docs/PLAGIARISM.md) | How much of a draft's wording came from its sources? What the verbatim `overlap`/`scan` checks catch, and -- just as important -- what they cannot see, since these drafts are LLM-written and the tier that catches a genuine restatement does not run everywhere |
+| [docs/PLAGIARISM.md](docs/PLAGIARISM.md) | How much of a draft's wording came from its sources? What the verbatim `overlap`/`scan` checks catch, and (just as important) what they cannot see, since these drafts are LLM-written and the tier that catches a genuine restatement does not run everywhere |
 | [docs/WRITING-STANDARDS.md](docs/WRITING-STANDARDS.md) | What prose standards do the genre skills follow, and where in the technical-communication literature do they come from? |
 
 ### 🤝 Working on it
 
 | Document | Answers |
 | --- | --- |
-| [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation actually resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
+| [docs/RENDERING-FLOW.md](docs/RENDERING-FLOW.md) | How does a draft's citation resolve into a rendered bibliography, which of four possible stores does a `.tex` fragment's citation defer to, and what happens to a figure on the way through? |
 | [docs/REJECTION.md](docs/REJECTION.md) | Why is turning a source *down* the judgment this pipeline is most careful about? The reasoning behind a retrieval change that was built and then withdrawn, and what was kept from it |
-| [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens actually go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
+| [docs/TOKENS.md](docs/TOKENS.md) | Where do a run's tokens go, which of them get billed once and which get billed every turn, and how do I measure that without paying for a full run? |
 | [docs/DESIGN.md](docs/DESIGN.md) | Why does this refuse what it refuses? The hard constraints, the conflict policy when two runs collide, and the failure analysis behind both |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how does the closed- and open-source landscape stack up against that bar, and where does this pipeline stand against its own requirement set -- what's built, what was measured and declined, and what's left? |
-| [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse actually work, what is each component for, and what is planned next? |
+| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | What must a grounded long-form writing system do, how do closed- and open-source tools compare against that bar, and where does this pipeline stand against its own requirement set: what's built, what was measured and declined, and what's left? |
+| [docs/PARALLELISM.md](docs/PARALLELISM.md) | How does the parallel parse work, what is each component for, and what is planned next? |
 | [docs/GROBID-CITATION-GRAPH.md](docs/GROBID-CITATION-GRAPH.md) | **A proposal, not a plan.** What would it take to build a corpus-internal citation graph, and is it worth a JDK and a long-running service? |
-| [docs/TLDR.md](docs/TLDR.md) | What does `chitragupta draft tldr` cache today, and -- **parked, not built** -- what would it take to generate it unattended: the two-path design, what was measured on the real corpus, and why it's waiting on an acceptance workflow that doesn't exist yet? |
+| [docs/TLDR.md](docs/TLDR.md) | What does `chitragupta draft tldr` cache today, and (**parked, not built**) what would it take to generate it unattended: the two-path design, what was measured on the real corpus, and why it's waiting on an acceptance workflow that doesn't exist yet? |
 | [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md) | **Unbuilt.** If the pipeline assembled its own worklist and attempted the mechanical repairs, what exactly would be built, and what would it have to satisfy? Normative, and carries no argument |
 | [docs/AUTO-IMPROVEMENT-RATIONALE.md](docs/AUTO-IMPROVEMENT-RATIONALE.md) | Why that loop, and where its line falls: why every quality signal here currently ends in prose a human must act on, what a machine may never repair, and the one documented rule this cannot satisfy without the user's approval |
-| [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Discussion notes, nothing implemented.** Where figure quality stands today, the gap between the six current layout metaphors and what a CS/SE textbook actually needs, and a build order for closing it |
+| [docs/FIGURE-ROADMAP.md](docs/FIGURE-ROADMAP.md) | **Discussion notes, nothing implemented.** Where figure quality stands today, the gap between the six current layout metaphors and what a CS/SE textbook needs, and a build order for closing it |
 | [docs/HOUSE-STYLE.md](docs/HOUSE-STYLE.md) | Why prose is the axis a machine improves *best*, why a readability score is the wrong target, and which of your preferences should outlive the draft that prompted them |
-| `DEVELOPER.md` (git checkout only -- `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
+| `DEVELOPER.md` (git checkout only; `chitragupta init` deliberately does not scaffold it) | How do I run the tests, where does everything live, and what is unbuilt? |
 | `DOCKER-DEVELOPER.md` (git checkout only) | How are the Docker images themselves built and verified before a release? |
-| `DEVELOPER-AGENTS.md` (git checkout only) | The rules an agent *changing this repo* must follow -- test policy, the local check suite, code standards, commit/PR/release conventions |
+| `DEVELOPER-AGENTS.md` (git checkout only) | The rules an agent *changing this repo* must follow: test policy, the local check suite, code standards, commit/PR/release conventions |
 | [docs/CODE-STANDARDS.md](docs/CODE-STANDARDS.md) | What must the code itself look like? The clean-code checklist mapped rule by rule, the two size rules that are machine-checked as a ratchet, why they count statements rather than lines, and why the rest is left to review |
-| [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and -- where the licence requires it -- what was deliberately not |
+| [docs/INSPIRATION.md](docs/INSPIRATION.md) | What did this project borrow, and from whom? Every external idea, what was taken, and (where the licence requires it) what was deliberately not |
 | [docs/EXPORT-ZOTERO-GROUPS.md](docs/EXPORT-ZOTERO-GROUPS.md) | **Discouraged, and says so.** How the one script that reads `zotero.sqlite` directly recovers collection labels when Better BibTeX cannot, which two project rules it bends to do it, and why you should use Better BibTeX instead |
 
-Every prose document ships in the release archive -- everything under
+Every prose document ships in the release archive (everything under
 `docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
-and `DEVELOPER.md` -- as do the genre skills in `.claude/`, `.agents/` and
+and `DEVELOPER.md`), as do the genre skills in `.claude/`, `.agents/` and
 `.opencode/`. Only this repo's own machinery stays behind: `tests/`,
 `bench/` (the measurement harness and its raw timings), `plans/`,
 `.github/`, `.gitignore` and a few root-level CI and tooling files.
 
 ## 🙏 Acknowledgements
 
-This project borrows from several others -- the deep-research skill's
+This project borrows from several others: the deep-research skill's
 7-phase method, the clean-code checklist its own code standard is written
 against, and the harness-engineering reading list behind much of
 `.claude/`. Each is credited, with what was taken and what deliberately
-was not, in **[docs/INSPIRATION.md](docs/INSPIRATION.md)**.
+was not, in [docs/INSPIRATION.md](docs/INSPIRATION.md).

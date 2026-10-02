@@ -7,14 +7,14 @@ do about a low-scoring claim. **Assumed:** a drafted, gated document.
 **Not covered here:** the scoring internals a change to them would need,
 which are in the module's own docstrings.
 
-**If that is you -- you have a report open and want to know what to do
--- start at the [worked example](#-worked-example) and read on through
+If you have a report open and want to know what to do, start at the
+[worked example](#-worked-example) and read on through
 [the calibration caveat](#-a-calibration-caveat-found-by-running-it):
-those two sections are the whole answer.** Everything between here and
-there is the build record -- the problem, the design decisions, the
-costs, and what the build got wrong first -- kept because the decisions
-would otherwise be re-litigated, and aimed at whoever changes this
-feature rather than at you.
+those two sections are the whole answer. Everything between here and
+there is the build record (the problem, the design decisions, the costs,
+and what the build got wrong first). It is kept because the decisions
+would otherwise be re-litigated, and it is aimed at whoever changes this
+feature, not at you.
 
 ## 💡 Background: what this repository does
 
@@ -24,9 +24,8 @@ This project turns a personal reference library into cited prose. It runs
 as two layers that never mix.
 
 **The corpus layer is deterministic and has no AI in it.** You export a
-`.bib` file
-from your reference manager. `python -m chitragupta.corpus sync` reads it,
-records every
+`.bib` file from your reference manager.
+`python -m chitragupta.corpus sync` reads it, records every
 entry in a small SQLite "ledger" (`content/ledger.sqlite`), and extracts
 each attached PDF's text into `content/parsed/<citekey>.txt`. Nothing is
 generated; the bib file is the source of truth.
@@ -34,26 +33,26 @@ generated; the bib file is the source of truth.
 **The drafting layer drafts documents**, on demand, using those extracted
 sources.
 
-A **citekey** is the identifier BibTeX assigns an entry -- for example
-`larsen_engineering_2024`. In a draft it appears as `[@larsen_engineering_2024]`.
+A **citekey** is the identifier BibTeX assigns an entry, for example
+`larsen_engineering_2024`. In a draft it appears as
+`[@larsen_engineering_2024]`.
 The project's one hard rule is that **a citekey may only be used if it
 came from the bib file**, because fabricated references have made it into
-real published papers before. `python -m chitragupta.draft gate` enforces this
-mechanically: it extracts every citekey from a draft and fails if any is
-absent from the ledger. That is a *gate* -- drafting is blocked until it
-passes.
+real published papers before. `python -m chitragupta.draft gate` enforces
+this mechanically: it extracts every citekey from a draft and fails if
+any is absent from the ledger. That is a *gate*: drafting is blocked
+until it passes.
 
 Some tools in the repo are gates. Others are **advisory**: they report
-something for a human to judge, and never block. Those are a named layer
--- the **review layer**, layer 4 -- rather than a group defined by what
-it is not, and [REVIEW.md](REVIEW.md) is the page for it. The
-distinction from the gate matters a lot below.
+something for a human to judge, and never block. Those form a named
+layer, the **review layer** (layer 4), and [REVIEW.md](REVIEW.md) is the
+page for it. The distinction from the gate matters a lot below.
 
 Two other terms used here:
 
-- **Parser backend** -- how a PDF becomes text. `pdftotext` (fast, the
+- **Parser backend**: how a PDF becomes text. `pdftotext` (fast, the
   default) or `docling` (slow, layout-aware). Set in `config.toml`.
-- **The enrichment layer** -- optional, opt-in stages under `chitragupta/enrich/`
+- **The enrichment layer**: optional, opt-in stages under `chitragupta/enrich/`
   run by `python -m chitragupta.enrich`: layout-aware Docling parsing,
   embeddings, topic modelling, and rendering to PDF/LaTeX.
 
@@ -64,51 +63,50 @@ You are reading a draft. A sentence carries a citation:
 > Simulation has become a cornerstone of developing and validating these
 > systems [@zampetti_continuous_2023].
 
-You have a doubt. Not "is this citekey real?" -- `citation_gate` already
-answers that, and answers it as a hard gate. The doubt is different and
-harder:
+You have a doubt. It is not "is this citekey real?", which
+`citation_gate` already answers as a hard gate. The doubt is different
+and harder:
 
 **Does the cited paper actually say this?**
 
 Right now, answering that means opening the PDF and reading until you
 find the passage, or convincing yourself it isn't there. That is slow
-enough that in practice it doesn't get done, which means the failure it
-would catch -- a claim that drifted away from its source during drafting
--- ships.
+enough that in practice it doesn't get done, so the failure it would
+catch, a claim that drifted away from its source during drafting, ships.
 
 ### 💡 Why the existing tools don't cover it
 
 The repository already had two of these commands, and neither answers
 this question.
 
-`chitragupta/review/citation_coverage.py` asks the inverse: *of the sources retrieval
-surfaced for a query, which ones did the draft actually cite?* That
-finds sources you missed. It says nothing about whether the ones you did
-cite support what you wrote.
+`chitragupta/review/citation_coverage.py` asks the inverse: *of the sources
+retrieval surfaced for a query, which ones did the draft actually cite?* That
+finds sources you missed. It says nothing about whether the ones you did cite
+support what you wrote.
 
 The `verbatim` aid is closer but needs you to already know the answer's
 shape. Two of its four modes take the citekey as an argument, so they
 answer a question you have to have asked first:
 
-- `overlap <draft> <citekey>` -- longest verbatim word runs shared
+- `overlap <draft> <citekey>`: longest verbatim word runs shared
   between the paragraphs citing that key and the source.
-- `locate <citekey> "<phrase>"` -- which page a phrase appears on.
+- `locate <citekey> "<phrase>"`: which page a phrase appears on.
 
-(The other two take no citekey. `scan` slides the whole draft across
-the whole corpus -- a different question, *did I reuse anyone's
-wording anywhere*, and docs/PLAGIARISM.md is where it belongs. `recheck`
-re-scans the draft against a baseline `scan --write` filed earlier.)
+(The other two take no citekey. `scan` slides the whole draft across the whole
+corpus, which answers a different question, *did I reuse anyone's wording
+anywhere*, and docs/PLAGIARISM.md is where it belongs. `recheck` re-scans the
+draft against a baseline `scan --write` filed earlier.)
 
 So it verifies a suspicion you have already formed about a specific
 citekey. It cannot tell you *which* of a draft's forty citations deserve
 suspicion in the first place.
 
 There is also a subtler gap. `cmd_overlap` matches **exact word n-grams
-(default n=8)**. That is the right tool for its actual job -- catching
-borrowed wording, i.e. accidental plagiarism -- but it is the wrong tool
-here. A correctly paraphrased claim shares *no* 8-word run with its
-source and scores zero, indistinguishable from a claim the source never
-made. The failure mode we care about is precisely the paraphrased one.
+(default n=8)**. That is the right tool for its own job, catching
+borrowed wording (accidental plagiarism), but it is the wrong tool here.
+A correctly paraphrased claim shares *no* 8-word run with its source and
+scores zero, indistinguishable from a claim the source never made, and
+the paraphrased claim is the failure mode we care about.
 
 ## 🎯 What is being asked for
 
@@ -116,8 +114,8 @@ A **citation provenance document**: for a given draft, a report that
 walks every citation and shows what in the source supports it, so a
 human reading the draft can jump straight to the doubtful ones.
 
-Explicitly a manual review step, run when you want it. Not a gate, not
-part of any automatic chain.
+It is a manual review step, run when you want it. It is not a gate and
+not part of any automatic chain.
 
 ## 🏗 The solution, as built
 
@@ -139,14 +137,15 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `survey.verbatim.md` and `survey.coverage.md`. A draft directly in
 `content/drafts/`, or outside it altogether, has no path to mirror and
 keeps the flat directory; a draft resolving outside `content/` is
-refused. `chitragupta/review/__init__.py` owns that contract for every review-layer
-command -- see [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
+refused. `chitragupta/review/__init__.py` owns that contract for every
+review-layer command; see
+[ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
 
 For each citing passage in the draft, emit:
 
 | Field | Meaning |
 | --- | --- |
-| Draft location | Line number and the citing sentence -- or, where the citation sits in a table, a list or a heading (Markdown or LaTeX), that row, item or heading alone |
+| Draft location | Line number and the citing sentence or, where the citation sits in a table, a list or a heading (Markdown or LaTeX), that row, item or heading alone |
 | Citekey | The key cited there |
 | Best-matching source passage | The span of that paper's text closest to the claim |
 | Page | Where that passage sits in the PDF |
@@ -154,37 +153,36 @@ For each citing passage in the draft, emit:
 | Flag | Explicit **NO SUPPORT FOUND** when nothing clears a floor |
 
 Sorted **worst match first**, so the report opens on the citations most
-worth your attention rather than making you read forty entries to find
+worth your attention instead of making you read forty entries to find
 three.
 
 ### ⚖ Design decisions
 
-**Advisory, not a gate.** This mirrors `citation_coverage.py`'s
-stated position exactly -- it is why the two share a layer. The reason is not
-caution for its own sake: a
-lexical matcher cannot tell "this claim is unsupported" from "this claim
-is supported in vocabulary the matcher didn't recognise". Anything that
-*blocks* on that distinction would train people to work around it, which
-is precisely the corrosion `citation_gate` avoids by only ever asserting
-something it can check exactly -- ledger membership.
+**Advisory, not a gate.** This mirrors `citation_coverage.py`'s stated
+position exactly, which is why the two share a layer. The reason is not
+caution for its own sake: a lexical matcher cannot tell "this claim is
+unsupported" from "this claim is supported in vocabulary the matcher
+didn't recognise". Anything that *blocks* on that distinction would train
+people to work around it, the corrosion `citation_gate` avoids by only
+ever asserting something it can check exactly: ledger membership.
 
 **Lexical overlap, not exact n-grams.** Scoring should follow
-`cmd_locate`'s approach -- distinctive words from the claim, counted
-against the words in each candidate source passage -- not `cmd_overlap`'s
+`cmd_locate`'s approach (distinctive words from the claim, counted
+against the words in each candidate source passage), not `cmd_overlap`'s
 verbatim runs. A paraphrase keeps most of its content words while
 changing their order and function words, so overlap scoring degrades
 gracefully where n-gram matching falls off a cliff. Stopwords should be
 dropped, as `chitragupta/retrieval.py` already does.
 
-**Page numbers come from the PDF, not the parsed text.** `verbatim_check.pages()`
-already re-runs `pdftotext -layout` on the original PDF and splits on
-form feeds, which means page resolution works regardless of which parser
-backend produced `content/parsed/`. That indirection is worth keeping.
+**Page numbers come from the PDF, not the parsed text.**
+`verbatim_check.pages()` already re-runs `pdftotext -layout` on the original PDF
+and splits on form feeds, which means page resolution works regardless of which
+parser backend produced `content/parsed/`. That indirection is worth keeping.
 
 **Stdlib only.** `citation_gate.py`, `references.py` and
 `citation_coverage.py` all run under bare `python` with no venv. This
 tool reuses `citation_gate.extract_citekeys` (which returns
-`(line_number, citekey)` pairs -- the line numbers are exactly what the
+`(line_number, citekey)` pairs, and the line numbers are exactly what the
 report needs) plus `verbatim_check`'s `pages()` and `norm()`, all of
 which are already stdlib-only. There is no reason for this one to be
 heavier.
@@ -192,7 +190,7 @@ heavier.
 ### 🔧 Prerequisite: already cleared
 
 This proposal was blocked on the PDF resolver. `verbatim_check.pdf_path()`
-resolved only **305 of 501** PDFs, for two independent reasons -- it
+resolved only **305 of 501** PDFs, for two independent reasons: it
 took the description segment of the bib `file` field instead of the path,
 and `bib_entry()` truncated entries at the first `\n}`, which also occurs
 inside multi-line field values. A provenance report built on that would
@@ -209,31 +207,31 @@ belongs.
 
 **It does not call an LLM.** Everything in the deterministic half of this
 pipeline (the corpus layer) is local and reproducible; a semantic matcher
-would be
-both non-deterministic and a new dependency, for a tool whose output a
-human reads anyway.
+would be both non-deterministic and a new dependency, for a tool whose
+output a human reads anyway.
 
-**It will not catch every drift.** A claim paraphrased into genuinely
-different vocabulary can score low despite being well supported, and a
+**It will not catch every drift.** A claim paraphrased into different
+vocabulary can score low despite being well supported, and a
 claim that shares vocabulary with its source can score high while
 misrepresenting it. The report is a reading order, not a verdict. This is
-the honest limit of lexical matching, and the reason the tool warns
-rather than gates.
+the limit of lexical matching, and the reason the tool warns instead of
+gating.
 
 ## 📄 The Docling provenance sidecar
 
-Docling's document model carries full provenance -- verified on a real
-17-page paper, **336 of 336 text items** had both a page number and a
-bounding box, plus a semantic label. `export_to_markdown()` discards all
+Docling's document model carries full provenance. On a real 17-page
+paper we verified that **336 of 336 text items** had both a page number
+and a bounding box, plus a semantic label. `export_to_markdown()` discards all
 of it; Docling never loses it.
 
 It is tempting to read this as a straight upgrade to the report's
 *pointing*: cite an exact rectangle instead of a page. That part is
-genuinely marginal -- a reviewer opening a PDF at page 7 finds the
-passage in seconds, and a bounding box only pays off if something
-renders a highlight, which nothing here does.
+marginal. A reviewer opening a PDF at page 7 finds the passage in
+seconds, and a bounding box only pays off if something renders a
+highlight, which nothing here does.
 
-The real argument is different, and it exposes a hole in the plan above.
+The stronger argument is a different one, and it exposes a hole in the
+plan above.
 
 ### 💡 Reading order, and why it matters more than coordinates
 
@@ -264,7 +262,7 @@ The distinction that matters is between *scoring* and *quoting*.
 
 **Page-level locating survives interleaving.** `cmd_locate` scores a
 page by how many distinctive words from the phrase appear anywhere in
-it -- a bag of words, order-independent. Column splicing moves words
+it: a bag of words, order-independent. Column splicing moves words
 around within a page; it doesn't move them to a different page. So
 page-level matching works on all ten papers today, unchanged.
 
@@ -273,52 +271,52 @@ passage" field in the report above would, on those four papers, show a
 reviewer two spliced half-sentences. That is worse than showing nothing,
 because it reads as evidence.
 
-Docling fixes exactly this: its text items are reading-order-resolved and
+Docling fixes this: its text items are reading-order-resolved and
 semantically labelled, so a passage is a real passage. The bounding box
-arrives in the same sidecar, essentially free, but it is the reading
-order that carries the value.
+arrives in the same sidecar, essentially free, but the value is in the
+reading order.
 
 ### 🗺 Revised plan
 
-**Phase 1 -- lexical matcher, page-level report.** Ship the tool above
+**Phase 1: lexical matcher, page-level report.** Ship the tool above
 with the passage field reduced to page-plus-score, or shown only for
 documents detected as single-column. Works for 100% of the corpus, needs
 no Docling run, stays stdlib-only.
 
-**Phase 2 -- Docling passage sidecar, if quoting proves necessary.**
-Persist `{text, label, page, bbox}` per item during the enrichment layer's
-Docling stage, and score against those items instead of flat windows. Buys real
-quotable passages, section-level context ("in §2.2 Structural Design
-Process", often more useful to a human than a page number), exclusion of
-running heads and footers from scoring, and bbox highlighting for free.
+**Phase 2: Docling passage sidecar, if quoting proves necessary.** Persist
+`{text, label, page, bbox}` per item during the enrichment layer's Docling
+stage, and score against those items instead of flat windows. That buys real
+quotable passages, section-level context ("in §2.2 Structural Design Process",
+often more useful to a human than a page number), exclusion of running heads and
+footers from scoring, and bbox highlighting for free.
 
 Phase 2 is not an alternative to Phase 1: it improves the *evidence
-display* and leaves the matching problem exactly where it was. A precise
+display* and leaves the matching problem where it was. A precise
 rectangle around a badly-matched paragraph is worse than a page number,
 because false precision invites trust.
 
 ### ⚡ Costs of Phase 2
 
-Phase 2 has since shipped, in both layers -- see ["What the corpus layer
+Phase 2 has since shipped, in both layers; see ["What the corpus layer
 keeps when it uses docling"](#-what-the-corpus-layer-keeps-when-it-uses-docling)
 below. The estimates it was planned against are kept here, corrected
 against what was later measured, because three of the four moved:
 
-- **A full Docling pass over the corpus.** Estimated at ~26s/paper, so
-  ~3.6 hours for 501 papers. Measured, once the converter was hoisted out
-  of the per-document path: **6.65s/PDF serial -- 3330s for the whole
-  501-PDF corpus, and 310s at twelve workers**
+- **A full Docling pass over the corpus.** Estimated at ~26s/paper, so ~3.6
+  hours for 501 papers. Measured, once the converter was hoisted out of the
+  per-document path: **6.65s/PDF serial, 3330s for the whole 501-PDF corpus, and
+  310s at twelve workers**
   ([docs/PERFORMANCE.md](PERFORMANCE.md#-parserworkers----document-level-parallelism)).
-  About 4x cheaper than the figure this decision was weighed against, and
-  cheaper again now that a corpus-layer Docling parse is adopted rather
-  than repeated. What remains true is the tail of the original bullet:
-  the per-document cache is invalidated wholesale when the image, OCR or
+  That is about 4x cheaper than the figure this decision was weighed against,
+  and cheaper again now that a corpus-layer Docling parse is adopted instead of
+  repeated. What remains true is the tail of the original bullet: the
+  per-document cache is invalidated wholesale when the image, OCR or
   cache-version settings change, so *those* re-parses do cost full price.
 - **A second text representation to keep in sync with `content/parsed/`.**
   Still true of the enrichment layer's sidecar. No longer true of the
   corpus layer's: it is written by the same parse that writes the `.txt`,
-  beside it, and cleared before the same re-parse -- there is no window in
-  which one is fresh and the other stale.
+  beside it, and cleared before the same re-parse, so there is no window
+  in which one is fresh and the other stale.
 - **A second consumer for an opt-in stage.** Already the case:
   `content/docling/` is read by `chitragupta/enrich/embed_index.py` and by
   `chitragupta/passages.py`'s rung 1.
@@ -340,10 +338,10 @@ on a real 17-page paper: 336 of 336 text items carried a page number, a
 bounding box and a semantic label. Reading order survived inside the
 text; page numbers, labels and boxes did not.
 
-The consequence ran against intuition. Choosing the better parser bought
+The consequence ran against intuition: choosing the better parser bought
 *worse* quotations. Markdown carries no form feeds, so the passage ladder
 found a single "page", declined it, and fell through to a fresh
-`pdftotext` run -- the column-splicing tool the ladder exists to avoid
+`pdftotext` run, the column-splicing tool the ladder exists to avoid
 quoting from.
 
 Both halves of that are now kept:
@@ -353,13 +351,13 @@ Both halves of that are now kept:
   shape as `pdftotext`'s output. Checked on a real 51-page paper: 51
   pages in the model, 51 form-feed-separated segments in the file.
 - The structure Markdown cannot carry leaves by a second door, as
-  `content/parsed/<citekey>.passages.json` -- the same records
+  `content/parsed/<citekey>.passages.json`, the same records
   `chitragupta/passages.py`'s `passage_records()` produces for the enrichment
-  layer. On that same paper: 592 records spanning pages 1 to 51, every
-  one carrying both a page number and a bounding box.
+  layer. On that same paper: 592 records spanning pages 1 to 51, every one
+  carrying both a page number and a bounding box.
 
 A sidecar quotes the PDF *as parsed when it was written*, so it is
-dropped before every re-parse rather than replaced after one. A switch
+dropped before every re-parse instead of replaced after one. A switch
 back to `pdftotext`, a parse that fails outright, and a re-parse of an
 edited PDF all end at "no sidecar" instead of at last week's sentences
 attributed to today's document.
@@ -412,24 +410,24 @@ sidecar it did not write and could not reproduce. Rung 1 is tried first
 because the enrichment stage parses the PDF a second time under its own
 OCR and figure settings.
 
-**Which backend to choose, then.** `docling` if you want quotable
-passages without running the enrichment layer at all -- that is the
-change described above, and it is the whole reason to pay the slower
-parse. `pdftotext` (the default) remains the right choice if you only
-need page-level locating and want the fastest sync; it lands on rung 3,
-which reports a real page and refuses to quote. The combination that once
-helped least -- Docling in the corpus layer with no enrichment stage --
-is now the one that gives you the most for a single parse.
+**Which backend to choose, then.** Choose `docling` if you want quotable
+passages without running the enrichment layer at all. That is the change
+described above, and it is the whole reason to pay the slower parse.
+`pdftotext` (the default) remains the right choice if you only need
+page-level locating and want the fastest sync; it lands on rung 3, which
+reports a real page and refuses to quote. The combination that once
+helped least, Docling in the corpus layer with no enrichment stage, is
+now the one that gives you the most for a single parse.
 
-`python -m chitragupta.review verbatim locate` benefits from the same change: it
-splits `content/parsed/<citekey>.txt` on form feeds, so it reports the
-page a phrase actually sits on rather than `pdf p.1` for every hit.
+`python -m chitragupta.review verbatim locate` benefits from the same
+change: it splits `content/parsed/<citekey>.txt` on form feeds, so it
+reports the page a phrase sits on instead of `pdf p.1` for every hit.
 
-One limit worth knowing. Docling emits a page break *between* consecutive
+There is one limit. Docling emits a page break *between* consecutive
 pages that carry items, and none before the first, so the nth segment is
-page n -- but a page carrying no items at all contributes no break and
+page n, but a page carrying no items at all contributes no break and
 shifts the pages after it. The sidecar is unaffected, because it records
-each item's own `page_no` rather than counting separators. Where the two
+each item's own `page_no` instead of counting separators. Where the two
 disagree, the sidecar is right.
 
 ## 📝 Worked example
@@ -472,7 +470,7 @@ weak / 5 supported** with page-level fallback, and **12 weak / 1
 supported** once Docling paragraphs were available. The matches did not
 get worse; the denominator got smaller.
 
-This is why the bands are described as a reading order rather than a
+This is why the bands are described as a reading order and not a
 measurement, and why the report says so in its own header. A single
 absolute threshold that meant the same thing for both sources would
 require normalising by passage length, which buys precision the tool
@@ -480,8 +478,8 @@ does not claim to have.
 
 ## 🐛 Three things the build got wrong first
 
-Worth recording, because all three are the kind of defect only a real
-run finds -- and the second was caused by the fix for the first.
+All three are the kind of defect only a real run finds, and the second
+was caused by the fix for the first.
 
 ### 🐛 Too narrow: the citing line
 
@@ -489,14 +487,13 @@ The first implementation read the citing **line** to recover the claim.
 Every draft this project produces is hard-wrapped, so a sentence spans
 three or four lines and the citation lands on whichever one happens to
 hold it. The report came out full of claims like `.` and `, or
-equivalently as combinations of` -- fragments that match nothing, scoring
+equivalently as combinations of`: fragments that match nothing, scoring
 0% and reporting five false "no support found" findings.
 
 Claims are now reconstructed from the whole paragraph, then split into
 sentences with an abbreviation-aware splitter (so `Fig. 1`, `e.g.` and
 `Smith et al. (2020)` don't create the same problem one level down). The
-same draft went from
-5 spurious "no support found" to 0.
+same draft went from 5 spurious "no support found" to 0.
 
 ### 🐛 Too wide: the whole table
 
@@ -513,11 +510,11 @@ report's blockquotes, where pandoc renders every one as `\textbar{}`.
 The damage was not only cosmetic. Scoring divides by the claim's own
 distinctive words, so a whole-table claim inflated the denominator from a
 row's 15-23 words to 61 or 91. That cut the *maximum achievable* score to
-roughly a quarter, pushing genuinely supported citations under the band
+roughly a quarter, pushing supported citations under the band
 thresholds. It is the same false "no support found" the paragraph change
 was made to remove, reappearing one level up.
 
-It also defeated the reason claims are sentences rather than paragraphs.
+It also defeated the reason claims are sentences and not paragraphs.
 Five citekeys in one table shared a single claim, so the report could not
 say which of them was the weak one.
 
@@ -534,7 +531,7 @@ beside the Markdown.** A `tabular` had the same defect with one extra
 cost. `\begin{tabular}{lll}`, `\toprule` and `\midrule` reached the
 scorer as though `begin`, `tabular`, `lll` and `toprule` were content
 words the cited paper ought to contain. No source can ever match that
-noise, so the dilution was guaranteed rather than merely likely.
+noise, so the dilution was guaranteed.
 
 The LaTeX rules mirror the Markdown ones, with one structural difference
 that matters: a `tabular` row ends at `\\`, not at a newline, so a row
@@ -556,8 +553,8 @@ document syntax the code did not actually model.
 
 Both fixes above are about a claim's *extent*. This one is about what
 survives inside it. Citation markup is removed before scoring, so the
-markers do not read as content words the cited paper ought to contain --
-right for `[@key]` and `\citep{key}`, which stand *outside* the
+markers do not read as content words the cited paper ought to contain.
+That is right for `[@key]` and `\citep{key}`, which stand *outside* the
 sentence's grammar as an aside the reader could skip. It is wrong for
 `\citet{key}`, which renders as "Smith et al. (2024)" and *is* a noun
 phrase in the sentence. Deleting it produced claims like "The vocabulary
@@ -565,26 +562,24 @@ of sharpens the claim" and "The packaging line twin of gained scheduling
 authority", quoted back at a reviewer as though the draft had written
 the dangling "of".
 
-Narrative markers are now replaced by `[...]` rather than removed.
+Narrative markers are now replaced by `[...]` instead of being removed.
 
-**An elision, not the author-year text it stands for**, which is the one
-decision here a reader might expect to go the other way. This report
-scores a claim by word overlap against the cited paper's own text, and
-that text contains its own authors' names -- on the title page, in the
-running head, in its self-citations. Substituting "Smith" would hand
-every narrative citation a hit unrelated to the claim, inflating exactly
-the band that flags weak support, silently and in the direction that
-hides a problem. `[...]` contributes no word to `distinctive()`, so the
-score is unchanged and only the quoted text moves.
+The replacement is an elision, not the author-year text it stands for, and this
+is the one decision here a reader might expect to go the other way. This report
+scores a claim by word overlap against the cited paper's own text, and that text
+contains its own authors' names: on the title page, in the running head, in its
+self-citations. Substituting "Smith" would hand every narrative citation a hit
+unrelated to the claim, inflating the band that flags weak support, silently and
+in the direction that hides a problem. `[...]` contributes no word to
+`distinctive()`, so the score is unchanged and only the quoted text moves.
 
-Found by a Copilot review of the PR that committed the sample project,
-which is to say by the committed
-sample project rather than by a test. `thesis-chapter-writer` has always
-been documented as emitting `\citep`/`\citet`
-([GENRE.md](GENRE.md)), so the narrative form was never exotic --
-it simply had no draft in this repository using it until the sample
-project arrived, and so no committed report in which the dangling "of"
-was visible to a reader.
+It was found by a Copilot review of the PR that committed the sample
+project, so by the committed sample project and not by a test.
+`thesis-chapter-writer` has always been documented as emitting
+`\citep`/`\citet` ([GENRE.md](GENRE.md)), so the narrative form was
+never exotic. No draft in this repository used it until the sample
+project arrived, and so no committed report showed the dangling "of" to
+a reader.
 
 ## 📊 Sizing (as built)
 
@@ -599,11 +594,11 @@ No new dependencies. No changes to `sync`, `citation_gate`, or the
 render chain beyond calling it.
 
 The sidecar -> form-feed pages -> `pdftotext` ladder, and the rule that a
-source with no reading order reports a page rather than a quotation, live
-in `chitragupta/passages.py` rather than here. That split happened when retrieval
-became the second consumer: a snippet shown to a drafting agent *as
-evidence* is under exactly the same constraint as a passage shown to a
+source with no reading order reports a page and not a quotation, live
+in `chitragupta/passages.py` and not here. That split happened when
+retrieval became the second consumer: a snippet shown to a drafting
+agent *as evidence* is under the same constraint as a passage shown to a
 reviewer, and the two must not answer "what does this source say here?"
 from different text. `citation_provenance` still owns everything above
-the ladder -- which sentence carries a citation, how it scores, how the
+the ladder: which sentence carries a citation, how it scores, how the
 report reads.

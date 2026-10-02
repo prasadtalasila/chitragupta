@@ -11,9 +11,8 @@ decide what is worth building.
 `python -m chitragupta.enrich --stages embed,bertopic`, or wondering why a
 draft cited a paper they didn't expect. **Assumed:** you have run
 `python -m chitragupta.corpus sync` and have a populated ledger. **Not
-covered:** how to
-tune any of them -- see [CONFIG.md](CONFIG.md) for the settings and
-[PERFORMANCE.md](PERFORMANCE.md) for what each costs.
+covered:** how to tune any of them; see [CONFIG.md](CONFIG.md) for the
+settings and [PERFORMANCE.md](PERFORMANCE.md) for what each costs.
 For how this pipeline's choices compare with six other RAG systems,
 stage by stage, see [RAG.md](RAG.md).
 
@@ -25,7 +24,7 @@ stage by stage, see [RAG.md](RAG.md).
 | Question it answers | which sources match this query? | *the same question* | what clusters exist in my corpus? |
 | Takes a query | yes | yes | **no** |
 | Method | Okapi BM25 over whitespace tokens | dense vectors, cosine distance | UMAP then HDBSCAN over one vector per document |
-| Unit of a hit | a whole document, or **one paragraph** -- the caller picks ([below](#-the-passage-unit)) | a 200-word chunk | a whole document |
+| Unit of a hit | a whole document, or **one paragraph**; the caller picks ([below](#-the-passage-unit)) | a 200-word chunk | a whole document |
 | Corpus | ledger rows only, so every hit is citable | *the same* | *the same* |
 | Needs | stdlib, bare `python` | venv + `enrich` group + a model download | venv + `enrich` group |
 | Used by | every genre skill, by default | `survey-writer`, `deep-research` (only if built) | **nothing in this repository** |
@@ -92,34 +91,33 @@ Two properties matter when you compare it with the alternative:
   `content/parsed/<citekey>.txt`, plus the `<citekey>.passages.json`
   sidecar beside it that says where that document's reference list starts
   ([below](#-a-papers-own-bibliography-is-not-indexed)). Running
-  the enrichment layer's `docling` stage does not improve BM25 --
+  the enrichment layer's `docling` stage does not improve BM25:
   `content/docling/` is not on its read path, and the sidecar BM25 reads
   is deliberately the corpus layer's, not that layer's richer one. The
-  only way Docling's output reaches keyword
-  retrieval is `[parser].backend = "docling"` in the corpus layer, which
-  changes what
+  only way Docling's output reaches keyword retrieval is
+  `[parser].backend = "docling"` in the corpus layer, which changes what
   `sync` writes into `content/parsed/`. (That choice also decides whether
   a claim can be quoted from a real paragraph or only located to a page:
   see [CITATION-PROVENANCE.md](CITATION-PROVENANCE.md#-what-the-corpus-layer-keeps-when-it-uses-docling).)
 
 Term-frequency statistics are cached to `content/retrieval_index.json`,
 keyed by a cheap per-document fingerprint (title, `parsed_path`, ledger
-`status`, and the parsed file's size and mtime -- not its content), so a
+`status`, and the parsed file's size and mtime, but not its content), so a
 call only re-tokenizes documents whose text changed or whose ledger
 status moved off `parsed`.
 
-**A tokenizer edit rebuilds the index without anyone remembering to.**
-The cache's version is a hand-bumped number joined to a digest of the
+Editing the tokenizer rebuilds the index without anyone having to
+remember to. The cache's version is a hand-bumped number joined to a digest of the
 floor and stopwords in `chitragupta/_tokens.py`'s `INDEX` setting, and
 `content/retrieval_passage_index.json` carries the same digest, so
 editing either invalidates both files together (issue 845). The number
 is kept for rule changes that are not vocabulary, such as the decoding
 rule below.
 
-**A document whose parsed file is missing is counted, not hidden.** A row
-the ledger calls `parsed` whose `.txt` is gone -- a `content/parsed/`
-restored from a partial backup, say -- is indexed on its title alone, and
-the CLI says how many there are, on stderr beside its other notes:
+A row the ledger calls `parsed` whose `.txt` is gone (a
+`content/parsed/` restored from a partial backup, say) is indexed on its
+title alone. Such rows are counted rather than hidden: the CLI says how
+many there are, on stderr beside its other notes:
 
 ```text
   [note] 2 parsed source(s) have no parsed text on disk and were ranked
@@ -142,7 +140,7 @@ k1 = 1.5
 b = 0.75
 ```
 
-`k1` is how fast a term's frequency saturates — how much the ninth
+`k1` is how fast a term's frequency saturates: how much the ninth
 mention of a word adds over the first. `b` is how strongly a document's
 score is normalized by its length, from 0 (not at all) to 1 (in full).
 Both also govern the [passage unit](#-the-passage-unit), which shares the
@@ -152,32 +150,33 @@ rejected when the config loads: past 1, `b` makes the normalizer
 sign of BM25's denominator and ranks a paper containing your term below
 one that does not.
 
-**1.5 and 0.75 are the textbook values, and they were swept rather than
-assumed.** They come from TREC-era ad-hoc retrieval over news and web
-collections; this corpus is a few hundred academic PDFs running from a
-four-page paper to a whole book, which is the length spread `b` exists
+1.5 and 0.75 are the textbook values, and they were swept here, not
+taken on trust. They come from TREC-era ad-hoc retrieval over news and
+web collections; this corpus is a few hundred academic PDFs running from
+a four-page paper to a whole book, which is the length spread `b` exists
 for. The sweep (`bench/RESULTS.md`, 2026-09-17) moved one parameter at a
 time at k in {3, 5, 10}, and found two different things:
 
 - **`b` has no better value here.** 0.75 is the recall@5 peak.
   Everything below it loses monotonically at all three cutoffs, and the
   two settings above it trade a query at one cutoff for a query at
-  another — `1.0` gains one at k = 3 and gives back two at k = 5. Read on
+  another: `1.0` gains one at k = 3 and gives back two at k = 5. Read on
   nDCG alone either would have looked like a small win, which is why
   three cutoffs were measured.
 - **`k1` prefers 8.0, and was left at 1.5 anyway.** On the one ground
   truth the measuring host could build, `k1 = 8` is worth 7 queries of
-  recall@5 and +0.0218 nDCG@5 — a real peak, not a grid edge. But that
+  recall@5 and +0.0218 nDCG@5, a real peak and not a grid edge. But that
   ground truth asks a paper's own author keywords to find that paper,
   so "let raw repetition count for more" is the change it is built to
   reward, and the independent arm of real drafting queries was
-  unavailable. A large gain on the circular arm alone is not a default.
+  unavailable. A large gain on the circular arm alone is not enough to
+  make a default.
 
-**So the right value for your corpus is an open question this one cannot
-answer.** Raise `k1` if a paper genuinely about your query keeps losing
-to one that merely mentions it a lot. Lower `b` if short documents win on
-brevity rather than relevance, raise it if long ones win on size. Read
-the table in `bench/RESULTS.md` before either.
+This corpus cannot tell you the right value for yours. Raise `k1` if a
+paper genuinely about your query keeps losing to one that merely
+mentions it a lot. Lower `b` if short documents win on brevity rather
+than relevance, raise it if long ones win on size. Read the table in
+`bench/RESULTS.md` before either.
 
 ### ⚖ Title and abstract can outweigh body text
 
@@ -192,10 +191,10 @@ weight_abstract = 1.0
 ```
 
 The weighted term frequency is a delta on the ordinary one, applied once
-before BM25's saturation — `tf + (weight - 1) × tf_in_field`. Two
+before BM25's saturation: `tf + (weight - 1) × tf_in_field`. Two
 consequences are worth knowing before you turn a dial:
 
-- **1.0 is not an approximation of "off". It is off**, exactly: every
+- **1.0 means off, exactly**, not approximately: every
   added term is multiplied by zero, so the ranker never reads a field
   count at all and the scores are bit-identical to a build without the
   feature. Above 1.0 the field counts for more; 0.0 discounts it
@@ -206,35 +205,35 @@ consequences are worth knowing before you turn a dial:
   document length the moment any weight left 1.0, so "1.0 changes
   nothing" would stop being true and no measurement would have a
   baseline. The cost is that a weight raises a document's score without
-  raising its modelled length; the baseline is worth more.
+  raising its modelled length, a cost accepted to keep the baseline.
 
 **`weight_abstract` needs a structural passage sidecar, and the shipped
 `[parser].backend` is `pdftotext`, which writes none.** On a default
 install there is no abstract for it to weight and the setting is
 silently inert; `[parser].backend = "docling"` is what makes it live.
-`weight_title` always applies — a title comes from the ledger. The
-abstract is read from the corpus layer's own sidecar and never from
-`content/docling/`, which is what keeps the promise
+`weight_title` always applies, because a title comes from the ledger.
+The abstract is read from the corpus layer's own sidecar and never from
+`content/docling/`, which keeps the promise
 [above](#-bm25----the-default-and-always-available) that running the
 enrichment layer does not change what BM25 ranks.
 
-**Both ship at 1.0, and that is a measurement rather than caution.**
-Swept over both BM25 ground truths on this project's own corpus
-(`bench/RESULTS.md`, 2026-09-15): title weighting is weakly positive at
-2.0 on both arms (nDCG +0.0025 and +0.0029, no recall lost) but the gain
-on real drafting queries is **one query in 96**, and the two arms
-disagree in sign at higher weights. Abstract weighting leaves recall
-**unchanged at every weight** on the independent arm and costs 1–4
-queries on the other, with the field populated for 318 of 642 items — so
-that is a result about the field, not about coverage. No value was
-supported by both arms, so none was adopted. Read that table before
-setting either dial on your own corpus; the right value there is an
-empirical question this one cannot answer for you.
+Both ship at 1.0 because a sweep measured it, not out of caution. Swept over both
+BM25 ground truths on this project's own corpus (`bench/RESULTS.md`,
+2026-09-15), title weighting is weakly positive at 2.0 on both arms
+(nDCG +0.0025 and +0.0029, no recall lost), but the gain on real
+drafting queries is **one query in 96**, and the two arms disagree in
+sign at higher weights. Abstract weighting leaves recall **unchanged at
+every weight** on the independent arm and costs 1–4 queries on the
+other. The field is populated for 318 of 642 items, so that is a result
+about the field, not about coverage. No value was supported by both
+arms, so none was adopted. Read that table before setting either dial on
+your own corpus, where only your own measurement can give the right
+value.
 
 ### 🔤 An acronym in the query can reach the words it stands for
 
 BM25 is exact-match lexical, so a query for `DT fidelity` reaches no
-paper that spells "digital twin" out and never abbreviates it — which in
+paper that spells "digital twin" out and never abbreviates it, which in
 a digital-twin corpus is most of them. Query-side acronym expansion
 (#789) adds the expansion's words to the query's terms:
 
@@ -243,36 +242,36 @@ a digital-twin corpus is most of them. Query-side acronym expansion
 acronym_expansion = true
 ```
 
-**On by default, and a switch rather than a dial.** An added term counts
-exactly as much as one you typed. That is measured, not assumed: an
-earlier revision made it a weight, and sweeping 0.25 / 0.5 / 1.0 of a
-typed term's weight put full weight ahead on every figure it moved, which
-leaves a dial whose only supported setting is its maximum. Switched off,
-nothing is added and the ranking is the one this layer produced before
-the feature existed — structurally, since `expand` returns before it even
-loads a vocabulary.
+It is on by default, and it is a switch with no weight: an added term
+counts exactly as much as one you typed. An earlier revision made it a
+weight, and sweeping 0.25 / 0.5 / 1.0 of a typed term's weight put full
+weight ahead on every figure it moved, which leaves a dial whose only
+supported setting is its maximum. Switched off, nothing is added and the
+ranking is the one this layer produced before the feature existed. That
+holds structurally, since `expand` returns before it even loads a
+vocabulary.
 
 The vocabulary is the one the drafting layer already reads:
 `assets/style/acronyms.toml` merged with your own file at
 `content/acronyms.toml`, which `chitragupta init` writes for you and
 `dossier acronyms-suggest <draft> --apply` grows from a draft's own
-glossary. **That choice is the point, not a convenience.** It is authored
-rather than derived, so expansion cannot make a ranking depend on whether
-an optional enrichment stage has run — the promise
+glossary. The choice is deliberate: the vocabulary is authored rather
+than derived, so expansion cannot make a ranking depend on whether an
+optional enrichment stage has run. That keeps the promise
 [above](#-bm25----the-default-and-always-available) that this layer never
 reads `content/docling/` or any model output. Nothing about expansion
 touches the index either, so there is no rebuild and a vocabulary edit
 takes effect on the next query.
 
-**What it can and cannot do.** A query saying `DT` reaches documents
-saying "digital twin". A query saying "digital twin" still cannot reach a
-document that only ever writes `DT` — that would be document-side
+Expansion works in one direction. A query saying `DT` reaches documents
+saying "digital twin", but a query saying "digital twin" still cannot
+reach a document that only ever writes `DT`: that would be document-side
 expansion, which would rewrite the index on every edit of the acronym
-file. A word you typed yourself is never added a second time. And a
+file. A word you typed yourself is never added a second time. A
 one-character acronym can never expand, because the token floor drops it
 from the query before expansion sees it.
 
-**The CLI says what it added**, on stderr beside its other query notes,
+The CLI says what it added, on stderr beside its other query notes,
 and `--log` writes the same string to the dossier's `retrieval.md`
 `expanded` column:
 
@@ -282,8 +281,8 @@ and `--log` writes the same string to the dossier's `retrieval.md`
 
 #### What it is worth, and what it costs
 
-Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), and
-the headline is a caveat: **on the shipped vocabulary alone, nothing
+Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), the
+first result is a caveat: **on the shipped vocabulary alone, nothing
 happens.** Zero of 256 self-retrieval queries and zero of 96 live-logged
 drafting queries contain one of the five vendored acronyms, so every
 figure is the baseline's exactly. A domain vocabulary read off a real
@@ -292,9 +291,9 @@ structural reason: a keyword list or a typed query that uses an acronym
 almost always spells the term out beside it, and expansion never re-adds
 a word you already typed.
 
-So the mechanism was measured on a **derived** set — the self-retrieval
-queries with each expansion phrase rewritten to its acronym, 149 rows of
-which 106 expand — which is the only set here that can see it at all:
+So the mechanism was measured on a derived set, the only one here that
+can see it at all: the self-retrieval queries with each expansion phrase
+rewritten to its acronym, 149 rows of which 106 expand.
 
 | arm | recall@1 | recall@5 | MRR@5 | nDCG@5 | mean query-term DF |
 | --- | --- | --- | --- | --- | --- |
@@ -302,36 +301,38 @@ which 106 expand — which is the only set here that can see it at all:
 | **on** | **0.5943** | 0.7925 | **0.6753** | **0.7049** | 292.1 |
 
 Figures over the 106 expanded rows; over all 149, expansion makes **8
-queries better and 2 worse**. The gain is in **rank, not reach** —
-recall@5 does not move while recall@1 and nDCG@5 rise, so the added terms
-are mostly lifting the right paper above papers the query already
-reached. The cost is the last column: the mean document frequency of a
-query's terms rises 264 → 292, because "digital" and "twin" are in far
-more of this corpus than `DT` is. On a corpus where your expansion words
-are ambient, that trade may not pay — this is the dial to reach for, and
-the figures to judge it by.
-**There is no `weight_caption` or `weight_table`, and that is measured
-too.** Issue #770 proposed both, on the argument that a caption and a
+queries better and 2 worse**. The gain is in rank, not reach: recall@5
+does not move while recall@1 and nDCG@5 rise, so the added terms are
+mostly lifting the right paper above papers the query already reached.
+The cost is the last column: the mean document frequency of a query's
+terms rises 264 → 292, because "digital" and "twin" are in far more of
+this corpus than `DT` is. On a corpus where your expansion words are
+ambient, that trade may not pay; this switch is the one to reach for
+then, and these are the figures to judge it by.
+
+There is no `weight_caption` or `weight_table`, and that was measured
+too. Issue #770 proposed both, on the argument that a caption and a
 table's cells are the paper's actual result in its most compressed form.
 
-A **caption** field cannot be built at all: the corpus layer's passage
-sidecar carries no `caption` label — figure captions are deliberately
-left out of it, so that a claim cannot "match" a journal name repeated on
-all seventeen pages — and there are zero caption records across this
-corpus's 497 sidecars. A weight over an empty field is not a
-configuration change; it is a reversal of that decision plus a re-parse.
+A **caption** field cannot be built at all. The corpus layer's passage
+sidecar carries no `caption` label (figure captions are deliberately
+left out of it, so that a claim cannot "match" a journal name repeated
+on all seventeen pages), and there are zero caption records across this
+corpus's 497 sidecars. A weight over an empty field would need that
+decision reversed and the corpus re-parsed, which is more than a
+configuration change.
 
 A **table** field was built and swept, and both ground truths agree it
 hurts: every weight above 1.0 loses nDCG on both, monotonically, costing
 up to five queries in 256 (`bench/RESULTS.md`, 2026-09-17). The issue's
-premise does not hold here either — a table record on this corpus
+premise does not hold here either: a table record on this corpus
 averages 219 words, *longer* than an abstract, because the markdown
 export carries its pipes and header text. So there is nothing short and
 dense to rescue from length normalization. Nothing in `chitragupta/`
 carries a table field; the arms live in the bench harness.
 
-**Tables still reach a drafting session, by two paths no weight is
-involved in** — a window that lands in one is
+Tables still reach a drafting session by two paths that involve no
+weight: a window that lands in one is
 [widened to the whole table](#-a-window-that-lands-in-a-table-keeps-the-whole-table),
 and the [passage unit](#-the-passage-unit) ranks and returns a table
 record verbatim. Declining the field changed neither.
@@ -339,14 +340,14 @@ record verbatim. Declining the field changed neither.
 ### 🔡 Where the token-length floor came from
 
 A token shorter than **two characters** is not indexed and not scored,
-on either side. Two is a measurement, not a default: the floor was three
+on either side. Two was chosen by measurement. The floor was three
 until #790, which put `AI`, `ML`, `DT`, `5G` and `QA` outside the index
 entirely, so a search for one of them returned nothing and the CLI could
 only warn that it would.
 
 Swept by `bench/bench_retrieval_token_floor.py` over 258 author-keyword
 self-retrieval queries (2026-09-16), **on the 32 queries whose own terms
-the floor actually changes**:
+the floor changes**:
 
 | floor | recall@1 | recall@5 | MRR@5 | nDCG@5 |
 | --- | --- | --- | --- | --- |
@@ -355,11 +356,11 @@ the floor actually changes**:
 
 Six of those 32 queries rank their own paper better and one worse. Over
 all 258, where most queries carry no short word at all, the same change
-is recall@5 0.8101 → 0.8178 and nDCG@5 0.7254 → 0.7319 — smaller,
-because it is the same handful of queries averaged over eight times as
-many.
+is recall@5 0.8101 → 0.8178 and nDCG@5 0.7254 → 0.7319. The gain is
+smaller because it is the same handful of queries averaged over eight
+times as many.
 
-**Read both columns, because the unaffected queries are not a control.**
+Read both columns, because the unaffected queries are not a control.
 A lowered floor admits tokens to every *document*, so the mean document
 grows from 5,479 tokens to 5,870, and document length is what BM25
 divides by. Queries that never changed a term therefore move too: over
@@ -367,119 +368,118 @@ the whole set the change is 7 better against 4 worse, where the affected
 subset alone is 6 against 1. The difference between those two pairs is
 the collateral cost of renormalizing every document.
 
-**It forced one fix beyond the tokenizer, in window selection.**
-`_windows` -- which chooses the snippet `search` shows and the passage
-`evidence` returns -- used to anchor on `str.find`, a substring search. A
-three-character term made that a rare nuisance; a two-character one makes
-it routine, because "ai" sits inside maintainer, said, detail, fair and
-failed. Measured across the queries this change enables, 37 of 134
-appearances of a two-character term in a returned snippet were
-substring-only, meaning the snippet did not contain the word the reader
-searched for. Anchoring and scoring now match on a word boundary, which
-brings that to 18 -- and those remaining are incidental: the window is
-chosen on a real word match and the short string merely also occurs
-somewhere in its 500 characters. The boundary is the **tokenizer's**,
-written as lookarounds over `[a-z0-9]` rather than as Python's `\b`:
-`\b` also treats an underscore and an accented letter as word
-characters, so `ai_model` -- which the index counts as `ai` and `model`
--- would rank and then yield no window at all. "co" matches in
+The change also forced one fix outside the tokenizer, in window
+selection. `_windows`, which chooses the snippet `search` shows and the
+passage `evidence` returns, used to anchor on `str.find`, a substring
+search. A three-character term made that a rare nuisance; a
+two-character one makes it routine, because "ai" sits inside maintainer,
+said, detail, fair and failed. Measured across the queries this change
+enables, 37 of 134 appearances of a two-character term in a returned
+snippet were substring-only, meaning the snippet did not contain the
+word the reader searched for. Anchoring and scoring now match on a word
+boundary, which brings that to 18, and those remaining are incidental:
+the window is chosen on a real word match and the short string merely
+also occurs somewhere in its 500 characters. The boundary is the
+tokenizer's, written as lookarounds over `[a-z0-9]` rather than as
+Python's `\b`. `\b` also treats an underscore and an accented letter as
+word characters, so `ai_model` (which the index counts as `ai` and
+`model`) would rank and then yield no window at all. "co" matches in
 "co-simulation" and not in "control", exactly as the index counted it.
 
-**What it costs on disk and on the clock**, measured on the same
-646-item corpus when the schema bump forced the rebuild:
-`content/retrieval_index.json` grows 2.8%, from 12,244,618 to 12,586,273
-bytes, and the whole re-tokenization takes about 7 seconds once. The
-on-disk growth is far below the 7.1% growth in tokens because the added
-tokens are repeats of a small vocabulary and the file stores counts, not
-occurrences.
+On disk and on the clock, measured on the same 646-item corpus when the
+schema bump forced the rebuild, `content/retrieval_index.json` grows
+2.8%, from 12,244,618 to 12,586,273 bytes, and the whole re-tokenization
+takes about 7 seconds once. The on-disk growth is far below the 7.1%
+growth in tokens because the added tokens are repeats of a small
+vocabulary and the file stores counts, not occurrences.
 
-**It stopped at 2 because 1 was measured and bought nothing.** At floor 1
-recall@5 lands on the same 0.8178, nDCG@5 slightly below floor 2's, and
-the mean document grows another 5.9% to 6,216 tokens — 13.5% above where
-it started. What floor 1 admits is visible in why: of the 1,016 tokens the
-two lowered floors add, the most widespread are `1`, `3`, `2`, `4`, `s`,
-`e`, `i` and `g`, sitting in 449–501 of 646 documents apiece. Those are
-list markers, figure numbers and OCR fragments, and IDF makes them nearly
-free rather than positively useful.
+The floor stopped at 2 because floor 1 was measured and bought nothing.
+At floor 1 recall@5 lands on the same 0.8178, nDCG@5 slightly below
+floor 2's, and the mean document grows another 5.9% to 6,216 tokens,
+13.5% above where it started. What floor 1 admits shows why: of the
+1,016 tokens the two lowered floors add, the most widespread are `1`,
+`3`, `2`, `4`, `s`, `e`, `i` and `g`, sitting in 449–501 of 646
+documents apiece. Those are list markers, figure numbers and OCR
+fragments, and IDF makes them nearly free rather than positively useful.
 
-**The issue's own premise did not survive the measurement, and the
-conclusion held anyway.** #790 argued that short stopwords are already
-excluded by the stopword list, "so the floor's entire remaining effect is
-to discard short *content* words". On this corpus it is not: retrieval
+The issue's own premise did not survive the measurement, though its
+conclusion held. #790 argued that short stopwords are already excluded
+by the stopword list, "so the floor's entire remaining effect is to
+discard short *content* words". On this corpus it is not: retrieval
 imports a 19-word core list, and the floor was the only thing keeping
-`or`, `it`, `if`, `no`, `we`, `up`, `so` and `do` — each in 400–500 of
-646 documents — out of the index. Lowering it admits all of them. That
+`or`, `it`, `if`, `no`, `we`, `up`, `so` and `do` (each in 400–500 of
+646 documents) out of the index. Lowering it admits all of them. That
 they cost nothing measurable is the issue's *other* argument being right:
 a term that appears everywhere earns a low IDF on its own, and no
 word list had to be grown to handle it.
 
-**Every dossier's recorded queries re-rank**, exactly as they did for the
+Every dossier's recorded queries re-rank, exactly as they did for the
 reference cut in #768. A drift report compares a draft's recorded
 retrieval against what the corpus returns now, so the first
 `chitragupta draft dossier status --all` after this lands reports
 movement on drafts nobody edited. That is the schema bump showing
 through, not a draft going stale, and it settles on the next run.
 
-**What this has not been measured against.** One ground truth, and one
-that leans toward the change: a self-retrieval query is a paper's own
+This was measured against one ground truth, and one that leans toward
+the change: a self-retrieval query is a paper's own
 `keywords` field, where an acronym appears as a standalone token far more
-often than in the prose a person actually types. That inflates how *often*
+often than in the prose a person types. That inflates how *often*
 the floor helps rather than which direction it moves, which is why the
 affected-subset counts are reported beside the means. The independent
 live-logged set that decided #762 and #787 could not be built when this
-ran — it needs a restored book's own retrieval logs, gitignored per-host
-data absent from this host — so the confirmation those two entries had,
-this one does not. `bench/RESULTS.md`'s 2026-09-16 entry carries the full
-tables and the argument.
+ran (it needs a restored book's own retrieval logs, gitignored per-host
+data absent from this host), so this entry lacks the confirmation those
+two had. `bench/RESULTS.md`'s 2026-09-16 entry carries the full tables
+and the argument.
 
 ### 📚 A paper's own bibliography is not indexed
 
 A reference list is dozens of *other* papers' titles sitting inside this
 one's body text, so a short query naming a subject used to match the
 bibliography of every paper that merely cites work on it. On the corpus
-this was measured against, **792,963 of 4,231,367 indexed tokens --
-18.7%** -- sat after a reference heading; the median document gave up
+this was measured against, **792,963 of 4,231,367 indexed tokens
+(18.7%)** sat after a reference heading; the median document gave up
 17.9% of its tokens to one and the worst gave up 80.8%. It cost twice:
 spurious term frequencies, and an inflated document length, so a paper
 with a long bibliography was penalised by BM25's own length
 normalization for text that is not its own.
 
 The indexed text therefore stops at that heading, and so does every
-snippet and every `evidence` window -- one cut in
-`chitragupta/_reference_cut.py`, applied where all three read their text,
-because a snippet quoting a reference list is evidence of nothing.
+snippet and every `evidence` window. One cut in
+`chitragupta/_reference_cut.py` is applied where all three read their
+text, because a snippet quoting a reference list is evidence of nothing.
 
-**What identifies the span, since no label does.** Docling has no
-`reference` label -- the same caveat [TLDR.md](TLDR.md) records about
-there being no `abstract` one. So the cut is structural: a
+No label identifies the span: Docling has no `reference` label, the
+same caveat [TLDR.md](TLDR.md) records about there being no `abstract`
+one. So the cut is structural: a
 `section_header` passage in `content/parsed/<citekey>.passages.json`
 whose text *is* `References` / `Bibliography` / `Works Cited` /
 `Literature Cited` (optionally numbered), and everything from the last
 such heading to the end of the document. A heading that merely starts
-with the word -- "Reference architecture" -- is not one, and neither is
+with the word ("Reference architecture") is not one, and neither is
 the same word carrying a different label.
 
-**It is backend-dependent, and that is licensed rather than overlooked.**
-A `pdftotext` parse leaves no sidecar, so those items are indexed exactly
-as before. 459 of 497 parsed items here have a locatable heading; the
-other 38 are untouched. `_INDEX_SCHEMA_VERSION` moved to 2, so every
-cache entry written under the old rule is discarded rather than mixed
-with new ones. `dossier status` scores drift from this same index
-([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), so the first sweep after this
-arrived can surface candidates on a draft nobody edited: what moved is
-what the corpus now looks like to BM25, which is exactly what that report
-is for.
+The cut depends on the backend, by design. A `pdftotext` parse leaves no
+sidecar, so those items are indexed exactly as before. 459 of 497 parsed
+items here have a locatable heading; the other 38 are untouched.
+`_INDEX_SCHEMA_VERSION` moved to 2, so every cache entry written under
+the old rule is discarded rather than mixed with new ones.
+`dossier status` scores drift from this same index
+([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), so the first sweep after
+this arrived can surface candidates on a draft nobody edited: what moved
+is what the corpus now looks like to BM25, which is what that report is
+for.
 
-**What the rule costs, measured rather than assumed.** On 79 of those 459
-a heading follows the cut -- overwhelmingly `Acknowledgements`,
-`Competing interests`, `Author contributions` and author biographies,
-which is why "to the end of the document" is the right rule here and not
-a lazy one. Two outliers pay for it with real prose: a working paper
-whose appendix tables follow its references, and a report whose last
-chapter bibliography is followed by workshop summaries. A book with a
-bibliography per chapter keeps every chapter's but the last.
+The rule's cost was measured. On 79 of those 459 a heading follows the
+cut, overwhelmingly `Acknowledgements`, `Competing interests`,
+`Author contributions` and author biographies, which is why "to the end
+of the document" is the right rule here. Two outliers pay for it with real
+prose: a working paper whose appendix tables follow its references, and
+a report whose last chapter bibliography is followed by workshop
+summaries. A book with a bibliography per chapter keeps every chapter's
+but the last.
 
-**Retrieval quality, before and after**, on the same two arms
+Retrieval quality before and after, on the same two arms
 `bench/bench_retrieval_keyword_selfretrieval.py` and
 `bench/bench_retrieval_live_logs.py` score everything else with, BM25 row
 only:
@@ -489,38 +489,37 @@ only:
 | keyword self-retrieval | 256 | 0.8086 → **0.8086** | 0.7296 → **0.7150** |
 | live drafting logs | 96 | 0.8542 → **0.8646** | 0.4729 → **0.4526** |
 
-Read that honestly: recall is flat on one arm and up a little on the
+Recall is flat on one arm and up a little on the
 other, and nDCG slips on both. Per query, the self-retrieval arm moves 37
 of 236 distinct queries (16 better, 21 worse) and the live-logs arm 54 of
 96 (19 better, 35 worse), so the aggregate is rank swaps inside the top
 five rather than sources appearing or vanishing. The self-retrieval arm
-is biased against the cut for a specific reason -- its query is a paper's
+is biased against the cut for a specific reason: its query is a paper's
 own keywords, and a paper's own bibliography is full of them, so removing
 it removes a signal that particular ground truth rewards.
 
-**What those two arms structurally cannot score is where the gain is.**
-Both rank *papers*, and the ranking barely moves, because a paper that
+The gain is in what those two arms structurally cannot score. Both rank
+*papers*, and the ranking barely moves, because a paper that
 matches in its bibliography almost always matches in its body too: of the
 1,760 top-five hits across both arms, **not one** matched only in its
 reference list, so no result slot was being wasted. What moves is the
 text handed back. Of the snippets those same hits returned before the
 cut, **235 of 1,241 (18.9%)** on the self-retrieval arm and **42 of 455
-(9.2%)** on the live-logs arm were cut from a reference list -- author
+(9.2%)** on the live-logs arm were cut from a reference list: author
 lists, DOIs and journal titles offered to a drafting agent as the
 evidence for citing that paper. After the cut that is zero by
 construction, which is the checklist item neither recall nor nDCG can
 see.
 
-**Zero for the documents the cut reaches, which is not all of them.** A
-`pdftotext` parse, or a docling parse with no locatable heading, is
-indexed whole, so a snippet from one can still be a reference list. That
-residual is bounded rather than hoped at: such documents are **67 of
-1,280 (5.2%)** and **20 of 480 (4.2%)** of the top-five hits on the two
-arms. Note also what this does *not* touch -- an in-text citation in a
-paper's own prose is that paper's text and stays in the snippet. What
-goes is the reference section, not the act of citing.
+That zero holds only for the documents the cut reaches. A `pdftotext`
+parse, or a docling parse with no locatable heading, is indexed whole,
+so a snippet from one can still be a reference list. That residual has a
+measured bound: such documents are **67 of 1,280 (5.2%)** and **20 of
+480 (4.2%)** of the top-five hits on the two arms. The cut does not
+touch an in-text citation in a paper's own prose, which is that paper's
+text and stays in the snippet; only the reference section goes.
 
-Two further figures explain the rank churn rather than excusing it. The
+Two further figures explain the rank churn. The
 median top-five hit *gains* 6.4% (self-retrieval) and 3.6% (live logs) of
 its score, because dropping the bibliography drops a length-normalization
 penalty it was paying; only 27 and 13 hits respectively lose more than a
@@ -541,16 +540,16 @@ Both `search` and `evidence` now go through one chooser. Candidate
 windows are anchored on every occurrence of every term **as a whole
 word**, scored by how many *distinct* query terms fall inside on the same
 word-boundary rule, de-overlapped, and returned in
-document order. That boundary is the tokenizer's own -- lookarounds over
-`[a-z0-9]`, not Python's `\b`, which would disagree about an underscore
--- so a term is found in the window exactly where the index counted it
-([above](#-where-the-token-length-floor-came-from) has what that was
-worth). Ties break on position. Nothing reads the set's order, so
-the result is deterministic by construction -- and it is the
+document order. That boundary is the tokenizer's own (lookarounds over
+`[a-z0-9]`, not Python's `\b`, which would disagree about an
+underscore), so a term is found in the window exactly where the index
+counted it ([above](#-where-the-token-length-floor-came-from) has what
+that was worth). Ties break on position. Nothing reads the set's order,
+so the result is deterministic by construction. It is also the
 best-covering passage rather than an arbitrary one, so a passage late in
 a long paper is reachable.
 
-This mattered enough to fix on its own, and it mattered more than it
+This was worth fixing on its own, and it mattered more than it
 looked: [REJECTION.md](REJECTION.md) describes an arrangement, since
 removed, in which a short window was the sole basis for *rejecting* a
 source. An irreproducible snippet there meant an irreproducible
@@ -559,27 +558,27 @@ rejection.
 ### 📊 A window that lands in a table keeps the whole table
 
 Docling serialises tables as Markdown pipe tables, and 274 of 497 parsed
-texts in the corpus this was measured against contain one -- so BM25 has
+texts in the corpus this was measured against contain one, so BM25 has
 always indexed their cell text. What it could not do was hand one back
 usefully. A real row here measures **~450 characters** against a
 500-character default window, so a hit inside a table returned a fragment
 cut through the middle of a single row, and the header row naming the
-columns -- most of why the table was worth retrieving -- was in a
-different window or absent entirely.
+columns (most of why the table was worth retrieving) was in a different
+window or absent entirely.
 
 A chosen window that touches a run of two or more consecutive lines
 beginning with `|` therefore widens to that whole block, and the block is
 rendered **line by line** rather than through the usual whitespace
 normalisation, which would otherwise collapse every row onto one line. A
 window that touches no such block is byte-identical to what it was
-before; this is invisible to the callers it does not serve, which is most
-of them. `chitragupta/retrieval_tables.py` owns it.
+before, so most callers see no change. `chitragupta/retrieval_tables.py`
+owns it.
 
-Two consequences worth knowing:
+Two consequences follow:
 
 - **A table hit can exceed the requested width**, capped at 4000
   characters. Over the cap, whole rows are dropped from the end rather
-  than the block being cut mid-row -- the header row is first, so it is
+  than the block being cut mid-row; the header row is first, so it is
   the last thing to go.
 - **Fewer windows may come back than were asked for.** Two windows that
   each caught a different corner of the same table are not overlapping
@@ -593,25 +592,25 @@ Two consequences worth knowing:
 python -m chitragupta.draft retrieve evidence "<query>" --citekey <key>
 ```
 
-Returns the passages of that one document which bear on the query --
-2 x 600 characters by default, more text than a snippet and chosen for
-the query rather than for where a term first appeared. A passage that
-lands inside a table is widened to the whole table, so it can exceed that
-width -- see [above](#-a-window-that-lands-in-a-table-keeps-the-whole-table).
+Returns the passages of that one document which bear on the query:
+2 x 600 characters by default, more text than a snippet, chosen for the
+query rather than for where a term first appeared. A passage that lands
+inside a table is widened to the whole table, so it can exceed that
+width (see [above](#-a-window-that-lands-in-a-table-keeps-the-whole-table)).
 
-**It is a lookup, not a stage.** Nothing is obliged to call it; a caller
+It is a lookup, not a stage: nothing is obliged to call it, and a caller
 satisfied by a `search` snippet is done. Use it when a snippet is not
-enough to judge a source you are minded to cite -- that is, to make an
+enough to judge a source you are minded to cite, that is, to make an
 *acceptance* more careful. Being more careful about a source you are
 about to cite cannot lose you one you never saw, which is the direction
 that makes this safe. [REJECTION.md](REJECTION.md) has the argument for
-why the reverse -- using a cheap read to reject more -- was tried and
+why the reverse (using a cheap read to reject more) was tried and
 withdrawn.
 
 Both subcommands take `--log <draft>`, which appends the call and the
-size of its payload to that draft's dossier (`retrieval.md` -- see
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md)). That is what makes the cost of
-retrieval for a given draft a measurement rather than an estimate.
+size of its payload to that draft's dossier (`retrieval.md`; see
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md)). That log is how the cost of
+retrieval for a given draft is measured instead of estimated.
 
 ## 📄 The passage unit
 
@@ -621,10 +620,10 @@ python -m chitragupta.draft retrieve search "<query>" --unit passage
 
 Everything above ranks whole documents. `--unit passage` ranks the corpus
 layer's reading-ordered paragraphs instead, and hands back the paragraph
-that scored -- verbatim, with its page. Same BM25, same corpus, same
-stdlib-only requirement; a smaller unit.
+that scored, verbatim, with its page. It uses the same BM25, the same
+corpus and the same stdlib-only requirement, over a smaller unit.
 
-**It is opt-in, and it should be**, because it trades recall for
+It is opt-in, and it should be, because it trades recall for
 quotability: **recall@5 falls from 0.8086 to 0.6914** on one arm and
 0.8646 to 0.7812 on the other, while the fraction of returned text cut
 mid-sentence falls from 99.8% to 16.4% and every hit gains a page
@@ -632,9 +631,9 @@ number. [The figures are below](#-what-it-costs-measured). So:
 
 | Use `--unit passage` when… | Stay on the default when… |
 | --- | --- |
-| You want a paragraph you can quote, and the page it sits on | You are asking "did this paper argue X?" -- a document-level question |
+| You want a paragraph you can quote, and the page it sits on | You are asking "did this paper argue X?", a document-level question |
 | You already know roughly which papers matter and want their best passage | You are still finding out which papers matter, where recall is the thing that matters |
-| Your corpus is parsed with `[parser].backend = "docling"` | Any part of your corpus was parsed with `pdftotext` -- those sources are [unreachable here](#-what-this-unit-structurally-cannot-return) |
+| Your corpus is parsed with `[parser].backend = "docling"` | Any part of your corpus was parsed with `pdftotext`; those sources are [unreachable here](#-what-this-unit-structurally-cannot-return) |
 
 No genre skill switches to it, and none should on this evidence alone.
 
@@ -651,32 +650,33 @@ and only the first of them is BM25:
 
 So the text a drafting skill is shown as evidence was chosen by a rule
 that had no part in deciding the source was worth showing. The window
-chooser is good at what it does -- it is deterministic and picks the
-best-covering passage rather than an arbitrary one
-([above](#-one-window-chooser-shared-and-deterministic)) -- but it is
-not the ranker, and it cuts at a character count rather than at a
-paragraph.
+chooser is deterministic and picks the best-covering passage rather than
+an arbitrary one ([above](#-one-window-chooser-shared-and-deterministic)),
+but it is not the ranker, and it cuts at a character count rather than
+at a paragraph.
 
-The passage unit collapses the two: **what ranks is what is shown.** The
-page comes along for free, because a sidecar record already carries one.
+The passage unit collapses the two, so what ranks is what is shown. The
+page comes with it at no cost, because a sidecar record already carries
+one.
 
 ### 📚 Where the paragraphs come from
 
-`chitragupta/passages.py`'s rung 2 -- `content/parsed/<citekey>.passages.json`,
-the corpus layer's own parse -- and deliberately not the enrichment
-layer's richer rung 1, because BM25 promises that running
-`chitragupta.enrich` does not change what it ranks. `_reference_cut`'s
+They come from `chitragupta/passages.py`'s rung 2,
+`content/parsed/<citekey>.passages.json`, the corpus layer's own parse.
+The enrichment layer's richer rung 1 is deliberately not used, because
+BM25 promises that running `chitragupta.enrich` does not change what it
+ranks. `_reference_cut`'s
 boundary is read as a *position* in the passage list rather than
 re-derived, so both units cut the bibliography at the same heading.
 
-Two exclusions beyond that, both about BM25's length normalization
-rewarding a short dense match -- harmless when the unit is a whole
-document, and not when it is a paragraph:
+Two further exclusions both concern BM25's length normalization
+rewarding a short dense match, which is harmless when the unit is a
+whole document and not when it is a paragraph:
 
 - **`section_header` and `title` passages are never indexed.** A
   three-word heading whose text *is* your query is the highest-scoring
   object in any passage index that admits it, and it is evidence of
-  nothing. Structural, not configurable.
+  nothing. The exclusion is structural, not configurable.
 - **A passage under `[retrieval].min_passage_tokens` (default 20) is
   not indexed.** This is also what keeps a one-line bibliography entry
   out on the documents whose reference heading could not be located.
@@ -689,8 +689,8 @@ BM25 over-rewards at this scale.
 
 ### 🧢 One paper cannot take the page
 
-The document unit returns one result per citekey by construction -- its
-scores are a dict keyed by citekey -- so its `search()` has never needed
+The document unit returns one result per citekey by construction (its
+scores are a dict keyed by citekey), so its `search()` has never needed
 a cap. A well-matched paper has as many passages as it has paragraphs,
 so this unit does: `[retrieval].max_passages_per_source`, default 3.
 
@@ -711,28 +711,27 @@ passages, shortlisting papers by abstract before ranking their passages,
 lifting a passage by how much vocabulary it shares with its own abstract,
 and dropping abstract passages outright.
 
-**None is supported by both arms**, and the reason is visible in the same
-table. The only rows that gain anywhere move the share of returned
-passages that are *abstract text* from 1.7% to 33%; push harder and the
-share reaches 88% as recall collapses. The mechanism is not finding the
-right paper, it is returning the summary in place of the paragraph --
-which is the substitution this unit exists to prevent. Dropping abstract
-passages is declined too: it costs nine queries on one arm and one on the
-other, so they earn their place at the shipped settings. Leave the
-balance where BM25 put it.
+None is supported by both arms, and the same table shows why. The only
+rows that gain anywhere move the share of returned passages that are
+*abstract text* from 1.7% to 33%; push harder and the share reaches 88%
+as recall collapses. Those rows gain by returning the summary in place
+of the paragraph, not by finding the right paper, and that substitution
+is what this unit exists to prevent. Dropping abstract passages is
+declined too: it costs nine queries on one arm and one on the other, so
+they earn their place at the shipped settings. Leave the balance where
+BM25 put it.
 
 ### 🕳 What this unit structurally cannot return
 
 A citekey parsed by `pdftotext` leaves no passage sidecar, so it is not
-ranked low here -- it is **absent from the index entirely**, however well
-it matches. Falling back to a document-level score for those would put
+merely ranked low here: it is **absent from the index entirely**, however
+well it matches. Falling back to a document-level score for those would put
 two incomparable numbers in one ranking, so the gap is reported instead:
 the CLI counts such sources and names them under the results.
 
 On a corpus parsed with `[parser].backend = "docling"` that count is
 zero. On a `pdftotext` corpus this unit has nothing to search at all,
-which is the honest answer and the reason it is a flag rather than the
-default.
+which is why it is a flag rather than the default.
 
 **Scores from the two units are not comparable.** `N`, every document
 frequency and `avgdl` are computed over passages on one path and over
@@ -743,12 +742,12 @@ list, and nothing should.
 
 On the 497-document corpus this was measured against, the passage index
 holds **47,355 paragraphs**, and a query costs **130 ms against 34 ms**
-for the document unit -- about 3.8x, for an index rebuilt incrementally
+for the document unit, about 3.8x. The index is rebuilt incrementally
 on the same stat-fingerprint terms
 (`content/retrieval_passage_index.json`, its own file and its own schema
 version, because the two indexes are invalidated by different things).
 
-**And it costs recall.** Scored by `bench/bench_retrieval_passage.py` on
+It also costs recall. Scored by `bench/bench_retrieval_passage.py` on
 the same two arms as everything else here, passage hits collapsed to
 citekeys so that recall@5 means the same thing on both rows
 (2026-09-15, shipped defaults: cap 3, floor 20):
@@ -765,7 +764,7 @@ argues your query diffusely across ten paragraphs loses to one that says
 it once, emphatically. Collapsing back to citekeys afterwards cannot
 recover evidence the smaller unit never pooled.
 
-**What it buys, on the same hits:**
+What it buys, on the same hits:
 
 | | document | passage (cap 3) |
 | --- | --- | --- |
@@ -777,10 +776,10 @@ recover evidence the smaller unit never pooled.
 is the feature: a document-unit snippet is a character window, so it is
 cut wherever 500 characters land and essentially always starts or ends
 mid-sentence; a passage is a whole paragraph and mostly does not. The
-residual 16% is real -- Docling splits some paragraphs across a page
+residual 16% is real: Docling splits some paragraphs across a page
 break, and a table or formula record has no sentence to end.
 
-**Read the third row as a loss the cap recovers, not a gain.** The
+Read the third row as a loss the cap recovers, not a gain. The
 document unit is 5.00 of 5 *by construction*, and no cap can beat that.
 At cap 1 the passage unit matches it (5.00) and gives up its second-best
 paragraph per source; at the shipped cap of 3 it recovers 3.72. Source
@@ -789,7 +788,7 @@ spending.
 
 ### 🔢 Where the passage-length floor's default came from
 
-A different floor from the tokenizer's
+This is a different floor from the tokenizer's
 ([above](#-where-the-token-length-floor-came-from)), and the two are
 easy to confuse: that one is the shortest *token* that may be indexed,
 measured in characters, and this one is the shortest *passage*, measured
@@ -798,8 +797,8 @@ in tokens.
 **The sweep below predates #790**, which lowered the tokenizer's length
 floor and so grew every passage's token count by about 7%. The floor of
 20 did not move; what it counts did, so it now admits passages this table
-excluded. The shape of the answer is unaffected -- the arms disagree for
-a reason about their queries, not about a 7% shift -- but the exact
+excluded. The shape of the answer is unaffected (the arms disagree for a
+reason about their queries, not about a 7% shift), but the exact
 crossover has not been re-measured.
 
 Swept on both arms at cap 3, recall@5:
@@ -809,17 +808,17 @@ Swept on both arms at cap 3, recall@5:
 | keyword self-retrieval | **0.7539** | 0.7500 | 0.6914 | 0.7148 |
 | live drafting logs | 0.7083 | 0.7500 | **0.7812** | 0.7708 |
 
-The two arms disagree, and the disagreement is informative rather than
-awkward. The self-retrieval arm's query is *a paper's own author-assigned
-keywords*, which is exactly the text that lands in short passages -- so
-that arm rewards admitting them, for the same reason
+The two arms disagree, and the disagreement is informative. The
+self-retrieval arm's query is *a paper's own author-assigned keywords*,
+which is exactly the text that lands in short passages, so that arm
+rewards admitting them, for the same reason
 [it was biased against the reference cut](#-a-papers-own-bibliography-is-not-indexed).
 The live-logs arm's queries are real drafting questions in prose, and it
 prefers 20.
 
 20 is chosen on the live-logs arm because that is the arm whose queries
-look like the ones this feature will actually serve, and the cost on the
-other arm is stated here rather than omitted. A corpus of unusually
+look like the ones this feature will serve, and the cost on the other
+arm is stated here rather than omitted. A corpus of unusually
 terse prose is a fair reason to lower it.
 
 ## 🧠 Embeddings -- a replacement for BM25, not an addition
@@ -833,39 +832,38 @@ instead of mixing dimensions.
 
 It is designed as a **drop-in**: `search(query, k, snippet_chars)` has the
 same shape as BM25's, so callers do not change. Nothing in this repository
-fuses or re-ranks the two -- there is no hybrid search here. A skill uses
+fuses or re-ranks the two; there is no hybrid search here. A skill uses
 one or the other.
 
-**This ranks chunks, not documents**, so without a check a
-single well-matched paper could fill every one of the `k` slots. `search`
-caps each citekey at `[enrich].embed_max_passages_per_source` (default
-3) chunks among the top `k`, applied to the over-fetched ranked list
-before it is truncated -- so dropping a dominant paper's excess chunks
-promotes another paper's chunk into the result, rather than merely
-shortening it ([CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
+This ranks chunks, not documents, so without a check a single
+well-matched paper could fill every one of the `k` slots. `search` caps
+each citekey at `[enrich].embed_max_passages_per_source` (default 3)
+chunks among the top `k`, applied to the over-fetched ranked list before
+it is truncated, so dropping a dominant paper's excess chunks promotes
+another paper's chunk into the result rather than merely shortening it ([CONFIG.md](CONFIG.md#-enrich----the-optional-enrichment-layer)).
 
-BM25's *document* unit needs no such cap -- it is one-per-citekey by
-construction -- but its [passage unit](#-the-passage-unit) does, and has
+BM25's *document* unit needs no such cap, being one-per-citekey by
+construction, but its [passage unit](#-the-passage-unit) does, and has
 one. The cap belongs to the unit rather than to the ranker, which is why
 the two settings live in different tables and why only this one needs an
 over-fetch multiplier beside it: Chroma truncates its candidate list and
 BM25 does not.
 
-**A cross-encoder can reorder the over-fetched passages before that
-cap, and is off by default.** It improves ordering rather than recall
+A cross-encoder can reorder the over-fetched passages before that
+cap, and is off by default. It improves ordering rather than recall
 and cannot improve source diversity at all, and it makes a search call
 2.5x dearer on a GPU. The stage order, the measurements behind that
 default, and how to choose a `rerank_model` are in
 [CORPUS-SEARCH.md](CORPUS-SEARCH.md), which is this section at the level
 of one `search()` call.
 
-**When it earns its cost.** BM25 cannot match a paper that argues your
-point in different words. If your corpus is large, or written across
-communities that use different vocabulary for the same idea, semantic
-recall is the reason to build this. On a small, vocabulary-consistent
-corpus, BM25 is usually enough -- which is why it stays the default.
+BM25 cannot match a paper that argues your point in different words. If
+your corpus is large, or written across communities that use different
+vocabulary for the same idea, semantic recall is the reason to build
+this. On a small, vocabulary-consistent corpus, BM25 is usually enough,
+which is why it stays the default.
 
-**Every hit is citable, exactly as with BM25.** The enrichment layer
+Every hit is citable, exactly as with BM25. The enrichment layer
 indexes the ledger and nothing else, so a chunk that comes back from
 Chroma always carries a real citekey that `citation_gate` will accept.
 (An earlier version also swept a directory of raw PDFs gathered outside
@@ -873,25 +871,22 @@ the bib file. Those hits came back with an empty citekey and could never
 be cited, and that second source is gone.) The way to make a paper
 searchable here is therefore the same as everywhere else in this
 repository: catalogue it in your reference manager, re-export, and
-re-run
-`sync`. `python -m chitragupta.enrich` prints what it is about to work on at the
-top of
-every run, before any stage touches it:
+re-run `sync`. `python -m chitragupta.enrich` prints what it is about to
+work on at the top of every run, before any stage touches it:
 
 ```text
 Corpus: 42 doc(s) from papers/bibliography.bib
 ```
 
-**Who uses it.** `survey-writer` and `deep-research` name it as the
+`survey-writer` and `deep-research` name it as the
 alternative to BM25, and `deep-research`'s subagents check that
 `content/chroma/` exists before reaching for it. The other three genre
 skills use BM25 only.
 
 ## 🗂 Topic model -- a different question
 
-`chitragupta/enrich/topic_model.py` takes no query. It embeds each document once
-as
-a whole, reduces with UMAP, clusters with HDBSCAN, and writes
+`chitragupta/enrich/topic_model.py` takes no query. It embeds each
+document once as a whole, reduces with UMAP, clusters with HDBSCAN, and writes
 `content/topics.json`: one topic assignment per document, plus a topic
 table. It needs at least two documents with text.
 
@@ -904,10 +899,10 @@ Three things to know before you run it:
 - **All-outliers is a correct answer on a small corpus.** HDBSCAN's
   default minimum cluster size will legitimately put every document in
   topic `-1` when there are few of them. Don't force clusters into
-  existence by lowering it; the honest result is that the corpus is not
-  yet big enough for the question.
+  existence by lowering it; the correct reading is that the corpus is
+  not yet big enough for the question.
 - **It is the one stage that cannot be incremental.** Clustering is
-  whole-corpus by nature -- adding a document can move every assignment.
+  whole-corpus by nature: adding a document can move every assignment.
   Only the encoding is cached (`content/topic_embed_cache.json`, keyed by
   text hash and model name), never the clustering.
 
@@ -916,11 +911,11 @@ Three things to know before you run it:
 | If you want to… | Do this |
 | --- | --- |
 | Draft from a modest, consistent corpus | Nothing. BM25 is already running |
-| Get a quotable paragraph and a page out of a search | Nothing to build -- `retrieve search --unit passage`, if your corpus is docling-parsed. Costs recall; [the figures](#-what-it-costs-measured) |
-| Quote sources accurately in a review | `--stages docling` -- it is the passage sidecar, not the ranker, that improves quoting |
+| Get a quotable paragraph and a page out of a search | Nothing to build: `retrieve search --unit passage`, if your corpus is docling-parsed. Costs recall; [the figures](#-what-it-costs-measured) |
+| Quote sources accurately in a review | `--stages docling`; it is the passage sidecar, not the ranker, that improves quoting |
 | Find papers that argue your point in other words | `--stages docling,embed` |
 | Decide what your survey should cover | `--stages docling,embed,bertopic`, then read `content/topics.json` yourself |
 
 `docling` comes first in each of those because the embedding stage prefers
-`content/docling/<doc>.md` over the plain parsed text when it exists --
-better reading order in, better chunks out.
+`content/docling/<doc>.md` over the plain parsed text when it exists, and
+better reading order in gives better chunks out.

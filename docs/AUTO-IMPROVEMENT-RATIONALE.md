@@ -5,12 +5,12 @@ Status: **reasoning document.** Written 2026-08-11. Updated 2026-08-23.
 Why this repository should be able to repair a draft on its own, what it
 must never repair, and the one documented rule that stands in the way.
 
-**Written for** someone deciding whether to accept the proposal -- and, in
+**Written for** someone deciding whether to accept the proposal and, in
 particular, whether to grant the amendment in
 [The amendment this needs](#-the-amendment-this-needs), which is the only
 part of it the user has to settle personally.
 
-**Not covered here:** what would actually be built. That is
+**Not covered here:** what would be built. That is
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md), which is normative and carries
 no argument; where a claim here and a requirement there touch, that file
 states the obligation and this one says why it exists. The prose and
@@ -43,18 +43,18 @@ and unusually bad at doing anything about it. Every quality signal it
 produces terminates in prose that a human must read, hold in their head,
 and hand-translate into a revision request.
 
-That is a deliberate posture, not an oversight -- the review layer is
-advisory by construction, and [SOUL.md](../SOUL.md) is explicit that
-"does this source support this sentence" is not a question a machine gets
-to settle. But *deciding* is not the same as *assembling*. The tedious
-part of acting on a review report is not the judgement; it is reading
+That posture is deliberate. The review layer is advisory by
+construction, and [SOUL.md](../SOUL.md) is explicit that "does this
+source support this sentence" is not a question a machine gets to settle.
+But *deciding* is not the same as *assembling*. The judgement is not the
+tedious part of acting on a review report. The tedious part is reading
 three prose documents, reconciling them against the section map, dropping
 the ones `rejected.md` already declined, and dispatching a reviser per
 survivor. None of that is a judgement call, and all of it is currently
 manual.
 
 The claim is narrow: **the pipeline should assemble the worklist, attempt
-the mechanical repairs, and re-verify them -- and the human should still
+the mechanical repairs, and re-verify them, and the human should still
 decide.**
 
 A recorded issue already scopes exactly this loop for one signal (verbatim
@@ -64,8 +64,8 @@ class of improvement none of them cover.
 ## 📡 Four signals, four dead ends
 
 Four commands carry every quality signal this repository has, and each one
-is a dead end. The fifth row is not a signal at all -- its absence is the
-point.
+is a dead end. The fifth row is not a signal at all; it is there to show
+what has none.
 
 | Signal | What it finds | What it emits | Who acts on it |
 | --- | --- | --- | --- |
@@ -75,21 +75,21 @@ point.
 | `python -m chitragupta.review coverage` | a source retrieval surfaced that the draft never cited | Markdown report, or `--json` | human, by hand |
 | *nothing* | a badly written sentence | -- | human, by hand |
 
-Two things stand out. **Most of the surface was text only.** When this
-was written, `--json` on `dossier status --all` was the single
+Two things stand out. First, most of the surface was text only. When
+this was written, `--json` on `dossier status --all` was the single
 machine-readable output in the whole quality surface; 5.4.0 added the
 second, on `verbatim scan`, and 6.16.0 the other two, on
 `provenance` and `coverage`. Four of the five signals above are
-machine-readable now. And **prose quality still has no signal at all**:
+machine-readable now. Second, prose quality still has no signal at all:
 `draft-reviser` is section-and-evidence-shaped, and a recorded issue notes
 that a copy-edit touching no evidence has no sanctioned path through it.
 
 ## 🔄 Where the loop sits, and the cycle that decides it
 
-The obvious placement is a new drafting-layer verb -- `python -m chitragupta.draft
-agenda <draft>` -- reading the review reports and emitting a worklist.
-**That placement is wrong, and the reason is the one cycle this repository
-already removed.**
+The obvious placement is a new drafting-layer verb, `python -m
+chitragupta.draft agenda <draft>`, reading the review reports and
+emitting a worklist. That placement is wrong because it would bring back
+the one cycle this repository already removed.
 
 [ARCHITECTURE.md](ARCHITECTURE.md#-the-four-layers) states the dependency
 graph as acyclic and artefact-mediated, with exactly one edge into the
@@ -106,10 +106,10 @@ review and drafting layers, and removing them is recorded in both
 this picture". A drafting-layer command reading `content/review/*.json`
 re-opens it in the other direction.
 
-**The edge that matters is the artefact edge, not the import.** Review
-already imports drafting-layer code -- `citation_provenance` imports
+The edge that matters is the artefact edge, not the import. Review
+already imports drafting-layer code (`citation_provenance` imports
 `citation_gate` and `ledger`, `citation_coverage` imports `retrieval`, and
-`review/__init__.py` imports `render_output` -- and that is fine, because
+`review/__init__.py` imports `render_output`), and that is fine, because
 those are tier-1 modules being *called*, downhill, by the layer that reads
 their output. The acyclicity ARCHITECTURE.md claims is of the artefact
 graph: who writes a file that whom reads. `content/review/*.json` is a
@@ -117,16 +117,16 @@ layer-4 artefact, and a layer-2 command consuming it is a new edge in that
 graph, which nothing else in the repository has.
 
 The alternative has no such problem. `review.AIDS` is an explicit, guarded
-extension point -- `chitragupta/review/__main__.py` raises a `RuntimeError` (not
-an assert, deliberately) if its subcommands drift from that dict, which
-exists so a further aid can be added safely. An agenda is "evidence for a
+extension point: `chitragupta/review/__main__.py` raises a `RuntimeError`
+(deliberately not an assert) if its subcommands drift from that dict,
+which exists so a further aid can be added safely. An agenda is "evidence for a
 human judgement, never a verdict", which is the review layer's charter
 word for word, and as an aid it inherits `report_dir`, `report_path`,
 `write` and the exits-0-always posture for free. Reading the other three
 aids' output is an edge *within* layer 4.
 
 So the aid belongs in layer 4. The clause that matters is the last one in
-the specification's shape -- that the human, not code, closes the loop --
+the specification's shape, that the human and not code closes the loop,
 because that is what keeps the graph acyclic: a skill reading a review
 report is the same act as a human reading one, which the layer already
 expects.
@@ -134,12 +134,12 @@ expects.
 ## 🔬 The method, in autoresearch's own terms
 
 [karpathy/autoresearch](https://github.com/karpathy/autoresearch) (MIT,
-per its README) is the nearest published thing to what this proposes, and
-it is worth stating properly rather than gesturing at, because the parts
-that make it work are not the parts it is famous for.
+per its README) is the nearest published thing to what this proposes. It
+is worth describing in full, because the parts that make it work are not
+the parts it is famous for.
 
-**Three files, and the split between them is the design.** `prepare.py`
-holds the constants, the data preparation and -- decisively -- the
+The design rests on how it splits work across three files. `prepare.py`
+holds the constants, the data preparation and, decisively, the
 evaluation function; it is read-only. `train.py` holds the model, the
 optimiser and the training loop; it is the *only* file the agent edits,
 and within it everything is fair game. `program.md` holds the agent's
@@ -150,14 +150,14 @@ programming the `program.md` Markdown files that provide context to the AI
 agents and set up your autonomous research org." `program.md` is, in its
 own words, "essentially a super lightweight skill".
 
-**One number, one budget.** Training always runs for exactly five minutes
-of wall clock, and the score is `val_bpb` -- validation bits per byte,
-lower better, and vocabulary-size-independent so that architectural
-changes compare fairly. The fixed budget is a control variable, not a
+It uses one number and one budget. Training always runs for exactly five
+minutes of wall clock, and the score is `val_bpb` (validation bits per
+byte, lower better, and vocabulary-size-independent so that architectural
+changes compare fairly). The fixed budget is a control variable, not a
 resource cap: it is what makes two experiments answers to the same
-question rather than to different ones.
+question.
 
-**The loop, as `program.md` states it.** Branch (`autoresearch/<tag>`);
+The loop, as `program.md` states it: branch (`autoresearch/<tag>`);
 establish a baseline by running the code unmodified; then repeat: hack
 `train.py` with one idea, commit, run redirecting all output to a log
 (explicitly *not* to the terminal, so the transcript does not flood the
@@ -170,11 +170,11 @@ tried. Crashes are diagnosed from the log's tail, fixed if the fault is
 trivial, abandoned if the idea itself is broken. A run exceeding double
 its budget is killed and treated as a failure.
 
-**Two rules that are easy to miss.** The first is a tie-breaker: *all else
-being equal, simpler is better* -- an improvement bought with twenty lines
+Two rules are easy to miss. The first is a tie-breaker: *all else
+being equal, simpler is better*. An improvement bought with twenty lines
 of hacky code is probably not worth it, while an equal result from
 *deleting* code is a win outright. The second is the posture: **"NEVER
-STOP"** -- once the loop has begun, do not ask the human whether to
+STOP"**. Once the loop has begun, do not ask the human whether to
 continue, because "the human might be asleep", and the loop runs "until
 the human interrupts you, period".
 
@@ -185,10 +185,10 @@ and different enough to be dangerous.
 
 | autoresearch | Here | Note |
 | --- | --- | --- |
-| `train.py` -- the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
-| `prepare.py` + `evaluate_bpb` -- read-only ground truth | the six review aids, `chitragupta.draft gate`, the boilerplate allowlist | The loop may run them and may not edit them |
-| `program.md` -- edited by the human, not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
-| `val_bpb` -- one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
+| `train.py`, the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
+| `prepare.py` + `evaluate_bpb`, read-only ground truth | the six review aids, `chitragupta.draft gate`, the boilerplate allowlist | The loop may run them and may not edit them |
+| `program.md`, edited by the human and not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
+| `val_bpb`, one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
 | the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
 | `results.tsv`, one row per attempt | `revisions.md`, including refused attempts | Same keep/discard/crash discipline, existing file |
 | branch advance-or-`git reset` | `dossier export` + per-item revert | Drafts are gitignored; the granularity is what transfers |
@@ -196,34 +196,35 @@ and different enough to be dangerous.
 
 | Its design choice | Transfers? | Requirement |
 | --- | --- | --- |
-| **The evaluation harness is read-only ground truth** | **Yes, and it is the rule this proposal most needed.** A rewrite that keeps failing the re-scan could otherwise be "fixed" by adding its phrase to the boilerplate allowlist, and a loop that can suppress its own findings is gaming a metric rather than improving a draft | R1 |
-| **Keep / discard / crash, one row per attempt** | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is. Not as a file: `revisions.md` already exists | R6 |
-| **Simplicity as the tie-breaker** | **Yes.** Where a deletion and a rewrite both pass, prefer the smaller diff. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already | R8 |
-| **Baseline first** | **Yes.** The agenda taken before the pass is that baseline | R9 |
-| **One scalar metric that must go down** | **Partly, and the gap is real -- in both directions.** The asymmetry is not boolean-versus-scalar but local-versus-global: `val_bpb` catches a regression *anywhere*, while a per-finding re-check cannot see that fixing one verbatim run introduced another. The scalar's own blind spot is the mirror image, and is why R4 reads both the count and the identity sets -- see below | R4 |
-| **A fixed per-iteration budget** | **No, and it is not needed.** Its experiments are competing alternatives on one leaderboard, so they must be comparable. Agenda items are independent repairs that do not compete | -- |
-| **A dedicated git branch, advanced or reset per experiment** | **No -- structurally unavailable.** `content/drafts/` and `content/dossiers/` are gitignored, so a user's drafts are not in git. What transfers is the *granularity*: one experiment reverts alone | R5 |
-| **"NEVER STOP"** | **No, and the opposite is correct here** | R7 |
+| The evaluation harness is read-only ground truth | **Yes, and it is the rule this proposal most needed.** A rewrite that keeps failing the re-scan could otherwise be "fixed" by adding its phrase to the boilerplate allowlist, and a loop that can suppress its own findings is gaming a metric instead of improving a draft | R1 |
+| Keep / discard / crash, one row per attempt | **Yes, as discipline.** The failure rows outnumber the keeps and are where the learning is. Not as a file: `revisions.md` already exists | R6 |
+| Simplicity as the tie-breaker | **Yes.** Where a deletion and a rewrite both pass, prefer the smaller diff. That is [SOUL.md](../SOUL.md)'s substantive-editor posture already | R8 |
+| Baseline first | **Yes.** The agenda taken before the pass is that baseline | R9 |
+| One scalar metric that must go down | **Partly, and the gap runs in both directions.** The asymmetry is local-versus-global, not boolean-versus-scalar: `val_bpb` catches a regression *anywhere*, while a per-finding re-check cannot see that fixing one verbatim run introduced another. The scalar's own blind spot is the mirror image, and is why R4 reads both the count and the identity sets (see below) | R4 |
+| A fixed per-iteration budget | **No, and it is not needed.** Its experiments are competing alternatives on one leaderboard, so they must be comparable. Agenda items are independent repairs that do not compete | -- |
+| A dedicated git branch, advanced or reset per experiment | **No; structurally unavailable.** `content/drafts/` and `content/dossiers/` are gitignored, so a user's drafts are not in git. What transfers is the *granularity*: one experiment reverts alone | R5 |
+| "NEVER STOP" | **No, and the opposite is correct here** | R7 |
 
 **On the scalar, and what a level count hides.** A total answers "is the
 draft worse?" and nothing finer. Fix one objective finding, introduce
-another, and the count is unchanged -- so an edit that swapped one
-defect for a different one is indistinguishable from an edit that
-changed nothing, and the swapped-in defect is kept. That is not a
-hypothetical about drafts; it is the ordinary experience of working on
-this repository's own code, where every "did I break something?" is
-answered by diffing a recorded per-test baseline rather than by reading
-a pass count, precisely because a total moves for reasons a name does
-not (`DEVELOPER-AGENTS.md`, "Baseline the suite before you edit").
+another, and the count is unchanged. An edit that swapped one defect for
+a different one is then indistinguishable from an edit that changed
+nothing, and the swapped-in defect is kept. That is no hypothetical
+about drafts: it is the ordinary experience of working on this
+repository's own code, where every "did I break something?" is
+answered by diffing a recorded per-test baseline
+instead of by reading a pass count, precisely because a total moves for
+reasons a name does not (`DEVELOPER-AGENTS.md`, "Baseline the suite
+before you edit").
 
 R4 therefore reads both, and the second half costs nothing to add: R2
 already requires every finding to carry an identity stable across runs,
 and `chitragupta/review/agenda/_recheck.py` already emits
 `resolved`/`persisting`/`new` matched on that id beside the count. The
 requirement was written against the count alone when neither existed.
-Keeping the count as well is deliberate -- it is the cross-class signal
-that catches a `verbatim-run` repair raising the `prose` count -- but a
-level count is no longer read as evidence that nothing regressed.
+Keeping the count as well is deliberate, since it is the cross-class
+signal that catches a `verbatim-run` repair raising the `prose` count,
+but a level count is no longer read as evidence that nothing regressed.
 
 **On never stopping.** It is the most quotable thing in `program.md` and
 the least transferable. A discarded training run costs five GPU-minutes
@@ -232,11 +233,11 @@ Unattended looping is only safe under a metric that catches compounding
 damage, and this design's is coarse. Three of six item classes need a
 human whatever the loop does, so an indefinite loop either starves or
 creeps into judgement. And its per-iteration cost is fixed where this
-one's token cost is not. The bounded design is argued, not timid.
+one's token cost is not. The bound follows from these reasons.
 
-Where the proposal may genuinely be too cautious is narrower: one pass per
-invocation. A bounded-convergence variant -- keep passing while the
-objective-class count strictly falls, to a hard maximum -- still terminates
+Where the proposal may be too cautious is narrower: one pass per
+invocation. A bounded-convergence variant (keep passing while the
+objective-class count strictly falls, to a hard maximum) still terminates
 deterministically and is closer to advance-while-improving. It is declined
 for legibility, not safety, and could be revisited.
 
@@ -247,25 +248,25 @@ sentence because SOUL.md forbids it. The stronger reason is that **the
 loop cannot detect its own failure here.**
 
 A paraphrase that subtly misstates what a paper claims passes the gate,
-because the citekey is still real; passes the verbatim scan, because the
-wording now differs -- which is precisely what "fixing" an overlap
-*means*; and passes provenance, if the source remains topically related.
+because the citekey is still real. It passes the verbatim scan, because
+the wording now differs, which is precisely what "fixing" an overlap
+*means*. And it passes provenance, if the source remains topically related.
 Every check the loop owns returns clean on its worst output. The exclusion
 is therefore a property of the mechanism, not a policy that could be
 relaxed by a more permissive rule.
 
-What can improve unattended on that axis is ordering and surfacing --
-which sections are least supported, which citations rest on the thinnest
-passage -- never the fix.
+What can improve unattended on that axis is ordering and surfacing
+(which sections are least supported, which citations rest on the
+thinnest passage), never the fix.
 
-**One reconciliation.** A companion proposal puts forward terminology,
+One reconciliation is needed. A companion proposal puts forward terminology,
 claim and cross-reference registries as "deterministic, **blocking**
 global checks ... beside the citation gate". This proposal borrows its
 *detectors* and declines its blocking posture: nothing here becomes a
-gate, and the overlap-gate proposal
-remains the only place that decision is taken. If the registries land as specified,
-the squaring is that a registry may block a *book assembly* without any
-review aid blocking a *draft*.
+gate, and the overlap-gate proposal remains the only place that decision
+is taken. If the registries land as specified, the two are reconciled
+because a registry may block a *book assembly* without any review aid
+blocking a *draft*.
 
 ## 🔒 Why only a person may start it
 
@@ -277,15 +278,15 @@ other skill may start it (R11). Each half of that has its own reason.
 exits 0. There is no occasion on which running it is a mistake, so there
 is nothing to restrict. That is the bare command; its `--baseline` mode
 re-runs the eight aids before comparing (~21 s, plus `support`'s own
-~21--60 s model-load floor, [REVIEW.md](REVIEW.md) -- and the
+~21--60 s model-load floor per [REVIEW.md](REVIEW.md); and the
 other eight aids' `.tex`/`.pdf` go stale against their `.md` until a
 full-format run follows), so for that mode occasion does matter, and
 R11's restriction to a person asking is what covers it.
 
 **Why not a PostToolUse hook.** One already exists, running the gate on
-every write under `content/drafts/`. The objection is not cost -- the
-bare agenda reads the aids' JSON rather than executing them, so a
-hooked agenda would run one command, not four. The objection is that
+every write under `content/drafts/`. Cost is no objection: the bare
+agenda reads the aids' JSON instead of executing them, so a hooked
+agenda would run one command, not four. The objection is that
 it would put a review report in the path of a write. The gate belongs
 in that path *because it is a gate*; nothing in the review layer does,
 and a report that a write waits on is one short step from a report
@@ -295,7 +296,7 @@ that blocks it.
 has no review reports to read, so the agenda would be empty. More
 importantly, a skill repairing its own output is marking its own
 homework, which is why the existing gate loop discards an unsupported
-claim and writes again rather than "fixing" it.
+claim and writes again instead of "fixing" it.
 
 **Why not cron.** `sync` is safely scheduled because it is deterministic
 and idempotent. The skill is neither, and a scheduled reviser is the
@@ -303,16 +304,16 @@ overnight posture
 [rejected above](#-mapping-the-method-onto-this-pipeline).
 
 **Why R11 is a convention, not a mechanism.** Skills already hand off to
-one another in prose -- `draft-reviser` to `corpus-reviser` and back --
+one another in prose (`draft-reviser` to `corpus-reviser` and back),
 and nothing enforces that mechanically. R11 is enforceable exactly as
-every other skill rule in this repository is, which is worth knowing
-rather than pretending otherwise. The hook half *is* mechanical: it
+every other skill rule in this repository is, and no more. The hook half
+*is* mechanical: it
 requires an entry in `.claude/settings.json`, and not adding one is a
 decision someone would have to reverse deliberately.
 
 **Why SOUL.md is not part of the wiring.** It states the one invariant
 and what each layer may not do, and the loop changes neither. Its review
-bullet -- the layer "never blocks, and must not be made to" -- already
+bullet (the layer "never blocks, and must not be made to") already
 covers the loop and survives the amendment intact. A proposal that has
 not been built also has no business in the file the assistant treats as
 its memory. If the loop ships, the sentence worth adding there is about
@@ -339,39 +340,40 @@ grep -rniE "never automatic|never invoked|invokes them automatically|reads it ba
 ```
 
 **Do not trust it to be complete; applying the amendment proved it.**
-It is line-based,
-and every one of these files is hand-wrapped to about 72 columns, so a
-statement of the rule that happens to break across a line -- "never\\n
-automatically" -- is invisible to it. Two real sites were missed exactly
+It is line-based, and every one of these files is hand-wrapped to about
+72 columns, so a statement of the rule that happens to break across a
+line ("never\\n automatically") is invisible to it. Two real sites were
+missed exactly
 that way (`uncited_prose.py` and `figure_layout/__init__.py`), and a
 third (`GENRE.md`, which states the rule for all nine skills at once) was
 missed because the original pattern had no term for *offered*. A sweep
 that has to be right normalises whitespace per file first and then
 matches; the grep above is for finding where to look.
 
-It also hits phrases with nothing to do with the review layer --
+It also hits phrases with nothing to do with the review layer, such as
 `AGENTS.md`'s "reads it back out of the ledger", a `tests/test_sync.py`
-docstring's "never invoked", `chitragupta/dossier/_acronyms.py`'s "still
-never automatic" (a **drafting**-layer rule about `acronyms-suggest
---apply`, and untouched by this) -- and it hits these documents.
+docstring's "never invoked", and `chitragupta/dossier/_acronyms.py`'s
+"still never automatic" (a **drafting**-layer rule about
+`acronyms-suggest --apply`, and untouched by this). It hits these
+documents too.
 
-**Twelve** of its matches were real statements of the rule when this was
+Twelve of its matches were real statements of the rule when this was
 written on 2026-08-11. By the time the amendment was applied it was
-**twenty-two**, in two families: the review layer gained three aids in
-between (`synthesis`, `figure`, `uncited`), and each
-arrived carrying its own copy of the sentence. The count is recorded as a
-range rather than a number for that reason -- it tracks how many aids
-exist, so it is stale the day a seventh lands.
+twenty-two, in two families: the review layer gained three aids in
+between (`synthesis`, `figure`, `uncited`), and each arrived carrying its
+own copy of the sentence. The count is recorded as a range for that
+reason: it tracks how many aids exist, so it is stale the day a seventh
+lands.
 
 | Family | Sites | Wording |
 | --- | --- | --- |
 | never automatic | 16 | six aid docstrings, `review/__init__.py`, `review/__main__.py`, AGENTS.md, ARCHITECTURE.md ×2, LADDERS.md, CLI.md ×3, GENRE.md |
 | nothing reads it back | 6 | `BANNER`, `_synthesis_render.py`, `synthesis.py`, CLI.md ×2, WRITING-STANDARDS.md |
 
-**Three diagrams were borderline, and the honest answer was that they
-were in scope.** No `.mmd` source stated the rule outright -- the one
-label that said "never automatic" was inline in ARCHITECTURE.md, so it
-was a text edit like the rest. But `00-main-workflow.mmd`'s "REVIEW AIDS
+Three diagrams were borderline, and they turned out to be in scope. No
+`.mmd` source stated the rule outright; the one label that said "never
+automatic" was inline in ARCHITECTURE.md, so it was a text edit like the
+rest. But `00-main-workflow.mmd`'s "REVIEW AIDS
 -- you run these", `g1-corpus-led.mmd`'s "afterwards, **by you**" and
 `extra-sequence.mmd`'s "optional afterwards", which draws *You* invoking
 the aids, were manual-invocation claims on exactly the axis the amendment
@@ -381,33 +383,32 @@ and untouched.
 
 The surviving invariant is the one that was always doing the work, and it
 is narrower than the old wording: **a review finding may be read, may
-be invoked by a driver, and may never block a draft.** Advisory versus
-blocking, not manual versus automatic. `chitragupta.draft gate` remains the only
-gate.
+be invoked by a driver, and may never block a draft.** The line is
+between advisory and blocking, not between manual and automatic.
+`chitragupta.draft gate` remains the only gate.
 
-**[SOUL.md](../SOUL.md) did not need amending, and that is the point.**
-Its review bullet says the layer "never blocks, and must not be made to" --
-no claim about who invokes it -- and its "let a machine outrank a human on
-a judgment call" prohibition is satisfied by the three surfaced item
-classes. The rule that changed is stated only in the layer's
-implementation and in the documents describing it, never in the soul. That
-is what made the amendment approvable rather than a rewrite of the
-project's premises.
+[SOUL.md](../SOUL.md) did not need amending. Its review bullet says the
+layer "never blocks, and must not be made to", with no claim about who
+invokes it, and its "let a machine outrank a human on a judgment call"
+prohibition is satisfied by the three surfaced item classes. The rule
+that changed is stated only in the layer's implementation and in the
+documents describing it, never in the soul. That is what made the
+amendment approvable instead of a rewrite of the project's premises.
 
 It was still a change to the review layer's stated posture in the
 user-facing rules file, and SOUL.md reserves that kind of call for the
-user. **It was the first thing to settle, before any code**, and it was.
+user. It was the first thing to settle, before any code, and it was.
 Had it been declined, the agenda aid could still have been written and
 run by hand, and only the skill's automation would have been lost.
 
 ## 🧩 The software half
 
-Whether the same idea can improve the software rather than the drafts. It
-can, but it is the smaller half, and the honest verdict is that **the gap
-is signal, not permission.**
+Can the same idea improve the software as well as the drafts? It can,
+but it is the smaller half, and what is missing is signal, not
+permission.
 
 `DEVELOPER-AGENTS.md` already grants an agent the
-whole cycle -- "implementing features, writing tests first, running the
+whole cycle: "implementing features, writing tests first, running the
 full local check suite, opening PRs, watching CI, merging, and cutting
 releases [...] proceed autonomously". CI runs on two platforms with a
 coverage floor. The backlog is labelled and dependency-ordered. Nothing is
@@ -418,9 +419,9 @@ What is missing is an objective signal an unattended agent could act on:
 - **`bench/` records results but never compares them.**
   `bench/results/*/` holds real timings from named machines, and nothing
   reads them back to say a change made the parse slower. A
-  compare-to-baseline step -- same host, same fixture corpus, a tolerance
-  -- would turn performance from something a human notices into something
-  a run reports. That is the single highest-value piece, and it is the
+  compare-to-baseline step (same host, same fixture corpus, a tolerance)
+  would turn performance from something a human notices into something
+  a run reports. That is the single most valuable piece, and it is the
   same "measurement before mechanism" principle the retrieval backlog
   already states for retrieval.
 - **A backlog groomer that stops at proposing.** A scheduled agent can
@@ -440,8 +441,8 @@ pipeline layer, and neither should acquire one.
   reading files that already exist. No new dependency, no venv
   requirement, tier 1, no lock.
 - **The skill is where the tokens go.** One reviser dispatch per agenda
-  item plus a re-check per attempt. It is bounded -- two attempts per
-  item, one pass per invocation -- but a long agenda on a long draft is a
+  item plus a re-check per attempt. It is bounded (two attempts per
+  item, one pass per invocation), but a long agenda on a long draft is a
   real run. [TOKENS.md](TOKENS.md) has the arithmetic this would extend;
   the saving to weigh it against is that today the same work happens as a
   human-driven sequence of full `draft-reviser` invocations, each paying
@@ -451,14 +452,14 @@ pipeline layer, and neither should acquire one.
   GPU-minutes, on hardware already owned, at a price fixed before the run
   starts. A wrong idea here is billed per token and scales with the draft.
   The rungs are in
-  [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-cost-ladder); the reason
-  the first one matters most is easy to miss -- a deterministic check does
-  not only *find* a problem for free, it **refuses a bad rewrite for
-  free**. Without it, deciding whether an edit worked means paying a model
-  to grade its own homework, which is worth less than it costs.
+  [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md#-the-cost-ladder). The reason
+  the first one matters most is easy to miss: a deterministic check both
+  *finds* a problem for free and **refuses a bad rewrite for free**.
+  Without it, deciding whether an edit worked means paying a model to
+  grade its own homework, which is worth less than it costs.
 - **The risk is alarm fatigue, not correctness.** An agenda that is mostly
   boilerplate verbatim hits gets ignored, which is why the boilerplate
-  allowlist precedes the aid rather than following it.
+  allowlist precedes the aid instead of following it.
 
 ## ❓ Open questions
 
@@ -466,7 +467,7 @@ pipeline layer, and neither should acquire one.
   citation the corpus no longer supports is objective in the sense that
   the gate will fail either way, but *what replaces the sentence* is not.
   The conservative alternative is to surface it with a suggested edit
-  rather than apply one.
+  instead of applying one.
 - **How does the agenda behave on a draft with no dossier?** Every aid
   degrades honestly today; the agenda would lose `rejected.md` and the
   section map, which are the two things keeping it scoped and
@@ -474,14 +475,14 @@ pipeline layer, and neither should acquire one.
   other aid refuses.
 - **Does the loop belong to `draft-reviser` as a branch instead of a new
   skill?** It is "a change to an existing draft", which is that skill's
-  charter -- the argument for separation is that its input is a file
-  rather than a person.
+  charter. The argument for separation is that its input is a file
+  and not a person.
 - **Does `agenda` strain the aid vocabulary?** A `review.AIDS` key is both
-  the subcommand and the report's filename suffix -- the values are the
-  human-readable titles -- so this ships as `survey.agenda.md`. What remains
-  against it is real: the other three
-  keys name an observed property of the draft, while this one names what
-  to do next. It is also the first aid that reads other aids.
+  the subcommand and the report's filename suffix (the values are the
+  human-readable titles), so this ships as `survey.agenda.md`. One
+  objection remains: the other three keys name an observed property of
+  the draft, while this one names what to do next. It is also the first
+  aid that reads other aids.
 
 ## 🏷 Naming, and the register the review layer may not use
 
@@ -490,12 +491,12 @@ proposal.
 
 The obvious names for a report of everything still wrong with a draft come
 from the audit register: `audit` itself, `reckoning`, `arrears`. `audit` is
-the strongest candidate in the language for this repository -- it is the
+the strongest candidate in the language for this repository: it is the
 project's own defining verb ([SOUL.md](../SOUL.md): "keeps a ledger of
 every citekey and *audits* citations against it"), it is dialect-neutral,
 and it is unused as an identifier anywhere in the tree.
 
-**It is still wrong, and [NAME.md](NAME.md) is why.** That document maps
+It is still wrong, because of [NAME.md](NAME.md). That document maps
 the myth onto the code. Its third and fourth points map exactly this
 register onto the **citation gate**: "a draft's claims are checked
 against the ledger at the moment of reckoning, and a `FAIL` is final -- a
@@ -508,20 +509,20 @@ output under the word this project reserves for its hardest check.
 So there is a rule here, and it binds any future aid as much as this one:
 
 > **The judgement register belongs to the gate.** Audit, reckoning,
-> verdict, ruling -- an advisory aid may not borrow them, however well
+> verdict, ruling: an advisory aid may not borrow them, however well
 > they fit the myth. NAME.md's fifth point gives the review layer its own
-> slot instead: "Evidence, quoted" -- the deeds are *read out*, and the
+> slot instead, "Evidence, quoted": the deeds are *read out*, and the
 > reading is not the ruling.
 
 That disposes of a whole family at once, and what survives has to come
-from the deliberation register rather than the judgement one. Every
+from the deliberation register instead of the judgement one. Every
 alternative weighed against `agenda` is worse:
 
 - `worklist` and `backlog` presume the items are accepted work, when
   three of six classes are undecided.
 - `remediation` names only the half the aid does not do.
 - `findings` is what all six existing aids already emit.
-- `digest` suggests condensing rather than prioritising.
+- `digest` suggests condensing, not prioritising.
 - `snags` is exact but colloquial, and opaque outside British usage.
 - `docket` reads as a delivery note in that same British usage.
 - `triage` is spoken for. [REJECTION.md](REJECTION.md) records a
@@ -529,8 +530,8 @@ alternative weighed against `agenda` is worse:
   would collide with a documented refusal.
 
 `agenda` wins on register: the ordered list of matters put before a
-decision-maker, none of them decided by the person who drew it up. That is
-the review layer's charter in one word.
+decision-maker, none of them decided by the person who drew it up, which
+matches the review layer's charter.
 
 The same test applies to the skill. `draft-improver` was rejected because
 "improver" presumes the outcome; `auto-reviser` because a name built on

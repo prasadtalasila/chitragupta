@@ -1,7 +1,7 @@
 # 🔐 Security architecture
 
 Status: **reference.** Written 2026-09-01. Updated 2026-09-02, adding
-the SonarQube scan action and its token to the release controls -- a
+the SonarQube scan action and its token to the release controls, a
 credential-bearing third-party action the first version of that section
 did not name. Updated 2026-10-01: every action is now SHA-pinned, and
 the release workflow installs Poetry wheels-only (#829).
@@ -94,8 +94,8 @@ rejects citekeys unsafe for filesystem use. An unsafe entry is skipped
 with a warning rather than silently rewritten. The same validator
 (`chitragupta/citekey_safety.py`) also guards the review layer's reads:
 citekeys there are extracted from a draft, not the bib file, so a draft
-citing `\citep{../../secret}` must -- and does -- resolve to no source
-text rather than to a file outside the content tree.
+citing `\citep{../../secret}` must resolve, and does resolve, to no
+source text rather than to a file outside the content tree.
 
 The drafting skills run the gate before presenting a draft. A hook or
 plugin on each harness also runs it after writes under `content/drafts/`
@@ -123,9 +123,9 @@ race with a process that can alter the filesystem concurrently.
 
 The files a draft references get the same treatment. A figure or image
 reference is resolved before the figure-layout aid compiles it or a
-render copies it beside the output, and one that lands outside the
-draft's own directory -- absolute, `..`-escaping, or a symlink, of the
-file or of a directory on the way to it -- is skipped. A render goes
+render copies it beside the output. One that lands outside the draft's
+own directory is skipped, whether it is absolute, `..`-escaping, or a
+symlink (of the file or of a directory on the way to it). A render goes
 further for the symlink case: pandoc and `pdflatex` open a draft's
 images and `\input` files by the name the draft spells, so a draft that
 names one through a symlink out of its directory is refused with
@@ -158,14 +158,14 @@ in the called executable, a malicious executable earlier on `PATH`, or
 dangerous content interpreted by the toolchain. The PDF and rendering
 sections of [CLI.md](CLI.md) identify which commands require local tools.
 
-Every `pdflatex` this codebase starts -- a `pdf` render through Pandoc,
-and the figure-layout aid's probe -- runs with `-no-shell-escape` and
+Every `pdflatex` this codebase starts (a `pdf` render through Pandoc,
+and the figure-layout aid's probe) runs with `-no-shell-escape` and
 with kpathsea's `openin_any=p`. The first turns off `\write18` entirely,
 including TeX Live's default restricted allow-list. The second is
 kpathsea's paranoid read mode: TeX may not open a name with a `..` or a
 dot-directory in it, nor an absolute name outside the output directory,
-though a relative name it finds on its search paths -- `TEXINPUTS`, the
-TeX installation -- is still allowed. A shared `.bib` whose title says
+though a relative name it finds on its search paths (`TEXINPUTS`, the
+TeX installation) is still allowed. A shared `.bib` whose title says
 `\input{/home/alice/.netrc}` reaches `pdflatex` as raw LaTeX through
 citeproc; with these settings the render fails and names the file
 instead of printing it into the reference list. Pandoc's own `--sandbox`
@@ -176,8 +176,8 @@ Paranoid mode judges a name as TeX spells it and follows symlinks, which
 is why the render refuses a draft's own symlinked references itself
 (above). Four limits follow:
 
-- A name that is not in the draft's text -- one in a bibliography field,
-  say -- that points at a symlink someone planted in the draft's
+- A name that is not in the draft's text (one in a bibliography field,
+  say) that points at a symlink someone planted in the draft's
   directory is still followed.
 - A `tex` output and a `--fragment` unit carry the same raw LaTeX to
   whoever compiles them later, with their own engine and their own
@@ -226,7 +226,7 @@ Read-only operations deliberately remain available while a writer runs.
 This prevents the pipeline's own writers from overlapping on a local
 filesystem. SQLite locking is not reliable on network filesystems, so
 this control assumes `content/` is local storage. Treat a local
-filesystem as an operational requirement for writer safety, not as an
+filesystem as an operational requirement for writer safety, not an
 optional tuning choice.
 [ARCHITECTURE.md](ARCHITECTURE.md#-one-writer-at-a-time) describes the
 lock and its scope, and
@@ -273,7 +273,7 @@ secret** rather than an OIDC token exchanged per run:
 `secrets.SONAR_TOKEN`, both in `ci.yml`. Those two are the part of this
 section worth re-auditing when a maintainer leaves, when a service is
 dropped, or on any schedule your organisation applies to third-party
-credentials -- they cannot expire on their own the way the PyPI publish
+credentials. They cannot expire on their own the way the PyPI publish
 path's token does, which is why that path deliberately has no
 equivalent.
 
@@ -407,17 +407,14 @@ Do not include credentials, private PDFs, unpublished drafts, personal
 data, or a working exploit in a public issue.
 
 Check the repository's GitHub **Security** page and any current
-project-maintainer guidance for a private reporting channel, and use
-that channel when it is available. Note that GitHub reads
-`docs/SECURITY.md` -- this file -- as the repository's security policy,
-so the Security page shows you this text. Do not read finding it there
-as evidence that a private channel exists; the presence of a policy and
-the presence of a channel are separate facts. If no private channel is
-published,
-disclose only the minimum non-sensitive information needed to request a
-private conversation; do not assume an email address, response time,
-bounty, or coordinated-disclosure policy that the project has not
-published.
+project-maintainer guidance for a private reporting channel, and use that
+channel when it is available. GitHub reads `docs/SECURITY.md` (this file) as the
+repository's security policy, so the Security page shows you this text. Finding
+it there is no evidence that a private channel exists: a policy and a channel
+are separate facts. If no private channel is published, disclose only the
+minimum non-sensitive information needed to request a private conversation; do
+not assume an email address, response time, bounty, or coordinated-disclosure
+policy that the project has not published.
 
 A useful initial report states the affected released version or commit,
 operating system, command or component, expected and observed behaviour,

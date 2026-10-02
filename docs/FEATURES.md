@@ -3,19 +3,19 @@
 Status: **reference.** Written 2026-08-22. Updated 2026-09-02,
 describing the pipeline as it stands at 6.60.
 
-**Written for** you -- someone who writes technical documents (a
+**Written for** you: someone who writes technical documents (a
 survey, a thesis chapter, a textbook, a report) and is deciding whether
 this tool does what you need, or wants its whole capability surface in
-one place. **Assumed:** nothing -- not this repository's layout, not
-its code, not any earlier document. **Not covered here:** how to invoke
+one place. **Assumed:** nothing, including this repository's layout, its
+code, and any earlier document. **Not covered here:** how to invoke
 any of it ([CLI.md](CLI.md)), how the workflow *flows*
 ([DIAGRAMS.md](DIAGRAMS.md) draws it thirteen ways), or why the
 architecture is shaped this way ([ARCHITECTURE.md](ARCHITECTURE.md),
 [SOUL.md](../SOUL.md)).
 
-**This document routes; it does not restate.** Every feature names the
-document that owns its detail, and stops there -- two documents
-describing one mechanism drift apart, and a features catalogue is the
+This document routes and does not restate. Every feature names the
+document that owns its detail, and stops there, because two documents
+describing one mechanism drift apart and a features catalogue is the
 most likely place for it. (How that constraint is enforced is at the
 [foot of this page](#-how-this-document-stays-true).)
 
@@ -46,8 +46,8 @@ Every feature in this document exists to support one sentence:
 > *and* was picked up into the ledger by a real parse of a real PDF.**
 
 Fabricated placeholder references have reached real published papers.
-This pipeline is built to make that impossible rather than unlikely, and
-the shape of the guarantee is what makes it a guarantee:
+This pipeline is built to make that impossible, not merely unlikely, and
+the guarantee rests on its shape:
 
 ```mermaid
 flowchart LR
@@ -68,8 +68,8 @@ flowchart LR
   style OUT fill:#dcfce7,stroke:#15803d
 ```
 
-Two properties do all the work, and both are structural rather than
-enforced by care:
+Two properties do all the work, and both are built into the structure
+rather than left to care:
 
 - **One entrance.** Citekeys come from your reference manager's export,
   read by exactly one module (`chitragupta/bib_reader.py`). Nothing in
@@ -79,11 +79,11 @@ enforced by care:
   `FAIL` is treated like a failing test rather than a lint warning.
 
 A `PostToolUse` hook enforces the same thing mechanically on every write
-to a draft, so the instruction to run the gate is belt-and-braces rather
-than the only line of defence ([HOOKS.md](HOOKS.md)).
+to a draft, so the instruction to run the gate is not the only line of
+defence ([HOOKS.md](HOOKS.md)).
 
-**The nuance that surprises people:** the loop back from a failed gate
-goes to *drafting*, not to you. The skill discards the unsupported claim
+The loop back from a failed gate goes to *drafting*, not to you, which
+surprises people. The skill discards the unsupported claim
 and writes again, so a gate failure is normally something you never see.
 You are involved only in the rarer case where the paper genuinely is not
 in the corpus yet.
@@ -118,14 +118,14 @@ flowchart TB
 
 | Layer | Generative? | Blocks you? | Takes the corpus write lock? |
 | --- | --- | --- | --- |
-| 1 · Corpus | No -- no LLM, no judgement calls | Only the gate, which lives in layer 2 | **Yes** |
-| 2 · Drafting | Yes | The gate does, and only the gate | No -- read-only over the corpus |
+| 1 · Corpus | No: no LLM, no judgement calls | Only the gate, which lives in layer 2 | **Yes** |
+| 2 · Drafting | Yes | The gate does, and only the gate | No; read-only over the corpus |
 | 3 · Enrichment | No | No | **Yes**, same lock as `sync` |
-| 4 · Review | No | **Never** | No -- keeps working during a `sync` |
+| 4 · Review | No | **Never** | No; keeps working during a `sync` |
 
-That last column is a feature, not an implementation detail: a review aid
-runs while a corpus rebuild is in progress, because an advisory
-read-only report has no reason to wait on one.
+That last column is a feature. A review aid runs while a corpus rebuild
+is in progress, because an advisory read-only report has no reason to
+wait on one.
 
 ## 📚 Corpus layer: turning a library into a ledger
 
@@ -137,22 +137,22 @@ same bibliography in, same citekeys out.
 | `corpus sync` | bib read, ledger update, PDF text extraction, duplicate-citekey check, stale-citekey report | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | `corpus ledger` | inspect what the corpus holds, by citekey, collection or status | [CLI.md](CLI.md) |
 | `corpus topics` | the topic clustering, once the enrichment layer has built it | [TOPIC-MODELLING.md](TOPIC-MODELLING.md) |
-| `corpus discover` | start from any phrase and find the topics, papers and neighbours your corpus actually holds | [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) |
+| `corpus discover` | start from any phrase and find the topics, papers and neighbours your corpus holds | [TOPIC-DISCOVERY.md](TOPIC-DISCOVERY.md) |
 | Two parser backends | `pdftotext` (fast, bit-reproducible) or Docling (layout-aware) | [PDF-PARSER.md](PDF-PARSER.md) |
 | Zotero group support | export a shared group library without Better BibTeX | [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md) |
 
-Four nuances worth knowing before you rely on it:
+Four things to know before you rely on it:
 
 - **Removal is opt-in, and it tells you what you are removing.** `sync`
   only *reports* a citekey that dropped out of your bib export; it
   deletes nothing until re-run with `--remove-stale`. A short export is
   more often a botched one than an intentional deletion. Either way it
-  first names every other artefact -- overlap index, topic graph, topic
-  membership, dossiers, chroma vectors -- that still references that
+  first names every other artefact (overlap index, topic graph, topic
+  membership, dossiers, chroma vectors) that still references that
   citekey, and repairs none of them.
 - **A citekey is also a filename stem.** One containing a path
   separator, a character Windows forbids, or a reserved device name is
-  **skipped with a warning naming it**, never sanitised -- this project
+  **skipped with a warning naming it**, never sanitised. This project
   does not rewrite citekeys, so the fix is to rename it in your reference
   manager and re-export.
 - **Determinism has one asterisk.** With `pdftotext` the parse is
@@ -165,30 +165,30 @@ Four nuances worth knowing before you rely on it:
 ## 🕸 Finding what to write about: topic discovery
 
 Before you draft, you often need the lie of the land: what is my
-library actually about, which papers belong to a theme, and what sits
-next to it? `chitragupta corpus discover` answers that from your own
-corpus -- no web search, no generated summary, every paper named by its
-real citekey.
+library about, which papers belong to a theme, and what sits next to it?
+`chitragupta corpus discover` answers that from your own corpus, with no
+web search and no generated summary, and names every paper by its real
+citekey.
 
 | You ask | You get |
 | --- | --- |
 | `corpus discover` | every topic in your corpus, with how many papers each holds |
-| `corpus discover "digital twin"` | that topic's papers with full references, the *other* topics each paper belongs to, and the linked topics -- with the shared papers that link them named |
-| `corpus discover "cyber replica"` (any phrasing) | the nearest real topic, found by meaning as well as wording -- and the output tells you *how* it matched (`resolved_via`) |
+| `corpus discover "digital twin"` | that topic's papers with full references, the *other* topics each paper belongs to, and the linked topics, with the shared papers that link them named |
+| `corpus discover "cyber replica"` (any phrasing) | the nearest real topic, found by meaning as well as wording; the output tells you *how* it matched (`resolved_via`) |
 | `corpus discover --paper smith2021` | which topics one paper belongs to |
 | `... --groups 8` | the corpus's broad areas: the stored merge tree cut into about eight named groups |
-| `... --clusters` | where clustering by shared papers and clustering by meaning disagree -- the pairs one groups and the other splits |
+| `... --clusters` | where clustering by shared papers and clustering by meaning disagree: the pairs one groups and the other splits |
 | `... --why "A" "B"` | why two topics have *no* edge: the shared papers, the statistics the gate weighed, and its verdict |
 | `... --path "A" "B" --family overlap` | the strongest chain between two topics over one relation, every hop named by its papers |
 | `... --compare "A" "B"` | two to six topics side by side: shared papers, bridges with full references, and the edges among them |
 | `... "digital twin" --hops 2` | a topic's neighbourhood as rings by distance, ring one labelled by which relation reached each neighbour |
 | `... "digital twin" --hops 2 --family overlap` | the same rings measured over *one* relation, so "two out" means two shared papers out rather than two hops over whichever relation got there first |
-| `... --origins seed,corroborated` | only the topics you named yourself, or only the ones the corpus proposed, or only what the model found on its own -- in every view, including the exported page and app |
-| `... --out overview.md` | a topic overview file -- papers, related topics, and representative sentences quoted verbatim from the papers themselves -- ready to seed a new draft |
-| `... --html topics.html` | your whole topic landscape as one clickable page that works offline, forever |
-| `... --app topicapp/` | the same landscape as an interactive app -- opens grouped at a readable handful of groups (a cut of the stored merge tree you can slide), type-ahead topic search, the neighbourhood of what you picked drawn as rings with the rest of the corpus dimmed rather than deleted, papers on click, and two pickers in the header for which kinds of topic and which relation to show -- a directory you can hand to anyone, opened from `file://` |
+| `... --origins seed,corroborated` | only the topics you named yourself, or only the ones the corpus proposed, or only what the model found on its own, in every view, including the exported page and app |
+| `... --out overview.md` | a topic overview file (papers, related topics, and representative sentences quoted verbatim from the papers themselves), ready to seed a new draft |
+| `... --html topics.html` | your whole topic map as one clickable page that works offline, indefinitely |
+| `... --app topicapp/` | the same map as an interactive app, in a directory you can hand to anyone and open from `file://`. It opens grouped at a readable handful of groups (a cut of the stored merge tree you can slide), with type-ahead topic search, the neighbourhood of what you picked drawn as rings with the rest of the corpus dimmed rather than deleted, papers on click, and two pickers in the header for which kinds of topic and which relation to show |
 
-Three properties worth knowing before you rely on it:
+Three properties to know before you rely on it:
 
 - **Nothing is generated.** Topic relations are computed from your
   papers (shared membership, and closeness in meaning); overview
@@ -197,8 +197,8 @@ Three properties worth knowing before you rely on it:
   labelled paper search rather than inventing an answer.
 - **Every link is explainable.** Two topics are shown as related either
   because named papers belong to both, or because a named pair of
-  papers sits closest across them -- never because of an opaque score
-  alone.
+  papers sits closest across them. An opaque score alone never links
+  them.
 - **You can measure it on your own corpus.** A small file of questions
   you write yourself, with the topics they should reach, scores the
   whole lookup so a settings change is a measured decision
@@ -215,7 +215,7 @@ the lookup itself is instant and works wherever the corpus does.
 
 Five write a new draft, three change one that already exists, and one
 assembles a book from units the others wrote. You never invoke them by
-name -- each declares its triggers, and asking in ordinary words selects
+name: each declares its triggers, and asking in ordinary words selects
 one ([GENRE.md](GENRE.md)).
 
 | Skill | Writes | Reader |
@@ -225,12 +225,12 @@ one ([GENRE.md](GENRE.md)).
 | `textbook-chapter-writer` | undergraduate chapter with worked examples | a student studying, not typing |
 | `tutorial-writer` | a hands-on lesson to a working result | a learner at a keyboard |
 | `deep-research` | multi-perspective report, heaviest by design | someone who needs perspectives reconciled |
-| `draft-reviser` | edits an existing draft, from its dossier | -- the cheap, default path for any change |
-| `corpus-reviser` | edits an existing draft, re-searching everything | -- by explicit request only |
-| `agenda-reviser` | repairs the unattended findings a review agenda found | -- one item at a time |
+| `draft-reviser` | edits an existing draft, from its dossier | (the cheap, default path for any change) |
+| `corpus-reviser` | edits an existing draft, re-searching everything | (by explicit request only) |
+| `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
 | `book-assembler` | one LaTeX book from accepted units | [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
 
-**The rule that saves the most money:** never re-run a genre skill to
+The rule that saves the most money is never to re-run a genre skill to
 change a draft that exists. `draft-reviser` reads the dossier and edits
 the affected sections instead. [TOKENS.md](TOKENS.md) measures what the
 mistake costs.
@@ -238,7 +238,7 @@ mistake costs.
 ### 🗂 The dossier: why a draft is revisable months later
 
 Every drafting run writes `content/dossiers/<the draft's path minus its
-suffix>/` -- Markdown, nine files (two of them optional), readable by a
+suffix>/`: Markdown, nine files (two of them optional), readable by a
 human or a model with no tooling at all.
 
 ```mermaid
@@ -270,46 +270,44 @@ mirroring is what lets `draft dossier export` bundle a draft with
 everything belonging to it by matching paths, rather than by keeping a
 registry that could fall out of step.
 
-Nine files -- `scope`, `evidence`, `rejected`, `sections`, `steering`,
-`revisions`, `retrieval`, and the optional `math` and `outline` -- each
-answering a question the draft itself
-cannot. **[DOSSIER.md](DOSSIER.md) explains each one**, what it holds and
+Nine files (`scope`, `evidence`, `rejected`, `sections`, `steering`,
+`revisions`, `retrieval`, and the optional `math` and `outline`) each
+answer a question the draft itself cannot. [DOSSIER.md](DOSSIER.md)
+explains each one, what it holds and
 what goes wrong without it, plus the `claim:`/`quote:` contract and why
 the whole thing is Markdown.
 
 It is deliberately machine-facing documentation: a dossier's reader is
-usually the model resuming a draft weeks later, not a person. That is the
-clean split from [REVIEW.md](REVIEW.md), which is written for you.
+usually the model resuming a draft weeks later, not a person. That
+separates it from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
 `status`, `stamp`, `sections`, `prune`, `outline`, `brief`,
 `check-evidence`, `list`, and `export`/`restore` for backup.
-**`status` is the one to
-know** -- it recomputes the corpus fingerprint the dossier recorded, and
-if the corpus has moved it names the citekeys that appear nowhere in the
-dossier, neither kept nor rejected. That distinguishes "new papers
-exist" from "a paper this draft cites has left the corpus", which want
-opposite responses. It also recomputes a **draft fingerprint** the same
-way, reporting `CHANGED since last stamp` when a hand edit has moved the
-draft itself since `stamp` last ran -- see [DOSSIER.md](DOSSIER.md)'s
-"The draft fingerprint".
+`status` is the one to know. It recomputes the corpus fingerprint the
+dossier recorded, and if the corpus has moved it names the citekeys that
+appear nowhere in the dossier, neither kept nor rejected. That
+distinguishes "new papers exist" from "a paper this draft cites has left
+the corpus", which want opposite responses. It also recomputes a **draft
+fingerprint** the same way, reporting `CHANGED since last stamp` when a
+hand edit has moved the draft itself since `stamp` last ran (see
+[DOSSIER.md](DOSSIER.md)'s "The draft fingerprint").
 
-**A human can declare the structure before drafting, instead of a genre
-skill inventing sub-themes from the topic.** `dossier init
+A human can declare the structure before drafting, instead of a genre
+skill inventing sub-themes from the topic. `dossier init
 --outline` creates an eighth, opt-in file, `outline.md`: per section, a
 `brief:` and/or `claim:` block plus optional declared `queries:`, which
 the genre skill then runs verbatim. `dossier status` reports whether the
-draft actually ran what was declared, from `retrieval.md`'s `origin`
-column -- "did this draft follow its outline?" becomes decidable rather
-than trusted.
+draft ran what was declared, from `retrieval.md`'s `origin` column, so
+"did this draft follow its outline?" can be checked.
 
-**A hand-edited section's own prose can re-run its own retrieval
-.** Once `dossier status` reports the draft fingerprint
-`CHANGED`, `draft-reviser` can offer one extra retrieval round for the
-section that changed, using the section's new wording as ITER-RETGEN's
-`y_{t-1}` (Shao et al., *Findings of EMNLP 2023*) -- a human in the
-generation slot a model would otherwise occupy. Exactly two rounds,
-merged and capped, never applied unasked.
+A hand-edited section's own prose can re-run its own retrieval. Once
+`dossier status` reports the draft fingerprint `CHANGED`, `draft-reviser`
+can offer one extra retrieval round for the section that changed, using
+the section's new wording as ITER-RETGEN's `y_{t-1}` (Shao et al.,
+*Findings of EMNLP 2023*), with a human in the generation slot a model
+would otherwise occupy. Exactly two rounds, merged and capped, never
+applied unasked.
 
 ### 📖 Evidence: `claim:` and `quote:`
 
@@ -320,8 +318,8 @@ ordering is the mechanism: a claim written before any sentence of the
 draft exists cannot be a lightly-edited copy of the source.
 
 `chitragupta draft evidence` then renders those quoted spans into an
-**evidence sidecar** beside the render -- attributed, in quotation marks,
-grouped by the section that leans on them -- so verbatim material has one
+**evidence sidecar** beside the render (attributed, in quotation marks,
+grouped by the section that leans on them), so verbatim material has one
 legitimate home and the body prose has none. Four of the five genres emit
 one; `tutorial-writer` does not, and
 [DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre) records
@@ -335,7 +333,7 @@ copyrighted sources.
 | `draft retrieve` | BM25 search and evidence windows over the parsed corpus | [RETRIEVAL.md](RETRIEVAL.md) |
 | `draft references` | an IEEE reference list built only from citekeys the draft already cites | [CLI.md](CLI.md) |
 | `draft render` | `.md`, `.tex`, `.pdf`, `.docx` via Pandoc, numbered IEEE-style | [CLI.md](CLI.md) |
-| `draft style` | prose checked against the house writing standards -- a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
+| `draft style` | prose checked against the house writing standards; a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
 | TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`) | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
 
 ### 📕 Book-scale drafting
@@ -351,14 +349,14 @@ over the accepted units. Two human sign-offs, not one.
 `draft tldr write <citekey>` (summary on stdin) and `draft tldr show
 <citekey>` cache a one-paragraph summary per citekey under
 `content/tldr/`, so skimming a large corpus does not mean opening every
-PDF. The summary is never generated by the tool itself -- a person or a
-skill composes it -- and it is keyed to a fingerprint of that citekey's
+PDF. The summary is never generated by the tool itself (a person or a
+skill composes it), and it is keyed to a fingerprint of that citekey's
 parsed text, so `show` reports a summary stale rather than silently
 describing a paper that has since been re-parsed.
 
-**For the citekeys nobody has written one for, `show` falls back to the
-authors' own abstract**, lifted out of the citekey's passage sidecar --
-extraction, not summarisation, so there is no LLM call and no
+For the citekeys nobody has written one for, `show` falls back to the
+authors' own abstract, lifted out of the citekey's passage sidecar. That
+is extraction, not summarisation, so there is no LLM call and no
 hallucination surface. It is re-derived on every read rather than stored,
 which is what keeps it from ever being stale. Where a paper genuinely has
 no abstract, `show` says so; where it was parsed by a backend that
@@ -372,9 +370,9 @@ stays in the drafting layer's own sidecar rather than the corpus plane.
 
 ### 🖼 Per-citekey figures
 
-`draft figures <citekey>` lists one paper's figures -- caption, page, the
-exact string to cite each by, and the path to the crop of it -- so a
-drafting session can **look at** a figure while grounding a claim about
+`draft figures <citekey>` lists one paper's figures (caption, page, the
+exact string to cite each by, and the path to the crop of it), so a
+drafting session can look at a figure while grounding a claim about
 what a paper shows, or while drawing a diagram of its own.
 
 It is the only route figures have to the drafting stage, and it had to be
@@ -382,12 +380,12 @@ a route rather than a widening: prose, table cell text and decoded
 equations all arrive through `content/parsed/<citekey>.txt`, which is the
 one artefact retrieval indexes, and a bitmap cannot live in a text file.
 
-**Consider, never replicate.** The crops are a reading aid; having a
+**Consider, never replicate.** The crops are a reading aid: having a
 paper in your library grants no right to reproduce its figures, and no
 source image is ever placed in a draft. It reads the enrichment layer's
 `content/docling/` index as a path rather than importing that layer, so
-an ordinary drafting run pulls in none of its optional dependencies --
-and it distinguishes a paper with no figures from one the docling stage
+an ordinary drafting run pulls in none of its optional dependencies.
+It also distinguishes a paper with no figures from one the docling stage
 has not reached, because only the second is something you can act on.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
 proposal parked in the issue tracker.
@@ -395,51 +393,51 @@ proposal parked in the issue tracker.
 ## 🔍 Review layer: ten advisory aids
 
 Run by hand on a finished draft. **None of them gates anything, and none
-may be promoted to a gate** -- [SOUL.md](../SOUL.md) has why. Each
+may be promoted to a gate**; [SOUL.md](../SOUL.md) has why. Each
 produces evidence for a human judgement, never a verdict, and each exits
 0 whether it finds something or not.
 
 | Aid | Answers |
 | --- | --- |
 | `review provenance` | what in each cited source actually supports the claim citing it, quoting a real passage |
-| `review verbatim` | how much wording the draft shares with its sources -- and with **any** parsed source, cited or not |
+| `review verbatim` | how much wording the draft shares with its sources, and with **any** parsed source, cited or not |
 | `review coverage` | retrieval surfaced these sources; did the draft cite them? |
 | `review synthesis` | how many sources each unit rests on, at the unit its genre binds at |
-| `review figure` | what a TikZ figure's own geometry says -- overlapping nodes, protrusion, overlong labels -- plus one source check: a figure file that loads its TikZ library by hand, which renders correctly alone and multiplies node spacing in an assembled book |
+| `review figure` | what a TikZ figure's own geometry says (overlapping nodes, protrusion, overlong labels), plus one source check: a figure file that loads its TikZ library by hand, which renders correctly alone and multiplies node spacing in an assembled book |
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
 | `review agenda` | merges the eight draft-level aids' reports into one ranked, deduplicated worklist |
 | `review support` | does the cited source actually entail this claim, scored by a real NLI entailment model |
 | `review union` | does an assembled book still cite every citekey its accepted units stand on? The one aid that reads a book rather than a draft |
 
-**Why they are not gates, stated once because it is the design and not an
-omission:** the gate answers a question with one correct answer -- is this
-citekey in the ledger? -- so it can be automatic and absolute. Seven of
+Why they are not gates, stated once because it is the design and not an
+omission: the gate answers a question with one correct answer (is this
+citekey in the ledger?), so it can be automatic and absolute. Seven of
 the ten answer questions of judgement, where a machine verdict would
 be either wrong often enough to be ignored, or trusted more than it
 deserves. `quotation` is binary and deterministic and still not a gate,
 because what it is measured against is the parse rather than the ledger
--- [ARCHITECTURE.md](ARCHITECTURE.md) has it. `union` is the second such
+([ARCHITECTURE.md](ARCHITECTURE.md) has it). `union` is the second such
 case and is no more a gate for it: set arithmetic over what a unit
 recorded, which decides nothing about whether the assembly is right to
 have dropped a source. `agenda` asks no question of its own; it inherits
-whichever answer -- judgement or binary -- produced each item it
+whichever answer, judgement or binary, produced each item it
 surfaces.
 
-**[REVIEW.md](REVIEW.md) explains each aid** -- what it answers, and the
+[REVIEW.md](REVIEW.md) explains each aid: what it answers, and the
 distinctions that are easy to get wrong, such as `coverage` and
 `uncited` looking like one question when they are mirror images of it.
-It also covers what every report looks like and the two limits worth
-knowing before you trust one.
+It also covers what every report looks like and the two limits to know
+before you trust one.
 
-Unlike the dossier, this half is written for **you**: a report is
+Unlike the dossier, this half is written for you: a report is
 evidence you weigh once, near the end, not state a machine reloads.
 
 ## 🧠 Enrichment layer: optional depth
 
-Nothing above needs it, and it is never run on your behalf by a skill --
-it is expensive, and cost a skill may incur unasked is not a decision it
-gets to make.
+Nothing above needs it, and a skill never runs it on your behalf. It is
+expensive, and a skill does not get to decide to incur that cost
+unasked.
 
 | Stage | What it adds |
 | --- | --- |
@@ -469,7 +467,7 @@ the last stage derives and the discovery feature being built on it;
 | Graceful degradation | every optional dependency has a documented fallback, and says which one it took | [LADDERS.md](LADDERS.md) |
 | Parallelism and locking | a worker pool for parsing, one write lock for the corpus | [PARALLELISM.md](PARALLELISM.md) |
 
-**The ladders are the feature most worth understanding.** Nothing here
+The ladders are the feature most worth understanding. Nothing here
 fails because an optional package is absent; it drops to the next rung
 and *says which rung it is on*. A run that silently reported less would
 be worse than one that refused.
@@ -481,11 +479,11 @@ decision rather than a gap:
 
 - **It does not fetch papers.** Curation is yours, in your reference
   manager. There is no auto-download and no auto-sync.
-- **It does not rewrite a citekey**, ever -- not to sanitise it, not to
-  deduplicate it.
+- **It does not rewrite a citekey**, ever, whether to sanitise it or
+  to deduplicate it.
 - **It does not promote a review aid to a gate.** Ten advisory aids
   and one gate is the design, and `review quotation` is the case that
-  proves it rather than the exception: binary, deterministic, and still
+  proves it, not an exception: binary, deterministic, and still
   advisory. See [SOUL.md](../SOUL.md).
 - **It does not have a genre for everything.**
   [GENRE.md](GENRE.md#-genres-this-project-does-not-have) lists the ones
@@ -506,7 +504,7 @@ decision rather than a gap:
 
 For the maintainers rather than for you: a features catalogue is where
 doc drift happens first, and this repository has repaired exactly that
-twice -- a review-layer section that still claimed three aids when
+twice: a review-layer section that still claimed three aids when
 there were six, and a command-count sentence whose arithmetic
 nothing checked. So every list and count here is pinned to the
 code by `tests/test_features_doc.py`: add a review aid or a genre skill

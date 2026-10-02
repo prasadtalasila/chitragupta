@@ -6,29 +6,30 @@ Status: **reasoning document.** Written 2026-08-08. Updated 2026-08-23.
 cost, or reviewing a proposal that claims a saving. **Assumed:**
 [ARCHITECTURE.md](ARCHITECTURE.md) for the layers, and
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) for the dossier. **Not covered
-here:** how to run anything -- this is a reasoning document, not a
+here:** how to run anything; this is a reasoning document, not a
 reference.
 
-Where a drafting run's tokens actually go, which of the two pools each
-cost lands in, what the dossier does and does not recover -- and how to
-put a number on any of it without paying for a full seven-phase run.
+This document covers where a drafting run's tokens go, which of the two
+pools each cost lands in, what the dossier does and does not recover, and
+how to put a number on any of it without paying for a full seven-phase
+run.
 
 The token accounting lives here, in one place.
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md) and
-[REJECTION.md](REJECTION.md) keep their own subjects -- the dossier, and
-why a retrieval change was withdrawn -- and defer the arithmetic to this
+[REJECTION.md](REJECTION.md) keep their own subjects (the dossier, and
+why a retrieval change was withdrawn) and defer the arithmetic to this
 document.
 
 Related reading:
 
-- [DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- the dossier: what it holds,
+- [DRAFT-ITERATION.md](DRAFT-ITERATION.md): the dossier, what it holds,
   why it is Markdown, and how a draft is revised weeks later.
-- [REJECTION.md](REJECTION.md) -- why turning a source down is the
+- [REJECTION.md](REJECTION.md): why turning a source down is the
   load-bearing judgment, and the record of a two-stage retrieval read
   that was built and then withdrawn on the reasoning below.
-- [RETRIEVAL.md](RETRIEVAL.md) -- what a `SearchResult` contains and how
+- [RETRIEVAL.md](RETRIEVAL.md): what a `SearchResult` contains and how
   big a snippet is, which is the input to every estimate here.
-- [PERFORMANCE.md](PERFORMANCE.md) -- **measured** costs, all of them
+- [PERFORMANCE.md](PERFORMANCE.md): **measured** costs, all of them
   wall-clock and disk. Nothing in this document belongs there. Every
   token figure below is an estimate or a derivation, and is labelled.
 
@@ -59,14 +60,14 @@ A subagent's context is destroyed when it hands back its packet. An
 orchestrator's is not: it is **append-only between compactions**, and the
 whole of it is re-sent on every subsequent turn. So the same 500-character
 snippet costs one unit inside a subagent and one unit per remaining turn
-in the main run. That difference, not the byte count, is what makes a
-drafting run expensive.
+in the main run. That difference, and not the byte count, is what makes
+a drafting run expensive.
 
 ### 💾 What caching changes, and what it does not
 
 Prompt caching blunts the resident pool without removing it. The
-structural ratios -- stable across Claude models, and ratios rather than
-prices so they do not go stale -- are:
+structural ratios (stable across Claude models, and ratios instead of
+prices so they do not go stale) are:
 
 | | Multiple of base input |
 | --- | --- |
@@ -77,18 +78,19 @@ prices so they do not go stale -- are:
 
 Two consequences run through everything below.
 
-**A resident token is roughly a tenth of a fresh one, not free.** Twenty
-turns of cached residency come to `20 x 0.1` = 2x the base rate, against
-1.25x to put the material in context in the first place. A long run
-therefore pays more to keep a snippet than it paid to fetch it.
+First, a resident token costs roughly a tenth of a fresh one, which is
+not zero. Twenty turns of cached residency come to `20 x 0.1` = 2x the
+base rate, against 1.25x to put the material in context in the first
+place. A long run therefore pays more to keep a snippet than it paid to
+fetch it.
 
 But any figure computed as `bytes x turns` overstates the bill about
 sixfold if it forgets the 0.1x, which is an easy mistake to make in this
 direction.
 
-**Output is the expensive direction, at 50x a cached input token.**
-Anything the orchestrator *writes* -- a draft, a dossier entry, a
-dispatch prompt pasted full of packet material -- is the costliest thing
+Second, output is the expensive direction, at 50x a cached input token.
+Anything the orchestrator *writes* (a draft, a dossier entry, a
+dispatch prompt pasted full of packet material) is the costliest thing
 it does per token. A fix that trades resident input for extra output can
 easily lose.
 
@@ -100,7 +102,7 @@ The quantity that matters is not how many tokens a phase produces but
 resident cost = tokens entering context x turns remaining in the run
 ```
 
-and the second factor is a property of the **skill**, not of the topic.
+and the second factor is a property of the skill, not of the topic.
 `survey-writer` has 15 numbered steps, of which retrieval is step 1;
 `deep-research` has seven phases, and Phase 7 alone mandates a peer-review
 dispatch, a reconciliation, an assembly, a provenance write, a gate run,
@@ -114,7 +116,7 @@ it; a token that enters at the presentation step is billed once.
 
 ## ⚡ Where the tokens go
 
-**Every figure in this section is an estimate**, derived from file sizes
+Every figure in this section is an estimate, derived from file sizes
 in `content/drafts/` and the defaults documented in the genre skills.
 Nothing here counts tokens directly: the closest this repository gets is
 `retrieval.md`, which records the *character* payload of each retrieval
@@ -124,15 +126,14 @@ call for one draft. Read the ratios, not the absolute numbers.
 
 `survey-writer` step 1 calls `search(sub_theme, k=15)` for two to four
 sub-themes, over-fetching on purpose. Each `SearchResult` carries a
-citekey, a title, a score and a 500-character snippet -- **an estimated
+citekey, a title, a score and a 500-character snippet, **an estimated
 ~150 tokens each**, so 30-60 results is an estimated **4.5k-9k tokens per
 retrieval pass**. Step 3 then tells you to reformulate and search again
 when a sub-theme comes up thin.
 
-The sharp part is what happens next. `reference.md` §1 sets "results kept
-per query ~ top 3" out of fifteen. **The roughly 80% that get rejected
-cost exactly what the kept ones cost, and then stay resident for the rest
-of the run anyway.**
+`reference.md` §1 sets "results kept per query ~ top 3" out of fifteen.
+**The roughly 80% that get rejected cost exactly what the kept ones cost,
+and then stay resident for the rest of the run anyway.**
 
 Rejecting a candidate saves no tokens at all. It only saves you from
 citing it. [REJECTION.md](REJECTION.md) is the full argument, including
@@ -142,7 +143,7 @@ withdrawn.
 ### 🤖 2. Fan-out results held across phases
 
 `deep-research` Phase 2 dispatches six interviewers and holds their
-packets through Phases 3, 4, 5, 6 and 7 -- the contradiction map, the
+packets through Phases 3, 4, 5, 6 and 7: the contradiction map, the
 outline, the section writers, the polish pass and the peer-review
 reconciliation all read them. An estimated ~1k tokens per packet is ~6k
 tokens resident across the longest stretch of the run. This is the
@@ -151,25 +152,24 @@ issue](https://github.com/prasadtalasila/chitragupta/issues/74), and
 ["What the dossier actually recovers"](#-what-the-dossier-actually-recovers)
 below is careful about which part of it a dossier can and cannot remove.
 The half that could be removed now has been: Phase 5 dispatches through
-`python -m chitragupta.draft dossier brief` rather than pasting the packets into
-four
-prompts. The residency itself is untouched, and the reason it cannot be
-touched from inside a run is the subject of that section.
+`python -m chitragupta.draft dossier brief` instead of pasting the packets
+into four prompts. The residency itself is untouched, and the reason it
+cannot be touched from inside a run is the subject of that section.
 
 ### ✍ 3. Whole-file rewrites
 
 `content/drafts/digital-twins-for-software-engineers/survey.md` is 18.3
-KB, an estimated **~4.6k output tokens to write once** -- and output is
+KB, an estimated **~4.6k output tokens to write once**, and output is
 the 5x direction. A draft rewritten whole for each revision pays that
 every time, including for a gate failure that touches one citekey.
 
 ### 🚫 4. No revision path at all
 
-This was the big one, and it is what `chitragupta/dossier/` plus the
+This was the largest cost, and it is what `chitragupta/dossier/` plus the
 `draft-reviser` skill exist to remove. Before them, no genre skill had a
 branch for "an existing draft plus a change request", so the only way to
 alter a paragraph was to run every step again. That is a **structural**
-cost -- a whole run you should not have had to make -- rather than a
+cost (a whole run you should not have had to make), as opposed to a
 constant factor on a run you make anyway, which is why it was fixed
 first.
 
@@ -190,8 +190,8 @@ A `survey-writer` run on a topic broken into three sub-themes.
 | 2 | ~3 kept per query, 12 rejected | ~1.4k kept, **~5.4k rejected** |
 | 2-14 | thirteen further numbered steps, an estimated 20+ orchestrator turns | nothing evicted |
 
-The 5.4k tokens of rejected candidates are the interesting half. Costed
-properly:
+The 5.4k tokens of rejected candidates are the half to follow. Costed
+with the weights:
 
 - entering context once: `5.4k x 1.25` = **6.8k equivalents**
 - resident across ~20 further turns: `5.4k x 0.1 x 20` = **10.8k**
@@ -199,16 +199,16 @@ properly:
 
 Three things follow. The rejected candidates cost **4x what the kept ones
 do**, because there are four times as many of them and residency does not
-care which is which. **Rejecting harder saves nothing** -- the tokens were
-spent at retrieval; a rejection only prevents a citation. And the naive
-figure, `5.4k x 20 = 108k`, overstates the bill by about six times: the
-honest unit is the multiplier, not the raw product.
+care which is which. **Rejecting harder saves nothing**: the tokens were
+spent at retrieval, and a rejection only prevents a citation. And the
+naive figure, `5.4k x 20 = 108k`, overstates the bill by about six times;
+the right unit is the multiplier, not the raw product.
 
 What *does* help is the subagent boundary. Dispatch one subagent per
 sub-theme and the 45 results are read inside three contexts that are then
 discarded; only the kept evidence comes back. The same 5.4k of rejects
-lands in the one-shot pool at 1.25x once -- about **6.8k equivalents,
-against 17.6k** -- and the saving grows with every turn the run still has
+lands in the one-shot pool at 1.25x once (about **6.8k equivalents,
+against 17.6k**), and the saving grows with every turn the run still has
 to make.
 
 ### 📝 Example 2: six interview packets, from Phase 3 to Phase 7f
@@ -228,37 +228,37 @@ resident pool:
 
 - **Transcription into the dossier.** `SKILL.md` already requires the
   kept claims into `evidence.md` and the discarded citekeys into
-  `rejected.md`. Say ~4k output tokens: `4k x 5` = **20k equivalents** --
+  `rejected.md`. Say ~4k output tokens: `4k x 5` = **20k equivalents**,
   as much as the entire residency, paid once, and paid for durability
-  rather than for speed. It is not a saving and was never billed as one.
+  and not for speed. It is not a saving and was never billed as one.
 - **Phase 5 dispatch prompts.** Each section writer *was* handed "the
   relevant citekeys plus supporting facts", which the orchestrator emits
   as *output*. Four writers x ~800 tokens of packet-derived material is
   3.2k output = **16k equivalents**.
 
-That last row is the one the fan-out cost issue could actually collect,
-and it is why the answer is a file rather than better summarising.
-**Implemented**: the pasted material is now the one line
+That last row is the one the fan-out cost issue could collect, and it is
+why the answer is a file instead of better summarising. This is
+implemented: the pasted material is now the one line
 `python -m chitragupta.draft dossier brief <draft> --section "<heading>"`, an
 estimated 40 output tokens per writer, ~0.8k equivalents.
 
-**An estimated 15k equivalents saved, in the 5x direction.** That is the
-same order as the entire resident cost the issue set out to attack,
-arrived at from the opposite side.
+That saves an estimated 15k equivalents, in the 5x direction, which is
+the same order as the entire resident cost the issue set out to attack,
+reached from the opposite side.
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-dispatching-from-the-dossier) has
-the mechanism and why it addresses by section rather than by citekey
+the mechanism and why it addresses by section and not by citekey
 list.
 
 ## 🗂 What the dossier actually recovers
 
 The issue's diagnosis is right about where the cost is and needs one
-correction about the mechanism, which is worth stating plainly because it
-changes what a fix should optimise.
+correction about the mechanism, because the correction changes what a
+fix should optimise.
 
 **Residency cannot be undone from inside a run.** The orchestrator's
 context is append-only between compactions. Once six packets have been
-returned into it, writing them to disk does not remove them -- reading an
-extract back *adds* tokens. There is no eviction primitive, so "hold the
+returned into it, writing them to disk does not remove them, and reading
+an extract back *adds* tokens. There is no eviction primitive, so "hold the
 extract instead of the packet" is not something a skill can do to a turn
 that has already happened.
 
@@ -269,14 +269,14 @@ that run. What it does recover:
 | --- | --- | --- | --- |
 | Phase 5 dispatch prompts shrink to a file reference | output, 5x | The orchestrator stops re-emitting packet material once per writer | **implemented** (3.10.0, `dossier brief`) |
 | Subagents read only the rows they need | subagent one-shot | Four writers each receive a command instead of a paste | **implemented** (3.10.0) |
-| Compaction stops being lossy | resident | A compacted run can recover exact packet detail from disk instead of re-dispatching six interviewers -- the single largest cost in the skill | implemented by the transcription (`c4fbd9a`) |
+| Compaction stops being lossy | resident | A compacted run can recover exact packet detail from disk instead of re-dispatching six interviewers, the single largest cost in the skill | implemented by the transcription (`c4fbd9a`) |
 | The next run skips Phase 2 entirely | structural | `draft-reviser` reads `evidence.md` and `rejected.md`; no interviews at all | implemented by the transcription (`c4fbd9a`) |
 
-The third row is the underrated one. Today a long run that hits
+The third row is easy to underrate. Today a long run that hits
 compaction either loses packet detail silently or pays six interviewer
 dispatches to get it back. With the packets on disk, compaction becomes a
-cheap operation instead of a lossy one -- which is a *resident*-pool
-effect, but an indirect one.
+cheap operation instead of a lossy one, which is a *resident*-pool
+effect, though an indirect one.
 
 ### ✂ The one way to cut residency, and what it would cost
 
@@ -284,11 +284,11 @@ Residency can only be avoided by **not putting the material in the
 orchestrator at all**. That collides with a rule the skill states
 deliberately: the main run owns the dossier, and a subagent never writes
 it (`.claude/skills/deep-research/SKILL.md`, "The dossier"). The three
-subagent definitions enforce it structurally -- `tools: Bash, Read, Grep,
-Glob`, with no `Write` or `Edit` -- and each is told in prose that it
+subagent definitions enforce it structurally (`tools: Bash, Read, Grep,
+Glob`, with no `Write` or `Edit`), and each is told in prose that it
 writes no files.
 
-**A proposal, not a plan:** relax that rule for exactly one shape --
+**A proposal, not a plan:** relax that rule for exactly one shape,
 **one file per subagent, written once, never read by a sibling**. Each
 interviewer writes `content/dossiers/<draft>/interviews/<persona>.md` and
 returns a short packet: claims, citekeys, one-line reasons. The long-form
@@ -297,8 +297,8 @@ incurred; the orchestrator reads back only what Phase 3 needs to build
 the contradiction map.
 
 What it buys is the only remaining reduction of the resident pool. What
-it costs is the invariant that makes the dossier trustworthy -- one
-writer, one record, verifiable by reading one skill file -- and it is
+it costs is the invariant that makes the dossier trustworthy (one
+writer, one record, verifiable by reading one skill file), and it is
 exactly the invariant that keeps
 [the synchronisation questions below](#-who-writes-a-packet-down-and-when)
 answerable. It is written down here so the trade is visible, not because
@@ -308,33 +308,33 @@ it is recommended, and it is deliberately not taken: `brief` only
 
 ## 💡 Why deep-research has no lever left
 
-The claim in [the fan-out cost issue](https://github.com/prasadtalasila/chitragupta/issues/74)
--- that the fan-out payload was the only remaining way to cut
-`deep-research`'s token cost -- was reached by elimination, and the
+The claim in [the fan-out cost issue](https://github.com/prasadtalasila/chitragupta/issues/74),
+that the fan-out payload was the only remaining way to cut
+`deep-research`'s token cost, was reached by elimination, and the
 eliminations are each recorded elsewhere:
 
 | Lever | Status for this skill |
 | --- | --- |
-| Remove the structural cost (no revision path) | Done -- `chitragupta/dossier/` plus `draft-reviser` |
+| Remove the structural cost (no revision path) | Done: `chitragupta/dossier/` plus `draft-reviser` |
 | Trim what retrieval returns (two-stage triage) | Withdrawn. See [REJECTION.md](REJECTION.md): `deep-research`'s reads already happen inside subagents, so triage optimises the *cheap* pool, adds an estimated 270 further process starts at standard depth, and discards exactly the qualifying passages contradiction mapping exists to find |
-| Move reads behind the subagent boundary | Done -- Phases 2, 5 and 7 all dispatch |
-| Cut the fan-out payload the orchestrator carries and re-emits | Done in 3.10.0 -- `dossier brief`, an estimated 15k equivalents |
+| Move reads behind the subagent boundary | Done: Phases 2, 5 and 7 all dispatch |
+| Cut the fan-out payload the orchestrator carries and re-emits | Done in 3.10.0: `dossier brief`, an estimated 15k equivalents |
 | Cut the residency itself | **Not available** without one file per subagent, and [the trade above](#-the-one-way-to-cut-residency-and-what-it-would-cost) is refused |
 
-The elimination was a real conclusion rather than an accident of what was
+The elimination was a real conclusion and not an accident of what was
 left: the dispatch payload was the one substantial thing the skill put in
-the expensive pool and then re-emitted by hand. With it gone, the honest
-statement of where this skill now stands is that its remaining cost is
-**structural to the genre** -- seven phases, a dozen subagents, and six
-packets that have to enter the orchestrator for Phase 3 to compare them
-against each other. A cheaper multi-perspective report is a different
-skill, not a further optimisation of this one; `survey-writer` is that
-skill, and the guardrails already say to point users there.
+the expensive pool and then re-emitted by hand. With it gone, the
+skill's remaining cost is **structural to the genre**: seven phases, a
+dozen subagents, and six packets that have to enter the orchestrator for
+Phase 3 to compare them against each other. A cheaper multi-perspective
+report is a different skill, not a further optimisation of this one;
+`survey-writer` is that skill, and the guardrails already say to point
+users there.
 
-The dependency the issue records is also stale, in the direction of being
-already satisfied. It lists itself as blocked by
-[an issue that has since closed](https://github.com/prasadtalasila/chitragupta/issues/81)
--- the dossier wiring landed in `c4fbd9a`, and
+The dependency the issue records is also stale, because it is already
+satisfied. It lists itself as blocked by
+[an issue that has since closed](https://github.com/prasadtalasila/chitragupta/issues/81);
+the dossier wiring landed in `c4fbd9a`, and
 `.claude/skills/deep-research/SKILL.md` has required the Phase 2
 transcription since. That was the write half; 3.10.0 is the
 dispatch-prompt half, and the two only work together. A run that skips
@@ -344,7 +344,7 @@ names the citekey it has no block for.
 ## 🚫 The one lever this repository does not own
 
 Everything above is a lever on *what enters context*. There is one lever
-on *what the work is priced at*, it belongs to the user rather than to
+on *what the work is priced at*, it belongs to the user and not to
 this repository, and a user who wants cheaper subagents needs nothing from
 here to get them:
 
@@ -354,13 +354,13 @@ export CLAUDE_CODE_SUBAGENT_MODEL=haiku
 
 Claude Code resolves a subagent's model from that environment variable
 first, then the per-invocation parameter, then the agent's `model:`
-frontmatter -- which defaults to `inherit`, the session's model. So the
+frontmatter, which defaults to `inherit`, the session's model. So the
 variable applies to **every** subagent dispatched by every skill here:
 `survey-writer` step 2a, and `deep-research` Phases 2, 5 and 7. Nothing in
 this repository can override it, and nothing here tries to.
 
-Three things are worth being exact about, because the size of the saving
-is easy to overstate and the cost of it is easy to miss.
+Three points need precision, because the size of the saving is easy to
+overstate and its cost is easy to miss.
 
 **It discounts the pool that was already cheap.** A subagent is the
 one-shot pool from [the two pools](#-the-two-pools): billed once, discarded
@@ -371,16 +371,16 @@ which runs are expensive.
 
 **It is all-or-nothing, and two of the four sites should not be
 cheapened.** `survey-writer` step 2a returns the *rejected* list, and
-`rejected.md` makes a rejection permanent --
+`rejected.md` makes a rejection permanent;
 [REJECTION.md](REJECTION.md) and SOUL.md both make that the load-bearing,
 irreversible judgment in the pipeline. `draft-reviser` repairing a
 citation-gate failure has to choose between correcting a claim and
 removing it, and its own text forbids the third option
 (`draft-reviser/SKILL.md`: *"never 'fix' a gate failure by inventing a
 plausible-looking key -- correct it or remove the claim"*). Setting the
-variable downgrades both along with
-everything else. That is a legitimate choice to make knowingly, and this
-document's job is to make sure it is knowing.
+variable downgrades both along with everything else. That is a
+legitimate choice, provided it is made knowingly, and this document
+exists so that it is.
 
 **Use the aliases, not a pinned model ID.** `haiku`, `sonnet`, `opus` and
 `fable` track the recommended version for the provider and move with it; a
@@ -397,7 +397,7 @@ measurement](https://github.com/prasadtalasila/chitragupta/issues/76) lands.
 ## ✍ Who writes a packet down, and when
 
 Two questions come up whenever this design is explained, and both have
-answers that are properties of the current code rather than intentions.
+answers that are properties of the current code, not intentions.
 
 **Do the later phases write the packets to disk?** No. Every write to
 `content/dossiers/` is done by the orchestrating run, in the phase that
@@ -414,7 +414,7 @@ The failure mode that remains is therefore **loss, not corruption**: an
 orchestrator that moves to Phase 3 without transcribing has lost six
 packets' worth of rejected citekeys. That used to be silent by
 construction, which is why the skill states the transcription as a rule
-of the skill rather than as a suggestion.
+of the skill and not as a suggestion.
 
 It is half-audible, and only because of a change made for a different
 reason. Phase 5 dispatches through `dossier brief`, which exits
@@ -422,13 +422,13 @@ reason. Phase 5 dispatches through `dossier brief`, which exits
 never transcribed surfaces at the moment the section that needs it is
 about to be written. A **rejected** citekey still fails silently: nothing
 downstream asks for it, which is exactly why it is the expensive half to
-lose -- the next session re-retrieves and re-judges those papers without
+lose: the next session re-retrieves and re-judges those papers without
 ever knowing it is repeating work. `dossier status` reporting "searched
 and recorded nothing it found" remains the only signal there, and it is
 after the fact.
 
-**Is there a synchronisation risk?** Not on the current paths, and the
-reason is worth knowing because it is narrower than "the module is safe".
+**Is there a synchronisation risk?** Not on the current paths, for a
+reason narrower than "the module is safe".
 
 - **One writer.** The orchestrator is single-threaded with respect to its
   own tool calls, and it is the only dossier writer. Concurrent
@@ -440,19 +440,17 @@ reason is worth knowing because it is narrower than "the module is safe".
   gate. It must not block behind a `sync` that is mid-run, and a
   bookkeeping write is never allowed to fail the work it was recording.
 
-There is one path that *can* produce concurrent writers, and it is worth
-naming because it was found by writing this document rather than by
-anything failing. `python -m chitragupta.draft retrieve ... --log <draft>`
-appends to
-the dossier's `retrieval.md`, and subagents can run Bash. Today only
+There is one path that *can* produce concurrent writers. It was found by
+writing this document, not by anything failing.
+`python -m chitragupta.draft retrieve ... --log <draft>` appends to the
+dossier's `retrieval.md`, and subagents can run Bash. Today only
 `survey-writer` and `draft-reviser` pass `--log`, and both are single
-orchestrators -- but give `--log` to six parallel interviewers and it is
+orchestrators, but give `--log` to six parallel interviewers and it is
 live.
 
 `log_retrieval` used to write the template when the file was absent and
-then append the row, which lost data two different ways. Both are worth
-knowing, because the second is what the obvious fix for the first turns
-into:
+then append the row, which lost data two different ways. Both matter,
+because the second is what the obvious fix for the first turns into:
 
 - **A stale check.** `if not path.exists(): path.write_text(TEMPLATE)`
   truncates, and the check can go stale between the two calls, so a
@@ -463,35 +461,35 @@ into:
   template written from offset 0. A second writer that appends a row in
   that window has it overwritten. This one is microseconds wide, which
   means concurrent processes essentially never hit it and a smoke test
-  proves nothing -- it has to be reproduced by forcing the interleaving.
+  proves nothing; it has to be reproduced by forcing the interleaving.
 
 What the module does now is write nothing at an offset: one append-mode
 handle, and the template written only when that open finds the file
 empty, so every byte lands at whatever the end of the file is at the time
 of the write. The residual failure is a *duplicated header* when two
-writers both find it empty -- observed, at 16 concurrent processes -- and
+writers both find it empty (observed, at 16 concurrent processes), and
 that is left in on purpose. It loses nothing: `retrieval_cost_by_revision`
 skips any row whose last cell is not an integer, which the header and its
-separator both are, so all 16 rows still total correctly. Buying exactly-one-header
-would cost a lock or a link-into-place dance, on the cheapest file in the
-system.
+separator both are, so all 16 rows still total correctly. Guaranteeing
+exactly one header would cost a lock or a link-into-place dance, on the
+cheapest file in the system.
 
 That is also the general answer to "why not just lock it". A lock fixes
-corruption, and the failure this section opened with is *loss* -- a
+corruption, and the failure this section opened with is *loss*: a
 transcription that never happened, which no mutual exclusion can conjure.
 It would also have to be skippable on timeout, since a bookkeeping write
 may never fail the work it records, and a lock you are willing to skip is
 not mutual exclusion. Meanwhile the per-persona-file proposal above
 sidesteps the whole question by construction, since one file with one
-writer never races -- at the price of the single-writer rule everywhere
+writer never races, at the price of the single-writer rule everywhere
 else.
 
 ## 📊 Measuring this without writing a survey
 
 Every figure above is derived. Turning them into numbers is [a planned
 measurement](https://github.com/prasadtalasila/chitragupta/issues/76), and
-the obvious way to do it -- run a full `standard`-depth `deep-research` on a
-real topic, before and after -- is also the most expensive experiment
+the obvious way to do it (run a full `standard`-depth `deep-research` on a
+real topic, before and after) is also the most expensive experiment
 available and the least controlled, since two runs on the same topic do
 not take the same number of turns. Four cheaper routes, in increasing
 order of what they cost you.
@@ -505,12 +503,12 @@ assistant entry carries a `usage` object with `input_tokens`,
 `output_tokens`.
 
 **Subagent turns are not in that file.** An earlier version of this
-recipe said they were, flagged `isSidechain: true` in the same JSONL --
-wrong, checked directly against this machine's own transcripts rather
-than assumed: every subagent turn instead lives in its own file, under
+recipe said they were, flagged `isSidechain: true` in the same JSONL.
+That was wrong, as a direct check against this machine's own transcripts
+showed: every subagent turn instead lives in its own file, under
 `<session-id>/subagents/agent-<id>.jsonl`, a sibling directory of the
-session file rather than a line inside it. The two pools still separate
-empirically, from a run already paid for -- the fix is reading a second
+session file and not a line inside it. The two pools still separate
+empirically, from a run already paid for; the fix is reading a second
 set of files, not a different flag:
 
 ```python
@@ -551,25 +549,25 @@ for name, (turns, inp, outp) in (
           f"  mean input/turn {inp // max(turns, 1):,}")
 ```
 
-This is a recipe, not shipped tooling -- it reads harness files this
+This is a recipe, not shipped tooling: it reads harness files this
 project does not own, and the schema (this directory layout included) is
 the harness's to change.
 
-**On a session with no subagent dispatches**, `subagent_dir` doesn't
-exist and the split is moot but the input:output ratio still holds: run
-against the session that wrote this document's original draft -- a
-documentation session, no drafting, no subagents -- it reports 35
+On a session with no subagent dispatches, `subagent_dir` doesn't exist
+and the split is moot, but the input:output ratio still holds. Run
+against the session that wrote this document's original draft (a
+documentation session, no drafting, no subagents), it reports 35
 orchestrator turns, **1,991,974 input tokens against 14,318 output
 tokens**. That ratio, 139 input tokens per output token, is the resident
-multiplier measured rather than argued, on a session doing nothing more
+multiplier measured, not argued, on a session doing nothing more
 expensive than reading files and writing prose. De-duplicating on
 `requestId` matters here too: summing naively inflated the same session
 to 56 turns and 3.2M tokens.
 
-**On a session that does dispatch subagents**, measured on two of this
+On a session that does dispatch subagents, measured on two of this
 machine's own multi-agent engineering sessions in this repository (not a
-drafting run -- ordinary feature work using the `Agent` tool, the closest
-real material available to check the fixed recipe against):
+drafting run, but ordinary feature work using the `Agent` tool, the
+closest real material available to check the fixed recipe against):
 
 | Session | Orchestrator turns | Orchestrator input | Subagent turns (agents) | Subagent input |
 | --- | --- | --- | --- | --- |
@@ -581,7 +579,7 @@ two. That is the direction [the resident
 multiplier](#-the-resident-multiplier) predicts: the orchestrator's
 context is append-only and re-billed every turn, while a subagent's is
 paid once and discarded. The ratio itself is two data points from
-unrelated engineering sessions rather than a `deep-research` or
+unrelated engineering sessions, not a `deep-research` or
 `survey-writer` run, and should not be read as this
 skill's own boundary saving. [The dispatch payload, measured on real
 material](#-the-dispatch-payload-measured-on-real-material) below is the
@@ -597,30 +595,30 @@ still builds a map, Phase 5 still writes sections, the gate still runs.
 What changes is the *content* of each packet, not the count of them or
 the number of turns they are resident for.
 
-That makes a stub corpus the right vehicle for the A/B that matters --
-the same topic, the same depth, once with packets pasted into dispatch
-prompts and once with a file reference -- because it is the one
-comparison where the difference is the change rather than the topic. Note
+That makes a stub corpus the right vehicle for the A/B that matters (the
+same topic, the same depth, once with packets pasted into dispatch
+prompts and once with a file reference), because it is the one
+comparison where the difference is the change and not the topic. Note
 what the two arms now are: since 3.10.0 the shipped skill *is* the file
 reference, so the paste arm means checking out the 3.9.0 revision of
 `.claude/skills/deep-research/SKILL.md`, not editing the current one.
 [The dispatch payload, measured on real material](#-the-dispatch-payload-measured-on-real-material)
 below is the cheaper half of that comparison, already done.
 
-Its limit is the honest one: a stub corpus tells you what the *structure*
-costs, not what a real run costs. Packet sizes on five toy papers are not
-packet sizes on 501.
+Its limit: a stub corpus tells you what the *structure* costs, not what
+a real run costs. Packet sizes on five toy papers are not packet sizes
+on 501.
 
 ### 🔢 Free, and needs no run at all: count the turns
 
 The second factor in `bytes x turns` can be read off the skill file. Take
 `.claude/skills/deep-research/SKILL.md`, count the mandated steps after
-Phase 2 -- each named command, each dispatch, each dossier write, each
-render -- and you have a floor on the multiplier that no topic can change.
+Phase 2 (each named command, each dispatch, each dossier write, each
+render), and you have a floor on the multiplier that no topic can change.
 Do the same for `survey-writer` after step 1. This is how the "~20 turns"
 and "~22 turns" in the examples above were obtained, and it is the part
 of the estimate least likely to be wrong, because it is a property of a
-file in this repository rather than of a model's behaviour.
+file in this repository and not of a model's behaviour.
 
 The first factor, packet size, can be bounded the same way: take one real
 packet from any previous run's transcript, count its characters, divide
@@ -628,28 +626,27 @@ by four. No new run required.
 
 ### 🔬 Already instrumented: `retrieval.md`
 
-`python -m chitragupta.draft retrieve ... --log <draft>` appends one row per
-call --
-mode, query, `k`, results, characters -- to the dossier's `retrieval.md`,
-and `python -m chitragupta.draft dossier status` totals it. That is characters rather
-than tokens and covers retrieval only, but it is the one number this
-repository already collects on a real corpus, it is comparable between
-runs, and it costs nothing beyond passing a flag.
+`python -m chitragupta.draft retrieve ... --log <draft>` appends one row
+per call (mode, query, `k`, results, characters) to the dossier's
+`retrieval.md`, and `python -m chitragupta.draft dossier status` totals
+it. That is characters, not tokens, and covers retrieval only, but it is
+the one number this repository already collects on a real corpus, it is
+comparable between runs, and it costs nothing beyond passing a flag.
 
 The gap it leaves is exactly the one this document is about: it measures
 what entered context, and not how many turns it stayed there for.
 
 ### 📊 The dispatch payload, measured on real material
 
-The one number here that is counted rather than estimated. It is a
+This is the one number here that is counted and not estimated. It is a
 **character count of a payload**, not a token count of a run: the same
-unit `retrieval.md` already collects, and the same reason -- characters
-are countable without a model in the loop.
+unit `retrieval.md` already collects, for the same reason, that
+characters are countable without a model in the loop.
 
 Method: the shipped example report
 (`content/drafts/digital-twins-for-software-engineers/deep-research.md`,
 7 sections, 11 distinct citekeys) with a dossier built from its own
-citations -- `sections.md` from the citekeys each section actually cites,
+citations: `sections.md` from the citekeys each section cites,
 and one `evidence.md` block per citekey whose `support:` line is a real
 600-character evidence window pulled from the 501-paper corpus, i.e. the
 same `chitragupta.draft retrieve evidence` call an interviewer makes. Then, per
@@ -662,27 +659,27 @@ replaces it on the other.
 | Dispatch lines that replace it (`Your evidence: python -m chitragupta.draft dossier brief ... --section "..."`) | **901** |
 | Ratio | **17.4x** |
 
-At the documented conversions -- four characters per token, output at 5x
-a base input token -- that is an estimated 3,915 output tokens against
+At the documented conversions (four characters per token, output at 5x
+a base input token), that is an estimated 3,915 output tokens against
 225, or **~19.6k input-token equivalents against ~1.1k**. It brackets the
-15k estimate derived above rather than contradicting it, from the high
-side: this report's blocks carry a 600-character window each, where the
+15k estimate derived above from the high side instead of contradicting
+it: this report's blocks carry a 600-character window each, where the
 estimate assumed ~800 tokens of packet-derived material per writer across
 four writers.
 
-Two sections contributed nothing, and they are the honest kind of zero:
+Two sections contributed nothing, and legitimately so:
 "Perspectives assembled" and "Self peer review" cite nothing, so there
 was never anything to paste for them. Reproduce it by building a dossier
 the same way and diffing the two payloads; nothing about it needs a
 drafting run.
 
-What it does **not** measure: any effect on residency (there is none --
+What it does **not** measure: any effect on residency (there is none;
 see [what the dossier actually recovers](#-what-the-dossier-actually-recovers)),
 and the turn counts either side of the change. Those still want the
 before/after run in [the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76).
 
 **What A2 changes here.** This measurement predates the
-`claim:`/`quote:` split and was built from a `support:`-only dossier --
+`claim:`/`quote:` split and was built from a `support:`-only dossier,
 each block a raw 600-character retrieval window
 ([DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)),
 exactly the material the split removes from a drafting step's own
@@ -693,23 +690,23 @@ which this character count cannot see either way.
 
 ### 📊 The step 2a boundary, measured on real material
 
-The other subagent boundary this document argues for --
+The other subagent boundary this document argues for is
 [survey-writer step 2a](#-the-one-lever-this-repository-does-not-own), the
 one [Example 1](#-example-1-one-rejected-paper-followed-to-the-end-of-the-run)
 above derives a saving for from estimated figures (~150 tokens per result,
-"3 kept per query, 12 rejected"). Measured here on real material, the
-same way as the Phase 5 payload above: a real character count, not a
+"3 kept per query, 12 rejected"). It is measured here on real material,
+the same way as the Phase 5 payload above: a real character count, not a
 token count of a run.
 
-Method: three sub-themes actually retrieved against the real 501-paper
-corpus (`digital twin DevOps continuous integration`, `digital twin
+Method: three sub-themes retrieved against the real 501-paper corpus
+(`digital twin DevOps continuous integration`, `digital twin
 runtime verification synchronization`, `digital twin security threat
-model` -- a topic this corpus turns out to cover well, chosen for that
+model`, a topic this corpus turns out to cover well, chosen for that
 reason), `--k 15` each, `--log`ged to a scratch dossier. Every one of the
-45 results read and judged by hand, exactly as `survey-writer` step 2
-specifies -- kept into `evidence.md` with a `relevance:`/`support:` block,
-turned down into `rejected.md` with a reason -- and both files measured
-against the raw retrieval payload `retrieval.md` already recorded.
+45 results was read and judged by hand, exactly as `survey-writer` step 2
+specifies: kept into `evidence.md` with a `relevance:`/`support:` block,
+or turned down into `rejected.md` with a reason. Both files were then
+measured against the raw retrieval payload `retrieval.md` already recorded.
 
 | | Characters |
 | --- | --- |
@@ -717,32 +714,32 @@ against the raw retrieval payload `retrieval.md` already recorded.
 | Judged packet a step 2a subagent returns instead (20 kept + 24 rejected) | **9,084** |
 | Ratio | **2.45x** |
 
-Smaller than Phase 5's 17.4x, and the reason is structural rather than a
-measurement discrepancy: Phase 5's `brief` replaces detailed evidence with
-a one-line file reference, discarding nearly all of the payload from the
-orchestrator's side. Step 2a's boundary discards nothing -- the packet
+This is smaller than Phase 5's 17.4x, for a structural reason and not a
+measurement discrepancy. Phase 5's `brief` replaces detailed evidence
+with a one-line file reference, discarding nearly all of the payload from
+the orchestrator's side. Step 2a's boundary discards nothing: the packet
 still carries a `relevance:`/`support:` pair for every kept citekey and a
-reason for every rejected one, the full judgment, restructured
-rather than thrown away. Rejecting harder wouldn't close the gap either,
+reason for every rejected one, the full judgment, restructured and not
+thrown away. Rejecting harder wouldn't close the gap either,
 per Example 1's own point: the tokens are spent at retrieval regardless
 of what survives judging.
 
 **This run kept 20 of 45 (44%); Example 1 assumed 3 kept per query, 9 of
-45 (20%).** The 2.45x ratio above moves directly with that keep rate --
-one reader's judgment on one topic, on a sub-theme set chosen because
-this corpus covers it unusually well. A stricter keeper, or a
+45 (20%).** The 2.45x ratio above moves directly with that keep rate,
+which is one reader's judgment on one topic, on a sub-theme set chosen
+because this corpus covers it unusually well. A stricter keeper, or a
 thinner-covered topic, would reject more and push the ratio up. Treat
 2.45x as this run's number, not a property of the boundary in general.
 
 **Reconciled against Example 1, on the same slice of material.** Example
-1 costs only the rejected share (5.4k of estimated tokens) and its own
-text says "only the kept evidence comes back" -- then charges nothing for
-that return trip, so its with-boundary total (6.8k, against 17.6k, a
-~61% saving) is the subagent's one-time read and nothing past it. Redone
-on the *measured* rejected share here -- 24 of 45 candidates, so
-24/45 of the raw payload (2,971 tokens), and `rejected.md`'s own body
-(952 tokens) -- at Example 1's exact method first, to check the two are
-actually comparable:
+1 costs only the rejected share (5.4k of estimated tokens), and its own
+text says "only the kept evidence comes back" but then charges nothing
+for that return trip, so its with-boundary total (6.8k, against 17.6k, a
+~61% saving) is the subagent's one-time read and nothing past it. Here
+it is redone on the *measured* rejected share, 24 of 45 candidates: 24/45
+of the raw payload (2,971 tokens), and `rejected.md`'s own body (952
+tokens). Example 1's exact method comes first, to check the two are
+comparable:
 
 | | Input-token equivalents (Example 1's method) |
 | --- | --- |
@@ -750,10 +747,9 @@ actually comparable:
 | With boundary (subagent's one-time read only, as Example 1 counts it) | **3,714** |
 | Saving | **61.5%** |
 
-That reproduces Example 1's ~61% almost exactly on real material, which
-is the useful check. The method is internally consistent, and the gap
-between the estimate and this run is measurement noise rather than a
-modelling error.
+That reproduces Example 1's ~61% almost exactly on real material. The
+method is internally consistent, and the gap between the estimate and
+this run is measurement noise, not a modelling error.
 
 **Then add the cost Example 1's text describes but its total omits**:
 the rejected list re-entering the orchestrator's context, once at 1.25x
@@ -764,15 +760,15 @@ and resident for the same ~20 turns as everything else it holds:
 | With boundary, subagent read + `rejected.md` write-back | 3,714 + 1,190 + 1,904 = **6,808** |
 | Saving, corrected | **29.5%**, not 61.5% |
 
-The boundary still wins on this slice -- discarding the raw candidates
-inside a subagent instead of holding them resident for 20 turns is real
--- but the earlier ~61% counted the win and not its cost. Example 1 is
-left as written rather than edited, since it is explicitly a worked
+The boundary still wins on this slice, since discarding the raw
+candidates inside a subagent instead of holding them resident for 20
+turns is a real saving, but the earlier ~61% counted the win and not its
+cost. Example 1 is left as written, since it is explicitly a worked
 derivation of the *method* and this is the reconciliation, not a
 retraction.
 
-**The whole-payload figure -- kept and rejected together, which Example 1
-never computed -- is a different, broader number, not a comparison to
+**The whole-payload figure (kept and rejected together, which Example 1
+never computed) is a different, broader number, not a comparison to
 Example 1's:**
 
 | | Input-token equivalents (kept + rejected together) |
@@ -781,9 +777,9 @@ Example 1's:**
 | With boundary: subagent's one-time read + full judged packet (kept + rejected) enters once, resident 20 turns | 5,570 x 1.25 + 2,271 x 1.25 + 2,271 x 0.1 x 20 = **14,343** |
 | Saving | **21%** |
 
-Lower than the rejects-only 29.5%, because the kept evidence was always
-going to enter the orchestrator's context eventually -- it is what gets
-cited -- so folding it into "cost avoided by the boundary" overstates the
+This is lower than the rejects-only 29.5%, because the kept evidence was
+always going to enter the orchestrator's context eventually (it is what
+gets cited), so folding it into "cost avoided by the boundary" overstates the
 boundary's own contribution. The rejects-only figure above is the fairer
 one to compare against Example 1; this one is the fairer one to compare
 against "what does step 2a save on this run's whole payload."
@@ -791,19 +787,20 @@ against "what does step 2a save on this run's whole payload."
 Reproduce it: run the three searches above with `--log` against a synced
 corpus, judge every result the way `survey-writer` step 2 describes, and
 diff `retrieval.md`'s total against `evidence.md` + `rejected.md`.
-Nothing about it needs a full drafting run -- retrieval, judging, and
+Nothing about it needs a full drafting run: retrieval, judging, and
 `dossier status` are the whole cost, and the judging is the same reading
 a real drafting session would do regardless of which arm it measures.
 
-What it does **not** measure: whether **the second, un-run arm** -- an
-orchestrator running steps 1-2 inline, with no subagent at all -- differs
+What it does **not** measure: whether **the second, un-run arm** (an
+orchestrator running steps 1-2 inline, with no subagent at all) differs
 from this in any way other than where the read happens. It shouldn't, by
 construction: the same 45 candidates get read and judged either way, so
-the raw-payload row above already *is* that arm's cost, measured rather
-than run twice. What a second run would add is confirming the turn count
+the raw-payload row above already *is* that arm's cost, measured without
+a second run. A second run would add confirmation that the turn count
 doesn't itself change with the boundary removed (plausible, since
 `survey-writer`'s numbered steps are unchanged either way, but unmeasured
-here) -- the last piece [the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76)
+here). That is the last piece
+[the planned measurement](https://github.com/prasadtalasila/chitragupta/issues/76)
 still owns.
 
 **What A2 changed here, before it was remeasured.** Like the Phase
@@ -816,27 +813,27 @@ replacement, not the boundary this section measures.
 
 ### 📊 The step 2a boundary, remeasured under `claim:`/`quote:` (A3)
 
-The "after" number A3 (shipped) asked for -- but as a **controlled**
-rebuild rather than a second independent
-run, because two different judges on the same 45 candidates would confound
-the field contract with keep-rate and prose-length choices that have
-nothing to do with A2. One judge (this one), the same 42 distinct
-citekeys, the same 23 kept / 19 rejected split, the same `relevance:` line
-per kept citekey -- serialized twice, once as `relevance:`/`support:` and
-once as `relevance:`/`claim:`/`quote:`. `rejected.md` carries no `support:`
+This is the "after" number A3 (shipped) asked for, built as a
+**controlled** rebuild and not a second independent run, because two
+different judges on the same 45 candidates would confound the field
+contract with keep-rate and prose-length choices that have nothing to do
+with A2. One judge (this one), the same 42 distinct citekeys, the same
+23 kept / 19 rejected split, and the same `relevance:` line per kept
+citekey were serialized twice, once as `relevance:`/`support:` and once
+as `relevance:`/`claim:`/`quote:`. `rejected.md` carries no `support:`
 or `claim:` field either way, so it is identical, unchanged, and shared
-between both arms rather than measured twice.
+between both arms instead of measured twice.
 
 Method: the identical three sub-themes, `--k 15` each, against the same
 501-paper corpus (a `ledger.sqlite` snapshot, so the BM25 index is
-unchanged) -- `retrieval.md` reproduced the same **22,280** raw characters
+unchanged). `retrieval.md` reproduced the same **22,280** raw characters
 byte-for-byte, confirming the corpus and the query set didn't drift. Every
-one of the 45 results read and judged by hand: kept into `claim:`/`quote:`
-form with a `quote:` line on three of them, where a specific phrase was
-worth quoting rather than paraphrasing (a fourth candidate quote -- a
-keyword list, not a sentence -- was dropped rather than kept, since nothing
-about a keyword list is usable "inside quotation marks with an
-attribution", which is the whole of what `quote:` is for); turned down into
+one of the 45 results was read and judged by hand. Kept results went into
+`claim:`/`quote:` form with a `quote:` line on three of them, where a
+specific phrase was worth quoting instead of paraphrasing. A fourth
+candidate quote (a keyword list, not a sentence) was dropped, since
+nothing about a keyword list is usable "inside quotation marks with an
+attribution", which is all `quote:` is for. The rest were turned down into
 `rejected.md` with a reason. Three citekeys recurred across sub-themes
 (already kept or rejected earlier in the same run) and were judged once,
 matching what `evidence.md`'s "one block per citekey" rule already asks a
@@ -846,7 +843,7 @@ The `support:` arm reuses every `relevance:` line verbatim and replaces
 `claim:`/`quote:` with the **same underlying evidence** a subagent would
 have read to write them: `python -m chitragupta.draft retrieve evidence
 "<sub-theme>" --citekey <key>` at its documented defaults (`--chars 600
---windows 2`) for all 23 kept citekeys -- the literal call
+--windows 2`) for all 23 kept citekeys, which is the literal call
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)
 names as what `support:` held in practice.
 
@@ -861,7 +858,7 @@ names as what `support:` held in practice.
 
 **The kept side alone: `claim:`/`quote:` is 27.7% the size of `support:`
 for the identical 23 judgments.** That isolates the field contract's own
-effect, with keep-rate and judge held constant -- the controlled
+effect, with keep-rate and judge held constant: the controlled
 comparison ["The step 2a boundary, measured on real
 material"](#-the-step-2a-boundary-measured-on-real-material) above could not
 run before a `claim:`/`quote:` dossier existed to rebuild against.
@@ -871,19 +868,19 @@ contracts, and the `support:` arm's own ratio is the sharper result.**
 `claim:`/`quote:` gives 22,280/11,184 = **1.99x**, in the same direction and
 close to the 2.45x the earlier `support:`-era run measured. Literal
 `support:`, rebuilt here at its documented default (two 600-character
-windows per kept citekey, not one), gives 22,280/33,101 = **0.67x** -- a
+windows per kept citekey, not one), gives 22,280/33,101 = **0.67x**, a
 judged packet *larger* than the raw candidates it was judged from, because
 `retrieve evidence` reads deeper per kept citekey than `retrieve search`'s
-500-character snippet does per candidate. Read plainly: serializing every
-kept citekey's full evidence windows costs more than the entire raw
+500-character snippet does per candidate. In other words, serializing
+every kept citekey's full evidence windows costs more than the entire raw
 retrieval pass that surfaced them, kept and rejected together.
 
 **This does not fully reconcile with the original 9,084-character
-`support:` measurement, and that gap is left open rather than resolved by
+`support:` measurement, and that gap is left open instead of resolved by
 assumption.** The earlier run's Method paragraph describes "the same
 `chitragupta.draft retrieve evidence` call" this rebuild also used, but
 20 kept blocks alone would need to average under 454 characters apiece to
-fit inside a 9,084-character total that also holds 24 rejected rows --
+fit inside a 9,084-character total that also holds 24 rejected rows,
 well short of even one 600-character window, let alone the two the default
 call returns. Two explanations are both consistent with what's on record
 and neither is verifiable after the fact, because that dossier was scratch
@@ -894,7 +891,7 @@ is the literal default-call reconstruction, stated as such, not a
 correction of the earlier figure.
 
 **What the boundary still removes, independent of any character count.**
-A3's point was never the packet's size on its own -- it is that the
+A3's point was never the packet's size on its own. It is that the
 packet returned across the subagent boundary now carries no raw
 retrieval window at all, only
 `claim:` lines written in the judge's own words plus a `quote:` span where
@@ -903,9 +900,9 @@ asserted"](#-measured-derived-and-asserted)'s sense: this run's own
 `claim:`/`quote:` blocks were written from memory before being typed, per
 [the contract](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306),
 but the scratch dossier they live in is gitignored and gone, so a later
-reader cannot re-open it to check -- only re-run the method and judge the
-new blocks independently. The 27.7%-of-`support:` figure above is
-measured; that the words are genuinely the judge's own is asserted.
+reader cannot re-open it to check, and can only re-run the method and
+judge the new blocks independently. The 27.7%-of-`support:` figure above
+is measured; that the words are the judge's own is asserted.
 
 Reproduce it: run the three searches above with `--log` against a synced
 corpus, judge every result into `claim:`/`quote:` form the way
@@ -920,46 +917,46 @@ instead. Diff the two `evidence.md` bodies against each other and against
 Kept separate on purpose, in a project where
 [PERFORMANCE.md](PERFORMANCE.md) means measured.
 
-**Measured** -- six figures now, in two different units. The 35 turns /
+**Measured**: six figures now, in two different units. The 35 turns /
 1,991,974 input / 14,318 output above, from this session's own
 transcript, on the machine this was written on: it demonstrates the
 ratio, and is not a benchmark of a drafting run. The [199/268
 orchestrator turns against 93/69 subagent
 turns](#-free-the-session-transcript-already-has-the-answer) from two of
 this machine's own multi-agent sessions, after the transcript recipe's
-subagent-file bug was fixed -- ordinary engineering work, not a drafting
-run either. The
+subagent-file bug was fixed; this was ordinary engineering work, not a
+drafting run either. The
 [15,660 against 901 characters](#-the-dispatch-payload-measured-on-real-material)
 of Phase 5 dispatch payload, counted on the shipped example report
 against the real corpus: a payload size, not a run. The [22,280
 against 9,084 characters](#-the-step-2a-boundary-measured-on-real-material)
 of the step 2a boundary under `relevance:`/`support:`, from a real
 3-sub-theme, 45-candidate retrieval pass against the real corpus, judged
-by hand: also a payload size, not a run -- and the one figure here that
+by hand: also a payload size, not a run, and the one figure here that
 corrects an earlier derived estimate (Example 1's implied ~61% saving)
-rather than only confirming one. And the pair
-[8,383 against 30,300 characters](#-the-step-2a-boundary-remeasured-under-claimquote-a3)
--- the same 23 kept judgments from the same judge, serialized once as
-`claim:`/`quote:` and once as `support:` at its documented default -- which
-is this document's one *controlled* payload comparison: `claim:`/`quote:`
+instead of only confirming one. And the pair
+[8,383 against 30,300 characters](#-the-step-2a-boundary-remeasured-under-claimquote-a3),
+the same 23 kept judgments from the same judge, serialized once as
+`claim:`/`quote:` and once as `support:` at its documented default, is
+this document's one *controlled* payload comparison: `claim:`/`quote:`
 at 27.7% of `support:`'s size, contract held constant on one side of the
-comparison and field shape on the other, rather than two independent runs
+comparison and field shape on the other, instead of two independent runs
 whose keep-rate and prose length could confound the result.
 
-**Derived** -- the turn counts (read off the skill files), the pricing
+**Derived**: the turn counts (read off the skill files), the pricing
 multipliers (structural ratios of the Claude API, not prices), and every
 worked example built from them.
 
-**Estimated** -- every token count of a payload: ~150 per
+**Estimated**: every token count of a payload: ~150 per
 `SearchResult`, ~1k per interview packet, ~4.6k to write an 18.3 KB
 draft. All from file sizes and documented defaults, at four characters
 per token.
 
-**Asserted** -- that the orchestrator's context is append-only between
+**Asserted**: that the orchestrator's context is append-only between
 compactions, that a subagent's is discarded on return, and the
 [`CLAUDE_CODE_SUBAGENT_MODEL` resolution order](#-the-one-lever-this-repository-does-not-own)
 together with the `inherit` frontmatter default. These are
-properties of the harness rather than of this repository, and everything
+properties of the harness and not of this repository, and everything
 in ["What the dossier actually recovers"](#-what-the-dossier-actually-recovers)
 depends on them. If a future harness evicts old tool results, the
 residency argument weakens and the dispatch-prompt argument does not.

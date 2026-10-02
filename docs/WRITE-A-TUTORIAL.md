@@ -2,8 +2,8 @@
 
 Status: **tutorial.** Written 2026-09-15.
 
-**Written for** anyone who wants a hands-on lesson -- a lab exercise, a
-getting-started walkthrough, a "build X to learn Y" -- that a learner
+**Written for** anyone who wants a hands-on lesson (a lab exercise, a
+getting-started walkthrough, a "build X to learn Y") that a learner
 follows at a keyboard to a working result. **Assumed:** nothing. This
 page repeats what other documents also say, deliberately. **Not covered
 here:** why each prose rule exists
@@ -38,7 +38,7 @@ that visibly works.
 - If your reader is studying rather than doing, you want
   [a textbook chapter](WRITE-A-TEXTBOOK-CHAPTER.md).
 - If your reader already knows what they want and needs only the steps,
-  they want a how-to guide -- say so rather than writing a tutorial
+  they want a how-to guide. Say so instead of writing a tutorial
   around it.
 - If your reader is mapping a field, they want
   [a survey](WRITE-A-SURVEY.md).
@@ -53,16 +53,16 @@ For a lesson you decide to call `labs/first-twin`:
 
 | Path | What it is |
 | --- | --- |
-| `content/drafts/labs/first-twin.md` | the lesson -- the canonical copy |
+| `content/drafts/labs/first-twin.md` | the lesson (the canonical copy) |
 | `content/dossiers/labs/first-twin/` | scope, the happy path you chose, and every path you rejected |
 | `content/rendered/labs/first-twin.pdf` | the typeset lesson |
 | `content/rendered/labs/first-twin.tex` | the same, as LaTeX |
 | `content/rendered/labs/first-twin.md` | a numbered Markdown copy |
 
-The dossier's `rejected.md` is unusually valuable in this genre. It
-records every alternative path you walked away from and why -- "Docker
-instead of a local interpreter: hides the thing being taught" -- so a
-later revision does not re-argue a decision you already made.
+The dossier's `rejected.md` is unusually useful in this genre. It
+records every alternative path you walked away from and why (for
+example, "Docker instead of a local interpreter: hides the thing being
+taught"), so a later revision does not re-argue a decision you already made.
 
 ## 🔧 Before you start
 
@@ -79,8 +79,8 @@ chitragupta corpus sync
 
 Or clone the repository and `cp config.toml.example config.toml`.
 
-A tutorial needs the smallest corpus of any genre -- it cites only in its
-closing section, if at all. You can write one against an almost empty
+A tutorial needs the smallest corpus of any genre, because it cites only
+in its closing section, if at all. You can write one against an almost empty
 ledger.
 
 > Every command here also works as `python -m chitragupta.<layer> ...`.
@@ -104,9 +104,9 @@ Then decide the slug:
 | a lesson beside other genres on one topic | `dt/tutorial` |
 | a standalone walkthrough | `first-twin` |
 
-And be honest about **how long it takes**. A tutorial should be
-completable in one sitting; if your path is three hours, cut it into two
-lessons now rather than after a class has failed to finish it.
+And be honest about how long it takes. A tutorial should be completable
+in one sitting; if your path is three hours, cut it into two lessons now,
+before a class has failed to finish it.
 
 ## 🗂 Step 2: open the dossier
 
@@ -116,17 +116,17 @@ chitragupta draft dossier init content/drafts/labs/first-twin.md \
 ```
 
 That writes eight files. **Exactly one is yours to fill in now:
-`scope.md`.** One other -- `rejected.md` -- is unusually important in
+`scope.md`.** One other, `rejected.md`, is unusually important in
 this genre and is described below.
 
 ### What goes in `scope.md`
 
 | Field | What goes in it | Why it is asked for |
 | --- | --- | --- |
-| `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**. Note that command output and file contents keep whatever the tool emits -- they are quoted material, not your prose |
+| `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**. Command output and file contents keep whatever the tool emits; they are quoted material, not your prose |
 | `## Reader` | the learner in one sentence, *including what they already know* | the prerequisites section follows directly from it |
 | `## Covers` | **the destination artifact**, named concretely, plus the capability left behind | if you cannot write this sentence the lesson is not scoped yet |
-| `## Does not cover` | the variations, edge cases and alternate environments you refuse | this is what stops a later revision quietly widening a 45-minute lesson |
+| `## Does not cover` | the variations, edge cases and alternate environments you refuse | this is what stops a later revision from widening a 45-minute lesson |
 | `## Glossary` | each recurring term with one definition | a lesson that calls the same thing three names loses a learner mid-step |
 
 Set the dialect with the command:
@@ -136,8 +136,8 @@ chitragupta draft dossier set-language \
     content/drafts/labs/first-twin.md en-GB
 ```
 
-A filled-in tutorial `scope.md` -- the whole file is at
-[`examples/dossiers/tutorial/scope.md`](examples/dossiers/tutorial/scope.md):
+A filled-in tutorial `scope.md` (the whole file is at
+[`examples/dossiers/tutorial/scope.md`](examples/dossiers/tutorial/scope.md)):
 
 ```markdown
 # Scope
@@ -182,8 +182,8 @@ and a pointer onward.
 ### The file this genre gets the most out of: `rejected.md`
 
 In other genres `rejected.md` holds retrieved sources that were turned
-down. A tutorial adds a second use, and it is the most valuable entry a
-lesson's dossier holds -- a `## Rejected paths` section with its own
+down. A tutorial adds a second use, and it is the most useful entry a
+lesson's dossier holds: a `## Rejected paths` section with its own
 two-column table:
 
 ```markdown
@@ -201,7 +201,7 @@ The prose can only show the path you kept. Without this table a revision
 re-argues every branch you already decided.
 
 Command output and file contents keep whatever spelling the tool
-actually emits -- they are quoted material, not your prose.
+emits; they are quoted material, not your prose.
 
 ## 🗺 Step 3: write an outline (optional)
 
@@ -218,15 +218,15 @@ Three fields per section:
 | Field | What goes in it | What the skill does with it |
 | --- | --- | --- |
 | `brief:` | steering in your own words | consumed once, **never appears in the lesson** |
-| `claim:` | your own prose | rewritten and grounded. **Rare in this genre** -- a tutorial makes few claims about the literature |
+| `claim:` | your own prose | rewritten and grounded. **Rare in this genre**: a tutorial makes few claims about the literature |
 | `queries:` | a `-` list of search terms | run **verbatim**. In a tutorial these belong to the closing section only |
 
 A section needs at least a `brief:` or a `claim:`. A tutorial's outline
-is almost all briefs, with one `queries:` block at the end -- the only
+is almost all briefs, with one `queries:` block at the end, the only
 place this genre may cite.
 
-A worked example -- the whole file is at
-[`examples/dossiers/tutorial/outline.md`](examples/dossiers/tutorial/outline.md):
+A worked example (the whole file is at
+[`examples/dossiers/tutorial/outline.md`](examples/dossiers/tutorial/outline.md)):
 
 ```markdown
 ## What you will build
@@ -277,9 +277,9 @@ queries:
 exercise" selects `tutorial-writer`.
 
 What it does: a task analysis (walking the whole path first, writing down
-every command and decision -- including the ones an expert does without
-noticing, which are exactly the ones a lesson omits and a learner fails
-on), the front matter, the steps, the ending, and a "Where to go next"
+every command and decision, including the ones an expert does without
+noticing, which are the ones a lesson omits and a learner fails on), the
+front matter, the steps, the ending, and a "Where to go next"
 that is the only place it may cite.
 
 ## 🏃 Step 5: the run-it step, which is not optional
@@ -287,7 +287,7 @@ that is the only place it may cite.
 The skill runs the lesson end to end before presenting it, in a scratch
 directory, and fixes what does not work. **Do it yourself too**, on a
 clean machine or a fresh container, because you are the one who knows
-what your students actually have installed.
+what your students have installed.
 
 Two failures a run catches and a read-through never does:
 
@@ -295,9 +295,9 @@ Two failures a run catches and a read-through never does:
 - a command that works in your shell because of something in your
   environment that is not in the prerequisites.
 
-If a step cannot be run here -- it needs hardware or an account you do
-not have -- say so in the lesson rather than presenting an unverified
-path as verified.
+If a step cannot be run here because it needs hardware or an account
+you do not have, say so in the lesson instead of presenting an
+unverified path as verified.
 
 ## ✅ Step 6: gate, render
 
@@ -340,8 +340,8 @@ chitragupta review verbatim scan content/drafts/labs/first-twin.md
 
 A long code block can also be reported as a wide line by the typesetting
 checks. The render wraps it with a `,→` continuation marker, so it is a
-quality note rather than a broken page -- but a line a learner has to
-retype is worth shortening anyway.
+quality note and the page is not broken. A line a learner has to retype
+is still worth shortening.
 
 ### The agenda: all of them as one worklist
 
@@ -395,11 +395,11 @@ agenda of any genre:
   chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
 ```
 
-**How to read that as the author.** Both are `[unattended]`. The wide
+Both findings are `[unattended]`. The wide
 line is one a learner has to type, so shortening it is worth doing even
 though the render would wrap it. The unexpanded acronym is the finding
-this genre should take most seriously -- a learner three steps into a
-lesson cannot pause to look one up.
+this genre should take most seriously, because a learner three steps
+into a lesson cannot pause to look one up.
 
 Several aids read `not run` here, and that is correct rather than a gap:
 a lesson with no claims has nothing for claim support to score, and one
@@ -413,8 +413,8 @@ Never re-run the genre skill. Ask for a revision:
 > Step 3 assumes the queue is already running. Add the start command to
 > step 2 and re-check that the lesson runs from a clean container.
 
-That selects `draft-reviser`, which reads the dossier -- including the
-rejected paths -- and edits only what is affected.
+That selects `draft-reviser`, which reads the dossier, including the
+rejected paths, and edits only what is affected.
 
 After a hand edit:
 
@@ -423,7 +423,7 @@ chitragupta draft gate content/drafts/labs/first-twin.md
 chitragupta draft dossier stamp content/drafts/labs/first-twin.md
 ```
 
-Back it up -- `content/drafts/` is gitignored:
+Back it up, because `content/drafts/` is gitignored:
 
 ```bash
 chitragupta draft dossier export labs/first-twin

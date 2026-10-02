@@ -9,9 +9,9 @@ wanting to know what each part of it means before acting on any of it.
 measures ([REVIEW.md](REVIEW.md)), and the unattended-repair loop's
 design ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
-An agenda is **one ranked, deduplicated worklist merged across the
-eight review aids that read a draft** (every other aid but `union`,
-which reads a book), so you read one document instead of eight. Produce
+An agenda is one ranked, deduplicated worklist merged across the eight
+review aids that read a draft (every aid except `union`, which reads a
+book), so you read one document instead of eight. Produce
 one with:
 
 ```bash
@@ -52,15 +52,15 @@ chitragupta review support content/drafts/dt/survey.md --write
 chitragupta review agenda content/drafts/dt/survey.md
 ```
 
-There is exactly one exception, `--baseline`, which re-runs the aids
-itself -- see [Acting on an agenda](#-acting-on-an-agenda).
+The one exception is `--baseline`, which re-runs the aids itself; see
+[Acting on an agenda](#-acting-on-an-agenda).
 
 ## 📄 A complete agenda
 
 This is the whole file, from a real run over the sample project's survey
 ([the committed original](examples/sample-project/content/review/dt-overview/survey.agenda.md)),
 abridged only by dropping repeated item lines. Its `Command:` line is
-quoted exactly as the committed report records it, in the module form --
+quoted exactly as the committed report records it, in the module form;
 `chitragupta review agenda <draft>` is the same command and is what this
 documentation uses everywhere else:
 
@@ -132,7 +132,7 @@ person to decide.
 
 | Section | What it is | What to do with it |
 | --- | --- | --- |
-| `# Agenda: <draft>` | the heading, naming the draft this is about | check it is the draft you meant -- an agenda for a stale path is the commonest confusion |
+| `# Agenda: <draft>` | the heading, naming the draft this is about | check it is the draft you meant; an agenda for a stale path is the commonest confusion |
 | The `>` notice | the review-layer contract, repeated in every aid's report | it is there because a file outlives the session that made it; a reader months later must not mistake it for a verdict |
 | `- Draft:` / `- Command:` / `- chitragupta <version>` | provenance: what was read, by what command, at what version | re-run the `Command:` line verbatim to reproduce the report |
 | `## How to read this` | the same contract in prose, plus the `unattended` rule | read once; it is identical in every agenda |
@@ -140,13 +140,13 @@ person to decide.
 | `## Summary` | counts per class, worst class first | tells you the shape of the work before you read a single item |
 | `## Findings` | the items themselves, grouped by class, ranked by class then severity | the worklist |
 
-**`## Sources` is the section people skip and should not.** Three
-different things can appear there:
+People tend to skip `## Sources`, and should not. Three different
+things can appear there:
 
-- **read** -- the aid's report was found and merged.
-- **not run** -- no report exists. Nothing from that aid is in this
+- **read**: the aid's report was found and merged.
+- **not run**: no report exists. Nothing from that aid is in this
   agenda, and its absence is not evidence of anything.
-- **read, no item class defined** -- the aid ran and was read, but its
+- **read, no item class defined**: the aid ran and was read, but its
   findings do not map to an agenda class. `synthesis` is the standing
   example: it is reported for a human, and deliberately contributes no
   worklist item.
@@ -163,14 +163,14 @@ Every finding is one line with four parts:
 | Part | Meaning |
 | --- | --- |
 | **id** (`289df3c9be7c`) | a stable 12-character handle for this finding. It is what `--accept` takes, and what a repair skill uses to look the finding's full payload up in the raising aid's own JSON |
-| **disposition** | `[unattended]` or `[surfaced]` -- see below |
+| **disposition** | `[unattended]` or `[surfaced]`; see below |
 | **section anchor** | which heading of the draft the finding sits under, so you can go straight there. Absent for a finding that is not about one section |
 | **summary** | one line of what was found. Deliberately thin: the full payload lives in the raising aid's own report, keyed by the id |
 
 The id is stable while the finding's identity is unchanged. Edit the
-sentence and it becomes a different finding with a different id -- which
-is exactly what makes `--accept` safe: an acceptance cannot silently
-carry over to text you have since rewritten.
+sentence and it becomes a different finding with a different id. That
+is what makes `--accept` safe: an acceptance cannot silently carry over
+to text you have since rewritten.
 
 ## 🏷 The classes
 
@@ -191,18 +191,19 @@ This is the distinction the whole file is organised around.
 
 | | Meaning | Classes |
 | --- | --- | --- |
-| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"` -- `WideCodeLine`, and dialect findings when the dialect came from `config.toml` rather than the author), `verbatim-run` at severity `short`, `missing-citekey` |
+| `[unattended]` | mechanically re-checkable: a future automated pass may repair it **without asking first** | `prose` (except a finding its rule marks `repair: "review"`: `WideCodeLine`, and dialect findings when the dialect came from `config.toml` rather than the author), `verbatim-run` at severity `short`, `missing-citekey` |
 | `[surfaced]` | a judgement about meaning that only a person can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
-The line is not "easy versus hard". It is **"is the repair verifiable by
-re-running a check?"** A defect marker either is or is not still in the
+The dividing line is whether the repair can be verified by re-running
+a check, which is a different question from whether it is easy. A
+defect marker either is or is not still in the
 sentence. Whether a source really supports a claim is not settled by any
 re-run, so no loop may close it on your behalf.
 
-One class repays a closer look: a `missing-citekey` is unattended, but
-its repair is to **de-cite the sentence** -- which then surfaces as an
-`uncited-claim` on the next agenda, for you. Nothing is quietly resolved;
-the problem is moved to the column where a person decides.
+A `missing-citekey` is unattended, but its repair is to **de-cite the
+sentence**, which then surfaces as an `uncited-claim` on the next agenda
+for you to decide. The problem is not resolved silently; it moves to the
+column where a person decides.
 
 ## 🔁 Two sections that appear only sometimes
 
@@ -226,8 +227,8 @@ chitragupta review agenda content/drafts/dt/survey.md --accept 289df3c9be7c
 ```
 
 Only `claim-support`, `uncited-claim` and `unsupported-claim` may be
-accepted. Every other class is refused with **exit code 2** -- you cannot
-accept away a misquotation or a missing citekey.
+accepted. Every other class is refused with **exit code 2**, so you
+cannot accept away a misquotation or a missing citekey.
 
 ## 🧾 The JSON sibling
 
@@ -239,12 +240,12 @@ JSON carries, plus:
 | --- | --- |
 | `sources` | per aid: `available` and `stale`; the prose check adds `partial`; dossier drift adds `corpus_available`; the acceptance record adds `count` |
 | `items` | one object per worklist entry: `id`, `class`, `section`, `citekey`, `line`, `unattended`, `summary`, and a `detail` object whose shape is specific to the class |
-| `objective_class_count` | how many `unattended` items this agenda holds -- what a repair loop watches fall |
+| `objective_class_count` | how many `unattended` items this agenda holds; a repair loop watches this number fall |
 | `pass_bound` | the backstop on how many repair passes may be taken |
 | `stale_spans` | what this run refused as stale |
 | `accepted` | each stored acceptance, with a `suppressed` flag saying whether this run's worklist was shorter for it |
 
-`objective_class_count` and `pass_bound` are carried **as data** rather
+`objective_class_count` and `pass_bound` are carried as data rather
 than as constants in a skill's prose, because a skill cannot import a
 Python constant and a hardcoded number goes stale silently.
 
@@ -266,24 +267,24 @@ One item, in full:
 }
 ```
 
-Note `detail.verbatim_id`: the agenda's own detail is **thin by design**.
+Note `detail.verbatim_id`: the agenda's own detail is thin by design.
 The full repair payload lives in the raising aid's report
 (`survey.verbatim.json` here), keyed by that id. A tool acting on an item
 looks it up there rather than expecting the agenda to carry everything.
 
 ## 🛠 Acting on an agenda
 
-**Read `## Sources` first**, then `## Summary`, then the `[surfaced]`
-items -- those are the ones needing your judgement and the ones a machine
-will never close for you.
+Read `## Sources` first, then `## Summary`, then the `[surfaced]`
+items. Those need your judgement, and a machine will never close them
+for you.
 
-**Hand the `[unattended]` ones off.** Ask to "work the review agenda"
-and `agenda-reviser` repairs them one at a time, re-running
-`chitragupta draft gate` and a baseline recheck after each, and logging
-every attempt -- refusals and reverts included -- in the dossier's
+To hand the `[unattended]` ones off, ask to "work the review agenda".
+`agenda-reviser` repairs them one at a time, re-running
+`chitragupta draft gate` and a baseline recheck after each, and logs
+every attempt (refusals and reverts included) in the dossier's
 `revisions.md`.
 
-**Check that a round of edits actually helped:**
+To check that a round of edits helped:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md \
@@ -301,10 +302,10 @@ first. With no ledger, or one that needs a sync, it says to run
 `chitragupta corpus sync` and exits 1 without changing anything. The
 plain `review agenda` does not need one.
 
-**Read `not_refreshed` before either.** It lists the aids whose
+Read `not_refreshed` before either. It lists the aids whose
 refresh failed this run: a refusal, an exit 0 that wrote nothing (as
 `support` does without the enrich stack), or an exception. Their `.json`
-on disk is an earlier run's. So their items are left out of all four
+on disk is an earlier run's, so their items are left out of all four
 groups and both counts, on the baseline's side as well as this run's. A
 driver must stop or surface such an aid, and never count the missing
 items as progress. `verbatim` is the one that matters for the count,
@@ -318,7 +319,7 @@ An aid that raised does not stop the run. It is listed in
 exception's one-line reason. The filed report has the same line under
 `sources.aids.<aid>.refresh_error`, and the header quotes it.
 
-**Read `objective_new`, not just the delta.** A repair that resolves one
+Read `objective_new` as well as the delta. A repair that resolves one
 finding and introduces another leaves `objective_delta` at 0, which is
 indistinguishable from having changed nothing. `objective_new` counts
 the unattended items in `new`, so that swap shows as 1. The plain-text

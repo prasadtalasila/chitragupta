@@ -5,8 +5,8 @@ Status: **tutorial.** Written 2026-09-15.
 **Written for** an author who wants a literature survey, a related-work
 section or a "state of the art" chapter out of their own library, and who
 has not used this pipeline before. **Assumed:** nothing. This page
-repeats what other documents also say, deliberately -- you should be able
-to finish a draft without leaving it. **Not covered here:** how the
+deliberately repeats what other documents also say, so that you can
+finish a draft without leaving it. **Not covered here:** how the
 retrieval ranking works ([RETRIEVAL.md](RETRIEVAL.md)) and why each rule
 exists ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)).
 
@@ -36,7 +36,7 @@ For a draft you decide to call `dt/survey`:
 
 | Path | What it is |
 | --- | --- |
-| `content/drafts/dt/survey.md` | the draft itself, with `[@citekey]` markers -- the canonical copy |
+| `content/drafts/dt/survey.md` | the draft itself, with `[@citekey]` markers; the canonical copy |
 | `content/dossiers/dt/survey/` | why it says what it says: scope, kept evidence, rejected candidates, every search run |
 | `content/rendered/dt/survey.pdf` | the typeset PDF, IEEE-numbered |
 | `content/rendered/dt/survey.tex` | the same, as LaTeX |
@@ -46,11 +46,11 @@ For a draft you decide to call `dt/survey`:
 
 Every citekey in that draft appears in your own `.bib` export **and** was
 picked up by a real parse of a real PDF. That is the one guarantee this
-pipeline exists to make, and the gate in step 6 is what enforces it.
+pipeline exists to make, and the gate in step 6 enforces it.
 
 ## 🔧 Before you start
 
-Three things, once per machine.
+There are three things to do, once per machine.
 
 **1. Install it and get a project directory.** Either
 
@@ -82,20 +82,21 @@ retrieval will find nothing. Zotero users: see
 chitragupta corpus sync
 ```
 
-It takes minutes on a small library and can be re-run any time. Check it
-found text, not just entries -- with no flags, `ledger` prints a summary:
+It takes minutes on a small library and can be re-run any time. Check
+that it found text, not just entries; with no flags, `ledger` prints a
+summary:
 
 ```bash
 chitragupta corpus ledger
 chitragupta corpus ledger --status no_pdf     # entries with no PDF attached
 ```
 
-If nothing is `parsed`, the bib has no usable PDF paths -- fix that
-before going further, because a survey cannot be written from a corpus
-with no text in it.
+If nothing is `parsed`, the bib has no usable PDF paths. Fix that before
+going further, because a survey cannot be written from a corpus with no
+text in it.
 
 > Every command on this page also works as
-> `python -m chitragupta.<layer> ...` -- `python -m chitragupta.corpus
+> `python -m chitragupta.<layer> ...`, so `python -m chitragupta.corpus
 > sync` is the same thing. Use whichever your install gives you.
 
 ## 📐 Step 1: settle the slug, reader and scope
@@ -119,8 +120,8 @@ now.
 **The reader** is one sentence: "a first-year PhD student who knows
 control theory but not digital twins", "a grant reviewer outside the
 field", "the related-work section of a paper for IEEE TSE". Everything
-downstream -- how much is explained, which sources earn space -- follows
-from this.
+downstream, such as how much is explained and which sources earn space,
+follows from this.
 
 **The scope** is two lists: what the survey covers, and what it
 deliberately does not. Write the second one. A reader who can tell an
@@ -136,7 +137,7 @@ chitragupta draft dossier init content/drafts/dt/survey.md --genre survey
 
 That writes `content/dossiers/dt/survey/` with eight files. **Exactly one
 of them is yours to fill in: `scope.md`.** The other seven are written
-for you as the draft is produced -- `evidence.md` (what was kept and
+for you as the draft is produced: `evidence.md` (what was kept and
 why), `rejected.md` (what was turned down and why), `sections.md` (which
 section cites which citekey), `retrieval.md` (every search that ran),
 `steering.md`, `revisions.md`, and a `README.md` explaining the rest.
@@ -149,15 +150,15 @@ are yours:
 | Field | What goes in it | Why it is asked for |
 | --- | --- | --- |
 | `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**; a draft whose dialect nobody chose silently gets the model's own |
-| `## Reader` | one concrete sentence -- who this is for and what they already know | every later revision is judged against it |
+| `## Reader` | one concrete sentence: who this is for and what they already know | every later revision is judged against it |
 | `## Covers` | the themes the survey will address | the positive half of scope |
 | `## Does not cover` | what it deliberately will not, **including any sub-theme the corpus turned out too thin to support** | so a reader can tell an omission from an oversight |
-| `## Glossary` | each recurring term with the one definition the whole survey uses | this is what stops terminology drifting between revisions |
+| `## Glossary` | each recurring term with the one definition the whole survey uses | it stops terminology drifting between revisions |
 
 The `genre:`, `draft:`, `created:` and `corpus:` lines are stamped by
 `init`. `draft digest:` is filled later by `dossier stamp`.
 
-Set the dialect with the command rather than editing the line, so the
+Set the dialect with the command instead of editing the line, so the
 format is right:
 
 ```bash
@@ -167,8 +168,8 @@ chitragupta draft dossier set-language content/drafts/dt/survey.md en-GB
 `en-US` for most IEEE and ACM venues, `en-GB` for most European funders,
 `en-IN` where that is the house style.
 
-A filled-in survey `scope.md`, which you can copy and edit -- the whole
-file is at
+Here is a filled-in survey `scope.md`, which you can copy and edit. The
+whole file is at
 [`examples/dossiers/survey/scope.md`](examples/dossiers/survey/scope.md):
 
 ```markdown
@@ -215,10 +216,9 @@ written thinly.
   *on the quantities the twin's decision depends on*, never in general.
 ```
 
-Note what the third exclusion does: it records a **corpus** finding, not
-a preference. Six months later that sentence is the difference between
-"we decided not to" and "we could not", and only one of those is worth
-revisiting.
+The third exclusion records a **corpus** finding, not a preference. Six
+months later that sentence is the difference between "we decided not
+to" and "we could not", and only one of those is worth revisiting.
 
 Check it any time with:
 
@@ -236,8 +236,8 @@ chitragupta draft dossier init content/drafts/dt/survey.md \
     --genre survey --outline
 ```
 
-Before filling it in, see what the corpus actually holds, so you do not
-declare a section it cannot support:
+Before filling it in, see what the corpus holds, so you do not declare a
+section it cannot support:
 
 ```bash
 chitragupta draft retrieve search "digital twin fidelity" --k 15
@@ -249,28 +249,27 @@ required:
 
 | Field | What goes in it | What the skill does with it |
 | --- | --- | --- |
-| `brief:` | steering, in your own words -- what to emphasise, what to skip, how long | consumed once and **never appears in the draft** |
-| `claim:` | your own prose: a sentence or short block you believe is true | rewritten into the draft, and **grounded** -- any sentence the corpus cannot support is reported back rather than shipped |
+| `brief:` | steering, in your own words: what to emphasise, what to skip, how long | consumed once and **never appears in the draft** |
+| `claim:` | your own prose: a sentence or short block you believe is true | rewritten into the draft, and **grounded**: any sentence the corpus cannot support is reported back instead of shipped |
 | `queries:` | a `-` list of search terms | run **verbatim**, instead of the skill inventing its own sub-themes |
 
-Three rules worth knowing before you write one:
+Three rules to know before you write one:
 
 - **A section needs at least a `brief:` or a `claim:`.** `--check` exits
   1 if one has neither.
 - **`queries:` is optional even then.** A framing or gap-analysis section
-  usually has nothing to retrieve, and leaving it out is correct rather
-  than lazy.
+  usually has nothing to retrieve, and leaving it out is correct.
 - **A `#` level-1 line is the file's title** and is passed over; sections
   start at `##`.
 
-Declared queries **bind**: the skill runs yours rather than inventing
+Declared queries **bind**: the skill runs yours instead of inventing
 sub-themes. If a section comes up thin it may add its own, logged
 distinctly, so `dossier status` can later tell you whether the draft ran
-what you declared -- "did this draft follow my outline?" becomes a
-question with an answer.
+what you declared. "Did this draft follow my outline?" then has an
+answer.
 
-A worked example for a survey of digital-twin literature -- the whole
-file is at
+Here is a worked example for a survey of digital-twin literature. The
+whole file is at
 [`examples/dossiers/survey/outline.md`](examples/dossiers/survey/outline.md):
 
 ```markdown
@@ -332,41 +331,40 @@ whose working directory is this project:
 > into `content/drafts/dt/survey.md`. The dossier and outline are already
 > there.
 
-That phrasing -- "write a survey" / "literature review" / "related-work
-section" -- is what selects `survey-writer`. If you name the draft path
-and say the dossier exists, it will use yours rather than making a second
+That phrasing ("write a survey" / "literature review" / "related-work
+section") is what selects `survey-writer`. If you name the draft path
+and say the dossier exists, it will use yours instead of making a second
 one.
 
-Two things worth saying in the same breath if they matter to you: the
+If they matter to you, say two more things in the same request: the
 venue or length you are aiming at, and any source you already know must
 be in there.
 
 ## ⏳ Step 5: what the skill does while you wait
 
-Not a black box. In order:
+The skill does the following, in order:
 
 1. **Retrieves broadly**, over-fetching on purpose, per sub-theme or per
    declared `queries:` line.
 2. **Scores every candidate itself** before it counts as evidence, and
    writes both the keeps (`evidence.md`) and the rejects with reasons
-   (`rejected.md`). A source you can see was considered and dropped is
-   the point of that second file.
+   (`rejected.md`). The second file shows you which sources were
+   considered and dropped.
 3. **Re-searches** any sub-theme that came up thin, with reformulated
    queries.
 4. **Clusters by judgement** into themes, and checks for disagreement
    between sources before writing a word.
 5. **Drafts** in Markdown with `[@citekey]` markers, a comparison table,
-   and a gap analysis -- the part of a survey that is actually worth
-   reading.
+   and a gap analysis, the part of a survey most worth reading.
 6. **Never writes a citekey it did not get from a retrieval result.**
 
-You will see it working. Where the corpus is thin it says so rather than
+You will see it working. Where the corpus is thin it says so instead of
 filling the hole with a plausible sentence.
 
 ## ✅ Step 6: gate, references, render
 
-The skill runs these itself. Run them yourself after any hand edit --
-this is the sequence that turns a draft into a document.
+The skill runs these itself. Run them yourself after any hand edit; this
+is the sequence that turns a draft into a document.
 
 **The gate** is the one hard check in this pipeline:
 
@@ -384,7 +382,7 @@ add the key to the bib by hand.
 chitragupta draft references content/drafts/dt/survey.md
 ```
 
-Leave the body's `[@citekey]` markers alone -- do not hand-number them.
+Leave the body's `[@citekey]` markers alone and do not hand-number them.
 Pandoc assigns `[1]`, `[2]` at render time.
 
 **The renders:**
@@ -403,7 +401,7 @@ chitragupta draft evidence content/drafts/dt/survey.md --format pdf
 
 It lists each cited source with the verbatim spans that justified it,
 grouped by the section that leans on them. If it prints `no quoted
-evidence recorded`, the run captured no quotations -- that is a real
+evidence recorded`, the run captured no quotations. That is a real
 answer about the draft, not a broken command.
 
 ## 🔍 Step 7: read the review aids
@@ -424,17 +422,17 @@ chitragupta review coverage content/drafts/dt/survey.md \
     --query "digital twin validation verification"
 ```
 
-What each is for, and what a finding from it actually means:
+What each is for, and what a finding from it means:
 
 | Aid | Reads for | A finding means |
 | --- | --- | --- |
 | `draft style` | defect markers, an acronym never expanded at first use, dialect against `scope.md` | a place to look. The first run of this check over this project's own docs kept 59 of 73 marker hits on inspection |
 | `review verbatim` | wording shared with any parsed source, cited or not | a run of words that also appears in a source. A `quoted` run that cites its source is a legitimate quotation; `long` and `short` are the buckets to read |
-| `review coverage` | how much of what retrieval surfaced actually got cited | a query whose top results the draft ignored -- sometimes correct, sometimes a theme you dropped by accident |
+| `review coverage` | how much of what retrieval surfaced got cited | a query whose top results the draft ignored: sometimes correct, sometimes a theme you dropped by accident |
 | `review synthesis` | paragraphs that summarise sources in sequence instead of synthesising them | the classic survey failure: three sentences, three citekeys, no connection drawn |
 | `review uncited` | claims that read like they need a source and have none | a sentence making a factual claim on nobody's authority |
 | `review quotation` | whether a quoted span matches the source it cites | a quotation that has drifted from what the paper says |
-| `review support` | whether the cited source actually entails the claim | a citation that is real but does not carry the sentence's weight |
+| `review support` | whether the cited source entails the claim | a citation that is real but does not carry the sentence's weight |
 
 Add `--write` to any `review` command above to file the report under
 `content/review/dt/`, in Markdown plus JSON. `draft style` has no
@@ -445,7 +443,7 @@ Add `--write` to any `review` command above to file the report under
 [AGENDA.md](AGENDA.md) explains every section of an agenda file in
 full; what follows is the short version for this genre.
 
-Rather than reading seven reports, merge them:
+Instead of reading seven reports, merge them:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md
@@ -453,7 +451,7 @@ chitragupta review agenda content/drafts/dt/survey.md
 
 The agenda **reads the aids' filed JSON and never runs an aid**, so run
 the aids you want included first (with `--write`), then the agenda. It
-names any aid whose report is absent rather than silently omitting it.
+names any aid whose report is absent instead of silently omitting it.
 
 Every item carries three things: a **class**, a **section anchor**, and
 whether it is `unattended` or `surfaced`.
@@ -463,8 +461,8 @@ whether it is `unattended` or `surfaced`.
 | `[unattended]` | safe for an automated pass to repair without asking | `prose`, the short runs a verbatim scan finds, `missing-citekey` |
 | `[surfaced]` | a judgement only you can make | `unsupported-claim`, `claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted` |
 
-What the report looks like for the survey we have been building -- this
-is the shape, with the counts and ids a real run produces:
+This is what the report looks like for the survey we have been building,
+in the shape and with the counts and ids a real run produces:
 
 ```markdown
 # Agenda: content/drafts/dt/survey.md
@@ -527,19 +525,19 @@ is the shape, with the counts and ids a real run produces:
   approaches): chitragupta.DefectMarker: 'obviously' (1x)
 ```
 
-**How to act on it.** The `[surfaced]` items are the ones worth your
-time -- in the excerpt above, the `unsupported-claim` in the Gaps section
-is the survey's weakest sentence and the `uncited-claim` is a real claim
-about practice that no source in the corpus makes. Fix those by asking
-for a revision (step 8).
+The `[surfaced]` items are the ones worth your time. In the excerpt
+above, the `unsupported-claim` in the Gaps section is the survey's
+weakest sentence and the `uncited-claim` is a real claim about practice
+that no source in the corpus makes. Fix those by asking for a revision
+(step 8).
 
 The `[unattended]` ones can be handed off: ask to "work the review
 agenda" and `agenda-reviser` repairs them one at a time, re-running the
-gate and a baseline recheck after each, logging every attempt --
-including refusals and reverts -- in `revisions.md`.
+gate and a baseline recheck after each, and logging every attempt
+(refusals and reverts included) in `revisions.md`.
 
-To see whether a round of edits actually helped, re-run against the
-previous agenda:
+To see whether a round of edits helped, re-run against the previous
+agenda:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md \
@@ -548,9 +546,9 @@ chitragupta review agenda content/drafts/dt/survey.md \
 
 That is the one mode that re-runs the aids. It reports each finding as
 `resolved`, `persisting`, `new` or `accepted`, with the objective count
-before and after -- so a repair that fixes one thing and breaks another
-shows up as a flat count with a non-empty `new` list, rather than as
-success.
+before and after. A repair that fixes one thing and breaks another
+therefore shows up as a flat count with a non-empty `new` list, and not
+as success.
 
 If you have considered a surfaced item and decided it stands, record
 that instead of re-reading it every round:
@@ -592,8 +590,9 @@ chitragupta draft dossier status --all
 
 ## 💾 Step 9: back it up
 
-`content/drafts/` and `content/dossiers/` are gitignored on purpose --
-your writing is not this repository's to commit. Bundle them yourself:
+`content/drafts/` and `content/dossiers/` are gitignored on purpose,
+because your writing is not this repository's to commit. Bundle them
+yourself:
 
 ```bash
 chitragupta draft dossier export dt/survey
@@ -609,7 +608,7 @@ That writes a `.tar.gz` holding the draft and its dossier. Add
 | `FileNotFoundError: papers/bibliography.bib` | no bib export | export your library there and re-run `corpus sync` |
 | The ledger has entries but 0 parsed | the bib has no PDF paths | re-export with file paths attached, then `corpus sync` |
 | The skill says the ledger is empty and refuses | no corpus yet | `chitragupta corpus sync` |
-| `gate` says `FAIL` | a citekey is not in the corpus | correct it, or drop the claim -- never add it by hand |
+| `gate` says `FAIL` | a citekey is not in the corpus | correct it, or drop the claim; never add it by hand |
 | `[missing-binary]` from `render` | no `pandoc`/`pdflatex` | install them; the `.md` draft is unaffected |
 | The survey reads thin in one theme | the corpus is thin there | add papers to the bib, `corpus sync`, then ask `corpus-reviser` for a whole-corpus pass |
 | You want a change and are tempted to re-run the skill | -- | ask for a revision instead; see step 8 |

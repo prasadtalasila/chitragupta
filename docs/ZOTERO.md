@@ -4,7 +4,7 @@ Status: **how-to.** Written 2026-08-03. Updated 2026-08-24.
 
 **Written for** anyone getting their own library into this pipeline for
 the first time. **Assumed:** nothing. **Not covered here:** what the
-pipeline then does with it -- [CLI.md](CLI.md) has the commands.
+pipeline then does with it; [CLI.md](CLI.md) has the commands.
 
 How to get a `.bib` file and its PDFs into the shape this pipeline
 expects. See [../README.md](../README.md) for the Quickstart that
@@ -16,35 +16,35 @@ general feature):
 
 1. Right-click the collection you want (or use **File -> Export Library**
    for everything) -> **Export Collection...** / **Export Library...**.
-2. Format: **BibTeX**. Check **Export Files** -- without it you get
+2. Format: **BibTeX**. Check **Export Files**; without it you get
    metadata only and `pdf_text/` will have nothing to extract.
 3. Save it as `bibliography` directly inside this repo's `papers/`
    directory. Zotero writes `papers/bibliography.bib` plus a **companion
    folder** (`papers/bibliography/`, `files/<id>/<name>.pdf` inside) for
-   every attachment -- the exported `.bib`'s `file` field encodes that
+   every attachment. The exported `.bib`'s `file` field encodes that
    folder's name as a literal relative path, tied to whatever name you
    gave the export at save time.
 4. **Don't rename that companion folder afterward.** `chitragupta/bib_reader.py`'s
    `_resolve_pdf_path` resolves each entry's `file` field relative to
-   wherever `bibliography.bib` itself lives (`papers/`) -- if you rename
-   or move the attachments folder, that relative path breaks silently
-   (entries just show up as "without a PDF attachment" after `sync`, not
-   as an error).
+   wherever `bibliography.bib` itself lives (`papers/`). If you rename
+   or move the attachments folder, that relative path breaks silently:
+   after `sync` the entries show up as "without a PDF attachment", and
+   no error is raised.
 5. Re-run `python -m chitragupta.corpus sync`.
 
-**A complete, working example of exactly this shape is committed**:
+A complete, working example of this shape is committed:
 [`bibliography.bib`](examples/sample-project/papers/bibliography.bib) in
-the sample project is a five-entry export
-with its `files/` folder of PDFs beside it, and every entry's `file`
-field uses the relative form this page describes. If your export's
+the sample project is a five-entry export with its `files/` folder of
+PDFs beside it, and every entry's `file` field uses the relative form
+this page describes. If your export's
 entries come up "without a PDF attachment" and you want to compare
 against one that syncs cleanly, that is the file to open.
 
 ## 🗂 Keeping your collections (optional)
 
 Zotero organises a library into collections and subcollections, and that
-tree is a judgement you have already made -- *these are the modelling
-papers*. This pipeline can use it to scope a draft's retrieval to the
+tree is a judgement you have already made (*these are the modelling
+papers*). This pipeline can use it to scope a draft's retrieval to the
 subset you curated for it, rather than to the whole library:
 
 ```bash
@@ -57,15 +57,15 @@ The genre skills use this too, and ask about it once. Each of them
 offers the list above at scope time, records the answer as a
 `collection:` line in the draft's `scope.md`, and passes
 `--collection` on every retrieval call for the rest of the run;
-`draft-reviser` and `corpus-reviser` then read that line back rather than
-asking again. Decline the offer and everything searches the whole
+`draft-reviser` and `corpus-reviser` then read that line back and do not
+ask again. Decline the offer and everything searches the whole
 library, exactly as it did before.
 
-It is worth knowing what the narrowing buys and what it costs, because
-neither is obvious. Measured over a 642-item corpus (`bench/RESULTS.md`,
+What the narrowing buys and what it costs are both less obvious than
+they look. Measured over a 642-item corpus (`bench/RESULTS.md`,
 2026-08-19): scoping to a 19-item shelf raised the share of surfaced
-papers that were actually cited from 0.31 to 0.89, and it cost nothing
-in index terms -- the retrieval cache is shared, and scoring is
+papers that were cited from 0.31 to 0.89, and it cost nothing in index
+terms, because the retrieval cache is shared and scoring is
 corpus-wide with only the ranking filtered. It did **not** reduce the
 size of the retrieval payload, because a fixed `--k` still returns `k`
 results. And a shelf is not a subset of the library's ranking: that same
@@ -73,7 +73,7 @@ results. And a shelf is not a subset of the library's ranking: that same
 because a small pool promotes what a large pool's competition buries.
 
 **Zotero's own BibTeX exporter drops collection membership entirely**, so
-none of that works on a plain export -- the commands run, and nothing is
+none of that works on a plain export: the commands run, and nothing is
 in any collection. Keeping it needs
 [Better BibTeX](https://retorque.re/zotero-better-bibtex/):
 
@@ -85,25 +85,24 @@ in any collection. Keeping it needs
    **Export Files** checked as in step 2 above.
 4. Re-run `python -m chitragupta.corpus sync`.
 
-**The stated cost, and why it is probably not a cost for you.** Better
-BibTeX warns that this option "will disable caching in exports", and its
+Better BibTeX warns that this option "will disable caching in exports", and its
 [performance notes](https://retorque.re/zotero-better-bibtex/support/performance/)
 put the difference at roughly 9 seconds against 3-4 on an 86-item library.
 But those same notes say the cache "will not be active" when **Export
-Files** is enabled -- and step 2 above requires Export Files, because
+Files** is enabled, and step 2 above requires Export Files, because
 without the attachments there is nothing for this pipeline to parse. So an
 export done the way this page describes never had the cache to lose.
 Turning JabRef fields on costs you nothing further.
 
 Two things follow. If you also keep a *separate* Better BibTeX export for
-something else -- a `.bib` for a LaTeX document, an auto-export on a timer
--- that one does lose its cache, since the preference is global rather than
+something else (a `.bib` for a LaTeX document, an auto-export on a
+timer), that one does lose its cache, since the preference is global rather than
 per-export. And if you do not want collections, leave the option off:
 nothing else in this pipeline reads the field.
 
-**If Better BibTeX is not an option at all**, there is a discouraged
-fallback that reads collection membership out of `zotero.sqlite` directly
--- [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md). It bends two of
+If Better BibTeX is not an option at all, there is a discouraged
+fallback that reads collection membership out of `zotero.sqlite`
+directly: [EXPORT-ZOTERO-GROUPS.md](EXPORT-ZOTERO-GROUPS.md). It bends two of
 this project's rules and says so at length. Prefer the option above.
 
 Two conventions come with `groups`, and both are JabRef's rather than
@@ -120,7 +119,7 @@ in `config.toml` at that field instead ([CONFIG.md](CONFIG.md)).
 A Zotero export is the **only** way to get a paper into this pipeline.
 There is no directory you can drop a raw PDF into to have it indexed:
 the enrichment layer's corpus is the bibliography, so anything it can
-retrieve is something a draft may cite -- see
+retrieve is something a draft may cite. See
 [`chitragupta/enrich/corpus.py`](https://github.com/prasadtalasila/chitragupta/blob/main/chitragupta/enrich/corpus.py)
 and AGENTS.md's citekey
 invariant. (Earlier versions did have such a directory, `papers/pdfs/`;
@@ -133,17 +132,17 @@ To add more papers later: add the entry in Zotero, re-export the same way
 Removing a paper: delete the entry in Zotero, re-export, re-run `sync`.
 By default `sync` only *reports* citekeys that dropped out of the bib file
 (`stale   <citekey> (no longer in bibliography.bib)`, one line per
-citekey, plus a single summary note pointing at `--remove-stale`) -- it
+citekey, plus a single summary note pointing at `--remove-stale`); it
 doesn't delete their `content/ledger.sqlite` row until you re-run with
 `--remove-stale`. This is deliberate. A bib export that comes back short
 a citekey is far more often a botched re-export, or `BIB_FILE` pointing
-at the wrong path, than an intentional deletion -- so the default keeps
+at the wrong path, than an intentional deletion, so the default keeps
 the ledger untouched until a human confirms.
 
 Before either run acts, it also names **what else on disk still
-references that citekey** -- the overlap index, the topic graph's edges,
+references that citekey**: the overlap index, the topic graph's edges,
 which topics the paper was a member of, the `evidence.md`/`sections.md`
-of any dossier, and the enrichment layer's chunk vectors -- so you can
+of any dossier, and the enrichment layer's chunk vectors. You can then
 see the residue before you confirm instead of meeting it as a dead
 reference in a draft weeks later. It reports and repairs nothing: only
 the ledger row is ever removed, and the topic classes clear themselves
@@ -170,11 +169,11 @@ a standard type (`@misc`, say) if you want it in the corpus.
 
 ## 🏷 Citekeys have to work as filenames
 
-A citekey is not only an identifier here -- it is the stem of every file
-the pipeline writes for that paper (`content/parsed/<citekey>.txt`, and
-the enrichment layer's `content/docling/<citekey>.md`). So a citekey
-containing `/` or `\`, one of `: * ? " < > |`, or a name Windows reserves
-(`CON`, `NUL`, `COM1`...) is **skipped**, with a warning naming it:
+Here a citekey is also the stem of every file the pipeline writes for
+that paper (`content/parsed/<citekey>.txt`, and the enrichment layer's
+`content/docling/<citekey>.md`). So a citekey containing `/` or `\`,
+one of `: * ? " < > |`, or a name Windows reserves (`CON`, `NUL`,
+`COM1`...) is **skipped**, with a warning naming it:
 
 ```text
   WARNING skipping citekey 'smith/2024': it contains '/', which cannot
@@ -184,7 +183,7 @@ containing `/` or `\`, one of `: * ? " < > |`, or a name Windows reserves
 
 Zotero's own key generator won't produce one of those, so you are most
 likely to hit this with Better BibTeX and a custom key pattern. This
-project never rewrites a citekey -- the bib file is the source of truth --
+project never rewrites a citekey (the bib file is the source of truth),
 so the fix is always to rename it in the reference manager and re-export.
 Ordinary accented characters (`naïve_2024`) are fine; they are legal in a
 filename.

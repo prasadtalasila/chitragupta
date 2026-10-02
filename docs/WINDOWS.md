@@ -35,7 +35,7 @@ because three OS packages have no apt to install them from.
 | The review layer's ten aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only four of its nine checks without `pdflatex` | yes |
 | `draft render` to PDF | needs Pandoc + a TeX distribution installed by hand | yes, via `os-deps` |
 | `chitragupta enrich` | yes | yes |
-| GPU acceleration | CPU only | yes -- see [below](#-gpu-features-under-wsl2) |
+| GPU acceleration | CPU only | yes; see [below](#-gpu-features-under-wsl2) |
 | Install command | needs Git Bash | the documented Linux one |
 
 ## 🧩 The situation
@@ -43,26 +43,26 @@ because three OS packages have no apt to install them from.
 Two things make Windows different, and only the second is really about
 Windows.
 
-**The installer is a bash script.** `scripts/install_full_pipeline.sh`
+First, the installer is a bash script. `scripts/install_full_pipeline.sh`
 is the single install path for a checkout, Docker and CI
 (`DEVELOPER-AGENTS.md` states why there is only one), and it needs a
-POSIX shell. CI's Windows leg has one -- the runner image ships Git
-Bash -- and runs the same script the Linux leg does, unmodified. A
+POSIX shell. CI's Windows leg has one (the runner image ships Git
+Bash) and runs the same script the Linux leg does, unmodified. A
 laptop may not, so [below](#-installing-native-windows) starts by
 installing one.
 
-**The hook launcher name.** `.claude/settings.json` starts every hook
+Second, the hook launcher name. `.claude/settings.json` starts every hook
 this repository registers as `python`, and
 [HOOKS.md](HOOKS.md#-the-launcher-contract) records why that name rather
 than `python3`: a virtual environment creates `python` on every
 platform and `python3` only on POSIX, so `python3` is the name that
-would go missing here. Windows is the *winning* host for that choice,
-not the losing one -- the name resolves natively.
+would go missing here. On Windows the name resolves natively, so this
+host gains from that choice.
 
-What makes it worth stating anyway is the failure mode. A hook whose
+It is still worth stating because of the failure mode. A hook whose
 launcher does not resolve produces **nothing at all**: no error, no log
 line. The citation gate is one of those hooks, so the settings file
-still lists it, the suite still passes, and drafts land ungated --
+still lists it, the suite still passes, and drafts land ungated.
 [SOUL.md](../SOUL.md) has why that is the one failure this project
 cannot tolerate. Two things now report it rather than one: `chitragupta
 draft gate` and the session-start preflight both call
@@ -72,7 +72,7 @@ platforms with nothing installed.
 
 The Windows-specific half of that check is the placeholder. An unbraced
 `$CLAUDE_PROJECT_DIR` is expanded by the *shell*, not substituted by the
-harness -- and on a Windows host without Git Bash that shell is
+harness, and on a Windows host without Git Bash that shell is
 PowerShell, where the syntax names an undefined variable and expands to
 nothing. Always write `${CLAUDE_PROJECT_DIR}`.
 
@@ -88,7 +88,7 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
    python --version
    ```
 
-3. **Create the venv and install**, exactly as on Linux -- the script
+3. **Create the venv and install**, exactly as on Linux; the script
    handles `Scripts/` versus `bin/` itself:
 
    ```bash
@@ -99,8 +99,7 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
    ```
 
    `os-deps` is apt-only and will not run here. That is expected: it is
-   not part of what a Windows host installs, and the script does not
-   pretend otherwise.
+   not part of what a Windows host installs, and the script says so.
 
 4. **Install the three OS binaries by hand**, if you want rendering and
    the `verbatim` aid. There is no scripted path for these
@@ -130,22 +129,21 @@ of the ten review aids need no OS package at all.
 **The second exception is `figure`, and it is the one to watch**,
 because unlike `verbatim` it neither refuses nor reports a missing
 binary: five of its nine checks need `pdflatex`, so without TeX it runs
-and reports the other four, naming what it skipped. Both of the checks
-a reader would call the point
-of a layout check -- node overlap and content protrusion -- are in the
-five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s own "Needs
-`pdflatex`" column for the split. A green `figure` report on a host
-without TeX is four-ninths of a report, not a clean one.
+and reports the other four, naming what it skipped. The two checks most
+readers want from a layout check, node overlap and content protrusion,
+are both in the five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s
+own "Needs `pdflatex`" column for the split. On a host without TeX, a
+green `figure` report covers only four of the nine checks.
 
 ## 🐧 Installing: WSL2
 
 Install a Debian or Ubuntu distribution, then follow
 [CLI.md](CLI.md#-installing) unchanged. There is no Windows-specific
 step and no Windows-specific caveat: inside WSL2 this is a Linux host,
-`os-deps` works, and `python-is-python3` -- which `os-deps` installs --
+`os-deps` works, and `python-is-python3` (which `os-deps` installs)
 puts the hook launcher's name on `PATH`.
 
-One thing that is easy to get wrong and slow to diagnose: **keep
+This one is easy to get wrong and slow to diagnose: **keep
 `papers/` and `content/` on the WSL2 filesystem, not under `/mnt/c/`.**
 The Windows drives are reached over a 9p mount whose per-file overhead
 dominates PDF parsing, so a corpus sync over a real library there is
@@ -154,7 +152,7 @@ directory.
 
 ## 🎮 GPU features under WSL2
 
-**Everything GPU-accelerated works,** which is to say the whole
+Everything GPU-accelerated works, which means the whole
 `enrich` layer: Docling's PDF parsing, sentence-transformers
 embeddings, and BERTopic's topic modelling. CUDA-on-WSL2 is NVIDIA's
 supported configuration and PyTorch sees the device normally.
@@ -172,7 +170,7 @@ Three things to get right:
    Linux driver installed in the distribution shadows the passthrough
    and breaks CUDA. The WSL side needs no driver package.
 2. **`nvidia-smi` reports the Windows driver's CUDA ceiling**, which is
-   the right number for choosing a wheel -- so its output means the same
+   the right number for choosing a wheel, so its output means the same
    thing here as on a bare Linux host.
 3. `nvidia-smi` under WSL2 has a reduced feature set (no per-process
    listing, for one). Nothing in this repository parses those fields;
@@ -185,18 +183,19 @@ consideration on a large corpus.
 
 ## 🚫 Why there is no PowerShell installer
 
-Deliberate, and recorded here so it is not proposed as an oversight.
+This is deliberate, and recorded here so it is not proposed as an
+oversight.
 
 `DEVELOPER-AGENTS.md` forbids a second install path, and states the
-invariant behind the rule: **one place a dependency fact can be
-written**, so a fix lands once and every target picks it up. A `.ps1`
+invariant behind the rule: there is one place a dependency fact can be
+written, so a fix lands once and every target picks it up. A `.ps1`
 that created a venv and ran `poetry install` would be a second
-implementation of a path that already works -- CI's Windows leg runs the
-bash script and has been green for ten consecutive runs. The duplication
-would buy nothing and would drift.
+implementation of a path that already works: CI's Windows leg runs the
+bash script and has been green for ten consecutive runs. The duplicate
+would add nothing and would drift.
 
-The genuine gap is smaller than an installer: three OS packages with no
+The real gap is smaller than an installer: three OS packages with no
 apt behind them. Scripting `winget` would not close it either, because
-the useful part is not the invocation -- it is knowing which binaries
-matter and what self-skips without them, which is what this file and
-`chitragupta doctor` are for.
+the invocation is the easy part. The useful part is knowing which
+binaries matter and what self-skips without them, and that is what this
+file and `chitragupta doctor` are for.

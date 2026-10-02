@@ -2,22 +2,23 @@
 
 Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-26;
 step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, step 4 in its own PR,
-and step 5 built narrow (verbatim runs only) in 5.7.0 -- see
+and step 5 built narrow (verbatim runs only) in 5.7.0; see
 [Build order](#-build-order).
 
 `python -m chitragupta.review agenda <draft>` is a command now, though
-no skill consumes it yet -- that is step 5's widening, still open. Of the
+no skill consumes it yet; that is step 5's widening, still open. Of the
 review aids, all seven now emit JSON: `verbatim scan` as of 5.4.0,
 `provenance` and `coverage` as of 6.16.0, `synthesis` and `uncited`
 from the day each landed, and `agenda` itself from the day it landed.
 This document states *what* would be built and *what it must satisfy*, in
 the order it would be built.
 
-**It contains no argument.** Every "why" -- why the aid sits in the review
-layer rather than the drafting one, why three of six item classes may not
-be acted on, why the loop stops instead of running overnight, and the one
-documented rule it cannot satisfy without the user's approval -- is in
-[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md). Read that
+It contains no argument. Every "why" is in
+[AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md): why the
+aid sits in the review layer and not the drafting one, why three of six
+item classes may not be acted on, why the loop stops instead of running
+overnight, and the one documented rule it cannot satisfy without the
+user's approval. Read that
 first if you are deciding whether to build this; read this one if you are
 building it.
 
@@ -27,8 +28,8 @@ building it.
 sweep.
 
 **Not covered here:** the prose and house-style half, which has its own
-detectors, its own persistence and its own roadmap --
-[HOUSE-STYLE.md](HOUSE-STYLE.md). Corpus growth is out of scope entirely:
+detectors, its own persistence and its own roadmap
+([HOUSE-STYLE.md](HOUSE-STYLE.md)). Corpus growth is out of scope entirely:
 nothing specified below fetches a paper, writes `bibliography.bib`, or
 writes the ledger.
 
@@ -73,44 +74,44 @@ Markdown, at `content/review/<topic>/<stem>.<aid>.json`.
   authoritative.
 - No timestamp, per the layer's existing rule: two runs over an unchanged
   draft and corpus produce byte-identical JSON.
-- This is the verbatim scan's `--json` change applied to the layer rather
-  than to
-  `verbatim_check` alone, so the report contract does not fork.
+- This is the verbatim scan's `--json` change applied to the layer
+  instead of to `verbatim_check` alone, so the report contract does not
+  fork.
 
-What 5.4.0 built, per that change's scope: the layer-level plumbing --
-`review.envelope()` (the payload's provenance, and the not-a-verdict
-notice, as data) and `review.write_json()` -- plus `verbatim scan
---json`, which prints the payload and files it under `--write`.
+What 5.4.0 built, per that change's scope: the layer-level plumbing
+(`review.envelope()`, which carries the payload's provenance and the
+not-a-verdict notice as data, and `review.write_json()`), plus `verbatim
+scan --json`, which prints the payload and files it under `--write`.
 
 What 6.16.0 added: `provenance --json` and
 `coverage --json`, reusing that same plumbing. `provenance` files its
 `.json` unconditionally, matching the `.md`'s own always-write policy;
 `coverage` files its `.json` only under `--write`, matching the `.md`'s.
 So the `agenda` below can still find an aid's JSON missing for a given
-draft -- not because an aid has yet to reuse the plumbing, but because
-that aid was never run against this draft, or `coverage` was run without
-`--write` -- which is the case step 2 already accounts for.
+draft. Every aid now reuses the plumbing, so the cause is that the aid was
+never run against this draft, or that `coverage` was run without
+`--write`; step 2 already accounts for that case.
 
 ## ▶ 2. The `agenda` aid
 
-`python -m chitragupta.review agenda <draft>` -- a fourth key in `review.AIDS`.
+`python -m chitragupta.review agenda <draft>` is a fourth key in `review.AIDS`.
 Deterministic, stdlib-only, no LLM, tier 1, takes no lock, exits 0 whatever
 it finds.
 
 **Reads:**
 
-- the eight aids' `.json` for this draft -- each optional, and skipped
+- the eight aids' `.json` for this draft, each optional, and skipped
   with a note when absent;
 - `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys and candidates;
 - `recorded_but_uncited(draft)`, for the citekeys the dossier still
-  records and the draft no longer cites -- read without a `dossier
+  records and the draft no longer cites, read without a `dossier
   stamp` baseline, deliberately, so an unstamped dossier still reports
   the state;
-- `rejected.md` -- a candidate already turned down with a reason is never
-  re-proposed;
+- `rejected.md`, so a candidate already turned down with a reason is
+  never re-proposed;
 - `sections.md`, so every item carries a section anchor;
 - `<stem>.accepted.json`, the items a person has already considered and
-  accepted (section 5 below) -- optional and absent by default, and it
+  accepted (section 5 below); optional and absent by default, and it
   raises no class of its own.
 
 **Writes:** `<stem>.agenda.md` and `<stem>.agenda.json` under
@@ -120,35 +121,34 @@ it finds.
 **Merges.** One finding may appear in two aids' output; the agenda emits
 one item. This cross-signal merge is the work no individual aid can do.
 
-**Every finding carries a stable identity** -- `(aid, class, section
-anchor, citekey, hash of the matched span)` or equivalent -- so that "this
+**Every finding carries a stable identity**, `(aid, class, section
+anchor, citekey, hash of the matched span)` or equivalent, so that "this
 finding is gone" and cross-aid dedup are both decidable across runs.
 
 **Order:** class order as the table below lists it, then the verbatim
-scan's severity
-bucket within a class, then position in the draft.
+scan's severity bucket within a class, then position in the draft.
 
 ### 🏷 Item classes
 
 | Class | Source | Kind | Unattended? |
 | --- | --- | --- | --- |
-| `missing-citekey` | drift | defect -- the gate will fail on it | yes |
-| `recorded-but-uncited` | dossier | `missing-citekey` in the other direction -- `evidence.md` or `sections.md` still records a citekey the draft's text no longer cites | no -- surfaced. `recorded - cited` cannot tell a citation the user deleted from a candidate transcribed and never cited, and the two want opposite repairs, so deleting recorded evidence unattended would trade a cosmetic staleness for a real loss. The repair is `dossier prune`, which a person confirms. Computed without a `dossier stamp` baseline, unlike `status`'s own report of the same state |
-| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human, **and every `embedding`-tier finding whatever its length**. `severity` comes from `_bucket`, which thresholds on `matched_words` and never looks at `tier`, so a short embedding alignment used to arrive here indistinguishable from a short exact run -- authorising an automated edit on the evidence of a similarity score, while `verbatim recheck` already refused even to *count* that tier on the grounds its own docstring gives ("advisory only, permanently": its findings move with tier availability and the embedding model, not only with an edit). Something advisory-only cannot also be safe to act on unasked. Built: `agenda-reviser` |
-| `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the class unless a finding opts out -- a recorded decision. `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set. One exception, decided in issue 836: a finding whose right repair may be "leave it alone" is built with `repair: "review"` and surfaced -- `WideCodeLine`, and a dialect finding whose dialect came from the host-wide `config.toml` rather than `scope.md` or `--language` |
-| `unsupported-claim` | provenance | judgement | no -- surfaced |
-| `claim-support` | support | judgement | no -- surfaced. Unfiltered by design -- a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)) -- so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
-| `uncited-claim` | uncited | judgement | no -- surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
-| `misquoted` | quotation | defect -- the span is not in the source it cites | no -- surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
+| `missing-citekey` | drift | defect; the gate will fail on it | yes |
+| `recorded-but-uncited` | dossier | `missing-citekey` in the other direction: `evidence.md` or `sections.md` still records a citekey the draft's text no longer cites | no, surfaced. `recorded - cited` cannot tell a citation the user deleted from a candidate transcribed and never cited, and the two want opposite repairs, so deleting recorded evidence unattended would trade a cosmetic staleness for a real loss. The repair is `dossier prune`, which a person confirms. Computed without a `dossier stamp` baseline, unlike `status`'s own report of the same state |
+| `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human, **and every `embedding`-tier finding whatever its length**. `severity` comes from `_bucket`, which thresholds on `matched_words` and never looks at `tier`, so a short embedding alignment used to arrive here indistinguishable from a short exact run, authorising an automated edit on the evidence of a similarity score, while `verbatim recheck` already refused even to *count* that tier on the grounds its own docstring gives ("advisory only, permanently": its findings move with tier availability and the embedding model, not only with an edit). Something advisory-only cannot also be safe to act on unasked. Built: `agenda-reviser` |
+| `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the class unless a finding opts out (a recorded decision). `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set. One exception, decided in issue 836: a finding whose right repair may be "leave it alone" is built with `repair: "review"` and surfaced: `WideCodeLine`, and a dialect finding whose dialect came from the host-wide `config.toml` instead of `scope.md` or `--language` |
+| `unsupported-claim` | provenance | judgement | no, surfaced |
+| `claim-support` | support | judgement | no, surfaced. Unfiltered by design, since a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)), so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
+| `uncited-claim` | uncited | judgement | no, surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
+| `misquoted` | quotation | defect: the span is not in the source it cites | no, surfaced. Binary and deterministic, so R3 is satisfied and the agenda may rank it; but the defect is in `evidence.md`, and `agenda-reviser` edits drafts. There is no unattended repair for a bad `quote:` |
 
 Two classes were removed from this table, and are named here so their
-absence reads as a decision rather than an oversight. `uncited-source`
+absence reads as a decision and not an oversight. `uncited-source`
 (from `coverage`, "was retrieved but never cited") and `candidate` (from
 `drift`, "matches this draft's own queries but is never cited") both
 reported the same thing: the corpus holds a paper the retrieval surfaced
 and the draft does not cite. For a draft that makes no claim from a
-surfaced paper -- the overwhelmingly common case, since retrieval
-surfaces far more than any one draft uses -- declining to cite it is the
+surfaced paper (the overwhelmingly common case, since retrieval
+surfaces far more than any one draft uses), declining to cite it is the
 correct outcome, not a finding. As standing agenda items they were
 volume, and volume on a worklist has a real cost: it is read, triaged
 and dismissed by a person on every cycle.
@@ -162,22 +162,23 @@ says the *dossier* records a citekey the draft no longer cites, which is
 an inconsistency between two artefacts the project maintains, not a
 paper someone declined to use.
 
-`support` (C2) asks the same underlying question as `provenance` --
-does the source support this claim? -- but was never wired in as a
+`support` (C2) asks the same underlying question as `provenance`
+(does the source support this claim?) but was never wired in as a
 second source for `unsupported-claim`: its score is ranked, never
 banded, by design ([REVIEW.md](REVIEW.md)), and that class's extractor
 (`unsupported_claim_items`) decides membership by a `band`, a field
-this aid deliberately does not emit. A later change gave it its own class instead,
-`claim-support`, ranked-but-unfiltered rather than thresholded -- a
-percentile cutoff would claim the same false precision a band would.
+this aid deliberately does not emit. A later change gave it its own
+class instead, `claim-support`, ranked-but-unfiltered instead of
+thresholded, because a percentile cutoff would claim the same false
+precision a band would.
 Findings the entailer could not score at all (`note` set, no quotable
 passage) are excluded, since there is no score there to rank or act on.
 
 The `prose` class had no producer when this was written. It has both a
 producer and a consumer now: the detector shipped in 5.13.0 and
 its automatic invocation landed in 5.19.0, and `chitragupta/style_check.py`
-emits `--json` -- so build-order step 6 below is **done**, and this class
-is live rather than an empty list.
+emits `--json`, so build-order step 6 below is done, and this class
+is live instead of an empty list.
 
 ## ▶ 3. The `agenda-reviser` skill
 
@@ -187,14 +188,14 @@ whole-corpus re-search, this one from the agenda.
 
 Per item:
 
-1. Dispatch the existing `draft-reviser` discipline -- read `scope.md` and
+1. Dispatch the existing `draft-reviser` discipline: read `scope.md` and
    `steering.md` first, edit inside the named section with `Edit`, never a
    whole-file `Write`.
 2. Re-run `python -m chitragupta.draft gate` **and** the aid that raised the
    finding. Accept only if both come back clean.
 3. Re-run every other aid. If the total count of objective-class findings
    rose, revert the edit and escalate the item.
-4. Log the attempt in `revisions.md` -- outcome included, refusals
+4. Log the attempt in `revisions.md`, outcome included, refusals
    included.
 
 **Termination:** at most two attempts per item; a second failure escalates
@@ -219,18 +220,17 @@ loop proposes and repairs; the human accepts.
 
 ## ▶ 5. Considered and accepted
 
-A different sense of "accept" from section 4's, and worth separating
-before anything else: that one accepts *an edit the skill proposed*, this
-one accepts *a finding as it stands* -- "I have read this, and I am
-leaving the draft as it is."
+This is a different sense of "accept" from section 4's. That one
+accepts *an edit the skill proposed*; this one accepts *a finding as it
+stands*: "I have read this, and I am leaving the draft as it is."
 
 ```bash
 python -m chitragupta.review agenda <draft> --accept <item id>
 ```
 
-The problem is the one this whole document already names. The agenda
-recomputes from the aids on every run, which is right -- no stale state,
-no queue to corrupt -- but it means a surfaced judgement item a person
+The problem is one this document already names. The agenda
+recomputes from the aids on every run, which is right (no stale state,
+no queue to corrupt), but it means a surfaced judgement item a person
 has read and decided about arrives again, identical, on every cycle. That
 is the same cost that removed `uncited-source` and `candidate` from the
 item-class table: volume on a worklist is read, triaged and dismissed by
@@ -238,7 +238,7 @@ a person, every cycle, forever. `rejected.md` does not help, because it
 records turned-down *candidates*, not considered *findings*.
 
 **Keyed on the identity the item already has.** `(aid, class, section
-anchor, citekey, span hash)` -- `chitragupta/review/agenda/_identity.py`'s
+anchor, citekey, span hash)` is `chitragupta/review/agenda/_identity.py`'s
 `item_id`, R2's identity, not a second mechanism invented for this.
 Suppressing by citekey or by section alone was rejected as too coarse: a
 new defect in an accepted section would be hidden.
@@ -250,34 +250,34 @@ record matches, and the item is back on the worklist. The acceptance says
 the text.
 
 **The agenda still recomputes from the aids.** This is a filter applied
-to a freshly computed list, not a durable queue with mutable item state
--- that alternative was considered and rejected, because the
+to a freshly computed list, not a durable queue with mutable item state.
+That alternative was considered and rejected, because the
 recompute-from-aids property is worth more than the convenience. Delete
 an aid's `.json` and the item is gone from both the worklist and the
 suppressed list; nothing but the identity was ever stored.
 
 **Three classes may be accepted:** `claim-support`, `uncited-claim` and
-`unsupported-claim` -- the ones surfaced because a person genuinely has a
+`unsupported-claim`, the ones surfaced because a person has a real
 call to make. Every other class in the item-class table is refused in
 code, with exit code 2. `missing-citekey` is a defect the gate fails on;
 accepting one should not be possible.
 
-**`misquoted` is deliberately excluded**, although it is surfaced rather
-than unattended, and the reason is not obvious enough to leave
+**`misquoted` is deliberately excluded**, although it is surfaced and not
+unattended, and the reason is not obvious enough to leave
 unrecorded. Three things, any one of which would be enough:
 
 1. **It is surfaced for a write-set reason, not a judgement one.** The
    item-class table above gives its reason as "the defect is in
    `evidence.md`, and `agenda-reviser` edits drafts. There is no
-   unattended repair for a bad `quote:`" -- a statement about what the
-   tool can reach, not about a decision a person has to record.
+   unattended repair for a bad `quote:`", which is a statement about what
+   the tool can reach, not about a decision a person has to record.
 2. **The class conflates two very different findings.**
    `chitragupta/review/_quotation_match.py` measured 70 raw findings
-   reducing to 33 after three normalisations -- and 40 to 38 after the
-   fourth issue #775 added -- and calls what is left
+   reducing to 33 after three normalisations (and 40 to 38 after the
+   fourth issue #775 added), and calls what is left
    "residual absents". An `absent` finding is therefore either a correct
-   quote the matcher cannot verify -- legitimately accept-worthy -- or a
-   genuinely fabricated quotation, which is the one failure
+   quote the matcher cannot verify, which is legitimately accept-worthy,
+   or a fabricated quotation, which is the one failure
    [SOUL.md](../SOUL.md) exists to prevent. The aid does not distinguish
    them, and the obvious discriminator is closed off: that module records
    that R3 bars a continuous `near_miss_score` from being the thing
@@ -285,8 +285,8 @@ unrecorded. Three things, any one of which would be enough:
 3. **Its identity is keyed on the wrong side of the comparison.**
    `misquoted_items` sets `section=None`, `line=None` and spans the quote
    text from `evidence.md`. A `misquoted` finding can become newly true
-   with the quote byte-identical -- a re-parse under different `PARSER_*`
-   settings, a replaced PDF, a `corpus sync` -- so the id would not
+   with the quote byte-identical (a re-parse under different `PARSER_*`
+   settings, a replaced PDF, a `corpus sync`), so the id would not
    change, the acceptance would hold, and a real fabrication would stay
    suppressed. Every acceptable class above is keyed on the draft text it
    is about.
@@ -297,7 +297,7 @@ because acceptance over a class that means two things can permanently
 suppress the one finding this project exists to catch. What #775 did and
 what it found:
 
-- **A fourth normalisation shipped**, on the same exact-matching-only
+- A fourth normalisation shipped, on the same exact-matching-only
   footing as the other three. An elision at either *end* of a quote
   leaves `fragments` one piece instead of two, and `locate` required
   two, so `"For data-driven models the topic is [unresolved]."` against
@@ -305,27 +305,27 @@ what it found:
   `absent` although everything before the drafter's own bracket is
   verbatim. Measured over 206 spans extracted from 19 real `evidence.md`
   files: **40 residual absents to 38, with no span lost.**
-- **One candidate was measured and declined.** Stripping a parenthesised
-  abbreviation gloss from the *source* -- `"a Digital Twin (DT) to gain
-  the most value"` against a quotation that dropped the `(DT)` --
+- One candidate was measured and declined. Stripping a parenthesised
+  abbreviation gloss from the *source* (`"a Digital Twin (DT) to gain
+  the most value"` against a quotation that dropped the `(DT)`)
   recovers 1 span and loses 12, because a drafter quoting that sentence
-  usually keeps the gloss. Recorded rather than dropped, since it is the
+  usually keeps the gloss. It is recorded here because it is the
   obvious next thing to try.
-- **Finding 2 is reduced, not removed.** Of the 38 that remain, 15 are
-  under eight words -- the measurement's own extraction rule collecting
+- Finding 2 is reduced, not removed. Of the 38 that remain, 15 are
+  under eight words: the measurement's own extraction rule collecting
   the book's scare-quoted phrases (`"explain it to a sponsor"`), which a
   `quote:` field would never hold; 18 have essentially nothing of the
   quote in the source, which at that extraction rule's fidelity is
-  mostly a mis-attribution rather than a finding; and **5 match a real
+  mostly a mis-attribution and not a finding; and **5 match a real
   prefix and then diverge**, which is exactly the class this aid exists
   for. A class that still contains those 5 is not a class to let a
   keystroke silence.
-- **Finding 3 is untouched**, and on its own would be enough. Accepting
+- Finding 3 is untouched, and on its own would be enough. Accepting
   a `misquoted` item would require its identity to carry the parsed
   source's fingerprint so a re-parse or a replaced PDF reopens it. That
   is a new mechanism, #767 declined to add one, and nothing in the
   measurement argues for paying for it now.
-- **The cost of "no" is currently zero.** No dossier in this corpus uses
+- The cost of "no" is currently zero. No dossier in this corpus uses
   the `quote:`/`claim:`/`support:` contract at all, so `misquoted`'s
   universe is empty on every real draft and acceptance would buy nothing
   measurable today. The normalisation was worth doing regardless: it is
@@ -333,52 +333,50 @@ what it found:
 
 `plans/775-quotation-residual-absents.md` holds the arms, the counts and
 the recipe for rebuilding them. If a later corpus makes the residual
-class mean one thing, this is the entry to revisit -- and the sequence
-to keep: normalise, measure, then decide.
+class mean one thing, this is the entry to revisit, and the sequence
+to keep is: normalise, measure, then decide.
 
 **The record is auditable.** `<stem>.accepted.json` holds one row per
-accepted item -- id, class, section, citekey and the summary as it read
-when it was accepted -- and the agenda's own report lists every row in an
+accepted item (id, class, section, citekey and the summary as it read
+when it was accepted), and the agenda's own report lists every row in an
 `## Accepted` section, marked `suppressed` or `not raised by this run`.
 The second marker is what a reopening looks like from the record's side,
-and is why those rows are kept rather than pruned. Under `--baseline`,
+and is why those rows are kept instead of pruned. Under `--baseline`,
 accepted items are reported in their own `accepted` group and not as
 `resolved`: an item absent by suppression was not repaired, and reporting
-it as fixed is precisely the silent wrong answer that mode exists to
-prevent.
+it as fixed is the silent wrong answer that mode exists to prevent.
 
-Two consequences worth knowing. The record lives under `content/review/`,
+This has two consequences. The record lives under `content/review/`,
 which `chitragupta draft dossier export`/`restore` does not bundle, so
-unlike `rejected.md` it does not survive that round-trip -- the cost of
+unlike `rejected.md` it does not survive that round-trip. The cost of
 losing one is a re-judgement, never a hidden finding. And an unreadable
 record suppresses nothing: every accepted item returns to the worklist,
 and the report's header says why.
 
 Bulk acceptance over a whole class is not built. `--accept` is
 repeatable, which covers "these four, now"; accepting a class wholesale
-would let a single keystroke silence findings nobody read, which is the
-opposite of what the record is for.
+would let a single keystroke silence findings nobody read, which defeats
+what the record is for.
 
-**Acceptance and R12's stale-span refusal are two filters on one list,
-and the order between them is decided.** `build_agenda` refuses first and
-suppresses second. Staleness asks whether the item is still *about*
-anything -- the draft text it was derived from is gone -- and acceptance
-asks what a person decided about an item that is; an item failing the
-first question has not reached the second. Running acceptance first would
-mark a stored record `suppressed` for a finding this run refused on other
-grounds, and drop that finding out of the refusal report, so the run
-would claim a judgement was honoured where it had declined to raise the
-item at all. Refusing first keeps both reports true: the item appears
-under `## Refused as stale`, and its acceptance record reads `not raised
-by this run`.
+**Acceptance and R12's stale-span refusal are two filters on one list, and the
+order between them is decided.** `build_agenda` refuses first and suppresses
+second. Staleness asks whether the item is still *about* anything, that is,
+whether the draft text it was derived from is gone, and acceptance asks what a
+person decided about an item that is; an item failing the first question has not
+reached the second. Running acceptance first would mark a stored record
+`suppressed` for a finding this run refused on other grounds, and drop that
+finding out of the refusal report, so the run would claim a judgement was
+honoured where it had declined to raise the item at all. Refusing first keeps
+both reports true: the item appears under `## Refused as stale`, and its
+acceptance record reads `not raised by this run`.
 
 The two are also disjoint by construction today. `_stale.partition` only
 refuses an item carrying a `span`, which is `verbatim-run` and `prose`
-alone, and neither is acceptable -- the three acceptable classes are
+alone, and neither is acceptable; the three acceptable classes are
 exactly the ones no span is filed for. That is a coincidence of the two
-designs rather than a guarantee either one makes, so a test asserts it,
+designs and not a guarantee either one makes, so a test asserts it,
 and a later class carrying both a span and acceptability has to decide
-rather than inherit an answer.
+instead of inheriting an answer.
 
 ## 🎯 The requirements
 
@@ -406,10 +404,10 @@ says where each comes from.
 The two halves have different answers, and conflating them is how this
 design would go wrong.
 
-**The aid: anyone, at any time.** `python -m chitragupta.review agenda <draft>`
-is
-free, deterministic, read-only and exits 0. It has exactly the standing of
-the other eight aids -- you run it because you want to know. No occasion is
+**The aid: anyone, at any time.**
+`python -m chitragupta.review agenda <draft>` is free, deterministic,
+read-only and exits 0. It has exactly the standing of the other eight
+aids: you run it because you want to know. No occasion is
 privileged and none is required. That describes the bare command, which
 is the one every caller here means; its `--baseline` mode re-runs the
 eight aids before comparing (`chitragupta/review/agenda/_refresh.py`), so
@@ -430,10 +428,10 @@ scheduled job, not a genre skill at the end of its own run, and not
 `draft-reviser` on its own initiative.
 [Why each](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
 
-**A stale input is reported, not merged.** Reports carry no timestamp --
-deliberately, so they diff cleanly -- so the check is file mtime. An aid
+**A stale input is reported, not merged.** Reports deliberately carry no
+timestamp, so they diff cleanly, and the check is therefore file mtime. An aid
 report older than the draft is named as stale in the agenda's header and
-its findings marked, rather than presented as current; the header says to
+its findings marked instead of presented as current; the header says to
 re-run that aid.
 
 **A stale *span* is refused, not relocated** (R12). The mtime check above
@@ -441,8 +439,8 @@ is about a whole report; this one is about a single item, and it is the
 finer-grained half of the same posture. The window is real and it is the
 only one in this loop that can destroy a person's own work: the aid runs,
 the author reads the worklist and revises the very passage it found, and
-`agenda-reviser` then holds a repair -- a `draft_text` to use as an
-`Edit`'s `old_string` -- aimed at text that no longer exists. So
+`agenda-reviser` then holds a repair (a `draft_text` to use as an
+`Edit`'s `old_string`) aimed at text that no longer exists. So
 `build_agenda` checks each item's span against the draft as it now stands
 and **drops** any whose text is gone, reporting it under
 `## Refused as stale` in the Markdown and as `stale_spans` in the `.json`,
@@ -451,8 +449,8 @@ with its section anchor. A dropped item is not counted in
 next agenda run against the current text, where it will either still
 stand or have been fixed by the author's own edit.
 
-Three alternatives are refused rather than deferred, and the reasons are
-the same ones this document already gives elsewhere:
+Three alternatives are refused, not deferred, for reasons this document
+already gives elsewhere:
 
 - **Merging the two edits**, as `llm_wiki` does for a regenerated page
   ([INSPIRATION.md](INSPIRATION.md) records that reading, and that no
@@ -460,24 +458,24 @@ the same ones this document already gives elsewhere:
   project's posture is that the human's wins by default. Refusal gets
   that for free.
 - **Re-locating the span by similarity.** That authorises an edit on the
-  evidence of a similarity score -- which this document already refuses
+  evidence of a similarity score, which this document already refuses
   for the verbatim scan's embedding tier, for the same reason. There is
   no fuzzy matcher anywhere in `chitragupta/review/agenda/`, and a test
   scans the package to keep it that way.
 - **Locking the draft between runs.** A person editing their own draft is
   the point of the tool.
 
-Only a span an aid guarantees to be exact draft text is checked --
+Only a span an aid guarantees to be exact draft text is checked:
 `verbatim`'s `draft_text` and `style_check`'s Vale match, which are
 exactly the two classes that are both unattended and positioned in the
-draft. Only `verbatim-run` can actually be refused. Its items come from
+draft. Only `verbatim-run` can be refused in practice. Its items come from
 a report filed by an earlier run, while `prose` is recomputed from the
 draft as it stands on every build, so its match is always present.
 Rewriting the sentence a `prose` finding came from moves the finding to
 whichever occurrence survives, and that occurrence is a live finding to
 repair, not a stale one (#839). `missing-citekey`,
-`recorded-but-uncited` and `misquoted` are derived from the dossier
-rather than the draft's text and are never refused on this basis;
+`recorded-but-uncited` and `misquoted` are derived from the dossier,
+not the draft's text, and are never refused on this basis;
 `recorded-but-uncited` by construction names a citekey the draft does
 not cite, so a text check would refuse it on every run. This adds no
 gate: the aid still exits 0 whatever it finds.
@@ -490,27 +488,27 @@ registered is dead code.
 
 | Piece | How it is found | Consequence of omitting it |
 | --- | --- | --- |
-| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS` | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import rather than writing a report nothing can find |
+| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS` | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import instead of writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |
 | The docs themselves | `mkdocs.yml` nav and the README documentation tables | Invisible in the site nav. Not a build failure: `nav.omitted_files` is INFO-level, and `mkdocs build --strict` still passes |
 
-The first two rows are load-bearing rather than administrative, and
-[SOUL.md](../SOUL.md) is deliberately absent from the list --
-[why](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it).
+The first two rows are functional requirements, not administrative ones.
+[SOUL.md](../SOUL.md) is deliberately absent from the list
+([why](AUTO-IMPROVEMENT-RATIONALE.md#-why-only-a-person-may-start-it)).
 
 ## ⚡ The cost ladder
 
-Do the free thing first, and pay only for what it could not decide --
-[LADDERS.md](LADDERS.md)'s existing shape.
+Do the free thing first, and pay only for what it could not decide. This
+is [LADDERS.md](LADDERS.md)'s existing shape.
 
 1. **Detection and rejection, at zero tokens.** Every aid, `style_check`
    and the gate are stdlib, deterministic and modelless. This rung must
    run to exhaustion before rung 2 begins.
 2. **A single-shot edit** where the fix is local and the re-check binary:
    a dialect slip, a defect marker, an acronym. No subagent, no
-   retrieval, no dossier read -- the finding already names the span.
+   retrieval, no dossier read: the finding already names the span.
    The span bounds the *edit*, not its consequences: a repair inside one
    sentence can falsify a claim elsewhere in the same draft ("the three
    approaches below", a count, a forward reference), and no aid detects
@@ -521,10 +519,9 @@ Do the free thing first, and pay only for what it could not decide --
    argument in context. The expensive rung, and the short list.
 
 Model tiering is the fourth rung. Two closed issues settled the policy
-and the
-measurement behind it; what is left is applying that policy
+and the measurement behind it; what is left is applying that policy
 to whatever mechanical stages this loop adds, which is a question for the
-build rather than a blocker on it.
+build and not a blocker on it.
 
 ## 🗄 What accumulates across drafts
 
@@ -533,73 +530,70 @@ of it is built, and none of it is read today.
 
 - **Which retrieval queries paid.** `retrieval.md` logs every call;
   `evidence.md` and `rejected.md` record what was kept and turned down.
-  Across drafts, that is which query shapes yield kept evidence -- the
-  evidence the parked evaluation harness would otherwise have to
+  Across drafts, that is which query shapes yield kept evidence, which is
+  the evidence the parked evaluation harness would otherwise have to
   synthesise.
 - **Which item classes the human accepts.** Accepted and reverted items
   per class, across drafts, is a labelled record of the loop's own
-  reliability. The gating decision requires its threshold to be tuned against
-  real reports rather than guessed; this is those reports.
+  reliability. The gating decision requires its threshold to be tuned
+  against real reports instead of guessed; this is those reports.
 - **Where the tokens went.** `dossier status` already totals retrieval
   cost per revision. Across drafts, that is the measurement
   [TOKENS.md](TOKENS.md) currently estimates.
 
-The house-style counterpart -- standing preferences, the glossary, the
-allowlist -- is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
+The house-style counterpart (standing preferences, the glossary, the
+allowlist) is in [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
 ## 🗺 Build order
 
 A standing issue already fixes this order; the change is to its scope,
 not its sequence.
 
-1. **Settle the amendment.** Not a coding task --
+1. **Settle the amendment.** Not a coding task; see
    [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md#-the-amendment-this-needs).
    *Approved by the user on 2026-08-21 and applied in 6.20.1 by the
-   change that
-   needed it to make the verbatim scan a required step in the genre
+   change that needed it to make the verbatim scan a required step in the genre
    skills. The surviving invariant is advisory-versus-blocking: a review
    finding may be read, may be invoked by a driver, and may never block a
    draft.*
 2. **`--json`, widened** to every aid. Hard prerequisite for everything
    below. *Done: `verbatim scan` in 5.4.0, then `provenance` and
    `coverage` in 6.16.0, and `synthesis`/`uncited` from the day
-   each landed -- all six aids now emit JSON on the same
+   each landed. All six aids now emit JSON on the same
    layer-level plumbing.*
 3. **Severity buckets and the boilerplate allowlist.** *Done in
-   5.5.0 -- the allowlist shipped as per-host, gitignored data (like
+   5.5.0. The allowlist shipped as per-host, gitignored data (like
    `config.toml`), not version-controlled as first framed in
    [HOUSE-STYLE.md](HOUSE-STYLE.md); the constraints above (read-only to
    the loop, etc.) hold either way.*
-4. **`agenda`, one aid further.** *Done -- useful on its own,
+4. **`agenda`, one aid further.** *Done, and useful on its own,
    independently of whether step 5 follows.*
-5. **The remediation skill, widened** -- the `agenda-reviser` skill, over
-   all defect
-   classes rather than verbatim runs alone. *Built narrow first, in
-   5.7.0: `overlap-reviser` (since renamed `agenda-reviser`) is the
-   remediation issue
-   as filed, over the `verbatim-run` class alone, consuming `verbatim
-   scan --json` directly rather than an agenda. It did not wait for
-   steps 2 and 4 because it did not need to
-   -- one aid's JSON already existed, and a loop that repairs one class
+5. **The remediation skill, widened**: the `agenda-reviser` skill, over
+   all defect classes instead of verbatim runs alone. *Built narrow
+   first, in 5.7.0: `overlap-reviser` (since renamed `agenda-reviser`)
+   is the remediation issue as filed, over the `verbatim-run` class
+   alone, consuming `verbatim scan --json` directly instead of an
+   agenda. It did not wait for steps 2 and 4 because it did not need
+   to: one aid's JSON already existed, and a loop that repairs one class
    is the report step 7 has to be tuned against. Widening it is now a
    matter of giving it the agenda as an input and the other classes as
    work; the write-set, the two-attempt limit, the binary re-check and
-   the person-only trigger are already what R1-R11 -- the requirement
-   set as it stood then, before R12 -- ask for.*
+   the person-only trigger are already what R1-R11 (the requirement
+   set as it stood then, before R12) ask for.*
 
    Two pieces of that step landed with it, both in the review layer
-   rather than the skill: the scan payload's `id` (R2's stable identity,
+   and not the skill: the scan payload's `id` (R2's stable identity,
    for the `verbatim-run` class) and `verbatim recheck`, which is R3's
    binary check and R4's did-anything-else-break count made
-   deterministic. `agenda` should reuse both rather than restate them.
+   deterministic. `agenda` should reuse both instead of restating them.
 6. **The copy-edit branch and `style_check.py`**, giving
    the `prose` class a producer and a consumer.
 7. **The gating decision**, last, tuned against real reports from
    step 5.
 
 Step 5's widening is the only work left live. Steps 1, 2, 3, 4 and 6
-are shipped, and step 7 is a closed, declined decision rather
-than an open issue -- see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
+are shipped, and step 7 is a closed, declined decision, not an
+open issue; see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
 
 ## 🚧 B5 is a separate mechanism, not a widening of this one
 
@@ -613,7 +607,7 @@ the same mechanism, and R11 ("no other skill invokes the
 cover B5:
 
 - B5's step runs **inside** a genre skill, at generation time, on the
-  draft that skill itself is producing. It is not `agenda-reviser` --
+  draft that skill itself is producing. It is not `agenda-reviser`:
   R11 governs when a person may start a *reviser* skill, not what a
   genre skill's own step does to its own output before the gate.
 - It does not widen step 5 above and is not a build-order step in this
@@ -627,19 +621,18 @@ cover B5:
   count: `outline.md`'s list is finite, so "every declared query
   ran and none came back empty" is decidable. That is a report the step
   prints, never a bound on how much it may edit and never a condition of
-  presenting -- the three-repair cap is what bounds the editing, and R3
+  presenting. The three-repair cap is what bounds the editing, and R3
   is why exhaustion is reported as a binary rather than a proportion.
 
 ## 🚫 What this does not change
 
 - **No new gate.** `chitragupta.draft gate` remains the only one. The
-  gating-decision issue remains
-  the only place that decision is taken.
+  gating-decision issue remains the only place that decision is taken.
 - **No corpus growth.** The loop never fetches, never writes the ledger,
   and never proposes a paper that is not already in it.
 - **No new layer.** Four layers, one new aid in the fourth, one new skill
   in the second.
-- **No new entry point.** `python -m chitragupta.review agenda <draft>` is one
-  verb under an existing front door, at depth 1.
+- **No new entry point.** `python -m chitragupta.review agenda <draft>` is
+  one verb under an existing front door, at depth 1.
 - **The review layer still never blocks.** `agenda` exits 0 with a full
   worklist, exactly as the other eight aids do with findings.

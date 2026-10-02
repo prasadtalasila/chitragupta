@@ -1,23 +1,23 @@
 # 🤖 PROMPTS.md
 
-What text does the model actually see when a genre skill runs? This
-document answers that for two skills that sit at opposite ends of this
-pipeline's complexity: `textbook-chapter-writer`, a single-context skill,
-and `deep-research`, a multi-agent one. They do **not** look the same --
-the second half of this document is about why.
+This document describes the text the model sees when a genre skill
+runs, for two skills at opposite ends of this pipeline's complexity:
+`textbook-chapter-writer`, a single-context skill, and `deep-research`,
+a multi-agent one. Their prompts are built differently, and the second
+half of this document explains why.
 
-This file is self-contained: read it without any other doc open. Where
-it names a file, that is so you can go verify the claim yourself, not
-because you need to have already read it.
+This file is self-contained and can be read without any other doc open.
+Where it names a file, the name is there so you can verify the claim
+yourself; you do not need to have read that file first.
 
 ## 🏷 Vocabulary this document assumes
 
-- **The prompt**: everything the model is given before it generates --
+- **The prompt**: everything the model is given before it generates:
   the harness's own system prompt, plus whatever project files, prior
   tool output and conversation turns are in context at that point.
 - **CLAUDE.md**: this repository's router, loaded into every Claude Code
   session automatically. It is one page and contains almost no rules
-  itself -- it says which of two longer files governs the task at hand
+  itself; it says which of two longer files governs the task at hand
   and sends the agent there.
 - **AGENTS.md / SOUL.md**: `AGENTS.md` is the rulebook for an agent
   *drafting content* with this pipeline (the citekey invariant, the
@@ -26,18 +26,18 @@ because you need to have already read it.
   `CLAUDE.md`, not inlined in it.
 - **A skill**: a Markdown file under `.claude/skills/<name>/SKILL.md`.
   Invoking one loads its full body into the current context, as
-  instructions to follow for the rest of the turn -- it is not a
-  function call, it is more text added to the same prompt.
+  instructions to follow for the rest of the turn. It is not a function
+  call; it is more text added to the same prompt.
 - **A subagent**: a *separate* model context, dispatched by the running
-  skill (via an `Agent`-style tool call), with its own system prompt --
-  usually a file under `.claude/agents/<name>.md` -- and only the
+  skill (via an `Agent`-style tool call), with its own system prompt
+  (usually a file under `.claude/agents/<name>.md`) and only the
   specific inputs the dispatching skill hands it. It cannot see the
   dispatching session's conversation, and the dispatching session
   cannot see its intermediate reasoning, only what it returns.
 - **The dossier**: `content/dossiers/<draft path minus suffix>/`, a set
   of Markdown files (`scope.md`, `evidence.md`, `rejected.md`,
   `retrieval.md`, `steering.md`, `sections.md`) that record the
-  judgment behind a draft -- reader, kept/rejected sources, glossary --
+  judgment behind a draft (reader, kept/rejected sources, glossary),
   so a later revision doesn't have to reconstruct it from a stale
   conversation. `docs/DRAFT-ITERATION.md` is the full design.
 
@@ -90,22 +90,21 @@ Layers 1-3 are fixed cost on every turn in this repository, regardless
 of skill. Layer 4 is what makes this *this* skill rather than
 `survey-writer` or `tutorial-writer`. Layers 5-6 arrive incrementally,
 pulled in as the skill's own numbered steps reach the point that needs
-them -- step 0 pulls in `acronyms.toml`, step 3 pulls in a retrieval
-call, and so on -- rather than all at once at the start. Layer 7 is
+them (step 0 pulls in `acronyms.toml`, step 3 pulls in a retrieval
+call, and so on) instead of all at once at the start. Layer 7 is
 the only layer that changes from one invocation of this skill to the
 next.
 
 ## 🔎 2. A multi-agent skill: `deep-research`
 
 `deep-research` shares layers 1-3 with every other skill in this
-pipeline -- CLAUDE.md still routes to AGENTS.md/SOUL.md first, the
-citekey invariant still binds it. Layer 4 onward is where it stops
-looking like the diagram above, for one structural reason:
-**`deep-research` is not one context, it is one orchestrating context
-plus a dozen short-lived subagent contexts it dispatches and discards.**
-A subagent's prompt is built fresh each time, and does not inherit the
-orchestrator's conversation -- only the specific fields the orchestrator
-decides to hand it.
+pipeline: CLAUDE.md still routes to AGENTS.md/SOUL.md first, and the
+citekey invariant still binds it. From layer 4 onward it differs from
+the diagram above for one structural reason: `deep-research` runs as one
+orchestrating context plus a dozen short-lived subagent contexts that it
+dispatches and discards. A subagent's prompt is built fresh each time.
+It does not inherit the orchestrator's conversation, only the specific
+fields the orchestrator decides to hand it.
 
 ### 🎛 2a. The orchestrating context
 
@@ -140,7 +139,7 @@ flowchart TB
 
 The orchestrator never pastes a subagent's returned packet, or the
 dossier's accumulated evidence, into a *later* subagent's dispatch
-prompt. It hands back a **pointer** instead:
+prompt. It hands over a pointer instead:
 
 ```bash
 python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md --section "<heading>"
@@ -149,17 +148,17 @@ python -m chitragupta.draft dossier brief content/drafts/deep-research-<slug>.md
 `docs/TOKENS.md` has the reasoning: pasted evidence is spent as output
 tokens once per writer it's pasted into, while a pointer costs about
 forty tokens and the writer reads the underlying rows inside its own
-context. That discipline is why the orchestrator's own prompt does not
-balloon by the size of every packet every subagent ever returned --
-only the transcribed, deduplicated dossier does.
+context. Because of this, the orchestrator's own prompt does not grow
+by the size of every packet every subagent ever returned; only the
+transcribed, deduplicated dossier does.
 
 ### 🤖 2b. A dispatched subagent's context (the part that's genuinely different)
 
-Each subagent dispatched from Phases 2, 5 and 7 gets its **own** fresh
+Each subagent dispatched from Phases 2, 5 and 7 gets its own fresh
 context. Its shape is not layers 1-7 above: the orchestrator's
 conversation, `AGENTS.md` and `SOUL.md` are not forwarded into it.
-`CLAUDE.md` **is** -- measured 2026-08-23, a dispatched subagent had it
-in context verbatim, layer 2 included, so the one hard rule reaches a
+`CLAUDE.md` is forwarded. Measured 2026-08-23, a dispatched subagent had
+it in context verbatim, layer 2 included, so the one hard rule reaches a
 subagent whether or not its definition restates it. What replaces
 layers 3-4 is a single file the harness loads as that subagent's system
 prompt:
@@ -201,14 +200,14 @@ Three roles fill that shape differently:
 | --- | --- | --- | --- |
 | `deep-research-interviewer` (Phase 2, one per persona, parallel) | `.claude/agents/deep-research-interviewer.md` | `TOPIC`, `PERSPECTIVE`, `ROUNDS`, `DRAFT PATH` (for `--log`) | Core position, cited key claims, one unique insight, citekeys consulted **and** citekeys discarded with the query and why |
 | `deep-research-writer` (Phase 5, one per section, parallel) | `.claude/agents/deep-research-writer.md` | `TOPIC`, `READER`, `GLOSSARY`, its section's outline fragment, and a `dossier brief --section` command in place of pasted evidence | The section's cited prose, plus `### Sources added` / `### Candidates discarded` blocks |
-| `peer-reviewer` (Phase 7a, one per role, parallel, `standard`/`deep` only) | `.claude/agents/peer-reviewer.md` | The full assembled draft, `DRAFT PATH`, and one assigned lens (`domain-accuracy`, `methodology-rigor`, `clarity-completeness`, `devils-advocate`) -- never another reviewer's critique | A verdict (`ready` / `needs revision` / `reject`) plus severity-rated concerns |
+| `peer-reviewer` (Phase 7a, one per role, parallel, `standard`/`deep` only) | `.claude/agents/peer-reviewer.md` | The full assembled draft, `DRAFT PATH`, and one assigned lens (`domain-accuracy`, `methodology-rigor`, `clarity-completeness`, `devils-advocate`); never another reviewer's critique | A verdict (`ready` / `needs revision` / `reject`) plus severity-rated concerns |
 
-No subagent ever writes to `content/dossiers/`. That is a rule stated
-explicitly in `SKILL.md`, not an incidental property: each subagent's
-context vanishes on return, so anything worth keeping has to be
-transcribed by the orchestrator, in the same phase, before it moves on
--- a fourth Phase-2 packet sitting unread while a fifth is dispatched is
-exactly how a discarded citekey's reasoning gets lost for good.
+No subagent ever writes to `content/dossiers/`. `SKILL.md` states this
+as an explicit rule. Each subagent's context vanishes on return, so
+anything worth keeping has to be transcribed by the orchestrator, in the
+same phase, before it moves on. A fourth Phase-2 packet left unread
+while a fifth is dispatched is how a discarded citekey's reasoning gets
+lost for good.
 
 ## ⚖ 3. Why the two don't look the same
 
@@ -216,14 +215,14 @@ exactly how a discarded citekey's reasoning gets lost for good.
 | --- | --- | --- |
 | Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `reference.md` §1), several times over across Phases 2/5/7 |
 | Where the citekey invariant lives | Read once, from `AGENTS.md` | Restated locally inside each `.claude/agents/*.md` definition, since a subagent doesn't inherit `AGENTS.md` |
-| How evidence reaches later steps | Stays in the one context that found it | Deliberately **not** pasted forward -- transcribed to the dossier, then handed to later subagents as a `dossier brief` pointer |
-| What ends the run's growth | The chapter is written once, in the one context | The orchestrator's own context still only grows across all 7 phases -- the saving is in what it hands to *each subagent*, not in its own size |
-| Citation stance | Optional -- a chapter with none is a complete, valid output | Mandatory -- every claim resolves to a real citekey or is stated as "not found in the corpus" |
+| How evidence reaches later steps | Stays in the one context that found it | Deliberately not pasted forward. It is transcribed to the dossier, then handed to later subagents as a `dossier brief` pointer |
+| What ends the run's growth | The chapter is written once, in the one context | The orchestrator's own context still only grows across all 7 phases. The saving is in what it hands to *each subagent*, not in its own size |
+| Citation stance | Optional: a chapter with none is a complete, valid output | Mandatory: every claim resolves to a real citekey or is stated as "not found in the corpus" |
 
 Both skills obey the same router (`CLAUDE.md`) and the same hard rule
 (never fabricate a citekey), and both write a dossier for the same
-reason -- so a revision next month doesn't have to redo the judgment
-this run already made. What differs is *where* that rule and that
+reason: so a revision next month doesn't have to redo the judgment this
+run already made. What differs is *where* that rule and that
 judgment live at any given moment: in one growing context for
 `textbook-chapter-writer`, or handed piece by piece into contexts that
 are built, used once, and thrown away, for `deep-research`.
@@ -231,25 +230,25 @@ are built, used once, and thrown away, for `deep-research`.
 ## 🧼 4. What was in the context before the skill was invoked
 
 Everything above describes what a skill *adds*. Layer 7 is whatever was
-already there -- and on a session that has been working for an hour,
-that is the largest layer and the only one nobody designed.
+already there. On a session that has been working for an hour, that is
+the largest layer and the only one nobody designed.
 
-It matters more than it looks, because of an asymmetry the gate cannot
-close. A **fabricated** citekey is caught mechanically, every time: the
-ledger is ground truth and an absent key is absent. A **real** citekey
-carried in from an earlier task in the same session is not caught by
-anything -- it resolves, it renders, `python -m chitragupta.draft gate`
-exits 0, and the claim it was attached to may have nothing to do with
-the paper. The deterministic layer has no purchase on it, and neither
-does `python -m chitragupta.review verbatim scan`, which is measuring
-something else.
+It matters because of an asymmetry the gate cannot close. A
+**fabricated** citekey is caught mechanically, every time: the ledger is
+ground truth and an absent key is absent. A **real** citekey carried in
+from an earlier task in the same session is not caught by anything. It
+resolves, it renders, `python -m chitragupta.draft gate` exits 0, and
+the claim it was attached to may have nothing to do with the paper. The
+deterministic layer cannot detect it, and neither can
+`python -m chitragupta.review verbatim scan`, which measures something
+else.
 
-So the remedy is procedural, and [AGENTS.md](../AGENTS.md) states it as
-practice: **start each draft in a fresh session.** That is affordable
-only because the dossier already holds the scope, the evidence, the
-rejections and the steering on disk -- see
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md) -- which is the same reason
-`deep-research` can throw away a subagent's context without losing what
-it found. The two halves of this document are one argument: a context
-is worth clearing precisely when the judgment inside it has been
-written down somewhere else first.
+The remedy is therefore procedural, and [AGENTS.md](../AGENTS.md) states
+it as practice: **start each draft in a fresh session.** That is
+affordable only because the dossier already holds the scope, the
+evidence, the rejections and the steering on disk (see
+[DRAFT-ITERATION.md](DRAFT-ITERATION.md)). The same fact lets
+`deep-research` throw away a subagent's context without losing what it
+found. The two halves of this document are one argument: a context is
+worth clearing exactly when the judgment inside it has first been
+written down somewhere else.

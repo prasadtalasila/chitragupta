@@ -2,15 +2,14 @@
 
 Status: **reference.** Written 2026-08-28.
 
-Retrieval-augmented generation is not one algorithm. It is a **pipeline
-of eleven stages**, and almost every interesting difference between two
-RAG systems is a different choice at one of them -- or a stage one of
+Retrieval-augmented generation is not one algorithm. It is a pipeline
+of eleven stages, and almost every interesting difference between two
+RAG systems is a different choice at one of them, or a stage one of
 them does not have at all.
 
-This document walks the eleven stages, names the **algorithm** each
-system actually uses at each, and states the **trade-off** the choice
-buys and costs. Chitragupta is one column among seven, held to the same
-scrutiny.
+This document walks the eleven stages, names the algorithm each system
+uses at each, and states what the choice buys and costs. Chitragupta is
+one column among seven, held to the same scrutiny.
 
 **Written for** someone deciding whether this pipeline's shape is the
 right one, or wondering why it lacks something every other RAG system
@@ -31,15 +30,15 @@ level of detail.
 | [AutoRAG](https://github.com/Marker-Inc-Korea/AutoRAG) | **split**: root MIT, `legacy/` Apache-2.0 | source |
 | [MiniRAG](https://github.com/HKUDS/MiniRAG) | MIT (a LightRAG fork; ~330 lines are its own) | source |
 
-**Two further sources are read for one stage each and are deliberately
-not counted among the six**, because neither is a comparable end-to-end
+Two further sources are read for one stage each and are deliberately
+not counted among the six, because neither is a comparable end-to-end
 system and folding them into the tallies below would make those tallies
 mean less:
 
 - **[LlamaIndex](https://github.com/run-llama/llama_index)** (MIT core,
   read at v0.14.24) is a *library*, and it is read only for
   [the synthesis shapes](#-the-synthesis-shape-how-n-passages-become-one-section)
-  it ships -- the question of how N passages become one section, which
+  it ships: the question of how N passages become one section, which
   none of the six answers explicitly.
 - **ITER-RETGEN** (Shao, Gong, Shen, Huang, Duan, Chen, *"Enhancing
   Retrieval-Augmented Large Language Models with Iterative
@@ -52,7 +51,7 @@ mean less:
 Two caveats a reader should hold throughout:
 
 - **Read for architecture, never copied.** [INSPIRATION.md](INSPIRATION.md)'s
-  standing rule -- *"Attribute the idea, and never copy the text."*
+  standing rule: *"Attribute the idea, and never copy the text."*
 - **This is a snapshot, and several of these repositories disagree with
   their own documentation.** Where a claim below contradicts a project's
   README, the code was read and the code won. Named instances are called
@@ -61,8 +60,8 @@ Two caveats a reader should hold throughout:
 ## 🗺 Where this sits in the standard taxonomy
 
 Two surveys are the field's common vocabulary, and this document's
-eleven stages are a finer-grained cut of the same territory. Naming the
-correspondence once means a reader who has read either can place this
+eleven stages are a finer-grained cut of the same ground. With the
+correspondence named once, a reader who has read either can place this
 pipeline exactly:
 
 - **Gao, Xiong, Gao, Jia, Pan, Bi, Dai, Sun, Wang and Wang**,
@@ -72,41 +71,41 @@ pipeline exactly:
   Meeting LLMs: Towards Retrieval-Augmented Large Language Models"*
   (KDD '24, pp. 6491-6501).
 
-**Four axes, and where chitragupta lands on each:**
+Four axes, and where chitragupta lands on each:
 
 | Axis | The options | This pipeline |
 | --- | --- | --- |
-| **Paradigm** (Gao §II) | Naive -> Advanced -> Modular | **Advanced.** It has pre-retrieval (collection scoping) and post-retrieval (cap, optional rerank) around a fixed chain -- not Modular's swappable routing |
+| **Paradigm** (Gao §II) | Naive -> Advanced -> Modular | **Advanced.** It has pre-retrieval (collection scoping) and post-retrieval (cap, optional rerank) around a fixed chain, without Modular's swappable routing |
 | **Retrieval process** (Gao Table I) | Once / Iterative / Recursive / Adaptive | **Once**, for every genre skill's ordinary retrieve-per-sub-theme flow. `draft-reviser`'s hand-edit re-grounding round ("Stage 11" below) is the one opt-in, two-round exception; nothing here is Recursive or Adaptive |
-| **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25's default unit -- the coarsest rung -- with a **Chunk**-grade passage unit beside it since #769, and Chunk for the dense path |
+| **Granularity** (Gao §III-A2) | Token / Phrase / Sentence / Proposition / Chunk / Doc | **Doc** for BM25's default unit (the coarsest rung), with a **Chunk**-grade passage unit beside it since #769, and Chunk for the dense path |
 | **Integration layer** (Fan §2.3) | Input / Intermediate / Output | **Input, necessarily.** The other two need white-box access to the generator, which a harness-driven model does not give |
 
-Three consequences worth drawing out, because each one bounds what this
-project can adopt from the literature at all.
+Three consequences follow, and each one bounds what this project can
+adopt from the literature at all.
 
-**Input-layer integration is not a choice here.** Fan's intermediate-layer
+Input-layer integration is not a choice here. Fan's intermediate-layer
 methods (RETRO's chunked cross-attention, kNN-augmented attention) and
 output-layer methods (kNN-LM's distribution interpolation) both require
 reaching inside the generator. That is unavailable to any pipeline whose
 model is behind an inference API, so a large fraction of the published
 technique space is inapplicable rather than merely unbuilt.
 
-**Doc granularity is the coarsest rung, and the surveys name its cost.**
+Doc granularity is the coarsest rung, and the surveys name its cost.
 Gao: coarse units "can provide more relevant information for the problem,
 but they may also contain redundant content, which could distract the
 retriever and language models". This pipeline accepts that cost knowingly
-and gets something back for it --
+and gets something back for it:
 [one result per citekey by construction](#-stage-8-capping-and-diversity),
 which every chunk-ranking system has to reintroduce as a filter.
 
-**Being train-free is also a position, not an absence.** Fan's §3 splits
+Being train-free is also a design position. Fan's §3 splits
 the field into train-free and training-based (independent, sequential,
 joint). Everything here is train-free, and Fan states the trade plainly:
 sparse retrieval's "no-training nature ... makes the retrieval
 performance heavily relying on the quality of the database and the
-query". That is precisely what
+query". That is what
 [the interrogative measurement](#-stage-4-query-manufacture-the-stage-most-systems-skip)
-found -- with no trained component to absorb a badly-shaped query, query
+found: with no trained component to absorb a badly-shaped query, query
 wording carries more weight here than in a system that fine-tuned its
 retriever.
 
@@ -141,39 +140,37 @@ retriever.
 | local-deep-research | web engines, or an uploaded private collection | LangChain loaders |
 | MiniRAG | any text | tiktoken windows |
 
-**The trade-off.** Chitragupta's entrance is the narrowest possible and
-this is the whole design: a citekey that no `sync` put in the ledger
-cannot survive to a rendered draft, so **fabrication is prevented
-structurally rather than detected statistically**. The cost is real and
-should be stated plainly -- *the pipeline cannot cite a paper you have
-not catalogued*, there is no downloader, and "the corpus does not contain
-this" is a frequent and deliberate answer. Every other system trades that
-guarantee for reach.
+**The trade-off.** Chitragupta's entrance is the narrowest possible, by design:
+a citekey that no `sync` put in the ledger cannot survive to a rendered draft,
+so **fabrication is prevented structurally rather than detected statistically**.
+The cost is real: *the pipeline cannot cite a paper you have not catalogued*,
+there is no downloader, and "the corpus does not contain this" is a frequent and
+deliberate answer. Every other system trades that guarantee for reach.
 
 ## ✂ Stage 2: chunking, the unit of retrieval
 
 | System | Unit | Algorithm |
 | --- | --- | --- |
-| **Chitragupta (BM25, default)** | **the whole document** | none -- BM25 scores documents |
-| **Chitragupta (BM25, `--unit passage`)** | **one reading-ordered paragraph** | none -- the corpus layer's Docling parse already segmented it |
+| **Chitragupta (BM25, default)** | **the whole document** | none; BM25 scores documents |
+| **Chitragupta (BM25, `--unit passage`)** | **one reading-ordered paragraph** | none; the corpus layer's Docling parse already segmented it |
 | **Chitragupta (dense)** | 200 words, 40 overlap | fixed window, `chunk_text()` |
 | RAGFlow | ~128 tokens, 15 templates | layout-aware, `naive_merge()` on delimiters |
 | papersgpt | a paragraph (old) / a whole page (shipped) | font-size + y-gap clustering (old) |
 | MiniRAG | 1,200 tokens, 100 overlap | tiktoken windows |
 | AutoRAG | swept as a parameter | several, compared empirically |
 
-**The trade-off, and it is the one that shapes everything downstream.**
-Scoring whole documents makes chitragupta's default BM25 unit
-**one-result-per-citekey by construction** -- no paper can occupy two
+**The trade-off.** This one shapes everything downstream. Scoring whole
+documents makes chitragupta's default BM25 unit
+**one-result-per-citekey by construction**: no paper can occupy two
 slots, so no cap is needed and none exists. That is a structural
 guarantee of source diversity which every chunk-ranking system has to
 reintroduce as a *filter*, and which RAGFlow (see stage 8) never
 reintroduces at all. The cost is precision: a 40-page paper matching in
 one paragraph scores as a document, so the snippet chooser has to find
-the passage afterwards -- by a criterion that played no part in the
+the passage afterwards, by a criterion that played no part in the
 ranking.
 
-**Since #769 that cost is a choice rather than a property.** The same
+Since #769 that cost is a choice rather than a property. The same
 BM25 will rank the corpus layer's paragraphs instead, and then the object
 that scored *is* the object handed back, with the page it sits on. Two
 things change with it, and both are the generic chunk-ranking costs this
@@ -181,12 +178,12 @@ project had been exempt from: the structural diversity guarantee becomes
 a configured cap (`[retrieval].max_passages_per_source`), and a source
 whose parse produced no paragraphs is unreachable rather than merely
 ranked low. So this row is now the literature's ordinary trade, taken
-deliberately and per call, rather than a place this pipeline sits apart.
+deliberately and per call.
 
-Note what does *not* follow: the unit is picked per query, not per
-corpus, so nothing here needs the whole-document guarantee to be given
-up to get the paragraph. papersgpt's regression -- paragraphs with
-bounding boxes replaced by whole pages with none -- is the same trade
+The unit is picked per query, not per corpus, so nothing here needs the
+whole-document guarantee to be given up to get the paragraph.
+papersgpt's regression (paragraphs with bounding boxes replaced by whole
+pages with none) is the same trade
 taken in the losing direction, and it cost that project its ability to
 point at where a claim came from.
 
@@ -202,25 +199,25 @@ point at where a claim came from.
 | MiniRAG | **none** | four collections, flat numpy | networkx entity graph |
 | OpenScholar | -- | FAISS over pes2o | -- |
 
-Two things are worth extracting from that table.
+Two things stand out in that table.
 
 **Three of the six have no lexical retrieval at all.** papersgpt,
 MiniRAG and local-deep-research are embedding-only. MiniRAG's paper
-therefore **never benchmarks against BM25** -- its "NaiveRAG" baseline is
-embedding-only chunk retrieval -- so "beats NaiveRAG" is not evidence
+therefore **never benchmarks against BM25** (its "NaiveRAG" baseline is
+embedding-only chunk retrieval), so "beats NaiveRAG" is not evidence
 against a BM25 pipeline.
 
 **RAGFlow's term weighting is the most interesting lexical algorithm
-here, and its own weakness is instructive.** Each token gets
+here, and it has an instructive weakness.** Each token gets
 `(0.3·idf(term_freq) + 0.7·idf(doc_freq)) × ner(t) × postag(t)`,
 normalised to sum to 1, with bigrams weighted above unigrams. But `freq()`
 and `df()` read **static frequency dictionaries shipped in the repo**, so
 the IDF is *corpus-independent by construction*. With 497 real parsed
-PDFs, a locally computed IDF is strictly better and strictly cheaper --
+PDFs, a locally computed IDF is strictly better and strictly cheaper,
 which is why chitragupta computes its own and caches it against a
 per-document fingerprint.
 
-**The trade-off chitragupta takes here is stdlib-only by default.** BM25
+**The trade-off.** Chitragupta is stdlib-only by default here. BM25
 needs no model download, no venv and no GPU, so retrieval works on a bare
 `python`. The cost is that BM25 cannot match a paper that argues your
 point in different words; the dense path exists for exactly that and is
@@ -229,8 +226,8 @@ for itself.
 
 ## ❓ Stage 4: query manufacture, the stage most systems skip
 
-**This is the emptiest column in the comparison, and the finding is
-worth stating flatly: three of the six manufacture no queries at all.**
+This is the emptiest column in the comparison: **three of the six
+manufacture no queries at all.**
 
 | System | Decomposition | Rewriting | HyDE | Default? |
 | --- | --- | --- | --- | --- |
@@ -246,10 +243,10 @@ OpenScholar's only LLM query generator caps at three by splitting a
 string on `", "`, at temperature 0.9 under a comment reading
 `# greedy decoding`.
 
-**Chitragupta's own answer is uneven and this document will not pretend
-otherwise.** `deep-research` implements STORM -- one or two broad calls
-to discover what the corpus actually holds, *then* corpus-specific
-personas derived from that, then rounds of persona-driven interviews.
+**Chitragupta's own answer is uneven.** `deep-research` implements
+STORM: one or two broad calls to discover what the corpus holds, *then*
+corpus-specific personas derived from that, then rounds of
+persona-driven interviews.
 That is better query manufacture than any of the six. The other four
 genre skills have nothing: `survey-writer` step 1 is the prose
 instruction *"break the requested topic into 2-4 sub-themes"*. The gap is
@@ -260,11 +257,11 @@ is the plan.
 **The one published method whose query costs no LLM call.**
 ITER-RETGEN (Shao et al., *Findings of EMNLP 2023*) forms the next
 query by **concatenating the previous generation with the original
-question** -- `y_{t-1} || q` -- and retrieving on that. No model writes
+question** (`y_{t-1} || q`) and retrieving on that. No model writes
 the query; it is string concatenation over text that already exists, so
 the retrieval path stays reproducible. Against a stdlib BM25 index that
-makes the whole loop deterministic, which is the property every other
-approach in this table gives up.
+makes the whole loop deterministic, a property every other approach in
+this table gives up.
 
 Its evidence is about retrieval rather than generation, and it is the
 only *measured* termination condition in this document. Answer recall by
@@ -279,36 +276,36 @@ iteration, from the paper's own Table 6:
 
 **A shipped implementation exists and diverges from the paper.**
 [FlashRAG](https://github.com/RUC-NLPIR/FlashRAG) (MIT) implements it in
-about 45 lines as `IterativePipeline`, and four differences are worth
-knowing before citing it as a reference: it runs **3 iterations, not 2**,
-with the choice undocumented; it concatenates `{question} {generation}`
-rather than the paper's `y_{t-1} || q` (**inert under BM25**, which is a
-bag of words, but not under a dense retriever, where order changes the
-embedding); it **discards the previous round's documents entirely**
-rather than accumulating them; and it **overwrites the retrieval record
-with the last round's**, so any recall computed from it describes round 3
-alone rather than what the method actually consumed.
+about 45 lines as `IterativePipeline`, and it differs from the paper in
+four ways to know before citing it as a reference: it runs
+**3 iterations, not 2**, with the choice undocumented; it concatenates
+`{question} {generation}` rather than the paper's `y_{t-1} || q`
+(**inert under BM25**, which is a bag of words, but not under a dense
+retriever, where order changes the embedding); it **discards the
+previous round's documents entirely** rather than accumulating them;
+and it **overwrites the retrieval record with the last round's**, so any
+recall computed from it describes round 3 alone rather than what the
+method consumed.
 
-**Iteration 2 buys 13.7 to 16.6 points; iterations 3 through 7 buy about
-one.** Two caveats the paper states itself and this document repeats
-rather than buries: its error analysis finds 65% of failures are
-retrieval-related and **76.9% of those are retrieval misled by wrong
-reasoning from the first iteration** -- a bad draft becomes a bad query
-and entrenches itself; and *"our experiments did not cover long-form
-generation"*, which is the only thing this pipeline does. Its headline
-metric is also an LLM judge.
+**Iteration 2 buys 13.7 to 16.6 points; iterations 3 through 7 buy about one.**
+The paper states two caveats itself: its error analysis finds 65% of failures
+are retrieval-related and **76.9% of those are retrieval misled by wrong
+reasoning from the first iteration** (a bad draft becomes a bad query and
+entrenches itself); and *"our experiments did not cover long-form generation"*,
+which is the only thing this pipeline does. Its headline metric is also an LLM
+judge.
 
-**One measured hazard belongs here.** BM25 over whitespace tokens used
+One measured hazard belongs here. BM25 over whitespace tokens used
 to score `what`, `why` and `does` as ordinary terms when a query was
-phrased as a question -- fixed query-side
+phrased as a question. That is now fixed query-side
 (`chitragupta/retrieval.py::_query_terms()`), leaving the shared
 tokenizer and its stopword list alone. Against author-assigned ground
 truth, phrasing a query as a question cost **7.7 recall points at
 k=5**; [CORPUS-SEARCH.md](CORPUS-SEARCH.md#-before-stage-1-the-shape-of-the-query)
 has the table and the partial fix.
 
-**The principled fix for that is an indexing change, not a query
-change, and it collides with a rule here.** Gao §III-B2 describes
+The principled fix for that is an indexing change, not a query
+change, and it collides with a rule here. Gao §III-B2 describes
 *Reverse HyDE*: at index time, have a model generate hypothetical
 *questions* a document answers, and index those alongside it. A
 question-form query then matches a question rather than competing
@@ -316,14 +313,13 @@ against a paper's prose, which is the part a stopword list structurally
 cannot reach. It is the right shape for the residual loss the
 query-side fix (`_query_terms()`, shipped) still leaves on the floor.
 
-**It is also LLM output entering the retrieval path**, and
+It is also LLM output entering the retrieval path, and
 [SOUL.md](../SOUL.md) keeps the corpus layer free of generated content
-so that the same bibliography always yields the same citekeys. So it is
-not simply unbuilt -- it would need a home outside the corpus plane, the
-way the per-citekey TL;DR already has one
-([TLDR.md](TLDR.md)), and a story for what happens when the generated
-questions are wrong. Recorded as a real option with a real constraint,
-not as an obvious win.
+so that the same bibliography always yields the same citekeys. Building it
+would need a home outside the corpus plane, the way the per-citekey
+TL;DR already has one ([TLDR.md](TLDR.md)), and a story for what happens
+when the generated questions are wrong. It is recorded as a real option
+with a real constraint; it is not an obvious win.
 
 ## 🎯 Stage 5: candidate retrieval
 
@@ -331,13 +327,12 @@ Chitragupta's dense path over-fetches `k × 4` and its BM25 path returns
 one hit per citekey. The general shape everywhere else is
 over-fetch-then-filter, and the sizes are what differ.
 
-**The trade-off is that over-fetching is the only stage that can add
-recall.** Nothing downstream can retrieve what stage 5 did not fetch --
-measured here, **69 of 256 correct papers (27%) never entered the
-20-chunk pool at all**, which puts a hard ceiling of 0.73 on dense
-recall@5 that no reranker can lift. This is why the first question when a
-paper does not come back is always "was it fetched?", never "was it
-ranked well?".
+**The trade-off.** Over-fetching is the only stage that can add recall, and
+nothing downstream can retrieve what stage 5 did not fetch. Measured here, **69
+of 256 correct papers (27%) never entered the 20-chunk pool at all**, which puts
+a hard ceiling of 0.73 on dense recall@5 that no reranker can lift. So when a
+paper does not come back, the first question is always "was it fetched?",
+never "was it ranked well?".
 
 ## ⚗ Stage 6: fusion, combining lexical and dense
 
@@ -348,16 +343,15 @@ ranked well?".
 | AutoRAG | RRF, or convex combination over min-max / z-score / DBSF normalised scores |
 | everyone else | single route |
 
-**RAGFlow's default is keyword-dominant (0.7 lexical / 0.3 vector)** --
-worth knowing, because three different defaults live in three places in
-that codebase and third-party write-ups routinely quote the wrong one.
+**RAGFlow's default is keyword-dominant (0.7 lexical / 0.3 vector).**
+Three different defaults live in three places in that codebase, and
+third-party write-ups routinely quote the wrong one.
 
 **Chitragupta has no hybrid search, and that is a real gap rather than a
-principled refusal.** The honest reason is that on this corpus BM25
-outscores the dense path on every ground truth tried, so fusion has not
-yet been worth building. AutoRAG's convex combination over normalised
-scores is the shape to copy if it ever is -- one tunable weight, one
-score scale, reproducible.
+principled refusal.** On this corpus BM25 outscores the dense path on
+every ground truth tried, so fusion has not yet been worth building.
+AutoRAG's convex combination over normalised scores is the shape to copy
+if it ever is: one tunable weight, one score scale, reproducible.
 
 ## 🔀 Stage 7: reranking
 
@@ -366,53 +360,53 @@ default. OpenScholar: BGE `FlagReranker`. AutoRAG: sixteen modules.
 RAGFlow: a cross-encoder whose score *replaces* the vector term while the
 lexical term survives.
 
-**The trade-off is that reranking is the most over-recommended stage in
-RAG.** Measured here over 256 queries: recall@3 rose 129 → 139, nDCG@5
-0.4949 → 0.5281, and **recall@5 did not move at all** -- the correct
-paper was lost 20 times and gained 20 times. It improves *ordering*, not
+**The trade-off.** Reranking is the most over-recommended stage in RAG.
+Measured here over 256 queries: recall@3 rose 129 → 139, nDCG@5
+0.4949 → 0.5281, and **recall@5 did not move at all** (the correct
+paper was lost 20 times and gained 20 times). It improves *ordering*, not
 recall, and it cannot improve source diversity even in principle, because
 with a cap of 3 and `k` of 5 the distinct-paper count is bounded by the
 **cap**. It also costs 2.5× on GPU and 5.8× on CPU. Hence: off by
 default, documented, and reached for only when the right paper comes back
 fourth.
 
-**A faster reranker was measured and does not change the default.**
+A faster reranker was measured and does not change the default.
 FlashRank (ONNX, no torch, a 4.4M-parameter model) benchmarked at 2.2x
-per call against the shipped 5.75x -- real, but not free, and its
-advantage shrinks as passages shorten toward the length this pipeline
-actually uses. Its weights are also CC-BY-SA-4.0 over Apache-2.0
+per call against the shipped 5.75x. The saving is real, but 2.2x is not
+free, and its advantage shrinks as passages shorten toward the length this pipeline
+uses. Its weights are also CC-BY-SA-4.0 over Apache-2.0
 originals, and its own "best" model is slower than what already ships.
 [CORPUS-SEARCH.md](CORPUS-SEARCH.md#-flashrank-evaluated-and-declined-2026-08-29)
 has the table and the two determinism findings that came out of it.
 
-**Where it sits matters more than whether it runs.** Chitragupta reranks
+Where the reranker sits matters more than whether it runs. Chitragupta reranks
 **before** the per-citekey cap, so a promotion can change *which
 document* survives; reranking after the cap can only permute what the
 bi-encoder already chose. Measured, the two orders return a different set
 of papers on **217 of 256 queries (85%)**, and a test pins the ordering
-so a refactor cannot quietly swap them.
+so a refactor cannot swap them unnoticed.
 
 ## 🧮 Stage 8: capping and diversity
 
 | System | Per-document cap |
 | --- | --- |
-| **Chitragupta (BM25, default)** | **structural** -- one result per citekey |
+| **Chitragupta (BM25, default)** | **structural**: one result per citekey |
 | **Chitragupta (BM25, `--unit passage`)** | `max_passages_per_source`, default 3, on the *whole* ranked list |
 | **Chitragupta (dense)** | `embed_max_passages_per_source`, default 3, applied before truncation |
 | MiniRAG | per-anchor `max_chunks=3` |
 | **RAGFlow** | **none** |
 | AutoRAG | none, and no cross-query dedup either |
 
-**This is where chitragupta is furthest ahead, and the reason is stage
-2.** RAGFlow's `top_n` default is 6 with no cap, so all six chunks can
-come from one paper -- which in a survey produces a section citing a
-single source.
+This is where chitragupta is furthest ahead, because of stage 2.
+RAGFlow's `top_n` default is 6 with no cap, so all six chunks can come
+from one paper, which in a survey produces a section citing a single
+source.
 
-**The passage unit is where that structural lead is spent**, and it is
-worth naming as a cost rather than listing as a third row. Measured on
-this corpus, distinct sources in the top five fall from 5.00 to 3.72 at
-the shipped cap -- so choosing the finer unit buys the same problem every
-other system on this table has, and the cap is what keeps it bounded. The
+The passage unit is where that structural lead is spent, and that is a
+cost. Measured on this corpus, distinct sources in the top five fall
+from 5.00 to 3.72 at the shipped cap, so choosing the finer unit buys
+the same problem every other system on this table has, and the cap is
+what keeps it bounded. The
 one thing the cap does better here than on any row above is *where* it
 applies: BM25 scores every passage in memory, so it caps the fully ranked
 list and a dropped passage is replaced rather than merely removed. Every
@@ -422,51 +416,50 @@ AutoRAG's multi-query path is worse: results are combined by a
 per-query quota with **no cross-query deduplication**, so a document
 returned by two expanded queries occupies two of your slots.
 
-**Across rounds, the same question returns and two implementations
-answer it oppositely.** In FlashRAG, `IterativePipeline` keeps nothing
+Across rounds, the same question returns, and two implementations
+answer it oppositely. In FlashRAG, `IterativePipeline` keeps nothing
 between rounds while `IRCoT` dedupes by document id, merges scores with
-`max(old, new)` and re-sorts the accumulated pool -- **but never
+`max(old, new)` and re-sorts the accumulated pool, **but never
 truncates it**, so after N rounds the prompt carries up to N x k
-documents. That is a live crash in their tracker, not a hypothetical.
-The mechanism is right and the missing cap is the whole lesson: dedupe,
-merge, re-sort, **then cap** -- which under a stdlib BM25 is a dict and
-a `sorted()`.
+documents. That is a live crash in their tracker. The mechanism is right and the
+missing cap is the lesson: dedupe, merge, re-sort, **then cap**, which
+under a stdlib BM25 is a dict and a `sorted()`.
 
-**The trade-off chitragupta accepts:** capping costs relevance. Dropping
+**The trade-off.** Capping costs relevance. Dropping
 a dominant paper's fourth-best chunk to promote another paper's
 tenth-best is a deliberate loss of per-passage quality, bought for source
 breadth. That is the right trade *for a survey* and would be the wrong
-one for factoid QA -- which is why the cap is a config key.
+one for factoid QA, which is why the cap is a config key.
 
 ## 📦 Stage 9: context assembly
 
 | System | What the generator receives |
 | --- | --- |
-| **Chitragupta** | **claims the drafter wrote**, from the dossier -- ideally never a raw window |
+| **Chitragupta** | **claims the drafter wrote**, from the dossier; ideally never a raw window |
 | OpenScholar | `[i] Title: … Text: …`, positional |
 | RAGFlow | an ASCII tree, `ID: <i>` per chunk |
-| MiniRAG | two CSV blocks -- **`id` is a loop index** |
+| MiniRAG | two CSV blocks; **`id` is a loop index** |
 | papersgpt | `[MAIN_TEXT]` + the paper's own `[BIBLIOGRAPHY]` |
 
 **Two of these destroy provenance at the last step.** MiniRAG replaces
 chunk identity with the enumeration index of a loop, so the model is
 handed anonymous text. papersgpt injects each source paper's *own
-reference list* and points the citation contract at it -- works that were
-never parsed and need not be in the library, which is precisely the
+reference list* and points the citation contract at it. Those are works
+that were never parsed and need not be in the library, which is the
 fabrication this project exists to prevent.
 
-**Position in the prompt is itself a lever, and nothing here uses it.**
-Gao §IV-A1 names the "lost in the middle" effect -- a model attends to
-the beginning and end of a long context and neglects the middle -- and
+Position in the prompt is itself a lever, and nothing here uses it.
+Gao §IV-A1 names the "lost in the middle" effect (a model attends to
+the beginning and end of a long context and neglects the middle) and
 notes that a reranker's second job is therefore to *relocate* the most
 relevant passages to the **edges** of the prompt rather than merely to
 sort them. This pipeline orders passages by score and hands them over in
 that order, which puts its best evidence in the middle of a long list.
 Cheap to change and unmeasured here, so it is named rather than claimed.
 
-**Chitragupta's trade-off here is the one it is least done with.** The
+**The trade-off.** This is the one chitragupta is least done with. The
 design intent is that the drafter holds `claim:` lines it wrote itself,
-not 500-character source windows -- because a model writing with a
+not 500-character source windows, because a model writing with a
 source's sentences in front of it will track those sentences.
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s Theme A exists because the
 current arrangement does not yet fully achieve this.
@@ -474,29 +467,29 @@ current arrangement does not yet fully achieve this.
 ### 🌲 The synthesis shape: how N passages become one section
 
 Stage 9's table is about *what* the generator is handed. The other half
-is **how many passages become one output**, and it is the stage a
-long-form pipeline lives or dies at. LlamaIndex (MIT) is the useful
+is how many passages become one output, and a long-form pipeline
+succeeds or fails at this stage. LlamaIndex (MIT) is the useful
 reference here because it ships five named shapes and they behave very
 differently. Read as algorithms, for N retrieved passages:
 
 | Shape | LLM calls | Can a source vanish silently? |
 | --- | --- | --- |
-| `simple_summarize` | 1 | **Yes, by construction** -- joins all passages, then keeps only what fits and discards the tail with no warning |
-| `refine` | >= N | **Yes, twice over** -- a running answer is the only state carried forward, so anything a step declines to fold in is gone; and a failed call is caught, logged at warning level, and skipped |
-| `compact` (the default) | k <= N | Yes, as `refine`, **plus source boundaries** -- passages are concatenated and re-split on token boundaries, so one prompt piece spans several papers with nothing marking where one ends |
-| `tree_summarize` | k + 1 | **Yes, by attrition** -- leaves are query-conditioned summaries, and the root never sees source text, so a detail dropped at leaf time cannot be recovered |
-| **`accumulate`** | N | **No** -- one independent call per passage into a fixed-length slot array; a failure materialises as a visible empty slot rather than an absence |
+| `simple_summarize` | 1 | **Yes, by construction**: joins all passages, then keeps only what fits and discards the tail with no warning |
+| `refine` | >= N | **Yes, twice over**: a running answer is the only state carried forward, so anything a step declines to fold in is gone; and a failed call is caught, logged at warning level, and skipped |
+| `compact` (the default) | k <= N | Yes, as `refine`, **plus source boundaries**: passages are concatenated and re-split on token boundaries, so one prompt piece spans several papers with nothing marking where one ends |
+| `tree_summarize` | k + 1 | **Yes, by attrition**: leaves are query-conditioned summaries, and the root never sees source text, so a detail dropped at leaf time cannot be recovered |
+| **`accumulate`** | N | **No**: one independent call per passage into a fixed-length slot array; a failure materialises as a visible empty slot rather than an absence |
 
 **`accumulate` is the only shape with a preservation guarantee**, and the
 guarantee is positional: output slot *k* corresponds to input passage
 *k*, so a missing answer is a *located* failure rather than a diff
 against text nobody can align. Its sibling `compact_accumulate` packs the
-inputs first and thereby destroys exactly that property -- the slots
-survive but no longer name a source.
+inputs first and thereby destroys that property: the slots survive but
+no longer name a source.
 
-**What that implies for a citation-dense draft.** The shape worth
-building is `accumulate`'s for the first stage -- one bounded call per
-passage, emitting a claim that already carries its citekey -- and
+For a citation-dense draft, the shape worth building is
+`accumulate`'s for the first stage (one bounded call per passage,
+emitting a claim that already carries its citekey) and
 `tree_summarize`'s *shape* for the fan-in, with one constraint its
 default lacks: **after every level, check that the union of citekeys in
 the children equals the union in the parent.** That check is arithmetic
@@ -506,19 +499,17 @@ characteristic failure from silent attrition into a caught error.
 for the opposite reason: a running answer means every earlier citation
 must survive re-derivation N-1 times.
 
-**Where this pipeline currently sits.** `deep-research` fans *out* -- one
-writer per outline section, each dispatched with
-`dossier brief --section` rather than pasted evidence -- which is the
-right shape at section granularity and has no fan-in problem, because
-sections are assembled rather than summarised. The other four genres
-write in a single context, which is `simple_summarize`'s shape with a
-human-sized context window instead of a token budget: nothing truncates,
-but nothing checks either. No genre currently verifies that the citekeys
-it was handed are the citekeys it used --
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C5 is the item that names
-this exact gap, the union invariant above, and remains unbuilt; A3 and
-B2 addressed adjacent context-leak and synthesis problems and have
-since shipped.
+As for this pipeline, `deep-research` fans *out*: one writer per outline
+section, each dispatched with `dossier brief --section` rather than pasted
+evidence. That is the right shape at section granularity and has no fan-in
+problem, because sections are assembled rather than summarised. The other four
+genres write in a single context, which is `simple_summarize`'s shape with a
+human-sized context window instead of a token budget: nothing truncates, but
+nothing checks either. No genre currently verifies that the citekeys it was
+handed are the citekeys it used. [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C5
+is the item that names this exact gap, the union invariant above, and remains
+unbuilt; A3 and B2 addressed adjacent context-leak and synthesis problems and
+have since shipped.
 
 ## ✅ Stage 10: citation and verification
 
@@ -527,8 +518,8 @@ citation.**
 
 | System | What is checked |
 | --- | --- |
-| **Chitragupta** | **the citekey exists in the ledger -- a blocking gate, the only one** |
-| RAGFlow | `i < len(chunks)` -- an array-bounds test |
+| **Chitragupta** | **the citekey exists in the ledger: a blocking gate, the only one** |
+| RAGFlow | `i < len(chunks)`, an array-bounds test |
 | OpenScholar | nothing; posthoc attribution silently returns the original on missing markers |
 | local-deep-research | nothing; an out-of-range `[42]` survives as literal text |
 | papersgpt | one regex rewrites a marker into an anchor |
@@ -539,22 +530,22 @@ RAGFlow's fallback attributor multiplies a 0.63 similarity threshold by
 benchmark **strips citation markers before grading**, so its citation
 correctness is never measured at all.
 
-**The trade-off, stated against this project rather than for it.** The
-gate checks that a citekey is *real*, not that the sentence attached to
-it is *right* -- a wrong claim with a real citekey passes. That is a
+**The trade-off**, which counts against this project. The gate checks
+that a citekey is *real*, not that the sentence attached to it is
+*right*: a wrong claim with a real citekey passes. That is a
 narrow guarantee, deliberately: [DESIGN.md](DESIGN.md) argues one check
 that always means exactly one thing beats several that each mean
-something fuzzy. Everything else here -- provenance, coverage, verbatim
-overlap, quotation integrity, claim support -- is an **advisory aid that
+something fuzzy. Everything else here (provenance, coverage, verbatim
+overlap, quotation integrity, claim support) is an **advisory aid that
 exits 0** and may never block. The cost is that a reader must still read
 the sources; the benefit is that `gate` never cries wolf.
 
-**Overlap detection**, which most RAG systems lack entirely, runs three
+Overlap detection, which most RAG systems lack entirely, runs three
 tiers whose findings are unioned: an exact word-run match, a stemmed
 skip-gram match tolerant of substituted words, and an embedding tier that
 is the only one that sees genuine restatement. The third is also
-the narrowest -- it needs the enrichment layer, the Docling sidecars, a
-synced ledger and the dossier all present -- so **a clean scan is never
+the narrowest: it needs the enrichment layer, the Docling sidecars, a
+synced ledger and the dossier all present. So **a clean scan is never
 a clean bill of health**, and the report names every tier that could not run.
 
 ## ♻ Stage 11: revision
@@ -566,26 +557,24 @@ regenerate button truncates and re-asks, destroying the prior answer;
 local-deep-research's follow-up creates a *new child row*.
 
 None detects a hand-edit. None supports section-scoped editing. And
-**all of them persist far more than they consume** -- OpenScholar writes
+**all of them persist far more than they consume**: OpenScholar writes
 a complete refinement audit trail and reads back only a row count.
 
-**ITER-RETGEN is the exception that clarifies the rule.** It *does*
-feed a prior generation back in -- but as a **retrieval query**, not as
-an artifact to edit, and it regenerates the answer from scratch each
-iteration. So it is iterative *retrieval*, not revision, and it belongs
-to stage 4 rather than here. What makes it interesting for this pipeline
-is that `y_{t-1}` need not come from a model: **if a person writes the
-draft, the person's draft is the query.** That turns "supply a starting
-draft, revise it by hand later" into the same loop with a human in the
-generation slot -- and it sidesteps the paper's own dominant failure
-mode, since the wrong-first-reasoning problem is a property of a *model's*
-first pass.
+ITER-RETGEN does feed a prior generation back in, but as a **retrieval query**,
+not as an artifact to edit, and it regenerates the answer from scratch each
+iteration. So it is iterative *retrieval*, not revision, and it belongs to stage
+4 rather than here. What makes it interesting for this pipeline is that
+`y_{t-1}` need not come from a model: **if a person writes the draft, the
+person's draft is the query.** That turns "supply a starting draft, revise it by
+hand later" into the same loop with a human in the generation slot, and it
+sidesteps the paper's own dominant failure mode, since the wrong-first-reasoning
+problem is a property of a *model's* first pass.
 
-**Chitragupta's dossier is the answer to exactly this**, and the
-`draft-reviser` / `corpus-reviser` split -- a cheap scoped path that
-contains no instructions for a wide search, so it cannot drift into one
--- has no equivalent in any of the six. **The trade-off is that the
-dossier is only as good as what was written into it**, and a skill that
+Chitragupta's dossier answers this, and the `draft-reviser` /
+`corpus-reviser` split (a cheap scoped path that contains no
+instructions for a wide search, so it cannot drift into one) has no
+equivalent in any of the six. **The trade-off.** The dossier is only as
+good as what was written into it, and a skill that
 skips recording a rejection costs the next revision the most expensive
 work in the pipeline. That gap has since closed, with the draft
 fingerprint (which says *that* a section moved) and
@@ -597,16 +586,16 @@ round 1 already found rather than replacing it.
 ## 📏 Evaluation, which is a stage too
 
 AutoRAG is the only one of the six built around evaluation, and its
-central idea is worth taking: **label-by-construction** -- sample a
+central idea is worth taking: **label-by-construction**. Sample a
 chunk, record its id as the ground truth, and only *then* generate a
 question from it, so the label needs no judge.
 
-**Its central hazard is worth taking even more seriously.** Because the
+Its central hazard deserves more attention still. Because the
 question is generated *from* the gold chunk, the query inherits that
 chunk's vocabulary, so such a set **structurally favours lexical
 retrieval**. A BM25 change measured on it looks better than it is, and
 nothing upstream says so. AutoRAG also has no near-duplicate dedup, and
-no train/test tooling -- its documentation warns about overfitting while
+no train/test tooling; its documentation warns about overfitting while
 its code does nothing to prevent it.
 
 Chitragupta's answer avoids the circularity by construction: the query is
@@ -615,11 +604,10 @@ paper. No retrieval method's history chose it, and no LLM wrote it.
 
 ### 📐 The abilities the surveys say a RAG system should be evaluated on
 
-Gao §VI-C names three quality scores -- **context relevance**, **answer
-faithfulness**, **answer relevance** -- and four required abilities:
-**noise robustness**, **negative rejection**, **information
-integration**, **counterfactual robustness**. Mapping this pipeline onto
-that list is uncomfortable in a useful way:
+Gao §VI-C names three quality scores (context relevance, answer
+faithfulness, answer relevance) and four required abilities: noise
+robustness, negative rejection, information integration, counterfactual
+robustness. Mapped onto that list, this pipeline shows gaps:
 
 | Ability | Where it lives here | Measured? |
 | --- | --- | --- |
@@ -630,45 +618,44 @@ that list is uncomfortable in a useful way:
 | Noise robustness | -- | no |
 | Counterfactual robustness | -- | no |
 
-**Negative rejection is the interesting gap**, because this project has
-the *behaviour* and no measurement of it. Every genre skill is told to
+Negative rejection is the notable gap, because this project has the
+*behaviour* and no measurement of it. Every genre skill is told to
 report thin coverage rather than pad it, and E4 (shipped)'s
-empty-result-is-informative rule sharpens it further -- but nothing
-anywhere tests whether a draft actually declines to claim what the
+empty-result-is-informative rule sharpens it further, but nothing
+anywhere tests whether a draft declines to claim what the
 corpus cannot support. It is the one ability on that list this pipeline
 is *designed* around, and the one with no number.
 
-**It is likely to stay that way, and now for a measured reason rather
-than an unbuilt one.** The roadmap item that would have supplied the
-number -- [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6 -- was skipped
-by evidence: on a corpus of 642 papers about one subject, a
-negative query set cannot be built by subtraction, and the refusal
-signal that does exist has never fired across 303 logged retrieval
-calls. That entry holds the measurement; this row stays **no** and
-should not be read as work merely waiting its turn.
+It is likely to stay that way, now for a measured reason. The roadmap item that
+would have supplied the number, [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C6,
+was skipped by evidence: on a corpus of 642 papers about one subject, a negative
+query set cannot be built by subtraction, and the refusal signal that does exist
+has never fired across 303 logged retrieval calls. That entry holds the
+measurement; this row stays **no** and should not be read as work merely waiting
+its turn.
 
-**One thing did change on the way, and it is not a measurement.** The
-signal C6's evidence is read off -- a declared query that ran and came
-back with nothing -- is now *reported*: `dossier status` names it,
+One thing did change on the way, though it is not a measurement. The
+signal C6's evidence is read off (a declared query that ran and came
+back with nothing) is now *reported*: `dossier status` names it,
 and the five genre skills' pre-gate step is told to cut the sentences
 resting on it rather than cite whatever ranked nearest. That is
 the behaviour, made visible per draft. It is still not a rate: nothing
 counts how often a draft should have refused against how often it did,
 which is what this row is asking for.
 
-**Two findings from Gao §VII-B are worth carrying, both
-counterintuitive.** Retrieved noise is not uniformly harmful: one study
+Two findings from Gao §VII-B are worth carrying, both
+counterintuitive. Retrieved noise is not uniformly harmful: one study
 it cites found that including irrelevant documents *increased* accuracy
 by over 30%, against the obvious expectation. And the failure that does
-hurt is specific -- "misinformation can be worse than no information at
+hurt is specific: "misinformation can be worse than no information at
 all". Together those argue against tuning a pipeline toward precision
 for its own sake, and for caring most about the wrong-but-plausible
-passage, which is exactly the class `review support`'s measured failure
-mode already lives in.
+passage, which is the class `review support`'s measured failure mode
+already lives in.
 
-**One argument from Gao §VII-A is this project's own thesis, stated by a
-survey.** Asked whether long-context models make RAG unnecessary, it
-answers partly on cost -- and partly that "RAG-based generation can
+One argument from Gao §VII-A is this project's own thesis, stated by a
+survey. Asked whether long-context models make RAG unnecessary, it
+answers partly on cost and partly that "RAG-based generation can
 quickly locate the original references for LLMs to help users verify the
 generated answers. The entire retrieval and reasoning process is
 observable, while generation solely relying on long context remains a
@@ -680,24 +667,24 @@ retrieve.
 [FlashRAG](https://github.com/RUC-NLPIR/FlashRAG) (MIT) exists to
 re-implement published RAG methods under one uniform setting, which makes
 its results the closest thing to an independent check on this whole
-field. Three things it reports are worth more than any method it ships.
+field. Three things it reports matter more than any method it ships.
 
-**Retrieval sometimes makes things worse, and the toolkit's own table
-says so.** On 2WikiMultiHopQA, standard RAG scores *below* generation
-with no retrieval at all, and **8 of 16 methods land under the
-no-retrieval baseline** on that column. One widely-cited method
-contributes nothing on three of six datasets. Whatever else a RAG
-pipeline is, "retrieval helps" is a claim to measure rather than assume.
+**Retrieval sometimes makes things worse**, by the toolkit's own table. On
+2WikiMultiHopQA, standard RAG scores *below* generation with no retrieval at
+all, and **8 of 16 methods land under the no-retrieval baseline** on that
+column. One widely-cited method contributes nothing on three of six datasets.
+Whatever else a RAG pipeline is, "retrieval helps" is a claim to measure rather
+than assume.
 
-**It never compares against the published numbers.** The README is candid
+**It never compares against the published numbers.** The README says
 that its uniform setting "may differ from the original setting of the
-method" -- but there is no side-by-side against the source papers
+method", but there is no side-by-side against the source papers
 anywhere in the repository, so *reproduction quality is unmeasured rather
 than good*. Users attempting it report gaps of several points and, in one
 thread, that most results could not be matched.
 
-**Seeds are not sufficient for determinism, and this is the part that
-generalises.** The toolkit seeds `random`, `numpy` and `torch`, and users
+**Seeds are not sufficient for determinism**, and this finding
+generalises. The toolkit seeds `random`, `numpy` and `torch`, and users
 still observed **three runs at a fixed seed scoring 18.7, 17.1 and 17.4**.
 Three causes, none of which a seed touches:
 
@@ -711,23 +698,23 @@ Three causes, none of which a seed touches:
 - **Inference framework.** The same task scored 19.0 under one backend
   and 21.8 under another.
 
-The clean part, and the one this pipeline shares: **retrieval itself is
-deterministic** given an exact index -- they use a Faiss `Flat` index for
-precisely that reason, rather than an approximate one.
+The part this pipeline shares: **retrieval itself is deterministic**
+given an exact index. They use a Faiss `Flat` index for that reason,
+rather than an approximate one.
 
-**The lesson for a pipeline that promises reproducible inputs** is that
-the guarantee has to be structural rather than seeded. This project's
+For a pipeline that promises reproducible inputs, the guarantee has to
+be structural rather than seeded. This project's
 retrieval path is deterministic because BM25 over a fingerprinted index
-is arithmetic, not because anything is seeded -- and
+is arithmetic, not because anything is seeded, and
 [stage 4](#-stage-4-query-manufacture-the-stage-most-systems-skip)'s
 preference for a query that costs no model call is the same argument one
-step earlier. What a seed cannot make reproducible is best not put in the
-path at all.
+step earlier. What a seed cannot make reproducible is best kept out of
+the path.
 
-**One naming trap worth carrying away:** its `acc` metric is *substring
-containment* -- whether the prediction contains the gold answer -- and it
-sits in the default metric list. A verbose model scores well on it for
-the wrong reason. Read what a metric computes, not what it is called.
+One naming trap: its `acc` metric is *substring containment* (whether
+the prediction contains the gold answer), and it sits in the default
+metric list. A verbose model scores well on it for the wrong reason, so
+read what a metric computes and do not trust what it is called.
 
 ## ⚖ The trade-offs in one table
 
@@ -744,15 +731,13 @@ the wrong reason. Read what a metric computes, not what it is called.
 | Dossier instead of regeneration | scoped, cheap revision nobody else has | only as good as what was recorded |
 | Author-keyword ground truth | no circularity, no LLM | only covers entries whose authors wrote keywords |
 
-**The pattern.** Most of these are the same trade taken repeatedly:
-**prefer a structural guarantee over a statistical one, and pay for it in
-reach.** A citekey cannot be fabricated because the ledger is the only
-source; a paper cannot monopolise a BM25 result because documents are the
-unit; the gate means one thing because it only ever checks one thing.
-Each buys a property you can state in a sentence and test, at the cost of
-capability the other six have.
+Most of these are the same trade taken repeatedly: prefer a structural guarantee
+over a statistical one, and pay for it in reach. A citekey cannot be fabricated
+because the ledger is the only source; a paper cannot monopolise a BM25 result
+because documents are the unit; the gate means one thing because it only ever
+checks one thing. Each buys a property you can state in a sentence and test, at
+the cost of capability the other six have.
 
-Where this pipeline is genuinely behind, the same honesty applies: no
-hybrid fusion, query manufacture in one skill of five, no draft
-fingerprint, and evidence that still reaches the drafter as raw windows
-more often than as written claims.
+Where this pipeline is behind: no hybrid fusion, query manufacture in one skill
+of five, no draft fingerprint, and evidence that still reaches the drafter as
+raw windows more often than as written claims.

@@ -4,9 +4,9 @@ Status: **tutorial.** Written 2026-09-15.
 
 **Written for** a doctoral or master's student who wants a chapter of
 their own thesis drafted from their own library, and who has not used
-this pipeline before. **Assumed:** nothing. This page repeats what other
-documents also say, deliberately -- you should be able to finish a
-chapter without leaving it. **Not covered here:** how retrieval ranks
+this pipeline before. **Assumed:** nothing. This page deliberately
+repeats what other documents also say, so that you can finish a chapter
+without leaving it. **Not covered here:** how retrieval ranks
 ([RETRIEVAL.md](RETRIEVAL.md)) and why each prose rule exists
 ([WRITING-STANDARDS.md](WRITING-STANDARDS.md)).
 
@@ -37,7 +37,7 @@ The output is a **LaTeX fragment**, not a document: no
 `\input` into the thesis you already have, so your own template,
 numbering and bibliography stay in charge.
 
-Three consequences, all deliberate:
+This has three deliberate consequences:
 
 - **Citations are `\citep{...}`/`\citet{...}`**, not `[@citekey]`. The
   gate reads both, so the guarantee is unchanged.
@@ -54,7 +54,7 @@ For a chapter you decide to call `thesis/methods`:
 
 | Path | What it is |
 | --- | --- |
-| `content/drafts/thesis/methods.tex` | the fragment -- the canonical copy, the thing you `\input` |
+| `content/drafts/thesis/methods.tex` | the fragment: the canonical copy, the thing you `\input` |
 | `content/dossiers/thesis/methods/` | scope, kept evidence, rejected candidates, every search run |
 | `content/rendered/thesis/methods.pdf` | a standalone preview, so you can read it before it is in the thesis |
 | `content/rendered/thesis/methods.md` | a Markdown preview of the same |
@@ -90,20 +90,21 @@ chitragupta corpus ledger          # a summary: how many entries, how many parse
 ```
 
 If nothing is `parsed`, your export has no usable PDF paths. Fix that
-first -- a chapter cannot be grounded in a corpus with no text in it.
+first, because a chapter cannot be grounded in a corpus with no text in
+it.
 
 > Every command here also works as `python -m chitragupta.<layer> ...`.
 
 ## 🔬 Step 1: the research question, the examiner, the slug
 
 **The research question** is the one thing this genre will not proceed
-sensibly without. A thesis chapter argues toward an RQ; it does not
-summarise papers in sequence. Write it down in one sentence, e.g.
+sensibly without. A thesis chapter argues toward an RQ instead of
+summarising papers in sequence. Write it down in one sentence, e.g.
 *"RQ2: under what conditions does a reduced-order surrogate remain
 faithful enough to support a safety decision?"*
 
 **The examiner** is your reader. Name what they already know, so
-background is recapped where it is genuinely needed and nowhere else.
+background is recapped where it is needed and nowhere else.
 "An examiner in control engineering who has never worked with
 digital twins" produces a very different chapter from "an examiner who
 supervises three digital-twin students".
@@ -123,11 +124,11 @@ chitragupta draft dossier init content/drafts/thesis/methods.tex \
     --genre thesis-chapter
 ```
 
-Note the `.tex` suffix -- this genre's draft is LaTeX.
+Note the `.tex` suffix: this genre's draft is LaTeX.
 
 That writes eight files. **Exactly one is yours to fill in: `scope.md`.**
-The rest -- `evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
-`steering.md`, `revisions.md`, `README.md` -- are written for you as the
+The rest (`evidence.md`, `rejected.md`, `sections.md`, `retrieval.md`,
+`steering.md`, `revisions.md`, `README.md`) are written for you as the
 chapter is produced.
 
 ### What goes in `scope.md`
@@ -149,7 +150,7 @@ Set the dialect with the command, so the format is right:
 chitragupta draft dossier set-language content/drafts/thesis/methods.tex en-GB
 ```
 
-A filled-in thesis-chapter `scope.md` -- the whole file is at
+A filled-in thesis-chapter `scope.md` follows; the whole file is at
 [`examples/dossiers/thesis-chapter/scope.md`](examples/dossiers/thesis-chapter/scope.md):
 
 ```markdown
@@ -198,8 +199,8 @@ notions of error entirely.
 ```
 
 The two glossary entries that say "pinned here because the sources use
-it differently" are doing the real work: that is how a chapter keeps its
-own vocabulary while citing papers that do not share it.
+it differently" are how a chapter keeps its own vocabulary while citing
+papers that do not share it.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -223,20 +224,20 @@ section:
 | Field | What goes in it | What the skill does with it |
 | --- | --- | --- |
 | `brief:` | steering in your own words | consumed once, **never appears in the chapter** |
-| `claim:` | your own prose -- the argument you intend to make | rewritten and **grounded**; any sentence the corpus cannot support is reported back rather than shipped |
+| `claim:` | your own prose: the argument you intend to make | rewritten and **grounded**; any sentence the corpus cannot support is reported back rather than shipped |
 | `queries:` | a `-` list of search terms | run **verbatim** instead of the skill inventing sub-themes |
 
 A section needs at least a `brief:` or a `claim:`; `queries:` is optional
-even then. Sections may nest -- `###` under `##` -- which this genre uses
+even then. Sections may nest (`###` under `##`), which this genre uses
 more than the others, because a chapter's technical core usually has two
 or three families to treat separately.
 
-**`claim:` is the field this genre gets the most out of.** A thesis
-chapter argues; writing your intended argument as `claim:` blocks means
-the skill either grounds each one or tells you it cannot -- which is
-exactly the conversation you want before the examiner has it with you.
+This genre gets the most out of `claim:`. A thesis chapter argues, and
+writing your intended argument as `claim:` blocks means the skill either
+grounds each one or tells you it cannot. You want that conversation
+before the examiner has it with you.
 
-A worked example -- the whole file is at
+A worked example follows; the whole file is at
 [`examples/dossiers/thesis-chapter/outline.md`](examples/dossiers/thesis-chapter/outline.md):
 
 ```markdown
@@ -291,8 +292,8 @@ Ask in ordinary words, in a session in this project directory:
 > decision? The dossier and outline are there.
 
 "Thesis chapter", "dissertation section" or "RQ-driven chapter" is what
-selects `thesis-chapter-writer`. Give it the RQ in the same message --
-it is the spine of everything it writes.
+selects `thesis-chapter-writer`. Give it the RQ in the same message,
+because the RQ is the spine of everything it writes.
 
 What it then does: clarifies the RQ if you did not give one, retrieves
 broadly and filters, re-searches thin concepts, checks for disagreement
@@ -311,16 +312,16 @@ chitragupta draft gate content/drafts/thesis/methods.tex
 `OK` means every `\citep{...}` key is real. `FAIL` names the line; fix
 the key or drop the claim.
 
-Previews -- the fragment stays canonical, these are for reading:
+Previews are for reading; the fragment stays canonical:
 
 ```bash
 chitragupta draft render content/drafts/thesis/methods.tex --format pdf
 chitragupta draft render content/drafts/thesis/methods.tex --format md
 ```
 
-The evidence sidecar, which this genre should always emit -- your reader
-is an examiner reading adversarially for the claim that outruns its
-evidence, and the sidecar is exactly what lets them check one:
+This genre should always emit the evidence sidecar. Your reader is an
+examiner reading adversarially for the claim that outruns its evidence,
+and the sidecar is what lets them check one:
 
 ```bash
 chitragupta draft evidence content/drafts/thesis/methods.tex --format pdf
@@ -348,7 +349,7 @@ Copy or symlink the fragment into your thesis tree and `\input` it:
 Three things your thesis preamble must provide, because a fragment
 carries no preamble of its own:
 
-- **`natbib` or whatever supplies `\citep`/`\citet`** -- you almost
+- **`natbib` or whatever supplies `\citep`/`\citet`.** You almost
   certainly have this already.
 - **Every citekey the chapter cites, in your thesis `.bib`.** They came
   from your own export, so this is normally already true.
@@ -375,13 +376,13 @@ chitragupta review support content/drafts/thesis/methods.tex
 
 For a thesis chapter, two are worth more than the rest:
 
-- **`review verbatim`** -- reuse of a source's wording is the failure with
+- **`review verbatim`.** Reuse of a source's wording is the failure with
   consequences at a viva. It reports wording shared with any parsed
   source, cited or not, in three buckets: `long`, `short` and `quoted`
   (the last being an attributed quotation, which is legitimate).
-- **`review support`** -- whether each citation actually entails the
-  claim it is attached to. This is the examiner's own reading habit,
-  mechanised.
+- **`review support`.** It checks whether each citation entails the
+  claim it is attached to, which mechanises the examiner's own reading
+  habit.
 
 If the chapter has TikZ figures, also:
 
@@ -401,13 +402,13 @@ chitragupta review agenda content/drafts/thesis/methods.tex
 It **reads the aids' filed JSON and never runs an aid**, so run the aids
 first, with `--write` where an aid offers it (`provenance` always files
 its report), and then the agenda. Any aid whose report is absent is
-named as absent rather than quietly skipped.
+named as absent instead of skipped.
 
 Each item carries a class, a section anchor, and whether it is
-`[unattended]` -- safe for an automated pass to repair without asking
-(`prose`, short verbatim runs, `missing-citekey`) -- or `[surfaced]`, a
-judgement only you can make (`unsupported-claim`, `claim-support`,
-`uncited-claim`, `recorded-but-uncited`, `misquoted`).
+`[unattended]`, meaning safe for an automated pass to repair without
+asking (`prose`, short verbatim runs, `missing-citekey`), or
+`[surfaced]`, a judgement only you can make (`unsupported-claim`,
+`claim-support`, `uncited-claim`, `recorded-but-uncited`, `misquoted`).
 
 For the methods chapter we have been building:
 
@@ -470,12 +471,12 @@ For the methods chapter we have been building:
   Projection-based reduction is the only family with a-priori guarantees
 ```
 
-**How to read that as the author.** The `misquoted` item is the one to
-fix first -- a quotation that says "bound" where the source said
-"estimate" is exactly the error this chapter's own glossary exists to
-prevent, and an examiner who spots it will doubt the rest. The two
-`unsupported-claim` items are the sentences where your argument outruns
-your sources: either soften them, or find the source that carries them.
+Read as the author, the `misquoted` item is the one to fix first. A
+quotation that says "bound" where the source said "estimate" is the
+error this chapter's own glossary exists to prevent, and an examiner who
+spots it will doubt the rest. The two `unsupported-claim` items are the
+sentences where your argument outruns your sources: either soften them,
+or find the source that carries them.
 The `uncited-claim` in the closing section is a claim you have made on
 your own authority in a place the chapter said it would not.
 
@@ -483,7 +484,7 @@ The `[unattended]` verbatim runs can be handed off: ask to "work the
 review agenda" and `agenda-reviser` repairs them one at a time, re-running
 the gate after each and logging every attempt in `revisions.md`.
 
-To check a round of edits actually helped:
+To check that a round of edits helped:
 
 ```bash
 chitragupta review agenda content/drafts/thesis/methods.tex \
@@ -522,7 +523,7 @@ chitragupta draft gate content/drafts/thesis/methods.tex
 chitragupta draft dossier stamp content/drafts/thesis/methods.tex
 ```
 
-Back it up -- `content/drafts/` is gitignored:
+Back it up, since `content/drafts/` is gitignored:
 
 ```bash
 chitragupta draft dossier export thesis/methods
@@ -533,9 +534,9 @@ chitragupta draft dossier export thesis/methods
 | What you see | What it means | What to do |
 | --- | --- | --- |
 | The skill refuses, saying the ledger is empty | no corpus | `chitragupta corpus sync` |
-| `gate` says `FAIL` | a `\citep` key is not in the corpus | correct it or drop the claim -- never add it by hand |
+| `gate` says `FAIL` | a `\citep` key is not in the corpus | correct it or drop the claim; never add it by hand |
 | The preview PDF fails on a figure | the figure's TikZ does not compile | fix the figure file; a broken figure fails the whole render |
-| Your thesis build fails on `\citep` | no `natbib` in your preamble | add it -- the fragment cannot |
+| Your thesis build fails on `\citep` | no `natbib` in your preamble | add it; the fragment cannot |
 | Your thesis build fails on `of` in a node position | the TikZ library is not loaded in *your* preamble | add `\usetikzlibrary{...}` with the names the figure file lists |
 | The chapter reads like a summary, not an argument | the RQ was never stated | give the RQ and ask `draft-reviser` to re-frame around it |
 | A cited paper left your library | the corpus moved | `chitragupta draft dossier status --all`, then ask for a re-grounding pass |
