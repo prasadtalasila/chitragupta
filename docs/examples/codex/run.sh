@@ -14,6 +14,13 @@
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 work="${1:-$(mktemp -d)}/project"
+# `chitragupta init` leaves an existing project as it is, so a second
+# run into the same WORKDIR would draft over the first run's ledger,
+# dossier and draft. Refuse instead of mixing two runs.
+if [ -e "$work" ]; then
+  echo "run.sh: $work already exists; pass a new WORKDIR" >&2
+  exit 1
+fi
 BASE_URL="${BASE_URL:-http://127.0.0.1:18080/v1}"
 MODEL="${MODEL:-qwen3.6-35b-a3b}"
 
