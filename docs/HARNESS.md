@@ -85,7 +85,9 @@ copied into a skill, a hook launcher or a plugin.
    one copy per harness" below).
 2. **Mandatory check (enforced).** A thin per-harness launcher runs the
    existing hook scripts on every write to a draft. The model cannot
-   skip it, and it is told to fix the key before it moves on.
+   skip it, and it is told to fix the key before it moves on -- as long
+   as it writes through the harness's own file tools, which Codex behind
+   llama.cpp does not offer it ([LOCAL-MODELS.md](LOCAL-MODELS.md)).
 3. **Last check.** `draft render` runs the gate before producing any
    format, so no draft with an unknown key becomes a document on any
    harness.
@@ -107,7 +109,8 @@ kept as small as possible:
   to prevent.
 - **The OpenCode plugin is a transport.** It turns OpenCode's tool
   arguments into the payload the hooks already read, pipes it to
-  `citation_gate_hook.py`, and hands the verdict back. Which writes are
+  `citation_gate_hook.py` and then `style_check_hook.py`, and hands the
+  verdict and any style notes back. Which writes are
   drafts, the size bound, the timeout and the fail-closed rules are the
   Python hook's, shared by all three harnesses.
 - **A liveness warning covers the hook that never fires.** The gate
@@ -120,7 +123,7 @@ kept as small as possible:
 | Harness | Self-check | Mandatory check | Last check |
 | --- | --- | --- | --- |
 | Claude Code | the skill runs `draft gate` | `PostToolUse` hook on Write and Edit, after the write | `draft render` |
-| Codex | the skill runs `draft gate` | `PostToolUse` hook on `apply_patch`, after the write, once the project's hooks are trusted | `draft render` |
+| Codex | the skill runs `draft gate` | `PostToolUse` hook on `apply_patch`, after the write, once the project's hooks are trusted and only if the model server passes `apply_patch` through (llama.cpp does not) | `draft render` |
 | OpenCode | the skill runs `draft gate` | plugin on `tool.execute.after`, after the write | `draft render` |
 
 **What none of them stops**: a write through the shell, such as
@@ -308,8 +311,10 @@ is relied on (the plan's Task 0).
   `patchText`, whose paths are relative to the project root.
   ([OpenCode plugins](https://opencode.ai/docs/en/plugins/),
   [OpenCode tools](https://opencode.ai/docs/tools/))
-- **Continue** reads Agent Skills and supports MCP, but has no hooks.
-  Its CLI can mark a built-in tool `exclude`.
+- **Continue** reads Agent Skills and supports MCP. Its CLI loads
+  Claude Code-style hooks but never runs them on a tool call (measured
+  on `cn` 1.5.47, [LOCAL-MODELS.md](LOCAL-MODELS.md)), and can mark a
+  built-in tool `exclude`.
   ([Continue tool permissions](https://docs.continue.dev/cli/tool-permissions))
 - **The Agent Skills specification** limits `description` to 1,024
   characters and allows only `name`, `description`, `license`,

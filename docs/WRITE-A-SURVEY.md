@@ -436,8 +436,9 @@ What each is for, and what a finding from it actually means:
 | `review quotation` | whether a quoted span matches the source it cites | a quotation that has drifted from what the paper says |
 | `review support` | whether the cited source actually entails the claim | a citation that is real but does not carry the sentence's weight |
 
-Add `--write` to any of them to file the report under
-`content/review/dt/`, in Markdown plus JSON.
+Add `--write` to any `review` command above to file the report under
+`content/review/dt/`, in Markdown plus JSON. `draft style` has no
+`--write`; the agenda runs it itself.
 
 ### The agenda: all of them as one worklist
 

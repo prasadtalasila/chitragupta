@@ -74,7 +74,8 @@ and, ultimately, the author remain responsible for those judgements; see
 
 The deterministic corpus layer does not fetch papers or call an LLM API.
 It processes the bibliography and attachment paths you provide. The
-optional drafting workflow uses Claude Code skills, so any information
+optional drafting workflow uses an agent harness's skills -- Claude Code,
+Codex or OpenCode ([LLM-AGENTS.md](LLM-AGENTS.md)) -- so any information
 placed in that session is subject to the AI service, account, client, and
 network controls selected by the operator. The repository itself contains
 no LLM API key requirement.
@@ -96,8 +97,9 @@ citekeys there are extracted from a draft, not the bib file, so a draft
 citing `\citep{../../secret}` must -- and does -- resolve to no source
 text rather than to a file outside the content tree.
 
-The drafting skills run the gate before presenting a draft. A Claude Code
-PostToolUse hook also runs it after writes under `content/drafts/`.
+The drafting skills run the gate before presenting a draft. A hook or
+plugin on each harness also runs it after writes under `content/drafts/`
+([HARNESS.md](HARNESS.md)).
 Because this is a post-write check, an invalid draft can exist on disk
 until it is corrected. Run the gate yourself before sharing, rendering,
 committing, or relying on a draft. [HOOKS.md](HOOKS.md) documents the

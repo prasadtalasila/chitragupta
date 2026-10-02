@@ -243,7 +243,7 @@ release. Set these in `docker/.env` or in the environment:
 | `CHITRAGUPTA_CONTAINER_NAME` | `chitragupta-claude` | The container's name, so `docker exec -it <name> bash` works. Also becomes the container hostname and the agent's name in the remote-control UI |
 | `CHITRAGUPTA_PROJECT_NAME` | `chitragupta` | Compose's project name, which prefixes the network. Set it per workspace to run two of these side by side |
 | `CHITRAGUPTA_IMAGE_TAG` | `latest` | Which tag to run. This is how you point one workspace at a `:tmp` build without disturbing the `:latest` everything else uses |
-| `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/prasad/.claude`. This is what persists the login, so a restart is not a re-authentication |
+| `CHITRAGUPTA_CLAUDE_HOME` | `./claude` | Host directory for `/home/$CHITRAGUPTA_USER/.claude`. This is what persists the login, so a restart is not a re-authentication |
 | `CHITRAGUPTA_PAPERS` | `$CHITRAGUPTA_WORKSPACE/papers` | Host directory of PDFs, mounted **read-only** at `/workspace/papers`. Point it elsewhere to share one corpus across workspaces |
 | `COMPOSE_PROFILES` | none | `cpu` or `gpu` -- see below. Compose's own variable, not one of ours |
 | `CHITRAGUPTA_USER` | **required** | The unprivileged account inside the image -- your own login name (`id -un`). A **build** arg as well as a runtime setting, so changing it needs `docker compose build`, not just a restart |

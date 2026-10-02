@@ -97,7 +97,9 @@ the checkout path's own `install_full_pipeline.sh` already creates
 `chitragupta init DIR` writes the same project directory a checkout
 gives you -- `config.toml` from `config.toml.example`, `.claude/`,
 `papers/`, `content/{drafts,dossiers,specs,review,rendered}/`, `assets/`
-and the prose docs -- so everything from
+and the prose docs. `--agent codex` and `--agent opencode`, repeatable,
+also write `.codex/` and `.agents/`, or `.opencode/`
+([LLM-AGENTS.md](LLM-AGENTS.md)) -- so everything from
 [step 1](#-the-full-first-run-step-by-step) onward reads the same
 regardless of which path got you here.
 
@@ -156,7 +158,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids) |
+| 1 | **`python`** -- stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids) |
 | 2 | **`.venv-full/bin/python`** -- venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`** -- venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -310,14 +312,15 @@ chitragupta draft retrieve search "digital twin composability" --unit passage
 chitragupta draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
-# 8. In Claude Code, ask for a draft, e.g.:
+# 8. In your coding agent (Claude Code, Codex or OpenCode), ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
-# The matching skill in .claude/skills/ picks this up automatically,
+# The matching skill in that agent's skills folder picks this up automatically,
 # including its own gate -> references -> render chain (chitragupta draft <verb>),
-# and writes a dossier beside the draft as it goes.
+# and writes a dossier beside the draft as it goes. LLM-AGENTS.md has each
+# agent's setup and skill names.
 
 # 9. Re-run any step of that chain by hand (no venv needed for these).
 #    All three read only under content/ -- a draft kept outside it is
@@ -409,7 +412,7 @@ python -m chitragupta.draft retrieve search "digital twin composability" --unit 
 python -m chitragupta.draft retrieve evidence "calibration" --citekey talasila_composable_2025 \
     --log content/drafts/<slug>.md
 
-# 8. (In Claude Code -- the matching skill invokes this form itself.)
+# 8. (In your coding agent -- the matching skill invokes this form itself.)
 
 # 9.
 python -m chitragupta.draft gate content/drafts/<slug>.md
@@ -1471,6 +1474,7 @@ reaches only the part of that checklist geometry can decide.
 | Node text over 15 words | binary | no |
 | Edge list, reported for confirmation | binary | no |
 | Stranded arrowhead | binary | no |
+| Loads its TikZ library by hand | binary | no |
 | Node overlap | binary | yes |
 | Content protrusion | binary | yes |
 | Nothing was measurable | binary | yes |
@@ -1484,7 +1488,7 @@ so it is labelled advisory everywhere it appears rather than left to be
 inferred. The count of names measured against names declared sits on
 that same side of the line, for the same reason: it is a ratio, and a
 ratio is a target. "Nothing was measurable" is on the other side because
-it is binary and has one correct fix -- name the nodes. And the three
+it is binary and has one correct fix -- name the nodes. And the four
 static checks need no TeX at all, so on a host without `tikz.sty` this
 still reports them and says the geometry was skipped, rather than
 refusing to run.
@@ -3014,9 +3018,11 @@ it ignores while building the archive anyway. Run it bare:
 python3 scripts/release.py
 ```
 
-`tests/`, `bench/`, `.github/` and `.gitignore` are excluded from the
-archive. Every prose document ships: `docs/`, `README.md`, `SOUL.md`,
-`AGENTS.md`, `DEVELOPER-AGENTS.md` and `DEVELOPER.md`, plus `.claude/`.
+`tests/`, `bench/`, `plans/`, `.github/`, `.gitignore` and a few root-level
+CI and tooling files are excluded from the archive
+(`scripts/release.py`'s `EXCLUDE_TOP_LEVEL`). Every prose document ships:
+`docs/`, `README.md`, `SOUL.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md` and
+`DEVELOPER.md`, plus `.claude/`, `.agents/`, `.codex/` and `.opencode/`.
 
 ## ⏰ Running sync on a schedule
 

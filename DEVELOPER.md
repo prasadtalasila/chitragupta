@@ -207,8 +207,8 @@ docs/                     reference docs that ship in the release zip -- everyth
                             each command needs -- the user-facing companion to DESIGN.md
   RETRIEVAL.md              BM25 vs embeddings vs topic model: which answers what, and what to build
   DESIGN.md                 architecture and design decisions -- the rationale, not the map
-  DIAGRAMS.md               the workflow drawn eleven ways; the fenced mermaid blocks are the source
-  diagrams/                 the same eleven as standalone files, for use outside this repo
+  DIAGRAMS.md               the workflow drawn thirteen ways; the fenced mermaid blocks are the source
+  diagrams/                 the same thirteen as standalone files, for use outside this repo
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 rendered exports, by scripts/render_diagrams.py. Exports only -- edit the
                               fenced block in DIAGRAMS.md, then re-render
@@ -275,13 +275,14 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
   pdf_text/                 PDF text extraction, dispatched to pdftotext/docling by config.PARSER; also the parse-quality guard
   sync.py                   orchestrates the above -- the corpus layer's `sync` verb; --remove-stale opts into
                           deleting stale ledger rows (default: report only, see README's "Removing a paper")
-  corpus.py                 the corpus layer's single entry point, `python -m chitragupta.corpus sync|ledger`.
+  corpus.py                 the corpus layer's single entry point, `python -m chitragupta.corpus sync|ledger|topics|discover`.
                           sync.py and ledger.py carry no __main__ block of their own. Imports the verb
                           it was given rather than both, so asking for `ledger` never pays for sync's
                           bibtexparser -- see docs/ARCHITECTURE.md on why that one is not like the
                           other dispatchers
   draft.py                  the drafting layer's single entry point, `python -m chitragupta.draft
-                          gate|dossier|retrieve|references|render`; same rule, same reasons
+                          gate|dossier|retrieve|references|render|...`, twelve verbs (see --help);
+                          same rule, same reasons
   dedup.py                  advisory near-duplicate citekey detection (shared DOI/title), called from sync
   reranker.py               the cross-encoder loader, cached per model id; shared by enrich's search rerank
                           and discover's ladder, so neither imports the other's privates
@@ -313,12 +314,12 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
-chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, six aids
+chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, ten aids
   __init__.py               the layer's shared output contract -- report path (content/review/,
                           mirroring the draft), the "not a gate" banner, the header, and the
-                          write-md-then-render routine all six aids use. No timestamp, so a
+                          write-md-then-render routine all ten aids use. No timestamp, so a
                           report diffs across revisions
-  __main__.py               the layer's single entry point: one parser, six subcommands, each
+  __main__.py               the layer's single entry point: one parser, ten subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no
                           __main__ block of their own -- see docs/ARCHITECTURE.md on why a layer's
                           command surface stays one level deep
@@ -366,17 +367,22 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           (draft-reviser, corpus-reviser, agenda-reviser), and one that
                           assembles accepted units into a book (book-assembler)
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer
-.claude/hooks/            citation_gate_hook.py and style_check_hook.py -- PostToolUse hooks,
+.claude/hooks/            citation_gate_hook.py, style_check_hook.py and code_standards_hook.py -- PostToolUse hooks,
                           mechanically enforcing the citation gate and the prose style check on
                           every Write/Edit under content/drafts/*.md and *.tex (see AGENTS.md);
                           session_start_hook.py checks the project can draft at all; draft_target.py
                           is the shared "which file did this tool call touch" helper both PostToolUse
                           hooks use; safe_path.py decides whether their children may import
-                          chitragupta from the project root (checkout) or not (installed project)
-.claude/settings.json     wires the three hooks above into PostToolUse/SessionStart
+                          chitragupta from the project root (checkout) or not (installed project);
+                          patch_paths.py reads the drafts an apply_patch payload touches (Codex, OpenCode)
+.claude/settings.json     wires the four hooks above into PostToolUse/SessionStart
+.agents/skills/           Codex's copy of the nine skills; .codex/hooks.json runs the same hooks on apply_patch
+.opencode/                OpenCode's copy of the skills (-opencode suffix), its gate plugin, and
+                          opencode.json's deny list for the unsuffixed names (docs/HARNESS.md)
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
                           entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)
-                          -- neither image is built by CI, see DOCKER-DEVELOPER.md
+                          -- CI builds docker/Dockerfile (cpu variant) but never runs it, and does not
+                          build Dockerfile.claude; see DOCKER-DEVELOPER.md
 ```
 
 ## 📐 Figures and copyright
@@ -444,8 +450,8 @@ every citation in a draft, what in the cited source supports it and where
 `.tex`/`.pdf` renders beside it. The report mirrors the draft's own place
 under `content/drafts/`, the same rule `rendered/` and `dossiers/` follow
 (`config.mirrored_dir`), and `chitragupta/review/__init__.py` owns that contract
-for all
-six review-layer commands.
+for every
+review-layer command.
 
 Run it directly rather than wrapping it in an enrichment stage: that
 would have the enrichment layer importing the review layer, and would
@@ -486,15 +492,15 @@ mtime does nothing until a human re-exports. Closing that properly means
 either a Zotero auto-export plugin (outside this repo) or accepting that
 the export stays a deliberate human step.
 
-### 🚫 `content/topics.json` has no consumer
+### 🚫 `content/topics.json` has no drafting consumer
 
-`chitragupta/enrich/topic_model.py` writes it and nothing reads it -- no module,
-no
-genre skill. `survey-writer` groups themes by judgement and says so
-explicitly ("With a small corpus there's no BERTopic step"). That is
-defensible today: clustering is whole-corpus, so assignments are not
-stable between runs, and on a small corpus every document legitimately
-lands in the outlier topic. If it is ever wired in, `survey-writer`'s
-"Cluster by judgment" step is the seam, gated on the file existing and on
-there being non-`-1` assignments -- the same shape the existing skills use
-to gate on `content/chroma/`.
+`chitragupta/enrich/topic_model.py` writes it. Only `corpus discover`
+(`chitragupta/discover/_data.py`, for its c-TF-IDF terms) and sync's residue
+report read it; no genre skill does. `survey-writer` groups themes by
+judgement and says so explicitly ("With a small corpus there's no BERTopic
+step"). That is defensible today: clustering is whole-corpus, so assignments
+are not stable between runs, and on a small corpus every document legitimately
+lands in the outlier topic. If it is ever wired in, `survey-writer`'s "Cluster
+by judgment" step is the seam, gated on the file existing and on there being
+non-`-1` assignments -- the same shape the existing skills use to gate on
+`content/chroma/`.

@@ -380,7 +380,7 @@ embed_overfetch_multiplier = 4
 Or for a single run, without editing the file:
 
 ```bash
-RERANK=true python -m chitragupta.retrieval search "digital twin composability"
+RERANK=true python -c "from chitragupta.enrich import embed_index; print(embed_index.search('digital twin composability'))"
 ```
 
 Two keys rather than one, because `rerank_model = ""` cannot mean "off"

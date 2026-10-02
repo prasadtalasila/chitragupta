@@ -139,8 +139,8 @@ same rule `content/rendered/` and `content/dossiers/` follow: a draft at
 `survey.verbatim.md` and `survey.coverage.md`. A draft directly in
 `content/drafts/`, or outside it altogether, has no path to mirror and
 keeps the flat directory; a draft resolving outside `content/` is
-refused. `chitragupta/review/__init__.py` owns that contract for all six review-layer
-commands -- see [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
+refused. `chitragupta/review/__init__.py` owns that contract for every review-layer
+command -- see [ARCHITECTURE.md](ARCHITECTURE.md#-layer-4-the-review-layer).
 
 For each citing passage in the draft, emit:
 

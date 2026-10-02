@@ -212,6 +212,7 @@ mkdir my-project && cd my-project
 python3 -m venv .venv-full && source .venv-full/bin/activate
 pip install chitragupta-cli
 chitragupta init                      # config.toml, .claude/, papers/, content/, prose docs
+                                      # add --agent codex / --agent opencode for those agents
 chitragupta install os-deps           # TeX Live, Pandoc, poppler. Debian/Ubuntu, needs root
 pip install 'chitragupta-cli[enrich]'   # optional, several GB -- only step 4 uses it
 ```
@@ -256,18 +257,19 @@ chitragupta corpus ledger
 #    whether you have it. "The enrichment layer" below, then
 #    docs/RETRIEVAL.md, say which stage is worth the cost.
 
-# 5. In Claude Code, ask for a draft, e.g.:
+# 5. In your coding agent (Claude Code, Codex or OpenCode), ask for a draft, e.g.:
 #    "write a survey section on digital twin composability"
 #    "draft a thesis chapter on runtime verification for autonomous robots"
 #    "write a textbook chapter introducing digital twin asset reuse"
 #    "write a tutorial that builds a minimal digital twin asset from scratch"
 #    "do deep research on fault injection for digital twin testbeds"
-# The matching skill in .claude/skills/ picks this up automatically,
-# including its own gate -> references -> render chain (chitragupta draft <verb>)
+# The matching skill in that agent's skills folder picks this up automatically,
+# including its own gate -> references -> render chain (chitragupta draft <verb>).
+# docs/LLM-AGENTS.md has each agent's setup and skill names.
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
-eight review-layer commands for checking a finished draft against its
+ten review-layer commands for checking a finished draft against its
 sources are in
 [docs/CLI.md](docs/CLI.md) -- see [The full first run, step by
 step](docs/CLI.md#-the-full-first-run-step-by-step), which walks the whole
@@ -427,9 +429,10 @@ one-screen router for exactly that.
 
 Every prose document ships in the release archive -- everything under
 `docs/`, plus `SOUL.md`, `CLAUDE.md`, `AGENTS.md`, `DEVELOPER-AGENTS.md`
-and `DEVELOPER.md` -- as do `.claude/`'s genre skills. Only this repo's own
-machinery stays behind: `tests/`, `bench/` (the measurement harness and its
-raw timings), `.github/` and `.gitignore`.
+and `DEVELOPER.md` -- as do the genre skills in `.claude/`, `.agents/` and
+`.opencode/`. Only this repo's own machinery stays behind: `tests/`,
+`bench/` (the measurement harness and its raw timings), `plans/`,
+`.github/`, `.gitignore` and a few root-level CI and tooling files.
 
 ## 🙏 Acknowledgements
 

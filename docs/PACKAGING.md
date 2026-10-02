@@ -102,7 +102,7 @@ command already has -- this is a front door, not a redesign.
 | --- | --- |
 | `chitragupta init [DIR] [--force] [--dry-run] [--agent NAME]` | Scaffold a project directory -- `config.toml`, `.claude/` skills and hooks, `papers/`, `content/`, `assets/`, the prose docs. What the release zip ships today. `--agent codex` and `--agent opencode` add that harness's launcher and its own copy of the skills (`.codex/` and `.agents/`, `.opencode/`); repeat for several, default `claude` ([LLM-AGENTS.md](LLM-AGENTS.md) for each agent's setup, [HARNESS.md](HARNESS.md) for the design) |
 | `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution, a hook launcher on any harness that cannot start. Exits 0 on findings -- an aid, never a gate |
-| `chitragupta install os-deps\|gpu-torch` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do. Other stages are refused by name with the pip equivalent |
+| `chitragupta install os-deps\|gpu-torch\|enrich` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do, or install the `enrich` extra at the running version. `all`, `dev-deps` and `python-deps` are refused by name with the pip equivalent |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
 
 ### 📚 `corpus` -- the deterministic run

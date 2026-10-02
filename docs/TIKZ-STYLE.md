@@ -492,6 +492,6 @@ author gets wrong:
   nodes you draw, in whichever idiom -- `\node (a)` and
   `child { node (a) ... }` both count.
 
-[REVIEW.md](REVIEW.md) has the aid among the other five;
+[REVIEW.md](REVIEW.md) has the aid among the other nine;
 [CLI.md](CLI.md#-chitragupta-review-figure) has its flags and the full
 statement of the boundary.

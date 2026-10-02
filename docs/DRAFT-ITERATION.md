@@ -515,12 +515,16 @@ cut a code block in half. Markdown fences (``` and `~~~`) and LaTeX
 ## 💾 Backup and restore
 
 `content/dossiers/` is gitignored, like `content/drafts/` and
-`content/rendered/` before it. That is a deliberate choice, not an
-oversight: `evidence.md` quotes passages from copyrighted sources, and
-this project already treats per-host content as the user's own to keep.
-Nothing under `content/dossiers/` is tracked, and no example one ships --
-a dossier is a record of a real run, and one assembled to be looked at
-would be a reconstruction wearing a record's clothes.
+`content/rendered/` before it. That is a deliberate choice, not an oversight:
+`evidence.md` quotes passages from copyrighted sources, and this project
+already treats per-host content as the user's own to keep. Nothing under your
+project's `content/dossiers/` is tracked. The only committed dossiers are real
+runs' records: the four samples under
+`docs/examples/sample-project/content/dossiers/dt-overview/`, and one per
+harness example under `docs/examples/codex/` and `docs/examples/opencode/`.
+None was assembled for show: a dossier is a record of a real run, and one
+assembled to be looked at would be a reconstruction wearing a record's
+clothes.
 
 What replaces version control is an explicit bundle:
 

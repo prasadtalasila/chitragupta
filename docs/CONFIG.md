@@ -140,7 +140,7 @@ used as given.
   as the enrichment caches below it. It is also what every tier-1 command
   that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, and so do all six of `chitragupta.review`'s aids.
+  that resolves outside it, and so do all ten of `chitragupta.review`'s aids.
   `ledger` is the one that takes no path argument at all -- its CLI only
   ever addresses rows by citekey or status -- so the rule applies to it
   vacuously rather than needing a check. This one
@@ -333,9 +333,9 @@ The values in full:
   file is shared rather than split per command because that is what
   makes it safe: a rotating file can only have one writer process at a
   time, and these two already exclude each other through the pipeline
-  write lock. Commands that don't take that lock -- `chitragupta.draft` (all eleven
+  write lock. Commands that don't take that lock -- `chitragupta.draft` (all twelve
   drafting-layer CLIs: gate, dossier, retrieve, references, evidence, render,
-  style, spec, unit, registry, tldr) --
+  style, spec, unit, registry, tldr, figures) --
   write to stdout only and are not logged.
 
 The log file's own location, `logs/` beside the repo root, has no

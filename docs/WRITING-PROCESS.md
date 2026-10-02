@@ -96,7 +96,7 @@ the dossier instead of redoing the research:
 | --- | --- | --- |
 | An ordinary change: shorten, expand, restructure, correct, copy-edit | `draft-reviser` (the default -- picked automatically) | Reads the dossier, edits only the affected sections, re-searches only when the change opens genuinely new ground. The cheapest path there is |
 | The whole corpus re-searched, cost regardless | say so explicitly -- "re-check the entire draft against the corpus" | `corpus-reviser`. Re-runs every recorded sub-theme query against the current corpus, honouring what was already rejected and why |
-| A repair queued by a review scan | "work the review agenda" | `agenda-reviser`. Fixes one unattended finding at a time -- a short verbatim run, a prose issue, an uncited claim -- never applies a repair unasked, and re-verifies every fix through the gate |
+| A repair queued by a review scan | "work the review agenda" | `agenda-reviser`. Fixes one unattended finding at a time -- a short verbatim run, a prose issue, a citation to a paper the corpus no longer has -- never applies a repair unasked, and re-verifies every fix through the gate |
 
 **The default path, step by step.**
 [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-revising-a-draft) has the full
@@ -138,20 +138,20 @@ silently reverts to typewriter text on the next render
 
 Nothing runs automatically when you save, and you don't have to tell the
 pipeline you edited it. The next time you ask for a revision -- or run
-`chitragupta draft dossier status content/drafts/<slug>.md` yourself --
-step 1 above compares a digest of the draft's current text against the
-one recorded at the last `dossier stamp`. A changed digest reports
-`CHANGED since last stamp` and only then checks four more specific
-things your edit might have caused: a citation you added with no
-`evidence.md` block, an `evidence.md` block for a citation you removed,
-a heading with no row in `sections.md`, and a `sections.md` row with no
-matching heading. `draft-reviser` offers each finding to you one at a
-time and acts only on what you agree to -- it never applies a repair
-unasked, and it never blocks the revision on one going unanswered.
-(`agenda-reviser` is the one exception: it may not touch `scope.md`, so a
-repair it makes leaves the fingerprint deliberately stale -- the honest
-signal that an automated pass, not your own revision session, touched
-the draft since anyone last confirmed it.)
+`chitragupta draft dossier status content/drafts/<slug>.md` yourself -- step 1
+above compares a digest of the draft's current text against the one recorded
+at the last `dossier stamp`. A changed digest reports `CHANGED since last
+stamp` and only then checks five more specific things your edit might have
+caused: a citation you added with no `evidence.md` block, an `evidence.md`
+block for a citation you removed, a heading with no row in `sections.md`, a
+`sections.md` row with no matching heading, and a `math.md` row appearing
+nowhere in the draft. `draft-reviser` offers each finding to you one at a time
+and acts only on what you agree to -- it never applies a repair unasked, and
+it never blocks the revision on one going unanswered. (`agenda-reviser` is the
+one exception: it may not touch `scope.md`, so a repair it makes leaves the
+fingerprint deliberately stale -- the honest signal that an automated pass,
+not your own revision session, touched the draft since anyone last confirmed
+it.)
 
 Nothing here is a gate. A hand-edited draft that never gets re-stamped
 just makes the next revision less efficient -- it cannot make a draft

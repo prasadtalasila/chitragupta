@@ -163,7 +163,7 @@ You normally never open `content/topic_graph.json` -- `corpus discover`
 and the `--html` page read it for you. It is documented here for the
 day you script against it with `--json`, or wonder why the tool asked
 you to re-run a stage. One enrichment run
-(`chitragupta enrich --stages topic-graph`, the sixth and last stage)
+(`chitragupta enrich --stages topic-graph`, the seventh and last stage)
 writes it from the topics the earlier stages already found; if those
 inputs are missing, or were built under a different embedding model,
 the stage stops and tells you which one to re-run rather than

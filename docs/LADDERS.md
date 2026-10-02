@@ -481,7 +481,7 @@ because nothing degrades: a module either imports or raises
 
 | # | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all ten aids), `chitragupta.passages` |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover`, `chitragupta.review` (all ten aids), `chitragupta.passages` |
 | 2 | a venv with `bibtexparser` | `python -m chitragupta.corpus sync` |
 | 3 | a venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -623,7 +623,7 @@ And the same decisions against the layer that makes them:
 | 1. Corpus (`chitragupta.corpus sync`) | accelerator | parser backend, interpreter 2 | **holds it** |
 | 2. Drafting (genre skills) | evidence passages | interpreter 1, render format | none |
 | 3. Enrichment (`python -m chitragupta.enrich`) | enrichment text source, accelerator | interpreter 3, render format | **same lock as sync** |
-| 4. Review (the three aids) | evidence passages, detection tiers | interpreter 1, render format | none |
+| 4. Review (the ten aids) | evidence passages, detection tiers | interpreter 1, render format | none |
 
 The two lock-holders never run at once: the second to start exits `2`
 rather than interleaving writes to `content/`.

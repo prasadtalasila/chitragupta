@@ -934,7 +934,7 @@ cytoscape's algorithms today.** Despite section 2's inventory of the
 library, `families.js`, `ego.js` and `absence.js` ship their own MCL,
 Dijkstra, BFS and hypergeometric tail, written out precisely so they
 run under `node --test` with no canvas. Exactly two cytoscape
-algorithms are live, both in `app.js`: the `cose` force layout that
+algorithms are live, both in `canvas.js`: the `cose` force layout that
 places the ungrouped view (the grouped and ego regimes are `preset`
 over positions `graph.js`/`ego.js` compute), and `closedNeighborhood()`
 for the hover highlight -- which runs over the currently *drawn*

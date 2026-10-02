@@ -674,8 +674,8 @@ All five run the same gate, in the same loop, with the same wording.
 these are the two skills that pay off the enrichment layer. `docling`
 gives passages good enough to survive review; `embed` gives semantic
 recall, finding the paper that makes your point in words you did not
-search for. They are also the only two skills whose SKILL.md names
-`chitragupta.enrich.embed_index.search()` as an alternative to BM25.
+search for. They are also the two genre skills whose SKILL.md names
+`chitragupta.enrich.embed_index` as an alternative to BM25.
 
 Both read the same corpus the rest of the pipeline does, and that corpus
 is the bibliography and nothing else -- so every document either skill can
@@ -885,13 +885,13 @@ separate for that reason.
 
 ### ⏱ One draft, in time order
 
-The full workflow with time on the vertical axis instead of dependency.
-Useful for two things in particular. The first is seeing that **the gate
-runs twice**: the PostToolUse hook fires on every write under
-`content/drafts/`, so a bad citekey cannot reach disk even if a skill
-forgets, and the skill then runs the gate itself, because the hook fires
-only on the tool call that wrote the file. The second is seeing the
-**loop** that wraps both of them.
+The full workflow with time on the vertical axis instead of dependency. Useful
+for two things in particular. The first is seeing that **the gate runs
+twice**: the PostToolUse hook fires on every write under `content/drafts/`, so
+a bad citekey written to disk is refused straight back to the model even if a
+skill forgets, and the skill then runs the gate itself, because the hook fires
+only on the tool call that wrote the file. The second is seeing the **loop**
+that wraps both of them.
 
 ```mermaid
 sequenceDiagram

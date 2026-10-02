@@ -133,7 +133,7 @@ different mechanism answering a different question:
 
 | | `.claude/hooks/` | `git-hooks/` |
 | --- | --- | --- |
-| Fired by | the Claude Code harness, on `Write`/`Edit` | git, on `commit` |
+| Fired by | the agent harness on its file-write tools: Claude Code's `Write`/`Edit`, Codex's `apply_patch`, OpenCode's plugin | git, on `commit` |
 | Sees | what *this agent* wrote | every path into a commit -- a human in an editor, another agent, `git apply`, `sed` |
 | Installed by | `.claude/settings.json`, which ships and is scaffolded | `core.hooksPath`, set by `install_full_pipeline.sh dev-deps` |
 | May block | only the citation gate | yes -- see below |
@@ -450,7 +450,7 @@ argument with no quoting, and ignores the shell entirely:
 ```
 
 That is not an example: it is what `.claude/settings.json` now contains,
-for all three hooks, and `tests/test_settings_launchers.py` asserts it of
+for all four hooks, and `tests/test_settings_launchers.py` asserts it of
 every entry in that file rather than of any named one. Exec form and the
 braced placeholder were confirmed working before being adopted -- the
 harness substituted the placeholder to an absolute path and the gate still
@@ -597,17 +597,17 @@ the harness, and emits only that one. The branch point is recorded
 because it is not guessable from the field names.
 
 **Codex and OpenCode launch the same scripts** (#812, #900).
-`.codex/hooks.json` registers the gate, style and session-start hooks
-on `apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js`
-pipes each file tool's arguments to `citation_gate_hook.py` as a
-payload of the shape the hooks already read. Neither holds any gate
-logic. The one payload shape they added is `apply_patch`'s: the patch
-text in `tool_input.command`, whose file headers `patch_paths.py` reads,
-so one write can name several drafts and every one is gated. A patch
-that mentions a draft but whose headers cannot be read is the one
-exception to malformed stdin failing open: it blocks, because failing
-open there is a silently inert gate. [HARNESS.md](HARNESS.md) has the
-design and what each harness enforces.
+`.codex/hooks.json` registers the gate, style and session-start hooks on
+`apply_patch|Edit|Write`, and `.opencode/plugins/chitragupta-gate.js` pipes
+each file tool's arguments to `citation_gate_hook.py`, then
+`style_check_hook.py`, as a payload of the shape the hooks already read.
+Neither holds any gate logic. The one payload shape they added is
+`apply_patch`'s: the patch text in `tool_input.command`, whose file headers
+`patch_paths.py` reads, so one write can name several drafts and every one is
+gated. A patch that mentions a draft but whose headers cannot be read is the
+one exception to malformed stdin failing open: it blocks, because failing open
+there is a silently inert gate. [HARNESS.md](HARNESS.md) has the design and
+what each harness enforces.
 
 **Codex's launcher cannot be a relative path.** Codex runs a hook in the
 session's working directory -- wherever the user started it -- and sets
@@ -896,8 +896,10 @@ whoever is changing a hook and wants the sources.
 5. **Whether the Codex and OpenCode results hold across versions.** The
    six trials above were run on Claude Code; Codex 0.159.0's hooks and
    OpenCode 1.18.33's plugin were measured end to end on 2026-09-29
-   ([HARNESS.md](HARNESS.md)). Both harnesses release often, and nothing
-   re-measures them.
+   ([HARNESS.md](HARNESS.md)), and again on real local models with Codex
+   0.159.3 and OpenCode 1.18.34 on 2026-10-02
+   ([LOCAL-MODELS.md](LOCAL-MODELS.md)). Both harnesses release often,
+   and nothing re-measures them automatically.
 6. **Whether a session-start message is the right register for a fault.**
    The preflight reports once and cannot re-report: a user who runs
    `python -m chitragupta.corpus sync` two minutes later keeps stale advice in

@@ -194,12 +194,14 @@ enrichment layer is optional and nothing above it needs it.
   a draft whose cited papers a `sync` removed. If you do want the whole
   corpus re-searched, ask for it and you get `corpus-reviser`, which is
   the same edit discipline over a full retrieval pass -- it still keeps
-  the dossier. And if what you want repaired is the verbatim overlap a
-  scan reported, that is `agenda-reviser`: it works the findings one at
-  a time, reasks you before deciding paraphrase-or-quote on a long run,
-  and keeps no repair that `python -m chitragupta.draft gate` and `python -m
-  chitragupta.review verbatim recheck` do not both accept. Never re-run a genre
-  skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
+  the dossier. And if what you want repaired is what a review scan
+  queued, that is `agenda-reviser`: it works the agenda's unattended
+  items -- short verbatim runs, `prose` findings, `missing-citekey` --
+  one at a time, asks you before deciding paraphrase-or-quote on a long
+  run, and keeps no repair unless `python -m chitragupta.draft gate`
+  passes and the `python -m chitragupta.review agenda --baseline`
+  recheck lists it as resolved with no new objective finding. Never
+  re-run a genre skill to change an existing draft -- see docs/DRAFT-ITERATION.md.
 
   **The human's own prose is a first-class input, not an obstacle.** An
   `outline.md` in the dossier can declare, per section, a brief the

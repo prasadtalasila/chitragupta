@@ -399,7 +399,8 @@ chitragupta review agenda content/drafts/thesis/methods.tex
 ```
 
 It **reads the aids' filed JSON and never runs an aid**, so run the aids
-first with `--write`, then the agenda. Any aid whose report is absent is
+first -- with `--write` where an aid offers it; `provenance` always files
+its report -- then the agenda. Any aid whose report is absent is
 named as absent rather than quietly skipped.
 
 Each item carries a class, a section anchor, and whether it is

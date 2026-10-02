@@ -126,10 +126,10 @@ Two properties carry the safety argument, and both are visible above:
 
 ## 📚 Layer 1: the corpus layer
 
-One entry point, `python -m chitragupta.corpus`, with two verbs: `sync` does the
-work and `ledger` reads back what it did. Until 5.2.0 this section said
-"one command" and meant it — `chitragupta.ledger` sat outside as a second bare
-command, which is the gap that release closed.
+One entry point, `python -m chitragupta.corpus`, with four verbs: `sync` does
+the work, and `ledger`, `topics` and `discover` read what it recorded. Until
+5.2.0 this section said "one command" and meant it — `chitragupta.ledger` sat
+outside as a second bare command, which is the gap that release closed.
 
 `sync` reads `papers/bibliography.bib`, updates one ledger row per
 citekey, resolves each PDF from the entry's `file` field, and extracts
@@ -203,8 +203,11 @@ Each skill retrieves from the corpus layer, drafts into
 draft at three points, and only one of them is the skill's own good
 intentions. A hook runs it on every write under `content/drafts/` -- a
 PostToolUse hook on Claude Code and Codex, a plugin on OpenCode -- so a
-draft cannot be saved with an unverifiable citation even if a skill
-forgets to check. The skill then runs it again before presenting
+draft saved with an unverifiable citation is refused straight back to
+the model, even if a skill forgets to check. That holds only where the
+model writes through the harness's file tools: behind llama.cpp, Codex
+is never offered `apply_patch` and its model writes through the shell
+([LOCAL-MODELS.md](LOCAL-MODELS.md)). The skill then runs it again before presenting
 anything. And `draft render` runs it before producing any format, so a
 draft written around the hook, through a shell command, still cannot
 become a document. [HARNESS.md](HARNESS.md) has what each harness
@@ -648,7 +651,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all eleven commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all seven aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands -- `style` additionally probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all ten aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -705,11 +708,11 @@ by that aid's own parser. The submodules inside `chitragupta/enrich/` and
 done nothing. That is a trap, but a silent and harmless one, and it is
 the price of there being exactly one `--help` per layer.
 
-The drafting layer's eleven commands carry the same trap without moving
+The drafting layer's twelve commands carry the same trap without moving
 into a package. `citation_gate.py`, `dossier.py`, `references.py`,
 `evidence_appendix.py`, `render_output.py`, `retrieval.py`,
-`style_check.py`, `spec.py`, `unit.py`, `registry.py` and `tldr.py`
-stayed flat in `chitragupta/` -- each a top-level module or package
+`style_check.py`, `spec.py`, `unit.py`, `registry.py`, `tldr.py` and
+`draft_figures.py` stayed flat in `chitragupta/` -- each a top-level module or package
 there, never gathered into a shared drafting subpackage the way
 `enrich/`'s stages are; `chitragupta/draft.py` beside them is what
 dropped their `__main__` blocks and gave the layer its one front door.
@@ -754,7 +757,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all seven review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all ten review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 

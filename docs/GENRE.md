@@ -91,7 +91,7 @@ document that fails at both.
 
 | | Output | Citation density | Subagents | Cost |
 | --- | --- | --- | --- | --- |
-| `survey-writer` | `content/drafts/<slug>.md` | every claim | none | one run |
+| `survey-writer` | `content/drafts/<slug>.md` | every claim | one per sub-theme on a broad topic, otherwise none | one run |
 | `thesis-chapter-writer` | `content/drafts/<slug>.tex` fragment | every claim | none | one run |
 | `textbook-chapter-writer` | `content/drafts/<slug>.md` | sparse -- background only | none | one run |
 | `tutorial-writer` | `content/drafts/<slug>.md` | closing section only | none | one run, plus running the lesson |
@@ -352,12 +352,12 @@ the field states some things one particular way.
 do*.
 
 **Every repair is verified before it is kept.** `python -m chitragupta.draft
-gate` and `python -m chitragupta.review verbatim recheck` both have to come back
-clean, the finding has to be gone, the count of objective findings must
-not have risen, and no *new* objective finding may have appeared. The
-last two conditions are not the same one twice: a rewrite that fixes its
-own finding by lifting from a different source leaves the count exactly
-where it was, and is caught only by being listed as new.
+gate` and the `python -m chitragupta.review agenda --baseline` recheck both
+have to come back clean, the finding has to be gone, the count of objective
+findings must not have risen, and no *new* objective finding may have
+appeared. The last two conditions are not the same one twice: a rewrite that
+fixes its own finding by lifting from a different source leaves the count
+exactly where it was, and is caught only by being listed as new.
 
 Two attempts per finding, one pass per invocation. Every attempt is
 logged in `revisions.md` with its outcome, refusals included.
@@ -485,23 +485,24 @@ not a clean bill of health.
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md) has why each tier sees what
 it sees.
 
-**The prose check is run, reported, and never acted on.** Before
-presenting, each skill runs `python -m chitragupta.draft style
-content/drafts/<path>` and reports what it says -- the findings, and the
-header lines naming which dialect was checked and on whose authority. It
-measures only what [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 marks
-decidable: §2's defect markers, an acronym never expanded at first use,
-and §8's dialect against `scope.md`'s `language:` line. So it is silent
-on whether a paragraph leads with its point, it cannot tell a quotation
-from the draft's own voice, and `dialect: not checked` means nobody ever
-recorded one rather than that nothing was wrong. **No skill fixes what it
-finds.** A finding is a place to look -- the first pass of this check
-over this repository's own docs kept 59 of its 73 marker hits after
-inspecting each -- and the sanctioned fix path is `draft-reviser`'s
-copy-edit mode, which reads the recorded dialect and logs one
-`revisions.md` entry naming the convention. Like the scan it exits 0
-whatever it finds; [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why
-it may never become a gate.
+**The prose check is run, reported, and never acted on.** Before presenting,
+each skill runs `python -m chitragupta.draft style content/drafts/<path>` and
+reports what it says -- the findings, and the header lines naming which
+dialect was checked and on whose authority. It measures only what
+[WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9 marks decidable: §2's defect
+markers, an acronym never expanded at first use, and §8's dialect against
+`scope.md`'s `language:` line. So it is silent on whether a paragraph leads
+with its point, it cannot tell a quotation from the draft's own voice, and
+`dialect: not checked` means nobody ever recorded one rather than that nothing
+was wrong. **No genre skill fixes what it finds**; the fix paths are
+`draft-reviser`'s copy-edit mode, and `agenda-reviser` for unattended `prose`
+items. A finding is a place to look -- the first pass of this check over this
+repository's own docs kept 59 of its 73 marker hits after inspecting each --
+and the sanctioned fix path is `draft-reviser`'s copy-edit mode, which reads
+the recorded dialect and logs one `revisions.md` entry naming the convention.
+Like the scan it exits 0 whatever it finds;
+[ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why it may never become a
+gate.
 
 **Both are run, and neither writes without being asked.** The scan was
 offered rather than run until that change, on the reasoning that it can

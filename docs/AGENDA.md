@@ -9,8 +9,9 @@ wanting to know what each part of it means before acting on any of it.
 measures ([REVIEW.md](REVIEW.md)), and the unattended-repair loop's
 design ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)).
 
-An agenda is **one ranked, deduplicated worklist merged across every
-other review aid**, so you read one document instead of nine. Produce
+An agenda is **one ranked, deduplicated worklist merged across the
+eight review aids that read a draft** (every aid but `union`, which
+reads a book), so you read one document instead of eight. Produce
 one with:
 
 ```bash

@@ -111,8 +111,8 @@ about the *corpus* side of the boundary -- were the surfaced candidates
 used? `uncited` asks about the *prose* side -- which claims here are
 supported by no citation? They share the word "uncited" and nothing else,
 which is why one always says *candidates* and the other always says
-*sentences*. It is also the only aid that reads no corpus, so it runs
-before you have parsed anything.
+*sentences*. Like `synthesis` and `figure`, it reads no corpus, so it
+runs before you have parsed anything.
 
 **`review quotation` -- is each quoted span really in the source it
 cites?** The only aid whose answer is binary. A `quote:` recorded in a
