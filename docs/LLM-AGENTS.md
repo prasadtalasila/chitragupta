@@ -95,7 +95,9 @@ Two things matter when Codex runs a local model:
   container without them, every sandboxed command fails with `bwrap: No
   permissions to create new namespace`, and the pipeline's commands
   cannot run. The recorded run used
-  `--dangerously-bypass-approvals-and-sandbox` in a scratch directory.
+  `--dangerously-bypass-approvals-and-sandbox` in a scratch directory,
+  with `--dangerously-bypass-hook-trust`, so it never showed the trust
+  prompt.
 - **Behind llama.cpp's server, the mandatory check never fires.** Codex
   sends `apply_patch` as a Responses tool of type `custom`, which
   llama.cpp skips. The model then writes files through the shell, which
@@ -163,8 +165,8 @@ Without the mandatory check, as on Codex behind llama.cpp and on
 Continue, the model hears about a bad key only if it runs the gate
 itself, or at render, after the draft is finished.
 
-**The warning that a hook did not fire is easy to miss.** On Codex the
-model's own gate run printed it twice, and the model read past it both
+**The warning that a hook did not fire is easy to miss.** On Codex each of
+the model's two gate runs printed it, and the model read past it both
 times. It also fires after `chitragupta draft references`, which
 rewrites a draft the hook already checked, so it can appear on a draft
 that was gated correctly.

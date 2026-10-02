@@ -494,12 +494,12 @@ markers, an acronym never expanded at first use, and §8's dialect against
 `scope.md`'s `language:` line. So it is silent on whether a paragraph leads
 with its point, it cannot tell a quotation from the draft's own voice, and
 `dialect: not checked` means nobody ever recorded one rather than that nothing
-was wrong. **No genre skill fixes what it finds**; the fix paths are
-`draft-reviser`'s copy-edit mode, and `agenda-reviser` for unattended `prose`
-items. A finding is a place to look -- the first pass of this check over this
-repository's own docs kept 59 of its 73 marker hits after inspecting each --
-and the sanctioned fix path is `draft-reviser`'s copy-edit mode, which reads
-the recorded dialect and logs one `revisions.md` entry naming the convention.
+was wrong. **No genre skill fixes what it finds.** A finding is a place to
+look -- the first pass of this check over this repository's own docs kept 59
+of its 73 marker hits after inspecting each. The fix paths are
+`draft-reviser`'s copy-edit mode, which reads the recorded dialect and logs
+one `revisions.md` entry naming the convention, and `agenda-reviser` for
+unattended `prose` items.
 Like the scan it exits 0 whatever it finds;
 [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is why it may never become a
 gate.
