@@ -322,8 +322,8 @@ is why it lives in `chitragupta/` and not in the package.
 
 A skill must not run this layer. A skill runs inline with the same Bash
 access as the session that invoked it, so it *can* shell out to
-`chitragupta/enrich/__main__.py`; AGENTS.md and all seven `SKILL.md` files
-say it must not.
+`chitragupta/enrich/__main__.py`; AGENTS.md and eight of the nine
+`SKILL.md` files say it must not.
 
 There are two reasons. This layer takes the same write lock as `sync`, so a skill
 invoking it can block or be blocked by the user's own run. And a first
@@ -369,26 +369,31 @@ Output lands in `content/review/`, mirroring the draft's path exactly as
 `render_output._output_dir`; a draft resolving outside `content/` is
 refused, the same tier-1 rule the gate chain follows.
 
-and can therefore be automatic and absolute. Seven of the nine answer
-questions of judgement (the original six, plus `support`, which scores
+The gate answers a question with one correct answer (is this citekey in the
+ledger?), and can therefore be automatic and absolute. Seven of the ten aids
+answer questions of judgement (the original six, plus `support`, which scores
 a claim against its cited source's passage but never calls the verdict
-itself), where a machine verdict would be either wrong often enough to
-be ignored, or trusted more than it deserves. They give you the evidence
-and leave the call to you.
+itself), where a machine verdict would be either wrong often enough to be
+ignored, or trusted more than it deserves. They give you the evidence and
+leave the call to you.
 
-`quotation` is the seventh, and it is not one of those. Its question
+`quotation` is the eighth, and it is not one of those. Its question
 (does this quoted span appear in the source it is attributed to?) is
 binary, deterministic, and about as close to ground truth as anything
 outside the gate. It is the sharpest test this section has, so it is
 worked through immediately below instead of being set aside as an
 exception.
 
-`agenda` is the eighth, and it asks no question of its own. It merges
-what the other eight already found into one ranked list, so each item it
+`agenda` is the ninth, and it asks no question of its own. It merges
+what eight of the others already found into one ranked list, so each item it
 surfaces carries whichever answer (judgement or binary) produced it,
 unchanged. Merging does not turn a judgement into a fact: an `agenda`
 item inherited from `provenance` is still something to read and decide,
 and `agenda` has not concluded it.
+
+`union` is the tenth. It reads an assembled book instead of a single
+draft, which is why the agenda does not merge it; [REVIEW.md](REVIEW.md)
+covers what it reports.
 
 **Which side a check falls on is decided by what it is measured against,
 not by how decidable its answer is.** The two are easy to conflate, and

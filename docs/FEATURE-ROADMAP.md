@@ -69,7 +69,7 @@ everything below.
 - [The borrowing posture](#-the-borrowing-posture-inspiration-or-copy)
 - [The decision that gated part of this (taken)](#-the-decision-that-gated-part-of-this-taken)
 - [What the OpenScholar sample demonstrates](#-what-the-openscholar-sample-demonstrates)
-- [Four constraints every item respects](#-four-constraints-every-item-respects)
+- [Five constraints every item respects](#-five-constraints-every-item-respects)
 - [Theme A: close the leak](#-theme-a-close-the-leak)
 - [Theme B: make synthesis structural](#-theme-b-make-synthesis-structural)
 - [Theme C: verify faithful use](#-theme-c-verify-faithful-use)
@@ -315,7 +315,7 @@ all nine skills (#183). It did not transfer: `style_check` is
 `python -m chitragupta.draft style`, a **drafting-layer** command, and
 the never-automatic rule was stated only about layer 4.
 
-## 🔑 Four constraints every item respects
+## 🔑 Five constraints every item respects
 
 Named up front because each one has already killed an obvious design.
 

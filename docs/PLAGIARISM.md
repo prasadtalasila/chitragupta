@@ -101,7 +101,8 @@ real. That answers "is every citation genuine" and says nothing about
 "does the wording around a citation belong to whoever it credits, or to
 someone else". `chitragupta/review/verbatim_check/`'s two modes exist to
 answer the second question mechanically, over what is currently checked:
-verbatim word-n-gram reuse.
+verbatim word n-grams (tier 1), stemmed skip-grams (tier 2) and, where the
+`enrich` group is installed, embedding similarity (tier 3).
 
 The deterministic tiers catch verbatim and light-paraphrase reuse only.
 Tier 2's stemmed skip-grams (`chitragupta/overlap_skipgram.py`) catch a
@@ -478,8 +479,8 @@ it has since been measured, and
 records what the measurement found.
 
 One caveat governs the whole section: repairing every finding the exact
-tier can see leaves untouched everything it cannot. Paraphrase is not
-detected, and an empty findings list is not a clean bill of health.
+tier can see leaves untouched everything it cannot. The exact tier does not
+detect paraphrase, and an empty findings list is not a clean bill of health.
 
 ## 📊 Measured: does the corpus's parser backend change the answer?
 
@@ -578,12 +579,10 @@ wall-clock time is not the limiting factor:
   is not recommended casually. If a shorter floor is needed, treat it as
   a deliberate reindex decision rather than a flag.
 
-The larger recall gap given the stated priority is the page-boundary
-limitation above, not either flag: a real lift split by a page break can
-be entirely missed regardless of `--gap`/`--min-run`, and no CLI setting
-reaches it. If catching more matters enough to justify slower checks,
-that global-token-position fix comes next, ahead of tuning either flag
-further.
+The page-boundary limitation is no longer a recall gap: source positions
+are global, so a lift split by a source page break is found as one run
+(see the gap-tolerant merge above), whatever `--gap` and `--min-run` are
+set to.
 
 ## 🔗 See also
 

@@ -91,7 +91,7 @@ giving no answer.
   is where LLM output already lives, and because a skill session, which
   is what composes the words, is drafting-layer by definition.
 
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-four-constraints-every-item-respects)'s
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-five-constraints-every-item-respects)'s
 constraint 1 ("no LLM output may reach the corpus plane") names this
 placement as the whole design decision behind the module, and nothing below
 changes that. The abstract fallback does not touch that constraint from
@@ -272,7 +272,7 @@ first:
 
 1. **It breaches the dependency boundary.** Centroid selection needs
    `sentence_transformers`, which
-   [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-four-constraints-every-item-respects)'s
+   [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-five-constraints-every-item-respects)'s
    constraint 3 quarantines behind the `enrich` extra and
    `pyproject.toml` deliberately keeps out of core, and `tldr` is a
    tier-1 command that must run under bare `python3`

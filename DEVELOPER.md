@@ -411,7 +411,7 @@ string:
 }
 ```
 
-Two details worth knowing about that `cite` string:
+Three details worth knowing about that `cite` string:
 
 - The number comes from the **caption's own text**, never from the
   picture's position. Publisher logos and licence badges are pictures
