@@ -4,15 +4,15 @@ Status: **current for 6.128.** Written 2026-10-02.
 
 **Written for** anyone choosing which coding agent, and which model, to
 draft with. chitragupta itself calls no language model: nothing under
-`chitragupta/` sends a prompt anywhere. A coding agent -- Claude Code,
-Codex, OpenCode -- reads a skill, drives the model, and runs the
+`chitragupta/` sends a prompt anywhere. A coding agent (Claude Code,
+Codex or OpenCode) reads a skill, drives the model, and runs the
 pipeline's commands. This page says how to set a project up for each
-agent, and what was observed when each one drafted a survey.
+agent, and what happened when each one drafted a survey.
 
 The one rule is the same everywhere: a citekey may be used only if it is
 in your own `.bib` export and the ledger picked it up from a real PDF
-([SOUL.md](../SOUL.md)). What differs between agents is how early a
-broken key is caught.
+([SOUL.md](../SOUL.md)). Agents differ in how early they catch a broken
+key.
 
 ## 🧭 Table of contents
 
@@ -31,8 +31,8 @@ Every agent gets the same three checks, all of them calls to one gate in
    gate` on its draft and fix what it reports. The model can skip it.
 2. **Mandatory check.** A hook or plugin runs the gate on every write
    the agent makes to a draft, and hands a refusal back to the model as
-   the tool's result. The model cannot skip it, but only if the agent
-   actually fires it.
+   the tool's result. The model cannot skip it, provided the agent fires
+   it.
 3. **Last check.** `chitragupta draft render` runs the gate before it
    writes any format, so a draft with an unknown key never becomes a
    document. It does not depend on the agent at all.
@@ -80,29 +80,29 @@ Claude Code reaches it through `CLAUDE.md`.
 Start `codex` in the project. The skills are the same nine, read from
 `.agents/skills/`, and Codex reads `AGENTS.md` itself.
 
-**Trust the project's hooks, or the mandatory check does not run.**
-Codex skips project hooks until you trust them, and trusts each hook
-against its current hash. On the first start it shows "Hooks need
-review": choose "Trust all and continue". `/hooks` lists them later, and
-a hook that changes, for example after an upgrade of chitragupta, needs
-trusting again. An untrusted hook fails silently. The only sign is the
-warning `chitragupta draft gate` prints when no hook has checked a draft
-since it last changed.
+You have to trust the project's hooks, or the mandatory check does not
+run. Codex skips project hooks until you trust them, and it records the
+trust against each hook's current hash. On the first start it shows
+"Hooks need review": choose "Trust all and continue". `/hooks` lists
+them later. A hook that changes, for example after you upgrade
+chitragupta, needs trusting again. An untrusted hook fails silently, and
+the only sign is the warning `chitragupta draft gate` prints when no
+hook has checked a draft since it last changed.
 
 Two things matter when Codex runs a local model:
 
-- **Codex's sandbox needs unprivileged user namespaces.** On a host or
+- Codex's sandbox needs unprivileged user namespaces. On a host or
   container without them, every sandboxed command fails with `bwrap: No
   permissions to create new namespace`, and the pipeline's commands
   cannot run. The recorded run used
   `--dangerously-bypass-approvals-and-sandbox` in a scratch directory,
   with `--dangerously-bypass-hook-trust`, so it never showed the trust
   prompt.
-- **Behind llama.cpp's server, the mandatory check never fires.** Codex
+- Behind llama.cpp's server, the mandatory check never fires. Codex
   sends `apply_patch` as a Responses tool of type `custom`, which
   llama.cpp skips. The model then writes files through the shell, which
   no hook sees. Self-check and render still hold. Other local servers
-  are not yet measured.
+  have not been measured.
 
 [`examples/codex/`](examples/codex/README.md) has a full run, with the
 script that drives it.
@@ -110,9 +110,9 @@ script that drives it.
 ### OpenCode
 
 Start `opencode` in the project. OpenCode's skills carry an `-opencode`
-suffix -- `survey-writer-opencode`, `draft-reviser-opencode` and so on
--- because OpenCode also reads `.claude/skills/` and `.agents/skills/`
-and would otherwise pick among same-named copies at random.
+suffix (`survey-writer-opencode`, `draft-reviser-opencode` and so on),
+because OpenCode also reads `.claude/skills/` and `.agents/skills/` and
+would otherwise pick among same-named copies at random.
 `.opencode/opencode.json` hides the unsuffixed names. Keep that file
 when you add your own OpenCode settings.
 
@@ -130,10 +130,10 @@ the script that drives it.
 
 `chitragupta init` has no Continue option yet. Continue's CLI reads
 `.claude/skills/` and `AGENTS.md`, so a project made with the default
-`chitragupta init` gives it the skills. But it has no mandatory check:
-Continue CLI 1.5.47 loads the hooks in `.claude/settings.json` and never
-runs them on a tool call. Only the self-check and render apply. The
-gated write tools that would close that gap are planned in
+`chitragupta init` gives it the skills. It has no mandatory check,
+though: Continue CLI 1.5.47 loads the hooks in `.claude/settings.json`
+and never runs them on a tool call. Only the self-check and render
+apply. The gated write tools that would close that gap are planned in
 [issue 901](https://github.com/prasadtalasila/chitragupta/issues/901).
 
 ## 📊 What was observed
@@ -151,58 +151,57 @@ makes it. "Enforced" means the model cannot get past the check. The
 Claude Code and Codex-with-OpenAI rows come from earlier measurements;
 the three local-model rows come from the runs this page summarises.
 
-**The last check holds on every agent.** Render runs the gate whatever
-wrote the draft, so in no setup can an unknown key reach a rendered
-document. In both recorded local-model surveys, the final draft cited
-only keys in the ledger.
+The last check holds on every agent. Render runs the gate whatever wrote
+the draft, so in no setup can an unknown key reach a rendered document.
+In both recorded local-model surveys, the final draft cited only keys in
+the ledger.
 
-**What differs is when a bad key is caught.** With the mandatory check,
-the model is told at the write that put the key there, and fixes it
-before moving on. On OpenCode that happened: the model wrote a
-placeholder `[@citekey]`, the plugin refused the write naming the line,
-and the model fixed that line rather than swapping in a real key.
-Without the mandatory check, as on Codex behind llama.cpp and on
-Continue, the model hears about a bad key only if it runs the gate
-itself, or at render, after the draft is finished.
+The agents differ in when a bad key is caught. With the mandatory check,
+the model hears about the key at the write that put it there and fixes
+it before moving on. That happened on OpenCode: the model wrote a
+placeholder `[@citekey]`, the plugin refused the write and named the
+line, and the model fixed that line without swapping in a real key. On
+Codex behind llama.cpp and on Continue, which have no mandatory check,
+the model hears about a bad key only if it runs the gate itself, or at
+render once the draft is finished.
 
-**The warning that a hook did not fire is easy to miss.** On Codex each of
+The warning that a hook did not fire is easy to miss. On Codex each of
 the model's two gate runs printed it, and the model read past it both
-times. It also fires after `chitragupta draft references`, which
-rewrites a draft the hook already checked, so it can appear on a draft
-that was gated correctly.
+times. It also fires after `chitragupta draft references` rewrites a
+draft the hook already checked, so it can appear on a draft that was
+gated correctly.
 
-**How well a model follows a skill varies from run to run.** Two Codex
+How closely a model follows a skill varies from run to run. Two Codex
 runs of the same prompt took different paths: one ran `dossier init`
-and logged its searches, the other skipped both and wrote the dossier
-files itself. Both OpenCode runs played down the verbatim scan's
-findings in their summaries. These are lapses in provenance and
-reporting, not in citekeys, and a person reviewing the dossier sees
-them.
+and logged its searches, while the other skipped both and wrote the
+dossier files itself. Both OpenCode runs played down the verbatim scan's
+findings in their summaries. None of these lapses touched a citekey, and
+a person reviewing the dossier would see all of them.
 
-**A local model needs a large context window.** The largest prompts
-were about 30,000 tokens on Codex and 44,000 on OpenCode, within a
-131,072-token window. Most of a prompt is the agent's own system prompt,
-`AGENTS.md` and the skill, so a 32k window overflows within the first
-few retrievals.
+A local model needs a large context window. The largest prompts were
+about 30,000 tokens on Codex and 44,000 on OpenCode, in a 131,072-token
+window. Most of each prompt is the agent's own system prompt, `AGENTS.md`
+and the skill, so a 32k window overflows within the first few
+retrievals.
 
-Each local-model row is one run on one model over five sample papers.
-It shows what happened, not what usually happens.
+Each local-model row records a single run on one model over five sample
+papers, so read it as one observation.
 
 ## 🧭 Choosing an agent and a model
 
-- **For the strongest guarantee**, use an agent whose mandatory check
-  fires with your model: Claude Code, Codex with an OpenAI model and
-  trusted hooks, or OpenCode.
-- **For a local model**, OpenCode is the one with a recorded run in
-  which the mandatory check fired. Give the model at least a 64k
-  window.
-- **If you use Codex behind llama.cpp, or Continue**, run
-  `chitragupta draft gate` yourself before trusting a draft, and treat
-  its "no automatic gate has checked" warning as meaningful. Render
-  will still refuse an unknown key.
-- **Whatever the agent**, read the dossier. It records what the model
-  searched for and kept, and that is where a model that cut corners
-  shows it.
+For the strongest guarantee, use an agent whose mandatory check fires
+with your model: Claude Code, Codex with an OpenAI model and trusted
+hooks, or OpenCode. For a local model, OpenCode is the agent with a
+recorded run in which the mandatory check fired; give the model at least
+a 64k window.
+
+If you use Codex behind llama.cpp, or Continue, run `chitragupta draft
+gate` yourself before trusting a draft, and take its "no automatic gate
+has checked" warning seriously. Render will still refuse an unknown key.
+
+Whatever the agent, read the dossier. It records what the model searched
+for and what it kept, which is where a model that skipped steps shows
+it.
 
 ## 📚 Where to read more
 

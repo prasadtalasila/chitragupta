@@ -14,8 +14,8 @@ its script and everything it wrote:
 [`examples/codex/`](examples/codex/README.md) and
 [`examples/opencode/`](examples/opencode/README.md). This page compares
 them and records what they showed about each harness. It makes no
-general quality claim: one run on one model over the five-paper sample
-corpus says what happened, not what usually happens.
+general quality claim. Each record is one run on one model over the
+five-paper sample corpus, and a second run could go differently.
 [LLM-AGENTS.md](LLM-AGENTS.md) turns these runs into setup advice for
 each agent.
 
@@ -46,10 +46,11 @@ Each run scaffolded a fresh project with `chitragupta init --agent
 <harness>`, copied in the sample project's papers and `config.toml`,
 ran a real `corpus sync`, and sent the same prompt: draft a survey with
 the harness's own copy of `survey-writer`, with the skill's scoping
-questions answered up front. Both examples' `run.sh` is what ran,
-plus a guard, added afterwards, that refuses to re-run into an existing
-directory. A logging proxy between each harness and the server recorded every
-request, which is where the tool lists and context sizes come from.
+questions answered up front. Each example's `run.sh` is the script that
+ran. The one change since is a guard that refuses to run into an
+existing directory. A logging proxy between each harness and the server
+recorded every request, which is where the tool lists and context sizes
+come from.
 
 ## 📊 Where each check fired
 
@@ -60,37 +61,37 @@ request, which is where the tool lists and context sizes come from.
 | Last check, `draft render` | passed, wrote a PDF and a `.markdown` file | passed, wrote `.tex`, `.pdf` and `.md` |
 | Unknown citekeys in the final draft | none | none |
 
-Neither model wrote a citekey that is not in the ledger into the final
-draft. The one unknown key either run produced was a placeholder, and
-the OpenCode plugin caught it.
+Neither model left a citekey that is missing from the ledger in its
+final draft. The only unknown key either run produced was a placeholder,
+and the OpenCode plugin caught it.
 
 ## ✅ OpenCode: the plugin refused a write, and the model fixed it
 
 [The example](examples/opencode/README.md) has the run step by step.
-In short: the model followed the skill in order, wrote every file it
+In short, the model followed the skill in order, wrote every file it
 authored through OpenCode's `write` and `edit` tools, and finished in 34
 minutes.
 
-**The mandatory check worked as designed on a real model.** The first
+The mandatory check worked as designed on a real model. The first
 `write` of the draft carried a placeholder `[@citekey]` in an HTML
 comment above the reference list. The plugin returned `Citation gate
 FAILED`, naming the line and the key, as the tool's result. The model
 read the line and wrapped the placeholder in a code span. It did not
-replace it with a real key, which is the failure the refusal's wording
-is written to avoid.
+replace the placeholder with a real key, which is the failure the
+refusal's wording is written to prevent.
 
-**The liveness warning fires on the pipeline's own write.** `draft
-references` rewrote the draft after the plugin's last check. The
-model's own gate run came before that, so it saw no warning, but a gate
-run by hand after the run warns that no automatic gate saw the current
-text. The warning cannot tell a pipeline command from a shell write.
-It never changes the gate's verdict, but it makes a correctly drafted
-survey look ungated.
+The liveness warning also fires on the pipeline's own write. `draft
+references` rewrote the draft after the plugin's last check. The model's
+own gate run came before that and saw no warning, but a gate run by hand
+after the session warns that no automatic gate saw the current text.
+The warning cannot tell a pipeline command from a shell write. It never
+changes the gate's verdict, but it makes a correctly drafted survey look
+ungated.
 
-**The skill's reporting step was half followed.** The verbatim scan
-found 25 overlaps with the sources, the longest six running 27 to 54
-words.
-The final summary said overlaps were found but listed none.
+The model only half followed the skill's reporting step. The verbatim
+scan found 25 overlaps with the sources, the longest six running 27 to
+54 words. The final summary said overlaps were found and listed none of
+them.
 
 An earlier OpenCode run, on the same model with chitragupta 6.128.5
 installed from a checkout, went the same way apart from the refusal: it
@@ -101,36 +102,36 @@ left the verbatim findings out entirely. It is not committed.
 
 [The example](examples/codex/README.md) has the run step by step.
 
-**Codex's sandbox could not run anything on the recording host.** Its
-bubblewrap sandbox needs unprivileged user namespaces, and the host
-refuses them, so every sandboxed command fails with `bwrap: No
-permissions to create new namespace`. The run therefore used
+Codex's sandbox could not run anything on the recording host. Its
+bubblewrap sandbox needs unprivileged user namespaces, which the host
+refuses, so every sandboxed command fails with `bwrap: No permissions
+to create new namespace`. The run therefore used
 `--dangerously-bypass-approvals-and-sandbox`, and
 `--dangerously-bypass-hook-trust` so the project's hooks would run.
 
-**The model was never offered `apply_patch`.** Codex sends
-`apply_patch` as a Responses tool of type `custom`, and llama.cpp's
-server skips that type with a warning. Under a model name Codex does
-not know, it offers no `apply_patch` at all. A `model_catalog_json`
-entry cloned from a built-in model makes Codex offer it, but only with
-`"apply_patch_tool_type": "freeform"` -- Codex 0.159.3 accepts no other
-value -- so llama.cpp still drops it. Codex no longer offers a
+The model was never offered `apply_patch`. Codex sends `apply_patch` as
+a Responses tool of type `custom`, and llama.cpp's server skips that
+type with a warning. Under a model name Codex does not know, it offers
+no `apply_patch` at all. A `model_catalog_json` entry cloned from a
+built-in model makes Codex offer it, but only with
+`"apply_patch_tool_type": "freeform"` (Codex 0.159.3 accepts no other
+value), so llama.cpp still drops it. Codex no longer has a
 chat-completions wire API to fall back on.
 
-So the model wrote every file with a shell here-document, and **the
-gate hook, which fires on `apply_patch`, never ran.** The liveness
-warning is what showed it: both of the model's own `draft gate` runs
-printed it, and the model read past it both times. The gate itself
-passed, with 16 citations, all real. Render would have refused an
-unknown key, so nothing ungated could have become a document, but
-nothing would have told the model to fix a bad key while drafting.
+So the model wrote every file with a shell here-document, and the gate
+hook, which fires on `apply_patch`, never ran. The liveness warning
+showed it: both of the model's own `draft gate` runs printed it, and the
+model read past it both times. The gate itself passed, with 16
+citations, all real. Render would have refused an unknown key, so
+nothing ungated could have become a document. But nothing would have
+told the model to fix a bad key while it was drafting.
 
-**The run cut corners the skill does not allow.** It skipped `dossier
+The run also skipped steps the skill requires. It never ran `dossier
 init` and made the dossier folder by hand. It passed the slug rather
 than the draft's path to `retrieve search --log`, so nothing was
 logged, and then wrote `retrieval.md` itself. It typed the reference
 list rather than running `draft references`. It did rewrite the
-passages its first verbatim scan flagged, until a second scan was
+passages its first verbatim scan flagged, and its second scan was
 clean.
 
 An earlier Codex run with the same prompt kept closer to the skill: it
@@ -153,48 +154,48 @@ Yes, on both, with room to spare at 131,072 tokens.
 
 It would not fit a small window. OpenCode's prompt is about 18,000
 tokens before the skill loads and about 30,000 once it has, so a 32k
-window overflows within the first few retrievals and an 8k or 16k one
+window overflows within the first few retrievals, and an 8k or 16k one
 cannot hold the skill at all. Splitting the skill would not change that
-much: most of the base prompt is the harness's own system prompt,
-`AGENTS.md` and the skill list.
+much, because most of the base prompt is the harness's own system
+prompt, `AGENTS.md` and the skill list.
 
 ## 🔎 Continue: what a real session showed
 
-**Continue CLI (`cn`) 1.5.47.** Issue 901 lists four facts to confirm on
-a real session before building its MCP server. The CLI's source and a
-live probe answer three of them, and add a fourth.
+This section covers the Continue CLI (`cn`), version 1.5.47. Issue 901
+lists four facts to confirm on a real session before building its MCP
+server. The CLI's source and a live probe answer three of them and add
+a fourth.
 
-- **Built-in tools can be excluded, but not from a project file.**
+- A user can exclude built-in tools, but a project file cannot.
   `--exclude <tool>` works: a probe with `--exclude Bash` was offered no
-  shell. The only file it reads permissions from is the user's
+  shell. The only file Continue reads permissions from is the user's
   `~/.continue/permissions.yaml`. Permissions in the project's
   `config.yaml` are marked "when implemented" in the CLI's precedence
-  code. A project cannot exclude the write tools for itself today.
-- **Project skills come from `.continue/skills/` and `.claude/skills/`**,
-  plus the user's `~/.continue/skills/`. It does not read
+  code, so a project cannot exclude the write tools for itself today.
+- Project skills come from `.continue/skills/` and `.claude/skills/`,
+  plus the user's `~/.continue/skills/`. Continue does not read
   `.agents/skills/`.
-- **It reads `AGENTS.md` natively**, taking the first of `AGENTS.md`,
+- It reads `AGENTS.md` natively, taking the first of `AGENTS.md`,
   `AGENT.md`, `CLAUDE.md` and `CODEX.md` in the project root.
-- **It loads Claude Code-style hooks but never runs them on a tool.**
+- It loads Claude Code-style hooks but never runs them on a tool call.
   The CLI reads hook settings from `.claude/settings.json`,
-  `.continue/settings.json` and their `.local` variants. But no tool
+  `.continue/settings.json` and their `.local` variants, yet no tool
   call dispatches a `PostToolUse` or `PreToolUse` event; only its
   built-in git-ai tracker sees file edits. In the live probe, Continue
   wrote `content/drafts/probe.md` with `Write`, the project's gate hook
-  did not run, and a gate run by hand printed the liveness warning. Even
-  if dispatch is added later, Continue runs a hook's `command` string
-  through a shell and ignores `args`, so the scaffolded Claude Code
-  launcher would need a different shape.
+  did not run, and a gate run by hand printed the liveness warning. If
+  dispatch is added later, the scaffolded Claude Code launcher will
+  still need a different shape, because Continue runs a hook's `command`
+  string through a shell and ignores `args`.
 
-Not yet confirmed: whether a local model through Continue calls MCP
-tools reliably, since the MCP server is not built.
+Whether a local model through Continue calls MCP tools reliably is not
+yet confirmed, since the MCP server is not built.
 
 ## 📋 Still to record
 
-- **Codex with a server that accepts `custom` tools**, so the model is
-  offered `apply_patch` and the gate hook can fire. Ollama's and LM
-  Studio's Responses support, through `--oss`, are the ones issue 904
-  named.
-- **A smaller window**, 32k, to see where each harness overflows and
-  how it compacts.
-- **A Continue survey**, once issue 901's MCP server exists.
+- Codex with a server that accepts `custom` tools, so the model is
+  offered `apply_patch` and the gate hook can fire. Issue 904 named
+  Ollama's and LM Studio's Responses support, through `--oss`.
+- A 32k window, to see where each harness overflows and how it
+  compacts.
+- A Continue survey, once issue 901's MCP server exists.
