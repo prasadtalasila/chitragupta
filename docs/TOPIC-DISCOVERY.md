@@ -22,8 +22,8 @@ are safe to skim.
 > feature borrows from is in `content/ledger.sqlite`, so none has a
 > citekey; each is named inline with a link and listed in full at the
 > end, the same rule TOPIC-MODELLING.md follows and for the same reason
-> ([AGENTS.md](../AGENTS.md)). What was taken from each, and what
-> was deliberately not, is recorded in
+> ([AGENTS.md](../AGENTS.md)). What was taken from each, and, as
+> importantly, what was deliberately not, is recorded in
 > [INSPIRATION.md](INSPIRATION.md#-topic-discovery); this document
 > quotes a source only where a specific mechanism came from it.
 
@@ -437,8 +437,8 @@ numbers the browser shows would be free to disagree with it.
 On the real 131-topic corpus, with 21 topics named across six groupings,
 the two families do not agree about the best inflation: paper-sharing
 peaks well above the shipped 2.0, semantic nearness at 2.0 itself. The
-per-family design is what exposes that disagreement, and it is why the
-app never fuses the two.
+per-family design is what exposes that disagreement, and the
+disagreement is why the app never fuses the two.
 
 This is legacy AutoRAG's methodology pointed at one corpus: measure
 every retrieval configuration against a small labelled set, never tune
@@ -477,8 +477,8 @@ clumps in a network. Drop a random walker onto the graph and let it
 step along edges, preferring strong ones. The walker gets *trapped*
 inside densely connected regions, because it is easy to wander within a
 clump and rare to escape it. MCL simulates that flow and calls each trap
-a cluster. It needs no cluster count guessed in advance, and the same
-input always gives the same answer.
+a cluster. Its appeal here is that it needs no cluster count guessed in
+advance, and the same input always gives the same answer.
 
 **Inflation, MCL's one dial.** During the simulation MCL repeatedly
 *sharpens* the flow, boosting strong routes and suppressing weak ones,
@@ -506,7 +506,8 @@ tens of topics a circle is legible, renders identically every run, and
 costs no physics code) **in the stored merge tree's leaf order**, so
 that neighbouring positions hold similar topics and the chords come out
 short and clustered rather than sweeping across the whole diagram.
-The circle is therefore a weak but real encoding, and it stays
+The circle is therefore a weak but real encoding rather than an
+arbitrary one, and it stays
 deterministic because the tree is read from the artefact rather than
 settled by a simulation. A topic the tree does not mention (it had
 no vector, or the corpus has fewer than two topics that did) keeps its

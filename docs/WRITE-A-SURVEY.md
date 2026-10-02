@@ -258,7 +258,7 @@ Three rules to know before you write one:
 - **A section needs at least a `brief:` or a `claim:`.** `--check` exits
   1 if one has neither.
 - **`queries:` is optional even then.** A framing or gap-analysis section
-  usually has nothing to retrieve, and leaving it out is correct.
+  usually has nothing to retrieve, and leaving it out is correct, not lazy.
 - **A `#` level-1 line is the file's title** and is passed over; sections
   start at `##`.
 
@@ -342,14 +342,14 @@ be in there.
 
 ## ⏳ Step 5: what the skill does while you wait
 
-The skill does the following, in order:
+The skill is not a black box. In order, it does the following:
 
 1. **Retrieves broadly**, over-fetching on purpose, per sub-theme or per
    declared `queries:` line.
 2. **Scores every candidate itself** before it counts as evidence, and
    writes both the keeps (`evidence.md`) and the rejects with reasons
-   (`rejected.md`). The second file shows you which sources were
-   considered and dropped.
+   (`rejected.md`). The second file exists so you can see which sources
+   were considered and dropped.
 3. **Re-searches** any sub-theme that came up thin, with reformulated
    queries.
 4. **Clusters by judgement** into themes, and checks for disagreement

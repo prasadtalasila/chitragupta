@@ -25,16 +25,17 @@ including the browser segment, is below.
 </video>
 
 A palette-optimised GIF of the same recording is also available:
-[`docs/images/demo.gif`](images/demo.gif). Use it anywhere a `<video>`
-tag or the two source formats above are inconvenient; as usual, the GIF
-is larger than either video encode of the same content.
+[`docs/images/demo.gif`](images/demo.gif). It is useful anywhere a
+`<video>` tag or the two source formats above are inconvenient, at the
+usual cost: the GIF is larger than either video encode of the same
+content.
 
 ## 🧭 The longer all-features tour
 
 A second, longer recording exists: thirty-seven steps across all four
 layers (`corpus`, `enrich`, `draft` and `review`), ending on the same
-browser segment. Watch it to learn what the tool has; the recording above
-shows what a first run looks like.
+browser segment. It is the one to watch to learn what the tool actually
+has; the recording above shows what a first run looks like.
 
 It is deliberately not shipped in this repository. At roughly two and
 a half minutes it is several times the size of the recording above, it
@@ -53,7 +54,7 @@ command is covered. Three groups of commands are absent on purpose:
 - **The verbs that write to the sample project.** `dossier init`, `spec
   sign`, `unit accept`, `tldr write` and `registry build` are the
   acceptance half of the book track, and arguably the most interesting
-  thing the pipeline does. Each one changes committed sample state, and
+  thing the pipeline does, but each one changes committed sample state, and
   nobody can re-run a recording that leaves the repository dirty.
   [WRITE-A-BOOK.md](WRITE-A-BOOK.md) walks that half in prose.
 - **`review union`.** It reads an assembled `book.tex`, and the sample
@@ -63,8 +64,8 @@ command is covered. Three groups of commands are absent on purpose:
   (survey, thesis chapter, tutorial, …) need a model, and `docling` is
   the slowest stage in the pipeline with nothing committed depending on
   it; the sample project's own `regenerate.sh` skips it for the same
-  reason. `draft figures` is still shown, reporting that the stage has not
-  run.
+  reason. `draft figures` is still shown, reporting honestly that the
+  stage has not run.
 
 ## 🛠 How they were made
 
@@ -85,8 +86,8 @@ assembling the frames into video with `ffmpeg`. The capture script
 asserts the number of rendered topic circles against the topic count the
 page itself embeds, and fails the run on a mismatch. Without that check,
 a selector that has moved would yield a video of the same establishing
-shot repeated, which is what the viewer's markup change since the first
-recording would otherwise have produced. It also checks, after every
+shot repeated, which is exactly what the viewer's markup change since the
+first recording would otherwise have produced. It also checks, after every
 click, that the panel names the topic just clicked.
 
 The browser segment was re-recorded on its own on 2026-10-01, when the

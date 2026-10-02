@@ -39,9 +39,9 @@ different mechanisms, and keeps them apart on purpose.
 | **Parallelism** | Several documents parsed at the same instant across several CPUs and GPUs, to cut the wall clock of **one** run | `chitragupta/sync_pool.py`'s worker pool, `chitragupta/pdf_text/` |
 | **Concurrency control** | Stopping two **separate** runs from corrupting `content/` when they overlap | `chitragupta/runlock.py` |
 
-The two solve unrelated problems. Parallelism is an opt-in speed
-feature, off by default; concurrency control is always on and exists
-purely for safety. A reader who conflates them goes looking for the run
+The two solve unrelated problems with unrelated solutions. Parallelism is an
+opt-in speed feature, off by default; concurrency control is always on and
+exists purely for safety. A reader who conflates them goes looking for the run
 lock inside the worker pool and finds nothing.
 
 Where no distinction is needed, "concurrent" is used loosely for "more
@@ -245,7 +245,7 @@ workers were assigned to it and could not load a model at all. A worker
 that fails takes ~19s where a working one takes minutes, and the pool
 hands the next document to whoever is free first, so **those four
 claimed and failed 334 of the corpus's 456 documents**. A poisoned worker
-draws in the whole queue.
+is worse than useless: it draws in the whole queue.
 
 Two details:
 

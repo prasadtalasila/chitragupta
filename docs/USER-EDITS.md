@@ -54,13 +54,14 @@ What you give up by doing it yourself is the bookkeeping a skill does as
 it edits: nothing updates `sections.md`, `evidence.md` or `steering.md`
 for you, and nothing tells the citation gate your edit happened until
 you ask for something next. The rest of this page is about that
-bookkeeping. You do not have to restore it by hand, but knowing what is
-now out of sync keeps the *next* revision cheap and clear.
+bookkeeping. You do not have to restore it by hand; the page covers it
+because knowing what is now out of sync is what makes the *next*
+revision cheap again instead of confused.
 
 ## ✅ Step 1: edit the file, at the same path
 
 Open `content/drafts/<slug>.md` and change it directly, with whatever
-editor you like. Two constraints apply:
+editor you like. Two constraints apply, and both matter:
 
 - **Keep the path.** There is no `dossier rename`. Saving the same
   content under a different filename orphans its dossier:
@@ -165,7 +166,7 @@ current state.
 
 If the section you hand-edited has a `queries:` line declared for it in
 `outline.md`, `draft-reviser` makes a second, separate offer once the
-five findings above are settled, and never in the same prompt as
+five findings above are settled, never folded into the same prompt as
 those:
 
 > *"Since you hand-edited `<heading>`, I can also re-run that section's

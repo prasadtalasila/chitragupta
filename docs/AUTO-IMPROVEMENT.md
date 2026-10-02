@@ -220,7 +220,8 @@ loop proposes and repairs; the human accepts.
 
 ## ▶ 5. Considered and accepted
 
-This is a different sense of "accept" from section 4's. That one
+This is a different sense of "accept" from section 4's, and worth
+separating before anything else. That one
 accepts *an edit the skill proposed*; this one accepts *a finding as it
 stands*: "I have read this, and I am leaving the draft as it is."
 
@@ -228,7 +229,7 @@ stands*: "I have read this, and I am leaving the draft as it is."
 python -m chitragupta.review agenda <draft> --accept <item id>
 ```
 
-The problem is one this document already names. The agenda
+The problem is the one this whole document already names. The agenda
 recomputes from the aids on every run, which is right (no stale state,
 no queue to corrupt), but it means a surfaced judgement item a person
 has read and decided about arrives again, identical, on every cycle. That
@@ -360,8 +361,8 @@ what the record is for.
 
 **Acceptance and R12's stale-span refusal are two filters on one list, and the
 order between them is decided.** `build_agenda` refuses first and suppresses
-second. Staleness asks whether the item is still *about* anything, that is,
-whether the draft text it was derived from is gone, and acceptance asks what a
+second. Staleness asks whether the item is still *about* anything (or whether
+the draft text it was derived from is gone), and acceptance asks what a
 person decided about an item that is; an item failing the first question has not
 reached the second. Running acceptance first would mark a stored record
 `suppressed` for a finding this run refused on other grounds, and drop that

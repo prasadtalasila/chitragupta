@@ -132,7 +132,7 @@ None of them stops a write through the shell, such as
 on Claude Code today as on the other two. `draft render` refuses the
 draft, and the skill's own `draft gate` run warns that no hook checked
 it. A person copying text straight out of the raw draft file is outside
-every check.
+every check, and nothing can see that.
 
 ## 📂 Skills: one copy per harness
 

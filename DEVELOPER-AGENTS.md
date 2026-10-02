@@ -112,7 +112,7 @@ Read it before a non-trivial change. In brief:
   25 or below; mark it *Accepted* in SonarCloud instead
   ([why](docs/CODE-STANDARDS.md#-cognitive-complexity-the-bar-is-25-not-sonarqubes-default-15)).
 - Everything else in that document (naming, one-thing-per-function, the
-  code-smell vocabulary) is deliberately a review standard with no
+  code-smell vocabulary) is a review standard and deliberately has no
   detector. A quality score is not a thing to drive to zero;
   [docs/AUTO-IMPROVEMENT.md](docs/AUTO-IMPROVEMENT.md)'s R3 is the rule,
   and it applies to code as written.
@@ -126,7 +126,7 @@ The 250-line ceiling is a ratchet, so a module already at 244, 248, 249
 or 250 code lines constrains what may be added to it, and all four of
 those were hit in one release run. Writing the obvious fix first and
 discovering it lands at 267 costs the fix twice: once written, once
-rewritten. Know two consequences before you start:
+rewritten. Two consequences are worth knowing before you start:
 
 - **A split the fix *forces* belongs in the same PR; a split you
   *chose* does not.** This is not an exception to the surgical-changes
@@ -171,7 +171,7 @@ spec, the topic artefacts). Two rules follow from what it is:
   (the dossier grammar, a review report's shape, the topic graph's
   schema) makes the committed samples stale, and the fix is to re-run the
   affected command in that directory and commit its real output.
-  Hand-editing a sample to match a format change produces the
+  Hand-editing a sample to match a format change produces exactly the
   fabricated-example problem the directory exists to avoid, and the
   documentation snippets quoting the artefact must move in the same PR
   (the docs sweep in
@@ -221,7 +221,7 @@ durable rule is the probe:
   any of them.
 - **When they're absent:** don't hang, stack-trace, or silently skip
   without saying so. Every `chitragupta/enrich/*` stage already self-probes its
-  own prerequisites and reports the outcome (`ok`/`partial`/`skipped`/`error`)
+  own prerequisites and reports honestly (`ok`/`partial`/`skipped`/`error`)
   via `chitragupta/enrich/__main__.py` rather than assuming the target
   implies availability. Keep any new stage consistent with that pattern
   instead of inventing a new fallback policy.
@@ -301,14 +301,14 @@ The layer implements seven stages (Docling -> sentence-transformers/Chroma
 -> BERTopic -> declared keywords -> seeded topics -> converged topic set
 -> topic graph) in one script for both host and Docker. Each stage
 self-probes its own prerequisites (docling importable, an upstream
-artefact present) and reports the outcome
+artefact present) and reports honestly
 (`ok`/`partial`/`skipped`/`error`) rather than assuming the target
 implies availability. Don't "fix" a skip by hardcoding target-specific
 behavior; fix the probe if it's wrong. Which of the four
 words changes the run's exit code is
 [docs/LADDERS.md](docs/LADDERS.md)'s to state, not this file's.
-`--target host|docker` is **informational only** for that reason: the probes
-decide, not the flag, so nothing branches on it.
+`--target host|docker` is **informational only** for exactly that reason:
+the probes decide, not the flag, so nothing branches on it.
 
 `chitragupta/enrich/embed_index.py`, `chitragupta/enrich/topic_model.py`, and
 `chitragupta/enrich/docling_parse.py` are all incremental, mirroring
@@ -607,7 +607,7 @@ Only once all of the above are green does a task count as complete.
 ### 🐛 Reading a red `codecov/project` on a branch you believe is 100%
 
 Believe your local run first, and check the session count before you go
-looking for the coverage you lost; twice now there was none to find.
+looking for the coverage you lost, because twice now there was none to find.
 
 Each matrix leg uploads its own report, and the two are only correct
 merged: score the Windows one alone and a 100% branch reads ~99%. Codecov
@@ -1281,7 +1281,7 @@ not merely started:
      test would have. Grep the documentation for the **claim** your
      change touches, not for the files in your diff.
 
-   That last point is the method, and the run that produced these
+   That last point is the whole method, and the run that produced these
    three searches kept paying for it: in PR #547 a commit fixed a
    duplicated sentence in four places and the sweep found three more
    verbatim copies still false, and in PR #548 a six-line code change

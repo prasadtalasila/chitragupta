@@ -284,7 +284,7 @@ To hand the `[unattended]` ones off, ask to "work the review agenda".
 every attempt (refusals and reverts included) in the dossier's
 `revisions.md`.
 
-To check that a round of edits helped:
+To check that a round of edits actually helped:
 
 ```bash
 chitragupta review agenda content/drafts/dt/survey.md \

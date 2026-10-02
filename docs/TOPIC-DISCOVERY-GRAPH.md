@@ -927,7 +927,7 @@ vectors.
 ## 14. Could networkx replace cytoscape.js?
 
 Asked when weighing path B, since consolidating the analytics into the
-builder makes Python the place they run. The answer splits along the
+builder makes Python the place they run. The answer splits cleanly along the
 computation/rendering line, and the app's own code already follows it.
 
 **Computation: yes, easily, because almost nothing uses

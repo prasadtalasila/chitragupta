@@ -194,8 +194,9 @@ is the draft that quotes its sources, so its runs are found and each
 names the tier that found it, and
 [`trust-chapter.verbatim.md`](examples/sample-project/content/review/dt-overview/trust-chapter.verbatim.md)
 is the other outcome: nothing found, by every tier that ran. Read the
-second one's tier list before its result; it shows the "a clean run is
-not a clean bill of health" rule below in practice.
+second one's tier list before its result: reading them in that order
+shows the "a clean run is not a clean bill of health" rule below in
+practice.
 
 ## ⚖ Advisory, never blocking
 
@@ -307,7 +308,8 @@ The page range does not run the other way. A remainder shorter than the
 index's own n-gram size has no gram starting on its page, so `scan`
 recovers it into the run's word content without moving `end_page`.
 
-`quoted` reads as overlap, not containment. A matched run is wider than
+`quoted` reads as overlap, not containment, and the difference is not
+cosmetic. A matched run is wider than
 the quotation that evidences it and routinely opens a word or two before
 the opening mark, in the draft's own framing prose. The original reading
 required the *whole* run to sit inside the marks, and so reported
@@ -411,19 +413,19 @@ findings one at a time, and `python -m chitragupta.review verbatim recheck`
 decides whether each repair may be kept.
 
 The scan payload locates a finding precisely enough for an editor to act
-on it. `start`/`fragment`/`context` describe the normalised word stream,
-which cannot be located in the file by position. Alongside them each
-finding carries `line`, `char_start`, `char_end` and `draft_text` (the
-passage exactly as written, citation markers and line breaks included),
-plus `id`, a digest of `(citekey, page, fragment)`, and `source_text`,
-the source passage the finding matched in the document's own text
-rather than a normalized form. `source_text` is `null` on the `exact`
-tier alone, where `fragment` already is the source's wording and there
-is no second side to show; the `skip-gram` and `embedding` tiers both
-carry it. `id` is deliberately position-free: an identity built on
-`start` would rename every remaining finding the moment the first was
-repaired, and nothing could then say whether a finding had survived a
-revision.
+on it, not just for a reader. `start`/`fragment`/`context` describe the
+normalised word stream, which cannot be located in the file by position.
+Alongside them each finding carries `line`, `char_start`, `char_end` and
+`draft_text` (the passage exactly as written, citation markers and line
+breaks included), plus `id`, a digest of `(citekey, page, fragment)`,
+and `source_text`, the source passage the finding matched in the
+document's own text rather than a normalized form. `source_text` is
+`null` on the `exact` tier alone, where `fragment` already is the
+source's wording and there is no second side to show; the `skip-gram`
+and `embedding` tiers both carry it. `id` is deliberately position-free:
+an identity built on `start` would rename every remaining finding the
+moment the first was repaired, and nothing could then say whether a
+finding had survived a revision.
 
 `recheck` is an acceptance test, not a second scan. Given a baseline
 payload, it re-scans at that baseline's own floor, because comparing a
@@ -474,7 +476,7 @@ every other review command. `python -m chitragupta.draft gate` remains the only
 thing in this pipeline that blocks. Whether a long allowlist-filtered run
 should ever join it is
 [the overlap-gate proposal](AUTO-IMPROVEMENT.md#-build-order)'s question;
-it has since been measured, and
+it has since been measured rather than guessed, and
 [the gate measurement](PLAGIARISM-DESIGN.md#-measured-what-a-blocking-overlap-gate-would-block)
 records what the measurement found.
 
@@ -537,8 +539,8 @@ a general instability.
 is not close. A reviewer working through `pdftotext`-backed `scan` output
 on a corpus with running headers (common in IEEE/ACM journal templates)
 has to notice and mentally discard a repeating artifact before trusting
-the rest of the list, the kind of alarm fatigue that makes a reviewer
-start skimming past real findings too.
+the rest of the list, which is exactly the alarm fatigue that makes a
+reviewer start skimming past real findings too.
 
 This was measured on 26 of ~500 corpus documents, one of which carried
 the artifact. It is evidence that the failure mode is real, not a census

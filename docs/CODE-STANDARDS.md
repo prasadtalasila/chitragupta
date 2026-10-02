@@ -114,7 +114,7 @@ inverts rules 6 through 8. This project's comments are overwhelmingly
 broke, why the obvious thing is wrong. `.github/workflows/ci.yml` is
 roughly half prose by line count, and every paragraph of it answers a
 question a future reader would otherwise re-litigate. An agent that
-"cleans up" those comments has destroyed the most useful thing in the
+"cleans up" those comments has destroyed the most valuable thing in the
 file, while believing it applied a clean-code rule.
 
 The canon does not say that. It says don't be **redundant**, and a
@@ -303,7 +303,8 @@ blocks it turning back. As a software check it means: measure something,
 freeze today's number, and fail the build if it gets *worse*, while
 saying nothing about it being imperfect today.
 
-It exists because both of the options a new rule normally has fail:
+It exists to fill the gap between the two options a new rule normally
+has, both of which fail:
 
 | Option | What happens here |
 | --- | --- |
@@ -525,7 +526,7 @@ different shape than proposed here; see their own notes.
    existing markers turned out to be unneeded on that evidence
    (`chitragupta/pdf_text/_backends.py`'s re-raising `except`; BLE001's
    own definition exempts a block that ends in `raise`) and was removed.
-   The rest were each confirmed live.
+   The rest were each confirmed live rather than assumed so.
 3. ~~**Type annotations and a checker.**~~ **Annotated in full, and
    the checker declined, not deferred.** Every `def` under
    `chitragupta/` now carries a return annotation, and

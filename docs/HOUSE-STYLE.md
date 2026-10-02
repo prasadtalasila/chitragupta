@@ -31,7 +31,7 @@ automatic invocation in 5.19.0: a PostToolUse hook per write and a step
 in all nine skills.
 
 Part of the machinery under "What persists across drafts" below remains
-unbuilt, not all of it as this paragraph previously said. Two of its
+unbuilt; this paragraph previously said all of it did. Two of its
 four items have since been built, and that section says so in its own
 body: the boilerplate allowlist (as per-host gitignored data instead of
 the version-controlled file first framed here) and the acronym-shaped
@@ -58,12 +58,12 @@ recurring refusals.
 
 The reason behind R3 is that a continuous score invites the loop to
 optimise the score instead of the draft, and keeping to binary checks is
-what lets prose carry an unattended loop at all. It is also why the
+the whole reason prose can carry an unattended loop at all. It is also why the
 specification counts findings rather than scoring quality: a count of
 binary conformance failures is safe to drive to zero, and a quality
 score is not safe to maximise.
 
-Applied to language, the rule cuts the axis in two. "Apply §2" is
+Applied to language, the rule cuts the axis cleanly in two. "Apply §2" is
 binary: "obviously" is present or it is not. "Improve the readability" is
 not, and no amount of care in the prompt makes it so.
 

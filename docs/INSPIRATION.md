@@ -62,7 +62,7 @@ came from.
     [REVIEW.md](REVIEW.md) adopts the distinction for this project's
     aids.
   - **Publish a score, then show its fragility.** Its weight-sensitivity
-    pass perturbs each weight and reports whether the *ordering* flips,
+    pass perturbs each weight and reports whether the *ordering* flips:
     a way to let a number exist without it becoming the thing optimised.
 
   Two things were read and deliberately not taken. Its citation
@@ -131,7 +131,7 @@ came from.
     house style of dense rationale comments. The rule the canon states
     is "don't be **redundant**", not "don't comment", and
     [CODE-STANDARDS.md's comment section](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid)
-    is about that difference.
+    is about that difference and nothing else.
   - Its **code smells** vocabulary (rigidity, fragility, immobility,
     needless complexity, needless repetition, opacity) is adopted
     directly as the review vocabulary, because naming a smell is what

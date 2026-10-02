@@ -96,8 +96,8 @@ than a rhetorical one:
   run verbatim instead of letting the model invent sub-themes.
 - **Write prose directly.** A section written by hand is a first-class
   input: the pipeline grounds it against the corpus, and any sentence
-  it cannot ground is dropped *and named back to you*. That is the
-  opposite of a tool that edits your draft.
+  it cannot ground is dropped *and named back to you*. That is
+  deliberately the opposite of a tool that edits your draft.
 - **Edit what the model produced.** A text fingerprint notices the
   draft moved, surfaces what went stale, and offers (never applies)
   one further retrieval round in which your own new wording *is* the
@@ -124,7 +124,7 @@ nothing reaches phase 5 without passing phase 4.
        width="100%">
 </p>
 
-Two properties of the spine make the guarantee hold, and both are
+Two properties of the spine alone make the guarantee hold, and both are
 structural rather than procedural:
 
 - **Phase 1 is the only entrance.** Citekeys come from your reference
@@ -187,8 +187,8 @@ With the opt-in `docling` backend *and* a worker pool, it isn't, and
 the instability reaches the *quotable passage*, so the exact span
 quoted from a source can change between runs. A snippet is the evidence
 a judgement is recorded against, so an irreproducible snippet means an
-irreproducible rejection; that is why this README states it. The cause
-is Docling's behaviour under load, which this pipeline does not add;
+irreproducible rejection; that is why this README states it openly. The
+cause is Docling's behaviour under load, not anything this pipeline adds;
 serial parsing (`[parser].workers = 1`, the default) has not been
 observed to vary. The artifact-by-artifact contract and the measured
 rates are in
@@ -353,7 +353,7 @@ publisher = {GitHub}
 This file is the overview: what the pipeline is, how to get it running,
 and what it needs. Everything else lives in one document per question,
 split by what you are doing: using the pipeline, or working on it.
-Which of those you are doing can change within a session, so the split
+Which of those you are doing can change within a session, and the split
 follows the task rather than the person; [CLAUDE.md](CLAUDE.md) is the
 one-screen router for that.
 
@@ -366,7 +366,7 @@ one-screen router for that.
 | [SOUL.md](SOUL.md) | One page: why this exists, the one invariant, and what it refuses to become |
 | [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits: from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
 | [docs/DEMO.md](docs/DEMO.md) | What does running it look like? A short recorded pass through the spine, as video and GIF, made against the committed sample project |
-| [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Reading it once makes every other document easier to follow |
+| [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Read it once and every other document gets easier |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |

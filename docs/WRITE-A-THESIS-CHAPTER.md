@@ -199,8 +199,8 @@ notions of error entirely.
 ```
 
 The two glossary entries that say "pinned here because the sources use
-it differently" are how a chapter keeps its own vocabulary while citing
-papers that do not share it.
+it differently" are doing the real work: they are how a chapter keeps
+its own vocabulary while citing papers that do not share it.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 
@@ -402,7 +402,7 @@ chitragupta review agenda content/drafts/thesis/methods.tex
 It **reads the aids' filed JSON and never runs an aid**, so run the aids
 first, with `--write` where an aid offers it (`provenance` always files
 its report), and then the agenda. Any aid whose report is absent is
-named as absent instead of skipped.
+named as absent instead of quietly skipped.
 
 Each item carries a class, a section anchor, and whether it is
 `[unattended]`, meaning safe for an automated pass to repair without
@@ -471,9 +471,9 @@ For the methods chapter we have been building:
   Projection-based reduction is the only family with a-priori guarantees
 ```
 
-Read as the author, the `misquoted` item is the one to fix first. A
-quotation that says "bound" where the source said "estimate" is the
-error this chapter's own glossary exists to prevent, and an examiner who
+Reading that as the author: the `misquoted` item is the one to fix
+first. A quotation that says "bound" where the source said "estimate" is
+the error this chapter's own glossary exists to prevent, and an examiner who
 spots it will doubt the rest. The two `unsupported-claim` items are the
 sentences where your argument outruns your sources: either soften them,
 or find the source that carries them.

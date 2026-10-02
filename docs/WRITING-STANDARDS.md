@@ -45,7 +45,7 @@ as the central hazard for engineer-writers. The term itself is Camerer,
 Loewenstein and Weber (1989), popularised by Steven Pinker.*
 
 You know the material and the reader does not. The specific danger is the
-step that feels too obvious to state, which is the step you will omit
+step that feels too obvious to state, which is exactly the step you will omit
 and the reader will fail on.
 
 Concrete guards:
@@ -183,7 +183,7 @@ means they are checked only when someone remembers to.
 | A table has a caption and an id, and every reference resolves | §13 | yes | no: the fix is a caption someone has to write |
 | Some sentence refers to each table | §13 | yes | no; and **whether that sentence explains the table is not decidable at all**, which is the half that matters most. A machine can see that a reference exists; only a reader can see that the arrangement was worth making |
 | A captioned figure's id is unique and kebab-case, and every `figureref` resolves | §10 | yes | no: the fix is an author decision, same as a table's |
-| Some sentence refers to each captioned figure | §10 | yes | no; and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure raises `chitragupta.FigureNoCaption` instead, so it is not exempt from §10, only from *this* row -- there is nothing yet for a sentence to refer to |
+| Some sentence refers to each captioned figure | §10 | yes | no; and **whether that sentence explains the figure is not decidable**, same split as a table's. An uncaptioned figure raises `chitragupta.FigureNoCaption` instead, so it is not exempt from §10, only from *this* row: there is nothing yet for a sentence to refer to |
 | A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | no: the fix is an author decision, same as a table's or figure's |
 | Some sentence refers to each numbered equation | §12 | yes | no; and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
 | Whether an equation should have been numbered at all (standalone, final-of-derivation, reused) | §12 | **no** | no: unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
@@ -480,8 +480,8 @@ hand-authors a real `\begin{figure}...\caption{}...\label{fig:<id>}`
 around its inline `\input`, the same carve-out §13 gives a hand-written
 `\begin{table}`. The one thing that changes there too: never write
 `\renewcommand{\thefigure}{N.M}`. The consuming thesis's own counter is
-what has to agree with its own chapter numbering, which is why a number
-never belongs in a draft.
+what has to agree with its own chapter numbering, which is the whole
+reason a number never belongs in a draft.
 
 `python -m chitragupta.draft style` reports the decidable part of this:
 a figure marker carrying no caption, a captioned figure no sentence
@@ -503,8 +503,8 @@ fenced code block in a Markdown draft, a `verbatim` environment in a
 forms survive every format such a host can produce: a fence renders
 straight through Markdown's own formats and, via pandoc, into `tex`/`pdf`
 too; a `verbatim` block survives pandoc's LaTeX reader into both
-`--format pdf` and `--format md`. Both were verified through this
-pipeline's own render path.
+`--format pdf` and `--format md`. Both were verified into both formats
+through this pipeline's own render path.
 
 This is not gated mechanically: there is no equivalent of
 `citation_gate` for a figure's originality. Whether a diagram is

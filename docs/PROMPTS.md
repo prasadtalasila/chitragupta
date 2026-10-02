@@ -100,11 +100,12 @@ next.
 `deep-research` shares layers 1-3 with every other skill in this
 pipeline: CLAUDE.md still routes to AGENTS.md/SOUL.md first, and the
 citekey invariant still binds it. From layer 4 onward it differs from
-the diagram above for one structural reason: `deep-research` runs as one
-orchestrating context plus a dozen short-lived subagent contexts that it
-dispatches and discards. A subagent's prompt is built fresh each time.
-It does not inherit the orchestrator's conversation, only the specific
-fields the orchestrator decides to hand it.
+the diagram above for one structural reason: `deep-research` is not one
+context. It runs as one orchestrating context plus a dozen short-lived
+subagent contexts that it dispatches and discards. A subagent's prompt
+is built fresh each time. It does not inherit the orchestrator's
+conversation, only the specific fields the orchestrator decides to hand
+it.
 
 ### 🎛 2a. The orchestrating context
 
@@ -233,8 +234,8 @@ Everything above describes what a skill *adds*. Layer 7 is whatever was
 already there. On a session that has been working for an hour, that is
 the largest layer and the only one nobody designed.
 
-It matters because of an asymmetry the gate cannot close. A
-**fabricated** citekey is caught mechanically, every time: the ledger is
+It matters more than it looks, because of an asymmetry the gate cannot
+close. A **fabricated** citekey is caught mechanically, every time: the ledger is
 ground truth and an absent key is absent. A **real** citekey carried in
 from an earlier task in the same session is not caught by anything. It
 resolves, it renders, `python -m chitragupta.draft gate` exits 0, and

@@ -199,19 +199,19 @@ Each skill retrieves from the corpus layer, drafts into
    `[3]-[6]` for a consecutive run, over a numbered bibliography built
    from the citekeys cited.
 
-Grounding is enforced in code. The gate runs on the same draft at three
-points, and only one of them depends on the skill's own good intentions.
-A hook runs it on every write under `content/drafts/` (a PostToolUse
-hook on Claude Code and Codex, a plugin on OpenCode), so a draft saved
-with an unverifiable citation is refused straight back to the model,
-even if a skill forgets to check. That holds only where the model writes
-through the harness's file tools: behind llama.cpp, Codex is never
-offered `apply_patch` and its model writes through the shell
-([LOCAL-MODELS.md](LOCAL-MODELS.md)). The skill then runs the gate again
-before presenting anything. And `draft render` runs it before producing
-any format, so a draft written around the hook, through a shell command,
-still cannot become a document. [HARNESS.md](HARNESS.md) has what each harness
-enforces.
+Grounding is enforced in code, not just requested. The gate runs on the
+same draft at three points, and only one of them depends on the skill's
+own good intentions. A hook runs it on every write under
+`content/drafts/` (a PostToolUse hook on Claude Code and Codex, a plugin
+on OpenCode), so a draft saved with an unverifiable citation is refused
+straight back to the model, even if a skill forgets to check. That holds
+only where the model writes through the harness's file tools: behind
+llama.cpp, Codex is never offered `apply_patch` and its model writes
+through the shell ([LOCAL-MODELS.md](LOCAL-MODELS.md)). The skill then
+runs the gate again before presenting anything. And `draft render` runs
+it before producing any format, so a draft written around the hook,
+through a shell command, still cannot become a document.
+[HARNESS.md](HARNESS.md) has what each harness enforces.
 
 A second hook checks at session start that the first one can still start
 at all, since a hook that fails to launch cannot report that it failed.
@@ -415,8 +415,8 @@ nothing about it is fuzzy. It is measured against the *parse*:
 enrichment run that has not happened, a backend switched back to
 `pdftotext`, a re-parse of an edited PDF: each changes the answer while
 nothing changes about the paper. So "this span is absent" is a statement
-about the parse as much as about the source, which is why the aid has a
-*third* outcome, `unverifiable`, for a source only `pdftotext -layout`
+about the parse as much as about the source, which is exactly why the
+aid has a *third* outcome, `unverifiable`, for a source only `pdftotext -layout`
 could read. There, column splicing means a perfectly correct quotation is
 not contiguous in the text, and calling it absent would assert a
 fabrication that is not there. A check that needs a third outcome is not
@@ -465,13 +465,13 @@ which is what makes it safe to put `sync` on a schedule.
 and packages it needs and reports `missing-binary` or `skipped` rather
 than crashing or silently succeeding. The parse path adds a quality guard
 on top: it warns when a backend starts fusing words together, which is
-invisible in a spot check but wrecks keyword retrieval.
+invisible in a spot check but silently wrecks keyword retrieval.
 
 ## 🔁 What is reproducible, and what is not
 
 Run the pipeline twice over an unchanged bibliography and some artifacts
 come back byte-identical, some come back equivalent-but-not-identical,
-and one comes back different. This section is the contract, artifact by
+and one comes back genuinely different. This section is the contract, artifact by
 artifact, so that "is this stable?" is answered in one place instead of
 inferred from four documents that each describe one corner of it.
 
@@ -609,9 +609,9 @@ a post-mortem on a parse configuration that was not held fixed.
   dossier has no counterpart.
 - **It does not record who wrote a sentence, and will not.** Prose you
   write into a draft yourself is measured by every review aid as though a
-  skill produced it. That is deliberate: a draft gets revised, the
-  drafting layer legitimately rewrites what is in it, and an authorship
-  marker would go stale while still looking authoritative. That is the
+  skill produced it. That is deliberate, not an omission: a draft gets
+  revised, the drafting layer legitimately rewrites what is in it, and an
+  authorship marker would go stale while still looking authoritative. That is the
   failure mode this pipeline already guards against by regenerating
   `sections.md` before a scan instead of trusting it.
   [DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the

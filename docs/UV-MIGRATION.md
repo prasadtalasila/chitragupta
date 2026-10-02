@@ -93,7 +93,8 @@ from both installs).
 Installation is 1.6x faster cold: worth having, but not worth a
 migration. The warm-cache figure (23s to 1s) matters mainly to CI, which
 installs on every run. The number that justifies anything is
-resolution, where the gap is seconds against "does not finish".
+resolution, where the gap is a change of kind rather than a factor:
+seconds against "does not finish".
 
 ## 💰 What migrating would cost
 

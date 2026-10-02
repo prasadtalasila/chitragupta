@@ -15,9 +15,9 @@ another.
 
 There are six such places. Three pick for you, silently, at run time.
 Three you pick yourself, in a config file or on a command line. This
-page tells those two kinds apart, because they fail differently: the
-first kind degrades without warning and you may not notice for weeks;
-the second kind stops and names what is missing.
+page exists to tell those two kinds apart, because they fail
+differently: the first kind degrades without warning and you may not
+notice for weeks; the second kind stops and names what is missing.
 
 Read [docs/ARCHITECTURE.md](ARCHITECTURE.md) first if you want to know
 *what the parts are*, and [docs/DIAGRAMS.md](DIAGRAMS.md) if you want to
@@ -155,8 +155,8 @@ flowchart TB
   class T1,T3 dim
 ```
 
-The two are named apart because of the asymmetry in those shapes. A
-ladder always reaches an answer, so its worst rung is silent: the
+The two are named apart for one reason: the asymmetry in those shapes.
+A ladder always reaches an answer, so its worst rung is silent: the
 output still looks like output, and nothing in the run says which rung
 produced it. A tier can only give you what you asked for or nothing, so
 its failure is loud and self-describing. Everything below is one or the
@@ -328,8 +328,9 @@ which does now read **rung 2 alone**, through
 `passages.corpus_passages`, to find where a document's reference list
 starts ([RETRIEVAL.md](RETRIEVAL.md#-a-papers-own-bibliography-is-not-indexed)),
 but still cuts its own snippets as character windows out of the flat text.
-It reads rung 2 alone, not the ladder, because rung 1 is the enrichment layer's
-parse and what BM25 ranks may not depend on whether that layer has run.
+`draft retrieve` reads rung 2 alone, not the ladder, because rung 1 is
+the enrichment layer's parse and what BM25 ranks may not depend on
+whether that layer has run.
 
 | # | Rung | Written by | Quotable? |
 | --- | --- | --- | --- |

@@ -7,8 +7,8 @@ a stage that looks obviously useful was built and withdrawn. **Assumed:**
 [RETRIEVAL.md](RETRIEVAL.md). **Not covered here:** how retrieval is run,
 which is [CLI.md](CLI.md).
 
-Why turning a source *down* is the judgment the rest of this
-pipeline rests on; why a two-stage retrieval read built to make rejection cheaper
+Why turning a source *down* is the judgment the rest of this pipeline
+rests on; why a two-stage retrieval read built to make rejection cheaper
 was withdrawn before it shipped; and what was kept from it.
 
 This is a record of a decision that went the other way, kept because the
@@ -85,8 +85,8 @@ do we retrieve more cheaply".
 
 As built, it split retrieval into `triage` (a short window, for ruling
 candidates out) and `evidence` (query-scored passages, for the survivors
-only). The arithmetic is easy to get backwards, so here are the numbers
-that were supposed to justify it.
+only). What matters here is the arithmetic, which is easy to get
+backwards, so here are the numbers that were supposed to justify it.
 
 Per sub-theme at `k=15`, in characters of payload reaching the caller:
 
@@ -97,7 +97,7 @@ Per sub-theme at `k=15`, in characters of payload reaching the caller:
 | Two-stage, 5 survive | 2,400 + 5 x 1,200 = **8,400** | +12% |
 | Two-stage, 8 survive | 2,400 + 8 x 1,200 = **12,000** | +60% |
 
-Three things follow, none of them in its favour.
+Three things follow, and all three are uncomfortable.
 
 **The saving is conditional on rejecting hard.** Two-stage beats
 one-stage below about five survivors and loses above eight. So the
@@ -179,7 +179,7 @@ about the genre's citation profile rather than about that one file.
 **`tutorial-writer`** cites only in a closing "Where to go next", never
 mid-lesson: one to three pointers. The machinery is overhead against a
 saving of a few hundred characters, on a skill whose stated virtue is a
-single clean path. Its bottleneck is verifying the lesson runs,
+single clean path. Its actual bottleneck is verifying the lesson runs,
 which retrieval does not touch.
 
 **`textbook-chapter-writer`** cites for motivation: the "this is a real
@@ -245,8 +245,8 @@ against, and it is cheap to reinstate from this document if that still-open
 measurement issue ever finds a case for it. `search()` plus the subagent
 boundary is the drafting path.
 
-Two smaller things also came out of building it that do not show up in a
-diff. The
+Two smaller things also came out of building it, worth stating because
+they are the kind of return that does not show up in a diff. The
 non-determinism bug was found only because shrinking the window made it
 load-bearing; it had been shipping in `search()` for every caller. And
 the arithmetic table above exists because an earlier version of the

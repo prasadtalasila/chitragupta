@@ -180,8 +180,8 @@ packets' worth of judgment and nothing reported it: the draft looked
 finished and the record was absent. A run that *dispatches* from
 the file cannot skip the file. `brief` exits 1 when nothing resolves and
 names every citekey with no block, and `--check` lets the orchestrator
-find that out before four writers are already running, while the
-failure is still cheap to fix.
+find that out before four writers are already running. Silent loss
+became a named failure, raised while it is still cheap to fix.
 
 **Who else can use it.** Nothing in `brief` is `deep-research`-specific:
 any skill that fans out over sections has the same shape.
@@ -338,7 +338,7 @@ sweep says explicitly that the result is unknown, and still exits 0.
 and current fingerprints, `missing` as citekey -> citing sections,
 `candidates` as citekey, title and the queries that surfaced it, and
 `reconsider` as the same plus the recorded rejection reason. This
-exists because the consumer is not always a human. A re-grounding pass
+exists because the consumer is not only a human. A re-grounding pass
 has to swap the missing citations, triage the candidates, and edit only
 the affected sections, and making it re-parse a report written for a
 terminal would be a fragile way to hand over structured facts the sweep
@@ -520,7 +520,7 @@ runs' records: the four samples under
 `docs/examples/sample-project/content/dossiers/dt-overview/`, and one per
 harness example under `docs/examples/codex/` and `docs/examples/opencode/`.
 None was assembled for show: a dossier is a record of a real run, and one
-assembled to be looked at would only be a reconstruction.
+assembled to be looked at would be a reconstruction posing as a record.
 
 What replaces version control is an explicit bundle:
 

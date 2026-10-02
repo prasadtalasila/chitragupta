@@ -51,9 +51,9 @@ at the end.
 **Written for:** Someone who has never heard of this.
 **Answers:** what are the steps, and who does each one?
 
-This is deliberately the least detailed diagram here. It shows two
-properties: phase 1 is the only entrance (citekeys come from your BibTeX
-export and nowhere else), and phase 4 is the only exit, with no arrow
+This is deliberately the least detailed diagram here. Two properties do
+all the work: phase 1 is the only entrance (citekeys come from your
+BibTeX export and nowhere else), and phase 4 is the only exit, with no arrow
 around it. This is the version in [the README](../README.md#-how-it-works).
 
 The `GATE FAIL` arrow loops back to **drafting**, not to you. A failing
@@ -653,8 +653,9 @@ flowchart TB
 
 ## 🎭 By genre
 
-The ladder above draws the pipeline as one thing, but the five genre
-skills in `.claude/skills/` use very different amounts of it.
+The ladder above draws the pipeline as one thing. It is not quite one:
+the five genre skills in `.claude/skills/` use very different amounts of
+it.
 The enrichment layer in particular is worth building for two of them,
 largely wasted on two others, and reduced to a preview step for the fifth.
 
@@ -685,8 +686,8 @@ source that has to be discussed by title because it may not be cited.
 `bertopic` sits off to one side because **no skill calls it.** It is for
 you, deciding what the survey should be about before anything is drafted.
 
-For the same reason, `chitragupta.review`'s `coverage` aid ("retrieval
-surfaced
+For the same reason, in the other direction, `chitragupta.review`'s
+`coverage` aid ("retrieval surfaced
 this paper -- did the draft actually cite it?") only asks a meaningful
 question in this genre.
 

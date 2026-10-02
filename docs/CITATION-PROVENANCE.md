@@ -43,10 +43,11 @@ this mechanically: it extracts every citekey from a draft and fails if
 any is absent from the ledger. That is a *gate*: drafting is blocked
 until it passes.
 
-Some tools in the repo are gates. Others are **advisory**: they report
-something for a human to judge, and never block. Those form a named
-layer, the **review layer** (layer 4), and [REVIEW.md](REVIEW.md) is the
-page for it. The distinction from the gate matters a lot below.
+Some tools in the repo are gates. Others are **advisory**: they report something
+for a human to judge, and never block. Those form a named layer, the **review
+layer** (layer 4), not a group defined by what it is not, and
+[REVIEW.md](REVIEW.md) is the page for it. The distinction from the gate matters
+a lot below.
 
 Two other terms used here:
 
@@ -105,8 +106,8 @@ There is also a subtler gap. `cmd_overlap` matches **exact word n-grams
 (default n=8)**. That is the right tool for its own job, catching
 borrowed wording (accidental plagiarism), but it is the wrong tool here.
 A correctly paraphrased claim shares *no* 8-word run with its source and
-scores zero, indistinguishable from a claim the source never made, and
-the paraphrased claim is the failure mode we care about.
+scores zero, indistinguishable from a claim the source never made.
+The paraphrased case is precisely the failure mode we care about.
 
 ## 🎯 What is being asked for
 
@@ -114,8 +115,8 @@ A **citation provenance document**: for a given draft, a report that
 walks every citation and shows what in the source supports it, so a
 human reading the draft can jump straight to the doubtful ones.
 
-It is a manual review step, run when you want it. It is not a gate and
-not part of any automatic chain.
+It is explicitly a manual review step, run when you want it. It is not
+a gate and not part of any automatic chain.
 
 ## 🏗 The solution, as built
 
@@ -478,8 +479,8 @@ does not claim to have.
 
 ## 🐛 Three things the build got wrong first
 
-All three are the kind of defect only a real run finds, and the second
-was caused by the fix for the first.
+They are worth recording, because all three are the kind of defect only
+a real run finds, and the second was caused by the fix for the first.
 
 ### 🐛 Too narrow: the citing line
 

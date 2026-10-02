@@ -55,9 +55,9 @@ is:
 ```
 
 `what`, `why`, `does` and `matter` are scored as ordinary BM25 terms.
-Because they are **rare in academic PDFs**, they carry high IDF and
-compete for the ranking against the terms you meant, which does more
-damage than noise would.
+The damage is not added noise. They are **rare in academic PDFs**, so
+they carry high IDF and compete for the ranking against the terms you
+meant.
 
 **Fixed query-side, in `_query_terms()` (`chitragupta/retrieval.py`).**
 `_tokenize` above is unchanged: a symmetric fix would re-rank every
@@ -118,9 +118,10 @@ would.
 The floor is **2** now, set by measurement:
 [RETRIEVAL.md](RETRIEVAL.md#-where-the-token-length-floor-came-from) has the
 sweep, including why it stopped at 2 rather than going to 1. What survives of
-the warning is narrower. A single-character query word cannot rank at any floor
-this project would ship, so `retrieve` still names one on stderr rather than
-letting a query built entirely from them return empty unexplained.
+the warning is narrower, but still worth having. A single-character query
+word cannot rank at any floor this project would ship, so `retrieve` still
+names one on stderr rather than letting a query built entirely from them
+return empty unexplained.
 
 ## 🪜 The four stages
 

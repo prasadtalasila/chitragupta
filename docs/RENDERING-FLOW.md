@@ -224,8 +224,9 @@ code:
 Issue 411 gives a *captioned* figure the same "author writes no number"
 contract §13 gives a table, via
 `chitragupta/render_output/_figure_captions.py`. That module is a
-sibling of `_figures.py`, split out once the combined module crossed
-`docs/CODE-STANDARDS.md`'s 250-code-line ratchet.
+sibling of `_figures.py` rather than a part of it, split out once the
+combined module crossed `docs/CODE-STANDARDS.md`'s 250-code-line
+ratchet.
 
 The Markdown contract is a `figure:` marker followed directly by its
 caption, no blank line between (`_FIGURE_CAPTION_PAIR_RE`):

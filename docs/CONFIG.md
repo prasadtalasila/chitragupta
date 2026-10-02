@@ -43,8 +43,8 @@ cp config.toml.example config.toml
 
 `chitragupta/config.py` reads it at import time and **fails with that exact
 command** if it is missing, instead of silently falling back to the
-example: a machine running settings its owner never chose is a worse
-failure than one that refuses to start.
+example: a machine quietly running settings its owner never chose is a
+worse failure than one that refuses to start.
 
 - The file is read **once, at import**, into plain module-level
   constants. They are fixed for the life of the process; editing
@@ -543,12 +543,12 @@ nonsense value fails *quietly* otherwise: `embed_top_k = 0` returns no
 results at all, which reads like an empty corpus and not a typo.
 
 **`rerank`** turns on a cross-encoder that reorders the over-fetched
-passages **before** that cap is applied. It is off by default, based on
-measurement: on this project's corpus it leaves recall@5 unchanged (156
-of 256 either way), does not change source diversity at all, and costs
-2.5x a search call on a GPU and 5.75x on a CPU. What it does buy is
-ordering: recall@3 rises from 129 to 139 of 256. Turn it on if you read
-the top three hits and not all five.
+passages **before** that cap is applied. It is off by default because of
+measurement, not caution: on this project's corpus it leaves recall@5
+unchanged (156 of 256 either way), does not change source diversity at
+all, and costs 2.5x a search call on a GPU and 5.75x on a CPU. What it
+does buy is ordering: recall@3 rises from 129 to 139 of 256. Turn it on
+if you read the top three hits and not all five.
 Changing it rebuilds nothing.
 
 **`rerank_model`** names that cross-encoder, and is read only when
@@ -1295,7 +1295,7 @@ this and no limit in the code: matching is one cosine per phrase per
 document, so hundreds of phrases against a corpus of thousands is still
 arithmetic you would not notice.
 
-Seeds also no longer compete with discovery. They are
+More importantly, seeds no longer compete with discovery. They are
 matched against the same document vectors *after* clustering, never fed
 into it, so naming a topic does not consume the documents an emergent
 topic would have been made of. That was not always true: routing seeds
@@ -1352,7 +1352,7 @@ the end names the papers no topic of either kind reached.
 **The stage re-runs nothing.** It reads the two artefacts, recomputes
 only the topic descriptors (arithmetic over vectors already cached, no
 clustering), and joins. Run it after `bertopic` and `seed-topics`; on
-its own it reports itself skipped instead of clustering for you.
+its own it reports itself skipped instead of quietly clustering for you.
 
 ### 🕸 The topic graph
 

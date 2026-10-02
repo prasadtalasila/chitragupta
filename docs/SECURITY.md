@@ -1,9 +1,9 @@
 # 🔐 Security architecture
 
 Status: **reference.** Written 2026-09-01. Updated 2026-09-02, adding
-the SonarQube scan action and its token to the release controls, a
-credential-bearing third-party action the first version of that section
-did not name. Updated 2026-10-01: every action is now SHA-pinned, and
+the SonarQube scan action (a credential-bearing third-party action the
+first version of that section did not name) and its token to the release
+controls. Updated 2026-10-01: every action is now SHA-pinned, and
 the release workflow installs Poetry wheels-only (#829).
 
 How chitragupta protects the locally managed research corpus and its
@@ -409,11 +409,11 @@ data, or a working exploit in a public issue.
 Check the repository's GitHub **Security** page and any current
 project-maintainer guidance for a private reporting channel, and use that
 channel when it is available. GitHub reads `docs/SECURITY.md` (this file) as the
-repository's security policy, so the Security page shows you this text. Finding
-it there is no evidence that a private channel exists: a policy and a channel
-are separate facts. If no private channel is published, disclose only the
-minimum non-sensitive information needed to request a private conversation; do
-not assume an email address, response time, bounty, or coordinated-disclosure
+repository's security policy, so the Security page shows you this text. Do not
+take finding it there as evidence that a private channel exists: a policy and a
+channel are separate facts. If no private channel is published, disclose only
+the minimum non-sensitive information needed to request a private conversation;
+do not assume an email address, response time, bounty, or coordinated-disclosure
 policy that the project has not published.
 
 A useful initial report states the affected released version or commit,

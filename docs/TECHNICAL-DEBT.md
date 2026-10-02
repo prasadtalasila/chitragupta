@@ -89,11 +89,11 @@ because an item is unpaid, and the arrival of the scan test did not
 change that.
 
 What that change added, `tests/test_technical_debt_scan.py`, checks
-something else: whether this document *describes the C1/C2 register
+something else entirely: whether this document *describes the C1/C2 register
 correctly*. A wrong sentence about the register is a factual error in
 prose, not an outstanding cost, and it is the one class of claim here
 with a machine-readable source of truth to check against. That
-distinction is why the test could be added without making the debt
+distinction is the whole reason the test could be added without making the debt
 itself a gate: leaving an entry open forever is fine, and saying it is
 on a register it left is not.
 
@@ -476,8 +476,8 @@ line it touched to it. It was empty of entries in this PR and filled in
 a small follow-up once the squash-merge SHA existed; the file's own
 header explains why a squash-merge repository cannot record that SHA in
 the same PR that creates the commit. It is in `scripts/release.py`'s
-`EXCLUDE_TOP_LEVEL`, being meaningful only against this repository's own commit
-history, which an unzipped release doesn't carry.
+`EXCLUDE_TOP_LEVEL`, because it is meaningful only against this repository's
+own commit history, which an unzipped release doesn't carry.
 
 ## 💰 The standing-instruction budget
 

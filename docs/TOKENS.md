@@ -252,8 +252,8 @@ list.
 ## 🗂 What the dossier actually recovers
 
 The issue's diagnosis is right about where the cost is and needs one
-correction about the mechanism, because the correction changes what a
-fix should optimise.
+correction about the mechanism. The correction is worth stating
+plainly, because it changes what a fix should optimise.
 
 **Residency cannot be undone from inside a run.** The orchestrator's
 context is append-only between compactions. Once six packets have been

@@ -136,8 +136,8 @@ drafted prose from**, and the ordering is the whole mechanism: it is
 written at the moment the evidence is judged, before any sentence of the
 draft exists, so it cannot be a lightly-edited copy of the passage.
 `quote:` is absent by default, because a quotation is a deliberate act
-and not the residue of retrieval, and it is what the evidence sidecar
-renders. Blocks written
+and not the residue of retrieval, and `quote:` is what the evidence
+sidecar renders. Blocks written
 before this contract carry a single `support:` field and are never
 rewritten; old and new coexist by construction.
 
@@ -166,7 +166,7 @@ replaces them with what the finished report cites.
 "Don't lead with tooling." "Shorter." "Drop the adoption angle." This
 guidance shaped the draft and is invisible in it, so without this file it
 survives only in a chat log nobody will reread. In practice it stops a
-revision months later from undoing a decision you made deliberately,
+revision months later from silently undoing a decision you made deliberately,
 which is the commonest way a revised draft comes back subtly wrong.
 
 **`revisions.md`: an append-only log of what changed and why**,
@@ -182,9 +182,9 @@ back.** It has two jobs. It lets you compare one run's retrieval cost
 against another's on a real corpus, and, more importantly, it **bounds
 re-grounding**: when a draft has to be brought back into line after the
 corpus moved, the candidates come from the queries already recorded here,
-so that pass cannot invent a new search and become a full re-draft. It
-has one limit: it records the *character payload* of each call, not
-tokens, and nothing records what the drafting turns themselves cost.
+so that pass cannot invent a new search and silently become a full
+re-draft. It has one limit: it records the *character payload* of each
+call, not tokens, and nothing records what the drafting turns themselves cost.
 That is enough to compare two runs, but not enough to price a whole
 draft.
 
@@ -261,7 +261,7 @@ freely.
 A restored tarball is also legible on its own a year later, without this
 code.
 
-The cost of that choice is that there is no schema, so nothing validates
+The cost of that choice is real: there is no schema, so nothing validates
 that `evidence.md` is well-formed. This is accepted deliberately, on the
 same principle as `chitragupta/review/citation_provenance.py`: a check
 that blocked on something it cannot verify exactly would train people to
@@ -543,7 +543,8 @@ python -m chitragupta.draft dossier prune content/drafts/<slug>.md --apply
 python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey doe_x_2024 --apply
 ```
 
-It is a dry run by default, by design: `recorded - cited` cannot distinguish a
+It is a dry run by default, and that is the design, not timidity:
+`recorded - cited` cannot distinguish a
 citation the user cut from a candidate transcribed into `evidence.md` and never
 cited, and the two want opposite repairs. It deletes by line span, touches
 `evidence.md` only, and refuses (instead of half-doing) a citekey with two

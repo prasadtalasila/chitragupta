@@ -144,8 +144,9 @@ At 24 workers with OCR on, 93% of the available CPU is busy, the one
 configuration measured where this machine is full. docling's
 OCR runs on the CPU (RapidOCR on onnxruntime), which is why.
 
-**And it cannot be moved to the GPU by configuration alone.** Two things
-are in the way, either of which is enough on its own:
+**And it cannot be moved to the GPU by configuration alone.** That is
+worth knowing before you go looking for the setting. Two things are in
+the way, either of which is enough on its own:
 
 - The `onnxruntime` wheel this project installs is the CPU build.
   `onnxruntime.get_available_providers()` returns
@@ -176,8 +177,8 @@ An earlier figure of **2.46x** appears in older documents and in
 reasonable estimate of the *serial* cost (measured: 2.08x); it is not the
 cost you will pay on a parallel run.
 
-**It is not free.** OCR only runs on
-*bitmap* regions, so what it recovers is text stored in the PDF as an
+**It is not free, and this is the part to read twice.** OCR only runs
+on *bitmap* regions, so what it recovers is text stored in the PDF as an
 image rather than as characters. Turning it off changed the extracted
 text of **8 of those 16 documents**:
 

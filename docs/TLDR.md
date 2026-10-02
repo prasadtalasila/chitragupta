@@ -72,8 +72,8 @@ the paper was parsed: `pdf_text/_backends.py`'s `_extract_pdftotext`
 returns `None` instead of an empty list ("this backend resolves no
 reading order"), so nothing writes a passage sidecar for it, and
 `[parser].backend = "docling"` fixes it. Collapsing the two would report
-"no abstract" about a document nothing had read, which is worse than
-giving no answer.
+"no abstract" about a document nothing had read, which is the one answer
+worse than giving no answer.
 
 ## 🏗 Why it lives where it lives
 
@@ -133,7 +133,7 @@ is *lower* than the regex's 337. The gap is the withheld set.
 
 ### 🏷 Docling has no abstract label
 
-A reader will likely assume otherwise, but there is no `abstract` in
+A reader's first assumption is that one exists, but there is no `abstract` in
 `DocItemLabel`. The enum runs
 `caption`, `chart`, `code`, `document_index`, `footnote`, `form`,
 `formula`, `list_item`, `marker`, `page_footer`, `page_header`,
@@ -219,16 +219,18 @@ An earlier revision of this document said, of the declined generator's
 internals, that "an extractive summary must never be the stored
 artefact". Stitching four sentences from different sections into 110
 words produces dangling anaphora ("this approach", "as shown in Fig.
-3", "the proposed method") that refer to things not in the summary. No
-tuning fixes that, and the statement still stands.
+3", "the proposed method") that refer to things not in the summary. That
+is incoherent by construction, so no tuning fixes it, and the statement
+still stands.
 
-The fallback works differently in kind, not in degree. The abstract is
-one **contiguous** span in reading order that its authors wrote to be
-read standalone. Up to three consecutive paragraphs are joined, and the
-span ends at the next heading. Nothing is selected from elsewhere in the
-paper and nothing is recombined, so no dangling reference can arise.
-That is why issue #401 put the author's abstract on a path of its own
-from the start instead of treating it as the cheap end of summarisation.
+The fallback does not do that, and it differs in kind, not in degree.
+The abstract is one **contiguous** span in reading order that its
+authors wrote to be read standalone. Up to three consecutive paragraphs
+are joined, and the span ends at the next heading. Nothing is selected
+from elsewhere in the paper and nothing is recombined, so no dangling
+reference can arise. That is why issue #401 put the author's abstract on
+a path of its own from the start instead of treating it as the cheap end
+of summarisation.
 
 ## 🚫 What is declined: whole-paper summarisation
 
@@ -323,8 +325,8 @@ matter of effort:
   context returning 100-120 words to a parent that pipes them to `tldr
   write`.
 
-Neither this nor any related work proposes showing a TL;DR in
-`corpus ledger` output. That would put LLM output in the corpus-layer
+Explicitly **not** proposed, by this or any related work: showing a
+TL;DR in `corpus ledger` output. That would put LLM output in the corpus-layer
 command's own view, inverting the layer order the same way caching a
 summary in the ledger itself would.
 [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-what-is-deliberately-not-proposed)

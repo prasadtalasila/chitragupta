@@ -86,8 +86,8 @@ layer below, advisorily and never as a block.
 ## 🧼 Start each draft in a clean session
 
 Begin a draft in a fresh session: `/clear` in Claude Code, or a new
-conversation in whatever agent you use. This closes the one failure the
-gate above cannot see.
+conversation in whatever agent you use. The reason is not tidiness: it
+closes the one failure the gate above cannot see.
 
 The gate is mechanical and complete for what it measures. A citekey is
 in the ledger or it is not, so a **fabricated** one is caught every
@@ -98,17 +98,17 @@ context, and that then gets cited for a claim it does not support.
 Every deterministic check in this pipeline passes that draft. `python
 -m chitragupta.draft gate` passes it, the PostToolUse hook passes it,
 and `python -m chitragupta.review verbatim scan` is looking for
-something else entirely. Nothing detects it, which is why the remedy is
-a procedure and not another check.
+something else entirely. Nothing anywhere detects it, which is why the
+remedy is a procedure and not another check.
 
 Framing travels the same way. A session that spent an hour on one topic
 carries its vocabulary, its emphases and its sense of what matters, and
 the next draft inherits all three without anyone having chosen them.
 
-Clearing is cheap here because of `content/dossiers/`. The reader, the
-scope, the glossary, the kept evidence, the rejected candidates and the
-steering already given live on disk, not in the conversation, so a
-fresh session picks a draft back up by reading them.
+Clearing is cheap here by design: it is what `content/dossiers/` is for. The
+reader, the scope, the glossary, the kept evidence, the rejected candidates and
+the steering already given live on disk, not in the conversation, so a fresh
+session picks a draft back up by reading them.
 `docs/DRAFT-ITERATION.md` describes that design, and it and this
 guidance support each other.
 
@@ -190,14 +190,14 @@ enrichment layer is optional and nothing above it needs it.
   holds four real ones, exactly as drafting filled them. The dossier
   makes a draft revisable weeks later:
   `draft-reviser` reads the dossier and edits the affected sections
-  instead of re-running the genre skill over the whole topic, including
-  when the change comes from the corpus instead of from you (re-grounding
-  a draft whose cited papers a `sync` removed). If you do want the whole
-  corpus re-searched, ask for it and you get `corpus-reviser`, which is
-  the same edit discipline over a full retrieval pass and still keeps
-  the dossier. And if what you want repaired is what a review scan
-  queued, that is `agenda-reviser`: it works the agenda's unattended
-  items (short verbatim runs, `prose` findings, `missing-citekey`)
+  instead of re-running the genre skill over the whole topic. It does the
+  same when the change comes from the corpus instead of from you
+  (re-grounding a draft whose cited papers a `sync` removed). If you do
+  want the whole corpus re-searched, ask for it and you get
+  `corpus-reviser`, which is the same edit discipline over a full
+  retrieval pass and still keeps the dossier. And if what you want
+  repaired is what a review scan queued, that is `agenda-reviser`: it
+  works the agenda's unattended items (short verbatim runs, `prose` findings, `missing-citekey`)
   one at a time, asks you before deciding paraphrase-or-quote on a long
   run, and keeps no repair unless `python -m chitragupta.draft gate`
   passes and the `python -m chitragupta.review agenda --baseline`
@@ -306,7 +306,8 @@ enrichment layer is optional and nothing above it needs it.
   answer questions of judgement and may not.
 
   **Having one correct answer is necessary for a gate, but not
-  sufficient.** What decides it is what the check is measured against.
+  sufficient.** What decides whether a check may be one is what it is
+  measured against.
   The gate is measured against the ledger, which is ground truth (the
   human's own `.bib` export plus a real parse of a real PDF), and no
   state of the world makes a citekey absent from it legitimately

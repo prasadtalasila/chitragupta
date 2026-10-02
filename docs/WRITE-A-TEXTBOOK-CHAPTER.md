@@ -194,7 +194,7 @@ build one are pointed at the lab, which is a tutorial.
 
 Putting the objectives in `## Covers` is the convention for this genre:
 they are scope, the exercises test them, and a later revision that
-drops one is then visible.
+quietly drops one is then visible.
 
 ## 🗺 Step 3: write an outline (optional, recommended)
 

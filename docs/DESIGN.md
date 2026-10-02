@@ -355,7 +355,7 @@ survive every later edit:
 Neither leaves a marker behind, because neither needs to: a brief has
 been consumed by the time the draft exists, and a claim's grounding is
 **re-checkable at any point** against the ledger. Authorship lacks that
-property, and it is why this split survives revision.
+property, and that property is why this split survives revision.
 
 `claim` is the one worth building deliberately. It turns your paragraphs
 into an obligation the pipeline can discharge honestly, and *"I could not

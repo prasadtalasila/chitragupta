@@ -123,9 +123,9 @@ flowchart TB
 | 3 · Enrichment | No | No | **Yes**, same lock as `sync` |
 | 4 · Review | No | **Never** | No; keeps working during a `sync` |
 
-That last column is a feature. A review aid runs while a corpus rebuild
-is in progress, because an advisory read-only report has no reason to
-wait on one.
+That last column is a deliberate feature, not an implementation detail:
+a review aid runs while a corpus rebuild is in progress, because an
+advisory read-only report has no reason to wait on one.
 
 ## 📚 Corpus layer: turning a library into a ledger
 
@@ -299,7 +299,8 @@ skill inventing sub-themes from the topic. `dossier init
 `brief:` and/or `claim:` block plus optional declared `queries:`, which
 the genre skill then runs verbatim. `dossier status` reports whether the
 draft ran what was declared, from `retrieval.md`'s `origin` column, so
-"did this draft follow its outline?" can be checked.
+"did this draft follow its outline?" can be checked instead of taken on
+trust.
 
 A hand-edited section's own prose can re-run its own retrieval. Once
 `dossier status` reports the draft fingerprint `CHANGED`, `draft-reviser`

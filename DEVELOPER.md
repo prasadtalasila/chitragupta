@@ -46,7 +46,7 @@ One module is the deliberate exception.
 `build_index()`/`search()`, and asks the real
 `sentence_transformers`/`bertopic` classes whether they still accept the
 keywords the fakes accept (#514). The fakes are faithful enough that the
-expensive failure is the day they stop being; that module is what
+expensive failure is the day they quietly stop being; that module is what
 notices. It does not download an embedding model (its own docstring says
 why), so it stays as fast and as offline as the rest.
 

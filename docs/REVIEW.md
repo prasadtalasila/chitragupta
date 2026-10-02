@@ -13,7 +13,7 @@ verbatim detector works internally, which is
 [PLAGIARISM-DESIGN.md](PLAGIARISM-DESIGN.md).
 
 This is the human-facing half of the pipeline's record-keeping, which
-separates it from its counterpart. [DOSSIER.md](DOSSIER.md)
+separates it cleanly from its counterpart. [DOSSIER.md](DOSSIER.md)
 documents working state a *model* reloads to keep drafting; this
 documents evidence *you* weigh before deciding a draft is done. The two
 mirror the same draft path and are otherwise unalike:
@@ -127,13 +127,13 @@ cannot see, because the citekey *is* real.
 It reports three outcomes, not two. **Found** gives you the page and
 how it matched. **Absent** is the finding, and carries the page its
 distinctive words concentrate on, so you can tell a fabrication from a
-quotation someone edited. **Not checkable** is the third. Where the only text
-available is `pdftotext -layout` output, a two-column page splices its
-columns together and a correct quotation is not contiguous. Calling that
-absent would accuse a draft of something it did not do, so the aid says
-it measured nothing instead. That third outcome is also why this check,
-binary as it is, stays advisory; [ARCHITECTURE.md](ARCHITECTURE.md)
-works it through.
+quotation someone edited. **Not checkable** is the third, and the
+honest one. Where the only text available is `pdftotext -layout`
+output, a two-column page splices its columns together and a correct
+quotation is not contiguous. Calling that absent would accuse a draft
+of something it did not do, so the aid says it measured nothing instead.
+That third outcome is also why this check, binary as it is, stays
+advisory; [ARCHITECTURE.md](ARCHITECTURE.md) works it through.
 
 It often has nothing to check: `quote:` is optional, because A2's
 contract makes one a deliberate act rather than the residue of

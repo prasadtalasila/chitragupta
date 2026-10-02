@@ -98,7 +98,7 @@ and gets something back for it:
 [one result per citekey by construction](#-stage-8-capping-and-diversity),
 which every chunk-ranking system has to reintroduce as a filter.
 
-Being train-free is also a design position. Fan's §3 splits
+Being train-free is also a position, not an absence. Fan's §3 splits
 the field into train-free and training-based (independent, sequential,
 joint). Everything here is train-free, and Fan states the trade plainly:
 sparse retrieval's "no-training nature ... makes the retrieval
@@ -140,7 +140,8 @@ retriever.
 | local-deep-research | web engines, or an uploaded private collection | LangChain loaders |
 | MiniRAG | any text | tiktoken windows |
 
-**The trade-off.** Chitragupta's entrance is the narrowest possible, by design:
+**The trade-off.** Chitragupta's entrance is the narrowest possible,
+and that is the whole design:
 a citekey that no `sync` put in the ledger cannot survive to a rendered draft,
 so **fabrication is prevented structurally rather than detected statistically**.
 The cost is real: *the pipeline cannot cite a paper you have not catalogued*,
@@ -178,7 +179,7 @@ project had been exempt from: the structural diversity guarantee becomes
 a configured cap (`[retrieval].max_passages_per_source`), and a source
 whose parse produced no paragraphs is unreachable rather than merely
 ranked low. So this row is now the literature's ordinary trade, taken
-deliberately and per call.
+deliberately and per call, and no longer a place this pipeline sits apart.
 
 The unit is picked per query, not per corpus, so nothing here needs the
 whole-document guarantee to be given up to get the paragraph.
@@ -277,7 +278,7 @@ iteration, from the paper's own Table 6:
 **A shipped implementation exists and diverges from the paper.**
 [FlashRAG](https://github.com/RUC-NLPIR/FlashRAG) (MIT) implements it in
 about 45 lines as `IterativePipeline`, and it differs from the paper in
-four ways to know before citing it as a reference: it runs
+four ways worth knowing before citing it as a reference: it runs
 **3 iterations, not 2**, with the choice undocumented; it concatenates
 `{question} {generation}` rather than the paper's `y_{t-1} || q`
 (**inert under BM25**, which is a bag of words, but not under a dense
@@ -315,8 +316,8 @@ query-side fix (`_query_terms()`, shipped) still leaves on the floor.
 
 It is also LLM output entering the retrieval path, and
 [SOUL.md](../SOUL.md) keeps the corpus layer free of generated content
-so that the same bibliography always yields the same citekeys. Building it
-would need a home outside the corpus plane, the way the per-citekey
+so that the same bibliography always yields the same citekeys. So it is
+not simply unbuilt: it would need a home outside the corpus plane, the way the per-citekey
 TL;DR already has one ([TLDR.md](TLDR.md)), and a story for what happens
 when the generated questions are wrong. It is recorded as a real option
 with a real constraint; it is not an obvious win.
@@ -422,7 +423,7 @@ between rounds while `IRCoT` dedupes by document id, merges scores with
 `max(old, new)` and re-sorts the accumulated pool, **but never
 truncates it**, so after N rounds the prompt carries up to N x k
 documents. That is a live crash in their tracker. The mechanism is right and the
-missing cap is the lesson: dedupe, merge, re-sort, **then cap**, which
+missing cap is the whole lesson: dedupe, merge, re-sort, **then cap**, which
 under a stdlib BM25 is a dict and a `sorted()`.
 
 **The trade-off.** Capping costs relevance. Dropping
@@ -560,7 +561,8 @@ None detects a hand-edit. None supports section-scoped editing. And
 **all of them persist far more than they consume**: OpenScholar writes
 a complete refinement audit trail and reads back only a row count.
 
-ITER-RETGEN does feed a prior generation back in, but as a **retrieval query**,
+ITER-RETGEN is the exception that clarifies the rule: it *does* feed a prior
+generation back in, but as a **retrieval query**,
 not as an artifact to edit, and it regenerates the answer from scratch each
 iteration. So it is iterative *retrieval*, not revision, and it belongs to stage
 4 rather than here. What makes it interesting for this pipeline is that
@@ -698,7 +700,7 @@ Three causes, none of which a seed touches:
 - **Inference framework.** The same task scored 19.0 under one backend
   and 21.8 under another.
 
-The part this pipeline shares: **retrieval itself is deterministic**
+The clean part, which this pipeline shares: **retrieval itself is deterministic**
 given an exact index. They use a Faiss `Flat` index for that reason,
 rather than an approximate one.
 

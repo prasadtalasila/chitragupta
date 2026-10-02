@@ -307,11 +307,11 @@ Invoke it when you ask for a whole-corpus pass in as many words, when a
 scope change you agreed to has invalidated the recorded queries, or when
 the draft is being re-targeted at a different reader. Anything else,
 including repairing citations after a sync moved the corpus, is
-`draft-reviser`. When it is unclear, the skills are told to
+`draft-reviser`. When it is genuinely unclear, the skills are told to
 pick `draft-reviser` and say so: being wrongly narrow costs a clarifying
 sentence, being wrongly wide costs the tokens.
 
-It does not relax the point of doing it here instead of re-running the
+It does *not* relax the point of doing it here instead of re-running the
 genre skill. It still consults and honours `rejected.md`.
 It still logs every call to `retrieval.md`. It still edits section by
 section instead of rewriting the file, because a wide *search* does not
@@ -400,7 +400,7 @@ and names the copy that moved ([HARNESS.md](HARNESS.md)).
 One of the nine is not a drafting skill: `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing*
 (the dossier, the acronym vocabulary), it says how that skill differs and
-why instead of exempting it without comment.
+why instead of leaving it silently exempt.
 
 One rule below is narrower still: the pre-gate self-feedback step
 (roadmap [B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop),
@@ -516,9 +516,9 @@ is not.
 ## 🚧 The boundaries, and why they are enforced
 
 Every skill carries a "When to invoke" table whose rows are mostly
-*other* skills. That looks like duplication, but the genre boundary is
-the thing most likely to be crossed, because crossing it feels helpful at
-the time.
+*other* skills. That looks like duplication and is not: the genre
+boundary is the thing most likely to be crossed, because crossing it
+feels helpful at the time.
 
 Crossing it is costly because the rules are opposite, not just
 different. A tutorial's "one path, no branches" would delete a
@@ -527,8 +527,8 @@ survey's "weigh both sides without picking a winner" would gut a thesis
 chapter, whose job is to take a position. A textbook chapter's
 digressions into *why* are the exact defect that stalls a tutorial. So a
 skill that drifts into the neighbouring genre produces a document that
-fails at both jobs, and the failure is invisible until a reader tries to
-use it.
+fails at both jobs, not merely a slightly-off one, and the failure is
+invisible until a reader tries to use it.
 
 This is [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §5 (don't let a
 document do two jobs), enforced at the point where it is easiest to

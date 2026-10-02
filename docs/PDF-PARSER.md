@@ -102,7 +102,7 @@ document included two whole tables. See
 [PERFORMANCE.md](PERFORMANCE.md#-parserocr----the-largest-single-lever-and-a-trade).
 
 It also carries a system dependency nothing else in this repository has,
-and a missing one produces a misleading error; see
+and a missing one produces a thoroughly misleading error; see
 ["docling fails every document with an OpenCV recursion error"](#-docling-fails-every-document-with-an-opencv-recursion-error).
 
 ### 📖 `grobid`

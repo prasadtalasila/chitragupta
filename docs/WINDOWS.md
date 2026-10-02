@@ -56,8 +56,8 @@ this repository registers as `python`, and
 [HOOKS.md](HOOKS.md#-the-launcher-contract) records why that name rather
 than `python3`: a virtual environment creates `python` on every
 platform and `python3` only on POSIX, so `python3` is the name that
-would go missing here. On Windows the name resolves natively, so this
-host gains from that choice.
+would go missing here. On Windows the name resolves natively, so
+Windows gains from that choice rather than losing by it.
 
 It is still worth stating because of the failure mode. A hook whose
 launcher does not resolve produces **nothing at all**: no error, no log
@@ -99,7 +99,8 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
    ```
 
    `os-deps` is apt-only and will not run here. That is expected: it is
-   not part of what a Windows host installs, and the script says so.
+   not part of what a Windows host installs, and the script does not
+   pretend otherwise.
 
 4. **Install the three OS binaries by hand**, if you want rendering and
    the `verbatim` aid. There is no scripted path for these
@@ -133,7 +134,8 @@ and reports the other four, naming what it skipped. The two checks most
 readers want from a layout check, node overlap and content protrusion,
 are both in the five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s
 own "Needs `pdflatex`" column for the split. On a host without TeX, a
-green `figure` report covers only four of the nine checks.
+green `figure` report covers only four of the nine checks, so it is not
+a clean report.
 
 ## 🐧 Installing: WSL2
 
@@ -143,7 +145,7 @@ step and no Windows-specific caveat: inside WSL2 this is a Linux host,
 `os-deps` works, and `python-is-python3` (which `os-deps` installs)
 puts the hook launcher's name on `PATH`.
 
-This one is easy to get wrong and slow to diagnose: **keep
+One thing is easy to get wrong and slow to diagnose: **keep
 `papers/` and `content/` on the WSL2 filesystem, not under `/mnt/c/`.**
 The Windows drives are reached over a 9p mount whose per-file overhead
 dominates PDF parsing, so a corpus sync over a real library there is

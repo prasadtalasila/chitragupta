@@ -217,8 +217,8 @@ The abstract is read from the corpus layer's own sidecar and never from
 [above](#-bm25----the-default-and-always-available) that running the
 enrichment layer does not change what BM25 ranks.
 
-Both ship at 1.0 because a sweep measured it, not out of caution. Swept over both
-BM25 ground truths on this project's own corpus (`bench/RESULTS.md`,
+Both ship at 1.0 on the evidence of a sweep, not out of caution. Swept
+over both BM25 ground truths on this project's own corpus (`bench/RESULTS.md`,
 2026-09-15), title weighting is weakly positive at 2.0 on both arms
 (nDCG +0.0025 and +0.0029, no recall lost), but the gain on real
 drafting queries is **one query in 96**, and the two arms disagree in
@@ -242,14 +242,13 @@ a digital-twin corpus is most of them. Query-side acronym expansion
 acronym_expansion = true
 ```
 
-It is on by default, and it is a switch with no weight: an added term
-counts exactly as much as one you typed. An earlier revision made it a
-weight, and sweeping 0.25 / 0.5 / 1.0 of a typed term's weight put full
-weight ahead on every figure it moved, which leaves a dial whose only
-supported setting is its maximum. Switched off, nothing is added and the
-ranking is the one this layer produced before the feature existed. That
-holds structurally, since `expand` returns before it even loads a
-vocabulary.
+It is on by default, and it is a switch with no weight: an added term counts
+exactly as much as one you typed. That was measured: an earlier revision made it
+a weight, and sweeping 0.25 / 0.5 / 1.0 of a typed term's weight put full weight
+ahead on every figure it moved, which leaves a dial whose only supported setting
+is its maximum. Switched off, nothing is added and the ranking is the one this
+layer produced before the feature existed. That holds structurally, since
+`expand` returns before it even loads a vocabulary.
 
 The vocabulary is the one the drafting layer already reads:
 `assets/style/acronyms.toml` merged with your own file at
@@ -282,7 +281,7 @@ and `--log` writes the same string to the dossier's `retrieval.md`
 #### What it is worth, and what it costs
 
 Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), the
-first result is a caveat: **on the shipped vocabulary alone, nothing
+main result is a caveat: **on the shipped vocabulary alone, nothing
 happens.** Zero of 256 self-retrieval queries and zero of 96 live-logged
 drafting queries contain one of the five vendored acronyms, so every
 figure is the baseline's exactly. A domain vocabulary read off a real
@@ -420,7 +419,7 @@ retrieval against what the corpus returns now, so the first
 movement on drafts nobody edited. That is the schema bump showing
 through, not a draft going stale, and it settles on the next run.
 
-This was measured against one ground truth, and one that leans toward
+This was measured against only one ground truth, and one that leans toward
 the change: a self-retrieval query is a paper's own
 `keywords` field, where an acronym appears as a standalone token far more
 often than in the prose a person types. That inflates how *often*
@@ -470,14 +469,13 @@ this arrived can surface candidates on a draft nobody edited: what moved
 is what the corpus now looks like to BM25, which is what that report is
 for.
 
-The rule's cost was measured. On 79 of those 459 a heading follows the
-cut, overwhelmingly `Acknowledgements`, `Competing interests`,
-`Author contributions` and author biographies, which is why "to the end
-of the document" is the right rule here. Two outliers pay for it with real
-prose: a working paper whose appendix tables follow its references, and
-a report whose last chapter bibliography is followed by workshop
-summaries. A book with a bibliography per chapter keeps every chapter's
-but the last.
+The rule's cost was measured. On 79 of those 459 a heading follows the cut,
+overwhelmingly `Acknowledgements`, `Competing interests`, `Author contributions`
+and author biographies, which is why "to the end of the document" is the right
+rule here, not a lazy one. Two outliers pay for it with real prose: a working
+paper whose appendix tables follow its references, and a report whose last
+chapter bibliography is followed by workshop summaries. A book with a
+bibliography per chapter keeps every chapter's but the last.
 
 Retrieval quality before and after, on the same two arms
 `bench/bench_retrieval_keyword_selfretrieval.py` and
@@ -519,8 +517,8 @@ measured bound: such documents are **67 of 1,280 (5.2%)** and **20 of
 touch an in-text citation in a paper's own prose, which is that paper's
 text and stays in the snippet; only the reference section goes.
 
-Two further figures explain the rank churn. The
-median top-five hit *gains* 6.4% (self-retrieval) and 3.6% (live logs) of
+Two further figures explain the rank churn rather than excusing it.
+The median top-five hit *gains* 6.4% (self-retrieval) and 3.6% (live logs) of
 its score, because dropping the bibliography drops a length-normalization
 penalty it was paying; only 27 and 13 hits respectively lose more than a
 quarter of their score. So the cut mostly rescales, and rescaling reorders
@@ -731,7 +729,8 @@ the CLI counts such sources and names them under the results.
 
 On a corpus parsed with `[parser].backend = "docling"` that count is
 zero. On a `pdftotext` corpus this unit has nothing to search at all,
-which is why it is a flag rather than the default.
+which is the honest answer and why it is a flag rather than the
+default.
 
 **Scores from the two units are not comparable.** `N`, every document
 frequency and `avgdl` are computed over passages on one path and over

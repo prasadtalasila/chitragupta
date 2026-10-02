@@ -61,8 +61,8 @@ offers the list above at scope time, records the answer as a
 ask again. Decline the offer and everything searches the whole
 library, exactly as it did before.
 
-What the narrowing buys and what it costs are both less obvious than
-they look. Measured over a 642-item corpus (`bench/RESULTS.md`,
+Neither what the narrowing buys nor what it costs is obvious, so both
+are worth knowing. Measured over a 642-item corpus (`bench/RESULTS.md`,
 2026-08-19): scoping to a 19-item shelf raised the share of surfaced
 papers that were cited from 0.31 to 0.89, and it cost nothing in index
 terms, because the retrieval cache is shared and scoring is
@@ -142,7 +142,7 @@ the ledger untouched until a human confirms.
 Before either run acts, it also names **what else on disk still
 references that citekey**: the overlap index, the topic graph's edges,
 which topics the paper was a member of, the `evidence.md`/`sections.md`
-of any dossier, and the enrichment layer's chunk vectors. You can then
+of any dossier, and the enrichment layer's chunk vectors, so you can
 see the residue before you confirm instead of meeting it as a dead
 reference in a draft weeks later. It reports and repairs nothing: only
 the ledger row is ever removed, and the topic classes clear themselves

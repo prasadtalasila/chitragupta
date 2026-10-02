@@ -450,7 +450,8 @@ argument with no quoting, and ignores the shell entirely:
 }
 ```
 
-This is what `.claude/settings.json` now contains for all four hooks,
+This is not an example: it is what `.claude/settings.json` now
+contains for all four hooks,
 and `tests/test_settings_launchers.py` asserts it of every entry in that
 file instead of any named one. Exec form and the braced placeholder were
 confirmed working before being adopted: the harness substituted the

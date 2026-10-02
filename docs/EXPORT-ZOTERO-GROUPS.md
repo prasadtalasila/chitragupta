@@ -18,7 +18,8 @@ pipeline does with collections once it has them, which is
 > `scripts/populate_bib_groups.py` reads Zotero's **internal SQLite
 > database** directly. Nothing else in this repository does that, and
 > nothing else should. It is documented here because it exists and
-> undocumented tools are worse. It is not recommended.
+> undocumented tools are worse; being documented does not make it
+> recommended.
 
 Two of this project's rules bend for it:
 
@@ -34,8 +35,9 @@ Two of this project's rules bend for it:
 - **The pipeline's inputs are meant to be auditable by their owner.** A
   `.bib` file can be read and diffed by the person who exported it; a
   multi-megabyte application database cannot. Deriving
-  citation-adjacent metadata from something the user cannot check is the
-  opacity this project exists to argue against ([SOUL.md](../SOUL.md)).
+  citation-adjacent metadata from something the user cannot check is
+  exactly the opacity this project exists to argue against
+  ([SOUL.md](../SOUL.md)).
 
 It does not touch citekeys, which is the one line that cannot be crossed
 at all. It only ever *adds* a `groups` field to an entry that already
@@ -128,16 +130,16 @@ Once an item is found, its collections come from a straight join:
 - **Title matching is the weakest link** (43 of 644 in the last run). It
   is an exact normalised-string match, so a retitled or typo'd duplicate
   will not match, and two different works sharing a title would collide.
-- **Items filed in no collection** correctly get no `groups` field; there
-  is nothing to report (5 of 644).
+- **Items filed in no collection** correctly get no `groups` field. That
+  is not a bug; there is just nothing to report (5 of 644).
 - **Blocks carrying no fields** are counted as `no_fields` and left alone
   (2 of 644). These are Zotero's contentless `@misc{key,}` stubs for an
   attachment with no metadata, which `bibtexparser` is right to drop. A
   recorded issue documents the same two blocks in this library. The
   bucket is named for what they are and not for a failure, because
-  reporting them as "dropped" on a healthy library is the crying-wolf
-  problem 4.2 is about. They are still counted, so the buckets sum to
-  the total.
+  reporting them as "dropped" on a healthy library is exactly the
+  crying-wolf problem 4.2 is about. They are still counted, so the
+  buckets sum to the total.
 - **A collection name containing a literal comma** would corrupt the
   `{a,b}` list; the script substitutes `;` inside an individual name
   before joining. Untested against real data, because Zotero's UI does not

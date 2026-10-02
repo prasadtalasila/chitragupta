@@ -65,13 +65,13 @@ a tutorial that builds a minimal digital twin asset from scratch", "do
 deep research on fault injection for digital twin testbeds". The
 matching skill picks the request up and runs step 3 above for you.
 
-[GENRE.md](GENRE.md#-picking-one) covers which of the five genres
-matches what you asked for. Read it if you're not sure whether what you
-want is a survey, a thesis chapter, a textbook chapter, a tutorial, or a
-deep-research report. In short, it depends on what your reader is doing
-while they read: entering a field, reading adversarially for a claim,
-studying worked examples, following you at a keyboard, or reconciling
-several perspectives.
+Which of the five genres matches what you asked for is
+[GENRE.md](GENRE.md#-picking-one)'s whole job. Read it if you're not
+sure whether what you want is a survey, a thesis chapter, a textbook
+chapter, a tutorial, or a deep-research report. In short, the choice
+depends on what your reader is doing while they read: entering a field,
+reading adversarially for a claim, studying worked examples, following
+you at a keyboard, or reconciling several perspectives.
 
 Step 1 is optional, and is the only step before you ask. It writes
 `outline.md`, where you set out each section's `brief:`, one or more
@@ -155,7 +155,7 @@ automated pass, not your own revision session, touched the draft since anyone
 last confirmed it.)
 
 Nothing here is a gate. A hand-edited draft that never gets re-stamped
-makes the next revision less efficient. It cannot make a draft
+only makes the next revision less efficient. It cannot make a draft
 wrong, because `chitragupta draft gate` still stands between any draft
 and its citekeys.
 

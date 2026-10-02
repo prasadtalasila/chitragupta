@@ -467,8 +467,8 @@ falls inside its metaphor's reference range: drop decorative and
 unconnected elements, then merge duplicates, then collapse leaf clusters
 into a single labelled node, then drop infrastructure that every node
 touches. Fixed order matters more than the specific rungs: it makes the
-reduction deterministic and therefore re-runnable, which is why a derived
-figure is worth more than a drawn one.
+reduction deterministic and therefore re-runnable, which is the whole
+reason a derived figure is worth more than a drawn one.
 
 **Every derivation emits a ledger** naming what it merged, collapsed and
 dropped, and what it kept in full. Something like:
@@ -499,7 +499,7 @@ this before the first derivation ships.
   corpus-layer one. It is deterministic, so it *could* live in the corpus
   layer's style, but it acts on a draft and not on the corpus, and
   belongs beside the draft.
-- **Determinism is required.** A derivation must not call an LLM. If a
+- **Determinism is the whole point.** A derivation must not call an LLM. If a
   step needs judgement (which cluster to collapse, which node is focal),
   that judgement belongs in the ladder as a fixed rule, or in the
   author's hands, not in a model. This is the same argument the
@@ -764,14 +764,14 @@ the same probe output the aid already reads.
 from its edge" is a finding. "Bad routing" is not. Each of the above is a
 number or a pair of node names, in the style the layout aid already uses.
 
-**The false-positive floor this inherits.** The probe reads node boxes from the
-pdflatex log. A TikZ node's recorded box does not account for stroke width,
-arrowheads, or decoration bleed. The same class of error is documented in
-`diagram-design`'s renderer linter, which found that a geometric bounding box
-both misses real clipping and invents clipping that is not there, and moved to a
-paint-based comparison. Chitragupta will hit this in the opposite direction: a
-label that clears the node box by 0.1 mm may still be overprinted by the
-arrowhead. Expect it, write it into the bench, and consider whether the
+**The false-positive floor this inherits is a real one.** The probe reads node
+boxes from the pdflatex log. A TikZ node's recorded box does not account for
+stroke width, arrowheads, or decoration bleed. The same class of error is
+documented in `diagram-design`'s renderer linter, which found that a geometric
+bounding box both misses real clipping and invents clipping that is not there,
+and moved to a paint-based comparison. Chitragupta will hit this in the opposite
+direction: a label that clears the node box by 0.1 mm may still be overprinted
+by the arrowhead. Expect it, write it into the bench, and consider whether the
 rasterisation route (`pypdfium2`, already declared) is the accurate measure for
 the clearance findings specifically. If Part XI ships, it already produces a
 rendered form per figure, and the two should share one path instead of compiling
@@ -1185,14 +1185,15 @@ clearest representation happens to *be* a diagram, which is why the twin
 requirement is nearly free here. Where it is not, a table beats
 character art and should be allowed to.
 
-**The corollary decided two proposals in this revision.** If the twin must carry
-the same *information*, then anything the TikZ form conveys and the twin cannot
-is a rule violation, not a stylistic loss. That is what ruled out an icon set,
-since an icon must then be strictly redundant with its label and therefore adds
-nothing. And it is what Part XI has to respect from the other direction:
-shipping a rendered image into `md` and `html` is only acceptable while the twin
-remains a complete representation, which is why the twin becomes the image's alt
-text instead of an alternative to it.
+**The corollary is sharper than it looks: it decided two proposals in this
+revision.** If the twin must carry the same *information*, then anything the
+TikZ form conveys and the twin cannot is a rule violation, not a stylistic loss.
+That is what ruled out an icon set, since an icon must then be strictly
+redundant with its label and therefore adds nothing. And it is what Part XI has
+to respect from the other direction: shipping a rendered image into `md` and
+`html` is only acceptable while the twin remains a complete representation,
+which is why the twin becomes the image's alt text instead of an alternative to
+it.
 
 ---
 

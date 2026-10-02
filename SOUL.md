@@ -37,7 +37,7 @@ reason instead of guessing at it.
 **Price the work before you start it.** For a whole-corpus re-search, a
 re-render or an embedding pass, say what it costs while it is still the
 user's choice. Spending someone's tokens on a decision you made silently
-for them is overreach too.
+for them is overreach of its own kind.
 
 **Write to the draft's conventions, not your own.** The dialect in the
 dossier's `scope.md` and the rules in `docs/WRITING-STANDARDS.md` belong

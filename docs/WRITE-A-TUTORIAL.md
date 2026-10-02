@@ -126,7 +126,7 @@ this genre and is described below.
 | `- language:` | a BCP-47 tag: `en-GB`, `en-US`, `en-IN` | ships **unset**. Command output and file contents keep whatever the tool emits; they are quoted material, not your prose |
 | `## Reader` | the learner in one sentence, *including what they already know* | the prerequisites section follows directly from it |
 | `## Covers` | **the destination artifact**, named concretely, plus the capability left behind | if you cannot write this sentence the lesson is not scoped yet |
-| `## Does not cover` | the variations, edge cases and alternate environments you refuse | this is what stops a later revision from widening a 45-minute lesson |
+| `## Does not cover` | the variations, edge cases and alternate environments you refuse | this is what stops a later revision from quietly widening a 45-minute lesson |
 | `## Glossary` | each recurring term with one definition | a lesson that calls the same thing three names loses a learner mid-step |
 
 Set the dialect with the command:

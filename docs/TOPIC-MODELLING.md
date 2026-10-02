@@ -14,15 +14,17 @@ extractive refiner, legacy AutoRAG's gold-set methodology). Those are
 quoted where each mechanism is described in TOPIC-DISCOVERY.md and
 itemised, borrowings and refusals both, in
 [INSPIRATION.md](INSPIRATION.md#-topic-discovery). This document's own
-reference list therefore stays the evidence behind the *model*.
+reference list therefore stays what it was: the evidence behind the
+*model*.
 
 > **On the references below.** The four sources here are *not* in
 > `content/ledger.sqlite` and therefore have no citekeys, so they are
-> cited in full at the end and by author-year in the text. That follows
-> the rule from [AGENTS.md](../AGENTS.md): a citekey exists only when the
-> human's own `.bib` export and a real parse of a real PDF put it in the
-> ledger. Inventing one here, in a document that ships, for sources that
-> are real, is the habit this project exists to make impossible. If these
+> cited in full at the end and by author-year in the text. That is
+> deliberate, and it is the rule from [AGENTS.md](../AGENTS.md): a
+> citekey exists only when the human's own `.bib` export and a real
+> parse of a real PDF put it in the ledger. Inventing one here, in a
+> document that ships, for sources that are genuinely real, is exactly
+> the habit this project exists to make impossible. If these
 > papers are later added to a library and synced, this document should
 > be updated to cite them properly instead of being left as prose.
 
@@ -72,7 +74,7 @@ complex, high-effort part of the system, not a trivial step".
 `doc_vectors.content_text()` follows that literally. It removes the
 reference list, bare emails, URLs, DOIs, copyright lines and page
 numbers, and **nothing else**. It does no stop-word removal, lowercasing
-or low-frequency filtering, each of which would destroy the multiword
+or low-frequency filtering, each of which would destroy exactly the multiword
 domain terms this corpus is discriminated by. A test asserts
 `IEC 62304`, `MQTT v5` and `DTaaS` survive untouched.
 
@@ -85,7 +87,7 @@ document. Two artefact clusters left the top twenty:
 `werner kritzinger, fraunhofer austria` was still a top-three topic
 afterwards, because the name is in the *body*, not the bibliography:
 `kritzinger` appears in 101 documents and **55 still contain it after
-the reference list is removed**. Those papers are a topic (they survey
+the reference list is removed**. Those papers genuinely are a topic (they survey
 the digital-twin/shadow/model taxonomy), so the clustering is right and
 only the *label* is wrong. No amount of further preprocessing fixes that
 without deleting content that belongs to the topic. It is a labelling
@@ -117,8 +119,9 @@ is scattered: uniformity 0.89-0.93 for long-document benchmarks against
 0.78-0.86 for short. Models that truncate "suffer significant
 performance degradation" there.
 
-This corpus is long-document. Measured, two representative papers run to
-22,048 and 24,132 tokens against a 512 word-piece model limit, so
+This corpus is squarely long-document. Measured, two representative
+papers run to 22,048 and 24,132 tokens against a 512 word-piece model
+limit, so
 `model.encode(text)` was embedding **about 2%** of each paper: its
 chapter heading, author list and abstract opening. Documents are now
 chunked with `embed_index.chunk_text()` and the chunk vectors mean-pooled.
@@ -135,7 +138,7 @@ centroid and reduces separation.
 
 Ma et al. (2022) define multi-document summarisation as generating a
 summary "from a cluster of topic-related documents", and name
-cross-document redundancy as its defining problem. A topic here has that
+cross-document redundancy as its defining problem. A topic here has exactly that
 shape, which makes per-topic summarisation the natural consumer for this
 artefact, and `chitragupta/overlap_index.py` already computes shared
 n-grams corpus-wide, so the redundancy detector exists.
@@ -163,7 +166,7 @@ captions, equations and author blocks are one undifferentiated category,
 which is why `content_text()` has to find the bibliography by *heading
 regex* and not by label. Adopting DocBank-grade structure means a
 LayoutLM-class model and Detectron2: a real dependency and its own piece
-of work, more than a configuration change.
+of work, not a configuration change.
 
 This was filed as an issue of its own and is now closed as not planned,
 because §3 removed the evidence for it. The artefact clusters that
@@ -233,7 +236,7 @@ measured instead of assumed.
 - `bench/bench_topic_membership.py`: the five-mechanism comparison
   behind HDBSCAN soft clustering.
 
-  **A correction, because it bit twice.** An early version
+  **A correction worth keeping, because it bit twice.** An early version
   of this comparison scored HDBSCAN's own soft clustering at 1%
   agreement, which is nonsense: it indexed HDBSCAN's *cluster* ids with
   BERTopic's *topic* ids, and BERTopic renumbers topics by size (cluster

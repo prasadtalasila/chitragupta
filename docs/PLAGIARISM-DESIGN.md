@@ -18,7 +18,7 @@ layer sits.
 [PLAGIARISM.md](PLAGIARISM.md), which is the user-facing half and the
 one a person reaches for before presenting a draft. Nothing is restated
 across the two. Where this document needs a term the other defines, it
-links to it, for the reason
+links to it rather than repeating it, for the reason
 [CODE-STANDARDS.md](CODE-STANDARDS.md#-where-these-rules-come-from) gives:
 a rule stated twice will eventually be stated two different ways.
 
@@ -146,7 +146,7 @@ that the book borrows no wording: paraphrase is invisible here, and is an
 LLM's normal failure mode. A gate built on this tier would block the
 honest cases, such as a quoted definition, and miss the paraphrased ones.
 
-Two further limits apply before anyone generalises: this is one
+Two further limits matter before anyone generalises: this is one
 book, one topic, one generator; and because it contains no organic true
 positives, the measurement establishes how often the gate fires *wrongly*
 far better than it establishes how often it would fire *rightly*.
@@ -248,8 +248,8 @@ cover disjoint populations instead of competing for the same one.
   paper or re-parsing one shifts every number above, and a run that was
   clean can turn dirty with no draft edit. That is deterministic *given a
   corpus state*, a weaker guarantee than `chitragupta.draft gate`'s and
-  the same shape as the per-host allowlist below. The gate proposal is
-  where that trade is priced.
+  the same shape as the per-host allowlist below. The gate proposal, not
+  this document, is where that trade is priced.
 
 The measurement is `bench/RESULTS.md`'s `2026-08-13b` section. It is not
 linked, because `bench/` is one of the trees the documentation site does
@@ -421,8 +421,8 @@ were specified, and all three held up when tier 3 was finally built:
   the form the same measurement argues against. The tier's redesign
   scopes it to the citekeys a section's dossier already records and ranks
   instead of thresholding. That is what shipped, and building it produced
-  a second, sharper version of the same finding: a *sentence-level*
-  comparison is wrong as well as a corpus-wide threshold. In this corpus
+  a second, sharper version of the same finding: a corpus-wide threshold
+  is wrong, and so is a *sentence-level* comparison. In this corpus
   a draft sentence's framing is enough topic to outweigh the claim inside
   it, so the true pair scores below the noise from the very paper it
   restates. The tier works only because it compares windows instead of

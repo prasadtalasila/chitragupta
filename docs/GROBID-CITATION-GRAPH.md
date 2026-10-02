@@ -209,7 +209,7 @@ flowchart LR
 Output is an edge list of `citekey -> [citekeys it cites, restricted to
 this corpus]`.
 
-Nothing else in the pipeline fills this gap. BM25 in
+Nothing else in the pipeline can fill this gap. BM25 in
 `chitragupta/retrieval.py` and the embedding index in
 `chitragupta/enrich/embed_index.py` both rank on body-text similarity.
 Neither can answer "what does this corpus treat as foundational" or

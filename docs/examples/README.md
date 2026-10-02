@@ -13,9 +13,9 @@ Two notes, so the samples cannot mislead:
 
 - **The sources are synthetic.** The five "papers" were written purely
   as sample sources (each carries a notice; all are CC0). Their claims
-  are illustrative only. The *machinery* is real: every artefact here
-  came out of a real `corpus sync`, a real `draft gate` pass, real
-  review aids and real renders.
+  are illustrative, not scholarship. The *machinery* is real: every
+  artefact here came out of a real `corpus sync`, a real `draft gate`
+  pass, real review aids and real renders.
 - **The drafts were written the way the pipeline writes drafts**: from
   logged retrieval over this corpus, citing only citekeys the ledger
   holds, each under 1,000 words, with the dossier filled as drafting
@@ -50,7 +50,7 @@ dossiers are less tidy than the sample project's.
 | `content/dossiers/dt-overview/<stem>/` | each draft's dossier: scope, kept evidence with `claim:`/`quote:`, rejected candidates, logged retrieval, sections, steering, revisions | [DOSSIER.md](../DOSSIER.md), [DRAFT-ITERATION.md](../DRAFT-ITERATION.md) |
 | `content/review/dt-overview/<stem>.*.md` (+ `.json`) | the review layer's reports for each draft: provenance, verbatim, coverage, synthesis, uncited, quotation, support, and the merged agenda | [REVIEW.md](../REVIEW.md), [CITATION-PROVENANCE.md](../CITATION-PROVENANCE.md), [PLAGIARISM.md](../PLAGIARISM.md) |
 | `content/rendered/dt-overview/` | rendered outputs: the survey as PDF and Markdown, the thesis fragment as `\input`-ready `.tex` | [RENDERING-FLOW.md](../RENDERING-FLOW.md) |
-| `content/specs/twin-basics/` | a signed book outline, its sign-off record, and one accepted unit (`units/ch-staleness.json`); the second unit is still `unwritten` | [WRITE-A-BOOK.md](../WRITE-A-BOOK.md) |
+| `content/specs/twin-basics/` | a signed book outline, its sign-off record, and one accepted unit (`units/ch-staleness.json`); the second unit is truthfully marked `unwritten` | [WRITE-A-BOOK.md](../WRITE-A-BOOK.md) |
 | [`content/seed_topics.toml`](sample-project/content/seed_topics.toml), [`content/topics.json`](sample-project/content/topics.json), [`content/topic_seeds.json`](sample-project/content/topic_seeds.json), [`content/topic_set.json`](sample-project/content/topic_set.json), [`content/topic_graph.json`](sample-project/content/topic_graph.json) | the topic artefacts, from hand-written phrases through clustering to the derived graph | [TOPIC-MODELLING.md](../TOPIC-MODELLING.md), [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |
 | [`content/topic_map.html`](sample-project/content/topic_map.html) | the whole topic map as one offline page | [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |
 | [`content/topic_gold.toml`](sample-project/content/topic_gold.toml), [`content/topic_gold_results.json`](sample-project/content/topic_gold_results.json), [`content/discover_digital_twin.txt`](sample-project/content/discover_digital_twin.txt) | a gold query set, its measured scores per resolution rung, and one `corpus discover` transcript | [TOPIC-DISCOVERY.md](../TOPIC-DISCOVERY.md) |

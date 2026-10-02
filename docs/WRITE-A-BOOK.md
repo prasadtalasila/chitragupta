@@ -576,7 +576,7 @@ Three properties hold for all of them:
   the ones it could not see. A registry over half a book is not the same
   claim as one over all of it.
 - **Nothing here is written by an LLM.** They are a deterministic reading
-  of accepted prose, which is why they can be trusted: the same standing
+  of accepted prose, which is the whole reason they can be trusted: the same standing
   `chitragupta/ledger.py` has as a reading of a real bib file.
 - **The conventions are borrowed, not invented.** The definition bullet is
   the dossier glossary's, the sentence splitter is the provenance aid's,
@@ -729,7 +729,7 @@ python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='re
 Anything but `[]` means a citekey never reached the bibliography. This
 check became load-bearing when the bibliography moved to the end of the
 book; before that, citeproc had resolved every citation already and
-there was nothing for the warning to report. Python rather than
+there was nothing for the warning to report. Using Python rather than
 `grep -c` is deliberate: on the host this was first run,
 `grep -c` over that log printed nothing at all, and a check that silently
 reports nothing is worse than no check.
@@ -802,8 +802,8 @@ expected set to compare against), and a path that is itself one of the
 book's units. Pointed at a unit, it would report every *other* unit's
 citekeys as dropped, a confident and wholly wrong report.
 
-Per-chapter aids still apply; run them before assembly rather than
-after:
+Per-chapter aids still apply, and are worth running before assembly
+rather than after:
 
 ```bash
 chitragupta review agenda content/drafts/twins/ch-fidelity.md
@@ -823,7 +823,7 @@ Nothing here has read the argument. The checks establish that a book is
 grounded, consistent and complete; none of them establishes that it is
 any good. That judgement is the second human gate, and it is yours.
 
-Before you circulate it, run these per unit rather than over
+These are worth running before you circulate it, per unit rather than over
 `book.tex` (which holds no prose):
 
 ```bash
@@ -998,7 +998,8 @@ question and are not expected to agree.
 
 `spec status` and `unit status` exit non-zero on an outline nobody has
 signed or a unit nobody has accepted. That is not a new gate, and the
-distinction is stated here rather than left to a reader.
+distinction matters enough to be stated here rather than left to a
+reader.
 
 [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" draws the line by **what a
 check is measured against**: the citation gate is measured against the
@@ -1038,7 +1039,8 @@ citekey and a registry line cannot collide into the same text.
 ## 💡 Why `registry check` exits 0, when the two `status` commands do not
 
 `spec status` and `unit status` exit non-zero. `registry check` never
-does, however much it finds, and the difference has a reason.
+does, however much it finds, and the difference is not an
+inconsistency.
 
 [ARCHITECTURE.md](ARCHITECTURE.md)'s "Layer 4" is explicit that a check
 measured against a recorded preference "reports and never blocks,

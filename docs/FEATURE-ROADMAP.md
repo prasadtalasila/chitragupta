@@ -216,7 +216,7 @@ the behaviour it wants rather than arguing for it from scratch.
 
 **Decided: inspiration only, nothing copied.** This section is kept
 because the decision was a measured one and the measurement is the
-useful part; the question is not open.
+useful part. It is not kept to leave the question open.
 
 Copying from both Apache-2.0 upstreams was offered. The question asked
 was what it would cost to decline, and keep
@@ -676,7 +676,8 @@ If it is built, PaperBanana's loop *shape* is sound and worth learning
 from: at most three rounds, a structured `{critique, revised}` payload,
 an early exit on an explicit "nothing to change" sentinel, and keeping
 the last good render on failure. That is architecture, which is the
-kind of thing this roadmap takes. Two further lessons matter:
+kind of thing this roadmap takes. Two further lessons matter more than
+they look:
 
 - **The calibration clause.** *"Readability is a baseline requirement,
   not a differentiator… Only severe violations of the Veto Rules
@@ -927,8 +928,8 @@ mechanical change that is the whole plan. `plans/README.md` has the
 three tests for when a plan earns its place. That directory does not
 ship.
 
-**One plan here is for an item that was never built**; read why before
-assuming a plan means a commitment.
+**One plan here is for an item that was never built**, and why is worth
+knowing before assuming a plan means a commitment.
 `plans/c4-numeral-as-claim.md` was written because C4's contracts could
 not be settled without measuring, and measuring is what deferred it:
 the aid as designed reports the complement of the case C4 is motivated

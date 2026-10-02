@@ -43,9 +43,10 @@ and unusually bad at doing anything about it. Every quality signal it
 produces terminates in prose that a human must read, hold in their head,
 and hand-translate into a revision request.
 
-That posture is deliberate. The review layer is advisory by
-construction, and [SOUL.md](../SOUL.md) is explicit that "does this
-source support this sentence" is not a question a machine gets to settle.
+That posture is deliberate, not an oversight. The review layer is
+advisory by construction, and [SOUL.md](../SOUL.md) is explicit that
+"does this source support this sentence" is not a question a machine
+gets to settle.
 But *deciding* is not the same as *assembling*. The judgement is not the
 tedious part of acting on a review report. The tedious part is reading
 three prose documents, reconciling them against the section map, dropping
@@ -233,7 +234,7 @@ Unattended looping is only safe under a metric that catches compounding
 damage, and this design's is coarse. Three of six item classes need a
 human whatever the loop does, so an indefinite loop either starves or
 creeps into judgement. And its per-iteration cost is fixed where this
-one's token cost is not. The bound follows from these reasons.
+one's token cost is not. The bounded design is argued, not timid.
 
 Where the proposal may be too cautious is narrower: one pass per
 invocation. A bounded-convergence variant (keep passing while the
@@ -480,7 +481,7 @@ pipeline layer, and neither should acquire one.
 - **Does `agenda` strain the aid vocabulary?** A `review.AIDS` key is both
   the subcommand and the report's filename suffix (the values are the
   human-readable titles), so this ships as `survey.agenda.md`. One
-  objection remains: the other three keys name an observed property of
+  real objection remains: the other three keys name an observed property of
   the draft, while this one names what to do next. It is also the first
   aid that reads other aids.
 
@@ -531,7 +532,7 @@ alternative weighed against `agenda` is worse:
 
 `agenda` wins on register: the ordered list of matters put before a
 decision-maker, none of them decided by the person who drew it up, which
-matches the review layer's charter.
+is the review layer's charter in one word.
 
 The same test applies to the skill. `draft-improver` was rejected because
 "improver" presumes the outcome; `auto-reviser` because a name built on

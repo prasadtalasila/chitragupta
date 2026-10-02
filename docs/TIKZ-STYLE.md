@@ -59,7 +59,7 @@ millimetres cannot express "do not collide": re-wording one label, or
 setting the figure at a different type size, re-opens every adjacency in
 the picture at once and each of them has to be re-checked by eye.
 Relative placement and `fit` layers make most of those collisions
-impossible, where absolute coordinates only make them detectable.
+impossible, not merely detectable.
 
 **Name every node you draw**, in whichever idiom. `review figure` measures a
 node's geometry only where the source gives it an explicit `(name)`, so a

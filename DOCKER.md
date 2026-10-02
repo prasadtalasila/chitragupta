@@ -120,7 +120,7 @@ A second, much thinner image. Its job is to host one long-lived
 `claude remote-control` session with this pipeline installed; it does
 not build the toolchain. It installs the *published* `chitragupta-cli`
 package from PyPI into `/opt/venv` and copies no part of this repository
-in. That is the main difference from the toolchain image: an image built
+in. That is the whole difference from the toolchain image: an image built
 from a checkout has to be rebuilt to follow a release, and this one only
 has to be restarted.
 
@@ -337,8 +337,8 @@ entrypoint:   docker exec -it chitragupta-claude claude   # then /login, then re
 It reports rather than exiting non-zero on purpose: the fix needs a
 running container to `docker exec` into, and a crash loop would take
 that away. `docker logs <name>` is therefore the first thing to read
-when the remote-control UI does not list your agent; `docker ps` will
-say `Up` either way.
+when the remote-control UI does not list your agent, not `docker ps`,
+which will say `Up` either way.
 
 Attach to the live session with:
 

@@ -82,7 +82,8 @@ bash scripts/install_full_pipeline.sh all
 source .venv-full/bin/activate
 ```
 
-Both paths use the same venv name on purpose. `.venv-full` is what
+Both paths use the same venv name on purpose, not as a checkout habit
+carried over. `.venv-full` is what
 keeps a bare `pip install` from hitting Debian/Ubuntu's PEP 668
 `externally-managed-environment` error. It is also what lets Claude
 Code's hooks import `chitragupta`, for as long as `.venv-full` stays
@@ -1699,7 +1700,8 @@ chitragupta review support content/drafts/survey.md
 **`--json`** carries the envelope every review aid's JSON carries, plus
 `scored`, `unscoreable`, and one `findings` object per citation (`id`,
 `line`, `citekey`, `claim`, `score`, `note`). The two counts are
-deliberately in different units: `scored` counts *findings*, one per
+deliberately in different units, not a second inconsistency: `scored`
+counts *findings*, one per
 citation the entailer scored (`note` is `null`), while `unscoreable`
 counts *citekeys*, one per source that offered no passage to score
 against. A citekey cited twice
@@ -1771,7 +1773,7 @@ a real answer rather than an unasked question: the assembly's own text
 and every non-unit file it includes were opened and read, and
 `includes_outside_units` says which. `dropped` is unaffected either way.
 
-**Do not ignore `includes_unresolved`.** An include naming a file that
+**`includes_unresolved` is not noise.** An include naming a file that
 is not on disk, or one that is not text (which a `book.md` link to a
 cover image or a PDF will be), is material this run could not open, so a
 report with entries there covers less than it appears to. Nothing is
@@ -1811,7 +1813,8 @@ chitragupta review synthesis content/drafts/survey.md
 # ... --json > synthesis.json
 ```
 
-The report gives two numbers. **Spread** is how many distinct
+The report gives two numbers, because one is not enough. **Spread** is
+how many distinct
 citekeys a unit cites. For a section, the report also gives the
 **longest run of consecutive paragraphs resting on the same single
 citekey**. A section citing two papers by running one out before
@@ -2274,7 +2277,7 @@ repair only when `recheck` and `chitragupta draft gate` both come back
 clean. Nothing obliges you to use it; `recheck` is as free and as
 advisory as every other command here.
 
-**What `scan` does not see.**
+**What `scan` does not see, and why that matters.**
 `scan` runs all three detection tiers, and each finding names the one
 that produced it in `--json` output.
 
