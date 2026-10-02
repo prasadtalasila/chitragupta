@@ -38,7 +38,7 @@ collections_field = "groups"
 # topics.json.
 # This is also what every tier-1 command that takes a path will accept
 # as an input: citation_gate, references and render_output refuse a
-# draft that resolves outside it, and so do all three of chitragupta.review's
+# draft that resolves outside it, and so do all ten of chitragupta.review's
 # aids. ledger takes no path argument at all, so the rule applies to it
 # vacuously.
 # That one directory is then the whole record of the work, and a copy of

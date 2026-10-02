@@ -1,15 +1,16 @@
 # 🗺 The auto-improvement loop: what would be built
 
-Status: **specification of mostly unbuilt work.** Written 2026-08-11. Updated 2026-08-26;
-step 1 built in 5.4.0 and 6.16.0, step 3 in 5.5.0, step 4 in its own PR,
-and step 5 built narrow (verbatim runs only) in 5.7.0; see
+Status: **specification of built work; step 7 declined.** Written
+2026-08-11. Updated 2026-10-02; step 1 built in 5.4.0 and 6.16.0, step 3
+in 5.5.0, step 4 in its own PR, and step 5 built narrow (verbatim runs
+only) in 5.7.0 and widened to the agenda in 6.37.0; see
 [Build order](#-build-order).
 
-`python -m chitragupta.review agenda <draft>` is a command now, though
-no skill consumes it yet; that is step 5's widening, still open. Of the
-review aids, all seven now emit JSON: `verbatim scan` as of 5.4.0,
-`provenance` and `coverage` as of 6.16.0, `synthesis` and `uncited`
-from the day each landed, and `agenda` itself from the day it landed.
+`python -m chitragupta.review agenda <draft>` is a command, and the
+`agenda-reviser` skill consumes it: that was step 5's widening, shipped
+in 6.37.0 (#440). All ten review aids now emit JSON ([CLI.md](CLI.md)):
+`verbatim scan` as of 5.4.0, `provenance` and `coverage` as of 6.16.0,
+and `synthesis`, `uncited` and `agenda` from the day each landed.
 This document states *what* would be built and *what it must satisfy*, in
 the order it would be built.
 
@@ -580,7 +581,9 @@ not its sequence.
    matter of giving it the agenda as an input and the other classes as
    work; the write-set, the two-attempt limit, the binary re-check and
    the person-only trigger are already what R1-R11 (the requirement
-   set as it stood then, before R12) ask for.*
+   set as it stood then, before R12) ask for.* *Widened in 6.37.0
+   (#440): `agenda-reviser` reads the agenda and repairs the classes it
+   marks unattended; every other class is surfaced for a person.*
 
    Two pieces of that step landed with it, both in the review layer
    and not the skill: the scan payload's `id` (R2's stable identity,
@@ -592,9 +595,9 @@ not its sequence.
 7. **The gating decision**, last, tuned against real reports from
    step 5.
 
-Step 5's widening is the only work left live. Steps 1, 2, 3, 4 and 6
-are shipped, and step 7 is a closed, declined decision, not an
-open issue; see [REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
+Steps 1 to 6 are shipped, step 5's widening included, and step 7 is a
+closed, declined decision, not an open issue; see
+[REQUIREMENTS.md §5.1](REQUIREMENTS.md#-51-current-position).
 
 ## 🚧 B5 is a separate mechanism, not a widening of this one
 

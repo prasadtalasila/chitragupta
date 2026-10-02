@@ -32,5 +32,5 @@ cd "$work"
 python -m chitragupta.corpus sync
 
 opencode run --format json --title "survey on a local model" \
-  "$(cat "$here/prompt.txt")" < /dev/null > events.jsonl
-echo "Done: $work/content/drafts/dt-survey.md (events in $work/events.jsonl)"
+  "$(cat "$here/prompt.txt")" < /dev/null > content/events.jsonl
+echo "Done: $work/content/drafts/dt-survey.md (events in $work/content/events.jsonl)"

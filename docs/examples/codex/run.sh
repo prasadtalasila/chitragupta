@@ -34,5 +34,5 @@ codex exec --json --skip-git-repo-check \
   --dangerously-bypass-approvals-and-sandbox --dangerously-bypass-hook-trust \
   -c model_provider=local \
   -c "model_providers.local={name=\"local\",base_url=\"$BASE_URL\",wire_api=\"responses\"}" \
-  -m "$MODEL" "$(cat "$here/prompt.txt")" < /dev/null > events.jsonl
-echo "Done: $work/content/drafts/dt-survey.md (events in $work/events.jsonl)"
+  -m "$MODEL" "$(cat "$here/prompt.txt")" < /dev/null > content/events.jsonl
+echo "Done: $work/content/drafts/dt-survey.md (events in $work/content/events.jsonl)"

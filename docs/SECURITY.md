@@ -97,9 +97,14 @@ citekeys there are extracted from a draft, not the bib file, so a draft
 citing `\citep{../../secret}` must resolve, and does resolve, to no
 source text rather than to a file outside the content tree.
 
-The drafting skills run the gate before presenting a draft. A hook or
-plugin on each harness also runs it after writes under `content/drafts/`
-([HARNESS.md](HARNESS.md)).
+The drafting skills run the gate before presenting a draft. On Claude
+Code, Codex and OpenCode, a hook or plugin also runs it after writes
+the agent's own file tools make under `content/drafts/`
+([HARNESS.md](HARNESS.md)). It does not see a write made through the
+shell, Continue runs none of these hooks, and Codex behind llama.cpp is
+never offered the hooked tool ([LOCAL-MODELS.md](LOCAL-MODELS.md)), so
+not every draft write is checked automatically. `draft render` runs the
+gate in every case.
 Because this is a post-write check, an invalid draft can exist on disk
 until it is corrected. Run the gate yourself before sharing, rendering,
 committing, or relying on a draft. [HOOKS.md](HOOKS.md) documents the

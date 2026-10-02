@@ -29,10 +29,12 @@ Every agent gets the same three checks, all of them calls to one gate in
 
 1. **Self-check.** Each skill tells the model to run `chitragupta draft
    gate` on its draft and fix what it reports. The model can skip it.
-2. **Mandatory check.** A hook or plugin runs the gate on every write
-   the agent makes to a draft, and hands a refusal back to the model as
-   the tool's result. The model cannot skip it, provided the agent fires
-   it.
+2. **Mandatory check.** On Claude Code, Codex and OpenCode, a hook or
+   plugin runs the gate after every write the agent makes to a draft
+   through its own file tools, and hands a refusal back to the model as
+   the tool's result. The model cannot skip it on those tools. A write
+   through the shell bypasses it on every agent, and so does an agent
+   that never fires it (see Codex behind llama.cpp, and Continue, below).
 3. **Last check.** `chitragupta draft render` runs the gate before it
    writes any format, so a draft with an unknown key never becomes a
    document. It does not depend on the agent at all.

@@ -46,9 +46,10 @@ correspondence with Chitragupta holds point for point:
 
 4. **The audit is incorruptible, not well-intentioned.** Chitragupta
    is characterized as impartial: the record cannot be argued with or
-   flattered. This project's enforcement is likewise mechanical: a
-   PostToolUse hook runs the gate on every write under
-   `content/drafts/`, so grounding does not depend on anyone
+   flattered. This project's enforcement is likewise mechanical: a hook
+   or plugin runs the gate after every write an agent's file tools make
+   under `content/drafts/`, and `draft render` runs it again before any
+   document is produced, so grounding does not depend on anyone
    remembering to be honest. "Enforced mechanically, not by good
    intentions" (README) could be his epithet.
 
