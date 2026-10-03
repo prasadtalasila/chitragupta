@@ -113,8 +113,8 @@ _LINK_DEFINITION_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*\S+", re.MULTILINE)
 # bibliography the citeproc swap replaces.
 _BLOCKQUOTE_RE = re.compile(r"(?sm)^(> .*?)(?:\n\n+|\Z)")
 _REFERENCES_RE = re.compile(
-    rf"(?ism)^(#{{1,6}}[ \t]*(?:{references_section.REFERENCE_TITLE}|Further[ \t]+reading)[ \t]*$.*?)"
-    r"(?:\n#+ |\Z)"
+    rf"(?ism)^(#{{1,6}}[ \t]*(?:{references_section.REFERENCE_TITLE}|Further[ \t]+reading)"
+    r"[ \t]*$.*?)(?:\n#+ |\Z)"
 )
 
 # The width check reads code blocks' bodies from `_code_regions`:
