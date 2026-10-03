@@ -706,6 +706,12 @@ class TestMaskForScan:
         assert "before" in masked
         assert "after" in masked
 
+    def test_blanks_a_works_cited_section(self):
+        text = "Prose.\n\n## Works cited\n\nSmith, Blockchain consensus.\n"
+        masked = vc._mask_for_scan(text)
+        assert "Smith" not in masked
+        assert "Prose." in masked
+
     def test_blanks_inline_code(self):
         masked = vc._mask_for_scan("use `@property` here")
         assert "property" not in masked
