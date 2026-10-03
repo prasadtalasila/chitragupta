@@ -43,7 +43,7 @@ shape as its "should this equation have been numbered at all" row.
 import re
 from pathlib import Path
 
-from chitragupta import _code_regions, citation_gate, style_elements
+from chitragupta import _code_regions, citation_gate, references_section, style_elements
 from chitragupta.render_output import _paths
 from chitragupta.render_output._tables import line_of
 
@@ -106,11 +106,15 @@ _LINK_DEFINITION_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*\S+", re.MULTILINE)
 # and not this draft's to rewrite, and `chitragupta/references.py`
 # splices bibliography URLs straight out of the ledger into the
 # references section, where rewriting one as a link would misrepresent
-# the entry.
+# the entry. Which headings count as the reference list is
+# `references_section.REFERENCE_TITLE`'s, shared with the citeproc swap
+# and the uncited-prose report (#951); "Further reading" is this check's
+# own addition -- a reading list is links by nature, but it is not the
+# bibliography the citeproc swap replaces.
 _BLOCKQUOTE_RE = re.compile(r"(?sm)^(> .*?)(?:\n\n+|\Z)")
 _REFERENCES_RE = re.compile(
-    r"(?sm)^(#+ +(?:[\d.]+ +)?(?:References|Further reading|Bibliography|Works cited)\b.*?)"
-    r"(?:\n#+ |\Z)"
+    rf"(?ism)^(#{{1,6}}[ \t]*(?:{references_section.REFERENCE_TITLE}|Further[ \t]+reading)"
+    r"[ \t]*$.*?)(?:\n#+ |\Z)"
 )
 
 # The width check reads code blocks' bodies from `_code_regions`:

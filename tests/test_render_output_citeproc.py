@@ -25,6 +25,14 @@ class TestSwapManualRefsForCiteproc:
         text = "A claim [@k].\n\n## 6. References\n\n[1] A Paper, 2024. `k`\n"
         assert "## 6. References" in render_output._swap_manual_refs_for_citeproc(text)
 
+    def test_swaps_a_bibliography_heading_and_keeps_its_text(self):
+        # #951: section_start knew only "References", so this draft kept
+        # its hand-built list and got citeproc's appended after it.
+        text = "A claim [@k].\n\n## Bibliography\n\n[1] A Paper, 2024. `k`\n"
+        assert render_output._swap_manual_refs_for_citeproc(text) == (
+            "A claim [@k].\n\n## Bibliography\n\n::: {#refs}\n:::\n"
+        )
+
     def test_preserves_the_heading_level(self):
         text = "A claim [@k].\n\n#### References\n\n[1] A Paper, 2024. `k`\n"
         assert "#### References" in render_output._swap_manual_refs_for_citeproc(text)

@@ -74,6 +74,13 @@ class TestHasSection:
         lines = draft.splitlines(keepends=True)
         assert lines[references_section.section_start(lines)].strip() == "## References"
 
+    def test_no_match_for_a_bibliography_heading_inside_a_code_fence(self):
+        draft = "# Lesson\n\n```markdown\n## Bibliography\n- an example\n```\n\nMore lesson.\n"
+        assert not references_section.has_section(draft)
+
+    def test_a_title_does_not_run_onto_the_next_line(self):
+        assert not references_section.has_section("# D\n\n## 6.\nReferences\n")
+
     @pytest.mark.parametrize(
         "heading",
         [
@@ -89,6 +96,15 @@ class TestHasSection:
             "## 1.14 References",
             "### 12.14 References",
             "## 1.2.3.4 References",
+            # #951: the claims and typeset readers already took these, so a
+            # draft headed `## Bibliography` kept its hand-built entries
+            # beside citeproc's and had its bibliography verbatim-scanned.
+            "## Bibliography",
+            "## Works cited",
+            "## Works Cited",
+            "## 7. Bibliography",
+            "## A. References",
+            "## IV. Works cited",
         ],
     )
     def test_matches_bare_and_numbered_headings(self, heading):
@@ -105,6 +121,10 @@ class TestHasSection:
             "## Further References",
             "## References and notes",
             "## Reference",
+            "## Bibliographic notes",
+            "## Further reading",
+            "## See. References",
+            "####### References",
         ],
     )
     def test_does_not_match_a_heading_that_is_not_the_bibliography(self, heading):
@@ -442,6 +462,18 @@ class TestNumberedMarkdown:
         assert "## 6. References" in out
         assert "`b2024`" not in out
 
+    def test_replaces_a_bibliography_section_and_keeps_its_title(self, ledger_con):
+        self._seed(ledger_con)
+        draft = (
+            "One [@b2024].\n\n## Bibliography\n\n"
+            '[1] J. Doe, "B Paper," *J. Things*, 2024. `b2024`\n'
+        )
+        out = references.numbered_markdown(draft, ledger_con)
+
+        assert "## Bibliography" in out
+        assert "References" not in out
+        assert out.count("[1] J. Doe") == 1
+
     def test_an_explicit_heading_overrides_the_drafts_own(self, ledger_con):
         self._seed(ledger_con)
         draft = "One [@b2024].\n\n## 6. References\n\n[1] old entry\n"
@@ -616,6 +648,29 @@ class TestBuildSection:
 
 
 class TestApply:
+    def test_a_hand_built_bibliography_is_replaced_not_followed_by_a_second_list(
+        self, isolated_config
+    ):
+        # #951 / #699: section_start knew only "References", so apply()
+        # appended a fresh `## References` after a tutorial's hand-built
+        # `## Bibliography`, and the draft carried two reference lists.
+        con = ledger.connect()
+        ledger.upsert_reference(
+            con, make_reference(citekey="smith2024", title="A Paper", year="2024")
+        )
+        con.close()
+        draft = content_draft(isolated_config, "tutorial.md")
+        draft.write_text(
+            "# Lesson\n\n## Where to go next\n\nA filter helps [@smith2024].\n\n"
+            "## Bibliography\n\n[1] A Paper, 2024. `smith2024`\n"
+        )
+        references.apply(draft)
+
+        text = draft.read_text()
+        assert "## Bibliography" not in text
+        assert text.count("## References") == 1
+        assert text.count("[1] ") == 1
+
     def test_no_citekeys_returns_message_and_leaves_file_untouched(self, isolated_config, tmp_path):
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("Just prose, nothing cited.\n")

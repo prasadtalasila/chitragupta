@@ -32,7 +32,25 @@ from chitragupta import citation_gate
 # 97.7% of all findings and 100% of the long-run bucket, none of them
 # reuse. The trailing separator stays optional because "1.14 References"
 # carries none, while "6. References" and "6) References" still do.
-_HEADING_RE = re.compile(r"^#{1,6}\s*(?:\d+(?:\.\d+)*[.)]?\s*)?References\s*$", re.IGNORECASE)
+#
+# The title itself is shared: `review/_claims.py` and `style_typeset.py`
+# compose `REFERENCE_TITLE` into their own patterns rather than each
+# restating which words open a bibliography, which is how `## Bibliography`
+# came to be the reference list for two readers and prose for the third
+# (#951). It is a string, not a compiled pattern, because the three match
+# different things -- a heading line here, a title with its markup already
+# stripped there, a heading-to-next-heading region in the typeset check --
+# the same reason `citation_gate.PANDOC_KEY` is one. Anchored at both ends
+# by every caller: `## References and notes` is not the bibliography, and
+# this module's callers act on the answer destructively. `[ \t]`, not
+# `\s`, so a caller compiling it under DOTALL cannot let a title run
+# onto the next line. A letter or Roman-numeral number needs its `.` or
+# `)`, so "See. References" is not read as section "See".
+REFERENCE_TITLE = (
+    r"(?:(?:\d+(?:\.\d+)*[.)]?|(?:[A-Z]|[IVXLC]+)[.)])[ \t]*)?"
+    r"(?:References|Bibliography|Works[ \t]+cited)"
+)
+_HEADING_RE = re.compile(rf"^#{{1,6}}[ \t]*{REFERENCE_TITLE}[ \t]*$", re.IGNORECASE)
 
 
 # Any Markdown ATX heading, for section_end below -- deliberately not
@@ -49,7 +67,8 @@ def has_section(text: str) -> bool:
 
 
 def section_start(lines: list[str]) -> int | None:
-    """Index of the References heading in `lines`, or None.
+    """Index of the bibliography heading in `lines` (References,
+    Bibliography or Works cited, per `REFERENCE_TITLE`), or None.
 
     A heading inside a fenced code block doesn't count. Both callers act
     on the answer destructively -- `apply` replaces everything from here

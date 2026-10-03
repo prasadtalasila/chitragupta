@@ -649,12 +649,12 @@ the lesson design is the part worth keeping either way.
 
     Keep the default `## References` heading -- the same contract as
     `textbook-chapter-writer` (#699). `render_output` recognises the
-    section only by a heading whose text is `References`, bare or
-    number-prefixed, and swaps its entries for citeproc's own
-    bibliography; any other heading (an earlier draft of this skill said
-    `Further reading`) leaves the manual list in the rendered
-    `.tex`/`.pdf` *and* citeproc's bibliography below it, so every
-    reference appears twice.
+    section only by a heading whose text is `References`, `Bibliography`
+    or `Works cited`, bare or number-prefixed, and swaps its entries for
+    citeproc's own bibliography; any other heading (an earlier draft of
+    this skill said `Further reading`) leaves the manual list in the
+    rendered `.tex`/`.pdf` *and* citeproc's bibliography below it, so
+    every reference appears twice.
 
 15. **Render tex, pdf, and numbered md.**
 

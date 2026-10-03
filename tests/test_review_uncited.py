@@ -161,6 +161,10 @@ class TestTheExclusions:
         draft = a_draft("\\section*{Bibliography}\n\nA paper.\n", name="thesis.tex")
         assert found_text(draft) == []
 
+    def test_a_latex_works_cited_heading_is_excluded(self, isolated_config):
+        draft = a_draft("\\section*{Works Cited}\n\nA paper.\n", name="thesis.tex")
+        assert found_text(draft) == []
+
     def test_headings_are_excluded(self, isolated_config):
         """A numbered heading also splits into two sentences -- `1.` and
         the title -- so leaving it in costs two findings, not one."""

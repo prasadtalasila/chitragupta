@@ -38,7 +38,7 @@ Stdlib-only, and reads only the draft -- no ledger, no corpus, no sync.
 import re
 from dataclasses import dataclass
 
-from chitragupta import citation_gate, sentences
+from chitragupta import citation_gate, references_section, sentences
 from chitragupta.review import _blocks
 
 # A heading that opens a draft's own bibliography, matched against the
@@ -47,11 +47,13 @@ from chitragupta.review import _blocks
 # title, and a fourth pattern restating that here is the duplication
 # docs/CODE-STANDARDS.md calls the highest-value finding.
 #
-# The optional number is not decoration: the real drafts write
-# `## 7. References`, so a pattern anchored at the title's first word
-# matches none of them.
+# Which titles count is `references_section.REFERENCE_TITLE`'s, so this
+# reader, the citeproc swap and the typeset check give one answer (#951),
+# anchored at both ends for the reason given there. Its optional number
+# is not decoration: the real drafts write `## 7. References`, so a
+# pattern anchored at the title's first word matches none of them.
 REFERENCE_TITLE = re.compile(
-    r"^\s*(?:[0-9A-Z]+[.)]\s*)?(?:references|bibliography|works\s+cited)\b",
+    rf"^[ \t]*{references_section.REFERENCE_TITLE}[ \t]*$",
     re.IGNORECASE,
 )
 

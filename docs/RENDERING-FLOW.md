@@ -164,6 +164,15 @@ numbered consistently with the inline markers and the one with authors
 and venues in it, therefore lands under the draft's own heading instead
 of a second, untitled list appearing at the end.
 
+`section_start` recognises the bibliography under any of the three
+titles `references_section.REFERENCE_TITLE` names (References,
+Bibliography, Works cited), numbered or not, so a hand-titled
+`## Bibliography` is swapped like a generated `## References`, and
+`draft references` replaces it rather than appending a second list
+after it (#951). The review layer's uncited-prose report and the
+typeset check compose the same title pattern, so all three agree on
+where the bibliography is.
+
 `thesis-chapter-writer` skips the `references` step entirely
 ([ARCHITECTURE.md:192](ARCHITECTURE.md)). That is by design, and
 mechanically it could not run anyway: `references.py:529`'s CLI takes
