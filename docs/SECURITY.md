@@ -68,7 +68,7 @@ and, ultimately, the author remain responsible for those judgements; see
 | `content/ledger.sqlite` | The synced set of citekeys that the gate treats as authoritative | Pipeline-managed local state under the configured content root |
 | Parsed-text, Docling, Chroma, and topic caches | Derived corpus text, embeddings, passages, and topic artefacts | Local derived data; may contain information extracted from the corpus |
 | Drafts, dossiers, renders, and review reports | Research drafts and their supporting records | User-reviewed work product; generated prose is not automatically authoritative |
-| Local executables and libraries | `pdftotext`, Pandoc, `pdflatex`, Docling, Python packages, and GPU tooling process corpus data | Trusted local toolchain chosen and maintained by the operator |
+| Local executables and libraries | `pdftotext`, Pandoc, LuaLaTeX, `pdflatex`, Docling, Python packages, and GPU tooling process corpus data | Trusted local toolchain chosen and maintained by the operator |
 | GitHub Actions and PyPI release artefacts | Build, documentation, release archives, wheels, and packages | Repository-maintainer and CI trust boundary |
 | Claude Code or another external AI session | A drafting session can receive corpus-derived context or user instructions | Optional external-service boundary; not required by the corpus pipeline |
 
@@ -131,7 +131,7 @@ reference is resolved before the figure-layout aid compiles it or a
 render copies it beside the output. One that lands outside the draft's
 own directory is skipped, whether it is absolute, `..`-escaping, or a
 symlink (of the file or of a directory on the way to it). A render goes
-further for the symlink case: pandoc and `pdflatex` open a draft's
+further for the symlink case: pandoc and the TeX engine open a draft's
 images and `\input` files by the name the draft spells, so a draft that
 names one through a symlink out of its directory is refused with
 `[error]` before either tool runs, rather than rendered without it. A
@@ -163,19 +163,49 @@ in the called executable, a malicious executable earlier on `PATH`, or
 dangerous content interpreted by the toolchain. The PDF and rendering
 sections of [CLI.md](CLI.md) identify which commands require local tools.
 
-Every `pdflatex` this codebase starts (a `pdf` render through Pandoc,
-and the figure-layout aid's probe) runs with `-no-shell-escape` and
-with kpathsea's `openin_any=p`. The first turns off `\write18` entirely,
-including TeX Live's default restricted allow-list. The second is
-kpathsea's paranoid read mode: TeX may not open a name with a `..` or a
-dot-directory in it, nor an absolute name outside the output directory,
-though a relative name it finds on its search paths (`TEXINPUTS`, the
-TeX installation) is still allowed. A shared `.bib` whose title says
-`\input{/home/alice/.netrc}` reaches `pdflatex` as raw LaTeX through
-citeproc; with these settings the render fails and names the file
-instead of printing it into the reference list. Pandoc's own `--sandbox`
-is deliberately not used: it confines Pandoc's reads, not `pdflatex`'s,
-and it drops a `docx` render's images.
+Every TeX engine this codebase starts (LuaLaTeX for a `pdf` render
+through Pandoc, pdflatex for the figure-layout aid's probe) runs with
+`-no-shell-escape` and with kpathsea's `openin_any=p`. The first turns
+off `\write18` entirely, including TeX Live's default restricted
+allow-list. The second is kpathsea's paranoid read mode: TeX may not
+open a name with a `..` or a dot-directory in it, nor an absolute name
+outside the output directory, though a relative name it finds on its
+search paths (`TEXINPUTS`, the TeX installation) is still allowed. A
+draft whose raw LaTeX says `\input{/home/alice/.netrc}` therefore fails
+to render and names the file instead of printing it. Pandoc's own
+`--sandbox` is deliberately not used: it confines Pandoc's reads, not
+the engine's, and it drops a `docx` render's images.
+
+**A `.bib` field's TeX does not reach the engine as code.** pandoc's
+BibTeX reader turns a command it does not understand into raw LaTeX, and
+keeps `$...$` as a math node whose source it prints verbatim; citeproc
+carries both into the reference list. Every render that runs citeproc
+(all but `--fragment`) therefore runs
+`assets/pandoc/bib_raw_tex_as_text.lua` after it, which prints raw TeX
+in the reference list and the citations as literal text, and does the
+same for a math node that contains one of the few primitives that run
+code or reach a file (`\directlua`, `\csname`, `\input`, `\write` and
+the like). A shared `.bib` whose title says `\input{/home/alice/.netrc}`
+or `\directlua{...}`, in text or inside `$...$`, renders with that text
+visible and nothing read or run. Ordinary content is untouched: accents,
+`\emph`, `\textsubscript` and plain mathematics such as `$\alpha \leq
+\beta$` are left exactly as the reader produced them.
+
+**Accepted residual: Lua in the author's own TeX.** A `pdf` render runs
+LuaLaTeX (#996), which embeds a Lua interpreter, and `openin_any` and
+`-no-shell-escape` fence TeX's own file access, not Lua's. TeX in a
+draft body or in a `figures/*.tex` file can run Lua with `\directlua`,
+or with an equivalent built through `\csname`, so a blocklist on the
+text cannot catch it. That Lua can read any file the user can read,
+write anywhere the user can write, and read environment variables
+(measured on TeX Live 2023: `plans/996-unicode-pdf-engine.md`, Q2).
+The project accepts this: a draft and its figures are the author's own
+text, and rendering one is running it. Only the `.bib` path, which
+carries a collaborator's text, is closed. In a shared tree where
+someone else can write your drafts or figures, treat a `pdf` render as
+running their code. Two possible follow-ups are recorded and not
+implemented: confining Lua inside LuaTeX, and running the engine under
+a Landlock ruleset (available on this host: Linux 5.15, Landlock ABI 1).
 
 Paranoid mode judges a name as TeX spells it and follows symlinks, which
 is why the render refuses a draft's own symlinked references itself

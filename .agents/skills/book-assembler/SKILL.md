@@ -230,7 +230,12 @@ the file copied beside it, into the book's directory under
 
 If any unit printed it, keep the `\usepackage{chitragupta-unicode}` line
 in the skeleton above; if none did, drop it. Under XeLaTeX or LuaLaTeX
-the package does nothing, so it is safe to keep either way. Never
+the package does nothing, so it is safe to keep either way. A book
+compiled with `lualatex` instead of `pdflatex` prints these characters
+from its fonts without the package, and Telugu or Chinese names in the
+bibliography too; chitragupta's own pdf renders use LuaLaTeX for that
+reason (#996). The engine is the author's choice: mention it, never
+switch it for them. Never
 rewrite a unit's characters to get the book through. A character the
 package does not map still stops the build and names itself. Ask the
 author which fix they want: a `\DeclareUnicodeCharacter` line in the

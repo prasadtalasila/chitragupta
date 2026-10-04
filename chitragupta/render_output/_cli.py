@@ -64,16 +64,28 @@ def _figure_repair_hint(input_arg: str) -> str:
     )
 
 
-_UNICODE_ERROR_RE = re.compile(r"Unicode character (.) \(U\+([0-9A-F]{4,6})\)")
+# The message assets/latex/chitragupta-lualatex.tex raises when no font in
+# the fallback chain has a character. Its wording copies TeX's own
+# "Missing character: There is no X (U+XXXX)", so a LuaTeX that ever
+# reports through its own message instead still matches.
+_UNICODE_ERROR_RE = re.compile(r"Missing character: There is no (.) \(U\+([0-9A-F]{4,6})\)")
 
 
 def _unicode_repair_hint(stderr: str | None) -> str:
-    r"""The fix for a character pdflatex cannot print, or "".
+    r"""The fix for a character no font in the render's chain has, or "".
 
-    chitragupta-unicode.sty prints about 1,900 characters (#948); one
-    outside it still fails the build, which is deliberate: the
-    alternative is changing the text. LaTeX's own message names the
-    character but not what to do, and the author has two choices.
+    A pdf render runs LuaLaTeX with STIX Two and a fallback chain that
+    covers Greek, math, Telugu, Devanagari, CJK and every character
+    #948's table knew (#996). A character outside all of them still
+    fails the build, which is deliberate: the alternative is a silent
+    gap in the PDF. The build stops at the first such character, so the
+    hint names that one; a draft may hold more.
+
+    Both fixes work under LuaLaTeX. `content/unicode-extra.tex` is
+    included behind a shim that defines `\DeclareUnicodeCharacter` on
+    top of `newunicodechar` where the kernel lacks it
+    (`_unicode._overlay_header`), so the line pdflatex users already
+    know also prints here.
     """
     match = _UNICODE_ERROR_RE.search(stderr or "")
     if match is None:
@@ -81,9 +93,11 @@ def _unicode_repair_hint(stderr: str | None) -> str:
     char, code = match.groups()
     extra = config.CONTENT_DIR / "unicode-extra.tex"
     return (
-        f"\n[unicode] pdflatex cannot print {char} (U+{code}). Either write it as LaTeX "
-        f"in the draft (for a symbol, its math command, e.g. $\\aleph$), or teach this "
-        f"project to print it: add \\DeclareUnicodeCharacter{{{code}}}{{...}} to {extra}."
+        f"\n[unicode] No installed font has {char} (U+{code}), the first such character "
+        f"in this draft. Either write it as LaTeX in the draft (for a symbol, its math "
+        f"command, e.g. $\\aleph$), or teach this project to print it: add "
+        f"\\DeclareUnicodeCharacter{{{code}}}{{...}} to {extra}, e.g. "
+        f"\\DeclareUnicodeCharacter{{{code}}}{{\\ensuremath{{\\ast}}}}."
     )
 
 

@@ -9,6 +9,7 @@ import.
 
 import argparse
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 import pytest
@@ -16,7 +17,7 @@ from chitragupta import render_output
 from chitragupta.render_output._cli import _unicode_repair_hint
 from tests.conftest import content_draft
 from tests.conftest import MARKED_MD
-from tests.conftest import pandoc_available, pdflatex_available
+from tests.conftest import lualatex_available, pandoc_available, pdflatex_available
 
 
 class TestMainCli:
@@ -50,7 +51,7 @@ class TestMainCli:
         assert "[missing-binary]" in out
 
     @pytest.mark.skipif(
-        not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+        not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
     )
     def test_called_process_error_prints_and_returns_1(
         self, isolated_config, tmp_path, monkeypatch, capsys
@@ -320,10 +321,12 @@ class TestBreakableInlineCodeFilter:
             "1in",
             [],
         )
-        assert "--lua-filter" in cmd
-        filter_path = cmd[cmd.index("--lua-filter") + 1]
-        assert Path(filter_path).name == "breakable_inline_code.lua"
-        assert Path(filter_path).is_file()
+        # The bib filter (#996) is also a `--lua-filter`, so find this one
+        # by name rather than taking the first.
+        paths = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--lua-filter"]
+        breakable = [p for p in paths if Path(p).name == "breakable_inline_code.lua"]
+        assert len(breakable) == 1
+        assert Path(breakable[0]).is_file()
 
     def test_a_fragment_render_also_gets_it(self):
         # `--lua-filter` lives in the base `cmd` list, before `shape`'s
@@ -521,13 +524,11 @@ class TestTikzLibraryPreamble:
         assert "[tikz-libraries]" not in capsys.readouterr().err
 
 
-class TestPdflatexHardening:
-    """#823. A `.bib` title such as `See \\input{~/.netrc}` passes
-    through pandoc's BibTeX reader as raw LaTeX, and `pdflatex` reads it
-    at compile time, since kpathsea's default `openin_any = a` allows any
-    readable file. `openin_any=p` limits reads to the working directory
-    and TEXINPUTS, and `-no-shell-escape` also turns off the restricted
-    `\\write18` allow-list."""
+class TestPdfEngineHardening:
+    """#823, on the engine #996 moved to. TeX's own `\\input` of an
+    absolute path is refused by kpathsea's `openin_any=p`, which limits
+    reads to the working directory and TEXINPUTS, and `-no-shell-escape`
+    also turns off the restricted `\\write18` allow-list."""
 
     def _cmd(self, output_format):
         return render_output._pandoc_command(
@@ -550,9 +551,30 @@ class TestPdflatexHardening:
         cmd, _ = self._cmd("pdf")
         assert "--pdf-engine-opt=-no-shell-escape" in cmd
 
-    def test_a_pdf_render_runs_pdflatex_paranoid_about_reads(self):
+    def test_a_pdf_render_runs_lualatex_and_no_other_engine(self):
+        # #996: one engine for chitragupta's own pdfs, no fallback.
+        cmd, _ = self._cmd("pdf")
+        engines = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--pdf-engine"]
+        assert engines == ["lualatex"]
+
+    def test_a_pdf_render_runs_the_engine_paranoid_about_reads(self):
         _, env = self._cmd("pdf")
         assert env["openin_any"] == "p"
+
+    def test_a_pdf_render_includes_the_strict_glyph_and_font_header_last(self):
+        # The fonts are set inside this header (not as pandoc variables),
+        # so apt pandoc 3.1.3, which knows no mainfontfallback, still gets
+        # the chain. It is last, after the template's own font setup.
+        cmd, _ = self._cmd("pdf")
+        assert not any(v.startswith("mainfontfallback=") for v in cmd)
+        assert not any(v.startswith("mainfont=") for v in cmd)
+        headers = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--include-in-header"]
+        assert headers[-1].endswith("chitragupta-lualatex.tex")
+
+    def test_the_sty_directory_is_not_on_a_pdf_render_s_search_path(self):
+        # #996: a pdf render no longer loads chitragupta-unicode.sty.
+        _, env = self._cmd("pdf")
+        assert env["TEXINPUTS"] == f"{Path('in.md').resolve().parent}:"
 
     def test_the_hosts_own_openin_any_does_not_win(self, monkeypatch):
         monkeypatch.setenv("openin_any", "a")
@@ -560,10 +582,11 @@ class TestPdflatexHardening:
         assert env["openin_any"] == "p"
 
     @pytest.mark.parametrize("output_format", ["html", "docx", "tex"])
-    def test_a_format_that_runs_no_pdflatex_is_untouched(self, output_format):
+    def test_a_format_that_runs_no_engine_is_untouched(self, output_format):
         cmd, env = self._cmd(output_format)
         assert env is None
-        assert not any(flag.startswith("--pdf-engine-opt") for flag in cmd)
+        assert not any(flag.startswith("--pdf-engine") for flag in cmd)
+        assert not any(arg.startswith("mainfont") for arg in cmd)
 
     def test_pandoc_itself_is_not_sandboxed(self):
         # Measured on pandoc 3.6.4: `--sandbox` silently drops a docx
@@ -572,6 +595,58 @@ class TestPdflatexHardening:
         for output_format in ("pdf", "docx"):
             cmd, _ = self._cmd(output_format)
             assert "--sandbox" not in cmd
+
+
+class TestRequirePdfToolchain:
+    """#996: `lualatex` alone is not enough; without texlive-luatex's
+    font loader every render fails on its first font, naming a font
+    that is installed. Said up front instead."""
+
+    def _which(self, monkeypatch, present):
+        monkeypatch.setattr(
+            render_output._pandoc.shutil,
+            "which",
+            lambda b: f"/usr/bin/{b}" if b in present else None,
+        )
+        monkeypatch.setattr(
+            render_output._errors.shutil,
+            "which",
+            lambda b: f"/usr/bin/{b}" if b in present else None,
+        )
+
+    def _kpsewhich(self, monkeypatch, returncode):
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            return subprocess.CompletedProcess(cmd, returncode, stdout=b"", stderr=b"")
+
+        monkeypatch.setattr(render_output._pandoc.subprocess, "run", fake_run)
+        return calls
+
+    def test_no_lualatex_is_a_missing_binary(self, monkeypatch):
+        self._which(monkeypatch, {"kpsewhich"})
+        with pytest.raises(render_output.MissingBinary, match="lualatex"):
+            render_output._pandoc._require_pdf_toolchain()
+
+    def test_no_font_loader_names_the_package(self, monkeypatch):
+        self._which(monkeypatch, {"lualatex", "kpsewhich"})
+        calls = self._kpsewhich(monkeypatch, 1)
+        with pytest.raises(render_output.MissingBinary, match="texlive-luatex"):
+            render_output._pandoc._require_pdf_toolchain()
+        assert calls == [["kpsewhich", "luaotfload.sty"]]
+
+    def test_a_complete_toolchain_passes(self, monkeypatch):
+        self._which(monkeypatch, {"lualatex", "kpsewhich"})
+        self._kpsewhich(monkeypatch, 0)
+        render_output._pandoc._require_pdf_toolchain()  # must not raise
+
+    def test_a_host_with_no_kpsewhich_is_not_second_guessed(self, monkeypatch):
+        # Same rule as _require_tikz: nothing to ask, so let the engine say.
+        self._which(monkeypatch, {"lualatex"})
+        calls = self._kpsewhich(monkeypatch, 1)
+        render_output._pandoc._require_pdf_toolchain()
+        assert calls == []
 
 
 class TestTexReadableTmpdir:
@@ -690,17 +765,30 @@ class TestOutputDirFlag:
 
 
 class TestUnicodeRepairHint:
-    """#948: a character chitragupta-unicode.sty does not map still stops
-    pdflatex, deliberately; the hint names the author's two fixes."""
+    """#996: a character no font in the LuaLaTeX chain has still stops the
+    build, deliberately; the hint names it and the author's two fixes.
+    The message shape is the one assets/latex/chitragupta-lualatex.tex
+    raises, which copies TeX's own."""
+
+    _LUALATEX = (
+        "! Missing character: There is no \U0002fffd (U+2FFFD) in font "
+        "STIXTwoText:mode=node;script=latn;language=dflt;+tlig; or any of its fallbacks.\n"
+        "<argument> ...not:N \\tex_shipout:D"
+    )
 
     def test_names_the_character_and_both_fixes(self):
-        hint = _unicode_repair_hint(
-            "! LaTeX Error: Unicode character ☃ (U+2603)\n               not set up"
-        )
+        hint = _unicode_repair_hint(self._LUALATEX)
         assert hint.startswith("\n[unicode] ")
-        assert "☃ (U+2603)" in hint
+        assert "\U0002fffd (U+2FFFD)" in hint
+        assert "the first such character" in hint
         assert "unicode-extra.tex" in hint
-        assert "\\DeclareUnicodeCharacter{2603}" in hint
+        assert "\\DeclareUnicodeCharacter{2FFFD}" in hint
+
+    def test_pdflatexs_own_message_is_not_what_a_render_prints_any_more(self):
+        # A pdf render no longer runs pdflatex, so its "Unicode character
+        # ... not set up" cannot reach this CLI; matching it would only
+        # ever fire on a message from somewhere else.
+        assert _unicode_repair_hint("! LaTeX Error: Unicode character ☃ (U+2603)") == ""
 
     @pytest.mark.parametrize("stderr", [None, "", "! Undefined control sequence."])
     def test_says_nothing_about_another_failure(self, stderr):

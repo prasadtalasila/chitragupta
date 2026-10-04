@@ -17,10 +17,11 @@
 #                `chitragupta install` refuses this stage by name and
 #                prints that command, rather than running it a second way).
 #   os-deps      -- apt-get the system packages the full pipeline needs
-#                (TeX Live, Pandoc, poppler-utils, Poetry itself,
-#                git/curl/unzip, OpenCV's runtime libraries, and
-#                python-is-python3 -- the name `python`, which the
-#                Claude Code hooks are launched by). Needs
+#                (TeX Live with LuaLaTeX, the fonts a pdf render uses,
+#                Pandoc, poppler-utils, Poetry itself, git/curl/unzip,
+#                OpenCV's runtime libraries, and python-is-python3 -- the
+#                name `python`, which the Claude Code hooks are launched
+#                by), plus the STIX Two font fetched by hand. Needs
 #                root; auto-sudo's if not already root. Opt-in -- not
 #                everyone wants this script touching apt. Also reachable
 #                as `chitragupta install os-deps` (#265), unmodified.
@@ -35,6 +36,8 @@
 #   actionlint   -- the workflow linter alone, without the venv dev-deps
 #                also builds. CI's lint job wants exactly this, the same
 #                reason `vale` is a stage of its own.
+#   stix-two     -- the STIX Two font alone (#996), pinned and
+#                checksum-verified; os-deps runs it too.
 #   gpu-torch    -- calls ensure_gpu_torch (below) directly, pointed at
 #                CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON rather than this
 #                script's own venv -- what `chitragupta install gpu-torch`
@@ -158,7 +161,29 @@ install_os_deps() {
         texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended latexmk \
         lmodern texlive-pictures \
         texlive-binaries texlive-publishers \
+        texlive-luatex \
+        fonts-noto-core fonts-noto-cjk fonts-dejavu-core fonts-unifont fontconfig \
         libgl1 "$glib_pkg"
+    # texlive-luatex and the four font packages are a pdf render's engine
+    # and fonts (#996, chitragupta/pdf_fonts.py). `lualatex` itself comes
+    # with texlive-binaries/texlive-latex-base above, but its font loader
+    # (luaotfload) is texlive-luatex: without it the binary is on PATH and
+    # every render fails on its first font, naming a font that is
+    # installed. The fonts are the fallback chain: Noto for whole scripts
+    # (Telugu, Devanagari, CJK) and the remaining symbols, DejaVu for a
+    # few more, Unifont for the six characters of #948's table no other
+    # packaged font has. About 206 MiB installed, from apt's
+    # Installed-Size on Ubuntu 24.04 (texlive-luatex 43.8, fonts-noto-core
+    # 41.6, fonts-noto-cjk 88.9, fonts-unifont 31.8; fonts-dejavu-core,
+    # 2.2, is usually present already). STIX Two, the text and math font,
+    # is not packaged outside the 1.65 GiB texlive-fonts-extra, so
+    # install_stix_two fetches its five files (2.0 MiB).
+    #
+    # No `luaotfload-tool --update` here: its font database lives in the
+    # *invoking* user's TEXMFVAR, and this stage runs under sudo, so it
+    # would warm root's and leave the user's cold. The first render
+    # builds it, in about 2 s on this font set.
+    install_stix_two
     # python3-dev + gcc are for triton, which nothing here asks for
     # either: torch's default Linux wheel bundles it, and on a host with
     # a GPU visible triton compiles a small C shim of its own
@@ -310,6 +335,77 @@ install_vale() {
     sudo_if_needed install -m 0755 "${vale_tmp}/vale" /usr/local/bin/vale
     rm -rf "$vale_tmp"
     echo "installed $(vale --version)"
+}
+
+# STIX Two, the text and math font of a pdf render (#996,
+# chitragupta/pdf_fonts.py). Debian and Ubuntu ship it only inside
+# texlive-fonts-extra (1.65 GiB installed), against 2.0 MiB for the five
+# files a render uses, so this fetches them from the STIX project's own
+# repository at a pinned tag, like Vale and actionlint above: verified
+# before anything is installed, and a mismatch is fatal. SIL OFL 1.1.
+#
+# Into /usr/local/share/fonts, which fontconfig and luaotfload both scan,
+# so no TeX tree is touched. Each file is checked again on a re-run, so a
+# host that already has the right files downloads nothing.
+STIX_TWO_TAG="v2.13b171"
+STIX_TWO_FILES=(
+    "STIXTwoText-Regular.otf:c4864ca6ec071c2d31d0d8309001faa1ee3517fffb53a31a405a697b71f52ca1"
+    "STIXTwoText-Bold.otf:7ef76c666a6704f76ed3fa27bcdda55b36e558b5c2c93b49b03d854db96bdeb5"
+    "STIXTwoText-Italic.otf:cd64481fd10b69469074a3a8172fb5a22cb4116941d8aceafb8c77756b563df8"
+    "STIXTwoText-BoldItalic.otf:90e88f2ac79d6c00a5ce2d8446bfdf9457aed6afc1159cde33262979d82c8586"
+    "STIXTwoMath-Regular.otf:3a5f3f26f40d5698b3c62dd085d48d6663696a3f80825aab8b553d5097518e8c"
+)
+STIX_TWO_DIR="${STIX_TWO_DIR:-/usr/local/share/fonts/stix-two}"
+
+install_stix_two() {
+    stix_tmp="$(mktemp -d)"
+    stix_base="https://raw.githubusercontent.com/stipub/stixfonts/${STIX_TWO_TAG}/fonts/static_otf"
+    stix_new=0
+    for entry in "${STIX_TWO_FILES[@]}"; do
+        name="${entry%%:*}"
+        sha="${entry##*:}"
+        if [[ -f "${STIX_TWO_DIR}/${name}" ]] \
+            && echo "${sha}  ${STIX_TWO_DIR}/${name}" | sha256sum -c --status; then
+            continue
+        fi
+        # A failed download warns and carries on, as install_vale's
+        # does: every other package here still installs, and `chitragupta
+        # doctor` names the missing font. A checksum mismatch, below, is
+        # the fatal case.
+        if ! curl -fsSL -o "${stix_tmp}/${name}" "${stix_base}/${name}"; then
+            echo "WARNING: could not download STIX Two (${name}) from ${stix_base}; skipping." >&2
+            echo "         pdf renders need it; chitragupta doctor will report it missing." >&2
+            rm -rf "$stix_tmp"
+            return 0
+        fi
+        if ! echo "${sha}  ${stix_tmp}/${name}" | sha256sum -c --status; then
+            echo "ERROR: STIX Two checksum mismatch for ${name} -- refusing to install." >&2
+            echo "       expected ${sha}" >&2
+            echo "       got      $(sha256sum "${stix_tmp}/${name}" | cut -d' ' -f1)" >&2
+            rm -rf "$stix_tmp"
+            return 1
+        fi
+        stix_new=1
+    done
+    if [[ "$stix_new" == "1" ]]; then
+        sudo_if_needed install -d -m 0755 "$STIX_TWO_DIR"
+        for file in "$stix_tmp"/*.otf; do
+            sudo_if_needed install -m 0644 "$file" "$STIX_TWO_DIR/"
+        done
+        # luaotfload scans font directories itself, so the cache refresh
+        # is a courtesy to other tools, not a requirement. Guarded because
+        # fc-cache is the `fontconfig` package: os-deps installs it, but
+        # the `stix-two` stage may run on a host that has not, and under
+        # `set -e` a missing fc-cache would otherwise abort after the
+        # fonts were already copied.
+        if command -v fc-cache >/dev/null 2>&1; then
+            sudo_if_needed fc-cache -f "$STIX_TWO_DIR" >/dev/null
+        fi
+        echo "installed STIX Two ${STIX_TWO_TAG} into ${STIX_TWO_DIR}"
+    else
+        echo "STIX Two ${STIX_TWO_TAG} already installed in ${STIX_TWO_DIR}"
+    fi
+    rm -rf "$stix_tmp"
 }
 
 install_actionlint() {
@@ -840,6 +936,10 @@ for stage in "${STAGES[@]}"; do
         # lint job wants the workflow linter and nothing else, and it must
         # not drag in poetry or a venv to get it.
         actionlint) install_actionlint ;;
+        # STIX Two alone (#996), for the reason `vale` is a stage: a host
+        # whose TeX Live and Noto fonts came from somewhere else can get the
+        # one font os-deps fetches by hand without re-running apt.
+        stix-two) install_stix_two ;;
         # `chitragupta install gpu-torch` (#265) reaches ensure_gpu_torch
         # the same way vale above reaches install_vale -- a stage of its
         # own, for the same reason the comment above vale gives: sourcing
@@ -860,7 +960,7 @@ for stage in "${STAGES[@]}"; do
         all) install_os_deps; install_python_deps ;;
         *)
             echo "Unknown stage: $stage" >&2
-            echo "Expected one of: os-deps, python-deps, dev-deps, cpu-torch, vale, gpu-torch, all" >&2
+            echo "Expected one of: os-deps, python-deps, dev-deps, cpu-torch, vale, actionlint, stix-two, gpu-torch, all" >&2
             exit 1
             ;;
     esac

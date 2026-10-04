@@ -1,0 +1,41 @@
+% chitragupta's LuaLaTeX preamble for its own pdf renders (#996).
+% Passed to pandoc with --include-in-header, after the template's own
+% font setup, which the lines below override. Not a package: a
+% `--fragment` or `.tex` output never gets it, because the document that
+% compiles those chooses its own engine.
+%
+% A character no font in the chain has must stop the build, not leave a
+% silent gap in the PDF. LuaTeX's default is a log warning and a dropped
+% glyph: the same silent change of what the document says that #948
+% removed from the text side. \tracinglostchars=3 makes it an error, and
+% the callback below makes that error name the character in the one line
+% pandoc shows -- LuaTeX's own message is printed on a line pandoc drops,
+% so without it the user sees only "Fatal error occurred" (measured,
+% plans/996-unicode-pdf-engine.md, Q1). The wording copies TeX's own
+% "Missing character: There is no X (U+XXXX)" so render_output/_cli.py
+% has one message shape to recognise.
+%
+% Fonts (#996). Generated from chitragupta/pdf_fonts.py's latex_fonts();
+% tests/test_render_output_fonts.py fails if the two disagree. Written
+% here rather than passed as pandoc variables because Ubuntu 24.04's apt
+% pandoc (3.1.3) knows no `mainfontfallback` and dropped the chain.
+% BEGIN chitragupta fonts
+\directlua{luaotfload.add_fallback("chitraguptafallback", {"STIX Two Math:mode=node", "Noto Serif:mode=node", "DejaVu Sans:mode=node", "Noto Sans Symbols 2:mode=node", "Noto Serif Telugu:mode=harf;script=telu", "Noto Serif Devanagari:mode=harf;script=dev2", "Noto Serif CJK SC:mode=harf", "Unifont:mode=node", "Unifont Upper:mode=node"})}
+\directlua{luaotfload.add_fallback("chitraguptamonofallback", {"DejaVu Sans Mono:mode=node", "STIX Two Math:mode=node", "Noto Serif:mode=node", "DejaVu Sans:mode=node", "Noto Sans Symbols 2:mode=node", "Noto Serif Telugu:mode=harf;script=telu", "Noto Serif Devanagari:mode=harf;script=dev2", "Noto Serif CJK SC:mode=harf", "Unifont:mode=node", "Unifont Upper:mode=node"})}
+\setmainfont{STIX Two Text}[Ligatures=TeX,Scale=1,RawFeature={fallback=chitraguptafallback}]
+\setmathfont{STIX Two Math}
+\setmonofont{Latin Modern Mono}[Scale=1,RawFeature={fallback=chitraguptamonofallback}]
+% END chitragupta fonts
+%
+\tracinglostchars=3
+\begingroup
+\catcode`\%=12
+\directlua{
+  luatexbase.add_to_callback("glyph_not_found", function(id, char)
+    local f = font.getfont(id)
+    tex.error(string.format(
+      "Missing character: There is no %s (U+%04X) in font %s or any of its fallbacks",
+      utf8.char(char), char, f and f.name or tostring(id)))
+  end, "chitragupta.missing_character")
+}
+\endgroup

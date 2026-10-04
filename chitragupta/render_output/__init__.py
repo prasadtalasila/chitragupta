@@ -1,9 +1,9 @@
 """Stage 7: Pandoc/LaTeX rendering of generated Markdown into PDF/DOCX.
 
 Needs the `pandoc` and TeX Live binaries (apt packages, not pip -- not
-installable via pyproject.toml/Poetry or any other venv mechanism). Verified working
-on this host (2026-07-28): `pandoc`, `pdflatex`, `latexmk` are all on
-PATH. Where they aren't, this stage fails cleanly with MissingBinary
+installable via pyproject.toml/Poetry or any other venv mechanism). A pdf is
+LuaLaTeX with the fonts `install_full_pipeline.sh os-deps` installs (#996).
+Where they aren't, this stage fails cleanly with MissingBinary
 rather than hanging or stack-tracing -- see docker/Dockerfile for a
 target that installs them when the host doesn't have root.
 
@@ -21,8 +21,8 @@ copies of the input and the bib file -- never touching the real
 also runs `_sanitize_for_latex` over the temp copy, stripping control
 characters and joining decomposed accents (both from `pdftotext` text in
 `content/parsed/`, and both rejected by pdflatex) -- never in the draft
-on disk. Every other character reaches pandoc as written (#948); the
-ones pdflatex cannot print alone are `_unicode.py`'s concern.
+on disk. Every other character reaches pandoc as written (#948); a pdf
+prints it from the font chain, a `.tex` gets `_unicode.py`'s `.sty`.
 
 Citations render in IEEE style -- numeric `[1]` markers, `[3]-[6]` for a
 consecutive run, over a numbered list of complete entries -- via the CSL
@@ -133,6 +133,7 @@ from chitragupta.render_output._pandoc import (
     _has_code_block,
     _pandoc_command,
     _render_csl,
+    _require_pdf_toolchain,
     _run_pandoc,
 )
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES, _output_dir
@@ -266,13 +267,13 @@ def render(
     math_mapping = _checked_math_mapping(draft_text, input_path)
     _refuse_escaping_refs(input_path, draft_text)
 
-    # Everything from here on needs the real pandoc/pdflatex/TeX Live
+    # Everything from here on needs the real pandoc/LuaLaTeX/TeX Live
     # toolchain to exercise -- see #291. Marked per-line rather than by
     # extracting a helper, since there is no single enclosing block to tag
     # and this trailing tail is otherwise ordinary sequential code.
     _require("pandoc")  # pragma: no cover-windows
     if output_format == "pdf":  # pragma: no cover-windows
-        _require("pdflatex")
+        _require_pdf_toolchain()
     figure_refs = _figure_refs(draft_text)  # pragma: no cover-windows
     if figure_refs and output_format in _TEX_FORMATS:  # pragma: no cover-windows
         _require_tikz()

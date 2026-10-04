@@ -9,12 +9,14 @@ module's job and not that layer's, can report `missing-binary`. "Probe
 for a toolchain; never assume one, in either direction"
 (DEVELOPER-AGENTS.md).
 
-Six checks, none of them fatal to run without:
+Seven checks, none of them fatal to run without:
 
-1. **OS binaries pip cannot supply** -- pandoc, pdflatex, pdftotext, vale.
-   `python -m chitragupta.draft render`/`style` already probe these
-   themselves and report per-call; this is the same probe, run once, up
-   front, so a user finds out before their first render rather than at it.
+1. **OS binaries pip cannot supply** -- pandoc, lualatex, pdflatex,
+   pdftotext, vale. `python -m chitragupta.draft render`/`style` already
+   probe these themselves and report per-call; this is the same probe,
+   run once, up front, so a user finds out before their first render
+   rather than at it. `lualatex` renders a pdf (#996); `pdflatex` is the
+   figure-layout probe's compiler.
 2. **Is the `enrich` extra importable?** `pip install chitragupta-cli`
    alone gives tier 1 and tier 2 (docs/CLI.md); this says whether tier 3
    is there too, without importing anything from `chitragupta.enrich`
@@ -39,6 +41,13 @@ Six checks, none of them fatal to run without:
 6. **Does OpenCode see only its own skill copies?** (#900) An OpenCode
    project's `.opencode/opencode.json` must deny the unsuffixed skill
    names, or OpenCode picks among the three harnesses' copies.
+7. **Can LuaLaTeX find every font a pdf render names?** (#996) The
+   fonts and fallback chain in `chitragupta/pdf_fonts.py`, each looked up
+   with `luaotfload-tool --find`: the same database the render uses, not
+   `dpkg`, which on one measured host listed `fonts-noto-core` as
+   installed while its font directory was empty. A missing font fails a
+   render only when the draft holds a character that needs it, so this
+   is the one place that says so before then.
 """
 
 import argparse
@@ -46,10 +55,11 @@ import importlib.metadata
 import importlib.util
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import launcher_configs
+from chitragupta import launcher_configs, pdf_fonts
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -58,8 +68,8 @@ DESCRIPTION = (
 )
 
 # What python -m chitragupta.draft render/style already probe for
-# themselves, per call. Doctor probes the same four, once, up front.
-BINARIES = ("pandoc", "pdflatex", "pdftotext", "vale")
+# themselves, per call. Doctor probes the same five, once, up front.
+BINARIES = ("pandoc", "lualatex", "pdflatex", "pdftotext", "vale")
 
 THIS_DISTRIBUTION = "chitragupta-cli"
 CONSOLE_SCRIPTS = ("chitragupta", "cg")
@@ -200,6 +210,32 @@ def _check_opencode_skills(root: Path) -> list[str]:
     ]
 
 
+def _check_pdf_fonts() -> list[str]:
+    """One line per font family a pdf render names (#996)."""
+    if shutil.which("luaotfload-tool") is None:
+        return [
+            "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
+            "loader (texlive-luatex) is not installed, so no pdf renders; "
+            "`bash scripts/install_full_pipeline.sh os-deps` installs it"
+        ]
+    lines = []
+    for name in pdf_fonts.all_families():
+        probe = subprocess.run(
+            ["luaotfload-tool", f"--find={name}"], capture_output=True, text=True, check=False
+        )
+        # Its exit status is 0 whether or not the font exists (measured,
+        # luaotfload 3.26); only the message tells them apart.
+        if f'Font "{name}" found!' in probe.stdout + probe.stderr:
+            lines.append(f"[ok] pdf font found: {name}")
+        else:
+            lines.append(
+                f"[missing] pdf font {name}: a draft with a character only it has "
+                "will not render to pdf; `bash scripts/install_full_pipeline.sh "
+                "os-deps` installs it"
+            )
+    return lines
+
+
 def build_parser() -> argparse.ArgumentParser:
     return argparse.ArgumentParser(prog=prog_for("doctor"), description=DESCRIPTION)
 
@@ -213,6 +249,7 @@ def main(argv=None) -> int:
         _check_competing_distribution(),
         *_check_launchers(Path.cwd()),
         *_check_opencode_skills(Path.cwd()),
+        *_check_pdf_fonts(),
     ]
     print("\n".join(lines))
     return 0

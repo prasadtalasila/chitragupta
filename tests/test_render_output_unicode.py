@@ -1,5 +1,6 @@
-"""chitragupta/render_output/_unicode.py: which renders load
-chitragupta-unicode.sty, and what a fragment is told (#948)."""
+"""chitragupta/render_output/_unicode.py: which renders get
+chitragupta-unicode.sty, what a fragment is told (#948), and how the
+project's unicode-extra.tex reaches a LuaLaTeX render (#996)."""
 
 import subprocess
 
@@ -7,7 +8,13 @@ import pytest
 
 from chitragupta import render_output
 from chitragupta.render_output import _unicode
-from tests.conftest import content_draft, pandoc_available, pdflatex_available
+from tests.conftest import (
+    content_draft,
+    lualatex_available,
+    pandoc_available,
+    pdf_text,
+    pdftotext_available,
+)
 
 
 class TestMappedCharacters:
@@ -29,11 +36,12 @@ class TestMappedCharacters:
 
 
 class TestPreambleFiles:
-    def test_a_pdf_with_a_mapped_character_gets_a_usepackage(self, tmp_path):
-        files = _unicode.preamble_files("CO₂", "pdf", False, tmp_path, tmp_path / "out")
-        assert [f.read_text(encoding="utf-8") for f in files] == [
-            "\\usepackage{chitragupta-unicode}\n"
-        ]
+    def test_a_pdf_never_loads_the_sty(self, tmp_path):
+        # #996: a pdf render is LuaLaTeX, where the .sty is a no-op and the
+        # font chain prints CO₂. Nothing is copied beside it either.
+        out = tmp_path / "out"
+        assert _unicode.preamble_files("CO₂", "pdf", False, tmp_path, out) == []
+        assert not out.exists()
 
     def test_a_draft_without_one_gets_nothing(self, tmp_path):
         assert _unicode.preamble_files("CO2", "pdf", False, tmp_path, tmp_path / "out") == []
@@ -65,19 +73,32 @@ class TestPreambleFiles:
         assert capsys.readouterr().err == ""
         assert not (out / "chitragupta-unicode.sty").exists()
 
-    def test_the_project_s_own_extra_file_comes_last(self, isolated_config, tmp_path):
+    def test_the_project_s_own_extra_file_comes_last_behind_the_shim(
+        self, isolated_config, tmp_path
+    ):
         extra = isolated_config.CONTENT_DIR / "unicode-extra.tex"
         extra.parent.mkdir(parents=True, exist_ok=True)
         extra.write_text("\\DeclareUnicodeCharacter{2603}{*}\n", encoding="utf-8")
-        files = _unicode.preamble_files("CO₂ ☃", "pdf", False, tmp_path, tmp_path / "out")
-        assert files[-1] == extra
-        # Loaded even when the draft has nothing the shipped .sty maps:
-        # the user's own characters are the reason the file exists.
-        assert _unicode.preamble_files("☃", "pdf", False, tmp_path, tmp_path / "out") == [extra]
+        out = tmp_path / "out"
+        out.mkdir()
+        files = _unicode.preamble_files("CO₂ ☃", "tex", False, tmp_path, out)
+        assert len(files) == 2
+        header = files[-1].read_text(encoding="utf-8")
+        # The shim first, so the same line works where the kernel lacks
+        # the command (LuaLaTeX, XeLaTeX); the project's file verbatim after.
+        assert header.startswith("\\ifdefined\\DeclareUnicodeCharacter\\else")
+        assert header.endswith("\\DeclareUnicodeCharacter{2603}{*}\n")
+        # The project's own file is never rewritten.
+        assert extra.read_text(encoding="utf-8") == "\\DeclareUnicodeCharacter{2603}{*}\n"
+        # Loaded even when the draft has nothing the shipped .sty maps,
+        # and on a pdf, which loads no .sty at all: the user's own
+        # characters are the reason the file exists.
+        assert len(_unicode.preamble_files("☃", "pdf", False, tmp_path, out)) == 1
 
 
 @pytest.mark.skipif(
-    not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+    not (pandoc_available and lualatex_available and pdftotext_available),
+    reason="pandoc/lualatex/pdftotext not installed",
 )
 class TestRenderReal:
     _DRAFT = (
@@ -87,19 +108,48 @@ class TestRenderReal:
         "```python\nα = 1  # ≤\n```\n"
     )
 
-    def test_948_s_characters_render_to_pdf(self, isolated_config):
+    def test_948_s_characters_render_to_pdf_as_written(self, isolated_config):
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text(self._DRAFT, encoding="utf-8")
-        assert render_output.render(str(draft), output_format="pdf").exists()
+        text = pdf_text(render_output.render(str(draft), output_format="pdf"))
+        # The font prints the character itself, where pdflatex's .sty
+        # printed `CO\textsubscript{2}`, which pdftotext reads as `CO2`.
+        assert "CO₂ budget" in text
+        assert "R², 5 µm, ½, the 𝑡 statistic" in text
 
-    def test_an_unmapped_character_still_fails_naming_itself(self, isolated_config):
+    def test_996_s_probe_renders_every_character_as_written(self, isolated_config):
+        # The issue's own success criterion: Greek, math letters, a
+        # Telugu word and a Chinese name, from the font chain.
         isolated_config.BIB_FILE_PATH.write_text("")
         draft = content_draft(isolated_config, "draft.md")
-        draft.write_text("A snowman ☃ here.\n", encoding="utf-8")
+        draft.write_text("CO₂ 𝑡 ℝ ≤ α 𝒶, తెలుగు, 王小明.\n", encoding="utf-8")
+        text = pdf_text(render_output.render(str(draft), output_format="pdf"))
+        assert "CO₂ 𝑡 ℝ ≤ α 𝒶, తెలుగు, 王小明." in text
+
+    def test_a_character_no_font_has_fails_naming_itself(self, isolated_config):
+        # U+2FFFD is unassigned, so no font in the chain may have it.
+        # Unifont covers nearly all of the BMP, so an assigned character
+        # that is reliably absent is hard to find; an unassigned one is not.
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("A gap \U0002fffd here.\n", encoding="utf-8")
         with pytest.raises(subprocess.CalledProcessError) as exc:
             render_output.render(str(draft), output_format="pdf")
-        assert "U+2603" in exc.value.stderr
+        assert "Missing character: There is no \U0002fffd (U+2FFFD)" in exc.value.stderr
+        assert not (isolated_config.RENDERED_DIR / "draft.pdf").exists()
+
+    def test_the_overlay_prints_a_character_under_lualatex(self, isolated_config):
+        # A line written for #948's pdflatex stopped a LuaLaTeX build with
+        # `Undefined control sequence` before the shim (measured).
+        isolated_config.BIB_FILE_PATH.write_text("")
+        extra = isolated_config.CONTENT_DIR / "unicode-extra.tex"
+        extra.parent.mkdir(parents=True, exist_ok=True)
+        extra.write_text("\\DeclareUnicodeCharacter{2FFFD}{[gap]}\n", encoding="utf-8")
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text("A gap \U0002fffd here.\n", encoding="utf-8")
+        text = pdf_text(render_output.render(str(draft), output_format="pdf"))
+        assert "A gap [gap] here." in text
 
     def test_a_tex_render_loads_the_sty_it_ships_beside_itself(self, isolated_config):
         isolated_config.BIB_FILE_PATH.write_text("")
@@ -122,7 +172,7 @@ def test_an_html_render_keeps_every_character_as_written(isolated_config):
 
 def test_each_preamble_file_becomes_an_include_in_header(tmp_path):
     # Without a real pandoc, so the Windows leg (no os-deps) reaches the
-    # loop too; the real renders above only run where pdflatex does.
+    # loop too; the real renders above only run where LuaLaTeX does.
     header, extra = tmp_path / "header.tex", tmp_path / "unicode-extra.tex"
     cmd, _ = render_output._pandoc_command(
         *(tmp_path / name for name in ("in.md", "bib.bib", "ieee.csl", "out.tex", "in.md")),
