@@ -34,3 +34,11 @@ test("every rule is a selector string and a style object", () => {
     assert.equal(typeof rule.style, "object");
   }
 });
+
+test("a dimmed membership line is drawn dim, not at the member rule's opacity", () => {
+  /* Since #981 a membership line leaving a dimmed topic carries `dim`,
+     so it matches both rules and the later one wins. */
+  const at = (selector) => CY_STYLE.findIndex((rule) => rule.selector === selector);
+  assert.ok(at("edge[family = 'member']") >= 0);
+  assert.ok(at("edge[dim = 1]") > at("edge[family = 'member']"));
+});

@@ -305,6 +305,37 @@ describe("the exported topic-graph page in a headless browser", { skip }, () => 
 
   const detailText = () => evaluate('document.getElementById("detail").textContent');
 
+  /* The layout is animated, so a step that redraws is finished only
+     once every node has stopped moving: a click aimed at a node still in
+     flight lands on empty canvas. */
+  async function settled() {
+    const positions = `(() => {
+      const cy = document.getElementById("cy")._cyreg;
+      if (!cy || !cy.cy.nodes().length) { return false; }
+      return JSON.stringify(cy.cy.nodes().map((n) => [n.id(), n.renderedPosition()]));
+    })()`;
+    let previous = await until(positions, "the canvas to draw");
+    const settleBy = Date.now() + DEADLINE_MS;
+    for (;;) {
+      assert.ok(Date.now() < settleBy, "the layout never came to rest");
+      await sleep(200);
+      const now = await until(positions, "the layout to settle");
+      if (now === previous) { break; }
+      previous = now;
+    }
+  }
+
+  // Double-click puts a topic's papers on the canvas.
+  async function expand(label) {
+    const at = await centreOf(`${CY}.$id(${JSON.stringify(label)})`);
+    await click(at);
+    await click(at);
+    await until(`${CY}.edges('[family = "member"]').length > 0`, label + "'s papers");
+    await settled();
+  }
+
+  const papersOnCanvas = () => evaluate(`${CY}.nodes('[kind = "paper"]').map((n) => n.id())`);
+
   before(async () => {
     scratch = fs.mkdtempSync(path.join(os.tmpdir(), "chitragupta-smoke-"));
     pageUrl = exportPage(path.join(scratch, "app"));
@@ -322,9 +353,7 @@ describe("the exported topic-graph page in a headless browser", { skip }, () => 
   });
 
   /* A fresh page per case, so no case leans on what an earlier one
-     clicked. The layout is animated, so a case starts only once every
-     node has stopped moving: a click aimed at a node still in flight
-     lands on empty canvas. */
+     clicked, and each starts on a canvas at rest. */
   beforeEach(async () => {
     problems = [];
     const loaded = new Promise((resolve) => { onLoad = resolve; });
@@ -334,20 +363,7 @@ describe("the exported topic-graph page in a headless browser", { skip }, () => 
     assert.ok(!errorText, "could not open " + pageUrl + ": " + errorText +
       (errorText ? " (a snap-packaged Chromium cannot read /tmp; set CHROME_PATH to another)" : ""));
     await withDeadline(loaded, "the page to load");
-    const positions = `(() => {
-      const cy = document.getElementById("cy")._cyreg;
-      if (!cy || !cy.cy.nodes().length) { return false; }
-      return JSON.stringify(cy.cy.nodes().map((n) => [n.id(), n.renderedPosition()]));
-    })()`;
-    let previous = await until(positions, "the canvas to draw");
-    const settleBy = Date.now() + DEADLINE_MS;
-    for (;;) {
-      assert.ok(Date.now() < settleBy, "the layout never came to rest");
-      await sleep(200);
-      const now = await until(positions, "the layout to settle");
-      if (now === previous) { break; }
-      previous = now;
-    }
+    await settled();
   });
 
   // Every case also holds the page to a clean console, so a regression
@@ -400,6 +416,53 @@ describe("the exported topic-graph page in a headless browser", { skip }, () => 
     await press("Escape", "Escape", 27);
     assert.deepEqual(await evaluate(focused), []);
     assert.equal(await evaluate(`${CY}.elements(".faded").length`), 0);
+  });
+
+  /* #981's view matrix, end to end: tests/webapp/papers.test.js holds
+     every view to it without a browser, and these two are the views
+     that went wrong on a real canvas. */
+  it("takes a topic's papers off the canvas when its group is collapsed over it", async () => {
+    await expand("digital twin");
+    assert.equal((await papersOnCanvas()).length, 2);
+    // The one cut the fixture's tree has groups digital twin with
+    // machine learning; before #936 the redraw threw here, once per line.
+    await evaluate(`(() => {
+      const cut = document.getElementById("cut");
+      cut.value = 1;
+      cut.dispatchEvent(new Event("change"));
+    })()`);
+    await settled();
+    await click(await evaluate(`(() => {
+      const box = document.getElementById("collapse-all").getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    })()`));
+    await settled();
+    assert.equal(await evaluate(`${CY}.nodes("[?collapsed]").length`), 1);
+    assert.deepEqual(await papersOnCanvas(), []);
+    assert.equal(await evaluate(`${CY}.edges('[family = "member"]').length`), 0);
+  });
+
+  it("dims a context topic's papers with it, and places them beside it", async () => {
+    await expand("digital twin");
+    // Pinning the topic no edge reaches leaves every other one context.
+    await click(await evaluate(`(() => {
+      const box = document.getElementById("search").getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    })()`));
+    await browser.send("Input.insertText", { text: "hostile" });
+    await press("Enter", "Enter", 13);
+    await settled();
+    const papers = await evaluate(`${CY}.nodes('[kind = "paper"]').map((n) => {
+      const cy = ${CY};
+      const mine = n.position();
+      const nearest = cy.nodes().filter((t) => !t.data("kind"))
+        .min((t) => Math.hypot(t.position("x") - mine.x, t.position("y") - mine.y)).ele.id();
+      return [n.id(), n.data("dim"), nearest];
+    })`);
+    assert.deepEqual(papers.sort(), [
+      ["paper:dt2022", 1, "digital twin"],
+      ["paper:sim2021", 1, "digital twin"],
+    ]);
   });
 
   // The two guards above, each against the shape it exists to catch:

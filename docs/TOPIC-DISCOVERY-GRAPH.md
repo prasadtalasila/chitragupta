@@ -558,6 +558,11 @@ It is cheap, and it is the interaction people expect from a graph.
 > that paper; and the bridge highlight counts the topics on the canvas,
 > not the topics in the corpus, since on a real corpus nearly every
 > paper is in several and the corpus-wide count highlights everything.
+> A paper takes every view attribute from the topics holding it (#981).
+> It is dimmed only when every open topic holding it is dimmed. It sits
+> in its topic's group box. In the ego and grouped layouts it is placed
+> on a small orbit beside the brightest open topic holding it. And it
+> leaves the canvas when a collapsed group folds its topic away.
 
 Expanding a topic into its member papers as leaf nodes makes a paper belonging to
 three topics *visibly* a bridge instead of a line of text repeated in three
