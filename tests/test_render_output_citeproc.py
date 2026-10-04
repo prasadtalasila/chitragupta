@@ -119,7 +119,6 @@ class TestSanitizeForLatex:
     def test_other_c0_controls_are_stripped_but_whitespace_is_kept(self):
         assert render_output._sanitize_for_latex("a\x01b\tc\nd\re") == "ab\tc\nd\re"
 
-
     def test_ordinary_unicode_is_left_alone(self):
         text = "an em—dash, café, and an arrow →"
         assert render_output._sanitize_for_latex(text) == text
