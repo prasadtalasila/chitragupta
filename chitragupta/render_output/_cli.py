@@ -1,6 +1,7 @@
 """The `python -m chitragupta.draft render` entry point."""
 
 import argparse
+import re
 import subprocess
 
 from pathlib import Path
@@ -60,6 +61,29 @@ def _figure_repair_hint(input_arg: str) -> str:
         'names one, run the draft-reviser skill: "the TikZ figure <file> fails to '
         'compile; repair it or drop the figure". A figure that does not compile '
         "here will not compile in the document that \\input-s this draft either."
+    )
+
+
+_UNICODE_ERROR_RE = re.compile(r"Unicode character (.) \(U\+([0-9A-F]{4,6})\)")
+
+
+def _unicode_repair_hint(stderr: str | None) -> str:
+    r"""The fix for a character pdflatex cannot print, or "".
+
+    chitragupta-unicode.sty prints about 1,300 characters (#948); one
+    outside it still fails the build, which is deliberate: the
+    alternative is changing the text. LaTeX's own message names the
+    character but not what to do, and the author has two choices.
+    """
+    match = _UNICODE_ERROR_RE.search(stderr or "")
+    if match is None:
+        return ""
+    char, code = match.groups()
+    extra = config.CONTENT_DIR / "unicode-extra.tex"
+    return (
+        f"\n[unicode] pdflatex cannot print {char} (U+{code}). Either write it as LaTeX "
+        f"in the draft (for a symbol, its math command, e.g. $\\aleph$), or teach this "
+        f"project to print it: add \\DeclareUnicodeCharacter{{{code}}}{{...}} to {extra}."
     )
 
 
@@ -182,7 +206,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[error] {exc}")
         return 1
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows
-        print(f"[error] pandoc failed: {exc.stderr or exc}{_figure_repair_hint(args.input)}")
+        print(
+            f"[error] pandoc failed: {exc.stderr or exc}"
+            f"{_figure_repair_hint(args.input)}{_unicode_repair_hint(exc.stderr)}"
+        )
         return 1
     except ledger.NoLedger as exc:
         # `--format md` numbers a citing draft from the ledger; with none
