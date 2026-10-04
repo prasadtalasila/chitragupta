@@ -295,6 +295,20 @@ withheld). **It has still not been built or run in this environment** (no
 Docker daemon here); treat it as a draft to validate, not a tested
 artifact.
 
+**Install this checkout editable, or not at all.** `.claude/hooks/`'s
+launchers decide which `chitragupta` a hook's child imports by where the
+package resolves *without* the working tree on `sys.path`
+(`.claude/hooks/safe_path.py`, docs/HOOKS.md). A checkout whose venv also
+carries a non-editable `chitragupta-cli` -- `pip install chitragupta-cli`
+run inside this same checkout's venv, instead of `poetry install` or
+`pip install -e .` -- reads exactly like an installed project to that
+check, so its hooks run the installed copy rather than the working tree,
+and a change here silently stops being what the citation gate enforces.
+`scripts/install_full_pipeline.sh` (above) and `poetry install` give you
+the editable shape; running `pip install chitragupta-cli` into the same
+venv afterwards is the mistake this warns against, not a supported
+combination to debug around.
+
 ## 🧠 The enrichment layer (`chitragupta/enrich/`, `chitragupta/enrich/__main__.py`)
 
 The layer implements seven stages (Docling -> sentence-transformers/Chroma
