@@ -3,10 +3,12 @@ pure helpers (_get/_get_float) that implement the override precedence."""
 
 import importlib
 import os
+from pathlib import Path
 
 import pytest
 
 from chitragupta import config, config_load
+from tests.conftest import run_python
 
 
 class TestGetHelpers:
@@ -895,7 +897,36 @@ class TestDiscoverProjectRoot:
         found = config.discover_project_root(
             cwd=marked / "nested", environ={"CHITRAGUPTA_PROJECT": str(chosen)}
         )
-        assert found == chosen
+        assert found == chosen.resolve()
+
+    def test_a_relative_env_var_resolves_against_the_cwd(self, tmp_path):
+        """A relative CHITRAGUPTA_PROJECT names one directory, whichever
+        cwd later code runs from (#966). Unresolved, every stored path
+        derived from it depended on where the process started."""
+        (tmp_path / "proj").mkdir()
+        here = tmp_path / "elsewhere"
+        here.mkdir()
+        found = config.discover_project_root(
+            cwd=here, environ={"CHITRAGUPTA_PROJECT": "../proj"}
+        )
+        assert found == (tmp_path / "proj").resolve()
+        assert found.is_absolute()
+
+    def test_a_relative_env_var_is_absolute_in_a_real_child(self, tmp_path):
+        """The same, through a real import, as the issue reproduces it."""
+        proj = tmp_path / "proj"
+        proj.mkdir()
+        (proj / config.PROJECT_MARKER).write_text("", encoding="utf-8")
+        other = tmp_path / "other"
+        other.mkdir()
+        result = run_python(
+            "-c",
+            "from chitragupta import config; print(config.PARSED_DIR)",
+            cwd=other,
+            env={**os.environ, "CHITRAGUPTA_PROJECT": "../proj"},
+            check=True,
+        )
+        assert Path(result.stdout.strip()) == proj.resolve() / "content" / "parsed"
 
     def test_walks_up_from_a_nested_cwd(self, tmp_path):
         """Running from deep inside a project still finds the project."""
