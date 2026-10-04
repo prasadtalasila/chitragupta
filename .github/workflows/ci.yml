@@ -585,7 +585,11 @@ jobs:
       # index.html names except the DOM wiring (search.js, pickers.js,
       # canvas.js, sidepanel.js, app.js), which is what puts each DOM-free
       # module in the report.
-      # The wiring has no test and is therefore not in it.
+      # The wiring is not in it either, because node never runs it:
+      # tests/webapp/browser_smoke.test.js (#933), in the same glob, opens
+      # the exported page in the runner image's Chrome and clicks through
+      # it, and that is the wiring's whole bar. It fails here, rather
+      # than skipping, if the image ever stops shipping a browser.
       - name: Test the webapp modules
         run: >-
           node --test --experimental-test-coverage
