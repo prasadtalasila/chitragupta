@@ -19,11 +19,12 @@ works around this by aliasing just the affected citekey(s) in temporary
 copies of the input and the bib file -- never touching the real
 `bibliography.bib` -- before handing both to pandoc. The same function
 also runs `_sanitize_for_latex` over the temp copy: a control character
-or math-alphanumeric Unicode codepoint (both reached via a quoted
-passage straight from `content/parsed/`, which is `pdftotext` output,
-not authored text) is never legitimate content and pdflatex rejects
-outright, so it is stripped/folded before pandoc ever sees it -- never
-in the draft on disk.
+(reached via a quoted passage straight from `content/parsed/`, which is
+`pdftotext` output, not authored text) is never legitimate content and
+pdflatex rejects it outright, so it is stripped, and a decomposed accent
+joined, before pandoc ever sees it -- never in the draft on disk. Every
+other character reaches pandoc as written (#948); the ones pdflatex
+cannot print alone are `_unicode.py`'s concern.
 
 Citations render in IEEE style -- numeric `[1]` markers, `[3]-[6]` for a
 consecutive run, over a numbered list of complete entries -- via the CSL

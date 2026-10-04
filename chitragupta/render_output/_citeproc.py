@@ -18,30 +18,23 @@ _UNSAFE_CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 
 def _sanitize_for_latex(text: str) -> str:
-    r"""`text` with control characters stripped and math-alphanumeric
-    Unicode folded to its ASCII equivalent -- what pandoc's LaTeX writer
-    hands pdflatex verbatim and pdflatex cannot carry through (#389).
+    r"""`text` with control characters stripped and accents stored as one
+    code point -- the two things no output format wants, and nothing else.
 
-    Found via a quoted passage in `chitragupta/review/citation_provenance.py`:
-    `content/parsed/<citekey>.txt` is `pdftotext` output, not authored
-    text, and two real failure modes surfaced there. A NUL byte from the
-    extraction itself -- pdflatex rejects it outright ("Text line
-    contains an invalid character", `^^@` is the NUL). And a source set
-    in LaTeX can extract as Unicode's "Mathematical Alphanumeric Symbols"
-    block (e.g. U+1D461, MATHEMATICAL ITALIC SMALL T) instead of a plain
-    letter, which pdflatex's default font has no glyph for ("Package
-    inputenc Error: Unicode character ... not set up").
+    A NUL byte reaches a draft through a quoted passage from
+    `content/parsed/<citekey>.txt`, which is `pdftotext` output (#389);
+    pdflatex rejects it outright, and no rendered document wants one.
+    `pdftotext` can also store `é` as `e` plus U+0301; pdflatex rejects
+    the bare combining mark, and NFC joins it back. NFC is canonical
+    equivalence, so it changes how a letter is stored, never what it is.
 
-    `unicodedata.normalize("NFKC", ...)` folds the second case to its
-    ordinary Latin letter: that block's own compatibility decomposition
-    *is* "the same letter, a different font", so this loses a font
-    annotation LaTeX cannot use anyway, not the letter itself.
-
-    Applied to every render, not only a provenance report: a control
-    character or a stray math-italic letter is never legitimate content
-    in a rendered document, whichever caller's text carries one.
+    It used to be NFKC, for #389's math-italic 𝑡, and NFKC rewrote far
+    more than that across the whole draft: `m²` to `m2`, `H₂O` to `H2O`,
+    and `µm` to a `μ` pdflatex cannot print (#948). Printing those
+    characters is now `assets/latex/chitragupta-unicode.sty`'s job (see
+    `_unicode.py`), so the text reaches pandoc as the author wrote it.
     """
-    return _UNSAFE_CONTROL_RE.sub("", unicodedata.normalize("NFKC", text))
+    return _UNSAFE_CONTROL_RE.sub("", unicodedata.normalize("NFC", text))
 
 
 def _alias_for(citekey: str) -> str:
@@ -84,10 +77,10 @@ def _safe_render_inputs(
       - a citekey containing "--" is aliased in both files, in the input
         and the bib together, because pandoc's citation tokenizer would
         otherwise truncate it mid-key and silently drop the citation;
-      - a control character or math-alphanumeric Unicode codepoint --
-        never legitimate content, most often reached by a quoted passage
-        straight from `content/parsed/` -- is sanitized so pdflatex
-        doesn't reject the whole render over it (see _sanitize_for_latex).
+      - a control character -- never legitimate content, most often
+        reached by a quoted passage straight from `content/parsed/` -- is
+        stripped, and a decomposed accent joined, so pdflatex doesn't
+        reject the whole render over it (see _sanitize_for_latex).
 
     Returns the original paths untouched when none applies.
     """

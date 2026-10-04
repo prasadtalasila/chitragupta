@@ -7,8 +7,18 @@ so the eight modules do not each re-run a `kpsewhich` subprocess at
 import.
 """
 
+import unicodedata
+
 import pytest
 from chitragupta import render_output
+from chitragupta.render_output._citeproc import _UNSAFE_CONTROL_RE
+
+# Every rewrite #948 found, plus #389's own 𝑡: printing them is
+# chitragupta-unicode.sty's job now, and the text must reach it as written.
+_WRITTEN_AS_IS = [
+    "5 µm", "10 m²", "H₂O", "½", "Brand™", "Phase Ⅳ", "Step ①",
+    "the 𝑡 statistic", "Planck ℎ", "R² = 0.94", "10\u00a0kg", "wait…", "ﬁle",
+]  # fmt: skip
 
 
 class TestSwapManualRefsForCiteproc:
@@ -97,9 +107,9 @@ class TestAliasFor:
 
 
 class TestSanitizeForLatex:
-    """Control characters and math-alphanumeric Unicode break pdflatex,
-    not pandoc -- both surfaced via a quoted passage straight out of
-    content/parsed/<citekey>.txt (#389)."""
+    """Control characters and decomposed accents break pdflatex, not
+    pandoc -- both reach a draft via a quoted passage straight out of
+    content/parsed/<citekey>.txt (#389). Nothing else may change (#948)."""
 
     def test_a_nul_byte_is_stripped(self):
         assert render_output._sanitize_for_latex("been outlined in ISO 23,247 \x00") == (
@@ -109,10 +119,6 @@ class TestSanitizeForLatex:
     def test_other_c0_controls_are_stripped_but_whitespace_is_kept(self):
         assert render_output._sanitize_for_latex("a\x01b\tc\nd\re") == "ab\tc\nd\re"
 
-    def test_math_italic_is_folded_to_its_ascii_letter(self):
-        # U+1D461 MATHEMATICAL ITALIC SMALL T -- pdflatex's default font
-        # has no glyph for it ("Unicode character \U0001d461 not set up").
-        assert render_output._sanitize_for_latex("the \U0001d461 statistic") == "the t statistic"
 
     def test_ordinary_unicode_is_left_alone(self):
         text = "an em—dash, café, and an arrow →"
@@ -121,6 +127,35 @@ class TestSanitizeForLatex:
     def test_idempotent_on_already_clean_text(self):
         text = "Nothing unusual here.\n"
         assert render_output._sanitize_for_latex(text) == text
+
+    @pytest.mark.parametrize("text", _WRITTEN_AS_IS)
+    def test_a_character_948_found_rewritten_is_left_as_written(self, text):
+        assert render_output._sanitize_for_latex(text) == text
+
+    def test_a_decomposed_accent_is_joined(self):
+        # pdftotext can emit é as e + U+0301; pdflatex rejects the bare
+        # combining mark (exit 43) and accepts the composed letter. NFC is
+        # canonical equivalence, so this changes how é is stored, not what
+        # the text says.
+        assert render_output._sanitize_for_latex("cafe\u0301") == "caf\u00e9"
+
+    def test_no_other_code_point_is_changed(self):
+        # The class #948 names: a transform over a whole draft is identity
+        # outside its stated domain. The domain is the C0 controls the
+        # regex names, plus NFC; every other assigned code point must come
+        # back as itself. Exhaustive rather than sampled, because the
+        # transform is per character: ~150k assigned code points, about a
+        # second.
+        changed = [
+            f"U+{cp:04X}"
+            for cp in range(0x110000)
+            if not 0xD800 <= cp <= 0xDFFF
+            and unicodedata.category(chr(cp)) != "Cn"
+            and not _UNSAFE_CONTROL_RE.match(chr(cp))
+            and unicodedata.is_normalized("NFC", chr(cp))
+            and render_output._sanitize_for_latex(chr(cp)) != chr(cp)
+        ]
+        assert changed == []
 
 
 class TestSafeRenderInputs:
