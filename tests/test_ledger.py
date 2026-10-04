@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from chitragupta import config, ledger, ledger_bib_fields, ledger_upsert, passages
+from chitragupta import config, ledger, ledger_bib_fields, ledger_paths, ledger_upsert, passages
 
 from tests.conftest import make_reference, parsed_file
 
@@ -542,7 +542,7 @@ class TestAPdfThatVanishesMidSync:
         # pdf_path is still recorded, which is the whole of "for this
         # run": a file that comes back is picked up by the next sync
         # with no --reparse and no manual repair.
-        assert row == ("no_pdf", str(pdf), None, None, None)
+        assert row == ("no_pdf", pdf.name, None, None, None)
         assert ref.citekey in caplog.text
 
     def test_a_pdf_gone_between_the_stat_and_the_hash_lands_the_same_way(
@@ -658,7 +658,58 @@ class TestUpsertReferenceParsedPathOnHashChange:
         (parsed_path,) = ledger_con.execute(
             "SELECT parsed_path FROM items WHERE citekey = ?", (ref.citekey,)
         ).fetchone()
-        assert parsed_path == str(out)
+        assert parsed_path == out.name
+
+
+class TestStoredPaths:
+    """#966: no column holds a host-absolute path."""
+
+    def test_mark_parsed_stores_the_name_under_parsed(self, ledger_con, isolated_config):
+        ledger.upsert_reference(ledger_con, make_reference(citekey="smith_example_2024"))
+        out = isolated_config.PARSED_DIR / "smith_example_2024.txt"
+        ledger.mark_parsed(ledger_con, "smith_example_2024", out)
+        (stored,) = ledger_con.execute("SELECT parsed_path FROM items").fetchone()
+        assert stored == "smith_example_2024.txt"
+        assert ledger_paths.parsed_file(stored) == out
+
+    def test_pdf_path_is_stored_relative_to_the_bib_directory(self, ledger_con, isolated_config):
+        pdf = isolated_config.BIB_FILE_PATH.parent / "pdfs" / "a.pdf"
+        pdf.parent.mkdir(parents=True)
+        pdf.write_bytes(b"%PDF")
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="smith_example_2024", pdf_path=str(pdf))
+        )
+        (stored,) = ledger_con.execute("SELECT pdf_path FROM items").fetchone()
+        assert stored == "pdfs/a.pdf"
+        assert ledger_paths.pdf_file(stored) == pdf
+
+    def test_a_legacy_absolute_value_still_reads_in_place(self, isolated_config):
+        out = isolated_config.PARSED_DIR / "k.txt"
+        assert ledger_paths.parsed_file(str(out)) == out
+
+    def test_a_relative_escape_is_refused_loudly(self, isolated_config, capsys):
+        assert ledger_paths.parsed_file("../../secret.txt") is None
+        assert "WARNING refusing" in capsys.readouterr().err
+
+    def test_storing_a_path_outside_the_root_is_a_bug(self, isolated_config, tmp_path_factory):
+        with pytest.raises(ValueError):
+            ledger_paths.stored_parsed(tmp_path_factory.mktemp("x") / "k.txt")
+
+    def test_connect_rewrites_legacy_absolute_parsed_paths(self, isolated_config):
+        con = ledger.connect()
+        con.execute(
+            "INSERT INTO items (citekey, status, parsed_path, last_synced) "
+            "VALUES ('smith_example_2024', 'parsed', "
+            "'/old/host/content/parsed/smith_example_2024.txt', 'x')"
+        )
+        con.commit()
+        con.close()
+        con = ledger.connect()
+        try:
+            (stored,) = con.execute("SELECT parsed_path FROM items").fetchone()
+        finally:
+            con.close()
+        assert stored == "smith_example_2024.txt"
 
 
 class TestMarkParsed:
@@ -674,7 +725,7 @@ class TestMarkParsed:
             "SELECT status, parsed_path, parse_error FROM items WHERE citekey = ?",
             (ref.citekey,),
         ).fetchone()
-        assert row == ("parsed", str(parsed_path), None)
+        assert row == ("parsed", parsed_path.name, None)
 
 
 class TestMarkParseFailed:
@@ -801,7 +852,7 @@ class TestPruneMissing:
 
         removed = ledger.prune_missing(ledger_con, seen_citekeys={"kept_key"})
 
-        assert removed == [("orphaned_key", str(parsed_path))]
+        assert removed == [("orphaned_key", parsed_path.name)]
 
     def test_refuses_to_prune_everything_when_bib_yields_nothing(self, ledger_con):
         # A real bib file with entries should never legitimately produce a

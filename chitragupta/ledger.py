@@ -15,7 +15,6 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
-from pathlib import Path
 
 from chitragupta import config, ledger_paths
 
@@ -28,6 +27,15 @@ from chitragupta import config, ledger_paths
 # unchanged.
 from chitragupta.ledger_upsert import upsert_reference  # noqa: F401  # pylint: disable=unused-import
 
+# mark_parsed moved to ledger_paths with the rule that a stored path is
+# relative (#966); re-exported so `ledger.mark_parsed` and sync.py are
+# unchanged.
+from chitragupta.ledger_paths import mark_parsed  # noqa: F401  # pylint: disable=unused-import
+
+# A column holding a path is named `*_path` and is stored through
+# `ledger_paths` (#966), never as `str(path)`;
+# tests/test_ledger_relocation.py scans for both.
+#
 # _SCHEMA only ever describes the *original* table shape (schema version
 # 0) -- every column added since is a migration in _MIGRATIONS below, not
 # an edit here. That way a brand-new database and an existing one predating
@@ -156,6 +164,7 @@ def connect() -> sqlite3.Connection:
     try:
         con.execute(_SCHEMA)
         _migrate(con)
+        ledger_paths.normalise_legacy(con)
     except BaseException:
         con.rollback()
         con.close()
@@ -247,14 +256,6 @@ def reading() -> Iterator[sqlite3.Connection]:
         yield con
     finally:
         con.close()
-
-
-def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> None:
-    con.execute(
-        "UPDATE items SET status = 'parsed', parsed_path = ?, parse_error = NULL WHERE citekey = ?",
-        (str(parsed_path), citekey),
-    )
-    con.commit()
 
 
 def mark_parse_failed(
