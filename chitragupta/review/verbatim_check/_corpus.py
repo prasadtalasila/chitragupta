@@ -24,7 +24,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 from subprocess import run as _run
 from pathlib import Path
 
-from chitragupta import citation_gate, config
+from chitragupta import citation_gate, config, ledger_paths
 from chitragupta.citekey_safety import citekey_problem
 
 
@@ -79,7 +79,7 @@ def pdf_path(citekey: str) -> Path | None:
     # wrong the moment BIB_FILE points somewhere outside the checked-out
     # repo (a relative path in the file field is only ever relative to
     # wherever the .bib itself lives).
-    bib_dir = config.BIB_FILE_PATH.resolve().parent
+    bib_dir = ledger_paths.pdf_root()
     for attachment in m.group(1).split(";"):
         parts = attachment.split(":")
         if len(parts) < 3:

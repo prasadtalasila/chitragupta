@@ -695,6 +695,43 @@ class TestStoredPaths:
         with pytest.raises(ValueError):
             ledger_paths.stored_parsed(tmp_path_factory.mktemp("x") / "k.txt")
 
+    def test_a_symlinked_bib_roots_pdfs_at_its_real_directory(
+        self, ledger_con, isolated_config, tmp_path, monkeypatch
+    ):
+        real = tmp_path / "zotero"
+        (real / "pdfs").mkdir(parents=True)
+        pdf = real / "pdfs" / "a.pdf"
+        pdf.write_bytes(b"%PDF")
+        (real / "library.bib").write_text("")
+        link = tmp_path / "proj" / "library.bib"
+        link.parent.mkdir()
+        try:
+            link.symlink_to(real / "library.bib")
+        except (OSError, NotImplementedError):
+            pytest.skip("symlinks unavailable")
+        monkeypatch.setattr(config, "BIB_FILE_PATH", link)
+        ledger.upsert_reference(
+            ledger_con, make_reference(citekey="smith_example_2024", pdf_path=str(pdf))
+        )
+        (stored,) = ledger_con.execute("SELECT pdf_path FROM items").fetchone()
+        assert stored == "pdfs/a.pdf"
+        assert ledger_paths.pdf_file(stored) == pdf.resolve()
+
+    def test_a_second_connect_leaves_null_and_relative_rows_alone(self, isolated_config):
+        con = ledger.connect()
+        con.execute(
+            "INSERT INTO items (citekey, status, parsed_path, last_synced) VALUES "
+            "('a2024', 'discovered', NULL, 'x'), ('b2024', 'parsed', 'b2024.txt', 'x')"
+        )
+        con.commit()
+        con.close()
+        con = ledger.connect()
+        try:
+            rows = con.execute("SELECT citekey, parsed_path FROM items ORDER BY citekey").fetchall()
+        finally:
+            con.close()
+        assert rows == [("a2024", None), ("b2024", "b2024.txt")]
+
     def test_connect_rewrites_legacy_absolute_parsed_paths(self, isolated_config):
         con = ledger.connect()
         con.execute(

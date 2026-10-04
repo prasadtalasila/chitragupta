@@ -48,6 +48,13 @@ def resolved(value: str | None, root: Path) -> Path | None:
     return config.confined_path(root / value, root)
 
 
+def pdf_root() -> Path:
+    """The directory `pdf_path` is stored relative to: the bib file's own,
+    symlinks followed, which is where bib_reader confines attachments.
+    A function, not a constant: config is patched at call time."""
+    return config.BIB_FILE_PATH.resolve().parent
+
+
 def stored_parsed(path: str | Path | None) -> str | None:
     """`path` relative to `content/parsed/`, as `parsed_path` stores it."""
     return stored(path, config.PARSED_DIR)
@@ -55,7 +62,7 @@ def stored_parsed(path: str | Path | None) -> str | None:
 
 def stored_pdf(path: str | Path | None) -> str | None:
     """`path` relative to the bib file's directory, as `pdf_path` stores it."""
-    return stored(path, config.BIB_FILE_PATH.parent)
+    return stored(path, pdf_root())
 
 
 def parsed_file(value: str | None) -> Path | None:
@@ -65,7 +72,7 @@ def parsed_file(value: str | None) -> Path | None:
 
 def pdf_file(value: str | None) -> Path | None:
     """The file a stored `pdf_path` names, confined to the bib directory."""
-    return resolved(value, config.BIB_FILE_PATH.parent)
+    return resolved(value, pdf_root())
 
 
 def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> None:
@@ -80,7 +87,9 @@ def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> Non
 # The file a parse writes is fully determined by its citekey
 # (pdf_text.extract_text), so a legacy host-absolute value is rewritten
 # to that name whatever host it named. Idempotent: once every row is
-# relative, the WHERE matches nothing.
+# relative, the WHERE matches nothing. A legacy absolute `pdf_path` is not
+# rewritten here: upsert_reference rewrites it for every bib entry on the
+# next sync.
 _NORMALISE_PARSED = (
     "UPDATE items SET parsed_path = citekey || '.txt' "
     "WHERE parsed_path IS NOT NULL AND parsed_path <> citekey || '.txt'"
