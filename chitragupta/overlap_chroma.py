@@ -166,19 +166,30 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
     """`citekeys`, ranked by how close the collection's own chunks put
     them to `text`, capped at `limit`.
 
-    One `collection.query()` for the whole section, not one per citekey:
+    The section is encoded once, not once per citekey:
     `embed_index.search()` re-embeds a single query string at a time,
     which is right for interactive retrieval and wrong at scan scale.
     The section is chunked with the same `chunk_text()` the index was
-    built with, every chunk is embedded in one `model.encode()` call, and
-    all of them are queried at once.
+    built with and every chunk is embedded in one `model.encode()` call.
 
-    Only `metadata["citekey"]` is read off the hits, and the chunk text
-    is discarded: chunk metadata is `{citekey, title, text_hash}` with no
-    page and no offset, so nothing built on a chunk could say which page
-    of the source it came from. Ranking which *documents* are worth
-    aligning against is all this collection can honestly answer, and it
-    is exactly what a shortlist needs.
+    **Then one query per citekey, not one for the whole section** (#954).
+    Chroma ranks *chunks*, so a single `$in` query capped at `limit`
+    hands every slot to whichever source owns `limit` chunks nearer than
+    any other source's best, and the rest never come back to be ranked
+    at all. Over-fetching, which is how `embed_index.search()` answers
+    the same crowd-out (#305), only moves the threshold: a long paper
+    still owns more close chunks than any multiplier allows. A section
+    cites a handful of sources, so asking each for its single nearest
+    chunk is exact and costs a few milliseconds per source against
+    embeddings already in hand. Measured on chromadb 1.5.9, 3,420
+    chunks: ~5.5 ms a query, beside ~5-9 ms for the one `$in` query.
+
+    Only distances are read off the hits, and the chunk text is never
+    fetched: chunk metadata is `{citekey, title, text_hash}` with no page
+    and no offset, so nothing built on a chunk could say which page of
+    the source it came from. Ranking which *documents* are worth aligning
+    against is all this collection can honestly answer, and it is exactly
+    what a shortlist needs.
     """
     from chitragupta.enrich import embed_index
 
@@ -186,30 +197,28 @@ def shortlist(collection, embedder, citekeys: list[str], text: str, limit: int) 
         # Nothing to rank, and a query would cost an encode to reorder a
         # list of one.
         return list(citekeys)
-    chunks = embed_index.chunk_text(text)
-    raw = collection.query(
-        query_embeddings=embedder.encode_lists(chunks),
-        n_results=limit,
-        where={"citekey": {"$in": list(citekeys)}},
-    )
-    ranked = _ranked_citekeys(raw)
+    embeddings = embedder.encode_lists(embed_index.chunk_text(text))
+    best: dict[str, float] = {}
+    for citekey in citekeys:
+        raw = collection.query(
+            query_embeddings=embeddings,
+            n_results=1,
+            where={"citekey": citekey},
+            include=["distances"],
+        )
+        # One row per section chunk, each empty when the source owns no
+        # chunk at all; the source's distance is its nearest across them.
+        distances = [distance for row in raw["distances"] for distance in row]
+        if distances:
+            best[citekey] = min(distances)
+    ranked = sorted(best, key=best.__getitem__)
     # A citekey the collection has no chunk for -- a source in the
     # bibliography whose PDF never parsed -- ranks last rather than
-    # vanishing, so the shortlist still fills up to its cap.
-    ranked += [key for key in citekeys if key not in ranked]
+    # vanishing, so the shortlist still fills up to its cap. Every source
+    # with a chunk is ranked ahead of it, so it can only take a slot no
+    # embedded source wanted.
+    ranked += [key for key in citekeys if key not in best]
     return ranked[:limit]
-
-
-def _ranked_citekeys(raw: dict) -> list[str]:
-    """Citekeys from a `collection.query` response, nearest first, each
-    at its own best distance across every chunk queried."""
-    best: dict[str, float] = {}
-    for metadatas, distances in zip(raw["metadatas"], raw["distances"]):
-        for metadata, distance in zip(metadatas, distances):
-            citekey = metadata.get("citekey")
-            if citekey is not None and distance < best.get(citekey, float("inf")):
-                best[citekey] = distance
-    return sorted(best, key=lambda key: best[key])
 
 
 def absent_citekeys(collection, citekeys) -> set[str]:
@@ -217,13 +226,14 @@ def absent_citekeys(collection, citekeys) -> set[str]:
 
     A metadata-only `get`, not a similarity query -- the same call
     `embed_index.py`'s own upsert uses to check what is already indexed.
-    `shortlist`'s ranking cannot answer this: a citekey that ranks last
-    there may simply be topically distant, still with real chunks in the
-    collection, and `shortlist` has no way to tell that case apart from a
-    source the enrichment layer has never embedded (#499, M-16) -- the
-    corpus grew a paper since `enrich` last ran, that paper never made
-    the shortlist's cap, and nothing said why. This is the presence check
-    that lets a caller say why, without changing how `shortlist` ranks.
+    `shortlist`'s return cannot answer this: it ranks unembedded sources
+    behind every embedded one (#954), but it returns a bare list capped
+    at `limit`, so a citekey that ranks last there may simply be
+    topically distant, and an unembedded one past the cap is not there
+    at all (#499, M-16) -- the corpus grew a paper since `enrich` last
+    ran, that paper never made the shortlist's cap, and nothing said
+    why. This is the presence check that lets a caller say why, across
+    every cited source rather than the shortlisted few.
     """
     if not citekeys:
         return set()
