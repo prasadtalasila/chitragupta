@@ -266,7 +266,9 @@ def per_query_scores(rows, index, a_index):
     """`(passage_scores, abstract_scores)` per query, computed once."""
     out = {}
     for row in rows:
-        terms = retrieval_passages._query_terms(row["query"])
+        # The typed terms, unexpanded, as when the figures were recorded;
+        # the passage unit has expanded since #953.
+        terms = retrieval._query_terms(row["query"])
         if not terms:
             out[_key(row)] = ({}, {})
             continue

@@ -35,9 +35,8 @@ from chitragupta import ledger, retrieval_cache, retrieval_expansion, retrieval_
 from chitragupta.retrieval import (
     SearchResult,
     _full_text,
-    _query_terms,
-    _tokenize,
     _windows,
+    query_terms,
     search,
     short_query_terms,
 )
@@ -78,7 +77,9 @@ def evidence(
         con.row_factory = None
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")
-    terms = set(_query_terms(query))
+    # `search`'s own terms, acronym expansion included (#953): a paper
+    # ranked on "digital twin" for `DT` must have a window for `DT` too.
+    terms = set(query_terms(query)[0])
     if not terms:
         return []
     return _windows(_full_text(row), terms, width=chars, count=windows)
@@ -309,9 +310,11 @@ def main(argv: "list[str] | None" = None) -> int:
     # rather than left to the score, because a result that surfaced on a
     # word the caller never typed is the one they would otherwise have no
     # way to explain. The same string goes to `--log`, so the note and
-    # `retrieval.md`'s `expanded` column cannot disagree. Silent at the
-    # shipped default, where nothing is ever added.
-    expanded = retrieval_expansion.announce(_query_terms(args.query), _tokenize)
+    # `retrieval.md`'s `expanded` column cannot disagree, and both read
+    # the pairs every subcommand ranks on (`query_terms`, #953), bar
+    # `--y-prev`'s appended prose (see `query_terms`). Silent
+    # when the vocabulary has nothing for the query.
+    expanded = retrieval_expansion.announce(query_terms(args.query)[1])
 
     # Refused rather than quietly ignored: --y-prev merges two rounds on
     # citekey and caps back to --k, and the passage unit changes what

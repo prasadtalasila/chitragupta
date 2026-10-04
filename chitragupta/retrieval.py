@@ -138,6 +138,30 @@ def _query_terms(query: str) -> list[str]:
     return [w for w in _tokenize(query) if w not in _INTERROGATIVES]
 
 
+# What a query is ranked on: the typed terms, then what the acronym
+# vocabulary added, and the `(acronym, term)` pairs that say which is
+# which. One function because #953 found two pipelines: `evidence`, the
+# passage unit and the drift report each tokenized the query for
+# themselves and never expanded it, while the CLI announced (and `--log`
+# recorded) an expansion only `search` had used. Everything that ranks or
+# windows a query goes through here, and the CLI's note reads the same
+# pairs. One exception remains: `--y-prev`'s second round searches the
+# query with draft prose appended, and an acronym in that prose expands
+# without reaching the note. A query with no terms skips the vocabulary,
+# so a malformed acronyms file cannot fail a query that ranks on nothing.
+#
+# Expansion is computed from the typed terms alone and never fed back
+# through itself: an added term is not looked up as an acronym in turn,
+# so no vocabulary can expand into a second expansion. An added term then
+# scores exactly as a typed one does -- #789's own sweep put full weight
+# ahead of every fraction of it, so there is no per-term weight here for
+# a caller to set or for the ranker to read.
+def query_terms(query: str) -> tuple[list[str], list[tuple[str, str]]]:
+    typed = _query_terms(query)
+    added = retrieval_expansion.expand(typed, _tokenize) if typed else []
+    return typed + [token for _, token in added], added
+
+
 # Occurrences of one query term that `_windows` will anchor a candidate
 # window on before it stops looking for more of that term. A ceiling on
 # work for a pathological document, not a quality knob: 500 anchors of one
@@ -338,17 +362,9 @@ def search(
     much as `enrich.embed_index.search()`. Tested in
     tests/test_retrieval.py so this module cannot silently lose it.
     """
-    terms = _query_terms(query)
+    terms, _added = query_terms(query)
     if not terms:
         return []
-    # Expansion is computed from the typed terms alone and never fed
-    # back through itself: an added term is not looked up as an acronym
-    # in turn, so no vocabulary can expand into a second expansion. An
-    # added term then scores exactly as a typed one does -- #789's own
-    # sweep put full weight ahead of every fraction of it, so there is no
-    # per-term weight here for a caller to set or for the ranker to read.
-    added = retrieval_expansion.expand(terms, _tokenize)
-    terms = terms + [token for _, token in added]
 
     with ledger.reading() as con:
         items = ledger.all_items(con)
