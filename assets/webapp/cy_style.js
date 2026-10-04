@@ -85,10 +85,10 @@
     /* Moved ahead of its usual place beside the other paper-related
        rules below: `edge.focus-near` sets the same two properties
        (`width`, `opacity`) and has to win over this family styling
-       when a paper's membership line is in a latched neighbourhood --
-       `elementsFor` never marks a member edge `dim` (paperElements is
-       concatenated after the dimming pass), so member and dim never
-       compete for the same element and reordering the two is safe. */
+       when a paper's membership line is in a latched neighbourhood.
+       A member edge can be `dim` too, since #981 (a line leaving a
+       dimmed topic), and `edge[dim = 1]` further down still comes after
+       this rule, so the dim opacity wins over the 0.7 here. */
     { selector: "edge[family = 'member']", style: {
       "width": 1,
       "line-color": "#90a4ae",

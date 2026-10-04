@@ -159,6 +159,118 @@ test("a hostile citekey cannot collide with a topic id", () => {
   assert.equal(graph.citekeyOf(hostile, "digital twin"), null);
 });
 
+// ---------- a paper in every view (#981) ----------
+
+/* Papers used to be appended after the view pass had decorated the
+   topics, so every per-view attribute a topic got, a paper did not:
+   a dimmed topic's papers stayed bright (#981), the ego layout parked
+   them on the far context ring and the grouped layout put them on the
+   top-level circle among the boxes (#982), and a topic folded into a
+   collapsed group still had its membership lines drawn to it (#936).
+   One matrix over every view, each with papers open, so that a view
+   added later is one row rather than a fresh bug. */
+
+const ego = require("../../assets/webapp/ego.js");
+
+const CUT = graph.cutTree(DATA.hierarchy, DATA.topics, 0.31);
+const PAIR = CUT.groupOf["digital twin"];
+const OPEN = new Set(["digital twin", "machine learning", "topic-7"]);
+const BOTH = ["overlap", "semantic"];
+
+/* topic-7 pinned: machine learning is one hop away, digital twin two,
+   so with one hop shown digital twin is the context. dt2022 belongs to
+   both open neighbours, which makes it the case where a paper's dim
+   and a topic's can part. */
+function ego1(context) {
+  const hops = ego.hopsFrom(DATA, ["topic-7"], BOTH);
+  const visible = graph.restrictTo(ego.withinHops(hops, 1), ALL);
+  const view = { context, all: ALL, expanded: OPEN };
+  return {
+    els: graph.elementsFor(DATA, visible, ["topic-7"], view),
+    place: (els) => ego.ringLayout(DATA, els, ["topic-7"], hops, 1, BOTH),
+  };
+}
+
+const VIEWS = {
+  ungrouped: () => ({ els: graph.elementsFor(DATA, ALL, [], { expanded: OPEN }) }),
+  grouped: () => ({
+    els: graph.elementsFor(DATA, ALL, [], { cut: CUT, collapsed: new Set(), expanded: OPEN }),
+    place: graph.positionsFor,
+  }),
+  collapsed: () => ({
+    els: graph.elementsFor(DATA, ALL, [], { cut: CUT, collapsed: new Set([PAIR]), expanded: OPEN }),
+    place: graph.positionsFor,
+  }),
+  "ego, context dimmed": () => ego1("dim"),
+  "ego, context hidden": () => ego1("hide"),
+};
+
+function distance(p, q) {
+  return Math.hypot(p.x - q.x, p.y - q.y);
+}
+
+for (const [name, build] of Object.entries(VIEWS)) {
+  test(`${name}: every paper takes its view attributes from its topic`, () => {
+    const { els, place } = build();
+    const nodes = Object.create(null);
+    els.filter((e) => e.group === "nodes").forEach((e) => { nodes[e.data.id] = e; });
+
+    // No line may end at a node that is not drawn (#936): cytoscape
+    // throws on it and leaves the redraw half-applied.
+    els.filter((e) => e.group === "edges").forEach((e) => {
+      assert.ok(nodes[e.data.source], `${e.data.id} starts at undrawn ${e.data.source}`);
+      assert.ok(nodes[e.data.target], `${e.data.id} ends at undrawn ${e.data.target}`);
+    });
+
+    const at = place ? place(els) : null;
+    const topics = Object.values(nodes).filter((n) => !n.data.kind && !n.data.isGroup && !n.data.collapsed);
+    const papers = paperNodes(els);
+    assert.ok(papers.length, "the view drew no papers to check");
+    papers.forEach((paper) => {
+      const lines = membershipEdges(els).filter((e) => e.data.target === paper.data.id);
+      const holders = lines.map((e) => nodes[e.data.source]);
+      // Beside the brightest topic holding it, the first of those if
+      // several tie: a bright paper by a dimmed topic on the context
+      // ring is #982 again, for exactly the papers the reader can see.
+      const dims = holders.map((h) => h.data.dim);
+      const anchor = dims[0] === undefined ? holders[0] : holders[dims.indexOf(Math.min(...dims))];
+      // Inside its topic's box, so the box is drawn round it.
+      assert.equal(paper.data.parent, anchor.data.parent, `${paper.data.id}'s parent`);
+      // As bright as the brightest topic holding it, and each line as
+      // bright as the topic it leaves.
+      assert.equal(paper.data.dim, dims[0] === undefined ? undefined : Math.min(...dims),
+        `${paper.data.id}'s dim`);
+      lines.forEach((line) => {
+        assert.equal(line.data.dim, nodes[line.data.source].data.dim, `${line.data.id}'s dim`);
+      });
+      if (!at) { return; }
+      // Beside its topic: nearer to it than to any other topic, so not
+      // on a ring or circle of its own.
+      const mine = at[paper.data.id];
+      assert.ok(mine, `${paper.data.id} was not placed`);
+      const nearest = topics.reduce((best, t) =>
+        distance(at[t.data.id], mine) < distance(at[best.data.id], mine) ? t : best);
+      assert.equal(nearest.data.id, anchor.data.id, `${paper.data.id} sits by ${nearest.data.id}`);
+    });
+  });
+}
+
+test("collapsing a group takes its topics' papers off with them", () => {
+  const { els } = VIEWS.collapsed();
+  const lines = membershipEdges(els).map((e) => e.data.source);
+  assert.deepEqual([...new Set(lines)], ["topic-7"]);
+  // Remembered, so the papers come back when the group is reopened.
+  assert.equal(paperNodes(VIEWS.grouped().els).length, 5);
+});
+
+test("a dimmed topic's papers are dimmed, and a paper a bright topic also holds is not", () => {
+  const { els } = ego1("dim");
+  const dimOf = (citekey) => paperNodes(els).find((p) => p.data.id === graph.paperId(DATA, citekey)).data.dim;
+  assert.equal(dimOf("sim2021"), 1, "only digital twin, the context, holds it");
+  assert.equal(dimOf("dt2022"), 0, "machine learning, in focus, holds it too");
+  assert.equal(dimOf("rv2018"), 0);
+});
+
 // ---------- the panel ----------
 
 const panel = require("../../assets/webapp/panel.js");

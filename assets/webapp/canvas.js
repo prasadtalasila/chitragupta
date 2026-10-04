@@ -136,7 +136,7 @@ window.CHITRAGUPTA_CANVAS = (function () {
       // no longer reaches it).
       paintLatchOrClear();
       if (hops) {
-        layOutRings(hops);
+        layOutRings(hops, elements);
       } else if (state.cut) {
         layOutGroups(elements);
       } else {
@@ -148,14 +148,11 @@ window.CHITRAGUPTA_CANVAS = (function () {
     // extension of the "a circle is legible" argument rather than a
     // contradiction of it. elementsFor has already suspended the cut,
     // so there are no boxes to lay out here.
-    function layOutRings(hops) {
-      var at = app.ringPositions(DATA, state.selected, hops, state.maxHops, families());
-      var outside = app.contextRing(
-        cy.nodes().map(function (n) { return n.id(); }), hops, state.maxHops
-      );
+    function layOutRings(hops, elements) {
+      var at = app.ringLayout(DATA, elements, state.selected, hops, state.maxHops, families());
       run({
         name: "preset",
-        positions: function (n) { return at[n.id()] || outside[n.id()]; },
+        positions: function (n) { return at[n.id()]; },
         // Object constancy: a node that teleports when the selection
         // changes makes the reader re-parse the whole picture.
         animate: true, animationDuration: 350,

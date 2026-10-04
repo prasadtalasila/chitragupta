@@ -472,31 +472,34 @@
 
   // What the top-level circle has to carry: one entry per collapsed
   // group, per expanded group, and per topic outside any group, each
-  // with the radius it needs.
+  // with the radius it needs. Never a paper: placePapers puts each one
+  // beside its topic afterwards (#982), and the room it needs there is
+  // already in its topic's footprint.
   function topLevel(elements) {
+    var wide = footprints(elements);
     var children = Object.create(null);
     elements.forEach(function (el) {
-      if (el.group === "nodes" && el.data.parent) {
+      if (el.group === "nodes" && el.data.parent && !isPaper(el)) {
         (children[el.data.parent] = children[el.data.parent] || []).push(el);
       }
     });
     var items = [];
     elements.forEach(function (el) {
-      if (el.group !== "nodes" || el.data.parent) { return; }
+      if (el.group !== "nodes" || el.data.parent || isPaper(el)) { return; }
       var kids = children[el.data.id] || [];
+      var size = maxSize(kids, wide);
       items.push({
         id: el.data.id,
         children: kids,
-        radius: el.data.isGroup
-          ? radiusFor(kids.length, maxSize(kids)) + maxSize(kids) / 2
-          : (el.data.size || 40) / 2,
+        childSize: size,
+        radius: el.data.isGroup ? radiusFor(kids.length, size) + size / 2 : wide[el.data.id] / 2,
       });
     });
     return items;
   }
 
-  function maxSize(nodes) {
-    return nodes.reduce(function (big, n) { return Math.max(big, n.data.size || 40); }, 40);
+  function maxSize(nodes, wide) {
+    return nodes.reduce(function (big, n) { return Math.max(big, wide[n.data.id]); }, 40);
   }
 
   function ring(items, cx, cy, at) {
@@ -520,7 +523,7 @@
   }
 
   function placeChildren(item, cx, cy, at) {
-    var radius = radiusFor(item.children.length, maxSize(item.children));
+    var radius = radiusFor(item.children.length, item.childSize);
     item.children.forEach(function (child, i) {
       var angle = (2 * Math.PI * i) / item.children.length;
       at[child.data.id] = item.children.length === 1
@@ -532,7 +535,7 @@
   function positionsFor(elements) {
     var at = Object.create(null);
     ring(topLevel(elements), 0, 0, at);
-    return at;
+    return placePapers(elements, at);
   }
 
   /* Where an expanded group ended up, and how much room it takes.
@@ -546,16 +549,84 @@
      one. Null for a group with nothing placed under it. */
   function groupCentre(elements, at, id) {
     var kids = elements.filter(function (el) {
-      return el.group === "nodes" && el.data.parent === id;
+      return el.group === "nodes" && el.data.parent === id && !isPaper(el);
     });
+    var size = maxSize(kids, footprints(elements));
     var placed = kids.map(function (kid) { return at[kid.data.id]; });
     if (!placed.length) { return null; }
     var cx = placed.reduce(function (sum, p) { return sum + p.x; }, 0) / placed.length;
     var cy = placed.reduce(function (sum, p) { return sum + p.y; }, 0) / placed.length;
     return {
       x: cx, y: cy,
-      radius: radiusFor(kids.length, maxSize(kids)) + maxSize(kids) / 2,
+      radius: radiusFor(kids.length, size) + size / 2,
     };
+  }
+
+  /* ---------- placing papers ----------
+
+     A paper goes on a small orbit round its anchor topic, in every
+     preset layout, so it is read as that topic's -- not on a ring of
+     its own, where the ego view's context ring parked a paper of the
+     pinned topic hundreds of pixels from it and the grouped layout put
+     papers among the boxes on the top-level circle (#982). The orbit
+     is wide enough for its largest diamond (cy_style.js maps a score to
+     16-34 px) to clear the topic and its neighbours on the orbit. */
+
+  var PAPER_SIZE = 34;
+  var PAPER_SPACING = 44;
+
+  function isPaper(el) {
+    return el.data.kind === "paper";
+  }
+
+  function orbitsOf(elements) {
+    var orbits = Object.create(null);
+    elements.forEach(function (el) {
+      if (el.group === "nodes" && isPaper(el)) {
+        (orbits[el.data.anchor] = orbits[el.data.anchor] || []).push(el);
+      }
+    });
+    return orbits;
+  }
+
+  function orbitRadius(size, count) {
+    return Math.max(size / 2 + PAPER_SIZE, (PAPER_SPACING * count) / (2 * Math.PI));
+  }
+
+  /* How wide each non-paper node is once its papers are round it: what
+     the grouped layout spaces by, so an open topic's papers do not land
+     on its neighbours. */
+  function footprints(elements) {
+    var orbits = orbitsOf(elements);
+    var wide = Object.create(null);
+    elements.forEach(function (el) {
+      if (el.group !== "nodes" || isPaper(el)) { return; }
+      var size = el.data.size || 40;
+      var papers = orbits[el.data.id];
+      wide[el.data.id] = papers ? 2 * orbitRadius(size, papers.length) + PAPER_SIZE : size;
+    });
+    return wide;
+  }
+
+  /* Adds a position for every paper in `elements` to `at`, which
+     already holds its anchor's, and returns `at`. */
+  function placePapers(elements, at) {
+    var orbits = orbitsOf(elements);
+    var size = Object.create(null);
+    elements.forEach(function (el) { size[el.data.id] = el.data.size || 40; });
+    Object.keys(orbits).forEach(function (anchor) {
+      var papers = orbits[anchor];
+      var centre = at[anchor];
+      var radius = orbitRadius(size[anchor], papers.length);
+      papers.forEach(function (paper, i) {
+        var angle = (2 * Math.PI * i) / papers.length;
+        at[paper.data.id] = {
+          x: centre.x + radius * Math.cos(angle),
+          y: centre.y + radius * Math.sin(angle),
+        };
+      });
+    });
+    return at;
   }
 
   /* ---------- papers as nodes ----------
@@ -620,9 +691,46 @@
   // silently drawing less than was asked for.
   var EXPANSION_CAP = 3;
 
-  function paperElements(data, visible, expanded) {
-    var open = data.topics
-      .filter(function (t) { return visible.has(t.label) && expanded.has(t.label); })
+  function paperNode(m, id, holders) {
+    return {
+      group: "nodes",
+      data: {
+        id: id,
+        kind: "paper",
+        label: m.citekey,
+        title: m.title,
+        score: Math.max(0, Math.min(1, m.score)),
+        topics: (holders[m.citekey] || []).length,
+        // Bridging is about what is *on the canvas*. On a real
+        // corpus almost every paper belongs to several topics, so
+        // colouring by the corpus-wide count paints everything the
+        // same and says nothing; what the reader can see is a
+        // paper joined to more than one of the topics they opened.
+        drawn: 1,
+      },
+    };
+  }
+
+  /* `anchor` is the topic placePapers puts the paper beside, and whose
+     box it sits in: the brightest open topic holding it, the first of
+     those if several tie. Grouping and dimming never apply together,
+     so moving the anchor for brightness never moves it between boxes. */
+  function anchorTo(paper, label, parentOf) {
+    paper.data.anchor = label;
+    if (parentOf[label]) { paper.data.parent = parentOf[label]; }
+  }
+
+  /* Built from the topics the view pass actually drew, not from the
+     visible set, and handed that pass's own decorations, so a paper
+     gets every per-view attribute its topic got (#981): a topic folded
+     into a collapsed group is not drawn and shows no papers (#936), a
+     paper sits in its anchor's box, and with the context dimmed a
+     paper is as bright as the brightest open topic holding it, each
+     line as bright as the topic it leaves. `dim` is null when nothing
+     is dimmed, so no element carries the attribute. */
+  function paperElements(data, drawn, expanded, parentOf, dim) {
+    var open = drawn
+      .filter(function (t) { return expanded.has(t.label); })
       .slice(0, EXPANSION_CAP);
     if (!open.length) { return []; }
     var holders = Object.create(null);
@@ -638,25 +746,21 @@
     open.forEach(function (t) {
       t.members.forEach(function (m) {
         var id = prefix + m.citekey;
-        nodes[id] = nodes[id] || {
-          group: "nodes",
-          data: {
-            id: id,
-            kind: "paper",
-            label: m.citekey,
-            title: m.title,
-            score: Math.max(0, Math.min(1, m.score)),
-            topics: (holders[m.citekey] || []).length,
-            // Bridging is about what is *on the canvas*. On a real
-            // corpus almost every paper belongs to several topics, so
-            // colouring by the corpus-wide count paints everything the
-            // same and says nothing; what the reader can see is a
-            // paper joined to more than one of the topics they opened.
-            drawn: 0,
-          },
-        };
-        nodes[id].data.drawn += 1;
-        edges.push({
+        var paper = nodes[id];
+        if (paper) {
+          paper.data.drawn += 1;
+          // A brighter holder takes the paper: placed by a dimmed topic
+          // on the context ring, a bright paper is #982 again (#981).
+          if (dim && dim(t.label) < paper.data.dim) {
+            paper.data.dim = dim(t.label);
+            anchorTo(paper, t.label, parentOf);
+          }
+        } else {
+          paper = nodes[id] = paperNode(m, id, holders);
+          anchorTo(paper, t.label, parentOf);
+          if (dim) { paper.data.dim = dim(t.label); }
+        }
+        var line = {
           group: "edges",
           data: {
             // JSON rather than a separator: labels and citekeys both
@@ -666,7 +770,9 @@
             target: id,
             family: "member",
           },
-        });
+        };
+        if (dim) { line.data.dim = dim(t.label); }
+        edges.push(line);
       });
     });
     return Object.keys(nodes).map(function (id) { return nodes[id]; }).concat(edges);
@@ -696,12 +802,14 @@
       if (resolved.collapsedIds.has(entry.group.id)) { return; }
       entry.members.forEach(function (label) { parentOf[label] = entry.group.id; });
     });
+    var drawn = [];
     data.topics.forEach(function (t) {
       if (!universe.has(t.label)) { return; }
       if (resolved.drawnAs[t.label] !== t.label) { return; }
       var node = topicNode(t, selected, parentOf[t.label]);
       if (dimming) { node.data.dim = dim(t.label); }
       els.push(node);
+      drawn.push(t);
     });
     var edges = bundleEdges(
       data, resolved.drawnAs, resolved.collapsedIds, familiesOf(view)
@@ -714,7 +822,7 @@
       });
     }
     var expanded = (view && view.expanded) || new Set();
-    return els.concat(edges, paperElements(data, universe, expanded));
+    return els.concat(edges, paperElements(data, drawn, expanded, parentOf, dimming ? dim : null));
   }
 
   /* `active` is the origin filter (#742), and omitting it means every
@@ -801,6 +909,7 @@
     citekeyOf: citekeyOf,
     cutTree: cutTree,
     positionsFor: positionsFor,
+    placePapers: placePapers,
     groupCentre: groupCentre,
     thresholdForGroups: thresholdForGroups,
     candidatesFor: candidatesFor,

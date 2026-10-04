@@ -12,20 +12,21 @@
    Split out of graph.js rather than added to it because it is a
    different job: graph.js turns a payload into elements, this turns a
    selection into a reading of the neighbourhood around it. Reads every
-   edge through payload.js, which index.html loads first. Tested
+   edge through payload.js, and places papers with graph.js's
+   placePapers, both of which index.html loads first. Tested
    without a DOM by tests/webapp/ego.test.js. */
 "use strict";
 
 (function (root, factory) {
   var api = typeof module === "object" && module.exports
-    ? factory(require("./payload.js"))
-    : factory(root.CHITRAGUPTA_APP);
+    ? factory(require("./payload.js"), require("./graph.js"))
+    : factory(root.CHITRAGUPTA_APP, root.CHITRAGUPTA_APP);
   if (typeof module === "object" && module.exports) {
     module.exports = api;
   } else {
     root.CHITRAGUPTA_APP = Object.assign(root.CHITRAGUPTA_APP || {}, api);
   }
-})(typeof self !== "undefined" ? self : this, function (payload) {
+})(typeof self !== "undefined" ? self : this, function (payload, graph) {
   /* The union, used only as the default for a caller that names no
      families -- every call site here predates the reader being able to
      switch one off, and "not said" has to mean both or the rings lose
@@ -283,6 +284,21 @@
     return at;
   }
 
+  /* Every node of an ego view placed: the rings, the dimmed context
+     ring outside them, and each paper beside its topic. The context
+     ring is over topics only -- a paper has no hop distance of its own,
+     and taking it as one parked a paper of the pinned topic on the far
+     ring (#982). */
+  function ringLayout(data, elements, roots, hops, maxHops, families) {
+    var at = ringPositions(data, roots, hops, maxHops, families);
+    var topics = elements
+      .filter(function (el) { return el.group === "nodes" && el.data.kind !== "paper"; })
+      .map(function (el) { return el.data.id; });
+    var outside = contextRing(topics, hops, maxHops);
+    Object.keys(outside).forEach(function (label) { at[label] = outside[label]; });
+    return graph.placePapers(elements, at);
+  }
+
   function placeRoots(members, at) {
     if (members.length === 1) {
       at[members[0]] = { x: 0, y: 0 };
@@ -341,5 +357,6 @@
     statsFor: statsFor,
     ringPositions: ringPositions,
     contextRing: contextRing,
+    ringLayout: ringLayout,
   };
 });

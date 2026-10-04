@@ -73,7 +73,7 @@ code_lines = 257
 
 [[c2js]]
 name = "assets/webapp/graph.js"
-code_lines = 527
+code_lines = 597
 
 [[c2js]]
 name = "assets/webapp/panel.js"
