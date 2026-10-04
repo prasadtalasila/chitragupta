@@ -220,10 +220,9 @@ def _scripts_numerals_circles() -> dict[int, str]:
             out[cp] = rf"\{command}{{{arg}}}"
     for cp in range(0x2160, 0x2180):
         out[cp] = rf"\textup{{{_decomposed(cp)[1]}}}"
+    # Circled 1-20, A-Z, a-z and 0: every one decomposes as <circle>.
     for cp in [*range(0x2460, 0x2474), *range(0x24B6, 0x24EB)]:
-        tag, text = _decomposed(cp)
-        if tag == "<circle>":
-            out[cp] = rf"\textcircled{{\scriptsize {text}}}"
+        out[cp] = rf"\textcircled{{\scriptsize {_decomposed(cp)[1]}}}"
     return out
 
 
