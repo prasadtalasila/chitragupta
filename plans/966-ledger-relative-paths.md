@@ -1,8 +1,22 @@
 # 966: the ledger stores paths a relocated project can still read
 
-Status: **plan, unbuilt.** Written 2026-10-04 against `main` @ 3486366;
-its three decisions were reviewed by the user the same day.
-Closes #966, and with it the consolidated #963.
+Status: **built**, closed by PR #1004 (6.132.1). Written 2026-10-04
+against `main` @ 3486366; its three decisions were reviewed by the user
+the same day. Closes #966, and with it the consolidated #963.
+
+What changed on the way:
+
+- `_parse_outputs_present` moved to Task 3, because sync would otherwise
+  re-parse everything between Tasks 3 and 4.
+- The PDF root is one function, `ledger_paths.pdf_root()`, which returns
+  `BIB_FILE_PATH.resolve().parent`. `bib_reader` and the verbatim aid
+  share it. A different spelling crashed sync on a symlinked bib file.
+- `read_only_uri` uses `absolute()`, not `resolve()`. On Windows,
+  `resolve()` turns a mapped drive into a UNC path. A UNC authority is
+  rewritten to SQLite's empty-authority `file:////` form.
+- Task 5's plain move test passes even with the writers reverted, because
+  `connect()` normalises `parsed_path`. The schema scan and the
+  legacy-upgrade test are what pin the writers.
 
 **Written for** whoever implements #966, working task by task. An agent
 can follow it with `superpowers:subagent-driven-development` or
