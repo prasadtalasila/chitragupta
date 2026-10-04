@@ -584,7 +584,15 @@ Before saying so, run, in this repo:
   functions; those five are the DOM wiring left over, split out of
   `app.js` (search and pickers by #857, the canvas and the side panel
   after it) so each piece stays under the C2 limit, and the only five
-  outside the coverage bar, because no test loads them. CI runs it in
+  outside the coverage bar, because node never loads them.
+  `tests/webapp/browser_smoke.test.js` (#933) is what tests them, and
+  is their whole bar: it exports `fixture.js` through the real exporter
+  (`python3` from the repository root, so it needs `config.toml` like
+  the rest of the suite), opens it from `file://` in headless Chrome
+  over the DevTools protocol, clicks through it, and fails on any
+  console error, CSP refusal or element cytoscape dropped. Off CI, with
+  no Chrome or Chromium on `PATH` and `CHROME_PATH` unset, it skips with
+  that instruction; on CI a missing browser fails it. CI runs it in
   the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration. `tests/webapp/code_standards.test.js` rides

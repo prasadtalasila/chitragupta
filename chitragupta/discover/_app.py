@@ -81,7 +81,14 @@ def write_app(path: str, origins: "set | None" = None) -> str:
     terms = _data.top_terms(topic_set)
     payload = build_app_payload(graph, topic_set, terms)
     payload["origins"] = [name for name in _origin.CLASSES if name in _origin.selected(origins)]
+    return write_app_dir(path, payload)
 
+
+def write_app_dir(path: str, payload: dict) -> str:
+    """Write an already-built payload out as the app directory. Its own
+    function so that tests/webapp/browser_smoke.test.js can export a
+    hand-built payload through the same copy list and the same data.js
+    encoding a reader's export goes through, with no corpus on disk."""
     target = Path(path)
     (target / "vendor").mkdir(parents=True, exist_ok=True)
     for name in APP_FILES:
