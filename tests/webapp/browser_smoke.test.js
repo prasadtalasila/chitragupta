@@ -96,6 +96,12 @@ const DROPPED_ELEMENTS = `(() => {
     set(factory) {
       wrapped = Object.assign(function (...args) {
         const cy = factory.apply(this, args);
+        // Elements handed to the constructor never pass through add.
+        const given = (args[0] && args[0].elements) || [];
+        if (Array.isArray(given) && cy.elements().length !== given.length) {
+          console.error("cytoscape dropped " + (given.length - cy.elements().length) +
+            " of " + given.length + " elements: a duplicate or invalid id");
+        }
         const add = cy.add;
         cy.add = function (elements) {
           const added = add.apply(this, arguments);
@@ -110,6 +116,19 @@ const DROPPED_ELEMENTS = `(() => {
     },
   });
 })();`;
+
+/* How long any one step may take. A browser that starts and then goes
+   silent, or a layout that never comes to rest, has to fail the run
+   rather than hold CI's job until GitHub's six-hour limit. */
+const DEADLINE_MS = 30000;
+
+function withDeadline(promise, what) {
+  let timer;
+  const expired = new Promise((resolve, reject) => {
+    timer = setTimeout(() => reject(new Error("timed out waiting for " + what)), DEADLINE_MS);
+  });
+  return Promise.race([promise, expired]).finally(() => clearTimeout(timer));
+}
 
 /* The DevTools protocol over --remote-debugging-pipe: JSON messages, each
    ended by a NUL byte, written to the browser's fd 3 and read from its
@@ -143,10 +162,14 @@ function launch(userDataDir) {
   }
   proc.on("error", abandon);
   proc.stdio[3].on("error", abandon);
+  proc.stdio[4].on("error", abandon);
+  // A decoder, not chunk.toString(): a read can end inside a multi-byte
+  // character, and the panel text the cases match on has an em dash.
+  proc.stdio[4].setEncoding("utf8");
   proc.on("exit", (code) => abandon(new Error("the browser exited (" + code + ")")));
 
   proc.stdio[4].on("data", (chunk) => {
-    const parts = (buffered + chunk.toString("utf8")).split("\0");
+    const parts = (buffered + chunk).split("\0");
     buffered = parts.pop();
     for (const raw of parts) {
       const message = JSON.parse(raw);
@@ -170,7 +193,7 @@ function launch(userDataDir) {
     const message = { id, method, params: params || {} };
     if (onSession) { message.sessionId = sessionId; }
     proc.stdio[3].write(JSON.stringify(message) + "\0");
-    return new Promise((resolve, reject) => pending.set(id, { method, resolve, reject }));
+    return withDeadline(new Promise((resolve, reject) => pending.set(id, { method, resolve, reject })), method);
   }
 
   async function attach() {
@@ -187,11 +210,13 @@ function launch(userDataDir) {
   }
 
   async function close() {
-    await send("Browser.close", {}, false).catch(() => {});
     // No pid is a browser that never started, which will never exit.
-    if (proc.pid && proc.exitCode === null && proc.signalCode === null) {
-      await new Promise((resolve) => { proc.once("exit", resolve); });
-    }
+    if (!proc.pid || proc.exitCode !== null || proc.signalCode !== null) { return; }
+    const exited = new Promise((resolve) => { proc.once("exit", resolve); });
+    // Asked first; killed if it did not answer, since one that has gone
+    // silent will not exit on its own.
+    await send("Browser.close", {}, false).catch(() => proc.kill("SIGKILL"));
+    await exited;
   }
 
   return { send, attach, close, on: (listener) => listeners.push(listener) };
@@ -303,15 +328,21 @@ describe("the exported topic-graph page in a headless browser", { skip }, () => 
   beforeEach(async () => {
     problems = [];
     const loaded = new Promise((resolve) => { onLoad = resolve; });
-    await browser.send("Page.navigate", { url: pageUrl });
-    await loaded;
+    // A browser that cannot read the scratch directory -- Ubuntu's snap
+    // Chromium has a private /tmp -- says so here, not as a blank canvas.
+    const { errorText } = await browser.send("Page.navigate", { url: pageUrl });
+    assert.ok(!errorText, "could not open " + pageUrl + ": " + errorText +
+      (errorText ? " (a snap-packaged Chromium cannot read /tmp; set CHROME_PATH to another)" : ""));
+    await withDeadline(loaded, "the page to load");
     const positions = `(() => {
       const cy = document.getElementById("cy")._cyreg;
       if (!cy || !cy.cy.nodes().length) { return false; }
       return JSON.stringify(cy.cy.nodes().map((n) => [n.id(), n.renderedPosition()]));
     })()`;
     let previous = await until(positions, "the canvas to draw");
+    const settleBy = Date.now() + DEADLINE_MS;
     for (;;) {
+      assert.ok(Date.now() < settleBy, "the layout never came to rest");
       await sleep(200);
       const now = await until(positions, "the layout to settle");
       if (now === previous) { break; }

@@ -30,7 +30,8 @@ from chitragupta.discover import _data, _origin, _page
 # that everything except the wiring can be tested without a browser --
 # `node --test tests/webapp/*.test.js` -- leaving search.js, pickers.js,
 # canvas.js, sidepanel.js and app.js as the cytoscape instance and the
-# DOM events around them.
+# DOM events around them, which tests/webapp/browser_smoke.test.js drives
+# in a headless browser instead.
 APP_FILES = (
     "index.html",
     "style.css",
