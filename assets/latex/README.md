@@ -1,9 +1,12 @@
 # LaTeX assets
 
-`chitragupta-unicode.sty` tells pdflatex how to print about 1,300
+`chitragupta-unicode.sty` tells pdflatex how to print about 1,900
 Unicode characters its default fonts cannot: math-style letters (𝑡 𝐀 ℝ),
 Greek, sub- and superscript digits (₂), Roman numerals (Ⅳ), circled
-numbers (①) and the common math operators (≤ ∈ →). It is
+numbers (①) and the common math operators (≤ ∈ →). The rest are the
+characters the pre-#948 NFKC fold used to turn into plain text (a thin
+space, `（`, `⑴`, `‼`, `⅓`), printed as that text so a draft that
+compiled before still does. It is
 **generated**: run `python -m scripts.generate_unicode_sty`, never edit
 it by hand. `tests/test_unicode_sty.py` fails when the two disagree.
 

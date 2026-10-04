@@ -20,6 +20,13 @@ class TestMappedCharacters:
     def test_a_mapped_character_is_noticed(self):
         assert _unicode.needs_sty("the 𝑡 statistic")
 
+    def test_the_check_reads_the_text_after_nfc(self):
+        # U+2126 OHM SIGN is printed by the kernel and not mapped, but
+        # _sanitize_for_latex's NFC turns it into U+03A9 GREEK CAPITAL
+        # OMEGA, which pdflatex cannot print without the .sty.
+        assert "Ω" not in _unicode.mapped_characters()
+        assert _unicode.needs_sty("10 kΩ")
+
 
 class TestPreambleFiles:
     def test_a_pdf_with_a_mapped_character_gets_a_usepackage(self, tmp_path):

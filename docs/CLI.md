@@ -2480,11 +2480,14 @@ then refused.
 
 **A `pdf` or `tex` render loads `chitragupta-unicode.sty` when the draft
 needs it.** The file ships in `assets/latex/` and tells `pdflatex` how
-to print about 1,300 characters its default fonts cannot: math-style
+to print about 1,900 characters its default fonts cannot: math-style
 letters, Greek, sub- and superscript digits, Roman numerals, circled
-numbers and the common math operators (`≤ ∈ →`). A draft with none of
-them renders exactly as before. A `tex` output gets the file copied
-beside it. A `--fragment` render has no preamble, so it gets the copy
+numbers and the common math operators (`≤ ∈ →`), plus every character
+the old NFKC fold turned into plain text (a thin space, `（`, `⑴`, `‼`,
+`⅓`), printed as that text, so a draft that compiled before still does.
+A draft with none of them renders exactly as before. A `tex` output
+gets the file copied beside it. A `--fragment` render has no preamble,
+so it gets the copy
 and prints one line naming what the assembling document must load:
 
 ```text

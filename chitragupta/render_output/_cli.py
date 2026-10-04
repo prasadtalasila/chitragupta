@@ -70,7 +70,7 @@ _UNICODE_ERROR_RE = re.compile(r"Unicode character (.) \(U\+([0-9A-F]{4,6})\)")
 def _unicode_repair_hint(stderr: str | None) -> str:
     r"""The fix for a character pdflatex cannot print, or "".
 
-    chitragupta-unicode.sty prints about 1,300 characters (#948); one
+    chitragupta-unicode.sty prints about 1,900 characters (#948); one
     outside it still fails the build, which is deliberate: the
     alternative is changing the text. LaTeX's own message names the
     character but not what to do, and the author has two choices.

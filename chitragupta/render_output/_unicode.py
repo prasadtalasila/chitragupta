@@ -16,6 +16,7 @@ render's output.
 import re
 import shutil
 import sys
+import unicodedata
 from functools import cache
 from pathlib import Path
 
@@ -43,8 +44,12 @@ def mapped_characters() -> frozenset[str]:
 
 
 def needs_sty(text: str) -> bool:
-    """Whether `text` holds a character the shipped `.sty` maps."""
-    return not mapped_characters().isdisjoint(text)
+    """Whether `text` holds a character the shipped `.sty` maps.
+
+    Asked of `text` after NFC, which is what `_sanitize_for_latex` hands
+    pandoc: NFC turns U+2126 OHM SIGN, which the kernel prints, into
+    U+03A9 GREEK CAPITAL OMEGA, which only the `.sty` does."""
+    return not mapped_characters().isdisjoint(unicodedata.normalize("NFC", text))
 
 
 def _extra_path() -> Path | None:

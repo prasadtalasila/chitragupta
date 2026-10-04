@@ -26,6 +26,40 @@ def test_the_characters_948_named_are_mapped(char):
     assert ord(char) in gen.entries()
 
 
+def _folded_to_ascii_before_948():
+    """Code points the old NFKC fold turned into printable ASCII, so a
+    draft carrying one compiled on 6.130.0. Those NFC still changes never
+    reach LaTeX as themselves, so they are left out."""
+    for cp in range(0x80, 0x110000):
+        char = chr(cp)
+        if 0xD800 <= cp <= 0xDFFF or unicodedata.category(char)[0] in "CM":
+            continue
+        folded = unicodedata.normalize("NFKC", char)
+        if (
+            folded != char
+            and unicodedata.is_normalized("NFC", char)
+            and folded.isascii()
+            and folded.isprintable()
+        ):
+            yield cp
+
+
+def test_every_character_nfkc_folded_to_ascii_is_still_printed():
+    # Measured, not in the plan: dropping NFKC also stopped folding a
+    # thin space, `（`, `⑴` and `‼`, which pdflatex cannot print. Each
+    # compiled before #948, so each needs an entry or it is a regression.
+    entries = gen.entries()
+    missing = [f"U+{cp:04X}" for cp in _folded_to_ascii_before_948() if cp not in entries]
+    assert missing == []
+
+
+@pytest.mark.parametrize(
+    "char", [" ", " ", "（", "ｆ", "⑴", "‼", "ſ", "⅓", "ⅆ", "Ŀ", "℉", "￡", "￫", "﹘"]
+)
+def test_the_characters_the_review_measured_failing_are_mapped(char):
+    assert ord(char) in gen.entries()
+
+
 def test_the_holes_are_exactly_the_math_block_s_reserved_letter_slots():
     # Unicode left 24 slots of U+1D400-U+1D6A3 empty because those
     # letters already existed in Letterlike Symbols. HOLES must name one
@@ -75,7 +109,7 @@ def _compile_every_entry(tmp_path):
     )
     return subprocess.run(
         ["pdflatex", "-interaction=nonstopmode", "-halt-on-error", "all.tex"],
-        cwd=tmp_path, capture_output=True, text=True, check=False,
+        cwd=tmp_path, capture_output=True, text=True, errors="replace", check=False,
     )  # fmt: skip
 
 

@@ -21,6 +21,7 @@ groups is not mapped at all, and pdflatex still stops on it, naming it.
 
 import sys
 import unicodedata
+from functools import cache
 from pathlib import Path
 
 STY_PATH = Path(__file__).resolve().parent.parent / "assets" / "latex" / "chitragupta-unicode.sty"
@@ -226,10 +227,73 @@ def _scripts_numerals_circles() -> dict[int, str]:
     return out
 
 
+# LaTeX's special characters, as the text-mode commands that print them.
+_ASCII_TEX = {
+    "#": r"\#", "$": r"\$", "%": r"\%", "&": r"\&", "_": r"\_", "{": r"\{", "}": r"\}",
+    "~": r"\textasciitilde{}", "^": r"\textasciicircum{}", "\\": r"\textbackslash{}",
+    "<": r"\textless{}", ">": r"\textgreater{}", "|": r"\textbar{}",
+}  # fmt: skip
+# A space NFKC folds to " " keeps its width; any other prints as a word space.
+_SPACES = {0x2002: r"\enspace", 0x2003: r"\quad", 0x2009: r"\,", 0x200A: r"\,", 0x202F: r"\,"}
+
+
+def _ascii_tex(text: str) -> str:
+    return "".join(_ASCII_TEX.get(char, char) for char in text)
+
+
+# Beyond ASCII, what an NFKC fold may contain and still print: Latin-1
+# (the kernel's utf8 support covers all of it), `ŋ`, the en and em dash,
+# `₩`, and the SYMBOLS entries. Not all of Latin Extended-A: T1 has no
+# `Ħ`, which `ꟸ` folds to. These stay as UTF-8 inside the definition and
+# print through their own entry.
+_FOLD_EXTRAS = {0x14B, 0x2013, 0x2014, 0x20A9, *SYMBOLS}
+
+
+def _printable_fold(folded: str) -> bool:
+    """Whether pdflatex prints every character of an NFKC fold."""
+    return folded.isprintable() and all(
+        char.isascii() or 0xA0 <= ord(char) <= 0xFF or ord(char) in _FOLD_EXTRAS for char in folded
+    )
+
+
+# Measured, not in the plan: the characters below compiled on 6.130.0
+# only because NFKC rewrote them, and dropping NFKC made a draft carrying
+# a thin space, `（`, `⑴` or `‼` fail. Printing the fold keeps them
+# compiling without changing the draft. The other groups override this
+# one where they print the character better (`₂` as a subscript, not `2`).
+def _compatibility_fallback() -> dict[int, str]:
+    """Each character NFKC folds to printable text, printed as that text,
+    and the vulgar fractions as a/b."""
+    out = {}
+    for cp in range(0x80, sys.maxunicode + 1):
+        char = chr(cp)
+        if unicodedata.category(char)[0] in "CM" or not unicodedata.is_normalized("NFC", char):
+            continue
+        tag, _ = _decomposed(cp)
+        folded = unicodedata.normalize("NFKC", char)
+        if tag == "<fraction>":
+            top, _, bottom = folded.partition("⁄")  # FRACTION SLASH
+            out[cp] = rf"\textsuperscript{{{top}}}\textfractionsolidus\textsubscript{{{bottom}}}"
+        elif folded != char and _printable_fold(folded):
+            text = _SPACES.get(cp, r"\ ") if folded == " " else _ascii_tex(folded)
+            wrap = {"<sub>": "textsubscript", "<super>": "textsuperscript"}.get(tag)
+            out[cp] = rf"\{wrap}{{{text}}}" if wrap else text
+    return out
+
+
+# Cached: the fallback group walks every code point, and the result never
+# changes within one Python.
+@cache
 def entries() -> dict[int, str]:
     """Every mapped code point to the LaTeX that prints it."""
     symbols = {cp: rf"\ensuremath{{{command}}}" for cp, command in SYMBOLS.items()}
-    return {**_math_block(), **_greek_block(), **_scripts_numerals_circles(), **symbols}
+    return {
+        **_compatibility_fallback(),
+        **_math_block(),
+        **_greek_block(),
+        **_scripts_numerals_circles(),
+        **symbols,
+    }
 
 
 def render() -> str:

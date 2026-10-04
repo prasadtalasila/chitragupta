@@ -13,8 +13,20 @@ edited skill (`.agents/`, `.opencode/`) carry the same text, as
 points an unmapped character at the book's own `preamble.tex`, since
 `content/unicode-extra.tex` reaches standalone renders only; and
 `tests/test_render_output_unicode.py` adds one pandoc-free test of the
-`--include-in-header` loop so CI's Windows leg reaches it. Written
-2026-10-04 for
+`--include-in-header` loop so CI's Windows leg reaches it.
+
+**Two measurements overturned parts of the plan.** First, "unmapped
+stays loud" covered more than the plan weighed: dropping NFKC also
+stopped folding about 450 characters pdflatex cannot print and that
+compiled before only because NFKC turned them into plain text (a thin
+space, fullwidth `（ｆ０`, `⑴ ⒈`, `㉑`, `‼`, `ʰ`, `⅓`, `ⅆ`). The
+generator therefore has a sixth group, `_compatibility_fallback`, which
+prints each as its NFKC text (vulgar fractions as a/b), overridden by
+the five groups wherever they print better; the `.sty` has 1,873
+entries rather than 1,333, and `test_unicode_sty.py` pins that no such
+character is left out. Second, `needs_sty` reads the text after NFC,
+because NFC turns U+2126 OHM SIGN (which the kernel prints) into
+U+03A9 (which only the `.sty` does). Written 2026-10-04 for
 [#948](https://github.com/prasadtalasila/chitragupta/issues/948)
 (parent #993). The engine move this plan deliberately does not make is
 [#996](https://github.com/prasadtalasila/chitragupta/issues/996); see
