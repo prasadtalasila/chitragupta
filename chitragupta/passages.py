@@ -265,10 +265,10 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
         return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
     # Both columns confined before either is opened (issue 821), each
-    # stored relative to its root (#966). The
-    # PDF one is the sharper of the two: it is not read here but handed
-    # to `pdftotext` as an argument, so an unconfined row ran a
-    # subprocess over an arbitrary host file and quoted the result.
+    # stored relative to its root (#966). The PDF one is the sharper of
+    # the two: it is not read here but handed to `pdftotext` as an
+    # argument, so an unconfined row ran a subprocess over an arbitrary
+    # host file and quoted the result.
     parsed_path = ledger_paths.parsed_file(row[0])
     pdf_path = ledger_paths.pdf_file(row[1])
     single_page: list[Passage] = []

@@ -59,7 +59,9 @@ def confined_path(value: "str | Path | None", root: Path) -> "Path | None":
 
     For the two path-shaped strings this pipeline is *handed* rather
     than computes: `parsed_path`/`pdf_path` read back out of a ledger
-    row, and the path inside a bib entry's `file` field (issue 821).
+    row (which reach here through `ledger_paths`, stored relative to
+    their root and anchored at it before this check), and the path
+    inside a bib entry's `file` field (issue 821).
     Both are data some other tool wrote -- a reference manager, an
     older release, a collaborator's export, a hand edit of a gitignored
     sqlite file -- so both can name any file on the host, and every

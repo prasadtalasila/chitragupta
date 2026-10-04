@@ -277,7 +277,8 @@ platform-specific branch.
 Two rejected alternatives: an `O_EXCL` lock file needs exactly that
 staleness heuristic, and locking the ledger itself would force a run into
 one transaction, discarding the incremental commit points on a crash.
-There are six of those: four in `chitragupta/ledger.py`, one in
+There are six of those: three in `chitragupta/ledger.py`, one in
+`chitragupta/ledger_paths.py` (`mark_parsed`), one in
 `chitragupta/ledger_upsert.py`, and one in `chitragupta/sync_decide.py`
 that closes the whole bibliography-upsert loop in a single transaction
 (the change that stopped a no-op sync being 646 fsync'd

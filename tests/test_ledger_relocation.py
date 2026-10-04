@@ -55,14 +55,20 @@ def make_project(root: Path) -> None:
 
 
 def absolute_path_values(con) -> list:
-    columns = [
-        row[1] for row in con.execute("PRAGMA table_info(items)") if row[1].endswith("_path")
+    tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type = 'table'")]
+    scanned = [
+        (table, row[1])
+        for table in tables
+        for row in con.execute(f'PRAGMA table_info("{table}")')
+        if row[1].endswith("_path")
     ]
-    assert {"parsed_path", "pdf_path"} <= set(columns)
+    assert {"parsed_path", "pdf_path"} <= {column for _, column in scanned}
     return [
-        (column, value)
-        for column in columns
-        for (value,) in con.execute(f"SELECT {column} FROM items WHERE {column} IS NOT NULL")
+        (f"{table}.{column}", value)
+        for table, column in scanned
+        for (value,) in con.execute(
+            f'SELECT "{column}" FROM "{table}" WHERE "{column}" IS NOT NULL'
+        )
         if PurePosixPath(value).is_absolute() or PureWindowsPath(value).drive
     ]
 

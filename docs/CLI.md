@@ -602,6 +602,15 @@ having no parsed text: `search`, `evidence`, `tldr`, `verbatim` and the
 enrichment stages all decline it and say so, and the next
 `corpus sync` re-parses the document rather than skipping it.
 
+Both columns are stored *relative*: `parsed_path` as `<citekey>.txt`
+under `content/parsed/`, `pdf_path` relative to the bib file's resolved
+directory. A project you move, a `content/` directory you rename, or a
+ledger you use from a container and then from the host therefore
+re-parses nothing. A ledger written by an older release, which holds
+absolute paths, is rewritten in place the first time a sync opens it.
+The retrieval caches key on the stored string, so each rebuilds once
+after that upgrade.
+
 If a stale path in your bib file is expected and you would rather the
 scheduled run stayed green, fix the path or drop the `file` field;
 there is deliberately no flag to suppress it.
