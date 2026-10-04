@@ -18,6 +18,7 @@ from chitragupta import config
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._tables import _LATEX_BOUND
+from chitragupta.render_output import _unicode
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 
 # What a table's caption is allowed to be as wide as. pandoc writes every
@@ -113,6 +114,7 @@ def _pandoc_command(
     figure_refs: list[str],
     fragment: bool = False,
     has_code_block: bool = False,
+    preamble_files: list[Path] | None = None,
 ) -> tuple[list[str], dict[str, str] | None]:
     """The pandoc argv and the environment to run it in."""
     # A fragment is for `\input` into a larger document, so it gets no
@@ -233,6 +235,13 @@ def _pandoc_command(
             r"\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}"
             r"\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}",
         ]
+    # chitragupta-unicode.sty, and the project's own unicode-extra.tex,
+    # for a draft carrying a character pdflatex cannot print alone (#948).
+    # A file per -H rather than a third header-includes string: pandoc
+    # keeps both, include-in-header after the variable, which is the
+    # order the .sty wants (after amssymb, which the template loads).
+    for path in preamble_files or []:
+        cmd += ["--include-in-header", str(path)]
     if output_format in _LATEX_BOUND:  # pragma: no cover-windows
         cmd += ["--variable", _LONGTABLE_CAPTION_WIDTH]
     env = None
@@ -256,10 +265,14 @@ def _pandoc_command(
         # dropping it loses the default search path pdflatex needs for
         # its own style files. Merges with os.environ rather than
         # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
-        # the subprocess can't find pandoc at all.
+        # the subprocess can't find pandoc at all. The shipped
+        # chitragupta-unicode.sty's directory comes second (#948), so
+        # `\usepackage{chitragupta-unicode}` finds it without an absolute
+        # path `openin_any` below would refuse, and a file of that name
+        # beside the draft still wins.
         env = {
             **os.environ,
-            "TEXINPUTS": f"{input_path.resolve().parent}:",
+            "TEXINPUTS": f"{input_path.resolve().parent}:{_unicode.sty_path().parent}:",
             # kpathsea's paranoid read mode: no absolute paths, no `..`,
             # no dotfiles, only the working directory and TEXINPUTS
             # (#823). Without it, a `.bib` title of

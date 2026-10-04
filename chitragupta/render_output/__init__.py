@@ -18,13 +18,11 @@ truncates the key mid-token, silently losing the citation. `_safe_render_inputs`
 works around this by aliasing just the affected citekey(s) in temporary
 copies of the input and the bib file -- never touching the real
 `bibliography.bib` -- before handing both to pandoc. The same function
-also runs `_sanitize_for_latex` over the temp copy: a control character
-(reached via a quoted passage straight from `content/parsed/`, which is
-`pdftotext` output, not authored text) is never legitimate content and
-pdflatex rejects it outright, so it is stripped, and a decomposed accent
-joined, before pandoc ever sees it -- never in the draft on disk. Every
-other character reaches pandoc as written (#948); the ones pdflatex
-cannot print alone are `_unicode.py`'s concern.
+also runs `_sanitize_for_latex` over the temp copy, stripping control
+characters and joining decomposed accents (both from `pdftotext` text in
+`content/parsed/`, and both rejected by pdflatex) -- never in the draft
+on disk. Every other character reaches pandoc as written (#948); the
+ones pdflatex cannot print alone are `_unicode.py`'s concern.
 
 Citations render in IEEE style -- numeric `[1]` markers, `[3]-[6]` for a
 consecutive run, over a numbered list of complete entries -- via the CSL
@@ -102,7 +100,7 @@ from chitragupta.render_output._citeproc import (
     _sanitize_for_latex,
     _swap_manual_refs_for_citeproc,
 )
-from chitragupta.render_output import _assets, _equation_captions, _math, _tables
+from chitragupta.render_output import _assets, _equation_captions, _math, _tables, _unicode
 from chitragupta.render_output._csl import _CSL_CITATION_TAG_RE, _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, OutsideContentDir, _require
 from chitragupta.render_output._figure_captions import figures as _declared_figures
@@ -304,6 +302,7 @@ def render(
             figure_refs,
             fragment,
             _has_code_block(draft_text),
+            _unicode.preamble_files(draft_text, output_format, fragment, Path(tmp), out_dir),
         )
         _run_pandoc(cmd, env)
 
