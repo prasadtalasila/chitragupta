@@ -15,7 +15,7 @@ import time
 
 import pytest
 
-from chitragupta import ledger
+from chitragupta import config, ledger
 
 # The original, schema-version-0 table: what a ledger written before any
 # migration looks like on disk.
@@ -160,3 +160,23 @@ class TestMigrationIsOneTransaction:
             raw.close()
         assert "pdf_size" not in cols
         assert _user_version(isolated_config.LEDGER_PATH) == 0
+
+
+@pytest.mark.parametrize("dirname", ["q?dir", "h#sh", "pct%41", "a space", "ñandú"])
+def test_read_connection_opens_the_named_file_read_only(isolated_config, monkeypatch, dirname):
+    """#963: a raw `file:{path}?mode=ro` let `?` end the path early, so
+    sqlite opened -- and created -- a prefix of it, dropped `mode=ro`,
+    and reported the real ledger as stale."""
+    parent = isolated_config.CONTENT_DIR.parent / dirname
+    parent.mkdir()
+    monkeypatch.setattr(config, "LEDGER_PATH", parent / "ledger.sqlite")
+    monkeypatch.setattr(config, "CONTENT_DIR", parent)
+    ledger.connect().close()
+    before = sorted(p.name for p in parent.parent.iterdir())
+
+    with ledger.reading() as con:
+        assert con.execute("PRAGMA user_version").fetchone()[0] == len(ledger._MIGRATIONS)
+        with pytest.raises(sqlite3.OperationalError, match="readonly"):
+            con.execute("DELETE FROM items")
+
+    assert sorted(p.name for p in parent.parent.iterdir()) == before

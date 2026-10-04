@@ -32,6 +32,7 @@ import re
 import sqlite3
 import sys
 from collections import defaultdict, namedtuple
+from pathlib import Path
 
 import bibtexparser
 from bibtexparser.bparser import BibTexParser
@@ -63,7 +64,7 @@ def open_library(sqlite_path):
     promise docs/EXPORT-ZOTERO-GROUPS.md makes. A writable handle would
     put someone's entire reference library at the mercy of a bug here.
     """
-    return sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
+    return sqlite3.connect(Path(sqlite_path).resolve().as_uri() + "?mode=ro", uri=True)
 
 
 def strip_doi(value: str) -> str:

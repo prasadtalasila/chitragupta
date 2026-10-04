@@ -17,7 +17,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, ledger_paths
 
 # upsert_reference's own implementation, and everything it depends on,
 # lives in chitragupta/ledger_upsert.py (#441) -- this module crossed the
@@ -223,7 +223,7 @@ def read_connection() -> sqlite3.Connection:
     `StaleLedger` when it needs a sync to migrate; creates nothing."""
     if not config.LEDGER_PATH.exists():
         raise NoLedger()
-    con = sqlite3.connect(f"file:{config.LEDGER_PATH}?mode=ro", uri=True, timeout=5.0)
+    con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
     # Closed on every way out but the return -- the refusal below, and a
     # file that is not a database at all, which fails on this first read.
     try:

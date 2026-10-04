@@ -3,7 +3,7 @@ modes (chitragupta/overlap_index.py, #110/#111), against a real draft and a
 real corpus.
 
 Unlike `bench_drift.py`, this never copies the ledger: `chitragupta/overlap_index.py`
-opens it through a read-only URI (`sqlite3.connect(f"file:...?mode=ro")`),
+opens it through a read-only URI (`ledger_paths.read_only_uri`),
 never `ledger.connect()` (a write connection that runs migrations), so
 timing a scan against this host's own `content/ledger.sqlite` in place is
 safe -- there is nothing here for a migration to touch. `OVERLAP_DIR` is

@@ -259,9 +259,11 @@ def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
     """
     import sqlite3
 
+    from chitragupta import ledger_paths
+
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_ledger, dest)
-    con = sqlite3.connect(f"file:{dest}?mode=ro", uri=True)
+    con = sqlite3.connect(ledger_paths.read_only_uri(dest), uri=True)
     rows = con.execute("SELECT parsed_path FROM items").fetchall()
     con.close()
     total = 0
