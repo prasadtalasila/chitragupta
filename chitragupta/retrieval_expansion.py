@@ -113,12 +113,14 @@ def describe(added: list[tuple[str, str]]) -> str:
     return "; ".join(f"{a} -> {' '.join(tokens)}" for a, tokens in by_acronym.items())
 
 
-def announce(terms: list[str], tokenize: Callable[[str], list[str]]) -> str:
-    """Print the CLI's expansion note for `terms`, and return `describe`.
+def announce(added: list[tuple[str, str]]) -> str:
+    """Print the CLI's expansion note for `added`, and return `describe`.
 
-    Prints nothing and returns `""` when nothing was added, which is
-    every call at the shipped default. `stderr`, beside the CLI's
-    "too short to search on" note, for the same reason that one uses it:
+    `added` is what `retrieval.query_terms` returned, the same pairs the
+    subcommand then ranks on, rather than a second `expand` call made
+    here: #953 was this note describing an expansion `evidence` never
+    used. Prints nothing and returns `""` when nothing was added.
+    `stderr`, beside the CLI's "too short to search on" note, for the same reason that one uses it:
     a genre skill parses this command's stdout as a documented contract,
     and a note about the query is not a result.
 
@@ -129,9 +131,8 @@ def announce(terms: list[str], tokenize: Callable[[str], list[str]]) -> str:
     ways, and keeping them in one file is what stops the note drifting
     from what was actually added. `search()` never calls this: what a
     library adds to a query is the caller's business to *read*, through
-    `expand`, not something a ranker should print from underneath them.
+    `retrieval.query_terms`, not something a ranker should print from underneath them.
     """
-    added = expand(terms, tokenize)
     if not added:
         return ""
     described = describe(added)

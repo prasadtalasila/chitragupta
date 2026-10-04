@@ -270,6 +270,17 @@ file. A word you typed yourself is never added a second time. A
 one-character acronym can never expand, because the token floor drops it
 from the query before expansion sees it.
 
+Every path that ranks a query expands it the same way: `search`,
+`search --unit passage`, `evidence`, and the drift report that `dossier
+status --all` (or `--json`) replays from each draft's recorded queries.
+So a paper `search` ranked first for `DT` because it says "digital twin"
+also has an `evidence` window for `DT`. Before #953 only `search`
+expanded, and `evidence` answered "no passage matches" for the paper
+`search` had just put first. The one exception is `search --y-prev`:
+its second round searches your query with the draft prose appended, and
+an acronym in that prose is expanded without appearing in the note or
+the log.
+
 The CLI says what it added, on stderr beside its other query notes,
 and `--log` writes the same string to the dossier's `retrieval.md`
 `expanded` column:

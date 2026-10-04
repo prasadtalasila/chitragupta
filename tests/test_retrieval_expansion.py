@@ -151,20 +151,18 @@ class TestDescribe:
 
 class TestAnnounce:
     def test_nothing_is_printed_when_nothing_is_added(self, capsys):
-        assert retrieval_expansion.announce(["fidelity"], retrieval._tokenize) == ""
+        assert retrieval_expansion.announce([]) == ""
         assert capsys.readouterr().err == ""
 
     def test_the_note_names_the_acronym_and_its_terms(self, vocabulary, capsys):
-        described = retrieval_expansion.announce(
-            retrieval._query_terms("DT fidelity"), retrieval._tokenize
-        )
+        described = retrieval_expansion.announce(expand("DT fidelity"))
         assert described == "dt -> digital twin"
         assert "acronym expansion added: dt -> digital twin" in capsys.readouterr().err
 
     def test_the_note_goes_to_stderr(self, vocabulary, capsys):
         """A genre skill parses this command's stdout as a contract; a
         note about the query is not a result."""
-        retrieval_expansion.announce(retrieval._query_terms("DT"), retrieval._tokenize)
+        retrieval_expansion.announce(expand("DT"))
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err

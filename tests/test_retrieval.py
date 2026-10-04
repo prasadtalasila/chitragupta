@@ -15,6 +15,8 @@ from chitragupta import (
     retrieval,
     retrieval_cache,
     retrieval_cli,
+    retrieval_passages,
+    retrieval_scoring,
     retrieval_tables,
 )
 
@@ -832,6 +834,121 @@ class TestEvidence:
 
         with pytest.raises(KeyError, match="not in the ledger"):
             retrieval_cli.evidence("nope_2024", "anything")
+
+
+class TestOneQueryOneSetOfTerms:
+    """#953: every consumer of a query ranks on the terms `search` ranks on.
+
+    `evidence` used to window on the typed terms while `search` ranked on
+    the typed terms plus the acronym expansion, so a paper `search` put
+    first on "digital twin" answered "no passage matches" for `DT`. The
+    passage unit and the dossier drift report had the same split. The
+    class is two pipelines for one query, so the table below runs one
+    query through every pipeline and compares what each ranked on.
+    """
+
+    QUERIES = [
+        "DT fidelity",
+        "digital twin fidelity",
+        "what is a DT",
+        "DT versus DM",
+        "calibration",
+        "the of and",
+    ]
+
+    @pytest.fixture
+    def corpus(self, ledger_con, monkeypatch):
+        monkeypatch.setattr(
+            acronyms, "load_vocabulary", lambda: {"DT": "digital twin", "DM": "digital model"}
+        )
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        parsed = parsed_file("a2024")
+        parsed.write_text(
+            "opening matter " * 60 + "the digital twin of the greenhouse was calibrated"
+        )
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        return ledger_con
+
+    @staticmethod
+    def _ranked_on(monkeypatch, run) -> "set[str] | None":
+        """The terms `run` handed to BM25, or None if it never scored."""
+        seen = []
+        real = retrieval_scoring.bm25_scores
+
+        def spy(index, terms):
+            seen.append(set(terms))
+            return real(index, terms)
+
+        monkeypatch.setattr(retrieval_scoring, "bm25_scores", spy)
+        run()
+        return seen[0] if seen else None
+
+    @pytest.mark.parametrize("query", QUERIES)
+    def test_evidence_windows_on_the_terms_search_ranks_on(self, corpus, monkeypatch, query):
+        searched = self._ranked_on(monkeypatch, lambda: retrieval.search(query))
+        windowed = []
+        real = retrieval_cli._windows
+        monkeypatch.setattr(
+            retrieval_cli,
+            "_windows",
+            lambda text, terms, **kw: windowed.append(set(terms)) or real(text, terms, **kw),
+        )
+        retrieval_cli.evidence("a2024", query)
+        assert (windowed[0] if windowed else None) == searched
+
+    @pytest.mark.parametrize("query", QUERIES)
+    def test_the_passage_unit_ranks_on_the_terms_search_ranks_on(self, corpus, monkeypatch, query):
+        searched = self._ranked_on(monkeypatch, lambda: retrieval.search(query))
+        passage = self._ranked_on(monkeypatch, lambda: retrieval_passages.search_passages(query))
+        assert passage == searched
+
+    @pytest.mark.parametrize("query", QUERIES)
+    def test_the_drift_report_replays_the_terms_search_ranks_on(self, corpus, monkeypatch, query):
+        from chitragupta.dossier import _drift
+
+        searched = self._ranked_on(monkeypatch, lambda: retrieval.search(query))
+        with ledger.reading() as con:
+            rows = ledger.all_items(con)
+        replayed = self._ranked_on(monkeypatch, lambda: _drift.Corpus(rows).matches([(query, "")]))
+        assert replayed == searched
+
+    def test_a_query_with_no_terms_never_reads_the_vocabulary(self, corpus, monkeypatch):
+        """Sharing `query_terms` put the drift report on the vocabulary's
+        path, so a query that tokenizes to nothing must not read it: a
+        malformed acronyms file would otherwise fail `dossier status
+        --all` over a recorded query that ranks on nothing anyway."""
+
+        def explode():
+            raise acronyms.AcronymsError("malformed")
+
+        monkeypatch.setattr(acronyms, "load_vocabulary", explode)
+        assert retrieval.query_terms("what is the") == ([], [])
+
+    def test_a_paper_search_ranks_first_on_an_acronym_has_an_evidence_window(self, corpus):
+        """The issue's scenario end to end. Red before the fix: the text
+        says "digital twin" and never `DT`, so the typed term alone
+        anchors no window at all."""
+        assert [r.citekey for r in retrieval.search("DT", k=1)] == ["a2024"]
+        (window,) = retrieval_cli.evidence("a2024", "DT", windows=1)
+        assert "digital twin" in window
+
+    def test_the_cli_logs_the_expansion_evidence_actually_used(self, corpus, capsys):
+        """The note `evidence` prints, and the `expanded` it logs, now
+        describe terms the run used rather than ones only `search` would
+        have."""
+        from chitragupta import dossier
+
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+        argv = ["evidence", "DT", "--citekey", "a2024", "--log", str(draft)]
+        assert retrieval.main(argv) == 0
+        captured = capsys.readouterr()
+        assert "acronym expansion added: dt -> digital twin" in captured.err
+        assert "no passage matches" not in captured.out
+        row = (dossier.dossier_dir(draft) / "retrieval.md").read_text().rstrip().splitlines()[-1]
+        assert [c.strip() for c in row.strip().strip("|").split("|")][8] == "dt -> digital twin"
 
 
 class TestCli:

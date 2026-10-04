@@ -137,7 +137,7 @@ class Corpus:
 
         hits: dict[str, list[str]] = {}
         for query, collection in queries:
-            terms = retrieval._query_terms(query)
+            terms, _added = retrieval.query_terms(query)
             if not terms:
                 continue
             scores = retrieval._bm25_scores(self.index, terms)
