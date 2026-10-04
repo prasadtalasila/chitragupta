@@ -2,7 +2,8 @@
 
 Nothing under chitragupta/, scripts/ or bench/ may build one: a path
 holding `?`, `#` or `%` silently names a different file. Build it with
-`Path.resolve().as_uri()` (chitragupta.ledger_paths.read_only_uri).
+chitragupta.ledger_paths.read_only_uri: `Path.absolute().as_uri()`,
+with a UNC path's authority rewritten to the empty one sqlite accepts.
 """
 
 import re
