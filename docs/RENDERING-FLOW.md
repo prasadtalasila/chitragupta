@@ -86,12 +86,18 @@ Two fixups run first, on temp copies only (`_safe_render_inputs`,
 `--` (pandoc's tokenizer truncates it mid-key otherwise, silently
 dropping the citation; under `--natbib` it is worse, emitting
 `\citep[art_2019]{tygesen_state}`, a truncated key *plus* a spurious
-optional argument), and stripping control characters / folding
-math-alphanumeric Unicode that `content/parsed/` text can carry and
+optional argument), and stripping control characters and joining
+decomposed accents (NFC) that `content/parsed/` text can carry and
 pdflatex cannot. Neither the draft nor `papers/bibliography.bib` is ever
 written to; the `.bib` that lands beside a fragment is a copy with
 every `--`-bearing key aliased, not just the ones one draft cites, so
 the result does not depend on which unit was rendered last.
+
+Every other character reaches pandoc as written (#948). The ones
+pdflatex cannot print alone (`₂`, `𝑡`, `≤`, `Ⅳ`) are printed by
+`assets/latex/chitragupta-unicode.sty`, which `_unicode.py` loads only
+for a `pdf` or `tex` render of a draft that contains one, and copies
+beside a `tex` or `--fragment` output.
 
 ## 🔢 Mathematics: substituted on the pandoc path only
 

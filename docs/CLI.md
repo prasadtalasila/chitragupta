@@ -2470,6 +2470,35 @@ when rendering. A `.tex` input still goes through pandoc for `md`, since
 converting a thesis fragment's `\citep{...}` is a real format
 conversion.
 
+**Unicode characters reach the output as written.** The copy handed to
+pandoc loses only control characters, and a decomposed accent (`e` plus
+U+0301) is joined into one letter. Nothing else is rewritten: `m²`,
+`H₂O`, `5 µm` and a math-italic `𝑡` stay what they are (#948). Before
+6.131.0 the render ran NFKC over the whole draft, which turned `m²`
+into `m2`, `H₂O` into `H2O`, and `µm` into a Greek `μ` that `pdflatex`
+then refused.
+
+**A `pdf` or `tex` render loads `chitragupta-unicode.sty` when the draft
+needs it.** The file ships in `assets/latex/` and tells `pdflatex` how
+to print about 1,300 characters its default fonts cannot: math-style
+letters, Greek, sub- and superscript digits, Roman numerals, circled
+numbers and the common math operators (`≤ ∈ →`). A draft with none of
+them renders exactly as before. A `tex` output gets the file copied
+beside it. A `--fragment` render has no preamble, so it gets the copy
+and prints one line naming what the assembling document must load:
+
+```text
+[unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+```
+
+**A character outside those tables still fails the `pdf` build**, and
+the `[error]` is followed by a `[unicode]` line naming it and the two
+fixes: write it as LaTeX in the draft, or add a
+`\DeclareUnicodeCharacter{<hex>}{...}` line to
+`content/unicode-extra.tex`. That file, if it exists, is added to the
+preamble of every standalone `pdf` and `tex` render, after the shipped
+package, so a project can print a character the package does not map.
+
 ```bash
 chitragupta draft render content/drafts/survey.md --format pdf
 # chitragupta draft render content/drafts/survey.md --format tex
