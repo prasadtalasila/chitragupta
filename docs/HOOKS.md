@@ -1,6 +1,6 @@
 # 🪝 Hooks: what runs automatically, and what is allowed to block
 
-Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-09-30. Four
+Status: **built, as of 5.20.0.** Written 2026-08-15. Updated 2026-10-04. Four
 hooks exist: `citation_gate_hook.py`, `style_check_hook.py`,
 `session_start_hook.py` and `code_standards_hook.py`. The first two share
 one `draft_target.py` (and through it `patch_paths.py`), all four share
@@ -413,18 +413,49 @@ it reads. `session_start_hook.py`'s own in-process import appends the root
 to `sys.path` instead of prepending it, so an installed package wins
 there too.
 
+**The pipeline's own commands** go through no hook, so `safe_path` never
+sees them: a skill that runs `python -m chitragupta.draft gate` from the
+project root would search that root first. In a scaffolded project the
+prose therefore does not say that. `chitragupta init` writes its copies
+of every skill, subagent definition, `AGENTS.md` and `docs/` page with
+`python -P` in front of each `-m chitragupta...` and each `-c` snippet
+(issue 891; `MODULE_FORM` in `chitragupta/init.py`). `-P` leaves the
+working directory off `sys.path` altogether, so a `chitragupta/`
+committed to the project after `init` is not what those commands
+import, however old the plant or whatever it contains. The protection
+lives in text the installed package wrote rather than in the package a
+plant would replace, which is why it holds for a plant that predates it.
+This page and docs/PACKAGING.md are copied unchanged, because they
+describe `-m`'s search order, and so is docs/CLI.md, kept word for word
+as the package's command reference. A checkout keeps plain `-m`, because its
+own `chitragupta/` is the real one and need not be installed.
+
+It covers the commands the prose spells out, not every way to start
+Python: a command an agent improvises, or one typed by hand, gets no
+`-P`, and a `PYTHONPATH` naming the project directory puts it back on
+`sys.path` regardless. A project scaffolded before this has plain `-m`
+in its copies. Update them by scaffolding afresh somewhere else, for
+example `chitragupta init /tmp/fresh`, and copying its `.claude/skills/`,
+`.claude/agents/`, `AGENTS.md` and `docs/` over the project's own (plus
+`.agents/` or `.opencode/skills/` for those harnesses). Avoid `chitragupta
+init --force` in the project itself, which also resets `config.toml` and
+`content/acronyms.toml`.
+
 **What this cannot close**, recorded so nobody assumes it does: an
 interpreter that finds no installed `chitragupta` at all (the unactivated
 venv of issue 563) looks exactly like a checkout, and no marker a
-checkout carries could not also be committed to a shared directory. There
-the gate still fails closed, but a planted package would run.
-Two more follow from the same rule. This protects the hooks' launches,
-not the pipeline's own commands: a skill that runs `python -m
-chitragupta.draft gate` from the project root still searches it first.
+checkout carries could not also be committed to a shared directory. The
+hooks still launch normally there, and the gate still fails closed, but
+the SessionStart preflight now says so by name: "no installed chitragupta
+visible to `<python>`" (issue 891), through the same advisory channel as
+its other faults, where it used to crash with a bare traceback. A
+scaffolded skill's `python -P -m` fails with `No module named
+chitragupta` in that state rather than running a plant.
 And a checkout whose venv also holds a non-editable `chitragupta-cli`
 reads as an installed project, so its hooks run that copy instead of
 the working tree, and `code_standards_hook.py` reports nothing. Install
-the checkout editable, or not at all.
+the checkout editable, or not at all; DEVELOPER-AGENTS.md says the same
+where someone running the test suite reads it.
 `chitragupta init` covers the other end: it refuses to scaffold into a
 directory already holding `chitragupta/` or `chitragupta.py`, with or
 without `--force`.

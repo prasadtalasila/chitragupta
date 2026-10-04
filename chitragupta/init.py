@@ -41,6 +41,7 @@ unnoticed on both sides.
 """
 
 import argparse
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -107,6 +108,25 @@ class ScaffoldTargetUnsafe(Exception):
 # already present was put there by someone else. The hooks refuse it at
 # launch as well (.claude/hooks/safe_path.py); this is the louder half.
 SHADOWING_NAMES = ("chitragupta", "chitragupta.py")
+
+
+# Every command the scaffolded prose spells out -- a skill's, a
+# subagent's, AGENTS.md's, and the docs/ pages the skills send an agent
+# to -- is run from inside the project. `python -m chitragupta.<layer>`
+# and `python -c "from chitragupta ..."` both put that directory first on
+# `sys.path`, so a `chitragupta/` committed there after `init` would be
+# imported in place of the install on the very next step (#891). A
+# scaffold has no `chitragupta/` of its own -- the package is installed
+# -- so its copies say `python -P`, which leaves the directory off
+# `sys.path` and imports the install whatever sits beside it. The fix
+# lives in text the installed package wrote, not in the code a plant
+# replaces, so it holds for a plant of any age. A checkout keeps plain
+# `-m`: its own `chitragupta/` is the real one, and may not be installed.
+# Three pages are copied unchanged. HOOKS.md and PACKAGING.md explain
+# `-m`'s search order, which `-P` would make them misstate; CLI.md is the
+# command reference, kept word for word as the package documents it.
+KEEPS_PLAIN_M = ("docs/CLI.md", "docs/HOOKS.md", "docs/PACKAGING.md")
+MODULE_FORM = re.compile(r"\b(python3?)(\s+)(-m\s+chitragupta\b|-c\s)")
 
 
 # The one entry that changes name on the way in. config.toml is
@@ -212,6 +232,23 @@ DELIBERATE_DIFFERENCES = frozenset(
 )
 
 
+def gets_dash_p(src: Path) -> bool:
+    """Is `src` prose whose commands `_copy` rewrites (`KEEPS_PLAIN_M`)?"""
+    return src.suffix == ".md" and src.relative_to(SOURCE_ROOT).as_posix() not in KEEPS_PLAIN_M
+
+
+def _copy(src: Path, dst: Path) -> None:
+    """`shutil.copy2`, with a prose file's `python -m`/`-c` made `-P`.
+
+    Bytes in and out, so a file's own line endings and encoding survive;
+    the pattern is ASCII, so it cannot split a multi-byte character.
+    """
+    shutil.copy2(src, dst)
+    if gets_dash_p(src):
+        text = dst.read_bytes().decode("utf-8")
+        dst.write_bytes(MODULE_FORM.sub(r"\1\2-P \3", text).encode("utf-8"))
+
+
 def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
     """One file: create, report-as-existing, or (with force) overwrite.
 
@@ -222,13 +259,13 @@ def _write_one(src: Path, dst: Path, *, force: bool, dry_run: bool) -> str:
         verb = "would create" if dry_run else "created"
         if not dry_run:
             dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
+            _copy(src, dst)
         return f"{verb}: {dst}"
     if not force:
         return f"exists, unchanged: {dst}"
     verb = "would overwrite" if dry_run else "overwrote"
     if not dry_run:
-        shutil.copy2(src, dst)
+        _copy(src, dst)
     return f"{verb}: {dst}"
 
 

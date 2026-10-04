@@ -17,6 +17,7 @@ import pytest
 
 import chitragupta.init as init
 import scripts.release as release
+from tests.conftest import run_python
 
 
 def make_source(tmp_path: Path) -> Path:
@@ -376,6 +377,113 @@ class TestADirectoryThatWouldShadowThePackageRefuses:
         (dest / "chitragupta.py").write_text("", encoding="utf-8")
         assert init.main([str(dest)]) == 1
         assert "chitragupta.py" in capsys.readouterr().err
+
+
+# A run of the package, or any `-c` snippet, not already preceded by `-P`.
+UNSAFE_RUN = re.compile(r"(?<!-P)\s(-m\s+chitragupta\b|-c\s)")
+
+
+class TestScaffoldedProseSaysDashP:
+    """#891. A `chitragupta/` committed to a scaffolded project *after*
+    `init` is beyond the refusal above, and a skill's `python -m
+    chitragupta.draft gate` would import it from the project directory.
+    So the prose `init` writes says `python -P`, which keeps that
+    directory off `sys.path` -- a property of the text the install
+    wrote, so it holds whatever the plant's age or contents."""
+
+    COMMANDS = (
+        "Run `python -m chitragupta.draft gate x.md`, then `python\n"
+        "  -m chitragupta.corpus sync`, or `.venv-full/bin/python -m chitragupta.review`"
+        ' or `python3 -m chitragupta.corpus ledger` or `python -c "import chitragupta"`.'
+        " Not `python -m pytest`, and `python -P -m chitragupta.draft` stays as it is.\n"
+    )
+    SAFE = (
+        "Run `python -P -m chitragupta.draft gate x.md`, then `python\n"
+        "  -P -m chitragupta.corpus sync`, or `.venv-full/bin/python -P -m chitragupta.review`"
+        ' or `python3 -P -m chitragupta.corpus ledger` or `python -P -c "import chitragupta"`.'
+        " Not `python -m pytest`, and `python -P -m chitragupta.draft` stays as it is.\n"
+    )
+    REWRITTEN = (
+        ".claude/skills/survey-writer/SKILL.md",
+        ".claude/agents/writer.md",
+        ".agents/skills/survey-writer/SKILL.md",
+        ".opencode/skills/survey-writer-opencode/SKILL.md",
+        "AGENTS.md",
+        "docs/CONFIG.md",
+        "README.md",
+    )
+    LEFT_ALONE = (*init.KEEPS_PLAIN_M, ".claude/hooks/session_start_hook.py")
+
+    @pytest.fixture
+    def commands(self, source):
+        for rel in (*self.REWRITTEN, *self.LEFT_ALONE):
+            (source / rel).parent.mkdir(parents=True, exist_ok=True)
+            (source / rel).write_text(self.COMMANDS, encoding="utf-8")
+        return source
+
+    def test_prose_gets_dash_p_and_nothing_else_changes(self, commands, tmp_path):
+        dest = tmp_path / "project"
+        init.scaffold(dest, agents=tuple(init.AGENT_TREES))
+        for rel in self.REWRITTEN:
+            assert (dest / rel).read_text(encoding="utf-8") == self.SAFE, rel
+        for rel in self.LEFT_ALONE:
+            assert (dest / rel).read_text(encoding="utf-8") == self.COMMANDS, rel
+
+    def test_force_overwrites_with_the_same_rewrite(self, commands, tmp_path):
+        """A file edited back to plain `-m` is rewritten again on
+        `--force`, and text already carrying `-P` (the last clause of
+        `COMMANDS`) is not given a second one."""
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        skill = dest / self.REWRITTEN[0]
+        skill.write_text(self.COMMANDS, encoding="utf-8")
+        init.scaffold(dest, force=True)
+        assert skill.read_text(encoding="utf-8") == self.SAFE
+
+    def test_line_endings_and_non_ascii_survive(self, source, tmp_path):
+        skill = source / self.REWRITTEN[0]
+        skill.write_bytes("Gate — `python -m chitragupta.draft gate`\r\n".encode("utf-8"))
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        assert (dest / self.REWRITTEN[0]).read_bytes() == (
+            "Gate — `python -P -m chitragupta.draft gate`\r\n".encode("utf-8")
+        )
+
+    def test_no_real_scaffolded_prose_keeps_a_plain_run(self, tmp_path):
+        """Against the real tree, every harness: catches an invocation
+        shape `MODULE_FORM` does not know (`"$PY" -m chitragupta...`)
+        the day the prose first uses one."""
+        dest = tmp_path / "project"
+        init.scaffold(dest, agents=tuple(init.AGENT_TREES))
+        unsafe = [
+            f"{path.relative_to(dest)}: {match.group(0)!r}"
+            for path in sorted(dest.rglob("*.md"))
+            if init.gets_dash_p(init.SOURCE_ROOT / path.relative_to(dest))
+            for match in UNSAFE_RUN.finditer(path.read_text(encoding="utf-8"))
+        ]
+        assert not unsafe, "\n".join(unsafe)
+
+    def test_a_package_planted_after_init_is_not_what_a_skill_runs(self, tmp_path):
+        """End to end, the shape #891 names: scaffold, then commit a
+        `chitragupta/` to the project, then run a skill's command from
+        the project root, exactly as the scaffolded survey skill words
+        it. Plain `-m` would import the plant (the control below); the
+        skill's own `-P` form imports the real package."""
+        dest = tmp_path / "project"
+        init.scaffold(dest)
+        skill = (dest / ".claude/skills/survey-writer/SKILL.md").read_text(encoding="utf-8")
+        flag, module = re.search(r"python (-P )?-m (chitragupta\.draft)\b", skill).groups()
+        sentinel = tmp_path / "planted-ran"
+        (dest / "chitragupta").mkdir()
+        (dest / "chitragupta" / "__init__.py").write_text(
+            f"open({str(sentinel)!r}, 'w').close()\nraise SystemExit(3)\n", encoding="utf-8"
+        )
+        safe = run_python(*([flag.strip()] if flag else []), "-m", module, "--help", cwd=dest)
+        assert safe.returncode == 0, safe.stderr
+        assert not sentinel.exists()
+        plain = run_python("-m", "chitragupta.draft", "--help", cwd=dest)
+        assert plain.returncode == 3
+        assert sentinel.exists()
 
 
 class TestAgents:
