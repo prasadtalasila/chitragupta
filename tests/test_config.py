@@ -906,9 +906,7 @@ class TestDiscoverProjectRoot:
         (tmp_path / "proj").mkdir()
         here = tmp_path / "elsewhere"
         here.mkdir()
-        found = config.discover_project_root(
-            cwd=here, environ={"CHITRAGUPTA_PROJECT": "../proj"}
-        )
+        found = config.discover_project_root(cwd=here, environ={"CHITRAGUPTA_PROJECT": "../proj"})
         assert found == (tmp_path / "proj").resolve()
         assert found.is_absolute()
 
