@@ -43,7 +43,7 @@ decided by `output_format` and the draft's own suffix:
   fenced divs that render as literal punctuation anywhere that isn't
   pandoc.
 - **Every other combination goes through pandoc**, against
-  `config.BIB_FILE_PATH`, and (for `pdf`) `pdflatex`. This is the path
+  `config.BIB_FILE_PATH`, and (for `pdf`) LuaLaTeX. This is the path
   the rest of this document is about, including a `.tex` fragment
   rendered to `.md`: converting `\citep{...}` to Markdown is a real
   format conversion, so it does not qualify for the first bullet's
@@ -93,11 +93,55 @@ written to; the `.bib` that lands beside a fragment is a copy with
 every `--`-bearing key aliased, not just the ones one draft cites, so
 the result does not depend on which unit was rendered last.
 
-Every other character reaches pandoc as written (#948). The ones
-pdflatex cannot print alone (`₂`, `𝑡`, `≤`, `Ⅳ`) are printed by
-`assets/latex/chitragupta-unicode.sty`, which `_unicode.py` loads only
-for a `pdf` or `tex` render of a draft that contains one, and copies
-beside a `tex` or `--fragment` output.
+Every other character reaches pandoc as written (#948).
+
+## 🔤 The pdf engine and its fonts (#996)
+
+A `pdf` render runs **LuaLaTeX**, the only engine for this project's own
+pdfs. It reads UTF-8 and OpenType fonts natively, so a character prints
+when a font has it. The fonts are in `chitragupta/pdf_fonts.py`: STIX Two
+Text and Math, Latin Modern Mono for code at its own size, and a
+`luaotfload` fallback chain (STIX Two Math, Noto Serif, DejaVu Sans, Noto
+Sans Symbols 2, Noto Serif Telugu, Devanagari and CJK SC, Unifont). The
+chain is set in the shipped header `assets/latex/chitragupta-lualatex.tex`
+rather than through pandoc's `mainfontfallback` variable, because only
+newer pandoc templates know that variable and Ubuntu 24.04's apt pandoc
+(3.1.3, which CI installs) silently dropped it. That chain prints
+every one of the 1,873 characters `chitragupta-unicode.sty` prints under
+pdflatex, so a draft that rendered before still does
+(`tests/test_render_output_fonts.py`), as well as Telugu, Devanagari and
+Chinese.
+
+A character no font in the chain has stops the build, by name.
+`assets/latex/chitragupta-lualatex.tex` sets `\tracinglostchars=3` and a
+`glyph_not_found` callback whose error pandoc shows
+(`! Missing character: There is no X (U+XXXX) ...`); the CLI then adds a
+`[unicode]` hint. Without it, LuaTeX drops the glyph with only a log
+warning, which is a silent change of what the PDF says.
+
+`assets/latex/chitragupta-unicode.sty` (#948) still ships, for the output
+someone else compiles: `_unicode.py` copies it beside a `tex` or
+`--fragment` output whose draft contains a character it maps, because the
+thesis or book that `\input`s it may well be pdflatex. A `pdf` render no
+longer loads it; under LuaLaTeX it is a no-op anyway. A project's
+`content/unicode-extra.tex` goes into every LaTeX-bound render's preamble
+behind a two-line shim that defines `\DeclareUnicodeCharacter` on top of
+`newunicodechar` where the engine's kernel lacks it, so the same line
+works under pdflatex and LuaLaTeX.
+
+A `.bib` field's raw TeX prints as text: `bib_raw_tex_as_text.lua` runs
+after citeproc and turns raw TeX in the reference list and the citations
+into literal text, and does the same for a `$...$` math node that holds a
+code-running primitive, because LuaLaTeX would run a `\directlua` in
+either. Plain mathematics is left as math. TeX in the draft body and in
+figure files still runs, Lua included; that is an accepted residual, set
+out in [SECURITY.md](SECURITY.md).
+
+**Build time.** Measured on TeX Live 2023 with a 170-page,
+63,000-word document made from this repository's sample drafts, warm
+cache: pdflatex 5.2 s, this LuaLaTeX setup 27.3 s (38.6 s on the first
+run, which builds the font cache). See
+`plans/996-unicode-pdf-engine.md`.
 
 ## 🔢 Mathematics: substituted on the pandoc path only
 

@@ -38,6 +38,41 @@ class TestCheckBinaries:
         assert len(lines) == len(doctor.BINARIES)
 
 
+class TestCheckPdfFonts:
+    """#996: every family chitragupta/pdf_fonts.py names, looked up the
+    way LuaLaTeX will look it up."""
+
+    def test_no_font_loader_is_one_missing_binary_line(self, monkeypatch):
+        monkeypatch.setattr(doctor.shutil, "which", lambda b: None)
+        lines = doctor._check_pdf_fonts()
+        assert len(lines) == 1
+        assert lines[0].startswith("[missing-binary] luaotfload-tool")
+        assert "texlive-luatex" in lines[0]
+
+    def test_each_family_is_reported_found_or_missing(self, monkeypatch):
+        monkeypatch.setattr(doctor.shutil, "which", lambda b: f"/usr/bin/{b}")
+        present = {"STIX Two Text", "Noto Serif"}
+
+        def fake_run(cmd, **kwargs):
+            name = cmd[1].removeprefix("--find=")
+            # luaotfload-tool exits 0 either way; only the message differs.
+            message = (
+                f'luaotfload | resolve : Font "{name}" found!'
+                if name in present
+                else f'luaotfload | resolve : Cannot find "{name}" in index.'
+            )
+            return SimpleNamespace(returncode=0, stdout="", stderr=message)
+
+        monkeypatch.setattr(doctor.subprocess, "run", fake_run)
+        lines = doctor._check_pdf_fonts()
+        assert len(lines) == len(doctor.pdf_fonts.all_families())
+        assert "[ok] pdf font found: STIX Two Text" in lines
+        assert "[ok] pdf font found: Noto Serif" in lines
+        missing = [line for line in lines if line.startswith("[missing] pdf font")]
+        assert len(missing) == len(lines) - 2
+        assert all("install_full_pipeline.sh os-deps" in line for line in missing)
+
+
 class TestCheckEnrichExtra:
     def test_importable_is_ok(self, monkeypatch):
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: object())

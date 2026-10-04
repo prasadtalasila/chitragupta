@@ -9,6 +9,7 @@ stay identical to the single module it replaced.
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -16,9 +17,8 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
-from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
-from chitragupta.render_output import _unicode
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 
 # What a table's caption is allowed to be as wide as. pandoc writes every
@@ -41,8 +41,8 @@ from chitragupta.render_output._tikz_libraries import header_include, preamble_l
 #
 # `\ifdefined` is an e-TeX primitive rather than a plain-TeX one, which
 # matters only for a `tex` output, since that is compiled by the reader's
-# engine and not by the `pdflatex` a `pdf` output pins. Every engine in
-# use for LaTeX today is e-TeX-based, `pdflatex` included.
+# engine and not by the LuaLaTeX a `pdf` output pins. Every engine in
+# use for LaTeX today is e-TeX-based, pdflatex included.
 #
 # LaTeX-bound formats only: pandoc's HTML template interpolates
 # `header-includes` into `<head>` verbatim, so an unconditional one would
@@ -57,6 +57,17 @@ from chitragupta.render_output._tikz_libraries import header_include, preamble_l
 _LONGTABLE_CAPTION_WIDTH = (
     r"header-includes=\ifdefined\LTcapwidth\setlength{\LTcapwidth}{\textwidth}\fi"
 )
+
+# The one engine chitragupta's own pdf renders use (#996). LuaLaTeX reads
+# UTF-8 and OpenType fonts natively, so a character prints when a font
+# has it, not when someone has written a table entry for it -- which is
+# the limit #948's chitragupta-unicode.sty works around under pdflatex.
+# Chosen over XeLaTeX for luaotfload's fallback chains: one list covers a
+# Latin draft quoting a Telugu title or a Chinese author, where XeLaTeX
+# needs per-script font switching that, measured, still dropped
+# Devanagari and three symbols. plans/996-unicode-pdf-engine.md has the
+# measurements, including the build-time cost.
+PDF_ENGINE = "lualatex"
 
 
 def _render_csl(  # pragma: no cover-windows
@@ -171,6 +182,23 @@ def _pandoc_command(
         *(["--natbib"] if fragment else ["--citeproc", "--csl", str(csl_path)]),
         "--bibliography",
         str(safe_bib),
+        # Straight after `--citeproc`: pandoc runs citeproc and filters in
+        # argv order, and this one rewrites what citeproc produced. A
+        # `.bib` field's raw TeX (`\directlua{...}`) then prints as text
+        # instead of running in LuaLaTeX -- see the filter's own header.
+        # Before breakable_inline_code.lua, which puts raw `\penalty0`
+        # breaks between pieces of a code span: run the other way round,
+        # a `\texttt{...}` in a `.bib` title printed those as visible text.
+        # A fragment has no reference list here (`--natbib` defers it to
+        # the book's bibtex), so it has nothing to rewrite.
+        *(
+            []
+            if fragment
+            else [
+                "--lua-filter",
+                str(config.shipped("assets", "pandoc", "bib_raw_tex_as_text.lua")),
+            ]
+        ),
         # Gives a long inline code span (a URL, a REST path, a file
         # path) somewhere to break in LaTeX/PDF output -- see the
         # filter's own header comment for why pandoc's default
@@ -208,7 +236,7 @@ def _pandoc_command(
         ]
     # Same shape, same reason, for a draft that has a fenced code block:
     # a LaTeX `verbatim` line is one unbreakable box, so a line wider
-    # than the page runs into the margin and `pdflatex` reports an
+    # than the page runs into the margin and the engine reports an
     # Overfull \hbox. `fvextra`'s `breaklines` wraps it instead, marking
     # each continuation with a `,→` so a wrapped line cannot be misread
     # as two. Both environments are redefined because which one pandoc
@@ -235,11 +263,12 @@ def _pandoc_command(
             r"\DefineVerbatimEnvironment{verbatim}{Verbatim}{breaklines}"
             r"\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\},breaklines}",
         ]
-    # chitragupta-unicode.sty, and the project's own unicode-extra.tex,
-    # for a draft carrying a character pdflatex cannot print alone (#948).
-    # A file per -H rather than a third header-includes string: pandoc
-    # keeps both, include-in-header after the variable, which is the
-    # order the .sty wants (after amssymb, which the template loads).
+    # `_unicode.preamble_files`: chitragupta-unicode.sty for a `.tex`
+    # output compiled later by someone's pdflatex (#948), and the
+    # project's own unicode-extra.tex. A file per -H rather than a third
+    # header-includes string: pandoc keeps both, include-in-header after
+    # the variable, which is the order the .sty wants (after amssymb,
+    # which the template loads).
     for path in preamble_files or []:
         cmd += ["--include-in-header", str(path)]
     if output_format in _LATEX_BOUND:  # pragma: no cover-windows
@@ -247,7 +276,16 @@ def _pandoc_command(
     env = None
     if output_format == "pdf":  # pragma: no cover-windows
         _require_tex_readable_tmpdir()
-        cmd += ["--pdf-engine", "pdflatex"]
+        cmd += ["--pdf-engine", PDF_ENGINE]
+        # Last in the preamble. It sets chitragupta/pdf_fonts.py's fonts and
+        # fallback chain itself, overriding the template's, because only
+        # newer pandoc templates know `mainfontfallback` (apt's 3.1.3 on
+        # Ubuntu 24.04 does not); then a character no font in the chain
+        # has stops the build and is named (see the file's own header).
+        cmd += [
+            "--include-in-header",
+            str(config.shipped("assets", "latex", "chitragupta-lualatex.tex")),
+        ]
         # No `\write18` at all, not even TeX Live's default restricted
         # allow-list (`shell_escape = p`). Nothing a draft legitimately
         # needs calls out to a shell, and the allow-list is still code
@@ -257,29 +295,27 @@ def _pandoc_command(
         cmd += ["--pdf-engine-opt=-no-shell-escape"]
         # LaTeX's own \input/\include search path is separate from
         # --resource-path above (that's pandoc's, for images pandoc
-        # reads itself). Without TEXINPUTS, pdflatex looks for
+        # reads itself). Without TEXINPUTS, the engine looks for
         # figures/fig1.tex relative to its own working directory, not
         # the draft's -- confirmed failing with "! LaTeX Error: File
         # 'figures/fig1.tex' not found" otherwise. The trailing ':' is
         # not optional: TEXINPUTS is a prefix, not a replacement, and
-        # dropping it loses the default search path pdflatex needs for
+        # dropping it loses the default search path the engine needs for
         # its own style files. Merges with os.environ rather than
         # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
-        # the subprocess can't find pandoc at all. The shipped
-        # chitragupta-unicode.sty's directory comes second (#948), so
-        # `\usepackage{chitragupta-unicode}` finds it without an absolute
-        # path `openin_any` below would refuse, and a file of that name
-        # beside the draft still wins.
+        # the subprocess can't find pandoc at all. chitragupta-unicode.sty
+        # is not on it: it does nothing under LuaLaTeX, so a pdf render
+        # no longer loads it (#996; `_unicode.preamble_files`).
         env = {
             **os.environ,
-            "TEXINPUTS": f"{input_path.resolve().parent}:{_unicode.sty_path().parent}:",
+            "TEXINPUTS": f"{input_path.resolve().parent}:",
             # kpathsea's paranoid read mode: no absolute paths, no `..`,
             # no dotfiles, only the working directory and TEXINPUTS
             # (#823). Without it, a `.bib` title of
-            # `\input{/home/alice/.netrc}` reaches pdflatex as raw LaTeX
+            # `\input{/home/alice/.netrc}` reaches the engine as raw LaTeX
             # through citeproc and the file is typeset into the reference
             # list. pandoc's own `--sandbox` does not help: it confines
-            # pandoc's reads, not pdflatex's, and it drops a docx
+            # pandoc's reads, not the engine's, and it drops a docx
             # render's images (measured on pandoc 3.6.4; see
             # plans/823-tex-read-hardening.md). Paranoid mode checks the
             # name as TeX spells it, so the draft's `figures/x.tex`,
@@ -289,18 +325,53 @@ def _pandoc_command(
             # dotted TMPDIR is refused up front
             # (`_require_tex_readable_tmpdir`). Set after `os.environ` so
             # a host's own `openin_any` cannot loosen it.
+            #
+            # It fences TeX's own reads, not Lua's. Under LuaLaTeX,
+            # `\directlua` in a draft or a figure file can read and write
+            # any file the user can, and read the environment; that is
+            # an accepted residual (docs/SECURITY.md). A `.bib` field,
+            # which is a collaborator's text rather than the author's,
+            # cannot reach it: bib_raw_tex_as_text.lua prints its raw
+            # TeX as text.
             "openin_any": "p",
         }
     cmd += ["-o", str(out_path)]
     return cmd, env
 
 
+def _require_pdf_toolchain() -> None:
+    """Raises `MissingBinary` unless this host can render a pdf: `lualatex`
+    on PATH, and its font loader installed.
+
+    `lualatex` itself is in `texlive-binaries` and its format in
+    `texlive-latex-base`, so it is on PATH on a host that installed
+    neither font loader nor fonts. `luaotfload` is `texlive-luatex`.
+    Without it, every pdf render failed with `! Font \\TU/lmr/m/n/10=...
+    not loadable: metric data not found or bad`, which names a font that
+    is installed and says nothing about the missing package (measured,
+    plans/996-unicode-pdf-engine.md, Q0). Same probe and same reasoning
+    as `_require_tikz`, including saying nothing when there is no
+    `kpsewhich` to ask.
+    """
+    _require(PDF_ENGINE)
+    if shutil.which("kpsewhich") is None:
+        return
+    probe = subprocess.run(["kpsewhich", "luaotfload.sty"], capture_output=True, check=False)
+    if probe.returncode != 0:
+        raise MissingBinary(
+            "pdf rendering runs LuaLaTeX, but its font loader (luaotfload.sty) is "
+            "not installed. On Debian/Ubuntu it is the 'texlive-luatex' package; "
+            "`bash scripts/install_full_pipeline.sh os-deps` installs it with the "
+            "fonts a render uses."
+        )
+
+
 def _require_tex_readable_tmpdir() -> None:
-    """Raises `MissingBinary` when pdflatex could not read pandoc's own
-    temp copy of the draft.
+    """Raises `MissingBinary` when the TeX engine could not read pandoc's
+    own temp copy of the draft.
 
     pandoc compiles in `$TMPDIR/tex2pdf.-XXXX/` and names `input.tex` to
-    pdflatex absolutely. `openin_any=p` (below, #823) refuses any name
+    the engine absolutely. `openin_any=p` (below, #823) refuses any name
     with a dot-directory in it, so `TMPDIR=~/.cache/tmp` -- common on
     HPC and quota'd homes -- failed every pdf render with an exit 43 that
     reads as a security refusal. `MissingBinary` for `_render_csl`'s
@@ -311,7 +382,7 @@ def _require_tex_readable_tmpdir() -> None:
     dotted = [part for part in tmp.parts if part.startswith(".")]
     if dotted:
         raise MissingBinary(
-            f"pdf rendering cannot use the temp directory {tmp}: pdflatex runs "
+            f"pdf rendering cannot use the temp directory {tmp}: {PDF_ENGINE} runs "
             "with openin_any=p (docs/SECURITY.md), which refuses any path with a "
             f"dot-directory in it ({', '.join(dotted)}), and pandoc compiles "
             "there. Set TMPDIR to a directory without one, e.g. TMPDIR=/tmp."

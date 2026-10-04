@@ -14,7 +14,7 @@ import tempfile
 import pytest
 from chitragupta import ledger
 from chitragupta import render_output
-from tests.conftest import content_draft
+from tests.conftest import content_draft, pdf_text
 from tests.conftest import make_reference
 from tests.conftest import (
     CAPTIONED_MD,
@@ -23,6 +23,7 @@ from tests.conftest import (
     figure_pair,
 )
 from tests.conftest import (
+    lualatex_available,
     pandoc_available,
     pdflatex_available,
     pdftotext_available,
@@ -205,7 +206,7 @@ class TestRenderMarkdown:
 
 
 @pytest.mark.skipif(
-    not (pandoc_available and pdflatex_available), reason="pandoc/pdflatex not installed"
+    not (pandoc_available and lualatex_available), reason="pandoc/lualatex not installed"
 )
 class TestRenderReal:
     def test_renders_markdown_with_citation_to_pdf(self, isolated_config, tmp_path):
@@ -225,10 +226,14 @@ class TestRenderReal:
         assert out_path.exists()
         assert out_path == isolated_config.RENDERED_DIR / "draft.pdf"
 
-    def test_a_bib_field_cannot_make_pdflatex_read_outside_the_draft(
+    def test_a_bib_field_cannot_make_the_engine_read_outside_the_draft(
         self, isolated_config, tmp_path
     ):
-        # #823: a shared (e.g. Zotero group) .bib is collaborator text.
+        # #823: a shared (e.g. Zotero group) .bib is collaborator text. It
+        # used to fail closed at pdflatex's `openin_any=p`; since #996 the
+        # field's raw TeX never reaches the engine as TeX at all
+        # (bib_raw_tex_as_text.lua), so the render succeeds and shows what
+        # the .bib says.
         secret = tmp_path / "outside" / "secret.txt"
         secret.parent.mkdir()
         secret.write_text("NOT-FOR-THE-PDF\n")
@@ -244,6 +249,23 @@ class TestRenderReal:
         )
         draft = content_draft(isolated_config, "draft.md")
         draft.write_text("# Title\n\nSome claim [@smith_2024].\n")
+
+        pdf = render_output.render(str(draft), output_format="pdf")
+
+        text = pdf_text(pdf)
+        assert "NOT-FOR-THE-PDF" not in text
+        assert "\\input{" in text
+
+    def test_tex_in_the_draft_still_cannot_input_a_file_outside_it(self, isolated_config, tmp_path):
+        # #823's `openin_any=p`, on the engine #996 moved to: TeX's own
+        # `\input` of an absolute path is refused, so the render fails
+        # closed rather than typesetting the file.
+        secret = tmp_path / "outside" / "secret.txt"
+        secret.parent.mkdir()
+        secret.write_text("NOT-FOR-THE-PDF\n")
+        isolated_config.BIB_FILE_PATH.write_text("")
+        draft = content_draft(isolated_config, "draft.md")
+        draft.write_text(f"# Title\n\n```{{=latex}}\n\\input{{{secret}}}\n```\n")
 
         with pytest.raises(subprocess.CalledProcessError) as raised:
             render_output.render(str(draft), output_format="pdf")
@@ -548,8 +570,8 @@ class TestRenderReal:
         assert not (isolated_config.RENDERED_DIR.parent / "secret.png").exists()
 
     @pytest.mark.skipif(
-        not (pandoc_available and pdflatex_available and tikz_available),
-        reason="pandoc/pdflatex/tikz.sty not installed",
+        not (pandoc_available and lualatex_available and tikz_available),
+        reason="pandoc/lualatex/tikz.sty not installed",
     )
     def test_a_tikz_figure_renders_to_pdf(self, isolated_config, tmp_path, monkeypatch):
         # #222: a bare tikzpicture environment fails pandoc's default LaTeX
@@ -725,8 +747,8 @@ class TestFigurePairRenderReal:
     actually draw, and only a real render proves that."""
 
     @pytest.mark.skipif(
-        not (pandoc_available and pdflatex_available and tikz_available),
-        reason="pandoc/pdflatex/tikz.sty not installed",
+        not (pandoc_available and lualatex_available and tikz_available),
+        reason="pandoc/lualatex/tikz.sty not installed",
     )
     def test_a_markdown_draft_renders_tikz_to_pdf(self, isolated_config, tmp_path, monkeypatch):
         isolated_config.BIB_FILE_PATH.write_text("")
@@ -968,8 +990,8 @@ class TestWideTableCaptionRenderReal:
     )
 
     @pytest.mark.skipif(
-        not (pandoc_available and pdflatex_available and pdftotext_available),
-        reason="pandoc/pdflatex/pdftotext not installed",
+        not (pandoc_available and lualatex_available and pdftotext_available),
+        reason="pandoc/lualatex/pdftotext not installed",
     )
     def test_a_long_table_caption_wraps_at_the_text_width(
         self, isolated_config, tmp_path, monkeypatch

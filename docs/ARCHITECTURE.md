@@ -488,7 +488,7 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.txt`, `docling` | **No**, at any GPU count: 1 of 300 differed even on a single card, so confining the pool lowers the rate without removing it. **Treat the percentages below as orders of magnitude, not figures.** Every rate this document has ever carried came from a *single* pair of runs, and eight pairs at one fixed configuration have since ranged from 0 to 6 documents. All of them were measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and none applies |
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters (see below) |
 | `content/rendered/*.md`, `*.tex` | **Yes**: byte-identical, measured |
-| `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** pdflatex embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
+| `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** The TeX engine embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
 | `content/review/*.md` (the seven review reports, and a `.json` sibling beside each) | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries: `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input: UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change: those are two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
@@ -645,7 +645,7 @@ unavailable.
 | Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#-which-interpreter-and-why)) |
 | Prose conformance report (`chitragupta.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
 | Docling layout-aware parsing, embeddings/Chroma, BERTopic | venv, `enrich` Poetry group |
-| Compiling generated `.tex` to PDF | `pandoc`, `pdflatex`, `latexmk` (`os-deps` stage) |
+| Compiling generated `.tex` to PDF | `pandoc`, LuaLaTeX (`texlive-luatex`) and the fonts in `chitragupta/pdf_fonts.py`, `latexmk`; `pdflatex` for the figure-layout aid (`os-deps` stage) |
 
 ## 🐍 Which interpreter, and why
 
@@ -686,7 +686,8 @@ otherwise. It is `chitragupta/review/verbatim_check/` now, and `scripts/`
 holds no layer entry point at all, only genuine dev tooling. Both moves
 corrected a label; neither changed a cost.
 
-What the aid needs is `pandoc` and `pdflatex`, which are operating-system
+What the aid needs is `pandoc` and a TeX engine (LuaLaTeX for a `pdf`
+render, `pdflatex` for the figure-layout probe), which are operating-system
 packages, probed at runtime and reported as `missing-binary` when absent.
 That axis (which binaries a command shells out to) is independent of
 which directory it lives in, and always was.
@@ -838,7 +839,7 @@ what is missing.
 | --- | --- | --- |
 | Parser backend | `pdftotext`, `docling` | `sync` warns and skips parsing. It does **not** silently substitute the other backend |
 | Interpreter | the three tiers above | `ModuleNotFoundError` |
-| Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + pdflatex) | reported as `missing-binary`. No format is silently downgraded to another |
+| Render format | `md` (no binary), `tex`/`docx` (pandoc), `pdf` (pandoc + LuaLaTeX) | reported as `missing-binary`. No format is silently downgraded to another |
 | Detection | `exact` word-n-gram runs, a deterministic skip-gram tier, and an embedding tier (all three built; the second and third advisory-only) | the embedding tier needs the optional enrichment layer's `content/chroma/`, the Docling passage sidecars, a synced ledger *and* the draft's own dossier; without any of them it is unavailable and says which, rather than falling back to the exact tier and reporting less |
 
 The detection tiers are the exception to the word *tier* as used above:

@@ -218,7 +218,7 @@ Two commands look like they belong in a higher tier and don't:
   plus
   `chitragupta.config`/`chitragupta.citation_gate`/`chitragupta.references`. It
   shells out to the
-  `pandoc`/`pdflatex` binaries, which are OS packages rather than Python
+  `pandoc`/LuaLaTeX binaries and fonts, which are OS packages rather than Python
   dependencies.
 - `chitragupta.review`'s `coverage` and `verbatim` aids are built on
   `chitragupta.retrieval` and `chitragupta.config`, both stdlib. `verbatim`
@@ -459,7 +459,7 @@ instead.
 | `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install 'chitragupta-cli[enrich]'` |
 | `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps`: the same script, reached a different way |
 | `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
-| Checking pandoc/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
+| Checking pandoc/LuaLaTeX and its fonts/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
 | `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>`. The module form still works too, and is what hooks and skills keep using ([Which interpreter](#-which-interpreter)) |
 | `python scripts/release.py` (build the zip) | Not needed: `pip install` already gives you the wheel |
 
@@ -1332,7 +1332,7 @@ Both are corrected above.
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
-| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written, since it *is* the report; `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written, since it *is* the report; `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 | `--json` | off | Print the worklist as JSON instead of just the written-files summary. The `.json` sibling is filed either way |
 | `--accept ID` | unset | Record this item id as considered and accepted, keeping it off the worklist while the finding's identity is unchanged. Repeatable. Only `claim-support`, `uncited-claim` and `unsupported-claim` may be accepted; every other class is refused with exit code 2 |
 | `--baseline PATH` | unset | Re-run the eight aids at `--formats md`, rebuild, and report `resolved`/`persisting`/`new`/`accepted` against the agenda `.json` at `PATH`, with the objective count before and after. **The one mode that runs another aid** (the bare command above never does), so it costs seconds rather than milliseconds |
@@ -1610,7 +1610,7 @@ reuses `chitragupta.retrieval`, which is itself stdlib.
 | `--k K` | `5` | Top-k results per query |
 | `--json` | off | Print the findings as JSON instead of as text (see below). `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default, since the usual use is a question asked and answered in one sitting |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written (it *is* the report), so `--formats pdf` still produces it. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. The `.md` is always written (it *is* the report), so `--formats pdf` still produces it. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review coverage content/drafts/survey.md \
@@ -1648,7 +1648,7 @@ filed whether or not `--json` is given.
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The Markdown draft to check |
-| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written: it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | Additional formats to render beside the Markdown report. The `.md` is always written: it *is* the report, and `tex`/`pdf` are renders of it, so `--formats pdf` still produces the `.md`. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 | `--json` | off | Print the findings as JSON instead of just the written-files summary (see below). The `.json` sibling is filed either way |
 
 ```bash
@@ -1689,7 +1689,7 @@ exits 0 rather than failing.
 | `<draft>` | required | The draft to check |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review support content/drafts/survey.md
@@ -1746,7 +1746,7 @@ confident and wholly wrong report.
 | `<draft>` | required | The assembled document, e.g. `content/rendered/<book>/book.tex` |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the book's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review union content/rendered/twins/book.tex
@@ -1804,7 +1804,7 @@ The unit comes from the genre recorded in the draft's dossier
 | `--unit {paragraph,section,document}` | from `scope.md` | Measure at this unit instead. For a draft with no dossier, or to look at one deliberately at another scale |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review synthesis content/drafts/survey.md
@@ -1889,7 +1889,7 @@ table that attributes rows that way rests on nothing.
 | `--genre {deep-research,survey,textbook-chapter,thesis-chapter,tutorial}` | from `scope.md` | Read the draft under this genre instead. For a draft with no dossier, or to read one strictly on purpose |
 | `--json` | off | Print the findings as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review uncited content/drafts/survey.md
@@ -1973,7 +1973,7 @@ other two are not a clean bill of health.
 | `<draft>` | required | The draft to check |
 | `--json` | off | Print the verdicts as JSON instead of as text. `--write` files it beside the report either way |
 | `--write` | off | Also write the report to `content/review/`, mirroring the draft's path. Printing stays the default |
-| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex`/`pdf` need `pandoc`/`pdflatex` on `PATH` |
+| `--formats FORMATS` | `md,tex,pdf` | With `--write`, the additional formats to render beside the Markdown report. `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 
 ```bash
 chitragupta review quotation content/drafts/survey.md
@@ -2377,8 +2377,10 @@ disagree, believe `chitragupta review provenance`.
 
 ### 📄 `chitragupta draft render`
 
-Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and `pdflatex`
-for PDF) on `PATH`, but no Python package from the enrich group.
+Render a Pandoc-Markdown or LaTeX draft. Needs `pandoc` (and, for PDF,
+LuaLaTeX with `texlive-luatex` and the fonts `os-deps` installs) on
+`PATH`, but no Python package from the enrich group. `chitragupta doctor`
+says whether each font is there.
 
 Citations render IEEE-style (`[1]`, and `[3]–[6]` for a consecutive
 run) over a numbered bibliography of complete entries, via the CSL style
@@ -2433,12 +2435,15 @@ The files a draft references are confined the same way. A figure or
 image reference that is absolute or contains `..` is not copied beside
 the output. One that is a symlink landing outside the draft's own
 directory fails the render with `[error]`, naming it, because pandoc and
-`pdflatex` would otherwise read it wherever it points. A `pdf` render
-also runs `pdflatex` without shell escape and with `openin_any=p`, so a
-shared `.bib` cannot make it read an absolute path either: such a render
-fails and names the file. That same setting needs a `TMPDIR` with no
-dot-directory in its path, and says so if it has one.
-[SECURITY.md](SECURITY.md) has what this does and does not cover.
+the TeX engine would otherwise read it wherever it points. A `pdf`
+render also runs LuaLaTeX without shell escape and with `openin_any=p`,
+so TeX's own `\input` of an absolute path fails the render and names the
+file. That same setting needs a `TMPDIR` with no dot-directory in its
+path, and says so if it has one. A shared `.bib` field's raw TeX
+(`\input{...}`, `\directlua{...}`) is printed in the reference list as
+literal text, never run. Lua in the draft's own TeX, or in its figure
+files, is not fenced: [SECURITY.md](SECURITY.md) has what this does and
+does not cover.
 
 | Flag | Default | What it does |
 | --- | --- | --- |
@@ -2478,14 +2483,22 @@ U+0301) is joined into one letter. Nothing else is rewritten: `m²`,
 into `m2`, `H₂O` into `H2O`, and `µm` into a Greek `μ` that `pdflatex`
 then refused.
 
-**A `pdf` or `tex` render loads `chitragupta-unicode.sty` when the draft
-needs it.** The file ships in `assets/latex/` and tells `pdflatex` how
-to print about 1,900 characters its default fonts cannot: math-style
-letters, Greek, sub- and superscript digits, Roman numerals, circled
-numbers and the common math operators (`≤ ∈ →`), plus every character
-the old NFKC fold turned into plain text (a thin space, `（`, `⑴`, `‼`,
-`⅓`), printed as that text, so a draft that compiled before still does.
-A draft with none of them renders exactly as before. A `tex` output
+**A `pdf` render prints them from its fonts.** Since 6.132.0 (#996) a
+`pdf` render runs LuaLaTeX with STIX Two and a fallback chain of Noto,
+DejaVu and Unifont fonts (`chitragupta/pdf_fonts.py`). It prints every
+character the `.sty` below prints under pdflatex, and Telugu,
+Devanagari and Chinese text too. There is no pdflatex option for a `pdf`
+render.
+
+**A `tex` or `--fragment` output gets `chitragupta-unicode.sty` when the
+draft needs it**, because whoever compiles it later may use pdflatex,
+as most thesis templates do. The file ships in `assets/latex/` and
+tells `pdflatex` how to print about 1,900 characters its default fonts
+cannot: math-style letters, Greek, sub- and superscript digits, Roman
+numerals, circled numbers and the common math operators (`≤ ∈ →`), plus
+every character the old NFKC fold turned into plain text (a thin space,
+`（`, `⑴`, `‼`, `⅓`), printed as that text. Under LuaLaTeX or XeLaTeX it
+does nothing. A draft with none of them gets no copy. A `tex` output
 gets the file copied beside it. A `--fragment` render has no preamble,
 so it gets the copy
 and prints one line naming what the assembling document must load:
@@ -2494,13 +2507,15 @@ and prints one line naming what the assembling document must load:
 [unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
 ```
 
-**A character outside those tables still fails the `pdf` build**, and
-the `[error]` is followed by a `[unicode]` line naming it and the two
-fixes: write it as LaTeX in the draft, or add a
+**A character no font in the chain has fails the `pdf` build**, by
+name, rather than leaving a gap in the PDF. The `[error]` is followed by
+a `[unicode]` line naming the first such character and the two fixes:
+write it as LaTeX in the draft, or add a
 `\DeclareUnicodeCharacter{<hex>}{...}` line to
 `content/unicode-extra.tex`. That file, if it exists, is added to the
-preamble of every standalone `pdf` and `tex` render, after the shipped
-package, so a project can print a character the package does not map.
+preamble of every standalone `pdf` and `tex` render, behind a shim that
+defines `\DeclareUnicodeCharacter` on top of `newunicodechar` where the
+engine lacks it, so the same line works under LuaLaTeX and pdflatex.
 
 ```bash
 chitragupta draft render content/drafts/survey.md --format pdf

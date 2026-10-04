@@ -608,7 +608,20 @@ def system_python():
 # than in each of them so the kpsewhich subprocess below runs once per
 # session instead of eight times at import.
 pandoc_available = shutil.which("pandoc") is not None
+# pdflatex is still what the figure-layout probe compiles with, and what a
+# fragment's own pdflatex document is tested against (#948). A `pdf`
+# render is LuaLaTeX (#996): see lualatex_available below.
 pdflatex_available = shutil.which("pdflatex") is not None
+# The `lualatex` binary alone is not enough: it ships in texlive-binaries
+# and its format in texlive-latex-base, while its font loader is
+# texlive-luatex, and without that every render fails on its first font
+# (plans/996-unicode-pdf-engine.md, Q0). Same shape as tikz_available.
+lualatex_available = (
+    shutil.which("lualatex") is not None
+    and shutil.which("kpsewhich") is not None
+    and subprocess.run(["kpsewhich", "luaotfload.sty"], capture_output=True, check=False).returncode
+    == 0
+)
 # tikz.sty is texlive-pictures (#222), a separate package from the ones
 # scripts/install_full_pipeline.sh already installed for lmodern etc. --
 # pdflatex being on PATH doesn't guarantee it, so this is its own probe
@@ -623,6 +636,16 @@ tikz_available = (
 # where a caption actually wrapped on the page, which is a question no
 # assertion over the `.tex` can answer.
 pdftotext_available = shutil.which("pdftotext") is not None
+
+
+def pdf_text(pdf) -> str:
+    """`pdftotext`'s reading of `pdf`, for a test that asserts on what a
+    render printed rather than on the `.tex` it came from."""
+    return subprocess.run(
+        ["pdftotext", str(pdf), "-"], capture_output=True, text=True, check=True
+    ).stdout
+
+
 # Whether this host can compile a TikZ figure at all: the two facts
 # `render_output/_figures.py::_require_tikz()` checks. A skip, not a
 # failure, because CI's Windows leg installs no `os-deps`. One marker for

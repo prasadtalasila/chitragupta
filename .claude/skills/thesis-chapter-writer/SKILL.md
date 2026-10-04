@@ -445,8 +445,13 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      quote it, and tell the user to copy `chitragupta-unicode.sty` next
      to their thesis and add `\usepackage{chitragupta-unicode}` to its
      preamble. It never overrides a glyph their preamble already gives a
-     character, and under XeLaTeX or LuaLaTeX it does nothing. Never
-     rewrite the characters in the fragment to get the build through.
+     character, and under XeLaTeX or LuaLaTeX it does nothing. A thesis
+     that compiles with LuaLaTeX needs no package for these at all: it
+     prints them from its fonts, and chitragupta's own pdf preview is
+     LuaLaTeX for that reason (#996). Say so if their template allows
+     it, but the engine is theirs to choose; never switch it for them.
+     Never rewrite the characters in the fragment to get the build
+     through.
 
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.
@@ -599,7 +604,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
     `content/drafts/<topic>/<name>.tex` renders to
     `content/rendered/<topic>/<name>.{md,pdf}`, so one topic directory
     holds the chapter, its dossier and its previews.
-    This needs only bare `python` plus `pandoc`/`pdflatex` on PATH -- don't
+    This needs only bare `python` plus `pandoc` (and LuaLaTeX, for the
+    pdf) on PATH -- don't
     assume either is present or absent without checking; probe (or just try
     the command and read the result) rather than assuming from a prior run
     on a different host. If either command reports `[missing-binary]` or
