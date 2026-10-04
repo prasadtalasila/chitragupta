@@ -10,12 +10,14 @@ distinction the skills refuse on.
 """
 
 import sqlite3
+import sys
 import threading
 import time
+from pathlib import Path, PureWindowsPath
 
 import pytest
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, ledger_paths
 
 # The original, schema-version-0 table: what a ledger written before any
 # migration looks like on disk.
@@ -162,7 +164,21 @@ class TestMigrationIsOneTransaction:
         assert _user_version(isolated_config.LEDGER_PATH) == 0
 
 
-@pytest.mark.parametrize("dirname", ["q?dir", "h#sh", "pct%41", "a space", "ñandú"])
+@pytest.mark.parametrize(
+    "dirname",
+    [
+        pytest.param(
+            "q?dir",
+            marks=pytest.mark.skipif(
+                sys.platform == "win32", reason="`?` is illegal in a Windows file name"
+            ),
+        ),
+        "h#sh",
+        "pct%41",
+        "a space",
+        "ñandú",
+    ],
+)
 def test_read_connection_opens_the_named_file_read_only(isolated_config, monkeypatch, dirname):
     """#963: a raw `file:{path}?mode=ro` let `?` end the path early, so
     sqlite opened -- and created -- a prefix of it, dropped `mode=ro`,
@@ -180,3 +196,29 @@ def test_read_connection_opens_the_named_file_read_only(isolated_config, monkeyp
             con.execute("DELETE FROM items")
 
     assert sorted(p.name for p in parent.parent.iterdir()) == before
+
+
+@pytest.mark.parametrize(
+    ("windows_path", "expected"),
+    [
+        (r"\\server\share\proj\ledger.sqlite", "file:////server/share/proj/ledger.sqlite"),
+        (r"H:\proj\ledger.sqlite", "file:///H:/proj/ledger.sqlite"),
+        (r"H:\q#d\a b.sqlite", "file:///H:/q%23d/a%20b.sqlite"),
+    ],
+)
+def test_sqlite_file_uri_gives_a_unc_path_an_empty_authority(windows_path, expected):
+    """#966: sqlite refuses a `file://server/...` authority, so a UNC path
+    -- what `resolve()` makes of a mapped drive -- moves its server into
+    the path; a drive-letter URI, percent-encoding included, is unchanged."""
+    uri = PureWindowsPath(windows_path).as_uri()
+    assert ledger_paths._sqlite_file_uri(uri) == expected
+
+
+def test_read_only_uri_makes_a_path_absolute_without_resolving_it(tmp_path, monkeypatch):
+    """`absolute()`, not `resolve()`: the path stays as named (`..` and
+    all), which is what keeps a mapped drive's letter on Windows (#966)."""
+    (tmp_path / "sub").mkdir()
+    monkeypatch.chdir(tmp_path)
+    assert ledger_paths.read_only_uri(Path("sub", "..", "ledger.sqlite")) == (
+        (tmp_path / "sub" / ".." / "ledger.sqlite").as_uri() + "?mode=ro"
+    )

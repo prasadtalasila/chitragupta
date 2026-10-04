@@ -63,8 +63,15 @@ def open_library(sqlite_path):
     safe to run against a live library while Zotero is open, which is the
     promise docs/EXPORT-ZOTERO-GROUPS.md makes. A writable handle would
     put someone's entire reference library at the mercy of a bug here.
+
+    `absolute()`, not `resolve()`, and a UNC `file://server/...` given
+    sqlite's empty authority, as chitragupta.ledger_paths.read_only_uri
+    does and for its reason: a library on a mapped drive (#966, #963).
     """
-    return sqlite3.connect(Path(sqlite_path).resolve().as_uri() + "?mode=ro", uri=True)
+    uri = Path(sqlite_path).absolute().as_uri()
+    if not uri.startswith("file:///"):
+        uri = "file:////" + uri[len("file://") :]
+    return sqlite3.connect(uri + "?mode=ro", uri=True)
 
 
 def strip_doi(value: str) -> str:

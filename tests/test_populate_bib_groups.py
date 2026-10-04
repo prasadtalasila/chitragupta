@@ -21,6 +21,7 @@ recorded in the PR, not here.
 
 import sqlite3
 from contextlib import closing
+from pathlib import PureWindowsPath
 
 import pytest
 
@@ -442,3 +443,30 @@ class TestMain:
         with closing(pbg.open_library(library)) as con:
             with pytest.raises(sqlite3.OperationalError, match="readonly"):
                 con.execute("delete from collections")
+
+    @pytest.mark.parametrize(
+        ("windows_path", "expected"),
+        [
+            (r"\\server\share\zotero.sqlite", "file:////server/share/zotero.sqlite?mode=ro"),
+            (r"H:\Zotero\zotero.sqlite", "file:///H:/Zotero/zotero.sqlite?mode=ro"),
+        ],
+    )
+    def test_a_library_on_a_mapped_or_unc_drive_gets_an_empty_authority(
+        self, monkeypatch, windows_path, expected
+    ):
+        # #966: sqlite refuses `file://server/...`, so a UNC library is
+        # handed over as `file:////server/...`; a drive letter as is.
+        class _WindowsPath:
+            def __init__(self, _):
+                pass
+
+            def absolute(self):
+                return PureWindowsPath(windows_path)
+
+        opened = []
+        monkeypatch.setattr(pbg, "Path", _WindowsPath)
+        monkeypatch.setattr(
+            pbg.sqlite3, "connect", lambda database, **kw: opened.append((database, kw))
+        )
+        pbg.open_library("ignored")
+        assert opened == [(expected, {"uri": True})]

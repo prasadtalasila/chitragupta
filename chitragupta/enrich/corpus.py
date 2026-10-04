@@ -52,7 +52,7 @@ class CorpusDoc:
 # re-checks it, so confining the two columns as the corpus is built
 # covers all of them at once, and covers a stage added later without
 # it having to know.
-def _as_str(path: "Path | None") -> "str | None":
+def _as_str(path: Path | None) -> str | None:
     return None if path is None else str(path)
 
 

@@ -606,10 +606,14 @@ Both columns are stored *relative*: `parsed_path` as `<citekey>.txt`
 under `content/parsed/`, `pdf_path` relative to the bib file's resolved
 directory. A project you move, a `content/` directory you rename, or a
 ledger you use from a container and then from the host therefore
-re-parses nothing. A ledger written by an older release, which holds
-absolute paths, is rewritten in place the first time a sync opens it.
-The retrieval caches key on the stored string, so each rebuilds once
-after that upgrade.
+re-parses nothing. A ledger written by an older release holds absolute
+paths: a legacy absolute `parsed_path` is rewritten the first time any
+writer opens the ledger (`ledger.connect()`), and a legacy absolute
+`pdf_path` by the next `sync`. The retrieval caches key on the stored
+string, so each rebuilds once after that upgrade. Every host and
+container sharing one ledger should run 6.132.1 or later: an older
+release reads the relative values against its own working directory,
+and its sync would write absolute ones back.
 
 If a stale path in your bib file is expected and you would rather the
 scheduled run stayed green, fix the path or drop the `file` field;

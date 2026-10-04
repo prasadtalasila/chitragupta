@@ -22,9 +22,25 @@ from chitragupta import config
 
 def read_only_uri(path: Path) -> str:
     """`path` as a sqlite URI that opens it read-only and creates nothing.
-    Resolved first: `as_uri()` accepts only an absolute path, and on
-    Windows this yields the `file:///C:/...` form sqlite expects."""
-    return path.resolve().as_uri() + "?mode=ro"
+
+    Made absolute, not resolved: `as_uri()` accepts only an absolute
+    path, and `resolve()` on Windows turns a mapped drive (`H:\\proj`)
+    into its UNC target, which `as_uri()` writes as `file://server/...`
+    -- an authority sqlite refuses, so every reader of a ledger on a
+    mapped drive would fail (#966, #963). `absolute()` keeps the drive
+    letter, and a path that is UNC to begin with goes through
+    `_sqlite_file_uri`."""
+    return _sqlite_file_uri(path.absolute().as_uri()) + "?mode=ro"
+
+
+def _sqlite_file_uri(uri: str) -> str:
+    """An `as_uri()` result in the form sqlite accepts. sqlite takes only
+    an empty or `localhost` authority, so a UNC path's
+    `file://server/share/...` becomes `file:////server/share/...`, with
+    the server moved into the path; every other URI passes unchanged."""
+    if not uri.startswith("file:///"):
+        return "file:////" + uri[len("file://") :]
+    return uri
 
 
 def stored(path: str | Path | None, root: Path) -> str | None:
