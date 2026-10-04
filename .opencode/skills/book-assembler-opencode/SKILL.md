@@ -59,6 +59,7 @@ The document skeleton, in order:
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
+\usepackage{chitragupta-unicode}             % see "Unicode characters" below
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
@@ -214,6 +215,27 @@ What a figure file must **never** contain is a hand-rolled load -- no
 clearing of `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
 one as `loads-library-by-hand`.
+
+**Unicode characters: the book loads `chitragupta-unicode` once.** A
+unit's text reaches LaTeX as its author wrote it (`H₂O`, `𝑡`, `≤`, `Ⅳ`),
+and pdflatex's default fonts cannot print those (#948). The shipped
+`chitragupta-unicode.sty` tells it how. Every unit rendered with
+`--fragment` that contains such a character prints one line and gets
+the file copied beside it, into the book's directory under
+`content/rendered/`:
+
+```text
+[unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+```
+
+If any unit printed it, keep the `\usepackage{chitragupta-unicode}` line
+in the skeleton above; if none did, drop it. Under XeLaTeX or LuaLaTeX
+the package does nothing, so it is safe to keep either way. Never
+rewrite a unit's characters to get the book through. A character the
+package does not map still stops the build and names itself. Ask the
+author which fix they want: a `\DeclareUnicodeCharacter` line in the
+book's own `preamble.tex`, or the character written as LaTeX in the
+unit, through `draft-reviser-opencode`.
 
 **No `citeproc-defs.def`, and no `CSLReferences` block.** A fragment
 used to carry citeproc's own bibliography environment, which

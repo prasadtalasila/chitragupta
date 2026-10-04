@@ -434,6 +434,19 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      makes `positioning` append its placement transform to a global hook
      once per figure, so the Nth figure shifts every node N times, with
      `pdflatex` exiting 0 and nothing in the log.
+   - **The same goes for Unicode characters** the fragment carries
+     (`H₂O`, `𝑡`, `≤`, `Ⅳ`), which pdflatex's default fonts cannot print
+     (#948). When the render prints
+
+     ```text
+     [unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+     ```
+
+     quote it, and tell the user to copy `chitragupta-unicode.sty` next
+     to their thesis and add `\usepackage{chitragupta-unicode}` to its
+     preamble. It never overrides a glyph their preamble already gives a
+     character, and under XeLaTeX or LuaLaTeX it does nothing. Never
+     rewrite the characters in the fragment to get the build through.
 
    The TikZ must be as original as the ASCII -- a picture redrawn from a
    source paper's figure is the same violation in different pixels.

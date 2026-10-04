@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 import pytest
 from chitragupta import render_output
+from chitragupta.render_output._cli import _unicode_repair_hint
 from tests.conftest import content_draft
 from tests.conftest import MARKED_MD
 from tests.conftest import pandoc_available, pdflatex_available
@@ -686,3 +687,21 @@ class TestOutputDirFlag:
             == 0
         )
         assert str(tmp_path) in seen["positional"]
+
+
+class TestUnicodeRepairHint:
+    """#948: a character chitragupta-unicode.sty does not map still stops
+    pdflatex, deliberately; the hint names the author's two fixes."""
+
+    def test_names_the_character_and_both_fixes(self):
+        hint = _unicode_repair_hint(
+            "! LaTeX Error: Unicode character ☃ (U+2603)\n               not set up"
+        )
+        assert hint.startswith("\n[unicode] ")
+        assert "☃ (U+2603)" in hint
+        assert "unicode-extra.tex" in hint
+        assert "\\DeclareUnicodeCharacter{2603}" in hint
+
+    @pytest.mark.parametrize("stderr", [None, "", "! Undefined control sequence."])
+    def test_says_nothing_about_another_failure(self, stderr):
+        assert _unicode_repair_hint(stderr) == ""
