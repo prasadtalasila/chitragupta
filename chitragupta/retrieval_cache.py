@@ -18,7 +18,7 @@ import would make) rather than this module importing `search`.
 
 import sys
 
-from chitragupta import _tokens, config
+from chitragupta import _tokens, config, ledger_paths
 from chitragupta._json_cache import MemoisedJson
 
 # 2 since #768: every entry written before it counted the tokens of the
@@ -72,9 +72,10 @@ _MISSING_PARSED = 0
 # on matching a `(size, mtime)` taken from the outside file, so the
 # leaked text would be served out of the cache by the very guard meant
 # to stop it. Refusing here makes a repointed row fingerprint as
-# `(False, 0, 0)` and invalidates its entry.
+# `(False, 0, 0)` and invalidates its entry. The value is relative to
+# `content/parsed/` (#966), which `parsed_file` resolves.
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
-    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
+    parsed = ledger_paths.parsed_file(parsed_path)
     if parsed:
         try:
             st = parsed.stat()

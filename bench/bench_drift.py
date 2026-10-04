@@ -252,8 +252,9 @@ def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
     step calls the real `retrieval.search()`, and that goes through
     `ledger.connect()` -- a write connection that runs migrations. Reading
     someone's corpus to time a scan is fine; migrating it is not. The
-    copied rows keep their absolute `parsed_path` values, so the text
-    being tokenized is the host's real parsed output, read-only.
+    copied rows keep their `parsed_path` values, relative to
+    `config.PARSED_DIR` (#966), so the text being tokenized is the host's
+    real parsed output, read-only.
 
     Returns (documents, bytes of parsed text).
     """
@@ -261,6 +262,9 @@ def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
 
     from chitragupta import ledger_paths
 
+    # Relative values resolve against `PARSED_DIR`, so aim it at the real
+    # corpus's own; the caller restores the redirected constants (#966).
+    config.PARSED_DIR = source_ledger.parent / "parsed"
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source_ledger, dest)
     con = sqlite3.connect(ledger_paths.read_only_uri(dest), uri=True)
@@ -268,9 +272,10 @@ def adopt_real_corpus(source_ledger: Path, dest: Path) -> tuple[int, int]:
     con.close()
     total = 0
     for (parsed_path,) in rows:
-        if parsed_path:
+        parsed = ledger_paths.parsed_file(parsed_path)
+        if parsed:
             try:
-                total += Path(parsed_path).stat().st_size
+                total += parsed.stat().st_size
             except OSError:
                 pass
     return len(rows), total
