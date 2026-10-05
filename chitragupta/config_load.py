@@ -241,13 +241,19 @@ def _get_bool(env_var: str, *toml_path: str, default: bool) -> bool:
     raw = _raw_setting(env_var, toml_path)
     if raw is None:
         return default
+    # The environment is held to the same bar (#968): a word in neither
+    # set raises, rather than reading as False, so `PARSER_OCR=ture`
+    # reports the typo instead of quietly turning OCR off. An empty value
+    # is False, the way an exported-but-blank flag has always read.
     if env_var in os.environ:
-        return raw.strip().lower() in ("1", "true", "yes", "on")
-    if not isinstance(raw, bool):
-        raise ValueError(
-            f"{'/'.join(toml_path)} (or {env_var}) must be true or false, not {raw!r}."
-        )
-    return raw
+        word = raw.strip().lower()
+        if word in ("1", "true", "yes", "on"):
+            return True
+        if word in ("", "0", "false", "no", "off"):
+            return False
+    elif isinstance(raw, bool):
+        return raw
+    raise ValueError(f"{'/'.join(toml_path)} (or {env_var}) must be true or false, not {raw!r}.")
 
 
 def _get_workers(env_var: str, *toml_path: str, default: int) -> "int | str":

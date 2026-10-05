@@ -39,11 +39,11 @@
 #   stix-two     -- the STIX Two font alone (#996), pinned and
 #                checksum-verified; os-deps runs it too.
 #   gpu-torch    -- calls ensure_gpu_torch (below) directly, pointed at
-#                CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON rather than this
-#                script's own venv -- what `chitragupta install gpu-torch`
-#                (#265) reaches, for someone who pip-installed rather than
-#                cloned. Not part of `all` or `python-deps`, which already
-#                call ensure_gpu_torch themselves against their own venv.
+#                CHITRAGUPTA_PYTHON rather than this script's own venv --
+#                what `chitragupta install gpu-torch` (#265) reaches, for
+#                someone who pip-installed rather than cloned. Not part
+#                of `all` or `python-deps`, which already call
+#                ensure_gpu_torch themselves against their own venv.
 #   all          -- os-deps + python-deps.
 #
 # Host usage:
@@ -654,7 +654,7 @@ install_python_deps() {
     fi
     local bin_dir
     bin_dir="$(venv_bin_dir "$VENV_DIR")"
-    ensure_gpu_torch "$bin_dir/pip" "$bin_dir/python"
+    ensure_gpu_torch "$bin_dir/python"
 
     echo
     echo "Installed. Run pipeline scripts via:"
@@ -677,9 +677,16 @@ install_python_deps() {
 # driver's supported range -- so on a GPU host we detect the driver's
 # ceiling and reinstall from the newest wheel tag at or under it, instead
 # of leaving a GPU host silently CPU-bound.
+#
+# Takes the interpreter alone and runs pip as `<python> -m pip` (#985):
+# the interpreter is the one path every caller already has, and `-m pip`
+# is always that interpreter's own pip, where a `pip` built beside it is
+# `Scripts\pip.exe` on Windows and so names nothing. A venv with no pip
+# module at all (`uv venv` without `--seed`, `--without-pip`) has nothing
+# either spelling could run; the check before the reinstall says so.
 ensure_gpu_torch() {
-    local pip="$1"
-    local python_bin="$2"
+    local python_bin="$1"
+    local pip=("$python_bin" -m pip)
 
     if ! command -v nvidia-smi >/dev/null 2>&1; then
         return  # no GPU on this host -- default (CPU) wheel is correct as-is
@@ -725,6 +732,18 @@ ensure_gpu_torch() {
         return
     fi
 
+    # Checked here, not at the top: a host with no GPU, or one torch
+    # already drives, never needs pip, so a pip-less venv is fine there.
+    # Without it, the `pip show` reads below come back empty and the
+    # reinstall fails on "No module named pip" with no word of why.
+    if ! "${pip[@]}" --version >/dev/null 2>&1; then
+        echo "Error: ${python_bin} has no pip module, so torch cannot be" >&2
+        echo "reinstalled from the ${best_tag} index. Add one with" >&2
+        echo "'${python_bin} -m ensurepip' (for a uv venv, recreate it with" >&2
+        echo "'uv venv --seed'), then re-run this stage." >&2
+        return 1
+    fi
+
     echo "GPU present but torch can't see it (driver's CUDA ceiling is" \
          "${driver_cuda}, older than the default wheel's build). Reinstalling" \
          "from the ${best_tag} wheel index (needs driver CUDA <= ${best_ver}) ..."
@@ -750,12 +769,12 @@ ensure_gpu_torch() {
     # unpinned only when the version cannot be read, which means torch is
     # not installed and there is nothing to preserve.
     local torch_ver tv_ver torch_spec torchvision_spec
-    torch_ver="$("$pip" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
-    tv_ver="$("$pip" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    torch_ver="$("${pip[@]}" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    tv_ver="$("${pip[@]}" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
     torch_spec="torch${torch_ver:+==${torch_ver}}"
     torchvision_spec="torchvision${tv_ver:+==${tv_ver}}"
 
-    if "$pip" install --force-reinstall \
+    if "${pip[@]}" install --force-reinstall \
         --index-url "https://download.pytorch.org/whl/${best_tag}" \
         "$torch_spec" "$torchvision_spec" \
         && "$python_bin" -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" 2>/dev/null; then
@@ -768,7 +787,7 @@ ensure_gpu_torch() {
     # `poetry install --with enrich` only makes sense from a checkout --
     # REPO_ROOT is site-packages when this runs via `chitragupta install
     # gpu-torch` (#265), which has no pyproject.toml and no poetry.lock to
-    # pin against. Fall back to reinstalling with $pip directly there --
+    # pin against. Fall back to reinstalling with pip directly there --
     # PyPI's current default wheel, not a lockfile-pinned one, so it's a
     # restore to *a* CPU-only state, not necessarily the one that was
     # installed before this function ran (#369: the previous unconditional
@@ -787,10 +806,10 @@ ensure_gpu_torch() {
         # this script pins. Unpinned only if the version could not be
         # read, which means torch was not installed and there is nothing
         # to preserve.
-        echo "Via '$pip install --force-reinstall $torch_spec $torchvision_spec'" >&2
+        echo "Via '${pip[*]} install --force-reinstall $torch_spec $torchvision_spec'" >&2
         echo "(CPU-only on this driver; no checkout/poetry.lock here, so pinned" >&2
         echo "to the previously installed version read back above) ..." >&2
-        "$pip" install --force-reinstall "$torch_spec" "$torchvision_spec"
+        "${pip[@]}" install --force-reinstall "$torch_spec" "$torchvision_spec"
     fi
 }
 
@@ -815,9 +834,11 @@ ensure_gpu_torch() {
 # function existed; the logic lives here now so Docker and CI call one
 # implementation, per DEVELOPER-AGENTS.md's rule that dependency facts
 # have a single home.
+#
+# `<python> -m pip`, for the reason ensure_gpu_torch gives.
 ensure_cpu_torch() {
-    local pip="$1"
-    local python_bin="$2"
+    local python_bin="$1"
+    local pip=("$python_bin" -m pip)
     local torch_ver tv_ver orphans
 
     # `|| true` is load-bearing under this script's `set -euo pipefail`:
@@ -826,21 +847,21 @@ ensure_cpu_torch() {
     # script *before* the refusal below can be printed. Found by running
     # it -- the stage exited 1 with no message at all, which is precisely
     # the silent failure the message exists to prevent.
-    torch_ver="$("$pip" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    torch_ver="$("${pip[@]}" show torch 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
     if [[ -z "$torch_ver" ]]; then
         echo "torch is not installed, so there is no variant to swap." >&2
         echo "Run the python-deps stage first." >&2
         return 1
     fi
-    tv_ver="$("$pip" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
+    tv_ver="$("${pip[@]}" show torchvision 2>/dev/null | sed -n 's/^Version: //p' | cut -d+ -f1 || true)"
 
     echo "Swapping torch ${torch_ver} to the cpu-only wheel index ..."
     if [[ -n "$tv_ver" ]]; then
-        "$pip" install --no-cache-dir --force-reinstall \
+        "${pip[@]}" install --no-cache-dir --force-reinstall \
             --index-url https://download.pytorch.org/whl/cpu \
             "torch==${torch_ver}" "torchvision==${tv_ver}"
     else
-        "$pip" install --no-cache-dir --force-reinstall \
+        "${pip[@]}" install --no-cache-dir --force-reinstall \
             --index-url https://download.pytorch.org/whl/cpu \
             "torch==${torch_ver}"
     fi
@@ -850,14 +871,14 @@ ensure_cpu_torch() {
     # stops removing whatever a later torch release adds -- the failure
     # mode being an image or cache that is quietly bigger than it should
     # be, which nothing reports.
-    orphans="$("$pip" list --format=freeze \
+    orphans="$("${pip[@]}" list --format=freeze \
                | sed -n 's/^\(nvidia-[a-z0-9-]*\|triton\)==.*/\1/p' || true)"
     if [[ -n "$orphans" ]]; then
         echo "Removing the CUDA runtime the default wheel brought in ..."
         # Deliberate word splitting: one package name per line is
         # exactly the argument list pip wants here.
         # shellcheck disable=SC2086
-        "$pip" uninstall -y $orphans
+        "${pip[@]}" uninstall -y $orphans
     fi
 
     # Reported, never asserted. A cpu-only torch that still claims CUDA is
@@ -874,7 +895,7 @@ install_cpu_torch() {
     resolve_venv_dir
     venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
     bin_dir="$(venv_bin_dir "$venv_dir")"
-    ensure_cpu_torch "$bin_dir/pip" "$bin_dir/python"
+    ensure_cpu_torch "$bin_dir/python"
 }
 
 
@@ -883,7 +904,7 @@ install_dev_deps() {
     local venv_dir="${VENV_DIR:-$REPO_ROOT/.venv-full}"
     local bin_dir
     bin_dir="$(venv_bin_dir "$venv_dir")"
-    if [[ ! -x "$bin_dir/pip" ]]; then
+    if [[ ! -x "$bin_dir/python" ]]; then
         echo "No venv at ${venv_dir} -- run '$0 python-deps' first." >&2
         exit 1
     fi
@@ -896,7 +917,7 @@ install_dev_deps() {
     # not remove the enrich group), but it can still touch transitive
     # packages shared with the enrich group, torch included. Re-run the
     # same GPU check as python-deps rather than assume it's still fine.
-    ensure_gpu_torch "$bin_dir/pip" "$bin_dir/python"
+    ensure_gpu_torch "$bin_dir/python"
 
     # The developer-side checks that are not Python packages: the
     # workflow linter CI's lint job also runs, and the git hook that
@@ -945,17 +966,17 @@ for stage in "${STAGES[@]}"; do
         # own, for the same reason the comment above vale gives: sourcing
         # this script to call the function directly would also run the
         # dispatcher below with no stage, defaulting to python-deps.
-        # CHITRAGUPTA_PIP/CHITRAGUPTA_PYTHON name the environment
+        # CHITRAGUPTA_PYTHON names the environment
         # `chitragupta` is actually installed into -- not .venv-full,
         # which is a checkout concept a pip install has no equivalent of,
         # so resolve_venv_dir/venv_bin_dir are deliberately not used here.
         gpu-torch)
-            if [[ -z "${CHITRAGUPTA_PIP:-}" || -z "${CHITRAGUPTA_PYTHON:-}" ]]; then
-                echo "gpu-torch needs CHITRAGUPTA_PIP and CHITRAGUPTA_PYTHON set to" >&2
-                echo "the target environment's pip and python (chitragupta install sets both)." >&2
+            if [[ -z "${CHITRAGUPTA_PYTHON:-}" ]]; then
+                echo "gpu-torch needs CHITRAGUPTA_PYTHON set to the target" >&2
+                echo "environment's python (chitragupta install sets it)." >&2
                 exit 1
             fi
-            ensure_gpu_torch "$CHITRAGUPTA_PIP" "$CHITRAGUPTA_PYTHON"
+            ensure_gpu_torch "$CHITRAGUPTA_PYTHON"
             ;;
         all) install_os_deps; install_python_deps ;;
         *)

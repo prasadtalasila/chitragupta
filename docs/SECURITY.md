@@ -197,6 +197,17 @@ to render and names the file instead of printing it. Pandoc's own
 `--sandbox` is deliberately not used: it confines Pandoc's reads, not
 the engine's, and it drops a `docx` render's images.
 
+**Accepted gap: MiKTeX ignores `openin_any`.** `openin_any` is a
+kpathsea variable, and MiKTeX, the TeX distribution
+[docs/WINDOWS.md](WINDOWS.md) installs, does not use kpathsea. On a
+MiKTeX host the variable is set and nothing reads it, so the paranoid
+read mode above does not apply there: nothing this codebase sets stops
+a draft's raw `\input{C:/Users/alice/secret.txt}`, and whether
+MiKTeX's own configuration does has not been measured. The `.bib` path
+stays closed, because the Lua filter below does not depend on the
+engine. A Windows host that renders drafts someone else can write
+should use TeX Live, which honours the variable.
+
 **A `.bib` field's TeX does not reach the engine as code.** pandoc's
 BibTeX reader turns a command it does not understand into raw LaTeX, and
 keeps `$...$` as a math node whose source it prints verbatim; citeproc

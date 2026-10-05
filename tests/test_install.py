@@ -133,9 +133,11 @@ class TestGpuTorch:
         assert install.main(["gpu-torch"]) == 0
         ((command, kwargs),) = recorded.calls
         assert command == ["/usr/bin/bash", str(install.SCRIPT), "gpu-torch"]
-        bin_dir = fake_python.parent
-        assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
-        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
+        # #985: the interpreter itself, which runs pip as `-m pip`. A
+        # `pip` built beside it is `Scripts\\pip.exe` on Windows, so the
+        # path named nothing there.
+        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(fake_python)
+        assert "CHITRAGUPTA_PIP" not in kwargs["env"]
 
     def test_stays_inside_the_venv_when_python_is_a_symlink(self, monkeypatch, tmp_path):
         # `python3 -m venv` always makes bin/python a symlink to the base
@@ -157,9 +159,7 @@ class TestGpuTorch:
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 0
         ((_command, kwargs),) = recorded.calls
-        bin_dir = venv_python.parent
-        assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
-        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
+        assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(venv_python)
 
     def test_refuses_without_bash(self, monkeypatch, capsys):
         monkeypatch.setattr(install.programs, "resolve_program", lambda b: None)

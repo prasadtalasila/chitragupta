@@ -28,11 +28,12 @@ one dependency set that image exists to make reachable -- the extra is
 deliberately not baked in, since it is torch.
 
 **`gpu-torch` targets the environment `chitragupta` is installed into**,
-not `.venv-full` -- `CHITRAGUPTA_PIP`/`CHITRAGUPTA_PYTHON`, derived from
-`sys.executable`, are what tell the shipped script's `gpu-torch` stage
-which pip/python to reinstall torch into (its own `ensure_gpu_torch`
-function already takes both as parameters; nothing there needed to
-change).
+not `.venv-full` -- `CHITRAGUPTA_PYTHON`, which is `sys.executable`, is
+what tells the shipped script's `gpu-torch` stage which interpreter to
+reinstall torch into, and it runs pip as `<that python> -m pip`. There
+used to be a `CHITRAGUPTA_PIP` beside it, built as the `pip` next to the
+interpreter, which on Windows is `Scripts\\pip.exe` and so named nothing
+(#985).
 """
 
 import argparse
@@ -157,12 +158,7 @@ def _run_gpu_torch() -> int:
     # interpreter, and resolving it walks straight out of the venv to the
     # base interpreter's own directory -- sys.executable is already
     # documented absolute, so nothing here needs normalizing (#369).
-    bin_dir = Path(sys.executable).parent
-    env = {
-        **os.environ,
-        "CHITRAGUPTA_PIP": str(bin_dir / "pip"),
-        "CHITRAGUPTA_PYTHON": str(bin_dir / "python"),
-    }
+    env = {**os.environ, "CHITRAGUPTA_PYTHON": sys.executable}
     command = [bash, str(SCRIPT), "gpu-torch"]
     return subprocess.run(command, check=False, env=env).returncode
 
