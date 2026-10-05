@@ -47,7 +47,7 @@ import types
 import numpy
 import pytest
 
-from chitragupta import chroma_paging, config
+from chitragupta import chroma_paging, config, overlap_chroma
 from chitragupta.enrich import embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
@@ -209,6 +209,42 @@ class TestBuildIndexAgainstRealChromadb:
         assert collection.get(where={"citekey": "a2024"})["ids"] == ["a2024::0"]
 
 
+@pytest.mark.skipif(not chromadb_available, reason="chromadb not installed")
+class TestShortlistAgainstRealChromadb:
+    """#954 against the real `query`: a source owning more near chunks
+    than the cap must not keep the others out of the ranking, and a
+    source owning none must come back as empty rows rather than raise.
+    Both are claims about chromadb, which `ChunkCollection` in
+    `test_overlap_embed.py` can only assume."""
+
+    class PointEmbedder:
+        """Every section chunk lands on the origin, so a chunk's distance
+        is fixed by where it was placed below and nothing else."""
+
+        def encode_lists(self, texts):
+            return [[0.0, 0.0] for _ in texts]
+
+    def test_a_dominant_source_does_not_crowd_the_others_out(self, tmp_path):
+        import chromadb
+
+        collection = chromadb.PersistentClient(path=str(tmp_path)).create_collection("shortlist")
+        placed = [("a2024", 0.10 + i / 100) for i in range(6)] + [("b2024", 0.2), ("c2024", 0.3)]
+        collection.add(
+            ids=[f"{key}::{i}" for i, (key, _) in enumerate(placed)],
+            embeddings=[[x, 0.0] for _, x in placed],
+            metadatas=[{"citekey": key} for key, _ in placed],
+        )
+        found = overlap_chroma.shortlist(
+            collection,
+            self.PointEmbedder(),
+            ["d2024", "c2024", "b2024", "a2024"],
+            "One sentence of section prose.",
+            3,
+        )
+        # `d2024` owns no chunk; before #954 it took b2024's slot.
+        assert found == ["a2024", "b2024", "c2024"]
+
+
 @pytest.mark.skipif(
     not (chromadb_available and sentence_transformers_available and bertopic_available),
     reason="the enrich extra is not installed",
@@ -254,7 +290,7 @@ class TestTheFakesStillMatchTheRealApi:
             ("get", ("where", "include", "limit", "offset")),
             ("update", ("ids", "metadatas")),
             ("delete", ("ids",)),
-            ("query", ("query_embeddings", "n_results")),
+            ("query", ("query_embeddings", "n_results", "where", "include")),
         ],
     )
     def test_the_collection_methods_the_fake_models_still_exist(self, method, keywords):
@@ -265,8 +301,9 @@ class TestTheFakesStillMatchTheRealApi:
         for keyword in keywords:
             assert self._accepts(real, keyword), (
                 f"chromadb's Collection.{method}() no longer accepts {keyword!r}, "
-                "which chitragupta/enrich/embed_index.py passes and "
-                "tests/test_enrich_embed_index.py's FakeCollection models."
+                "which chitragupta/enrich/embed_index.py or "
+                "chitragupta/overlap_chroma.py passes and the fakes in "
+                "tests/test_enrich_embed_index.py or tests/test_overlap_embed.py model."
             )
 
     def test_sentence_transformer_still_takes_a_model_name_and_encodes_quietly(self):

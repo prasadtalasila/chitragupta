@@ -9,6 +9,7 @@ alignment itself is exercised with a fake embedder that returns a
 hand-written matrix -- no model, no vectors, no numpy."""
 
 import json
+import random
 import sqlite3
 import sys
 import types
@@ -54,16 +55,13 @@ class FakeEmbedder:
 
 
 class FakeCollection:
-    def __init__(self, response=None, count=1, get_response=None):
-        self.response = response
+    """`get` and `count` only. A test that needs `query` uses
+    `ChunkCollection` below, which ranks chunks the way Chroma does."""
+
+    def __init__(self, count=1, get_response=None):
         self.get_response = get_response
-        self.queries = []
         self.gets = []
         self._count = count
-
-    def query(self, query_embeddings, n_results, where):
-        self.queries.append({"n": len(query_embeddings), "n_results": n_results, "where": where})
-        return self.response
 
     def get(self, where, include=None, limit=None, offset=None):
         """Paged, and refusing an over-large page, because Chroma's
@@ -271,84 +269,142 @@ class TestEmbedder:
         assert loads == [True]
 
 
+class ChunkCollection:
+    """A collection that ranks *chunks*, as Chroma does: each query
+    embedding gets its own `n_results` nearest chunks among those the
+    `where` filter admits, and a source owns as many chunks as it was
+    given. That is the shape issue #954 needed a fake to have --
+    `FakeCollection` answers every query with one canned response, so a
+    source crowding out another could never happen in it.
+
+    `chunks` maps a citekey to its chunks' distances, the same for every
+    query embedding: the section's own text never varies the answer here,
+    because what is under test is what `shortlist` does with chunks it is
+    handed, not how near they are.
+    """
+
+    def __init__(self, chunks):
+        self.chunks = chunks
+        self.queries = []
+
+    def query(self, query_embeddings, n_results, where, include=None):
+        self.queries.append(
+            {
+                "n": len(query_embeddings),
+                "n_results": n_results,
+                "where": where,
+                "include": include,
+            }
+        )
+        wanted = where["citekey"]
+        admitted = set(wanted["$in"]) if isinstance(wanted, dict) else {wanted}
+        hits = sorted(
+            (distance, citekey)
+            for citekey, distances in self.chunks.items()
+            if citekey in admitted
+            for distance in distances
+        )[:n_results]
+        return {
+            "metadatas": [[{"citekey": c} for _, c in hits] for _ in query_embeddings],
+            "distances": [[d for d, _ in hits] for _ in query_embeddings],
+        }
+
+
 class TestShortlist:
     def test_a_single_citekey_is_returned_without_a_query(self):
-        collection = FakeCollection()
+        collection = ChunkCollection({})
         assert overlap_chroma.shortlist(collection, FakeEmbedder(), ["only_2024"], "prose", 5) == [
             "only_2024"
         ]
         assert collection.queries == []
 
     def test_citekeys_come_back_nearest_first(self):
-        collection = FakeCollection(
-            {
-                "metadatas": [[{"citekey": "far_2024"}, {"citekey": "near_2024"}]],
-                "distances": [[0.9, 0.1]],
-            }
-        )
+        collection = ChunkCollection({"far_2024": [0.9], "near_2024": [0.1]})
         assert overlap_chroma.shortlist(
             collection, FakeEmbedder(), ["far_2024", "near_2024"], "prose", 5
         ) == ["near_2024", "far_2024"]
 
     def test_a_citekey_takes_its_best_distance_across_every_chunk(self):
-        collection = FakeCollection(
-            {
-                "metadatas": [
-                    [{"citekey": "a_2024"}],
-                    [{"citekey": "a_2024"}, {"citekey": "b_2024"}],
-                ],
-                "distances": [[0.9], [0.05, 0.5]],
-            }
-        )
+        collection = ChunkCollection({"a_2024": [0.9, 0.05], "b_2024": [0.5]})
         assert overlap_chroma.shortlist(
-            collection, FakeEmbedder(), ["a_2024", "b_2024"], "prose", 5
+            collection, FakeEmbedder(), ["b_2024", "a_2024"], "prose", 5
         ) == ["a_2024", "b_2024"]
 
     def test_a_citekey_the_collection_never_embedded_ranks_last_not_nowhere(self):
         # A source whose PDF never parsed has no chunk; dropping it would
         # shrink the shortlist below its cap for no stated reason.
-        collection = FakeCollection(
-            {
-                "metadatas": [[{"citekey": "indexed_2024"}]],
-                "distances": [[0.2]],
-            }
-        )
+        collection = ChunkCollection({"indexed_2024": [0.2]})
         assert overlap_chroma.shortlist(
-            collection, FakeEmbedder(), ["indexed_2024", "missing_2024"], "prose", 5
+            collection, FakeEmbedder(), ["missing_2024", "indexed_2024"], "prose", 5
         ) == ["indexed_2024", "missing_2024"]
 
-    def test_a_hit_with_no_citekey_in_its_metadata_is_skipped(self):
-        collection = FakeCollection(
-            {
-                "metadatas": [[{"title": "no citekey here"}, {"citekey": "real_2024"}]],
-                "distances": [[0.1, 0.4]],
-            }
-        )
-        assert overlap_chroma.shortlist(
-            collection, FakeEmbedder(), ["real_2024", "other_2024"], "prose", 5
-        ) == ["real_2024", "other_2024"]
-
     def test_the_cap_is_applied(self):
-        collection = FakeCollection(
-            {
-                "metadatas": [[{"citekey": f"k{i}_2024"} for i in range(4)]],
-                "distances": [[0.1, 0.2, 0.3, 0.4]],
-            }
-        )
+        collection = ChunkCollection({f"k{i}_2024": [0.1 * (i + 1)] for i in range(4)})
         found = overlap_chroma.shortlist(
             collection, FakeEmbedder(), [f"k{i}_2024" for i in range(4)], "prose", 2
         )
         assert found == ["k0_2024", "k1_2024"]
 
-    def test_the_whole_section_is_one_query_not_one_per_citekey(self):
-        collection = FakeCollection({"metadatas": [[]], "distances": [[]]})
-        overlap_chroma.shortlist(
-            collection, FakeEmbedder(), ["a_2024", "b_2024", "c_2024"], "prose", 5
+    def test_a_dominant_source_does_not_crowd_the_others_out_of_the_ranking(self):
+        """#954: one source with at least `limit` chunks nearer than any
+        other source's best used to fill every slot of a query capped at
+        `limit`, so the others never came back and were appended in
+        citation order. Here that put the never-embedded `g_2024` in the
+        shortlist and dropped `b_2024`, the second-nearest source."""
+        collection = ChunkCollection(
+            {
+                "a_2024": [0.10, 0.11, 0.12, 0.13, 0.14],
+                "b_2024": [0.2],
+                "c_2024": [0.3],
+                "d_2024": [0.4],
+                "e_2024": [0.5],
+                "f_2024": [0.6],
+            }
         )
-        assert len(collection.queries) == 1
-        assert collection.queries[0]["where"] == {
-            "citekey": {"$in": ["a_2024", "b_2024", "c_2024"]}
-        }
+        cited = ["e_2024", "d_2024", "c_2024", "g_2024", "f_2024", "b_2024", "a_2024"]
+        assert overlap_chroma.shortlist(collection, FakeEmbedder(), cited, "prose", 5) == [
+            "a_2024",
+            "b_2024",
+            "c_2024",
+            "d_2024",
+            "e_2024",
+        ]
+
+    def test_every_embedded_source_is_ranked_ahead_of_every_unembedded_one(self):
+        """The property #954 asks for, over random corpora: whatever the
+        chunk counts, every cited source with at least one chunk is
+        ranked by its own best distance, and only sources with none
+        follow, in citation order. Seeded, so a failure reproduces."""
+        rng = random.Random(954)
+        for _ in range(300):
+            cited = [f"k{i}_2024" for i in range(rng.randint(2, 8))]
+            rng.shuffle(cited)
+            chunks = {
+                key: [rng.random() for _ in range(rng.choice([0, 1, 2, 12]))] for key in cited
+            }
+            limit = rng.randint(1, len(cited))
+            embedded = sorted((k for k in cited if chunks[k]), key=lambda k: min(chunks[k]))
+            expected = (embedded + [k for k in cited if not chunks[k]])[:limit]
+            found = overlap_chroma.shortlist(
+                ChunkCollection(chunks), FakeEmbedder(), cited, "prose", limit
+            )
+            assert found == expected, (chunks, cited, limit)
+
+    def test_the_section_is_encoded_once_however_many_sources_it_cites(self):
+        # Encoding is the cost at scan scale; a query against embeddings
+        # already in hand is milliseconds.
+        collection = ChunkCollection({})
+        embedder = FakeEmbedder()
+        calls = []
+        embedder.encode_lists = lambda texts: calls.append(texts) or [[1.0] for _ in texts]
+        overlap_chroma.shortlist(collection, embedder, ["a_2024", "b_2024", "c_2024"], "prose", 5)
+        assert len(calls) == 1
+        assert [q["where"] for q in collection.queries] == [
+            {"citekey": "a_2024"},
+            {"citekey": "b_2024"},
+            {"citekey": "c_2024"},
+        ]
+        assert {q["n_results"] for q in collection.queries} == {1}
 
 
 class TestAbsentCitekeys:

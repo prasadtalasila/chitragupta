@@ -3248,7 +3248,7 @@ def tier3(monkeypatch, ledger_con):
 
     def install(scores, sections=None, missing=frozenset()):
         class FakeCollection:
-            def query(self, query_embeddings, n_results, where):
+            def query(self, query_embeddings, n_results, where, include=None):
                 return {"metadatas": [[]], "distances": [[]]}
 
             def get(self, where, include=None, limit=None, offset=None):
