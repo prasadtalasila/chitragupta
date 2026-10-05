@@ -17,6 +17,7 @@ from pathlib import Path
 
 from chitragupta import config
 from chitragupta._atomic_write import write_atomically
+from chitragupta.citekey_safety import citekey_path
 
 
 def sidecar_path(citekey: str) -> Path:
@@ -29,7 +30,7 @@ def sidecar_path(citekey: str) -> Path:
     parse under its own OCR and figure settings, so the two must not share
     a file even though they now key on the same string.
     """
-    return config.PARSED_DIR / f"{citekey}.passages.json"
+    return citekey_path(config.PARSED_DIR, citekey, ".passages.json")
 
 
 def write_sidecar(citekey: str, records: list[dict]) -> Path:

@@ -43,6 +43,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from chitragupta import chroma_paging, config, overlap_chroma
+from chitragupta.citekey_safety import citekey_path, citekey_problem
 
 # Fixed order, so two runs over the same corpus print identically and a
 # reader can diff them. Roughly cheapest-to-costliest to scan.
@@ -97,6 +98,18 @@ def _unscanned(artefact: str, path: object, exc: Exception) -> str:
     return f"{artefact}: {path} could not be read ({exc}), so it was not scanned."
 
 
+def _fingerprint_files(citekey: str) -> list[str]:
+    """`citekey`'s per-document fingerprints that exist on disk."""
+    # A stale ledger key that cannot name a file has none, since every
+    # writer builds the name through `citekey_path` too; raising instead
+    # would put a traceback after sync's upserts have committed (#975).
+    if citekey_problem(citekey):
+        return []
+    docs = config.OVERLAP_DIR / "docs"
+    paths = (citekey_path(docs, citekey, suffix) for suffix in (".fpr", ".skipgram.fpr"))
+    return [str(path) for path in paths if path.is_file()]
+
+
 def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Per-document fingerprints and the merged corpus index."""
     # Which index named it, not merely that one did: the two tiers are
@@ -110,15 +123,7 @@ def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
             indexed.setdefault(key, []).append(str(path))
     hits = {}
     for citekey in citekeys:
-        where = [
-            str(path)
-            for path in (
-                config.OVERLAP_DIR / "docs" / f"{citekey}.fpr",
-                config.OVERLAP_DIR / "docs" / f"{citekey}.skipgram.fpr",
-            )
-            if path.is_file()
-        ]
-        where += indexed.get(citekey, [])
+        where = _fingerprint_files(citekey) + indexed.get(citekey, [])
         if where:
             hits[citekey] = Hit(OVERLAP, len(where), "file", tuple(where))
     return hits

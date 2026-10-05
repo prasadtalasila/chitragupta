@@ -33,6 +33,7 @@ from itertools import accumulate
 from pathlib import Path
 
 from chitragupta import config
+from chitragupta.citekey_safety import citekey_path
 
 DEFAULT_N = 8
 
@@ -126,7 +127,7 @@ class DocFingerprint:
 
 
 def _doc_cache_path(citekey: str) -> Path:
-    return config.OVERLAP_DIR / "docs" / f"{citekey}.fpr"
+    return citekey_path(config.OVERLAP_DIR / "docs", citekey, ".fpr")
 
 
 def _atomic_write_json(path: Path, payload: dict) -> None:

@@ -70,7 +70,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config, ledger_paths, programs
-from chitragupta.citekey_safety import citekey_problem
+from chitragupta.citekey_safety import citekey_path, citekey_problem
 
 # Re-exported so `passages.distinctive`, `passages.passage_records`,
 # `passages.PASSAGE_LABELS` and the sidecar-file functions keep resolving
@@ -228,7 +228,10 @@ def structural_passages(citekey: str) -> list[Passage] | None:
     # enrichment layer's is a second, independent parse of the PDF under
     # its own OCR and figure settings, so it is the richer of the two
     # whenever a run has paid for it.
-    for path in (config.DOCLING_DIR / f"{citekey}.passages.json", sidecar_path(citekey)):
+    for path in (
+        citekey_path(config.DOCLING_DIR, citekey, ".passages.json"),
+        sidecar_path(citekey),
+    ):
         sidecar = _from_sidecar(path)
         if sidecar:
             return sidecar

@@ -41,6 +41,7 @@ import json
 import sys
 
 from chitragupta import config, ledger
+from chitragupta.citekey_safety import citekey_path
 from chitragupta.progname import prog_for
 
 # Said once, here, so the CLI and any other caller quote the same
@@ -126,7 +127,7 @@ def figures(citekey: str) -> "tuple[list | None, str | None]":
     if row is None:
         raise KeyError(f"{citekey} is not in the ledger")
 
-    index = config.DOCLING_DIR / f"{citekey}.figures.json"
+    index = citekey_path(config.DOCLING_DIR, citekey, ".figures.json")
     if not index.exists():
         return None, _NOT_ENRICHED.format(citekey=citekey)
 

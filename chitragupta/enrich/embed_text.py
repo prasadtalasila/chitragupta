@@ -21,6 +21,7 @@ import tempfile
 from pathlib import Path
 
 from chitragupta import config, programs
+from chitragupta.citekey_safety import citekey_path
 from chitragupta.enrich.corpus import CorpusDoc
 
 logger = logging.getLogger("chitragupta.enrich")
@@ -60,7 +61,7 @@ def strip_image_refs(markdown: str) -> str:
 def get_text(doc: CorpusDoc) -> str | None:
     """Best available text for a doc: Docling output > existing parsed text
     > on-the-fly pdftotext. Doesn't require the Docling stage to have run."""
-    docling_path = config.DOCLING_DIR / f"{doc.citekey}.md"
+    docling_path = citekey_path(config.DOCLING_DIR, doc.citekey, ".md")
     if docling_path.exists():
         return strip_image_refs(docling_path.read_text(encoding="utf-8"))
     if doc.text_path and Path(doc.text_path).exists():

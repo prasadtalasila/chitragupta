@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from chitragupta import config, passages
+from chitragupta.citekey_safety import citekey_path
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -32,10 +33,10 @@ def _outputs_present(stem: str) -> bool:
     what it copied is stamped with a fingerprint that watches only the
     PDF, so nothing else would ever re-parse it.
     """
-    expected = [config.DOCLING_DIR / f"{stem}.md"]
+    expected = [citekey_path(config.DOCLING_DIR, stem, ".md")]
     if config.DOCLING_IMAGES:
-        expected.append(config.DOCLING_DIR / f"{stem}.figures.json")
-    sidecar = config.DOCLING_DIR / f"{stem}.passages.json"
+        expected.append(citekey_path(config.DOCLING_DIR, stem, ".figures.json"))
+    sidecar = citekey_path(config.DOCLING_DIR, stem, ".passages.json")
     return all(path.exists() for path in expected) and passages.sidecar_state(sidecar) == "ok"
 
 
@@ -127,7 +128,7 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
     # write_text without one encodes with the *platform* encoding, so any
     # non-ASCII paper fails with UnicodeEncodeError under a C-locale host.
     out_path.write_text(re.sub(r"\n{3,}", "\n\n", markdown.replace("\f", "\n\n")), encoding="utf-8")
-    (config.DOCLING_DIR / f"{stem}.passages.json").write_text(
+    citekey_path(config.DOCLING_DIR, stem, ".passages.json").write_text(
         json.dumps(records, indent=2), encoding="utf-8"
     )
     return True

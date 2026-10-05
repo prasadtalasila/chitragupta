@@ -147,6 +147,15 @@ class TestScan:
             (str(isolated_config.OVERLAP_DIR / "skipgram_index.json"),)
         ]
 
+    def test_a_stale_key_that_cannot_name_a_file_is_scanned_not_raised(self, isolated_config):
+        # #975: the fingerprint paths go through `citekey_path`, which
+        # refuses this key. The report runs after sync has committed,
+        # so a traceback there would hide it; the index entry still counts.
+        write_json(isolated_config.OVERLAP_DIR / "index.json", {"citekeys": ["../escape"]})
+        found, _notes = sync_residue.scan(["../escape"])
+        (hit,) = found["../escape"]
+        assert hit.where == (str(isolated_config.OVERLAP_DIR / "index.json"),)
+
     def test_a_citekey_in_both_indexes_is_counted_twice(self, isolated_config):
         write_json(isolated_config.OVERLAP_DIR / "index.json", {"citekeys": ["both_2004"]})
         write_json(isolated_config.OVERLAP_DIR / "skipgram_index.json", {"citekeys": ["both_2004"]})
