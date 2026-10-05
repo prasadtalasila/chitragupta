@@ -274,7 +274,8 @@ Two consequences are new since the original draft:
   them.
 - **A citekey is also a filename**, enforced by
   `bib_reader.citekey_problem()`. Anything writing
-  `content/grobid/<citekey>.tei.xml` inherits that guarantee, and must not
+  `content/grobid/<citekey>.tei.xml` builds the name with
+  `citekey_safety.citekey_path()` to inherit that guarantee, and must not
   construct a path from a GROBID-derived string, which carries no such
   guarantee.
 

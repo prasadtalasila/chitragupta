@@ -225,6 +225,10 @@ class TestRefusals:
         with pytest.raises(tldr.TldrError, match="cannot be empty"):
             tldr.write(ledger_con, "smith2024", "   \n  ")
 
+    def test_a_path_shaped_citekey_is_refused_before_it_becomes_a_path(self, ledger_con):
+        with pytest.raises(tldr.TldrError, match="cannot name a file"):
+            tldr.sidecar_path("../outside")
+
     def test_a_refusal_writes_no_sidecar(self, ledger_con):
         with pytest.raises(tldr.TldrError):
             tldr.write(ledger_con, "bogus2099", "A summary.")
@@ -253,6 +257,16 @@ class TestNothingIsWrittenToTheLedger:
 
 
 class TestCLI:
+    def test_show_refuses_a_citekey_that_climbs_out_of_the_tldr_directory(self, ledger_con, capsys):
+        # #975: `show` read `TLDR_DIR / "../outside.json"` before any
+        # ledger lookup and printed its `summary` field.
+        outside = config.TLDR_DIR.parent / "outside.json"
+        outside.write_text(json.dumps({"summary": "SECRET"}), encoding="utf-8")
+        assert tldr.main(["show", "../outside"]) == 1
+        captured = capsys.readouterr()
+        assert "SECRET" not in captured.out + captured.err
+        assert "cannot name a file" in captured.err
+
     def test_write_reads_stdin_and_reports_the_path(self, ledger_con, monkeypatch, capsys):
         add_item("smith2024", "Original parsed text.")
         monkeypatch.setattr("sys.stdin", io.StringIO("A summary from stdin.\n"))

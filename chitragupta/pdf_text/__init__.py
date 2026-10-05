@@ -35,6 +35,7 @@ import re
 from pathlib import Path
 
 from chitragupta import config, passages, programs
+from chitragupta.citekey_safety import citekey_path
 
 
 class BackendUnavailable(RuntimeError):
@@ -281,7 +282,7 @@ def extract_text(pdf_path: str, citekey: str, threads: int | None = None) -> Pat
         exc_cls = MissingBinary if config.PARSER == "pdftotext" else MissingDependency
         raise exc_cls(unavailable_reason())
 
-    out_path = config.PARSED_DIR / f"{citekey}.txt"
+    out_path = citekey_path(config.PARSED_DIR, citekey, ".txt")
     # Each disk write is guarded where it happens -- here, and around the
     # docling backend's own .txt write -- rather than around the whole
     # parse, so an OSError from anything else is not misreported as one.

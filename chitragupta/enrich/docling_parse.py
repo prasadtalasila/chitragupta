@@ -67,6 +67,7 @@ from pathlib import Path
 from typing import Any
 
 from chitragupta import config, logging_setup, passages, pdf_text
+from chitragupta.citekey_safety import citekey_path
 from chitragupta.enrich._docling_cache import _load_cache, _save_cache
 from chitragupta.enrich._docling_figures import write_figure_outputs
 from chitragupta.enrich._docling_pool import _LazyConverter, _parse_with_pool
@@ -227,7 +228,9 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
         # whichever branch we are in -- so figures are purely additive
         # now, where the old save_as_markdown path had to write the
         # markdown itself. `_docling_figures` owns the rest.
-        write_figure_outputs(doc, dl_doc, out_path, config.DOCLING_DIR / f"{stem}.figures.json")
+        write_figure_outputs(
+            doc, dl_doc, out_path, citekey_path(config.DOCLING_DIR, stem, ".figures.json")
+        )
 
     # Written for every doc, images on or off: chitragupta/review/citation_provenance.py
     # reads it to quote a real passage rather than a window sliced out of
@@ -236,7 +239,7 @@ def _write_parse_outputs(doc: CorpusDoc, dl_doc, out_path: Path, stem: str) -> N
     # definition of what a passage is -- but under this layer's own
     # directory, because this parse runs under its own OCR and figure
     # settings and must not overwrite the corpus layer's copy.
-    passages_path = config.DOCLING_DIR / f"{stem}.passages.json"
+    passages_path = citekey_path(config.DOCLING_DIR, stem, ".passages.json")
     passages_path.write_text(
         json.dumps(passages.passage_records(dl_doc), indent=2), encoding="utf-8"
     )
@@ -263,7 +266,7 @@ def parse_doc(doc: CorpusDoc, cache: dict | None = None, converter=None) -> Path
 
     config.DOCLING_DIR.mkdir(parents=True, exist_ok=True)
     stem = doc.citekey
-    out_path = config.DOCLING_DIR / f"{stem}.md"
+    out_path = citekey_path(config.DOCLING_DIR, stem, ".md")
 
     fingerprint = _fingerprint(doc)
     if cache.get(doc.citekey) == fingerprint and _outputs_present(stem):

@@ -25,7 +25,7 @@ from subprocess import run as _run
 from pathlib import Path
 
 from chitragupta import citation_gate, config, ledger, ledger_paths, programs
-from chitragupta.citekey_safety import citekey_problem
+from chitragupta.citekey_safety import citekey_path, citekey_problem
 
 
 def pdf_path(citekey: str) -> Path | None:
@@ -66,7 +66,7 @@ def _parsed_pages(citekey: str) -> list[str]:
     """
     if citekey_problem(citekey):
         return []
-    parsed = config.PARSED_DIR / f"{citekey}.txt"
+    parsed = citekey_path(config.PARSED_DIR, citekey, ".txt")
     if not parsed.exists():
         return []
     # pdftotext leaves stray NUL/control bytes in some files, which

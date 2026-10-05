@@ -60,6 +60,7 @@ import sys
 from pathlib import Path
 
 from chitragupta import _abstract, config, ledger, ledger_paths
+from chitragupta.citekey_safety import UnsafeCitekey, citekey_path
 
 
 class TldrError(Exception):
@@ -69,8 +70,16 @@ class TldrError(Exception):
 
 def sidecar_path(citekey: str) -> Path:
     """Where `citekey`'s TL;DR lives -- one JSON file, named the same
-    way passages.py's sidecar_path names its own."""
-    return config.TLDR_DIR / f"{citekey}.json"
+    way passages.py's sidecar_path names its own.
+
+    Raises TldrError for a citekey that cannot name a file. `show` reads
+    this path before any ledger lookup, so without the check
+    `tldr show ../../x` printed a field of any JSON file it reached (#975).
+    """
+    try:
+        return citekey_path(config.TLDR_DIR, citekey, ".json")
+    except UnsafeCitekey as exc:
+        raise TldrError(str(exc)) from exc
 
 
 def _fingerprint(con, citekey: str) -> str:

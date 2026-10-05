@@ -95,7 +95,10 @@ with a warning rather than silently rewritten. The same validator
 (`chitragupta/citekey_safety.py`) also guards the review layer's reads:
 citekeys there are extracted from a draft, not the bib file, so a draft
 citing `\citep{../../secret}` must resolve, and does resolve, to no
-source text rather than to a file outside the content tree.
+source text rather than to a file outside the content tree. Every
+per-citekey file name is built by `citekey_safety.citekey_path()`, which
+refuses such a key, so a command-line citekey such as
+`draft tldr show ../../x` is refused too, before any file is read.
 
 The drafting skills run the gate before presenting a draft. On Claude
 Code, Codex and OpenCode, a hook or plugin also runs it after writes

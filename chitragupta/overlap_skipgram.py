@@ -70,6 +70,7 @@ from itertools import accumulate
 from pathlib import Path
 
 from chitragupta import config
+from chitragupta.citekey_safety import citekey_path
 from chitragupta.overlap_index import (
     _atomic_write_bytes,
     _atomic_write_json,
@@ -260,7 +261,7 @@ class DocSkipgramFingerprint:
 
 
 def _doc_cache_path(citekey: str) -> Path:
-    return config.OVERLAP_DIR / "docs" / f"{citekey}.skipgram.fpr"
+    return citekey_path(config.OVERLAP_DIR / "docs", citekey, ".skipgram.fpr")
 
 
 def _load_doc_cache(citekey: str, key: list, n: int) -> "DocSkipgramFingerprint | None":

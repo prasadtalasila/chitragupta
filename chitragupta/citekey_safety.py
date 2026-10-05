@@ -20,9 +20,16 @@ problem with the bib file. bibtexparser hands back whatever sits between
 `{` and `,`, which includes `smith/2024` and `../escape2024`: the first
 writes into a subdirectory that doesn't exist; the second escapes the
 content directory entirely. Neither is hypothetical -- both parse today.
+
+`citekey_path` is the one place a per-citekey file name is built (#975).
+Validating at each entrance was not enough: `tldr show` joined a
+command-line citekey onto `content/tldr/` before any ledger lookup, so
+`tldr show ../../x` printed a field of any JSON file it could reach.
+`tests/test_citekey_path.py` fails on any other `/ f"{citekey}..."` join.
 """
 
 import re
+from pathlib import Path
 
 _CITEKEY_ILLEGAL_RE = re.compile(r'[/\\:*?"<>|\x00-\x1f]')
 
@@ -60,3 +67,20 @@ def citekey_problem(citekey: str) -> str | None:
     if citekey.split(".")[0].upper() in _WINDOWS_RESERVED:
         return f"'{citekey.split('.')[0]}' is a reserved device name on Windows"
     return None
+
+
+class UnsafeCitekey(ValueError):
+    """A citekey `citekey_path` refused to turn into a file name."""
+
+
+def citekey_path(directory: Path, citekey: str, suffix: str) -> Path:
+    """`directory / f"{citekey}{suffix}"`, or `UnsafeCitekey`.
+
+    The validation is what confines the result: a citekey
+    `citekey_problem` accepts holds no separator and is not `.` or `..`,
+    so the joined name is one entry directly inside `directory`.
+    """
+    problem = citekey_problem(citekey)
+    if problem:
+        raise UnsafeCitekey(f"citekey {citekey!r} cannot name a file: {problem}")
+    return directory / f"{citekey}{suffix}"
