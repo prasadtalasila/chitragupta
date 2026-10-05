@@ -1,11 +1,14 @@
 """chitragupta/review/__init__.py: the review layer's shared output contract -- where a
 report goes, what it opens with, and what it must never contain."""
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
-from chitragupta import config, review
+from chitragupta import config, ledger, render_output, review
+from chitragupta.render_output._failures import RENDER_FAILURES
+from tests.conftest import make_reference
 
 
 class TestReportPath:
@@ -185,6 +188,45 @@ class TestWrite:
 
         assert set(written) == {"md"}
         assert "pandoc not found" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("failure", RENDER_FAILURES, ids=lambda c: c.__name__)
+    def test_every_render_failure_degrades_to_the_md(
+        self, isolated_config, monkeypatch, capsys, failure
+    ):
+        """#949: `write` catches the one tuple `render()` publishes, so a
+        failure `render()` gains later is not a traceback here."""
+
+        def refuse(*a, **k):
+            if failure is subprocess.CalledProcessError:
+                raise failure(1, ["pandoc"], stderr="pandoc said no")
+            raise failure("render refused")
+
+        monkeypatch.setattr(render_output, "render", refuse)
+        written = review.write(
+            config.DRAFTS_DIR / "survey.md", "verbatim", "# body\n", ["md", "tex"]
+        )
+
+        assert set(written) == {"md"}
+        assert "WARNING: skipped tex" in capsys.readouterr().err
+
+    def test_a_report_quoting_an_unknown_key_still_writes_its_md(
+        self, isolated_config, ledger_con, capsys
+    ):
+        """#949's reproduction, unpatched: a verbatim excerpt carrying a
+        `[@key]` the ledger does not hold is refused by the render gate,
+        and that refusal is a skipped format, not a crash."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="smith2024"))
+        ledger_con.commit()
+
+        written = review.write(
+            config.DRAFTS_DIR / "survey.md",
+            "verbatim",
+            "> quoted [@not_a_real_citekey_2026]\n",
+            ["md", "tex"],
+        )
+
+        assert set(written) == {"md"}
+        assert "not_a_real_citekey_2026" in capsys.readouterr().err
 
     def test_json_is_never_rendered(self, isolated_config, monkeypatch):
         """`json` in `--formats` names the payload's own path, and pandoc

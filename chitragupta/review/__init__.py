@@ -260,7 +260,9 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     `chitragupta/render_output.py`, the same path every genre draft uses -- it
     needs pandoc/pdflatex on PATH, so a missing binary is reported and
     skipped rather than failing the whole run, matching how every other
-    stage in this project treats an absent optional tool.
+    stage in this project treats an absent optional tool. So is every
+    other failure in `render_output._failures.RENDER_FAILURES`, the
+    render gate's refusal among them.
     """
     md_path = report_path(draft, aid)
     md_path.parent.mkdir(parents=True, exist_ok=True)
@@ -284,31 +286,31 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
     import subprocess
 
     from chitragupta import render_output
+    from chitragupta.render_output._failures import RENDER_FAILURES
 
     for fmt in remaining:
         try:
             written[fmt] = render_output.render(str(md_path), fmt, output_dir=md_path.parent)
-        except render_output.MissingBinary as exc:
-            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
-        except render_output.OutsideContentDir as exc:
-            # A layout fault rather than this report's fault: content/review
-            # resolves out of the content directory, so render_output has
-            # nowhere it is willing to write. The md report above is already
-            # written and unaffected, so degrade the same way as the two
-            # causes above rather than taking the whole run out, which is
-            # also how render_output.py's own CLI reports it.
-            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
         except subprocess.CalledProcessError as exc:
             # A quoted excerpt can carry characters straight from the
             # source PDF (e.g. circled digits) that pdflatex's default
             # fonts can't set -- a real rendering failure, not a bug in
-            # this report. render_output.py's own CLI already treats this
-            # as warn-and-continue rather than a crash; do the same here
-            # so one unrenderable format doesn't take out the md/tex
-            # formats that did succeed.
+            # this report. Its own branch only for pandoc's stderr.
             print(
                 f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr
             )
+        except RENDER_FAILURES as exc:
+            # Every other way render() refuses: a missing binary, an
+            # output dir outside content/, or the render gate refusing a
+            # verbatim excerpt that quotes a `[@key]` the ledger lacks
+            # (#949). The md report above is already written and
+            # unaffected, and the caller files the `.json` the agenda reads
+            # next, so one format is skipped rather than the run taken out
+            # -- how render_output.py's own CLI reports each of these too.
+            # The shared tuple rather than classes listed here, so a
+            # failure render() gains later is caught without this
+            # needing to know.
+            print(f"  WARNING: skipped {fmt} -- {exc}", file=sys.stderr)
     return written
 
 
