@@ -37,6 +37,7 @@ Related reading:
 - [Step 3: hand it back](#-step-3-hand-it-back)
 - [What `draft-reviser` finds, and offers one at a time](#-what-draft-reviser-finds-and-offers-one-at-a-time)
 - [The one thing it offers separately: re-grounding your new wording](#-the-one-thing-it-offers-separately-re-grounding-your-new-wording)
+- [Edit by edit: what the dossier records and what notices](#-edit-by-edit-what-the-dossier-records-and-what-notices)
 - [Traps specific to a hand edit](#-traps-specific-to-a-hand-edit)
 - [What this is not](#-what-this-is-not)
 - [Worked example](#-worked-example)
@@ -81,7 +82,8 @@ the next section covers when that changes.
 
 Do not hand-edit anything under `content/dossiers/<slug>/`:
 `evidence.md`, `rejected.md`, `sections.md`, `scope.md`,
-`steering.md`, `retrieval.md` or `revisions.md`. Three reasons, in
+`steering.md`, `retrieval.md`, `revisions.md`, and `math.md` or
+`outline.md` where the draft has them. Three reasons, in
 order of how often they bite:
 
 - **A fabricated `evidence.md` block is the same failure class as a
@@ -139,9 +141,10 @@ has the full format):
 | --- | --- | --- |
 | You added a citation | a citekey cited with no `evidence.md` block | add a block for it, treated like a newly kept citation, so you'll be asked what the source actually says |
 | You removed a citation | an `evidence.md` block whose citekey is no longer cited | `python -m chitragupta.draft dossier prune content/drafts/<slug>.md --citekey <key> --apply` (dry-run without `--apply`), or note that the citation belongs back in the draft |
-| You added, renamed or moved a heading | a heading with no row in `sections.md` | `python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write`, which rebuilds the map from the draft itself |
-| You deleted a heading | a `sections.md` row with no matching heading | the same command; a rename and a deletion both show up here, so `draft-reviser` reads the diff to tell which one happened |
-| You reworded or deleted a numbered equation | a `math.md` row appearing nowhere in the draft | update the row's key to the new span text, or drop the row if the quantity was cut |
+| You added or renamed a heading | a heading with no row in `sections.md` | `python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write`, which rebuilds the map from the draft itself |
+| You deleted or renamed a heading | a `sections.md` row with no matching heading | the same command; a rename shows up as one row of each kind and a deletion as this row alone, so `draft-reviser` reads the diff to tell which one happened |
+| You moved a section or subsection without renaming it | nothing: the check compares the set of heading titles, not their order | nothing is needed; the same command puts the `sections.md` rows back in draft order, and each citekey follows the lines it moved with |
+| You reworded or deleted text `math.md` maps to LaTeX | a `math.md` row appearing nowhere in the draft | update the row's key to the new span text, or drop the row if the quantity was cut |
 
 Two things about how these are offered:
 
@@ -152,7 +155,12 @@ Two things about how these are offered:
   and it will.
 - **`not recorded` is not the same as `CHANGED`.** If the draft has
   never been stamped, `status` says so once and doesn't treat it as
-  drift to chase, because there is nothing to compare against yet.
+  drift to chase, because there is nothing to compare against yet. It
+  runs none of the five checks either, so for an unstamped draft
+  `python -m chitragupta.review agenda <draft>` is what still notices a
+  removed citation: its `recorded-but-uncited` item needs no stamp.
+- **`dossier status --json` leaves the fingerprint out.** It reports
+  corpus drift only. Read the plain-text output for the five findings.
 
 Nothing here is a gate. A hand-edited draft that's never handed back for
 a stamp just makes the *next* revision a little less efficient (the
@@ -188,6 +196,27 @@ Declining, or having no `outline.md` at all, is the common case:
 `draft-reviser` says so and moves on instead of silently degrading into
 something else. This runs at most once per section per revision session;
 it is two rounds, not a loop.
+
+## 🗺 Edit by edit: what the dossier records and what notices
+
+Nothing in the dossier updates itself when you save. A skill or a
+repair command someone runs is the only thing that ever writes it, and
+the table below says which records each kind of edit leaves behind and
+what eventually reports them.
+
+| Your edit | What the dossier records about it | What notices | The repair |
+| --- | --- | --- | --- |
+| Delete a sentence or passage that cites a source | the citekey's `evidence.md` block and its `sections.md` entry; both stay | `dossier status` (stamped draft only) and `review agenda` (any draft). `draft gate` does not: it checks citekeys against the ledger and never reads the dossier | `dossier prune --citekey <key> --apply`, then `dossier sections --citekeys --write`. `rejected.md` is never touched |
+| Move a section or a subsection | `sections.md` rows, keyed by heading title alone; `evidence.md` has no section field | nothing, if the titles are unchanged. A rename or deletion shows in `dossier status`. A figure, table or equation moved away from the sentence that refers to it shows as `*RefOutsideSection` in `draft style` | optional `dossier sections --citekeys --write`; `outline.md` headings by hand, since nothing checks them |
+| Add, delete or change a figure | nothing: a figure lives in the draft's `<!-- figure: name -->` marker and `figures/<name>.tex` / `figures/<name>.txt`, not in the dossier | `draft style` (`FigureNoCaption`, `FigureUnreferenced`, `FigureUnknownRef`, `FigureDuplicateId`) and `draft render` (a marker whose file is missing). Nothing checks that the two forms still show the same thing, or reports a figure file no marker uses | update both forms by hand, or ask `draft-reviser` |
+| Add, delete or change an equation | `math.md` rows mapping exact span text to LaTeX; numbered equations are draft markers, not dossier rows | `dossier status` reports a `math.md` row whose span is gone. `draft render` warns on that and on a span with no row, and fails outright on a displayed `<!-- math -->` block with no row or no `math.md` at all. `draft style` checks `<!-- equation: id -->` markers | edit the `math.md` row; there is no command for it |
+
+Two limits apply to the whole table. The `draft style` checks cover
+Markdown drafts only: a `.tex` fragment's `\label`/`\eqref` pairs are
+not checked. And the book track's `python -m chitragupta.draft spec align
+<book>` is the only check that notices a reordering, comparing a
+chapter's headings against the sections its signed `spec.md` declares;
+it does not run on an ordinary draft in `content/drafts/`.
 
 ## ⚠ Traps specific to a hand edit
 

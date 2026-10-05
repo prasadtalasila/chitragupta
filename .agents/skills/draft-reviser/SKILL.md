@@ -184,7 +184,7 @@ payload instead.)
 the draft was hand-edited since the last time this skill (or a human)
 ran `dossier stamp` -- #454, FEATURE-ROADMAP.md's E3. That is not itself
 a problem: a digest changing is expected of a draft anyone edits. What it
-means is that the four findings under it, if any are listed, may be
+means is that the five findings under it, if any are listed, may be
 real drift between the draft and the rest of the dossier rather than
 something this revision is about to introduce. Offer each one to the
 user **one at a time**, in your own words, and act only on what they
@@ -207,7 +207,7 @@ by `review agenda` without a stamp baseline (#701), as a surfaced
 `evidence.md`, so an unstamped draft is no longer silent about it.
 
 **A `CHANGED` fingerprint is also FEATURE-ROADMAP.md's E4 trigger**: "a
-draft fingerprint is what says the query moved." Once the four
+draft fingerprint is what says the query moved." Once the five
 findings above are settled -- never before, and never folded into the
 same offer -- and only for a section `outline.md` declares one or more
 `queries:` for, offer one more thing: *"Since you hand-edited
