@@ -31,6 +31,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta import review
+from scripts import render_diagrams
 from scripts.render_diagrams import fingerprint
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -38,32 +39,10 @@ DIAGRAMS_MD = REPO_ROOT / "docs" / "DIAGRAMS.md"
 DIAGRAMS_DIR = REPO_ROOT / "docs" / "diagrams"
 DIAGRAMS_TEXT = DIAGRAMS_MD.read_text(encoding="utf-8")
 
-_EDITING_HEADING = "## ✏ Editing these"
-_NAME_ROW = re.compile(r"^\| [^|]+ \| `([\w-]+)` \|$", re.MULTILINE)
-
-
-def _export_names(text: str) -> list[str]:
-    """The `<name>` column of DIAGRAMS.md's "Editing these" table, in
-    order. That table is the one hand-kept list of diagrams (#866), and
-    its order is what ties fenced block i to export i -- so a diagram
-    inserted in the middle without its row fails the agreement check
-    below rather than silently comparing every later block against the
-    wrong export. Refuses to return an empty list: an empty NAMES would
-    make every parametrised test below vanish while the run stayed
-    green."""
-    _, found, tail = text.partition(_EDITING_HEADING)
-    names = _NAME_ROW.findall(tail) if found else []
-    assert names, (
-        f"docs/DIAGRAMS.md no longer has a {_EDITING_HEADING!r} table this test can "
-        "read. Rewording it is fine; teach _NAME_ROW the new shape in the same change."
-    )
-    return names
-
-
-NAMES = _export_names(DIAGRAMS_TEXT)
+NAMES = render_diagrams.export_names(DIAGRAMS_TEXT)
 
 _TITLE = re.compile(r"\A---\ntitle:.*?\n---\n", re.DOTALL)
-BLOCKS = re.findall(r"```mermaid\n(.*?)```", DIAGRAMS_TEXT, re.DOTALL)
+BLOCKS = render_diagrams.blocks(DIAGRAMS_TEXT)
 
 
 def _body(name: str) -> str:
@@ -91,15 +70,70 @@ class TestTheScanIsNotVacuous:
 
 class TestTheNameListReadsTheTable:
     def test_a_reworded_table_fails_loudly(self):
-        with pytest.raises(AssertionError, match="no longer has"):
-            _export_names("# Diagrams\n\nno table here\n")
+        with pytest.raises(ValueError, match="no longer has"):
+            render_diagrams.export_names("# Diagrams\n\nno table here\n")
 
     def test_it_reads_names_in_order_and_skips_the_header(self):
         text = (
-            f"{_EDITING_HEADING}\n\n| Diagram | `<name>` |\n| --- | --- |\n"
+            f"{render_diagrams.EDITING_HEADING}\n\n| Diagram | `<name>` |\n| --- | --- |\n"
             "| B | `b-two` |\n| A | `a-one` |\n"
         )
-        assert _export_names(text) == ["b-two", "a-one"]
+        assert render_diagrams.export_names(text) == ["b-two", "a-one"]
+
+
+class TestEveryDiagramWearsTheHouseTheme:
+    """#1017: one theme, held in one place, in all thirteen. The test for
+    the `.mmd` side is the block comparison below; this is the block side."""
+
+    STYLE_TEXT = render_diagrams.STYLE_DOC.read_text(encoding="utf-8")
+    THEME = render_diagrams.house_theme(render_diagrams.palette(STYLE_TEXT))
+
+    @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
+    def test_the_block_carries_the_current_theme(self, index, name):
+        assert BLOCKS[index] == render_diagrams.stamp(BLOCKS[index], self.THEME), (
+            f"The fenced block for {name} in docs/DIAGRAMS.md does not carry the current "
+            "house theme. Restamp every block and copy it to its .mmd:\n"
+            "    python scripts/render_diagrams.py --sync"
+        )
+
+    @pytest.mark.parametrize("index,name", list(enumerate(NAMES)))
+    def test_its_classes_are_the_four_roles(self, index, name):
+        """A diagram-local classDef brings back a hue the palette does not
+        have; a `class` line naming anything else styles nothing."""
+        block = BLOCKS[index]
+        defined = set(re.findall(r"^\s*classDef (\w+)", block, re.MULTILINE))
+        used = set(re.findall(r"^\s*class [\w,]+ (\w+)\s*$", block, re.MULTILINE))
+        used |= set(re.findall(r":::(\w+)", block))
+        roles = set(render_diagrams.ROLES)
+        assert defined <= roles and used <= roles, (
+            f"{name} uses {sorted((defined | used) - roles)}; map them onto "
+            f"{render_diagrams.ROLES} (docs/DIAGRAMS.md, 'Editing these')."
+        )
+        assert used <= defined, (
+            f"{name} uses {sorted(used - defined)} without defining them, so they style "
+            "nothing. scripts/render_diagrams.py's _TAKES_CLASSDEF decides which diagram "
+            "types --sync adds the roles to."
+        )
+
+    def test_no_block_types_a_hex_of_its_own(self):
+        """The palette hexes come from docs/TIKZ-STYLE.md and nowhere else:
+        every colour a block names is one the generated theme holds."""
+        allowed = set(re.findall(r"#[0-9A-F]{6}", "\n".join(self.THEME)))
+        typed = {h.upper() for b in BLOCKS for h in re.findall(r"#[0-9A-Fa-f]{6}\b", b)}
+        assert typed <= allowed, f"hexes outside the house theme: {sorted(typed - allowed)}"
+
+    def test_the_theme_is_the_tikz_palette(self):
+        """Read the palette again, independently of the script's parser, so
+        a parser that silently found the wrong colours is caught too."""
+        defined = dict(
+            re.findall(r"\\definecolor\{(cg\w+)\}\{HTML\}\{([0-9A-F]{6})\}", self.STYLE_TEXT)
+        )
+        init, roles = self.THEME
+        for colour in ("cgFlow", "cgAlt", "cgAccent"):
+            assert f"stroke:#{defined[colour]}" in roles
+            assert f'BorderColor": "#{defined[colour]}"' in init
+        ink = defined["cgInk"]
+        assert f'"primaryTextColor": "#{ink}"' in init
 
 
 class TestEachSvgWasRenderedFromItsCurrentSource:

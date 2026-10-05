@@ -209,7 +209,7 @@ docs/                     reference docs that ship in the release zip -- everyth
   diagrams/                 the same thirteen as standalone files, for use outside this repo
     *.mmd                     mermaid sources with a title line
     svg/*.svg                 rendered exports, by scripts/render_diagrams.py. Exports only -- edit the
-                              fenced block in DIAGRAMS.md, then re-render
+                              fenced block in DIAGRAMS.md, run --sync (house theme + .mmd copy), re-render
     svg/sources.json          which .mmd fingerprint each export was rendered from; pinned by a test
   CITATION-PROVENANCE.md    what chitragupta/review/citation_provenance.py reports and how to read it
   PLAGIARISM.md             what chitragupta/review/verbatim_check/'s overlap/scan modes catch and don't
