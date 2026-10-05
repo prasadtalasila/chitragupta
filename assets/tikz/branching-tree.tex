@@ -13,27 +13,306 @@
 % `python -m chitragupta.review figure` reports no edge list for this
 % picture at all. That is the aid being silently short, not the figure
 % being unwired -- read the nesting below for what connects to what.
-% House palette (docs/TIKZ-STYLE.md). These five lines travel *inside*
-% every figure that uses them -- not a shared file, not a preamble: the
-% renderer injects only \usepackage{tikz}, and a thesis fragment is
-% \input into a document that has never heard of this project.
-\definecolor{cgInk}{HTML}{1A1A1A}
-\definecolor{cgFlow}{HTML}{0072B2}
-\definecolor{cgAccent}{HTML}{D55E00}
-\definecolor{cgAlt}{HTML}{009E73}
-\definecolor{cgAux}{HTML}{56B4E9}
-\usetikzlibrary{trees}
-\begin{tikzpicture}[thick,
-                    level distance=16mm,
-                    level 1/.style={sibling distance=46mm},
-                    level 2/.style={sibling distance=23mm},
-                    every node/.style={draw=cgInk,align=center,fill=cgFlow!8,
-                                       minimum width=20mm,minimum height=9mm}]
-  \node[draw=cgAccent,fill=cgAccent!10] (source) {source}
+%
+% The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
+% from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
+% edit it: every figure in a book carries the same copy, and an edited
+% one forks the house style. A style this figure alone needs goes in the
+% picture's own options.
+% >>> chitragupta figure style v1 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% ===========================================================================
+% chitragupta house figure style -- the "presentation tier" prelude block.
+%
+% WHAT THIS IS. The five \definecolor lines of docs/TIKZ-STYLE.md, grown
+% into the rest of the vocabulary a figure needs to look drawn rather
+% than assembled: zone cards, two-tier node labels, step badges, edge
+% tags, and five domain `pic`s. Same travel rule as the palette -- this
+% block lives *inside* the figure file, not in a shared .sty and not in a
+% preamble, because the renderer injects only \usepackage{tikz} and a
+% thesis-chapter fragment is \input into a document that has never heard
+% of this project.
+%
+% WHY IT IS SAFE TO REPEAT. Every definition below is \providecommand or
+% a \tikzset key. \tikzset is idempotent -- re-running it re-defines the
+% same keys to the same values -- so N figures in one document carrying N
+% copies of this block cost N key definitions and change nothing. That is
+% the same property \usetikzlibrary has under #781, for the same reason.
+% It is NOT the property \tikzset{every node/.style=...} has, which is
+% why nothing here touches `every node`.
+%
+% LIBRARIES. Load these at the top of the figure, above \begin{tikzpicture}:
+%   \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}
+% All six are TikZ/PGF libraries shipped by texlive-pictures. `shadows.blur`
+% comes from pgf-blur and is reached by \usetikzlibrary, not \usepackage --
+% verified, which is what makes the soft shadow portable into a foreign
+% thesis.
+%
+% THE TYPE RAMP, AND ITS FLOOR. Three sizes, and the floor is the rule:
+%
+%   \normalsize  the document's own body size. The SMALLEST type any
+%                figure may use. Glosses, edge tags, notes, legend text,
+%                badge digits -- everything that is not a name.
+%   \large       node names (bold) and zone titles (bold). One step up.
+%   ---          nothing smaller than \normalsize exists in this block,
+%                and nothing in a figure should reach past it for one.
+%
+% A figure whose labels run smaller than the paragraph beside them reads
+% as an afterthought, and shrinking type is never the fix for a box with
+% too many words in it -- that is the conciseness defect, and the fix is
+% fewer words. Going the other way is free: a larger name costs nothing
+% and gives the figure a hierarchy the flat version has to spell out.
+%
+% DRAW AT FINAL WIDTH. \resizebox NEVER. This is the same rule from the
+% other end, and it is the one that actually gets broken, because a
+% \resizebox is invisible in the figure file -- it lives in the draft.
+% A picture set at its natural size and scaled to fit prints its type at
+% whatever the scale factor happens to be, so the floor above becomes a
+% number nobody chose. Measured on one acmart paper before the fix: six
+% figures scaled between 0.92 and 1.18, with the smallest type landing
+% between 5.5pt and 7.1pt against a 9pt body (#1012).
+%
+% So: settle the target width first (docs/TIKZ-STYLE.md, "Draw for the
+% width it will be printed at"), lay the figure out to that width, and
+% \input it bare. If it does not fit, change the layout -- wrap a row,
+% cut a gloss, drop a stage -- never the scale.
+% ===========================================================================
+
+% --- Palette --------------------------------------------------------------
+% The five roles of docs/TIKZ-STYLE.md, unchanged, plus three more members
+% of the same Okabe-Ito set. The extension is not a new palette: a zoned
+% figure needs one hue per zone and five roles do not stretch to six zones
+% without reusing one, which reads as a claim the figure is not making.
+\definecolor{cgInk}{HTML}{1A1A1A}%      borders, labels, default strokes
+\definecolor{cgFlow}{HTML}{0072B2}%     the primary path through the figure
+\definecolor{cgAccent}{HTML}{D55E00}%   the one thing the figure is about
+\definecolor{cgAlt}{HTML}{009E73}%      a second class of node or edge
+\definecolor{cgAux}{HTML}{56B4E9}%      auxiliary, "also happens"
+\definecolor{cgWarm}{HTML}{E69F00}%     a third zone   (Okabe-Ito orange)
+\definecolor{cgRose}{HTML}{CC79A7}%     a fourth zone  (Okabe-Ito purple)
+\definecolor{cgPaper}{HTML}{FAFAF8}%    card ground, one step off white
+% A named grey rather than `cgInk!55`. Styles here take a colour as an
+% argument and paste it into a tint expression (`fill=#1!11`), and
+% `cgInk!55!11` is not a colour -- xcolor stops with "Undefined color".
+% Every role that needs muted ink therefore needs a *name*.
+\definecolor{cgMute}{HTML}{8A8A8A}%     "absent", and named as such
+
+\tikzset{
+  % --- Picture-wide defaults ----------------------------------------------
+  % Set once as a picture option: \begin{tikzpicture}[cg]
+  % `font=\normalsize` is the floor, and it is load-bearing rather than a
+  % default: the SMALLEST type in a figure must equal the document's body
+  % size, and every other size in the ramp is larger. Set it explicitly
+  % rather than inheriting it, so a picture that lands inside a float,
+  % a table cell or a \small group does not quietly drop below the floor.
+  %
+  % This only holds if the figure is drawn at its final width. A picture
+  % set at natural size and then wrapped in \resizebox prints its type at
+  % whatever the scale factor happens to be -- see the FINAL WIDTH note
+  % at the head of this file.
+  cg/.style={
+    thick, line cap=round, line join=round,
+    font=\normalsize,
+    every node/.append style={text=cgInk},
+  },
+  % --- Soft shadow --------------------------------------------------------
+  % The single largest contributor to "drawn, not assembled". Kept very
+  % light: a shadow that reads as a shadow is a 2008 slide deck.
+  cgsoft/.style={
+    blur shadow={shadow blur steps=10, shadow xshift=0.35pt,
+                 shadow yshift=-0.7pt, shadow opacity=22,
+                 shadow blur radius=1.6pt}},
+  % --- Nodes --------------------------------------------------------------
+  % One base box, four role tints. Rounded corners at 3pt: enough to read
+  % as a card, not so much it reads as a pill.
+  cgbox/.style={draw=cgFlow, fill=cgFlow!7, rounded corners=3pt,
+                align=center, inner sep=4.5pt, minimum height=11mm,
+                text width=24mm, cgsoft},
+  cgalt/.style={cgbox, draw=cgAlt,    fill=cgAlt!9},
+  cgaux/.style={cgbox, draw=cgAux,    fill=cgAux!10},
+  cgwarm/.style={cgbox, draw=cgWarm,  fill=cgWarm!12},
+  cgrose/.style={cgbox, draw=cgRose,  fill=cgRose!10},
+  cgplain/.style={cgbox, draw=cgInk!45, fill=cgPaper},
+  % The accent node. Heavier rule, because one thing per figure is what
+  % the figure is about and the reader should find it without reading.
+  cgkey/.style={cgbox, draw=cgAccent, fill=cgAccent!11, line width=1.15pt},
+  % "Absent / not done here" -- dashed, unfilled, same footprint. A gap in
+  % a pipeline is a claim and should occupy space like one.
+  cgnone/.style={cgbox, draw=cgInk!40, fill=white, cgflat,
+                 dash pattern=on 2.6pt off 2.2pt},
+  % Optional / off to the side: dashed, tinted, and deliberately *not*
+  % shadowed. A dashed border plus a soft shadow renders as two parallel
+  % broken lines, which reads as a drawing mistake rather than a dash.
+  cgopt/.style={cgbox, draw=cgAux, fill=cgAux!8, cgflat,
+                dash pattern=on 2.6pt off 2.2pt},
+  % Cancels the shadow a role style already set.
+  cgflat/.style={blur shadow={shadow opacity=0, shadow blur steps=1}},
+  % An icon well: an empty, invisible node of fixed size that a `pic`
+  % is drawn into. It exists so the icon has a name -- which is what
+  % lets a zone card `fit` around it and what lets `review figure`
+  % measure it, since the aid sees only nodes the source names.
+  cgwell/.style={inner sep=0pt, minimum width=10mm, minimum height=10mm},
+  % --- Zone card ----------------------------------------------------------
+  % The bRAG idiom: a tinted rounded region drawn *behind* its members,
+  % with its title outside the top-left corner in the zone's own hue.
+  % Draw it on the `background` layer so it never paints over a member.
+  cgzone/.style={rounded corners=5pt, inner sep=5mm, draw=#1, fill=#1!6,
+                 dash pattern=on 3.4pt off 2.6pt, line width=0.9pt},
+  cgzone/.default=cgFlow,
+  cgzonetitle/.style={anchor=south west, font=\large\bfseries, text=#1,
+                      inner sep=0pt, yshift=1.4mm},
+  cgzonetitle/.default=cgFlow,
+  % --- Edges --------------------------------------------------------------
+  cgedge/.style={draw=cgFlow, line width=0.85pt,
+                 -{Latex[length=2.6mm, width=2.1mm]}, shorten >=1.5pt,
+                 shorten <=1pt},
+  cgweak/.style={cgedge, draw=cgAux, dash pattern=on 2.8pt off 2.2pt},
+  cgback/.style={cgedge, draw=cgAccent, dash pattern=on 2.8pt off 2.2pt},
+  % A leader line from a zone card to the point on the spine it explains.
+  % No arrowhead: it points at a place, it does not carry anything there.
+  cglead/.style={draw=#1, line width=0.9pt,
+                 dash pattern=on 2.2pt off 2.4pt, opacity=0.85},
+  cglead/.default=cgFlow,
+  % --- Edge tag -----------------------------------------------------------
+  % A word on an arrow, set on its own ground so the line does not strike
+  % through it. `fill=cgPaper` rather than white for the same reason the
+  % ink is not black, and `inner ysep` kept tight because TIKZ-STYLE.md's
+  % fill-erases-everything warning is about the band this occupies.
+  cgtag/.style={font=\normalsize, fill=cgPaper, rounded corners=1.5pt,
+                inner xsep=2.5pt, inner ysep=1.2pt, text=cgInk!85},
+  cgnote/.style={font=\normalsize\itshape, text=cgInk!75, inner sep=2pt},
+  % --- Step badge ---------------------------------------------------------
+  % A numbered disc at a node's top-left corner. Ordinal information
+  % leaves the label, so the label is free to say what the step does.
+  % At the type floor a two-digit badge needs 5.8mm, not 4.6mm. The disc
+  % is sized from the type rather than the type shrunk to the disc.
+  cgbadge/.style={circle, draw=#1, fill=#1, text=white,
+                  font=\normalsize\bfseries, inner sep=0pt,
+                  minimum size=5.8mm},
+  cgbadge/.default=cgFlow,
+  % --- Legend -------------------------------------------------------------
+  % A swatch that is the same object as the thing it stands for: the
+  % card's rule weight and tint, its corner rounded, at 4mm square. A legend
+  % drawn with a plain filled square claims a correspondence the figure
+  % does not actually have.
+  cgswatch/.style={draw=#1, fill=#1!11, rounded corners=1.2pt,
+                   minimum size=4mm, inner sep=0pt, line width=0.8pt},
+  cgswatch/.default=cgFlow,
+  cglegendtext/.style={font=\normalsize, text=cgInk!85, anchor=west,
+                       inner sep=0pt},
+}%
+
+% `\cglegenditem{<name>}{<anchor>}{<colour>}{<text>}` -- one legend entry,
+% placed with its swatch at `<anchor>` and its text to the right.
+\providecommand{\cglegenditem}[4]{%
+  \node[cgswatch=#3] (#1) at (#2) {};
+  \node[cglegendtext, right=1.6mm of #1] (#1-t) {#4};}%
+
+% `\cgstep{<n>}{<node>}{<colour>}` -- the badge, placed. Written as a macro
+% rather than a style because it needs the node's north-west corner and a
+% style cannot reach for one.
+\providecommand{\cgstep}[3]{%
+  \node[cgbadge=#3] at ([xshift=1.2mm,yshift=-1.2mm]#2.north west) {#1};}%
+
+% `\cgzonelabel{<node or fit box>}{<colour>}{<text>}` -- a zone's title.
+\providecommand{\cgzonelabel}[3]{%
+  \node[cgzonetitle=#2] at (#1.north west) {#3};}%
+
+% --- The two-tier label ----------------------------------------------------
+% `\cglab{<name>}{<gloss>}` -- a bold name over a smaller gloss line.
+%
+% This is the one thing here that bends an existing rule.
+% docs/TIKZ-STYLE.md forbids shrinking node text to cram more words in,
+% and it is right to: that is the conciseness defect wearing a disguise.
+% A *type ramp* is the opposite move -- a name and a gloss are two roles,
+% and setting two roles at one size is what makes a box of text out of a
+% label. The rule to keep is one size per role, held across the figure,
+% which this enforces by being the only way a gloss gets set. Keep the
+% gloss under about eight words; past that it is prose in a box and the
+% conciseness defect is real again.
+\providecommand{\cglab}[2]{%
+  {\large\bfseries #1}\\[1.5pt]{\normalsize\textcolor{cgInk!72}{#2}}}%
+
+% ===========================================================================
+% Domain `pic`s -- V.2's "a few house shapes, not an icon set".
+%
+% Each is drawn from explicit coordinates inside its own definition, which
+% is the carve-out FIGURE-ROADMAP.md's "Rules that will have to bend"
+% proposes: relative placement governs composition, a fixed object's
+% internal geometry does not reflow and may be written down. Each is sized
+% in millimetres against a body-text figure and each takes its colour from
+% `/cg/pic colour`, so a pic inherits the zone it sits in.
+%
+% Each also passes the twin test: the shape is redundant with the label
+% beside it. A drum labelled `ledger` and the twin's [ledger] carry the
+% same proposition, so nothing is lost when the ASCII form drops the drum.
+% ===========================================================================
+\tikzset{
+  cg pic colour/.store in=\cgPicColour, cg pic colour=cgFlow,
+  % A drum: any persistent store. 8mm wide, 9mm tall.
+  pics/cgstore/.style={code={
+    \path[fill=\cgPicColour!15, draw=\cgPicColour, line width=0.8pt]
+      (-4mm,2.6mm) -- (-4mm,-3mm)
+      .. controls (-4mm,-4.4mm) and (4mm,-4.4mm) .. (4mm,-3mm) -- (4mm,2.6mm)
+      .. controls (4mm,4mm) and (-4mm,4mm) .. (-4mm,2.6mm) -- cycle;
+    \path[draw=\cgPicColour, line width=0.8pt]
+      (-4mm,2.6mm) .. controls (-4mm,1.2mm) and (4mm,1.2mm) .. (4mm,2.6mm);
+  }},
+  % A stack of pages: a document, or a set of them.
+  pics/cgdocs/.style={code={
+    \foreach \i in {2,1}{
+      \path[fill=cgPaper, draw=\cgPicColour!55, line width=0.7pt,
+            rounded corners=0.6pt]
+        (-3mm+\i*0.9mm, -4mm+\i*0.9mm) rectangle (2.6mm+\i*0.9mm, 4mm+\i*0.9mm);}
+    \path[fill=cgPaper, draw=\cgPicColour, line width=0.8pt, rounded corners=0.6pt]
+      (-3mm,-4mm) rectangle (2.6mm,4mm);
+    \foreach \y in {2.4,0.8,-0.8,-2.4}{
+      \path[draw=\cgPicColour!60, line width=0.55pt]
+        (-2mm,\y mm) -- (1.6mm,\y mm);}
+  }},
+  % A funnel: any place the set gets smaller. The cap, the top-k, the gate.
+  pics/cgfunnel/.style={code={
+    \path[fill=\cgPicColour!18, draw=\cgPicColour, line width=0.8pt]
+      (-3.6mm,3.4mm) -- (3.6mm,3.4mm) -- (0.9mm,-0.4mm) -- (0.9mm,-3.8mm)
+      -- (-0.9mm,-3.8mm) -- (-0.9mm,-0.4mm) -- cycle;
+  }},
+  % A chip: anything that computes. The model, the encoder, the reranker.
+  pics/cgchip/.style={code={
+    \path[fill=\cgPicColour!15, draw=\cgPicColour, line width=0.8pt,
+          rounded corners=0.8pt] (-3mm,-3mm) rectangle (3mm,3mm);
+    \path[fill=\cgPicColour!45, draw=\cgPicColour, line width=0.6pt,
+          rounded corners=0.5pt] (-1.4mm,-1.4mm) rectangle (1.4mm,1.4mm);
+    \foreach \i in {-1.5,0,1.5}{
+      \path[draw=\cgPicColour, line width=0.7pt]
+        (\i mm,3mm) -- (\i mm,4.3mm)  (\i mm,-3mm) -- (\i mm,-4.3mm)
+        (3mm,\i mm) -- (4.3mm,\i mm)  (-3mm,\i mm) -- (-4.3mm,\i mm);}
+  }},
+  % A shield: the one blocking check. Used once per figure, if at all.
+  pics/cgshield/.style={code={
+    \path[fill=\cgPicColour!16, draw=\cgPicColour, line width=0.95pt]
+      (0,4.2mm) -- (3.4mm,2.6mm) -- (3.4mm,-1mm)
+      .. controls (3.4mm,-3mm) and (1.6mm,-3.8mm) .. (0,-4.4mm)
+      .. controls (-1.6mm,-3.8mm) and (-3.4mm,-3mm) .. (-3.4mm,-1mm)
+      -- (-3.4mm,2.6mm) -- cycle;
+    \path[draw=\cgPicColour, line width=1pt, line cap=round]
+      (-1.5mm,0.2mm) -- (-0.4mm,-1.1mm) -- (1.7mm,1.6mm);
+  }},
+}%
+% >>> end chitragupta figure style <<<
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,trees}%
+% Laid out to the article class's \textwidth (345pt) and \input bare.
+% Four leaves is what fits at the type floor; a fifth wants another
+% level, not a smaller box.
+\begin{tikzpicture}[cg,
+                    level distance=19mm,
+                    level 1/.style={sibling distance=52mm},
+                    level 2/.style={sibling distance=26mm},
+                    every child node/.style={cgbox, text width=18mm},
+                    edge from parent/.style={draw=cgFlow, line width=0.85pt}]
+  \node[cgkey, text width=18mm] (source) {source}
     child { node (batch) {batch}
       child { node (nightly) {nightly} }
       child { node (weekly) {weekly} } }
     child { node (live) {live}
       child { node (push) {push} }
       child { node (poll) {poll} } };
-\end{tikzpicture}
+\end{tikzpicture}%

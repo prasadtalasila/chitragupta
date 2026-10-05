@@ -104,7 +104,8 @@ properties:
 ## 🕳 The gap, stated precisely
 
 The six metaphors (pipeline, map, layered stack, control loop,
-branching tree, hub-and-spoke) are all **topological**. Each one
+branching tree, hub-and-spoke) are all **topological**. (#1012 added a
+seventh, the zoned spine, on 2026-10-05; it is topological too.) Each one
 answers "how do these things connect". That is one figure form among
 several, and in a CS or SE textbook it is not the most common one.
 
@@ -585,6 +586,11 @@ second catches a figure that has fallen behind the text.
 ## 🧩 Part V: A shared object vocabulary
 
 ### The vocabulary gap
+
+**Update 2026-10-05:** #1012 shipped `assets/tikz/cg-figstyle.tex`, a
+house `\tikzset` block every scaffold carries verbatim, with five house
+`pic`s in it (#1014 owns their documentation). What follows is the gap
+as it stood when this was written.
 
 There is no `\tikzset{pics/...}` and no `tikzset` at all in
 `assets/tikz/`. Every scaffold stands alone; every figure is drawn from

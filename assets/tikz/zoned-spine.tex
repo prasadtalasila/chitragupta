@@ -1,12 +1,13 @@
-% Metaphor: map. Two axes a reader can name, and every item placed by
-% where it falls on both -- reach for it when the point is *how things
-% compare*, not how they connect. A map with arrows on it is usually a
-% pipeline that has not admitted it yet.
+% Metaphor: zoned spine. One left-to-right path carries the argument,
+% and each zone card is a tinted region behind a group of members, its
+% title outside the top-left corner -- reach for it when the figure has
+% one storyline and several parallel commentaries on points along it.
+% If nothing comments on the path, this is a pipeline.
 %
-% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
-% a coordinate and re-wording a label cannot collide with its neighbour.
-% Each cell holds a real `\node` with a name, which is what lets
-% `python -m chitragupta.review figure` measure this picture at all.
+% Idiom: `fit` plus `backgrounds`. Each card is fitted *around* its
+% members on the background layer, so re-wording a member widens its
+% zone instead of escaping it, and the spine stays one chain of
+% `positioning` steps that crosses from zone to zone.
 %
 % The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
 % from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
@@ -292,15 +293,32 @@
   }},
 }%
 % >>> end chitragupta figure style <<<
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix}%
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
 % Laid out to the article class's \textwidth (345pt) and \input bare.
-% The axis heads are names, so they take the ramp's upper step.
-\begin{tikzpicture}[cg,
-                    head/.style={font=\large\bfseries, align=center,
-                                 minimum height=11mm}]
-  \matrix[row sep=4mm, column sep=4mm] {
-    \node[head] (corner) {};     & \node[head] (cheap) {cheap};      & \node[head] (dear) {dear};          \\
-    \node[head] (batch) {batch}; & \node[cgbox] (bc) {overnight};    & \node[cgbox] (bd) {rebuild};        \\
-    \node[head] (live) {live};   & \node[cgbox] (lc) {cached};       & \node[cgkey] (ld) {on demand};      \\
-  };
+\begin{tikzpicture}[cg, node distance=6mm,
+                    cgbox/.append style={text width=16mm},
+                    cgzone/.append style={inner sep=3.5mm}]
+  % The spine. The gap between the second and third member is wider
+  % because two cards' inner sep and a gutter live in it.
+  \node[cgbox] (ingest) {ingest};
+  \node[cgbox, right=of ingest] (parse) {parse};
+  \node[cgalt, right=16mm of parse] (draft) {draft};
+  \node[cgkey, right=of draft] (check) {check};
+  % The commentary: one note per zone, under the point it explains.
+  \node[cgplain, below=8mm of parse, text width=24mm] (rule)
+    {rules only};
+  \node[cgplain, below=8mm of draft, text width=24mm] (model)
+    {model writes};
+  \draw[cgedge] (ingest) -- (parse);
+  \draw[cgedge] (parse) -- (draft);
+  \draw[cgedge] (draft) -- (check);
+  % A leader points at a place; it carries nothing there, so no head.
+  \draw[cglead=cgFlow] (rule) -- (parse);
+  \draw[cglead=cgAlt] (model) -- (draft);
+  \begin{scope}[on background layer]
+    \node[cgzone=cgFlow, fit=(ingest)(parse)(rule)] (fixed) {};
+    \node[cgzone=cgAlt, fit=(draft)(check)(model)] (generative) {};
+  \end{scope}
+  \cgzonelabel{fixed}{cgFlow}{Deterministic}
+  \cgzonelabel{generative}{cgAlt}{Generative}
 \end{tikzpicture}%

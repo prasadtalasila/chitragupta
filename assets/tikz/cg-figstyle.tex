@@ -1,18 +1,3 @@
-% Metaphor: map. Two axes a reader can name, and every item placed by
-% where it falls on both -- reach for it when the point is *how things
-% compare*, not how they connect. A map with arrows on it is usually a
-% pipeline that has not admitted it yet.
-%
-% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
-% a coordinate and re-wording a label cannot collide with its neighbour.
-% Each cell holds a real `\node` with a name, which is what lets
-% `python -m chitragupta.review figure` measure this picture at all.
-%
-% The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
-% from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
-% edit it: every figure in a book carries the same copy, and an edited
-% one forks the house style. A style this figure alone needs goes in the
-% picture's own options.
 % >>> chitragupta figure style v1 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
@@ -292,15 +277,3 @@
   }},
 }%
 % >>> end chitragupta figure style <<<
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix}%
-% Laid out to the article class's \textwidth (345pt) and \input bare.
-% The axis heads are names, so they take the ramp's upper step.
-\begin{tikzpicture}[cg,
-                    head/.style={font=\large\bfseries, align=center,
-                                 minimum height=11mm}]
-  \matrix[row sep=4mm, column sep=4mm] {
-    \node[head] (corner) {};     & \node[head] (cheap) {cheap};      & \node[head] (dear) {dear};          \\
-    \node[head] (batch) {batch}; & \node[cgbox] (bc) {overnight};    & \node[cgbox] (bd) {rebuild};        \\
-    \node[head] (live) {live};   & \node[cgbox] (lc) {cached};       & \node[cgkey] (ld) {on demand};      \\
-  };
-\end{tikzpicture}%

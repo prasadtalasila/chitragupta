@@ -1546,8 +1546,8 @@ The practical consequence for an author: fix a finding by changing what
 you asked TikZ for (a `sibling distance`, a `row sep`, which library
 you reached for), not by nudging a coordinate until the number moves.
 `assets/tikz/` exists so that starting point is a file rather than a
-blank picture, and none of those six scaffolds writes a coordinate at
-all.
+blank picture, and none of those seven scaffolds places a node at a
+coordinate.
 
 **Do not tune a figure to the thresholds.** The numbers behind
 `overlap` and `protrusion` are this checker's own: an empty horizontal
