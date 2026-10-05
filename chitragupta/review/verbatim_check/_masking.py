@@ -196,7 +196,7 @@ def _tokenize_draft(text: str) -> tuple[list[_DraftWord], list[set[str]]]:
     words = []
     paragraph_citekeys = []
     for p_idx, (para_start, para) in enumerate(_paragraphs(masked)):
-        paragraph_citekeys.append({key for _, key in citation_gate.extract_citekeys(para)})
+        paragraph_citekeys.append(set(citation_gate.extract_citekeys_from_line(para)))
         clean = _CITE_MARKER_RE.sub(_blank_span, para)
         quote_spans = _quote_char_spans(clean)
         lowered, offsets = _lower_offsets(clean)

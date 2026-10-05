@@ -46,7 +46,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import config, entailment, ledger, review
+from chitragupta import citation_gate, config, entailment, ledger, review
 from chitragupta.review import _emit
 from chitragupta.passages import Passage, distinctive, source_passages
 from chitragupta.review import _claim_support_render as _render
@@ -188,7 +188,7 @@ def build_report(draft_path: Path, entailer, top_k: int | None = None) -> Report
     report = Report(draft=Path(draft_path))
     with ledger.reading() as con:
         cache: dict[str, tuple[list[Passage], str | None]] = {}
-        latex = Path(draft_path).suffix.lower() == ".tex"
+        latex = citation_gate.is_latex(draft_path)
         for line_no, citekey, claim in citation_provenance.claims(text, latex=latex):
             if citekey not in cache:
                 cache[citekey] = source_passages(con, citekey)

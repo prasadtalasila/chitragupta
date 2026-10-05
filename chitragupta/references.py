@@ -165,7 +165,7 @@ def write_numbered(path: Path, out_dir: Path, text: str | None = None) -> Path:
 def apply(path: Path, heading: str = "References") -> str:
     path = config.require_inside_content(path)
     text = path.read_text(encoding="utf-8")
-    keys = used_citekeys(text, latex=path.suffix.lower() == ".tex")
+    keys = used_citekeys(text, latex=citation_gate.is_latex(path))
     if not keys:
         return f"{path}: no citekeys cited -- nothing to do"
 

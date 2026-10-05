@@ -120,7 +120,7 @@ _REFERENCES_RE = re.compile(
 # The width check reads code blocks' bodies from `_code_regions`:
 # `fenced_bodies` for Markdown and `latex_verbatim_bodies` for a `.tex`
 # fragment, each by a linear scan rather than the DOTALL regexes they
-# replaced (#824). Deliberately not `citation_gate._blank_fenced`: that
+# replaced (#824). Deliberately not `citation_gate._blank_code`: that
 # one blanks the whole fence including its delimiter lines, because it
 # exists to blank the block out, and here the delimiter lines must be
 # excluded -- an info string like ```python is not a content line and
@@ -144,8 +144,9 @@ def _blank(pattern: "re.Pattern", text: str) -> str:
     move anything.
 
     **Not a second way of doing what `_blank_code` does**, though it
-    shares that one-line idiom. `_blank_code` blanks a *fixed* set of
-    three patterns and is called here, unchanged, for exactly that set.
+    shares that one-line idiom. `_blank_code` blanks a *fixed* set --
+    code, found by block structure -- and is called here, unchanged, for
+    exactly that set.
     This takes the pattern as an argument, because the regions below --
     a link target, a block quotation, a references section -- are this
     module's own and belong in no other caller's set. Parameterising

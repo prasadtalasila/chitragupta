@@ -84,8 +84,7 @@ def _recorded_citekeys(book: Path, unit_id: str) -> list[str]:
 def _citekeys(text: str, name: str | Path) -> set[str]:
     """Every citekey in `text`, by the extractor and suffix rule `unit accept`
     uses -- so the two sides of the subtraction are the same set."""
-    latex = Path(name).suffix.lower() == ".tex"
-    return {key for _, key in citation_gate.extract_citekeys(text, latex=latex)}
+    return {key for _, key in citation_gate.extract_citekeys_for(name, text)}
 
 
 def compute(assembled: Path) -> UnionResult:

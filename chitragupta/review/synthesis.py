@@ -44,7 +44,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import config, review
+from chitragupta import citation_gate, config, review
 from chitragupta.review import _emit
 from chitragupta.review import _synthesis_render, _units
 
@@ -117,7 +117,7 @@ def resolve(draft: Path, override: str | None) -> tuple[str, str, str | None]:
 
 def build_report(draft: Path, kind: str, source: str, genre: str | None) -> Report:
     text = Path(draft).read_text(encoding="utf-8")
-    latex = Path(draft).suffix.lower() == ".tex"
+    latex = citation_gate.is_latex(draft)
     return Report(draft, kind, source, genre, _units.units(text, kind, latex=latex))
 
 

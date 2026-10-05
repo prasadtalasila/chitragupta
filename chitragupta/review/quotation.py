@@ -68,7 +68,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import config, evidence_appendix, ledger, passages, review
+from chitragupta import citation_gate, config, evidence_appendix, ledger, passages, review
 from chitragupta.review import _emit
 from chitragupta.dossier import DossierError, dossier_dir
 from chitragupta.review import _quotation_render
@@ -115,7 +115,7 @@ def build_report(draft: Path) -> Report:
         # agenda's `_read_drift` treats this as "no dossier" too (#838).
         return Report(draft, [], "no-dossier")
     text = draft.read_text(encoding="utf-8")
-    spans = evidence_appendix.quoted_spans(text, directory, latex=draft.suffix.lower() == ".tex")
+    spans = evidence_appendix.quoted_spans(text, directory, latex=citation_gate.is_latex(draft))
     if not spans:
         return Report(draft, [], "no-quotes")
     with ledger.reading() as con:

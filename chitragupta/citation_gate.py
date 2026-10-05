@@ -18,10 +18,12 @@ Usage:
 Recognizes any LaTeX/biblatex/natbib command whose name contains "cite"
 (\\cite, \\citep, \\citealp, \\footcite, \\nocite, capitalized biblatex
 forms, ..., with optional * and [] options) and Pandoc/Markdown ([@key],
-[@key1; @key2], bare @key, suppressed-author -@key) citation syntax. Code
-fences, inline code spans, and -- in LaTeX -- verbatim/lstlisting/
-minted environments, `%` comments and \\verb are excluded from
-scanning first (see _blank_code).
+[@key1; @key2], bare @key, suppressed-author -@key, and the braced @{key}
+for a key pandoc's bare form cannot spell) citation syntax. Everything
+pandoc does not read as prose -- code, HTML comments, link targets,
+reference definitions (`chitragupta/_markdown_inert.py`), and in LaTeX
+verbatim/lstlisting/minted environments, `%` comments and \\verb -- is
+excluded from scanning first (see _blank_code).
 
 Known gaps, investigated and left as over-reporting (#834): a brace
 group adjacent to a citation's own reads as a multicite group, so
@@ -36,7 +38,8 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import _code_regions, config, gate_liveness, ledger
+from chitragupta import _code_regions, _markdown_inert, config, gate_liveness, ledger
+from chitragupta._braced_keys import braced_keys
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -164,7 +167,6 @@ _PANDOC_CITE_RE = re.compile(rf"(?<![A-Za-z0-9._%+\-\\])-?@({PANDOC_KEY})")
 # `_code_regions.blank_latex_verbatim`, a linear scan: the DOTALL regex it
 # replaced was O(N x L) on N unclosed openers, enough to get the gate hook
 # killed before it could block (#824).
-_INLINE_CODE_RE = re.compile(r"`[^`\n]+`")
 # LaTeX's other two ways of saying "this is not prose", scanned in one
 # left-to-right alternation so whichever construct opens first wins, as
 # in TeX itself: `\verb|50%|` keeps the following citation live, while
@@ -199,47 +201,17 @@ _LATEX_INERT_RE = re.compile(
 )
 
 
-def _blank_fenced(text: str) -> str:
-    """Blank fenced code blocks, pairing fences the way CommonMark does.
+def _blank_code(text: str, *, latex: bool = False, prose_only: bool = False) -> str:
+    """Blank code to spaces, preserving every offset.
 
-    A fence is a line-start construct (up to three spaces of indent, then
-    ``` or ~~~) -- an earlier version paired every ``` token in document
-    order regardless of position, so one prose mention of ``` shifted the
-    pairing for the rest of the file: the prose after it (real citations
-    included) was blanked, and the next code block's interior exposed.
-    An unclosed fence runs to the end of the document, as CommonMark
-    reads it. Two deliberate approximations, both blanking-safe: the
-    closing fence is matched on its first three characters (a longer
-    close still closes), and a same-character fence line inside the
-    block closes it even where CommonMark would want it longer.
-    CommonMark's no-backtick-in-a-backtick-info-string rule is applied,
-    and matters here: without it a line-start ``` code ``` span would
-    open a phantom fence and blank every later citation in the file. A
-    tab indents by four columns, so a tab-indented marker is indented
-    code, not a fence.
-    """
-    out: list[str] = []
-    fence: str | None = None
-    for line in text.splitlines(keepends=True):
-        stripped = line.lstrip(" ")
-        marker = stripped[:3] if stripped[:3] in ("```", "~~~") else None
-        if len(line) - len(stripped) > 3:
-            marker = None
-        if fence is None and marker == "```" and "`" in stripped.lstrip("`"):
-            marker = None
-        if fence is None and marker is None:
-            out.append(line)
-            continue
-        out.append(re.sub(r"[^\n]", " ", line))
-        if fence is None:
-            fence = marker
-        elif marker == fence:
-            fence = None
-    return "".join(out)
-
-
-def _blank_code(text: str, *, latex: bool = False) -> str:
-    """Blank code-like regions to spaces, preserving every offset.
+    For Markdown, code is found by pandoc's block structure
+    (`chitragupta/_markdown_inert.py`): fenced and indented code measured
+    from their container, and inline code. `prose_only=True` also blanks
+    everything else pandoc does not read as prose -- HTML comments, raw
+    HTML blocks, link targets and reference definitions -- which is what
+    citation extraction needs. The other callers want those kept: the
+    figure check reads image paths, and review units read a
+    `<!-- single-source: ... -->` marker.
 
     `latex=True` blanks LaTeX's own inert regions -- verbatim-style
     environments, `%` comments and `\\verb` -- and none of Markdown's: in
@@ -258,9 +230,7 @@ def _blank_code(text: str, *, latex: bool = False) -> str:
     text = _code_regions.blank_latex_verbatim(text)
     if latex:
         return _LATEX_INERT_RE.sub(_blank_unless_escaped, text)
-    text = _blank_fenced(text)
-    text = _INLINE_CODE_RE.sub(_blank_match, text)
-    return text
+    return _markdown_inert.blank(text, code_only=not prose_only)
 
 
 @dataclass
@@ -274,16 +244,36 @@ class GateResult:
         return not self.unknown
 
 
-def extract_citekeys_from_line(line: str) -> list[str]:
-    """The keys extract_citekeys() finds in `line`, without their line numbers.
+def is_latex(path: "str | Path") -> bool:
+    """Whether `path` is read with LaTeX's rules rather than Markdown's.
 
-    It scans whatever string it is handed, newlines included, so the
-    whole-document guarantees below hold for a caller that passes a whole
-    document. The name records the one caller that does not:
-    chitragupta/review/citation_coverage.py hands this one line at a time.
-    The others -- review/_claim_sentence.py (a sentence's parts) and
-    review/verbatim_check/_corpus.py (a passage) -- want only the keys.
-    review/_claims.py, which holds whole blocks, calls extract_citekeys()
+    The one place the suffix rule lives (#957): `registry.claims` read a
+    `.tex` unit with Markdown's backtick rule because its caller never
+    restated the decision, and a `\\citep{}` between two quoted phrases
+    dropped out of the claim register. `tests/test_citation_gate_pandoc.py`
+    fails on a caller that derives the flag from a suffix itself.
+    """
+    return Path(path).suffix.lower() == ".tex"
+
+
+def extract_citekeys_for(path: "str | Path", text: str) -> list[tuple[int, str]]:
+    """`extract_citekeys(text)` with the LaTeX flag taken from `path`."""
+    return extract_citekeys(text, latex=is_latex(path))
+
+
+def extract_citekeys_from_line(line: str, *, latex: bool = False) -> list[str]:
+    """The keys extract_citekeys() finds in a fragment, without line numbers.
+
+    For a caller holding a piece of a document -- a line, a sentence, a
+    paragraph -- rather than the whole of it. Each line's own leading
+    whitespace is dropped first: a fragment has lost the list item or
+    blockquote it sat in, so a continuation paragraph indented under a
+    list item would otherwise read as indented code and its citations
+    vanish. chitragupta/review/citation_coverage.py hands this one line
+    at a time; review/_claim_sentence.py a sentence's parts,
+    review/verbatim_check/_corpus.py a passage, _masking.py a paragraph
+    and chitragupta/registry a sentence. review/_claims.py, whose blocks
+    arrive already flattened to one line, calls extract_citekeys()
     directly since #854.
 
     A caller that splits a document into lines first loses two things,
@@ -306,7 +296,8 @@ def extract_citekeys_from_line(line: str) -> list[str]:
     per-line loop to close. Prefer extract_citekeys() for any new caller
     that has the whole document available.
     """
-    return [key for _, key in extract_citekeys(line)]
+    flush = "\n".join(part.lstrip() for part in line.split("\n"))
+    return [key for _, key in extract_citekeys(flush, latex=latex)]
 
 
 def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]:
@@ -321,7 +312,7 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
     pass it for `.tex` input, where a backtick is a quote character and
     Markdown's inline-code rule would blank real citations.
     """
-    text = _blank_code(text, latex=latex)
+    text = _blank_code(text, latex=latex, prose_only=True)
 
     # (start_offset, key) from both regexes, sorted into true document
     # order first -- LaTeX and Pandoc matches were previously collected in
@@ -342,6 +333,7 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
             matches.extend((start, k.strip()) for k in group.group(1).split(",") if k.strip())
     for match in _PANDOC_CITE_RE.finditer(text):
         matches.append((match.start(), match.group(1)))
+    matches.extend(braced_keys(text))
     matches.sort(key=lambda m: m[0])
 
     # One forward sweep instead of a fresh text.count("\n", 0, ...) per
@@ -371,8 +363,7 @@ def check_text(path: Path, text: str, known_citekeys: set[str]) -> GateResult:
     # .tex drafts get LaTeX-aware blanking: a backtick there is a quote,
     # and the Markdown inline-code rule blanked real citations between
     # two quoted phrases (see _blank_code).
-    latex = path.suffix.lower() == ".tex"
-    for line_no, key in extract_citekeys(text, latex=latex):
+    for line_no, key in extract_citekeys_for(path, text):
         result.total_citations += 1
         if key not in known_citekeys:
             result.unknown.append((line_no, key))

@@ -170,9 +170,7 @@ def staleness(draft: Path) -> Staleness:
     if not report.changed:
         return report
 
-    cited = {
-        key for _, key in citation_gate.extract_citekeys(text, latex=draft.suffix.lower() == ".tex")
-    }
+    cited = {key for _, key in citation_gate.extract_citekeys_for(draft, text)}
     recorded_evidence = set(evidence_blocks(target))
     report.missing_evidence = sorted(cited - recorded_evidence)
     report.orphaned_evidence = sorted(recorded_evidence - cited)
@@ -215,9 +213,7 @@ def recorded_but_uncited(draft: Path) -> "dict[str, list[str]]":
     """
     target = dossier_dir(draft)
     text = draft.read_text(encoding="utf-8")
-    cited = {
-        key for _, key in citation_gate.extract_citekeys(text, latex=draft.suffix.lower() == ".tex")
-    }
+    cited = {key for _, key in citation_gate.extract_citekeys_for(draft, text)}
     surfaces = {
         "evidence": set(evidence_blocks(target)),
         "sections": {key for keys in citekeys_by_section(target).values() for key in keys},

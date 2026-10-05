@@ -102,6 +102,18 @@ def test_a_claim_is_a_sentence_that_cites_something():
     assert found[0][1] == ["smith_2024"]
 
 
+def test_a_tex_unit_is_read_with_latex_rules(tmp_path):
+    """#957: Markdown's backtick rule read the span between two LaTeX
+    `quoted' phrases as inline code, and the citation inside it dropped
+    out of the register."""
+    (tmp_path / "ch-x.tex").write_text(
+        "The `digital twin' view \\citep{smith_2024} is `neat'.\n", encoding="utf-8"
+    )
+    built = {"terms": [], "claims": [], "xrefs": []}
+    registry._read_unit(tmp_path, "ch-x", built, set())
+    assert [claim["citekeys"] for claim in built["claims"]] == [["smith_2024"]]
+
+
 def test_a_rendered_reference_list_is_not_a_register_of_claims():
     """Every line of a reference list cites something. Reading them as
     claims would fill the register with bibliography -- the same
