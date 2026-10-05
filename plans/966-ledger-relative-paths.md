@@ -1,6 +1,6 @@
 # 966: the ledger stores paths a relocated project can still read
 
-Status: **built**, closed by PR #1004 (6.132.1). Written 2026-10-04
+Status: **built**, closed by PR #1004 (6.133.0). Written 2026-10-04
 against `main` @ 3486366; its three decisions were reviewed by the user
 the same day. Closes #966, and with it the consolidated #963.
 

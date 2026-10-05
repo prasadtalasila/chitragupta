@@ -611,7 +611,7 @@ paths: a legacy absolute `parsed_path` is rewritten the first time any
 writer opens the ledger (`ledger.connect()`), and a legacy absolute
 `pdf_path` by the next `sync`. The retrieval caches key on the stored
 string, so each rebuilds once after that upgrade. Every host and
-container sharing one ledger should run 6.132.1 or later: an older
+container sharing one ledger should run 6.133.0 or later: an older
 release reads the relative values against its own working directory,
 and its sync would write absolute ones back. [MIGRATION.md](MIGRATION.md)
 walks through moving a project step by step.
