@@ -602,6 +602,21 @@ having no parsed text: `search`, `evidence`, `tldr`, `verbatim` and the
 enrichment stages all decline it and say so, and the next
 `corpus sync` re-parses the document rather than skipping it.
 
+Both columns are stored *relative*: `parsed_path` as `<citekey>.txt`
+under the `parsed/` directory of `[content].dir` (default
+`content/parsed/`), and `pdf_path` relative to the bib file's resolved
+directory. A project you move, a `content/` directory you rename, or a
+ledger you use from a container and then from the host therefore
+re-parses nothing. A ledger written by an older release holds absolute
+paths: a legacy absolute `parsed_path` is rewritten the first time any
+writer opens the ledger (`ledger.connect()`), and a legacy absolute
+`pdf_path` by the next `sync`. The retrieval caches key on the stored
+string, so each rebuilds once after that upgrade. Every host and
+container sharing one ledger should run 6.133.0 or later: an older
+release reads the relative values against its own working directory,
+and its sync would write absolute ones back. [MIGRATION.md](MIGRATION.md)
+walks through moving a project step by step.
+
 If a stale path in your bib file is expected and you would rather the
 scheduled run stayed green, fix the path or drop the `file` field;
 there is deliberately no flag to suppress it.
@@ -1161,7 +1176,7 @@ chitragupta draft dossier outline content/drafts/survey.md --check
 | `--section NAME` | `brief` | Take the citekeys from that `sections.md` row. Matches without the section's numbering; an ambiguous name matches nothing rather than guessing |
 | `--score` | `check-evidence` | Also print each warning's overlap score. Off by default, so there is nothing to reword against until it drops |
 | `--out FILE` | `export` | Archive path (default `drafts-<name>-<date>.tar.gz`) |
-| `--with-rendered` | `export` | Include `content/rendered/` too (large: it holds the PDFs) |
+| `--with-rendered` | `export` | Include `content/rendered/` and the non-Markdown review renders too (large: they hold the PDFs) |
 | `--force` | `restore` | Actually write, overwriting what is already there |
 
 ```bash
@@ -1212,15 +1227,19 @@ chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz
 chitragupta draft dossier restore drafts-all-2026-08-06.tar.gz --force
 ```
 
-A bundle carries `drafts/`, `dossiers/` and optionally `rendered/`, with
-paths relative to `content/` so it restores into a checkout whose
-`[content].dir` points elsewhere. It does **not** carry
+A bundle carries `drafts/`, `dossiers/`, and the `.md` and `.json`
+files under `review/` (the reports and each draft's accepted-items
+record). `--with-rendered` adds `rendered/` and the rest of `review/`.
+Paths are relative to `content/`, so a bundle restores into a checkout
+whose `[content].dir` points elsewhere. It does **not** carry
 `content/ledger.sqlite` (regenerate with `chitragupta corpus sync`) or
 `papers/bibliography.bib` (your reference manager's export, which
 AGENTS.md keeps as the source of truth rather than something this
 pipeline copies). Restore refuses the whole archive, instead of
 skipping a member, if any entry is a link or device node, escapes the
-extraction directory, or sits outside those three directories.
+extraction directory, or sits outside those four directories.
+[MIGRATION.md](MIGRATION.md) covers backups and moving a project as a
+whole.
 
 ### 🔎 `chitragupta draft retrieve`
 

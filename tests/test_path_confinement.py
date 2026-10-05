@@ -14,6 +14,7 @@ These tests are grouped by the layer that must refuse, not by module,
 because the point of the fix is that no layer trusts the one above it.
 """
 
+import os
 from pathlib import Path
 
 import pytest
@@ -59,6 +60,112 @@ def insert(con, citekey: str, *, parsed_path=None, pdf_path=None, status="parsed
         (citekey, f"Paper {citekey}", status, parsed_path, pdf_path),
     )
     con.commit()
+
+
+RELATIVE_TEXT = "the relocated corpus text"
+
+
+@pytest.fixture
+def relative_row(isolated_config):
+    """A row as #966 writes it: names relative to their roots."""
+    isolated_config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+    (isolated_config.PARSED_DIR / "rel2024.txt").write_text(RELATIVE_TEXT, encoding="utf-8")
+    with ledger.connection() as con:
+        insert(con, "rel2024", parsed_path="rel2024.txt")
+    return isolated_config
+
+
+class TestRelativeRowsAreRead:
+    """Every reader must find the file a relative row names (#966).
+    Opened raw, `rel2024.txt` resolves against the process cwd."""
+
+    def test_overview(self, relative_row, monkeypatch, tmp_path_factory):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        assert _overview._parsed_texts(["rel2024"]) == {"rel2024": RELATIVE_TEXT}
+
+    def test_overlap_ledger_returns_an_openable_path(
+        self, relative_row, monkeypatch, tmp_path_factory
+    ):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        _hash, path = overlap_index_ledger.ledger_item("rel2024")
+        assert Path(path).read_text(encoding="utf-8") == RELATIVE_TEXT
+        ((_ck, _h, listed),) = overlap_index_ledger._ledger_items()
+        assert Path(listed).read_text(encoding="utf-8") == RELATIVE_TEXT
+
+    def test_outputs_present(self, relative_row, monkeypatch, tmp_path_factory):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        assert ledger_upsert._parse_outputs_present("rel2024", "rel2024.txt")
+
+    def test_tldr_fingerprint(self, relative_row, monkeypatch, tmp_path_factory):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        with ledger.reading() as con:
+            assert tldr._fingerprint(con, "rel2024")
+
+    def test_retrieval_indexes_the_text(self, relative_row, monkeypatch, tmp_path_factory):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        assert [r.citekey for r in retrieval.search("relocated")] == ["rel2024"]
+
+    def test_the_index_fingerprint_stats_the_file(
+        self, relative_row, monkeypatch, tmp_path_factory
+    ):
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        present, size, _mtime = retrieval_cache._parsed_file_stat("rel2024.txt")
+        assert present and size == len(RELATIVE_TEXT)
+
+    def test_passages_reads_the_parsed_text(self, relative_row, monkeypatch, tmp_path_factory):
+        (relative_row.PARSED_DIR / "rel2024.txt").write_text(
+            "one two\fthree four", encoding="utf-8"
+        )
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        with ledger.reading() as con:
+            found, why = passages.source_passages(con, "rel2024")
+        assert why is None and [p.page for p in found] == [1, 2]
+
+    def test_passages_hands_pdftotext_the_resolved_pdf(
+        self, relative_row, monkeypatch, tmp_path_factory
+    ):
+        pdf = relative_row.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF")
+        with ledger.connection() as con:
+            insert(con, "pdf2024", pdf_path="paper.pdf")
+        ran = []
+        monkeypatch.setattr(passages, "_from_pdf", lambda *a: ran.append(a[0]) or ([], "ran"))
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        with ledger.reading() as con:
+            passages.source_passages(con, "pdf2024")
+        assert ran == [str(pdf.resolve())]
+
+    def test_the_enrichment_corpus_carries_absolute_paths(
+        self, relative_row, monkeypatch, tmp_path_factory
+    ):
+        pdf = relative_row.BIB_FILE_PATH.parent / "paper.pdf"
+        pdf.write_bytes(b"%PDF")
+        with ledger.connection() as con:
+            insert(con, "pdf2024", pdf_path="paper.pdf")
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+        doc = next(d for d in enrich_corpus.build_corpus() if d.citekey == "pdf2024")
+        assert doc.pdf_path == str(pdf.resolve())
+
+    def test_enrich_reuses_a_relative_corpus_parse(
+        self, relative_row, monkeypatch, tmp_path_factory
+    ):
+        """`_docling_reuse` opens `CorpusDoc.text_path` and stats
+        `.pdf_path` directly, so both must come back absolute (#966)."""
+        from chitragupta.enrich import _docling_reuse
+
+        pdf = relative_row.BIB_FILE_PATH.parent / "rel2024.pdf"
+        pdf.write_bytes(b"%PDF")
+        os.utime(pdf, ns=(1, 1))  # older than the parse, so reuse is allowed
+        with ledger.connection() as con:
+            con.execute("UPDATE items SET pdf_path = 'rel2024.pdf' WHERE citekey = 'rel2024'")
+            con.commit()
+        passages.sidecar_path("rel2024").write_text("[]", encoding="utf-8")
+        monkeypatch.setattr(config, "DOCLING_IMAGES", False)
+        monkeypatch.chdir(tmp_path_factory.mktemp("cwd"))
+
+        (doc,) = [d for d in enrich_corpus.build_corpus() if d.citekey == "rel2024"]
+        assert Path(doc.text_path).is_absolute() and Path(doc.pdf_path).is_absolute()
+        assert _docling_reuse._corpus_parse_available(doc)
 
 
 class TestConfinedPath:

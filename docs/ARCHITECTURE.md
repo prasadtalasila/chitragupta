@@ -482,7 +482,7 @@ a specific span of a specific source.
 
 | Artifact | Stable across a re-run on unchanged input? |
 | --- | --- |
-| `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `failure_kind` and the bib columns are byte-stable |
+| `content/ledger.sqlite` rows | **Yes, except `last_synced`**, which is wall-clock and changes every run. `pdf_hash`, `status`, `parsed_path`, `pdf_path`, `failure_kind` and the bib columns are byte-stable, and `parsed_path` and `pdf_path` stay so across hosts too: they are stored relative to the `parsed/` directory under `[content].dir` and to the bib file's resolved directory, never host-absolute, so moving the project or reading the ledger from a container and then the host re-parses nothing (#966) |
 | `pdf_size`, `pdf_mtime_ns` | Stable only while the file is untouched. A re-export producing byte-identical PDFs with fresh mtimes changes `pdf_mtime_ns`, which the stat-before-hash skip reads, so those documents are re-hashed (not re-parsed: the hash still matches) |
 | `content/parsed/<citekey>.txt`, `pdftotext` | **Yes**: byte-identical, measured |
 | `content/parsed/<citekey>.txt`, `docling` | **No**, at any GPU count: 1 of 300 differed even on a single card, so confining the pool lowers the rate without removing it. **Treat the percentages below as orders of magnitude, not figures.** Every rate this document has ever carried came from a *single* pair of runs, and eight pairs at one fixed configuration have since ranged from 0 to 6 documents. All of them were measured at `[parser].ocr = false` and `[parser].formulas = false`; turn either on and none applies |

@@ -62,8 +62,8 @@ from chitragupta import (
     _reference_cut,
     _tokens,
     bib_collections,
-    config,
     ledger,
+    ledger_paths,
     retrieval_cache,
     retrieval_expansion,
     retrieval_scoring,
@@ -285,14 +285,13 @@ def _full_text(item: sqlite3.Row) -> str:
     # it names (#490). overlap_index_ledger.py already gates on status;
     # this was BM25 retrieval and evidence's own read serving the stale
     # text as current.
-    # `confined_path` is the second half of the same guard (issue 821):
+    # `parsed_file` is the second half of the same guard (issue 821):
     # `status` says the column is current, and this says the column is
     # allowed to be opened at all. A ledger row is data -- gitignored
     # sqlite under a shared `content/` -- so one repointed at
     # `~/.ssh/id_rsa` had its bytes indexed here as this paper's text.
-    if item["status"] == "parsed" and (
-        parsed := config.confined_path(item["parsed_path"], config.PARSED_DIR)
-    ):
+    # The stored value is relative to `config.PARSED_DIR` (#966).
+    if item["status"] == "parsed" and (parsed := ledger_paths.parsed_file(item["parsed_path"])):
         try:
             raw = parsed.read_text(encoding="utf-8", errors="replace")
         except OSError:

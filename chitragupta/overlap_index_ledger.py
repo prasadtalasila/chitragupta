@@ -11,7 +11,7 @@ has why its `timeout` is sqlite's default rather than 0 (m-72, #552).
 
 import sqlite3
 
-from chitragupta import config, ledger
+from chitragupta import ledger, ledger_paths
 
 
 def _ledger_connect_ro() -> sqlite3.Connection | None:
@@ -28,9 +28,11 @@ def _ledger_connect_ro() -> sqlite3.Connection | None:
         return None
 
 
-def _parsed_text_present(parsed_path: str) -> bool:
-    """Whether this row's parsed text is both inside `content/parsed/`
-    and actually on disk.
+def _present_path(parsed_path: str) -> str | None:
+    """The absolute path of this row's parsed text, or `None` unless it
+    is both inside `content/parsed/` and actually on disk. The stored
+    value is relative to `config.PARSED_DIR` (#966), so consumers get the
+    resolved path, which opens from any cwd.
 
     The confinement is issue 821's: the column is data, and a row
     repointed at a host file had that file fingerprinted, paged and
@@ -39,8 +41,8 @@ def _parsed_text_present(parsed_path: str) -> bool:
     `overlap_skipgram`, `overlap_source_text` and the verbatim aid all
     reach their `parsed_path` through these two functions.
     """
-    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
-    return parsed is not None and parsed.exists()
+    parsed = ledger_paths.parsed_file(parsed_path)
+    return str(parsed) if parsed is not None and parsed.exists() else None
 
 
 def ledger_item(citekey: str) -> "tuple[str, str] | None":
@@ -62,9 +64,8 @@ def ledger_item(citekey: str) -> "tuple[str, str] | None":
     if row is None:
         return None
     pdf_hash, parsed_path = row
-    if not _parsed_text_present(parsed_path):
-        return None
-    return pdf_hash, parsed_path
+    present = _present_path(parsed_path)
+    return None if present is None else (pdf_hash, present)
 
 
 def _ledger_items() -> list[tuple[str, str, str]]:
@@ -82,4 +83,4 @@ def _ledger_items() -> list[tuple[str, str, str]]:
         ).fetchall()
     finally:
         con.close()
-    return [(ck, h, p) for ck, h, p in rows if _parsed_text_present(p)]
+    return [(ck, h, present) for ck, h, p in rows if (present := _present_path(p))]

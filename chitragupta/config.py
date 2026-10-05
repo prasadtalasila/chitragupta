@@ -90,7 +90,7 @@ def discover_project_root(
     Order, first hit wins:
 
     1. `CHITRAGUPTA_PROJECT`, so an explicit answer always beats a
-       discovered one.
+       discovered one. A relative value resolves against `cwd`.
     2. The nearest ancestor of the working directory holding a
        `config.toml` -- how an installed `chitragupta` finds the project
        the user is standing in.
@@ -109,7 +109,11 @@ def discover_project_root(
     environ = os.environ if environ is None else environ
     explicit = environ.get("CHITRAGUPTA_PROJECT")
     if explicit:
-        return Path(explicit)
+        # Resolved (#966): a relative value is relative to where the
+        # user stood when they set it, and leaving it unresolved made
+        # every path derived from PROJECT_ROOT depend on the cwd of
+        # whichever process read it later.
+        return ((Path.cwd() if cwd is None else Path(cwd)) / explicit).resolve()
     start = (Path.cwd() if cwd is None else Path(cwd)).resolve()
     for candidate in (start, *start.parents):
         if (candidate / PROJECT_MARKER).is_file():

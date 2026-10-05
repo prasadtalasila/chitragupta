@@ -22,8 +22,9 @@ re-export, and re-run `python -m chitragupta.corpus sync`.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 
-from chitragupta import config, ledger
+from chitragupta import ledger, ledger_paths
 
 
 @dataclass
@@ -44,13 +45,14 @@ class CorpusDoc:
 
 
 # The enrichment layer's one gate on the two ledger columns that are
-# host paths (issue 821). Every stage below -- Docling, the crops, the
-# embedding text, the figure sidecars -- takes its path from a
-# `CorpusDoc` and none of them re-checks it, so confining the two
-# columns as the corpus is built covers all of them at once, and covers
-# a stage added later without it having to know.
-def _confined(value: "str | None", root) -> "str | None":
-    path = config.confined_path(value, root)
+# host paths (issue 821), each stored relative to its root (#966) and
+# resolved here to the absolute path the stages open. Every stage
+# below -- Docling, the crops, the embedding text, the figure
+# sidecars -- takes its path from a `CorpusDoc` and none of them
+# re-checks it, so confining the two columns as the corpus is built
+# covers all of them at once, and covers a stage added later without
+# it having to know.
+def _as_str(path: Path | None) -> str | None:
     return None if path is None else str(path)
 
 
@@ -63,8 +65,8 @@ def build_corpus() -> list[CorpusDoc]:
         CorpusDoc(
             citekey=item["citekey"],
             title=item["title"] or "Untitled",
-            pdf_path=_confined(item["pdf_path"], config.BIB_FILE_PATH.parent),
-            text_path=_confined(item["parsed_path"], config.PARSED_DIR),
+            pdf_path=_as_str(ledger_paths.pdf_file(item["pdf_path"])),
+            text_path=_as_str(ledger_paths.parsed_file(item["parsed_path"])),
         )
         for item in rows
     ]

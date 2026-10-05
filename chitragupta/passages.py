@@ -69,7 +69,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config
+from chitragupta import config, ledger_paths
 from chitragupta.citekey_safety import citekey_problem
 
 # Re-exported so `passages.distinctive`, `passages.passage_records`,
@@ -264,12 +264,13 @@ def source_passages(con, citekey: str) -> tuple[list[Passage], str | None]:
     if row is None:
         return [], "not in the ledger -- run `python -m chitragupta.corpus sync`"
 
-    # Both columns confined before either is opened (issue 821). The
-    # PDF one is the sharper of the two: it is not read here but handed
-    # to `pdftotext` as an argument, so an unconfined row ran a
-    # subprocess over an arbitrary host file and quoted the result.
-    parsed_path = config.confined_path(row[0], config.PARSED_DIR)
-    pdf_path = config.confined_path(row[1], config.BIB_FILE_PATH.parent)
+    # Both columns confined before either is opened (issue 821), each
+    # stored relative to its root (#966). The PDF one is the sharper of
+    # the two: it is not read here but handed to `pdftotext` as an
+    # argument, so an unconfined row ran a subprocess over an arbitrary
+    # host file and quoted the result.
+    parsed_path = ledger_paths.parsed_file(row[0])
+    pdf_path = ledger_paths.pdf_file(row[1])
     single_page: list[Passage] = []
     if parsed_path and parsed_path.exists():
         raw = parsed_path.read_text(encoding="utf-8", errors="replace")

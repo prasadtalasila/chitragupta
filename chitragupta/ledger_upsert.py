@@ -29,7 +29,7 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from chitragupta import config, ledger_bib_fields, passages
+from chitragupta import config, ledger_bib_fields, ledger_paths, passages
 
 if TYPE_CHECKING:
     # Only for the upsert_reference type hint -- citation_gate.py imports
@@ -152,12 +152,13 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     Directly mirrors `chitragupta/enrich/docling_parse.py`'s `_outputs_present`,
     which exists for the same reason on the other layer's artefacts.
     """
-    # Confined, not raised on (issue 821): a row whose `parsed_path`
+    # The stored value is relative to `config.PARSED_DIR` (#966). Confined,
+    # not raised on (issue 821): a row whose `parsed_path`
     # lands outside `content/parsed/` has no parse this pipeline will
     # read, so it reads as "outputs gone" and the next sync re-parses
     # it -- which rewrites the column correctly and lets a relocated
     # project heal itself instead of needing a hand repair.
-    parsed = config.confined_path(parsed_path, config.PARSED_DIR)
+    parsed = ledger_paths.parsed_file(parsed_path)
     if parsed is None or not parsed.exists():
         return False
     # A sidecar that is there but unreadable -- torn by a killed write
@@ -231,7 +232,7 @@ def upsert_reference(
                 ref.year,
                 ref.doi,
                 ref.url,
-                ref.pdf_path,
+                ledger_paths.stored_pdf(ref.pdf_path),
                 pdf_hash,
                 pdf_size,
                 pdf_mtime_ns,
@@ -268,7 +269,7 @@ def upsert_reference(
                 ref.year,
                 ref.doi,
                 ref.url,
-                ref.pdf_path,
+                ledger_paths.stored_pdf(ref.pdf_path),
                 pdf_hash,
                 pdf_size,
                 pdf_mtime_ns,

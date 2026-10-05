@@ -59,7 +59,7 @@ import json
 import sys
 from pathlib import Path
 
-from chitragupta import _abstract, config, ledger
+from chitragupta import _abstract, config, ledger, ledger_paths
 
 
 class TldrError(Exception):
@@ -89,8 +89,9 @@ def _fingerprint(con, citekey: str) -> str:
         )
     # A path outside `content/parsed/` is no parsed text this pipeline
     # will read (issue 821), so it takes the same branch as none at all
-    # -- loudly: `confined_path` has already named it on stderr.
-    parsed = config.confined_path(row[0], config.PARSED_DIR)
+    # -- loudly: `confined_path` has already named it on stderr. The
+    # value is relative to `config.PARSED_DIR` (#966).
+    parsed = ledger_paths.parsed_file(row[0])
     if parsed is None or not parsed.is_file():
         raise TldrError(
             f"{citekey} has no parsed text yet -- run `python -m chitragupta.corpus "

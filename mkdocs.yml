@@ -170,6 +170,7 @@ nav:
       - Docker install: DOCKER.md
       - Windows and WSL2: docs/WINDOWS.md
       - Import library: docs/ZOTERO.md
+      - Backing up and moving a project: docs/MIGRATION.md
       - Commands: docs/CLI.md
       - Configuration: docs/CONFIG.md
   - Writing:

@@ -207,11 +207,9 @@ class TestLedgerItem:
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_recorded_but_missing_file_returns_none(self, ledger_con, tmp_path):
-        add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text")
-        row = ledger_con.execute(
-            "SELECT parsed_path FROM items WHERE citekey = ?", ("smith_2024",)
-        ).fetchone()
-        Path(row[0]).unlink()
+        # The stored value is relative to PARSED_DIR (#966): unlink the
+        # file the helper wrote, not the raw column.
+        add_parsed_item(ledger_con, tmp_path, "smith_2024", "some text").unlink()
         assert overlap_index.ledger_item("smith_2024") is None
 
     def test_valid_item_returns_pdf_hash_and_parsed_path(self, ledger_con, tmp_path):

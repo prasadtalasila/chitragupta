@@ -31,7 +31,7 @@ from bibtexparser.bibdatabase import STANDARD_TYPES
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
 
-from chitragupta import bib_collections, bib_integrity, bib_names, config
+from chitragupta import bib_collections, bib_integrity, bib_names, config, ledger_paths
 from chitragupta.citekey_safety import citekey_problem
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
@@ -360,6 +360,6 @@ def read_library() -> Library:
     dropped = bib_integrity.dropped_entries(raw_text, len(entries), name, STANDARD_TYPES)
     duplicated = bib_integrity.duplicated_citekeys(entries, name)
     unfilenameable = _unfilenameable_citekeys(entries, duplicated)
-    bib_dir = config.BIB_FILE_PATH.resolve().parent
+    bib_dir = ledger_paths.pdf_root()
     kept = [e for e in entries if e["ID"] not in duplicated and e["ID"] not in unfilenameable]
     return Library([_reference(e, bib_dir) for e in kept], duplicated, dropped, unfilenameable)
