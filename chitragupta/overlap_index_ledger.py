@@ -31,7 +31,7 @@ def _ledger_connect_ro() -> sqlite3.Connection | None:
 def _present_path(parsed_path: str) -> str | None:
     """The absolute path of this row's parsed text, or `None` unless it
     is both inside `content/parsed/` and actually on disk. The stored
-    value is relative to `content/parsed/` (#966), so consumers get the
+    value is relative to `config.PARSED_DIR` (#966), so consumers get the
     resolved path, which opens from any cwd.
 
     The confinement is issue 821's: the column is data, and a row

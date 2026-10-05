@@ -73,7 +73,7 @@ _MISSING_PARSED = 0
 # leaked text would be served out of the cache by the very guard meant
 # to stop it. Refusing here makes a repointed row fingerprint as
 # `(False, 0, 0)` and invalidates its entry. The value is relative to
-# `content/parsed/` (#966), which `parsed_file` resolves.
+# `config.PARSED_DIR` (#966), which `parsed_file` resolves.
 def _parsed_file_stat(parsed_path: str | None) -> tuple[bool, int, int]:
     parsed = ledger_paths.parsed_file(parsed_path)
     if parsed:

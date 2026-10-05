@@ -42,6 +42,11 @@ chitragupta reads or writes for that project is under it, unless your
 `config.toml` points somewhere else. The table sorts the contents by what
 losing them costs you.
 
+`content/` in this page means your content directory: whatever
+`[content].dir` in `config.toml` names (or the `CONTENT_DIR` environment
+variable), `content` by default. Every path below it, `parsed/`
+included, follows that setting.
+
 | Path | What it is | If you lose it |
 | --- | --- | --- |
 | `config.toml` | Your settings | Copy `config.toml.example` again and redo your edits |
@@ -155,15 +160,19 @@ the ledger is not caught halfway through a write.
 The ledger records, for each paper, where its parsed text and its PDF are.
 Up to 6.132.0 it stored those as full paths on the machine that ran
 `sync`, such as `/home/ana/thesis/content/parsed/smith2024.txt`.
-Every reader checks that a path from the ledger lands inside
-`content/parsed/` (for text) or the bib file's directory (for PDFs).
+Every reader checks that a path from the ledger lands inside the
+`parsed/` directory of `[content].dir` (for text) or the bib file's
+directory (for PDFs).
 After a move, the old full paths pointed somewhere else, every row failed
 that check, and `sync` printed `WARNING refusing ...` and parsed the
 whole library again.
 
 From 6.133.0 the ledger stores both paths relative to those directories:
-`parsed_path` is just `<citekey>.txt`, and `pdf_path` is relative to the
-directory the bib file is really in, after following symlinks.
+`parsed_path` is just `<citekey>.txt`, read from `parsed/` under
+`[content].dir`, and `pdf_path` is relative to the directory the bib
+file is really in, after following symlinks. Change `[content].dir`, or
+rename the directory and update the setting to match, and the ledger
+still finds every file.
 
 You do not run a migration step:
 

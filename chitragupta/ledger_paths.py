@@ -72,7 +72,11 @@ def pdf_root() -> Path:
 
 
 def stored_parsed(path: str | Path | None) -> str | None:
-    """`path` relative to `content/parsed/`, as `parsed_path` stores it."""
+    """`path` relative to `config.PARSED_DIR`, as `parsed_path` stores it.
+
+    `PARSED_DIR` is `parsed/` under `[content].dir`, so the stored value
+    follows that setting rather than a fixed `content/`.
+    """
     return stored(path, config.PARSED_DIR)
 
 
@@ -82,7 +86,7 @@ def stored_pdf(path: str | Path | None) -> str | None:
 
 
 def parsed_file(value: str | None) -> Path | None:
-    """The file a stored `parsed_path` names, confined to `content/parsed/`."""
+    """The file a stored `parsed_path` names, confined to `config.PARSED_DIR`."""
     return resolved(value, config.PARSED_DIR)
 
 

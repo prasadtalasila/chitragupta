@@ -152,7 +152,7 @@ def _parse_outputs_present(citekey: str, parsed_path: str | None) -> bool:
     Directly mirrors `chitragupta/enrich/docling_parse.py`'s `_outputs_present`,
     which exists for the same reason on the other layer's artefacts.
     """
-    # The stored value is relative to `content/parsed/` (#966). Confined,
+    # The stored value is relative to `config.PARSED_DIR` (#966). Confined,
     # not raised on (issue 821): a row whose `parsed_path`
     # lands outside `content/parsed/` has no parse this pipeline will
     # read, so it reads as "outputs gone" and the next sync re-parses

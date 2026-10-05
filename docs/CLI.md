@@ -603,7 +603,8 @@ enrichment stages all decline it and say so, and the next
 `corpus sync` re-parses the document rather than skipping it.
 
 Both columns are stored *relative*: `parsed_path` as `<citekey>.txt`
-under `content/parsed/`, `pdf_path` relative to the bib file's resolved
+under the `parsed/` directory of `[content].dir` (default
+`content/parsed/`), and `pdf_path` relative to the bib file's resolved
 directory. A project you move, a `content/` directory you rename, or a
 ledger you use from a container and then from the host therefore
 re-parses nothing. A ledger written by an older release holds absolute

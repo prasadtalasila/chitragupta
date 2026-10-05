@@ -90,7 +90,7 @@ def _fingerprint(con, citekey: str) -> str:
     # A path outside `content/parsed/` is no parsed text this pipeline
     # will read (issue 821), so it takes the same branch as none at all
     # -- loudly: `confined_path` has already named it on stderr. The
-    # value is relative to `content/parsed/` (#966).
+    # value is relative to `config.PARSED_DIR` (#966).
     parsed = ledger_paths.parsed_file(row[0])
     if parsed is None or not parsed.is_file():
         raise TldrError(

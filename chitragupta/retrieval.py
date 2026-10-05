@@ -290,7 +290,7 @@ def _full_text(item: sqlite3.Row) -> str:
     # allowed to be opened at all. A ledger row is data -- gitignored
     # sqlite under a shared `content/` -- so one repointed at
     # `~/.ssh/id_rsa` had its bytes indexed here as this paper's text.
-    # The stored value is relative to `content/parsed/` (#966).
+    # The stored value is relative to `config.PARSED_DIR` (#966).
     if item["status"] == "parsed" and (parsed := ledger_paths.parsed_file(item["parsed_path"])):
         try:
             raw = parsed.read_text(encoding="utf-8", errors="replace")

@@ -293,7 +293,7 @@ def integrity_complaints(drafts, arms, labels):
         out.append(
             "the masked arm found nothing at all -- an empty corpus index and a "
             "clean book are indistinguishable here; check the ledger's "
-            "parsed_path values, read relative to content/parsed/, exist on this host"
+            "parsed_path values, read relative to [content].dir's parsed/, exist on this host"
         )
     gateable = [f for f in masked if eligible(f) and f["span_words"] >= SWEEP_FLOOR]
     missing = [f["id"] for f in gateable if f["id"] not in labels]

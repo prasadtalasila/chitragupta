@@ -43,7 +43,7 @@ def _parsed_texts(citekeys: list) -> dict:
         con.close()
     texts = {}
     for citekey, parsed_path in rows:
-        # Relative to `content/parsed/` (#966), and confined to it before
+        # Relative to `config.PARSED_DIR` (#966), and confined to it before
         # it is opened -- issue 821.
         parsed = ledger_paths.parsed_file(parsed_path)
         if parsed and parsed.exists():
