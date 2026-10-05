@@ -314,9 +314,19 @@ def _plant(stem: Path, marker: Path) -> Path:
         path = stem.with_name(stem.name + ".bat")
         path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\nexit /b 1\r\n', encoding="utf-8")
         return path
-    stem.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 1\n', encoding="utf-8")
+    # A builtin redirect, not `touch`: the PATH a test sets may hold no /usr/bin.
+    stem.write_text(f'#!/bin/sh\n: > "{marker}"\nexit 1\n', encoding="utf-8")
     stem.chmod(stem.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
     return stem
+
+
+def _inert(stem: Path) -> Path:
+    """An empty executable `stem` (`.exe` on Windows) that PATH lookup
+    finds and no OS can spawn, so a probe of it is OSError, not a run."""
+    path = stem.with_name(stem.name + ".exe") if sys.platform == "win32" else stem
+    path.write_text("", encoding="utf-8")
+    path.chmod(path.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    return path
 
 
 def entry_for(program: str) -> dict:
@@ -405,8 +415,13 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
         project = tmp_path / "project"
         project.mkdir()
         _plant(project / "python", marker)
+        # What PATH should resolve instead: a file that cannot be spawned,
+        # not a real interpreter, whose child would write coverage data
+        # from outside the repository and break the combine.
+        (tmp_path / "bin").mkdir()
+        _inert(tmp_path / "bin" / "python")
         monkeypatch.chdir(project)
-        monkeypatch.setenv("PATH", os.pathsep.join([".", "", os.environ.get("PATH", "")]))
+        monkeypatch.setenv("PATH", os.pathsep.join([".", "", str(tmp_path / "bin")]))
         hook_launchers.faults(settings(entry_for("python")))
         assert not marker.exists(), "the planted binary was executed"
 
@@ -424,11 +439,7 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
             planted.write_text("", encoding="utf-8")
             planted.chmod(planted.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
         (tmp_path / "bin").mkdir()
-        # Never run (the launch is recorded, not made), so on Windows an
-        # empty `python.exe` is enough to be found.
-        real = tmp_path / "bin" / ("python.exe" if sys.platform == "win32" else "python")
-        real.write_text("", encoding="utf-8")
-        real.chmod(real.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        real = _inert(tmp_path / "bin" / "python")
         monkeypatch.chdir(project)
         monkeypatch.setenv("PATH", os.pathsep.join([".", "", str(tmp_path / "bin")]))
         launched = []

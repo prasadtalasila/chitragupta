@@ -104,7 +104,8 @@ class TestResolveProgram:
         monkeypatch.setattr(programs.shutil, "which", lambda cmd: searched.append(cmd))
         programs.resolve_program("tool")
         expected = [d for d in os.defpath.split(os.pathsep) if os.path.isabs(d)]
-        assert searched == [os.path.join(d, "tool") for d in expected]
+        suffix = ".exe" if sys.platform == "win32" else ""
+        assert searched == [os.path.join(d, "tool" + suffix) for d in expected]
 
 
 class TestRequireProgram:
