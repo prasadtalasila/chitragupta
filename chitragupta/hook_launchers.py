@@ -124,7 +124,7 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
     env = _probe_env(settings_path)
     for program in launchers:
         if _is_python_interpreter(program) and _is_bare_command(program):
-            fault = programs.resolve_program(program) and _import_fault(program, env)
+            fault = _import_fault(program, env)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
     return list(dict.fromkeys(found))
@@ -270,15 +270,14 @@ def _probe_env(settings_path: Path) -> dict | None:
 def _import_fault(program: str, env: dict | None = None) -> str | None:
     """Can `program` import the `chitragupta` package? One short subprocess.
 
-    Only called for a program that already resolved, so a missing
-    interpreter is never reported twice. A non-zero exit and a timeout
-    are both faults; an interpreter that cannot be spawned at all
-    (`OSError`, e.g. a resolved-but-not-executable path) is left to the
-    PATH check above rather than reported a second time here.
+    A program that does not resolve is not probed and not reported: the
+    PATH check above already names it, so it is never reported twice. A
+    non-zero exit and a timeout are both faults; an interpreter that
+    cannot be spawned at all (`OSError`, e.g. a resolved-but-not-executable
+    path) is left to that PATH check too.
     """
     # The absolute path, never the bare name, which `CreateProcess` would
-    # look up in cwd all over again (#974). None is a program removed since
-    # `faults()` resolved it: the PATH check's to report, as for `OSError`.
+    # look up in cwd all over again (#974).
     resolved = programs.resolve_program(program)
     if resolved is None:
         return None

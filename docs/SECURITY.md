@@ -181,7 +181,7 @@ batch file runs through cmd.exe, which re-parses its arguments. An
 absolute `PATH` entry
 inside the project, such as an activated `.venv/bin`, is still
 searched: that entry is the operator's choice, not the directory's.
-`tests/test_programs.py` scans every launch in both directories and
+`tests/test_bare_launch_scan.py` scans every launch in both directories and
 fails on one whose program is not resolved this way.
 
 Every TeX engine this codebase starts (LuaLaTeX for a `pdf` render

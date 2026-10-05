@@ -264,10 +264,8 @@ class TestImportFaultDirectly:
     caller's job, not this function's."""
 
     def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
-        """`faults()` only calls this once the program has already
-        resolved, so one that no longer does is a race (removed between
-        the two checks) rather than something new to report -- the PATH
-        check already covers it."""
+        """A program that does not resolve is the PATH check's to report,
+        so the probe neither runs it nor reports it a second time."""
         assert hook_launchers._import_fault("nowhere-abcx") is None
 
     def test_an_interpreter_that_can_import_the_package_is_clean(self, monkeypatch):
@@ -496,9 +494,9 @@ class TestImportProbeIsPerDistinctProgram:
     def test_never_runs_for_a_program_not_on_path(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
+            hook_launchers.subprocess, "run", lambda argv, **kwargs: calls.append(argv)
         )
-        hook_launchers.faults(
+        found = hook_launchers.faults(
             settings(
                 {
                     "hooks": {
@@ -514,6 +512,8 @@ class TestImportProbeIsPerDistinctProgram:
             )
         )
         assert calls == []
+        # Reported once, by the PATH check, not a second time by the probe.
+        assert found == ["`python4.2` is not on PATH, so a hook cannot start."]
 
 
 class TestTheImportProbeOnlyRunsAgainstAPython:

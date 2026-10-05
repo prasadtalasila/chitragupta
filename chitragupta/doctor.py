@@ -211,8 +211,8 @@ def _check_opencode_skills(root: Path) -> list[str]:
 
 def _check_pdf_fonts() -> list[str]:
     """One line per font family a pdf render names (#996)."""
-    tool = programs.resolve_program("luaotfload-tool")
-    if tool is None:
+    luaotfload = programs.resolve_program("luaotfload-tool")
+    if luaotfload is None:
         return [
             "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
             "loader (texlive-luatex) is not installed, so no pdf renders; "
@@ -221,7 +221,7 @@ def _check_pdf_fonts() -> list[str]:
     lines = []
     for name in pdf_fonts.all_families():
         probe = subprocess.run(
-            [tool, f"--find={name}"], capture_output=True, text=True, check=False
+            [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
         )
         # Its exit status is 0 whether or not the font exists (measured,
         # luaotfload 3.26); only the message tells them apart.
