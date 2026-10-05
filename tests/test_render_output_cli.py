@@ -8,6 +8,7 @@ import.
 """
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -574,7 +575,14 @@ class TestPdfEngineHardening:
     def test_the_sty_directory_is_not_on_a_pdf_render_s_search_path(self):
         # #996: a pdf render no longer loads chitragupta-unicode.sty.
         _, env = self._cmd("pdf")
-        assert env["TEXINPUTS"] == f"{Path('in.md').resolve().parent}:"
+        assert env["TEXINPUTS"] == f"{Path('in.md').resolve().parent}{os.pathsep}"
+
+    def test_texinputs_ends_in_the_hosts_own_path_separator(self, monkeypatch):
+        # #950: TeX on Windows separates TEXINPUTS with `;`, so a literal
+        # `:` splits `C:\\drafts` in two and no figure include is found.
+        monkeypatch.setattr(os, "pathsep", ";")
+        _, env = self._cmd("pdf")
+        assert env["TEXINPUTS"] == f"{Path('in.md').resolve().parent};"
 
     def test_the_hosts_own_openin_any_does_not_win(self, monkeypatch):
         monkeypatch.setenv("openin_any", "a")

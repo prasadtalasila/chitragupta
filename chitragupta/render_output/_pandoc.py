@@ -297,17 +297,19 @@ def _pandoc_command(
         # reads itself). Without TEXINPUTS, the engine looks for
         # figures/fig1.tex relative to its own working directory, not
         # the draft's -- confirmed failing with "! LaTeX Error: File
-        # 'figures/fig1.tex' not found" otherwise. The trailing ':' is
-        # not optional: TEXINPUTS is a prefix, not a replacement, and
+        # 'figures/fig1.tex' not found" otherwise. The trailing separator
+        # is not optional: TEXINPUTS is a prefix, not a replacement, and
         # dropping it loses the default search path the engine needs for
-        # its own style files. Merges with os.environ rather than
+        # its own style files. It is os.pathsep, not ':', because TeX on
+        # Windows separates with ';' and a ':' there splits the drive
+        # letter off the draft's own directory (#950). Merges with os.environ rather than
         # replacing it -- env={"TEXINPUTS": ...} alone drops PATH, and
         # the subprocess can't find pandoc at all. chitragupta-unicode.sty
         # is not on it: it does nothing under LuaLaTeX, so a pdf render
         # no longer loads it (#996; `_unicode.preamble_files`).
         env = {
             **os.environ,
-            "TEXINPUTS": f"{input_path.resolve().parent}:",
+            "TEXINPUTS": f"{input_path.resolve().parent}{os.pathsep}",
             # kpathsea's paranoid read mode: no absolute paths, no `..`,
             # no dotfiles, only the working directory and TEXINPUTS
             # (#823). Without it, a `.bib` title of

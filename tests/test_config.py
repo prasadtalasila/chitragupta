@@ -111,6 +111,48 @@ class TestGetHelpers:
         monkeypatch.setenv("MY_FLAG", raw)
         assert config._get_bool("MY_FLAG", "enrich", "flag", default=not expected) is expected
 
+    @pytest.mark.parametrize("raw", ["ture", "flase", "2", "enabled", "y", "nope"])
+    def test_bool_env_var_rejects_a_word_it_does_not_know(self, monkeypatch, raw):
+        # #968: the TOML path already raised on these, and the env path
+        # read every one of them as False, so `PARSER_OCR=ture` turned
+        # OCR off with no signal.
+        monkeypatch.setenv("MY_FLAG", raw)
+        with pytest.raises(ValueError, match="MY_FLAG.*must be true or false"):
+            config._get_bool("MY_FLAG", "enrich", "flag", default=True)
+
+    @pytest.mark.parametrize("value", [True, False])
+    def test_bool_env_and_toml_agree_on_every_value_toml_can_spell(self, monkeypatch, value):
+        monkeypatch.setattr(config_load, "_toml", {"enrich": {"flag": value}})
+        monkeypatch.delenv("MY_FLAG", raising=False)
+        from_toml = config._get_bool("MY_FLAG", "enrich", "flag", default=not value)
+        monkeypatch.setenv("MY_FLAG", str(value).lower())
+        from_env = config._get_bool("MY_FLAG", "enrich", "flag", default=not value)
+        assert from_toml is from_env is value
+
+    # #968's class: an env path weaker than the TOML path for the same
+    # key. Every typed getter has to reject a string it cannot read as
+    # its type, rather than map it to some value.
+    @pytest.mark.parametrize(
+        "getter,kwargs",
+        [
+            (config_load._get_bool, {"default": False}),
+            (config_load._get_float, {"default": 1.0}),
+            (config_load._get_int, {"default": 1}),
+            (config_load._get_positive_int, {"default": 1}),
+            (config_load._get_optional_positive_int, {}),
+            (config_load._get_optional_float, {"default": 1.0}),
+            (config_load._get_workers, {"default": 1}),
+            (config_load._get_choice, {"default": "a", "choices": ("a", "b")}),
+        ],
+    )
+    @pytest.mark.parametrize("raw", ["ture", "1.5x", "nope"])
+    def test_every_typed_getter_rejects_an_unreadable_env_string(
+        self, monkeypatch, getter, kwargs, raw
+    ):
+        monkeypatch.setenv("MY_SETTING", raw)
+        with pytest.raises(ValueError, match="MY_SETTING"):
+            getter("MY_SETTING", "enrich", "setting", **kwargs)
+
     def test_bool_falls_back_to_toml(self, monkeypatch):
         monkeypatch.setattr(config_load, "_toml", {"enrich": {"flag": False}})
         monkeypatch.delenv("MY_FLAG", raising=False)

@@ -82,9 +82,9 @@ rm -f "$HOME/.config/tmux/tmux.conf"
 
 # Then say whether it actually came up, because this failure is silent
 # and it is the state every *first* start is in: `claude remote-control`
-# exits immediately when the mounted /home/prasad/.claude carries no
-# login ("You must be logged in to use Remote Control"). PID 1 stays
-# healthy either way, so `restart: unless-stopped` never fires and
+# exits immediately when the mounted /home/${CHITRAGUPTA_USER}/.claude
+# carries no login ("You must be logged in to use Remote Control"). PID 1
+# stays healthy either way, so `restart: unless-stopped` never fires and
 # nothing else would ever mention it.
 #
 # Reported rather than exited on, deliberately: the fix is to `docker

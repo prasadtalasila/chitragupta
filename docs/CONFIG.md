@@ -624,11 +624,13 @@ meant to tune it.
 Two of these will surprise you.
 
 **Booleans from the environment.** In TOML, write `true` / `false`. From
-an environment variable, only `1`, `true`, `yes`, `on`
-(case-insensitive) mean true; **anything else is false**, including
-typos. That is deliberate: `bool("false")` is `True` in Python, so
-without it every documented way of turning a setting off via the
-environment would silently turn it on.
+an environment variable, `1`, `true`, `yes` and `on` mean true, and `0`,
+`false`, `no`, `off` and an empty value mean false (case-insensitive).
+**Any other word raises**, naming the setting, so a typo such as
+`PARSER_OCR=ture` is reported rather than read as false. The words are
+parsed rather than cast because `bool("false")` is `True` in Python, so
+a cast would make every documented way of turning a setting off via the
+environment silently turn it on.
 
 **A wrong TOML type raises, once a value is present at all.** A missing
 key still takes its default, but `ocr = "true"` (a string, not a
