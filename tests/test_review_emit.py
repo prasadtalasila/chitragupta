@@ -13,8 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import review
+from chitragupta import config, ledger, review
 from chitragupta.review import _emit
+from tests.conftest import make_reference
 
 DRAFT = Path("content/drafts/t/survey.md")
 
@@ -117,6 +118,28 @@ class TestEmit:
         assert seen == ["command"]
         assert filed["md"][2] == "# cmd"
         assert filed["json"][2] == {"command": "cmd"}
+
+    def test_a_report_the_render_gate_refuses_still_files_its_json(
+        self, isolated_config, ledger_con
+    ):
+        """#949: the agenda reads the `.json`, so a `tex` the gate refuses
+        must not leave the previous run's payload there."""
+        ledger.upsert_reference(ledger_con, make_reference(citekey="smith2024"))
+        ledger_con.commit()
+        draft = config.DRAFTS_DIR / "t" / "survey.md"
+
+        _emit.emit(
+            draft,
+            "verbatim",
+            args(write=True, formats="md,tex"),
+            text=lambda: "the report",
+            command=lambda: "python -m chitragupta.review verbatim scan",
+            payload=lambda _: {"aid": "verbatim", "run": "this one"},
+            markdown=lambda _: "> quoted [@not_a_real_citekey_2026]\n",
+        )
+
+        filed = json.loads(review.report_path(draft, "verbatim").with_suffix(".json").read_text())
+        assert filed["run"] == "this one"
 
 
 class TestAnnounce:
