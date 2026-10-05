@@ -568,6 +568,7 @@ class TestProbePlacement:
         assert "\\begin{document}" in built
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestMaxPrintLineEnv:
     """pdflatex wraps its log at `max_print_line` (~79 by default),
     breaking the one-line CGBOX parse for a long node name -- a node
@@ -626,6 +627,7 @@ class TestMaxPrintLineEnv:
         assert calls[0]["env"]["A_MARKER_ONLY_THE_HOST_SETS"] == "yes"
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestProbeTexHardening:
     """#823: the probe compiles a user's figure file, so it gets the
     same two settings as the pdf render path."""

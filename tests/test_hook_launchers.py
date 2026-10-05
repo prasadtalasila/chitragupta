@@ -15,6 +15,7 @@ rather than raise on a file it merely finds odd.
 import json
 import os
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -263,14 +264,23 @@ class TestImportFaultDirectly:
     caller's job, not this function's."""
 
     def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
-        """`faults()` only calls this once `shutil.which` has already
-        resolved the program, so a program that can't be spawned at all
-        is `OSError` from a race (removed between the two checks) rather
-        than something new to report -- the PATH check already covers it."""
-        assert hook_launchers._import_fault("/nonexistent/nowhere-abcx") is None
+        """`faults()` only calls this once the program has already
+        resolved, so one that no longer does is a race (removed between
+        the two checks) rather than something new to report -- the PATH
+        check already covers it."""
+        assert hook_launchers._import_fault("nowhere-abcx") is None
 
-    def test_an_interpreter_that_can_import_the_package_is_clean(self):
-        assert hook_launchers._import_fault(sys.executable) is None
+    def test_an_interpreter_that_can_import_the_package_is_clean(self, monkeypatch):
+        monkeypatch.setenv("PATH", str(Path(sys.executable).parent))
+        assert hook_launchers._import_fault(Path(sys.executable).name) is None
+
+    def test_a_program_that_resolves_but_cannot_be_spawned_is_not_a_fault(
+        self, tmp_path, monkeypatch
+    ):
+        """`OSError` from the spawn itself, e.g. a file with the execute
+        bit and no format the OS can run."""
+        monkeypatch.setattr(hook_launchers.programs, "resolve_program", lambda name: str(tmp_path))
+        assert hook_launchers._import_fault("python3") is None
 
 
 @pytest.fixture
@@ -294,6 +304,19 @@ def fake_interpreter(tmp_path):
         return str(script)
 
     return make
+
+
+def _plant(stem: Path, marker: Path) -> Path:
+    """A program at `stem` that leaves `marker` behind if it ever runs: a
+    shell script on POSIX, and on Windows a batch file, the PATHEXT
+    spelling a lookup of the bare stem finds."""
+    if sys.platform == "win32":
+        path = stem.with_name(stem.name + ".bat")
+        path.write_text(f'@echo off\r\ntype nul > "{marker}"\r\nexit /b 1\r\n', encoding="utf-8")
+        return path
+    stem.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 1\n', encoding="utf-8")
+    stem.chmod(stem.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+    return stem
 
 
 def entry_for(program: str) -> dict:
@@ -360,20 +383,63 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
     bare name -- resolved against PATH, the user's own environment, which
     the walked-to directory cannot rewrite -- may be probed."""
 
-    @pytest.mark.skipif(
-        sys.platform == "win32", reason="a shebang script is not directly executable on Windows"
-    )
     def test_a_path_qualified_interpreter_is_never_executed(self, settings, tmp_path):
         marker = tmp_path / "ran"
-        planted = tmp_path / "python3"
-        planted.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 1\n', encoding="utf-8")
-        planted.chmod(planted.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
-        found = hook_launchers.faults(settings(entry_for(str(planted))))
+        _plant(tmp_path / "python3", marker)
+        found = hook_launchers.faults(settings(entry_for(str(tmp_path / "python3"))))
         assert not marker.exists(), "the planted binary was executed"
         # It resolves and is not probed, so it contributes no fault at
         # all -- reporting less is the accepted price of not executing a
         # file merely because a directory we walked into named it.
         assert found == []
+
+    def test_a_python_planted_in_the_project_is_never_executed(
+        self, settings, tmp_path, monkeypatch
+    ):
+        """#974. The premise above, that a bare name resolves against PATH
+        alone, is false on Windows, where `shutil.which` and
+        `CreateProcess` both search cwd first, and on any host whose PATH
+        has a relative or empty entry. A cloned project holding `python`
+        was then what the probe ran."""
+        marker = tmp_path / "ran"
+        project = tmp_path / "project"
+        project.mkdir()
+        _plant(project / "python", marker)
+        monkeypatch.chdir(project)
+        monkeypatch.setenv("PATH", os.pathsep.join([".", "", os.environ.get("PATH", "")]))
+        hook_launchers.faults(settings(entry_for("python")))
+        assert not marker.exists(), "the planted binary was executed"
+
+    def test_the_probe_is_handed_the_absolute_path_path_resolved(
+        self, settings, tmp_path, monkeypatch
+    ):
+        """The other half: not the bare name, which `CreateProcess` would
+        look up in cwd again, but the absolute path found on PATH. Every
+        spelling a Windows lookup tries is planted, so this is red there
+        as well as here."""
+        project = tmp_path / "project"
+        project.mkdir()
+        for name in ("python", "python.exe", "python.bat", "python.cmd"):
+            planted = project / name
+            planted.write_text("", encoding="utf-8")
+            planted.chmod(planted.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        (tmp_path / "bin").mkdir()
+        # Never run (the launch is recorded, not made), so on Windows an
+        # empty `python.exe` is enough to be found.
+        real = tmp_path / "bin" / ("python.exe" if sys.platform == "win32" else "python")
+        real.write_text("", encoding="utf-8")
+        real.chmod(real.stat().st_mode | stat.S_IEXEC | stat.S_IXGRP | stat.S_IXOTH)
+        monkeypatch.chdir(project)
+        monkeypatch.setenv("PATH", os.pathsep.join([".", "", str(tmp_path / "bin")]))
+        launched = []
+
+        def record(argv, **kwargs):  # pylint: disable=unused-argument
+            launched.append(Path(argv[0]))
+            return subprocess.CompletedProcess(argv, 0)
+
+        monkeypatch.setattr(hook_launchers.subprocess, "run", record)
+        hook_launchers.faults(settings(entry_for("python")))
+        assert launched == [real]
 
     def test_a_bare_name_resolved_from_path_is_still_probed(self, settings, monkeypatch):
         calls = []

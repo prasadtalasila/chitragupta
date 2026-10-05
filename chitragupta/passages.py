@@ -69,7 +69,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, ledger_paths
+from chitragupta import config, ledger_paths, programs
 from chitragupta.citekey_safety import citekey_problem
 
 # Re-exported so `passages.distinctive`, `passages.passage_records`,
@@ -316,7 +316,7 @@ def _from_pdf(pdf_path: str, single_page: list[Passage]) -> tuple[list[Passage],
         # below and would take down a whole report over one PDF. Same
         # guard the parsed-text branch above already applies.
         out = subprocess.run(
-            ["pdftotext", "-layout", pdf_path, "-"],
+            [programs.require_program("pdftotext"), "-layout", pdf_path, "-"],
             capture_output=True,
             check=True,
             encoding="utf-8",

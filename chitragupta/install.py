@@ -39,11 +39,11 @@ import argparse
 import importlib.metadata
 import os
 import shlex
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from chitragupta import programs
 from chitragupta.progname import prog_for
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
@@ -93,7 +93,8 @@ def _refuse(stage: str) -> int:
 
 
 def _run_os_deps() -> int:
-    if not (shutil.which("apt-get") and shutil.which("bash")):
+    bash = programs.resolve_program("bash")
+    if not (programs.resolve_program("apt-get") and bash):
         print(
             "os-deps is Debian/Ubuntu and bash only. Install by hand: TeX Live, "
             "Pandoc, poppler-utils, git/curl/unzip, libgl1/libglib2.0 -- and make "
@@ -101,7 +102,7 @@ def _run_os_deps() -> int:
             file=sys.stderr,
         )
         return 1
-    command = ["bash", str(SCRIPT), "os-deps"]
+    command = [bash, str(SCRIPT), "os-deps"]
     print(f"About to run (needs root): {' '.join(command)}")
     return subprocess.run(command, check=False).returncode
 
@@ -144,7 +145,8 @@ def _run_enrich() -> int:
 
 
 def _run_gpu_torch() -> int:
-    if not shutil.which("bash"):
+    bash = programs.resolve_program("bash")
+    if not bash:
         print(
             "gpu-torch needs bash. Reinstall by hand from "
             "https://pytorch.org/get-started/locally/.",
@@ -161,7 +163,7 @@ def _run_gpu_torch() -> int:
         "CHITRAGUPTA_PIP": str(bin_dir / "pip"),
         "CHITRAGUPTA_PYTHON": str(bin_dir / "python"),
     }
-    command = ["bash", str(SCRIPT), "gpu-torch"]
+    command = [bash, str(SCRIPT), "gpu-torch"]
     return subprocess.run(command, check=False, env=env).returncode
 
 

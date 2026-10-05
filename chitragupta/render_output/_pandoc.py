@@ -9,13 +9,12 @@ stay identical to the single module it replaced.
 
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, programs
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
@@ -354,9 +353,10 @@ def _require_pdf_toolchain() -> None:
     `kpsewhich` to ask.
     """
     _require(PDF_ENGINE)
-    if shutil.which("kpsewhich") is None:
+    kpsewhich = programs.resolve_program("kpsewhich")
+    if kpsewhich is None:
         return
-    probe = subprocess.run(["kpsewhich", "luaotfload.sty"], capture_output=True, check=False)
+    probe = subprocess.run([kpsewhich, "luaotfload.sty"], capture_output=True, check=False)
     if probe.returncode != 0:
         raise MissingBinary(
             "pdf rendering runs LuaLaTeX, but its font loader (luaotfload.sty) is "
@@ -400,7 +400,15 @@ def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     raises on a nonzero exit; that exception already carries its own
     stderr, so this is only for the case a raise never reaches.
     """
-    result = subprocess.run(cmd, check=True, capture_output=True, text=True, env=env)
+    # Both programs by absolute path (#974): pandoc, and the engine it
+    # spawns by whatever name `--pdf-engine` gives, which on Windows is
+    # looked up in cwd before PATH. Resolved here rather than where `cmd`
+    # is built, which the tests do on hosts with no TeX at all.
+    argv = [programs.require_program(cmd[0]), *cmd[1:]]
+    if "--pdf-engine" in argv:
+        engine = argv.index("--pdf-engine") + 1
+        argv[engine] = programs.require_program(argv[engine])
+    result = subprocess.run(argv, check=True, capture_output=True, text=True, env=env)
     if result.stderr.strip():
         for line in result.stderr.splitlines():
             print(f"[pandoc] {line}", file=sys.stderr)

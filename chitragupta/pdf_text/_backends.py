@@ -12,7 +12,7 @@ for its own submodules.
 import subprocess
 from pathlib import Path
 
-from chitragupta import config, passages
+from chitragupta import config, passages, programs
 from chitragupta._atomic_write import write_atomically
 from chitragupta.pdf_text import ExtractionError, write_failed
 from chitragupta.pdf_text._converter import _docling_converter, check_docling_status
@@ -51,7 +51,7 @@ def _extract_pdftotext(pdf_path: str, out_path: Path, threads: int | None = None
     # cannot read, so `_write_parsed` writes it instead (#894).
     try:
         completed = subprocess.run(
-            ["pdftotext", "-layout", pdf_path, "-"],
+            [programs.require_program("pdftotext"), "-layout", pdf_path, "-"],
             check=True,
             capture_output=True,
             # The one backend where a hang can genuinely be stopped:

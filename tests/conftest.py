@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 
-from chitragupta import config, ledger
+from chitragupta import config, ledger, programs
 from tests import content_guard
 
 
@@ -601,6 +601,19 @@ def system_python():
         if probe.returncode != 0:
             return candidate
     pytest.skip("no system python3 without bibtexparser found on this host")
+
+
+@pytest.fixture
+def programs_on_path(monkeypatch):
+    """Every program the package resolves is found, at a stand-in path.
+
+    For a test that fakes the launch itself: since #974 the package
+    resolves a program before launching it, so a faked `subprocess.run`
+    is never reached on a host without that program, which CI's Windows
+    leg is for the whole toolchain. Nothing exists at the path; the
+    launch must still be faked.
+    """
+    monkeypatch.setattr(programs, "resolve_program", lambda name: f"/usr/bin/{name}")
 
 
 # --- Rendering: binary probes and figure fixtures -------------------------

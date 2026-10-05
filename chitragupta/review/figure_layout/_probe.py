@@ -33,6 +33,7 @@ from subprocess import run as _run
 import tempfile
 from pathlib import Path
 
+from chitragupta import programs
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
@@ -201,7 +202,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
         result = _run(
             [
-                "pdflatex",
+                programs.require_program("pdflatex"),
                 "-no-shell-escape",
                 "-interaction=nonstopmode",
                 "-halt-on-error",

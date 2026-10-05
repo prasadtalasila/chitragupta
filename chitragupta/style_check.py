@@ -47,7 +47,6 @@ running this over a real 178,000-word book rather than chosen up front:
 """
 
 import json
-import shutil
 
 # `_run` is the one patch point for this module's external launches
 # (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
@@ -58,7 +57,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, dossier
+from chitragupta import config, dossier, programs
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, PYTHON_CHECKS, _ALL_DIALECT_RULES, with_repair
 
@@ -140,9 +139,9 @@ def rule_filter(language: str | None) -> str:
     return " and ".join(f'.Name != "{rule}"' for rule in excluded)
 
 
-def _vale_argv(draft: Path, language: str | None) -> list[str]:
+def _vale_argv(vale: str, draft: Path, language: str | None) -> list[str]:
     return [
-        "vale",
+        vale,
         f"--config={config.VALE_CONFIG_PATH}",
         "--output=JSON",
         "--no-exit",  # findings are not this command's exit code; see the docstring
@@ -160,7 +159,8 @@ def _vale_argv(draft: Path, language: str | None) -> list[str]:
 
 def run_vale(draft: Path, language: str | None) -> list[dict]:
     """Vale's findings for `draft`, flattened out of its per-file JSON."""
-    if shutil.which("vale") is None:
+    vale = programs.resolve_program("vale")
+    if vale is None:
         raise MissingBinary(
             "vale is not on PATH, so no prose check ran. Install it with "
             "`bash scripts/install_full_pipeline.sh os-deps`, or see "
@@ -168,7 +168,7 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
             "unaffected -- this check is advisory."
         )
     result = _run(
-        _vale_argv(draft, language),
+        _vale_argv(vale, draft, language),
         capture_output=True,
         text=True,
         check=False,

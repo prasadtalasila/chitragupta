@@ -39,15 +39,15 @@ class TestRefusals:
 
 class TestOsDeps:
     def test_runs_the_shipped_script_with_the_os_deps_stage(self, monkeypatch):
-        monkeypatch.setattr(install.shutil, "which", lambda b: f"/usr/bin/{b}")
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
         recorded = RecordedRun(returncode=0)
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["os-deps"]) == 0
         ((command, _kwargs),) = recorded.calls
-        assert command == ["bash", str(install.SCRIPT), "os-deps"]
+        assert command == ["/usr/bin/bash", str(install.SCRIPT), "os-deps"]
 
     def test_states_what_it_will_run_before_running_it(self, monkeypatch, capsys):
-        monkeypatch.setattr(install.shutil, "which", lambda b: f"/usr/bin/{b}")
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
         monkeypatch.setattr(install.subprocess, "run", RecordedRun())
         install.main(["os-deps"])
         out = capsys.readouterr().out
@@ -55,7 +55,7 @@ class TestOsDeps:
         assert "os-deps" in out
 
     def test_refuses_on_a_host_without_apt_get(self, monkeypatch, capsys):
-        monkeypatch.setattr(install.shutil, "which", lambda b: None)
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: None)
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["os-deps"]) == 1
@@ -63,7 +63,7 @@ class TestOsDeps:
         assert recorded.calls == []
 
     def test_propagates_the_script_s_exit_code(self, monkeypatch):
-        monkeypatch.setattr(install.shutil, "which", lambda b: f"/usr/bin/{b}")
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
         monkeypatch.setattr(install.subprocess, "run", RecordedRun(returncode=1))
         assert install.main(["os-deps"]) == 1
 
@@ -126,13 +126,13 @@ class TestGpuTorch:
         # path, which a literal "/opt/..." assertion on the other side
         # can never match -- caught on the Windows CI leg.
         fake_python = tmp_path / "some-venv" / "bin" / "python"
-        monkeypatch.setattr(install.shutil, "which", lambda b: "/usr/bin/bash")
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: "/usr/bin/bash")
         monkeypatch.setattr(install.sys, "executable", str(fake_python))
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 0
         ((command, kwargs),) = recorded.calls
-        assert command == ["bash", str(install.SCRIPT), "gpu-torch"]
+        assert command == ["/usr/bin/bash", str(install.SCRIPT), "gpu-torch"]
         bin_dir = fake_python.parent
         assert kwargs["env"]["CHITRAGUPTA_PIP"] == str(bin_dir / "pip")
         assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
@@ -151,7 +151,7 @@ class TestGpuTorch:
         venv_python = tmp_path / "some-venv" / "bin" / "python"
         venv_python.parent.mkdir(parents=True)
         venv_python.symlink_to(base_python)
-        monkeypatch.setattr(install.shutil, "which", lambda b: "/usr/bin/bash")
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: "/usr/bin/bash")
         monkeypatch.setattr(install.sys, "executable", str(venv_python))
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
@@ -162,7 +162,7 @@ class TestGpuTorch:
         assert kwargs["env"]["CHITRAGUPTA_PYTHON"] == str(bin_dir / "python")
 
     def test_refuses_without_bash(self, monkeypatch, capsys):
-        monkeypatch.setattr(install.shutil, "which", lambda b: None)
+        monkeypatch.setattr(install.programs, "resolve_program", lambda b: None)
         recorded = RecordedRun()
         monkeypatch.setattr(install.subprocess, "run", recorded)
         assert install.main(["gpu-torch"]) == 1

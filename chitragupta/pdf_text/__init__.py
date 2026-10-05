@@ -32,10 +32,9 @@ exactly as it did when this was one file.
 
 import importlib.util
 import re
-import shutil
 from pathlib import Path
 
-from chitragupta import config, passages
+from chitragupta import config, passages, programs
 
 
 class BackendUnavailable(RuntimeError):
@@ -98,7 +97,7 @@ def unavailable_reason() -> str:
 
 def is_available() -> bool:
     if config.PARSER == "pdftotext":
-        return shutil.which("pdftotext") is not None
+        return programs.resolve_program("pdftotext") is not None
     return importlib.util.find_spec(config.PARSER) is not None
 
 

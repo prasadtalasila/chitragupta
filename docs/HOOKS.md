@@ -203,7 +203,7 @@ It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
 | --- | --- | --- |
-| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct resolved launcher **whose bare name (no path separators) names a Python interpreter** | fault |
+| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct launcher **whose bare name (no path separators) names a Python interpreter**, run by the absolute path `chitragupta/programs.py` resolves from `PATH`'s absolute entries | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
@@ -248,8 +248,15 @@ checks are corpus-independent by construction:
   attacker's binary, which `shutil.which` accepts as-is), and the probe
   would execute it with the user's
   privileges. A bare name resolves against `PATH`, the user's own
-  environment, which the walked-to directory cannot rewrite. A
-  path-qualified launcher keeps the existence check and silently forgoes
+  environment, which the walked-to directory cannot rewrite, but only
+  if the lookup reads nothing else. A plain one does: on Windows
+  `shutil.which` and `CreateProcess` both search the current directory
+  before `PATH`, and on any host a relative or empty `PATH` entry is the
+  current directory by another name, so a cloned project holding
+  `python.exe` was what the probe ran (#974). The probe therefore
+  resolves the name with `chitragupta/programs.py`, which searches only
+  `PATH`'s absolute entries, and launches the absolute path it returns.
+  A path-qualified launcher keeps the existence check and silently forgoes
   the import probe: reporting less is the accepted price of never
   executing a file merely because a directory this process walked into
   named it.

@@ -24,7 +24,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 from subprocess import run as _run
 from pathlib import Path
 
-from chitragupta import citation_gate, config, ledger_paths
+from chitragupta import citation_gate, config, ledger_paths, programs
 from chitragupta.citekey_safety import citekey_problem
 
 
@@ -139,7 +139,7 @@ def pages(citekey: str) -> list[str]:
         return _parsed_pages(citekey)
     try:  # pragma: no cover-windows
         out = _run(
-            ["pdftotext", "-layout", str(p), "-"],
+            [programs.require_program("pdftotext"), "-layout", str(p), "-"],
             capture_output=True,
             text=True,
             check=True,

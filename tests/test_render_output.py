@@ -31,6 +31,7 @@ from tests.conftest import (
 )
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestRunPandoc:
     """`_run_pandoc` in isolation, via a mocked `subprocess.run` -- no
     real pandoc needed, unlike the rest of this module's tests."""
@@ -76,6 +77,19 @@ class TestRunPandoc:
         monkeypatch.setattr(subprocess, "run", fake_run)
         with pytest.raises(subprocess.CalledProcessError):
             render_output._run_pandoc(["pandoc"], {})
+
+    def test_pandoc_and_its_engine_are_launched_by_absolute_path(self, monkeypatch):
+        """#974: pandoc starts the engine by the name `--pdf-engine`
+        gives, which on Windows is looked up in cwd before PATH."""
+        launched = []
+
+        def fake_run(argv, **kwargs):  # pylint: disable=unused-argument
+            launched.append(argv)
+            return self._fake_completed()
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        render_output._run_pandoc(["pandoc", "in.md", "--pdf-engine", "lualatex"], {})
+        assert launched == [["/usr/bin/pandoc", "in.md", "--pdf-engine", "/usr/bin/lualatex"]]
 
 
 class TestRenderMarkdown:
