@@ -92,10 +92,12 @@ from chitragupta._passage_words import distinctive
 __all__ = [
     "Passage",
     "PASSAGE_LABELS",
+    "SidecarUnreadable",
     "clear_sidecar",
     "corpus_passages",
     "distinctive",
     "passage_records",
+    "read_records",
     "sidecar_path",
     "sidecar_state",
     "source_passages",

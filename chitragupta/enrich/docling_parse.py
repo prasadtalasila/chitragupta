@@ -185,7 +185,8 @@ def _is_cached(doc: CorpusDoc, cache: dict) -> bool:
     it, because parse_corpus needs the answer *before* dispatching work
     to a pool -- a cached document must not be sent to a worker, or the
     run pays a process and a model load to discover there was nothing to
-    do. A stat is nanoseconds next to that.
+    do. A stat, and one JSON read of the passage sidecar
+    (`_outputs_present`, #967), is small next to that.
     """
     try:
         return cache.get(doc.citekey) == _fingerprint(doc) and _outputs_present(doc.citekey)

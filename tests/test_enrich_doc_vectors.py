@@ -41,15 +41,16 @@ class TestSaveEmbedCacheIsAtomic:
     def test_a_write_that_dies_mid_save_leaves_the_previous_cache_intact(
         self, isolated_config, monkeypatch
     ):
-        doc_vectors._save_embed_cache({"a2024": {"hash": "old"}})
+        old = {"a2024": {"hash": "old", "embedding": [1.0]}}
+        doc_vectors._save_embed_cache(old)
 
         def dying_replace(*a, **kw):
             raise OSError("disk full")
 
         monkeypatch.setattr(os, "replace", dying_replace)
         try:
-            doc_vectors._save_embed_cache({"a2024": {"hash": "new"}})
+            doc_vectors._save_embed_cache({"a2024": {"hash": "new", "embedding": [2.0]}})
         except OSError:
             pass
 
-        assert doc_vectors._load_embed_cache() == {"a2024": {"hash": "old"}}
+        assert doc_vectors._load_embed_cache() == old
