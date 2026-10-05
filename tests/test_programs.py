@@ -328,7 +328,10 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(2, "'pdftotext'")]
 
     def test_an_argv_bound_to_a_name_first(self):
-        old = 'def f():\n    command = ["bash", str(SCRIPT), "os-deps"]\n    subprocess.run(command)\n'
+        old = (
+            'def f():\n    command = ["bash", str(SCRIPT), "os-deps"]\n'
+            "    subprocess.run(command)\n"
+        )
         assert bare_launches(old) == [(3, "'bash'")]
 
     def test_an_argv_a_same_module_function_builds(self):
