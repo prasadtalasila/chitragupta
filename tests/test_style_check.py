@@ -124,12 +124,12 @@ class TestRuleFilter:
 
 class TestRunVale:
     def test_missing_binary_is_reported_not_raised_past_the_cli(self, draft, monkeypatch):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: None)
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         with pytest.raises(style_check.MissingBinary, match="advisory"):
             style_check.run_vale(draft, None)
 
     def test_findings_are_flattened_out_of_vales_per_file_payload(self, draft, monkeypatch):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.run_vale(draft, "en-GB")[0]["Match"] == "simply"
 
@@ -138,26 +138,26 @@ class TestRunVale:
         launch, so a test fakes this module's subprocess and nobody
         else's -- patching the global `subprocess.run` reached every
         launch in the process for the duration of the test."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.run_vale(draft, None)[0]["Match"] == "simply"
 
     def test_a_clean_run_produces_no_findings(self, draft, monkeypatch):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({}, stdout=""))
         assert style_check.run_vale(draft, None) == []
 
     def test_unreadable_output_blames_the_config_not_the_draft(self, draft, monkeypatch):
         """A parse failure means the vendored style is broken. Swallowing
         it would report zero findings, which reads as a clean draft."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run(None, stdout="not json"))
         with pytest.raises(style_check.MissingBinary, match="could not read"):
             style_check.run_vale(draft, None)
 
     def test_the_filter_and_config_reach_the_command_line(self, draft):
-        argv = style_check._vale_argv(draft, "en-US")
-        assert argv[0] == "vale"
+        argv = style_check._vale_argv("/usr/bin/vale", draft, "en-US")
+        assert argv[0] == "/usr/bin/vale"
         assert f"--config={config.VALE_CONFIG_PATH}" in argv
         assert any(a.startswith("--filter=") and "DialectGB" in a for a in argv)
         assert "--no-exit" in argv
@@ -167,14 +167,14 @@ class TestRunVale:
         to the *caller's* cwd, not vale's -- so vale must always be handed
         an absolute one, regardless of what the caller passed in (#495)."""
         monkeypatch.chdir(draft.parent)
-        argv = style_check._vale_argv(Path(draft.name), None)
+        argv = style_check._vale_argv("/usr/bin/vale", Path(draft.name), None)
         assert argv[-1] == str(draft.resolve())
 
     def test_a_nonzero_exit_with_empty_stdout_is_reported_not_swallowed(self, draft, monkeypatch):
         """Vale's own errors -- a broken filter, a missing file, a bad
         config -- write to stderr and leave stdout empty. Read as "{}"
         that would report a clean draft vale never actually opened (#495)."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
 
         def _run(argv, **kwargs):  # pylint: disable=unused-argument
             return subprocess.CompletedProcess(argv, 1, stdout="", stderr="Fatal: bad filter")
@@ -189,7 +189,7 @@ class TestRunVale:
         """`--no-exit` is meant to make findings not affect the exit code,
         but if a future vale release breaks that contract this must still
         prefer the findings it did produce over discarding them."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         payload = {str(draft): [finding()]}
 
         def _run(argv, **kwargs):  # pylint: disable=unused-argument
@@ -349,13 +349,13 @@ class TestMain:
         """The single most important assertion in this file. SOUL.md and
         DEVELOPER-AGENTS.md both turn on this check never gating, and a
         non-zero exit is exactly how it would become one."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()] * 3}))
         assert style_check.main([str(draft)]) == 0
         assert "not a gate" in capsys.readouterr().out
 
     def test_it_exits_zero_with_no_findings(self, draft, monkeypatch, capsys):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({}))
         assert style_check.main([str(draft)]) == 0
         assert "no findings" in capsys.readouterr().out
@@ -363,21 +363,21 @@ class TestMain:
     def test_a_missing_binary_warns_and_still_exits_zero(self, draft, monkeypatch, capsys):
         """render_output's bargain: an absent optional tool costs you this
         report and nothing else."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: None)
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         assert style_check.main([str(draft)]) == 0
         assert "WARNING" in capsys.readouterr().out
 
     def test_a_missing_binary_stops_after_the_first_draft(self, draft, monkeypatch, capsys):
         """It will not appear between two drafts, so repeating the same
         warning once per draft is noise."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: None)
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         style_check.main([str(draft), str(draft)])
         assert capsys.readouterr().out.count("WARNING") == 1
 
     def test_an_unreadable_draft_warns_and_still_exits_zero(
         self, isolated_config, monkeypatch, capsys
     ):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
 
         def _raise(*_args, **_kwargs):
             raise OSError("no such file")
@@ -391,7 +391,7 @@ class TestMain:
     ):
         """The hook and docs/AUTO-IMPROVEMENT.md's agenda both read this
         rather than the printed form."""
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({str(draft): [finding()]}))
         assert style_check.main([str(draft), "--json"]) == 0
         payload = json.loads(capsys.readouterr().out)
@@ -401,12 +401,12 @@ class TestMain:
     def test_json_reports_a_missing_binary_as_a_warning_not_an_empty_result(
         self, draft, monkeypatch, capsys
     ):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: None)
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: None)
         style_check.main([str(draft), "--json"])
         assert json.loads(capsys.readouterr().out)["warnings"]
 
     def test_check_returns_the_language_it_used(self, draft, monkeypatch):
-        monkeypatch.setattr(style_check.shutil, "which", lambda _: "/usr/bin/vale")
+        monkeypatch.setattr(style_check.programs, "resolve_program", lambda _: "/usr/bin/vale")
         monkeypatch.setattr(style_check, "_run", fake_run({}))
         write_scope(draft, "- language: en-IN")
         assert style_check.check(draft)["language"] == "en-IN"

@@ -210,6 +210,7 @@ class TestStripImageRefs:
         assert embed_index.strip_image_refs(prose) == prose
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestGetText:
     def test_strips_image_refs_from_docling_output(self, isolated_config):
         isolated_config.DOCLING_DIR.mkdir(parents=True)

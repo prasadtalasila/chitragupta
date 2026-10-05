@@ -7,9 +7,10 @@ is `_worker.py`, which calls `usable_devices` at pool-build time via
 """
 
 import os
-import shutil
 import subprocess
 import sys
+
+from chitragupta import programs
 
 # nvidia-smi normally answers in tens of milliseconds; a driver in a bad
 # state is what makes it hang, and that must not hang a sync that would
@@ -85,7 +86,7 @@ def _gpu_free_mib_nvidia_smi() -> "dict[int, int] | None":
     parent, which must be able to hand a usable CUDA context to a forked
     child, and importing torch here would take that away.
     """
-    smi = shutil.which("nvidia-smi")
+    smi = programs.resolve_program("nvidia-smi")
     if smi is None:
         return None
     try:
@@ -186,7 +187,7 @@ def _gpu_count_nvidia_smi() -> "int | None":
     exists -- a parent that has touched CUDA cannot hand a usable context
     to a forked child. See start_method for what that buys.
     """
-    smi = shutil.which("nvidia-smi")
+    smi = programs.resolve_program("nvidia-smi")
     if smi is None:
         return None
     try:

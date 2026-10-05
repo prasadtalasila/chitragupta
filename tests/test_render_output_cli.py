@@ -604,13 +604,8 @@ class TestRequirePdfToolchain:
 
     def _which(self, monkeypatch, present):
         monkeypatch.setattr(
-            render_output._pandoc.shutil,
-            "which",
-            lambda b: f"/usr/bin/{b}" if b in present else None,
-        )
-        monkeypatch.setattr(
-            render_output._errors.shutil,
-            "which",
+            render_output._pandoc.programs,
+            "resolve_program",
             lambda b: f"/usr/bin/{b}" if b in present else None,
         )
 
@@ -634,7 +629,7 @@ class TestRequirePdfToolchain:
         calls = self._kpsewhich(monkeypatch, 1)
         with pytest.raises(render_output.MissingBinary, match="texlive-luatex"):
             render_output._pandoc._require_pdf_toolchain()
-        assert calls == [["kpsewhich", "luaotfload.sty"]]
+        assert calls == [["/usr/bin/kpsewhich", "luaotfload.sty"]]
 
     def test_a_complete_toolchain_passes(self, monkeypatch):
         self._which(monkeypatch, {"lualatex", "kpsewhich"})

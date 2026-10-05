@@ -30,7 +30,7 @@ from chitragupta import config, passages, pdf_text
 class TestExtractTextPdftotext:
     """Fast, deterministic: doesn't require pdftotext on PATH.
 
-    extract_text() calls is_available() (shutil.which("pdftotext"))
+    extract_text() calls is_available() (programs.resolve_program("pdftotext"))
     before dispatching to _extract_pdftotext, so without stubbing that
     too, every test below would actually depend on the real binary being
     on PATH regardless of the subprocess.run mock -- true on this repo's
@@ -38,8 +38,8 @@ class TestExtractTextPdftotext:
     these tests might run on (PR #11 review)."""
 
     @pytest.fixture(autouse=True)
-    def _pdftotext_present(self, monkeypatch):
-        monkeypatch.setattr(shutil, "which", lambda name: "/usr/bin/pdftotext")
+    def _pdftotext_present(self, programs_on_path):
+        pass
 
     def test_calls_pdftotext_with_layout_flag(self, isolated_config, monkeypatch, tmp_path):
         calls = []
@@ -52,7 +52,7 @@ class TestExtractTextPdftotext:
         monkeypatch.setattr(subprocess, "run", fake_run)
         result = pdf_text.extract_text(str(tmp_path / "in.pdf"), "smith_2024")
 
-        assert calls[0][0] == "pdftotext"
+        assert calls[0][0] == "/usr/bin/pdftotext"
         assert "-layout" in calls[0]
         assert calls[0][-1] == "-"
         assert result == isolated_config.PARSED_DIR / "smith_2024.txt"
@@ -530,6 +530,7 @@ class TestDoclingPageBreaks:
         assert pdf_text.run_together_ratio("alpha beta\fgamma delta") == without
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestCorpusLayerPassageSidecar:
     """The structure Markdown can't carry, written beside the text."""
 

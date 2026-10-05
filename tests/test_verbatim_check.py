@@ -192,6 +192,7 @@ class TestPdfPath:
         assert vc.pdf_path("smith_2024") == pdf
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestPages:
     def test_falls_back_to_parsed_text_when_no_pdf(self, fixture_repo):
         config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")

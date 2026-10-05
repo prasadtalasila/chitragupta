@@ -28,11 +28,10 @@ thing; that is `draft-reviser`'s "touch a figure, touch both forms".
 """
 
 import re
-import shutil
 import subprocess
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, programs
 from chitragupta.citation_gate import _PANDOC_CITE_RE
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._figure_captions import warnings as _caption_warnings
@@ -198,9 +197,10 @@ def _require_tikz() -> None:
     guessing "absent" there would refuse to render on a working TeX
     installation that simply ships its own tooling.
     """
-    if shutil.which("kpsewhich") is None:
+    kpsewhich = programs.resolve_program("kpsewhich")
+    if kpsewhich is None:
         return
-    probe = subprocess.run(["kpsewhich", "tikz.sty"], capture_output=True, check=False)
+    probe = subprocess.run([kpsewhich, "tikz.sty"], capture_output=True, check=False)
     if probe.returncode != 0:
         raise MissingBinary(
             "This draft has a TikZ figure, but tikz.sty is not installed. On "

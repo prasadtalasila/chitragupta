@@ -474,6 +474,7 @@ class TestSidecarRobustness:
         assert found[0].label is None
 
 
+@pytest.mark.usefixtures("programs_on_path")
 class TestPdfFallback:
     def test_parsed_text_without_page_breaks_falls_through_to_the_pdf(
         self, isolated_config, monkeypatch, tmp_path

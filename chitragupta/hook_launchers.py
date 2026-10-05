@@ -33,7 +33,7 @@ launcher can resolve on PATH and still not be able to import the package
 it is supposed to run. `faults()` now probes that too, per distinct
 program named in the settings file.
 
-Standard library only, and it imports no other `chitragupta` module on purpose:
+Standard library only, and it imports no `chitragupta` module but `programs` on purpose:
 `chitragupta.config` raises without a `config.toml`, which would break both
 docs/CLI.md's tier-1 promise and the preflight's ability to run in a fresh
 clone.
@@ -44,6 +44,8 @@ import os
 import shutil
 import subprocess
 from pathlib import Path, PurePath
+
+from chitragupta import programs
 
 # Generous on purpose: this runs once per session, not once per keystroke,
 # and a launcher that is merely slow to start (a cold venv on a networked
@@ -57,7 +59,7 @@ def _project_root() -> Path:
 
     A deliberate second copy of `chitragupta/config.py`'s marker walk, and the
     module docstring above says why it cannot be the first one: this
-    module "imports no other `chitragupta` module on purpose", because
+    module imports no `chitragupta` module that could raise, because
     `chitragupta.config` raises without a `config.toml` and that would break both
     docs/CLI.md's tier-1 promise and the preflight's ability to run in a
     fresh clone. Importing config to find the project would reintroduce
@@ -109,7 +111,7 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
         events = json.loads(Path(settings_path).read_text(encoding="utf-8"))["hooks"]
     except (OSError, ValueError, KeyError, TypeError):
         return []
-    found, programs = [], []
+    found, launchers = [], []
     for entries in _items(events):
         for entry in _items(entries):
             for hook in _items(entry.get("hooks") if isinstance(entry, dict) else None):
@@ -117,11 +119,11 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
                     continue
                 found.extend(_launcher_fault(hook))
                 program = _program_name(hook)
-                if program and program not in programs:
-                    programs.append(program)
+                if program and program not in launchers:
+                    launchers.append(program)
     env = _probe_env(settings_path)
-    for program in programs:
-        if _is_python_interpreter(program) and _is_bare_command(program) and shutil.which(program):
+    for program in launchers:
+        if _is_python_interpreter(program) and _is_bare_command(program):
             fault = _import_fault(program, env)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
@@ -217,6 +219,10 @@ def _is_bare_command(program: str) -> bool:
     both a Windows drive prefix and there being no legitimate bare
     launcher name containing one.
     """
+    # "Resolved against PATH" means `chitragupta.programs`, not a plain
+    # lookup: on Windows `shutil.which` and `CreateProcess` both search cwd
+    # first, so the premise above held only on POSIX, and only for a PATH
+    # with no relative entry, until #974.
     return not any(sep in program for sep in ("/", "\\", ":"))
 
 
@@ -264,15 +270,20 @@ def _probe_env(settings_path: Path) -> dict | None:
 def _import_fault(program: str, env: dict | None = None) -> str | None:
     """Can `program` import the `chitragupta` package? One short subprocess.
 
-    Only called for a program `shutil.which` already resolved, so a
-    missing interpreter is never reported twice. A non-zero exit and a
-    timeout are both faults; an interpreter that cannot be spawned at all
-    (`OSError`, e.g. a resolved-but-not-executable path) is left to the
-    PATH check above rather than reported a second time here.
+    A program that does not resolve is not probed and not reported: the
+    PATH check above already names it, so it is never reported twice. A
+    non-zero exit and a timeout are both faults; an interpreter that
+    cannot be spawned at all (`OSError`, e.g. a resolved-but-not-executable
+    path) is left to that PATH check too.
     """
+    # The absolute path, never the bare name, which `CreateProcess` would
+    # look up in cwd all over again (#974).
+    resolved = programs.resolve_program(program)
+    if resolved is None:
+        return None
     try:
         result = subprocess.run(
-            [program, "-c", "import chitragupta"],
+            [resolved, "-c", "import chitragupta"],
             capture_output=True,
             timeout=IMPORT_PROBE_TIMEOUT,
             check=False,

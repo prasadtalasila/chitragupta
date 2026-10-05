@@ -26,13 +26,15 @@ class FakeDistribution(SimpleNamespace):
 class TestCheckBinaries:
     def test_a_present_binary_is_ok(self, monkeypatch):
         monkeypatch.setattr(
-            doctor.shutil, "which", lambda b: f"/usr/bin/{b}" if b == "pandoc" else None
+            doctor.programs,
+            "resolve_program",
+            lambda b: "/usr/bin/pandoc" if b == "pandoc" else None,
         )
         lines = doctor._check_binaries()
         assert any(line.startswith("[ok] pandoc") for line in lines)
 
     def test_an_absent_binary_is_reported_missing(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: None)
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         lines = doctor._check_binaries()
         assert all("[missing-binary]" in line for line in lines)
         assert len(lines) == len(doctor.BINARIES)
@@ -43,14 +45,14 @@ class TestCheckPdfFonts:
     way LuaLaTeX will look it up."""
 
     def test_no_font_loader_is_one_missing_binary_line(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: None)
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         lines = doctor._check_pdf_fonts()
         assert len(lines) == 1
         assert lines[0].startswith("[missing-binary] luaotfload-tool")
         assert "texlive-luatex" in lines[0]
 
     def test_each_family_is_reported_found_or_missing(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: f"/usr/bin/{b}")
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
         present = {"STIX Two Text", "Noto Serif"}
 
         def fake_run(cmd, **kwargs):
@@ -119,11 +121,11 @@ class TestCheckEnrichExtra:
 
 class TestCheckGpuTorch:
     def test_no_gpu_is_ok(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: None)
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         assert "[ok] no GPU detected" in doctor._check_gpu_torch()
 
     def test_gpu_present_but_torch_missing_is_skipped(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: "/usr/bin/nvidia-smi")
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: "/usr/bin/nvidia-smi")
         real_import = __import__
 
         def fake_import(name, *args, **kwargs):
@@ -135,7 +137,7 @@ class TestCheckGpuTorch:
         assert "[skipped]" in doctor._check_gpu_torch()
 
     def test_gpu_present_and_torch_sees_it_is_ok(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: "/usr/bin/nvidia-smi")
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: "/usr/bin/nvidia-smi")
         fake_torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: True))
         real_import = __import__
 
@@ -146,7 +148,7 @@ class TestCheckGpuTorch:
         assert "[ok] torch sees the GPU" in doctor._check_gpu_torch()
 
     def test_gpu_present_but_torch_cpu_only_names_the_fix(self, monkeypatch):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: "/usr/bin/nvidia-smi")
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: "/usr/bin/nvidia-smi")
         fake_torch = SimpleNamespace(cuda=SimpleNamespace(is_available=lambda: False))
         real_import = __import__
 
@@ -202,7 +204,7 @@ class TestCompetingDistribution:
 
 class TestMain:
     def test_exits_zero_regardless_of_findings(self, monkeypatch, capsys):
-        monkeypatch.setattr(doctor.shutil, "which", lambda b: None)
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
         monkeypatch.setattr(doctor.importlib.util, "find_spec", lambda name: None)
         monkeypatch.setattr(importlib.metadata, "distributions", lambda: [])
         assert doctor.main([]) == 0

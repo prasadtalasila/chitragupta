@@ -54,12 +54,11 @@ import argparse
 import importlib.metadata
 import importlib.util
 import json
-import shutil
 import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import launcher_configs, pdf_fonts
+from chitragupta import launcher_configs, pdf_fonts, programs
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -78,7 +77,7 @@ CONSOLE_SCRIPTS = ("chitragupta", "cg")
 def _check_binaries() -> list[str]:
     found = []
     for binary in BINARIES:
-        path = shutil.which(binary)
+        path = programs.resolve_program(binary)
         if path:
             found.append(f"[ok] {binary} found: {path}")
         else:
@@ -127,7 +126,7 @@ def _check_enrich_extra() -> str:
 
 
 def _check_gpu_torch() -> str:
-    if not shutil.which("nvidia-smi"):
+    if not programs.resolve_program("nvidia-smi"):
         return "[ok] no GPU detected (nvidia-smi absent) -- the default CPU wheel is correct"
     try:
         import torch  # pylint: disable=import-outside-toplevel
@@ -212,7 +211,8 @@ def _check_opencode_skills(root: Path) -> list[str]:
 
 def _check_pdf_fonts() -> list[str]:
     """One line per font family a pdf render names (#996)."""
-    if shutil.which("luaotfload-tool") is None:
+    luaotfload = programs.resolve_program("luaotfload-tool")
+    if luaotfload is None:
         return [
             "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
             "loader (texlive-luatex) is not installed, so no pdf renders; "
@@ -221,7 +221,7 @@ def _check_pdf_fonts() -> list[str]:
     lines = []
     for name in pdf_fonts.all_families():
         probe = subprocess.run(
-            ["luaotfload-tool", f"--find={name}"], capture_output=True, text=True, check=False
+            [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
         )
         # Its exit status is 0 whether or not the font exists (measured,
         # luaotfload 3.26); only the message tells them apart.

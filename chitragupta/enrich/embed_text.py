@@ -19,7 +19,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from chitragupta import config
+from chitragupta import config, programs
 from chitragupta.enrich.corpus import CorpusDoc
 
 
@@ -78,7 +78,7 @@ def get_text(doc: CorpusDoc) -> str | None:
         os.close(fd)
         try:
             subprocess.run(
-                ["pdftotext", "-layout", doc.pdf_path, tmp_name],
+                [programs.require_program("pdftotext"), "-layout", doc.pdf_path, tmp_name],
                 check=True,
                 capture_output=True,
                 # The sync backend's bound (#824): one PDF that hangs

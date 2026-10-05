@@ -163,6 +163,27 @@ in the called executable, a malicious executable earlier on `PATH`, or
 dangerous content interpreted by the toolchain. The PDF and rendering
 sections of [CLI.md](CLI.md) identify which commands require local tools.
 
+Every program that `chitragupta/` and `.claude/hooks/` launch is run by
+absolute path, resolved by `chitragupta/programs.py` from the absolute
+entries of `PATH` and nothing else (#974). A bare name handed to
+`subprocess.run` would leave the lookup to the OS, and on Windows
+`CreateProcess` searches the current directory before `PATH`, as
+`shutil.which` does there too. On any host a relative or empty `PATH`
+entry is the current directory under another name. The current
+directory is often a cloned or shared project, so a `pdftotext.exe` or
+`python.exe` planted in it would otherwise run with the user's
+privileges. The same applies to the TeX engine Pandoc starts, whose
+`--pdf-engine` is passed as an absolute path; what Pandoc or TeX start
+in turn (`rsvg-convert` for an SVG figure, say) is their own lookup and
+outside this. On Windows a name gets `.exe`, as `CreateProcess` would
+give it, so a `.bat` or `.cmd` earlier on `PATH` is never chosen: a
+batch file runs through cmd.exe, which re-parses its arguments. An
+absolute `PATH` entry
+inside the project, such as an activated `.venv/bin`, is still
+searched: that entry is the operator's choice, not the directory's.
+`tests/test_bare_launch_scan.py` scans every launch in both directories and
+fails on one whose program is not resolved this way.
+
 Every TeX engine this codebase starts (LuaLaTeX for a `pdf` render
 through Pandoc, pdflatex for the figure-layout aid's probe) runs with
 `-no-shell-escape` and with kpathsea's `openin_any=p`. The first turns

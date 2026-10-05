@@ -1,6 +1,13 @@
 """Notice that the draft moved (#454, FEATURE-ROADMAP.md's E3): a text
-fingerprint for the draft, beside `scope.md`'s corpus one, plus the four
-staleness classes a changed fingerprint can mean.
+fingerprint for the draft, beside `scope.md`'s corpus one, plus the five
+staleness classes a changed fingerprint can mean: a citekey cited with no
+`evidence.md` block, an `evidence.md` block no longer cited, a heading
+with no `sections.md` row, a `sections.md` row with no heading, and a
+`math.md` row whose span is gone from the draft.
+
+Headings are compared as a set of titles, so a section moved without
+being renamed is no finding: `sections.md` is keyed by title, and its
+row order carries nothing a later revision reads.
 
 `scope.md`'s corpus line already answers "has the corpus moved since
 this draft was written?" (`dossier.recorded_corpus`). Nothing answered
@@ -25,7 +32,7 @@ stamp reads as a human edit on the next `status`, which is the right
 direction to fail: a false "you edited this" costs one confirmation; a
 missed stamp would silently corrupt every later drift check.
 
-**Why the four classes are gated on `changed`.** Computed unconditionally
+**Why the five classes are gated on `changed`.** Computed unconditionally
 they would fire on nearly any real dossier -- a legacy one predates
 `sections.md` matching every heading, and a hand-edited `evidence.md`
 routinely lags a draft by one citation. A permanent wall of findings on
@@ -112,7 +119,7 @@ def stamp(draft: Path) -> Path:
 class Staleness:
     """What moved in a draft since its dossier's last `stamp`.
 
-    The four list fields stay empty until `changed` is true -- see the
+    The five list fields stay empty until `changed` is true -- see the
     module docstring for why an unconditional scan would drown `status`
     in findings on almost any real dossier.
     """

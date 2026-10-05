@@ -5,9 +5,7 @@ module here can raise them without importing the package root, which
 imports `render()`, which imports everything else.
 """
 
-import shutil
-
-from chitragupta import config
+from chitragupta import config, programs
 
 
 class MissingBinary(RuntimeError):
@@ -25,7 +23,7 @@ OutsideContentDir = config.OutsideContentDir
 
 
 def _require(binary: str) -> None:
-    if shutil.which(binary) is None:
+    if programs.resolve_program(binary) is None:
         raise MissingBinary(
             f"'{binary}' is not on PATH. This stage needs Pandoc + TeX Live, "
             "which need root to install (apt) and aren't available here. "
