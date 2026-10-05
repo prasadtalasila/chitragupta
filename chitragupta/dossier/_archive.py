@@ -183,7 +183,7 @@ def _checked_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
     extracted backup is worse than none, because it looks like it worked.
     `extractall(filter="data")` below repeats the traversal checks -- this
     is not redundant, it is the layer that can say *which* member was
-    wrong and that only the three directories this module owns are
+    wrong and that only the four directories this module owns are
     writable.
     """
     checked: list[tarfile.TarInfo] = []

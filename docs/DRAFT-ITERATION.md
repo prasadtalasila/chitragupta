@@ -566,6 +566,9 @@ citation gate cannot verify anything until `sync` has run. That is the
 correct failure: a gate that refuses to confirm a citekey it cannot see
 is better than one that passes because there is nothing to check against.
 
+[MIGRATION.md](MIGRATION.md) covers what a bundle leaves out, how to
+take a full backup, and how to move a project to another computer.
+
 ## 🚫 What this deliberately does not do
 
 **It is not a gate and it takes no lock.** Nothing in `chitragupta/dossier/`

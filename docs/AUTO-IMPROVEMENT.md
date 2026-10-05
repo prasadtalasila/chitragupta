@@ -348,10 +348,10 @@ accepted items are reported in their own `accepted` group and not as
 `resolved`: an item absent by suppression was not repaired, and reporting
 it as fixed is the silent wrong answer that mode exists to prevent.
 
-This has two consequences. The record lives under `content/review/`,
-which `chitragupta draft dossier export`/`restore` does not bundle, so
-unlike `rejected.md` it does not survive that round-trip. The cost of
-losing one is a re-judgement, never a hidden finding. And an unreadable
+This has two consequences. The record is a `.json` file under
+`content/review/`, which `chitragupta draft dossier export` bundles, so
+it survives an export and restore like `rejected.md` does. Lose it some
+other way and the cost is a re-judgement, never a hidden finding. And an unreadable
 record suppresses nothing: every accepted item returns to the worklist,
 and the report's header says why.
 

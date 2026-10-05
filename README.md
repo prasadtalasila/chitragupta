@@ -367,6 +367,7 @@ one-screen router for that.
 | [docs/FEATURES.md](docs/FEATURES.md) | What can it do for me? The whole capability surface in one place, written for someone deciding whether it fits: from getting a library in, through topic discovery, drafting and review, to what it deliberately does not do |
 | [docs/DEMO.md](docs/DEMO.md) | What does running it look like? A short recorded pass through the spine, as video and GIF, made against the committed sample project |
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Read it once and every other document gets easier |
+| [docs/MIGRATION.md](docs/MIGRATION.md) | How do I back up my drafts, restore them, or move a project to another directory, another computer or a container without parsing my library again? |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the nine skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
