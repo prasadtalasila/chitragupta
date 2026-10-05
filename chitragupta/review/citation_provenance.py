@@ -138,7 +138,7 @@ def build_report(draft_path: Path) -> Report:
     report = Report(draft=Path(draft_path))
     with ledger.reading() as con:
         cache: dict[str, list[Passage]] = {}
-        for line_no, citekey, claim in claims(text, latex=draft_path.suffix.lower() == ".tex"):
+        for line_no, citekey, claim in claims(text, latex=citation_gate.is_latex(draft_path)):
             if citekey not in cache:
                 passages, reason = source_passages(con, citekey)
                 cache[citekey] = passages

@@ -47,7 +47,7 @@ from chitragupta import spec, unit
 # public name belongs in its own PR, not this one.
 from chitragupta.acronyms import _REFERENCES_HEADING
 from chitragupta.dossier._citekeys import _GLOSSARY_TERM
-from chitragupta.citation_gate import extract_citekeys
+from chitragupta.citation_gate import extract_citekeys_from_line, is_latex
 from chitragupta.sentences import split as split_sentences
 
 # `[text](#some-id)` -- the Markdown cross-reference. Anchored on the
@@ -108,8 +108,12 @@ def _prose(text: str) -> str:
     return "\n".join(line for line in body.splitlines() if not _GLOSSARY_TERM.match(line))
 
 
-def claims(text: str) -> list[tuple[str, list[str]]]:
+def claims(text: str, *, latex: bool = False) -> list[tuple[str, list[str]]]:
     """`(sentence, citekeys)` for every sentence in `text` that cites.
+
+    `latex` is the unit's own flag (`citation_gate.is_latex`): read with
+    Markdown's backtick rule, a `.tex` unit's `\\citep{}` between two
+    `quoted' phrases dropped out of the register (#957).
 
     Split per paragraph rather than over the whole unit, so a sentence
     cannot run across a blank line and swallow the heading or bullet
@@ -119,7 +123,7 @@ def claims(text: str) -> list[tuple[str, list[str]]]:
     found = []
     for paragraph in re.split(r"\n\s*\n", _prose(text)):
         for sentence in split_sentences(paragraph):
-            citekeys = [key for _, key in extract_citekeys(sentence)]
+            citekeys = extract_citekeys_from_line(sentence, latex=latex)
             if citekeys:
                 found.append((" ".join(sentence.split()), citekeys))
     return found
@@ -151,12 +155,13 @@ def labels(text: str) -> set[str]:
 
 def _read_unit(book, unit_id: str, built: dict, anchors: set[str]) -> None:
     """Fold one accepted unit into the registries being built."""
-    text = unit.draft_path(book, unit_id).read_text(encoding="utf-8")
+    path = unit.draft_path(book, unit_id)
+    text = path.read_text(encoding="utf-8")
     for term, kind, definition in definitions(text):
         built["terms"].append(
             {"term": term, "kind": kind, "unit": unit_id, "definition": definition}
         )
-    for claim, citekeys in claims(text):
+    for claim, citekeys in claims(text, latex=is_latex(path)):
         built["claims"].append({"claim": claim, "unit": unit_id, "citekeys": citekeys})
     for target in references(text):
         built["xrefs"].append({"from": unit_id, "target": target})

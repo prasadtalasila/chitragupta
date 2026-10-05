@@ -139,12 +139,7 @@ def _cmd_accept(args) -> int:
     # Same LaTeX-aware blanking the gate itself just applied to this
     # draft -- recording with the Markdown rules would drop a citation
     # sitting between two LaTeX-quoted phrases from the permanent record.
-    citekeys = sorted(
-        {
-            key
-            for _, key in citation_gate.extract_citekeys(text, latex=draft.suffix.lower() == ".tex")
-        }
-    )
+    citekeys = sorted({key for _, key in citation_gate.extract_citekeys_for(draft, text)})
     path = record_path(args.book, args.unit)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(record_text(built, text, citekeys), encoding="utf-8")

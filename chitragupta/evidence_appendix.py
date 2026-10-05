@@ -59,7 +59,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import config, ledger, reference_entries, references
+from chitragupta import citation_gate, config, ledger, reference_entries, references
 from chitragupta.dossier import citekeys_by_section, dossier_dir
 from chitragupta.dossier._citekeys import evidence_blocks
 from chitragupta.dossier._evidence_check import fields
@@ -196,7 +196,7 @@ def write(draft: Path, out_dir: Path, draft_text: str | None = None) -> Path | N
         draft_text = draft.read_text(encoding="utf-8")
     # Checked before the ledger is opened, so a draft with nothing quoted
     # has no sidecar -- and needs no ledger -- rather than a refusal.
-    latex = draft.suffix.lower() == ".tex"
+    latex = citation_gate.is_latex(draft)
     if not quoted_spans(draft_text, dossier_dir(draft), latex=latex):
         return None
     with ledger.reading() as con:

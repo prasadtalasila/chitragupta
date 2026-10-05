@@ -632,10 +632,13 @@ the lesson design is the part worth keeping either way.
 
     Fix and re-run until `OK` before presenting. If there are no citations at
     all, the gate step is unnecessary -- just save the file.
-    Note: the gate blanks fenced code, inline code spans and LaTeX verbatim
-    environments before extracting citekeys, so `@dataclass`, `@property` and
-    similar tokens in your worked code are not false positives. Don't mangle
-    real teaching code to appease it.
+    Note: the gate blanks what pandoc does not render as prose -- fenced and
+    indented code (code indented under a numbered step included), inline
+    code spans, HTML comments and LaTeX verbatim environments -- before
+    extracting citekeys, so `@dataclass`, `@property` and similar tokens in
+    your worked code are not false positives. Don't mangle real teaching
+    code to appease it. Close every fence you open: pandoc reads an
+    unclosed one as prose, and so does the gate.
 
 14. **Build the References section**, only if the draft cites anything:
 

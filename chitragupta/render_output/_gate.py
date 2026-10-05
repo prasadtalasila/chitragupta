@@ -33,8 +33,7 @@ def gated_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]"
     ledger raises `ledger.NoLedger`, whose message says to run `sync`:
     more use to the reader than a list of every key as unknown.
     """
-    latex = input_path.suffix.lower() == ".tex"
-    if citation_gate.extract_citekeys(draft_text, latex=latex):
+    if citation_gate.extract_citekeys_for(input_path, draft_text):
         with ledger.reading() as con:
             known = ledger.known_citekeys(con)
         result = citation_gate.check_text(input_path, draft_text, known)

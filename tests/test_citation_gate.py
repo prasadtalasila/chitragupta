@@ -376,11 +376,28 @@ class TestCodeAndVerbatimExclusion:
         text = "    ```\nGrounded claim [@smith2024].\n"
         assert citation_gate.extract_citekeys(text) == [(2, "smith2024")]
 
-    def test_unclosed_fence_blanks_to_end_of_document(self):
-        # CommonMark runs an unclosed fence to the end of the document; an
-        # @-token after one is still code, not a citation.
-        text = "```python\n@dataclass\nclass Foo: pass\n"
-        assert citation_gate.extract_citekeys(text) == []
+    def test_an_unclosed_fence_is_prose_as_pandoc_reads_it(self):
+        # Pandoc's markdown reads an unclosed fence as a paragraph, so
+        # `@dataclass` there renders as a citation (#945). Blanking to the
+        # end of the document, as CommonMark would, hid every later
+        # citation -- a fabricated one included -- from the gate.
+        text = "```python\n@dataclass\nclass Foo: pass\n\nSee [@fabricated_2026].\n"
+        assert citation_gate.extract_citekeys(text) == [(2, "dataclass"), (5, "fabricated_2026")]
+
+
+class TestFragments:
+    """A caller holding part of a document has lost its containers."""
+
+    def test_a_fragment_indented_under_its_lost_list_item_still_cites(self):
+        # Whole-document, this line is a paragraph inside a list item;
+        # alone, its indent would read as indented code.
+        assert citation_gate.extract_citekeys_from_line("    continued [@smith2024]") == [
+            "smith2024"
+        ]
+
+    def test_a_fragment_keeps_latex_rules_when_asked(self):
+        line = "The `twin' view \\citep{smith2024} is `neat'."
+        assert citation_gate.extract_citekeys_from_line(line, latex=True) == ["smith2024"]
 
 
 class TestLatexBlanking:

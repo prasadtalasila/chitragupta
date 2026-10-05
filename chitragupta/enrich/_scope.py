@@ -90,10 +90,7 @@ def draft_citekeys(path: Path) -> set[str]:
     caller wants the papers, not the citations.
     """
     return {
-        key
-        for _, key in citation_gate.extract_citekeys(
-            path.read_text(encoding="utf-8"), latex=path.suffix.lower() == ".tex"
-        )
+        key for _, key in citation_gate.extract_citekeys_for(path, path.read_text(encoding="utf-8"))
     }
 
 

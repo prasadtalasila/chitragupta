@@ -341,7 +341,7 @@ def _sections_citekeys(draft: Path, text: str, write: bool) -> int:
     table to build and a caller that piped this somewhere should hear
     about it rather than write an empty file.
     """
-    latex = draft.suffix.lower() == ".tex"
+    latex = citation_gate.is_latex(draft)
     per_section, unattributed = attribute_citekeys(text, latex=latex)
     if not per_section:
         print(f"No headings in {draft_relpath(draft)}.", file=sys.stderr)
