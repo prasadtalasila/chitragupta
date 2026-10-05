@@ -19,6 +19,11 @@ from typing import Any
 from chitragupta import config
 
 
+class EntailmentUnavailable(RuntimeError):
+    """The entailment model would not load (#977); its message is the
+    reason `review support` prints when it reports "not run"."""
+
+
 class EntailmentLabelError(RuntimeError):
     """A configured NLI checkpoint whose `id2label` names no entailment
     label, so there is no column to read a probability out of."""
@@ -105,7 +110,22 @@ class Entailer:
         if self._model is None:
             from sentence_transformers import CrossEncoder
 
-            self._model = CrossEncoder(config.ENTAILMENT_MODEL)
+            # Still loaded here, at first use, and not by open_entailer:
+            # a draft with nothing to score pays nothing. A checkpoint
+            # that will not load -- no cache and no network is the usual
+            # host -- is raised as EntailmentUnavailable, so the aid can
+            # report "not run" rather than a traceback mid-report (#977).
+            # Broad on purpose, and re-raised rather than swallowed:
+            # sentence-transformers raises anything from OSError to a
+            # huggingface_hub error for a model it cannot load.
+            try:
+                self._model = CrossEncoder(config.ENTAILMENT_MODEL)
+            except Exception as exc:
+                first_line = str(exc).partition("\n")[0] or type(exc).__name__
+                raise EntailmentUnavailable(
+                    f"the entailment model {config.ENTAILMENT_MODEL!r} could not be loaded "
+                    f"({first_line}) -- set [enrich].entailment_model to one that is available"
+                ) from exc
         return self._model
 
     def score(self, pairs: list[tuple[str, str]]) -> list[float]:

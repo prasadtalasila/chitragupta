@@ -73,6 +73,24 @@ def write_failed(path: Path, exc: OSError) -> ExtractionError:
     return error
 
 
+def document_failure(exc: Exception) -> ExtractionError:
+    """An exception no backend promised, as this one document's failure.
+
+    The per-document boundary of #962: a docling or pydantic error on one
+    odd PDF, a `UnicodeEncodeError`, or a bug in `passage_records` used to
+    abort a serial sync mid-batch, and in the pool to discard every
+    collected result. Deterministic, as a backend failure is: the same
+    PDF meets the same code next run -- except an `OSError` or a
+    `MemoryError`, which is the machine and is retried, by the rule
+    `write_failed` applies (#842). A string, not the exception, so it
+    pickles back from a pool worker whatever the original was.
+    """
+    error = ExtractionError(f"unexpected {type(exc).__name__}: {exc}")
+    if isinstance(exc, (OSError, MemoryError)):
+        error.transient = True
+    return error
+
+
 _INSTALL_HINT = {
     "pdftotext": (
         "'pdftotext' not found on PATH. Install poppler-utils "
@@ -314,3 +332,5 @@ def extract_one(job: tuple[str, str, int | None]) -> tuple[str, str | None, Exce
         return citekey, str(extract_text(pdf_path, citekey, threads)), None
     except (ExtractionError, BackendUnavailable) as exc:
         return citekey, None, exc
+    except Exception as exc:  # noqa: BLE001 -- the per-document boundary, see document_failure
+        return citekey, None, document_failure(exc)

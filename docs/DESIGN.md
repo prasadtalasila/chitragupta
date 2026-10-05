@@ -241,7 +241,8 @@ Five distinct failure modes, each handled where it can be:
   native code does not honour SIGTERM promptly) and calls `os._exit`,
   skipping the atexit hook that would *join* those workers. This is safe
   only because the ledger commits incrementally, so finished work is
-  already on disk.
+  already on disk: each document's row is written the moment its result
+  lands, on the pool path as on the serial one (#961).
 
 ### ⚖ Partial success is a failure
 

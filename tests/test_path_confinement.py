@@ -400,18 +400,20 @@ class TestBibFileFieldIsConfined:
     def test_the_new_reason_has_a_label_sync_can_print(self):
         assert bib_reader.PDF_OUTSIDE_PAPERS in bib_reader.PDF_RESOLUTION_LABELS
 
-    def test_verbatim_locate_resolves_no_outside_pdf(self, isolated_config, tmp_path, monkeypatch):
-        """`review/verbatim_check/_corpus.py` parses the same `file`
-        field with its own resolver, so it needs the same confinement --
-        otherwise the hole simply moves to `verbatim locate`."""
-        outside = tmp_path / "private.pdf"
+    def test_verbatim_locate_resolves_no_outside_pdf(
+        self, isolated_config, tmp_path_factory, ledger_con
+    ):
+        """`review/verbatim_check/_corpus.py` hands the PDF it finds to
+        `pdftotext`, so it needs the same confinement. It reads the
+        ledger's `pdf_path` since #956 rather than re-parsing the `file`
+        field, so the row is what is planted here: one naming a file
+        outside the bib directory, as a hand-edited ledger could."""
+        outside = tmp_path_factory.mktemp("outside") / "private.pdf"
         outside.write_bytes(b"%PDF-1.4")
-        bib = tmp_path / "papers" / "library.bib"
-        bib.parent.mkdir()
-        bib.write_text(
-            "@article{leaky2024,\n  title = {T},\n"
-            f"  file = {{Private:{outside}:application/pdf}},\n}}\n",
-            encoding="utf-8",
+        ledger_con.execute(
+            "INSERT INTO items (citekey, title, status, pdf_path, last_synced)"
+            " VALUES ('leaky2024', 'T', 'discovered', ?, '2026-01-01')",
+            (str(outside),),
         )
-        monkeypatch.setattr(config, "BIB_FILE_PATH", bib)
+        ledger_con.commit()
         assert verbatim_corpus.pdf_path("leaky2024") is None

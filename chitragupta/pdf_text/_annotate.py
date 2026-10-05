@@ -7,15 +7,57 @@ only `annotated_output`, which `__init__.extract_text` uses.
 """
 
 import contextlib
+import contextvars
 import sys
+import threading
 from collections.abc import Iterator
 from typing import Any
 
-# The citekey this process is parsing right now, or None between
-# documents. One per process, which is exactly right: the serial path
-# parses in the parent and the pool gives each worker its own copy, so
-# there is never more than one document in flight per process.
-_ANNOTATED_CITEKEY = None
+# The citekey the *current thread* is parsing, or None between documents.
+# A context variable rather than a module global (#960): with pdftotext
+# and `[parser].workers > 1` the pool is a ThreadPoolExecutor, so one
+# process has several documents in flight at once, and a global named
+# whichever entered last. Each pool thread runs in its own context, and
+# the main thread, which prints sync's own contract lines, never sets it.
+_ANNOTATED_CITEKEY: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "annotated_citekey", default=None
+)
+
+
+# The wrappers are installed by the first document to open and removed by
+# the last to close, not swapped per document. Swapping per document is
+# what broke under threads: in the order A enters, B enters, A exits,
+# B exits, B restored what it had found on entry, which was A's wrapper,
+# and sync's stdout kept it for the rest of the run.
+class _Installed:
+    """Which documents are open, and the streams the first one found.
+    Written only under `lock`; `open_citekeys` is a tuple, replaced
+    whole, so `sole_citekey` can read it from any thread without one."""
+
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.open_citekeys: tuple[str, ...] = ()
+        self.found_out: Any = None
+        self.found_err: Any = None
+
+    def sole_citekey(self) -> str | None:
+        """The one open document's citekey, for a thread with none of its own.
+
+        A new thread starts with an empty context, so a thread a backend
+        starts itself -- docling runs every pipeline stage, OCR included,
+        in one, and RapidOCR's unattributed complaints are what #154 is
+        for -- cannot see the citekey of the document that started it.
+        With one document open there is only one it can belong to. With
+        several, naming any would be the guess #154 removed, and the main
+        thread is never given one: it prints sync's own contract lines.
+        """
+        open_citekeys = self.open_citekeys
+        if len(open_citekeys) != 1 or threading.current_thread() is threading.main_thread():
+            return None
+        return open_citekeys[0]
+
+
+_INSTALLED = _Installed()
 
 
 class _AnnotatedStream:
@@ -53,7 +95,7 @@ class _AnnotatedStream:
     def write(self, text: str) -> int:
         if not text:
             return 0
-        citekey = _ANNOTATED_CITEKEY
+        citekey = _ANNOTATED_CITEKEY.get() or _INSTALLED.sole_citekey()
         # The return value throughout is the count the *caller* wrote,
         # not the count that reached the underlying stream. A caller
         # checking it is asking "did all my text go?", and the prefix is
@@ -116,17 +158,36 @@ def annotated_output(citekey: str) -> Iterator[None]:
     `sync`'s own stdout -- a documented, diffable contract -- never sees
     a prefix. Restores what it found rather than `sys.__stdout__`, so it
     composes with pytest's capture and with a caller redirecting output.
+    "What it found" is what the first of the open documents found, since
+    the streams are shared by every thread and wrapped only once.
     """
-    global _ANNOTATED_CITEKEY
-    previous_citekey = _ANNOTATED_CITEKEY
-    previous_out, previous_err = sys.stdout, sys.stderr
-    _ANNOTATED_CITEKEY = citekey
-    sys.stdout, sys.stderr = _wrapped(previous_out), _wrapped(previous_err)
+    token = _ANNOTATED_CITEKEY.set(citekey)
+    _open_document(citekey)
     try:
         yield
     finally:
         # Restored on the failing path too: without the `finally`, one
         # unreadable PDF would leave the rest of the run wearing its
         # citekey.
-        sys.stdout, sys.stderr = previous_out, previous_err
-        _ANNOTATED_CITEKEY = previous_citekey
+        _close_document(citekey)
+        _ANNOTATED_CITEKEY.reset(token)
+
+
+def _open_document(citekey: str) -> None:
+    """Count `citekey` open, wrapping the streams if it is the first."""
+    with _INSTALLED.lock:
+        if not _INSTALLED.open_citekeys:
+            _INSTALLED.found_out, _INSTALLED.found_err = sys.stdout, sys.stderr
+            sys.stdout, sys.stderr = _wrapped(sys.stdout), _wrapped(sys.stderr)
+        _INSTALLED.open_citekeys += (citekey,)
+
+
+def _close_document(citekey: str) -> None:
+    """Count `citekey` finished, restoring the streams if it was the last."""
+    with _INSTALLED.lock:
+        remaining = list(_INSTALLED.open_citekeys)
+        remaining.remove(citekey)
+        _INSTALLED.open_citekeys = tuple(remaining)
+        if not remaining:
+            sys.stdout, sys.stderr = _INSTALLED.found_out, _INSTALLED.found_err
+            _INSTALLED.found_out = _INSTALLED.found_err = None

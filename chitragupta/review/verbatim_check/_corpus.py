@@ -1,4 +1,4 @@
-"""Corpus lookup: the citekey -> bib entry -> PDF/parsed-text path chain
+"""Corpus lookup: the citekey -> ledger row -> PDF/parsed-text path chain
 every tier and CLI mode in this package reads from.
 
 Split out of what was one 2357-line chitragupta/review/verbatim_check.py
@@ -6,7 +6,7 @@ Split out of what was one 2357-line chitragupta/review/verbatim_check.py
 here, the package root others import from -- mirroring
 chitragupta/dossier/'s own root submodule.
 
-Both locations are read off `config` at call time (#854). They used to be
+Every location is read off `config` at call time (#854). They used to be
 bound once, as module-level `BIB`/`PARSED_DIR`, which froze whichever
 project was current at first import: a later `config` change -- a
 `CHITRAGUPTA_PROJECT` switch, or `tests/conftest.py`'s `isolated_config`
@@ -24,81 +24,34 @@ from subprocess import CalledProcessError, TimeoutExpired
 from subprocess import run as _run
 from pathlib import Path
 
-from chitragupta import citation_gate, config, ledger_paths, programs
+from chitragupta import citation_gate, config, ledger, ledger_paths, programs
 from chitragupta.citekey_safety import citekey_problem
 
 
-def bib_entry(citekey: str) -> str:
-    bib = config.BIB_FILE_PATH
-    if not bib.exists():
-        # papers/bibliography.bib is gitignored, per-host data (see
-        # AGENTS.md) -- absent on a fresh clone/CI checkout until someone
-        # exports their own. Treat that the same as "citekey not in the
-        # bib file" rather than crashing on a raw FileNotFoundError.
-        return ""
-    text = bib.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"@\w+\{" + re.escape(citekey) + r",", text)
-    if not m:
-        return ""
-    # Brace-match to the entry's real end rather than stopping at the
-    # first "\n}": that sequence occurs *inside* multi-line field values
-    # too (an `annote` holding a URL list is the common case here), which
-    # truncated the entry mid-way and hid every field after it --
-    # including `file`, so 40 papers looked like they had no PDF at all.
-    depth = 0
-    for i in range(text.index("{", m.start()), len(text)):
-        if text[i] == "{":
-            depth += 1
-        elif text[i] == "}":
-            depth -= 1
-            if depth == 0:
-                return text[m.start() : i + 1]
-    return text[m.start() :]  # unbalanced braces: hand back what we have
-
-
 def pdf_path(citekey: str) -> Path | None:
-    """The `file` field's attachment format is `Desc:path:mimetype`,
-    `;`-separated per attachment -- the same shape chitragupta.bib_reader
-    parses, and it must be split the same way here.
+    """The PDF `sync` resolved for `citekey`, read off its ledger row.
 
-    Splitting on ':' and taking the first segment that merely *ends in*
-    `.pdf` picks the human-readable description, not the path: this
-    project's export writes both, as
-    `Smith - 2024 - Title.pdf:pdfs/21/Smith - 2024 - Title.pdf:application/pdf`.
-    Those two coincide only when the attachment sits directly beside the
-    .bib, so the mistake was invisible in a flat fixture directory and
-    silently lost 196 of 501 real PDFs -- `locate`/`overlap` then fell
-    back to parsed text and reported page 1 for everything.
+    Not off the bib file. This used to match `@\\w+\\{key,` and
+    `file = \\{...\\},` with its own regexes, a second bib parser beside
+    `bib_reader`, and missed `@article{ key ,`, an unbraced or last
+    `file` field and every escape the exporters write (#956), so the key
+    fell back to parsed text and `locate` reported page 1 for it.
+    `bib_reader` cannot be called here instead: it needs bibtexparser,
+    and this aid runs on bare python. The ledger row is what `bib_reader`
+    wrote, which is the same answer, the way `passages.lookup` reads it.
+
+    Confined by `ledger_paths.pdf_file` to the bib file's directory, for
+    the reason issue 821 gave: the path is handed to `pdftotext`. No
+    ledger, one that needs a sync to migrate, or no row is no PDF, and
+    `pages` falls back to the parsed text.
     """
-    entry = bib_entry(citekey)
-    m = re.search(r"file = \{(.*?)\},", entry, re.S)
-    if not m:
+    try:
+        with ledger.reading() as con:
+            row = con.execute("SELECT pdf_path FROM items WHERE citekey = ?", (citekey,)).fetchone()
+    except ledger.NoLedger:
         return None
-    # Anchor a relative attachment path to the bib file's own directory,
-    # matching chitragupta.bib_reader._resolve_pdf_path -- not REPO, which is
-    # wrong the moment BIB_FILE points somewhere outside the checked-out
-    # repo (a relative path in the file field is only ever relative to
-    # wherever the .bib itself lives).
-    bib_dir = ledger_paths.pdf_root()
-    for attachment in m.group(1).split(";"):
-        parts = attachment.split(":")
-        if len(parts) < 3:
-            continue
-        if "pdf" not in parts[-1].lower():
-            continue
-        p = Path(":".join(parts[1:-1]).strip())
-        if not p.is_absolute():
-            p = bib_dir / p
-        # Confined the same way `bib_reader._resolve_pdf_path` is, for
-        # the reason the docstring above already gives for splitting the
-        # field the same way: this is a second resolver over the same
-        # untrusted `file` field, so a rule applied only in the other one
-        # does not close the hole, it moves it to `verbatim locate`
-        # (issue 821).
-        confined = config.confined_path(p, bib_dir)
-        if confined is not None and confined.is_file():
-            return confined
-    return None
+    confined = ledger_paths.pdf_file(row[0]) if row else None
+    return confined if confined is not None and confined.is_file() else None
 
 
 def _parsed_pages(citekey: str) -> list[str]:

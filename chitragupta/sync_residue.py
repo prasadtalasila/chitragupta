@@ -89,8 +89,12 @@ def _read_json(path: Path, artefact: str, notes: list[str]) -> dict:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        notes.append(f"{artefact}: {path} could not be read ({exc}), so it was not scanned.")
+        notes.append(_unscanned(artefact, path, exc))
         return {}
+
+
+def _unscanned(artefact: str, path: object, exc: Exception) -> str:
+    return f"{artefact}: {path} could not be read ({exc}), so it was not scanned."
 
 
 def _scan_overlap(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
@@ -211,11 +215,15 @@ def _dossier_files() -> list[Path]:
     return sorted(found)
 
 
-def _scan_dossiers(citekeys: list[str]) -> dict[str, Hit]:
+def _scan_dossiers(citekeys: list[str], notes: list[str]) -> dict[str, Hit]:
     """Mentions in the dossiers of drafts already written."""
-    texts = [
-        (path, path.read_text(encoding="utf-8", errors="replace")) for path in _dossier_files()
-    ]
+    # Noted, not raised, for `_read_json`'s reason (#970).
+    texts = []
+    for path in _dossier_files():
+        try:
+            texts.append((path, path.read_text(encoding="utf-8", errors="replace")))
+        except OSError as exc:
+            notes.append(_unscanned(DOSSIERS, path, exc))
     hits = {}
     for citekey in citekeys:
         pattern = _pattern(citekey)
@@ -229,15 +237,13 @@ def _scan_dossiers(citekeys: list[str]) -> dict[str, Hit]:
 
 def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
     """Chunk vectors, and -- second element -- why they could not be
-    counted when they could not.
-
-    `content/chroma/` is checked for existence *before* the stack is
-    probed, and the collection is read through `overlap_chroma`, which
-    never creates one. A corpus embedded under a different
-    `[embedding].model` lives in a differently named collection and
-    reads as zero here; that is a true statement about the collection
-    this configuration would use, not a miscount.
-    """
+    counted when they could not."""
+    # `content/chroma/` is checked for existence *before* the stack is
+    # probed, and the collection is read through `overlap_chroma`, which
+    # never creates one. A corpus embedded under a different
+    # `[embedding].model` lives in a differently named collection and
+    # reads as zero here; that is a true statement about the collection
+    # this configuration would use, not a miscount.
     if not config.CHROMA_DIR.is_dir():
         return {}, None
     stack = overlap_chroma.optional_stack()
@@ -246,12 +252,16 @@ def _scan_chroma(citekeys: list[str]) -> tuple[dict[str, Hit], "str | None"]:
             f"{CHROMA}: {config.CHROMA_DIR} exists but the enrich group is not "
             f"installed, so vectors were not scanned."
         )
-    collection = overlap_chroma.built_collection(stack[0])
-    if collection is None:
+    try:
+        collection = overlap_chroma.built_collection(stack[0])
+        where = {"citekey": {"$in": sorted(citekeys)}}
+        rows = collection and chroma_paging.all_rows(collection, where=where, include=["metadatas"])
+    # Any chroma or sqlite error, noted for `_read_json`'s reason (#970):
+    # a store a killed enrichment run left half-written is not `sync`'s.
+    except Exception as exc:  # noqa: BLE001 -- see the comment above
+        return {}, _unscanned(CHROMA, config.CHROMA_DIR, exc)
+    if rows is None:
         return {}, None
-    rows = chroma_paging.all_rows(
-        collection, where={"citekey": {"$in": sorted(citekeys)}}, include=["metadatas"]
-    )
     hits = {}
     for citekey in citekeys:
         count = sum(1 for meta in rows["metadatas"] if meta.get("citekey") == citekey)
@@ -274,7 +284,7 @@ def scan(citekeys: list[str]) -> tuple[dict[str, list[Hit]], list[str]]:
         _scan_overlap(citekeys, notes),
         _scan_topic_graph(citekeys, notes),
         _scan_topic_membership(citekeys, notes),
-        _scan_dossiers(citekeys),
+        _scan_dossiers(citekeys, notes),
         chroma,
     ]
     found = {

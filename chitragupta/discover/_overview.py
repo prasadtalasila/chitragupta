@@ -14,7 +14,7 @@ paraphrased.
 from typing import Any
 
 from chitragupta import config, ledger, ledger_paths, sentences
-from chitragupta.discover import _data
+from chitragupta.discover import _data, _resolve
 
 # How many verbatim sentences the overview quotes, and the length band a
 # candidate sentence must fall in -- below it fragments and page furniture
@@ -71,7 +71,8 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
     citekeys: candidates from every member's parsed text, ranked by
     cosine to the topic centroid in the same centred space the graph
     stage stored. `None` -- distinct from "no candidates" -- when the
-    enrich extra is absent, so the caller can say what is missing."""
+    enrich extra is absent or its embedding model will not load (#977),
+    so the caller can say what is missing."""
     from chitragupta.discover import _render  # pylint: disable=import-outside-toplevel
 
     centroid = _render._graph_node(graph, label).get("centroid") or []
@@ -80,9 +81,8 @@ def snippets(members: list, graph: dict, label: str) -> "list | None":
     candidates = _candidate_sentences(_parsed_texts([m["citekey"] for m in members]))
     if not candidates:
         return []
-    try:
-        model = _load_model()
-    except ImportError:
+    model, _note = _resolve.optional_model(_load_model, "snippets")
+    if model is None:
         return None
     vectors = model.encode([sentence for _, sentence in candidates], show_progress_bar=False)
     scored = [
@@ -132,8 +132,8 @@ def build_markdown(data: dict, quoted: "list | None") -> str:
     lines += ["", "## Representative snippets", ""]
     if quoted is None:
         lines.append(
-            "Snippet selection unavailable: the enrich extra is not installed, "
-            "and quoting cannot be ranked without it."
+            "Snippet selection unavailable: the enrich extra is not installed or "
+            "its embedding model would not load, and quoting cannot be ranked without it."
         )
     elif not quoted:
         lines.append("No member paper has parsed text to quote from.")

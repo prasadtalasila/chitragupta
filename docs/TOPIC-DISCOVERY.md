@@ -335,8 +335,10 @@ common scale. That is the shape the precision tier below adds on top of
 this rung: RRF orders the candidates, the cross-encoder rescores the
 fused list.
 
-Without the enrich extra the semantic half is skipped with a one-line
-note and the rung degrades to BM25 alone. Every enrich stage's
+Without the enrich extra, or with an embedding model that will not load
+(no cached checkpoint and no network is the usual host), the semantic
+half is skipped with a one-line note and the rung degrades to BM25
+alone. Every enrich stage's
 self-probe degrades the same way, with a note and never a silent
 substitution. An unresolvable phrase whose fallback also returns
 nothing exits 1 naming the known topics, on **stderr**, like every
@@ -350,9 +352,10 @@ Two additions sit on top of the hybrid rung. Both are enrich-tier and
 both degrade as the semantic rung does: they silently reorder nothing
 and say nothing false:
 
-- **Cross-encoder rescoring.** The fused candidates are rescored by
-  the same cross-encoder the embed index reranks with (one model, one
-  cache, one config key: `[enrich].rerank_model`), over
+- **Cross-encoder rescoring.** With `[enrich].rerank` on, the fused
+  candidates are rescored by the same cross-encoder the embed index
+  reranks with (one model, one cache, one config key:
+  `[enrich].rerank_model`), over
   (phrase, topic-vocabulary) pairs. A cross-encoder reads the query and
   the candidate *jointly*, so it catches term-overlap-without-relevance
   failures a bi-encoder's two separate vectors cannot. This is

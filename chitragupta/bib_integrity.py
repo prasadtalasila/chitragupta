@@ -76,14 +76,49 @@ def count_raw_entries(text: str, kept_types: Collection[str] | None = None) -> i
     `kept_types`, when given, is every (lowercase) entry type the parser
     keeps; a block of any other type is one it ignores by design rather
     than loses, so it is not counted (issue 888).
+
+    An `@type{` line inside a field value is not a block at all; see
+    `_entry_starts`.
     """
-    starts = list(_ENTRY_START_RE.finditer(text))
+    starts = _entry_starts(text)
     ends = [m.start() for m in starts[1:]] + [len(text)]
     return sum(
         1
         for m, end in zip(starts, ends)
         if _counted_type(m.group(1).lower(), kept_types) and block_has_fields(text[m.end() : end])
     )
+
+
+def _entry_starts(text: str) -> list:
+    """The `@type{` lines that open an entry, skipping those inside a
+    field value (#965).
+
+    An abstract or a `note` quoting BibTeX, wrapped by the exporter so
+    that `@article{` starts a line, was counted as an entry: a phantom
+    drop, exit 3 on every run, and `--remove-stale` refusing to prune.
+
+    Two signs, either enough. **Depth:** an entry's body opens at brace
+    depth 1 and a braced field value at 2 or deeper, so a line at depth
+    1 or less is outside every value. **A blank line before it:** every
+    exporter separates entries with one, and BibTeX quoted in a value
+    almost never has one right before its `@`.
+
+    Neither alone. Depth alone is the issue's suggestion and hides the
+    case this count exists for: an entry with unbalanced braces leaves
+    the depth raised for the rest of the file, so nothing after it would
+    count -- the trap `block_has_fields` describes for a forward
+    brace-matcher. The blank line alone would stop counting a real entry
+    in a hand-kept file that does not separate its entries.
+    """
+    starts, depth, scanned = [], 0, 0
+    for match in _ENTRY_START_RE.finditer(text):
+        start = match.start()
+        depth += text.count("{", scanned, start) - text.count("}", scanned, start)
+        scanned = start
+        previous_line = text[text.rfind("\n", 0, max(start - 1, 0)) + 1 : max(start - 1, 0)]
+        if depth <= 1 or not previous_line.strip():
+            starts.append(match)
+    return starts
 
 
 def _counted_type(entry_type: str, kept_types: Collection[str] | None) -> bool:

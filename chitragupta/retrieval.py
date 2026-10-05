@@ -300,7 +300,7 @@ def _full_text(item: sqlite3.Row) -> str:
             # and `retrieval_cli` prints it as a note (issue 844).
             pass
         else:
-            # `errors="replace"`, the rule `sync._record_result` and
+            # `errors="replace"`, the rule `sync._report_result` and
             # `passages` decode by (issue 844): with "ignore" a stray byte
             # fused the words either side of it, so BM25 ranked a text the
             # aids never quote. `_INDEX_SCHEMA_VERSION` moved with it.

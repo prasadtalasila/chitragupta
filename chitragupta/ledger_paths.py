@@ -96,7 +96,7 @@ def pdf_file(value: str | None) -> Path | None:
 
 
 def mark_parsed(con: sqlite3.Connection, citekey: str, parsed_path: Path) -> None:
-    """Record a finished parse; commits, which `sync._record_result` relies on."""
+    """Record a finished parse; commits, which `sync._commit_result` relies on."""
     con.execute(
         "UPDATE items SET status = 'parsed', parsed_path = ?, parse_error = NULL WHERE citekey = ?",
         (stored_parsed(parsed_path), citekey),

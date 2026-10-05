@@ -272,7 +272,8 @@ def main(argv: list[str] | None = None) -> int:
 
 def _scored(draft_path: Path) -> Report | None:
     """The scored report, or None once "not run" is on stderr because the
-    enrichment layer, and so the entailer, is not installed."""
+    enrichment layer, and so the entailer, is not installed, or its
+    model will not load."""
     entailer, reason = entailment.open_entailer()
     if entailer is None:
         print(f"support: not run -- {reason}", file=sys.stderr)
@@ -281,7 +282,13 @@ def _scored(draft_path: Path) -> Report | None:
     # the config is what the *CLI* obeys while a caller -- notably
     # bench/bench_support_topk.py, which sweeps k -- pins it per arm at
     # the call site instead of mutating a module constant mid-run.
-    return build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
+    try:
+        return build_report(draft_path, entailer, config.SUPPORT_PREMISE_TOPK)
+    except entailment.EntailmentUnavailable as unavailable:
+        # The model loads at the first claim scored, so this is where a
+        # checkpoint that will not load surfaces (#977).
+        print(f"support: not run -- {unavailable}", file=sys.stderr)
+        return None
 
 
 def run(args: argparse.Namespace) -> int:

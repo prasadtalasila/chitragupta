@@ -30,8 +30,9 @@ import bibtexparser
 from bibtexparser.bibdatabase import STANDARD_TYPES
 from bibtexparser.bparser import BibTexParser
 from bibtexparser.customization import convert_to_unicode
+from bibtexparser.latexenc import latex_to_unicode
 
-from chitragupta import bib_collections, bib_integrity, bib_names, config, ledger_paths
+from chitragupta import bib_collections, bib_escapes, bib_integrity, bib_names, config, ledger_paths
 from chitragupta.citekey_safety import citekey_problem
 
 # Reference.pdf_resolution values -- *why* a PDF did or didn't resolve.
@@ -200,8 +201,10 @@ def _parse_authors(author_field: str) -> list[tuple[str, str]]:
     return authors
 
 
-def _attachment_pdf(attachment: str, bib_dir: Path) -> "tuple[bool, Path | None]":
-    """One `Desc:path:mimetype` segment, as `(did it parse at all, the
+def _attachment_pdf(
+    attachment: "tuple[str, str] | None", bib_dir: Path
+) -> "tuple[bool, Path | None]":
+    """One `bib_escapes.attachments` entry, as `(did it parse at all, the
     pdf-mime path it names)`.
 
     Split out of `_resolve_pdf_path` when issue 821's confinement pushed
@@ -210,18 +213,19 @@ def _attachment_pdf(attachment: str, bib_dir: Path) -> "tuple[bool, Path | None]
     about the *field's* shape -- a convention of the export tool, and
     the reason a path is rejoined with `:` rather than taken as
     `parts[1]` -- and the caller is about which of several attachments
-    the corpus will actually accept.
+    the corpus will actually accept. The splitting itself, escapes and
+    all, is `bib_escapes`'s since #964.
 
     `None` for the path covers both "not three colon-separated parts"
     and "parsed, but not a PDF"; the boolean is what tells those apart,
     and the caller needs both to pick between its two no-PDF reasons.
     """
-    parts = attachment.split(":")
-    if len(parts) < 3:
+    if attachment is None:
         return False, None
-    if "pdf" not in parts[-1].lower():
+    raw_path, mimetype = attachment
+    if "pdf" not in mimetype.lower():
         return True, None
-    path = Path(":".join(parts[1:-1]))
+    path = Path(raw_path)
     return True, path if path.is_absolute() else bib_dir / path
 
 
@@ -248,7 +252,7 @@ def _resolve_pdf_path(file_field: str, bib_dir: Path) -> tuple[str | None, str]:
     saw_parseable_attachment = False
     saw_pdf_mime = False
     saw_outside = False
-    for attachment in file_field.split(";"):
+    for attachment in bib_escapes.attachments(file_field):
         parseable, path = _attachment_pdf(attachment, bib_dir)
         saw_parseable_attachment = saw_parseable_attachment or parseable
         if path is None:
@@ -335,6 +339,31 @@ def _reference(entry: dict, bib_dir: Path) -> Reference:
     )
 
 
+# The `file` field is decoded only where it is LaTeX (#964). Zotero and
+# Better BibTeX write it raw, escaping only `\:`, `\;` and `\\`, which are
+# `bib_escapes`'s to undo; the decoder raised `TypeError` on a `\;` and
+# took the whole read with it. Mendeley writes it as LaTeX (`{\_}` for an
+# underscore), and decoding is what made those paths resolve, so a field
+# holding `{\` still is. A decode that fails keeps the raw field rather
+# than ending the read.
+def _decoded(record: dict) -> dict:
+    """`convert_to_unicode`, with the `file` field left to `_decoded_file`."""
+    file_field = record.pop("file", None)
+    record = convert_to_unicode(record)
+    if file_field is not None:
+        record["file"] = _decoded_file(file_field)
+    return record
+
+
+def _decoded_file(file_field: str) -> str:
+    if "{\\" not in file_field:
+        return file_field
+    try:
+        return latex_to_unicode(file_field)
+    except TypeError:
+        return file_field
+
+
 def read_library() -> Library:
     if not config.BIB_FILE_PATH.exists():
         raise FileNotFoundError(
@@ -352,7 +381,7 @@ def read_library() -> Library:
     # such an entry is ignored, not lost, so it is kept off the raw side of
     # the dropped-entry comparison and cannot exit 3 or block a prune.
     parser = BibTexParser(common_strings=True)
-    parser.customization = convert_to_unicode
+    parser.customization = _decoded
     bib_database = bibtexparser.loads(raw_text, parser=parser)
 
     name = config.BIB_FILE_PATH.name
