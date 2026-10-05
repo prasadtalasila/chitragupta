@@ -12,8 +12,10 @@ the reverse.
 
 Loading needs the `enrich` extra (sentence-transformers). The import is
 inside `load_reranker`, so importing this module never does; a caller
-without the extra gets the `ImportError` on the first load, which
-`discover` treats as "keep the fused order".
+without the extra gets the `ImportError` on the first load, and one
+whose model will not load gets the `RuntimeError` below. `discover`
+asks only with `[enrich].rerank` on, and treats either as "keep the
+fused order" with a note (#977).
 """
 
 import functools

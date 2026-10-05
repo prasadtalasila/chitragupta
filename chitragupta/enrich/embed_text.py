@@ -13,6 +13,7 @@ call -- inside and outside this package -- keeps working unchanged.
 """
 
 import hashlib
+import logging
 import os
 import re
 import subprocess
@@ -21,6 +22,8 @@ from pathlib import Path
 
 from chitragupta import config, programs
 from chitragupta.enrich.corpus import CorpusDoc
+
+logger = logging.getLogger("chitragupta.enrich")
 
 
 def hash_text(text: str) -> str:
@@ -90,6 +93,14 @@ def get_text(doc: CorpusDoc) -> str | None:
             # No text rather than a crash: the caller reports the
             # document as having nothing to embed and moves on, which is
             # what a parse that never finished amounts to.
+            return None
+        except (subprocess.CalledProcessError, OSError) as exc:
+            # The same, for an encrypted or corrupt PDF and for a host
+            # with no pdftotext (#978). This fallback is reached for
+            # exactly the documents a sync parse already failed on, and
+            # every topic stage reads it, so one of them raising failed
+            # embed, bertopic, seed-topics and topic-graph together.
+            logger.warning("no text for %s: pdftotext failed (%s)", doc.citekey, exc)
             return None
         finally:
             os.unlink(tmp_name)

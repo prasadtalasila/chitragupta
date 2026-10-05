@@ -129,26 +129,42 @@ def _dispatch_and_apply(con, to_parse, tally) -> None:
         logger.warning(complaint)
     tally.workers = workers
     parse_started = time.monotonic()
+
+    def commit(citekey, out_path, exc) -> None:
+        _commit_result(con, citekey, out_path, exc)
+
     if workers > 1:
         print(f"  parsing {len(to_parse)} document(s) with {workers} workers")
-        results = sync_pool._parse_parallel(to_parse, workers, pdf_text.docling_threads(workers))
+        threads = pdf_text.docling_threads(workers)
+        results = sync_pool._parse_parallel(to_parse, workers, threads, commit)
     else:
-        results = sync_pool._parse_serial(to_parse)
+        results = sync_pool._parse_serial(to_parse, commit)
 
-    # Applied in bib order, not completion order: futures finish in
+    # Reported in bib order, not completion order: futures finish in
     # whatever order they finish, and letting that reach stdout would
     # make two identical runs print differently and stop anyone
-    # diffing them.
+    # diffing them. The ledger is not waiting for this loop: `commit`
+    # wrote each row as its result landed (#961).
     for _ref, (citekey, out_path, exc) in zip(to_parse, results):
-        _record_result(con, citekey, out_path, exc, tally)
+        _report_result(citekey, out_path, exc, tally)
     tally.parse_elapsed = time.monotonic() - parse_started
 
 
-def _record_result(con, citekey, out_path, exc, tally) -> None:
-    """One document's outcome, written to the ledger and counted."""
+def _commit_result(con, citekey, out_path, exc) -> None:
+    """One document's outcome, written to the ledger the moment it lands."""
+    if exc is None:
+        ledger.mark_parsed(con, citekey, Path(out_path))
+    elif not isinstance(exc, pdf_text.BackendUnavailable):
+        # getattr, not isinstance: the marker rides on the
+        # exception instance because it is set by whoever knows
+        # the *cause*, which is the pool, not the raiser.
+        ledger.mark_parse_failed(con, citekey, str(exc), transient=getattr(exc, "transient", False))
+
+
+def _report_result(citekey, out_path, exc, tally) -> None:
+    """One document's outcome, counted and printed."""
     if exc is None:
         out_path = Path(out_path)
-        ledger.mark_parsed(con, citekey, out_path)
         tally.parsed += 1
         print(f"  parsed  {citekey}")
         # Read once, used twice: the quality guard below and the
@@ -178,12 +194,8 @@ def _record_result(con, citekey, out_path, exc, tally) -> None:
         tally.backend_unavailable += 1
         logger.warning("no-%s  %s: %s", config.PARSER, citekey, exc)
     else:
-        # getattr, not isinstance: the marker rides on the
-        # exception instance because it is set by whoever knows
-        # the *cause*, which is the pool, not the raiser.
-        ledger.mark_parse_failed(con, citekey, str(exc), transient=getattr(exc, "transient", False))
         tally.failed += 1
-        # Collected rather than marked transient above: what
+        # Collected rather than marked transient by _commit_result: what
         # expired is a *setting*, so a document that ran out of
         # time will run out of it again next run, and retrying
         # automatically would spend the same minutes every run

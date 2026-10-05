@@ -3,7 +3,7 @@ the only place a citekey should ever originate from (AGENTS.md)."""
 
 import pytest
 
-from chitragupta import bib_integrity, bib_reader
+from chitragupta import bib_escapes, bib_integrity, bib_reader
 
 
 def write_bib(path, body):
@@ -144,8 +144,9 @@ class TestResolvePdfPath:
         """Windows-style or otherwise colon-bearing paths: the middle
         segment must be rejoined with ":", not just taken as `parts[1]`.
 
-        Asked of `_attachment_pdf`, which is the half that does the
-        rejoining, rather than of `_resolve_pdf_path`. No file named
+        Asked of `bib_escapes.attachments`, which does the rejoining
+        since #964, and `_attachment_pdf`, rather than of
+        `_resolve_pdf_path`. No file named
         `a:b.pdf` can be created to prove it against -- a bare colon in
         a filename is illegal on Windows, being reserved for the
         drive-letter and ADS syntax -- and since issue 821 the two
@@ -156,7 +157,8 @@ class TestResolvePdfPath:
         spelled the same way, so it pins the rejoin on either platform
         without pinning a resolution that differs between them.
         """
-        assert bib_reader._attachment_pdf("desc:a:b.pdf:application/pdf", tmp_path) == (
+        (attachment,) = bib_escapes.attachments("desc:a:b.pdf:application/pdf")
+        assert bib_reader._attachment_pdf(attachment, tmp_path) == (
             True,
             tmp_path / "a:b.pdf",
         )

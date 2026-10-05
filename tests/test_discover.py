@@ -194,13 +194,12 @@ class TestResolveLadder:
         can still win the lexical rungs, but geometry has nothing to say
         about it."""
         FakeModel.VECTORS = {"anything": [1.0, 0.0]}
-        monkeypatch.setattr(_resolve, "_load_model", lambda: FakeModel())
         graph = dict(GRAPH)
         graph["topics"] = [
             {"label": "digital twin", "provenance": "seed", "size": 2, "centroid": [0.5, -0.5]},
             {"label": "unparsed", "provenance": "seed", "size": 1, "centroid": []},
         ]
-        ranked = _resolve.semantic_ranking("anything", graph)
+        ranked = _resolve.semantic_ranking("anything", graph, FakeModel())
         assert [label for label, _ in ranked] == ["digital twin"]
 
     def test_hybrid_fires_when_lexical_rungs_miss(self, isolated_config, monkeypatch):

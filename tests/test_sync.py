@@ -1490,11 +1490,18 @@ class TestPdfSize:
         assert sync_pool._pdf_size(str(tmp_path / "gone.pdf")) == 0
 
 
+def _ignore(*_result):
+    """An `on_landed` for tests that read only what is yielded."""
+
+
 class TestParseSerial:
     def test_yields_a_triple_per_reference(self, isolated_config, monkeypatch, tmp_path):
         monkeypatch.setattr(pdf_text, "extract_text", fake_extract_text_factory())
         refs = [make_ref("a", tmp_path), make_ref("b", tmp_path)]
-        assert [(k, e) for k, _, e in sync_pool._parse_serial(refs)] == [("a", None), ("b", None)]
+        assert [(k, e) for k, _, e in sync_pool._parse_serial(refs, _ignore)] == [
+            ("a", None),
+            ("b", None),
+        ]
 
     def test_a_failure_becomes_the_third_slot_not_a_raise(
         self, isolated_config, monkeypatch, tmp_path
@@ -1502,7 +1509,8 @@ class TestParseSerial:
         monkeypatch.setattr(
             pdf_text, "extract_text", fake_extract_text_factory(fail_citekeys={"b"})
         )
-        results = list(sync_pool._parse_serial([make_ref("a", tmp_path), make_ref("b", tmp_path)]))
+        refs = [make_ref("a", tmp_path), make_ref("b", tmp_path)]
+        results = list(sync_pool._parse_serial(refs, _ignore))
         assert results[0][2] is None
         assert isinstance(results[1][2], pdf_text.ExtractionError)
 

@@ -15,10 +15,13 @@ between a topic membership and a plausible guess:
 4. **search** -- nothing above answered; the caller falls back to
    `chitragupta.retrieval.search()` over papers, clearly labelled.
 
-The semantic half of rung 3 needs the enrich extra. When it is absent
-the rung degrades to BM25 alone and the resolution carries a note
-saying so -- the same honest-degradation posture every enrich stage's
-self-probe takes, never a silent substitution.
+The semantic half of rung 3 needs the enrich extra, and the
+cross-encoder that reorders its result needs `[enrich].rerank` too.
+When either is absent -- not installed, or installed with a model that
+will not load (#977) -- that tier degrades to the one below it and the
+resolution carries a note saying so -- the same honest-degradation
+posture every enrich stage's self-probe takes, never a silent
+substitution.
 """
 
 import difflib
@@ -107,31 +110,53 @@ def _load_reranker() -> "Any":
     return reranker.load_reranker(config.RERANK_MODEL)
 
 
-def _rescored(phrase: str, fused: list, vocab: dict) -> list:
+def optional_model(load, tier: str) -> "tuple[Any, str | None]":
+    """`(model, None)`, or `(None, note)` naming `tier` when the model
+    cannot be had: the extra not installed, or a checkpoint that will
+    not load (#977). Only `ImportError` used to be caught, but a host
+    with the extra and no cached model raises `OSError` (or, through
+    `reranker.load_reranker`, `RuntimeError`), and that traceback ended
+    `corpus discover` for a tier the ladder can do without."""
+    try:
+        return load(), None
+    except ImportError:
+        return None, f"{tier} unavailable (enrich extra not installed)"
+    # Broad on purpose: sentence-transformers raises anything from
+    # OSError to a huggingface_hub error for a model it cannot load.
+    except Exception as exc:  # noqa: BLE001 -- see the comment above
+        # The first line only: huggingface's messages run to several,
+        # and this is one line of a printed view.
+        reason = str(exc).partition("\n")[0] or type(exc).__name__
+        return None, f"{tier} unavailable (the model would not load: {reason})"
+
+
+def _rescored(phrase: str, fused: list, vocab: dict) -> "tuple[list, str | None]":
     """The fused candidate labels, reordered by a cross-encoder over
     (phrase, topic-vocabulary) pairs -- OpenScholar's recall-then-
     precision cascade, sized for a topic list rather than 45M papers.
 
     Reordering only: the scorer sees exactly the candidates the ladder
-    fused and can promote or demote but never add. Without the enrich
-    extra the fused order stands -- the same degradation the semantic
-    rung already practises, and no second knob to explain.
+    fused and can promote or demote but never add. With `[enrich].rerank`
+    off the model is never loaded, as docs/CONFIG.md says; with it on but
+    unavailable the fused order stands with a note -- the same
+    degradation the semantic rung practises.
     """
-    try:
-        scorer = _load_reranker()
-    except ImportError:
-        return fused
+    if not config.RERANK:
+        return fused, None
+    scorer, note = optional_model(_load_reranker, "reranking")
+    if scorer is None:
+        return fused, note
     scores = scorer.predict([(phrase, vocab.get(label, label)) for label in fused])
     # Stable: equal scores keep the fused order, so an indifferent
     # scorer changes nothing.
-    return [label for _score, label in sorted(zip(scores, fused), key=lambda pair: -pair[0])]
+    ordered = sorted(zip(scores, fused), key=lambda pair: -pair[0])
+    return [label for _score, label in ordered], None
 
 
-def semantic_ranking(phrase: str, graph: dict) -> list:
+def semantic_ranking(phrase: str, graph: dict, model: "Any") -> list:
     """`[(label, cosine), ...]` against the stored centroids, in the
     same mean-centred space the graph stage used -- the stored
     `corpus_mean` is what moves the query there without the embed cache."""
-    model = _load_model()
     vector = model.encode(phrase, show_progress_bar=False)
     scored = [
         (topic["label"], _data.centred_cosine(vector, graph["corpus_mean"], topic["centroid"]))
@@ -173,17 +198,10 @@ def resolve(
 
     vocab = topic_vocabulary(topic_set, terms)
     lexical = bm25_ranking(phrase, vocab)
-    note = None
-    try:
-        semantic = semantic_ranking(phrase, graph)
-    except ImportError:
-        semantic, note = (
-            [],
-            (
-                "semantic resolution unavailable (enrich extra not installed); "
-                "matched on topic vocabulary alone"
-            ),
-        )
+    model, note = optional_model(_load_model, "semantic resolution")
+    semantic = semantic_ranking(phrase, graph, model) if model is not None else []
+    if note:
+        note += "; matched on topic vocabulary alone"
 
     best_cosine = semantic[0][1] if semantic else None
     # The floor gates only the semantic evidence; a lexical hit on the
@@ -195,5 +213,6 @@ def resolve(
     fused = rrf_fuse(
         [[label for label, _ in ranking] for ranking in (lexical, semantic) if ranking]
     )
-    ordered = _rescored(phrase, [label for label, _ in fused], vocab)
+    ordered, rerank_note = _rescored(phrase, [label for label, _ in fused], vocab)
+    note = "; ".join(n for n in (note, rerank_note) if n) or None
     return Resolution(ordered[0], "hybrid", ordered, score=best_cosine, note=note)

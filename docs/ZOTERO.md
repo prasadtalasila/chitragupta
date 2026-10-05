@@ -32,6 +32,12 @@ general feature):
    no error is raised.
 5. Re-run `python -m chitragupta.corpus sync`.
 
+On Windows, Zotero and Better BibTeX escape the drive colon and every
+backslash of an attachment path (`C\:\\Users\\...`), and a `;` that
+is part of a file name as `\;`. `bib_reader` undoes exactly those
+escapes, so an absolute Windows path in the `file` field resolves as
+written; there is nothing to convert by hand.
+
 A complete, working example of this shape is committed:
 [`bibliography.bib`](examples/sample-project/papers/bibliography.bib) in
 the sample project is a five-entry export with its `files/` folder of

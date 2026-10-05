@@ -51,7 +51,7 @@ content/) exits 1; a malformed invocation exits 2, the usual CLI-usage
 error, not a verdict.
 
 **A package since #361**, split out of what was one 2357-line module: the
-corpus lookup (`bib_entry`/`pdf_path`/`pages`/`norm`/`sentences_citing`)
+corpus lookup (`pdf_path`/`pages`/`norm`/`sentences_citing`)
 moved to `_corpus.py`, masking/tokenizing to `_masking.py`, the
 gap-tolerant run merger to `_merge.py`, the per-host allowlist to
 `_allowlist.py`, the helpers every tier shares (line lookup, finding
@@ -82,7 +82,6 @@ from chitragupta.review.verbatim_check._allowlist import (
 )
 from chitragupta.review.verbatim_check._baseline import _BASELINE_FIELDS, load_baseline
 from chitragupta.review.verbatim_check._corpus import (
-    bib_entry,
     norm,
     pages,
     pdf_path,

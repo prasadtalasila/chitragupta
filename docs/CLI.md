@@ -844,23 +844,25 @@ counterpart to `--family` on `--path` and `--hops`.
 A free phrase resolves through a ladder (exact label, fuzzy label, then a
 hybrid of BM25 over each topic's own vocabulary fused with cosine against
 the stored topic centroids, its fused candidates rescored by the
-`[enrich].rerank_model` cross-encoder), and the output names which rung
-answered (`resolved_via`). When the hybrid rung matches several topics, the
-view adds a `neighbourhood` ranking: personalised PageRank over the topic
-graph, seeded from every candidate. A phrase no topic claims falls back to
-`retrieval.search()` over papers, clearly labelled a search result rather
-than a topic membership. Without the `enrich` extra installed the semantic
-rung is skipped with a one-line note and resolution degrades to the lexical
-rungs. Exits `1` when the graph artefact is missing (naming the stage to
-run), when `--paper` names a citekey in no topic, when a phrase resolves
-nowhere and even the fallback finds nothing, and when an `--out`, `--html`
-or `--app` target cannot be written. The `--out` one is raised *after* the
-topic view has already printed, so it is the one `discover` failure where
-the command both answered the question and returned nonzero. A script
-driving `--out` therefore has to check the exit status: stdout carries the
-topic view either way, and the plain-text line naming the path and the OS
-error goes to **stderr**, so `discover "x" --json --out FILE > view.json`
-leaves a valid JSON file even when the write fails.
+`[enrich].rerank_model` cross-encoder when `[enrich].rerank` is on), and
+the output names which rung answered (`resolved_via`). When the hybrid
+rung matches several topics, the view adds a `neighbourhood` ranking:
+personalised PageRank over the topic graph, seeded from every candidate. A
+phrase no topic claims falls back to `retrieval.search()` over papers,
+clearly labelled a search result rather than a topic membership. Without
+the `enrich` extra installed, or with a model that will not load, the
+semantic rung (and the rescoring) is skipped with a one-line note and
+resolution degrades to the lexical rungs. Exits `1` when the graph
+artefact is missing (naming the stage to run), when `--paper` names a
+citekey in no topic, when a phrase resolves nowhere and even the fallback
+finds nothing, and when an `--out`, `--html` or `--app` target cannot be
+written. The `--out` one is raised *after* the topic view has already
+printed, so it is the one `discover` failure where the command both
+answered the question and returned nonzero. A script driving `--out`
+therefore has to check the exit status: stdout carries the topic view
+either way, and the plain-text line naming the path and the OS error goes
+to **stderr**, so `discover "x" --json --out FILE > view.json` leaves a
+valid JSON file even when the write fails.
 
 `--html`'s write failure goes to **stderr** too, and for the rule rather
 than for that reason: a failure line is diagnostics in either mode, so

@@ -26,7 +26,7 @@ from chitragupta.review import verbatim_check as vc
 # its recorded count, and one more re-export line would grow a debt the
 # ratchet exists to stop growing.
 from chitragupta.review.verbatim_check._scan_notes import _words_note
-from chitragupta import config, overlap_chroma, overlap_embed, overlap_index
+from chitragupta import config, ledger, overlap_chroma, overlap_embed, overlap_index
 from tests.conftest import add_parsed_item, run_python
 
 
@@ -34,142 +34,45 @@ from tests.conftest import add_parsed_item, run_python
 def fixture_repo(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "BIB_FILE_PATH", tmp_path / "bibliography.bib")
     monkeypatch.setattr(config, "PARSED_DIR", tmp_path / "content" / "parsed")
+    monkeypatch.setattr(config, "LEDGER_PATH", tmp_path / "content" / "ledger.sqlite")
     return tmp_path
 
 
-class TestBibEntry:
-    def test_finds_entry_by_citekey(self, fixture_repo):
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {A Paper},\n}\n"
-            "@article{doe_2023,\n  title = {Another},\n}\n"
+def ledger_pdf(citekey: str, stored: "str | None") -> None:
+    """A ledger row whose `pdf_path` column holds `stored`, verbatim: the
+    PDF `sync` resolved through `bib_reader`, which is all `pdf_path`
+    reads since #956."""
+    config.LEDGER_PATH.parent.mkdir(parents=True, exist_ok=True)
+    con = ledger.connect()
+    try:
+        con.execute(
+            "INSERT INTO items (citekey, title, status, pdf_path, last_synced)"
+            " VALUES (?, 'T', 'discovered', ?, '2026-01-01')",
+            (citekey, stored),
         )
-        entry = vc.bib_entry("smith_2024")
-        assert "smith_2024" in entry
-        assert "A Paper" in entry
-        assert "doe_2023" not in entry
-
-    def test_missing_citekey_returns_empty(self, fixture_repo):
-        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {A Paper},\n}\n")
-        assert vc.bib_entry("nonexistent_2024") == ""
-
-    def test_missing_bib_file_returns_empty_rather_than_raising(self, fixture_repo):
-        assert not config.BIB_FILE_PATH.exists()
-        assert vc.bib_entry("anything_2024") == ""
+        con.commit()
+    finally:
+        con.close()
 
 
 class TestPdfPath:
-    def test_resolves_pdf_from_file_field(self, fixture_repo):
+    """The PDF comes off the ledger row `sync` wrote with `bib_reader`
+    (#956). How a `file` field is split is `bib_reader`'s, and tested
+    there and in `tests/test_bib_exporter_shapes.py`."""
+
+    def test_resolves_the_stored_relative_path_against_the_bib_directory(self, fixture_repo):
+        pdf = fixture_repo / "pdfs" / "21" / "Smith - 2024 - Title.pdf"
+        pdf.parent.mkdir(parents=True)
+        pdf.write_bytes(b"%PDF-1.4")
+        ledger_pdf("smith_2024", "pdfs/21/Smith - 2024 - Title.pdf")
+        assert vc.pdf_path("smith_2024") == pdf
+
+    def test_a_legacy_absolute_value_still_reads(self, fixture_repo):
+        """A ledger an older release wrote stores the PDF host-absolute
+        (#966); inside the bib directory it still resolves in place."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_multiple_attachments_picks_the_pdf(self, fixture_repo):
-        pdf = fixture_repo / "paper.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {page.html:page.html:text/html;paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_no_file_field_returns_none(self, fixture_repo):
-        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n  title = {T},\n}\n")
-        assert vc.pdf_path("smith_2024") is None
-
-    def test_file_field_with_no_pdf_attachment_returns_none(self, fixture_repo):
-        html = fixture_repo / "page.html"
-        html.write_text("<html></html>")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n  file = {page.html:page.html:text/html},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") is None
-
-    def test_pdf_referenced_but_missing_on_disk_returns_none(self, fixture_repo):
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") is None
-
-    def test_field_after_a_multiline_value_is_still_found(self, fixture_repo):
-        """The second regression: bib_entry() stopped at the first "\\n}".
-        A field whose closing brace sits at the start of a line -- an
-        `annote` holding a URL is the real case -- truncated the entry
-        there, hiding every later field including `file`. Braces are
-        balanced; only the naive delimiter search was fooled. Cost 40
-        papers, each of which did have a PDF on disk.
-        """
-        pdf = fixture_repo / "paper.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n"
-            "\ttitle = {T},\n"
-            "\tannote = {codebase: https://example.invalid/x\n"
-            "},\n"
-            "\tfile = {paper.pdf:paper.pdf:application/pdf},\n"
-            "}\n"
-        )
-        assert "file =" in vc.bib_entry("smith_2024")
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_html_attachment_before_pdf_still_finds_the_pdf(self, fixture_repo):
-        """Mirrors the real export: an arXiv HTML snapshot is listed
-        first, the PDF second."""
-        sub = fixture_repo / "pdfs" / "159"
-        sub.mkdir(parents=True)
-        pdf = sub / "Lu et al. - 2023 - EvoCLINICAL.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n\tfile = {arXiv.org Snapshot:pdfs/158/2309.html:text/html;"
-            "Submitted Version:pdfs/159/Lu et al. - 2023 - EvoCLINICAL.pdf:application/pdf},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_unbalanced_braces_returns_what_it_has(self, fixture_repo):
-        """A truncated/corrupt .bib shouldn't hang or raise -- hand back
-        the remainder and let the caller find no `file` field."""
-        config.BIB_FILE_PATH.write_text("@article{smith_2024,\n\ttitle = {T},\n")
-        assert vc.bib_entry("smith_2024").startswith("@article{smith_2024,")
-        assert vc.pdf_path("smith_2024") is None
-
-    def test_description_differs_from_path(self, fixture_repo):
-        """The regression: this project's export writes
-        `Desc.pdf:real/path.pdf:application/pdf`. Taking the first
-        segment ending in `.pdf` picks the description, which only
-        resolves when it coincides with the path -- as it does in a flat
-        fixture dir, which is why every other test here missed this.
-        Lost 196 of 501 real PDFs."""
-        sub = fixture_repo / "pdfs" / "21"
-        sub.mkdir(parents=True)
-        pdf = sub / "Smith - 2024 - Title.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {Smith - 2024 - Title.pdf:pdfs/21/Smith - 2024 - Title.pdf"
-            ":application/pdf},\n}\n"
-        )
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_absolute_path_in_file_field(self, fixture_repo, tmp_path):
-        pdf = tmp_path / "abs.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            f"  file = {{abs.pdf:{pdf}:application/pdf}},\n}}\n"
-        )
-        assert vc.pdf_path("smith_2024") == pdf
-
-    def test_malformed_attachment_segment_is_skipped(self, fixture_repo):
-        pdf = fixture_repo / "paper.pdf"
-        pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {junk;paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", str(pdf))
         assert vc.pdf_path("smith_2024") == pdf
 
     def test_resolves_relative_to_bib_file_directory_not_repo_root(self, tmp_path, monkeypatch):
@@ -182,14 +85,27 @@ class TestPdfPath:
         bib_dir = tmp_path / "elsewhere"
         bib_dir.mkdir()
         monkeypatch.setattr(config, "BIB_FILE_PATH", bib_dir / "bibliography.bib")
-
+        monkeypatch.setattr(config, "LEDGER_PATH", tmp_path / "content" / "ledger.sqlite")
         pdf = bib_dir / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", "paper.pdf")
         assert vc.pdf_path("smith_2024") == pdf
+
+    def test_no_pdf_recorded_returns_none(self, fixture_repo):
+        ledger_pdf("smith_2024", None)
+        assert vc.pdf_path("smith_2024") is None
+
+    def test_a_recorded_pdf_missing_on_disk_returns_none(self, fixture_repo):
+        ledger_pdf("smith_2024", "paper.pdf")
+        assert vc.pdf_path("smith_2024") is None
+
+    def test_a_citekey_with_no_row_returns_none(self, fixture_repo):
+        ledger_pdf("other_2024", None)
+        assert vc.pdf_path("smith_2024") is None
+
+    def test_no_ledger_at_all_returns_none_rather_than_raising(self, fixture_repo):
+        assert not config.LEDGER_PATH.exists()
+        assert vc.pdf_path("anything_2024") is None
 
 
 @pytest.mark.usefixtures("programs_on_path")
@@ -264,10 +180,7 @@ class TestPages:
             capture_output=True,
         )
 
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", "paper.pdf")
         result = vc.pages("smith_2024")
         assert any("distinctive verbatim content" in p for p in result)
 
@@ -280,10 +193,7 @@ class TestPages:
         stack trace."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", "paper.pdf")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True, exist_ok=True)
         (parsed_dir / "smith_2024.txt").write_text("the parsed fallback text")
@@ -300,10 +210,7 @@ class TestPages:
         and running out of it takes the same fallback as a failure."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", "paper.pdf")
         parsed_dir = fixture_repo / "content" / "parsed"
         parsed_dir.mkdir(parents=True, exist_ok=True)
         (parsed_dir / "smith_2024.txt").write_text("the parsed fallback text")
@@ -323,10 +230,7 @@ class TestPages:
         with no poppler actually raises."""
         pdf = fixture_repo / "paper.pdf"
         pdf.write_bytes(b"%PDF-1.4 not really a pdf")
-        config.BIB_FILE_PATH.write_text(
-            "@article{smith_2024,\n  title = {T},\n"
-            "  file = {paper.pdf:paper.pdf:application/pdf},\n}\n"
-        )
+        ledger_pdf("smith_2024", "paper.pdf")
 
         def refuse(*args, **kwargs):
             raise OSError("pdftotext not found")

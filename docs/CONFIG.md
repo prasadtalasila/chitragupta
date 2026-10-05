@@ -551,6 +551,12 @@ does buy is ordering: recall@3 rises from 129 to 139 of 256. Turn it on
 if you read the top three hits and not all five.
 Changing it rebuilds nothing.
 
+`rerank` also gates `python -m chitragupta.corpus discover`'s precision
+tier, which rescores the ladder's fused topic candidates with the same
+cross-encoder. Off, that tier is skipped and the model is never loaded
+(#977); on, but with a model that will not load, the fused order stands
+with a note.
+
 **`rerank_model`** names that cross-encoder, and is read only when
 `rerank` is on. **The `bge-*` / `e5-*` prefix warning below does not
 apply to this key.** That warning is about bi-encoders, and a reranker

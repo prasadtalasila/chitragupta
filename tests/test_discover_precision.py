@@ -11,7 +11,7 @@ import json
 
 import pytest
 
-from chitragupta import discover
+from chitragupta import config, discover
 from chitragupta.discover import _resolve, _walk
 
 from tests.test_discover import GRAPH, TOPIC_SET, FakeModel, prepare
@@ -28,6 +28,11 @@ class FakeReranker:
 
 
 class TestCrossEncoderRescoring:
+    @pytest.fixture(autouse=True)
+    def _rerank_on(self, monkeypatch):
+        """The rung runs only with `[enrich].rerank` on (#977)."""
+        monkeypatch.setattr(config, "RERANK", True)
+
     def test_the_reranker_reorders_the_fused_candidates(self, isolated_config, monkeypatch):
         """BM25 and cosine both fuse 'machine learning' ahead; the
         cross-encoder disagrees, and its ordering is the contract."""

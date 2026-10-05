@@ -19,7 +19,7 @@ test process's monkeypatches don't exist -- the same reason
 
 import logging
 import os
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from concurrent.futures import (
     FIRST_COMPLETED,
     Future,
@@ -36,6 +36,15 @@ logger = logging.getLogger("chitragupta.sync")
 # The (citekey, out_path, exception) triple pdf_text.extract_one produces,
 # yielded back out by both _parse_serial and _parse_parallel.
 _ParseResult = tuple[str, str | None, Exception | None]
+
+# Called with each result's three fields the moment it lands, before
+# anything else happens to it: `sync` writes the ledger row here (#961).
+# Until then the pool path wrote no row until every future had drained,
+# so Ctrl+C -- whose handler `os._exit`s -- or a pool failure left every
+# finished `.txt` on disk with its row still `discovered`, and the next
+# run parsed it all again. Landing order, not bib order: the ledger has
+# no order, and `sync` prints in bib order separately.
+OnLanded = Callable[[str, str | None, Exception | None], None]
 
 
 def _executor_for(workers: int) -> ProcessPoolExecutor | ThreadPoolExecutor:
@@ -167,7 +176,7 @@ def _as_they_land(futures, executor, stalled) -> Iterator[Future]:
         yield from done
 
 
-def _parse_serial(refs) -> Iterator[_ParseResult]:
+def _parse_serial(refs, on_landed: OnLanded) -> Iterator[_ParseResult]:
     """The historical path, taken whenever [parser].workers resolves to 1.
 
     Deliberately not "a pool with one worker": no executor, no pickling,
@@ -176,12 +185,16 @@ def _parse_serial(refs) -> Iterator[_ParseResult]:
     """
     for ref in refs:
         try:
-            yield ref.citekey, str(pdf_text.extract_text(ref.pdf_path, ref.citekey)), None
+            result = ref.citekey, str(pdf_text.extract_text(ref.pdf_path, ref.citekey)), None
         except (pdf_text.ExtractionError, pdf_text.BackendUnavailable) as exc:
-            yield ref.citekey, None, exc
+            result = ref.citekey, None, exc
+        except Exception as exc:  # noqa: BLE001 -- see pdf_text.document_failure
+            result = ref.citekey, None, pdf_text.document_failure(exc)
+        on_landed(*result)
+        yield result
 
 
-def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
+def _drain_pool(executor, jobs, stalled, on_landed: OnLanded) -> tuple[dict, Exception | None]:
     """The result-draining loop: submit every job and collect (out_path,
     exc) per citekey as workers finish. Returns whatever was collected
     before an early exit alongside the pool's break, if any -- the caller
@@ -203,20 +216,31 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
     "took forever to exit" and emitted docling teardown tracebacks from
     workers still being fed. Shutdown is therefore explicit below, with
     cancel_futures on the interrupt path.
+
+    Each future is mapped back to its citekey, so a `future.result()`
+    that raises something other than a broken pool is that document's
+    failure (`pdf_text.document_failure`), not the batch's. Rare since
+    `extract_one` returns every exception as a string, which leaves a
+    result the worker could not pickle, or a stand-in `extract_one`;
+    one that cannot be *received* breaks the pool instead.
     """
     results = {}
     broken = None
     done = 0
     try:
         with pdf_text.interrupt_guard(executor, lambda: f"{done}/{len(jobs)} document(s) parsed"):
-            futures = [executor.submit(pdf_text.extract_one, job) for job in jobs]
+            futures = {executor.submit(pdf_text.extract_one, job): job[1] for job in jobs}
             for future in _as_they_land(futures, executor, stalled):
                 try:
                     citekey, out_path, exc = future.result()
                 except BrokenProcessPool as pool_exc:
                     broken = pool_exc
                     continue
+                except Exception as unexpected:  # noqa: BLE001 -- see the docstring
+                    citekey, out_path = futures[future], None
+                    exc = pdf_text.document_failure(unexpected)
                 results[citekey] = (out_path, exc)
+                on_landed(citekey, out_path, exc)
                 done += 1
                 # Live progress, on stderr so stdout stays in
                 # bibliography order and diffable between runs. Without
@@ -235,7 +259,7 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
         #
         # cancel_futures drops everything not yet started; wait=False
         # means we don't block on the handful still running. Whatever
-        # finished is still recorded by the caller, so an interrupted run
+        # finished already reached `on_landed`, so an interrupted run
         # keeps its work rather than discarding it.
         pdf_text.terminate_workers(executor)
         executor.shutdown(wait=False, cancel_futures=True)
@@ -251,10 +275,10 @@ def _drain_pool(executor, jobs, stalled) -> tuple[dict, Exception | None]:
     return results, broken
 
 
-def _account_for_unfinished(refs, results: dict, broken, stalled) -> None:
+def _account_for_unfinished(refs, results: dict, broken, stalled, on_landed: OnLanded) -> None:
     """The failure accounting: warn on a broken pool, then fill in a
     transient failure for every ref _drain_pool didn't land a result for.
-    Mutates `results` in place.
+    Mutates `results` in place, and lands each filled-in failure too.
 
     Marked transient: these documents were never given a fair attempt,
     so they must come back next run. A failure the *backend* returned
@@ -283,9 +307,12 @@ def _account_for_unfinished(refs, results: dict, broken, stalled) -> None:
             error = pdf_text.ExtractionError(unfinished)
             error.transient = True
             results[ref.citekey] = (None, error)
+            on_landed(ref.citekey, None, error)
 
 
-def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseResult]:
+def _parse_parallel(
+    refs, workers: int, threads: int | None, on_landed: OnLanded
+) -> Iterator[_ParseResult]:
     """Same triples as _parse_serial, produced by `workers` at once.
 
     Submitted biggest-file-first (the LPT heuristic). One 675-page
@@ -299,6 +326,6 @@ def _parse_parallel(refs, workers: int, threads: int | None) -> Iterator[_ParseR
     ]
     stalled = []
     executor = _executor_for(workers)
-    results, broken = _drain_pool(executor, jobs, stalled)
-    _account_for_unfinished(refs, results, broken, stalled)
+    results, broken = _drain_pool(executor, jobs, stalled, on_landed)
+    _account_for_unfinished(refs, results, broken, stalled, on_landed)
     return ((ref.citekey, *results[ref.citekey]) for ref in refs)
