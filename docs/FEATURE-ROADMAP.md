@@ -1,13 +1,16 @@
 # 🗺 Feature roadmap: what would be built, and in what order
 
-Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-09-18.
+Status: **plan for unbuilt work.** Written 2026-08-20. Updated 2026-10-05.
 **Nineteen of the original twenty-one items have shipped and have been
 removed from this document** rather than marked as done. A twentieth,
 **B3** (section thesis with a source count), was closed unbuilt as *"not
 a priority now"*
 ([#379](https://github.com/prasadtalasila/chitragupta/issues/379)) and is
 removed too, recorded under [the build order](#-build-order) so it is not
-re-proposed as an oversight. Of the items added since, **C5** (the
+re-proposed as an oversight. So is **D5** (two figure checks `review
+figure` could compute from source), closed unbuilt as not planned
+([#624](https://github.com/prasadtalasila/chitragupta/issues/624)). Of
+the items added since, **C5** (the
 citekey union invariant) has shipped and is removed on the same rule as
 the nineteen (it is `chitragupta review union`, described in
 [REVIEW.md](REVIEW.md), and the book surface it was specified for is the
@@ -19,8 +22,9 @@ what was measured is the reason, the same treatment D4 gets. **C4** (a
 numeral in prose is a claim too) has left it the same way and for a
 different reason: not falsified but **mis-specified**, defining the
 complement of the finding it was commissioned for, which its own plan
-found while measuring it. Everything still in the build order is
-outstanding, which is what makes the list usable.
+found while measuring it. **The build order is empty today**: D5 was
+the last item in it. Anything added later is outstanding work, which is
+what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -736,38 +740,6 @@ future book whose figures are denser than this corpus's, where
 `review figure` and this section's checklist come back clean but a
 reader still disagrees.
 
-### 📏 D5: two checks `review figure` could compute from source
-
-The pre-flight list in [TIKZ-STYLE.md](TIKZ-STYLE.md) *names* two
-defects it cannot decide, and both are recoverable from the TikZ source
-that `review figure` already parses:
-
-- **Type size at final scale.** "Illegible type" is currently a human
-  judgement. It is arithmetic: a `\footnotesize` node inside a picture
-  carrying `scale=0.8`, set in a document at a known width, has a
-  computable final point size. `figure_layout/_source.py` already splits
-  picture and node options, so the parse is in place and the check is
-  not.
-- **Two palette colours a greyscale print cannot separate.** Colour is
-  house-standard and carries meaning freely
-  ([TIKZ-STYLE.md](TIKZ-STYLE.md)); what it may not do is carry the
-  figure's *main* point alone, because a black-and-white print
-  greyscales the TikZ form and `cgFlow` and `cgAlt` land at similar
-  lightness. A screen over *declared* colours (`\definecolor` and named
-  colours, not pixels) for pairs that differ in hue but not lightness
-  would report it. The idea is
-  [K-Dense-AI/scientific-agent-skills](INSPIRATION.md)'s palette audit,
-  which reads declarations rather than rendering; note their own caveat,
-  that a lightness heuristic is not colour-vision simulation. **Advisory
-  and easy to over-fire**: a secondary distinction living only in
-  colour is legitimate, so this reports a pair, not a verdict.
-
-Both fit the existing aid: deterministic, source-parsing, advisory,
-exit 0. Neither needs the vision critic
-[D4](#-d4-optional-vision-critique) declined.
-
-Size: M. Depends on: nothing.
-
 ## 🧭 Theme E: the human's own structure
 
 Themes A-D are about what the pipeline does with what it retrieved. This
@@ -889,9 +861,9 @@ closed it and in `plans/`. A roadmap that accumulates its own
 history stops being a list of what to do next, which is the only thing it
 is for.
 
-| # | PR | Theme | Size | Depends on |
-| --- | --- | --- | --- | --- |
-| 1 | [D5](#-d5-two-checks-review-figure-could-compute-from-source) two figure checks from source | D | M | -- |
+**Nothing is listed.** The last item, D5, was closed unbuilt (below).
+A new item goes here as one row of `#`, `PR`, `Theme`, `Size` and
+`Depends on` once it has been proposed and costed.
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).
@@ -905,9 +877,14 @@ Deprioritised unbuilt, and removed from this document rather than
 carried as a permanent number 1: **B3**, section thesis with a source
 count (issue
 [#379](https://github.com/prasadtalasila/chitragupta/issues/379), closed
-2026-08-26 with *"Not a priority now"*). Its design survives in that
-issue, which is where to start if it is ever wanted; nothing else in
-this roadmap depended on it.
+2026-08-26 with *"Not a priority now"*), and **D5**, two figure checks
+`review figure` could compute from source, a node's final point size and
+a declared colour pair a greyscale print cannot separate (issue
+[#624](https://github.com/prasadtalasila/chitragupta/issues/624), closed
+2026-09-04 as not planned). Each design survives in its issue, which is
+where to start if it is ever wanted; nothing else in this roadmap
+depended on either. The two defects D5 would have decided stay on
+[TIKZ-STYLE.md](TIKZ-STYLE.md)'s pre-flight list as human judgements.
 
 **What changed from the first draft of this document.** A1 was PR #1
 and "Depends on: nothing". Reading the auto-improvement track moved it
@@ -921,12 +898,8 @@ argument.** Check a new proposal against both before costing it.
 exists.** `plans/` holds the implementation plan for a roadmap item whose
 design is underdetermined; `plans/g5-topic-discovery.md`,
 which governed the shipped G5-G9 sequence, is the recent worked
-example. **D5, the one item still listed, has none**,
-which is a statement about it rather than a gap: its entry
-already names its files, its size and its dependencies, and for a
-mechanical change that is the whole plan. `plans/README.md` has the
-three tests for when a plan earns its place. That directory does not
-ship.
+example. `plans/README.md` has the three tests for when a plan earns
+its place. That directory does not ship.
 
 **One plan here is for an item that was never built**, and why is worth
 knowing before assuming a plan means a commitment.
@@ -945,11 +918,6 @@ the ticket rather than a second specification, so a design decision
 recorded in a plan file is not repeated here, and the two cannot drift.
 B5's entry said so explicitly for as long as it was here, and
 `plans/b5-pregate-self-feedback.md` is the worked example.
-
-**The leading PR needs no decision and no new dependency.** D5 is two
-arithmetic checks over TikZ source `review figure` already parses: a
-node's final point size, and a declared colour pair a greyscale print
-cannot separate. No model, no new package, and no decision from anyone.
 
 ## 🚫 What is deliberately not proposed
 

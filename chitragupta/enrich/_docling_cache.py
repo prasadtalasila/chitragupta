@@ -53,10 +53,14 @@ def _load_cache() -> dict:
     PDF re-converted at a different `DOCLING_IMAGE_SCALE` produces
     differently-sized bitmaps -- but the comparison here omitted it, so a
     scale change silently kept serving old bitmaps for every doc this
-    cache still considered fresh (#504, m-46)."""
+    cache still considered fresh (#504, m-46).
+
+    `UnicodeDecodeError` is caught beside the JSON error because a write
+    killed inside a multi-byte character fails before json sees it
+    (#967) -- a non-ASCII citekey is enough to put one in the file."""
     try:
         data = json.loads(config.DOCLING_CACHE_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
     if not isinstance(data, dict):
         return {}

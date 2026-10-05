@@ -9,6 +9,7 @@ one way -- `docling_parse.py` imports `_outputs_present`,
 imports `docling_parse`.
 """
 
+import json
 import os
 import re
 from pathlib import Path
@@ -25,14 +26,17 @@ def _outputs_present(stem: str) -> bool:
     corrupted `<stem>.passages.json` (or `<stem>.figures.json`, with
     images on) would be skipped over on every subsequent run and stay
     missing forever, because the .md it is paired with is still there.
+
+    The passage sidecar is asked whether it *reads*, not whether it
+    exists (#967): a torn one adopted before `_reuse_corpus_parse` read
+    what it copied is stamped with a fingerprint that watches only the
+    PDF, so nothing else would ever re-parse it.
     """
-    expected = [
-        config.DOCLING_DIR / f"{stem}.md",
-        config.DOCLING_DIR / f"{stem}.passages.json",
-    ]
+    expected = [config.DOCLING_DIR / f"{stem}.md"]
     if config.DOCLING_IMAGES:
         expected.append(config.DOCLING_DIR / f"{stem}.figures.json")
-    return all(path.exists() for path in expected)
+    sidecar = config.DOCLING_DIR / f"{stem}.passages.json"
+    return all(path.exists() for path in expected) and passages.sidecar_state(sidecar) == "ok"
 
 
 def _corpus_parse_available(doc: CorpusDoc) -> bool:
@@ -100,16 +104,20 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
     if not _corpus_parse_available(doc):
         return False
     # Both reads before either write, and a damaged one declines the reuse
-    # instead of raising. A sidecar truncated mid-write by a killed
-    # process can split a multi-byte character, which fails to decode --
-    # chitragupta/passages.py's reader already tolerates exactly that, for the
-    # same reason. Here the cost of not tolerating it would be worse than
-    # a fallback: parse_doc would report a hard error for a document whose
-    # PDF is sitting right there, perfectly parseable.
+    # instead of raising. The sidecar is read by its own reader rather
+    # than copied as bytes (#967): one truncated between two characters
+    # decodes fine and is still not JSON, and adopting it would stamp it
+    # with a fingerprint that a later `sync` repairing the corpus copy
+    # never moves. Declining costs one parse; raising would report a hard
+    # error for a document whose PDF is sitting right there, parseable.
     try:
         markdown = Path(doc.text_path).read_text(encoding="utf-8", errors="replace")
-        records = passages.sidecar_path(doc.citekey).read_text(encoding="utf-8")
-    except (OSError, UnicodeDecodeError):
+        records = passages.read_records(passages.sidecar_path(doc.citekey))
+    except (OSError, passages.SidecarUnreadable):
+        return False
+    if records is None:
+        # Cleared since `_corpus_parse_available` looked: `pdf_text`
+        # drops the sidecar before every re-parse.
         return False
     # Each form feed becomes the paragraph break it sits inside, rather
     # than being deleted: Docling writes them surrounded by blank lines,
@@ -119,5 +127,7 @@ def _reuse_corpus_parse(doc: CorpusDoc, out_path: Path, stem: str) -> bool:
     # write_text without one encodes with the *platform* encoding, so any
     # non-ASCII paper fails with UnicodeEncodeError under a C-locale host.
     out_path.write_text(re.sub(r"\n{3,}", "\n\n", markdown.replace("\f", "\n\n")), encoding="utf-8")
-    (config.DOCLING_DIR / f"{stem}.passages.json").write_text(records, encoding="utf-8")
+    (config.DOCLING_DIR / f"{stem}.passages.json").write_text(
+        json.dumps(records, indent=2), encoding="utf-8"
+    )
     return True

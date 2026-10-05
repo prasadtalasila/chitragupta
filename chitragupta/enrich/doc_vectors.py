@@ -20,18 +20,35 @@ from chitragupta.enrich import embed_index
 from chitragupta.enrich.corpus import CorpusDoc
 
 
+def _is_embed_entry(entry) -> bool:
+    """What `document_embeddings` reads off an entry without a `.get`: a
+    text hash to compare and a vector to return."""
+    return (
+        isinstance(entry, dict)
+        and isinstance(entry.get("hash"), str)
+        and isinstance(entry.get("embedding"), list)
+    )
+
+
 def _load_embed_cache() -> dict:
     """Corrupt or unexpected-shape cache data is treated as empty rather
     than raised (#504, M-24) -- see `_docling_cache._load_cache` for the
     same defensive shape, applied here so a process killed mid-`_save_embed_cache`
     doesn't take down every later bertopic/seed-topics/converge run until
     someone hand-deletes the file; it costs one avoidable re-embed pass
-    instead."""
+    instead.
+
+    The same holds per entry (#979): one hand-edited or older-format
+    entry is dropped, which makes it a cache miss for that citekey alone,
+    rather than reaching `document_embeddings` as a `KeyError` that fails
+    every topic stage."""
     try:
         data = json.loads(config.TOPIC_EMBED_CACHE_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return {}
-    return data if isinstance(data, dict) else {}
+    if not isinstance(data, dict):
+        return {}
+    return {citekey: entry for citekey, entry in data.items() if _is_embed_entry(entry)}
 
 
 def _save_embed_cache(cache: dict) -> None:
