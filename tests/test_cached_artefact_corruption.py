@@ -66,10 +66,13 @@ class TestTheCorpusPassageSidecarIsReadBeforeItIsAdopted:
     DAMAGE = [kind for kind in CORRUPTIONS if kind != "missing key"]
 
     def _corpus_parsed(self, tmp_path, sidecar: bytes) -> CorpusDoc:
-        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+        # The PDF first: reuse requires both corpus artefacts to be no
+        # older than it, and written the other way round they are older
+        # whenever the clock ticks between the writes.
         text_path = config.PARSED_DIR / "a2024.txt"
-        text_path.write_text("corpus text", encoding="utf-8")
         doc = _pdf_doc(tmp_path, text_path=str(text_path))
+        config.PARSED_DIR.mkdir(parents=True, exist_ok=True)
+        text_path.write_text("corpus text", encoding="utf-8")
         passages.sidecar_path(doc.citekey).write_bytes(sidecar)
         return doc
 
