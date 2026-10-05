@@ -14,6 +14,18 @@ empty `tikzpicture`.
 | `control-loop.tex` | Control loop | the whole claim is that the cycle closes |
 | `branching-tree.tex` | Branching tree | one thing divides into cases and no case rejoins another |
 | `hub-and-spoke-network.tex` | Hub-and-spoke network | everything going through one place *is* the claim |
+| `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
+
+Two more things live here that are not scaffolds:
+
+- **`cg-figstyle.tex`** is the house figure style: the palette plus node
+  roles, zone cards, edges, tags, badges, a legend swatch and a two-step
+  label ramp. Every scaffold carries a verbatim copy of it, so you never
+  copy it by hand; see below.
+- **`exemplars/`** holds three figures from one paper redrawn with that
+  block, at a wider page (acmart's 506pt) than the scaffolds. They show
+  what the vocabulary is for: zone cards, step badges, a legend and the
+  house `pic`s together. Read them; start from a scaffold.
 
 ## 🚀 Using one
 
@@ -23,21 +35,38 @@ Copy it beside the draft that needs it and re-label the nodes:
 cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
 ```
 
-## 🎨 The palette comes with the file
+## 🎨 The house style comes with the file
 
-Every scaffold carries the five `\definecolor` lines of the house
-palette ([TIKZ-STYLE.md](../../docs/TIKZ-STYLE.md)) and uses them,
-so a copied file is already in house colours and you re-label rather than
-re-decide. Keep the block **inside** the figure when you edit it: the
-renderer injects only `\usepackage{tikz}`, and a `thesis-chapter-writer`
-fragment is `\input` into the user's own thesis, which has never heard
-of this project. A figure depending on a colour defined elsewhere
-compiles here and fails there.
+Every scaffold carries the house figure-style block
+(`cg-figstyle.tex`, described in
+[TIKZ-STYLE.md](../../docs/TIKZ-STYLE.md)) between two marker comments,
+and draws with it: `\begin{tikzpicture}[cg]`, then `cgbox`, `cgkey`,
+`cgedge` and the rest, so a copied file is already in house colours,
+weights and corners and you re-label rather than re-decide. Keep the
+block **inside** the figure when you edit it: the renderer injects only
+`\usepackage{tikz}`, and a `thesis-chapter-writer` fragment is `\input`
+into the user's own thesis, which has never heard of this project. A
+figure depending on a style defined elsewhere compiles here and fails
+there.
 
-The roles, in one line each: `cgInk` borders and labels, `cgFlow` the
-primary path, `cgAccent` the one thing the figure is about, `cgAlt` a
-second class, `cgAux` what happens off to the side. Fills are tints
-(`cgFlow!8`); strokes take the colour undiluted.
+**Do not edit inside the markers.** Every figure in a book carries the
+same copy, and an edited one forks the house style without anyone
+noticing. A style only your figure needs goes in the picture's own
+options. Repeating the block in every figure of one document is safe:
+it is all `\tikzset` and `\providecommand`, so a second copy re-defines
+the same keys to the same values.
+
+The colour roles, in one line each: `cgInk` borders and labels, `cgFlow`
+the primary path, `cgAccent` the one thing the figure is about, `cgAlt`
+a second class, `cgAux` what happens off to the side, `cgWarm` and
+`cgRose` a third and fourth zone. Fills are tints; strokes take the
+colour undiluted.
+
+**Labels never go below the body size.** Node names are
+`\large\bfseries` and everything else is `\normalsize`, which `[cg]`
+sets explicitly. Each scaffold is laid out to fit the `article` class's
+text width at that size, so `\input` it bare: a `\resizebox` around it
+prints the type at whatever the scale factor happens to be.
 
 Then write the ASCII twin at `figures/<name>.txt` and reference the pair
 from the draft with a single marker line -- `docs/WRITING-STANDARDS.md`
@@ -83,6 +112,22 @@ cannot quietly rot into one that fails the check it exists to pass. The
 same test reads the metaphor table in `docs/TIKZ-STYLE.md`, so adding a
 row there without adding a file here fails.
 
+The same file also checks three things the layout aid does not, for the
+scaffolds and the exemplars alike:
+
+- every copy of the block is byte-identical to `cg-figstyle.tex`;
+- `\input` of the file sets nothing but its picture: the block, the
+  `\usetikzlibrary` line and the picture's last line all end in `%`;
+- no glyph prints below the body size, read back out of the compiled PDF
+  (a subscript or exponent may go to TeX's own script size, and no
+  further);
+- each scaffold fits the `article` text width unscaled.
+
+One gap to know about: a node drawn by a macro, such as
+`\cglegenditem`'s swatch, is never measured, because the source never
+spells its name. A legend colliding with a card is therefore yours to
+catch by eye.
+
 **Every node is named**, and that is load-bearing rather than tidy. The
 aid measures geometry only for a node with an explicit `(name)`, so a
 picture that names nothing reports zero findings because nothing was
@@ -92,7 +137,9 @@ Keep the names when you re-label.
 ## ✏ Editing one without breaking it
 
 The scaffolds place every node relative to another node. None of them
-writes a coordinate in millimetres, and that is the property to preserve:
+places a node at a coordinate in millimetres, and that is the property
+to preserve (the block's `pic`s draw a fixed shape in millimetres, which
+is not the same thing):
 a figure laid out in hand-computed absolute millimetres cannot express
 "do not collide", so changing one label's length re-opens every
 adjacency in the picture at once.

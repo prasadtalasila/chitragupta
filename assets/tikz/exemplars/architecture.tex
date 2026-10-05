@@ -1,18 +1,8 @@
-% Metaphor: map. Two axes a reader can name, and every item placed by
-% where it falls on both -- reach for it when the point is *how things
-% compare*, not how they connect. A map with arrows on it is usually a
-% pipeline that has not admitted it yet.
-%
-% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
-% a coordinate and re-wording a label cannot collide with its neighbour.
-% Each cell holds a real `\node` with a name, which is what lets
-% `python -m chitragupta.review figure` measure this picture at all.
-%
-% The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
-% from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
-% edit it: every figure in a book carries the same copy, and an edited
-% one forks the house style. A style this figure alone needs goes in the
-% picture's own options.
+% The four layers, the single entrance and the single exit -- redrawn in
+% the presentation tier. The claim the zone cards carry, which the flat
+% version left to the caption: the pipeline crosses from deterministic
+% to generative exactly once, and nothing generated leaves except
+% through one gate.
 % >>> chitragupta figure style v1 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
@@ -292,15 +282,78 @@
   }},
 }%
 % >>> end chitragupta figure style <<<
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix}%
-% Laid out to the article class's \textwidth (345pt) and \input bare.
-% The axis heads are names, so they take the ramp's upper step.
-\begin{tikzpicture}[cg,
-                    head/.style={font=\large\bfseries, align=center,
-                                 minimum height=11mm}]
-  \matrix[row sep=4mm, column sep=4mm] {
-    \node[head] (corner) {};     & \node[head] (cheap) {cheap};      & \node[head] (dear) {dear};          \\
-    \node[head] (batch) {batch}; & \node[cgbox] (bc) {overnight};    & \node[cgbox] (bd) {rebuild};        \\
-    \node[head] (live) {live};   & \node[cgbox] (lc) {cached};       & \node[cgkey] (ld) {on demand};      \\
-  };
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
+% Laid out to a 178mm target (acmart sigconf \textwidth = 506.3pt), and
+% \input bare -- no \resizebox, so \normalsize in the picture is
+% \normalsize on the page.
+\begin{tikzpicture}[cg, node distance=7mm and 10mm,
+                    cgzone/.append style={inner sep=3.4mm}]
+
+  % ---- the spine, left to right -------------------------------------------
+  \node[cgbox, text width=23mm] (bib)
+    {\cglab{Curate}{.bib export + PDFs}};
+  \node[cgbox, right=of bib, text width=23mm] (sync)
+    {\cglab{Corpus}{parse, ledger}};
+  \node[cgalt, right=13mm of sync, text width=23mm] (draft)
+    {\cglab{Draft}{retrieve, write}};
+  \node[cgkey, right=13mm of draft, text width=27mm] (gate)
+    {\cglab{Gate}{every cited document in the ledger}};
+
+  % ---- what hangs below it ------------------------------------------------
+  \node[cgopt, below=18mm of sync, text width=27mm] (enrich)
+    {\cglab{Enrichment}{vectors, topics}};
+  \node[cgopt, below=18mm of draft, text width=27mm] (review)
+    {\cglab{Review}{ten aids, none blocks}};
+  \node[cgbox, below=18mm of gate, text width=26mm] (pub)
+    {\cglab{Publish}{LaTeX, PDF, \textsc{md}}};
+
+  % ---- house shapes, each in a named well so the zones enclose them -------
+  \node[cgwell, above=3mm of bib]   (ibib)   {};
+  \node[cgwell, above=3mm of sync]  (isync)  {};
+  \node[cgwell, above=3mm of draft] (idraft) {};
+  \node[cgwell, above=3mm of gate]  (igate)  {};
+  \pic[cg pic colour=cgFlow]   at (ibib)   {cgdocs};
+  \pic[cg pic colour=cgFlow]   at (isync)  {cgstore};
+  \pic[cg pic colour=cgAlt]    at (idraft) {cgchip};
+  \pic[cg pic colour=cgAccent] at (igate)  {cgshield};
+
+  % ---- the spine's edges ---------------------------------------------------
+  \draw[cgedge] (bib) -- (sync);
+  \draw[cgedge] (sync) -- node[cgtag] {ledger} (draft);
+  \draw[cgedge] (draft) -- (gate);
+  \draw[cgedge] (gate) -- node[cgtag, pos=0.42] {\textsc{ok}} (pub);
+
+  % ---- what happens off to the side ---------------------------------------
+  \draw[cgweak] (sync) -- node[cgtag] {vectors} (enrich);
+  \draw[cgweak] (enrich) -- (review);
+  % Offset left of centre, so the FAIL riser has the right half of the
+  % channel to itself. Two lines sharing a node's attach point is the
+  % "shared attach point" finding waiting to happen.
+  \draw[cgweak] ([xshift=-6mm]draft.south) -- node[cgtag] {finished}
+    ([xshift=-6mm]review.north);
+
+  % ---- the one loop --------------------------------------------------------
+  % The one loop. Drawn as a curve through the channel between the rows,
+  % rather than over the top: the back edge is the figure's second-most
+  % important fact and a route over the icons would read as a detour.
+  \coordinate (chan) at ($(draft.south)!0.5!(review.north)$);
+  \draw[cgback] ([xshift=-5mm]gate.south) |- (chan -| gate.west)
+    -- node[cgtag, text=cgAccent, pos=0.62] {\textsc{fail}}
+       ([xshift=7mm]draft.south |- chan) -- ([xshift=7mm]draft.south);
+
+  % ---- step badges ---------------------------------------------------------
+  \cgstep{1}{bib}{cgFlow}   \cgstep{2}{sync}{cgFlow}
+  \cgstep{3}{draft}{cgAlt}  \cgstep{4}{gate}{cgAccent}
+  \cgstep{5}{pub}{cgFlow}
+
+  % ---- zone cards, drawn behind everything --------------------------------
+  \begin{scope}[on background layer]
+    \node[cgzone=cgFlow,   fit=(ibib)(bib)(isync)(sync)(enrich)] (z1) {};
+    \node[cgzone=cgAlt,    fit=(idraft)(draft)(review)]          (z2) {};
+    \node[cgzone=cgAccent, fit=(igate)(gate)(pub)]               (z3) {};
+  \end{scope}
+  \cgzonelabel{z1}{cgFlow}{Deterministic --- no model is called}
+  \cgzonelabel{z2}{cgAlt}{Generative}
+  \cgzonelabel{z3}{cgAccent}{Gated}
+
 \end{tikzpicture}%

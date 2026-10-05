@@ -260,8 +260,8 @@ class TestStrandedArrowheads:
         than noisy. TikZ clips a path at a node's boundary, so arrow 1's
         head lands *on* `parse` -- correctly pointing at it -- and arrow 2
         starts from the opposite border. `assets/tikz/pipeline.tex`,
-        `control-loop.tex` and `hub-and-spoke-network.tex` are all drawn
-        this way, so treating it as a finding would break
+        `control-loop.tex`, `hub-and-spoke-network.tex` and
+        `zoned-spine.tex` are all drawn this way, so treating it as a finding would break
         tests/test_tikz_scaffolds.py's zero-findings criterion.
         """
         source = "\\draw[->] (intake) -- (parse);\n\\draw[->] (parse) -- (index);\n"
@@ -516,6 +516,24 @@ class TestProbePlacement:
 
         assert figure_layout.node_names(source) == ["a"]
 
+    def test_a_name_inside_a_macro_definition_is_not_probed(self):
+        """#1012's house block, `assets/tikz/cg-figstyle.tex`, defines
+        `\\cglegenditem` by `\\providecommand`, and its body declares
+        `(#1)` and `(#1-t)`. Those are templates for a name the caller
+        supplies, not names: `#` is TeX's macro-parameter character and
+        no drawn node is spelled with it. Probed anyway, they took the
+        compile down with `! Illegal parameter number`, so every figure
+        carrying the block was reported as broken. The block's own
+        `\\providecommand` lines, verbatim."""
+        source = (
+            "\\providecommand{\\cglegenditem}[4]{%\n"
+            "  \\node[cgswatch=#3] (#1) at (#2) {};\n"
+            "  \\node[cglegendtext, right=1.6mm of #1] (#1-t) {#4};}\n"
+            "\\node (a) {A};\n"
+        )
+
+        assert figure_layout.node_names(source) == ["a"]
+
     def test_probes_go_inside_the_picture_not_after_it(self):
         """`current bounding box` belongs to the picture being built, so
         a probe placed after `\\end{tikzpicture}` measures an empty one.
@@ -693,6 +711,27 @@ class TestProbeAgainstRealPdflatex:
         boxes = figure_layout.node_boxes(figure)
 
         assert figure_layout.BBOX_NAME in boxes
+
+    def test_a_figure_defining_a_node_macro_compiles_and_is_measured(self, tmp_path):
+        """The same defect end to end: before #1012 this raised
+        `FigureCompileError` on a figure that compiles cleanly on its
+        own. The node the macro draws is not measured -- the source
+        never spells its name -- and that is the honest answer. (The
+        macro's name must be unused: `\\providecommand` silently keeps
+        an existing command, and `\\mark` is a TeX primitive.)"""
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\providecommand{\\cgtestmark}[1]{\\node (#1) at (0,1) {#1};}\n"
+            "\\begin{tikzpicture}\n"
+            "\\node (a) at (0,0) {A};\n"
+            "\\cgtestmark{m}\n"
+            "\\end{tikzpicture}\n",
+            encoding="utf-8",
+        )
+
+        boxes = figure_layout.node_boxes(figure)
+
+        assert set(boxes) == {"a", figure_layout.BBOX_NAME}
 
     def test_compiling_does_not_litter_beside_the_figure(self, tmp_path):
         """A review aid that leaves .aux/.log/.pdf files next to a

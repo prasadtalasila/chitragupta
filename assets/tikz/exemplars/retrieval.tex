@@ -1,18 +1,14 @@
-% Metaphor: map. Two axes a reader can name, and every item placed by
-% where it falls on both -- reach for it when the point is *how things
-% compare*, not how they connect. A map with arrows on it is usually a
-% pipeline that has not admitted it yet.
+% Two retrieval routes; nothing fuses them -- redrawn in the presentation
+% tier. The zone cards say the thing the flat version only implied: these
+% are two routes, not one branching one, and they never meet.
 %
-% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
-% a coordinate and re-wording a label cannot collide with its neighbour.
-% Each cell holds a real `\node` with a name, which is what lets
-% `python -m chitragupta.review figure` measure this picture at all.
-%
-% The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
-% from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
-% edit it: every figure in a book carries the same copy, and an edited
-% one forks the house style. A style this figure alone needs goes in the
-% picture's own options.
+% WIDTH. Laid out to acmart sigconf's \textwidth (506.3pt = 178mm) and
+% \input bare -- no \resizebox, so every label prints at the size it is
+% set in. That is what wrapped the dense route into two rows: at the type
+% floor its five cards in one line measured 667pt. The picture is taller
+% and narrower than it was, which is the shape a fixed width and a fixed
+% type size force. Changing the layout is the correct response to that;
+% changing the scale is the defect docs/TIKZ-STYLE.md names.
 % >>> chitragupta figure style v1 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
@@ -292,15 +288,81 @@
   }},
 }%
 % >>> end chitragupta figure style <<<
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix}%
-% Laid out to the article class's \textwidth (345pt) and \input bare.
-% The axis heads are names, so they take the ramp's upper step.
-\begin{tikzpicture}[cg,
-                    head/.style={font=\large\bfseries, align=center,
-                                 minimum height=11mm}]
-  \matrix[row sep=4mm, column sep=4mm] {
-    \node[head] (corner) {};     & \node[head] (cheap) {cheap};      & \node[head] (dear) {dear};          \\
-    \node[head] (batch) {batch}; & \node[cgbox] (bc) {overnight};    & \node[cgbox] (bd) {rebuild};        \\
-    \node[head] (live) {live};   & \node[cgbox] (lc) {cached};       & \node[cgkey] (ld) {on demand};      \\
-  };
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
+\begin{tikzpicture}[cg, node distance=8mm and 8mm,
+                    cgzone/.append style={inner sep=3.6mm},
+                    rt/.style={cgbox, text width=30mm, minimum height=14mm}]
+
+  % ---- lexical route, one row ----------------------------------------------
+  \node[rt, cgalt]               (bm)  {\cglab{BM25}{$k_1{=}1.5$, $b{=}0.75$}};
+  % Wider than its siblings by 4mm, with `one hit` narrower by the same
+  % 4mm: the row's width is unchanged and the gloss stops breaking. At a
+  % fixed type size a long gloss is a width problem, and the two fixes
+  % are a wider box or fewer words -- never smaller type.
+  \node[rt, cgalt, right=of bm, text width=34mm]
+    (fwd) {\cglab{forward index}{DF at query time}};
+  \node[rt, cgkey, right=of fwd, text width=26mm]
+    (one) {\cglab{one hit}{per document}};
+  \node[cgwell, above=2.5mm of fwd] (ifwd) {};
+  \pic[cg pic colour=cgAlt] at (ifwd) {cgstore};
+
+  % ---- dense route, two rows -----------------------------------------------
+  \node[rt, below=33mm of bm]         (emb)  {\cglab{bi-encoder}{200 / 40 chunks}};
+  \node[rt, right=of emb]             (chr)  {\cglab{vector store}{40{,}741 chunks}};
+  \node[rt, right=of chr]             (pool) {\cglab{pool}{$k{\times}4 = 20$}};
+  \node[rt, cgopt, below=14mm of emb] (rr)   {\cglab{cross-encoder}{rerank --- off}};
+  \node[rt, right=of rr]              (cap)  {\cglab{cap}{3 per source}};
+  \node[rt, right=of cap]             (topk) {\cglab{top $k$}{$k = 5$}};
+  \node[cgwell, above=2.5mm of emb] (iemb) {};
+  \node[cgwell, above=2.5mm of chr] (ichr) {};
+  \pic[cg pic colour=cgFlow] at (iemb) {cgchip};
+  \pic[cg pic colour=cgFlow] at (ichr) {cgstore};
+
+  % ---- the query, the single entrance --------------------------------------
+  \node[cgplain, text width=18mm, minimum height=11mm,
+        left=17mm of $(bm.west)!0.5!(emb.west)$] (q) {{\large\bfseries query}};
+
+  % ---- edges ---------------------------------------------------------------
+  \draw[cgedge, draw=cgAlt] (q.east) -- ++(7mm,0) |- (bm.west);
+  \draw[cgedge]             (q.east) -- ++(7mm,0) |- (emb.west);
+  \draw[cgedge, draw=cgAlt] (bm) -- (fwd);
+  \draw[cgedge, draw=cgAlt] (fwd) -- (one);
+  \draw[cgedge] (emb) -- (chr);
+  \draw[cgedge] (chr) -- (pool);
+  % The wrap into the second row. One \draw, so the head lands at the end
+  % only. Routed round the right-hand side rather than back across the
+  % first row, which would run the line under three node boxes.
+  \draw[cgedge] (pool.south) -- ++(0,-7.5mm) -| ([yshift=7.5mm]rr.north)
+    -- (rr.north);
+  \draw[cgweak] (rr) -- node[cgtag] {off} (cap);
+  \draw[cgedge] (cap) -- (topk);
+  % No funnel here. The only free band is under the second row, and an
+  % icon stranded there is the protrusion defect -- the same reason
+  % rag-stages carries no shield.
+
+  % ---- the two things a reader should carry away ---------------------------
+  % Anchored to the card's right edge, so a note wider than the card it
+  % annotates overhangs inward rather than out through the zone border.
+  % Placed with `at`, not with `above=... of`: the positioning library
+  % takes an explicit `anchor` as the thing to place but still reserves
+  % the node's own extent on the other side, and the note -- wider than
+  % the card it annotates -- pushed the picture 32pt past its target
+  % width without visibly moving.
+  \node[cgnote, text=cgAccent, anchor=south east]
+    at ([yshift=2.5mm]one.north east) {source diversity, for free};
+
+  % ---- zone cards ----------------------------------------------------------
+  \begin{scope}[on background layer]
+    \node[cgzone=cgAlt,  fit=(bm)(ifwd)(fwd)(one)]                  (zl) {};
+    \node[cgzone=cgFlow, fit=(iemb)(emb)(chr)(pool)(rr)(cap)(topk)] (zd) {};
+  \end{scope}
+  \cgzonelabel{zl}{cgAlt}{Lexical route}
+  \cgzonelabel{zd}{cgFlow}{Dense route}
+
+  % The ceiling. Below the dense zone, where it belongs: it is a property
+  % of that route, and it is the single most important sentence in the
+  % figure.
+  \node[cgnote, below=2.5mm of zd.south west, anchor=north west]
+    {ceiling: for 27\% of queries the correct paper never enters the pool};
+
 \end{tikzpicture}%

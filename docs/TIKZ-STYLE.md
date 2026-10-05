@@ -1,7 +1,8 @@
 # 📐 TikZ figure style: layout, typography, and the pre-flight checklist
 
 Status: **standard, not mechanically checked.** Written 2026-08-21. Updated
-2026-08-24. A future review-layer aid
+2026-10-05 (#1012: the house figure-style block, the type floor, the zoned
+spine). A future review-layer aid
 ([FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s D2) may check some of the binary
 items below by compiling the figure; nothing here is gated today.
 
@@ -38,9 +39,18 @@ maps onto a TikZ idiom to use:
 | Control loop | cyclic edges with `bend` |
 | Branching tree | `tree` |
 | Hub-and-spoke network | a star |
+| Zoned spine | `fit` plus `backgrounds` |
 
-(The metaphor list is PaperBanana's planner supplement, read and not
+(The first six are PaperBanana's planner supplement, read and not
 copied; [INSPIRATION.md](INSPIRATION.md) carries the credit.)
+
+**The zoned spine** is one left-to-right path that carries the argument,
+with each zone card a tinted region behind a group of members and its
+title outside the card's top-left corner. Reach for it when the figure
+has one storyline and several parallel commentaries on points along it.
+The card is a `fit` node drawn `on background layer`, so it never paints
+over a member and re-wording a member widens the card instead of
+escaping it. If nothing comments on the path, it is a pipeline.
 
 **There is a starting file for every row of that table, in
 `assets/tikz/`.** One per metaphor, named for it, each compiling on its
@@ -53,8 +63,10 @@ draft and there is nothing to download. `assets/tikz/README.md` says
 what each one is for.
 
 **Every scaffold places its nodes relative to one another, and none of
-them writes a coordinate in millimetres.** That is the property to keep
-when you edit one. A figure laid out in hand-computed absolute
+them places a node at a coordinate in millimetres.** That is the property
+to keep when you edit one. (The house block's `pic` definitions do write
+millimetres, for the internal geometry of a fixed shape; that is the
+shape, not the composition.) A figure laid out in hand-computed absolute
 millimetres cannot express "do not collide": re-wording one label, or
 setting the figure at a different type size, re-opens every adjacency in
 the picture at once and each of them has to be re-checked by eye.
@@ -314,18 +326,35 @@ Concrete defects, not taste:
 Two conventions, both about a figure looking like a native part of the
 document rather than something pasted in:
 
-- **Node text matches the document's own font size.** Don't shrink a
-  node's label with `\footnotesize`, `\scriptsize` or similar to cram
-  more words into a box; that is a symptom of the conciseness defect
-  above, not a fix for it. A figure whose labels run smaller than the
-  surrounding paragraph reads as an afterthought.
+- **The smallest type in a figure equals the document's body size.** That
+  is a floor, not a target: nothing in a picture may be set smaller than
+  the paragraph beside it, and a figure is free to go *up* from there.
+  The house ramp is two steps: `\normalsize` for every gloss, edge tag,
+  note, legend entry and badge, and `\large\bfseries` for node names and
+  zone titles. Set the floor explicitly as a picture option
+  (`\begin{tikzpicture}[cg]` does it), rather than inheriting it, so a
+  picture that lands inside a float, a table cell or a `\small` group
+  does not quietly drop below it.
+
+  Shrinking type is never the fix for a box with too many words in it:
+  that is the conciseness defect, and the fixes are fewer words or a
+  wider box. Going the other way costs nothing: a larger name gives the
+  figure a hierarchy the flat version has to spell out in the caption.
+  Two exceptions, both automatic and both correct: a mathematical
+  subscript or superscript set by TeX's own script style, and the
+  `\caption`, which is the document's, not the figure's.
+  `tests/test_tikz_scaffolds.py` holds every file in `assets/tikz/` to
+  this by reading each glyph's printed size back out of the compiled
+  PDF, not by reading the source, because the size that breaks it
+  usually arrives from somewhere the figure file cannot see.
 - **Lines are distinctly thicker than TikZ's own default.**
   `\pgflinewidth` defaults to 0.4pt, TikZ's `thin` key (verified with
   `\typeout{\the\pgflinewidth}` on this host). Draw node borders and
   arrows at `thick` (0.8pt, double the default, same probe) instead;
   a figure left at the bare default reads as faint next to a document's
   normal text weight. Set it as a picture option, not a restated style:
-  `\begin{tikzpicture}[thick]`. **Do not** reach for
+  `\begin{tikzpicture}[thick]`, which the house block's `[cg]` already
+  includes. **Do not** reach for
   `\tikzset{every node/.style={thick}}` to do this: `/.style=`
   *replaces* whatever `every node` already held, so a figure with its
   own node style (`draw`, `circle`, a fill colour) silently loses all of
@@ -338,8 +367,9 @@ document rather than something pasted in:
 ## 🎨 The house palette
 
 **Figures here are in colour, and they use one palette.** Five named
-colours, each with a job. A figure that invents its own hues reads as
-imported from somewhere else, which a house palette exists to prevent.
+colours with a role each, and four more that a zoned figure needs. A
+figure that invents its own hues reads as imported from somewhere else,
+which a house palette exists to prevent.
 
 ```latex
 \definecolor{cgInk}{HTML}{1A1A1A}     % borders, labels, default strokes
@@ -347,7 +377,26 @@ imported from somewhere else, which a house palette exists to prevent.
 \definecolor{cgAccent}{HTML}{D55E00}  % the one thing the figure is about
 \definecolor{cgAlt}{HTML}{009E73}     % a second class of node or edge
 \definecolor{cgAux}{HTML}{56B4E9}     % auxiliary, secondary, "also happens"
+\definecolor{cgWarm}{HTML}{E69F00}    % a third zone
+\definecolor{cgRose}{HTML}{CC79A7}    % a fourth zone
+\definecolor{cgPaper}{HTML}{FAFAF8}   % card ground, one step off white
+\definecolor{cgMute}{HTML}{8A8A8A}    % muted ink, as a name
 ```
+
+(Inside `assets/tikz/cg-figstyle.tex` each of these lines ends its
+`}` with a `%`, so the block sets no stray space; see "The house figure
+style" below.)
+
+**`cgWarm` and `cgRose` are one hue per zone.** They are Okabe-Ito's
+remaining qualitative members, so the extension is the same palette
+rather than a second one: a zoned figure needs one hue per zone, and five
+roles do not stretch to six zones without reusing one, which reads as a
+claim the figure is not making. **`cgMute` is a *named* grey** because
+the house styles take a colour as an argument and paste it into a tint
+(`fill=#1!11`): `cgInk!55` passed in becomes `cgInk!55!11`, which xcolor
+rejects with "Undefined color". Every role that needs muted ink
+therefore needs a name. `cgPaper` is the card ground, one step off white
+for the same reason `cgInk` is not black.
 
 The values are Okabe-Ito's colourblind-safe qualitative set (Okabe &
 Ito, 2008), the usual choice for this purpose, and it costs nothing to
@@ -372,8 +421,9 @@ stroke, and **not** usable for label text on white. `cgInk`, `cgFlow` and
 
 ### 📎 The palette travels inside the figure
 
-**Paste those five lines into every figure that uses them.** Not into a
-shared file the figure `\input`s, and not into a preamble: the
+**The palette travels as part of the house block** (next section), which
+every figure carries whole. Not in a
+shared file the figure `\input`s, and not in a preamble: the
 renderer injects `\usepackage{tikz}` and nothing else, and
 `thesis-chapter-writer`'s fragment is `\input` directly into the user's
 own thesis, which has never heard of this project. A figure that depends
@@ -382,8 +432,61 @@ the worst of the two orders to fail in.
 
 This is the same discipline the `\usetikzlibrary` line already follows,
 for the same reason, and it means the definitions are duplicated across
-figures on purpose. The six scaffolds in `assets/tikz/` all carry the
+figures on purpose. The seven scaffolds in `assets/tikz/` all carry the
 block, so copying one gets it for free.
+
+### 🧱 The house figure style
+
+`assets/tikz/cg-figstyle.tex` is the palette grown into the rest of the
+vocabulary a figure needs to look drawn rather than assembled, so a
+figure stops re-deciding corner radius, rule weight, tint depth,
+arrowhead and label structure from nothing each time:
+
+| Group | Keys |
+| --- | --- |
+| Palette | the nine colours above |
+| Picture default | `cg`: `thick`, round caps and joins, `font=\normalsize`, ink colour |
+| Node roles | `cgbox` `cgalt` `cgaux` `cgwarm` `cgrose` `cgplain` `cgkey` `cgnone` `cgopt` |
+| Shadow | `cgsoft` (on in every filled role) and `cgflat` (cancels it; `cgnone` and `cgopt` use it) |
+| Zone card | `cgzone=<colour>` and `\cgzonelabel{<fit node>}{<colour>}{<text>}` |
+| Edges | `cgedge` `cgweak` `cgback` `cglead=<colour>` |
+| Annotation | `cgtag` (a word on an arrow, on its own ground), `cgnote` |
+| Badges | `cgbadge=<colour>` and `\cgstep{<n>}{<node>}{<colour>}` |
+| Legend | `cgswatch=<colour>`, `\cglegenditem{...}` |
+| Label ramp | `\cglab{<name>}{<gloss>}` |
+| Icon well | `cgwell`: a named, invisible, fixed-size node a `pic` is drawn into |
+
+It also defines five house `pic`s (`cgstore`, `cgdocs`, `cgfunnel`,
+`cgchip`, `cgshield`), which #1014 documents. Each is drawn into a
+`cgwell`, because a `pic` is a path, has no name, and so is otherwise
+invisible to `review figure`.
+
+The block needs one library line, at the top of the figure with the
+picture's own:
+
+```latex
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}
+```
+
+All six ship with `texlive-pictures`. `shadows.blur` comes from the
+`pgf-blur` package but is reached by `\usetikzlibrary`, not
+`\usepackage`, which is what lets the soft shadow travel into a thesis
+preamble this project never sees: a figure file cannot load a package.
+
+**Carry the block whole, between its two marker comments, and do not
+edit inside them.** Every scaffold carries it byte for byte, and
+`tests/test_tikz_scaffolds.py` fails a copy that differs from
+`cg-figstyle.tex` by one character. A style only one figure needs goes in
+that picture's own options, below the block.
+
+**Repeating it once per figure is safe**, by the same argument #781
+makes for `\usetikzlibrary`. `\tikzset` re-defines the same keys to the
+same values, and every macro is `\providecommand`, so N figures in one
+document carrying N copies cost N definitions and change nothing. No
+global hook is appended to and no loaded flag is set. The one construct
+without this property is `\tikzset{every node/.style=...}` (see "Type and
+line weight" above), and the block touches `every node` only through
+`.append style` inside the `cg` picture option, scoped to one picture.
 
 ### 🖨 What the other two forms do with it
 
@@ -419,6 +522,44 @@ So settle the target width *before* choosing a metaphor: a
 hub-and-spoke needs horizontal room a single column does not have, and
 is the wrong metaphor there however well it fits the content. A layered
 stack degrades gracefully to a narrow column; a wide map does not.
+
+**Never wrap a figure in `\resizebox` or `\scalebox`, and never set
+`scale=` on the picture.** A picture drawn at its natural size and then
+scaled to fit prints its type at whatever the scale factor happens to
+be, so the floor in "Type and line weight" becomes a number nobody
+chose. Settle the target width first, lay the figure out to it, and
+`\input` it bare. If it does not fit, change the layout (wrap a row, cut
+a gloss, drop a stage), never the scale. The row count following from
+the type size is the right direction for that decision to run.
+
+This is the rule that actually gets broken, because the scale is
+**invisible in the figure file**: it lives in the draft that `\input`s
+it. Measured on six hand-written figures in one acmart sigconf paper
+(9pt body), each wrapped in `\resizebox{\textwidth}{!}{...}`:
+
+| Figure | Natural width | Scale applied | Smallest type printed at |
+| --- | --- | --- | --- |
+| `architecture` | 462.8pt | 1.094 | 6.6pt |
+| `rag-stages` | 548.9pt | 0.922 | **5.5pt** |
+| `retrieval` | 519.5pt | 0.975 | 5.9pt |
+| `coauthoring` | 520.8pt | 0.972 | 5.8pt |
+| `prompt` | 425.6pt | 1.118 | 6.7pt |
+| `revision` | 420.6pt | 1.180 | 7.1pt |
+
+Six figures, six effective type sizes, none of them chosen. Laid out
+again to fit 506.3pt unscaled, every label printed at 8.97pt or above.
+Expect the floor to *change layouts*, not just sizes: `rag-stages` went
+from two rows to three, and `retrieval`'s dense route wrapped. Three of
+those redrawn figures ship as `assets/tikz/exemplars/`.
+
+The renderer is already clean here: `render_output/_figure_captions.py`
+emits a bare `\begin{figure}` around the marker with no scale knob, so a
+pipeline-rendered figure is drawn at natural size. The defect is what a
+*hand-written* document does, which is exactly `thesis-chapter-writer`'s
+case: its fragment is `\input` into a thesis this project never sees.
+The seven scaffolds are each laid out to the `article` class's 345pt
+text width, and a test compiles each one there and fails on an
+`Overfull \hbox`.
 
 **No venue table is bundled here, deliberately.** Column widths are
 per-publisher, differ between initial and revised submission, and go
@@ -473,8 +614,8 @@ ones authors get wrong:
   fix for a finding is to change what you asked TikZ for (a
   `sibling distance`, a `row sep`, a different library), and never to
   nudge a coordinate until the number moves. `assets/tikz/` is the
-  starting point for that, and none of its six scaffolds writes
-  a coordinate at all.
+  starting point for that, and none of its seven scaffolds places
+  a node at a coordinate.
 - **Its thresholds are the checker's, not this document's.** "An empty
   band worth more than a third of the height" is a number chosen so
   ordinary layouts pass; it is not a rule from the list above. It does

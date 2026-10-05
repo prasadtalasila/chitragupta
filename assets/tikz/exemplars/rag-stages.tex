@@ -1,18 +1,17 @@
-% Metaphor: map. Two axes a reader can name, and every item placed by
-% where it falls on both -- reach for it when the point is *how things
-% compare*, not how they connect. A map with arrows on it is usually a
-% pipeline that has not admitted it yet.
+% The eleven RAG stages, and where this pipeline's guarantees sit --
+% redrawn in the presentation tier.
 %
-% Idiom: `matrix`. The rows and columns are the layout, so no cell needs
-% a coordinate and re-wording a label cannot collide with its neighbour.
-% Each cell holds a real `\node` with a name, which is what lets
-% `python -m chitragupta.review figure` measure this picture at all.
+% Two changes of substance over the flat version: the stage number leaves
+% the label and becomes a badge, so the label says what the stage does;
+% and the legend's swatches are the same objects as the cards they stand
+% for, at the same rule weight and tint, rather than filled squares that
+% merely share a hue.
 %
-% The house figure style (docs/TIKZ-STYLE.md) follows, copied verbatim
-% from assets/tikz/cg-figstyle.tex. Keep it inside the figure and do not
-% edit it: every figure in a book carries the same copy, and an edited
-% one forks the house style. A style this figure alone needs goes in the
-% picture's own options.
+% WIDTH. Laid out to acmart sigconf's \textwidth (506.3pt = 178mm) and
+% \input bare -- no \resizebox, so the gloss line prints at the body
+% size. That is what decided the grid: at the type floor, six cards in a
+% row measure 682pt and do not fit. Four do. The row count follows from
+% the type size, which is the right direction for that decision to run.
 % >>> chitragupta figure style v1 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
@@ -292,15 +291,59 @@
   }},
 }%
 % >>> end chitragupta figure style <<<
-\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix}%
-% Laid out to the article class's \textwidth (345pt) and \input bare.
-% The axis heads are names, so they take the ramp's upper step.
-\begin{tikzpicture}[cg,
-                    head/.style={font=\large\bfseries, align=center,
-                                 minimum height=11mm}]
-  \matrix[row sep=4mm, column sep=4mm] {
-    \node[head] (corner) {};     & \node[head] (cheap) {cheap};      & \node[head] (dear) {dear};          \\
-    \node[head] (batch) {batch}; & \node[cgbox] (bc) {overnight};    & \node[cgbox] (bd) {rebuild};        \\
-    \node[head] (live) {live};   & \node[cgbox] (lc) {cached};       & \node[cgkey] (ld) {on demand};      \\
-  };
+\usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
+\begin{tikzpicture}[cg, node distance=9mm and 9mm,
+                    st/.style={cgbox, text width=27mm, minimum height=14mm}]
+
+  % ---- row one -------------------------------------------------------------
+  \node[st, cgalt]               (s1) {\cglab{Ingest}{.bib only}};
+  \node[st, cgalt,  right=of s1] (s2) {\cglab{Chunk}{whole doc}};
+  \node[st,         right=of s2] (s3) {\cglab{Index}{BM25}};
+  \node[st, cgnone, right=of s3] (s4) {\cglab{Query}{one skill}};
+
+  % ---- row two -------------------------------------------------------------
+  \node[st,         below=of s1] (s5) {\cglab{Retrieve}{over-fetch}};
+  \node[st, cgnone, right=of s5] (s6) {\cglab{Fuse}{none}};
+  \node[st,         right=of s6] (s7) {\cglab{Rerank}{off by default}};
+  \node[st, cgalt,  right=of s7] (s8) {\cglab{Cap}{structural}};
+
+  % ---- row three -----------------------------------------------------------
+  \node[st, cgnone, below=of s5] (s9)  {\cglab{Assemble}{claims, partly}};
+  \node[st, cgkey,  right=of s9] (s10) {\cglab{Verify}{the gate}};
+  \node[st, cgalt, right=of s10] (s11) {\cglab{Revise}{the dossier}};
+
+  % No house shape in this one, deliberately. The accent card already
+  % carries "the one thing the figure is about", and a shield floating in
+  % a gap is the protrusion defect docs/TIKZ-STYLE.md names -- an element
+  % stranded in an empty band, wasting every inch beside it. The
+  % vocabulary is there to be used where it pays.
+
+  % ---- the chain -----------------------------------------------------------
+  \foreach \a/\b in {s1/s2, s2/s3, s3/s4, s5/s6, s6/s7, s7/s8,
+                     s9/s10, s10/s11}
+    {\draw[cgedge] (\a) -- (\b);}
+  % The two wraps. One \draw each, so the arrowhead lands only at the end.
+  \draw[cgedge] (s4.south) -- ++(0,-4.5mm) -| ([yshift=4.5mm]s5.north)
+    -- (s5.north);
+  \draw[cgedge] (s8.south) -- ++(0,-4.5mm) -| ([yshift=4.5mm]s9.north)
+    -- (s9.north);
+
+  % ---- step badges ---------------------------------------------------------
+  \foreach \n/\s/\c in {1/s1/cgAlt, 2/s2/cgAlt, 3/s3/cgFlow, 4/s4/cgMute,
+                        5/s5/cgFlow, 6/s6/cgMute, 7/s7/cgFlow, 8/s8/cgAlt,
+                        9/s9/cgMute, 10/s10/cgAccent, 11/s11/cgAlt}
+    {\cgstep{\n}{\s}{\c}}
+
+  % ---- legend, two rows ----------------------------------------------------
+  % Two rows rather than one, for the same reason the stages are in three:
+  % at the type floor the four entries measure past the target width, and
+  % the answer to that is a wrap, never a smaller size.
+  \coordinate (lg) at ($(s9.south west)+(1mm,-10mm)$);
+  \cglegenditem{lgA}{lg}{cgAlt}{a guarantee none of the six compared
+                                systems has}
+  \cglegenditem{lgB}{$(lgA-t.east)+(8mm,0)$}{cgAccent}{the one blocking check}
+  \cglegenditem{lgC}{$(lgA.center)+(0,-6.5mm)$}{cgFlow}{standard practice}
+  \cglegenditem{lgD}{$(lgB.center)+(0,-6.5mm)$}{cgMute}{absent or partial,
+                                                        and named as such}
+
 \end{tikzpicture}%

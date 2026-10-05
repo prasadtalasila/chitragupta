@@ -92,8 +92,15 @@ def node_names(source: str) -> list[str]:
     name missed leaves that node unmeasured, and `protrudes()` then
     reads the band it occupies as empty -- a seven-node tree drawn with
     `child` reported one node and a protrusion it did not have.
+
+    A name holding `#` is skipped: that is TeX's macro-parameter
+    character, so the declaration sits inside a macro's definition and
+    names a node only once a caller fills it in (#1012's
+    `\\cglegenditem`, whose `(#1)` took the compile down).
     """
-    return [match.group("name").strip() for match in _NODE_NAME_RE.finditer(strip_comments(source))]
+    matches = _NODE_NAME_RE.finditer(strip_comments(source))
+    names = (match.group("name").strip() for match in matches)
+    return [name for name in names if "#" not in name]
 
 
 def scaffold(source: str, names: list[str]) -> str:

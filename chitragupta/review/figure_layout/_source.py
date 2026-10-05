@@ -254,7 +254,7 @@ def stranded_arrowheads(source: str) -> list[str]:
 
     TikZ clips each path at the node's boundary, so the first head lands
     on `parse` pointing at it and the second starts from the opposite
-    border. Nothing is stranded. Three of the six scaffolds in
+    border. Nothing is stranded. Four of the seven scaffolds in
     `assets/tikz/` are drawn this way, so a check without this clause
     would report a finding on each of them. In #399's figure nothing is
     drawn at `(46,36)` at all, which is why the head points at empty
