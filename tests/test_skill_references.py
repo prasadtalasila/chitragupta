@@ -20,12 +20,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 CLAUDE = REPO_ROOT / ".claude"
 NEUTRAL_DIRS = ("references", "assets", "scripts")
 NAMED_PATH = re.compile(r"`(\.claude/skills(?:-common)?/[^`\s]+)`")
-TOOLS = sorted({word for words in FOREIGN.values() for word in words} | {"`Edit`", "`Write`", "`Read`"})
+TOOLS = sorted(
+    {word for words in FOREIGN.values() for word in words} | {"`Edit`", "`Write`", "`Read`"}
+)
 
 
 def neutral_files() -> list:
     """Every file outside a `SKILL.md` that a skill may point at."""
-    roots = [CLAUDE / "skills-common", *(CLAUDE / "skills" / s / d for s in SKILLS for d in NEUTRAL_DIRS)]
+    roots = [
+        CLAUDE / "skills-common",
+        *(CLAUDE / "skills" / s / d for s in SKILLS for d in NEUTRAL_DIRS),
+    ]
     return sorted(p for root in roots if root.is_dir() for p in root.rglob("*") if p.is_file())
 
 
@@ -71,7 +76,12 @@ def test_only_skill_md_is_kept_per_harness(name, harness):
 # Skills whose collection-scoping section points at the shared reference.
 # deep-research deliberately does not scope, and the revisers inherit the
 # recorded collection instead of offering one.
-_SCOPING_GENRES = ("survey-writer", "thesis-chapter-writer", "textbook-chapter-writer", "tutorial-writer")
+_SCOPING_GENRES = (
+    "survey-writer",
+    "thesis-chapter-writer",
+    "textbook-chapter-writer",
+    "tutorial-writer",
+)
 _SCOPING = ".claude/skills-common/references/collection-scoping.md"
 
 
