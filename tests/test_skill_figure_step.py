@@ -28,6 +28,7 @@ _RIDERS = (
     "lettered sub-captions",
     "tikz@node@reset@hook",
     "as original as the ASCII",
+    "chitragupta.figure sync",
 )
 _NO_CITEKEY = "No citekey inside either figure file"
 _MARKDOWN_SHAPE = "<!-- figure: figures/<name> -->"

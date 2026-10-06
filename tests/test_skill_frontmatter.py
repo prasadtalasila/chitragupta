@@ -13,6 +13,7 @@ import re
 from pathlib import Path
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ROOTS = (
@@ -50,3 +51,30 @@ def test_frontmatter_loads_on_every_harness(path):
     assert fields["name"] == path.parent.name
     assert NAME_RE.match(fields["name"])
     assert 1 <= len(fields["description"]) <= MAX_DESCRIPTION, len(fields["description"])
+
+
+@pytest.mark.parametrize(
+    "path", SKILL_FILES, ids=lambda p: f"{p.parent.parent.parent.name}/{p.parent.name}"
+)
+def test_frontmatter_is_valid_yaml(path):
+    """The harnesses read a `description:` with `: ` inside it, but YAML
+    does not: GitHub refuses to render the file ("mapping values are not
+    allowed in this context"), and any strict loader would too (#1027).
+    The parsed value must also be the whole line the harnesses see."""
+    block = path.read_text(encoding="utf-8").split("---", 2)[1]
+    parsed = yaml.safe_load(block)
+    assert parsed["name"] == path.parent.name
+    assert parsed["description"] == frontmatter(path)["description"]
+
+
+AGENT_FILES = sorted((REPO_ROOT / ".claude" / "agents").glob("*.md"))
+
+
+@pytest.mark.parametrize("path", AGENT_FILES, ids=lambda p: p.name)
+def test_agent_frontmatter_is_valid_yaml(path):
+    """The subagent definitions carry the same frontmatter shape, and the
+    same `: ` trap."""
+    block = path.read_text(encoding="utf-8").split("---", 2)[1]
+    parsed = yaml.safe_load(block)
+    assert parsed["name"] == path.stem
+    assert parsed["description"] == frontmatter(path)["description"]

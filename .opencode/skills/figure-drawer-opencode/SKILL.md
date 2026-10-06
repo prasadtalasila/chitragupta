@@ -1,6 +1,6 @@
 ---
 name: figure-drawer-opencode
-description: Draws one figure for a draft in content/drafts/ -- a TikZ picture in figures/<name>.tex and its ASCII twin in figures/<name>.txt -- from the house scaffolds in assets/tikz/, then compiles and reviews it. Handed off to by survey-writer-opencode, tutorial-writer-opencode, textbook-chapter-writer-opencode and thesis-chapter-writer-opencode once they have decided a figure is warranted, and by draft-reviser-opencode to redraw or fix one. Also triggers directly when the user asks to draw, add, redraw or fix a figure or diagram in an existing draft. Owns how a figure is drawn, never whether a genre wants one. Never presents a draft: it returns to the skill that called it, which gates and renders. Never puts a citekey in a figure file.
+description: Draws one figure for a draft in content/drafts/ -- a TikZ picture in figures/<name>.tex and its ASCII twin in figures/<name>.txt -- from the house scaffolds in assets/tikz/, then compiles and reviews it. Handed off to by survey-writer-opencode, tutorial-writer-opencode, textbook-chapter-writer-opencode and thesis-chapter-writer-opencode once they have decided a figure is warranted, and by draft-reviser-opencode to redraw or fix one. Also triggers directly when the user asks to draw, add, redraw or fix a figure or diagram in an existing draft. Owns how a figure is drawn, never whether a genre wants one. Never presents a draft -- it returns to the skill that called it, which gates and renders. Never puts a citekey in a figure file.
 tags: [figure, tikz, drafting]
 ---
 
@@ -89,7 +89,11 @@ so they are this skill's to state:
    holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names --
    pipeline, map, layered stack, control loop, branching tree,
    hub-and-spoke, zoned spine. Copy the one that fits and re-label it,
-   leaving the house style block it carries unedited. Each places its
+   leaving the house style block it carries unedited. Then run
+   `python -m chitragupta.figure sync <the figure file>`, which
+   refreshes the block if the scaffold's copy is older than the
+   installed one, and reports instead of overwriting if you edited
+   inside it. Each places its
    nodes relative to one another, which is the property worth keeping:
    a figure laid out in hand-computed millimetres re-opens every
    adjacency in it the moment any label changes length. Then check the
@@ -104,6 +108,7 @@ so they are this skill's to state:
 
    ```bash
    cp assets/tikz/zoned-spine.tex content/drafts/rag/figures/flow.tex
+   python -m chitragupta.figure sync content/drafts/rag/figures/flow.tex
    ```
 
 3. **Panels get lettered sub-captions, in both forms.** A figure with
