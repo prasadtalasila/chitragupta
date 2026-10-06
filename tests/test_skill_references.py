@@ -66,3 +66,18 @@ def test_neutral_files_name_no_skill_or_tool(path):
 @pytest.mark.parametrize("name", SKILLS)
 def test_only_skill_md_is_kept_per_harness(name, harness):
     assert sorted(p.name for p in folder(harness, name).iterdir()) == ["SKILL.md"]
+
+
+# Skills whose collection-scoping section points at the shared reference.
+# deep-research deliberately does not scope, and the revisers inherit the
+# recorded collection instead of offering one.
+_SCOPING_GENRES = ("survey-writer", "thesis-chapter-writer", "textbook-chapter-writer", "tutorial-writer")
+_SCOPING = ".claude/skills-common/references/collection-scoping.md"
+
+
+@pytest.mark.parametrize("name", _SCOPING_GENRES)
+def test_each_scoping_genre_points_at_the_collection_reference(name):
+    text = (folder("claude", name) / "SKILL.md").read_text(encoding="utf-8")
+    section = text.split("## Collection scoping", 1)[1].split("\n## ", 1)[0]
+    assert f"`{_SCOPING}`" in section
+    assert "ledger --collections" in section, "the one check every run makes stays in SKILL.md"
