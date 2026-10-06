@@ -431,24 +431,14 @@ After step 7 and before presenting:
 python -m chitragupta.draft style content/drafts/<path>
 ```
 
-**It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable** --
-§2's defect markers, an acronym never expanded at first use, a glossary
-acronym whose expansion has drifted from the vocabulary, and §8's
-dialect against `scope.md`'s `language:` line. It says nothing about
-whether a paragraph leads with its point, and it cannot tell a quotation
-from the draft's own voice.
+Read `.claude/skills-common/references/prose-check.md` now and follow it:
+what the check can and cannot see, and how to report what it finds.
 
-**Report every finding and fix none of them, and say which are yours.**
-The check reads the whole file, so most of what it reports predates this
-revision; a reviser who tidies all of it has made a whole-document change
-nobody asked for. A finding is a place to look, not a defect -- the first
-pass of this check over this repository's own docs kept 59 of its 73
-marker hits on inspection. If the user wants them acted on, that is
-**copy-edit mode** below: this same skill, one `revisions.md` entry
-naming the convention. Report the header lines too: `dialect: not
-checked` means nobody ever recorded one, so a short list is not a clean
-draft. A review aid, not a gate -- it exits 0 whatever it finds, and a
-missing `vale` binary is a one-line warning that blocks nothing.
+**Say which findings are yours.** The check reads the whole file, so most
+of what it reports predates this revision; a reviser who tidies all of it
+has made a whole-document change nobody asked for. If the user wants them
+acted on, that is **copy-edit mode** below: this same skill, one
+`revisions.md` entry naming the convention.
 
 ### Run the verbatim scan
 

@@ -192,13 +192,9 @@ turn a wide pass into the re-run this skill exists to avoid.
   content/drafts/<path>` -- after the gate and before presenting.
   `draft-reviser-opencode`'s numbered steps 1-7 do not reach its unnumbered riders,
   so this is written out here for the same reason the scan offer is.
-  **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-  -- §2's defect markers, an acronym never expanded at first use, a
-  glossary acronym whose expansion has drifted from the vocabulary, and
-  §8's dialect against `scope.md`'s `language:` line -- and it cannot
-  tell a quotation from the draft's own voice. **Report every finding and fix
-  none of them:** a wide pass rewrites against sources the draft never
-  cited, which makes it the pass most able to import another author's
+  Read `.claude/skills-common/references/prose-check.md` now and follow
+  it. **Fix none of the findings:** a wide pass rewrites against sources
+  the draft never cited, which makes it the pass most able to import another author's
   spelling along with their point, and also the pass least entitled to
   tidy prose nobody asked about. Findings go to `draft-reviser-opencode`'s
   copy-edit mode, not into this pass.

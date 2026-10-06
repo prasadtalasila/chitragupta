@@ -392,15 +392,10 @@ It is the reading copy for anyone who is not building LaTeX.
    python -m chitragupta.draft style content/drafts/<book>/<unit-id>.md
    ```
 
-   **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-   -- §2's defect markers, an acronym never expanded at first use, a
-   glossary acronym whose expansion has drifted from the vocabulary, and
-   §8's dialect against `scope.md`'s `language:` line. It says nothing
-   about whether a paragraph leads with its point. **Report every
-   finding and fix none of them.** A finding is a place to look, not a
-   defect, and acting on one is `draft-reviser-opencode`'s copy-edit mode, in the
-   unit that owns the prose. A review aid, not a gate: it exits 0
-   whatever it finds.
+   Read `.claude/skills-common/references/prose-check.md` now and follow
+   it: what the check can and cannot see, and how to report what it finds.
+   Acting on a finding is `draft-reviser-opencode`'s copy-edit mode, in the unit
+   that owns the prose.
 
 8. **Run the verbatim scan, per unit.** Assembly is the last moment
    before a whole book is read by somebody else, which makes it the

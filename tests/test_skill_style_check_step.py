@@ -23,6 +23,13 @@ reads as a verdict on prose quality, when the check is silent on every
 rule §9 marks a judgement -- and silent, too, about whether a marker sits
 inside a quotation, which `assets/vale/vale.ini` exempts for block quotes
 and code but not for inline quotation marks.
+
+Since #997 both literals live once, in
+`.claude/skills-common/references/prose-check.md`, which each step names
+right after its command; `_body` splices it in there (tests/skill_text.py)
+so the windows below still measure from the command to the rider a model
+following the pointer reads. `agenda-reviser` keeps its own wording,
+because it is the one skill that repairs what the check finds.
 """
 
 import re
@@ -30,9 +37,12 @@ from pathlib import Path
 
 import pytest
 
+from tests.skill_text import collapsed, expanded
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
+REFERENCE = ".claude/skills-common/references/prose-check.md"
 
 _STEP = re.compile(r"-m chitragupta\.draft style\b")
 
@@ -43,10 +53,12 @@ _STEP = re.compile(r"-m chitragupta\.draft style\b")
 _HELPERS = {"figure-drawer"}
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", re.DOTALL)
 
-# Measured over the eight files once they were written: the furthest either
-# literal sits from its command is ~700 characters, and no file names the
-# command twice, so a window this size cannot reach a different step's.
-_LOOKAHEAD_CHARS = 1100
+# Measured over the eight files with the shared reference spliced in
+# (#997): the furthest either literal sits from its command is 1273
+# characters, in `corpus-reviser`, whose bullet explains why a wide pass
+# is the one least entitled to tidy prose before it points at the
+# reference.
+_LOOKAHEAD_CHARS = 1400
 
 _CAVEAT = "§9 marks decidable"
 _NO_FIX = "fix none of them"
@@ -71,7 +83,20 @@ def _body(path: Path) -> str:
     always-loaded strings.
     """
     text = _FRONTMATTER.sub("", path.read_text(encoding="utf-8"), count=1)
-    return re.sub(r"\s+", " ", text)
+    return expanded(text)
+
+
+def test_every_step_but_the_repairing_one_names_the_reference():
+    """The riders are one file read away, so the pointer is the step."""
+    offenders = []
+    for path in _skill_files():
+        if path.parent.name in _HELPERS | {"agenda-reviser"}:
+            continue
+        text = collapsed(path.read_text(encoding="utf-8"))
+        windows = [text[m.start() : m.start() + _LOOKAHEAD_CHARS] for m in _STEP.finditer(text)]
+        if not any(f"`{REFERENCE}`" in w for w in windows):
+            offenders.append(path.parent.name)
+    assert not offenders, f"no pointer to {REFERENCE} after the command in {offenders}"
 
 
 def test_the_frontmatter_stripper_still_strips():

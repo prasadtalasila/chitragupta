@@ -672,25 +672,10 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.draft style content/drafts/<slug>.md
     ```
 
-    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-    — §2's defect markers, an acronym never expanded at first use, a
-    glossary acronym whose expansion has drifted from the vocabulary,
-    and §8's dialect against `scope.md`'s `language:` line. It says nothing
-    about whether a paragraph leads with its point or whether a hedge
-    carries information, and it cannot tell a quotation from the draft's own
-    voice, so a marker inside a quoted passage reports and is correct as
-    it stands.
-
-    **Report every finding and fix none of them.** A finding is a place to
-    look, not a defect: the first pass of this check over this
-    repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser`'s
-    copy-edit mode, which reads the recorded dialect and logs one
-    `revisions.md` entry — never an edit made here. Report the header
-    lines too: `dialect: not checked` means nobody ever recorded one, so a
-    short list is not a clean draft. A review aid, not a gate — it
-    exits 0 whatever it finds, and a missing `vale` binary is a one-line
-    warning that blocks nothing.
+    Read `.claude/skills-common/references/prose-check.md` now and follow
+    it: what the check can and cannot see, and how to report what it
+    finds. If the user wants any finding acted on, that is
+    `draft-reviser`'s copy-edit mode, never an edit made here.
 17. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
