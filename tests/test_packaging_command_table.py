@@ -24,6 +24,11 @@ CHOICES_RE = re.compile(r"\{([a-z0-9,_-]+)\}")
 # `{...}` choices list below, not restated as a magic number.
 TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install", "figure"}
 
+# The package-level commands among them. Three are one atomic command
+# each; `figure` is a command with verbs of its own (#1013).
+PACKAGE_COMMANDS = {"init", "doctor", "install", "figure"}
+FIGURE_VERBS = {"sync"}
+
 # Every drafting-layer verb that has its own subcommands, and what
 # docs/PACKAGING.md's "draft" table row lists for it.
 DRAFT_SUBCOMMANDS = {
@@ -110,7 +115,7 @@ def _leaf_terms() -> tuple[int, ...]:
     subcommand leaves, enrich.
     """
     return (
-        3,  # init, doctor, install -- each one atomic command
+        len(PACKAGE_COMMANDS) - 1 + len(FIGURE_VERBS),  # init, doctor, install, figure sync
         len(CORPUS_VERBS),
         len(DRAFT_FLAT_VERBS),
         sum(len(v) for v in DRAFT_SUBCOMMANDS.values()),
@@ -209,6 +214,14 @@ class TestInstall:
             "enrich",
             *install.REFUSED,
         }
+
+
+class TestFigure:
+    def test_matches_the_live_choices(self):
+        assert _choices(_help("figure")) == FIGURE_VERBS
+
+    def test_every_verb_is_documented(self):
+        _documented(*(f"chitragupta figure {verb}" for verb in FIGURE_VERBS))
 
 
 class TestStatedCounts:

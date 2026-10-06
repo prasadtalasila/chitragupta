@@ -154,8 +154,8 @@ and redesigns nothing.
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `chitragupta enrich` | `--stages docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph`, `--for-draft PATH`, `--target host\|docker` (informational only; the probes decide)   |
 
-That is 4 layers and 27 verbs and aids (4 + 12 + 10 + 1), plus 3
-package-level commands, giving **57 invocable leaf commands**: 3 + 4 +
+That is 4 layers and 27 verbs and aids (4 + 12 + 10 + 1), plus 4
+package-level commands, giving **58 invocable leaf commands**: 4 + 4 +
 (6 + 30) + (9 + 4) + 1. The counts are stated because a table is easy to
 extend and easy to forget to extend; a test pins them by walking the
 live parsers, so a verb added without a row here fails the suite.

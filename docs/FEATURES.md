@@ -335,7 +335,7 @@ copyrighted sources.
 | `draft references` | an IEEE reference list built only from citekeys the draft already cites | [CLI.md](CLI.md) |
 | `draft render` | `.md`, `.tex`, `.pdf`, `.docx` via Pandoc, numbered IEEE-style | [CLI.md](CLI.md) |
 | `draft style` | prose checked against the house writing standards; a review aid, never a gate | [WRITING-STANDARDS.md](WRITING-STANDARDS.md) |
-| TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`) | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
+| TikZ figures | figures drawn to a documented style, checked for layout defects, and started from a known-good scaffold per layout metaphor rather than from an empty picture (`assets/tikz/`); the shared style block each figure carries is kept current by `figure sync` | [TIKZ-STYLE.md](TIKZ-STYLE.md) |
 
 ### 📕 Book-scale drafting
 
@@ -459,9 +459,10 @@ the last stage derives and the discovery feature being built on it;
 
 | Feature | What it gives you | Detail |
 | --- | --- | --- |
-| One CLI, one level deep | `chitragupta <layer> <verb>`, four layers plus `init`/`doctor`/`install` | [PACKAGING.md](PACKAGING.md) |
+| One CLI, one level deep | `chitragupta <layer> <verb>`, four layers plus `init`/`doctor`/`install`/`figure` | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta init` | scaffolds a project directory to draft in | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
+| `chitragupta figure sync` | keeps the house figure-style block current in every figure file, and never overwrites one you edited | [CLI.md](CLI.md#-chitragupta-figure-sync) |
 | Config in one file | `config.toml`, every key overridable by environment variable | [CONFIG.md](CONFIG.md) |
 | Hooks | the citation gate enforced on every draft write | [HOOKS.md](HOOKS.md) |
 | Docker | two images: one that installs the Pandoc/TeX toolchain when you lack root, one that hosts a Claude Code agent with the published package | [DOCKER.md](../DOCKER.md) |
