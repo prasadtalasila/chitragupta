@@ -88,7 +88,7 @@ dropping the citation; under `--natbib` it is worse, emitting
 `\citep[art_2019]{tygesen_state}`, a truncated key *plus* a spurious
 optional argument), and stripping control characters and joining
 decomposed accents (NFC) that `content/parsed/` text can carry and
-pdflatex cannot. Neither the draft nor `papers/bibliography.bib` is ever
+LaTeX cannot. Neither the draft nor `papers/bibliography.bib` is ever
 written to; the `.bib` that lands beside a fragment is a copy with
 every `--`-bearing key aliased, not just the ones one draft cites, so
 the result does not depend on which unit was rendered last.
@@ -427,7 +427,7 @@ fence (see that module's docstring).
 
 The fourth row's no-op rests on one assumption: that pandoc, asked to
 render a `.tex` fragment to `tex`/`pdf`, hands the TikZ straight through
-to `pdflatex` untouched. It does not, on pandoc 3.1.11.1 (this host,
+to the TeX engine untouched. It does not, on pandoc 3.1.11.1 (this host,
 2026-08-24), and nothing in `_with_figures_for` or `_pandoc_command`
 intercepts it, because the fourth row is coded as "nothing to do here."
 
@@ -453,7 +453,7 @@ path (pandoc's LaTeX reader drops an environment it doesn't
 understand), except that combination has a swap guarding it and this one
 does not, because `_with_figures_for`'s docstring treats `.tex`→`tex`/`pdf`
 as the one genuinely inline case needing no substitution. The file on
-disk is inline; what pandoc's reader does with it before `pdflatex` ever
+disk is inline; what pandoc's reader does with it before the TeX engine ever
 sees the result is not.
 
 **This contradicts `thesis-chapter-writer/SKILL.md`'s own claim** (step
@@ -461,7 +461,7 @@ sees the result is not.
 uses `\input`, which is the shape that skill's own step 9 tells the
 genre to write. Passing `-f latex+raw_tex` instead of the bare default
 reader leaves `\input{...}` as a raw command rather than resolving it.
-That is confirmed to restore the figure, since `pdflatex` (with `TEXINPUTS`
+That is confirmed to restore the figure, since LuaLaTeX (with `TEXINPUTS`
 already set for the `pdf` format, `chitragupta/render_output/__init__.py`)
 then reads the real file itself. **Not applied anywhere in this
 codebase as of this writing.** It is flagged here rather than fixed,

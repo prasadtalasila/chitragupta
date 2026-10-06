@@ -182,8 +182,8 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
     **Both halves of the toolchain are probed, and needing both is not
     obvious.** `_require_tikz()` answers "is `tikz.sty` installed?" and
     deliberately says *nothing* on a host with no `kpsewhich`, leaving
-    `pdflatex` to report a missing package itself -- correct for the
-    renderer, which calls `_require("pdflatex")` separately right beside
+    the engine to report a missing package itself -- correct for the
+    renderer, which calls `_require(PDF_ENGINE)` separately right beside
     it. An aid that called only `_require_tikz()` would sail past a host
     with no TeX at all and then crash on `FileNotFoundError` from the
     `subprocess` call. CI's Windows leg installs no `os-deps` and is

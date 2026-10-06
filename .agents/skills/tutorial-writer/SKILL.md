@@ -547,7 +547,7 @@ the lesson design is the part worth keeping either way.
     reader who won't open one. The draft itself keeps its `[@citekey]`
     markers.
 
-    Bare `python` plus `pandoc`/`pdflatex` on PATH -- no enrich group. If
+    Bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH -- no enrich group. If
     either reports `[missing-binary]` or `[error]`, print a one-line warning
     in chat with that message and continue anyway; a rendering failure never
     blocks presenting the `.md` draft.

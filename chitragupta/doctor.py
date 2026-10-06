@@ -65,8 +65,9 @@ DESCRIPTION = (
     "extra, torch vs. the GPU driver, a competing distribution, hook launchers."
 )
 
-# What python -m chitragupta.draft render/style already probe for
-# themselves, per call. Doctor probes the same five, once, up front.
+# What `draft render`/`draft style` and `review figure` (pdflatex, for
+# its layout probe) already probe for themselves, per call. Doctor probes
+# the same five, once, up front.
 BINARIES = ("pandoc", "lualatex", "pdflatex", "pdftotext", "vale")
 
 THIS_DISTRIBUTION = "chitragupta-cli"

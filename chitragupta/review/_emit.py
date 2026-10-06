@@ -23,8 +23,7 @@ from pathlib import Path
 from chitragupta import install, review
 
 # Every aid's --formats help (#1022): written once, because ten copies
-# went on saying "pandoc/pdflatex" after #996 moved a pdf render to
-# LuaLaTeX. The wording matches docs/CLI.md's per-aid rows.
+# went on naming pdflatex after #996 moved a pdf render to LuaLaTeX. The wording matches docs/CLI.md's per-aid rows.
 FORMATS_HELP = (
     "Additional formats to render beside the Markdown report (default: "
     "md,tex,pdf). The .md is always written -- it is the report; tex and "
