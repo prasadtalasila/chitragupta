@@ -138,3 +138,36 @@ def announce(added: list[tuple[str, str]]) -> str:
     described = describe(added)
     print(f"  [note] acronym expansion added: {described}", file=sys.stderr)
     return described
+
+
+# The unreadable-vocabulary notes already printed by this process, so a
+# sweep calling `query_terms_or_typed` once per recorded query across
+# every dossier says it once rather than once per query.
+_NOTED: set[str] = set()
+
+
+def query_terms_or_typed(query: str) -> tuple[list[str], list[tuple[str, str]]]:
+    """`retrieval.query_terms(query)`, or the typed terms alone with one
+    stderr note when the acronym vocabulary cannot be read (#1023).
+
+    For every consumer but `search`: `evidence`, the passage unit and the
+    dossier drift sweep use the vocabulary opportunistically, and #953 is
+    what put them on its path. `acronyms.AcronymsError`'s raise-not-skip
+    rationale was written for `search`, where a silent skip changes a
+    ranking; a status sweep dying with a traceback over a typo in the
+    acronym file is the wrong trade. The note is what keeps this from
+    being the silent fallback that rationale rules out.
+    """
+    # Imported here: `retrieval` imports this module (see `expand`).
+    from chitragupta import retrieval
+
+    try:
+        return retrieval.query_terms(query)
+    except acronyms.AcronymsError as exc:
+        if str(exc) not in _NOTED:
+            _NOTED.add(str(exc))
+            print(
+                f"  [note] acronym vocabulary unreadable, ranking on the typed terms: {exc}",
+                file=sys.stderr,
+            )
+        return retrieval._query_terms(query), []

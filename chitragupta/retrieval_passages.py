@@ -68,10 +68,10 @@ from chitragupta import (
     config,
     ledger,
     passages,
+    retrieval_expansion,
     retrieval_passages_cache,
     retrieval_scoring,
 )
-from chitragupta.retrieval import query_terms
 
 
 @dataclass
@@ -187,7 +187,7 @@ def search_passages(query: str, k: int = 5, collection: str | None = None) -> Pa
     string hashing makes anything reading a `set`'s order a different
     answer run to run (`retrieval._windows`' docstring has the history).
     """
-    terms, _added = query_terms(query)
+    terms, _added = retrieval_expansion.query_terms_or_typed(query)
     if not terms:
         return PassageSearch([], 0)
 

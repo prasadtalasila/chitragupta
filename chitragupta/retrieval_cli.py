@@ -79,7 +79,9 @@ def evidence(
         raise KeyError(f"{citekey} is not in the ledger")
     # `search`'s own terms, acronym expansion included (#953): a paper
     # ranked on "digital twin" for `DT` must have a window for `DT` too.
-    terms = set(query_terms(query)[0])
+    # The typed terms alone, with a note, when the vocabulary will not
+    # parse (#1023): a window is worth having without it.
+    terms = set(retrieval_expansion.query_terms_or_typed(query)[0])
     if not terms:
         return []
     return _windows(_full_text(row), terms, width=chars, count=windows)
@@ -313,8 +315,12 @@ def main(argv: "list[str] | None" = None) -> int:
     # `retrieval.md`'s `expanded` column cannot disagree, and both read
     # the pairs every subcommand ranks on (`query_terms`, #953), bar
     # `--y-prev`'s appended prose (see `query_terms`). Silent
-    # when the vocabulary has nothing for the query.
-    expanded = retrieval_expansion.announce(query_terms(args.query)[1])
+    # when the vocabulary has nothing for the query. Only a document
+    # search still fails on a vocabulary that will not parse (#1023):
+    # `query_terms_or_typed` says why for the rest.
+    strict = args.command == "search" and args.unit == "document"
+    terms_of = query_terms if strict else retrieval_expansion.query_terms_or_typed
+    expanded = retrieval_expansion.announce(terms_of(args.query)[1])
 
     # Refused rather than quietly ignored: --y-prev merges two rounds on
     # citekey and caps back to --k, and the passage unit changes what

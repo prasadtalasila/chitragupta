@@ -289,6 +289,18 @@ and `--log` writes the same string to the dossier's `retrieval.md`
   [note] acronym expansion added: dt -> digital twin
 ```
 
+An acronym file that will not parse (a missing closing quote is the
+usual cause) stops a plain `search` with the parse error, since ranking
+without the vocabulary would quietly change what you get back. The
+other paths only use the vocabulary when it is available: `search
+--unit passage`, `evidence`, and the drift check behind `dossier
+status` (with or without `--all`) and `review agenda` fall back to the
+terms you typed and print one note saying so (#1023):
+
+```text
+  [note] acronym vocabulary unreadable, ranking on the typed terms: ...
+```
+
 #### What it is worth, and what it costs
 
 Measured on this project's corpus (`bench/RESULTS.md`, 2026-09-17), the

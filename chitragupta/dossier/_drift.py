@@ -133,11 +133,11 @@ class Corpus:
         `status --all` pays for the lookup once rather than once per
         dossier -- two different data shapes behind the same one-line call.
         """
-        from chitragupta import retrieval
+        from chitragupta import retrieval, retrieval_expansion
 
         hits: dict[str, list[str]] = {}
         for query, collection in queries:
-            terms, _added = retrieval.query_terms(query)
+            terms, _added = retrieval_expansion.query_terms_or_typed(query)
             if not terms:
                 continue
             scores = retrieval._bm25_scores(self.index, terms)

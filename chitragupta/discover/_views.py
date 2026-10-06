@@ -20,11 +20,18 @@ def emit(args, data: dict, prose: str) -> None:
 def _resolve_names(args, phrases, graph, topic_set, terms) -> "tuple[list, list] | None":
     """Every phrase through the same ladder every view uses; None (after
     a stderr refusal) when any name resolves nowhere."""
-    labels, vias = [], []
+    labels, vias, noted = [], [], set()
     for phrase in phrases:
         resolution = _resolve.resolve(phrase, graph, topic_set, terms)
-        if resolution.note and not args.json:
-            print(f"note: {resolution.note}")
+        # Each part of a note once (#1023): a model that would not load
+        # degrades every phrase the same way, and says so once. By part,
+        # because `resolve` joins the semantic and reranking notes with
+        # "; " only on the rungs that reach both.
+        parts = resolution.note.split("; ") if resolution.note else []
+        fresh = [part for part in parts if part not in noted]
+        noted.update(fresh)
+        if fresh and not args.json:
+            print(f"note: {'; '.join(fresh)}")
         if resolution.label is None:
             print(
                 f"No topic matched {phrase!r} -- this view needs topics that exist.",

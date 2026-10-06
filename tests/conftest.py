@@ -110,6 +110,8 @@ def _no_real_resolver_models(request, monkeypatch):
     (monkeypatch is last-write-wins); one testing the loaders
     themselves opts out with `@pytest.mark.real_resolver_loaders`.
     """
+    # A load failure is remembered for the process (#1023); not across tests.
+    monkeypatch.setattr("chitragupta.discover._resolve._FAILED", {})
     if request.node.get_closest_marker("real_resolver_loaders"):
         return
 

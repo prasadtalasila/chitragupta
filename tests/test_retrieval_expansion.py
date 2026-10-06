@@ -18,7 +18,9 @@ default cannot reach any vocabulary at all.
 
 import pytest
 
-from chitragupta import acronyms, config, retrieval, retrieval_expansion
+from chitragupta import acronyms, config, ledger, retrieval, retrieval_cli, retrieval_expansion
+
+from tests.conftest import make_reference, parsed_file
 
 VOCABULARY = {"DT": "digital twin", "DM": "digital model", "UQ": "uncertainty quantification"}
 
@@ -166,3 +168,69 @@ class TestAnnounce:
         captured = capsys.readouterr()
         assert captured.out == ""
         assert captured.err
+
+
+class TestAMalformedVocabularyFailsOnlySearch:
+    """#1023: `query_terms` put `evidence`, the passage unit and the
+    dossier drift sweep on the acronym vocabulary's path (#953), and
+    `acronyms._load` raises on a malformed file. The raise was written for
+    `search`, where a silent skip changes a ranking; for the other three
+    the vocabulary is opportunistic, so each falls back to the typed terms
+    and says so once. A real malformed file, not a patched loader: the
+    unclosed quote is the shape the issue reproduced."""
+
+    QUERY = "DT fidelity"
+
+    @pytest.fixture
+    def malformed(self, ledger_con, monkeypatch, tmp_path):
+        broken = tmp_path / "acronyms.toml"
+        broken.write_text('DT = "digital twin\n', encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_PATH", broken)
+        monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
+        monkeypatch.setattr(retrieval_expansion, "_NOTED", set())
+        parsed = parsed_file("a2024")
+        parsed.write_text("opening matter " * 60 + "the fidelity of the greenhouse twin")
+        ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
+        ledger.mark_parsed(ledger_con, "a2024", parsed)
+        return ledger_con
+
+    @staticmethod
+    def _status_all() -> int:
+        from chitragupta import dossier
+
+        draft = config.DRAFTS_DIR / "survey.md"
+        draft.parent.mkdir(parents=True, exist_ok=True)
+        draft.write_text("# s\n")
+        dossier.init(draft, "survey")
+        for query in ("DT fidelity", "DT twin"):
+            dossier.log_retrieval(draft, "search", query, 5, 5, 100)
+        return dossier.main(["status", "--all"])
+
+    @pytest.mark.parametrize(
+        "run",
+        [
+            lambda: retrieval_cli.main(["evidence", "DT fidelity", "--citekey", "a2024"]),
+            lambda: retrieval_cli.main(["search", "DT fidelity", "--unit", "passage"]),
+            _status_all,
+        ],
+        ids=["evidence", "passage-search", "dossier-status-all"],
+    )
+    def test_each_consumer_but_search_exits_zero_with_one_note(self, malformed, capsys, run):
+        assert run() == 0
+        err = capsys.readouterr().err
+        assert err.count("acronym vocabulary unreadable") == 1
+        assert "acronyms.toml" in err
+
+    def test_the_fallback_is_the_typed_terms(self, malformed):
+        assert retrieval_expansion.query_terms_or_typed(self.QUERY) == (
+            retrieval._query_terms(self.QUERY),
+            [],
+        )
+
+    def test_search_still_raises(self, malformed):
+        """The raise-not-skip rationale in `acronyms.py` stands for the
+        one consumer whose ranking a silent skip would change."""
+        with pytest.raises(acronyms.AcronymsError):
+            retrieval.search(self.QUERY)
+        with pytest.raises(acronyms.AcronymsError):
+            retrieval_cli.main(["search", self.QUERY])
