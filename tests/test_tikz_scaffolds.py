@@ -130,6 +130,24 @@ def _pics() -> list[str]:
     return _PIC_RE.findall(BLOCK.read_text(encoding="utf-8"))
 
 
+# The house-shape table in docs/TIKZ-STYLE.md, found by its header.
+_PIC_TABLE_HEADER = "| `pic` | Stands for | Twin says |"
+_PIC_ROW_RE = re.compile(r"^\|\s*`(?P<name>\w+)`\s*\|")
+
+
+def _documented_pics() -> list[str]:
+    """The `pic`s docs/TIKZ-STYLE.md's house-shape table names."""
+    lines = STYLE_DOC.read_text(encoding="utf-8").splitlines()
+    start = lines.index(_PIC_TABLE_HEADER) + 2
+    found = []
+    for line in lines[start:]:
+        match = _PIC_ROW_RE.match(line)
+        if match is None:
+            break
+        found.append(match.group("name"))
+    return found
+
+
 # Parametrised by file rather than by metaphor so a failure names the
 # scaffold a reader would go and open.
 by_scaffold = pytest.mark.parametrize("scaffold", _scaffolds(), ids=lambda p: p.stem)
@@ -166,6 +184,19 @@ class TestMetaphorCoverage:
         expected = {_slug(m) for m in _metaphors()}
 
         assert {path.stem for path in _scaffolds()} == expected
+
+
+class TestTheShapesAreTheDocumentedOnes:
+    """#1014: a shape is added only when a metaphor wants it, and the
+    argument is made in writing. The doc row is where that argument
+    lands, so a `pic` the table does not name cannot ship, and a row
+    for a `pic` that was removed cannot linger."""
+
+    def test_the_table_was_read(self):
+        assert len(_documented_pics()) > 1
+
+    def test_the_block_and_the_table_name_the_same_pics(self):
+        assert _documented_pics() == _pics()
 
 
 class TestEverySourceProperty:

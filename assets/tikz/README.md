@@ -143,8 +143,8 @@ Keep the names when you re-label.
 
 The scaffolds place every node relative to another node. None of them
 places a node at a coordinate in millimetres, and that is the property
-to preserve (the block's `pic`s draw a fixed shape in millimetres, which
-is not the same thing):
+to preserve (the block's `pic`s are the one exception, and
+docs/TIKZ-STYLE.md says why):
 a figure laid out in hand-computed absolute millimetres cannot express
 "do not collide", so changing one label's length re-opens every
 adjacency in the picture at once.

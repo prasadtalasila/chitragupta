@@ -589,7 +589,9 @@ second catches a figure that has fallen behind the text.
 
 **Update 2026-10-05:** #1012 shipped `assets/tikz/cg-figstyle.tex`, a
 house `\tikzset` block every scaffold carries verbatim, with five house
-`pic`s in it (#1014 owns their documentation). What follows is the gap
+`pic`s in it, documented in
+[TIKZ-STYLE.md](TIKZ-STYLE.md#-house-shapes-and-the-well-they-sit-in)
+(#1014). What follows is the gap
 as it stood when this was written.
 
 **Update 2026-10-06:** #1013 (F2) shipped `chitragupta figure sync`,
@@ -1158,6 +1160,9 @@ Three existing rules collide with proposals above. Each needs a decision
 made deliberately instead of discovered mid-implementation.
 
 ### "No coordinate in millimetres" versus fixed objects
+
+**Resolved 2026-10-06 (#1014):** the carve-out below is now a rule in
+[TIKZ-STYLE.md](TIKZ-STYLE.md#-commit-to-a-layout-metaphor-before-you-draw).
 
 The rule exists because a figure laid out in hand-computed absolute
 millimetres cannot express "do not collide": re-wording one label

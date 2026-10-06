@@ -124,12 +124,14 @@ already prescribes it.
 ### Task 1: Pin every `pic` inside its well, and fix `cgdocs`
 
 **Files:**
+
 - Modify: `tests/test_tikz_scaffolds.py` (new helpers after `_region`,
   new class after `TestTheBlockTypesetsNothing`)
 - Modify: `assets/tikz/cg-figstyle.tex:239-250` (`cgdocs`), plus the
   comments above each `pic`
 
 **Interfaces:**
+
 - Produces: `_pics() -> list[str]` (the `pic` names the block defines,
   in order) and `_WELL_RE`. Task 3 uses `_pics()`.
 
@@ -146,7 +148,6 @@ _PIC_RE = re.compile(r"pics/(?P<name>\w+)/\.style=")
 _PT_PER_MM = 72.27 / 25.4
 _CGPIC_RE = re.compile(r"CGPIC (\S+) (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt")
 _LIBRARIES = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur"
-
 
 def _pics() -> list[str]:
     """Every `pic` the block defines, in the order it defines them."""
@@ -229,7 +230,12 @@ class TestEveryPicFitsItsWell:
 
 - [ ] **Step 2: Run to verify the right test fails**
 
-Run: `.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestEveryPicFitsItsWell -v`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestEveryPicFitsItsWell -v
+```
+
 Expected: `test_every_pic_is_measured_and_fits` FAILS, naming `['cgdocs']`.
 The other three pass.
 
@@ -274,7 +280,12 @@ reads as the geometry change alone.
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestEveryPicFitsItsWell -v`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestEveryPicFitsItsWell -v
+```
+
 Expected: 4 passed. (`TestTheBlockTravelsUnforked` and
 `test_figure_block.py` now fail, because the carriers and the register
 still hold v1. Task 2 fixes that; do not commit between the two
@@ -290,12 +301,14 @@ tasks if a green commit per task is wanted. Otherwise commit with
 ### Task 2: Ship the block as v2 and re-sync every carrier
 
 **Files:**
+
 - Modify: `assets/tikz/cg-figstyle.tex:1` (marker `v1` → `v2`)
 - Modify: `assets/tikz/cg-figstyle.versions.toml` (append `v2`)
 - Modify: the 7 scaffolds and 3 exemplars, via `figure sync` only
 - Modify: `tests/test_figure_block.py:30, 81, 173`, `tests/test_figure_sync.py:63`
 
 **Interfaces:**
+
 - Consumes: Task 1's edited block.
 
 - [ ] **Step 1: Make the version-literal tests follow the block.** In
@@ -310,12 +323,19 @@ newer = house.text.replace(f" v{house.version} ", " v9 ", 1)
 ```
 
 (`house` is the fixture already in scope at each site. `0.95pt` is
-`cgshield`'s stroke and survives Task 1.) Run
-`.venv-full/bin/python -m pytest tests/test_figure_block.py tests/test_figure_sync.py -q`:
-all pass on v1, which shows the rewrite is behaviour-neutral.
+`cgshield`'s stroke and survives Task 1.) Run the command below: all
+pass on v1, which shows the rewrite is behaviour-neutral.
+
+```bash
+.venv-full/bin/python -m pytest tests/test_figure_block.py tests/test_figure_sync.py -q
+```
 
 - [ ] **Step 2: Bump and register.** Change line 1 of `cg-figstyle.tex`
-  to `% >>> chitragupta figure style v2 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<`, then:
+  to the line below, then compute the digest:
+
+```latex
+% >>> chitragupta figure style v2 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+```
 
 ```bash
 .venv-full/bin/python -c "from pathlib import Path; from chitragupta import figure; \
@@ -326,14 +346,24 @@ Append `v2 = "<that digest>"` under the `v1` line. Leave `v1` as it is.
 
 - [ ] **Step 3: Re-sync**
 
-Run: `.venv-full/bin/python -m chitragupta figure sync assets/tikz/*.tex assets/tikz/exemplars/*.tex`
+Run:
+
+```bash
+.venv-full/bin/python -m chitragupta figure sync assets/tikz/*.tex assets/tikz/exemplars/*.tex
+```
+
 Expected: `figure sync: 1 current, 10 refreshed` (the block file itself
 is current). If any file reports `modified`, stop: someone edited
 inside a marker, and that is a separate fix.
 
 - [ ] **Step 4: Verify**
 
-Run: `.venv-full/bin/python -m pytest tests/test_figure_block.py tests/test_figure_sync.py tests/test_tikz_scaffolds.py -q`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_figure_block.py tests/test_figure_sync.py tests/test_tikz_scaffolds.py -q
+```
+
 Expected: all pass, including `TestTheBlockTravelsUnforked` and the
 geometry checks on the two exemplars that draw `cgdocs`/`cgstore`.
 `git diff --stat` should show the ten carriers changing only inside
@@ -350,15 +380,18 @@ git commit -m "Fit cgdocs inside its well and pin every house pic to it (block v
 ### Task 3: Write the rules into TIKZ-STYLE.md and close the roadmap's carve-out
 
 **Files:**
+
 - Modify: `docs/TIKZ-STYLE.md:65-74` (carve-out), `:457-462` (table row
   and the "#1014 documents" sentence), new subsection before
   `### 🖨 What the other two forms do with it` (line 513)
-- Modify: `docs/FIGURE-ROADMAP.md:590-593` and §"No coordinate in millimetres" versus fixed objects (line 1160)
+- Modify: `docs/FIGURE-ROADMAP.md:590-593`, and §"No coordinate in
+  millimetres" versus fixed objects (line 1160)
 - Modify: `assets/tikz/README.md:144-147` (the parenthetical becomes a
   pointer)
 - Test: `tests/test_tikz_scaffolds.py`
 
 **Interfaces:**
+
 - Consumes: `_pics()` from Task 1.
 - Produces: the table header `` | `pic` | Stands for | Twin says | `` in
   TIKZ-STYLE.md, which the test reads.
@@ -369,7 +402,6 @@ git commit -m "Fit cgdocs inside its well and pin every house pic to it (block v
 ```python
 _PIC_TABLE_HEADER = "| `pic` | Stands for | Twin says |"
 _PIC_ROW_RE = re.compile(r"^\|\s*`(?P<name>\w+)`\s*\|")
-
 
 def _documented_pics() -> list[str]:
     """The `pic`s docs/TIKZ-STYLE.md's house-shape table names."""
@@ -382,7 +414,6 @@ def _documented_pics() -> list[str]:
             break
         found.append(match.group("name"))
     return found
-
 
 class TestTheShapesAreTheDocumentedOnes:
     """#1014: a shape is added only when a metaphor wants it, and the
@@ -399,7 +430,12 @@ class TestTheShapesAreTheDocumentedOnes:
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestTheShapesAreTheDocumentedOnes -v`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -k TestTheShapesAreTheDocumentedOnes -v
+```
+
 Expected: FAIL with `ValueError: ... is not in list` (no table yet).
 
 - [ ] **Step 3: Write the docs.**
@@ -475,7 +511,12 @@ block's `pic`s are the one exception, and TIKZ-STYLE.md says why)".
 
 - [ ] **Step 4: Verify**
 
-Run: `.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -q && markdownlint-cli2 docs/TIKZ-STYLE.md docs/FIGURE-ROADMAP.md assets/tikz/README.md plans/fig-f3-house-pics.md`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -q && markdownlint-cli2 docs/TIKZ-STYLE.md docs/FIGURE-ROADMAP.md assets/tikz/README.md plans/fig-f3-house-pics.md
+```
+
 Expected: pass, and no lint finding. Also run the repo's docs link
 check, if DEVELOPER-AGENTS.md's local check list names one, so the two
 new anchors resolve.
@@ -490,6 +531,7 @@ git commit -m "Document the house shapes, the well and the millimetre carve-out"
 ### Task 4: One scaffold draws a `pic`
 
 **Files:**
+
 - Modify: `assets/tikz/pipeline.tex` (picture body only, below the end marker)
 
 `pipeline.tex` is the right carrier. It is the default copy in
@@ -511,7 +553,12 @@ redundant with the label, which is the twin test.
 
 - [ ] **Step 2: Verify**
 
-Run: `.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -q`
+Run:
+
+```bash
+.venv-full/bin/python -m pytest tests/test_tikz_scaffolds.py -q
+```
+
 Expected: all pass. Watch three tests specifically:
 `test_compiles_and_measures_every_name_it_declares[pipeline]`
 (`iintake` is declared and measured),
