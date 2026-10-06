@@ -83,22 +83,21 @@ def test_each_scoping_genre_points_at_the_collection_reference(name):
     assert "ledger --collections" in section, "the one check every run makes stays in SKILL.md"
 
 
-# A mode a skill enters only on some requests reads its procedure from a
-# reference, named in the section that recognises the mode (#997).
-_MODES = {
-    "draft-reviser": {
-        "## Copy-edit mode": "copy-edit.md",
-        "## Acronym-realignment mode": "acronyms.md",
-        "## Re-grounding after the corpus moves": "re-grounding.md",
-    },
-}
-
-
-@pytest.mark.parametrize(
-    "name,heading,reference",
-    [(n, h, r) for n, modes in _MODES.items() for h, r in modes.items()],
+# A mode a skill enters only on some requests, or a repair it makes only
+# for some item classes, reads its procedure from a reference named in the
+# section that recognises it (#997).
+_CONDITIONAL = (
+    ("draft-reviser", "## Copy-edit mode", "copy-edit.md"),
+    ("draft-reviser", "## Acronym-realignment mode", "acronyms.md"),
+    ("draft-reviser", "## Re-grounding after the corpus moves", "re-grounding.md"),
+    ("agenda-reviser", "### 4. Repair one item", "repair-missing-citekey.md"),
+    ("agenda-reviser", "### 4. Repair one item", "repair-prose.md"),
+    ("agenda-reviser", "### 4. Repair one item", "repair-verbatim-run.md"),
 )
-def test_each_mode_section_points_at_its_reference(name, heading, reference):
+
+
+@pytest.mark.parametrize("name,heading,reference", _CONDITIONAL)
+def test_each_conditional_section_points_at_its_reference(name, heading, reference):
     text = (folder("claude", name) / "SKILL.md").read_text(encoding="utf-8")
-    section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+    section = re.split(r"\n#{2,3} ", text.split(heading, 1)[1], maxsplit=1)[0]
     assert f"`.claude/skills/{name}/references/{reference}`" in section
