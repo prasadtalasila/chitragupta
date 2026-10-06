@@ -572,11 +572,51 @@ recorded. This is one inline judgement call, not a subagent dispatch and
 not a deterministic check -- nothing in this pipeline scores this
 automatically.
 
-This step is never a condition of presenting. Read
-`.claude/skills-common/references/critique.md` now and follow it, with
-`content/drafts/deep-research-<slug>.md` as `<draft>`. Make each edit with
-an `apply_patch` hunk, inside that section only. If nothing on the list
-clears the bar, or the list was empty, continue to the gate.
+**Run this step: it is never a condition of presenting, but it is not done
+until you have run its commands.** Read
+`.claude/skills-common/references/critique.md` now, before listing anything,
+and work it through with `content/drafts/deep-research-<slug>.md` as
+`<draft>`. In outline:
+
+1. Where the dossier has an `outline.md`, read what the corpus could not
+   answer:
+
+   ```bash
+   python -m chitragupta.draft dossier status content/drafts/deep-research-<slug>.md
+   ```
+
+2. Take the baseline:
+
+   ```bash
+   python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>.md --citekeys --write
+   python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md --write --json
+   python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
+   ```
+
+   If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
+   restatement is only detected where the embedding tier can run**. `style`
+   reports only what WRITING-STANDARDS.md §9 marks decidable, and this step is
+   told to fix none of them: its count is a proxy for a new defect, not a work
+   list.
+
+3. Repair at most three items, each edit with an `apply_patch` hunk, inside
+   that section only. Keep an edit only if all three checks pass the
+   reference's test; otherwise restore the text you kept:
+
+   ```bash
+   python -m chitragupta.draft gate content/drafts/deep-research-<slug>.md
+   python -m chitragupta.review verbatim recheck content/drafts/deep-research-<slug>.md \
+       --baseline content/review/<topic>/<stem>.verbatim.json --json
+   python -m chitragupta.draft style content/drafts/deep-research-<slug>.md --json
+   ```
+
+   Read `style`'s count only as a number: it reports what §9 marks
+   decidable, and you fix none of them here.
+
+4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
+
+If nothing on the list clears the bar, or the list was empty, say so and
+continue to the gate.
 
 **Then gate:**
 

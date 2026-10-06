@@ -358,3 +358,18 @@ def test_no_genre_skill_makes_the_step_a_condition_of_presenting():
         "`chitragupta.draft gate` remains the only gate; a review-shaped step that gains "
         "a mandatory outcome is one careless edit away from being read as a second one."
     )
+
+
+def test_every_genre_step_keeps_its_commands_in_skill_md():
+    """The loop's commands stay in front of the model, not only in the
+    reference (#997). A step that held nothing but a pointer was measured
+    being skipped outright: a non-interactive run read none of it and went
+    straight to the gate. The reference holds the why; the commands are
+    the step."""
+    offenders = []
+    for path in _genre_skill_files():
+        text = collapsed(path.read_text(encoding="utf-8"))
+        windows = [text[m.start() : m.start() + _STEP_TAIL_CHARS] for m in _CRITIQUE.finditer(text)]
+        if not any(_SCAN.search(w) and _GATE.search(w) and _RECHECK.search(w) for w in windows):
+            offenders.append(path.parent.name)
+    assert not offenders, f"the critique step's own text names no scan/gate/recheck in {offenders}"
