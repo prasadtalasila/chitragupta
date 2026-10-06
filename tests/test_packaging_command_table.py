@@ -22,7 +22,7 @@ CHOICES_RE = re.compile(r"\{([a-z0-9,_-]+)\}")
 # The top-level layers and package-level commands docs/PACKAGING.md's
 # tables document -- checked against `python -m chitragupta --help`'s own
 # `{...}` choices list below, not restated as a magic number.
-TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install"}
+TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install", "figure"}
 
 # Every drafting-layer verb that has its own subcommands, and what
 # docs/PACKAGING.md's "draft" table row lists for it.

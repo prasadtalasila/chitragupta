@@ -17,7 +17,7 @@ and the naming.
 > `chitragupta`, `pyproject.toml` declares a `[build-system]`, and
 > `poetry build` produces `chitragupta_cli-<version>-py3-none-any.whl`,
 > which installs the `chitragupta` and `cg` commands. Every row in the
-> table below is live, the four layers and `init`/`doctor`/`install`
+> table below is live, the four layers and `init`/`doctor`/`install`/`figure`
 > alike. `chitragupta-cli` is published to PyPI via Trusted Publishing on
 > every major or minor release. A PATCH release still gets a GitHub
 > Release with the wheel attached but does not reach PyPI, since a
@@ -92,7 +92,7 @@ name is the failure class
 ## ⌨ The command surface
 
 Four layers, unchanged from what `python -m chitragupta.<layer>` already
-exposes, plus four commands that only make sense once the code is
+exposes, plus commands that only make sense once the code is
 installed rather than cloned. Every flag, exit code and subcommand name is
 the one that command already has; the console script adds a front door
 and redesigns nothing.
@@ -104,6 +104,7 @@ and redesigns nothing.
 | `chitragupta init [DIR] [--force] [--dry-run] [--agent NAME]` | Scaffold a project directory: `config.toml`, `.claude/` skills and hooks, `papers/`, `content/`, `assets/`, the prose docs. What the release zip ships today. `--agent codex` and `--agent opencode` add that harness's launcher and its own copy of the skills (`.codex/` and `.agents/`, `.opencode/`); repeat for several, default `claude` ([LLM-AGENTS.md](LLM-AGENTS.md) for each agent's setup, [HARNESS.md](HARNESS.md) for the design) |
 | `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution, a hook launcher on any harness that cannot start. Exits 0 on findings; an aid, never a gate |
 | `chitragupta install os-deps\|gpu-torch\|enrich` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do, or install the `enrich` extra at the running version. `all`, `dev-deps` and `python-deps` are refused by name with the pip equivalent |
+| `chitragupta figure sync [PATH ...] [--check]` | Stamp the house figure-style block into each figure file that lacks it and refresh a stale one, never touching a block edited by hand ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)). Exits 0 on findings; `--check` writes nothing and exits 1 if any file is not current; 2 if the installed block cannot be read |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
 
 ### 📚 `corpus` -- the deterministic run
