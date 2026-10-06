@@ -293,8 +293,8 @@ its own `main()`, before it does any real work.** `repro_check.py`, `bench_drift
 `bench_keyword_pipeline.py`, `bench_claim_support_labelling.py`,
 `bench_support_topk.py`, `bench_retrieval_stemming.py`,
 `bench_retrieval_token_floor.py`, `bench_retrieval_acronym_expansion.py`,
-`bench_retrieval_bm25_params.py` and `bench_retrieval_abstract.py` each
-have one -- 43 of the 45 scripts here. The
+`bench_retrieval_bm25_params.py`, `bench_retrieval_abstract.py` and
+`bench_skill_harnesses.py` each have one -- 44 of the 46 scripts here. The
 exceptions are `bench_docling.py` and `make_corpus.py`: both publish
 only real, directly-observed measurements (a per-PDF timing; a corpus or
 sample size) with no comparison or aggregation logic of their own that

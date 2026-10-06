@@ -424,15 +424,20 @@ wrong.
 
 ## 🔑 What all ten have in common
 
-These are not per-skill choices. They are the same rules restated in
-ten `SKILL.md` files, and a skill that broke one would be the bug.
+These are not per-skill choices. They are the same rules, stated in each
+of the ten `SKILL.md` files or, where several skills share the wording
+(the critique loop, the prose check, the verbatim scan, collection
+scoping), once in a reference under `.claude/skills-common/references/`
+that each skill's step names (#997). A skill that broke one would be the
+bug.
 
-Each of those files exists once per harness (`.claude/skills/`,
+Each `SKILL.md` exists once per harness (`.claude/skills/`,
 `.agents/skills/` and `.opencode/skills/*-opencode/`), differing only in
 the tool phrases `tests/fixtures/skill_harness_phrases.toml` lists.
 **Change every copy**, and add a phrase-map entry for any wording meant
 to differ; `tests/test_skill_harness_copies.py` fails on anything else
-and names the copy that moved ([HARNESS.md](HARNESS.md)).
+and names the copy that moved ([HARNESS.md](HARNESS.md)). A reference
+exists once, under `.claude/`, and names no skill and no harness tool.
 
 Two of the ten are not drafting skills. `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing*
