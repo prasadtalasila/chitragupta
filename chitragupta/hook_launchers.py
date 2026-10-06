@@ -31,27 +31,21 @@ Once the package can be installed into a venv the harness may not be
 using, "can it start" stopped being enough: an `init`-ed project's
 launcher can resolve on PATH and still not be able to import the package
 it is supposed to run. `faults()` now probes that too, per distinct
-program named in the settings file.
+program named in the settings file. The probe itself is
+`chitragupta/import_probe.py`.
 
-Standard library only, and it imports no `chitragupta` module but `programs` on purpose:
+Standard library only, and it imports no `chitragupta` module but
+`programs` and `import_probe` on purpose:
 `chitragupta.config` raises without a `config.toml`, which would break both
 docs/CLI.md's tier-1 promise and the preflight's ability to run in a fresh
 clone.
 """
 
 import json
-import os
 import shutil
-import subprocess
-from pathlib import Path, PurePath
+from pathlib import Path
 
-from chitragupta import programs
-
-# Generous on purpose: this runs once per session, not once per keystroke,
-# and a launcher that is merely slow to start (a cold venv on a networked
-# filesystem) must not be misreported as one that cannot import the
-# package at all.
-IMPORT_PROBE_TIMEOUT = 5.0
+from chitragupta import import_probe, programs
 
 
 def _project_root() -> Path:
@@ -121,10 +115,10 @@ def faults(settings_path: Path = SETTINGS) -> list[str]:
                 program = _program_name(hook)
                 if program and program not in launchers:
                     launchers.append(program)
-    env = _probe_env(settings_path)
+    env = import_probe.probe_env(settings_path)
     for program in launchers:
-        if _is_python_interpreter(program) and _is_bare_command(program):
-            fault = _import_fault(program, env)
+        if import_probe.is_python_interpreter(program) and import_probe.is_bare_command(program):
+            fault = import_probe.import_fault(program, env)
             if fault:
                 found.append(fault)  # pragma: no cover-windows
     return list(dict.fromkeys(found))
@@ -160,8 +154,8 @@ def _launcher_fault(hook: dict) -> list[str]:
     harness's only because both descend from the same shell. That is the
     limit of what a check on this side of the fence can see.
 
-    A bare name is looked up as `_import_fault` looks it up, on PATH's
-    absolute entries (#1025). With `shutil.which` here, a launcher found
+    A bare name is looked up as `import_probe.import_fault` looks it up,
+    on PATH's absolute entries (#1025). With `shutil.which` here, a launcher found
     only through a relative entry (`PATH=.venv/bin:$PATH`) passed this
     check and was then silently skipped by the probe, so it was reported
     neither missing nor dead.
@@ -173,7 +167,7 @@ def _launcher_fault(hook: dict) -> list[str]:
     args = [a for a in _items(hook.get("args")) if isinstance(a, str)]
     text = " ".join([command, *args])
     found = []
-    if not _is_bare_command(program):
+    if not import_probe.is_bare_command(program):
         if not shutil.which(program):
             found.append(f"`{program}` is not an executable file, so a hook cannot start.")
     elif not programs.resolve_program(program):
@@ -197,119 +191,3 @@ def _program_name(hook: dict) -> str | None:
     if not isinstance(command, str) or not command.split():
         return None
     return command if "args" in hook else command.split()[0]
-
-
-def _is_bare_command(program: str) -> bool:
-    """Is `program` a bare name, resolvable only via PATH?
-
-    The import probe *executes* the program, and the settings file that
-    named it was found by walking cwd's ancestors for a `config.toml`
-    (#637) -- so inside an untrusted tree (a cloned project, a directory
-    under /tmp), a planted settings file could name `/that/tree/python3`
-    and this module would run an attacker's binary with the user's
-    privileges: `_is_python_interpreter` below checks only the basename,
-    and `shutil.which` resolves a path-qualified program as-is rather
-    than via PATH. A bare name is resolved against PATH -- the user's own
-    environment, which the walked-to directory cannot rewrite -- so only
-    bare names are probed. Every launcher this repository ships is one.
-
-    A path-qualified launcher (an `init`-ed project naming its venv's
-    python by path) still gets `_launcher_fault`'s existence check; it
-    forgoes the import probe, and silently -- emitting a "not probed"
-    sentence every session would be a fault about the probe, not the
-    hook, the exact false-positive class #509/m-38 removed. Reporting
-    less is the accepted price of never executing a file merely because
-    a directory this process walked into named it.
-
-    Separators are checked as characters, not through PurePath: on a
-    POSIX host `PurePath(r"..\\python.exe").name` is the whole string
-    (backslash is not a separator there), yet the same settings file
-    carried to a Windows host would resolve it as a path. `:` covers
-    both a Windows drive prefix and there being no legitimate bare
-    launcher name containing one.
-    """
-    # "Resolved against PATH" means `chitragupta.programs`, not a plain
-    # lookup: on Windows `shutil.which` and `CreateProcess` both search cwd
-    # first, so the premise above held only on POSIX, and only for a PATH
-    # with no relative entry, until #974.
-    return not any(sep in program for sep in ("/", "\\", ":"))
-
-
-def _is_python_interpreter(program: str) -> bool:
-    """Does `program` name a Python interpreter?
-
-    `_import_fault` runs `<program> -c "import chitragupta"`, which is a
-    Python invocation and nothing else. Running it against a launcher that
-    is not Python -- `bash`, `uv`, `node` -- means the program either
-    rejects `-c` or runs something unrelated, and either way exits
-    non-zero, which this module would then report as "cannot import
-    chitragupta" every single session. That fault would be about the
-    probe, not about the hook (#509/m-38).
-
-    Latent rather than observed: every launcher this repository ships is
-    Python today. It is a *silent* latency, though -- a settings file
-    naming `bash` is legal and would produce a false fault on every
-    session with nothing pointing at the cause -- so the probe is gated
-    on what it can actually answer for.
-
-    Basename, with any version suffix and a Windows extension removed, so
-    `/usr/bin/python3.12` and `C:/…/python.exe` are both recognised. Not
-    a guess about arbitrary interpreters: an unrecognised program is
-    simply not probed, which is the pre-package behaviour and reports
-    nothing rather than something wrong.
-    """
-    stem = PurePath(program).name.lower()
-    stem = stem[: -len(".exe")] if stem.endswith(".exe") else stem
-    return stem.split("-")[0].rstrip("0123456789.") in ("python", "py", "pypy")
-
-
-def _probe_env(settings_path: Path) -> dict | None:
-    """The probe's environment: safe-path unless this is a checkout (#822).
-
-    `-c` puts cwd first on `sys.path`, where a scaffolded project may hold
-    a stray `chitragupta/`. This module living inside the project that
-    `settings_path` belongs to means a checkout; anywhere else, an install.
-    """
-    root = Path(settings_path).resolve().parent.parent
-    if Path(__file__).resolve().is_relative_to(root):
-        return None
-    return {**os.environ, "PYTHONSAFEPATH": "1"}
-
-
-def _import_fault(program: str, env: dict | None = None) -> str | None:
-    """Can `program` import the `chitragupta` package? One short subprocess.
-
-    A program that does not resolve is not probed and not reported: the
-    PATH check above already names it, so it is never reported twice. A
-    non-zero exit and a timeout are both faults; an interpreter that
-    cannot be spawned at all (`OSError`, e.g. a resolved-but-not-executable
-    path) is left to that PATH check too.
-    """
-    # The absolute path, never the bare name, which `CreateProcess` would
-    # look up in cwd all over again (#974).
-    resolved = programs.resolve_program(program)
-    if resolved is None:
-        return None
-    try:
-        result = subprocess.run(
-            [resolved, "-c", "import chitragupta"],
-            capture_output=True,
-            timeout=IMPORT_PROBE_TIMEOUT,
-            check=False,
-            env=env,
-        )
-    except subprocess.TimeoutExpired:
-        return (  # pragma: no cover-windows
-            f"`{program}` did not respond within {IMPORT_PROBE_TIMEOUT:.0f}s "
-            "probing whether it can import chitragupta -- treated as a fault, "
-            "not as clean."
-        )
-    except OSError:
-        return None
-    if result.returncode != 0:
-        return (  # pragma: no cover-windows
-            f"`{program}` cannot import chitragupta, so a hook it launches will "
-            "start and then fail silently. Activate the virtualenv chitragupta "
-            "is installed into before starting this session."
-        )
-    return None

@@ -242,7 +242,7 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
         assert bare_launches(old) == [(5, "'vale'")]
 
     def test_a_parameter_a_caller_fills_with_a_bare_name(self):
-        """hook_launchers' `_import_fault(program, env)`."""
+        """hook_launchers' `_import_fault(program, env)`, before #1025 moved it."""
         old = (
             "def _import_fault(program):\n"
             '    subprocess.run([program, "-c", "import chitragupta"])\n'

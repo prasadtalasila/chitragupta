@@ -320,6 +320,7 @@ chitragupta/
 ├── draft.py                    `python -m chitragupta.draft <gate|style|...>`
 ├── citation_gate.py            what the gate hook shells out to
 ├── hook_launchers.py           can the registered launchers start?
+├── import_probe.py             ...and can each import chitragupta?
 └── style_check.py              what the style hook shells out to
 
 scripts/
@@ -355,7 +356,9 @@ an envelope.** That line is where the boundary falls. An adapter is
 defined by handling the harness's stdin/stdout contract, and this module
 handles neither; it reads `settings.json` and returns English
 sentences. It has to be here, because the preflight cannot report its own
-interpreter missing and [the gate can](#-the-session-preflight).
+interpreter missing and [the gate can](#-the-session-preflight). Its
+import probe, `import_probe.py`, is split out of it (#1025) and falls
+under the same exception.
 
 **Layer 2, `.claude/hooks/`, holds adapters.** An adapter reads a
 `PostToolUse` payload on stdin, decides whether it is interested, shells
@@ -434,11 +437,11 @@ scaffolds no `scripts/`, so one found in an installed project was planted
 and would run with the user's privileges on the next `.py` write under
 `chitragupta/` or `scripts/`. There it starts no process at all; only the
 checkout runs its scanner.
-`hook_launchers.py`'s import probe makes the same call from its own side,
-by whether it is itself running from inside the project whose settings
-it reads. `session_start_hook.py`'s own in-process import appends the root
-to `sys.path` instead of prepending it, so an installed package wins
-there too.
+`hook_launchers.py`'s import probe (`import_probe.py`) makes the same
+call from its own side, by whether it is itself running from inside the
+project whose settings it reads. `session_start_hook.py`'s own
+in-process import appends the root to `sys.path` instead of prepending
+it, so an installed package wins there too.
 
 **The pipeline's own commands** go through no hook, so `safe_path` never
 sees them: a skill that runs `python -m chitragupta.draft gate` from the

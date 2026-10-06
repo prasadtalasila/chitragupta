@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import hook_launchers
+from chitragupta import hook_launchers, import_probe
 
 from tests.test_citation_gate_hook import _IS_COVERAGE_BOOTSTRAP
 
@@ -33,7 +33,7 @@ def installed_package_on_pythonpath(monkeypatch):
     """PYTHONPATH as the stand-in for site-packages, for every probe here.
 
     The settings files below live in `tmp_path`, outside this checkout, so
-    to `_probe_env` they are an installed-package project and the import
+    to `probe_env` they are an installed-package project and the import
     probe runs safe-path (#822): no cwd entry, so it no longer finds this
     checkout by the accident of pytest's working directory. PYTHONPATH is
     how the tests' children already reach the real package.
@@ -265,18 +265,18 @@ class TestProjectRoot:
 
 
 class TestImportFaultDirectly:
-    """`_import_fault` on its own, for the shapes a whole settings file
+    """`import_fault` on its own, for the shapes a whole settings file
     would only reach by first resolving the program -- which is the
     caller's job, not this function's."""
 
     def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
         """A program that does not resolve is the PATH check's to report,
         so the probe neither runs it nor reports it a second time."""
-        assert hook_launchers._import_fault("nowhere-abcx") is None
+        assert import_probe.import_fault("nowhere-abcx") is None
 
     def test_an_interpreter_that_can_import_the_package_is_clean(self, monkeypatch):
         monkeypatch.setenv("PATH", str(Path(sys.executable).parent))
-        assert hook_launchers._import_fault(Path(sys.executable).name) is None
+        assert import_probe.import_fault(Path(sys.executable).name) is None
 
     def test_a_program_that_resolves_but_cannot_be_spawned_is_not_a_fault(
         self, tmp_path, monkeypatch
@@ -284,7 +284,7 @@ class TestImportFaultDirectly:
         """`OSError` from the spawn itself, e.g. a file with the execute
         bit and no format the OS can run."""
         monkeypatch.setattr(hook_launchers.programs, "resolve_program", lambda name: str(tmp_path))
-        assert hook_launchers._import_fault("python3") is None
+        assert import_probe.import_fault("python3") is None
 
 
 @pytest.fixture
@@ -368,7 +368,7 @@ class TestImportProbeThroughFaults:
     def test_a_timeout_is_reported_as_a_fault_never_as_clean(
         self, settings, fake_interpreter, monkeypatch
     ):
-        monkeypatch.setattr(hook_launchers, "IMPORT_PROBE_TIMEOUT", 0.05)
+        monkeypatch.setattr(import_probe, "IMPORT_PROBE_TIMEOUT", 0.05)
         program = fake_interpreter(code=0, sleep=1)
         monkeypatch.setenv("PATH", str(Path(program).parent), prepend=":")
         found = hook_launchers.faults(settings(entry_for("python3")))
@@ -392,7 +392,7 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
     -- so inside an untrusted tree (a cloned project, /tmp), a planted
     settings.json naming `/that/tree/python3` handed an attacker's binary
     to subprocess.run with the user's privileges:
-    `_is_python_interpreter` checks only the basename, and `shutil.which`
+    `is_python_interpreter` checks only the basename, and `shutil.which`
     resolves a path-qualified program as-is rather than via PATH. Only a
     bare name -- resolved against PATH, the user's own environment, which
     the walked-to directory cannot rewrite -- may be probed."""
@@ -469,14 +469,14 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
             launched.append(Path(argv[0]))
             return subprocess.CompletedProcess(argv, 0)
 
-        monkeypatch.setattr(hook_launchers.subprocess, "run", record)
+        monkeypatch.setattr(import_probe.subprocess, "run", record)
         hook_launchers.faults(settings(entry_for("python")))
         assert launched == [real]
 
     def test_a_bare_name_resolved_from_path_is_still_probed(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
+            import_probe, "import_fault", lambda program, env=None: calls.append(program) or None
         )
         monkeypatch.setattr(
             hook_launchers.programs, "resolve_program", lambda program: "/usr/bin/python3"
@@ -489,11 +489,11 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
         ["/usr/bin/python3", "./python3", "venv/bin/python", "C:/Py/python.exe", "..\\python.exe"],
     )
     def test_a_path_qualified_name_is_not_bare(self, program):
-        assert not hook_launchers._is_bare_command(program)
+        assert not import_probe.is_bare_command(program)
 
     @pytest.mark.parametrize("program", ["python", "python3", "python3.12", "python.exe", "py"])
     def test_a_bare_name_is_bare(self, program):
-        assert hook_launchers._is_bare_command(program)
+        assert import_probe.is_bare_command(program)
 
 
 class TestImportProbeIsPerDistinctProgram:
@@ -504,7 +504,7 @@ class TestImportProbeIsPerDistinctProgram:
     def test_runs_once_for_a_program_two_entries_share(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
+            import_probe, "import_fault", lambda program, env=None: calls.append(program) or None
         )
         monkeypatch.setattr(
             hook_launchers.programs, "resolve_program", lambda program: "/usr/bin/python3"
@@ -521,7 +521,7 @@ class TestImportProbeIsPerDistinctProgram:
     def test_never_runs_for_a_program_not_on_path(self, settings, monkeypatch):
         calls = []
         monkeypatch.setattr(
-            hook_launchers.subprocess, "run", lambda argv, **kwargs: calls.append(argv)
+            import_probe.subprocess, "run", lambda argv, **kwargs: calls.append(argv)
         )
         found = hook_launchers.faults(
             settings(
@@ -544,7 +544,7 @@ class TestImportProbeIsPerDistinctProgram:
 
 
 class TestTheImportProbeOnlyRunsAgainstAPython:
-    """m-38 (#509). `_import_fault` runs `<program> -c "import
+    """m-38 (#509). `import_fault` runs `<program> -c "import
     chitragupta"`, which is a Python invocation and nothing else. Against
     a non-Python launcher -- `bash`, `uv`, `node` -- the program either
     rejects `-c` or runs something unrelated, exits non-zero, and gets
@@ -564,11 +564,11 @@ class TestTheImportProbeOnlyRunsAgainstAPython:
         ],
     )
     def test_an_interpreter_is_probed(self, program):
-        assert hook_launchers._is_python_interpreter(program)
+        assert import_probe.is_python_interpreter(program)
 
     @pytest.mark.parametrize("program", ["bash", "/bin/sh", "uv", "node", "sh.exe"])
     def test_anything_else_is_not(self, program):
-        assert not hook_launchers._is_python_interpreter(program)
+        assert not import_probe.is_python_interpreter(program)
 
     @pytest.mark.skipif(
         sys.platform == "win32",
@@ -678,10 +678,10 @@ class TestTheProbeNeverImportsAPlantedPackage:
 
     def test_a_checkout_keeps_its_cwd_entry(self):
         """The checkout finds its own package through cwd, with no install."""
-        assert hook_launchers._probe_env(REPO_ROOT / ".claude" / "settings.json") is None
+        assert import_probe.probe_env(REPO_ROOT / ".claude" / "settings.json") is None
 
     def test_an_installed_package_project_is_probed_safe_path(self, tmp_path):
-        env = hook_launchers._probe_env(tmp_path / ".claude" / "settings.json")
+        env = import_probe.probe_env(tmp_path / ".claude" / "settings.json")
         assert env["PYTHONSAFEPATH"] == "1"
         assert env["PYTHONPATH"] == str(REPO_ROOT)  # the rest of the environment survives
 
