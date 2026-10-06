@@ -1,6 +1,6 @@
 # Five house `pic`s: finishing what #1026 shipped
 
-Status: **implemented in the PR that carries this line** (6.136.1).
+Status: **implemented in the PR that carries this line** (6.137.1).
 On the way: Task 4 gained a test that some scaffold draws a `pic` into a
 well, so that acceptance item had a red run too; the carve-out's em dash
 became a colon, as TIKZ-STYLE.md uses none. Written 2026-10-06, for
