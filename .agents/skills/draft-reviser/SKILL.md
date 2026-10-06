@@ -482,23 +482,9 @@ are in this mode before you start**, naming the convention you are about
 to apply. That sentence is what lets the user stop you if they meant a
 change of substance.
 
-What changes, relative to the loop above:
-
-| Step | In copy-edit mode |
-| --- | --- |
-| 1. Locate and read state | Unchanged, and load-bearing. `scope.md`'s `language:` line is the target a dialect pass converts *to*, and `steering.md` may already carry a house-style decision. Skip this and you apply your own default instead of the user's recorded one |
-| 2. Check against recorded scope | Not applicable -- wording is not scope |
-| 3. Map the change onto sections | Read the whole draft. This is precisely the case step 3's exception exists for, and it is paid for deliberately |
-| 4. Decide whether to search | **No, and never.** A copy-edit that needs a retrieval call has stopped being one; see "Where the line is" below |
-| 5. Edit in place | Unchanged, and load-bearing for a second reason -- below |
-| 6. Write the dossier back | `revisions.md`, one entry -- **and `math.md`, if the draft has one.** There is no evidence delta, no new rejection and no moved section to record, but a wording pass is exactly what desyncs a mapping keyed on exact span text: "convert to en-GB" or "fix the grammar" rewrites the sentence around an equation. This is the one thing a copy-edit changes structurally, and step 7's render is what catches it |
-| 7. Gate, reference, render | Unchanged. Run the gate even though you changed no citation: that is the point |
-| Run the prose check | **Inverted, and this is the one place it inverts.** The findings are this pass's work list rather than a report: the user asked for exactly this class of change. Run it before you start, to scope the pass, and again at the end, to say what is left |
-
-If `scope.md`'s `language:` still says `not settled`, ask which dialect
-before converting, and write the answer to that line as part of the pass.
-A conversion applied against an unrecorded target is one the next session
-cannot repeat or check.
+Then read `.claude/skills/draft-reviser/references/copy-edit.md` now and
+follow it: what changes relative to the loop above, the dialect target,
+the single `revisions.md` entry, and where a copy-edit stops being one.
 
 **Still `apply_patch` hunks, never a rewrite, and now for a second reason.** Every
 objection in step 5 holds. The new one is that the PostToolUse citation
@@ -507,41 +493,6 @@ check that the rewrite has not mangled a citekey or a `\citep{}` -- the
 safety net that makes an aggressive whole-document rewrite safe to attempt
 at all. One rewrite of the whole file trades that away exactly where the
 risk is highest.
-
-**One `revisions.md` entry for the whole pass**, not one per section, and
-it names the convention rather than the sections:
-
-```text
-2026-08-14 -- copy-edit: converted to en-GB per scope.md's `language:`
-(-ise, -our, -re endings); whole document; no claim, citation, section
-order or citekey changed.
-```
-
-One entry because the log's later reader wants to know *what convention
-now governs this draft*; forty entries reading "converted section 4" do
-not answer that. `docs/DRAFT-ITERATION.md` has the shape and why it
-carries no evidence delta.
-
-### Where the line is
-
-If the rephrasing wants to change what a sentence claims, add or drop a
-citation, or reorder an argument, that is an ordinary revision. Finish the
-copy-edit, then say what you found and ask -- never take a substantive
-change under cover of a style pass, where it arrives in a diff the user is
-reviewing for spelling.
-
-Two things this mode refuses outright:
-
-- **Never change a claim to make a sentence read better.** Hedging that
-  carries real uncertainty is information (`docs/WRITING-STANDARDS.md`
-  §4), and "X may be a factor" flattened to "X is a factor" is a new claim
-  with an old citation behind it.
-- **Never touch quoted material, a cited title, a proper noun, or a
-  dataset or code identifier.** The recorded dialect governs the draft's
-  own prose only (`docs/WRITING-STANDARDS.md` §8), and "organization"
-  inside a quoted abstract or a venue's name stays as the source spelled
-  it. Nothing downstream catches this one: the citation gate checks
-  citekeys, not the words around them.
 
 ## Acronym-realignment mode
 
@@ -553,38 +504,9 @@ acronyms with my vocabulary", "the DT definition is stale", or the
 finding itself pasted in -- and say you are in this mode before you
 start, naming the term(s) involved.
 
-**The check only ever compares `scope.md`'s glossary to the vocabulary.**
-It cannot see whether the draft's own first-use expansion has drifted
-the same way, independently, or not at all -- that is prose, not a file
-diff, and no mechanical check here reads it. Two edits, not one:
-
-1. **Rewrite the glossary bullet** in `scope.md` to the vocabulary's
-   current expansion. This is what the finding named, so it is never
-   optional.
-2. **Find the term's own first-use expansion in the draft body** (the
-   same "Name (ACRONYM)" shape `chitragupta/acronyms.py` looks for, or whatever
-   shape this draft actually used) and update it too, if it disagrees.
-   You can see this half because you are reading the section anyway;
-   the check cannot. Say in the `revisions.md` entry that this half was
-   read by eye, not verified by a check -- the same honesty the finding
-   itself practises about what it can and cannot see.
-
-Same guardrails as copy-edit mode: no claim changed, no citation added or
-dropped, no argument reordered. `apply_patch` hunks, never a rewrite, for the same
-PostToolUse-gate reason step 5 above gives. One `revisions.md` entry,
-naming the term(s) and every file touched:
-
-```text
-2026-08-14 -- acronym realignment: DT's recorded expansion changed from
-"Digital twin" to "Digital Twin System" in content/acronyms.toml;
-updated scope.md's glossary bullet and the chapter's own first-use
-expansion (section 2) to match. The glossary half came from the style
-check; the body half was read by eye, not re-verified by a check.
-```
-
-Re-run the prose check at the end: the finding should be gone. If it
-isn't, say so rather than presenting a draft that still fails the check
-you were asked to fix.
+Then read `.claude/skills/draft-reviser/references/acronyms.md` now and
+follow it. Same guardrails as copy-edit mode, and `apply_patch` hunks,
+never a rewrite, for the same PostToolUse-gate reason step 5 above gives.
 
 ## Re-grounding after the corpus moves
 
@@ -595,146 +517,8 @@ notices; this is what acts on it. It is the same loop entered from a
 report instead of a request, so steps 5, 6 and 7 above still apply
 verbatim -- what changes is how the work is found.
 
-### R1. Read the report as data
-
-```bash
-python -m chitragupta.draft dossier status content/drafts/<path> --json
-```
-
-Or take the payload from a `--all --json` sweep the user already has. The
-envelope is always `{"dossiers": [...]}`, so a single draft comes back as
-a one-element list: read `.dossiers[0]`, not a bare object.
-
-### R2. Branch on the payload, never on the exit code
-
-This command exits 0 almost unconditionally -- that is deliberate, so the
-caller reads the contents rather than a status. Two cases to check before
-anything else:
-
-- **`corpus_available` is `false`.** The ledger could not be read, so
-  every finding list is empty because the check never ran, not because
-  there is nothing to find. Say what you checked, point the user at
-  `python -m chitragupta.corpus sync`, and stop. Do not report the draft as current.
-- **The dossier does not exist.** `--json` returns an almost-empty entry
-  and still exits 0. Go to "When there is no dossier", bootstrap, and
-  come back.
-
-### R3. Act on the three lists -- they are not the same kind of thing
-
-Flattening them into one list of "papers to look at" is the failure mode
-this section exists to prevent.
-
-**`missing` is a defect.** The draft stands on a paper the corpus no
-longer has; `citation_gate` already disagrees with the draft. Always
-actioned, whatever else the revision is about. Each entry maps a citekey
-to the sections citing it, and `python -m chitragupta.draft dossier sections
-content/drafts/<path>` turns those into line ranges, so the edit stays as
-scoped as any other. Look for the replacement in this order, and stop at
-the first that supports the claim:
-
-1. `evidence.md` -- another paper you already kept may support it, at no
-   retrieval cost at all.
-2. The report's own `candidates` -- a paper that arrived matching the
-   same query that once produced the broken citation is the likeliest
-   replacement there is.
-3. A fresh search -- here it *is* right, unlike the candidate path,
-   because a claim left unsupported is genuinely new ground:
-
-   ```bash
-   python -m chitragupta.draft retrieve search "<the claim>" --k 15 --collection "<from scope.md>" --log content/drafts/<path>
-   ```
-
-If none of the three supports it, **remove the claim** and say so. Not a
-reworded sentence that keeps the assertion and quietly drops the
-citation. Never leave the citekey in place, and never replace it with a
-key you have not seen in the ledger.
-
-**`candidates` are a decision, not a defect.** New papers that this
-dossier's own recorded queries reach. Pursue only the ones whose
-`queries` touch the sub-theme actually in play; the rest are reported to
-the user and left in the report for the next revision to weigh. Do not
-work through the list.
-
-For the ones you do pursue, go straight to the passage. The report
-already carries the citekey, the title and the query that surfaced it, so
-re-running `search` for that query pays for fifteen snippets to be handed
-back the same fifteen citekeys:
-
-```bash
-python -m chitragupta.draft retrieve evidence "<the query from the report>" \
-    --citekey <candidate> --log content/drafts/<path>
-```
-
-What the report lacks is text to judge on, and that is what `evidence` is
-for. Keep `python -m chitragupta.draft retrieve search "<query>" --k 15 --log <draft>`
-for the case where the revision opens ground the dossier never covered --
-a query not already in `retrieval.md`, which by definition could not have
-produced a candidate.
-
-**`reconsider` is not re-judged.** These are papers the draft already
-read and turned down, which its queries still reach. `rejected.md` has
-already been subtracted from `candidates`; these are carried separately
-*with the recorded reason* so you can weigh the reason without paying to
-re-judge the paper. Report citekey, title and reason. Re-open one only
-when the recorded reason no longer holds -- typically a scope change the
-user agreed to in step 2. Re-judging these by default is precisely the
-cost `rejected.md` exists to prevent (`docs/REJECTION.md`).
-
-### R4. Edit, write back, and re-stamp
-
-Step 5 unchanged. Step 6 unchanged except for two of its bullets, which
-were written for a revision someone asked for:
-
-- **`steering.md` -- usually nothing.** A re-grounding pass has no
-  instruction to record; the corpus moved, the user did not steer.
-  Append only if they actually said something here. Inventing a steering
-  entry to fill the file is the same failure as inventing an evidence
-  one.
-- **`scope.md` -- the fingerprint line only.** The rule that the scope
-  statement changes only by agreement is untouched; the corpus line
-  below is bookkeeping, and is the one thing this mode always writes.
-
-Then two things specific to this mode.
-
-**Re-stamp the corpus fingerprint** in `scope.md`, after the gate passes,
-from the report's `current` field -- it is the record that this draft was
-re-grounded against that corpus:
-
-```text
-- corpus: 503 citekeys, digest `f6e5d4c3b2a1`
-```
-
-Rewrite the line; do not reshape it. Anything that no longer matches the
-recorded form makes `recorded_corpus()` return nothing, and the dossier
-silently downgrades to "records no corpus fingerprint" instead of
-erroring.
-
-**Append a `revisions.md` entry** naming this as a re-grounding: what was
-swapped, what was dropped, what was added, and -- with the same weight --
-which candidates were reported and *not* pursued. The Guardrails rule
-about reporting what you didn't do binds hardest here, because the user
-did not ask for this revision and cannot infer its edges.
-
-### R5. The gate is the exit, not the report
-
-Finish with step 7 and change nothing about it. `missing` is computed
-from the dossier's own `evidence.md` and `sections.md`, not from the
-draft body, so a citekey the draft cites that was never recorded in the
-dossier will not appear in the report at all. `python -m
-chitragupta.draft gate` is the check that reads the draft, and it is what
-decides the draft is presentable. A clean drift report never does.
-
-The loop's two riders still apply, and neither is a gate. A re-grounding
-pass rewrites sentences around a swapped citation, which is new prose
-whatever prompted it.
-
-Expect the draft to keep showing candidates in the next sweep, and say
-so. A query returns fifteen hits and a revision accepts one or two;
-"still has candidates" is the normal state of a healthy draft. What
-re-grounding promises is that the *missing* list is empty. Do not clear
-the candidate list by writing unpursued papers into `rejected.md` -- a
-rejection recorded from a title alone is a judgment you did not make, and
-`rejected.md` is trusted permanently by every revision after this one.
+Read `.claude/skills/draft-reviser/references/re-grounding.md` now and
+work through its R1 to R5 in order.
 
 ## When a whole-corpus pass is what's wanted
 

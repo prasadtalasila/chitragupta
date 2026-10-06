@@ -81,3 +81,24 @@ def test_each_scoping_genre_points_at_the_collection_reference(name):
     section = text.split("## Collection scoping", 1)[1].split("\n## ", 1)[0]
     assert f"`{_SCOPING}`" in section
     assert "ledger --collections" in section, "the one check every run makes stays in SKILL.md"
+
+
+# A mode a skill enters only on some requests reads its procedure from a
+# reference, named in the section that recognises the mode (#997).
+_MODES = {
+    "draft-reviser": {
+        "## Copy-edit mode": "copy-edit.md",
+        "## Acronym-realignment mode": "acronyms.md",
+        "## Re-grounding after the corpus moves": "re-grounding.md",
+    },
+}
+
+
+@pytest.mark.parametrize(
+    "name,heading,reference",
+    [(n, h, r) for n, modes in _MODES.items() for h, r in modes.items()],
+)
+def test_each_mode_section_points_at_its_reference(name, heading, reference):
+    text = (folder("claude", name) / "SKILL.md").read_text(encoding="utf-8")
+    section = text.split(heading, 1)[1].split("\n## ", 1)[0]
+    assert f"`.claude/skills/{name}/references/{reference}`" in section
