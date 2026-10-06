@@ -176,20 +176,18 @@ def _pandoc_command(
         f"papersize={papersize}",
         "--variable",
         f"geometry:margin={margin}",
-        # `--natbib` and `--citeproc` are alternatives, not additions:
-        # one defers every citation to LaTeX, the other resolves it here.
-        *(["--natbib"] if fragment else ["--citeproc", "--csl", str(csl_path)]),
-        "--bibliography",
-        str(safe_bib),
-        # Straight after `--citeproc`: pandoc runs citeproc and filters in
-        # argv order, and this one rewrites what citeproc produced. A
-        # `.bib` field's raw TeX (`\directlua{...}`) then prints as text
-        # instead of running in LuaLaTeX -- see the filter's own header.
-        # Before breakable_inline_code.lua, which puts raw `\penalty0`
-        # breaks between pieces of a code span: run the other way round,
-        # a `\texttt{...}` in a `.bib` title printed those as visible text.
-        # A fragment has no reference list here (`--natbib` defers it to
-        # the book's bibtex), so it has nothing to rewrite.
+        # Straight before `--citeproc`: pandoc runs citeproc and filters
+        # in argv order, and this one rewrites the bibliography citeproc
+        # is about to read. A `.bib` field's raw TeX (`\directlua{...}`)
+        # then prints as text instead of running in LuaLaTeX, and the
+        # author's own citation prefix and suffix, which citeproc merges
+        # into the same node, are never touched (#1022) -- see the
+        # filter's own header. Before breakable_inline_code.lua too,
+        # which puts raw `\penalty0` breaks between pieces of a code span:
+        # run the other way round, a `\texttt{...}` in a `.bib` title
+        # printed those as visible text. A fragment has no reference list
+        # here (`--natbib` defers it to the book's bibtex), so it has
+        # nothing to rewrite.
         *(
             []
             if fragment
@@ -198,6 +196,11 @@ def _pandoc_command(
                 str(config.shipped("assets", "pandoc", "bib_raw_tex_as_text.lua")),
             ]
         ),
+        # `--natbib` and `--citeproc` are alternatives, not additions:
+        # one defers every citation to LaTeX, the other resolves it here.
+        *(["--natbib"] if fragment else ["--citeproc", "--csl", str(csl_path)]),
+        "--bibliography",
+        str(safe_bib),
         # Gives a long inline code span (a URL, a REST path, a file
         # path) somewhere to break in LaTeX/PDF output -- see the
         # filter's own header comment for why pandoc's default

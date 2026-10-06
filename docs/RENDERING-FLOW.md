@@ -130,12 +130,16 @@ behind a two-line shim that defines `\DeclareUnicodeCharacter` on top of
 works under pdflatex and LuaLaTeX.
 
 A `.bib` field's raw TeX prints as text: `bib_raw_tex_as_text.lua` runs
-after citeproc and turns raw TeX in the reference list and the citations
-into literal text, and does the same for a `$...$` math node that holds a
+just before citeproc and turns raw TeX in every bibliography entry into
+literal text, and does the same for a `$...$` math node that holds a
 code-running primitive, because LuaLaTeX would run a `\directlua` in
-either. Plain mathematics is left as math. TeX in the draft body and in
-figure files still runs, Lua included; that is an accepted residual, set
-out in [SECURITY.md](SECURITY.md).
+either. Plain mathematics is left as math. It rewrites the entries
+rather than citeproc's output, because citeproc merges the author's own
+citation prefix and suffix (`[\emph{cf.} @key, p. 3]`) into the same
+node as the `.bib` text, and those are the author's to keep (#1022).
+TeX in the draft body, in a citation's prefix or suffix, and in figure
+files still runs, Lua included; that is an accepted residual, set out in
+[SECURITY.md](SECURITY.md).
 
 **Build time.** Measured on TeX Live 2023 with a 170-page,
 63,000-word document made from this repository's sample drafts, warm

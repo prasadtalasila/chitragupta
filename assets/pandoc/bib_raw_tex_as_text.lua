@@ -13,21 +13,32 @@
 -- `openin_any=p` and `-no-shell-escape` #823 set, because those fence
 -- TeX's own reads and not Lua's. See plans/996-unicode-pdf-engine.md.
 --
--- So this runs straight after `--citeproc` (argv order is filter order)
--- and rewrites, inside citeproc's output only -- the `refs` Div and each
--- Cite:
---   * every raw TeX node, into Code, which the LaTeX writer escapes;
+-- So this runs straight *before* `--citeproc` (argv order is filter
+-- order) and rewrites the bibliography citeproc is about to read: every
+-- entry `pandoc.utils.references` returns -- each `--bibliography` file
+-- and a draft's own `references:` block alike -- goes back into the
+-- metadata as `references`, with `bibliography` dropped so citeproc
+-- reads the rewritten copy and not the files again. In each field:
+--   * every raw TeX node becomes Code, which the LaTeX writer escapes;
 --   * any Math node whose source contains one of the few primitives that
---     run code or touch files (the rest of math -- `\alpha`, `\leq`,
---     `x^2` -- is left exactly as written, so ordinary mathematics in a
---     title still typesets).
+--     run code or touch files becomes Code too (the rest of math --
+--     `\alpha`, `\leq`, `x^2` -- is left exactly as written, so ordinary
+--     mathematics in a title still typesets).
 -- The reader sees what their `.bib` says. A normal entry has no such
 -- node after the reader, so its LaTeX is byte-identical with and without
 -- this filter (pinned in tests/test_render_output_bib_raw_tex.py).
 --
--- A draft's own raw LaTeX (an `\input` of a figure, a display equation)
--- lives outside both and is untouched: that text is the author's, and
--- the draft is theirs to run.
+-- Before citeproc, not after it (#1022): citeproc merges a citation's
+-- prefix and suffix, which the author typed, into the same Cite node as
+-- the `.bib`-derived label, and nothing in its output says which inline
+-- came from where. Rewriting citeproc's output therefore also turned an
+-- author's `[\emph{cf.} @key]` into visible `\emph{cf.}` text. Rewritten
+-- at the source, no `.bib` text reaches citeproc unescaped, and the
+-- author's citations are never walked.
+--
+-- A draft's own raw LaTeX (an `\input` of a figure, a display equation,
+-- a citation's prefix or suffix) is never walked and is untouched: that
+-- text is the author's, and the draft is theirs to run.
 
 local function is_tex(el)
   return el.format == "latex" or el.format == "tex"
@@ -92,15 +103,27 @@ local as_text = {
   end,
 }
 
+-- A reference is a table of fields: Inlines for a title or a name part,
+-- plain strings for an id or a date part, nested tables for a name list
+-- or a date. Only the Inlines can hold TeX.
+local function rewrite(value)
+  local kind = pandoc.utils.type(value)
+  if kind == "Inlines" or kind == "Blocks" then
+    return value:walk(as_text)
+  elseif type(value) == "table" then
+    for key, field in pairs(value) do
+      value[key] = rewrite(field)
+    end
+  end
+  return value
+end
+
 function Pandoc(doc)
-  return doc:walk({
-    Div = function(div)
-      if div.identifier == "refs" then
-        return div:walk(as_text)
-      end
-    end,
-    Cite = function(cite)
-      return cite:walk(as_text)
-    end,
-  })
+  local refs = pandoc.utils.references(doc)
+  if #refs == 0 then
+    return nil
+  end
+  doc.meta.references = rewrite(refs)
+  doc.meta.bibliography = nil
+  return doc
 end

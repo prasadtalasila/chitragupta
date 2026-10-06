@@ -15,18 +15,23 @@ output format.
 
 `bib_raw_tex_as_text.lua` (#996) is loaded on every render that runs
 `--citeproc` (all but `--fragment`, which defers citations to the book's
-`bibtex`), right **after** `--citeproc` on the command line and before
+`bibtex`), right **before** `--citeproc` on the command line and before
 `breakable_inline_code.lua`: pandoc runs citeproc and filters in argv
-order, this filter rewrites what citeproc produced, and running it after
-the breakable filter would turn that filter's `\penalty0` break nodes
-into visible text in a `.bib` title's `\texttt`. pandoc's BibTeX reader
-turns a command it does not understand into raw LaTeX, and keeps `$...$`
-as a math node whose source it prints verbatim; citeproc carries both
-into the reference list and the citations, where under LuaLaTeX a
-`\directlua{...}` would run. The filter turns every raw TeX node inside
-the `refs` Div and each Cite into a code span, which every writer
-escapes, and does the same for a math node that contains a code-running
-or file-reaching primitive (`\directlua`, `\csname`, `\input`, `\write`
-and the like); plain mathematics is left as math. A normal entry has no
-such node after the reader, so its output is byte-identical with or
-without the filter.
+order, this filter rewrites the bibliography citeproc is about to read,
+and running it after the breakable filter would turn that filter's
+`\penalty0` break nodes into visible text in a `.bib` title's `\texttt`.
+pandoc's BibTeX reader turns a command it does not understand into raw
+LaTeX, and keeps `$...$` as a math node whose source it prints verbatim;
+citeproc carries both into the reference list and the citations, where
+under LuaLaTeX a `\directlua{...}` would run. The filter reads every
+entry with `pandoc.utils.references` (each `--bibliography` file and the
+draft's own `references:` block), turns every raw TeX node in them into
+a code span, which every writer escapes, and does the same for a math
+node that contains a code-running or file-reaching primitive
+(`\directlua`, `\csname`, `\input`, `\write` and the like); plain
+mathematics is left as math. A normal entry has no such node after the
+reader, so its output is byte-identical with or without the filter. It
+rewrites the entries and not citeproc's output because citeproc merges a
+citation's prefix and suffix, which the author typed, into the same Cite
+node as the `.bib` text: walking that node turned an author's
+`[\emph{cf.} @key]` into visible `\emph{cf.}` (#1022).

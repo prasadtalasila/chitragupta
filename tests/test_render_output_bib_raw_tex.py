@@ -58,19 +58,23 @@ class TestArgv:
         )  # fmt: skip
         return cmd
 
-    def test_the_filter_runs_after_citeproc_and_before_breakable_code(self):
-        # pandoc runs --citeproc and --lua-filter in argv order; this
-        # filter rewrites citeproc's output, so before it there is nothing
-        # to see. It must also run before breakable_inline_code.lua, which
-        # inserts raw `\penalty0` nodes into a code span -- the other order
-        # printed those as visible text in a `.bib` title's `\texttt`.
+    def test_the_filter_runs_before_citeproc_and_before_breakable_code(self):
+        # pandoc runs --citeproc and --lua-filter in argv order. This
+        # filter rewrites the bibliography citeproc is about to read, so
+        # after it citeproc would already have formatted the raw `.bib`
+        # text, and the only way left to reach it is walking citeproc's
+        # output, which also holds the author's own citation prefix and
+        # suffix (#1022). It must also run before breakable_inline_code.lua,
+        # which inserts raw `\penalty0` nodes into a code span -- the
+        # other order printed those as visible text in a `.bib` title's
+        # `\texttt`.
         cmd = self._cmd(False)
         filters = [i for i, arg in enumerate(cmd) if arg.endswith(_FILTER)]
         assert len(filters) == 1
         breakable = next(
             i for i, arg in enumerate(cmd) if arg.endswith("breakable_inline_code.lua")
         )
-        assert cmd.index("--citeproc") < filters[0] < breakable
+        assert filters[0] < cmd.index("--citeproc") < breakable
 
     def test_a_fragment_has_no_reference_list_to_rewrite(self):
         assert not any(arg.endswith(_FILTER) for arg in self._cmd(True))
@@ -80,17 +84,19 @@ _BIB_FILTER = ["--lua-filter", str(config.shipped("assets", "pandoc", _FILTER))]
 _BREAKABLE = ["--lua-filter", str(config.shipped("assets", "pandoc", "breakable_inline_code.lua"))]
 
 
-def _latex_of(tmp_path, title, filters):
+def _latex_of(tmp_path, title, bib_filter, body="See [@smith_2024].\n"):
+    # The argv order a real render uses: the bib filter, --citeproc, then
+    # the breakable filter, which every real render also runs.
     (tmp_path / "x.bib").write_text(
         f"@article{{smith_2024,\n  title={{{title}}},\n"
         '  author={M{\\"u}ller, J{\\"o}rg},\n  year={2024},\n}\n',
         encoding="utf-8",
     )
-    (tmp_path / "x.md").write_text("See [@smith_2024].\n", encoding="utf-8")
+    (tmp_path / "x.md").write_text(body, encoding="utf-8")
     cmd = [
-        "pandoc", "x.md", "--citeproc",
+        "pandoc", "x.md", *(_BIB_FILTER if bib_filter else []), "--citeproc",
         "--csl", str(config.shipped("assets", "csl", "ieee.csl")),
-        "--bibliography", "x.bib", "-t", "latex", *filters,
+        "--bibliography", "x.bib", "-t", "latex", *_BREAKABLE,
     ]  # fmt: skip
     return subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True, check=True).stdout
 
@@ -108,10 +114,10 @@ def test_the_bib_filter_is_a_no_op_on_a_normal_entry(tmp_path):
         "{\\\"U}ber $\\alpha \\leq \\beta$ and \\emph{L\\'evy} flights in"
         " H$_2$O, see \\texttt{src/main.py} and {CO}\\textsubscript{2}"
     )
-    breakable_only = _latex_of(tmp_path, title, _BREAKABLE)
+    breakable_only = _latex_of(tmp_path, title, bib_filter=False)
     assert "Müller" in breakable_only and "\\alpha" in breakable_only  # the fixture parsed
     assert "penalty0" in breakable_only  # the \texttt was split, a real break
-    assert _latex_of(tmp_path, title, _BIB_FILTER + _BREAKABLE) == breakable_only
+    assert _latex_of(tmp_path, title, bib_filter=True) == breakable_only
 
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
@@ -122,11 +128,59 @@ def test_a_directlua_inside_math_is_turned_to_text(tmp_path):
     latex = _latex_of(
         tmp_path,
         'Flow at $\\directlua{tex.print("X")}$ and $\\alpha \\leq \\beta$',
-        _BIB_FILTER + _BREAKABLE,
+        bib_filter=True,
     )
     assert "\\(\\directlua" not in latex and "$\\directlua" not in latex
     assert "directlua" in latex  # present, but as escaped text
     assert "\\(\\alpha \\leq \\beta\\)" in latex  # real math untouched
+
+
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+def test_the_authors_own_citation_prefix_and_suffix_are_left_alone(tmp_path):
+    # A citation's prefix and suffix are the author's text, as much as the
+    # draft body is, and citeproc merges them into the same Cite node as
+    # the `.bib`-derived label. Walking that node turned `\emph{cf.}` into
+    # a visible `\texttt{\textbackslash{}emph...}` (#1022). The `.bib`
+    # title's raw TeX beside it must still print as text.
+    latex = _latex_of(
+        tmp_path,
+        'Flow \\directlua{tex.print("X")} here',
+        bib_filter=True,
+        body="See [\\emph{cf.} @smith_2024, eq. $\\alpha$; \\textbf{also}].\n",
+    )
+    assert "\\emph{cf.}" in latex and "\\textbf{also}" in latex
+    assert "\\(\\alpha\\)" in latex
+    assert "textbackslash{}emph" not in latex and "textbackslash{}textbf" not in latex
+    assert "\\texttt{\\textbackslash{}directlua" in latex  # the .bib side still guarded
+
+
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+def test_inline_yaml_references_are_rewritten_too(tmp_path):
+    # citeproc also reads a draft's own `references:` block, and
+    # pandoc.utils.references returns those beside the `.bib` entries; a
+    # rewrite that only looked at the file would let them through.
+    (tmp_path / "x.md").write_text(
+        "---\nreferences:\n- id: smith_2024\n  type: article-journal\n"
+        "  title: 'Flow `\\directlua{x}`{=latex} here'\n"
+        "  issued: {date-parts: [[2024]]}\n---\n\nSee [@smith_2024].\n",
+        encoding="utf-8",
+    )
+    cmd = [
+        "pandoc", "x.md", *_BIB_FILTER, "--citeproc",
+        "--csl", str(config.shipped("assets", "csl", "ieee.csl")), "-t", "latex",
+    ]  # fmt: skip
+    latex = subprocess.run(cmd, cwd=tmp_path, capture_output=True, text=True, check=True).stdout
+    assert "directlua" in latex and "\\directlua{x}" not in latex.replace("\\textbackslash{}", "")
+
+
+@pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
+def test_a_draft_without_a_bibliography_is_left_alone(tmp_path):
+    (tmp_path / "x.md").write_text("No citations, `\\x`{=latex}.\n", encoding="utf-8")
+    run = lambda *f: subprocess.run(  # noqa: E731
+        ["pandoc", "x.md", *f, "--citeproc", "-t", "latex"],
+        cwd=tmp_path, capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    assert run(*_BIB_FILTER) == run() == "No citations, \\x.\n"
 
 
 @pytest.mark.skipif(
