@@ -345,7 +345,7 @@ def _pandoc_command(
 
 def _require_pdf_toolchain() -> None:
     """Raises `MissingBinary` unless this host can render a pdf: `lualatex`
-    on PATH, and its font loader installed.
+    on PATH, its font loader installed, and the fonts the header sets.
 
     `lualatex` itself is in `texlive-binaries` and its format in
     `texlive-latex-base`, so it is on PATH on a host that installed

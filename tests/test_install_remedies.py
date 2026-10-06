@@ -40,3 +40,19 @@ def test_no_printed_string_names_the_install_script():
             and "scripts/install_full_pipeline.sh" in node.value
         ]
     assert offenders == []
+
+
+SKILL_TREES = (".claude/skills", ".agents/skills", ".opencode/skills")
+
+
+def test_no_skill_sends_a_drafting_reader_to_the_install_script():
+    # The skills are scaffolded into a `chitragupta init` project too,
+    # which has no scripts/ to run (#1022 review).
+    root = PACKAGE.parent
+    offenders = [
+        f"{path.relative_to(root)}"
+        for tree in SKILL_TREES
+        for path in sorted((root / tree).rglob("*.md"))
+        if "scripts/install_full_pipeline.sh" in path.read_text(encoding="utf-8")
+    ]
+    assert offenders == []

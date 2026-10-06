@@ -99,9 +99,9 @@ _INSTALL_HINT = {
     ),
     "docling": (
         "the 'docling' package isn't usable (not installed, or a "
-        f"transitive dependency is broken). Run {install.remedy('enrich')} "
-        "(in a git checkout: 'poetry install --with enrich') to extract PDF "
-        "text with it."
+        "transitive dependency is broken). To extract PDF text with it, run, "
+        "in a git checkout, 'poetry install --with enrich'; in an installed "
+        f"project, {install.remedy('enrich')}."
     ),
 }
 
