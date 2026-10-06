@@ -16,15 +16,20 @@ from chitragupta.figure._block import (
     newer_than_install,
     stamp,
 )
+from chitragupta.figure._sync import Outcome, figure_files, run, sync_file
 
 __all__ = [
     "House",
+    "Outcome",
     "Region",
     "State",
     "classify",
     "digest",
+    "figure_files",
     "finding",
     "load_house",
     "newer_than_install",
+    "run",
     "stamp",
+    "sync_file",
 ]
