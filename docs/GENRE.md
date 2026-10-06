@@ -51,10 +51,11 @@ Related reading:
 - [At a glance](#-at-a-glance)
 - [The five drafting genres](#-the-five-drafting-genres)
 - [Assembling a book](#-assembling-a-book)
+- [Drawing a figure: figure-drawer](#-drawing-a-figure-figure-drawer)
 - [Revising: draft-reviser](#-revising-draft-reviser)
 - [Revising widely: corpus-reviser](#-revising-widely-corpus-reviser)
 - [Working the agenda: agenda-reviser](#-working-the-agenda-agenda-reviser)
-- [What all nine have in common](#-what-all-nine-have-in-common)
+- [What all ten have in common](#-what-all-ten-have-in-common)
 - [The boundaries, and why they are enforced](#-the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#-genres-this-project-does-not-have)
 
@@ -100,6 +101,7 @@ document that fails at both.
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass, by request only |
 | `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
 | `book-assembler` | `content/rendered/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
+| `figure-drawer` | one `figures/<name>.tex` + `.txt` pair beside a draft | none: no citekey in a figure file | none | one figure, compiled and reviewed |
 
 All five drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
@@ -369,8 +371,8 @@ cannot repair is escalated, not worked around.
 
 ## 📕 Assembling a book
 
-`book-assembler` is the ninth skill and the only one that writes no
-prose. It composes units that are already accepted and gate-passed into
+`book-assembler` is the ninth skill, and it writes no prose. It
+composes units that are already accepted and gate-passed into
 one LaTeX book (front matter, `\part`, `\chapter`, one `\input` per
 unit, back matter) from the outline `python -m chitragupta.draft spec` holds
 and the acceptance records `python -m chitragupta.draft unit` wrote.
@@ -385,10 +387,41 @@ unaccepted or stale sends it back to the genre skill or to
 generation unit, the registries, and why the consistency check reports
 instead of blocking.
 
-## 🔑 What all nine have in common
+## 🖍 Drawing a figure: `figure-drawer`
+
+`figure-drawer` is the tenth skill. It owns *how* a figure is drawn:
+the layout metaphor, the scaffold from `assets/tikz/`, panel letters,
+the ASCII twin, the compile probe and the geometry review. It never
+decides *whether* a draft gets a figure, and it never presents a draft.
+
+Four genre skills hand off to it once they have decided a figure is
+warranted: `survey-writer`, `tutorial-writer`,
+`textbook-chapter-writer` and `thesis-chapter-writer`. `draft-reviser`
+hands off to it to redraw or fix one. When the drawing is done, control
+returns to the skill that called it, which places the figure in its own
+shape, gates and renders. `deep-research` uses no figures.
+
+It also triggers on its own: "draw a figure for section 3 of
+rag/survey.md showing how a query moves through retrieval". That
+changes an existing draft, so it is a revision: after drawing, the
+session continues in `draft-reviser`'s write-back and gate steps, which
+log the change, run the gate and re-stamp the draft.
+
+**Why each genre skill still keeps a short figure step.** Skills here
+are picked by their trigger descriptions, so a step that says "now use
+`figure-drawer`" relies on the model actually loading it, in three
+harnesses. Each genre's figure step therefore keeps what must hold even
+if that handoff is skipped: its when-to-draw threshold, its output shape
+(a marker line in Markdown, `\input` plus a `%figure:` comment in the
+thesis fragment), and **no citekey inside either figure file**, because
+the gate reads the draft and does not follow `\input`.
+`tests/test_skill_figure_step.py` pins that stub in each genre and
+fails if a rule that moved to `figure-drawer` reappears in one (#1027).
+
+## 🔑 What all ten have in common
 
 These are not per-skill choices. They are the same rules restated in
-nine `SKILL.md` files, and a skill that broke one would be the bug.
+ten `SKILL.md` files, and a skill that broke one would be the bug.
 
 Each of those files exists once per harness (`.claude/skills/`,
 `.agents/skills/` and `.opencode/skills/*-opencode/`), differing only in
@@ -397,10 +430,14 @@ the tool phrases `tests/fixtures/skill_harness_phrases.toml` lists.
 to differ; `tests/test_skill_harness_copies.py` fails on anything else
 and names the copy that moved ([HARNESS.md](HARNESS.md)).
 
-One of the nine is not a drafting skill: `book-assembler` composes units
+Two of the ten are not drafting skills. `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing*
 (the dossier, the acronym vocabulary), it says how that skill differs and
-why instead of leaving it silently exempt.
+why instead of leaving it silently exempt. `figure-drawer` presents no
+draft at all: it draws one figure and returns to the skill that called
+it, so the gate, the prose check, the verbatim scan and the fingerprint
+stamp below are that skill's, not its own. The one rule it carries
+itself is the invariant: no citekey in a figure file.
 
 One rule below is narrower still: the pre-gate self-feedback step
 (roadmap [B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop),

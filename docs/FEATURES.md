@@ -98,7 +98,7 @@ it.
 flowchart TB
   L1["<b>Layer 1 · Corpus</b> — deterministic, safe unattended<br/><small>sync · ledger · topics · discover</small>"]:::f
   L3["<b>Layer 3 · Enrichment</b> — optional, extends the corpus<br/><small>docling · embeddings · topic model · seed topics · topic graph</small>"]:::o
-  L2["<b>Layer 2 · Drafting</b> — generative, you review it<br/><small>9 skills · dossier · retrieval · references · evidence · render · style · book pipeline</small>"]:::f
+  L2["<b>Layer 2 · Drafting</b> — generative, you review it<br/><small>10 skills · dossier · retrieval · references · evidence · render · style · book pipeline</small>"]:::f
   GATE{{"<b>chitragupta draft gate</b><br/><small>this layer's only exit</small>"}}:::g
   OUT["rendered document"]:::out
   L4["<b>Layer 4 · Review</b> — advisory, never a gate<br/><small>10 aids, each exits 0 whatever it finds</small>"]:::f
@@ -211,10 +211,11 @@ the lookup itself is instant and works wherever the corpus does.
 
 ## ✍ Drafting layer: writing something grounded
 
-### 🤖 Nine skills
+### 🤖 Ten skills
 
-Five write a new draft, three change one that already exists, and one
-assembles a book from units the others wrote. You never invoke them by
+Five write a new draft, three change one that already exists, one
+assembles a book from units the others wrote, and one draws the figures
+the others hand it. You never invoke them by
 name: each declares its triggers, and asking in ordinary words selects
 one ([GENRE.md](GENRE.md)).
 
@@ -229,6 +230,7 @@ one ([GENRE.md](GENRE.md)).
 | `corpus-reviser` | edits an existing draft, re-searching everything | (by explicit request only) |
 | `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
 | `book-assembler` | one LaTeX book from accepted units | [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
+| `figure-drawer` | one TikZ figure and its ASCII twin, for a draft | (handed off to by four genre skills and `draft-reviser`, or asked for directly) |
 
 The rule that saves the most money is never to re-run a genre skill to
 change a draft that exists. `draft-reviser` reads the dossier and edits

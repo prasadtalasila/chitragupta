@@ -173,7 +173,7 @@ and loads every folder it scans concurrently, so among same-named copies
 the last to load wins, which in practice is random. The suffixed names
 cannot collide with the other copies, and the `skill` permission in
 `.opencode/opencode.json`, which filters the list the model is shown,
-denies the nine unsuffixed names. That holds per project, with no
+denies the ten unsuffixed names. That holds per project, with no
 environment variable. The OpenCode copies refer to one another by the
 suffixed names; `AGENTS.md` says so in one line.
 
@@ -260,7 +260,7 @@ Every refusal names the bad key and its line, and nothing else.
 **A git pre-commit hook.** `content/drafts/` is gitignored, so a draft
 is never committed.
 
-**Hand-kept copies of each skill with no check between them.** Nine
+**Hand-kept copies of each skill with no check between them.** Ten
 skills of 2,500-7,700 words each, copied three ways, would drift, and a
 copy that drifts on the gate step is a fabrication path. The copies
 exist, but only because the phrase-map test fails on any drift outside

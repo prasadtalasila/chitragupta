@@ -38,7 +38,7 @@ def frontmatter(path: Path) -> dict[str, str]:
 
 
 def test_every_copy_of_every_skill_is_found():
-    assert len(SKILL_FILES) == 27  # nine skills, three harnesses
+    assert len(SKILL_FILES) == 30  # ten skills, three harnesses
 
 
 @pytest.mark.parametrize(
