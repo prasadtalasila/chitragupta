@@ -169,7 +169,28 @@ so they are this skill's to state:
    the pre-flight list, and leave the rest. It measures only nodes the
    source names, so name every node you draw.
 
-9. **Return.** Tell the caller the two paths and whether the probe
-   passed. The caller places the marker and the caption in its own
-   shape, then gates and renders the draft. None of that is this
-   skill's.
+9. **Look at it in the real render.** The probe is a bare article class
+   under `pdflatex`; the pipeline's own pdf is LuaLaTeX at the draft's
+   body font, where labels wrap and the gaps between layers close
+   differently, so a figure that passes the probe can still print with
+   a hyphenated label or an arrow through a zone title. Once the draft
+   carries the figure's marker, render it and look at the page that
+   holds the figure:
+
+   ```bash
+   python -m chitragupta.draft render <draft> --format pdf
+   pdftoppm -png -r 100 -f <page> -l <page> -singlefile <the rendered pdf> page
+   ```
+
+   Rendering writes only under `content/rendered/`, never the draft.
+   Check the page against the same pre-flight list, fix the layout
+   (wider boxes, more room, a moved edge, never a smaller scale), and
+   render again until it reads cleanly. Edit only below the house style
+   block: a change inside it makes the render warn that the block was
+   hand-edited. If the marker is not in the draft yet, tell the caller
+   to make this check right after its own render.
+
+10. **Return.** Tell the caller the two paths, whether the probe
+    passed and whether you checked the rendered page. The caller places
+    the marker and the caption in its own shape, then gates and renders
+    the draft. None of that is this skill's.

@@ -157,3 +157,18 @@ def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
         "\\renewcommand{\\thefigure}",
     ):
         assert needle in text, needle
+
+
+def test_the_drawer_checks_the_figure_in_the_real_render():
+    # The probe sets the figure in a bare article class under pdflatex; the
+    # pipeline's own pdf is LuaLaTeX at the document's body font, where
+    # labels wrap and gaps close differently. A figure that passed the
+    # probe came out with a hyphenated label and an arrow through a zone
+    # title in a real render (#1027), so the drawer must look at the page.
+    text = _text(DRAWER)
+    assert "python -m chitragupta.draft render" in text
+    at_probe = text.find("run `pdflatex` on it")
+    at_render = text.find("python -m chitragupta.draft render")
+    at_return = text.find("**Return.**")
+    assert at_probe < at_render < at_return, (at_probe, at_render, at_return)
+    assert "LuaLaTeX" in text

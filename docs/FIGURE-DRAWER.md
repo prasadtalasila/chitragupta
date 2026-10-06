@@ -119,7 +119,14 @@ Each step names the document that owns its rule.
 7. **Reads the geometry.** `python -m chitragupta.review figure <draft>`
    reports overlaps, protrusions and hand-loaded libraries. It is a
    review aid, never a gate ([REVIEW.md](REVIEW.md)).
-8. **Returns** the two paths and whether the probe passed.
+8. **Looks at the real render.** The probe is a bare article class
+   under `pdflatex`, but the pipeline's own PDF is LuaLaTeX at the
+   draft's body font, so labels can wrap and gaps close differently
+   there. Once the draft carries the marker, it renders the PDF and
+   checks the page that holds the figure against the same pre-flight
+   list.
+9. **Returns** the two paths, whether the probe passed, and whether it
+   checked the rendered page.
 
 The skill folder also holds a `reference.md` that it reads only when a
 step sends it there: which metaphor fits, a worked panelled figure,
@@ -197,6 +204,14 @@ return edge fixed all three, with no change of scale. After that,
 `review figure` reported no layout findings and `figure sync --check`
 reported the block current.
 
+The probe is not the last word. A second figure, a five-layer stack for
+a chapter on the digital twin ecosystem, passed its probe and still
+printed in the chapter's own PDF with "Dashboard" hyphenated inside its
+box and an arrow running through a layer title, because that PDF sets
+labels in a larger body font than the probe does. Step 8 exists for
+that case: wider boxes and arrows anchored to each card's right edge
+fixed it, checked on the rendered page itself.
+
 ## 🎓 Thesis fragments
 
 A thesis chapter is a `.tex` fragment that you `\input` into your own
@@ -249,6 +264,7 @@ that moved comes back into a genre skill.
 | --- | --- | --- |
 | The figure came back as ASCII inline, with no marker | `kpsewhich tikz.sty` found no TikZ on this host | install TeX Live's `texlive-pictures`, then ask for the figure again |
 | The whole PDF render fails | a figure file does not compile | ask to fix that figure; the skill re-runs the probe |
+| A label hyphenates or an arrow crosses a title in the PDF, though the probe looked fine | the PDF sets labels in the draft's body font, larger than the probe's | widen the boxes or move the edge, and check the rendered page again |
 | Labels look small in the PDF | the draft wraps the figure in `\resizebox` | remove the wrapper and ask for a re-layout ([TIKZ-STYLE.md](TIKZ-STYLE.md)) |
 | `review figure` reports nothing for a busy figure | its nodes have no names, so nothing was measured | name every node |
 | A render warns that the figure's style block is stale | the block predates the installed one | `python -m chitragupta.figure sync <file>` |
