@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# git pre-commit hook: lint a staged workflow file before it is committed.
+# git pre-commit hook: two checks on what is about to be committed.
+#
+#   1. A staged figure file's house figure-style block (#1013), through
+#      `python -m chitragupta figure sync --check`. Advisory: it reports
+#      and never refuses the commit.
+#   2. A staged workflow file, through actionlint. This half blocks.
 #
 # **Why a git hook when .claude/hooks/ already exists.** Those are Claude
 # Code harness hooks: they fire on an agent's Write/Edit, so they only
@@ -9,9 +14,9 @@
 # path into a commit. The two mechanisms cover different sets and neither
 # replaces the other.
 #
-# **It blocks, and that is not a contradiction of docs/HOOKS.md's "exactly
-# one gate".** That rule governs the review layer, where a finding is a
-# judgement about a draft. A workflow file either parses and type-checks
+# **The workflow half blocks, and that is not a contradiction of
+# docs/HOOKS.md's "exactly one gate".** That rule governs the review
+# layer, where a finding is a judgement about a draft. A workflow file either parses and type-checks
 # or it does not; ci.yml's lint job already fails the build on it, and
 # blocking here only moves the same binary verdict earlier, to where the
 # fix is still part of the change in hand. What it must never do is block
@@ -46,13 +51,41 @@ fi
 # ACMR, not the default: a *deleted* workflow leaves nothing to lint, and
 # linting the survivors would report findings this commit did not cause.
 # NUL-delimited so a filename containing a space or a newline cannot split
-# into two arguments.
+# into two arguments. In a `case` glob `*` matches `/`, so the drafts pattern also takes a
+# book unit's `content/drafts/<book>/<unit>/figures/x.tex`.
 staged=0
+figures=()
 while IFS= read -r -d '' file; do
     case "$file" in
         .github/workflows/*.yml|.github/workflows/*.yaml) staged=1 ;;
+        assets/tikz/*.tex|content/drafts/*/figures/*.tex) figures+=("$file") ;;
     esac
 done < <(git diff --cached --name-only --diff-filter=ACMR -z)
+
+# The house figure-style block (#1013). Advisory: a stale block renders
+# fine and `figure sync` fixes it in one command, so this reports and
+# never refuses the commit -- the opposite of actionlint below, whose
+# verdict CI would enforce anyway. It checks the working tree, not the
+# index: a partially staged figure is checked as it is on disk.
+# CHITRAGUPTA_PYTHON names the interpreter; the checkout's own .venv is
+# the default, then python3.
+if [ "${#figures[@]}" -gt 0 ]; then
+    py="${CHITRAGUPTA_PYTHON:-}"
+    if [ -z "$py" ]; then
+        if [ -x .venv/bin/python ]; then py=.venv/bin/python; else py=python3; fi
+    fi
+    set +e
+    report="$("$py" -m chitragupta figure sync --check "${figures[@]}" 2>&1)"
+    status=$?
+    set -e
+    case "$status" in
+        0) ;;
+        1) echo "$report" >&2
+           echo "pre-commit: a figure's house style block is not current (advisory)." >&2
+           echo "            python -m chitragupta figure sync" >&2 ;;
+        *) echo "pre-commit: figure sync could not run, figures not checked." >&2 ;;
+    esac
+fi
 
 [ "$staged" -eq 1 ] || exit 0
 
