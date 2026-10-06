@@ -8,8 +8,7 @@ import re
 import unicodedata
 from pathlib import Path
 
-from chitragupta import references_section
-from chitragupta.citation_gate import _PANDOC_CITE_RE
+from chitragupta import _pandoc_cites, references_section
 
 # C0 controls other than the whitespace pdflatex accepts (\t \n \r), plus
 # DEL. Never legitimate content in a rendered document, wherever they came
@@ -87,7 +86,7 @@ def _safe_render_inputs(
     on_disk = input_path.read_text(encoding="utf-8")
     original = on_disk if text is None else text
     text = _sanitize_for_latex(_swap_manual_refs_for_citeproc(original))
-    bad_keys = {m.group(1) for m in _PANDOC_CITE_RE.finditer(text) if "--" in m.group(1)}
+    bad_keys = {key for _, _, key in _pandoc_cites.citations(text) if "--" in key}
     if not bad_keys:
         # Against what is *on disk*, not against `original`. Comparing
         # with `original` returns `input_path` whenever this function

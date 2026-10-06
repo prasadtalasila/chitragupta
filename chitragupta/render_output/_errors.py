@@ -17,7 +17,7 @@ class MissingBinary(RuntimeError):
 # It now lives in chitragupta/config.py, because chitragupta/citation_gate.py and
 # chitragupta/references.py started raising it too and needed a home neither of
 # them could import from -- render_output already imports citation_gate
-# (`_PANDOC_CITE_RE` above), so a shared helper in either would close a
+# (`_gate.py`, `_chapter_number.py`), so a shared helper in either would close a
 # cycle.
 OutsideContentDir = config.OutsideContentDir
 

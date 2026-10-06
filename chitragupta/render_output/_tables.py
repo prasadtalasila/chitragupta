@@ -45,8 +45,8 @@ against pandoc 3.1.11.1 rather than assumed:
   is written into it.
 
 Pandoc-crossref's `@tbl:id` spelling is not available here, and not for
-reasons of taste: `citation_gate.py`'s `_PANDOC_CITE_RE` matches a bare
-`@key`, so `@tbl:start-here` reads as the citekey `tbl` and fails the
+reasons of taste: `_pandoc_cites.citations` reads a bare `@key`, so
+`@tbl:start-here` reads as the citekey `tbl:start-here` and fails the
 gate as a fabricated reference.
 
 Nothing here touches a `.tex` fragment. `thesis-chapter-writer` writes a

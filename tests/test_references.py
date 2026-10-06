@@ -415,6 +415,28 @@ class TestRenumber:
             == "Use `[@a]` for this. Real [2]."
         )
 
+    @pytest.mark.parametrize(
+        "text,expected",
+        [
+            # #1021: the braced form and Unicode keys read as the gate reads
+            # them, alone, mixed with a bare key and with a locator.
+            ("[@{brace.one}] and @{brace_two}.", "[1] and [2]."),
+            ("[@plain; @{brace.one}]", "[1], [3]"),
+            ("[@{brace.one}, p. 3]", "[1, p. 3]"),
+            ("[@müller_2020] and pre-@plain", "[4] and pre-[3]"),
+            # A defined example label is no citation outside brackets.
+            ("(@ex) An example.\n\nSee @ex and [@ex].", "(@ex) An example.\n\nSee @ex and [5]."),
+        ],
+    )
+    def test_the_gates_own_citations_renumber(self, text, expected):
+        numbers = {"brace.one": 1, "brace_two": 2, "plain": 3, "müller_2020": 4, "ex": 5}
+        assert references.renumber(text, numbers) == expected
+
+    def test_a_comment_inside_a_group_is_kept(self):
+        # The group's shape is read from the draft, not the blanked copy,
+        # where the comment is spaces and the bracket would collapse.
+        assert references.renumber("[@a <!-- n --> ]", self.NUMBERS) == "[[1] <!-- n --> ]"
+
     def test_a_locator_carrying_a_code_span_keeps_it_verbatim(self):
         # The locator is rewritten from a code-blanked copy that has
         # replaced every code span with spaces, purely to locate the

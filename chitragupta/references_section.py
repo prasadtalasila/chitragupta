@@ -40,7 +40,7 @@ from chitragupta import citation_gate
 # (#951). It is a string, not a compiled pattern, because the three match
 # different things -- a heading line here, a title with its markup already
 # stripped there, a heading-to-next-heading region in the typeset check --
-# the same reason `citation_gate.PANDOC_KEY` is one. Anchored at both ends
+# the same reason `_pandoc_cites.PANDOC_KEY` is one. Anchored at both ends
 # by every caller: `## References and notes` is not the bibliography, and
 # this module's callers act on the answer destructively. `[ \t]`, not
 # `\s`, so a caller compiling it under DOTALL cannot let a title run

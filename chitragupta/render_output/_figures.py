@@ -31,8 +31,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from chitragupta import config, programs
-from chitragupta.citation_gate import _PANDOC_CITE_RE
+from chitragupta import _pandoc_cites, config, programs
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._figure_captions import warnings as _caption_warnings
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
@@ -277,7 +276,7 @@ def _ascii_alt_refs(text: str) -> list[str]:
     return [_ascii_path(base) for base in _FIGURE_MARKER_TEX_RE.findall(text)]
 
 
-# `\cite`, `\citep`, `\citet` and friends. `_PANDOC_CITE_RE` covers the
+# `\cite`, `\citep`, `\citet` and friends. `_pandoc_cites` covers the
 # `[@key]` spelling; a figure file is checked for both because a Markdown
 # draft's figures and a fragment's figures are the same kind of file.
 _LATEX_CITE_RE = re.compile(r"\\cite[a-zA-Z]*\s*[\[{]")
@@ -292,7 +291,7 @@ def _figure_has_citekey(path: Path) -> bool:
     stops a render.
     """
     body = path.read_text(encoding="utf-8", errors="replace")
-    return bool(_PANDOC_CITE_RE.search(body) or _LATEX_CITE_RE.search(body))
+    return bool(_pandoc_cites.citations(body) or _LATEX_CITE_RE.search(body))
 
 
 def _figure_warnings(text: str, input_path: Path) -> list[str]:
