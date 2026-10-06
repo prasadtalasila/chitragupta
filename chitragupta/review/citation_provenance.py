@@ -223,14 +223,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="Report what in each cited source supports the claim citing it.",
         )
     parser.add_argument("draft", help="Markdown draft to check")
-    parser.add_argument(
-        "--formats",
-        default="md,tex,pdf",
-        help="Additional formats to render beside the Markdown report "
-        "(default: md,tex,pdf). The .md is always written -- it is the "
-        "report; tex/pdf are renders of it, and need pandoc/pdflatex "
-        "on PATH.",
-    )
+    _emit.add_formats(parser)
     parser.add_argument(
         "--json",
         action="store_true",

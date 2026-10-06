@@ -123,7 +123,7 @@ def genre_of(draft: Path) -> str | None:
     None covers three situations that all want the same treatment -- no
     dossier, no `- genre:` line, and an empty value. Each means *nobody
     recorded a genre*, and the honest response is to measure at the
-    fallback and name it. Mirrors `style_check.language_of`, which
+    fallback and name it. Mirrors `style_language.language_of`, which
     resolves the dialect from the same file the same way.
     """
     try:

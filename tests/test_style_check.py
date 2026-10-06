@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import config, dossier, style_check, style_rules
+from chitragupta import config, dossier, style_check, style_language, style_rules
 from tests.conftest import content_draft
 
 
@@ -58,60 +58,60 @@ def finding(check="chitragupta.DefectMarkers", match="simply", line=3):
 
 class TestLanguageOf:
     def test_no_dossier_at_all_reads_as_unset(self, draft):
-        assert style_check.language_of(draft) is None
+        assert style_language.language_of(draft) is None
 
     def test_a_dossier_without_a_language_line_reads_as_unset(self, draft):
         """Every dossier written before 5.12.0 is this case, including the
         fifteen restored with the example book -- so it is the common one,
         not an edge."""
         write_scope(draft, "- draft: x")
-        assert style_check.language_of(draft) is None
+        assert style_language.language_of(draft) is None
 
     def test_the_shipped_not_settled_placeholder_reads_as_unset(self, draft):
         """The placeholder *contains* real tags, to tell a human what shape
         to write. Taking the first word is what stops "not settled -- a
         BCP-47 tag (`en-GB`, ...)" being read as en-GB."""
         write_scope(draft, "- language: not settled -- a BCP-47 tag (`en-GB`, `en-IN`, `en-US`)")
-        assert style_check.language_of(draft) is None
+        assert style_language.language_of(draft) is None
 
     def test_an_unrecognised_tag_is_still_reported_as_recorded(self, draft):
         """ "Recorded fr-FR, nothing here can check it" and "nobody chose
         one" are different states, and only the second is worth prompting
         about."""
         write_scope(draft, "- language: fr-FR")
-        assert style_check.language_of(draft) == "fr-FR"
+        assert style_language.language_of(draft) == "fr-FR"
 
     def test_an_empty_value_reads_as_unset(self, draft):
         write_scope(draft, "- language:")
-        assert style_check.language_of(draft) is None
+        assert style_language.language_of(draft) is None
 
     @pytest.mark.parametrize("tag", ["en-GB", "en-US", "en-IN"])
     def test_a_recorded_tag_is_returned(self, draft, tag):
         write_scope(draft, f"- language: {tag}")
-        assert style_check.language_of(draft) == tag
+        assert style_language.language_of(draft) == tag
 
     def test_a_draft_outside_content_has_no_dossier_to_read(self, isolated_config, tmp_path):
         """dossier_dir refuses a path outside content/. That is a fine
         reason to skip the dialect rules and no reason to crash: the rest
         of the check still applies to the prose."""
-        assert style_check.language_of(tmp_path / "loose.md") is None
+        assert style_language.language_of(tmp_path / "loose.md") is None
 
 
 class TestRuleFilter:
     def test_no_language_excludes_every_dialect_rule(self):
-        expression = style_check.rule_filter(None)
-        for rule in style_check._ALL_DIALECT_RULES:
+        expression = style_language.rule_filter(None)
+        for rule in style_rules._ALL_DIALECT_RULES:
             assert f'.Name != "{rule}"' in expression
 
     def test_en_gb_keeps_only_the_gb_rule(self):
-        expression = style_check.rule_filter("en-GB")
+        expression = style_language.rule_filter("en-GB")
         assert "DialectGB" not in expression
         assert "DialectUS" in expression and "DialectIN" in expression
 
     def test_en_in_keeps_both_gb_and_in(self):
         """en-IN is en-GB plus the -ize check, not an alias for either:
         British English accepts Oxford -ize and Indian English does not."""
-        expression = style_check.rule_filter("en-IN")
+        expression = style_language.rule_filter("en-IN")
         assert "DialectGB" not in expression and "DialectIN" not in expression
         assert "DialectUS" in expression
 
@@ -119,7 +119,7 @@ class TestRuleFilter:
         """A rule added to assets/vale/ later must be enabled without
         touching this module. An inclusion list would silently disable it,
         and a report of zero findings is where that hides."""
-        assert style_check.rule_filter("en-GB").count("!=") == 2
+        assert style_language.rule_filter("en-GB").count("!=") == 2
 
 
 class TestRunVale:
@@ -237,7 +237,7 @@ class TestResolveLanguage:
     def test_the_flag_wins_over_everything(self, draft, monkeypatch):
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "en-US")
         write_scope(draft, "- language: en-IN")
-        assert style_check.resolve_language(draft, "en-GB") == ("en-GB", "--language")
+        assert style_language.resolve_language(draft, "en-GB") == ("en-GB", "--language")
 
     def test_the_draft_wins_over_the_host_default(self, draft, monkeypatch):
         """A thesis at an Indian university and an IEEE submission
@@ -245,15 +245,15 @@ class TestResolveLanguage:
         this is."""
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "en-US")
         write_scope(draft, "- language: en-GB")
-        assert style_check.resolve_language(draft) == ("en-GB", "scope.md")
+        assert style_language.resolve_language(draft) == ("en-GB", "scope.md")
 
     def test_the_host_default_applies_when_the_draft_records_nothing(self, draft, monkeypatch):
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "en-GB")
-        assert style_check.resolve_language(draft) == ("en-GB", "config.toml")
+        assert style_language.resolve_language(draft) == ("en-GB", "config.toml")
 
     def test_nothing_anywhere_is_reported_as_nothing(self, draft, monkeypatch):
         monkeypatch.setattr(config, "STYLE_LANGUAGE", "")
-        assert style_check.resolve_language(draft) == (None, "nothing")
+        assert style_language.resolve_language(draft) == (None, "nothing")
 
 
 class TestProposeLanguage:
@@ -453,7 +453,7 @@ class TestSetLanguageRoundTrip:
     def test_setting_a_language_makes_style_check_read_it(self, draft):
         dossier.init(draft, "survey")
         dossier.set_language(draft, "en-IN")
-        assert style_check.language_of(draft) == "en-IN"
+        assert style_language.language_of(draft) == "en-IN"
 
     def test_it_replaces_the_shipped_placeholder_rather_than_adding_a_line(self, draft):
         dossier.init(draft, "survey")
@@ -466,7 +466,7 @@ class TestSetLanguageRoundTrip:
         path is the common one rather than the edge."""
         write_scope(draft, "- draft: x")
         dossier.set_language(draft, "en-GB")
-        assert style_check.language_of(draft) == "en-GB"
+        assert style_language.language_of(draft) == "en-GB"
 
     def test_it_refuses_something_that_is_not_a_language_tag(self, draft):
         dossier.init(draft, "survey")

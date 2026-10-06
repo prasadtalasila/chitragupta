@@ -76,10 +76,10 @@ def test_the_dialect_rules_are_the_ones_style_check_knows_about():
     """assets/ and chitragupta/style_check.py's DIALECT_RULES are a pair: a rule
     file with no entry there is never enabled, and an entry with no file
     makes Vale fail to start."""
-    from chitragupta import style_check
+    from chitragupta import style_rules
 
     on_disk = {f"chitragupta.{rule.stem}" for rule in STYLES.glob("Dialect*.yml")}
-    assert on_disk == set(style_check._ALL_DIALECT_RULES)
+    assert on_disk == set(style_rules._ALL_DIALECT_RULES)
 
 
 def test_no_block_ignore_contains_a_comma():

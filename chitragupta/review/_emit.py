@@ -20,7 +20,22 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from chitragupta import review
+from chitragupta import install, review
+
+# Every aid's --formats help (#1022): written once, because ten copies
+# went on saying "pandoc/pdflatex" after #996 moved a pdf render to
+# LuaLaTeX. The wording matches docs/CLI.md's per-aid rows.
+FORMATS_HELP = (
+    "Additional formats to render beside the Markdown report (default: "
+    "md,tex,pdf). The .md is always written -- it is the report; tex and "
+    "pdf are renders of it: tex needs pandoc, and pdf needs pandoc and "
+    f"LuaLaTeX with the fonts {install.remedy('os-deps')} installs."
+)
+
+
+def add_formats(parser: argparse.ArgumentParser) -> None:
+    """The `--formats` option every aid takes, with its one help text."""
+    parser.add_argument("--formats", default="md,tex,pdf", help=FORMATS_HELP)
 
 
 def formats(args: argparse.Namespace) -> list[str]:

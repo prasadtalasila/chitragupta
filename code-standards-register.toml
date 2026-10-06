@@ -52,18 +52,6 @@ statements = 26
 name = "chitragupta/overlap_skipgram.py"
 code_lines = 289
 
-[[c2]]
-name = "chitragupta/style_check.py"
-code_lines = 261
-
-[[c2]]
-name = "chitragupta/review/verbatim_check/__init__.py"
-code_lines = 257
-
-[[c2]]
-name = "chitragupta/review/figure_layout/__init__.py"
-code_lines = 257
-
 # C1 (JS): at most 25 statements per function, assets/webapp/ only.
 
 # None registered: the last offender, families.js's computePath, was

@@ -161,7 +161,7 @@ def _missing_from_register(text: str, functions: set, files: set) -> list[str]:
 # "freezes **10 functions** over C1 (25 statements) and **11 modules**
 # over C2 (250 code lines)" -- matched over whitespace-normalised text,
 # because the sentence line-wraps and the wrap point moves with any edit.
-_SIZES_RE = re.compile(r"\*\*(\d+) functions\*\* over C1 .*?\*\*(\d+) modules\*\* over C2")
+_SIZES_RE = re.compile(r"\*\*(\d+) functions\*\* over C1 .*?\*\*(\d+) modules?\*\* over C2")
 
 
 def _stated_sizes(text: str) -> tuple[int, int]:

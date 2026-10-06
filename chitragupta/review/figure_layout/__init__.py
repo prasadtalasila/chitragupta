@@ -255,14 +255,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
         help="Also write the report to content/review/, mirroring the "
         "draft's path. Off by default: printing is the usual use.",
     )
-    parser.add_argument(
-        "--formats",
-        default="md,tex,pdf",
-        help="Additional formats to render beside the Markdown "
-        "report (default: md,tex,pdf). The .md is always "
-        "written -- it is the report; tex/pdf are renders "
-        "of it, and need pandoc/pdflatex on PATH.",
-    )
+    _emit.add_formats(parser)
     return parser
 
 
