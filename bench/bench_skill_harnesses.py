@@ -207,11 +207,29 @@ def expected_paths(project: Path, harness: str, name: str) -> set:
     return {m.split("#")[0] for m in NAMED_PATH.findall(text)}
 
 
+def loaded_own_copy(harness: str, name: str, log: Path, text: str) -> "tuple[bool, bool]":
+    """(loaded its own copy, loaded the Claude copy instead).
+
+    Every agent's project holds `.claude/skills/`, and all three copies of
+    a `SKILL.md` name the same reference paths, so READ lines alone cannot
+    tell an OpenCode run that loaded `survey-writer-opencode` from one that
+    read `.claude/skills/survey-writer/SKILL.md`. The load itself can:
+    Claude Code's `Skill` call names the skill, OpenCode's `skill` tool
+    reports its base directory, and Codex opens the file by path.
+    """
+    if harness == "claude":
+        return f'"skill":"{name}"' in log.read_text(encoding="utf-8", errors="replace"), False
+    own = f"{SKILL_DIRS[harness]}/{name}{SUFFIX[harness]}"
+    return own in text, f".claude/skills/{name}/SKILL.md" in text
+
+
 def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     """Which named files the model read, judged by whether the first line
-    it printed is really that file's first line."""
+    it printed is really that file's first line, from which copy of the
+    skill it loaded."""
     expected = expected_paths(project, harness, name)
     text = transcript_text(log)
+    own, foreign = loaded_own_copy(harness, name, log, text)
     # A harness that resolved the project from the wrong directory reads
     # this checkout's identical files and would otherwise pass.
     leaked = str(REPO_ROOT) in text
@@ -231,7 +249,9 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
         "missing": sorted(expected - set(printed)),
         "extra": sorted(set(printed) - expected),
         "outside_project": leaked,
-        "pass": set(read) == expected and not leaked,
+        "loaded_own_copy": own,
+        "loaded_claude_copy": foreign,
+        "pass": set(read) == expected and not leaked and own and not foreign,
     }
 
 
@@ -250,12 +270,40 @@ def tier1(args) -> list:
     return results
 
 
+TOOL_INPUT_KEYS = {"file_path", "filePath", "command", "path"}
+
+
+def tool_inputs(log: Path) -> str:
+    """The file paths and commands of every tool call in a transcript --
+    what a harness actually opened or ran, not the skill text it was
+    shown, which names every reference whether or not one is read."""
+    found = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if key in TOOL_INPUT_KEYS and isinstance(value, str):
+                    found.append(value)
+                else:
+                    walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+        try:
+            walk(json.loads(line))
+        except ValueError:
+            continue
+    return "\n".join(found)
+
+
 def references_read(log: Path) -> list:
-    """Every `.claude/skills...references/...` path the transcript mentions
-    -- read, quoted or named -- in order of first appearance."""
+    """Every `.claude/skills...references/...` file a tool call opened, in
+    order of first opening."""
     seen = []
     pattern = r"\.claude/skills(?:-common|/[\w-]+)/references/[\w.-]+\.md"
-    for match in re.findall(pattern, transcript_text(log)):
+    for match in re.findall(pattern, tool_inputs(log)):
         if match not in seen:
             seen.append(match)
     return seen
@@ -291,9 +339,10 @@ def self_check() -> None:
     when the printed first line is the file's own, so the guards are
     the ways that comparison could pass a read that never happened: a
     wrong first line must not count, a path never printed must be
-    reported missing rather than passed, and a run that touched this
-    checkout instead of its own project must fail even though the files
-    there are identical.
+    reported missing rather than passed, a run that touched this checkout
+    instead of its own project, or loaded another copy of the skill, must
+    fail even though the files there are identical -- and a clean run must
+    still pass. Tier 2 counts only files a tool call opened.
     """
     import tempfile
 
@@ -333,6 +382,21 @@ def self_check() -> None:
         )
         scored = score_tier1(project, "claude", "x", log)
         assert scored["outside_project"] and not scored["pass"], scored
+        good = (
+            json.dumps({"name": "Skill", "input": {"skill": "x"}}, separators=(",", ":"))
+            + "\nREAD .claude/skills-common/references/a.md :: # A heading"
+            + "\nREAD .claude/skills-common/references/b.md :: # B heading\n"
+        )
+        log.write_text(good, encoding="utf-8")
+        assert score_tier1(project, "claude", "x", log)["pass"], "a clean run must pass"
+        log.write_text(good.replace('"skill":"x"', '"skill":"y"'), encoding="utf-8")
+        assert not score_tier1(project, "claude", "x", log)["pass"], "another skill's load"
+        log.write_text(
+            json.dumps({"input": {"file_path": ".claude/skills-common/references/a.md"}})
+            + "\nThe skill names `.claude/skills-common/references/b.md`.\n",
+            encoding="utf-8",
+        )
+        assert references_read(log) == [".claude/skills-common/references/a.md"]
 
 
 def main(argv=None) -> int:

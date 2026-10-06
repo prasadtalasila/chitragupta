@@ -33,6 +33,9 @@ into collections:
 python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 If it reports none, say nothing, ask nothing, record
 `- collection: (whole corpus)` in `scope.md`'s header, and skip the rest
 of this section. Otherwise read

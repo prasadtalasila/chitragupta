@@ -113,3 +113,15 @@ def test_each_conditional_section_points_at_its_reference(name, heading, referen
     text = (folder("claude", name) / "SKILL.md").read_text(encoding="utf-8")
     section = re.split(r"\n#{2,3} ", text.split(heading, 1)[1], maxsplit=1)[0]
     assert f"`.claude/skills/{name}/references/{reference}`" in section
+
+
+@pytest.mark.parametrize("skill_md", every_skill_md(), ids=lambda p: str(p.relative_to(REPO_ROOT)))
+def test_the_first_named_path_says_it_is_from_the_project_root(skill_md):
+    """Codex resolves a relative path against the skill's own folder first,
+    where `.agents/skills/<name>/.claude/...` does not exist. So each skill
+    says where its paths start, before or at the first one it names."""
+    text = " ".join(skill_md.read_text(encoding="utf-8").split())
+    first = NAMED_PATH.search(text)
+    if first is None:
+        return
+    assert "from the project root" in text[: first.end() + 250]

@@ -137,8 +137,8 @@ every check, and nothing can see that.
 ## 📂 Skills: one copy per harness
 
 Each skill's `SKILL.md` exists once per harness, and each copy names
-that harness's own tools. A model then reads a complete instruction at the step where
-it acts ("use `Edit`, never `Write`" on Claude Code, "patch with
+that harness's own tools. A model then reads a complete instruction at
+the step where it acts ("use `Edit`, never `Write`" on Claude Code, "patch with
 `apply_patch`" on Codex, "`edit`, never `write`" on OpenCode) instead of
 a harness-neutral phrase it has to translate.
 
@@ -151,8 +151,7 @@ a harness-neutral phrase it has to translate.
 │   ├── agents/                    # Claude Code subagents
 │   ├── skills/<name>/
 │   │   ├── SKILL.md               # Claude Code wording
-│   │   ├── references/            # this skill's detail, read on demand
-│   │   └── assets/                # templates it writes from
+│   │   └── references/            # this skill's detail, read on demand
 │   └── skills-common/references/  # detail several skills share
 ├── .agents/
 │   └── skills/<name>/SKILL.md     # Codex wording
@@ -213,7 +212,7 @@ copies agree, a required step present in one is present in all three.
 ### Only `SKILL.md` is per harness
 
 Everything else a skill uses exists once, under `.claude/` (#997):
-`.claude/skills/<name>/references/` and `assets/` for one skill, and
+`.claude/skills/<name>/references/` for one skill, and
 `.claude/skills-common/references/` for a passage several skills share.
 All three copies of `SKILL.md` name those files by their path from the
 project root, so the files sit outside the Codex and OpenCode skill

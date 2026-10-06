@@ -777,7 +777,7 @@ its working state get backed up.
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
 - **Parallelize, with a cap.** Dispatch same-phase subagents in one message;
-    bound concurrency per
+  bound concurrency per
   `.claude/skills/deep-research/references/report.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
   `survey-writer` -- point users there if they want something faster.

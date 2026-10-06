@@ -31,6 +31,9 @@ you are in the wrong skill.
 
 ## Conventions as data
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 The whole of the composition is one table: the outline
 (`content/specs/<book>/spec.md`) is planned top-down, and the book is
 emitted bottom-up from what has been accepted. Read

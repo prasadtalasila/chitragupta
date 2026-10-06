@@ -84,6 +84,9 @@ nothing to fall back on.
 
 ## The loop
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 Follow `.agents/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
 through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same

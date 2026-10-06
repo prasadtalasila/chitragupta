@@ -431,6 +431,9 @@ After step 7 and before presenting:
 python -m chitragupta.draft style content/drafts/<path>
 ```
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 Read `.claude/skills-common/references/prose-check.md` now and follow it:
 what the check can and cannot see, and how to report what it finds.
 

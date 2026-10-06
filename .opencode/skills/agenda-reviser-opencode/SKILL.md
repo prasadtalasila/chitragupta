@@ -109,6 +109,9 @@ decision, asked rather than taken.
 
 ## The loop
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 Follow `.opencode/skills/draft-reviser-opencode/SKILL.md`'s `## The loop` for the
 parts this skill does not restate -- reading `scope.md` and `steering.md`
 first, mapping a change onto sections, editing with `edit` rather than
@@ -405,7 +408,8 @@ it. Its "say what it did not check" matters on this skill above all: these
 drafts are LLM-written, literal paraphrase is an LLM's normal failure mode,
 and a repair loop reporting "all findings fixed" from two tiers of three is
 the most misleading sentence in this pipeline. A clean `recheck` is no more
-a clean bill of health than a clean scan. **A review aid, not a gate: it is
+a clean bill of health than a clean scan: say that plainly rather than
+letting a zero read as an all-clear. **A review aid, not a gate: it is
 never a condition of presenting.**
 
 ### Close the pass with one full-format run

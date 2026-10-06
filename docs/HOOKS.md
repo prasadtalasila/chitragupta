@@ -482,7 +482,7 @@ behind, which no skill reads any more:
 ```bash
 chitragupta init /tmp/fresh --agent <yours>
 cp -r /tmp/fresh/.claude/skills /tmp/fresh/.claude/skills-common .claude/
-find .claude/skills .agents/skills .opencode/skills -name reference.md -delete
+find .claude/skills .agents/skills .opencode/skills -name reference.md -delete 2>/dev/null
 ```
 
 Copy the per-harness `SKILL.md` files as above. Copying never deletes
