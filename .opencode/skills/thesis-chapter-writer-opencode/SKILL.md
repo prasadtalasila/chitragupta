@@ -352,9 +352,12 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      `\input{figures/<name>.txt}` makes their `pdflatex` read ASCII art
      as LaTeX source and fail with `! Missing $ inserted.` -- a break in
      their build that our own render would never show us.
-   - **If TikZ is not installed,** `figure-drawer-opencode` writes no pair.
-     Write the ASCII inline in a `verbatim` environment instead, no
-     pair and no marker, and say so in chat.
+   - **Check for TikZ, and that the figure compiles.** If
+     `figure-drawer-opencode` was not loaded, run `kpsewhich tikz.sty`
+     yourself: if it finds nothing, write the ASCII inline in
+     a `verbatim` environment instead, no pair and no marker, and say so in
+     chat. A figure you keep compiles on its own first: a malformed
+     one fails the whole pdf render, not just the figure.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.tex`, move the draft and its dossier before
      adding a figure, or drop the figure. Figures under a flat draft
@@ -364,6 +367,9 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      that introduces the figure.
+   - **Nothing redrawn from a source.**
+     A picture redrawn from a source paper's figure is the same
+     violation in different pixels.
    - **A captioned figure is written as real LaTeX too, around the
      inline `\input`** -- the same carve-out step 8 states for a table,
      and for the same reason: `\begin{figure}\input{figures/<name>.tex}\caption{...}\label{fig:<id>}\end{figure}`,

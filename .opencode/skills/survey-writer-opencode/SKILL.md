@@ -433,9 +433,12 @@ collapse them for the sake of a cleaner narrative.
      adding a figure, or drop the figure -- and in this genre dropping
      it is usually the right answer. Figures under a flat draft land in
      `content/drafts/figures/`, shared with every other flat draft.
-   - **If TikZ is not installed,** `figure-drawer-opencode` writes no pair.
-     Write the ASCII inline in a fence instead, no pair and no
-     marker, and say so in chat.
+   - **Check for TikZ, and that the figure compiles.** If
+     `figure-drawer-opencode` was not loaded, run `kpsewhich tikz.sty`
+     yourself: if it finds nothing, write the ASCII inline in
+     a fence instead, no pair and no marker, and say so in
+     chat. A figure you keep compiles on its own first: a malformed
+     one fails the whole pdf render, not just the figure.
    - **No citekey inside either figure file.** Step 11's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. This is the genre
@@ -443,6 +446,9 @@ collapse them for the sake of a cleaner narrative.
      each branch -- and it is exactly the wrong place for it: attribute
      in the prose or the comparison table, where the gate can see the
      key.
+   - **Nothing redrawn from a source.**
+     A taxonomy redrawn from a source survey's own figure is the same
+     violation in different pixels, whichever notation it is drawn in.
    - **A caption, if this figure warrants one, goes in the draft, never
      in the figure file.** A caption line directly below the marker, no
      blank line between, and an inline `<!-- figureref: <name> -->`

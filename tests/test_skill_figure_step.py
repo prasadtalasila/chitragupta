@@ -129,3 +129,22 @@ def test_draft_reviser_hands_redrawing_to_the_drawer():
     # the change is logged. That is not a drawing rule.
     assert "Touch a figure, touch both forms" in text
     assert not [r for r in _RIDERS if r in text]
+
+
+def test_every_stub_probes_for_tikz_and_guards_originality_itself():
+    # If the handoff is skipped, the stub alone must still look for TikZ
+    # before falling back, and still forbid redrawing a source's figure.
+    # Neither may depend on figure-drawer having been loaded.
+    for g in _GENRES:
+        text = _text(g)
+        missing = [p for p in ("kpsewhich tikz.sty", "compiles", "redrawn from a source") if p not in text]
+        assert not missing, f"{g} stub lacks {missing}"
+
+
+def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
+    # On direct use the caller is draft-reviser, which has no figure step,
+    # so the drawer itself must name the TikZ fallback per shape, the flat
+    # draft case and the thesis fragment's preamble warnings.
+    text = _text(DRAWER)
+    for needle in ("a `verbatim` environment", "A flat draft** (", "[tikz-libraries]", "[unicode]", "\\renewcommand{\\thefigure}"):
+        assert needle in text, needle

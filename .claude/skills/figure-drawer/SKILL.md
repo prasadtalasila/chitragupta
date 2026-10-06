@@ -40,14 +40,36 @@ checked, return to the step that sent you here.
 
 | Draft | In the draft | Files |
 | --- | --- | --- |
-| `.md` (survey, tutorial, textbook chapter) | a line of its own, `<!-- figure: figures/<name> -->`, with the caption line directly below it (no blank line) and an inline `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
-| `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>` on the next line, inside a hand-written `figure` float with `\caption{...}` and `\label{fig:<id>}` | the same pair |
+| `.md` (survey, tutorial, textbook chapter) | a line of its own, `<!-- figure: figures/<name> -->`; if the figure warrants a caption, a caption line directly below it (no blank line), and an inline `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
+| `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>` on the next line; a captioned figure goes inside a hand-written `figure` float with `\caption{...}` and `\label{fig:<id>}` | the same pair |
 
 Both files sit under the draft's topic directory,
-`content/drafts/<topic>/figures/`. A flat draft has no topic directory;
-the caller's figure step says what to do about that. Never write the
-word "Figure" or a number yourself: the renderer, or the thesis's own
-LaTeX, assigns both.
+`content/drafts/<topic>/figures/`. A flat draft has no topic directory
+of its own; the caller's figure step says what to do about that, and on
+direct use the section below does. Never write the word "Figure" or a
+number yourself: the renderer, or the thesis's own LaTeX, assigns both.
+
+### On direct use
+
+A genre skill's figure step covers the cases below for its own drafts.
+On direct use the caller is `draft-reviser`, which has no figure step,
+so they are this skill's to state:
+
+- **No TikZ** (step 7's probe finds nothing): write no pair. Write the
+  ASCII inline instead, in a fence in a `.md` draft or in a `verbatim`
+  environment in a `.tex` one, with no marker, and say so in chat.
+- **A flat draft** (`content/drafts/<slug>.md` or `.tex`, no topic
+  directory): figures beside it would land in `content/drafts/figures/`,
+  shared with every other flat draft. Ask whether to move the draft and
+  its dossier into a topic directory first, or drop the figure.
+- **A thesis fragment.** The fragment is `\input` into the user's own
+  thesis, so two things are theirs to know. When the render prints a
+  `[tikz-libraries]` line, quote it and tell them that
+  `\usetikzlibrary{...}` with those names belongs in their thesis
+  preamble; never work around it inside a figure file. When it prints a
+  `[unicode]` line, tell them to copy `chitragupta-unicode.sty` beside
+  their thesis and load it. And never write `\renewcommand{\thefigure}`:
+  their thesis's own counter numbers the figure.
 
 ## The procedure
 
@@ -113,7 +135,8 @@ LaTeX, assigns both.
 7. **Verify the TikZ compiles before keeping it.** Run
    `kpsewhich tikz.sty` first. **If it finds nothing, write no pair:
    return to the caller, whose figure step names its inline ASCII
-   fallback, and say so in chat.** If it is present, wrap
+   fallback (on direct use, "On direct use" above), and say so in
+   chat.** If it is present, wrap
    `figures/<name>.tex` in a minimal `\documentclass{article}` +
    `\usepackage{tikz}` document and run `pdflatex` on it. A malformed
    figure fails the *whole* pdf render, not just the figure. If the

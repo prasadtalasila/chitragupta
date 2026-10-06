@@ -10,9 +10,9 @@ wondering why a skill refused something. **Assumed:**
 `DEVELOPER-AGENTS.md` (git checkout only).
 
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Nine skills live in `.claude/`: five write a new draft,
-three change an existing one, and one assembles a book from units the
-others wrote. Of the three revisers, one is cheap and scoped, one goes
+refuses to do. Ten skills live in `.claude/`: five write a new draft,
+three change an existing one, one assembles a book from units the
+others wrote, and one draws the figures the others hand it. Of the three revisers, one is cheap and scoped, one goes
 back to the whole corpus when you ask it to, and one repairs what a
 verbatim scan found.
 

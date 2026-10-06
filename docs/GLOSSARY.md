@@ -34,7 +34,8 @@ documentation gets easier.
 
 - **Genre skill**: one of the nine writing behaviours (survey, thesis
   chapter, textbook chapter, tutorial, deep research, three revisers,
-  and the book assembler). You never invoke one by name; you ask in
+  and the book assembler). The tenth skill, `figure-drawer`, is not
+  one: it draws a figure for whichever of them hands it one. You never invoke one by name; you ask in
   ordinary words and the right one answers ([GENRE.md](GENRE.md)).
 - **Draft**: the document being written, under `content/drafts/`.
 - **Dossier**: the folder written *alongside* a draft holding the

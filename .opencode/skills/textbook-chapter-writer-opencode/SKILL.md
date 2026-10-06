@@ -364,13 +364,21 @@ candidate for the chapter.
      adding a figure, or drop the figure. Figures under a flat draft
      land in `content/drafts/figures/`, shared with every other flat
      draft.
-   - **If TikZ is not installed,** `figure-drawer-opencode` writes no pair.
-     Write the ASCII inline in a fence instead, no pair and no
-     marker, and say so in chat.
+   - **Check for TikZ, and that the figure compiles.** If
+     `figure-drawer-opencode` was not loaded, run `kpsewhich tikz.sty`
+     yourself: if it finds nothing, write the ASCII inline in
+     a fence instead, no pair and no marker, and say so in
+     chat. A figure you keep compiles on its own first: a malformed
+     one fails the whole pdf render, not just the figure.
    - **No citekey inside either figure file.** Step 12's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      around the figure instead.
+   - **Nothing redrawn from a source.**
+     A diagram redrawn from a source paper's figure is the same
+     violation in different pixels -- which bites hardest here, where the
+     temptation is to reproduce the textbook diagram everyone in the field
+     already knows.
    - **A caption, if the figure earns one, goes in the draft, never in
      the figure file.** A caption line directly below the marker, no
      blank line between, and an inline `<!-- figureref: <name> -->`
