@@ -1,0 +1,14 @@
+# Every released version of the house figure-style block
+# (cg-figstyle.tex), by the version its start marker carries, and the
+# sha256 of the region -- both marker lines included, CRLF folded to LF.
+#
+# `chitragupta figure sync` refreshes a region only when its digest is
+# one of these, and leaves any other region alone: a region matching no
+# released version was edited by hand, and overwriting it would delete
+# the author's work (#1013).
+#
+# Changing cg-figstyle.tex means bumping the version in its first line
+# and adding a line here. Never edit an existing line: a figure stamped
+# with that version would stop being recognised and become "modified".
+# tests/test_figure_block.py fails if the block and this file disagree.
+v1 = "f2aed6cbb46107d304468b080883d7c826e53c70402fe531a9ae9b4c3f9c7401"
