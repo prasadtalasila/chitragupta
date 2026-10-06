@@ -12,3 +12,4 @@
 # with that version would stop being recognised and become "modified".
 # tests/test_figure_block.py fails if the block and this file disagree.
 v1 = "f2aed6cbb46107d304468b080883d7c826e53c70402fe531a9ae9b4c3f9c7401"
+v2 = "e30b7a37b052ba6732dc149dfdc1f8c0c08006e210c34266a5d17317cb76bf49"

@@ -27,8 +27,8 @@ def house():
 def old_block(house, version=0):
     """A stand-in for a past release: the current block with one value
     changed and its marker naming `version`."""
-    text = house.text.replace(" v1 ", f" v{version} ", 1).replace("0.95pt", "0.9pt", 1)
-    return text
+    text = house.text.replace(f" v{house.version} ", f" v{version} ", 1)
+    return text.replace("0.95pt", "0.9pt", 1)
 
 
 def house_with_history(house):
@@ -78,7 +78,7 @@ class TestClassify:
         assert figure.classify(edited + PICTURE, house).state is State.MODIFIED
 
     def test_a_newer_unknown_version_is_modified_and_keeps_its_number(self, house):
-        newer = house.text.replace(" v1 ", " v9 ", 1)
+        newer = house.text.replace(f" v{house.version} ", " v9 ", 1)
         region = figure.classify(newer + PICTURE, house)
         assert (region.state, region.marker_version) == (State.MODIFIED, 9)
 
@@ -170,7 +170,7 @@ class TestFinding:
         assert "unpaired or repeated" in message and "will not touch" in message
 
     def test_a_newer_version_says_to_upgrade(self, house):
-        newer = house.text.replace(" v1 ", " v9 ", 1)
+        newer = house.text.replace(f" v{house.version} ", " v9 ", 1)
         assert "newer" in figure.finding(newer + PICTURE, house)
 
 

@@ -114,6 +114,22 @@ def _region(text: str) -> str | None:
     return text[start : end + len(_REGION_END)]
 
 
+# The well a `pic` is drawn into, and the `pic`s themselves, both read
+# out of the block rather than restated, so the test follows an edit.
+_WELL_RE = re.compile(
+    r"cgwell/\.style=\{[^}]*minimum width=(?P<w>[\d.]+)mm, minimum height=(?P<h>[\d.]+)mm"
+)
+_PIC_RE = re.compile(r"pics/(?P<name>\w+)/\.style=")
+_PT_PER_MM = 72.27 / 25.4
+_CGPIC_RE = re.compile(r"CGPIC (\S+) (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt")
+_LIBRARIES = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur"
+
+
+def _pics() -> list[str]:
+    """Every `pic` the block defines, in the order it defines them."""
+    return _PIC_RE.findall(BLOCK.read_text(encoding="utf-8"))
+
+
 # Parametrised by file rather than by metaphor so a failure names the
 # scaffold a reader would go and open.
 by_scaffold = pytest.mark.parametrize("scaffold", _scaffolds(), ids=lambda p: p.stem)
@@ -491,6 +507,77 @@ class TestTheTypeFloor:
         _, sizes = self._floor_and_figure(tmp_path, f"\\input{{{shrunk}}}")
 
         assert min(sizes) < 1 - _SIZE_TOLERANCE
+
+
+@needs_tikz
+class TestEveryPicFitsItsWell:
+    """#1014: a `pic` is drawn into a `cgwell`, and a zone card `fit`s
+    the well, not the `pic`. A `pic` that outgrows its well therefore
+    pokes through its own zone card and nothing measures it, because a
+    path has no name. `cgdocs` as #1026 shipped it did exactly that,
+    0.92mm through the top."""
+
+    @staticmethod
+    def _extents(directory: Path, names: list[str], extra: str = "") -> dict:
+        """Each `pic`'s ink box in mm, origin at the well's centre.
+        `current bounding box` includes half the stroke width."""
+        body = "".join(
+            f"\\begin{{tikzpicture}}[cg]\\pic{{{name}}};"
+            "\\pgfpointanchor{current bounding box}{south west}\\pgfgetlastxy\\cgxa\\cgya"
+            "\\pgfpointanchor{current bounding box}{north east}\\pgfgetlastxy\\cgxb\\cgyb"
+            f"\\typeout{{CGPIC {name} \\cgxa\\space\\cgya\\space\\cgxb\\space\\cgyb}}"
+            "\\end{tikzpicture}\n"
+            for name in names
+        )
+        result = _pdflatex(
+            directory, f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}{extra}\n{body}"
+        )
+        assert result.returncode == 0, result.stdout[-2000:]
+        return {
+            m.group(1): tuple(float(v) / _PT_PER_MM for v in m.groups()[1:])
+            for m in _CGPIC_RE.finditer(result.stdout)
+        }
+
+    @staticmethod
+    def _inside_the_well(box: tuple) -> bool:
+        match = _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+        half_w, half_h = float(match["w"]) / 2, float(match["h"]) / 2
+        x0, y0, x1, y1 = box
+        return -half_w <= x0 and x1 <= half_w and -half_h <= y0 and y1 <= half_h
+
+    def test_there_are_pics_to_measure(self):
+        """The non-vacuous guard: a regex that stops matching makes every
+        check below pass on an empty list."""
+        assert len(_pics()) > 1 and _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+
+    def test_every_pic_is_measured_and_fits(self, tmp_path):
+        extents = self._extents(tmp_path, _pics())
+
+        assert set(extents) == set(_pics())
+        assert [n for n, box in extents.items() if not self._inside_the_well(box)] == []
+
+    def test_the_probe_sees_an_oversize_pic(self, tmp_path):
+        """The probe against the shape it exists to catch."""
+        oversize = (
+            "\\tikzset{pics/cgoversize/.style={code={"
+            "\\path[draw] (-6mm,-6mm) rectangle (6mm,6mm);}}}"
+        )
+        extents = self._extents(tmp_path, ["cgoversize"], oversize)
+
+        assert not self._inside_the_well(extents["cgoversize"])
+
+    def test_a_pic_colour_does_not_leak_to_the_next_pic(self, tmp_path):
+        """`cg pic colour` is set per `\\pic`, so the next un-keyed one in
+        the same picture is the default again, not the last zone's hue."""
+        result = _pdflatex(
+            tmp_path,
+            f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}\n"
+            "\\begin{tikzpicture}[cg]\\pic[cg pic colour=cgAlt]{cgstore};"
+            "\\typeout{CGCOL=\\cgPicColour}\\end{tikzpicture}",
+        )
+
+        assert result.returncode == 0, result.stdout[-2000:]
+        assert "CGCOL=cgFlow" in result.stdout
 
 
 @needs_tikz
