@@ -338,7 +338,9 @@ fused list.
 Without the enrich extra, or with an embedding model that will not load
 (no cached checkpoint and no network is the usual host), the semantic
 half is skipped with a one-line note and the rung degrades to BM25
-alone. Every enrich stage's
+alone. The failure is remembered for the rest of the command, so
+`--compare A B C` asks for the model once and prints the note once,
+not once per phrase (#1023). Every enrich stage's
 self-probe degrades the same way, with a note and never a silent
 substitution. An unresolvable phrase whose fallback also returns
 nothing exits 1 naming the known topics, on **stderr**, like every

@@ -11,8 +11,8 @@ import json
 from test_discover import make_ledger, place_nowhere, write_artefacts
 from test_discover_why import WHY_GRAPH, WHY_TOPIC_SET
 
-from chitragupta import discover
-from chitragupta.discover import _compare
+from chitragupta import config, discover
+from chitragupta.discover import _compare, _resolve
 
 
 def prepare_three(cfg):
@@ -113,3 +113,51 @@ class TestCompareCli:
         place_nowhere(monkeypatch, "quantum blockchain")
         assert discover.main(["--compare", "digital twin", "quantum blockchain"]) == 1
         assert "quantum blockchain" in capsys.readouterr().err
+
+
+class TestAModelThatWillNotLoadIsAskedOnce:
+    """#1023: `optional_model` re-attempted the bi-encoder and the
+    cross-encoder once per phrase, so `--compare A B C` offline paid the
+    Hub timeout three times and printed three identical notes. A failure
+    is remembered for the process: one attempt per loader, one note."""
+
+    def test_three_phrases_one_attempt_each_and_one_note(
+        self, isolated_config, capsys, monkeypatch
+    ):
+        prepare_three(isolated_config)
+        monkeypatch.setattr(config, "RERANK", True)
+        attempts = {"model": 0, "reranker": 0}
+
+        def offline(which):
+            def load():
+                attempts[which] += 1
+                raise OSError("We couldn't connect to 'https://huggingface.co'")
+
+            return load
+
+        monkeypatch.setattr(_resolve, "_load_model", offline("model"))
+        monkeypatch.setattr(_resolve, "_load_reranker", offline("reranker"))
+        phrases = ["twin replica", "learning systems", "formal proofs"]
+        assert discover.main(["--compare", *phrases]) == 0
+        assert attempts == {"model": 1, "reranker": 1}
+        assert capsys.readouterr().out.count("semantic resolution unavailable") == 1
+
+    def test_a_note_sharing_a_part_with_an_earlier_one_repeats_none_of_it(
+        self, isolated_config, capsys, monkeypatch
+    ):
+        """A phrase resolved on the hybrid rung carries the semantic and
+        the reranking note joined; one that resolves nowhere carries the
+        semantic note alone. Deduplicated by whole note, the semantic
+        part printed twice."""
+        prepare_three(isolated_config)
+        monkeypatch.setattr(config, "RERANK", True)
+
+        def offline():
+            raise OSError("offline")
+
+        monkeypatch.setattr(_resolve, "_load_model", offline)
+        monkeypatch.setattr(_resolve, "_load_reranker", offline)
+        assert discover.main(["--compare", "twin replica", "quantum blockchain"]) == 1
+        out = capsys.readouterr().out
+        assert out.count("semantic resolution unavailable") == 1
+        assert out.count("reranking unavailable") == 1

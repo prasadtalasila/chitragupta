@@ -110,24 +110,38 @@ def _load_reranker() -> "Any":
     return reranker.load_reranker(config.RERANK_MODEL)
 
 
+# Loaders that already failed in this process, with the note they
+# failed with (#1023). `lru_cache` caches no exception, so without this
+# `--compare A B C` offline asked the Hub, and paid its timeout, once per
+# phrase. Keyed by the loader and the tier it serves, so a test that
+# patches in a new loader starts clean, and one loader standing in for
+# two tiers still names the right one.
+_FAILED: dict = {}
+
+
 def optional_model(load, tier: str) -> "tuple[Any, str | None]":
     """`(model, None)`, or `(None, note)` naming `tier` when the model
     cannot be had: the extra not installed, or a checkpoint that will
     not load (#977). Only `ImportError` used to be caught, but a host
     with the extra and no cached model raises `OSError` (or, through
     `reranker.load_reranker`, `RuntimeError`), and that traceback ended
-    `corpus discover` for a tier the ladder can do without."""
+    `corpus discover` for a tier the ladder can do without. A failure is
+    remembered for the process and not re-attempted."""
+    key = (load, tier)
+    if key in _FAILED:
+        return None, _FAILED[key]
     try:
         return load(), None
     except ImportError:
-        return None, f"{tier} unavailable (enrich extra not installed)"
+        _FAILED[key] = f"{tier} unavailable (enrich extra not installed)"
     # Broad on purpose: sentence-transformers raises anything from
     # OSError to a huggingface_hub error for a model it cannot load.
     except Exception as exc:  # noqa: BLE001 -- see the comment above
         # The first line only: huggingface's messages run to several,
         # and this is one line of a printed view.
         reason = str(exc).partition("\n")[0] or type(exc).__name__
-        return None, f"{tier} unavailable (the model would not load: {reason})"
+        _FAILED[key] = f"{tier} unavailable (the model would not load: {reason})"
+    return None, _FAILED[key]
 
 
 def _rescored(phrase: str, fused: list, vocab: dict) -> "tuple[list, str | None]":

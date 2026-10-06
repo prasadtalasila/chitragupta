@@ -915,12 +915,11 @@ class TestOneQueryOneSetOfTerms:
 
     def test_a_query_with_no_terms_never_reads_the_vocabulary(self, corpus, monkeypatch):
         """Sharing `query_terms` put the drift report on the vocabulary's
-        path, so a query that tokenizes to nothing must not read it: a
-        malformed acronyms file would otherwise fail `dossier status
-        --all` over a recorded query that ranks on nothing anyway."""
+        path, so a query that tokenizes to nothing must not read it: there
+        is nothing for an expansion to add to."""
 
         def explode():
-            raise acronyms.AcronymsError("malformed")
+            raise AssertionError("read the vocabulary")
 
         monkeypatch.setattr(acronyms, "load_vocabulary", explode)
         assert retrieval.query_terms("what is the") == ([], [])
