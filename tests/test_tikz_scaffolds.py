@@ -114,6 +114,48 @@ def _region(text: str) -> str | None:
     return text[start : end + len(_REGION_END)]
 
 
+# The well a `pic` is drawn into, and the `pic`s themselves, both read
+# out of the block rather than restated, so the test follows an edit.
+_WELL_RE = re.compile(
+    r"cgwell/\.style=\{[^}]*minimum width=(?P<w>[\d.]+)mm, minimum height=(?P<h>[\d.]+)mm"
+)
+_PIC_RE = re.compile(r"pics/(?P<name>\w+)/\.style=")
+_PT_PER_MM = 72.27 / 25.4
+_CGPIC_RE = re.compile(r"CGPIC (\S+) (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt (-?[\d.]+)pt")
+_LIBRARIES = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur"
+
+
+def _pics() -> list[str]:
+    """Every `pic` the block defines, in the order it defines them."""
+    return _PIC_RE.findall(BLOCK.read_text(encoding="utf-8"))
+
+
+def _pics_overriding_the_join(source: str) -> list[str]:
+    """The `pic`s in `source` whose own code sets a line join. Each
+    definition runs from its `pics/<name>/` key to the next one."""
+    starts = list(_PIC_RE.finditer(source))
+    ends = [m.start() for m in starts[1:]] + [len(source)]
+    return [m["name"] for m, end in zip(starts, ends) if "line join" in source[m.start() : end]]
+
+
+# The house-shape table in docs/TIKZ-STYLE.md, found by its header.
+_PIC_TABLE_HEADER = "| `pic` | Stands for | Twin says |"
+_PIC_ROW_RE = re.compile(r"^\|\s*`(?P<name>\w+)`\s*\|")
+
+
+def _documented_pics() -> list[str]:
+    """The `pic`s docs/TIKZ-STYLE.md's house-shape table names."""
+    lines = STYLE_DOC.read_text(encoding="utf-8").splitlines()
+    start = lines.index(_PIC_TABLE_HEADER) + 2
+    found = []
+    for line in lines[start:]:
+        match = _PIC_ROW_RE.match(line)
+        if match is None:
+            break
+        found.append(match.group("name"))
+    return found
+
+
 # Parametrised by file rather than by metaphor so a failure names the
 # scaffold a reader would go and open.
 by_scaffold = pytest.mark.parametrize("scaffold", _scaffolds(), ids=lambda p: p.stem)
@@ -150,6 +192,45 @@ class TestMetaphorCoverage:
         expected = {_slug(m) for m in _metaphors()}
 
         assert {path.stem for path in _scaffolds()} == expected
+
+
+class TestTheWellSizeIsStatedOnce:
+    """The probe reads the well's size out of `cgwell`'s style, so a
+    resized well moves the test with it. These two sentences state the
+    size in prose, and would otherwise go on saying the old number."""
+
+    def test_the_prose_names_the_well_the_block_draws(self):
+        match = _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+        stated = re.findall(r"(\d+)mm `cgwell`", BLOCK.read_text(encoding="utf-8"))
+        stated += re.findall(
+            r"fixed-size \((\d+)mm\)", STYLE_DOC.read_text(encoding="utf-8").replace("\n", " ")
+        )
+
+        assert len(stated) == 2
+        assert set(stated) == {match["w"], match["h"]}
+
+
+class TestTheShapesAreTheDocumentedOnes:
+    """#1014: a shape is added only when a metaphor wants it, and the
+    argument is made in writing. The doc row is where that argument
+    lands, so a `pic` the table does not name cannot ship, and a row
+    for a `pic` that was removed cannot linger."""
+
+    def test_the_table_was_read(self):
+        assert len(_documented_pics()) > 1
+
+    def test_the_block_and_the_table_name_the_same_pics(self):
+        assert _documented_pics() == _pics()
+
+    def test_a_scaffold_draws_one_into_a_well(self):
+        """So every run compiles the construct and measures the well,
+        rather than leaving it to the exemplars alone."""
+        drawn = re.compile(
+            r"\\node\[cgwell\b[^]]*\]\s*\((?P<well>[\w-]+)\)"
+            r"[^\n]*\n\s*\\pic\b[^\n]*at \((?P=well)\)"
+        )
+
+        assert [s.stem for s in _scaffolds() if drawn.search(s.read_text(encoding="utf-8"))]
 
 
 class TestEverySourceProperty:
@@ -325,7 +406,7 @@ class TestTheBlockTypesetsNothing:
         bare = tmp_path / "bare.tex"
         # The `%` stops the bare file's own last line setting a space.
         bare.write_text(source[start:end] + "%", encoding="utf-8")
-        libraries = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix,trees"
+        libraries = f"{_LIBRARIES},matrix,trees"
         result = _pdflatex(
             tmp_path,
             f"\\usetikzlibrary{{{libraries}}}\\input{{{BLOCK}}}%\n"
@@ -491,6 +572,94 @@ class TestTheTypeFloor:
         _, sizes = self._floor_and_figure(tmp_path, f"\\input{{{shrunk}}}")
 
         assert min(sizes) < 1 - _SIZE_TOLERANCE
+
+
+@needs_tikz
+class TestEveryPicFitsItsWell:
+    """#1014: a `pic` is drawn into a `cgwell`, and a zone card `fit`s
+    the well, not the `pic`. A `pic` that outgrows its well therefore
+    pokes through its own zone card and nothing measures it, because a
+    path has no name. `cgdocs` as #1026 shipped it did exactly that,
+    0.92mm through the top."""
+
+    @staticmethod
+    def _extents(directory: Path, names: list[str], extra: str = "") -> dict:
+        """Each `pic`'s ink box in mm, origin at the well's centre.
+        `current bounding box` includes half the stroke width."""
+        body = "".join(
+            f"\\begin{{tikzpicture}}[cg]\\pic{{{name}}};"
+            "\\pgfpointanchor{current bounding box}{south west}\\pgfgetlastxy\\cgxa\\cgya"
+            "\\pgfpointanchor{current bounding box}{north east}\\pgfgetlastxy\\cgxb\\cgyb"
+            f"\\typeout{{CGPIC {name} \\cgxa\\space\\cgya\\space\\cgxb\\space\\cgyb}}"
+            "\\end{tikzpicture}\n"
+            for name in names
+        )
+        result = _pdflatex(
+            directory, f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}{extra}\n{body}"
+        )
+        assert result.returncode == 0, result.stdout[-2000:]
+        return {
+            m.group(1): tuple(float(v) / _PT_PER_MM for v in m.groups()[1:])
+            for m in _CGPIC_RE.finditer(result.stdout)
+        }
+
+    @staticmethod
+    def _inside_the_well(box: tuple) -> bool:
+        match = _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+        half_w, half_h = float(match["w"]) / 2, float(match["h"]) / 2
+        x0, y0, x1, y1 = box
+        return -half_w <= x0 and x1 <= half_w and -half_h <= y0 and y1 <= half_h
+
+    def test_there_are_pics_to_measure(self):
+        """The non-vacuous guard: a regex that stops matching makes every
+        check below pass on an empty list."""
+        assert len(_pics()) > 1 and _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+
+    def test_every_pic_is_measured_and_fits(self, tmp_path):
+        extents = self._extents(tmp_path, _pics())
+
+        assert set(extents) == set(_pics())
+        assert [n for n, box in extents.items() if not self._inside_the_well(box)] == []
+
+    def test_the_probe_sees_an_oversize_pic(self, tmp_path):
+        """The probe against the shape it exists to catch."""
+        oversize = (
+            "\\tikzset{pics/cgoversize/.style={code={"
+            "\\path[draw] (-6mm,-6mm) rectangle (6mm,6mm);}}}"
+        )
+        extents = self._extents(tmp_path, ["cgoversize"], oversize)
+
+        assert not self._inside_the_well(extents["cgoversize"])
+
+    def test_no_pic_overrides_the_round_join(self):
+        """The probe is exact only under round joins: `current bounding
+        box` pads a path by half its line width, which is where a round
+        join's ink ends, but a mitre's point runs past it -- 0.8mm for a
+        20-degree spike at 1pt, measured with Ghostscript's bbox device.
+        `cg` sets `line join=round`, so a pic is safe until it sets a
+        join of its own."""
+        assert _pics_overriding_the_join(BLOCK.read_text(encoding="utf-8")) == []
+
+    def test_the_join_check_sees_a_mitred_pic(self):
+        spike = (
+            "\\tikzset{pics/cgspike/.style={code={\\path[draw, line join=miter]"
+            " (-1mm,0) -- (0,4mm) -- (1mm,0);}}}%\n"
+        )
+
+        assert _pics_overriding_the_join(spike) == ["cgspike"]
+
+    def test_a_pic_colour_does_not_leak_to_the_next_pic(self, tmp_path):
+        """`cg pic colour` is set per `\\pic`, so the next un-keyed one in
+        the same picture is the default again, not the last zone's hue."""
+        result = _pdflatex(
+            tmp_path,
+            f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}\n"
+            "\\begin{tikzpicture}[cg]\\pic[cg pic colour=cgAlt]{cgstore};"
+            "\\typeout{CGCOL=\\cgPicColour}\\end{tikzpicture}",
+        )
+
+        assert result.returncode == 0, result.stdout[-2000:]
+        assert "CGCOL=cgFlow" in result.stdout
 
 
 @needs_tikz

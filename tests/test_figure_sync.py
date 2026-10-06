@@ -60,7 +60,7 @@ class TestSync:
         assert path.read_text(encoding="utf-8") == edited
 
     def test_a_region_from_a_newer_install_says_so_and_is_not_touched(self, figures, house):
-        newer = house.text.replace(" v1 ", " v9 ", 1) + PICTURE
+        newer = house.text.replace(f" v{house.version} ", " v9 ", 1) + PICTURE
         path = write(figures / "a.tex", newer)
         [outcome] = figure.run([figures], house, check=False)
         assert outcome.action == "modified" and "newer than this install" in outcome.detail
