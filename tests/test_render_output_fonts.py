@@ -36,9 +36,15 @@ def test_font_installed_reads_the_message_not_the_exit_status(monkeypatch):
         message = f'Font "{name}" found!' if found else f'Cannot find "{name}" in index.'
         return SimpleNamespace(returncode=0, stdout="", stderr=message)
 
+    monkeypatch.setattr(pdf_fonts.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
     monkeypatch.setattr(pdf_fonts.subprocess, "run", fake_run)
-    assert pdf_fonts.font_installed("/usr/bin/luaotfload-tool", "STIX Two Text")
-    assert not pdf_fonts.font_installed("/usr/bin/luaotfload-tool", "Noto Serif")
+    assert pdf_fonts.font_installed("STIX Two Text") is True
+    assert pdf_fonts.font_installed("Noto Serif") is False
+
+
+def test_font_installed_without_a_loader_to_ask_says_nothing(monkeypatch):
+    monkeypatch.setattr(pdf_fonts.programs, "resolve_program", lambda b: None)
+    assert pdf_fonts.font_installed("STIX Two Text") is None
 
 
 def test_the_chain_names_every_family_once_in_order():

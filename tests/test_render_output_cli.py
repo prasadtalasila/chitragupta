@@ -652,7 +652,7 @@ class TestRequirePdfToolchain:
         monkeypatch.setattr(
             render_output._pandoc.pdf_fonts,
             "font_installed",
-            lambda tool, name: name != "STIX Two Math",
+            lambda name: name != "STIX Two Math",
         )
         with pytest.raises(render_output.MissingBinary, match="STIX Two Math") as exc:
             render_output._pandoc._require_pdf_toolchain()
@@ -666,7 +666,7 @@ class TestRequirePdfToolchain:
         monkeypatch.setattr(
             render_output._pandoc.pdf_fonts,
             "font_installed",
-            lambda tool, name: asked.append(name) or True,
+            lambda name: asked.append(name) or True,
         )
         render_output._pandoc._require_pdf_toolchain()
         assert asked == list(render_output._pandoc.pdf_fonts.REQUIRED_FONTS)

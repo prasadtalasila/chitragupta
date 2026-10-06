@@ -37,8 +37,8 @@ def test_no_text_states_pdflatex_as_the_pdf_requirement():
     for path in _texts():
         text = " ".join(path.read_text(encoding="utf-8").split())
         for match in _REQUIREMENT.finditer(text):
-            start = max(match.start() - 50, 0)
-            offenders.append(f"{path.relative_to(REPO_ROOT)}: ...{text[start : match.end() + 15]}...")
+            context = text[max(match.start() - 50, 0) : match.end() + 15]
+            offenders.append(f"{path.relative_to(REPO_ROOT)}: ...{context}...")
     assert offenders == []
 
 

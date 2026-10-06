@@ -1,8 +1,9 @@
 """The fonts chitragupta's own pdf renders use (#996), in one place.
 
-Standard library only, and importing nothing from `chitragupta`, so
-`chitragupta/doctor.py` can ask whether they are installed without
-loading the render stage or its config. `render_output/_pandoc.py`
+Standard library only, and importing nothing from `chitragupta` but
+`programs` (itself standard library only), so `chitragupta/doctor.py`
+can ask whether they are installed without loading the render stage or
+its config. `render_output/_pandoc.py`
 turns these into pandoc variables.
 
 A pdf render runs LuaLaTeX with STIX Two for text and math -- the only
@@ -14,6 +15,8 @@ set at. plans/996-unicode-pdf-engine.md has the measurements.
 """
 
 import subprocess
+
+from chitragupta import programs
 
 MAIN_FONT = "STIX Two Text"
 MATH_FONT = "STIX Two Math"
@@ -67,13 +70,16 @@ MONO_FALLBACKS = ("DejaVu Sans Mono:mode=node", *FONT_FALLBACKS)
 REQUIRED_FONTS = (MAIN_FONT, MATH_FONT, MONO_FONT)
 
 
-def font_installed(luaotfload: str, name: str) -> bool:
-    """Whether LuaLaTeX's font loader, `luaotfload` at that path, finds
-    the family `name`.
+def font_installed(name: str) -> bool | None:
+    """Whether LuaLaTeX's font loader finds the family `name`, or None
+    when there is no `luaotfload-tool` on PATH to ask.
 
     `luaotfload-tool --find` exits 0 whether or not the font exists
     (measured, luaotfload 3.26); only its message tells them apart.
     """
+    luaotfload = programs.resolve_program("luaotfload-tool")
+    if luaotfload is None:
+        return None
     probe = subprocess.run(
         [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
     )

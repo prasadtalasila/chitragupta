@@ -211,8 +211,7 @@ def _check_opencode_skills(root: Path) -> list[str]:
 
 def _check_pdf_fonts() -> list[str]:
     """One line per font family a pdf render names (#996)."""
-    luaotfload = programs.resolve_program("luaotfload-tool")
-    if luaotfload is None:
+    if programs.resolve_program("luaotfload-tool") is None:  # one line, not one per font
         return [
             "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
             "loader (texlive-luatex) is not installed, so no pdf renders; "
@@ -220,7 +219,7 @@ def _check_pdf_fonts() -> list[str]:
         ]
     lines = []
     for name in pdf_fonts.all_families():
-        if pdf_fonts.font_installed(luaotfload, name):
+        if pdf_fonts.font_installed(name):
             lines.append(f"[ok] pdf font found: {name}")
             continue
         # A required font stops every render; a fallback only a draft

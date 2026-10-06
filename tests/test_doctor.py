@@ -78,7 +78,7 @@ class TestCheckPdfFonts:
         # #1022: a missing STIX Two stops every render, not only a draft
         # with an unusual character, and the line said the latter.
         monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
-        monkeypatch.setattr(doctor.pdf_fonts, "font_installed", lambda tool, name: False)
+        monkeypatch.setattr(doctor.pdf_fonts, "font_installed", lambda name: False)
         lines = dict(zip(doctor.pdf_fonts.all_families(), doctor._check_pdf_fonts()))
         assert "no pdf renders" in lines["STIX Two Text"]
         assert "a draft with a character only it has" in lines["Noto Serif"]

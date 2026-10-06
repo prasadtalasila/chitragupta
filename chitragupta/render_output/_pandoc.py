@@ -375,12 +375,8 @@ def _require_pdf_toolchain() -> None:
             "not installed. On Debian/Ubuntu it is the 'texlive-luatex' package; "
             f"{install.remedy('os-deps')} installs it with the fonts a render uses."
         )
-    luaotfload = programs.resolve_program("luaotfload-tool")
-    if luaotfload is None:
-        return
-    missing = [
-        name for name in pdf_fonts.REQUIRED_FONTS if not pdf_fonts.font_installed(luaotfload, name)
-    ]
+    # `is False`: None means no luaotfload-tool to ask, which says nothing.
+    missing = [name for name in pdf_fonts.REQUIRED_FONTS if pdf_fonts.font_installed(name) is False]
     if missing:
         raise MissingBinary(
             f"pdf rendering needs {', '.join(missing)}, which LuaLaTeX cannot find, "
