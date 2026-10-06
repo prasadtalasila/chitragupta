@@ -34,6 +34,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -159,20 +160,26 @@ def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> di
     if harness == "opencode":
         env = without_git(env)
     started = time.monotonic()
+    # Its own session, so a timeout kills the harness and everything it
+    # started. `subprocess.run(timeout=)` kills only the direct child: a
+    # timed-out Codex run kept its model request alive and held the local
+    # server's one slot, and every run after it queued until it timed out
+    # too (measured).
     with log.open("w", encoding="utf-8") as out:
+        proc = subprocess.Popen(
+            command(harness, prompt),
+            cwd=project,
+            env=env,
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
         try:
-            proc = subprocess.run(
-                command(harness, prompt),
-                cwd=project,
-                env=env,
-                stdin=subprocess.DEVNULL,
-                stdout=out,
-                stderr=subprocess.STDOUT,
-                timeout=timeout,
-                check=False,
-            )
-            code = proc.returncode
+            code = proc.wait(timeout=timeout)
         except subprocess.TimeoutExpired:
+            os.killpg(proc.pid, signal.SIGKILL)
+            proc.wait()
             code = "timeout"
     return {"exit": code, "seconds": round(time.monotonic() - started)}
 
