@@ -9,31 +9,41 @@ another. See assets/style/README.md and GitHub issue #190.
 """
 
 import re
+import sys
 import tomllib
 from pathlib import Path
 
 from chitragupta import config
 
-
-class AcronymsError(RuntimeError):
-    """An acronyms TOML file (vendored or the user's own) exists but
-    cannot be read as one.
-
-    Raised rather than skipped past, matching `chitragupta/seed_topics.py`'s
-    `SeedTopicsError`: a malformed file is a typo in something the author
-    wrote by hand, and a silent fallback to "no vocabulary" would produce
-    a review that looks clean while quietly ignoring every acronym they
-    defined."""
+# The unreadable files already reported by this process, so a drift sweep
+# loading the vocabulary once per recorded query says so once.
+_NOTED: set[Path] = set()
 
 
 def _load(path: Path) -> dict[str, str]:
+    """`path`'s acronyms, or `{}` when it is absent or unreadable.
+
+    An unreadable file is skipped as if it did not exist, with one note on
+    stderr (#1023). This used to raise, on the ground that a silent
+    fallback would hide a typo; but the vocabulary is an aid to every
+    command that reads it (retrieval, the dossier drift sweep, the review
+    aids), and a typo in it ended all of them with a traceback. The note
+    is what keeps the skip from being silent. stderr, because several of
+    those commands' stdout is a contract a genre skill parses.
+    """
     if not path.is_file():
         return {}
     try:
         with path.open("rb") as handle:
             parsed = tomllib.load(handle)
     except (tomllib.TOMLDecodeError, OSError) as exc:
-        raise AcronymsError(f"{path} could not be parsed as TOML: {exc}") from exc
+        if path not in _NOTED:
+            _NOTED.add(path)
+            print(
+                f"  [note] acronym file skipped, it could not be parsed as TOML: {path}: {exc}",
+                file=sys.stderr,
+            )
+        return {}
     # A non-string value (a table, an array, a bare number) can't be an
     # expansion -- filtered here rather than raised, unlike the parse
     # failure above, so one mistyped entry in an otherwise-good file

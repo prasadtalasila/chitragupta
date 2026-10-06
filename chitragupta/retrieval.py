@@ -148,7 +148,7 @@ def _query_terms(query: str) -> list[str]:
 # pairs. One exception remains: `--y-prev`'s second round searches the
 # query with draft prose appended, and an acronym in that prose expands
 # without reaching the note. A query with no terms skips the vocabulary,
-# so a malformed acronyms file cannot fail a query that ranks on nothing.
+# which it has no use for.
 #
 # Expansion is computed from the typed terms alone and never fed back
 # through itself: an added term is not looked up as an acronym in turn,

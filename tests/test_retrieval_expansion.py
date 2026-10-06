@@ -54,9 +54,8 @@ class TestOffIsStructural:
 
     def test_the_vocabulary_is_never_read_when_it_is_off(self, monkeypatch):
         """Not an optimisation -- it is what makes "off" mean *off*. A
-        malformed `[style].acronyms` file raises `AcronymsError`, and a
-        caller who has switched expansion off must not start failing
-        searches because of a file they told retrieval to ignore."""
+        caller who has switched expansion off must not have their
+        searches read, or note on, a file they told retrieval to ignore."""
 
         def explode():
             raise AssertionError("the vocabulary was read with expansion off")
@@ -170,29 +169,32 @@ class TestAnnounce:
         assert captured.err
 
 
-class TestAMalformedVocabularyFailsOnlySearch:
+class TestAnUnreadableVocabularyIsSkipped:
     """#1023: `query_terms` put `evidence`, the passage unit and the
-    dossier drift sweep on the acronym vocabulary's path (#953), and
-    `acronyms._load` raises on a malformed file. The raise was written for
-    `search`, where a silent skip changes a ranking; for the other three
-    the vocabulary is opportunistic, so each falls back to the typed terms
-    and says so once. A real malformed file, not a patched loader: the
-    unclosed quote is the shape the issue reproduced."""
+    dossier drift sweep on the acronym vocabulary's path (#953), and an
+    unparseable file used to end each of them, and `search`, with a
+    traceback. It is now skipped as if absent, with one note. A real
+    malformed file rather than a patched loader: the unclosed quote is
+    the shape the issue reproduced."""
 
     QUERY = "DT fidelity"
 
     @pytest.fixture
-    def malformed(self, ledger_con, monkeypatch, tmp_path):
-        broken = tmp_path / "acronyms.toml"
-        broken.write_text('DT = "digital twin\n', encoding="utf-8")
-        monkeypatch.setattr(config, "ACRONYMS_PATH", broken)
+    def corpus(self, ledger_con, monkeypatch):
         monkeypatch.setattr(config, "ACRONYM_EXPANSION", True)
-        monkeypatch.setattr(retrieval_expansion, "_NOTED", set())
+        monkeypatch.setattr(acronyms, "_NOTED", set())
         parsed = parsed_file("a2024")
         parsed.write_text("opening matter " * 60 + "the fidelity of the greenhouse twin")
         ledger.upsert_reference(ledger_con, make_reference(citekey="a2024", title="Greenhouse"))
         ledger.mark_parsed(ledger_con, "a2024", parsed)
         return ledger_con
+
+    @pytest.fixture
+    def malformed(self, corpus, monkeypatch, tmp_path):
+        broken = tmp_path / "acronyms.toml"
+        broken.write_text('DT = "digital twin\n', encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_PATH", broken)
+        return broken
 
     @staticmethod
     def _status_all() -> int:
@@ -209,28 +211,20 @@ class TestAMalformedVocabularyFailsOnlySearch:
     @pytest.mark.parametrize(
         "run",
         [
-            lambda: retrieval_cli.main(["evidence", "DT fidelity", "--citekey", "a2024"]),
+            lambda: retrieval_cli.main(["search", "DT fidelity"]),
             lambda: retrieval_cli.main(["search", "DT fidelity", "--unit", "passage"]),
+            lambda: retrieval_cli.main(["evidence", "DT fidelity", "--citekey", "a2024"]),
             _status_all,
         ],
-        ids=["evidence", "passage-search", "dossier-status-all"],
+        ids=["search", "passage-search", "evidence", "dossier-status-all"],
     )
-    def test_each_consumer_but_search_exits_zero_with_one_note(self, malformed, capsys, run):
+    def test_every_consumer_exits_zero_with_one_note(self, malformed, capsys, run):
         assert run() == 0
         err = capsys.readouterr().err
-        assert err.count("acronym vocabulary unreadable") == 1
-        assert "acronyms.toml" in err
+        assert err.count("acronym file skipped") == 1
+        assert str(malformed) in err
 
-    def test_the_fallback_is_the_typed_terms(self, malformed):
-        assert retrieval_expansion.query_terms_or_typed(self.QUERY) == (
-            retrieval._query_terms(self.QUERY),
-            [],
-        )
-
-    def test_search_still_raises(self, malformed):
-        """The raise-not-skip rationale in `acronyms.py` stands for the
-        one consumer whose ranking a silent skip would change."""
-        with pytest.raises(acronyms.AcronymsError):
-            retrieval.search(self.QUERY)
-        with pytest.raises(acronyms.AcronymsError):
-            retrieval_cli.main(["search", self.QUERY])
+    def test_terms_are_those_of_a_project_with_no_user_file(self, corpus, malformed, monkeypatch):
+        skipped = retrieval.query_terms(self.QUERY)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", malformed.with_name("absent.toml"))
+        assert skipped == retrieval.query_terms(self.QUERY)

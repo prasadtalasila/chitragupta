@@ -290,15 +290,13 @@ and `--log` writes the same string to the dossier's `retrieval.md`
 ```
 
 An acronym file that will not parse (a missing closing quote is the
-usual cause) stops a plain `search` with the parse error, since ranking
-without the vocabulary would quietly change what you get back. The
-other paths only use the vocabulary when it is available: `search
---unit passage`, `evidence`, and the drift check behind `dossier
-status` (with or without `--all`) and `review agenda` fall back to the
-terms you typed and print one note saying so (#1023):
+usual cause) is skipped as if it did not exist, by every command that
+reads it, with one note on stderr naming the file and the parse error
+(#1023). Only that file is skipped: the vendored floor still applies
+when your own file is the broken one.
 
 ```text
-  [note] acronym vocabulary unreadable, ranking on the typed terms: ...
+  [note] acronym file skipped, it could not be parsed as TOML: content/acronyms.toml: ...
 ```
 
 #### What it is worth, and what it costs

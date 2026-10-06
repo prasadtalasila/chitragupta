@@ -14,14 +14,33 @@ class TestLoadDegradesCleanly:
     tomllib.TOMLDecodeError, and a non-string expansion crashed
     stale_expansions() with AttributeError on the first .strip() call."""
 
-    def test_unparseable_toml_raises_a_typed_error(self, monkeypatch, tmp_path):
+    def test_an_unparseable_user_file_is_skipped_as_if_absent(self, monkeypatch, tmp_path, capsys):
+        """#1023: skipped with a note rather than raised, and only that
+        file -- the vendored floor still applies, exactly as it does when
+        the user file does not exist."""
+        vendored = tmp_path / "vendored.toml"
+        vendored.write_text('PDF = "Portable Document Format"\n', encoding="utf-8")
+        bad = tmp_path / "bad.toml"
+        bad.write_text('DT = "digital twin\n', encoding="utf-8")
+        monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", vendored)
+        monkeypatch.setattr(config, "ACRONYMS_PATH", bad)
+        monkeypatch.setattr(acronyms, "_NOTED", set())
+
+        assert acronyms.load_vocabulary() == {"PDF": "Portable Document Format"}
+        assert acronyms.load_vocabulary() == {"PDF": "Portable Document Format"}
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert captured.err.count("acronym file skipped") == 1
+        assert str(bad) in captured.err
+
+    def test_an_unparseable_vendored_file_is_skipped_too(self, monkeypatch, tmp_path):
         bad = tmp_path / "bad.toml"
         bad.write_text("this is not = = valid toml [[[", encoding="utf-8")
         monkeypatch.setattr(config, "ACRONYMS_DEFAULT_PATH", bad)
         monkeypatch.setattr(config, "ACRONYMS_PATH", bad)
+        monkeypatch.setattr(acronyms, "_NOTED", set())
 
-        with pytest.raises(acronyms.AcronymsError, match="could not be parsed"):
-            acronyms.load_vocabulary()
+        assert acronyms.load_vocabulary() == {}
 
     def test_a_non_string_value_is_dropped_not_raised(self, monkeypatch, tmp_path):
         vendored = tmp_path / "vendored.toml"
