@@ -499,11 +499,10 @@ candidate for the chapter.
     reader who won't open one. The draft itself keeps its `[@citekey]`
     markers.
 
-    This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH -- no
-    enrich group required. If either command reports `[missing-binary]` or
-    `[error]`, print a one-line warning in chat with that message and
-    continue anyway -- a rendering failure never blocks presenting the
-    `.md` draft.
+    This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH
+    -- no enrich group required. If either command reports `[missing-binary]` or
+    `[error]`, print a one-line warning in chat with that message and continue
+    anyway -- a rendering failure never blocks presenting the `.md` draft.
 
     **Then render the evidence sidecar** -- and expect it to be thin, or
     absent:

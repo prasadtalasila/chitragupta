@@ -407,7 +407,7 @@ been repaired. On a missing `libGL.so.1` the loader's message is
 confirmed is the mask mechanism (reproduced below) and the remedy.
 
 **The fix.** `libgl1` and GLib are in the `os-deps` package list, so
-`bash scripts/install_full_pipeline.sh os-deps` covers it. By hand:
+`chitragupta install os-deps` covers it. By hand:
 
 ```console
 sudo apt-get install -y libgl1 libglib2.0-0t64   # libglib2.0-0 before Ubuntu 24.04 / Debian 13

@@ -654,10 +654,10 @@ holds the report, its dossier and its renders. The `md` output is a
 numbered copy -- the same IEEE numbers as the PDF, for a reader who
 won't open one. The draft itself keeps its `[@citekey]` markers.
 
-This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH — no enrich
-group required. If either command reports `[missing-binary]` or `[error]`,
-print a one-line warning in chat with that message and continue anyway —
-a rendering failure never blocks presenting the `.md` report.
+This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX) on PATH —
+no enrich group required. If either command reports `[missing-binary]` or
+`[error]`, print a one-line warning in chat with that message and continue
+anyway — a rendering failure never blocks presenting the `.md` report.
 
 **Then render the evidence sidecar**, in the same formats:
 
