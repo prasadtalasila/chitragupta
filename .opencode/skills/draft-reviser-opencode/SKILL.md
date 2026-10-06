@@ -92,9 +92,11 @@ break:
   the same thing,
   so a half-done edit leaves the pdf and the Markdown preview
   disagreeing about the same figure, silently, until a reader notices.
-  If you edit the TikZ, re-verify it compiles before you keep it (§10's
-  standalone `pdflatex` check) -- a figure that no longer compiles
-  fails the whole pdf render, not just the figure. If the two forms
+  **To redraw or fix the picture, hand it to `figure-drawer-opencode`** and
+  come back to step 6 to log it: that skill owns the scaffolds, the
+  compile probe and the geometry review, and it re-verifies the TikZ
+  compiles before you keep it -- a figure that no longer compiles fails
+  the whole pdf render, not just the figure. If the two forms
   have drifted too far to reconcile, say so and drop the figure rather
   than shipping a pair that disagrees.
 

@@ -120,3 +120,12 @@ def test_no_rider_has_drifted_back_into_a_genre_skill():
 
 def test_deep_research_draws_no_figure_and_names_no_drawer():
     assert f"`{DRAWER}`" not in _text("deep-research")
+
+
+def test_draft_reviser_hands_redrawing_to_the_drawer():
+    text = _text("draft-reviser")
+    assert f"`{DRAWER}`" in text
+    # The revision-only rule stays here: both forms change together, and
+    # the change is logged. That is not a drawing rule.
+    assert "Touch a figure, touch both forms" in text
+    assert not [r for r in _RIDERS if r in text]
