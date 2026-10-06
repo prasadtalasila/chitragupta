@@ -83,9 +83,10 @@ def test_each_scoping_genre_points_at_the_collection_reference(name):
     assert "ledger --collections" in section, "the one check every run makes stays in SKILL.md"
 
 
-# A mode a skill enters only on some requests, or a repair it makes only
-# for some item classes, reads its procedure from a reference named in the
-# section that recognises it (#997).
+# A mode a skill enters only on some requests, a repair it makes only for
+# some item classes, or reference data too long to carry in three harness
+# copies, is read from a reference named in the section that needs it
+# (#997).
 _CONDITIONAL = (
     ("draft-reviser", "## Copy-edit mode", "copy-edit.md"),
     ("draft-reviser", "## Acronym-realignment mode", "acronyms.md"),
@@ -93,6 +94,7 @@ _CONDITIONAL = (
     ("agenda-reviser", "### 4. Repair one item", "repair-missing-citekey.md"),
     ("agenda-reviser", "### 4. Repair one item", "repair-prose.md"),
     ("agenda-reviser", "### 4. Repair one item", "repair-verbatim-run.md"),
+    ("book-assembler", "## Conventions as data", "latex-conventions.md"),
 )
 
 
