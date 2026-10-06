@@ -124,7 +124,10 @@ Each step names the document that owns its rule.
    draft's body font, so labels can wrap and gaps close differently
    there. Once the draft carries the marker, it renders the PDF and
    checks the page that holds the figure against the same pre-flight
-   list.
+   list. This needs `pandoc`, LuaLaTeX and `pdftoppm` (poppler), which
+   `chitragupta install os-deps` installs on Linux; without them, or in
+   a harness that cannot view an image, the skill skips the look and
+   says so.
 9. **Returns** the two paths, whether the probe passed, and whether it
    checked the rendered page.
 

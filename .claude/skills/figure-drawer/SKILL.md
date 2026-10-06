@@ -188,7 +188,11 @@ so they are this skill's to state:
    render again until it reads cleanly. Edit only below the house style
    block: a change inside it makes the render warn that the block was
    hand-edited. If the marker is not in the draft yet, tell the caller
-   to make this check right after its own render.
+   to make this check right after its own render. If the render reports
+   `[missing-binary]`, `pdftoppm` is not installed, or you cannot view
+   an image, skip the look: keep the probe and `review figure` results,
+   and say so in chat. The look is a check, never a condition of
+   keeping the figure; `chitragupta install os-deps` brings the tools.
 
 10. **Return.** Tell the caller the two paths, whether the probe
     passed and whether you checked the rendered page. The caller places

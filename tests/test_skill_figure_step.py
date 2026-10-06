@@ -172,3 +172,12 @@ def test_the_drawer_checks_the_figure_in_the_real_render():
     at_return = text.find("**Return.**")
     assert at_probe < at_render < at_return, (at_probe, at_render, at_return)
     assert "LuaLaTeX" in text
+
+
+def test_the_render_check_says_what_to_do_without_the_tools():
+    # The look needs pandoc, LuaLaTeX and pdftoppm, which a bare pip
+    # install does not bring, and a harness that can view an image. Without
+    # them the step must degrade to the probe and say so, never block.
+    text = _text(DRAWER)
+    assert "[missing-binary]" in text and "pdftoppm" in text
+    assert "say so in chat" in text[text.find("Look at it in the real render") :]
