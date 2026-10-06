@@ -5,8 +5,17 @@
 > superpowers:executing-plans to carry out this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **planned, not built.** Written 2026-10-06 against `main` at
-`10ac21f` (#1026), version 6.135.0.
+Status: **built in PR #1030, 6.137.0.** Written 2026-10-06 against
+`main` at `10ac21f` (#1026). What changed on the way: each genre stub
+also keeps the `kpsewhich` probe, the compile check and an originality
+line, so they hold if the handoff is skipped (review finding); the
+skill gained an "On direct use" section for the cases no genre step
+covers there; `figure sync` (#1029) moved into the skill with the
+other rules; every skill's frontmatter was made valid YAML, which
+also fixed `book-assembler` and `draft-reviser`; and the skill got its
+own page, `docs/FIGURE-DRAWER.md`. The per-harness handoff run (Task 4
+steps 2-3) was not done; discovery was checked with
+`opencode debug skill`.
 
 **Written for** whoever builds #1027: a session that changes
 `.claude/skills/`, `.agents/skills/`, `.opencode/`, `tests/` and `docs/`,

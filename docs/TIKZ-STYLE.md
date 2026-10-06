@@ -12,10 +12,12 @@ that section owns the two-form (TikZ + ASCII) pair, the marker syntax,
 and originality. This document is what makes the TikZ half of the pair
 good, before it is kept.
 
-**Written for** whichever of `survey-writer`, `tutorial-writer`,
-`thesis-chapter-writer` or `textbook-chapter-writer` is about to draw a
-figure; each links here from its own figure step. `deep-research`
-does not draw §10 figures at all, so it has no reason to link here.
+**Written for** the `figure-drawer` skill, which `survey-writer`,
+`tutorial-writer`, `thesis-chapter-writer` and `textbook-chapter-writer`
+hand a figure to, and for anyone drawing one by hand.
+[FIGURE-DRAWER.md](FIGURE-DRAWER.md) says how the skill applies this
+document. `deep-research` does not draw §10 figures at all, so it has no
+reason to link here.
 
 **Not covered here:** the two-form pair contract, the marker syntax and
 originality, all of which stay in

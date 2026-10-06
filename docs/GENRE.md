@@ -418,6 +418,10 @@ the gate reads the draft and does not follow `\input`.
 `tests/test_skill_figure_step.py` pins that stub in each genre and
 fails if a rule that moved to `figure-drawer` reappears in one (#1027).
 
+[FIGURE-DRAWER.md](FIGURE-DRAWER.md) is the skill's own page: example
+requests, what it writes, a worked figure, and what to do when one goes
+wrong.
+
 ## 🔑 What all ten have in common
 
 These are not per-skill choices. They are the same rules restated in

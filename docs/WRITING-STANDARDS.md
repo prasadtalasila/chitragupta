@@ -261,6 +261,11 @@ wants. So a figure in this pipeline exists twice: once as a TikZ
 picture, which sets as vector art at the consuming document's own font
 and line width, and once as the plain-ASCII diagram above.
 
+The `figure-drawer` skill draws both forms, for any genre that hands it
+a figure and for a direct request ([FIGURE-DRAWER.md](FIGURE-DRAWER.md)).
+This section is the contract it follows, and stays the contract for a
+figure drawn by hand.
+
 **Both forms are always sibling files, in every genre, and a draft
 carries only a marker naming them**, with one exception, which is not
 about figures. `thesis-chapter-writer`'s `.tex` fragment is what the user

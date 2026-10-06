@@ -230,7 +230,7 @@ one ([GENRE.md](GENRE.md)).
 | `corpus-reviser` | edits an existing draft, re-searching everything | (by explicit request only) |
 | `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
 | `book-assembler` | one LaTeX book from accepted units | [WRITE-A-BOOK.md](WRITE-A-BOOK.md) |
-| `figure-drawer` | one TikZ figure and its ASCII twin, for a draft | (handed off to by four genre skills and `draft-reviser`, or asked for directly) |
+| `figure-drawer` | one TikZ figure and its ASCII twin, for a draft | [FIGURE-DRAWER.md](FIGURE-DRAWER.md) |
 
 The rule that saves the most money is never to re-run a genre skill to
 change a draft that exists. `draft-reviser` reads the dossier and edits

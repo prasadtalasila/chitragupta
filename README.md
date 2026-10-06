@@ -371,6 +371,7 @@ one-screen router for that.
 | [docs/MIGRATION.md](docs/MIGRATION.md) | How do I back up my drafts, restore them, or move a project to another directory, another computer or a container without parsing my library again? |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
 | [docs/GENRE.md](docs/GENRE.md) | Which of the ten skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
+| [docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md) | How do I get a figure into a draft? What to ask for, what the `figure-drawer` skill writes, a worked example, and what to do when a figure breaks the PDF |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |
