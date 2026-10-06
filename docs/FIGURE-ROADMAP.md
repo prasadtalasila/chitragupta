@@ -592,6 +592,12 @@ house `\tikzset` block every scaffold carries verbatim, with five house
 `pic`s in it (#1014 owns their documentation). What follows is the gap
 as it stood when this was written.
 
+**Update 2026-10-06:** #1013 (F2) shipped `chitragupta figure sync`,
+which stamps the block into a figure file that lacks it and refreshes a
+stale one, and refuses to touch a block edited by hand. The renderer and
+`git-hooks/pre-commit` report a stale or missing block without blocking
+anything ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)).
+
 There is no `\tikzset{pics/...}` and no `tikzset` at all in
 `assets/tikz/`. Every scaffold stands alone; every figure is drawn from
 nothing. Consistency across a whole book is therefore an act of authorial

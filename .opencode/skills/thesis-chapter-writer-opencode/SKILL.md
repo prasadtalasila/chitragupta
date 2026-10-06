@@ -356,7 +356,11 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names
      -- pipeline, map, layered stack, control loop, branching tree,
      hub-and-spoke, zoned spine. Copy the one that fits and re-label it,
-     leaving the house style block it carries unedited. Each places
+     leaving the house style block it carries unedited. Then run
+     `python -m chitragupta.figure sync <the figure file>`, which
+     refreshes the block if the scaffold's copy is older than the
+     installed one, and reports instead of overwriting if you edited
+     inside it. Each places
      its nodes relative to one another, which is the property worth
      keeping: a figure laid out in hand-computed millimetres re-opens
      every adjacency in it the moment any label changes length. Then

@@ -25,6 +25,7 @@ class TestDispatch:
         mechanism as a layer, but are not one -- CHOICES is where the
         two merge for the parser and for main()'s import."""
         assert "init" in entry.COMMANDS
+        assert "figure" in entry.COMMANDS
         assert entry.CHOICES == {**entry.LAYERS, **entry.COMMANDS}
 
     @pytest.mark.parametrize("layer", ["corpus", "draft", "review", "enrich"])

@@ -115,7 +115,12 @@ row there without adding a file here fails.
 The same file also checks three things the layout aid does not, for the
 scaffolds and the exemplars alike:
 
-- every copy of the block is byte-identical to `cg-figstyle.tex`;
+- every copy of the block is byte-identical to `cg-figstyle.tex`. After
+  editing that file, bump the `v<N>` in its first line, add the new
+  version's digest to `cg-figstyle.versions.toml`, and run
+  `python -m chitragupta figure sync assets/tikz/*.tex
+  assets/tikz/exemplars/*.tex` to refresh every scaffold and exemplar
+  instead of copying the block by hand;
 - `\input` of the file sets nothing but its picture: the block, the
   `\usetikzlibrary` line and the picture's last line all end in `%`;
 - no glyph prints below the body size, read back out of the compiled PDF

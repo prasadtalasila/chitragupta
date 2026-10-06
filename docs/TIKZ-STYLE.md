@@ -473,11 +473,33 @@ All six ship with `texlive-pictures`. `shadows.blur` comes from the
 `\usepackage`, which is what lets the soft shadow travel into a thesis
 preamble this project never sees: a figure file cannot load a package.
 
-**Carry the block whole, between its two marker comments, and do not
-edit inside them.** Every scaffold carries it byte for byte, and
-`tests/test_tikz_scaffolds.py` fails a copy that differs from
-`cg-figstyle.tex` by one character. A style only one figure needs goes in
-that picture's own options, below the block.
+**The block travels between its two marker comments, and
+`python -m chitragupta figure sync` keeps it current.** The command
+stamps the block into a figure file that lacks one, above its first
+`\usetikzlibrary` or `tikzpicture` line, and replaces a block from an
+older release with the installed one. Everything outside the markers
+stays byte for byte as it was. With no paths it walks every
+`content/drafts/**/figures/*.tex`; `--check` writes nothing and exits 1
+if any file is not current. `chitragupta draft render` reports a stale
+or missing block as a `[figure]` warning naming the command, and renders
+anyway: it never rewrites a figure itself.
+
+**Never edit inside the markers.** A style one figure needs goes in that
+picture's own options, or in a `\tikzset` below the end marker. `figure
+sync` recognises every block this project has released by its digest, so
+a region that matches none of them was edited by hand. It leaves that
+region alone and prints the diff against the house block, for a person
+to move the edit out. A style that three or more figures need is a pull
+request against `cg-figstyle.tex`, not a local override.
+
+**Changing the block means a new version.** Bump the `v<N>` in its first
+line and add that version's digest to
+`assets/tikz/cg-figstyle.versions.toml`, never editing an existing line
+there. `tests/test_figure_block.py` fails when the block and the register
+disagree, so an edit without a version bump cannot reach `main`. Then
+run `python -m chitragupta figure sync assets/tikz/*.tex
+assets/tikz/exemplars/*.tex` to refresh every scaffold and exemplar,
+which `tests/test_tikz_scaffolds.py` still checks byte for byte.
 
 **Repeating it once per figure is safe**, by the same argument #781
 makes for `\usetikzlibrary`. `\tikzset` re-defines the same keys to the

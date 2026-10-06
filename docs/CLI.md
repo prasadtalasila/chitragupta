@@ -48,6 +48,7 @@ short path; this is the full set.
   - [`chitragupta draft registry`](#-chitragupta-draft-registry)
   - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
   - [`chitragupta draft figures`](#-chitragupta-draft-figures)
+  - [`chitragupta figure sync`](#-chitragupta-figure-sync)
   - [`chitragupta enrich`](#-chitragupta-enrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
@@ -2921,6 +2922,50 @@ a path, never by importing that layer, so an ordinary drafting run needs
 none of its optional dependencies. The index lists figures rather than
 every picture on the page;
 [CONFIG.md](CONFIG.md#-docling_images) says what that excludes and why.
+
+### 🎨 `chitragupta figure sync`
+
+Keeps the house figure-style block
+([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)) current inside
+every figure file. A figure file carries its own copy of the block,
+between two marker comments, so that it compiles under
+`\usepackage{tikz}` alone wherever it is `\input`; this is what updates
+those copies when the block changes.
+
+```bash
+chitragupta figure sync                       # every content/drafts/**/figures/*.tex
+chitragupta figure sync content/drafts/twin   # a directory: every figures/*.tex beneath it
+chitragupta figure sync --check assets/tikz/*.tex   # files as named; report only
+```
+
+A directory contributes only the `*.tex` files directly inside a
+`figures/` directory beneath it, the same rule the default walk uses, so
+a draft's own `.tex` is never stamped. A file named on the command line
+is taken as given.
+
+| What it finds | What it does |
+| --- | --- |
+| no block | stamps one above the first `\usetikzlibrary` or `tikzpicture` line (`stamped`) |
+| a block this project released earlier | replaces it with the installed one (`refreshed`) |
+| the installed block | nothing (`current`) |
+| a block that matches no release: edited, or stamped by a newer chitragupta | leaves it alone and prints the diff (`modified`) |
+| markers unpaired or repeated | leaves it alone (`malformed`) |
+| no picture to stamp above, a symlink, not UTF-8, read-only or unwritable | reports it and carries on (`no-picture`, `skipped`) |
+
+Everything outside the markers is left byte for byte, CRLF line endings
+included, and running it twice changes nothing the second time.
+
+| Flag | Exit |
+| --- | --- |
+| *(none)* | **0** whatever it found; it is an aid |
+| `--check` | writes nothing; **1** if any file is not current, else 0 |
+| either | **2** on a usage error, or when the installed block or its version register cannot be read (`chitragupta doctor`) |
+
+`chitragupta draft render` reports a stale or missing block as a
+`[figure]` warning that names this command, and renders anyway. In a
+developer checkout, `git-hooks/pre-commit` runs `--check` on staged
+figure files and reports without blocking the commit
+([HOOKS.md](HOOKS.md)).
 
 ### 🧠 `chitragupta enrich`
 

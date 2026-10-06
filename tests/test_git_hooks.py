@@ -69,6 +69,23 @@ def fake_actionlint(bin_dir: Path, exit_code: int) -> None:
     stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
 
 
+def fake_python(bin_dir: Path, exit_code: int, output: str = "") -> Path:
+    """A stand-in interpreter that records its argv, prints `output` and
+    exits `exit_code`, so the hook's figure section is measured without a
+    chitragupta install behind it. The default output is what `figure
+    sync --check` prints for a stale file."""
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    output = output or "stale      figures/a.tex\nfigure sync: 1 stale"
+    script = bin_dir / "fake-python"
+    script.write_text(
+        f'#!/usr/bin/env bash\necho "$@" > "{bin_dir.as_posix()}/python-args"\n'
+        f"printf '%s\\n' '{output}'\nexit {exit_code}\n",
+        encoding="utf-8",
+    )
+    script.chmod(0o755)
+    return script
+
+
 class HookRepo:
     def __init__(self, root: Path):
         self.root = root
@@ -88,8 +105,11 @@ class HookRepo:
         path.write_text(body, encoding="utf-8")
         subprocess.run(["git", "add", relpath], cwd=self.root, check=True)
 
-    def run(self, with_actionlint: "int | None" = 0):
+    def run(self, with_actionlint: "int | None" = 0, python: "Path | None" = None):
         env = dict(os.environ)
+        env.pop("CHITRAGUPTA_PYTHON", None)
+        if python is not None:
+            env["CHITRAGUPTA_PYTHON"] = python.as_posix()
         if with_actionlint is None:
             # PATH is left alone rather than emptied. Emptying it removed
             # `bash` too, so the hook exited 127 on its own shebang and
@@ -190,6 +210,61 @@ class TestWhenItStaysOutOfTheWay:
         `session_start_hook.py` draws between a fault and a stage."""
         repo.stage(".github/workflows/w.yml", BAD_WORKFLOW)
         assert "actionlint" in repo.run(with_actionlint=None).stderr
+
+
+class TestTheFigureCheck:
+    """#1013: an advisory `figure sync --check` over staged figure files."""
+
+    def test_a_staged_figure_is_checked(self, repo, tmp_path):
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        result = repo.run(python=fake_python(tmp_path / "pybin", 0))
+        args = (tmp_path / "pybin" / "python-args").read_text(encoding="utf-8")
+        assert "figure sync --check content/drafts/t/figures/a.tex" in args
+        assert result.returncode == 0
+
+    def test_a_book_units_figure_is_checked(self, repo, tmp_path):
+        repo.stage("content/drafts/book/unit/figures/a.tex", "x")
+        repo.run(python=fake_python(tmp_path / "pybin", 0))
+        args = (tmp_path / "pybin" / "python-args").read_text(encoding="utf-8")
+        assert "content/drafts/book/unit/figures/a.tex" in args
+
+    def test_a_staged_scaffold_is_checked(self, repo, tmp_path):
+        repo.stage("assets/tikz/pipeline.tex", "x")
+        repo.run(python=fake_python(tmp_path / "pybin", 0))
+        args = (tmp_path / "pybin" / "python-args").read_text(encoding="utf-8")
+        assert "assets/tikz/pipeline.tex" in args
+
+    def test_a_stale_figure_is_reported_and_does_not_block(self, repo, tmp_path):
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        result = repo.run(python=fake_python(tmp_path / "pybin", 1))
+        assert result.returncode == 0
+        assert "figure sync" in result.stderr and "stale" in result.stderr
+
+    def test_an_interpreter_that_cannot_run_it_is_one_line(self, repo, tmp_path):
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        result = repo.run(python=fake_python(tmp_path / "pybin", 2))
+        assert result.returncode == 0 and "not checked" in result.stderr
+
+    def test_a_crash_is_not_reported_as_a_stale_block(self, repo, tmp_path):
+        """An uncaught exception exits 1 too; only sync's own summary line
+        makes a 1 a finding."""
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        crash = "Traceback (most recent call last):\nModuleNotFoundError: No module named x"
+        result = repo.run(python=fake_python(tmp_path / "pybin", 1, crash))
+        assert result.returncode == 0 and "not checked" in result.stderr
+        assert "not current" not in result.stderr
+
+    def test_an_unrelated_tex_file_is_not_a_figure(self, repo, tmp_path):
+        repo.stage("content/drafts/t/chapter.tex", "x")
+        repo.run(python=fake_python(tmp_path / "pybin", 0))
+        assert not (tmp_path / "pybin" / "python-args").exists()
+
+    def test_the_workflow_lint_still_runs_after_it(self, repo, tmp_path):
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        repo.stage(".github/workflows/ci.yml", BAD_WORKFLOW)
+        result = repo.run(with_actionlint=1, python=fake_python(tmp_path / "pybin", 1))
+        assert result.returncode == 1  # actionlint's block, not the figure's
+        assert "actionlint ran" in result.stdout + result.stderr
 
 
 class TestSequencerCommits:

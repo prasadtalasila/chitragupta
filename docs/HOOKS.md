@@ -126,7 +126,9 @@ Only the gate guarantees anything about what the agent then does.
 This document's registry is not everything that runs automatically,
 and it says so here so the next reader does not assume it is. Since
 issue 431's successor, `git-hooks/pre-commit` runs `actionlint` over
-`.github/workflows/` when a commit stages one.
+`.github/workflows/` when a commit stages one. Since #1013 it also runs
+`python -m chitragupta figure sync --check` over any staged figure file
+(`assets/tikz/*.tex`, `content/drafts/**/figures/*.tex`).
 
 It is deliberately *not* a row in the registry below, because it is a
 different mechanism answering a different question:
@@ -136,7 +138,7 @@ different mechanism answering a different question:
 | Fired by | the agent harness on its file-write tools: Claude Code's `Write`/`Edit`, Codex's `apply_patch`, OpenCode's plugin | git, on `commit` |
 | Sees | what *this agent* wrote | every path into a commit: a human in an editor, another agent, `git apply`, `sed` |
 | Installed by | `.claude/settings.json`, which ships and is scaffolded | `core.hooksPath`, set by `install_full_pipeline.sh dev-deps` |
-| May block | only the citation gate | yes (see below) |
+| May block | only the citation gate | the workflow check, yes (see below); the figure check, never |
 
 **Why the git hook may block when the rule above says only one hook
 may.** That rule governs the review layer, where a finding is a
@@ -147,6 +149,19 @@ commit only moves an identical binary verdict earlier, to where the fix
 is part of the change in hand. The rule that *does* carry over intact is
 the one about not blocking when it cannot tell: an absent `actionlint`
 is silence, because the install stage is opt-in.
+
+**Why the figure check does not block.** A stale house figure-style
+block is not a broken file: the figure still compiles and renders, and
+`figure sync` fixes it in one command. For a draft's figure nothing in
+CI fails on it either, so blocking at the commit would make the hook
+stricter than the build. (A stale scaffold under `assets/tikz/` does
+fail CI, in `tests/test_figure_sync.py` and the byte-identity check in
+`tests/test_tikz_scaffolds.py`; the advisory there is an early warning
+of that.) It prints what `--check` found and the command to run, and the
+commit goes ahead. When the interpreter it finds (`CHITRAGUPTA_PYTHON`, else
+the checkout's `.venv/bin/python`, else `python3`) cannot run the check,
+or crashes without printing sync's own summary line, it says once that
+figures were not checked.
 
 The inert-hook failure applies here too, in a new shape. A tracked
 hook directory git has not been pointed at runs nothing, and

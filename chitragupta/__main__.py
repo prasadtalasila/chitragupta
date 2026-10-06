@@ -13,6 +13,7 @@ installed rather than cloned (#258):
     chitragupta init [DIR]     ...   scaffold a project directory (#263)
     chitragupta doctor         ...   probe the toolchain, report, never install (#265)
     chitragupta install <stage> ...  os-deps or gpu-torch, the two pip cannot do itself (#265)
+    chitragupta figure sync [PATH] ... stamp the house figure-style block (#1013)
 
 **This adds a front door, not a command surface.** Every verb, flag and
 exit code below belongs to the layer it dispatches to, unchanged. Like
@@ -88,6 +89,10 @@ COMMANDS = {
         "chitragupta.install",
         "run the install_full_pipeline.sh stages a pip install "
         "cannot do itself -- os-deps, gpu-torch",
+    ),
+    "figure": (
+        "chitragupta.figure.__main__",
+        "keep the house figure-style block current in figure files -- sync, sync --check",
     ),
 }
 
