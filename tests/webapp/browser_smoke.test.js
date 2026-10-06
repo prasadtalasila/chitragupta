@@ -22,9 +22,11 @@
    on-screen position, not `emit("tap")`, so cytoscape's own event
    handling is under test as well.
 
-   Off CI, with no browser found, every case skips with the instruction,
-   the way code_standards.test.js does for acorn. On CI a missing browser
-   fails instead, because there the runner image is meant to have one. */
+   With no browser found, every case skips with the instruction, the way
+   code_standards.test.js does for acorn. In GitHub Actions it skips
+   always, browser or not: the runner's Chrome timing out at startup
+   failed unrelated PRs' lint job, so this runs on a developer's host
+   (`bash scripts/check_local.sh`) and not in CI. */
 "use strict";
 
 const { describe, it, before, after, beforeEach, afterEach } = require("node:test");
@@ -53,14 +55,15 @@ function onPath(name) {
 }
 
 function findBrowser() {
+  if (process.env.GITHUB_ACTIONS) {
+    return [null, "headless Chrome is not run in GitHub Actions -- run this file locally"];
+  }
   if (process.env.CHROME_PATH) { return [process.env.CHROME_PATH, false]; }
   for (const name of CANDIDATES) {
     const found = onPath(name);
     if (found) { return [found, false]; }
   }
-  const reason = "no Chrome or Chromium found -- install one, or set CHROME_PATH to its binary";
-  if (process.env.CI) { throw new Error(reason); }
-  return [null, reason];
+  return [null, "no Chrome or Chromium found -- install one, or set CHROME_PATH to its binary"];
 }
 
 const [BROWSER, skip] = findBrowser();

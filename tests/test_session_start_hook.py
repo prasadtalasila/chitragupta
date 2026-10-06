@@ -248,7 +248,7 @@ class TestLauncherFaults:
         )
         context = PreflightRepo.context(synced.run())
         assert "python4.2" in context
-        assert "not on PATH" in context
+        assert "not on an absolute PATH entry" in context
 
     def test_a_shell_form_command_is_checked_by_its_first_word(self, synced):
         synced.write_settings(

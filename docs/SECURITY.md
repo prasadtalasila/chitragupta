@@ -168,7 +168,9 @@ sections of [CLI.md](CLI.md) identify which commands require local tools.
 
 Every program that `chitragupta/` and `.claude/hooks/` launch is run by
 absolute path, resolved by `chitragupta/programs.py` from the absolute
-entries of `PATH` and nothing else (#974). A bare name handed to
+entries of `PATH` and nothing else (#974). OpenCode's adapter,
+`.opencode/chitragupta/gate.js`, applies the same rule in Node before it
+spawns `python` (#1025). A bare name handed to
 `subprocess.run` would leave the lookup to the OS, and on Windows
 `CreateProcess` searches the current directory before `PATH`, as
 `shutil.which` does there too. On any host a relative or empty `PATH`
@@ -185,7 +187,9 @@ absolute `PATH` entry
 inside the project, such as an activated `.venv/bin`, is still
 searched: that entry is the operator's choice, not the directory's.
 `tests/test_bare_launch_scan.py` scans every launch in both directories and
-fails on one whose program is not resolved this way.
+fails on one whose program is not resolved this way, and fails on any
+`child_process` launch in the repository's JavaScript whose program is
+a string literal.
 
 Every TeX engine this codebase starts (LuaLaTeX for a `pdf` render
 through Pandoc, pdflatex for the figure-layout aid's probe) runs with
