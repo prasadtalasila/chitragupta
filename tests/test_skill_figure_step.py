@@ -81,3 +81,42 @@ def test_the_reference_file_has_the_sections_the_procedure_points_at():
         assert heading in ref, heading
     for section in ("§1", "§2", "§3", "§4"):
         assert f"reference.md {section}" in _text(DRAWER), section
+
+
+_GENRES = {
+    "survey-writer": _MARKDOWN_SHAPE,
+    "tutorial-writer": _MARKDOWN_SHAPE,
+    "textbook-chapter-writer": _MARKDOWN_SHAPE,
+    "thesis-chapter-writer": _THESIS_SHAPE,
+}
+
+
+def test_every_figure_genre_keeps_the_no_citekey_rule():
+    # The one rule whose loss is unsafe if a harness skips the handoff:
+    # the gate does not follow \input (SOUL.md). It must not be trimmed
+    # out of a stub on the grounds that figure-drawer also says it.
+    missing = [g for g in _GENRES if _NO_CITEKEY not in _text(g)]
+    assert not missing, f"no-citekey rule missing from: {missing}"
+
+
+def test_every_figure_genre_keeps_its_own_shape():
+    wrong = [g for g, shape in _GENRES.items() if shape not in _text(g)]
+    assert not wrong, wrong
+    assert _MARKDOWN_SHAPE not in _text("thesis-chapter-writer")
+
+
+def test_every_figure_genre_hands_off():
+    missing = [g for g in _GENRES if f"`{DRAWER}`" not in _text(g)]
+    assert not missing, f"no handoff to figure-drawer in: {missing}"
+
+
+def test_no_rider_has_drifted_back_into_a_genre_skill():
+    # #1012 edited twelve files for one sentence. A rider that reappears
+    # here is that duplication coming back one copy at a time.
+    found = {g: [r for r in _RIDERS if r in _text(g)] for g in _GENRES}
+    found = {g: rs for g, rs in found.items() if rs}
+    assert not found, f"riders belong only in figure-drawer: {found}"
+
+
+def test_deep_research_draws_no_figure_and_names_no_drawer():
+    assert f"`{DRAWER}`" not in _text("deep-research")

@@ -337,16 +337,6 @@ candidate for the chapter.
    dropped is a `rejected.md` row, the same as an abandoned worked
    example.
 
-   **You may look at how the literature draws it first.**
-   `python -m chitragupta.draft figures <citekey>` lists a synced paper's
-   figures and hands back the path to a crop of each, for any citekey
-   this chapter already cites for motivation or background. Seeing how a
-   concept is conventionally drawn is legitimate input to a diagram you
-   then draw yourself. It is not a licence to reproduce one: the source
-   image never enters the draft, and `docs/WRITING-STANDARDS.md` §10 is
-   explicit that closely redrawing one from memory is the same violation
-   in different pixels. AGENTS.md states the boundary in full.
-
    A figure that stays is a **pair of files**, and §10 is the contract.
    This genre carries no inline form of either -- the draft names the
    figure in a marker line of its own, with nothing beside it:
@@ -361,70 +351,26 @@ candidate for the chapter.
    `.txt` contents in a fence on `--format md` and every other
    non-LaTeX format, and `--format tex`/`--format pdf` (step 14) get
    `\input{figures/<name>.tex}`, so the printed chapter a student reads
-   carries a real picture rather than monospace art. Six riders, each
-   of which §10 explains:
+   carries a real picture rather than monospace art.
 
-   - **Commit to a layout metaphor before drawing, and start from the
-     scaffold for it rather than from an empty picture.** `assets/tikz/`
-     holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names
-     -- pipeline, map, layered stack, control loop, branching tree,
-     hub-and-spoke, zoned spine. Copy the one that fits and re-label it,
-     leaving the house style block it carries unedited. Then run
-     `python -m chitragupta.figure sync <the figure file>`, which
-     refreshes the block if the scaffold's copy is older than the
-     installed one, and reports instead of overwriting if you edited
-     inside it. Each places
-     its nodes relative to one another, which is the property worth
-     keeping: a figure laid out in hand-computed millimetres re-opens
-     every adjacency in it the moment any label changes length. Then
-     check the result against that document's pre-flight defect list
-     (occlusion, chaotic routing, illegible type, non-rectangular
-     protrusion, an overlong node, literal copying) before keeping the
-     figure. No label goes below the body size, and the figure is
-     `\input` bare, never inside `\resizebox`: if it does not fit, change
-     the layout, not the scale.
-   - **Panels get lettered sub-captions, in both forms.** A figure with
-     more than one panel is still one figure and one marker; each panel
-     carries a `(<letter>) <short title>` node -- `(a)` for the first
-     panel in reading order, `(b)` for the second, on through the
-     alphabet -- and
-     the same letters appear in the `.txt` -- `docx`, `html` and `md`
-     render only that form, so letters left out of it are letters the
-     reader never sees. `docs/TIKZ-STYLE.md` has the worked example, the
-     row-wrapping rule for a row that stops fitting, and why the
-     `subcaption` package is not the answer.
+   Hand the drawing itself to `figure-drawer-opencode`, and come back to this
+   step when it returns: it owns the layout metaphor and scaffold,
+   panel letters, the ASCII twin, the compile probe and the geometry
+   review. What stays here must hold even if that skill is never
+   loaded:
+
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.md`, move the draft and its dossier before
      adding a figure, or drop the figure. Figures under a flat draft
      land in `content/drafts/figures/`, shared with every other flat
      draft.
-   - **Verify the TikZ compiles before keeping it.** Run
-     `kpsewhich tikz.sty` first: if it is absent, write the ASCII inline
-     in a fence instead, no pair and no marker, and say so in chat. If
-     it is present, wrap `figures/<name>.tex` in a minimal
-     `\documentclass{article}` + `\usepackage{tikz}` document and run
-     `pdflatex` on it. A malformed figure fails the *whole* pdf render,
-     not just the figure -- and in this genre that render is the
-     artifact a class actually reads.
-     If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
-     its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
-     copy that line into the probe too: the probe's own preamble loads
-     `tikz` and no library, so a picture that relies on one errors there
-     whether or not it is sound. Keep the line in the figure file and
-     write nothing else about loading -- no clearing of
-     `\tikz@library@...@loaded`, no saving or restoring of
-     `\tikz@node@reset@hook`. The renderer collects those lines and
-     loads the union in its own preamble (#781); a load *inside* the
-     figure float is the bug that multiplied node spacing in this
-     project's own book. `docs/TIKZ-STYLE.md` has the detail.
+   - **If TikZ is not installed,** `figure-drawer-opencode` writes no pair.
+     Write the ASCII inline in a fence instead, no pair and no
+     marker, and say so in chat.
    - **No citekey inside either figure file.** Step 12's gate reads the
      draft and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      around the figure instead.
-   - **The TikZ must be as original as the ASCII.** A picture redrawn
-     from a source paper's figure is the same violation in different
-     pixels -- which bites hardest here, where the temptation is to
-     reproduce the textbook diagram everyone in the field already knows.
    - **A caption, if the figure earns one, goes in the draft, never in
      the figure file.** A caption line directly below the marker, no
      blank line between, and an inline `<!-- figureref: <name> -->`
