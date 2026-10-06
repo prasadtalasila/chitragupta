@@ -156,9 +156,15 @@ def _launcher_fault(hook: dict) -> list[str]:
     shell is PowerShell on a Windows host without Git Bash -- where that
     syntax names an undefined variable and expands to nothing.
 
-    `shutil.which` reads *this* process's PATH, which stands in for the
+    A bare name's lookup reads *this* process's PATH, which stands in for the
     harness's only because both descend from the same shell. That is the
     limit of what a check on this side of the fence can see.
+
+    A bare name is looked up as `_import_fault` looks it up, on PATH's
+    absolute entries (#1025). With `shutil.which` here, a launcher found
+    only through a relative entry (`PATH=.venv/bin:$PATH`) passed this
+    check and was then silently skipped by the probe, so it was reported
+    neither missing nor dead.
     """
     command = hook.get("command")
     program = _program_name(hook)
@@ -167,8 +173,11 @@ def _launcher_fault(hook: dict) -> list[str]:
     args = [a for a in _items(hook.get("args")) if isinstance(a, str)]
     text = " ".join([command, *args])
     found = []
-    if not shutil.which(program):
-        found.append(f"`{program}` is not on PATH, so a hook cannot start.")
+    if not _is_bare_command(program):
+        if not shutil.which(program):
+            found.append(f"`{program}` is not an executable file, so a hook cannot start.")
+    elif not programs.resolve_program(program):
+        found.append(f"`{program}` is not on an absolute PATH entry, so a hook cannot start.")
     if "$CLAUDE_PROJECT_DIR" in text.replace("${CLAUDE_PROJECT_DIR}", ""):
         found.append(
             f"`{program}` uses an unbraced $CLAUDE_PROJECT_DIR, which the "

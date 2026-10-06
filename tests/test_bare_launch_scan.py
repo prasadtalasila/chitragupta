@@ -15,7 +15,11 @@ is what keeps every launch on it.
 # launches of the package, this one the package's launches of the rest.
 
 import ast
+import os
+import re
 from pathlib import Path
+
+import pytest
 
 from tests.test_subprocess_launch_scan import _LAUNCHERS, _subprocess_names
 
@@ -298,3 +302,74 @@ class TestTheScanSeesTheShapesItWasWrittenFor:
             '    for p in ("bash",):\n        subprocess.run([p])\n'
         )
         assert bare_launches(old) == [(4, "cannot follow p")]
+
+
+# The JavaScript a harness adapter runs (#1025): `.opencode/` today, and
+# any later adapter written in Node. Python's `ast` cannot read it, so the
+# check is narrower and textual: a `child_process` launcher whose first
+# argument is a string literal is a bare name left to the OS lookup. The
+# fix is the adapter's own resolver, as `.opencode/chitragupta/gate.js`'s
+# `resolveProgram`; a launch through anything else (a parameter, a
+# resolver's result) is not a literal and is left alone.
+_JS_LAUNCH = re.compile(
+    r"\b(spawn|spawnSync|exec|execSync|execFile|execFileSync|fork)\s*\(\s*([\"'`])"
+)
+
+
+def bare_js_launches(source: str) -> "list[tuple[int, str]]":
+    """(line, launcher) for each JS launch whose program is a literal."""
+    return [
+        (source.count("\n", 0, match.start()) + 1, match.group(1))
+        for match in _JS_LAUNCH.finditer(source)
+    ]
+
+
+_NOT_SHIPPED = {".git", ".venv", "venv", "node_modules", "site-packages", "tests", "worktrees"}
+
+
+def _scanned_js() -> list:
+    """Every JavaScript file the repository ships that imports
+    `child_process`, outside the tests and any installed packages.
+
+    Pruned while walking, not filtered after: from the main checkout a
+    full walk descends into every worktree and venv and takes ~24s."""
+    found = []
+    for directory, dirnames, filenames in os.walk(REPO_ROOT):
+        dirnames[:] = [d for d in dirnames if d not in _NOT_SHIPPED]
+        for name in filenames:
+            path = Path(directory) / name
+            if path.suffix in (".js", ".mjs", ".cjs") and "child_process" in path.read_text(
+                encoding="utf-8"
+            ):
+                found.append(path)
+    return sorted(found)
+
+
+def test_no_launch_in_a_javascript_adapter_takes_a_bare_name():
+    offenders = [
+        f"{path.relative_to(REPO_ROOT)}:{line} {launcher}"
+        for path in _scanned_js()
+        for line, launcher in bare_js_launches(path.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, (
+        "resolve the program over PATH's absolute entries first, as "
+        ".opencode/chitragupta/gate.js's resolveProgram does:\n  " + "\n  ".join(offenders)
+    )
+
+
+def test_the_javascript_scan_reaches_the_opencode_gate():
+    """A scan that reads no file passes for the wrong reason."""
+    assert REPO_ROOT / ".opencode" / "chitragupta" / "gate.js" in _scanned_js()
+
+
+class TestTheJavascriptScanSeesTheShapeItWasWrittenFor:
+    def test_the_pre_1025_launch(self):
+        old = 'const result = spawn("python", [join(HOOKS, script)], {\n'
+        assert bare_js_launches("// x\n" + old) == [(2, "spawn")]
+
+    @pytest.mark.parametrize("launcher", ["spawnSync", "execFileSync", "exec", "fork"])
+    def test_every_child_process_launcher(self, launcher):
+        assert bare_js_launches(f"{launcher}( 'node', [])") == [(1, launcher)]
+
+    def test_a_resolved_program_is_left_alone(self):
+        assert bare_js_launches("const result = spawn(python, [join(HOOKS, script)]);") == []

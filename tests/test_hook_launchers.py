@@ -113,7 +113,7 @@ class TestFaults:
                 }
             )
         )
-        assert "not on PATH" in found[0]
+        assert "not on an absolute PATH entry" in found[0]
 
     def test_one_missing_interpreter_is_reported_once(self, settings):
         """Both hooks are launched the same way, so the naive version said
@@ -224,6 +224,12 @@ class TestOneLauncher:
     def test_an_entry_with_no_command_is_skipped(self):
         assert hook_launchers._launcher_fault({"type": "command"}) == []
 
+    def test_a_path_qualified_launcher_that_is_not_there_is_a_fault(self, tmp_path):
+        missing = str(tmp_path / "nowhere" / "python")
+        assert hook_launchers._launcher_fault({"command": missing, "args": []}) == [
+            f"`{missing}` is not an executable file, so a hook cannot start."
+        ]
+
 
 class TestProjectRoot:
     """Where this module looks for `.claude/settings.json`.
@@ -260,7 +266,7 @@ class TestProjectRoot:
 
 class TestImportFaultDirectly:
     """`_import_fault` on its own, for the shapes a whole settings file
-    would only reach by first resolving `shutil.which` -- which is the
+    would only reach by first resolving the program -- which is the
     caller's job, not this function's."""
 
     def test_a_program_that_cannot_be_spawned_at_all_is_not_a_fault(self):
@@ -423,6 +429,23 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
         hook_launchers.faults(settings(entry_for("python")))
         assert not marker.exists(), "the planted binary was executed"
 
+    def test_a_launcher_only_a_relative_path_entry_finds_is_reported_missing(
+        self, settings, tmp_path, monkeypatch
+    ):
+        """#1025. The existence check used `shutil.which`, which follows a
+        relative entry, and the probe used `resolve_program`, which does
+        not: `PATH=relbin:$PATH` made the launcher pass the one and be
+        skipped by the other, so it was reported neither missing nor
+        dead. Now both agree, and it is reported missing."""
+        marker = tmp_path / "ran"
+        (tmp_path / "relbin").mkdir()
+        _plant(tmp_path / "relbin" / "python", marker)
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setenv("PATH", "relbin")
+        found = hook_launchers.faults(settings(entry_for("python")))
+        assert found == ["`python` is not on an absolute PATH entry, so a hook cannot start."]
+        assert not marker.exists(), "the relative-entry binary was executed"
+
     def test_the_probe_is_handed_the_absolute_path_path_resolved(
         self, settings, tmp_path, monkeypatch
     ):
@@ -455,7 +478,9 @@ class TestTheImportProbeOnlyRunsAgainstABareName:
         monkeypatch.setattr(
             hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
         )
-        monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
+        monkeypatch.setattr(
+            hook_launchers.programs, "resolve_program", lambda program: "/usr/bin/python3"
+        )
         hook_launchers.faults(settings(entry_for("python3")))
         assert calls == ["python3"]
 
@@ -481,7 +506,9 @@ class TestImportProbeIsPerDistinctProgram:
         monkeypatch.setattr(
             hook_launchers, "_import_fault", lambda program, env=None: calls.append(program) or None
         )
-        monkeypatch.setattr(hook_launchers.shutil, "which", lambda program: "/usr/bin/python3")
+        monkeypatch.setattr(
+            hook_launchers.programs, "resolve_program", lambda program: "/usr/bin/python3"
+        )
         # Bare-named, since #637 made that the only shape the probe takes.
         same = {"command": "python3", "args": ["${CLAUDE_PROJECT_DIR}/x.py"]}
         hook_launchers.faults(
@@ -513,7 +540,7 @@ class TestImportProbeIsPerDistinctProgram:
         )
         assert calls == []
         # Reported once, by the PATH check, not a second time by the probe.
-        assert found == ["`python4.2` is not on PATH, so a hook cannot start."]
+        assert found == ["`python4.2` is not on an absolute PATH entry, so a hook cannot start."]
 
 
 class TestTheImportProbeOnlyRunsAgainstAPython:

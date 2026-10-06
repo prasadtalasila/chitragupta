@@ -6,7 +6,8 @@
 // (docs/HARNESS.md). Kept apart from ../plugins/ so that directory's one
 // file exports exactly one plugin.
 import { spawnSync } from "node:child_process";
-import { dirname, join } from "node:path";
+import { accessSync, constants, statSync } from "node:fs";
+import { delimiter, dirname, extname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
@@ -32,9 +33,35 @@ export function touchesDrafts(payload) {
   return DRAFT_MARKERS.some((marker) => text.includes(marker));
 }
 
-export function runHook(script, payload, spawn = spawnSync) {
+// chitragupta/programs.py's rule, in Node (#1025): a bare name handed to
+// spawnSync is looked up by the OS, and on Windows `CreateProcess` tries
+// the current directory -- a cloned project -- before PATH. So only PATH's
+// absolute entries are searched, and the absolute path is what is spawned.
+// A name without an extension gets `.exe` on Windows, as `CreateProcess`
+// would give it, so a `.bat` or `.cmd` earlier on PATH is never chosen.
+export function resolveProgram(name, path = process.env.PATH, platform = process.platform) {
+  const file = platform === "win32" && !extname(name) ? `${name}.exe` : name;
+  for (const directory of (path ?? "").split(delimiter)) {
+    if (!isAbsolute(directory)) continue;
+    const candidate = join(directory, file);
+    try {
+      if (!statSync(candidate).isFile()) continue;
+      accessSync(candidate, constants.X_OK);
+      return candidate;
+    } catch {
+      // absent or not executable: keep looking, as a PATH search does
+    }
+  }
+  return null;
+}
+
+export function runHook(script, payload, spawn = spawnSync, resolve = resolveProgram) {
   // `python`, as every launcher here names it (docs/HOOKS.md's launcher contract).
-  const result = spawn("python", [join(HOOKS, script)], {
+  const python = resolve("python");
+  if (!python) {
+    return { failed: true, detail: "`python` is not on an absolute PATH entry." };
+  }
+  const result = spawn(python, [join(HOOKS, script)], {
     input: JSON.stringify(payload),
     encoding: "utf8",
     timeout: HOOK_TIMEOUT_MS,

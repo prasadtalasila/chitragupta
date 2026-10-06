@@ -218,7 +218,7 @@ It makes three checks, of which **only the first two are faults**:
 
 | Checked | How | Verdict |
 | --- | --- | --- |
-| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, `shutil.which` on each command, unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct launcher **whose bare name (no path separators) names a Python interpreter**, run by the absolute path `chitragupta/programs.py` resolves from `PATH`'s absolute entries | fault |
+| Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, each command looked up (a bare name on `PATH`'s absolute entries only), unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct launcher **whose bare name (no path separators) names a Python interpreter**, run by the absolute path `chitragupta/programs.py` resolves from `PATH`'s absolute entries | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
 | Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
 | all three fine | -- | says nothing at all |
@@ -239,7 +239,7 @@ with the command that advances it, and never as `BROKEN`.
 That distinction is what lets the hook run this early at all. Both fault
 checks are corpus-independent by construction:
 
-- The launcher check reads a config file, calls `shutil.which`, and, for
+- The launcher check reads a config file, looks each launcher up, and, for
   each distinct launcher that resolves *and is a bare, Python-shaped
   name*, spawns it once to ask whether it can import `chitragupta`. No
   corpus either way.
@@ -271,6 +271,11 @@ checks are corpus-independent by construction:
   `python.exe` was what the probe ran (#974). The probe therefore
   resolves the name with `chitragupta/programs.py`, which searches only
   `PATH`'s absolute entries, and launches the absolute path it returns.
+  The existence check looks a bare name up the same way (#1025). It used
+  `shutil.which`, which follows a relative entry, so with
+  `PATH=.venv/bin:$PATH` a launcher passed the existence check, was
+  skipped by the probe, and was reported neither missing nor dead. It is
+  now reported as not on an absolute `PATH` entry.
   A path-qualified launcher keeps the existence check and silently forgoes
   the import probe: reporting less is the accepted price of never
   executing a file merely because a directory this process walked into
@@ -621,6 +626,11 @@ inherit from: a hook already running *is* an interpreter, so naming it
 again is a needless second chance to fail, while the launcher has nothing
 to inherit and a name is the only thing `settings.json` can give the
 harness. Resolve by name once, at the outermost edge, and never again.
+The decision is about *which* name, not how it is looked up: where the
+lookup is this repository's own code, as in OpenCode's
+`.opencode/chitragupta/gate.js`, it resolves `python` on `PATH`'s
+absolute entries and spawns the absolute path (#1025), the rule
+[SECURITY.md](SECURITY.md) gives for every launch.
 
 **Finish inside the harness's timeout, or block.** Every hook gets
 `"timeout": 30`, and a hook the harness kills prints nothing: for the

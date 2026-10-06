@@ -672,7 +672,7 @@ class TestDeadLauncherWarning:
             citation_gate.gate_liveness.launcher_configs,
             "faults",
             lambda root: [
-                ".claude/settings.json: `python` is not on PATH, so a hook cannot start."
+                ".claude/settings.json: `python` is not on an absolute PATH entry, so a hook cannot start."
             ],
         )
         rc = citation_gate.run([self.draft(isolated_config)])
@@ -680,7 +680,7 @@ class TestDeadLauncherWarning:
 
         assert rc == 0
         assert "OK" in captured.out
-        assert "`python` is not on PATH" in captured.err
+        assert "`python` is not on an absolute PATH entry" in captured.err
         assert "docs/HOOKS.md" in captured.err
         assert "WARNING" not in captured.out, "the verdict stream stays the verdict"
 

@@ -1,11 +1,15 @@
 // node --test for .opencode/chitragupta/gate.js (#900).
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { delimiter, join } from "node:path";
 import {
   WRITERS,
   afterWrite,
   deliver,
   payloadFor,
+  resolveProgram,
   runHook,
   touchesDrafts,
 } from "../../.opencode/chitragupta/gate.js";
@@ -37,29 +41,32 @@ test("only writes that mention a draft count as touching drafts", () => {
   assert.equal(touchesDrafts(payloadFor("apply_patch", { patchText: patch })), true);
 });
 
+// A resolver standing in for PATH, so these cases do not depend on the host's.
+const found = () => "/usr/bin/python";
+
 test("a hook that cannot start is a failure, not a pass", () => {
   const spawn = () => ({ error: new Error("ENOENT"), status: null, stdout: "", stderr: "" });
-  assert.equal(runHook("citation_gate_hook.py", {}, spawn).failed, true);
+  assert.equal(runHook("citation_gate_hook.py", {}, spawn, found).failed, true);
 });
 
 test("a hook that exits non-zero is a failure", () => {
   const spawn = () => ({ status: 1, stdout: "", stderr: "Traceback" });
-  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn), { failed: true, detail: "Traceback" });
+  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn, found), { failed: true, detail: "Traceback" });
 });
 
 test("a hook that prints nothing passes", () => {
   const spawn = () => ({ status: 0, stdout: "", stderr: "" });
-  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn), {});
+  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn, found), {});
 });
 
 test("a hook that prints non-JSON is a failure", () => {
   const spawn = () => ({ status: 0, stdout: "Traceback ...", stderr: "" });
-  assert.equal(runHook("citation_gate_hook.py", {}, spawn).failed, true);
+  assert.equal(runHook("citation_gate_hook.py", {}, spawn, found).failed, true);
 });
 
 test("a hook's JSON comes back parsed", () => {
   const spawn = () => ({ status: 0, stdout: '{"decision": "block", "reason": "r"}\n' });
-  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn), { decision: "block", reason: "r" });
+  assert.deepEqual(runHook("citation_gate_hook.py", {}, spawn, found), { decision: "block", reason: "r" });
 });
 
 test("delivering a refusal reaches both the tool output and a thrown error", () => {
@@ -108,4 +115,78 @@ test("a passing gate with no style findings changes nothing", () => {
   const output = { output: "ok" };
   afterWrite("edit", draft, output, hooks({}, {}));
   assert.equal(output.output, "ok");
+});
+
+// #1025: the program is resolved on PATH's absolute entries, never left to
+// the OS lookup, which on Windows tries the current directory first.
+function bin(...names) {
+  const dir = mkdtempSync(join(tmpdir(), "gate-"));
+  for (const name of names) {
+    writeFileSync(join(dir, name), "");
+    chmodSync(join(dir, name), 0o755);
+  }
+  return dir;
+}
+
+test("the hook is spawned by the absolute path the resolver found", () => {
+  const launched = [];
+  const spawn = (program) => launched.push(program) && { status: 0, stdout: "" };
+  runHook("citation_gate_hook.py", {}, spawn, found);
+  assert.deepEqual(launched, ["/usr/bin/python"]);
+});
+
+test("a python on no absolute PATH entry is a failure and spawns nothing", () => {
+  const launched = [];
+  const spawn = (program) => launched.push(program) && { status: 0, stdout: "" };
+  const result = runHook("citation_gate_hook.py", {}, spawn, () => null);
+  assert.equal(result.failed, true);
+  assert.match(result.detail, /absolute PATH entry/);
+  assert.deepEqual(launched, []);
+});
+
+test("an absolute PATH entry is searched", () => {
+  const dir = bin("python");
+  assert.equal(resolveProgram("python", dir, "linux"), join(dir, "python"));
+});
+
+test("a relative or empty PATH entry is never searched", () => {
+  const root = mkdtempSync(join(tmpdir(), "gate-"));
+  mkdirSync(join(root, "relbin"));
+  writeFileSync(join(root, "relbin", "python"), "");
+  chmodSync(join(root, "relbin", "python"), 0o755);
+  writeFileSync(join(root, "python"), "");
+  chmodSync(join(root, "python"), 0o755);
+  const cwd = process.cwd();
+  process.chdir(root);
+  try {
+    assert.equal(resolveProgram("python", ["relbin", ".", ""].join(delimiter), "linux"), null);
+  } finally {
+    process.chdir(cwd);
+  }
+});
+
+test("a directory or an absent file is passed over for the next entry", () => {
+  const first = bin();
+  mkdirSync(join(first, "python"));
+  const second = bin("python");
+  const path = [bin(), first, second].join(delimiter);
+  assert.equal(resolveProgram("python", path, "linux"), join(second, "python"));
+});
+
+test("a file that is not executable is passed over", { skip: process.platform === "win32" }, () => {
+  const first = bin();
+  writeFileSync(join(first, "python"), "");
+  const second = bin("python");
+  assert.equal(resolveProgram("python", [first, second].join(delimiter), "linux"), join(second, "python"));
+});
+
+test("on Windows a bare name is looked for as .exe, never .bat or .cmd", () => {
+  const batch = bin("python.bat", "python.cmd");
+  const exe = bin("python.exe");
+  const path = [batch, exe].join(delimiter);
+  assert.equal(resolveProgram("python", path, "win32"), join(exe, "python.exe"));
+});
+
+test("an empty PATH resolves nothing", () => {
+  assert.equal(resolveProgram("python", "", "linux"), null);
 });

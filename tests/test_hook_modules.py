@@ -412,13 +412,13 @@ class TestLauncherFaults:
         monkeypatch.setattr(
             preflight.launcher_configs,
             "faults",
-            lambda root: ["`python` is not on PATH, so a hook cannot start."],
+            lambda root: ["`python` is not on an absolute PATH entry, so a hook cannot start."],
         )
         monkeypatch.setattr(preflight, "gate_is_live", lambda: True)
         monkeypatch.setattr(preflight, "corpus_stage", lambda: None)
         assert preflight.main() == 0
         context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
-        assert "BROKEN: `python` is not on PATH" in context
+        assert "BROKEN: `python` is not on an absolute PATH entry" in context
 
     def test_no_installed_chitragupta_is_named_rather_than_silent(self, preflight, monkeypatch):
         """#891 gap 2, at the `launcher_configs is None` branch
