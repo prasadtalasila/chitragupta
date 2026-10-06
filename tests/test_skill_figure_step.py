@@ -137,7 +137,9 @@ def test_every_stub_probes_for_tikz_and_guards_originality_itself():
     # Neither may depend on figure-drawer having been loaded.
     for g in _GENRES:
         text = _text(g)
-        missing = [p for p in ("kpsewhich tikz.sty", "compiles", "redrawn from a source") if p not in text]
+        missing = [
+            p for p in ("kpsewhich tikz.sty", "compiles", "redrawn from a source") if p not in text
+        ]
         assert not missing, f"{g} stub lacks {missing}"
 
 
@@ -146,5 +148,11 @@ def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
     # so the drawer itself must name the TikZ fallback per shape, the flat
     # draft case and the thesis fragment's preamble warnings.
     text = _text(DRAWER)
-    for needle in ("a `verbatim` environment", "A flat draft** (", "[tikz-libraries]", "[unicode]", "\\renewcommand{\\thefigure}"):
+    for needle in (
+        "a `verbatim` environment",
+        "A flat draft** (",
+        "[tikz-libraries]",
+        "[unicode]",
+        "\\renewcommand{\\thefigure}",
+    ):
         assert needle in text, needle
