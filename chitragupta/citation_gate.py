@@ -38,8 +38,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from chitragupta import _code_regions, _markdown_inert, config, gate_liveness, ledger
-from chitragupta._braced_keys import braced_keys
+from chitragupta import _code_regions, _markdown_inert, _pandoc_cites, config, gate_liveness, ledger
 
 # Matches the command name by substring ("contains cite/Cite") rather than
 # an explicit list of the standard cite/citep/citet/... names -- an earlier,
@@ -113,45 +112,10 @@ _LATEX_CITE_RE = re.compile(
 # than its {cf} read as a key group -- an invented citekey would block a
 # sound draft. Only alternation matches with group(1) set are keys.
 _CITE_KEYS_RE = re.compile(r"\[[^\]]*\]|\{([^}]+)\}")
-# Pandoc only treats @ as a citation marker when it isn't part of a larger
-# token -- otherwise `\href{mailto:name@example.com}` (this project's own
-# papers/ directory has author emails) would be misread as a citation.
-# Citekey body includes '-' because bibtexparser-generated keys do (e.g.
-# `jacoby_open-source_2023`, or a reference manager's own `-1`/`-2`
-# disambiguation suffixes on duplicate entries) -- roughly a quarter of
-# this project's synced citekeys contain one, so excluding it silently
-# truncated matches. Backslash is excluded too: LaTeX's internal
-# @-as-letter idiom (\makeatletter ... \@ifundefined{...}{}{} ...
-# \makeatother, pandoc's own rendered .tex templates use this) would
-# otherwise misread as a citation on `\@ifundefined` -- found via a
-# retro-sweep over rendered .tex output, and load-bearing now that
-# thesis-chapter-writer's content/drafts/<slug>.tex is hook-gated too.
-# The first character admits digits and '_' as well as letters because
-# Pandoc's own grammar does: requiring a letter made `[@3dprinting_2020]`
-# invisible to the gate (0 citations) while pandoc still rendered it as a
-# citation -- the false-negative direction, which always wins here.
-# Pandoc's own citekey grammar, and the one definition of it in this
-# package: an alphanumeric (or `_`) start, then alphanumerics, with
-# `:.#$%&-+?<>~/` allowed only *between* them. The lookahead is what
-# stops a sentence-final `.` or a closing `>` being eaten -- pandoc
-# resolves `key` in "shown by @key.", not `key.`. Restricting the body to
-# `[A-Za-z0-9_-]` truncated the key at the first of those characters, so
-# the gate verified a *prefix* of what pandoc would look up: a draft
-# citing `[@smith:2020]` passed on a ledger holding `smith`, and pandoc
-# then rendered `[?]` -- the one thing this gate exists to catch. In the
-# other direction a legitimate Better-BibTeX key (`doe.2020`) was refused
-# as unknown, pushing an author to "fix" a correct citation.
-#
-# A hyphen *run* is matched whole, deliberately unlike pandoc, which
-# stops at `--` (verified against `pandoc -t json` on this host). Keys
-# with a doubled hyphen are real here -- bibtexparser collapses
-# "as-a-service" into `zech_digital-twins-as--service_2024` -- and
-# render_output/_citeproc.py already repairs that for pandoc by aliasing
-# the run away in a temp copy. That repair is driven by this pattern, so
-# matching pandoc's truncation here would both refuse the key at the gate
-# and leave the alias unbuilt, silently dropping the citation instead.
-PANDOC_KEY = r"[A-Za-z0-9_](?:[A-Za-z0-9_]|-+(?=[A-Za-z0-9_])|[:.#$%&+?<>~/](?=[A-Za-z0-9_]))*"
-_PANDOC_CITE_RE = re.compile(rf"(?<![A-Za-z0-9._%+\-\\])-?@({PANDOC_KEY})")
+# The Pandoc half of the grammar -- what a key may be spelled with, what
+# may stand before its `@`, example-list references -- is
+# `_pandoc_cites`'s, shared with every other module that finds a Pandoc
+# citation (#1021).
 
 # The teaching genres' whole job is worked code examples, and code routinely
 # contains @-tokens that look like a Pandoc citation (Python's @dataclass,
@@ -233,6 +197,18 @@ def _blank_code(text: str, *, latex: bool = False, prose_only: bool = False) -> 
     return _markdown_inert.blank(text, code_only=not prose_only)
 
 
+def markdown_prose(text: str) -> tuple[str, set[str]]:
+    """`_blank_code(text, prose_only=True)` for Markdown, and the
+    example-list labels the document defines.
+
+    The labels come from the same text the blanking reads, with LaTeX
+    verbatim environments already blanked, so a `(@label)` line inside
+    one -- raw TeX to pandoc -- defines nothing. Read from the original
+    instead, it would hide every `@label` in the file from the gate.
+    """
+    return _markdown_inert.prose(_code_regions.blank_latex_verbatim(text))
+
+
 @dataclass
 class GateResult:
     path: Path
@@ -312,7 +288,11 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
     pass it for `.tex` input, where a backtick is a quote character and
     Markdown's inline-code rule would blank real citations.
     """
-    text = _blank_code(text, latex=latex, prose_only=True)
+    source = text
+    if latex:
+        text, labels = _blank_code(text, latex=True, prose_only=True), set()
+    else:
+        text, labels = markdown_prose(text)
 
     # (start_offset, key) from both regexes, sorted into true document
     # order first -- LaTeX and Pandoc matches were previously collected in
@@ -331,9 +311,10 @@ def extract_citekeys(text: str, *, latex: bool = False) -> list[tuple[int, str]]
                 continue
             start = match.start() if group.start() == 0 else match.start(1) + group.start()
             matches.extend((start, k.strip()) for k in group.group(1).split(",") if k.strip())
-    for match in _PANDOC_CITE_RE.finditer(text):
-        matches.append((match.start(), match.group(1)))
-    matches.extend(braced_keys(text))
+    matches.extend(
+        (start, key)
+        for start, _, key in _pandoc_cites.citations(text, labels, latex=latex, source=source)
+    )
     matches.sort(key=lambda m: m[0])
 
     # One forward sweep instead of a fresh text.count("\n", 0, ...) per

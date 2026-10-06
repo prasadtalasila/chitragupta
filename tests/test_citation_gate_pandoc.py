@@ -16,12 +16,16 @@ also runs where pandoc is absent. The composition is a seeded
 is not a dependency here; a fixed seed keeps a failure reproducible
 from the test id alone.
 
-Three disagreements are deliberate, and pinned as such at the end: a
+Six disagreements are deliberate, and pinned as such at the end: a
 LaTeX `\\cite` in Markdown (pandoc passes it through raw, and a LaTeX
 render would resolve it), a doubled hyphen in a key (see `PANDOC_KEY`),
-and `$math$` (a gap that can only over-report).
+a raw TeX command before an `@`, which pandoc 3.1 and 3.6 read
+differently, and three gaps that can only over-report: `$math$`, a TeX
+command that takes the `@` as its argument, and an `@` after an
+emphasis opener pandoc abandoned.
 """
 
+import functools
 import json
 import random
 import re
@@ -31,11 +35,39 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import _braced_keys, citation_gate
+from chitragupta import _braced_keys, citation_gate, references
 
 ROOT = Path(__file__).resolve().parent.parent
 PANDOC = shutil.which("pandoc")
 needs_pandoc = pytest.mark.skipif(PANDOC is None, reason="pandoc not installed")
+
+
+@functools.cache
+def _pandoc_version() -> tuple[int, ...]:
+    if PANDOC is None:
+        return ()
+    first = subprocess.run(
+        [PANDOC, "--version"], capture_output=True, text=True, check=True, encoding="utf-8"
+    ).stdout.split()[1]
+    return tuple(int(part) for part in first.split("."))
+
+
+# The version the stored answers below were recorded against. An older
+# pandoc reads some constructs differently -- 3.1, which Ubuntu's apt
+# installs and so CI's Linux leg, lets an unclosed `<!--` inside a nested
+# list item swallow the blocks after it -- so the random comparisons ask
+# it only for the direction this gate exists for: nothing it cites goes
+# unchecked. Exact agreement is asked of the recorded version, and of the
+# stored answers everywhere.
+RECORDED = (3, 6)
+
+
+def assert_agrees_with_pandoc(gate: set[str], text: str) -> None:
+    resolved = pandoc_citation_ids(text)
+    if _pandoc_version() >= RECORDED:
+        assert gate == resolved, text
+    else:
+        assert resolved <= gate, text
 
 
 def pandoc_citation_ids(text: str) -> set[str]:
@@ -189,6 +221,74 @@ FRAGMENTS = [
         "Body[^n].\n\n[^n]: Note @footnote_first.\n\n    @footnote_para\n",
         {"footnote_para", "footnote_first"},
     ),
+    # What may stand before the `@` (#1021): only a letter, a digit or a
+    # `.` stops a citation, Unicode included, and a backslash escapes
+    # the `@` only when it is not itself escaped.
+    (
+        "pre-@k_hyphen, [pre-@k_bracket], x_@k_under, x%@k_pct and x+@k_plus",
+        {"k_hyphen", "k_bracket", "k_under", "k_pct", "k_plus"},
+    ),
+    (
+        'x*@k_star x~@k_tilde x/@k_slash x:@k_colon x#@k_hash )@k_paren "@k_quote x!@k_bang',
+        {"k_star", "k_tilde", "k_slash", "k_colon", "k_hash", "k_paren", "k_quote", "k_bang"},
+    ),
+    ("x.@k_dot é@k_accent x²@k_super see@k_letter me@k_email.org", set()),
+    (
+        "\\@k_esc1 \\\\@k_esc2 \\\\\\@k_esc3 \\-@k_esc4 \\\\-@k_esc5",
+        {"k_esc2", "k_esc4", "k_esc5"},
+    ),
+    # An escaped `.` is punctuation, not the `.` that blocks a citation.
+    # (A raw TeX command before the `@` is pinned in its own test below:
+    # pandoc versions disagree on it.)
+    ("\\.@k_escdot a\\.@k_escdot2 \\\\.@k_escdot3", {"k_escdot", "k_escdot2"}),
+    # Smart punctuation reads a run of three `.` as an ellipsis, which
+    # does not block the `@` after it; an escaped last `.` does not either.
+    (
+        "x...@el_1 x....@el_2 x......@el_3 ..\\.@el_4 \\...@el_5 ...@el_6",
+        {"el_1", "el_3", "el_4", "el_6"},
+    ),
+    # A `:` or `/` may stand before a `/`: URL-shaped keys read whole.
+    ("[@url_a:/b] @url_c//d @url_e:/ @url_f/:g", {"url_a:/b", "url_c//d", "url_e:", "url_f"}),
+    # Unicode in the key itself: any letter or digit, but a combining
+    # mark ends it, as it does pandoc's.
+    (
+        "@日本_2021 and [@müller_2020] and [@p36ü] and @Ⅻ_roman",
+        {"日本_2021", "müller_2020", "p36ü", "Ⅻ_roman"},
+    ),
+    ("@comb́ined and @²_digit", {"comb", "²_digit"}),
+    # `*` may open a key: `@*` alone is the cite-everything wildcard.
+    ("@* and [@*k_wild]", {"*", "*k_wild"}),
+    # Example lists: a defined label is an example reference, not a
+    # citation, everywhere outside a bracketed citation.
+    (
+        "(@ex_a) An example.\n\nSee (@ex_a), @ex_a, -@ex_a and @{ex_a}, but [@ex_a]"
+        " and [see @ex_a, p. 3] and @ex_a:more.",
+        {"ex_a", "ex_a:more"},
+    ),
+    ("See (@ex_undef).", {"ex_undef"}),
+    ("Text\n(@ex_lazy) is no list.\n\n@ex_lazy", {"ex_lazy"}),
+    ("@ex_c) d\n\n@ex_d. d\n\n@ex_c @ex_d", set()),
+    ("- a\n(@ex_e) lazy item\n\n@ex_e", set()),
+    ("```\n(@ex_f) code\n```\n\n@ex_f", {"ex_f"}),
+    ("<!--\n(@ex_g) c\n-->\n\n@ex_g", {"ex_g"}),
+    ("- a\n  <!--\n  (@ex_h) c\n  -->\n\n@ex_h", {"ex_h"}),
+    ("# (@ex_i) heading\n\n@ex_i", {"ex_i"}),
+    ("(@é_ex) d\n\n@é_ex", set()),
+    ("(@ex_j) d\n\n(@ex_jj) d\n\n[see \\] @ex_j] and [a [b] @ex_jj]", {"ex_j", "ex_jj"}),
+    ("(@ex_k) d\n\nOne [para\n\n@ex_k] two", set()),
+    ("Term\n\n:   (@ex_l) d\n\n> (@ex_m) d\n\n@ex_l @ex_m", set()),
+    # A setext underline or a table's delimiter row makes the line above
+    # a heading or a header, not a list item, so it defines no label.
+    ("(@ul_a) x\n---\n\n@ul_a", {"ul_a"}),
+    ("(@ul_b) x\n===\n\n@ul_b", {"ul_b"}),
+    ("@ul_c. x\n-\n\n@ul_c", {"ul_c"}),
+    ("- (@ul_d) x\n  ---\n\n@ul_d", {"ul_d"}),
+    ("(@ul_e) x | y\n--- | ---\n1 | 2\n\n@ul_e", {"ul_e"}),
+    # A line that blanking empties is still inside its paragraph, so the
+    # bracketed citation around it stays open.
+    ("(@br_a) item\n\n[see\n`code`\n@br_a]", {"br_a"}),
+    ("(@br_b) item\n\n[see\n<!-- c -->\n@br_b]", {"br_b"}),
+    ("(@br_c) item\n\n> [see\n> `code`\n> @br_c]", {"br_c"}),
 ]
 
 
@@ -201,6 +301,24 @@ def test_each_fragment_extracts_what_pandoc_resolves(fragment, resolved):
 @pytest.mark.parametrize("fragment, resolved", FRAGMENTS)
 def test_pandoc_still_resolves_what_each_fragment_records(fragment, resolved):
     assert pandoc_citation_ids(fragment) == resolved
+
+
+# #1021: `references_renumber` reads citations with the gate's own
+# function, so the numbered copy carries a number for every citation the
+# gate verified and no raw `@key` the reference list does not cover. The
+# LaTeX-in-Markdown fragments are left out: renumbering never touched
+# `\cite`, and the gate's reading of it is a deliberate disagreement.
+@pytest.mark.parametrize(
+    "fragment",
+    [
+        fragment
+        for fragment, _ in FRAGMENTS
+        if "\\begin" not in fragment and "\\end" not in fragment
+    ],
+)
+def test_renumbering_leaves_no_citation_the_gate_extracts(fragment):
+    numbers = {key: n for n, key in enumerate(references.used_citekeys(fragment), start=1)}
+    assert gate_ids(references.renumber(fragment, numbers)) == set()
 
 
 def _in_list(text: str, rng: random.Random) -> str:
@@ -228,7 +346,36 @@ def _compose(rng: random.Random) -> str:
 @pytest.mark.parametrize("seed", range(60))
 def test_random_compositions_extract_what_pandoc_resolves(seed):
     text = _compose(random.Random(944_000 + seed))
-    assert gate_ids(text) == pandoc_citation_ids(text), text
+    assert_agrees_with_pandoc(gate_ids(text), text)
+
+
+# #1021's class at the character level: what may stand before an `@`, and
+# what a key may be spelled with. The fragments above pin each shape
+# found; these draw from the alphabets those shapes came from, Unicode
+# letters, digits and marks and runs of backslashes included. Left out:
+# the characters that open an inline construct pandoc reads first
+# (`` ` ``, `<`, `[`, `]`, `$`), which the fragments cover, and `$`
+# besides is a deliberate disagreement (below).
+_BEFORE = list("-_%+*~/:#)\"'!&=?.,;|^{}(\\") + ["\\\\", "\\\\\\", "x", "é", "²", "·", "…", " "]
+_KEY = list("aZ09_-:.#%&+?~/*'é日üÅⅫ²ʼ·→́ ") + ["--", "aa", "b1"]
+
+
+def _at_tokens(rng: random.Random) -> str:
+    tokens = []
+    for _ in range(rng.randint(3, 8)):
+        before = "".join(rng.choice(_BEFORE) for _ in range(rng.randint(0, 2)))
+        key = "".join(rng.choice(_KEY) for _ in range(rng.randint(1, 5)))
+        tokens.append(f"{before}@{key}")
+    return "Text " + " ".join(tokens) + "\n"
+
+
+@needs_pandoc
+@pytest.mark.parametrize("seed", range(80))
+def test_random_characters_around_an_at_extract_what_pandoc_resolves(seed):
+    text = _at_tokens(random.Random(1021_000 + seed))
+    # A doubled hyphen is the one deliberate disagreement in a key
+    # (`test_a_doubled_hyphen_keeps_the_whole_key`), so compare up to it.
+    assert_agrees_with_pandoc({key.split("--")[0] for key in gate_ids(text)}, text)
 
 
 class TestDeliberateDisagreements:
@@ -250,6 +397,43 @@ class TestDeliberateDisagreements:
         # `PANDOC_KEY` explains why: `_citeproc` aliases the run away.
         assert pandoc_citation_ids("[@twin--as-a-service]") == {"twin"}
         assert gate_ids("[@twin--as-a-service]") == {"twin--as-a-service"}
+
+    # Pandoc 3.6 hands an unknown TeX command to TeX and opens a citation
+    # at the `@` after it; 3.1, which Ubuntu's apt installs and so CI's
+    # Linux leg, opens one only after a command ending in digits. The gate
+    # reads every one as a citation, so a key either version would render
+    # is checked, and the stored answer runs where pandoc is absent too.
+    TEX_COMMANDS = (
+        "\\x@k_tex1 \\é@k_tex2 \\xa12@k_tex3 a\\x@k_tex4 \\\\x@k_tex5 \\1@k_tex6 \\x2b@k_tex7"
+    )
+    TEX_COMMAND_KEYS = {"k_tex1", "k_tex2", "k_tex3", "k_tex4"}
+
+    def test_a_tex_command_before_an_at_opens_a_citation(self):
+        assert gate_ids(self.TEX_COMMANDS) == self.TEX_COMMAND_KEYS
+
+    @needs_pandoc
+    def test_no_pandoc_cites_after_a_tex_command_what_the_gate_does_not(self):
+        assert "k_tex3" in pandoc_citation_ids(self.TEX_COMMANDS)
+        assert pandoc_citation_ids(self.TEX_COMMANDS) <= self.TEX_COMMAND_KEYS
+
+    @needs_pandoc
+    def test_a_tex_command_taking_an_argument_still_opens_a_citation(self):
+        # Pandoc gives a command it knows to take an argument the `@` as
+        # that argument; reading which commands do is pandoc's LaTeX
+        # reader, not something to restate here (#1021).
+        text = "\\b@tex_arg and \\emph@tex_arg2"
+        assert pandoc_citation_ids(text) == set()
+        assert gate_ids(text) == {"tex_arg", "tex_arg2"}
+
+    @needs_pandoc
+    def test_an_abandoned_emphasis_opener_still_opens_a_citation(self):
+        # Pandoc's emphasis parser, having failed to close the first `*`,
+        # does not read the `@` after the second one as a citation, and
+        # `_` behaves the same. That depends on the whole paragraph's
+        # emphasis, which the gate does not parse (#1021).
+        text = "*@star_a *@star_b"
+        assert pandoc_citation_ids(text) == {"star_a"}
+        assert gate_ids(text) == {"star_a", "star_b"}
 
     @needs_pandoc
     def test_math_is_not_blanked(self):

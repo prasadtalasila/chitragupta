@@ -8,42 +8,31 @@ ledger or an entry's formatted fields -- a separate concern from
 seam from it for the same reason.
 """
 
+import bisect
 import re
 
-from chitragupta import citation_gate
+from chitragupta import _pandoc_cites, citation_gate
 
-# A bracketed Pandoc citation containing nothing but citekeys separated
-# by ";" -- `[@a]`, `[@a; @b; @c]`, `[-@a]`. Deliberately does NOT match a
-# group carrying a prefix or locator (`[see @a, p. 33]`): collapsing that
-# to a bare number would silently delete the words around it. Those are
-# handled one key at a time by _BARE_KEY_RE below, which leaves the
-# surrounding text alone.
+# Which citations to renumber is not decided here: `renumber` takes the
+# gate's own (start, end, key) spans, from the gate's own prose blanking.
+# Two readings that drift apart leave a real citation un-numbered or
+# number something that was never one, and they did drift (#1021): this
+# module restated the gate's pattern and never learned the braced form,
+# so `[@{brace.one}]` came out raw, and `[@plain; @{brace.one}]` as
+# `[[3]; @{brace.one}]`, while the reference list numbered `brace.one`.
+# Sharing the spans is also what keeps `@` inside a larger token from
+# reading as a citation -- this project's own tutorial draft carries an
+# author's email address, and a citekey could be named `gmail`.
 #
-# Built from the gate's own citekey grammar for the reason _BARE_KEY_RE
-# below shares its whole pattern: a group regex that recognised fewer
-# keys than the per-key pass let a group fall through to it, and the
-# per-key replacement then ran *inside* the untouched brackets, nesting a
-# second pair around the number (`[[1]]`).
-_CITATION_GROUP_RE = re.compile(
-    rf"\[\s*-?@{citation_gate.PANDOC_KEY}(?:\s*;\s*-?@{citation_gate.PANDOC_KEY})*\s*\]"
-)
-# A single citekey with a preserved locator -- `[@doe2020, p. 33]` --
-# which `_CITATION_GROUP_RE` above deliberately does not match (its own
-# comment: a prefix or locator must not be silently dropped). Renumbered
-# as `[3, p. 33]` rather than falling through to the per-key pass below,
-# which would leave the surrounding brackets in place and nest a second
-# pair around the number (`[[3], p. 33]`).
-_LOCATOR_GROUP_RE = re.compile(rf"\[\s*(-?@{citation_gate.PANDOC_KEY})\s*,\s*([^\[\]@;]+)\]")
-# citation_gate's own Pandoc-citation regex, not a second definition of
-# one. Its negative lookbehind is what keeps `@` inside a larger token
-# from reading as a citation -- this project's own tutorial draft carries
-# an author's email address, and a looser pattern would rewrite the
-# `@gmail` in it the moment a citekey happened to be named `gmail`.
-# Sharing the gate's pattern also guarantees that what gets renumbered
-# here is exactly what the gate verified and what used_citekeys() counted;
-# two patterns that drifted apart would silently leave a real citation
-# un-numbered, or number something that was never a citation.
-_BARE_KEY_RE = citation_gate._PANDOC_CITE_RE
+# What *is* decided here is a bracket's shape. A bracket holding nothing
+# but citations separated by ";" -- `[@a]`, `[@a; @b; @c]`, `[-@a]` --
+# collapses to its numbers. One citation with a locator -- `[@a, p. 33]`
+# -- becomes `[3, p. 33]`. Anything else, a prefix word included (`[see
+# @a, p. 33]`), is renumbered one key at a time, so the words around it
+# survive: collapsing that bracket would silently delete them. Only a
+# bracket holding no other bracket is a candidate, as before.
+_BRACKET_RE = re.compile(r"\[[^\[\]]*\]")
+_LOCATOR_RE = re.compile(r"\s*,\s*([^\[\]@;]+)")
 # IEEE, and the CSL style's own `collapse="citation-number"`, only
 # contract a run of *three or more*: [1], [2] stays as it is, [3]-[5]
 # collapses. Matching that keeps the numbered Markdown identical to what
@@ -69,85 +58,80 @@ def _format_numbers(numbers: list[int]) -> str:
     return ", ".join(out)
 
 
-def _group_edits(
-    blanked: str, numbers: dict[str, int]
-) -> tuple[list[tuple[int, int, str]], list[tuple[int, int]]]:
-    """`;`-separated citekey groups (`[@a; @b]`), IEEE-contracted."""
+def _locator(text: str, blanked: str, bracket: re.Match, inner: list) -> "str | None":
+    """`""` for a bracket of ";"-separated citations, the locator for one
+    citation with a locator, None for any other shape.
+
+    The words between the citations are read from `text`: in `blanked` a
+    comment is spaces, and a bracket holding one collapsed to its number,
+    deleting the comment from the numbered copy. The locator is matched
+    in `blanked`, where a code span inside it cannot hold an `@` or `;`,
+    and sliced from `text`, so the code span survives.
+    """
+    gaps = []
+    pos = bracket.start() + 1
+    for start, end, _ in inner:
+        gaps.append(text[pos:start])
+        pos = end
+    if gaps[0].strip() or any(gap.strip() != ";" for gap in gaps[1:]):
+        return None
+    if not text[pos : bracket.end() - 1].strip():
+        return ""
+    found = _LOCATOR_RE.fullmatch(blanked, pos, bracket.end() - 1) if len(inner) == 1 else None
+    return text[found.start(1) : found.end(1)].strip() if found else None
+
+
+def _group_edits(text: str, blanked: str, cites: list, numbers: dict[str, int]) -> tuple:
+    """A group's or a locator bracket's edit, and the citations it covers.
+
+    A bracket holding even one unnumbered key is covered all the same, so
+    it is left exactly as written. Without that the per-key pass would
+    still rewrite its *known* keys and leave `[[1]; @zzz]` -- a mangling
+    worse than the untouched marker, which at least reads as an obvious
+    omission.
+    """
+    starts = [start for start, _, _ in cites]
     edits: list[tuple[int, int, str]] = []
-    covered: list[tuple[int, int]] = []
-    for match in _CITATION_GROUP_RE.finditer(blanked):
-        keys = _BARE_KEY_RE.findall(match.group())
-        # Marked covered either way, so that a group holding even one
-        # unnumbered key is left exactly as written. Without this the
-        # per-key pass below would still rewrite its *known* keys and
-        # leave `[[1]; @zzz]` -- a mangling that is worse than the
-        # untouched marker, which at least reads as an obvious omission.
-        covered.append((match.start(), match.end()))
-        if any(k not in numbers for k in keys):
+    covered: set[int] = set()
+    for bracket in _BRACKET_RE.finditer(blanked):
+        inner = cites[
+            bisect.bisect_left(starts, bracket.start()) : bisect.bisect_left(starts, bracket.end())
+        ]
+        locator = _locator(text, blanked, bracket, inner) if inner else None
+        if locator is None:
             continue
-        edits.append((match.start(), match.end(), _format_numbers([numbers[k] for k in keys])))
+        covered.update(start for start, _, _ in inner)
+        keys = [key for _, _, key in inner]
+        if any(key not in numbers for key in keys):
+            continue
+        if locator:
+            replacement = f"[{numbers[keys[0]]}, {locator}]"
+        else:
+            replacement = _format_numbers([numbers[key] for key in keys])
+        edits.append((bracket.start(), bracket.end(), replacement))
     return edits, covered
-
-
-def _locator_edits(text: str, blanked: str, numbers: dict[str, int]) -> list[tuple[int, int, str]]:
-    """A single citekey with a preserved locator (`[@a, p. 33]`).
-
-    No overlap check against `_group_edits`'s `covered` here: that regex
-    only matches a bracket containing nothing but ";"-separated keys, and
-    this pattern only matches one containing a ",", so the two can never
-    claim the same span.
-
-    The locator itself is sliced from `text`, not `match.group(2)` off
-    `blanked` -- `blanked` has every code span replaced with spaces, so a
-    locator carrying one (a code span inside the locator text) would
-    otherwise render with the code silently blanked out of the draft
-    instead of renumbered.
-    """
-    edits: list[tuple[int, int, str]] = []
-    for match in _LOCATOR_GROUP_RE.finditer(blanked):
-        key_match = _BARE_KEY_RE.match(match.group(1))
-        if key_match is None or key_match.group(1) not in numbers:
-            continue
-        locator = text[match.start(2) : match.end(2)].strip()
-        edits.append((match.start(), match.end(), f"[{numbers[key_match.group(1)]}, {locator}]"))
-    return edits
-
-
-def _bare_key_edits(
-    blanked: str, numbers: dict[str, int], covered: list[tuple[int, int]]
-) -> list[tuple[int, int, str]]:
-    """Anything left: a bare `@key`, or one inside a group with a prefix.
-
-    Replaced individually so the words around it survive.
-    """
-    edits: list[tuple[int, int, str]] = []
-    for match in _BARE_KEY_RE.finditer(blanked):
-        if any(start <= match.start() < end for start, end in covered):
-            continue
-        number = numbers.get(match.group(1))
-        if number is not None:
-            edits.append((match.start(), match.end(), f"[{number}]"))
-    return edits
 
 
 def renumber(text: str, numbers: dict[str, int]) -> str:
     """Rewrites `text`'s citekey markers as IEEE numbers from `numbers`.
 
-    Scans a code-blanked copy to locate the citations, then edits the
-    original at those offsets -- `citation_gate._blank_code` replaces a
-    fenced block or code span with spaces while preserving every
-    character position, so a `[@key]` shown inside an example (which the
-    gate itself ignores) is left exactly as written here too.
+    Finds the citations in a blanked copy, then edits the original at
+    those offsets -- `citation_gate.markdown_prose` replaces code and
+    other non-prose with spaces while preserving every character
+    position, so a `[@key]` shown inside an example (which the gate
+    itself ignores) is left exactly as written here too.
 
     A key with no number -- which can only happen if a caller passes a
     partial map -- is left untouched rather than rendered as `[None]`.
     """
-    blanked = citation_gate._blank_code(text)
-
-    group_edits, covered = _group_edits(blanked, numbers)
-    locator_edits = _locator_edits(text, blanked, numbers)
-    covered.extend((start, end) for start, end, _ in locator_edits)
-    edits = group_edits + locator_edits + _bare_key_edits(blanked, numbers, covered)
+    blanked, labels = citation_gate.markdown_prose(text)
+    cites = _pandoc_cites.citations(blanked, labels, source=text)
+    edits, covered = _group_edits(text, blanked, cites, numbers)
+    edits.extend(
+        (start, end, f"[{numbers[key]}]")
+        for start, end, key in cites
+        if start not in covered and key in numbers
+    )
 
     out = []
     position = 0

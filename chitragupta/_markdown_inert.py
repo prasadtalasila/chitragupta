@@ -41,7 +41,6 @@ where this must not err, is the comment below.
 # memoised search, never by re-scanning from every opener, and containers
 # deeper than `_MAX_DEPTH` are read as prose instead of recursing.
 
-import bisect
 import re
 
 from chitragupta._markdown_inline import InlineScanner
@@ -57,6 +56,7 @@ from chitragupta._markdown_lines import (
     is_blank,
     unquote,
 )
+from chitragupta._markdown_marks import ContainerText, Found
 
 # Containers nested deeper than this are read as prose, not parsed: a
 # line of a thousand `>` would otherwise recurse past Python's limit.
@@ -77,6 +77,15 @@ _ITEM_RE = re.compile(
     r"(?:[-*+]|\d{1,9}[.)]|#[.)]|\(\d{1,9}\)|[A-Za-z][.)]|\([A-Za-z]\)"
     r"|[ivxlcdmIVXLCDM]+[.)]|\([ivxlcdmIVXLCDM]+\)|\(@[\w-]*\)|@[\w-]*[.)]|[:~])(?=[ \t]|$)"
 )
+# The two of those markers that name an example: `(@label)`, `@label)`
+# and `@label.`. A label they define makes every `@label` outside a
+# bracketed citation an example reference rather than a citation (#1021).
+_EXAMPLE_RE = re.compile(r"\(@([\w-]+)\)|@([\w-]+)[.)]")
+# A line of only `-`, `=`, `|`, `:` and `+` under one: a setext underline
+# or a table's delimiter row, either of which pandoc reads before a list
+# item, so the line above defines no example label. Broader than either,
+# deliberately: a label wrongly missed only over-reports.
+_UNDERLINE_RE = re.compile(r"[ \t|:+]*[-=][-=|:+ \t]*\r?$")
 _DEFINITION_RE = re.compile(r"[:~](?=[ \t])")
 _FOOTNOTE_RE = re.compile(r"\[\^[^\]\s]+\]:")
 _ATX_RE = re.compile(r"#{1,6}(?=[ \t]|$)")
@@ -92,20 +101,13 @@ _REFERENCE_RE = re.compile(
 _RAW_BLOCK_RE = re.compile(r"<(pre|script|style|textarea)(?:[ \t][^>\n]*)?>", re.IGNORECASE)
 
 
-class _Container:
-    """One container's lines, joined, with the indexes the scan needs."""
+class _Container(ContainerText):
+    """One container's blocks, scanned for what to mark."""
 
-    def __init__(self, lines: list[Line], depth: int, in_item: bool, spans: list) -> None:
-        self.lines = lines
+    def __init__(self, lines: list[Line], depth: int, in_item: bool, found: Found) -> None:
+        super().__init__(lines, found)
         self.depth = depth
         self.in_item = in_item
-        self.spans = spans
-        self.text = "\n".join(line.text for line in lines)
-        self.offsets = []
-        pos = 0
-        for line in lines:
-            self.offsets.append(pos)
-            pos += len(line.text) + 1
         self._closers = FenceClosers(lines)
         self._tables = TableBorders(lines)
         self._inline = InlineScanner(self)
@@ -119,35 +121,6 @@ class _Container:
         if not match:
             return None
         return self._closers.after(row, match.group(1)[0], len(match.group(1)))
-
-    # -- marking -----------------------------------------------------
-
-    def row_of(self, pos: int) -> int:
-        return bisect.bisect_right(self.offsets, pos) - 1
-
-    def line_end(self, row: int) -> int:
-        return self.offsets[row] + len(self.lines[row].text)
-
-    def mark(self, start: int, end: int, *, code: bool) -> None:
-        """Blank container text [start, end), line by line; `code` says
-        whether `_blank_code`'s code-only callers blank it too."""
-        row = self.row_of(start)
-        while start < end:
-            stop = min(end, self.line_end(row))
-            if stop > start:
-                base = self.lines[row].start - self.offsets[row]
-                self.spans.append((base + start, base + stop, code))
-            row += 1
-            if row == len(self.lines):
-                break
-            start = self.offsets[row]
-
-    def mark_rows(self, first: int, last: int, *, code: bool) -> None:
-        for row in range(first, last + 1):
-            line = self.lines[row]
-            self.spans.append((line.start, line.start + len(line.text), code))
-
-    # -- blocks ------------------------------------------------------
 
     def interrupts(self, row: int) -> bool:
         """Does `row` end the paragraph above it?"""
@@ -242,6 +215,10 @@ class _Container:
             return self._item(row, chars + match.end(), footnote=True)
         match = _ITEM_RE.match(rest)
         if match:
+            example = _EXAMPLE_RE.fullmatch(match.group())
+            underlined = row + 1 < len(self.lines) and _UNDERLINE_RE.match(self.lines[row + 1].text)
+            if example and not underlined:
+                self.found.labels.add(example.group(1) or example.group(2))
             return self._item(row, chars + match.end(), footnote=False)
         return None
 
@@ -260,7 +237,7 @@ class _Container:
             else:
                 break
             end += 1
-        _Container(inner, self.depth + 1, self.in_item, self.spans).scan()
+        _Container(inner, self.depth + 1, self.in_item, self.found).scan()
         return end
 
     def _item(self, row: int, marker_end: int, footnote: bool) -> int:
@@ -295,7 +272,7 @@ class _Container:
             else:
                 break
             last = end
-        _Container(inner, self.depth + 1, True, self.spans).scan()
+        _Container(inner, self.depth + 1, True, self.found).scan()
         return last + 1
 
     def _raw_block(self, row: int, rest: str) -> "int | None":
@@ -321,20 +298,40 @@ class _Container:
         return row + 1
 
 
+def _scan(text: str) -> Found:
+    found = Found()
+    _Container(document_lines(text), 0, False, found).scan()
+    return found
+
+
 def non_prose_spans(text: str, *, code_only: bool = False) -> list[tuple[int, int]]:
     """Every (start, end) offset range of `text` pandoc does not read as
     prose: code, comments, link targets, reference definitions and raw
     HTML blocks -- or, with `code_only`, just the fenced, indented and
     inline code. Ranges never include a newline."""
-    spans: list[tuple[int, int, bool]] = []
-    _Container(document_lines(text), 0, False, spans).scan()
-    return [(start, end) for start, end, code in spans if code or not code_only]
+    return [(start, end) for start, end, code in _scan(text).spans if code or not code_only]
+
+
+def prose(text: str) -> tuple[str, set[str]]:
+    """`blank(text)` and the example-list labels `text` defines, from one
+    scan, since the gate needs both and the scan is its heaviest pass.
+
+    Only a marker that opens a list item defines a label: in code, a
+    comment, a heading or a lazy paragraph line, `(@label)` is a
+    citation to pandoc, and reading it as a definition would hide every
+    `@label` in the file from the gate (#1021)."""
+    found = _scan(text)
+    return _blanked(text, [(start, end) for start, end, _ in found.spans]), found.labels
+
+
+def _blanked(text: str, spans: list[tuple[int, int]]) -> str:
+    chars = list(text)
+    for start, end in spans:
+        chars[start:end] = " " * (end - start)
+    return "".join(chars)
 
 
 def blank(text: str, *, code_only: bool = False) -> str:
     """`text` with every `non_prose_spans` range replaced by spaces, so
     every offset and every line number is unchanged."""
-    chars = list(text)
-    for start, end in non_prose_spans(text, code_only=code_only):
-        chars[start:end] = " " * (end - start)
-    return "".join(chars)
+    return _blanked(text, non_prose_spans(text, code_only=code_only))

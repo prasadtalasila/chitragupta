@@ -15,7 +15,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
-from chitragupta import citation_gate
+from chitragupta import _pandoc_cites, citation_gate
 from chitragupta.dossier import SECTIONS_MD, _SECTIONS_TEMPLATE, dossier_dir, draft_relpath
 
 # A citekey as the dossier templates write one: inside backticks, starting
@@ -75,7 +75,7 @@ _CITEKEY_TOKEN = re.compile(rf"`({_KEY})`|@({_KEY})")
 # The charset is the gate's own `PANDOC_KEY` rather than a third spelling
 # of one: a ledger key this scan could not tokenise the way the gate does
 # is a key the dossier can never be differenced against.
-_LOOSE_KEY = citation_gate.PANDOC_KEY
+_LOOSE_KEY = _pandoc_cites.PANDOC_KEY
 
 _LOOSE_CITEKEY_TOKEN = re.compile(rf"`({_LOOSE_KEY})`|@({_LOOSE_KEY})")
 
