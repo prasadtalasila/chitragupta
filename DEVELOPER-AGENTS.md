@@ -590,10 +590,15 @@ Before saying so, run, in this repo:
   (`python3` from the repository root, so it needs `config.toml` like
   the rest of the suite), opens it from `file://` in headless Chrome
   over the DevTools protocol, clicks through it, and fails on any
-  console error, CSP refusal or element cytoscape dropped. Off CI, with
-  no Chrome or Chromium on `PATH` and `CHROME_PATH` unset, it skips with
-  that instruction; on CI a missing browser fails it. CI runs it in
-  the `lint` job, where node is already installed for
+  console error, CSP refusal or element cytoscape dropped. With no
+  Chrome or Chromium on `PATH` and `CHROME_PATH` unset, it skips with
+  that instruction. **It does not run in GitHub Actions**: it skips
+  there whenever `GITHUB_ACTIONS` is set, because the runner's Chrome
+  timing out at startup failed the `lint` job on PRs that touched no
+  webapp code. So the wiring's bar is a local run, by
+  `bash scripts/check_local.sh` with a browser installed; a change to
+  those five files needs one, named in the PR's test plan. The command
+  rides in the `lint` job, where node is already installed for
   `markdownlint`. Node's runner takes files rather than a directory, so
   the glob is not decoration. `tests/webapp/code_standards.test.js` rides
   the same command: it is `assets/webapp/`'s C1/C2 ratchet (see "Code
