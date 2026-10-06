@@ -1,6 +1,9 @@
 # Five house `pic`s: finishing what #1026 shipped
 
-Status: **designed, unbuilt.** Written 2026-10-06, for
+Status: **implemented in the PR that carries this line** (6.136.1).
+On the way: Task 4 gained a test that some scaffold draws a `pic` into a
+well, so that acceptance item had a red run too; the carve-out's em dash
+became a colon, as TIKZ-STYLE.md uses none. Written 2026-10-06, for
 [issue 1014](https://github.com/prasadtalasila/chitragupta/issues/1014),
 F3 of [docs/FIGURE-ROADMAP.md](../docs/FIGURE-ROADMAP.md). The roadmap's
 F-numbering is its own and has nothing to do with
@@ -135,7 +138,7 @@ already prescribes it.
 - Produces: `_pics() -> list[str]` (the `pic` names the block defines,
   in order) and `_WELL_RE`. Task 3 uses `_pics()`.
 
-- [ ] **Step 1: Write the failing tests.** Add beside the other
+- [x] **Step 1: Write the failing tests.** Add beside the other
   module-level helpers:
 
 ```python
@@ -228,7 +231,7 @@ class TestEveryPicFitsItsWell:
         assert "CGCOL=cgFlow" in result.stdout
 ```
 
-- [ ] **Step 2: Run to verify the right test fails**
+- [x] **Step 2: Run to verify the right test fails**
 
 Run:
 
@@ -239,7 +242,7 @@ Run:
 Expected: `test_every_pic_is_measured_and_fits` FAILS, naming `['cgdocs']`.
 The other three pass.
 
-- [ ] **Step 3: Fix `cgdocs` and the five comments.** Replace the
+- [x] **Step 3: Fix `cgdocs` and the five comments.** Replace the
   `cgdocs` definition with the prototype (measured −3.74…3.72 ×
   −4.64…4.62 mm):
 
@@ -278,7 +281,7 @@ into; tests/test_tikz_scaffolds.py measures that."
 Do **not** bump the version yet; Task 2 does that, so this task's diff
 reads as the geometry change alone.
 
-- [ ] **Step 4: Run to verify it passes**
+- [x] **Step 4: Run to verify it passes**
 
 Run:
 
@@ -292,7 +295,7 @@ still hold v1. Task 2 fixes that; do not commit between the two
 tasks if a green commit per task is wanted. Otherwise commit with
 `--no-verify` only if the pre-commit hook blocks, and say so.)
 
-- [ ] **Step 5: Look at it.** Render all five `pic`s, each inside a
+- [x] **Step 5: Look at it.** Render all five `pic`s, each inside a
   `cgwell` with `draw=red`, through a `standalone` document and
   `pdftoppm -r 1200`. Check that `cgdocs` still reads as a stack of
   pages. A test can measure the box but not whether the shape is still
@@ -311,7 +314,7 @@ tasks if a green commit per task is wanted. Otherwise commit with
 
 - Consumes: Task 1's edited block.
 
-- [ ] **Step 1: Make the version-literal tests follow the block.** In
+- [x] **Step 1: Make the version-literal tests follow the block.** In
   each of the four places, replace the hard-coded `" v1 "` with the
   block's own version:
 
@@ -330,7 +333,7 @@ pass on v1, which shows the rewrite is behaviour-neutral.
 .venv-full/bin/python -m pytest tests/test_figure_block.py tests/test_figure_sync.py -q
 ```
 
-- [ ] **Step 2: Bump and register.** Change line 1 of `cg-figstyle.tex`
+- [x] **Step 2: Bump and register.** Change line 1 of `cg-figstyle.tex`
   to the line below, then compute the digest:
 
 ```latex
@@ -344,7 +347,7 @@ print(figure.digest(Path('assets/tikz/cg-figstyle.tex').read_text(encoding='utf-
 
 Append `v2 = "<that digest>"` under the `v1` line. Leave `v1` as it is.
 
-- [ ] **Step 3: Re-sync**
+- [x] **Step 3: Re-sync**
 
 Run:
 
@@ -356,7 +359,7 @@ Expected: `figure sync: 1 current, 10 refreshed` (the block file itself
 is current). If any file reports `modified`, stop: someone edited
 inside a marker, and that is a separate fix.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -370,7 +373,7 @@ geometry checks on the two exemplars that draw `cgdocs`/`cgstore`.
 their markers: run `git diff -U0 assets/tikz | grep '^@@'` and check
 each hunk lies between lines 1 and ~280 of the region.
 
-- [ ] **Step 5: Commit** Tasks 1 and 2 together:
+- [x] **Step 5: Commit** Tasks 1 and 2 together:
 
 ```bash
 git add assets/tikz tests/test_tikz_scaffolds.py tests/test_figure_block.py tests/test_figure_sync.py
@@ -396,7 +399,7 @@ git commit -m "Fit cgdocs inside its well and pin every house pic to it (block v
 - Produces: the table header `` | `pic` | Stands for | Twin says | `` in
   TIKZ-STYLE.md, which the test reads.
 
-- [ ] **Step 1: Write the failing test** (in `TestMetaphorCoverage`'s
+- [x] **Step 1: Write the failing test** (in `TestMetaphorCoverage`'s
   style, source-only, so it runs without TeX):
 
 ```python
@@ -428,7 +431,7 @@ class TestTheShapesAreTheDocumentedOnes:
         assert _documented_pics() == _pics()
 ```
 
-- [ ] **Step 2: Run to verify it fails**
+- [x] **Step 2: Run to verify it fails**
 
 Run:
 
@@ -438,7 +441,7 @@ Run:
 
 Expected: FAIL with `ValueError: ... is not in list` (no table yet).
 
-- [ ] **Step 3: Write the docs.**
+- [x] **Step 3: Write the docs.**
 
 (a) TIKZ-STYLE.md, §"Commit to a layout metaphor": replace the
 parenthetical "(The house block's `pic` definitions do write
@@ -509,7 +512,7 @@ example the `#-the-house-figure-style` link at line 598).
 (f) `assets/tikz/README.md:146`: shorten the parenthetical to "(the
 block's `pic`s are the one exception, and TIKZ-STYLE.md says why)".
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 Run:
 
@@ -521,7 +524,7 @@ Expected: pass, and no lint finding. Also run the repo's docs link
 check, if DEVELOPER-AGENTS.md's local check list names one, so the two
 new anchors resolve.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/TIKZ-STYLE.md docs/FIGURE-ROADMAP.md assets/tikz/README.md tests/test_tikz_scaffolds.py
@@ -541,7 +544,7 @@ along the documented `review figure` path as well as by the per-carrier
 checks. Its first stage is `\cglab{Intake}{files in}`, so `cgdocs` is
 redundant with the label, which is the twin test.
 
-- [ ] **Step 1: Add the well and the `pic`** after the `intake` node:
+- [x] **Step 1: Add the well and the `pic`** after the `intake` node:
 
 ```latex
   % A house shape, drawn into a named well so `review figure` measures
@@ -551,7 +554,7 @@ redundant with the label, which is the twin test.
   \pic[cg pic colour=cgFlow] at (iintake) {cgdocs};
 ```
 
-- [ ] **Step 2: Verify**
+- [x] **Step 2: Verify**
 
 Run:
 
@@ -568,7 +571,7 @@ not width). Also run
 `.venv-full/bin/python -m chitragupta figure sync --check assets/tikz/pipeline.tex`:
 `1 current`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add assets/tikz/pipeline.tex
@@ -577,12 +580,12 @@ git commit -m "Draw a house pic in the pipeline scaffold so every run compiles o
 
 ### Task 5: Close out
 
-- [ ] Run the full local check list (DEVELOPER-AGENTS.md §"Before
+- [x] Run the full local check list (DEVELOPER-AGENTS.md §"Before
   claiming a task complete") in the worktree venv, with pylint under
   Python 3.13 as CI does.
-- [ ] Add a `Status:` outcome line at the top of this plan naming the
+- [x] Add a `Status:` outcome line at the top of this plan naming the
   PR, per plans/README.md.
-- [ ] Open the PR with `Closes #1014`, the `## Commit message` fence
+- [x] Open the PR with `Closes #1014`, the `## Commit message` fence
   checked by `scripts/merge_pr.py --check`, and the `cgdocs`
   measurement table in the body. The fix is the one behaviour change
   here, and a reviewer should see the before and after numbers.
