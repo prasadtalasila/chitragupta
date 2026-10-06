@@ -79,7 +79,7 @@ Claude Code reaches it through `CLAUDE.md`.
 
 ### Codex
 
-Start `codex` in the project. The skills are the same nine, read from
+Start `codex` in the project. The skills are the same ten, read from
 `.agents/skills/`, and Codex reads `AGENTS.md` itself.
 
 You have to trust the project's hooks, or the mandatory check does not

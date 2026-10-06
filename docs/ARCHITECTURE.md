@@ -155,10 +155,11 @@ successful read, `1` for a citekey the ledger doesn't hold.
 
 ## ✍ Layer 2: the drafting layer
 
-Nine Claude Code skills in `.claude/skills/`, one set of grounding rules
+Ten Claude Code skills in `.claude/skills/`, one set of grounding rules
 between them: five that write a new draft, three that revise one that
-already exists, and `book-assembler`, the only one that writes no prose,
-which composes an already-drafted book from its accepted units.
+already exists, `book-assembler`, which writes no prose and composes an
+already-drafted book from its accepted units, and `figure-drawer`, which
+draws the figures the others hand it and presents no draft of its own.
 
 | Skill | Produces |
 | --- | --- |

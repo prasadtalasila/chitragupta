@@ -119,6 +119,12 @@ _NOT_A_CONDITION = "never a condition of presenting"
 # posture cannot come back one file at a time.
 _OLD_OFFER = re.compile(r"Offer the verbatim scan", re.I)
 
+# Skills that never present a draft, so there is nothing for them to
+# scan. Named, not inferred, so a new drafting skill cannot slip in here
+# by accident. `figure-drawer` draws one figure and returns to the skill
+# that called it, which runs the scan (#1027).
+_HELPERS = {"figure-drawer"}
+
 
 def _skill_files():
     return sorted(SKILLS_DIR.glob("*/SKILL.md"))
@@ -140,11 +146,12 @@ def test_every_drafting_skill_runs_the_verbatim_scan():
     files = _skill_files()
     assert files, "expected to find SKILL.md files under .claude/skills/"
 
-    missing = [p.parent.name for p in files if not _SCAN.search(_normalised(p))]
+    drafting = [p for p in files if p.parent.name not in _HELPERS]
+    missing = [p.parent.name for p in drafting if not _SCAN.search(_normalised(p))]
     assert not missing, (
         "these skills never mention `-m chitragupta.review verbatim scan`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
-        'docs/GENRE.md\'s "What all nine have in common" claims otherwise.'
+        'docs/GENRE.md\'s "What all ten have in common" claims otherwise.'
     )
 
 
@@ -207,7 +214,9 @@ def test_every_skill_rebuilds_the_section_map_before_scanning():
     before it.
     """
     offenders = sorted(
-        path.parent.name for path in _skill_files() if not list(_step_blocks(_normalised(path)))
+        path.parent.name
+        for path in _skill_files()
+        if path.parent.name not in _HELPERS and not list(_step_blocks(_normalised(path)))
     )
     assert not offenders, (
         "no `dossier sections --citekeys --write` immediately before "
@@ -258,7 +267,7 @@ def test_no_skill_makes_the_scan_a_condition_of_presenting():
 
 
 def test_genre_doc_still_speaks_for_every_skill_that_exists():
-    """docs/GENRE.md says "all nine" in prose. Prose can't count.
+    """docs/GENRE.md says "all ten" in prose. Prose can't count.
 
     If a tenth skill lands, the shared-conventions section silently
     stops covering it -- and that section is where the scan step, the
@@ -269,9 +278,9 @@ def test_genre_doc_still_speaks_for_every_skill_that_exists():
     eight.
     """
     count = len(_skill_files())
-    assert count == 9, (
-        f'{count} skills exist but docs/GENRE.md still says "all nine". '
+    assert count == 10, (
+        f'{count} skills exist but docs/GENRE.md still says "all ten". '
         "Update that section -- and check the new skill carries the gate, "
         "dossier and verbatim-scan conventions it states."
     )
-    assert "What all nine have in common" in GENRE_DOC.read_text(encoding="utf-8")
+    assert "What all ten have in common" in GENRE_DOC.read_text(encoding="utf-8")

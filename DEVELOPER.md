@@ -220,7 +220,7 @@ docs/                     reference docs that ship in the release zip -- everyth
                             re-running the pipeline that produced it
   TOKENS.md                 where a run's tokens go -- the resident/one-shot pools, two worked
                             examples, and how to measure it without paying for a full run
-  GENRE.md                  the nine skills in .claude/: which writes what, how to pick, and what
+  GENRE.md                  the ten skills in .claude/: which writes what, how to pick, and what
                             each one refuses to do
   LADDERS.md                every automatic fallback chain the code walks, and every tier you pick
                             yourself -- and what the bottom rung of each costs
@@ -374,7 +374,7 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
                           chitragupta from the project root (checkout) or not (installed project);
                           patch_paths.py reads the drafts an apply_patch payload touches (Codex, OpenCode)
 .claude/settings.json     wires the four hooks above into PostToolUse/SessionStart
-.agents/skills/           Codex's copy of the nine skills; .codex/hooks.json runs the same hooks on apply_patch
+.agents/skills/           Codex's copy of the ten skills; .codex/hooks.json runs the same hooks on apply_patch
 .opencode/                OpenCode's copy of the skills (-opencode suffix), its gate plugin, and
                           opencode.json's deny list for the unsuffixed names (docs/HARNESS.md)
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +

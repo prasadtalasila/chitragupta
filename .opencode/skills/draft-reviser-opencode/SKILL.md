@@ -1,6 +1,6 @@
 ---
 name: draft-reviser-opencode
-description: Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it: reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser-opencode; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
+description: Revises an existing draft in content/drafts/ from its dossier instead of re-running the genre skill that produced it -- reads the recorded scope, reader, glossary, kept evidence and rejected candidates, edits only the affected sections, and logs what changed. Triggers when the user asks to revise, shorten, expand, restructure or correct an existing draft, including in a session that did not write it. Also covers copy-editing that touches no evidence ("fix the grammar", "convert this to British English", "make it en-GB") and re-grounding after the corpus moves ("re-ground", "a cited paper left the corpus", a `dossier status --all` report naming a draft). The cheap, scoped default for any change. A whole-corpus re-search ("search everything, cost regardless") is corpus-reviser-opencode; a NEW draft is a genre skill's job. Must pass `python -m chitragupta.draft gate` before presenting and never invents a citekey.
 tags: [revision, dossier, citation]
 ---
 
@@ -92,9 +92,11 @@ break:
   the same thing,
   so a half-done edit leaves the pdf and the Markdown preview
   disagreeing about the same figure, silently, until a reader notices.
-  If you edit the TikZ, re-verify it compiles before you keep it (§10's
-  standalone `pdflatex` check) -- a figure that no longer compiles
-  fails the whole pdf render, not just the figure. If the two forms
+  **To redraw or fix the picture, hand it to `figure-drawer-opencode`** and
+  come back to step 6 to log it: that skill owns the scaffolds, the
+  compile probe and the geometry review, and it re-verifies the TikZ
+  compiles before you keep it -- a figure that no longer compiles fails
+  the whole pdf render, not just the figure. If the two forms
   have drifted too far to reconcile, say so and drop the figure rather
   than shipping a pair that disagrees.
 

@@ -250,7 +250,8 @@ enrichment layer is optional and nothing above it needs it.
     you assert.
   - You are drawing a figure of your own. Seeing how the literature
     already draws this is legitimate input to a diagram you then draw
-    yourself, in TikZ, as your own work.
+    yourself, in TikZ, as your own work. The `figure-drawer` skill
+    carries out the drawing ([docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md)).
 
   **What it is never for.** Do not put a source image in a draft, do not
   copy a figure's layout stroke for stroke, and do not cite a figure you

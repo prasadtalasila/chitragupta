@@ -323,15 +323,6 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `docs/WRITING-STANDARDS.md` §10's figures are occasional here, not
    routine. Default to no figure.
 
-   **When one is earned, you may look at how the cited work draws it
-   first.** `python -m chitragupta.draft figures <citekey>` lists a
-   synced paper's figures and hands back a crop of each, for any citekey
-   the chapter already cites -- useful precisely because a figure is
-   earned here so rarely that the one you do draw carries weight. Look,
-   then draw your own: the source image never enters the chapter, and
-   `docs/WRITING-STANDARDS.md` §10 counts a close redraw as the same
-   violation. AGENTS.md states the boundary in full.
-
    When one is earned, it is a **pair of files**, and §10 is the
    contract. This genre's native form is the TikZ picture -- vector art
    that sets at the thesis's own font and line width, which is the whole
@@ -349,70 +340,36 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    `pdflatex`. The renderer
    swaps that `\input` for the `.txt` contents when it builds the `.md`
    preview (step 12); `--format tex` and `--format pdf` get the TikZ.
-   Six things to hold onto, each of which §10 explains:
 
-   - **Commit to a layout metaphor before drawing, and start from the
-     scaffold for it rather than from an empty picture.** `assets/tikz/`
-     holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names
-     -- pipeline, map, layered stack, control loop, branching tree,
-     hub-and-spoke, zoned spine. Copy the one that fits and re-label it,
-     leaving the house style block it carries unedited. Then run
-     `python -m chitragupta.figure sync <the figure file>`, which
-     refreshes the block if the scaffold's copy is older than the
-     installed one, and reports instead of overwriting if you edited
-     inside it. Each places
-     its nodes relative to one another, which is the property worth
-     keeping: a figure laid out in hand-computed millimetres re-opens
-     every adjacency in it the moment any label changes length. Then
-     check the result against that document's pre-flight defect list
-     (occlusion, chaotic routing, illegible type, non-rectangular
-     protrusion, an overlong node, literal copying) before keeping the
-     figure. No label goes below the body size, and the figure is
-     `\input` bare, never inside `\resizebox`: if it does not fit, change
-     the layout, not the scale.
+   Hand the drawing itself to `figure-drawer-opencode`, and come back to this
+   step when it returns: it owns the layout metaphor and scaffold,
+   panel letters, the ASCII twin, the compile probe and the geometry
+   review. What stays here must hold even if that skill is never
+   loaded:
+
    - **The marker is a comment, never a second `\input`.** The fragment
      on disk is what the user `\input`s into their own thesis, and
      `\input{figures/<name>.txt}` makes their `pdflatex` read ASCII art
      as LaTeX source and fail with `! Missing $ inserted.` -- a break in
      their build that our own render would never show us.
-   - **Panels get lettered sub-captions, in both forms.** A figure with
-     more than one panel is still one figure and one marker; each panel
-     carries a `(<letter>) <short title>` node -- `(a)` for the first
-     panel in reading order, `(b)` for the second, on through the
-     alphabet -- and
-     the same letters appear in the `.txt` -- `docx`, `html` and `md`
-     render only that form, so letters left out of it are letters the
-     reader never sees. `docs/TIKZ-STYLE.md` has the worked example, the
-     row-wrapping rule for a row that stops fitting, and why the
-     `subcaption` package is not the answer.
+   - **Check for TikZ, and that the figure compiles.** If
+     `figure-drawer-opencode` was not loaded, run `kpsewhich tikz.sty`
+     yourself: if it finds nothing, write the ASCII inline in
+     a `verbatim` environment instead, no pair and no marker, and say so in
+     chat. A figure you keep compiles on its own first: a malformed
+     one fails the whole pdf render, not just the figure.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.tex`, move the draft and its dossier before
      adding a figure, or drop the figure. Figures under a flat draft
      land in `content/drafts/figures/`, shared with every other flat
      draft.
-   - **Verify it compiles before keeping it.** Run `kpsewhich tikz.sty`
-     first: if it is absent, write the ASCII inline in a `verbatim`
-     environment, no pair and no marker, and say so in chat. If it is
-     present, wrap `figures/<name>.tex` in a minimal
-     `\documentclass{article}` + `\usepackage{tikz}` document and run
-     `pdflatex` on it. A malformed figure fails the *whole* pdf render
-     in step 12, not just the figure, so a figure that will not compile
-     alone never reaches the fragment.
-     If the figure uses `positioning`, `matrix`, `fit` or `tree`, put
-     its `\usetikzlibrary` line at the top of `figures/<name>.tex` and
-     copy that line into the probe too: the probe's own preamble loads
-     `tikz` and no library, so a picture that relies on one errors there
-     whether or not it is sound. Keep the line in the figure file and
-     write nothing else about loading -- no clearing of
-     `\tikz@library@...@loaded`, no saving or restoring of
-     `\tikz@node@reset@hook`. The renderer collects those lines and
-     loads the union in its own preamble (#781); a load *inside* the
-     figure float is the bug that multiplied node spacing in this
-     project's own book. `docs/TIKZ-STYLE.md` has the detail.
    - **No citekey inside either figure file.** Step 11's gate reads the
      fragment and does not follow `\input`, so a citekey in a node label
      evades the one check this pipeline exists for. Cite in the prose
      that introduces the figure.
+   - **Nothing redrawn from a source.**
+     A picture redrawn from a source paper's figure is the same
+     violation in different pixels.
    - **A captioned figure is written as real LaTeX too, around the
      inline `\input`** -- the same carve-out step 8 states for a table,
      and for the same reason: `\begin{figure}\input{figures/<name>.tex}\caption{...}\label{fig:<id>}\end{figure}`,
@@ -459,9 +416,6 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      it, but the engine is theirs to choose; never switch it for them.
      Never rewrite the characters in the fragment to get the build
      through.
-
-   The TikZ must be as original as the ASCII -- a picture redrawn from a
-   source paper's figure is the same violation in different pixels.
 
    **An equation gets the same carve-out, without the pair-of-files
    ceremony.** Most displayed math in a chapter needs no number at all

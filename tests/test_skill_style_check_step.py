@@ -35,6 +35,12 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
 
 _STEP = re.compile(r"-m chitragupta\.draft style\b")
+
+# Skills that never present a draft, so there is nothing for them to
+# check. Named, not inferred, so a new drafting skill cannot slip in here
+# by accident. `figure-drawer` draws one figure and returns to the skill
+# that called it, which runs the prose check (#1027).
+_HELPERS = {"figure-drawer"}
 _FRONTMATTER = re.compile(r"\A---\n.*?\n---\n", re.DOTALL)
 
 # Measured over the eight files once they were written: the furthest either
@@ -81,11 +87,13 @@ def test_the_frontmatter_stripper_still_strips():
 def test_every_drafting_skill_runs_the_prose_check():
     files = _skill_files()
     assert files, "expected to find SKILL.md files under .claude/skills/"
-    missing = [p.parent.name for p in files if not _STEP.search(_body(p))]
+    missing = [
+        p.parent.name for p in files if p.parent.name not in _HELPERS and not _STEP.search(_body(p))
+    ]
     assert not missing, (
         f"these skills never mention `-m chitragupta.draft style`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
-        'docs/GENRE.md\'s "What all eight have in common" claims otherwise, '
+        'docs/GENRE.md\'s "What all ten have in common" claims otherwise, '
         "and #183 is the issue this leaves half-built: the hook would still "
         "report per write, but nothing would report the finished draft."
     )

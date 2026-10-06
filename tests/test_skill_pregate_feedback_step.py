@@ -11,16 +11,17 @@ commands this step calls actually do has its own tests
 tests/test_style_check.py). This file pins only that the five skills
 still tell anyone to run the step, in the shape the plan specifies.
 
-**Five, not nine.** Unlike the verbatim scan (shared by all nine), this
-step belongs only to the skills that draft fresh prose from a
-`claim:`/`quote:` evidence packet: `survey-writer`,
+**Five, not ten.** Unlike the verbatim scan (shared by the nine that
+present a draft), this step belongs only to the skills that draft
+fresh prose from a `claim:`/`quote:` evidence packet: `survey-writer`,
 `thesis-chapter-writer`, `textbook-chapter-writer`, `tutorial-writer`,
 `deep-research`. `book-assembler` writes no prose of its own;
 `draft-reviser`, `corpus-reviser` and `agenda-reviser` already
 gate-and-recheck per section rather than critiquing a whole fresh
 draft. `test_only_the_five_genre_skills_carry_the_step` below is what
 keeps a future edit from copying the step into the wrong file by habit,
-or dropping it from one of the five.
+or dropping it from one of the five. `figure-drawer` presents no draft
+at all, so it carries neither this step nor the scan (#1027).
 
 **Why the acceptance test matters more than the critique itself.** The
 critique step is an inline judgement call -- nothing in this pipeline
@@ -43,8 +44,8 @@ SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 # The five skills this step belongs to -- drafting fresh prose from a
 # claim:/quote: evidence packet, as distinct from a reviser (which edits
 # an existing draft section by section) or book-assembler (writes no
-# prose at all). docs/GENRE.md's "What all nine have in common" section
-# states this same five-of-nine split in the same words.
+# prose at all). docs/GENRE.md's "What all ten have in common" section
+# states this same five-of-ten split in the same words.
 _GENRE_SKILLS = {
     "survey-writer",
     "thesis-chapter-writer",
@@ -53,11 +54,17 @@ _GENRE_SKILLS = {
     "deep-research",
 }
 
-# The four skills that must never carry this step -- checked by name,
-# not merely "everything but the five," so a tenth skill landing later
+# The five skills that must never carry this step -- checked by name,
+# not merely "everything but the five," so an eleventh skill landing later
 # fails loudly here rather than silently joining whichever side of the
 # split its file happens to sort into.
-_EXCLUDED_SKILLS = {"draft-reviser", "corpus-reviser", "agenda-reviser", "book-assembler"}
+_EXCLUDED_SKILLS = {
+    "draft-reviser",
+    "corpus-reviser",
+    "agenda-reviser",
+    "book-assembler",
+    "figure-drawer",
+}
 
 _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 
@@ -155,7 +162,7 @@ def test_only_the_five_genre_skills_carry_the_step():
     extra = present - _GENRE_SKILLS
     assert not missing, (
         f"these genre skills never mention the pre-gate critique step: {sorted(missing)}. "
-        "docs/GENRE.md's five-of-nine note claims otherwise."
+        "docs/GENRE.md's five-of-ten note claims otherwise."
     )
     assert not extra, (
         f"these skills carry the pre-gate critique step and should not: {sorted(extra)}. "
