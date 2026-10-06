@@ -125,3 +125,142 @@ class TestMain:
     def test_an_unknown_name_is_refused(self, tree, capsys):
         assert render_diagrams.main(["nope"]) == 2
         assert "nope" in capsys.readouterr().err
+
+
+PALETTE_DOC = """# Style
+
+## 🎨 The house palette
+
+```latex
+\\definecolor{cgInk}{HTML}{1A1A1A}
+\\definecolor{cgFlow}{HTML}{0072B2}
+\\definecolor{cgAccent}{HTML}{D55E00}
+\\definecolor{cgAlt}{HTML}{009E73}
+```
+
+## Elsewhere
+
+\\definecolor{cgStray}{HTML}{123456}
+"""
+
+THEME = render_diagrams.house_theme(render_diagrams.palette(PALETTE_DOC))
+
+
+class TestPalette:
+    def test_it_reads_the_house_palette_section_only(self):
+        assert render_diagrams.palette(PALETTE_DOC) == {
+            "cgInk": "1A1A1A",
+            "cgFlow": "0072B2",
+            "cgAccent": "D55E00",
+            "cgAlt": "009E73",
+        }
+
+    def test_a_missing_palette_fails_loudly(self):
+        with pytest.raises(ValueError, match="definecolor"):
+            render_diagrams.palette("# Style\n\nno palette here\n")
+
+
+class TestTint:
+    def test_it_mixes_with_white_as_tikz_does(self):
+        assert render_diagrams.tint("0072B2", 10) == "E6F1F7"
+
+    def test_the_ends_of_the_range(self):
+        assert render_diagrams.tint("0072B2", 100) == "0072B2"
+        assert render_diagrams.tint("0072B2", 0) == "FFFFFF"
+
+
+class TestHouseTheme:
+    def test_the_roles_take_their_strokes_from_the_palette(self):
+        init, roles = THEME
+        assert '"primaryBorderColor": "#0072B2"' in init
+        assert "classDef key fill:#FBEFE6,stroke:#D55E00" in roles
+        assert "stroke-dasharray" in roles.splitlines()[-1]
+
+    def test_the_directive_is_mermaid_json(self):
+        init, _ = THEME
+        body = init.removeprefix("%%{init: ").removesuffix("}%%")
+        assert json.loads(body)["theme"] == "base"
+
+
+class TestStamp:
+    def test_a_flowchart_gets_the_directive_and_the_roles(self):
+        out = render_diagrams.stamp("flowchart LR\n  A --> B\n", THEME)
+        assert out.startswith(THEME[0] + "\nflowchart LR\n")
+        assert out.endswith(THEME[1] + "\n")
+
+    def test_a_sequence_diagram_gets_the_directive_only(self):
+        out = render_diagrams.stamp("sequenceDiagram\n  A->>B: hi\n", THEME)
+        assert out == THEME[0] + "\nsequenceDiagram\n  A->>B: hi\n"
+
+    def test_a_leading_comment_does_not_hide_a_flowchart(self):
+        out = render_diagrams.stamp("%% a note\nflowchart LR\n  A --> B\n", THEME)
+        assert out.endswith(THEME[1] + "\n")
+
+    def test_a_state_diagram_keeps_its_roles(self):
+        """stateDiagram takes classDef; dropping a hand-written role and
+        putting nothing back would leave its `class` lines styling nothing."""
+        out = render_diagrams.stamp(
+            "stateDiagram-v2\n  classDef flow fill:#fff\n  class a flow\n", THEME
+        )
+        assert out.endswith(THEME[1] + "\n") and "fill:#fff" not in out
+
+    def test_an_empty_block_gets_the_directive_only(self):
+        assert render_diagrams.stamp("", THEME) == THEME[0] + "\n\n"
+
+    def test_restamping_is_a_no_op(self):
+        once = render_diagrams.stamp("flowchart LR\n  A --> B\n", THEME)
+        assert render_diagrams.stamp(once, THEME) == once
+
+    def test_an_older_theme_is_replaced_not_stacked(self):
+        old = render_diagrams.house_theme(
+            dict(render_diagrams.palette(PALETTE_DOC), cgFlow="112233")
+        )
+        stale = render_diagrams.stamp("flowchart LR\n  A --> B\n", old)
+        assert render_diagrams.stamp(stale, THEME) == render_diagrams.stamp(
+            "flowchart LR\n  A --> B\n", THEME
+        )
+
+
+@pytest.fixture
+def docs(tree, tmp_path, monkeypatch):
+    """A DIAGRAMS.md listing `a` and `b`, and a palette, wired in."""
+    style = tmp_path / "TIKZ-STYLE.md"
+    style.write_text(PALETTE_DOC, encoding="utf-8")
+    md = tmp_path / "DIAGRAMS.md"
+    md.write_text(
+        "# Diagrams\n\n```mermaid\nflowchart LR\n  A --> B\n```\n\n"
+        "```mermaid\nsequenceDiagram\n  A->>B: hi\n```\n\n"
+        f"{render_diagrams.EDITING_HEADING}\n\n| Diagram | `<name>` |\n| --- | --- |\n"
+        "| A | `a` |\n| B | `b` |\n",
+        encoding="utf-8",
+    )
+    (tree / "a.mmd").write_text('---\ntitle: "A"\n---\nflowchart LR\n  A --> B\n', encoding="utf-8")
+    monkeypatch.setattr(render_diagrams, "DIAGRAMS_MD", md)
+    monkeypatch.setattr(render_diagrams, "STYLE_DOC", style)
+    return md
+
+
+class TestSync:
+    def test_it_stamps_the_blocks_and_copies_them_keeping_the_title(self, docs, tree):
+        assert render_diagrams.sync() == ["a", "b"]
+        blocks = render_diagrams.blocks(docs.read_text(encoding="utf-8"))
+        assert blocks[0] == render_diagrams.stamp("flowchart LR\n  A --> B\n", THEME)
+        assert (tree / "a.mmd").read_text(encoding="utf-8") == '---\ntitle: "A"\n---\n' + blocks[0]
+        assert (tree / "b.mmd").read_text(encoding="utf-8") == blocks[1]
+
+    def test_a_second_run_changes_nothing(self, docs):
+        render_diagrams.sync()
+        assert render_diagrams.sync() == []
+
+    def test_a_block_without_a_row_is_refused(self, docs):
+        docs.write_text(
+            docs.read_text(encoding="utf-8").replace("| B | `b` |\n", ""), encoding="utf-8"
+        )
+        with pytest.raises(ValueError, match="2 fenced blocks"):
+            render_diagrams.sync()
+
+    def test_main_names_what_to_re_render(self, docs, capsys):
+        assert render_diagrams.main(["--sync"]) == 0
+        assert "render_diagrams.py a b" in capsys.readouterr().out
+        assert render_diagrams.main(["--sync"]) == 0
+        assert "already matches" in capsys.readouterr().out
