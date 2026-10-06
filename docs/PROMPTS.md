@@ -115,7 +115,7 @@ Same first three layers as any skill, then:
 flowchart TB
   PRIOR["<i>layers 1–3: harness, CLAUDE.md, AGENTS.md/SOUL.md —<br/>identical to every other skill, see diagram above</i>"]
 
-  L4["<b>4 · SKILL BODY</b><br/><br/>.claude/skills/deep-research/SKILL.md<br/><small>the 7 phases</small><br/>.claude/skills/deep-research/reference.md<br/><small>exact protocol, depth-preset defaults,<br/>the report template, the peer-review<br/>reconciliation rule — pulled in because<br/>SKILL.md cites it by name rather than<br/>repeating it</small>"]
+  L4["<b>4 · SKILL BODY</b><br/><br/>.claude/skills/deep-research/SKILL.md<br/><small>the 7 phases</small><br/>.claude/skills/deep-research/references/report.md<br/><small>exact protocol, depth-preset defaults,<br/>the report template, the peer-review<br/>reconciliation rule — pulled in because<br/>SKILL.md cites it by name rather than<br/>repeating it</small>"]
 
   L5["<b>5 · CROSS-GENRE STANDARDS</b><br/><i>same as every other skill</i><br/><br/>docs/WRITING-STANDARDS.md<br/>assets/style/acronyms.toml"]
 
@@ -214,7 +214,7 @@ lost for good.
 
 | | `textbook-chapter-writer` | `deep-research` |
 | --- | --- | --- |
-| Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `reference.md` §1), several times over across Phases 2/5/7 |
+| Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `references/report.md` §1), several times over across Phases 2/5/7 |
 | Where the citekey invariant lives | Read once, from `AGENTS.md` | Restated locally inside each `.claude/agents/*.md` definition, since a subagent doesn't inherit `AGENTS.md` |
 | How evidence reaches later steps | Stays in the one context that found it | Deliberately not pasted forward. It is transcribed to the dossier, then handed to later subagents as a `dossier brief` pointer |
 | What ends the run's growth | The chapter is written once, in the one context | The orchestrator's own context still only grows across all 7 phases. The saving is in what it hands to *each subagent*, not in its own size |

@@ -23,6 +23,11 @@ first line that moved.
 The step scans (tests/test_skill_*_step.py) read only `.claude/skills/`:
 once the copies agree here, a required step present in one is present in
 all three.
+
+Only `SKILL.md` is kept per harness (#997). A skill's references, assets
+and scripts exist once, under `.claude/`, and every copy of `SKILL.md`
+names them by path; tests/test_skill_references.py pins that half. So the
+comparisons below read each copy's top-level Markdown, never a subfolder.
 """
 
 import json
@@ -108,14 +113,14 @@ def test_every_skill_has_all_three_copies():
 
 @pytest.mark.parametrize("name", SKILLS)
 def test_each_copy_holds_the_same_files(name):
-    files = {h: sorted(p.name for p in folder(h, name).iterdir()) for h in ROOTS}
+    files = {h: sorted(p.name for p in folder(h, name).glob("*.md")) for h in ROOTS}
     assert files["codex"] == files["claude"] == files["opencode"], files
 
 
 @pytest.mark.parametrize("harness", ["codex", "opencode"])
 @pytest.mark.parametrize("name", SKILLS)
 def test_the_copies_differ_only_where_the_phrase_map_says(name, harness):
-    for path in sorted(folder("claude", name).iterdir()):
+    for path in sorted(folder("claude", name).glob("*.md")):
         base = normalized("claude", path.read_text(encoding="utf-8"))
         other = normalized(harness, (folder(harness, name) / path.name).read_text(encoding="utf-8"))
         assert base == other, (

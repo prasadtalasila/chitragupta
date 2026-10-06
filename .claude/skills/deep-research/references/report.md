@@ -1,6 +1,6 @@
 # deep-research -- Reference (exact protocol, adapted)
 
-Source of truth for the `deep-research` skill's phases. Adapted from
+Source of truth for the deep-research skill's phases. Adapted from
 [hadufer/claude-storm](https://github.com/hadufer/claude-storm) (MIT
 License), which itself encodes the Stanford STORM algorithm
 (`github.com/stanford-oval/storm`, NAACL 2024 / arXiv:2402.14207) fused with
@@ -18,7 +18,7 @@ SKILL.md, under `# deep-research`, for what every claim must resolve to.
 | Interview rounds / persona | 2 / **3** / 4 (quick/standard/deep) | |
 | Search queries / question | up to 3 | reformulations, not parallel identical calls |
 | Candidates retrieved / query | 15 (`retrieval search`) | 500-char snippets -- enough to judge, not just a title |
-| Results kept / query | ~top 3 after relevance filtering | filter like `survey-writer` step 2, not raw top-k |
+| Results kept / query | ~top 3 after relevance filtering | filter like the survey writer's step 2, not raw top-k |
 | Concurrency cap | ~8-10 subagents in flight at once | batch the rest sequentially |
 | Lead/summary length | <=4 paragraphs | |
 
@@ -27,7 +27,7 @@ Contradiction map -> Outline -> Cited writing -> Polish/synthesis -> Peer
 review**. STORM's own paper reports multi-perspective articles ~25% more
 organized and ~10% broader in coverage than single-prompt baselines --
 that's the gain the perspective fan-out buys, and why this skill exists
-alongside the faster single-pass `survey-writer`.
+alongside the faster single-pass survey writer.
 
 ---
 
@@ -54,8 +54,8 @@ Per round (repeat for ROUNDS):
    if that stack has been built for this corpus).
 3. **Retrieve and filter**: run the queries, read the actual snippets
    (500 chars by default from both `search()` functions), keep only what
-   passes a relevance judgment -- same discipline as `survey-writer`'s
-   step 2, not "top-k, done."
+   passes a relevance judgment -- same discipline as the survey
+   writer's step 2, not "top-k, done."
 4. **Answer grounded only in what survived filtering**, every sentence
    cited by real citekey. If nothing relevant survives after reformulating,
    say so -- "no appropriate answer can be formulated from this corpus" is

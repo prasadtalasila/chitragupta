@@ -22,8 +22,9 @@ It reads the same shared corpus layer as the other genre skills.
 Adapted from hadufer/claude-storm (MIT), itself an implementation of
 Stanford OVAL's STORM method (Shao et al., NAACL 2024) fused with Nav
 Toor's 4-prompt adaptation, and retooled to cite only real citekeys
-instead of live web sources. `reference.md` carries the attribution and
-the adaptation in full.
+instead of live web sources. `.claude/skills/deep-research/references/report.md`
+(paths in this skill are from the project root) carries the attribution
+and the adaptation in full.
 
 ## Shared corpus layer (read, don't regenerate)
 
@@ -335,7 +336,8 @@ dispatching.
 Dispatch one `deep-research-interviewer` subagent per persona, **all in
 parallel** if your session offers subagent tools; otherwise run each
 interview yourself, one after another, following the protocol from
-`reference.md` §3 plus the packet schema from
+`.claude/skills/deep-research/references/report.md` §3 plus the
+packet schema from
 `.claude/agents/deep-research-interviewer.md` (or read that
 file).
 
@@ -368,8 +370,9 @@ reasonable reformulation, that's a real "thin coverage" finding to report,
 not something to paper over.
 
 Citekeys need no de-duplication/global-renumbering step (unlike
-claude-storm's URL-globalization algorithm) -- see `reference.md` §4 for
-why a citekey is already the stable, project-wide identifier.
+claude-storm's URL-globalization algorithm) -- see
+`.claude/skills/deep-research/references/report.md` §4 for why a
+citekey is already the stable, project-wide identifier.
 
 ## Phase 3 -- Contradiction map
 
@@ -453,7 +456,7 @@ If you cannot spawn `deep-research-writer`, write each section yourself with
 line goes in the prompt either way. For `quick`, write inline: you are
 the writer, the packets are already in your context, and running `brief`
 against yourself would only add tokens. Cap concurrency per
-`reference.md` §1.
+`.claude/skills/deep-research/references/report.md` §1.
 
 Inline `[@citekey]` citations, neutral tone, every sentence grounded, no
 per-section reference list. A writer may re-search a thin subpoint -- only
@@ -506,7 +509,8 @@ the actionable insight for the user's role; the frontier question.
 **(a) Peer review.** STORM's documented weakness is skipping self-critique
 entirely; a single self-review pass (below, `quick` depth) is one fix, but
 one voice reviewing its own work shares its own blind spots. For
-`standard`/`deep`, use the panel described in `reference.md` §7 instead
+`standard`/`deep`, use the panel described in
+`.claude/skills/deep-research/references/report.md` §7 instead
 (idea credited to
 [Imbad0202/academic-research-skills](https://github.com/Imbad0202/academic-research-skills)'s
 Stage-3 peer review -- see the README's Acknowledgements; nothing from that
@@ -539,7 +543,8 @@ dispatch): confidence score (1-10) per key finding with justification;
 weakest link and what would verify it; bias check (did one perspective's
 sources dominate); a missing 6th perspective; overall grade.
 
-**(b) Assemble** per `reference.md` §5's template: Title -> Summary ->
+**(b) Assemble** per `.claude/skills/deep-research/references/report.md`
+§5's template: Title -> Summary ->
 Synthesis briefing -> article body -> Contradiction map -> Peer-review
 scorecard -> References (citekeys with title/year from the ledger, not URLs).
 
@@ -667,7 +672,8 @@ Fix and re-run until `OK`. Never present a draft that hasn't passed.
 
 **(d) Save and render.** Write to `content/drafts/deep-research-<slug>.md`
 (the canonical, source-of-truth format). Then fill in the `## References`
-section (reference.md §5's template) from exactly the gated citekeys,
+section (`.claude/skills/deep-research/references/report.md` §5's
+template) from exactly the gated citekeys,
 rather than hand-assembling it:
 
 ```bash
@@ -838,7 +844,8 @@ its working state get backed up.
   citekey, or is stated as not found. Never fabricate a citekey, a quote,
   or a finding.
 - **Parallelize, with a cap.** Dispatch same-phase subagents together where your
-  session can; bound concurrency per `reference.md` §1.
+  session can;   bound concurrency per
+  `.claude/skills/deep-research/references/report.md` §1.
 - **Be honest about cost.** This is intentionally heavy and slower than
   `survey-writer` -- point users there if they want something faster.
 

@@ -131,7 +131,8 @@ citekey, a title, a score and a 500-character snippet, **an estimated
 retrieval pass**. Step 3 then tells you to reformulate and search again
 when a sub-theme comes up thin.
 
-`reference.md` §1 sets "results kept per query ~ top 3" out of fifteen.
+deep-research's `references/report.md` §1 sets "results kept per query ~
+top 3" out of fifteen.
 **The roughly 80% that get rejected cost exactly what the kept ones cost,
 and then stay resident for the rest of the run anyway.**
 

@@ -47,8 +47,8 @@ _WORKTREES = "worktrees"
 
 def _skill_and_agent_files(claude_dir=CLAUDE_DIR):
     # Every Markdown file under .claude/, not just SKILL.md and agent
-    # files: `deep-research/reference.md` is a real, separate protocol
-    # doc that a retrieval invocation could land in just as easily, and
+    # files: `deep-research/references/report.md` is a real, separate
+    # protocol doc that a retrieval invocation could land in just as easily, and
     # nothing about this project's layout rules out another one like it
     # appearing alongside a future skill.
     #

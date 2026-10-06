@@ -436,7 +436,9 @@ checkout run from its own tree) leaves the launch as it was.
 scaffolds no `scripts/`, so one found in an installed project was planted
 and would run with the user's privileges on the next `.py` write under
 `chitragupta/` or `scripts/`. There it starts no process at all; only the
-checkout runs its scanner.
+checkout runs its scanner. The rule is about that one root-level folder:
+a skill's own `references/` or `assets/` under `.claude/skills/` (#997)
+is scaffolded on purpose and is nothing the hook looks at.
 `hook_launchers.py`'s import probe (`import_probe.py`) makes the same
 call from its own side, by whether it is itself running from inside the
 project whose settings it reads. `session_start_hook.py`'s own
@@ -470,6 +472,21 @@ example `chitragupta init /tmp/fresh`, and copying its `.claude/skills/`,
 `.agents/` or `.opencode/skills/` for those harnesses). Avoid `chitragupta
 init --force` in the project itself, which also resets `config.toml` and
 `content/acronyms.toml`.
+
+Since #997 a skill keeps its reference material in `references/`
+folders under `.claude/` rather than in a `reference.md` beside each
+copy of `SKILL.md`, so the same update also copies
+`.claude/skills-common/` and then deletes the files the old layout left
+behind, which no skill reads any more:
+
+```bash
+chitragupta init /tmp/fresh --agent <yours>
+cp -r /tmp/fresh/.claude/skills /tmp/fresh/.claude/skills-common .claude/
+find .claude/skills .agents/skills .opencode/skills -name reference.md -delete
+```
+
+Copy the per-harness `SKILL.md` files as above. Copying never deletes
+anything, which is why the last line is spelled out.
 
 **What this cannot close**, recorded so nobody assumes it does: an
 interpreter that finds no installed `chitragupta` at all (the unactivated

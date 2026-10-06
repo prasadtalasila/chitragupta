@@ -131,8 +131,8 @@ Each step names the document that owns its rule.
 9. **Returns** the two paths, whether the probe passed, and whether it
    checked the rendered page.
 
-The skill folder also holds a `reference.md` that it reads only when a
-step sends it there: which metaphor fits, a worked panelled figure,
+The skill folder also holds `references/figures.md`, which it reads only
+when a step sends it there: which metaphor fits, a worked panelled figure,
 fitting a figure without scaling it, and an annotated exemplar.
 
 ## 🌱 A worked example

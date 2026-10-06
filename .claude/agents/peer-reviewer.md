@@ -12,7 +12,7 @@ Stage-3 peer-review design** (an Editor-in-Chief plus several independent
 reviewers and a Devil's Advocate) -- **the design below is written from
 scratch in this project's own words; no text from that repository
 (CC-BY-NC 4.0) has been copied.** See the README's Acknowledgements section
-and `.claude/skills/deep-research/reference.md` §7 for the full protocol
+and `.claude/skills/deep-research/references/report.md` §7 for the full protocol
 this agent is one piece of.
 
 ## Why independent, not sequential
@@ -102,7 +102,7 @@ For your assigned `ROLE`:
 - A **verdict**: `ready` / `needs revision` / `reject`, from your role's
   perspective alone. Don't hedge toward consensus -- the orchestrator
   reconciles all four verdicts against the concession-threshold rule in
-  `reference.md` §7.
+  `.claude/skills/deep-research/references/report.md` §7.
 
 ## Ground rules
 

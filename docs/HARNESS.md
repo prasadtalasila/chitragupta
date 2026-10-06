@@ -149,17 +149,20 @@ a harness-neutral phrase it has to translate.
 │   ├── settings.json              # Claude Code's hook launchers
 │   ├── hooks/                     # the hook scripts all three harnesses run
 │   ├── agents/                    # Claude Code subagents
-│   └── skills/<name>/             # Claude Code wording
-│       └── SKILL.md               #   (deep-research also has reference.md)
+│   ├── skills/<name>/
+│   │   ├── SKILL.md               # Claude Code wording
+│   │   ├── references/            # this skill's detail, read on demand
+│   │   └── assets/                # templates it writes from
+│   └── skills-common/references/  # detail several skills share
 ├── .agents/
-│   └── skills/<name>/             # Codex wording
+│   └── skills/<name>/SKILL.md     # Codex wording
 ├── .codex/
 │   └── hooks.json                 # Codex's hook launchers → .claude/hooks/
 └── .opencode/
     ├── opencode.json              # denies the unsuffixed skill names
     ├── plugins/chitragupta-gate.js
     ├── chitragupta/gate.js
-    └── skills/<name>-opencode/    # OpenCode wording
+    └── skills/<name>-opencode/SKILL.md  # OpenCode wording
 ```
 
 | Harness | Skills it sees | Why only those |
@@ -206,6 +209,40 @@ To change a skill, change every copy, and add or edit a phrase-map
 entry for any wording that is meant to differ. The step scans
 (`tests/test_skill_*_step.py`) read only `.claude/skills/`; once the
 copies agree, a required step present in one is present in all three.
+
+### Only `SKILL.md` is per harness
+
+Everything else a skill uses exists once, under `.claude/` (#997):
+`.claude/skills/<name>/references/` and `assets/` for one skill, and
+`.claude/skills-common/references/` for a passage several skills share.
+All three copies of `SKILL.md` name those files by their path from the
+project root, so the files sit outside the Codex and OpenCode skill
+folders. That works because:
+
+- **every harness loads them on demand.** Each one preloads only a
+  skill's name and description, loads the `SKILL.md` body when the skill
+  is used, and leaves every other file for the model to open by path.
+  None inlines a `references/` folder. Sources: the Claude Code skills
+  docs; Codex's skill catalog prompt (`openai/codex`,
+  `ext/skills/src/catalog_prompt.rs`), which tells the model to read
+  only the references it needs; OpenCode's `skill` tool
+  (`sst/opencode`, `packages/opencode/src/tool/skill.ts`), which lists
+  a skill's other files by path without their contents.
+- **nothing confines a model to its skill's own folder.** It reads with
+  its ordinary file tools. Codex resolves a relative path against the
+  skill's folder first, which is why the paths are written from the
+  project root and say so.
+- **`.claude/` is scaffolded for every `--agent`**, so the files are
+  there whichever harness a project uses.
+
+The price is one rule: **a shared file names no skill and no harness
+tool.** OpenCode must be sent to `<name>-opencode`, and a reference that
+named the unsuffixed skill would send it to one its config denies, so a
+sentence that routes to another skill stays in `SKILL.md`, where the
+phrase map and the suffix rule apply. `tests/test_skill_references.py`
+holds both halves: every path a `SKILL.md` names exists, every reference
+is named by some `SKILL.md`, no shared file names a skill or a tool, and
+the Codex and OpenCode folders hold `SKILL.md` and nothing else.
 
 ## 🚫 Designs turned down, and why
 

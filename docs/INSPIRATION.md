@@ -34,8 +34,8 @@ came from.
   7-phase pipeline (perspective discovery, parallel grounded interviews,
   contradiction mapping, outline, cited writing, synthesis, self peer-review).
   Retooled here for a closed, citekey-grounded local corpus instead of live
-  web sources; see `reference.md` in that skill's directory for what
-  changed and why.
+  web sources; see `references/report.md` in that skill's directory for
+  what changed and why.
 - **[stanford-oval/storm](https://github.com/stanford-oval/storm)**: the
   original STORM method claude-storm implements: "Assisting in Writing
   Wikipedia-like Articles From Scratch with Large Language Models" (Shao,
@@ -108,7 +108,7 @@ came from.
   reviewer, reconciled against a concession threshold) is credited to that
   project's Stage-3 peer-review design. That project is licensed CC-BY-NC
   4.0; **no text from it was copied**: `.claude/agents/peer-reviewer.md`
-  and `.claude/skills/deep-research/reference.md` §7 are written from
+  and `.claude/skills/deep-research/references/report.md` §7 are written from
   scratch, adapting only the concept of an independent panel plus a
   Devil's Advocate role, not its implementation.
 

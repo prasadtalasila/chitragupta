@@ -101,9 +101,12 @@ so they are this skill's to state:
    overlong node, literal copying) before keeping the figure. No label
    goes below the body size, and the figure is `\input` bare, never
    inside `\resizebox`: if it does not fit, change the layout, not the
-   scale. For which metaphor fits, see reference.md §1; for a figure
-   that does not fit the width, reference.md §3; for what the house
-   block's zone cards, badges and legend are for, reference.md §4.
+   scale. For which metaphor fits, see
+   `.claude/skills/figure-drawer/references/figures.md` §1 (paths in this
+   skill are from the project root); for a figure that does not fit the
+   width, `.claude/skills/figure-drawer/references/figures.md` §3; for
+   what the house block's zone cards, badges and legend are for,
+   `.claude/skills/figure-drawer/references/figures.md` §4.
 
    ```bash
    cp assets/tikz/zoned-spine.tex content/drafts/rag/figures/flow.tex
@@ -119,7 +122,8 @@ so they are this skill's to state:
    letters the reader never sees. Which lettering to use is `scope.md`'s
    to say, when it records one. The worked three-panel example, the
    row-wrapping rule for a row that stops fitting, and why the
-   `subcaption` package is not the answer are in reference.md §2.
+   `subcaption` package is not the answer are in
+   `.claude/skills/figure-drawer/references/figures.md` §2.
 
 4. **Write the ASCII twin** in `figures/<name>.txt`, in
    `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet, depicting the same
