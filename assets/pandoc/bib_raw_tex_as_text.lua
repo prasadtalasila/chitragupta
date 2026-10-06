@@ -103,9 +103,10 @@ local as_text = {
   end,
 }
 
--- A reference is a table of fields: Inlines for a title or a name part,
--- plain strings for an id or a date part, nested tables for a name list
--- or a date. Only the Inlines can hold TeX.
+-- A reference is a table of fields: Inlines for a title or a journal,
+-- plain strings for an id, a DOI or a URL (citeproc prints those as
+-- literal text), nested tables for a name list or a date. Only Inlines
+-- (or Blocks) can hold TeX.
 local function rewrite(value)
   local kind = pandoc.utils.type(value)
   if kind == "Inlines" or kind == "Blocks" then

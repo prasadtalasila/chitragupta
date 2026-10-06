@@ -8,6 +8,7 @@ LaTeX, and citeproc carries it into the reference list. Under LuaLaTeX
 the one tests/test_render_output.py already uses; no new key is made up.
 """
 
+import json
 import subprocess
 import unicodedata
 from pathlib import Path
@@ -175,12 +176,17 @@ def test_inline_yaml_references_are_rewritten_too(tmp_path):
 
 @pytest.mark.skipif(not pandoc_available, reason="pandoc not installed")
 def test_a_draft_without_a_bibliography_is_left_alone(tmp_path):
+    # No `references` key is added to the metadata: an empty one would
+    # still reach a writer that prints metadata (a docx's custom
+    # properties), so the filter returns the document untouched.
     (tmp_path / "x.md").write_text("No citations, `\\x`{=latex}.\n", encoding="utf-8")
-    run = lambda *f: subprocess.run(  # noqa: E731
-        ["pandoc", "x.md", *f, "--citeproc", "-t", "latex"],
-        cwd=tmp_path, capture_output=True, text=True, check=True,
-    ).stdout  # fmt: skip
-    assert run(*_BIB_FILTER) == run() == "No citations, \\x.\n"
+    meta = json.loads(
+        subprocess.run(
+            ["pandoc", "x.md", *_BIB_FILTER, "-t", "json"],
+            cwd=tmp_path, capture_output=True, text=True, check=True,
+        ).stdout
+    )["meta"]  # fmt: skip
+    assert meta == {}
 
 
 @pytest.mark.skipif(
