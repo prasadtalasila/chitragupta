@@ -30,46 +30,16 @@ import re
 import sys
 from pathlib import Path
 
+# `strip_comments` lives in a leaf module so `chitragupta.figure` can use it
+# without importing this package; older callers still import it from here.
+from chitragupta._tex_comments import strip_comments
 from chitragupta.render_output._figures import _TEX_FORMATS, _resolve_sibling
-
-# A TeX comment: `%` to the end of the line. Stripped before any pattern
-# here runs, and before `review/figure_layout`'s own source checks run --
-# #404, where every symptom was a *wrong* answer rather than a missing
-# one. A commented-out `\draw` was reported as an edge the figure claims;
-# a commented-out `\node`'s label was measured for length; and worst, a
-# comment merely *mentioning* a node declaration made the probe ask
-# pdflatex for a shape nothing had drawn, so the aid reported a figure
-# that compiles fine as one that does not. For this module the same rule
-# has a second edge: a commented-out `\usetikzlibrary` would otherwise
-# put a library in the preamble no figure uses, and a misspelled name
-# inside a comment would fail the whole render (docs/TIKZ-STYLE.md -- a
-# missing name takes the whole call down).
-#
-# `\%` is a literal percent sign and does not start a comment, hence the
-# lookbehind. `\\%` -- an escaped backslash followed by a real comment --
-# is read the wrong way by that lookbehind and is left alone: it needs a
-# character-by-character scan rather than a regex, and no figure this
-# pipeline draws has produced one.
-#
-# This is the canonical definition. `review/figure_layout/_source.py`
-# imports it from here rather than keeping its own, because the
-# dependency runs review -> render_output and never back.
-_COMMENT_RE = re.compile(r"(?<!\\)%[^\n]*")
 
 # The load itself. Deliberately regex over TikZ rather than a LaTeX
 # parser, matching how `_figures.py` already reads these same files. PGF
 # has no optional-argument form of this macro, so there is nothing
 # between the name and its brace but space.
 _USETIKZLIBRARY_RE = re.compile(r"\\usetikzlibrary\s*\{([^}]*)\}")
-
-
-def strip_comments(source: str) -> str:
-    """`source` with every TeX comment removed.
-
-    The first thing every reader of a figure's source here does. See
-    `_COMMENT_RE` for what that fixes and what it deliberately does not.
-    """
-    return _COMMENT_RE.sub("", source)
 
 
 def libraries_in(source: str) -> list[str]:

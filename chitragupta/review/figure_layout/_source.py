@@ -13,19 +13,19 @@ below says what that costs it.
 
 import re
 
-from chitragupta.render_output._tikz_libraries import strip_comments
+from chitragupta._tex_comments import strip_comments
 
 # docs/TIKZ-STYLE.md's conciseness rule, as the number it is written as.
 # One place, because the report quotes it back to the reader.
 MAX_NODE_WORDS = 15
 
 # `strip_comments` used to be defined here. It moved to
-# `render_output/_tikz_libraries.py` (#781), which needs the same
-# stripper to collect a figure's `\usetikzlibrary` names, and is
-# re-exported under its old name because this module is where every
-# reader of a figure's source looks for it. The dependency only runs one
-# way -- review imports render_output, never the reverse -- so the
-# canonical definition, and #404's record of what it fixes, live there.
+# `render_output/_tikz_libraries.py` (#781), and then to the leaf
+# `chitragupta/_tex_comments.py` (#1013) so `chitragupta.figure` could
+# share it without an import cycle. It is re-exported under its old name
+# because this module is where every reader of a figure's source looks
+# for it. The canonical definition, and #404's record of what it fixes,
+# live in the leaf.
 __all__ = [
     "MAX_NODE_WORDS",
     "edge_list",
