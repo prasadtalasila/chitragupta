@@ -48,6 +48,14 @@ The **`tiers_not_run` report** is what makes the remaining three
 honest. A two-of-three-tier scan that reads clean is worse than no scan,
 because it looks like an answer.
 
+Since #997 the riders below live once, in
+`.claude/skills-common/references/verbatim-scan.md`, which each step
+names right after its commands. The scans read each skill through
+`tests/skill_text.py`, which splices that file in where it is named, so
+a window measured from the command still reaches the rider the way a
+model following the pointer does; `test_every_scan_step_names_the_reference`
+pins the pointer itself.
+
 A text scan over `.claude/skills/`, in the shape of
 tests/test_skill_retrieval_logging.py, and for the same reason: what the
 command actually does has its own tests in tests/test_verbatim_check.py
@@ -58,20 +66,29 @@ tell anyone to run it.
 import re
 from pathlib import Path
 
+from tests.skill_text import collapsed, skill_text
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
 GENRE_DOC = REPO_ROOT / "docs" / "GENRE.md"
+REFERENCE = ".claude/skills-common/references/verbatim-scan.md"
+
+# How far after the scan command the step names the reference. The
+# commands are one fenced block, and the genre's own reason for the scan
+# sits between it and the pointer.
+_POINTER_CHARS = 1200
 
 _SCAN = re.compile(r"-m chitragupta\.review verbatim scan\b")
 
 # The caveat has to travel with the command, not merely exist somewhere
 # in the file -- a skill that mentions paraphrase in an unrelated
 # paragraph has not warned the drafter about this command. Measured
-# against all nine files: the furthest any caveat sits from a mention of
-# the command is 1542 characters, in `draft-reviser`, whose step explains
-# why a revision in particular invalidates the section map before it gets
-# to what the scan cannot see.
-_LOOKAHEAD_CHARS = 1700
+# against all nine files with the shared reference spliced in (#997): the
+# furthest any caveat sits from a mention of the command is 1818
+# characters, in `draft-reviser`, whose step explains why a revision in
+# particular invalidates the section map before it points at the
+# reference that says what the scan cannot see.
+_LOOKAHEAD_CHARS = 2000
 _CAVEAT = "genuine restatement is only detected where the embedding tier can run"
 
 # What the skill must report when a tier was skipped. The payload key
@@ -106,8 +123,9 @@ _REGEN = re.compile(r"-m chitragupta\.draft dossier sections[^`]{0,160}?--citeke
 _STEP_SPAN_CHARS = 200
 
 # From the same anchor, how far the step may run before it has said what
-# it could not check. Measured max is 1303 characters (`draft-reviser`).
-_STEP_TAIL_CHARS = 1700
+# it could not check. Measured max is 1665 characters (`draft-reviser`),
+# with the shared reference spliced in.
+_STEP_TAIL_CHARS = 2000
 
 # The clause that keeps this a review aid rather than a gate. It is the
 # tripwire for the whole change: a skill that made the scan a condition
@@ -131,15 +149,31 @@ def _skill_files():
 
 
 def _normalised(path):
-    """Whitespace collapsed, because these files are hand-wrapped.
+    """Whitespace collapsed, because these files are hand-wrapped, and
+    the shared reference spliced in where the step names it.
 
-    Without this the check is really a check on where someone's editor
-    broke the line: `**paraphrase is not\\n    detected**` is the same
-    sentence as the unwrapped form and must not read as a missing
+    Without the collapsing the check is really a check on where someone's
+    editor broke the line: `**paraphrase is not\\n    detected**` is the
+    same sentence as the unwrapped form and must not read as a missing
     caveat. That is not hypothetical -- it was the state of
     textbook-chapter-writer when this test was written.
     """
-    return re.sub(r"\s+", " ", path.read_text(encoding="utf-8"))
+    return skill_text(path)
+
+
+def test_every_scan_step_names_the_reference():
+    """The riders are one file read away, so the pointer is the step."""
+    offenders = sorted(
+        p.parent.name
+        for p in _skill_files()
+        if p.parent.name not in _HELPERS
+        and not any(
+            f"`{REFERENCE}`" in text[m.start() : m.start() + _POINTER_CHARS]
+            for text in [collapsed(p.read_text(encoding="utf-8"))]
+            for m in _SCAN.finditer(text)
+        )
+    )
+    assert not offenders, f"no pointer to {REFERENCE} after the scan command in {offenders}"
 
 
 def test_every_drafting_skill_runs_the_verbatim_scan():

@@ -790,32 +790,20 @@ python -m chitragupta.draft dossier sections content/drafts/deep-research-<slug>
 python -m chitragupta.review verbatim scan content/drafts/deep-research-<slug>.md
 ```
 
-The first command is not optional and not a repeat of step (c). The embedding
-tier compares each section against the citekeys that section's `sections.md`
-row records, so a table written before the synthesis pass describes a report
-you have since edited. If it exits 1 for a missing dossier, say so and scan
-anyway.
+The first command is not optional and not a repeat of step (c): a section
+map written before the synthesis pass describes a report you have since
+edited.
 
-It reports wording the report shares with **any** parsed source, cited or not.
 This genre earns the check more than most: a dozen subagents wrote sections
 independently, so no single context ever saw the whole report, and the
-synthesis prose stitching their sections together cites nothing at all --
-exactly the text no per-citekey check can see. **A review aid, not a gate: it
-exits 0 either way, it cannot block the report, and it is never a condition of
-presenting.** Show what it found rather than summarising it away, and lead with
-the `long` and `short` buckets -- a `quoted` run that also cites its source is a
-legitimate attributed quotation, so give those a count rather than a list.
+synthesis prose stitching their sections together cites nothing at all.
+**A review aid, not a gate: it cannot block the report, and it is never a
+condition of presenting.**
 
-**Say what it did not check.** If `tiers_not_run` is not empty, quote each
-reason as the scan wrote it, and where the reason names a fix (`poetry install
---with enrich`, `python -m chitragupta.enrich`) pass that on once. It sees
-verbatim and near-verbatim reuse only, and **genuine
-restatement is only detected where the embedding tier can run**, so a clean
-scan is not a clean bill of health (`docs/PLAGIARISM.md`). Repairing a finding
-is `agenda-reviser-opencode`'s job, and only if the user asks. If the user wants
-the finding kept, add `--write`: the report goes to `content/review/`,
-mirroring the draft's path, beside any provenance and coverage reports for the
-same draft.
+Read `.claude/skills-common/references/verbatim-scan.md`
+now and follow it: what to show, what the scan could not check, and
+how to keep the report. Repairing a finding is `agenda-reviser-opencode`'s
+job, and only if the user asks.
 
 **(h) Stamp the draft fingerprint, then present.** Nothing edits the
 report's text after this point, so this is where `dossier status`

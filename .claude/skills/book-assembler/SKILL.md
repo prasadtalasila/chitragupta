@@ -413,25 +413,15 @@ It is the reading copy for anyone who is not building LaTeX.
 
    The first command is not optional. The embedding tier compares each
    section against the citekeys that section's `sections.md` row records,
-   and a unit accepted weeks ago may have been revised since. If it exits
-   1 for a missing dossier, say so and scan that unit anyway.
+   and a unit accepted weeks ago may have been revised since.
 
-   It reports wording a unit shares with **any** parsed source, cited or
-   not. **A review aid, not a gate: it exits 0 either way, and it is
-   never a condition of presenting** -- a unit with findings is still an
-   assembled unit, and this step reports rather than withholds. Show what
-   it found rather than summarising it away, and lead with the `long` and
-   `short` buckets -- a `quoted` run that also cites its source is a
-   legitimate attributed quotation, so give those a count rather than a
-   list. **Say what it did not check:** if `tiers_not_run` is not empty,
-   quote each reason as the scan wrote it, and where the reason names a
-   fix (`poetry install --with enrich`, `python -m chitragupta.enrich`)
-   pass that on once. It sees verbatim and
-   near-verbatim reuse only, and **genuine restatement is only detected
-   where the embedding tier can run**, so a clean scan is not a clean
-   bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-   `agenda-reviser`'s job, one finding at a time, in the unit that owns
-   the wording, and only if the user asks.
+   **A review aid, not a gate: it is never a condition of presenting** --
+   a unit with findings is still an assembled unit, and this step reports
+   rather than withholds. Read
+   `.claude/skills-common/references/verbatim-scan.md` now and follow it
+   for each unit. Repairing a finding is `agenda-reviser`'s job, one
+   finding at a time, in the unit that owns the wording, and only if the
+   user asks.
 
    Report the per-unit results as one table rather than a wall: the book
    has fifteen chapters, and fifteen separate scan reports is how a real
