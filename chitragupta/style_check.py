@@ -57,7 +57,7 @@ from subprocess import run as _run
 from pathlib import Path
 from typing import Any
 
-from chitragupta import config, dossier, programs
+from chitragupta import config, dossier, install, programs
 from chitragupta.style_report import report
 from chitragupta.style_rules import DIALECT_RULES, PYTHON_CHECKS, _ALL_DIALECT_RULES, with_repair
 
@@ -163,7 +163,7 @@ def run_vale(draft: Path, language: str | None) -> list[dict]:
     if vale is None:
         raise MissingBinary(
             "vale is not on PATH, so no prose check ran. Install it with "
-            "`bash scripts/install_full_pipeline.sh os-deps`, or see "
+            f"{install.remedy('os-deps')}, or see "
             "assets/vale/README.md for the pinned version. The draft is "
             "unaffected -- this check is advisory."
         )

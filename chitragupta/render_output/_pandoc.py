@@ -14,7 +14,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from chitragupta import config, programs
+from chitragupta import config, install, programs
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
@@ -366,8 +366,7 @@ def _require_pdf_toolchain() -> None:
         raise MissingBinary(
             "pdf rendering runs LuaLaTeX, but its font loader (luaotfload.sty) is "
             "not installed. On Debian/Ubuntu it is the 'texlive-luatex' package; "
-            "`bash scripts/install_full_pipeline.sh os-deps` installs it with the "
-            "fonts a render uses."
+            f"{install.remedy('os-deps')} installs it with the fonts a render uses."
         )
 
 

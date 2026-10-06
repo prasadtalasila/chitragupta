@@ -58,7 +58,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import launcher_configs, pdf_fonts, programs
+from chitragupta import install, launcher_configs, pdf_fonts, programs
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -216,7 +216,7 @@ def _check_pdf_fonts() -> list[str]:
         return [
             "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
             "loader (texlive-luatex) is not installed, so no pdf renders; "
-            "`bash scripts/install_full_pipeline.sh os-deps` installs it"
+            f"{install.remedy('os-deps')} installs it"
         ]
     lines = []
     for name in pdf_fonts.all_families():
@@ -230,8 +230,7 @@ def _check_pdf_fonts() -> list[str]:
         else:
             lines.append(
                 f"[missing] pdf font {name}: a draft with a character only it has "
-                "will not render to pdf; `bash scripts/install_full_pipeline.sh "
-                "os-deps` installs it"
+                f"will not render to pdf; {install.remedy('os-deps')} installs it"
             )
     return lines
 

@@ -34,7 +34,7 @@ import importlib.util
 import re
 from pathlib import Path
 
-from chitragupta import config, passages, programs
+from chitragupta import config, install, passages, programs
 from chitragupta.citekey_safety import citekey_path
 
 
@@ -95,12 +95,13 @@ def document_failure(exc: Exception) -> ExtractionError:
 _INSTALL_HINT = {
     "pdftotext": (
         "'pdftotext' not found on PATH. Install poppler-utils "
-        "(scripts/install_full_pipeline.sh os-deps) to extract PDF text with it."
+        f"({install.remedy('os-deps')}) to extract PDF text with it."
     ),
     "docling": (
         "the 'docling' package isn't usable (not installed, or a "
-        "transitive dependency is broken). Run 'poetry install --with enrich' "
-        "(scripts/install_full_pipeline.sh python-deps) to extract PDF text with it."
+        f"transitive dependency is broken). Run {install.remedy('enrich')} "
+        "(in a git checkout: 'poetry install --with enrich') to extract PDF "
+        "text with it."
     ),
 }
 

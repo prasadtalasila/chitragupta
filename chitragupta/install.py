@@ -73,6 +73,21 @@ REFUSED = {
 
 STAGES = ("os-deps", "gpu-torch", "enrich", *REFUSED)
 
+
+def remedy(stage: str) -> str:
+    """The command a message should tell its reader to run, quoted.
+
+    One spelling for both project shapes (#1022): the wheel ships the
+    script this module runs, and a checkout's venv has the console
+    script, so `scripts/install_full_pipeline.sh` -- which a
+    `chitragupta init` project does not have -- never needs naming in a
+    message.
+    """
+    if stage not in STAGES or stage in REFUSED:
+        raise ValueError(f"{stage!r} is not a stage chitragupta install runs")
+    return f"`chitragupta install {stage}`"
+
+
 # Derived, not restated: choices= alone gives --help no way to show which
 # of the five actually run something (#369 -- a reader who tried
 # python-deps/dev-deps/all off the usage line alone had no reason to

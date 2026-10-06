@@ -72,7 +72,12 @@ class TestCheckPdfFonts:
         assert "[ok] pdf font found: Noto Serif" in lines
         missing = [line for line in lines if line.startswith("[missing] pdf font")]
         assert len(missing) == len(lines) - 2
-        assert all("install_full_pipeline.sh os-deps" in line for line in missing)
+        assert all("chitragupta install os-deps" in line for line in missing)
+
+    def test_no_line_names_a_scripts_path(self, monkeypatch):
+        # A `chitragupta init` project has no scripts/ directory (#1022).
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
+        assert not any("scripts/" in line for line in doctor._check_pdf_fonts())
 
 
 class TestCheckEnrichExtra:
