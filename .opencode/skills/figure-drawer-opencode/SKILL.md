@@ -17,9 +17,10 @@ checked, return to the step that sent you here.
 
 ## Who called you
 
-- **A genre skill** (`survey-writer-opencode`, `tutorial-writer-opencode`,
-  `textbook-chapter-writer-opencode` or `thesis-chapter-writer-opencode`). It has decided
-  a figure is warranted and named its shape. Draw, check, and return to
+- **A genre skill** (`survey-writer-opencode`,
+  `tutorial-writer-opencode`, `textbook-chapter-writer-opencode` or
+  `thesis-chapter-writer-opencode`). It has decided a figure is
+  warranted and named its shape. Draw, check, and return to
   its next step.
 - **`draft-reviser-opencode`**, redrawing or fixing one figure. The same, and it
   logs the change when you return.

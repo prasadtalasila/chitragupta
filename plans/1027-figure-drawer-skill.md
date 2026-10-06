@@ -146,25 +146,40 @@ exercises, most likely first. Each has its test in the owning task.
 
 ---
 
-### Task 1: The `figure-drawer` skill lands, in three copies, with the suite green
+### Task 1: The `figure-drawer` skill lands, suite green
 
 **Files:**
-- Create: `.claude/skills/figure-drawer/SKILL.md`, `.claude/skills/figure-drawer/reference.md`
-- Create: `.agents/skills/figure-drawer/SKILL.md`, `.agents/skills/figure-drawer/reference.md`
-- Create: `.opencode/skills/figure-drawer-opencode/SKILL.md`, `.opencode/skills/figure-drawer-opencode/reference.md`
-- Modify: `.opencode/opencode.json` (add `"figure-drawer": "deny"`, alphabetical)
+
+- Create: `.claude/skills/figure-drawer/SKILL.md`,
+  `.claude/skills/figure-drawer/reference.md`
+- Create: `.agents/skills/figure-drawer/SKILL.md`,
+  `.agents/skills/figure-drawer/reference.md`
+- Create: `.opencode/skills/figure-drawer-opencode/SKILL.md`,
+  `.opencode/skills/figure-drawer-opencode/reference.md`
+- Modify: `.opencode/opencode.json` (add `"figure-drawer": "deny"`,
+  alphabetical)
 - Create: `tests/test_skill_figure_step.py`
 - Modify: `tests/test_skill_frontmatter.py:41` (27 → 30, comment "ten skills")
-- Modify: `tests/test_skill_verbatim_scan_step.py` (helper exemption; count 9 → 10; "What all ten have in common")
-- Modify: `tests/test_skill_style_check_step.py` (helper exemption in `test_every_drafting_skill_runs_the_prose_check`)
-- Modify: `tests/test_skill_pregate_feedback_step.py:60` (add to `_EXCLUDED_SKILLS`, fix "four"/"nine" in comments)
-- Modify: `docs/GENRE.md` (new section, heading "What all ten have in common", TOC link, at-a-glance row)
-- Modify: `docs/FEATURES.md:101,214` ("10 skills", "### 🤖 Ten skills", a bullet naming `` `figure-drawer` ``)
-- Modify: `README.md:161,372`, `DEVELOPER.md:223,377`, `docs/HARNESS.md:176,263` ("nine" → "ten" where it counts today's skills. Leave dated measurements such as `HARNESS.md:409-410` as they are: they record a run.)
+- Modify: `tests/test_skill_verbatim_scan_step.py` (helper exemption; count 9 →
+  10; "What all ten have in common")
+- Modify: `tests/test_skill_style_check_step.py` (helper exemption in
+  `test_every_drafting_skill_runs_the_prose_check`)
+- Modify: `tests/test_skill_pregate_feedback_step.py:60` (add to
+  `_EXCLUDED_SKILLS`, fix "four"/"nine" in comments)
+- Modify: `docs/GENRE.md` (new section, heading "What all ten have in common",
+  TOC link, at-a-glance row)
+- Modify: `docs/FEATURES.md:101,214` ("10 skills", "### 🤖 Ten skills", a bullet
+  naming `` `figure-drawer` ``)
+- Modify: `README.md:161,372`, `DEVELOPER.md:223,377`,
+  `docs/HARNESS.md:176,263` ("nine" → "ten" where it counts today's skills.
+  Leave dated measurements such as `HARNESS.md:409-410` as they are: they record
+  a run.)
 - Modify: `pyproject.toml` version → 6.136.0
 
 **Interfaces:**
-- Produces: a skill folder named `figure-drawer` whose `SKILL.md` contains these literal strings, which Tasks 2 and 3 and the tests rely on:
+
+- Produces: a skill folder named `figure-drawer` whose `SKILL.md` contains
+  these literal strings, which Tasks 2 and 3 and the tests rely on:
   `Commit to a layout metaphor`, `pre-flight defect list`,
   `lettered sub-captions`, `tikz@node@reset@hook`,
   `as original as the ASCII`, `No citekey inside either figure file`,
@@ -287,7 +302,7 @@ rider list (lines 436-517 on `10ac21f`) as the source text, strip the
 genre-specific clauses named below, and keep everything else
 word for word, so #1012's wording survives.
 
-```markdown
+````markdown
 # figure-drawer
 
 This skill owns *how* a figure is drawn. Whether a draft wants one, and
@@ -371,7 +386,7 @@ figure step says what to do about that.
    passed. The caller places the marker and caption in its own shape,
    and later runs `python -m chitragupta.draft gate` and renders. None
    of that is this skill's.
-```
+````
 
 Strip from the moved text: "Step 11's gate" / "Step 13's gate" (say
 "the gate"); "This is the genre most likely to want one -- a taxonomy
@@ -456,11 +471,10 @@ constant with the same comment, and filter it out of
 `test_every_drafting_skill_runs_the_prose_check` only. The qualifier
 test iterates over mentions, so it needs no change.
 
-In `tests/test_skill_pregate_feedback_step.py`:
-`_EXCLUDED_SKILLS = {"draft-reviser", "corpus-reviser", "agenda-reviser", "book-assembler", "figure-drawer"}`,
-and update the comment above it ("The five skills that must never carry
-this step") plus the "five-of-nine" wording in the docstring and messages
-to "five-of-ten".
+In `tests/test_skill_pregate_feedback_step.py`, add `"figure-drawer"`
+to `_EXCLUDED_SKILLS`, and update the comment above it ("The five
+skills that must never carry this step") plus the "five-of-nine"
+wording in the docstring and messages to "five-of-ten".
 
 `tests/test_skill_frontmatter.py:41`:
 `assert len(SKILL_FILES) == 30  # ten skills, three harnesses`.
@@ -468,7 +482,7 @@ to "five-of-ten".
 - [ ] **Step 7: Docs**
 
 - `docs/GENRE.md`: add a section after "📕 Assembling a book":
-  `## 🖍 Drawing a figure: \`figure-drawer\``. It covers what the skill
+  ``## 🖍 Drawing a figure: `figure-drawer` ``. It covers what the skill
   owns, the handoff from four genre skills and `draft-reviser`, direct
   use as a revision, and why each genre keeps a stub (the handoff can be
   skipped; the stub holds the no-citekey rule). Rename
@@ -484,14 +498,19 @@ to "five-of-ten".
 - `README.md:161` "Nine skills" → "Ten skills", and a line for the new
   skill if that list names each; `README.md:372`, `DEVELOPER.md:223,377`,
   `docs/HARNESS.md:176,263`: nine → ten.
-- Find any others: `grep -rn -i -E "\bnine\b" README.md DEVELOPER.md AGENTS.md docs/ | grep -i skill`.
+- Find any others:
+  `grep -rn -i -E "\bnine\b" README.md DEVELOPER.md AGENTS.md docs/ | grep -i skill`.
   Leave `plans/` alone (allowed to go stale) and dated measurements.
 - `pyproject.toml`: `version = "6.136.0"`.
 
 - [ ] **Step 8: Run the touched tests**
 
 Run:
-`poetry run pytest tests/test_skill_figure_step.py tests/test_skill_harness_copies.py tests/test_skill_frontmatter.py tests/test_skill_verbatim_scan_step.py tests/test_skill_style_check_step.py tests/test_skill_pregate_feedback_step.py tests/test_skill_retrieval_logging.py tests/test_features_doc.py tests/test_init.py -v`
+
+```bash
+poetry run pytest tests/test_skill_figure_step.py tests/test_skill_harness_copies.py tests/test_skill_frontmatter.py tests/test_skill_verbatim_scan_step.py tests/test_skill_style_check_step.py tests/test_skill_pregate_feedback_step.py tests/test_skill_retrieval_logging.py tests/test_features_doc.py tests/test_init.py -v
+```
+
 Expected: all PASS. If `test_the_copies_differ_only_where_the_phrase_map_says`
 fails for `figure-drawer`, a sentence differs between copies. Fix the
 copy; do not add a phrase-map entry for drift.
@@ -512,17 +531,23 @@ git commit -m "Add the figure-drawer skill the genre skills will hand figures to
 ### Task 2: The four genre skills keep a stub and hand off
 
 **Files:**
+
 - Modify (×3 copies each, 12 files):
-  `{.claude,.agents}/skills/survey-writer/SKILL.md` + `.opencode/skills/survey-writer-opencode/SKILL.md` (step 9, lines 401-497 on `10ac21f`),
+  `{.claude,.agents}/skills/survey-writer/SKILL.md` +
+  `.opencode/skills/survey-writer-opencode/SKILL.md` (step 9, lines 401-497 on
+  `10ac21f`),
   `tutorial-writer` (step 9, 373-476),
   `textbook-chapter-writer` (step 7, 331-~434),
   `thesis-chapter-writer` (step 9, 320-~460)
 - Modify: `tests/test_skill_figure_step.py`
 
 **Interfaces:**
-- Consumes: Task 1's skill name `figure-drawer` / `figure-drawer-opencode`, and its literal rider phrases (now asserted *absent* here).
 
-- [ ] **Step 1: Add the failing stub tests** (append to `tests/test_skill_figure_step.py`)
+- Consumes: Task 1's skill name `figure-drawer` / `figure-drawer-opencode`, and
+  its literal rider phrases (now asserted *absent* here).
+
+- [ ] **Step 1: Add the failing stub tests** (append to
+      `tests/test_skill_figure_step.py`)
 
 ```python
 _GENRES = {
@@ -579,7 +604,7 @@ paragraph unchanged, since it is the threshold. Replace everything from
 "**On that rare occasion, look at how the surveyed papers draw it
 first.**" through the caption rider with:
 
-```markdown
+````markdown
    **On the rare occasion one is warranted, hand the drawing to
    `figure-drawer`** and return here when it does. It owns the
    scaffolds, the panels, the ASCII twin, the compile probe and the
@@ -608,7 +633,7 @@ first.**" through the caption rider with:
      want one, since a taxonomy naturally attributes each branch, and the
      figure is exactly the wrong place for it: attribute in the prose or
      the comparison table.
-```
+````
 
 The quantity and numbered-math paragraphs after it are unchanged.
 
@@ -631,7 +656,7 @@ Same stub, with each genre's own wording kept where it differs today:
   `chitragupta.FigureNoCaption` (#421)."
 
 Before trimming, diff each genre's rider block against survey-writer's
-(e.g. `diff <(sed -n 436,517p .claude/skills/survey-writer/SKILL.md) <(sed -n 408,476p .claude/skills/tutorial-writer/SKILL.md)`).
+(for example, `diff` the two `sed -n` ranges).
 Any genre-specific sentence the diff shows, other than those listed
 above, either stays in that genre's stub or gets a line in the PR saying
 why it went.
@@ -655,7 +680,12 @@ The equation paragraph is unchanged.
 Apply each edit to the other two copies. In the OpenCode copies, the
 handoff names `` `figure-drawer-opencode` ``. Then:
 
-Run: `poetry run pytest tests/test_skill_harness_copies.py tests/test_skill_figure_step.py -v`
+Run:
+
+```bash
+poetry run pytest tests/test_skill_harness_copies.py tests/test_skill_figure_step.py -v
+```
+
 Expected: all PASS, including
 `test_the_opencode_copy_refers_to_opencode_skills[survey-writer]` and
 the three other genres.
@@ -672,7 +702,12 @@ about 840 in all.
 
 - [ ] **Step 8: Run the skill scans and commit**
 
-Run: `poetry run pytest tests/test_skill_*.py tests/test_features_doc.py -v`
+Run:
+
+```bash
+poetry run pytest tests/test_skill_*.py tests/test_features_doc.py -v
+```
+
 Expected: all PASS.
 
 ```bash
@@ -685,11 +720,15 @@ git commit -m "Hand figure drawing from the four genre skills to figure-drawer"
 ### Task 3: `draft-reviser` hands redrawing to `figure-drawer`
 
 **Files:**
-- Modify: `.claude/skills/draft-reviser/SKILL.md:50-100` (+ the `.agents/` and `.opencode/` copies)
+
+- Modify: `.claude/skills/draft-reviser/SKILL.md:50-100` (+ the `.agents/` and
+  `.opencode/` copies)
 - Modify: `tests/test_skill_figure_step.py`
 
 **Interfaces:**
-- Consumes: `figure-drawer`'s "Who called you" section from Task 1, which says `draft-reviser` logs the change.
+
+- Consumes: `figure-drawer`'s "Who called you" section from Task 1, which says
+  `draft-reviser` logs the change.
 
 - [ ] **Step 1: Failing test** (append)
 
@@ -705,7 +744,12 @@ def test_draft_reviser_hands_redrawing_to_the_drawer():
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `poetry run pytest tests/test_skill_figure_step.py::test_draft_reviser_hands_redrawing_to_the_drawer -v`
+Run:
+
+```bash
+poetry run pytest tests/test_skill_figure_step.py::test_draft_reviser_hands_redrawing_to_the_drawer -v
+```
+
 Expected: FAIL on the `figure-drawer` assertion.
 
 - [ ] **Step 3: Edit the Claude copy**
@@ -734,7 +778,12 @@ drawing.
 Apply the edit to the `.agents/` and `.opencode/` copies (the latter
 says `` `figure-drawer-opencode` ``).
 
-Run: `poetry run pytest tests/test_skill_figure_step.py tests/test_skill_harness_copies.py -v`
+Run:
+
+```bash
+poetry run pytest tests/test_skill_figure_step.py tests/test_skill_harness_copies.py -v
+```
+
 Expected: PASS.
 
 ```bash
@@ -744,9 +793,10 @@ git commit -m "Send draft-reviser's figure redraws through figure-drawer"
 
 ---
 
-### Task 4: Whole-suite verification and the handoff checked by hand in each harness
+### Task 4: Full suite, and the handoff checked in each harness
 
 **Files:**
+
 - Modify: this plan (outcome line at the top) and the PR description only.
 
 - [ ] **Step 1: Full suite under CI's interpreter**
@@ -754,7 +804,8 @@ git commit -m "Send draft-reviser's figure redraws through figure-drawer"
 Set up the worktree's environment as memory "Worktree test env setup"
 describes (clean in-project venv, `config.toml`). Then:
 
-Run: `poetry run pytest -q` then `poetry run pylint chitragupta tests` under Python 3.13, and the repository's coverage command from `DEVELOPER-AGENTS.md`.
+Run: `poetry run pytest -q` then `poetry run pylint chitragupta tests` under
+Python 3.13, and the repository's coverage command from `DEVELOPER-AGENTS.md`.
 Expected: all pass, 100% line and branch coverage (no code changed, so
 any drop means a test edit broke something).
 
