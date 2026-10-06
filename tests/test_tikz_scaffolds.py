@@ -130,6 +130,14 @@ def _pics() -> list[str]:
     return _PIC_RE.findall(BLOCK.read_text(encoding="utf-8"))
 
 
+def _pics_overriding_the_join(source: str) -> list[str]:
+    """The `pic`s in `source` whose own code sets a line join. Each
+    definition runs from its `pics/<name>/` key to the next one."""
+    starts = list(_PIC_RE.finditer(source))
+    ends = [m.start() for m in starts[1:]] + [len(source)]
+    return [m["name"] for m, end in zip(starts, ends) if "line join" in source[m.start() : end]]
+
+
 # The house-shape table in docs/TIKZ-STYLE.md, found by its header.
 _PIC_TABLE_HEADER = "| `pic` | Stands for | Twin says |"
 _PIC_ROW_RE = re.compile(r"^\|\s*`(?P<name>\w+)`\s*\|")
@@ -184,6 +192,22 @@ class TestMetaphorCoverage:
         expected = {_slug(m) for m in _metaphors()}
 
         assert {path.stem for path in _scaffolds()} == expected
+
+
+class TestTheWellSizeIsStatedOnce:
+    """The probe reads the well's size out of `cgwell`'s style, so a
+    resized well moves the test with it. These two sentences state the
+    size in prose, and would otherwise go on saying the old number."""
+
+    def test_the_prose_names_the_well_the_block_draws(self):
+        match = _WELL_RE.search(BLOCK.read_text(encoding="utf-8"))
+        stated = re.findall(r"(\d+)mm `cgwell`", BLOCK.read_text(encoding="utf-8"))
+        stated += re.findall(
+            r"fixed-size \((\d+)mm\)", STYLE_DOC.read_text(encoding="utf-8").replace("\n", " ")
+        )
+
+        assert len(stated) == 2
+        assert set(stated) == {match["w"], match["h"]}
 
 
 class TestTheShapesAreTheDocumentedOnes:
@@ -382,7 +406,7 @@ class TestTheBlockTypesetsNothing:
         bare = tmp_path / "bare.tex"
         # The `%` stops the bare file's own last line setting a space.
         bare.write_text(source[start:end] + "%", encoding="utf-8")
-        libraries = "arrows.meta,positioning,fit,backgrounds,calc,shadows.blur,matrix,trees"
+        libraries = f"{_LIBRARIES},matrix,trees"
         result = _pdflatex(
             tmp_path,
             f"\\usetikzlibrary{{{libraries}}}\\input{{{BLOCK}}}%\n"
@@ -606,6 +630,23 @@ class TestEveryPicFitsItsWell:
         extents = self._extents(tmp_path, ["cgoversize"], oversize)
 
         assert not self._inside_the_well(extents["cgoversize"])
+
+    def test_no_pic_overrides_the_round_join(self):
+        """The probe is exact only under round joins: `current bounding
+        box` pads a path by half its line width, which is where a round
+        join's ink ends, but a mitre's point runs past it -- 0.8mm for a
+        20-degree spike at 1pt, measured with Ghostscript's bbox device.
+        `cg` sets `line join=round`, so a pic is safe until it sets a
+        join of its own."""
+        assert _pics_overriding_the_join(BLOCK.read_text(encoding="utf-8")) == []
+
+    def test_the_join_check_sees_a_mitred_pic(self):
+        spike = (
+            "\\tikzset{pics/cgspike/.style={code={\\path[draw, line join=miter]"
+            " (-1mm,0) -- (0,4mm) -- (1mm,0);}}}%\n"
+        )
+
+        assert _pics_overriding_the_join(spike) == ["cgspike"]
 
     def test_a_pic_colour_does_not_leak_to_the_next_pic(self, tmp_path):
         """`cg pic colour` is set per `\\pic`, so the next un-keyed one in

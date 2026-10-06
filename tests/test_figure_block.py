@@ -27,14 +27,35 @@ def house():
 def old_block(house, version=0):
     """A stand-in for a past release: the current block with one value
     changed and its marker naming `version`."""
-    text = house.text.replace(f" v{house.version} ", f" v{version} ", 1)
-    return text.replace("0.95pt", "0.9pt", 1)
+    marker = f" v{house.version} "
+    assert marker in house.text and "0.95pt" in house.text, "old_block's edits no longer land"
+    return house.text.replace(marker, f" v{version} ", 1).replace("0.95pt", "0.9pt", 1)
 
 
 def house_with_history(house):
     """`house`, plus a released v0 that `old_block` reproduces."""
     released = {**house.released, figure.digest(old_block(house)): 0}
     return figure.House(text=house.text, version=house.version, released=released)
+
+
+class TestTheOldBlockStandIn:
+    """`old_block` is a past release only while both of its edits land.
+    A `.replace` that matches nothing returns its input unchanged, so a
+    marker or value that drifted would hand every test using it the
+    current block under another name, and those tests classify by
+    digest, so they would stay green."""
+
+    def test_it_refuses_a_marker_it_cannot_renumber(self, house):
+        drifted = house.text.replace(f" v{house.version} ", f" v{house.version}.0 ", 1)
+
+        with pytest.raises(AssertionError):
+            old_block(figure.House(drifted, house.version, house.released))
+
+    def test_it_refuses_a_value_it_cannot_change(self, house):
+        drifted = house.text.replace("0.95pt", "0.96pt")
+
+        with pytest.raises(AssertionError):
+            old_block(figure.House(drifted, house.version, house.released))
 
 
 class TestTheRegisterAndTheBlockAgree:
