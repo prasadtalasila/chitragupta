@@ -152,7 +152,10 @@ def command(harness: str, prompt: str) -> list:
 
 
 def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> dict:
-    env = harness_env()
+    # PWD too, not only cwd: OpenCode takes its project directory from the
+    # inherited PWD, so without this it loads the skills of whichever
+    # directory launched the bench (measured: it read this checkout's).
+    env = {**harness_env(), "PWD": str(project)}
     if harness == "opencode":
         env = without_git(env)
     started = time.monotonic()
@@ -208,8 +211,12 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     """Which named files the model read, judged by whether the first line
     it printed is really that file's first line."""
     expected = expected_paths(project, harness, name)
+    text = transcript_text(log)
+    # A harness that resolved the project from the wrong directory reads
+    # this checkout's identical files and would otherwise pass.
+    leaked = str(REPO_ROOT) in text
     printed = {}
-    for path, first in READ_LINE.findall(transcript_text(log)):
+    for path, first in READ_LINE.findall(text):
         printed[path.rstrip(".,")] = first.strip()
     read, wrong = [], []
     for path in sorted(expected):
@@ -223,7 +230,8 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
         "wrong_first_line": wrong,
         "missing": sorted(expected - set(printed)),
         "extra": sorted(set(printed) - expected),
-        "pass": set(read) == expected,
+        "outside_project": leaked,
+        "pass": set(read) == expected and not leaked,
     }
 
 
@@ -280,10 +288,12 @@ def self_check() -> None:
 
     `bench/` sits outside the test suite and its coverage (bench/README.md),
     so this runs on every invocation instead. Tier 1 counts a read only
-    when the printed first line is the file's own, so the two guards are
+    when the printed first line is the file's own, so the guards are
     the ways that comparison could pass a read that never happened: a
-    wrong first line must not count, and a path never printed must be
-    reported missing rather than passed.
+    wrong first line must not count, a path never printed must be
+    reported missing rather than passed, and a run that touched this
+    checkout instead of its own project must fail even though the files
+    there are identical.
     """
     import tempfile
 
@@ -316,6 +326,13 @@ def self_check() -> None:
         scored = score_tier1(project, "claude", "x", log)
         assert scored["missing"] == [".claude/skills-common/references/b.md"], scored
         assert not scored["pass"], "an unread file must fail the skill"
+        log.write_text(
+            f"READ .claude/skills-common/references/a.md :: # A heading\n{REPO_ROOT}/x\n"
+            "READ .claude/skills-common/references/b.md :: # B heading\n",
+            encoding="utf-8",
+        )
+        scored = score_tier1(project, "claude", "x", log)
+        assert scored["outside_project"] and not scored["pass"], scored
 
 
 def main(argv=None) -> int:
