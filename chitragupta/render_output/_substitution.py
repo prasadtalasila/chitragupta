@@ -14,6 +14,7 @@ from pathlib import Path
 from chitragupta.render_output import (
     _chapter_number,
     _equation_captions,
+    _figure_style,
     _math,
     _math_findings,
     _paths,
@@ -65,6 +66,7 @@ def _draft_warnings(draft_text: str, input_path: Path) -> "list[tuple[str, str]]
     its source."""
     return (
         [("figure", w) for w in _figure_warnings(draft_text, input_path)]
+        + [("figure", w) for w in _figure_style.warnings(draft_text, input_path)]
         + [("table", w) for w in _tables.warnings(draft_text)]
         + [("equation", w) for w in _equation_captions.warnings(draft_text)]
     )
