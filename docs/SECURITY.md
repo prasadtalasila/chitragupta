@@ -216,15 +216,16 @@ BibTeX reader turns a command it does not understand into raw LaTeX, and
 keeps `$...$` as a math node whose source it prints verbatim; citeproc
 carries both into the reference list. Every render that runs citeproc
 (all but `--fragment`) therefore runs
-`assets/pandoc/bib_raw_tex_as_text.lua` after it, which prints raw TeX
-in the reference list and the citations as literal text, and does the
-same for a math node that contains one of the few primitives that run
-code or reach a file (`\directlua`, `\csname`, `\input`, `\write` and
-the like). A shared `.bib` whose title says `\input{/home/alice/.netrc}`
-or `\directlua{...}`, in text or inside `$...$`, renders with that text
-visible and nothing read or run. Ordinary content is untouched: accents,
-`\emph`, `\textsubscript` and plain mathematics such as `$\alpha \leq
-\beta$` are left exactly as the reader produced them.
+`assets/pandoc/bib_raw_tex_as_text.lua` just before it, which rewrites
+every bibliography entry citeproc is about to read so that its raw TeX
+prints as literal text, and does the same for a math node that contains
+one of the few primitives that run code or reach a file (`\directlua`,
+`\csname`, `\input`, `\write` and the like). A shared `.bib` whose title
+says `\input{/home/alice/.netrc}` or `\directlua{...}`, in text or
+inside `$...$`, renders with that text visible and nothing read or run.
+Ordinary content is untouched: accents, `\emph`, `\textsubscript` and
+plain mathematics such as `$\alpha \leq \beta$` are left exactly as the
+reader produced them.
 
 **Accepted residual: Lua in the author's own TeX.** A `pdf` render runs
 LuaLaTeX (#996), which embeds a Lua interpreter, and `openin_any` and
