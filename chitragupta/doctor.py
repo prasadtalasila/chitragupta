@@ -54,7 +54,6 @@ import argparse
 import importlib.metadata
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
 
@@ -220,18 +219,19 @@ def _check_pdf_fonts() -> list[str]:
         ]
     lines = []
     for name in pdf_fonts.all_families():
-        probe = subprocess.run(
-            [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
-        )
-        # Its exit status is 0 whether or not the font exists (measured,
-        # luaotfload 3.26); only the message tells them apart.
-        if f'Font "{name}" found!' in probe.stdout + probe.stderr:
+        if pdf_fonts.font_installed(luaotfload, name):
             lines.append(f"[ok] pdf font found: {name}")
-        else:
-            lines.append(
-                f"[missing] pdf font {name}: a draft with a character only it has "
-                f"will not render to pdf; {install.remedy('os-deps')} installs it"
-            )
+            continue
+        # A required font stops every render; a fallback only a draft
+        # holding a character no earlier font in the chain has (#1022).
+        effect = (
+            "no pdf renders without it"
+            if name in pdf_fonts.REQUIRED_FONTS
+            else "a draft with a character only it has will not render to pdf"
+        )
+        lines.append(
+            f"[missing] pdf font {name}: {effect}; {install.remedy('os-deps')} installs it"
+        )
     return lines
 
 

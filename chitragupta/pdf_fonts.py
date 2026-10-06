@@ -13,6 +13,8 @@ included. Code stays in Latin Modern Mono, so the 79-column width
 set at. plans/996-unicode-pdf-engine.md has the measurements.
 """
 
+import subprocess
+
 MAIN_FONT = "STIX Two Text"
 MATH_FONT = "STIX Two Math"
 MONO_FONT = "Latin Modern Mono"
@@ -56,6 +58,26 @@ FONT_FALLBACKS = (
 # Code quotes the same characters prose does (`x ≤ y`). DejaVu Sans Mono
 # first, so a fallback glyph in code stays monospaced where it can.
 MONO_FALLBACKS = ("DejaVu Sans Mono:mode=node", *FONT_FALLBACKS)
+
+
+# The three the shipped header sets with \setmainfont, \setmathfont and
+# \setmonofont. Without any one of them every pdf render fails inside
+# fontspec ("The font ... cannot be found", measured, #1022); the
+# fallbacks only matter to a draft holding a character only they have.
+REQUIRED_FONTS = (MAIN_FONT, MATH_FONT, MONO_FONT)
+
+
+def font_installed(luaotfload: str, name: str) -> bool:
+    """Whether LuaLaTeX's font loader, `luaotfload` at that path, finds
+    the family `name`.
+
+    `luaotfload-tool --find` exits 0 whether or not the font exists
+    (measured, luaotfload 3.26); only its message tells them apart.
+    """
+    probe = subprocess.run(
+        [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
+    )
+    return f'Font "{name}" found!' in probe.stdout + probe.stderr
 
 
 _FALLBACK = "chitraguptafallback"

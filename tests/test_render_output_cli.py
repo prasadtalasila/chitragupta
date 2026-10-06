@@ -644,6 +644,33 @@ class TestRequirePdfToolchain:
         self._kpsewhich(monkeypatch, 0)
         render_output._pandoc._require_pdf_toolchain()  # must not raise
 
+    def test_a_missing_required_font_refuses_before_pandoc_runs(self, monkeypatch):
+        # #1022: without STIX Two Math every render failed inside fontspec
+        # ("The font ... cannot be found"), which named no remedy.
+        self._which(monkeypatch, {"lualatex", "kpsewhich", "luaotfload-tool"})
+        self._kpsewhich(monkeypatch, 0)
+        monkeypatch.setattr(
+            render_output._pandoc.pdf_fonts,
+            "font_installed",
+            lambda tool, name: name != "STIX Two Math",
+        )
+        with pytest.raises(render_output.MissingBinary, match="STIX Two Math") as exc:
+            render_output._pandoc._require_pdf_toolchain()
+        assert "STIX Two Text" not in str(exc.value)
+        assert "chitragupta install os-deps" in str(exc.value)
+
+    def test_every_required_font_present_passes(self, monkeypatch):
+        self._which(monkeypatch, {"lualatex", "kpsewhich", "luaotfload-tool"})
+        self._kpsewhich(monkeypatch, 0)
+        asked = []
+        monkeypatch.setattr(
+            render_output._pandoc.pdf_fonts,
+            "font_installed",
+            lambda tool, name: asked.append(name) or True,
+        )
+        render_output._pandoc._require_pdf_toolchain()
+        assert asked == list(render_output._pandoc.pdf_fonts.REQUIRED_FONTS)
+
     def test_a_host_with_no_kpsewhich_is_not_second_guessed(self, monkeypatch):
         # Same rule as _require_tikz: nothing to ask, so let the engine say.
         self._which(monkeypatch, {"lualatex"})

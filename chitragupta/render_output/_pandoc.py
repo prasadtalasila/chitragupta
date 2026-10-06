@@ -14,7 +14,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from chitragupta import config, install, programs
+from chitragupta import config, install, pdf_fonts, programs
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
@@ -356,6 +356,13 @@ def _require_pdf_toolchain() -> None:
     plans/996-unicode-pdf-engine.md, Q0). Same probe and same reasoning
     as `_require_tikz`, including saying nothing when there is no
     `kpsewhich` to ask.
+
+    Then the three fonts the shipped header sets (`pdf_fonts.REQUIRED_FONTS`).
+    Without one, every render failed inside pandoc with fontspec's `The
+    font "STIXTwoText" cannot be found`, which `_unicode_repair_hint` does
+    not read and which names no remedy (#1022). About 0.2 s a font,
+    against a LuaLaTeX run of seconds. Said nothing when there is no
+    `luaotfload-tool` to ask, for the same reason as `kpsewhich`.
     """
     _require(PDF_ENGINE)
     kpsewhich = programs.resolve_program("kpsewhich")
@@ -367,6 +374,18 @@ def _require_pdf_toolchain() -> None:
             "pdf rendering runs LuaLaTeX, but its font loader (luaotfload.sty) is "
             "not installed. On Debian/Ubuntu it is the 'texlive-luatex' package; "
             f"{install.remedy('os-deps')} installs it with the fonts a render uses."
+        )
+    luaotfload = programs.resolve_program("luaotfload-tool")
+    if luaotfload is None:
+        return
+    missing = [
+        name for name in pdf_fonts.REQUIRED_FONTS if not pdf_fonts.font_installed(luaotfload, name)
+    ]
+    if missing:
+        raise MissingBinary(
+            f"pdf rendering needs {', '.join(missing)}, which LuaLaTeX cannot find, "
+            f"and no pdf renders without {'them' if len(missing) > 1 else 'it'}. "
+            f"{install.remedy('os-deps')} installs the fonts a render uses."
         )
 
 

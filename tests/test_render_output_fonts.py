@@ -8,6 +8,8 @@ fallback chain -- otherwise a draft that rendered yesterday fails today
 under `\\tracinglostchars=3`. This renders every one of them.
 """
 
+from types import SimpleNamespace
+
 import pytest
 
 from chitragupta import pdf_fonts, render_output
@@ -17,6 +19,26 @@ from tests.conftest import content_draft, lualatex_available, pandoc_available
 # Characters per paragraph: short enough that TeX can break the line
 # between them, so no overfull box hides a glyph off the page.
 _PER_LINE = 40
+
+
+def test_the_required_fonts_are_the_three_the_preamble_sets():
+    assert pdf_fonts.REQUIRED_FONTS == (
+        pdf_fonts.MAIN_FONT, pdf_fonts.MATH_FONT, pdf_fonts.MONO_FONT,
+    )  # fmt: skip
+
+
+def test_font_installed_reads_the_message_not_the_exit_status(monkeypatch):
+    # luaotfload-tool exits 0 whether or not the font exists (measured,
+    # luaotfload 3.26).
+    def fake_run(cmd, **kwargs):
+        name = cmd[1].removeprefix("--find=")
+        found = name == "STIX Two Text"
+        message = f'Font "{name}" found!' if found else f'Cannot find "{name}" in index.'
+        return SimpleNamespace(returncode=0, stdout="", stderr=message)
+
+    monkeypatch.setattr(pdf_fonts.subprocess, "run", fake_run)
+    assert pdf_fonts.font_installed("/usr/bin/luaotfload-tool", "STIX Two Text")
+    assert not pdf_fonts.font_installed("/usr/bin/luaotfload-tool", "Noto Serif")
 
 
 def test_the_chain_names_every_family_once_in_order():
