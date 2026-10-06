@@ -302,6 +302,11 @@
 \begin{tikzpicture}[cg, node distance=6mm,
                     cgbox/.append style={text width=19mm}]
   \node[cgbox] (intake) {\cglab{Intake}{files in}};
+  % A house shape, drawn into a named well so `review figure` measures
+  % it and a zone card could `fit` it. It repeats what the label says;
+  % the twin drops it and loses nothing (docs/TIKZ-STYLE.md).
+  \node[cgwell, above=2.5mm of intake] (iintake) {};
+  \pic[cg pic colour=cgFlow] at (iintake) {cgdocs};
   \node[cgbox, right=of intake] (parse) {\cglab{Parse}{text out}};
   \node[cgbox, right=of parse] (index) {\cglab{Index}{terms in}};
   % The one accented node: `cgkey` marks what the figure is about.

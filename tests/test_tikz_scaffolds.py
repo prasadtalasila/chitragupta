@@ -198,6 +198,16 @@ class TestTheShapesAreTheDocumentedOnes:
     def test_the_block_and_the_table_name_the_same_pics(self):
         assert _documented_pics() == _pics()
 
+    def test_a_scaffold_draws_one_into_a_well(self):
+        """So every run compiles the construct and measures the well,
+        rather than leaving it to the exemplars alone."""
+        drawn = re.compile(
+            r"\\node\[cgwell\b[^]]*\]\s*\((?P<well>[\w-]+)\)"
+            r"[^\n]*\n\s*\\pic\b[^\n]*at \((?P=well)\)"
+        )
+
+        assert [s.stem for s in _scaffolds() if drawn.search(s.read_text(encoding="utf-8"))]
+
 
 class TestEverySourceProperty:
     """What can be checked without a toolchain, so it runs everywhere."""
