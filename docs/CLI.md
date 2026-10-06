@@ -2934,9 +2934,14 @@ those copies when the block changes.
 
 ```bash
 chitragupta figure sync                       # every content/drafts/**/figures/*.tex
-chitragupta figure sync content/drafts/twin   # a directory: every *.tex beneath it
-chitragupta figure sync --check assets/tikz   # report only
+chitragupta figure sync content/drafts/twin   # a directory: every figures/*.tex beneath it
+chitragupta figure sync --check assets/tikz/*.tex   # files as named; report only
 ```
+
+A directory contributes only the `*.tex` files directly inside a
+`figures/` directory beneath it, the same rule the default walk uses, so
+a draft's own `.tex` is never stamped. A file named on the command line
+is taken as given.
 
 | What it finds | What it does |
 | --- | --- |
@@ -2945,7 +2950,7 @@ chitragupta figure sync --check assets/tikz   # report only
 | the installed block | nothing (`current`) |
 | a block that matches no release: edited, or stamped by a newer chitragupta | leaves it alone and prints the diff (`modified`) |
 | markers unpaired or repeated | leaves it alone (`malformed`) |
-| no picture to stamp above, a symlink, not UTF-8, unwritable | reports it and carries on (`no-picture`, `skipped`) |
+| no picture to stamp above, a symlink, not UTF-8, read-only or unwritable | reports it and carries on (`no-picture`, `skipped`) |
 
 Everything outside the markers is left byte for byte, CRLF line endings
 included, and running it twice changes nothing the second time.

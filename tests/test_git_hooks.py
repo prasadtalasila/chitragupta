@@ -69,15 +69,17 @@ def fake_actionlint(bin_dir: Path, exit_code: int) -> None:
     stub.chmod(stub.stat().st_mode | stat.S_IEXEC)
 
 
-def fake_python(bin_dir: Path, exit_code: int) -> Path:
-    """A stand-in interpreter that records its argv and exits `exit_code`,
-    so the hook's figure section is measured without a chitragupta
-    install behind it."""
+def fake_python(bin_dir: Path, exit_code: int, output: str = "") -> Path:
+    """A stand-in interpreter that records its argv, prints `output` and
+    exits `exit_code`, so the hook's figure section is measured without a
+    chitragupta install behind it. The default output is what `figure
+    sync --check` prints for a stale file."""
     bin_dir.mkdir(parents=True, exist_ok=True)
+    output = output or "stale      figures/a.tex\nfigure sync: 1 stale"
     script = bin_dir / "fake-python"
     script.write_text(
         f'#!/usr/bin/env bash\necho "$@" > "{bin_dir.as_posix()}/python-args"\n'
-        f'echo "stale      figures/a.tex"\nexit {exit_code}\n',
+        f"printf '%s\\n' '{output}'\nexit {exit_code}\n",
         encoding="utf-8",
     )
     script.chmod(0o755)
@@ -242,6 +244,15 @@ class TestTheFigureCheck:
         repo.stage("content/drafts/t/figures/a.tex", "x")
         result = repo.run(python=fake_python(tmp_path / "pybin", 2))
         assert result.returncode == 0 and "not checked" in result.stderr
+
+    def test_a_crash_is_not_reported_as_a_stale_block(self, repo, tmp_path):
+        """An uncaught exception exits 1 too; only sync's own summary line
+        makes a 1 a finding."""
+        repo.stage("content/drafts/t/figures/a.tex", "x")
+        crash = "Traceback (most recent call last):\nModuleNotFoundError: No module named x"
+        result = repo.run(python=fake_python(tmp_path / "pybin", 1, crash))
+        assert result.returncode == 0 and "not checked" in result.stderr
+        assert "not current" not in result.stderr
 
     def test_an_unrelated_tex_file_is_not_a_figure(self, repo, tmp_path):
         repo.stage("content/drafts/t/chapter.tex", "x")

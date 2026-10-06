@@ -165,6 +165,10 @@ class TestFinding:
         edited = house.text.replace("0.95pt", "0.9pt", 1)
         assert "will not touch" in figure.finding(edited + PICTURE, house)
 
+    def test_malformed_says_sync_will_not_touch_it(self, house):
+        message = figure.finding(house.text + house.text + PICTURE, house)
+        assert "unpaired or repeated" in message and "will not touch" in message
+
     def test_a_newer_version_says_to_upgrade(self, house):
         newer = house.text.replace(" v1 ", " v9 ", 1)
         assert "newer" in figure.finding(newer + PICTURE, house)

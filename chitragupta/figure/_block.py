@@ -104,9 +104,10 @@ def load_house(block: Path | None = None, register: Path | None = None) -> House
 
 
 def _line_end(text: str, offset: int) -> int:
-    """`offset` moved past the line break that ends its line, if any."""
-    if text.startswith("\r\n", offset):
-        return offset + 2
+    """`offset` moved past the line break that ends its line, if any.
+
+    `_END_RE` takes a CRLF's `\r` into its match, so only `\n` is left.
+    """
     return offset + 1 if text.startswith("\n", offset) else offset
 
 

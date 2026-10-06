@@ -152,12 +152,16 @@ is silence, because the install stage is opt-in.
 
 **Why the figure check does not block.** A stale house figure-style
 block is not a broken file: the figure still compiles and renders, and
-`figure sync` fixes it in one command. Nothing in CI fails on it either,
-so blocking at the commit would make the hook stricter than the build.
-It prints what `--check` found and the command to run, and the commit
-goes ahead. When the interpreter it finds (`CHITRAGUPTA_PYTHON`, else
+`figure sync` fixes it in one command. For a draft's figure nothing in
+CI fails on it either, so blocking at the commit would make the hook
+stricter than the build. (A stale scaffold under `assets/tikz/` does
+fail CI, in `tests/test_figure_sync.py` and the byte-identity check in
+`tests/test_tikz_scaffolds.py`; the advisory there is an early warning
+of that.) It prints what `--check` found and the command to run, and the
+commit goes ahead. When the interpreter it finds (`CHITRAGUPTA_PYTHON`, else
 the checkout's `.venv/bin/python`, else `python3`) cannot run the check,
-it says once that figures were not checked.
+or crashes without printing sync's own summary line, it says once that
+figures were not checked.
 
 The inert-hook failure applies here too, in a new shape. A tracked
 hook directory git has not been pointed at runs nothing, and

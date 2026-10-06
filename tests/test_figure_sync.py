@@ -3,14 +3,13 @@
 import os
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import pytest
 
 from chitragupta import figure
 from chitragupta.figure import __main__ as cli
-from tests.conftest import needs_tikz
+from tests.conftest import needs_tikz, run_python
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PICTURE = (
@@ -103,6 +102,45 @@ class TestSync:
         assert outcome.action == "skipped" and outcome.path == path
         assert path.read_text(encoding="utf-8") == PICTURE
 
+    def test_a_read_only_file_is_reported_and_not_replaced(self, figures, house):
+        if hasattr(os, "geteuid") and os.geteuid() == 0:
+            pytest.skip("root writes through a read-only mode")
+        path = write(figures / "a.tex", PICTURE)
+        path.chmod(0o444)
+        try:
+            [outcome] = figure.run([figures], house, check=False)
+        finally:
+            path.chmod(0o644)
+        assert (outcome.action, outcome.detail) == ("skipped", "read-only")
+        assert path.read_text(encoding="utf-8") == PICTURE
+
+    def test_a_symlink_is_reported_on_every_platform(self, figures, house, monkeypatch):
+        write(figures / "a.tex", PICTURE)
+        monkeypatch.setattr(Path, "is_symlink", lambda self: True)
+        [outcome] = figure.run([figures], house, check=False)
+        assert outcome.action == "skipped" and "symlink" in outcome.detail
+
+    def test_a_failed_write_is_reported_on_every_platform(self, figures, house, monkeypatch):
+        path = write(figures / "a.tex", PICTURE)
+
+        def refuse(*_args):
+            raise OSError("disk full")
+
+        monkeypatch.setattr("chitragupta.figure._sync.write_atomically", refuse)
+        [outcome] = figure.run([figures], house, check=False)
+        assert (outcome.action, outcome.detail) == ("skipped", "disk full")
+        assert path.read_text(encoding="utf-8") == PICTURE
+
+    def test_a_path_that_cannot_be_read_is_reported(self, tmp_path, house):
+        [outcome] = figure.run([tmp_path / "absent.tex"], house, check=False)
+        assert outcome.action == "skipped"
+
+    def test_malformed_markers_are_reported_and_not_touched(self, figures, house):
+        text = house.text + house.text + PICTURE
+        path = write(figures / "a.tex", text)
+        [outcome] = figure.run([figures], house, check=False)
+        assert outcome.action == "malformed" and path.read_text(encoding="utf-8") == text
+
     def test_no_picture_is_reported(self, figures, house):
         write(figures / "a.tex", "% nothing drawn\n")
         [outcome] = figure.run([figures], house, check=False)
@@ -110,6 +148,23 @@ class TestSync:
 
 
 class TestFigureFiles:
+    def test_a_directory_contributes_only_its_figures_dirs(self, tmp_path):
+        """A draft's own `.tex` under a named directory is not a figure: a
+        `tikzpicture` inside its `verbatim` would otherwise be an anchor."""
+        for rel in ["t/figures/a.tex", "t/t.tex", "t/figures/sub/b.tex"]:
+            (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+            (tmp_path / rel).write_text("x", encoding="utf-8")
+        found = figure.figure_files([tmp_path / "t"])
+        assert [p.relative_to(tmp_path).as_posix() for p in found] == ["t/figures/a.tex"]
+
+    def test_no_drafts_directory_is_no_figures(self, tmp_path, monkeypatch):
+        monkeypatch.setattr("chitragupta.config.DRAFTS_DIR", tmp_path / "absent")
+        assert figure.figure_files([]) == []
+
+    def test_a_file_named_explicitly_is_taken_as_given(self, tmp_path):
+        path = tmp_path / "anywhere.tex"
+        assert figure.figure_files([path]) == [path]
+
     def test_the_default_walk_is_every_figures_dir_under_drafts(self, tmp_path, monkeypatch):
         drafts = tmp_path / "drafts"
         for rel in [
@@ -155,19 +210,15 @@ class TestCli:
         assert "cg-figstyle.tex" in capsys.readouterr().err
 
     def test_the_top_level_entry_point_reaches_it(self):
-        result = subprocess.run(
-            [sys.executable, "-m", "chitragupta", "figure", "sync", "--help"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
+        result = run_python("-m", "chitragupta", "figure", "sync", "--help", check=False)
         assert result.returncode == 0 and "--check" in result.stdout
 
 
 class TestThisRepositorysOwnFigures:
     def test_every_shipped_scaffold_and_exemplar_is_current(self, house):
-        outcomes = figure.run([REPO_ROOT / "assets" / "tikz"], house, check=True)
+        tikz = REPO_ROOT / "assets" / "tikz"
+        files = sorted(tikz.glob("*.tex")) + sorted((tikz / "exemplars").glob("*.tex"))
+        outcomes = figure.run(files, house, check=True)
         assert len(outcomes) > 1
         assert {o.action for o in outcomes} == {"current"}
 

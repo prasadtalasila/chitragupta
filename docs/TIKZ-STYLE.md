@@ -497,9 +497,9 @@ line and add that version's digest to
 `assets/tikz/cg-figstyle.versions.toml`, never editing an existing line
 there. `tests/test_figure_block.py` fails when the block and the register
 disagree, so an edit without a version bump cannot reach `main`. Then
-run `python -m chitragupta figure sync assets/tikz` to refresh every
-scaffold, which `tests/test_tikz_scaffolds.py` still checks byte for
-byte.
+run `python -m chitragupta figure sync assets/tikz/*.tex
+assets/tikz/exemplars/*.tex` to refresh every scaffold and exemplar,
+which `tests/test_tikz_scaffolds.py` still checks byte for byte.
 
 **Repeating it once per figure is safe**, by the same argument #781
 makes for `\usetikzlibrary`. `\tikzset` re-defines the same keys to the

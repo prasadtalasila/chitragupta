@@ -78,6 +78,11 @@ if [ "${#figures[@]}" -gt 0 ]; then
     report="$("$py" -m chitragupta figure sync --check "${figures[@]}" 2>&1)"
     status=$?
     set -e
+    # An uncaught exception exits 1 as well, so a 1 is a finding only
+    # when sync's own summary line is there to say so.
+    if [ "$status" -eq 1 ] && ! printf '%s\n' "$report" | grep -q '^figure sync: '; then
+        status=2
+    fi
     case "$status" in
         0) ;;
         1) echo "$report" >&2

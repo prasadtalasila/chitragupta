@@ -1,11 +1,15 @@
 """Walk figure files and bring each one's house block up to date (#1013).
 
-With no paths, the walk is every `*.tex` directly inside a directory
-named `figures` under `content/drafts/`: docs/WRITING-STANDARDS.md §10
+A walk, with no paths or through a directory named on the command line,
+takes every `*.tex` directly inside a directory named `figures`: docs/WRITING-STANDARDS.md §10
 puts every figure file at `content/drafts/<topic>/figures/<name>.tex`,
 and a book's units nest one level deeper. A draft's own `.tex` is not a
-figure and is never stamped. Pass a path to reach anything else, such as
-a project's copy of `assets/tikz/`.
+figure, and a `tikzpicture` in its `verbatim` listing must not become a
+place to stamp the block. A file named on the command line is taken as
+given, which is how `assets/tikz/*.tex` is reached.
+
+A read-only file is reported rather than replaced: `os.replace` would
+swap it out on POSIX, mode and all, which is not what read-only asked.
 
 A symlink is reported and skipped rather than followed: a write through
 it would land outside the tree the user named. A file that cannot be
@@ -15,6 +19,7 @@ figure is never the reason the other twenty stay stale.
 """
 
 import difflib
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,14 +46,15 @@ def figure_files(paths: list[Path]) -> list[Path]:
     """The figure files to sync, sorted and deduplicated.
 
     No paths means every `figures/*.tex` under the drafts directory. A
-    directory contributes every `*.tex` beneath it; a file is taken as
-    given.
+    directory contributes every `figures/*.tex` beneath it; a file is
+    taken as given.
     """
-    if not paths:
-        return sorted(p for p in config.DRAFTS_DIR.rglob("*.tex") if p.parent.name == "figures")
     found: set[Path] = set()
-    for path in paths:
-        found.update(path.rglob("*.tex") if path.is_dir() else [path])
+    for path in paths or [config.DRAFTS_DIR]:
+        if path.is_dir():
+            found.update(p for p in path.rglob("*.tex") if p.parent.name == "figures")
+        elif paths:
+            found.add(path)
     return sorted(found)
 
 
@@ -107,6 +113,8 @@ def sync_file(path: Path, house: House, *, check: bool) -> Outcome:
         return Outcome(path, "no-picture", "no \\usetikzlibrary or tikzpicture to stamp above")
     if check:
         return Outcome(path, region.state.value)
+    if not os.access(path, os.W_OK):
+        return Outcome(path, "skipped", "read-only")
     try:
         write_atomically(path, new.encode("utf-8"))
     except OSError as exc:
