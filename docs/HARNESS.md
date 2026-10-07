@@ -336,11 +336,11 @@ Every refusal names the bad key and its line, and nothing else.
 **A git pre-commit hook.** `content/drafts/` is gitignored, so a draft
 is never committed.
 
-**Hand-kept copies of each skill with no check between them.** Ten
-skills of 2,500-7,700 words each, copied three ways, would drift, and a
-copy that drifts on the gate step is a fabrication path. The copies
-exist, but only because the phrase-map test fails on any drift outside
-the entries meant to differ.
+**Hand-kept copies of each skill with no check between them.** Ten skills of
+1,800-6,300 words each (after #997), copied three ways, would drift, and a
+copy that drifts on the gate step is a fabrication path. The copies exist, but
+only because the phrase-map test fails on any drift outside the entries meant
+to differ.
 
 **One harness-neutral wording, with a tool glossary in `AGENTS.md`.**
 Built first and replaced. "Edit the passage in place" gives up Claude

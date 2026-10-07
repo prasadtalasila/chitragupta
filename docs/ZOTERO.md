@@ -59,8 +59,10 @@ python -m chitragupta.corpus ledger --collection "Digital twins"
 python -m chitragupta.draft retrieve search "surrogate models" --collection "Digital twins"
 ```
 
-The genre skills use this too, and ask about it once. Each of them
-offers the list above at scope time, records the answer as a
+The genre skills use this too, and ask about it once. Each runs
+`ledger --collections` at scope time; if your library has none, it says
+nothing and records `collection: (whole corpus)`. Otherwise it reads its
+collection-scoping reference, offers the list above, records the answer as a
 `collection:` line in the draft's `scope.md`, and passes
 `--collection` on every retrieval call for the rest of the run;
 `draft-reviser` and `corpus-reviser` then read that line back and do not

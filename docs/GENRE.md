@@ -14,7 +14,8 @@ refuses to do. Ten skills live in `.claude/`: five write a new draft,
 three change an existing one, one assembles a book from units the
 others wrote, and one draws the figures the others hand it. Of the
 three revisers, one is cheap and scoped, one goes back to the whole
-corpus when you ask it to, and one repairs what a verbatim scan found.
+corpus when you ask it to, and one works the review agenda's
+unattended findings.
 
 You do not invoke any of them by name. Each has a `description` in its
 frontmatter that names its triggers, and asking for the thing in ordinary
@@ -449,7 +450,7 @@ stamp below are that skill's, not its own. The one rule it carries
 itself is the invariant: no citekey in a figure file.
 
 One rule below is narrower still: the pre-gate self-feedback step
-(roadmap [B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop),
+(roadmap [B5](FEATURE-ROADMAP.md#-theme-b-make-synthesis-structural),
 designed in `plans/b5-pregate-self-feedback.md`) is shared by the five
 genre skills that write fresh prose from an
 evidence packet (`survey-writer`, `thesis-chapter-writer`,
@@ -552,8 +553,9 @@ offered instead of run until that change, on the reasoning that it can
 be read as an accusation and `--write` files a report. That reasoning
 missed that the only defence against verbatim reuse was then post-hoc *and*
 optional, so a draft could be presented having never been checked. Both
-steps now run; neither passes `--write` unless the person asks, so
-neither files anything, and neither can block a draft. A `PostToolUse`
+steps now run; neither passes `--write` unless the person asks, and
+neither can block a draft. (The earlier critique step does file a
+verbatim baseline under `content/review/`, for its own recheck.) A `PostToolUse`
 hook reports the prose check per write, to the agent, mid-loop; these
 steps report the finished draft once, to the human.
 [HOOKS.md](HOOKS.md) has that split: invocation is enforced, conformance

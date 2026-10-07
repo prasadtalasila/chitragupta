@@ -1,7 +1,7 @@
 # ✨ Features
 
-Status: **reference.** Written 2026-08-22. Updated 2026-09-02,
-describing the pipeline as it stands at 6.60.
+Status: **reference.** Written 2026-08-22. Updated 2026-10-07,
+describing the pipeline as it stands at 6.138.
 
 **Written for** you: someone who writes technical documents (a
 survey, a thesis chapter, a textbook, a report) and is deciding whether
@@ -284,8 +284,9 @@ usually the model resuming a draft weeks later, not a person. That
 separates it from [REVIEW.md](REVIEW.md), which is written for you.
 
 `chitragupta draft dossier` is how you work with one by hand: `init`,
-`status`, `stamp`, `sections`, `prune`, `outline`, `brief`,
-`check-evidence`, `list`, and `export`/`restore` for backup.
+`status`, `mark-revision`, `stamp`, `sections`, `prune`, `outline`,
+`brief`, `set-language`, `acronyms-suggest`, `check-evidence`, `list`,
+and `export`/`restore` for backup.
 `status` is the one to know. It recomputes the corpus fingerprint the
 dossier recorded, and if the corpus has moved it names the citekeys that
 appear nowhere in the dossier, neither kept nor rejected. That
@@ -406,7 +407,7 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review verbatim` | how much wording the draft shares with its sources, and with **any** parsed source, cited or not |
 | `review coverage` | retrieval surfaced these sources; did the draft cite them? |
 | `review synthesis` | how many sources each unit rests on, at the unit its genre binds at |
-| `review figure` | what a TikZ figure's own geometry says (overlapping nodes, protrusion, overlong labels), plus one source check: a figure file that loads its TikZ library by hand, which renders correctly alone and multiplies node spacing in an assembled book |
+| `review figure` | what a TikZ figure's own geometry says (overlapping nodes, protrusion, overlong labels), plus checks that need only the source: a stranded arrowhead, overlong node text, the edge list, and a figure file that loads its TikZ library by hand, which renders correctly alone and multiplies node spacing in an assembled book |
 | `review uncited` | which sentences carry no citation at all. The one aid that reads no corpus |
 | `review quotation` | is each quoted span in the dossier really in the source it is attributed to? The one aid whose answer is binary |
 | `review agenda` | merges the eight draft-level aids' reports into one ranked, deduplicated worklist |

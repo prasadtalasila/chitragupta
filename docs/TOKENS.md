@@ -103,12 +103,12 @@ resident cost = tokens entering context x turns remaining in the run
 ```
 
 and the second factor is a property of the skill, not of the topic.
-`survey-writer` has 15 numbered steps, of which retrieval is step 1;
-`deep-research` has seven phases, and Phase 7 alone mandates a peer-review
-dispatch, a reconciliation, an assembly, a provenance write, a gate run,
-a references build, three renders, two dossier writes and a presentation.
-Neither count changes if you ask about digital twins instead of runtime
-verification.
+`survey-writer` has 20 numbered steps (0-18, plus 2a), of which retrieval is
+step 1; `deep-research` has seven phases, and Phase 7 alone mandates a
+peer-review dispatch, a reconciliation, an assembly, a provenance write, a
+gate run, a references build, three renders, two dossier writes and a
+presentation. Neither count changes if you ask about digital twins instead of
+runtime verification.
 
 This is why the cheapest place to spend attention is the *earliest* one.
 A token that enters context in step 1 is multiplied by everything after
@@ -189,7 +189,7 @@ A `survey-writer` run on a topic broken into three sub-themes.
 | --- | --- | --- |
 | 1 | `search --k 15` x 3 sub-themes | 45 results x ~150 = ~6.7k |
 | 2 | ~3 kept per query, 12 rejected | ~1.4k kept, **~5.4k rejected** |
-| 2-14 | thirteen further numbered steps, an estimated 20+ orchestrator turns | nothing evicted |
+| 2-18 | eighteen further numbered steps (including 2a), an estimated 20+ orchestrator turns | nothing evicted |
 
 The 5.4k tokens of rejected candidates are the half to follow. Costed
 with the weights:
@@ -444,10 +444,9 @@ reason narrower than "the module is safe".
 There is one path that *can* produce concurrent writers. It was found by
 writing this document, not by anything failing.
 `python -m chitragupta.draft retrieve ... --log <draft>` appends to the
-dossier's `retrieval.md`, and subagents can run Bash. Today only
-`survey-writer` and `draft-reviser` pass `--log`, and both are single
-orchestrators, but give `--log` to six parallel interviewers and it is
-live.
+dossier's `retrieval.md`, and subagents can run Bash. Every genre skill
+passes `--log`, and so do deep-research's parallel interviewers, so this
+path is live.
 
 `log_retrieval` used to write the template when the file was absent and
 then append the row, which lost data two different ways. Both matter,
@@ -682,7 +681,7 @@ before/after run in [the planned measurement](https://github.com/prasadtalasila/
 **What A2 changes here.** This measurement predates the
 `claim:`/`quote:` split and was built from a `support:`-only dossier,
 each block a raw 600-character retrieval window
-([DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)),
+([DOSSIER.md](DOSSIER.md#-evidencemds-claimquote-contract-a2)),
 exactly the material the split removes from a drafting step's own
 context. It says nothing about the payload's *size*: a `claim:` written
 in the drafter's own words is not reliably shorter than the window it
@@ -845,7 +844,7 @@ The `support:` arm reuses every `relevance:` line verbatim and replaces
 have read to write them: `python -m chitragupta.draft retrieve evidence
 "<sub-theme>" --citekey <key>` at its documented defaults (`--chars 600
 --windows 2`) for all 23 kept citekeys, which is the literal call
-[DRAFT-ITERATION.md](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306)
+[DOSSIER.md](DOSSIER.md#-evidencemds-claimquote-contract-a2)
 names as what `support:` held in practice.
 
 | | Characters |
@@ -899,7 +898,7 @@ retrieval window at all, only
 one was deliberately captured. *Asserted*, in ["Measured, derived, and
 asserted"](#-measured-derived-and-asserted)'s sense: this run's own
 `claim:`/`quote:` blocks were written from memory before being typed, per
-[the contract](DRAFT-ITERATION.md#evidencemds-claimquote-contract-a2-306),
+[the contract](DOSSIER.md#-evidencemds-claimquote-contract-a2),
 but the scratch dossier they live in is gitignored and gone, so a later
 reader cannot re-open it to check, and can only re-run the method and
 judge the new blocks independently. The 27.7%-of-`support:` figure above

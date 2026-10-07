@@ -114,7 +114,7 @@ and redesigns nothing.
 | `chitragupta corpus sync` | `--reparse`, `--remove-stale` |
 | `chitragupta corpus ledger` | `--list`, `--status`, `--citekey`, `--collection`, `--collections` |
 | `chitragupta corpus topics` | `--topic` |
-| `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k`, `--html FILE`, `--app DIR` |
+| `chitragupta corpus discover` | `[PHRASE ...]`, `--paper CITEKEY`, `--json`, `--out FILE`, `--k`, `--html FILE`, `--app DIR`, `--why`, `--groups`, `--compare`, `--hops`, `--clusters`, `--inflation`, `--path`, `--family`, `--origins` |
 
 ### ✍ `draft` -- work on one draft
 
@@ -144,7 +144,7 @@ and redesigns nothing.
 | `chitragupta review figure <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review uncited <draft>` | `--genre`, `--json`, `--write`, `--formats` |
 | `chitragupta review quotation <draft>` | `--json`, `--write`, `--formats` |
-| `chitragupta review agenda <draft>` | `--json`, `--formats` |
+| `chitragupta review agenda <draft>` | `--json`, `--formats`, `--accept ID`, `--baseline PATH` |
 | `chitragupta review support <draft>` | `--json`, `--write`, `--formats` |
 | `chitragupta review union <book>/book.tex` | `--json`, `--write`, `--formats` |
 

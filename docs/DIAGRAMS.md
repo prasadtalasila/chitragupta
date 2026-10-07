@@ -21,8 +21,8 @@ Read the one that matches your question and ignore the rest.
 
 One property holds in the eleven workflow views: **a genre skill loops on the citation
 gate until it exits 0, and shows you nothing before that.** All five
-SKILL.md files in `.claude/skills/` carry that instruction, four of them
-in the same words: *"Fix and re-run until `OK`. Never present a draft
+genre skills' SKILL.md files carry that instruction, two of them in
+exactly these words: *"Fix and re-run until `OK`. Never present a draft
 that hasn't passed."* A gate failure is normally something you never
 see.
 
@@ -76,7 +76,7 @@ between them except a draft that has passed the gate.
 The two dashed boxes are stores and reports, not steps.
 `DOSSIER` ([DOSSIER.md](DOSSIER.md)) is written while a draft is
 written and read back to change it, which is why revision does not
-re-run the genre skill. `REVIEW` ([REVIEW.md](REVIEW.md)) is seven
+re-run the genre skill. `REVIEW` ([REVIEW.md](REVIEW.md)) is ten
 advisory aids for a finished draft. Its arrow back to drafting is dotted
 where the gate's is solid, because a review finding is yours to weigh
 and does not block the pipeline.
@@ -231,7 +231,8 @@ flowchart TB
 **Answers:** what actually runs, what does it write, and where does the module
 I'm looking at fit?
 
-The reference diagram. Everything in `chitragupta/` appears here exactly once.
+The reference diagram. Every module on the corpus-to-gate-to-render spine
+appears here exactly once.
 [ARCHITECTURE.md](ARCHITECTURE.md) is the prose companion to it: the
 same system in words, plus what each part needs to run.
 
@@ -395,11 +396,12 @@ flowchart TB
 Same pipeline, but the files are the nodes and the modules are the edge
 labels: the inverse of the full workflow diagram.
 
-Everything under `content/` is disposable. Delete
-the directory and one `sync` plus one enrichment run rebuilds all of it.
-Nothing under `papers/` is disposable, and neither is `config.toml`; both
-are gitignored and per-host, so they are also the only things a backup
-needs to contain.
+Everything `sync` and `enrich` write under `content/` is disposable:
+delete it and one `sync` plus one enrichment run rebuilds it. What you
+author there is not: drafts, dossiers, book specs and seed topics
+([MIGRATION.md](MIGRATION.md) lists them). Nothing under `papers/` is
+disposable either, and neither is `config.toml`; both are gitignored and
+per-host, so a backup needs them and the authored half of `content/`.
 
 With `[enrich].docling_images` on, `docling` also writes each document's
 figure bitmaps into `<doc>_artifacts/` and an index of them in
@@ -745,7 +747,7 @@ largely wasted on two others, and reduced to a preview step for the fifth.
 | [Genre B: teaching](#-genre-b-teaching) | `tutorial-writer`, `textbook-chapter-writer` | BM25 only | none | yes (custom heading) |
 | [Genre C: LaTeX-native](#-genre-c-latex-native) | `thesis-chapter-writer` | BM25 only | none | **no, skipped** |
 
-All five run the same gate, in the same loop, with the same wording.
+All five run the same gate, in the same loop.
 
 ### 📚 Genre A: corpus-led
 
@@ -932,7 +934,7 @@ it gets its own diagram.
 
 The gate is not relaxed for LaTeX: `chitragupta.draft gate` reads
 `\citep`/`\citet` as readily as Markdown `[@key]`, and the loop-until-`OK`
-rule is worded identically to the other four skills.
+rule is the same as in the other four skills.
 
 ```mermaid
 %%{init: {

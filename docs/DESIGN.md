@@ -158,11 +158,14 @@ around `pdftotext` would add pickling and spawn cost to buy the same
 OS-level concurrency; threads around `docling` would serialise the very
 work being overlapped.
 
-The Docling pool uses the `spawn` start method, because counting GPUs
+The Docling pool never uses plain `fork`, because counting GPUs
 initialises CUDA in the parent and a forked child inherits a broken CUDA
-context from such a parent. The cost (each worker re-imports torch and
-docling) is why parallelism buys nothing on a small corpus and a great
-deal on a large one.
+context from such a parent. `[parser].start_method = "auto"` (the
+default) picks `forkserver`, which imports torch and docling once for
+all workers, and falls back to `spawn`, where each worker re-imports
+them, on a platform without it. The per-worker start-up cost is why
+parallelism buys nothing on a small corpus and a great deal on a large
+one.
 
 ### 🧵 The parent keeps what only the parent can do
 
@@ -371,8 +374,9 @@ them, and the advisory aids measure them alongside everything else.
 That is not a gap to close; it is true of every sentence in a revised
 document.
 
-None of this is built. The proposal is
-`plans/outline-driven-drafting-and-manual-edits.md`.
+Both are built: a `brief:` or `claim:` block per section of the
+dossier's optional `outline.md` (#455; [DOSSIER.md](DOSSIER.md) has the
+format). The plan was `plans/outline-driven-drafting-and-manual-edits.md`.
 
 ## 🗺 Where proposed work lives
 

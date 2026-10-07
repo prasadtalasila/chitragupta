@@ -273,7 +273,7 @@ Two consequences are new since the original draft:
   ledger, never in Chroma, never anywhere a retrieval call can return
   them.
 - **A citekey is also a filename**, enforced by
-  `bib_reader.citekey_problem()`. Anything writing
+  `citekey_safety.citekey_problem()`. Anything writing
   `content/grobid/<citekey>.tei.xml` builds the name with
   `citekey_safety.citekey_path()` to inherit that guarantee, and must not
   construct a path from a GROBID-derived string, which carries no such
@@ -314,7 +314,8 @@ only design that supports it without touching the citekey invariant.
 ## ❓ Open questions
 
 - **Does the graph have a consumer?** `content/topics.json` is already an
-  artefact nothing reads (see `DEVELOPER.md`, git checkout only). Adding a
+  artefact no drafting skill reads (see `DEVELOPER.md`, git checkout
+  only). Adding a
   second unread artefact, at the cost of a JDK and a service, would be a
   worse version of the same mistake. A concrete consumer (a
   `survey-writer` step, a retrieval signal) should be named before this

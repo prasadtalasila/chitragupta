@@ -85,7 +85,7 @@ survey's expectations.
 
 **`review figure`: what a TikZ figure's own geometry says.** It reports
 overlapping nodes, content protruding past the frame, node text too long
-to fit, page-width overflow, an arrowhead stranded mid-line where a
+to fit, an arrowhead stranded mid-line where a
 figure builds one arrow out of two `\draw`s, the edge list to confirm
 the figure connects what you meant it to, and a figure file that manages
 a TikZ library load by hand. Such a file renders correctly on its own
@@ -159,8 +159,9 @@ live re-run.
 comparison it reports means something, then rebuilds and diffs against a
 previous agenda. Every item carries whether it is `unattended` (safe for
 a future automated pass) or merely surfaced for a human to decide;
-`missing-citekey`, `prose`, and the short runs a verbatim scan finds are
-the former. Everything judgement-shaped (`recorded-but-uncited`,
+`missing-citekey`, `prose` (unless its rule marks it for review), and
+the short runs a deterministic verbatim tier finds (not the embedding
+tier's) are the former. Everything judgement-shaped (`recorded-but-uncited`,
 `unsupported-claim`, `claim-support`, `uncited-claim` and `misquoted`)
 is the latter. Three of those surfaced classes (`claim-support`,
 `uncited-claim` and `unsupported-claim`) can be marked considered and
@@ -254,7 +255,8 @@ use.
 
 The full written set exists to read:
 `docs/examples/sample-project/content/review/dt-overview/` holds every
-draft-reading aid's `.md` and `.json` for four real drafts. Open
+draft-reading aid's `.md` and `.json` for four real drafts, except
+`figure`'s: the sample drafts carry no TikZ figure. Open
 [`trust-chapter.agenda.md`](examples/sample-project/content/review/dt-overview/trust-chapter.agenda.md)
 there to see what a merged worklist looks like on a draft that mostly
 passes, which is the common case and the one examples rarely show, and

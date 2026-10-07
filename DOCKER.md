@@ -185,15 +185,16 @@ defaults and its `.env` resolve:
 
 ```bash
 cd docker
-cp .env.example .env          # then edit CHITRAGUPTA_WORKSPACE
-mkdir -p "$CHITRAGUPTA_WORKSPACE/papers"
+cp .env.example .env          # then edit the four CHITRAGUPTA_* variables
+mkdir -p /path/to/workspace/papers   # the CHITRAGUPTA_WORKSPACE you set
 docker compose up -d          # .env's COMPOSE_PROFILES picks cpu or gpu
 docker exec -it chitragupta-claude bash
 ```
 
 `docker/.env.example` is the tracked documentation of every variable
-the compose file reads; `docker/.env` is gitignored. Nothing has to be
-edited but `CHITRAGUPTA_WORKSPACE`.
+the compose file reads; `docker/.env` is gitignored. Four variables have
+no default and must be set: `CHITRAGUPTA_WORKSPACE`, `CHITRAGUPTA_USER`,
+`CHITRAGUPTA_UID` and `CHITRAGUPTA_GID`.
 
 Do not skip that `mkdir`. The Docker daemon silently creates a missing
 bind-mount source itself, owned by `root:root`. For the read-only papers

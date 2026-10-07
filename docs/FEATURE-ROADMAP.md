@@ -87,7 +87,9 @@ everything below.
 ## 🩺 The diagnosis: where a source's wording actually enters a draft
 
 The problem lies in the path evidence takes to the drafter, not in the
-detectors. Traced through the current code:
+detectors. Traced through the code as it stood before Theme A shipped
+(steps 3 and 5 below have since changed: A2 replaced the `support:` line
+with `claim:`/`quote:`, and A1a made the scan a step that runs):
 
 1. `chitragupta/retrieval.py::search()` returns a **500-character raw
    snippet** per candidate (`snippet_chars=500`).
@@ -164,8 +166,8 @@ before the scan, in every skill.
 
 **3. `deep-research` scored zero, and it is the one genre that already
 records claims.** Its SKILL.md writes "kept claims and their citekeys"
-into `evidence.md`; `survey-writer` and `tutorial-writer` are the two
-that specify a `support:` line, and they are the two with the most
+into `evidence.md`; `survey-writer` and `tutorial-writer` were then the
+two that specified a `support:` line, and they are the two with the most
 findings. That is the correlation A2 predicts.
 
 **Treat it as suggestive and not as proof.** It is four drafts on one
@@ -358,8 +360,8 @@ copied, so Apache-2.0 §4's notice obligations never attach;
 [INSPIRATION.md](INSPIRATION.md) carries both upstreams instead, which
 is what that file exists for.
 
-**5. `R1`-`R11` bind every new review aid and every unattended edit.**
-[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) states eleven obligations,
+**5. `R1`-`R12` bind every new review aid and every unattended edit.**
+[AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md) states twelve obligations,
 *"each phrased so a reviewer can tell whether it has been met"*. Four
 reach items in this roadmap and are easy to breach by accident:
 
@@ -415,7 +417,7 @@ description ends *"never runs unless a person asked for it"*, and
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s build-order step 5 asserts
 that skill's *"person-only trigger"* is already what R1-R11 (the
 requirement set as it stood then, before R12) ask for.
-Auto-invoking it from nine genre skills would make both sentences false,
+Auto-invoking it from five genre skills would make both sentences false,
 which is a documentation change nobody proposed and a rule change
 smuggled in as a convenience.
 
@@ -428,7 +430,7 @@ around.
 
 Theme A stopped wording leaking. Theme B removed the *opportunity* by
 changing what a paragraph is required to be, and **nothing in it remains
-open**: B1-B4 shipped and were removed from this document, B3 was
+open**: B1, B2 and B4 shipped and were removed from this document, B3 was
 dropped unbuilt (see [the build order](#-build-order)), and B5 (the
 pre-gate self-feedback step in the five genre skills) shipped in two
 halves, #438 and then the four amendments a 2026-08-28 read of four

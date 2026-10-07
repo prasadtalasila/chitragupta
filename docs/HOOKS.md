@@ -97,7 +97,7 @@ question is already answered:
 
 | | **Gate class** | **Advisory class** |
 | --- | --- | --- |
-| Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py` |
+| Members | `citation_gate_hook.py` | `session_start_hook.py`, `style_check_hook.py`, `code_standards_hook.py` |
 | What it protects | the citekey invariant | a recorded preference, or the operator's attention |
 | May emit a blocking decision | yes, the only one that may | never |
 | On its own internal failure | must be detectable | exit 0, say nothing |
@@ -177,13 +177,14 @@ why `dev-deps` sets it, instead of a README asking you to.
 | `PostToolUse` | `Write\|Edit` | `code_standards_hook.py` | advisory | built |
 | `SessionStart` | `startup\|clear` | `session_start_hook.py` | advisory | built |
 
-**Two entries on one matcher, not one dispatcher.** Both `PostToolUse`
+**Separate entries on one matcher, not one dispatcher.** The `PostToolUse`
 hooks are separate processes with separate settings entries. The reason is
 fault isolation: a defect in a prose checker must not be able to weaken the
-citekey gate, and one process means one crash takes both. The usual
-argument for consolidating (controlling how several checks' findings
-merge into a single stdout) does not apply, because the harness already
-merges them correctly; see [the trial table](#-what-is-measured-and-what-is-merely-documented).
+citekey gate, and one process means one crash takes both. The usual argument
+for consolidating (controlling how several checks' findings merge into a
+single stdout) does not apply, because the harness already merges them
+correctly; see [the trial
+table](#-what-is-measured-and-what-is-merely-documented).
 
 The two share exactly one decision, *is this write a draft?*, and it
 is factored into one helper beside them instead of copied, because a
@@ -301,17 +302,20 @@ draft of theirs.
 
 ## 🏗 The shared design, in files
 
-Both `PostToolUse` hooks answer the same three questions in the same
-order (*was this write a draft? what does the check say? how do I hand
-that back?*) and differ only in the middle one. The design that serves
-both is three layers with a rule about what may live in each.
+The two draft hooks (`citation_gate_hook.py` and `style_check_hook.py`) answer
+the same three questions in the same order (*was this write a draft? what does
+the check say? how do I hand that back?*) and differ only in the middle one.
+The design that serves both is three layers with a rule about what may live in
+each.
 
 ```text
 .claude/
 ├── settings.json               the launcher: one exec-form entry per hook
 └── hooks/
     ├── draft_target.py         shared -- payload in, draft path or None out
+    ├── patch_paths.py          shared -- the paths an apply_patch payload touches
     ├── safe_path.py            shared -- which `chitragupta` a child may import
+    ├── session_start_hook.py   advisory class -- the preflight, never blocks
     ├── citation_gate_hook.py   gate class     -- may block
     ├── style_check_hook.py     advisory class -- never blocks
     └── code_standards_hook.py  advisory class -- never blocks
@@ -331,8 +335,11 @@ tests/
 ├── test_safe_path.py           checkout or installed project, every shape
 ├── test_hook_launchers.py      the launcher check, every shape
 ├── test_settings_launchers.py  the real settings.json, against the contract
+├── test_patch_paths.py         apply_patch payloads, every shape
 ├── test_citation_gate_hook.py  the model the other two follow
-└── test_style_check_hook.py    the process contract, not the branches
+├── test_style_check_hook.py    the process contract, not the branches
+├── test_code_standards_hook*.py  the size hook, process and module
+└── test_session_start_hook.py  the preflight
 ```
 
 **Layer 1 holds the checks.** They are importable, tested, and know
@@ -408,7 +415,8 @@ it breaks under `python -P` or `PYTHONSAFEPATH`, neither of which the
 launcher sets (`safe_path.py` sets it on a hook's *children*, never on
 the hook); and `tests/test_citation_gate_hook.py`'s `hook_repo`
 fixture, which copies the hook script into a temporary root so that
-`Path(__file__).resolve()` lands there, must copy both helpers beside it.
+`Path(__file__).resolve()` lands there, must copy all three helpers
+beside it.
 
 ### 🛡 Which `chitragupta` a hook's child imports
 
@@ -437,8 +445,9 @@ scaffolds no `scripts/`, so one found in an installed project was planted
 and would run with the user's privileges on the next `.py` write under
 `chitragupta/` or `scripts/`. There it starts no process at all; only the
 checkout runs its scanner. The rule is about that one root-level folder:
-a skill's own `references/` or `assets/` under `.claude/skills/` (#997)
-is scaffolded on purpose and is nothing the hook looks at.
+a skill's `references/` under `.claude/skills/<name>/`, or the shared
+ones in `.claude/skills-common/` (#997), are scaffolded on purpose and
+are nothing the hook looks at.
 `hook_launchers.py`'s import probe (`import_probe.py`) makes the same
 call from its own side, by whether it is itself running from inside the
 project whose settings it reads. `session_start_hook.py`'s own
@@ -557,7 +566,7 @@ on three findings:
   and no `python3.exe` at all.
 - **The rest of this repository already requires `python`.** Every
   documented invocation across `.claude/skills/`, `AGENTS.md`,
-  `README.md` and `docs/` is `python -m src.*`, some 470 of them,
+  `README.md` and `docs/` is `python -m chitragupta.*`, some 470 of them,
   against a handful of `python3` in `bench/RESULTS.md`. The hook launcher
   was the outlier.
 - **That makes the losing host a different kind of host.** `python`'s
@@ -829,7 +838,7 @@ Importing the module avoids the problem.
 
 One consequence can surprise someone: the scope is declared once, in
 `[tool.coverage.run].source`, and the suite is run with a bare `--cov`,
-not `--cov=src --cov=scripts`. A command line naming
+not `--cov=chitragupta --cov=scripts`. A command line naming
 the paths would silently keep measuring the old set after a new one is
 added.
 
@@ -920,8 +929,9 @@ documented, and therefore liable to change.
 **A generic skill wrapping `python -m chitragupta.draft style` is not an
 antipattern in general, but is the wrong shape here**, for three reasons.
 [GENRE.md](GENRE.md) already sets the precedent for shared invariants
-(*"These are not per-skill choices. They are the same rules restated in
-eight `SKILL.md` files, and a skill that broke one would be the bug"*)
+(*"These are not per-skill choices. They are the same rules, stated in
+each of the ten `SKILL.md` files or ... once in a reference ... A skill
+that broke one would be the bug"*)
 and pins them with a text scan over `.claude/skills/`, which is exactly
 what has been proposed for this step. Skills are also matched on *user
 intent*, and "another skill is midway through its own loop" is not user

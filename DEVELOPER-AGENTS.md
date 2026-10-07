@@ -445,7 +445,7 @@ refuses to import without it rather than falling back silently, so its
 absence fails tests that have nothing to do with configuration:
 `.claude/hooks/`'s launchers, the CSL resolver, the citation-gate hook.
 `.github/workflows/ci.yml` runs exactly this `cp` in both the `test` and
-the `build` job for that reason, and the session-start hook tells a new
+the `lint` job for that reason, and the session-start hook tells a new
 clone to. Nobody had told a *worktree*, and the cost of not knowing was
 16 of the 17 failures that a whole release run then carried as a
 constant.
@@ -813,8 +813,8 @@ no DTaaS config to inherit it from:
 
 `.gitattributes` (`* text=auto eol=lf`) *is* in force now and needs no
 runner: it normalises line endings so CI's Windows leg reads
-byte-identical files to the Linux leg, which matters because four tests
-here scan this repository's own source.
+byte-identical files to the Linux leg, which matters because over a
+dozen tests here scan this repository's own source.
 
 ## 🔍 Reviewing before you push: the OpenCodeReview plugin
 

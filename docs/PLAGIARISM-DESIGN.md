@@ -392,7 +392,7 @@ are in `bench/RESULTS.md`'s 2026-08-13 skip-gram and
    642 documents now and the tier is faster, not slower. Without tier 3
    the same scans take 447--474 ms, so the tier costs 44--86x
    everything else in a `scan` combined, and peaks at ~1,492 MB against
-   23--73 MB for any other review aid. Full method and the other seven
+   23--73 MB for any other review aid. Full method and the other eight
    aids' figures:
    [PERFORMANCE.md](PERFORMANCE.md#-what-a-review-pass-costs).
 

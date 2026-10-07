@@ -64,7 +64,7 @@ launcher does not resolve produces **nothing at all**: no error, no log
 line. The citation gate is one of those hooks, so the settings file
 still lists it, the suite still passes, and drafts land ungated.
 [SOUL.md](../SOUL.md) has why that is the one failure this project
-cannot tolerate. Two things now report it rather than one: `chitragupta
+cannot tolerate. Four things now report it: `chitragupta
 draft gate` and the session-start preflight both call
 `chitragupta/hook_launchers.py`, the install script prints what it finds
 at the end of `python-deps`, and CI's `launchers` job checks it on both
@@ -81,8 +81,9 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
 1. **Install Git for Windows**, which provides Git Bash. Everything
    below runs in a Git Bash prompt, not PowerShell or `cmd`.
 
-2. **Install Python 3.12 or newer** from python.org or the Microsoft
-   Store, with "Add to PATH" enabled. Confirm both names resolve:
+2. **Install Python 3.12, 3.13 or 3.14** (not 3.14.1) from python.org
+   or the Microsoft Store, with "Add to PATH" enabled. Confirm it
+   resolves:
 
    ```bash
    python --version

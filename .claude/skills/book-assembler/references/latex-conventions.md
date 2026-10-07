@@ -11,8 +11,12 @@ bottom-up from what has been accepted.
 | --- | --- | --- |
 | `# Title` | `\title{...}` in the preamble | -- |
 | `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
-| `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |
-| `#### Section {#sec-1}` | `\input{sec-1.tex}` | the unit's own `\label{sec-1}` |
+| `### Chapter {#ch-1}` | `\input{ch-1.tex}`, the unit, whose own `#` heading becomes `\chapter{...}` | `\label{ch-1}` |
+| `#### Section {#sec-1}` | a heading inside `ch-1.tex`, never a file of its own | `\label{sec-1}` |
+
+A chapter the outline describes only at chapter level (a book
+retrofitted from older prose) has a single section, and that section is
+the unit: `\input{<section-id>.tex}`.
 
 **The `{#id}` becomes the LaTeX label, unchanged.** That is what makes
 the cross-references the registry checked actually resolve in the built

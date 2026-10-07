@@ -463,7 +463,8 @@ an edit. A baseline predating `corpus_key` is not treated as a mismatch,
 since there is nothing recorded to compare against.
 
 The buckets above, not the model, decide what may be repaired without
-asking. A `short` run is reworded unattended. A `long` one stops and
+asking. A `short` run from a deterministic tier is reworded unattended;
+an `embedding`-tier one is surfaced. A `long` one stops and
 asks the human whether to paraphrase or to quote. A `quoted` one is
 reported as already correct.
 

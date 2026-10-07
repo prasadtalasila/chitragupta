@@ -9,9 +9,9 @@ skill does what. **Not covered here:** the prose standard this
 repository's *own* documentation is held to, which is
 [HOUSE-STYLE.md](HOUSE-STYLE.md).
 
-Shared prose standards for every skill in `.claude/skills/`. Each SKILL.md
-points here rather than restating them, and adds only the rules specific to
-its own genre.
+Shared prose standards for every skill in `.claude/skills/`. Each drafting and
+revising SKILL.md points here rather than restating them, and adds only the
+rules specific to its own genre.
 
 These are drawn from the technical-communication literature, primarily the
 [Diátaxis](https://diataxis.fr/) framework, Google's
@@ -100,8 +100,8 @@ alternatives and weigh them, a tutorial must eliminate every choice.
 
 If, while drafting, you find yourself writing material that belongs to a
 different genre, **stop and say so to the user** rather than absorbing it.
-The routing tables in each SKILL.md's "When to invoke" section exist for
-exactly this moment.
+The routing tables in each genre SKILL.md ("When to invoke", or "What
+this genre is not" in `tutorial-writer`) exist for exactly this moment.
 
 ## 👓 6. Read it once as the reader
 
@@ -984,7 +984,7 @@ abbreviate the path.
 
 A book is the third case: its units are rendered `--fragment`, which
 emits no preamble, so its `book.tex` carries the `fvextra` load itself
-(see `.claude/skills/book-assembler/SKILL.md`).
+(see `.claude/skills/book-assembler/references/latex-conventions.md`).
 
 ### 🔤 Prefer a breakable form for a very long token
 

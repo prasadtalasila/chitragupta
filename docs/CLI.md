@@ -114,7 +114,8 @@ argument implies. Once `.venv-full` above is activated, run these
 directly instead of the refused stage:
 
 ```bash
-# chitragupta install python-deps refuses, naming this:
+# chitragupta install python-deps refuses, naming `chitragupta install enrich`,
+# whose pip equivalent is:
 pip install 'chitragupta-cli[enrich]'   # tier 3 -- chitragupta enrich (docling, embeddings, topic clustering)
 
 # chitragupta install dev-deps refuses, naming this. There is no
@@ -160,7 +161,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids) |
+| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids; `support` needs the `enrich` extra and exits 0 with a notice without it) |
 | 2 | **`.venv-full/bin/python`**: venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`**: venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -272,7 +273,7 @@ cp config.toml.example config.toml   # git checkout only
 
 # 4. Sync the corpus from papers/bibliography.bib. Needs the virtual
 #    environment, and only one sync (or enrichment run) can write at a
-#    time -- a second one waits its turn.
+#    time -- a second one exits 2 at once rather than waiting.
 chitragupta corpus sync
 # chitragupta corpus sync --reparse         # re-extract text even if the PDF is unchanged
 # chitragupta corpus sync --remove-stale    # only after reading the stale list it prints
@@ -369,7 +370,7 @@ repository rather than drafting with it, so only their checkout form
 exists; neither has a console-script equivalent:
 
 ```bash
-bash scripts/install_full_pipeline.sh dev-deps   # pytest + pytest-cov, only to run the test suite
+bash scripts/install_full_pipeline.sh dev-deps   # pytest, pytest-cov, actionlint and the git hooks
 python -m pytest                                 # the suite itself
 
 python3 scripts/release.py                       # bundles release/chitragupta-<version>.zip
@@ -480,6 +481,11 @@ interpreter is already on `PATH`. Two later sections,
 [Environment variables](#-environment-variables), spell out
 `.venv-full/bin/python` in full instead, because a cron job or a systemd
 unit has no shell to have activated anything in.
+
+Three commands that set a project up rather than work in one --
+`chitragupta init` (`[DIR]`, `--force`, `--dry-run`, `--agent NAME`),
+`chitragupta doctor` and `chitragupta install` -- are listed with their
+flags in [PACKAGING.md](PACKAGING.md)'s command table.
 
 ### 🔄 `chitragupta corpus sync`
 
@@ -1286,6 +1292,8 @@ withdrawn.
 | Flag | Applies to | Default | What it does |
 | --- | --- | --- | --- |
 | `--k N` | `search` | 5 | How many candidates to rank |
+| `--unit document\|passage` | `search` | `document` | What a result is: `passage` ranks paragraphs and returns the scoring paragraph with its page. Scores are not comparable across units |
+| `--collection NAME` | `search` | -- | Rank only inside this Zotero collection (see `ledger --collections`) |
 | `--chars N` | all | 600 / 500 | Window size (evidence / search) |
 | `--citekey KEY` | `evidence` | required | Which document to read |
 | `--windows N` | `evidence` | 2 | How many passages to return |
@@ -1686,7 +1694,7 @@ Markdown report: `id`, `line`, `citekey`, `claim`, `score`, `band`,
 `passage` (`page`/`quotable`/`text`, `null` when nothing matched) and `note`
 (why a source was unreadable, when one was). It is an additional
 serialisation of what `render_markdown` already prints, never a second
-computation. Unlike the other seven gated behind `--write`, the `.json` is
+computation. Unlike the other eight gated behind `--write`, the `.json` is
 filed unconditionally, matching the `.md`'s own always-write policy (the
 same one `agenda` follows), and `--json` only decides whether it is *also*
 printed to stdout, with the written-files summary moving to stderr in that
@@ -2819,8 +2827,8 @@ chitragupta draft registry excerpt content/drafts/<book> <unit-id>
 | `check` | what the registries disagree on | **always 0** |
 | `excerpt` | what one unit's generation should be told the rest of the book settled | 1 only if the book has no readable outline |
 
-**`check` is a review aid and exits 0 whatever it finds**, like the three
-`chitragupta.review` aids and unlike `spec status`/`unit status`. Those two report
+**`check` is a review aid and exits 0 whatever it finds**, like every
+`chitragupta.review` aid and unlike `spec status`/`unit status`. Those two report
 whether a *human decided* something; this reports a *machine's reading of
 prose*, which is judgement however mechanical the arithmetic. There is no
 flag that makes it block;
@@ -2985,14 +2993,15 @@ bug. No stage here shells out to a binary, so none of them can report
 | `--stages STAGES` | all seven, or `docling` alone with `--for-draft` | Comma-separated subset of `docling,embed,bertopic,extract-keywords,seed-topics,converge,topic-graph` |
 | `--for-draft PATH` | -- | Scope `docling` to the papers this draft cites. Refused with an explicit `--stages embed`, `bertopic`, `extract-keywords`, `seed-topics`, `converge` or `topic-graph` |
 
-**Exit code**, which is all a schedule can read: `1` when any stage
-reports `error`, `0` otherwise, including `partial`, which is what an
-ordinary unparseable PDF produces, and `skipped`, which is what a stage
-whose prerequisite is absent produces. One case is worth naming because
-it used to be silent: a `docling` run that gave up on
-documents it could not get through a repeatedly-dying worker pool reports
-`error` rather than `partial`, so it exits `1`. Before that, a run that
-abandoned 460 of 642 documents exited `0`, exactly like a clean one.
+**Exit code**, which is all a schedule can read: `1` when any stage reports
+`error` or there is no ledger, `2` when another run holds the lock (as for
+`sync`), `3` when `--for-draft` is refused, `0` otherwise, including
+`partial`, which is what an ordinary unparseable PDF produces, and `skipped`,
+which is what a stage whose prerequisite is absent produces. One case is worth
+naming because it used to be silent: a `docling` run that gave up on documents
+it could not get through a repeatedly-dying worker pool reports `error` rather
+than `partial`, so it exits `1`. Before that, a run that abandoned 460 of 642
+documents exited `0`, exactly like a clean one.
 
 ```bash
 chitragupta enrich
@@ -3038,7 +3047,9 @@ this is usually for. To carry on into the draft's own review report, run
 `chitragupta review provenance <draft>` afterwards: it is a tier-1
 command, so it needs no venv and waits on no lock.
 
-Two stages refuse the scope rather than honouring it:
+Six stages refuse the scope rather than honouring it -- every stage but
+`docling`, because each builds one whole-corpus artefact. `embed` is the
+example:
 
 ```console
 $ chitragupta enrich --for-draft content/drafts/digital-twins.md --stages embed
@@ -3053,8 +3064,10 @@ Every skill that reads it decides by asking only whether
 `content/chroma/` exists, so a collection holding eleven papers would
 answer as though it held 642. `bertopic` overwrites `content/topics.json`
 whole, so a scoped run would replace a corpus-wide topic model with an
-eleven-document one. Neither is worth a silently smaller answer, so the
-run stops and names the command to use instead (exit status 3).
+eleven-document one. `extract-keywords`, `seed-topics`, `converge` and
+`topic-graph` likewise each write one corpus-wide artefact. None is worth
+a silently smaller answer, so the run stops and names the command to use
+instead (exit status 3).
 
 A citekey the draft cites and the ledger has never heard of is named, not
 silently dropped. A scope matching nothing at all stops rather than
@@ -3090,11 +3103,12 @@ One install path for both a bare machine and the Docker image. Takes
 
 | Stage | What it does |
 | --- | --- |
-| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[enrich]'` |
+| `python-deps` | **Default when no stage is given.** Creates the venv and runs `poetry install --with enrich`. `chitragupta install` refuses this by name, pointing at `chitragupta install enrich` (pip: `pip install 'chitragupta-cli[enrich]'`) |
 | `os-deps` | `apt-get` the system packages (TeX Live, Pandoc, poppler-utils, Poetry, git/curl/unzip, OpenCV's runtime libraries, and `python-is-python3`, which is what puts the name `python` on `PATH`, the name every Claude Code hook is launched by ([HOOKS.md](HOOKS.md#-the-launcher-contract)); see [PDF-PARSER.md](PDF-PARSER.md#-docling-fails-every-document-with-an-opencv-recursion-error)). Needs root; auto-sudo's. Opt-in, since not everyone wants a script touching apt. Also reachable as `chitragupta install os-deps`, unmodified |
-| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv. Needed only to run the test suite. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[dev]'` |
+| `dev-deps` | `poetry install --with dev` (pytest, pytest-cov) into the same venv, plus the pinned `actionlint` binary and `core.hooksPath` pointed at `git-hooks/`. Needed only to run the test suite and commit. Run `python-deps` first. `chitragupta install` refuses this by name; the pip equivalent is `pip install 'chitragupta-cli[dev]'` |
 | `cpu-torch` | Swaps torch to the CPU-only wheel index and removes the CUDA runtime the default wheel pulled in. Opt-in and never part of `all`: it asserts a GPU is absent *for good* (a hosted CI runner, a CPU-only container), which the script cannot infer about a host that might grow one later |
 | `gpu-torch` | Reaches `ensure_gpu_torch` (below) directly, pointed at `CHITRAGUPTA_PYTHON` rather than this script's own venv, and runs pip as `$CHITRAGUPTA_PYTHON -m pip`. This is what `chitragupta install gpu-torch` reaches for someone who pip-installed rather than cloned. Not part of `all` or `python-deps`, which already call `ensure_gpu_torch` against their own venv |
+| `actionlint` | Installs the pinned workflow linter alone, without the venv `dev-deps` also builds |
 | `vale` | Installs Vale alone, without the TeX Live and poppler `os-deps` also brings. This is what CI's `lint` job and a bare `python-deps` run (which needs no `poetry`) both want |
 | `all` | `os-deps` + `python-deps`. **Does not include `dev-deps`** |
 

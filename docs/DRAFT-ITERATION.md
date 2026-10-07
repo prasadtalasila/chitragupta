@@ -360,7 +360,7 @@ loop:
    has the corpus moved, and has the *draft* moved since the last
    `dossier stamp` (FEATURE-ROADMAP.md's E3; "The draft
    fingerprint" in [docs/DOSSIER.md](DOSSIER.md))? A changed draft
-   fingerprint surfaces up to four findings, offered to the user one at a
+   fingerprint surfaces up to five findings, offered to the user one at a
    time instead of applied. Then `python -m chitragupta.draft dossier
    mark-revision <draft>`, before any retrieval call, so `retrieval.md`
    can tell this revision's cost apart from the last one. Its rows

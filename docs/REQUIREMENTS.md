@@ -412,10 +412,11 @@ inverse of this project's requirement.
 That is the gap [DRAFT-ITERATION.md](DRAFT-ITERATION.md)'s dossier and
 the `draft-reviser` / `corpus-reviser` split were built to fill, and this
 read found no open- or closed-source equivalent for either. It also
-sharpens what is still missing here: nothing yet fingerprints the draft,
-so a *hand*-edited draft is as invisible to this pipeline as to the other
-four (Theme E3 in
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-e3-notice-that-the-draft-moved)).
+sharpened what was then missing here: nothing fingerprinted the draft,
+so a *hand*-edited draft was as invisible to this pipeline as to the
+other four. That has since shipped: `dossier stamp` and `dossier status`
+notice a hand edit (#462, Theme E in
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-theme-e-the-humans-own-structure)).
 
 ### 🕸 Five more, read for topic discovery (2026-09-02)
 
@@ -655,8 +656,8 @@ shipped it; §5 has the full status table.
 ### ✅ 4.2 The gate — built
 
 1. `python -m chitragupta.draft gate` validates every citekey a draft uses
-   against the bib parse **and** the ledger (entry exists *and* has a
-   parsed source behind it), on the only draft->render path. On
+   against the ledger, which `sync` fills only from the bib export, on
+   the only draft->render path. On
    failure: the drafting skill discards the bad claim, drafts again, and
    loops until it passes; the human sees a finished, gated draft, not
    the failed attempts. A PostToolUse hook
@@ -755,8 +756,8 @@ shipped it; §5 has the full status table.
 
 - The deterministic plane gets ordinary unit/CI tests (fixtures of bib
   files, PDFs, drafts with planted violations). This repository holds
-  itself to 100% line and branch coverage on the Linux CI leg
-  (`DEVELOPER-AGENTS.md`).
+  itself to 100% line and branch coverage on both CI legs, Linux and
+  Windows (`DEVELOPER-AGENTS.md`).
 - The gates get adversarial fixtures: drafts with fabricated citekeys,
   planted verbatim runs, planted paraphrases. The pipeline catches
   every planted violation, or the test fails.
@@ -824,7 +825,7 @@ built:
    terminology/notation registry, a claim register, and a
    cross-reference graph, each written by a deterministic post-pass over
    accepted units (never by an LLM writing to the corpus plane) and
-   enforced by deterministic, blocking global checks after chapter-level
+   reported by deterministic, advisory global checks after chapter-level
    parallel generation completes.
 4. **LaTeX book assembly as a genre skill.** Deliberately the smallest
    step of the four: parts/chapters/front-and-back-matter assembly of

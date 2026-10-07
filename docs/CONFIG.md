@@ -103,7 +103,8 @@ workers = "auto"      # as many as this machine can sustain
 
 ## 📋 Every setting
 
-Paths resolve **relative to the repository root**; an absolute path is
+Paths resolve **relative to the project directory** (the one holding
+`config.toml`); an absolute path is
 used as given.
 
 ### 📁 Paths

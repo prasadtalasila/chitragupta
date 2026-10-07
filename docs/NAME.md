@@ -50,8 +50,8 @@ correspondence with Chitragupta holds point for point:
    or plugin runs the gate after every write an agent's file tools make
    under `content/drafts/`, and `draft render` runs it again before any
    document is produced, so grounding does not depend on anyone
-   remembering to be honest. "Enforced mechanically, not by good
-   intentions" (README) could be his epithet.
+   remembering to be honest. "Enforced by architecture, not by prompt"
+   (README) could be his epithet.
 
 5. **Evidence, quoted.** Judgment in the stories is not a bare
    verdict; the deeds are read out. `citation_provenance`, which quotes
