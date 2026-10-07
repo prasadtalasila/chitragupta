@@ -27,7 +27,10 @@ yourself; you do not need to have read that file first.
 - **A skill**: a Markdown file under `.claude/skills/<name>/SKILL.md`.
   Invoking one loads its full body into the current context, as
   instructions to follow for the rest of the turn. It is not a function
-  call; it is more text added to the same prompt.
+  call; it is more text added to the same prompt. Detail a step needs
+  only sometimes lives beside it in `references/` (or, when several
+  skills share it, in `.claude/skills-common/references/`) and enters
+  the context only when the model reads the file a step names (#997).
 - **A subagent**: a *separate* model context, dispatched by the running
   skill (via an `Agent`-style tool call), with its own system prompt
   (usually a file under `.claude/agents/<name>.md`) and only the

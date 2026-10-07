@@ -55,17 +55,21 @@ chooses which agent's files to write, and can be repeated:
 
 | Agent | Command | What it adds |
 | --- | --- | --- |
-| Claude Code | `chitragupta init my-project` | `.claude/`: the skills, the hook scripts and `settings.json`, which wires the hooks to `Write` and `Edit`. This is the default |
-| Codex | `chitragupta init --agent codex my-project` | `.codex/hooks.json`, which runs the same hook scripts on `apply_patch`, and Codex's copy of the skills in `.agents/skills/` |
-| OpenCode | `chitragupta init --agent opencode my-project` | `.opencode/`: a plugin that runs the gate after `write`, `edit` and `apply_patch`, OpenCode's copy of the skills, and `opencode.json` |
+| Claude Code | `chitragupta init my-project` | `.claude/`: the skills with their reference files, the hook scripts and `settings.json`, which wires the hooks to `Write` and `Edit`. This is the default |
+| Codex | `chitragupta init --agent codex my-project` | `.codex/hooks.json`, which runs the same hook scripts on `apply_patch`, and Codex's copy of each skill's `SKILL.md` in `.agents/skills/` |
+| OpenCode | `chitragupta init --agent opencode my-project` | `.opencode/`: a plugin that runs the gate after `write`, `edit` and `apply_patch`, OpenCode's copy of each skill's `SKILL.md`, and `opencode.json` |
 | Several | `chitragupta init --agent claude --agent codex --agent opencode my-project` | all of the above in one project |
 | Continue | none yet | see below |
 
 Every project also gets `config.toml`, `papers/`, `content/`, `assets/`,
 `AGENTS.md`, `SOUL.md` and the documentation. `.claude/` is written for
 every agent, because it holds the hook scripts Codex and OpenCode run
-too. After scaffolding, put your `.bib` export and PDFs in `papers/`, run
-`chitragupta corpus sync`, and run `chitragupta doctor`. Doctor reports
+too, and the only copy of each skill's reference files: the Codex and
+OpenCode `SKILL.md` copies point at `.claude/skills/<name>/references/`
+and `.claude/skills-common/references/` by path. Keep `.claude/` in a
+project that uses only Codex or OpenCode. After scaffolding, put your
+`.bib` export and PDFs in `papers/`, run `chitragupta corpus sync`, and
+run `chitragupta doctor`. Doctor reports
 a hook launcher that cannot start, and an OpenCode project whose skill
 deny list is incomplete.
 
@@ -80,7 +84,10 @@ Claude Code reaches it through `CLAUDE.md`.
 ### Codex
 
 Start `codex` in the project. The skills are the same ten, read from
-`.agents/skills/`, and Codex reads `AGENTS.md` itself.
+`.agents/skills/`, and Codex reads `AGENTS.md` itself. Each `SKILL.md`
+there names its reference files by their path from the project root,
+under `.claude/`; Codex reads them on demand like any other file
+([HARNESS.md](HARNESS.md) has the measurement).
 
 You have to trust the project's hooks, or the mandatory check does not
 run. Codex skips project hooks until you trust them, and it records the
@@ -116,7 +123,8 @@ suffix (`survey-writer-opencode`, `draft-reviser-opencode` and so on),
 because OpenCode also reads `.claude/skills/` and `.agents/skills/` and
 would otherwise pick among same-named copies at random.
 `.opencode/opencode.json` hides the unsuffixed names. Keep that file
-when you add your own OpenCode settings.
+when you add your own OpenCode settings. As on Codex, each `SKILL.md`
+reads its reference files from `.claude/` by path.
 
 The plugin needs no trust step. For a local model, add an
 `@ai-sdk/openai-compatible` provider; the example passes one through

@@ -53,12 +53,15 @@ failing test. It binds the two teaching genres too, where citations are
 optional: a draft that cites nothing passes trivially, but a draft that
 cites anything must pass on merit.
 
-Each harness has its own copy of every skill, naming its own tools:
-`.claude/skills/` for Claude Code, `.agents/skills/` for Codex, and
-`.opencode/skills/` for OpenCode, where the names carry an `-opencode`
-suffix (`survey-writer-opencode`, `draft-reviser-opencode`, ...). Use the
-copy your harness offers; [docs/HARNESS.md](docs/HARNESS.md) explains
-the layout.
+Each harness has its own copy of every skill's `SKILL.md`, naming its
+own tools: `.claude/skills/` for Claude Code, `.agents/skills/` for
+Codex, and `.opencode/skills/` for OpenCode, where the names carry an
+`-opencode` suffix (`survey-writer-opencode`, `draft-reviser-opencode`,
+...). Use the copy your harness offers. A skill's reference files exist
+once, under `.claude/skills/<name>/references/` and
+`.claude/skills-common/references/`, and every copy names them by their
+path from the project root: when a step says to read one, read it before
+you carry on. [docs/HARNESS.md](docs/HARNESS.md) explains the layout.
 
 A hook (`.claude/hooks/citation_gate_hook.py`) also enforces this
 mechanically: any write under `content/drafts/*.md` or `*.tex` runs the
