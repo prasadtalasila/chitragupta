@@ -243,6 +243,43 @@ holds both halves: every path a `SKILL.md` names exists, every reference
 is named by some `SKILL.md`, no shared file names a skill or a tool, and
 the Codex and OpenCode folders hold `SKILL.md` and nothing else.
 
+**Measured on 2026-10-06/07** with `bench/bench_skill_harnesses.py`,
+against projects scaffolded from the #997 branch. Claude Code ran
+`claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
+Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
+a skill and print the first line of every `.claude/` file it names; a
+read counts only when that line matches the file.
+
+| Harness | Loaded its own copy | `.claude/` reads that failed | Every named file read |
+| --- | ---: | ---: | ---: |
+| Claude Code | 10 of 10 | 0 | 10 of 10 |
+| Codex | 10 of 10 | 0 | 7 of 10 |
+| OpenCode | 10 of 10 | 0 | 7 of 10 |
+
+Every shortfall was the local model listing fewer paths than the skill
+names (or, on OpenCode, two runs passing the 15-minute cap), never a
+path that failed to resolve or a read that was refused. Codex opened
+`.agents/skills/<name>/SKILL.md` and then each `.claude/` path from the
+project root; OpenCode reported its `-opencode` copy's base directory and
+read the same way.
+
+**A pointer alone is not enough for a step that must run.** Tier 2 runs a
+real survey. With the critique step reduced to "read `critique.md` and
+follow it", a Claude Code run skipped the step outright: no baseline, no
+recheck, no `revisions.md` entry. The same run against `main` worked the
+loop. Each genre's step now keeps the loop's commands inline and says the
+step is not done until they have run; two re-runs both worked the loop.
+`tests/test_skill_pregate_feedback_step.py` fails if the step's own text
+loses them. Move rationale and detail into a reference; keep the
+commands a step requires in `SKILL.md`.
+
+Two harness facts the bench had to work around, both recorded in the
+script: OpenCode takes its project directory from the inherited `PWD`,
+not the process's working directory, so a run launched from elsewhere
+loads that directory's skills; and a timed-out Codex run left its model
+request holding the local server's one slot until its process group was
+killed.
+
 ## 🚫 Designs turned down, and why
 
 **An MCP server with gated `draft_write` / `draft_edit` tools, as the
