@@ -24,9 +24,19 @@ the recorded runs). The server has one slot, so harnesses run one at a
 time. Like everything in bench/, this is outside the test suite and its
 coverage; docs/HARNESS.md records what it measured.
 
-    python bench/bench_skill_harnesses.py --tier 1 --out /tmp/skills-t1
+**Run it only on a disposable machine.** To measure a harness unattended
+it turns that harness's safety off: Claude Code runs with
+`--permission-mode bypassPermissions`, and Codex with
+`--dangerously-bypass-approvals-and-sandbox` and
+`--dangerously-bypass-hook-trust`. A model then runs shell commands with
+no sandbox and no approval prompt, in the scaffolded project and with
+your user's access to everything else. Without `--out`, each run gets a
+fresh private directory from `tempfile.mkdtemp`, never a fixed path
+another user could plant files in.
+
+    python bench/bench_skill_harnesses.py --tier 1
     python bench/bench_skill_harnesses.py --tier 1 --harness codex --skill survey-writer
-    python bench/bench_skill_harnesses.py --tier 2 --out /tmp/skills-t2
+    python bench/bench_skill_harnesses.py --tier 2 --out ~/bench/skills-t2
 """
 
 import argparse
@@ -37,6 +47,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -50,6 +61,9 @@ EXAMPLES = REPO_ROOT / "docs" / "examples"
 BASE_URL = os.environ.get("BASE_URL", "http://127.0.0.1:18080/v1")
 LOCAL_MODEL = os.environ.get("MODEL", "qwen3.6-35b-a3b")
 HARNESSES = ("claude", "codex", "opencode")
+# Filled by main() before any scaffolding, so a missing CLI is named up
+# front rather than failing inside Popen after a corpus sync.
+BINARIES: dict = {}
 SKILL_DIRS = {
     "claude": ".claude/skills",
     "codex": ".agents/skills",
@@ -90,9 +104,31 @@ def harness_env() -> dict:
     return env
 
 
-def without_git(env: dict) -> dict:
-    keep = [p for p in env["PATH"].split(os.pathsep) if not (Path(p) / "git").exists()]
-    return {**env, "PATH": os.pathsep.join(keep)}
+def without_git(env: dict, shim_root: Path) -> dict:
+    """`env` with no `git` on PATH and everything else still there.
+
+    Dropping a directory that holds `git` would drop `/usr/bin` on a
+    merged-/usr host, taking `python`, `bash` and coreutils with it. A
+    stub `git` does not work either: a non-executable one is skipped by
+    the PATH search, and an executable one is still a child OpenCode never
+    reaps. So each such directory is replaced by a shim directory that
+    links every entry in it except `git`.
+    """
+    parts = []
+    for index, entry in enumerate(env["PATH"].split(os.pathsep)):
+        folder = Path(entry)
+        if not (folder / "git").exists():
+            parts.append(entry)
+            continue
+        shim = shim_root / str(index)
+        if shim.exists():
+            shutil.rmtree(shim)
+        shim.mkdir(parents=True)
+        for item in folder.iterdir():
+            if item.name != "git":
+                (shim / item.name).symlink_to(item)
+        parts.append(str(shim))
+    return {**env, "PATH": os.pathsep.join(parts)}
 
 
 def scaffold(harness: str, dest: Path, sync: bool) -> Path:
@@ -122,7 +158,7 @@ def scaffold(harness: str, dest: Path, sync: bool) -> Path:
 def command(harness: str, prompt: str) -> list:
     if harness == "claude":
         return [
-            shutil.which("claude"),
+            BINARIES["claude"],
             "-p",
             "--model",
             "sonnet",
@@ -135,7 +171,7 @@ def command(harness: str, prompt: str) -> list:
         ]
     if harness == "codex":
         return [
-            shutil.which("codex"),
+            BINARIES["codex"],
             "exec",
             "--json",
             "--skip-git-repo-check",
@@ -144,12 +180,14 @@ def command(harness: str, prompt: str) -> list:
             "-c",
             "model_provider=local",
             "-c",
-            f'model_providers.local={{name="local",base_url="{BASE_URL}",wire_api="responses"}}',
+            # json.dumps writes a valid TOML basic string, quotes escaped.
+            f'model_providers.local={{name="local",base_url={json.dumps(BASE_URL)},'
+            'wire_api="responses"}',
             "-m",
             LOCAL_MODEL,
             prompt,
         ]
-    return [shutil.which("opencode"), "run", "--format", "json", prompt]
+    return [BINARIES["opencode"], "run", "--format", "json", prompt]
 
 
 def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> dict:
@@ -158,7 +196,7 @@ def run(harness: str, project: Path, prompt: str, log: Path, timeout: int) -> di
     # directory launched the bench (measured: it read this checkout's).
     env = {**harness_env(), "PWD": str(project)}
     if harness == "opencode":
-        env = without_git(env)
+        env = without_git(env, project.parent / "path-shim")
     started = time.monotonic()
     # Its own session, so a timeout kills the harness and everything it
     # started. `subprocess.run(timeout=)` kills only the direct child: a
@@ -247,7 +285,8 @@ def score_tier1(project: Path, harness: str, name: str, log: Path) -> dict:
     for path in sorted(expected):
         if path not in printed:
             continue
-        actual = (project / path).read_text(encoding="utf-8").splitlines()[0].strip()
+        lines = (project / path).read_text(encoding="utf-8").splitlines()
+        actual = next(iter(lines), "").strip()
         (read if printed[path].strip("`") == actual else wrong).append(path)
     return {
         "expected": sorted(expected),
@@ -404,6 +443,17 @@ def self_check() -> None:
             encoding="utf-8",
         )
         assert references_read(log) == [".claude/skills-common/references/a.md"]
+        (ref / "b.md").write_text("", encoding="utf-8")
+        log.write_text(good, encoding="utf-8")
+        scored = score_tier1(project, "claude", "x", log)
+        assert scored["wrong_first_line"] == [".claude/skills-common/references/b.md"], scored
+        tools = project / "bin"
+        tools.mkdir()
+        for name in ("git", "python"):
+            (tools / name).write_text("", encoding="utf-8")
+        env = without_git({"PATH": str(tools)}, project / "shim")
+        shim = Path(env["PATH"])
+        assert sorted(p.name for p in shim.iterdir()) == ["python"], "only git is hidden"
 
 
 def main(argv=None) -> int:
@@ -411,13 +461,21 @@ def main(argv=None) -> int:
     parser.add_argument("--tier", type=int, choices=(1, 2), required=True)
     parser.add_argument("--harness", action="append", choices=HARNESSES)
     parser.add_argument("--skill", action="append", choices=SKILLS)
-    parser.add_argument("--out", type=Path, default=Path("/tmp/skill-harness-bench"))
-    parser.add_argument("--timeout", type=int, default=1800)
+    parser.add_argument("--out", type=Path, help="default: a fresh private temporary directory")
+    parser.add_argument("--timeout", type=int, default=900, help="seconds per run (default 900)")
     args = parser.parse_args(argv)
     self_check()
     args.harness = args.harness or list(HARNESSES)
     args.skill = args.skill or list(SKILLS)
+    BINARIES.update({h: shutil.which(h) for h in args.harness})
+    missing = [h for h, path in BINARIES.items() if path is None]
+    if missing:
+        print(f"not on PATH: {', '.join(missing)}; install it or drop --harness", file=sys.stderr)
+        return 2
+    if args.out is None:
+        args.out = Path(tempfile.mkdtemp(prefix="skill-harness-bench-"))
     args.out.mkdir(parents=True, exist_ok=True)
+    print(f"writing to {args.out}", flush=True)
     results = tier1(args) if args.tier == 1 else tier2(args)
     (args.out / f"tier{args.tier}.json").write_text(json.dumps(results, indent=2), encoding="utf-8")
     if args.tier == 1:

@@ -248,7 +248,10 @@ against projects scaffolded from the #997 branch. Claude Code ran
 `claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
 Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
 a skill and print the first line of every `.claude/` file it names; a
-read counts only when that line matches the file.
+read counts only when that line matches the file. Each Tier 1 run was
+capped at 900 seconds (`--timeout 900`, the script's default), except
+the first Codex batch (1800) and OpenCode's four genre writers (1200);
+each Tier 2 task was capped at 3300.
 
 | Harness | Loaded its own copy | `.claude/` reads that failed | Every named file read |
 | --- | ---: | ---: | ---: |
