@@ -552,3 +552,25 @@ class TestAgents:
         with pytest.raises(init.ScaffoldSourceMissing, match=".codex"):
             init.scaffold(tmp_path / "p", agents=("codex",))
         init.scaffold(tmp_path / "q")  # the default never needed it
+
+
+class TestSkillReferencesReachEveryHarness:
+    """#997. A skill's references exist once, under `.claude/`, and the
+    Codex and OpenCode copies of `SKILL.md` point there by path. That
+    holds only while `.claude/` is scaffolded for every `--agent`, so
+    pin it against the real tree, one agent at a time."""
+
+    REFERENCES = (
+        ".claude/skills/deep-research/references/report.md",
+        ".claude/skills/figure-drawer/references/figures.md",
+    )
+
+    @pytest.mark.parametrize("agent", sorted(init.AGENT_TREES))
+    def test_each_agent_gets_the_references_with_dash_p(self, tmp_path, agent):
+        dest = tmp_path / "project"
+        init.scaffold(dest, agents=(agent,))
+        for rel in self.REFERENCES:
+            text = (dest / rel).read_text(encoding="utf-8")
+            assert "python -P -m chitragupta" in text, rel
+            assert not UNSAFE_RUN.search(text), rel
+        assert not list(dest.rglob("reference.md"))

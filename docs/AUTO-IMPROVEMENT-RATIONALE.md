@@ -118,7 +118,7 @@ layer-4 artefact, and a layer-2 command consuming it is a new edge in that
 graph, which nothing else in the repository has.
 
 The alternative has no such problem. `review.AIDS` is an explicit, guarded
-extension point: `chitragupta/review/__main__.py` raises a `RuntimeError`
+extension point: `chitragupta/review/_registry.py` raises a `RuntimeError`
 (deliberately not an assert) if its subcommands drift from that dict,
 which exists so a further aid can be added safely. An agenda is "evidence for a
 human judgement, never a verdict", which is the review layer's charter
@@ -187,7 +187,7 @@ and different enough to be dangerous.
 | autoresearch | Here | Note |
 | --- | --- | --- |
 | `train.py`, the one file the agent edits | the draft under `content/drafts/` | Same discipline: one artefact, reviewable diffs |
-| `prepare.py` + `evaluate_bpb`, read-only ground truth | the six review aids, `chitragupta.draft gate`, the boilerplate allowlist | The loop may run them and may not edit them |
+| `prepare.py` + `evaluate_bpb`, read-only ground truth | the review aids, `chitragupta.draft gate`, the boilerplate allowlist | The loop may run them and may not edit them |
 | `program.md`, edited by the human and not the agent | `.claude/skills/`, `scope.md`, `steering.md`, `docs/WRITING-STANDARDS.md` | [HOUSE-STYLE.md](HOUSE-STYLE.md) is where this half is worked out |
 | `val_bpb`, one global scalar | the count of objective-class findings over all aids | Coarser, and the reason for the binary rule |
 | the fixed five-minute budget | *nothing, deliberately* | Its runs compete; agenda items do not |
@@ -231,16 +231,17 @@ but a level count is no longer read as evidence that nothing regressed.
 the least transferable. A discarded training run costs five GPU-minutes
 and the metric catches it; a wrong scholarly claim is silent and ships.
 Unattended looping is only safe under a metric that catches compounding
-damage, and this design's is coarse. Three of six item classes need a
+damage, and this design's is coarse. Five of eight item classes need a
 human whatever the loop does, so an indefinite loop either starves or
 creeps into judgement. And its per-iteration cost is fixed where this
 one's token cost is not. The bounded design is argued, not timid.
 
-Where the proposal may be too cautious is narrower: one pass per
+Where the proposal was too cautious was narrower: one pass per
 invocation. A bounded-convergence variant (keep passing while the
 objective-class count strictly falls, to a hard maximum) still terminates
-deterministically and is closer to advance-while-improving. It is declined
-for legibility, not safety, and could be revisited.
+deterministically and is closer to advance-while-improving, and it is
+what shipped: `agenda-reviser` keeps passing while
+`objective_class_count` strictly falls and stops at `pass_bound` (3).
 
 ## 🚫 Why provenance is excluded
 

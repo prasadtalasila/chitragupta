@@ -85,10 +85,10 @@ opencode = '''
 Dispatch one
    `general` subagent per sub-theme with `task`, all in one message, each told to'''
 
-[edit_inside_section]
-claude = "2. Edit with `Edit`, inside"
-codex = "2. Edit with an `apply_patch` hunk, inside"
-opencode = "2. Edit with `edit`, inside"
+[critique_edit_tool]
+claude = "each edit with `Edit`"
+codex = "each edit with an `apply_patch` hunk"
+opencode = "each edit with `edit`"
 
 [checklist]
 claude = "Create a TodoWrite list with the 7 phases below"

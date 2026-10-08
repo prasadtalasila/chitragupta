@@ -33,13 +33,27 @@ finding count -- never the skill's own opinion that its edit is an
 improvement. That is the one line separating this from A1b (declined),
 so most of the tests below pin the acceptance machinery, not the prose
 around it.
+
+Since #997 the repair loop lives once, in
+`.claude/skills-common/references/critique.md`, which each genre's step
+names after its own opening paragraph. `_normalised` splices it in there
+(tests/skill_text.py), so the windows below still run from the step's
+heading through the rider a model following the pointer reads.
+`test_every_genre_step_names_the_reference` pins the pointer itself.
 """
 
 import re
 from pathlib import Path
 
+from tests.skill_text import collapsed, skill_text
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = REPO_ROOT / ".claude" / "skills"
+REFERENCE = ".claude/skills-common/references/critique.md"
+
+# How far after the step's heading its genre-specific opening paragraph
+# may run before the step names the reference.
+_POINTER_CHARS = 2000
 
 # The five skills this step belongs to -- drafting fresh prose from a
 # claim:/quote: evidence packet, as distinct from a reviser (which edits
@@ -78,6 +92,8 @@ _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")
 # file, which is why this is 5900 rather than the 4300 it was: the
 # window has to reach past them to the closing clause, or the tests
 # below start passing because the sentence they check fell outside it.
+# Re-measured with the shared reference spliced in (#997): the furthest
+# rider now sits 5252 characters from its anchor, in `deep-research`.
 _STEP_TAIL_CHARS = 5900
 
 # The single-shot rule, stated once per step so a later edit cannot
@@ -148,8 +164,19 @@ def _skill_files():
 def _normalised(path):
     """Whitespace collapsed -- these files are hand-wrapped, and a
     phrase broken across a line by an editor is still the same
-    sentence."""
-    return re.sub(r"\s+", " ", path.read_text(encoding="utf-8"))
+    sentence -- with the shared reference spliced in where it is named."""
+    return skill_text(path)
+
+
+def test_every_genre_step_names_the_reference():
+    """The repair loop is one file read away, so the pointer is the step."""
+    offenders = []
+    for path in _genre_skill_files():
+        text = collapsed(path.read_text(encoding="utf-8"))
+        windows = [text[m.start() : m.start() + _POINTER_CHARS] for m in _CRITIQUE.finditer(text)]
+        if not any(f"`{REFERENCE}`" in w for w in windows):
+            offenders.append(path.parent.name)
+    assert not offenders, f"no pointer to {REFERENCE} in the critique step of {offenders}"
 
 
 def _genre_skill_files():
@@ -331,3 +358,18 @@ def test_no_genre_skill_makes_the_step_a_condition_of_presenting():
         "`chitragupta.draft gate` remains the only gate; a review-shaped step that gains "
         "a mandatory outcome is one careless edit away from being read as a second one."
     )
+
+
+def test_every_genre_step_keeps_its_commands_in_skill_md():
+    """The loop's commands stay in front of the model, not only in the
+    reference (#997). A step that held nothing but a pointer was measured
+    being skipped outright: a non-interactive run read none of it and went
+    straight to the gate. The reference holds the why; the commands are
+    the step."""
+    offenders = []
+    for path in _genre_skill_files():
+        text = collapsed(path.read_text(encoding="utf-8"))
+        windows = [text[m.start() : m.start() + _STEP_TAIL_CHARS] for m in _CRITIQUE.finditer(text)]
+        if not any(_SCAN.search(w) and _GATE.search(w) and _RECHECK.search(w) for w in windows):
+            offenders.append(path.parent.name)
+    assert not offenders, f"the critique step's own text names no scan/gate/recheck in {offenders}"

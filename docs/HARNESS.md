@@ -136,9 +136,9 @@ every check, and nothing can see that.
 
 ## 📂 Skills: one copy per harness
 
-Each skill exists once per harness, and each copy names that harness's
-own tools. A model then reads a complete instruction at the step where
-it acts ("use `Edit`, never `Write`" on Claude Code, "patch with
+Each skill's `SKILL.md` exists once per harness, and each copy names
+that harness's own tools. A model then reads a complete instruction at
+the step where it acts ("use `Edit`, never `Write`" on Claude Code, "patch with
 `apply_patch`" on Codex, "`edit`, never `write`" on OpenCode) instead of
 a harness-neutral phrase it has to translate.
 
@@ -149,17 +149,19 @@ a harness-neutral phrase it has to translate.
 │   ├── settings.json              # Claude Code's hook launchers
 │   ├── hooks/                     # the hook scripts all three harnesses run
 │   ├── agents/                    # Claude Code subagents
-│   └── skills/<name>/             # Claude Code wording
-│       └── SKILL.md               #   (deep-research also has reference.md)
+│   ├── skills/<name>/
+│   │   ├── SKILL.md               # Claude Code wording
+│   │   └── references/            # this skill's detail, read on demand
+│   └── skills-common/references/  # detail several skills share
 ├── .agents/
-│   └── skills/<name>/             # Codex wording
+│   └── skills/<name>/SKILL.md     # Codex wording
 ├── .codex/
 │   └── hooks.json                 # Codex's hook launchers → .claude/hooks/
 └── .opencode/
     ├── opencode.json              # denies the unsuffixed skill names
     ├── plugins/chitragupta-gate.js
     ├── chitragupta/gate.js
-    └── skills/<name>-opencode/    # OpenCode wording
+    └── skills/<name>-opencode/SKILL.md  # OpenCode wording
 ```
 
 | Harness | Skills it sees | Why only those |
@@ -206,6 +208,80 @@ To change a skill, change every copy, and add or edit a phrase-map
 entry for any wording that is meant to differ. The step scans
 (`tests/test_skill_*_step.py`) read only `.claude/skills/`; once the
 copies agree, a required step present in one is present in all three.
+
+### Only `SKILL.md` is per harness
+
+Everything else a skill uses exists once, under `.claude/` (#997):
+`.claude/skills/<name>/references/` for one skill, and
+`.claude/skills-common/references/` for a passage several skills share.
+All three copies of `SKILL.md` name those files by their path from the
+project root, so the files sit outside the Codex and OpenCode skill
+folders. That works because:
+
+- **every harness loads them on demand.** Each one preloads only a
+  skill's name and description, loads the `SKILL.md` body when the skill
+  is used, and leaves every other file for the model to open by path.
+  None inlines a `references/` folder. Sources: the Claude Code skills
+  docs; Codex's skill catalog prompt (`openai/codex`,
+  `ext/skills/src/catalog_prompt.rs`), which tells the model to read
+  only the references it needs; OpenCode's `skill` tool
+  (`sst/opencode`, `packages/opencode/src/tool/skill.ts`), which lists
+  a skill's other files by path without their contents.
+- **nothing confines a model to its skill's own folder.** It reads with
+  its ordinary file tools. Codex resolves a relative path against the
+  skill's folder first, which is why the paths are written from the
+  project root and say so.
+- **`.claude/` is scaffolded for every `--agent`**, so the files are
+  there whichever harness a project uses.
+
+The price is one rule: **a shared file names no skill and no harness
+tool.** OpenCode must be sent to `<name>-opencode`, and a reference that
+named the unsuffixed skill would send it to one its config denies, so a
+sentence that routes to another skill stays in `SKILL.md`, where the
+phrase map and the suffix rule apply. `tests/test_skill_references.py`
+holds both halves: every path a `SKILL.md` names exists, every reference
+is named by some `SKILL.md`, no shared file names a skill or a tool, and
+the Codex and OpenCode folders hold `SKILL.md` and nothing else.
+
+**Measured on 2026-10-06/07** with `bench/bench_skill_harnesses.py`,
+against projects scaffolded from the #997 branch. Claude Code ran
+`claude -p --model sonnet`; Codex 0.159.3 and OpenCode 1.18.34 ran
+Qwen3.6-35B-A3B on a local llama-server. Tier 1 asks each harness to load
+a skill and print the first line of every `.claude/` file it names; a
+read counts only when that line matches the file. Each Tier 1 run was
+capped at 900 seconds (`--timeout 900`, the script's default), except
+the first Codex batch (1800) and OpenCode's four genre writers (1200);
+each Tier 2 task was capped at 3300.
+
+| Harness | Loaded its own copy | `.claude/` reads that failed | Every named file read |
+| --- | ---: | ---: | ---: |
+| Claude Code | 10 of 10 | 0 | 10 of 10 |
+| Codex | 10 of 10 | 0 | 7 of 10 |
+| OpenCode | 10 of 10 | 0 | 7 of 10 |
+
+Every shortfall was the local model listing fewer paths than the skill
+names (or, on OpenCode, two runs passing the 15-minute cap), never a
+path that failed to resolve or a read that was refused. Codex opened
+`.agents/skills/<name>/SKILL.md` and then each `.claude/` path from the
+project root; OpenCode reported its `-opencode` copy's base directory and
+read the same way.
+
+**A pointer alone is not enough for a step that must run.** Tier 2 runs a
+real survey. With the critique step reduced to "read `critique.md` and
+follow it", a Claude Code run skipped the step outright: no baseline, no
+recheck, no `revisions.md` entry. The same run against `main` worked the
+loop. Each genre's step now keeps the loop's commands inline and says the
+step is not done until they have run; two re-runs both worked the loop.
+`tests/test_skill_pregate_feedback_step.py` fails if the step's own text
+loses them. Move rationale and detail into a reference; keep the
+commands a step requires in `SKILL.md`.
+
+Two harness facts the bench had to work around, both recorded in the
+script: OpenCode takes its project directory from the inherited `PWD`,
+not the process's working directory, so a run launched from elsewhere
+loads that directory's skills; and a timed-out Codex run left its model
+request holding the local server's one slot until its process group was
+killed.
 
 ## 🚫 Designs turned down, and why
 
@@ -260,11 +336,11 @@ Every refusal names the bad key and its line, and nothing else.
 **A git pre-commit hook.** `content/drafts/` is gitignored, so a draft
 is never committed.
 
-**Hand-kept copies of each skill with no check between them.** Ten
-skills of 2,500-7,700 words each, copied three ways, would drift, and a
-copy that drifts on the gate step is a fabrication path. The copies
-exist, but only because the phrase-map test fails on any drift outside
-the entries meant to differ.
+**Hand-kept copies of each skill with no check between them.** Ten skills of
+1,800-6,300 words each (after #997), copied three ways, would drift, and a
+copy that drifts on the gate step is a fabrication path. The copies exist, but
+only because the phrase-map test fails on any drift outside the entries meant
+to differ.
 
 **One harness-neutral wording, with a tool glossary in `AGENTS.md`.**
 Built first and replaced. "Edit the passage in place" gives up Claude

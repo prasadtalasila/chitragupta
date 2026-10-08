@@ -225,14 +225,16 @@ expected behaviour, and not a warning about your question.
 
 ## 🔭 Step 4: the seven phases, and what you do during them
 
-You are not idle here. Two phases have a decision in them that is yours.
+You are not idle here. The skill states its perspective list and its
+outline as it goes but does not pause for approval: interrupt it then if
+you want to change either.
 
 | Phase | What happens | What you do |
 | --- | --- | --- |
-| **1. Perspective discovery** | Names the perspectives to interview: typically the Practitioner, the Academic, the Skeptic, the Adoption/Incentives analyst, the Historian, plus a basic-fact pass | **Read the list and change it.** A perspective that does not fit your question wastes a whole interview; one you add can be the report's best section |
+| **1. Perspective discovery** | Names the perspectives to interview: typically the Practitioner, the Academic, the Skeptic, the Adoption/Incentives analyst, the Historian, plus a basic-fact pass | **Read the list, and interrupt to change it.** A perspective that does not fit your question wastes a whole interview; one you add can be the report's best section |
 | **2. Grounded interviews** | One subagent per perspective, in parallel, each searching the corpus and citing only real citekeys | Nothing, but watch for a perspective reporting that it found nothing |
 | **3. Contradiction map** | Direct contradictions, strongest vs weakest evidence, the resolving question, universal agreement, and the blind spot nobody's searches reached | **Read this closely.** It is the most useful artefact of the whole run, whatever the report ends up saying |
-| **4. Outline** | Turns the map into a section plan | **Approve or redirect it** before writing starts. Cheap now, expensive after five sections exist |
+| **4. Outline** | Turns the map into a section plan | **Redirect it now if it is wrong**, before writing starts. Cheap now, expensive after five sections exist |
 | **5. Cited section writing** | One writer per section, in parallel, from pre-vetted citekeys | Nothing |
 | **6. Polish + synthesis briefing** | A synthesis pass over the assembled sections | Nothing |
 | **7. Peer review + assembly** | A panel (domain accuracy, methodology rigour, clarity, devil's advocate) critiques the draft, then it is saved and gated | **Read the critiques**, including the ones not acted on |

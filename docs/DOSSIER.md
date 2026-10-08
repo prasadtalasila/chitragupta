@@ -401,13 +401,12 @@ where the plan is replaced by what the finished report cites.
 ## 💡 Why not merge the provenance JSON into the rest of the dossier
 
 `thesis-chapter-writer` and `deep-research` also write a
-`provenance.json`, and the thesis genre additionally writes an
-`evidence.json`. Both live **inside** the dossier directory, at
+`provenance.json`. It lives **inside** the dossier directory, at
 `content/dossiers/<draft path minus suffix>/provenance.json`, for two
 reasons.
 
-They are drafting state, produced by the run that wrote the draft, so
-they belong with the rest of that run's state. And `dossier_dir()`
+It is drafting state, produced by the run that wrote the draft, so it
+belongs with the rest of that run's state. And `dossier_dir()`
 mirrors the draft's path, so two drafts named `survey.md` in different
 topics do not share one file.
 
@@ -461,9 +460,10 @@ could bear on. That is a claim about a corpus that *grew*. A corpus that
 *lost* a paper the draft cites has produced a broken citation, which is
 fixed whether or not anyone asked.
 
-The line between the two is drawn in "Two findings, and they are not the
-same kind of thing" below, and acted on in "Re-grounding after the corpus
-moves".
+The line between the two is drawn in [DRAFT-ITERATION.md's "Two findings,
+and they are not the same kind of thing"](DRAFT-ITERATION.md#-two-findings-and-they-are-not-the-same-kind-of-thing),
+and acted on in its ["Re-grounding after the corpus
+moves"](DRAFT-ITERATION.md#-re-grounding-after-the-corpus-moves).
 
 The fingerprint is written once, by `init`, and is not maintained by any
 command. The only thing that rewrites it is a re-grounding pass, which

@@ -27,7 +27,10 @@ yourself; you do not need to have read that file first.
 - **A skill**: a Markdown file under `.claude/skills/<name>/SKILL.md`.
   Invoking one loads its full body into the current context, as
   instructions to follow for the rest of the turn. It is not a function
-  call; it is more text added to the same prompt.
+  call; it is more text added to the same prompt. Detail a step needs
+  only sometimes lives beside it in `references/` (or, when several
+  skills share it, in `.claude/skills-common/references/`) and enters
+  the context only when the model reads the file a step names (#997).
 - **A subagent**: a *separate* model context, dispatched by the running
   skill (via an `Agent`-style tool call), with its own system prompt
   (usually a file under `.claude/agents/<name>.md`) and only the
@@ -55,7 +58,7 @@ flowchart TB
 
   L3["<b>3 · GOVERNING CONTRACT</b><br/><i>read because CLAUDE.md said to</i><br/><br/><b>AGENTS.md</b><br/><small>citekey invariant in full · the bib file as<br/>source of truth · the four layers · the gate</small><br/><br/><b>SOUL.md</b><br/><small>the one-page why · tie-breaker on disagreement</small>"]
 
-  L4["<b>4 · SKILL BODY</b><br/><i>loaded whole the moment the skill is invoked</i><br/><br/><b>.claude/skills/textbook-chapter-writer/SKILL.md</b><br/><small>frontmatter + the full 18-step process<br/>(name the reader → objectives → scope →<br/>… → gate → render → present)</small>"]
+  L4["<b>4 · SKILL BODY</b><br/><i>loaded whole the moment the skill is invoked</i><br/><br/><b>.claude/skills/textbook-chapter-writer/SKILL.md</b><br/><small>frontmatter + the full 19-step process (0-18)<br/>(name the reader → objectives → scope →<br/>… → gate → render → present)</small>"]
 
   L5["<b>5 · CROSS-GENRE STANDARDS</b><br/><i>pulled in on demand, as steps reach them</i><br/><br/>docs/WRITING-STANDARDS.md — shared prose rules<br/>docs/DRAFT-ITERATION.md — the dossier's design<br/>docs/PLAGIARISM.md — what the verbatim scan<br/>does and does not catch<br/>assets/style/acronyms.toml<br/><small>+ the user's own file, if config.toml points at one</small>"]
 
@@ -115,7 +118,7 @@ Same first three layers as any skill, then:
 flowchart TB
   PRIOR["<i>layers 1–3: harness, CLAUDE.md, AGENTS.md/SOUL.md —<br/>identical to every other skill, see diagram above</i>"]
 
-  L4["<b>4 · SKILL BODY</b><br/><br/>.claude/skills/deep-research/SKILL.md<br/><small>the 7 phases</small><br/>.claude/skills/deep-research/reference.md<br/><small>exact protocol, depth-preset defaults,<br/>the report template, the peer-review<br/>reconciliation rule — pulled in because<br/>SKILL.md cites it by name rather than<br/>repeating it</small>"]
+  L4["<b>4 · SKILL BODY</b><br/><br/>.claude/skills/deep-research/SKILL.md<br/><small>the 7 phases</small><br/>.claude/skills/deep-research/references/report.md<br/><small>exact protocol, depth-preset defaults,<br/>the report template, the peer-review<br/>reconciliation rule — pulled in because<br/>SKILL.md cites it by name rather than<br/>repeating it</small>"]
 
   L5["<b>5 · CROSS-GENRE STANDARDS</b><br/><i>same as every other skill</i><br/><br/>docs/WRITING-STANDARDS.md<br/>assets/style/acronyms.toml"]
 
@@ -214,7 +217,7 @@ lost for good.
 
 | | `textbook-chapter-writer` | `deep-research` |
 | --- | --- | --- |
-| Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `reference.md` §1), several times over across Phases 2/5/7 |
+| Number of contexts | One, for the whole run | One orchestrator + up to ~10 subagents in flight at once (concurrency-capped per `references/report.md` §1), several times over across Phases 2/5/7 |
 | Where the citekey invariant lives | Read once, from `AGENTS.md` | Restated locally inside each `.claude/agents/*.md` definition, since a subagent doesn't inherit `AGENTS.md` |
 | How evidence reaches later steps | Stays in the one context that found it | Deliberately not pasted forward. It is transcribed to the dossier, then handed to later subagents as a `dossier brief` pointer |
 | What ends the run's growth | The chapter is written once, in the one context | The orchestrator's own context still only grows across all 7 phases. The saving is in what it hands to *each subagent*, not in its own size |

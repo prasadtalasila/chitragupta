@@ -389,17 +389,18 @@ agenda of any genre:
 
 ### prose
 
-- `5a8bf91ec244` [unattended] (Step 1 -- Get the simulator running):
+- `5a8bf91ec244` [surfaced] (Step 1 -- Get the simulator running):
   chitragupta.WideCodeLine: 'python -m tanksim --seed 42 --rate 1 --noise'
 - `c14d0b7e9a33` [unattended] (Step 3 -- Add the estimate):
   chitragupta.AcronymNotExpanded: 'RMS' used before first expansion
 ```
 
-Both findings are `[unattended]`. The wide
-line is one a learner has to type, so shortening it is worth doing even
-though the render would wrap it. The unexpanded acronym is the finding
-this genre should take most seriously, because a learner three steps
-into a lesson cannot pause to look one up.
+The wide line is `[surfaced]`: its rule leaves the call to you, because a long
+line may be deliberate in a block verified to run. It is one a learner has to
+type, so shortening it is worth doing even though the render would wrap it.
+The acronym is `[unattended]`. The unexpanded acronym is the finding this
+genre should take most seriously, because a learner three steps into a lesson
+cannot pause to look one up.
 
 Several aids read `not run` here, and that is correct rather than a gap:
 a lesson with no claims has nothing for claim support to score, and one

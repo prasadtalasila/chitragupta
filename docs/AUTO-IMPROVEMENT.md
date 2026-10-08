@@ -16,7 +16,7 @@ the order it would be built.
 
 It contains no argument. Every "why" is in
 [AUTO-IMPROVEMENT-RATIONALE.md](AUTO-IMPROVEMENT-RATIONALE.md): why the
-aid sits in the review layer and not the drafting one, why three of six
+aid sits in the review layer and not the drafting one, why five of eight
 item classes may not be acted on, why the loop stops instead of running
 overnight, and the one documented rule it cannot satisfy without the
 user's approval. Read that
@@ -95,7 +95,7 @@ never run against this draft, or that `coverage` was run without
 
 ## ▶ 2. The `agenda` aid
 
-`python -m chitragupta.review agenda <draft>` is a fourth key in `review.AIDS`.
+`python -m chitragupta.review agenda <draft>` is a key in `review.AIDS`.
 Deterministic, stdlib-only, no LLM, tier 1, takes no lock, exits 0 whatever
 it finds.
 
@@ -103,13 +103,11 @@ it finds.
 
 - the eight aids' `.json` for this draft, each optional, and skipped
   with a note when absent;
-- `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys and candidates;
+- `chitragupta.dossier.drift(dossier_dir)`, for missing citekeys;
 - `recorded_but_uncited(draft)`, for the citekeys the dossier still
   records and the draft no longer cites, read without a `dossier
   stamp` baseline, deliberately, so an unstamped dossier still reports
   the state;
-- `rejected.md`, so a candidate already turned down with a reason is
-  never re-proposed;
 - `sections.md`, so every item carries a section anchor;
 - `<stem>.accepted.json`, the items a person has already considered and
   accepted (section 5 below); optional and absent by default, and it
@@ -136,7 +134,7 @@ scan's severity bucket within a class, then position in the draft.
 | `missing-citekey` | drift | defect; the gate will fail on it | yes |
 | `recorded-but-uncited` | dossier | `missing-citekey` in the other direction: `evidence.md` or `sections.md` still records a citekey the draft's text no longer cites | no, surfaced. `recorded - cited` cannot tell a citation the user deleted from a candidate transcribed and never cited, and the two want opposite repairs, so deleting recorded evidence unattended would trade a cosmetic staleness for a real loss. The repair is `dossier prune`, which a person confirms. Computed without a `dossier stamp` baseline, unlike `status`'s own report of the same state |
 | `verbatim-run` | verbatim scan | defect above a span threshold | yes, except the long runs the remediation design reserves for the human, **and every `embedding`-tier finding whatever its length**. `severity` comes from `_bucket`, which thresholds on `matched_words` and never looks at `tier`, so a short embedding alignment used to arrive here indistinguishable from a short exact run, authorising an automated edit on the evidence of a similarity score, while `verbatim recheck` already refused even to *count* that tier on the grounds its own docstring gives ("advisory only, permanently": its findings move with tier availability and the embedding model, not only with an edit). Something advisory-only cannot also be safe to act on unasked. Built: `agenda-reviser` |
-| `prose` | `style_check`, `steering.md` | no evidence delta | **yes**, for the class unless a finding opts out (a recorded decision). `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set. One exception, decided in issue 836: a finding whose right repair may be "leave it alone" is built with `repair: "review"` and surfaced: `WideCodeLine`, and a dialect finding whose dialect came from the host-wide `config.toml` instead of `scope.md` or `--language` |
+| `prose` | `style_check` | no evidence delta | **yes**, for the class unless a finding opts out (a recorded decision). `style_check` already emits only the decidable rules of [WRITING-STANDARDS.md](WRITING-STANDARDS.md) §9, so every prose item *is* the mechanically re-checkable subset, and the repair is an edit to the draft, which is R1's write-set. One exception, decided in issue 836: a finding whose right repair may be "leave it alone" is built with `repair: "review"` and surfaced: `WideCodeLine`, and a dialect finding whose dialect came from the host-wide `config.toml` instead of `scope.md` or `--language` |
 | `unsupported-claim` | provenance | judgement | no, surfaced |
 | `claim-support` | support | judgement | no, surfaced. Unfiltered by design, since a cutoff would claim a precision this corpus does not support ([REVIEW.md](REVIEW.md)), so `_order.severity_rank` ranks worst-score-first inside the class instead, and the item's own summary states the score is not a verdict |
 | `uncited-claim` | uncited | judgement | no, surfaced. Binary per finding, so the agenda may rank it; the fix is evidence, not wording, and a reviser rewording one would make it *look* supported without making it supported |
@@ -490,7 +488,7 @@ registered is dead code.
 
 | Piece | How it is found | Consequence of omitting it |
 | --- | --- | --- |
-| The `agenda` aid | a fourth key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS` | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import instead of writing a report nothing can find |
+| The `agenda` aid | a key in `review.AIDS` (`chitragupta/review/__init__.py`) **and** in `review._registry.AIDS` | `chitragupta/review/_registry.py` raises `RuntimeError` if the two dicts disagree, so a half-registered aid fails loudly at import instead of writing a report nothing can find |
 | The `agenda-reviser` skill | its `SKILL.md` frontmatter `name` and `description` | This is the *only* trigger mechanism. A skill whose description does not match how a user phrases the request is never invoked, however correct its body |
 | Both, for an agent working on a draft | [AGENTS.md](../AGENTS.md)'s layer bullets, which enumerate the aids (Layer 4) and the skills (Layer 2) | An agent following AGENTS.md would not know either exists |
 | Both, for a human | [CLI.md](CLI.md) for the command and its flags; [GENRE.md](GENRE.md) for which reviser handles what; README's review-aid block | Undiscoverable outside the source |
@@ -561,7 +559,7 @@ not its sequence.
 2. **`--json`, widened** to every aid. Hard prerequisite for everything
    below. *Done: `verbatim scan` in 5.4.0, then `provenance` and
    `coverage` in 6.16.0, and `synthesis`/`uncited` from the day
-   each landed. All six aids now emit JSON on the same
+   each landed. All ten aids now emit JSON on the same
    layer-level plumbing.*
 3. **Severity buckets and the boilerplate allowlist.** *Done in
    5.5.0. The allowlist shipped as per-host, gitignored data (like
@@ -602,7 +600,7 @@ closed, declined decision, not an open issue; see
 ## 🚧 B5 is a separate mechanism, not a widening of this one
 
 The five genre skills' own pre-gate self-feedback step (roadmap item
-[B5](FEATURE-ROADMAP.md#-b5-pre-gate-self-feedback-loop), designed in
+[B5](FEATURE-ROADMAP.md#-theme-b-make-synthesis-structural), designed in
 `plans/b5-pregate-self-feedback.md`) is easy to misfile as part of this
 track, since both critique a draft
 against a deterministic count before accepting an edit. They are not

@@ -381,15 +381,15 @@ which genre wrote a chapter.
 Ask for the contract, which is what the unit is generated *from*:
 
 ```bash
-chitragupta draft unit contract content/drafts/twins sec-1 --source smith_2024
-chitragupta draft unit contract content/drafts/twins sec-1 --json   # for a skill
+chitragupta draft unit contract content/drafts/twins ch-1 --source smith_2024
+chitragupta draft unit contract content/drafts/twins ch-1 --json   # for a skill
 ```
 
 ```text
 # The model half
-- unit: sec-1
+- unit: ch-1
 - in: Part I: Foundations > Chapter 1: What a twin is
-- draft: content/drafts/twins/sec-1.md
+- draft: content/drafts/twins/ch-1.md
 - sources: smith_2024
 - input digest: 6524fd365003
 - outline: signed off
@@ -415,16 +415,17 @@ of that digest
 Then write the unit. This is the one step this track does not own: a
 genre skill drafts it (`thesis-chapter-writer` for a `.tex` fragment,
 another genre for Markdown), grounded in the sources, and saves it as
-`content/drafts/twins/sec-1.md`. From step 5 on you can hand that skill
+`content/drafts/twins/ch-1.md`. From step 5 on you can hand that skill
 what the rest of the book already settled:
 
 ```bash
-chitragupta draft registry excerpt content/drafts/twins sec-1
+chitragupta draft registry excerpt content/drafts/twins ch-1
 ```
 
-A part or a chapter has no contract, and asking for one is refused rather
-than answered with an empty contract: those levels name no prose of their
-own.
+A part has no contract, and neither does a section inside a chapter that
+declares sections, because that chapter is the unit. Asking for either is
+refused rather than answered with an empty contract, and the refusal names
+the units that do exist.
 
 ## ▶ Step 4: accept the unit
 
@@ -460,13 +461,13 @@ only at chapter level; see
 for the scoping rule and what it is protecting against.
 
 ```bash
-chitragupta draft unit accept content/drafts/twins sec-1 --source smith_2024
+chitragupta draft unit accept content/drafts/twins ch-1 --source smith_2024
 ```
 
 ```text
-OK    content/drafts/twins/sec-1.md: 12 citation(s), all verified against the ledger.
-Accepted sec-1 at input digest 6524fd365003.
-Wrote content/specs/twins/units/sec-1.json.
+OK    content/drafts/twins/ch-1.md: 12 citation(s), all verified against the ledger.
+Accepted ch-1 at input digest 6524fd365003.
+Wrote content/specs/twins/units/ch-1.json.
 ```
 
 `accept` writes the record only after the project's one gate passes on
@@ -516,8 +517,8 @@ what the *dossier* says about the same prose beside what this layer
 recorded:
 
 ```text
-  sec-1                    accepted                     dossier: agrees
-  sec-2                    stale: draft changed since accepted   dossier: disagrees
+  ch-1                     accepted                      dossier: agrees
+  ch-2                     stale: draft changed since accepted   dossier: disagrees
 ```
 
 Two records of the same text exist and they answer different questions:
@@ -611,8 +612,8 @@ and the ids carry through unchanged:
 | --- | --- | --- |
 | `# Title` | `\title{...}` | none |
 | `## Part {#part-i}` | `\part{...}` | `\label{part-i}` |
-| `### Chapter {#ch-1}` | `\chapter{...}` | `\label{ch-1}` |
-| `#### Section {#sec-1}` | `\input{sec-1.tex}` | the unit's own `\label{sec-1}` |
+| `### Chapter {#ch-1}` | `\input{ch-1.tex}`, the unit, whose own `#` heading becomes `\chapter{...}` | `\label{ch-1}` |
+| `#### Section {#sec-1}` | a heading inside `ch-1.tex`, never a file of its own | `\label{sec-1}` |
 
 Because the `{#id}` becomes the LaTeX label unchanged, the
 cross-references `registry check` verified resolve in the built PDF: the

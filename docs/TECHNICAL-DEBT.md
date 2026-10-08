@@ -307,7 +307,8 @@ this section was written.
 
 Same shape, with `.markdownlint.yaml` inherited from the same source, run
 over this repository's own prose (root `*.md`, `docs/**/*.md`,
-`.claude/**/*.md` and `plans/**/*.md`, per `ci.yml`'s `markdownlint` step;
+`.claude/**/*.md`, `.agents/**/*.md`, `.opencode/**/*.md` and
+`plans/**/*.md`, per `ci.yml`'s `markdownlint` step;
 see `DEVELOPER-AGENTS.md`'s "The linters, which are enforced").
 `content/` is the user's drafts and out of scope:
 
@@ -673,14 +674,14 @@ worse.
 | Looks like | Actually |
 | --- | --- |
 | Very long comments; `.github/workflows/ci.yml` roughly half prose | Required. [The comment rules](CODE-STANDARDS.md#-the-comment-rules-and-the-misreading-to-avoid): *why*-comments are mandatory here, and the size rules count statements precisely so that explaining yourself is free |
-| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:137`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
+| `con.execute(f"PRAGMA user_version = {target}")` (`chitragupta/ledger.py:145`) | Not SQL injection. `PRAGMA` does not accept `?` binding, and `target` is `len(_MIGRATIONS)`, this module's own constant. The comment above it says exactly that |
 | `_load_cache`/`_save_cache` duplicated in `retrieval_cache.py` and `enrich/_docling_cache.py` | Different requirements, and each docstring names them: retrieval needs a per-writer-unique temp name for concurrent subagents, and since a later optimisation a per-process memo on the index file's `(path, size, mtime_ns)`, because its payload is 14 MB and is read many times per run. Docling's is neither, and says why |
-| 11 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`) | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline): confirmed live, not assumed so |
+| 19 broad `except Exception` handlers in `chitragupta`/`scripts` (2 more in `bench/`), counted 2026-10-07 | Each has a stated cause and a `# noqa: BLE001` marker `ruff` now reads. See [5.4](#-54-ruff-a-measured-baseline): confirmed live, not assumed so |
 | `--target host\|docker` accepted but never branched on | Deliberate: the probes decide, the flag is informational. Removing it is a CLI break for no gain |
 | C2 permits a registered module to grow | [Deliberate](CODE-STANDARDS.md#-what-a-ratchet-is-and-the-debt-register). Pinning each to today's size fails on every ordinary edit and gets the rule turned off |
 | No timestamp in any review report | A product rule: two runs over unchanged input produce byte-identical output, so reports diff across revisions |
 | Tests duplicate setup instead of DRYing it | [Adopted position](CODE-STANDARDS.md#-tests): a test that reads top to bottom is worth more than a DRY one |
-| `tests/test_pdf_text.py` at 1806 code lines | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
+| `tests/test_pdf_text.py` at 2044 code lines (2026-10-07) | C2 does not cover tests, for a stated reason: a test module's length tracks the surface of the module under test |
 | Tests duplicating setup, several asserts in one test, 2,000-line test modules, five tests with no assert | All four are checked positions, not drift; see `.opencodereview/rule.json`'s `tests` entry. The assert-free five are documented "does not raise" tests |
 | `class TestRealConfigToml` in `tests/test_config.py` asserting against the real `config.toml` | Deliberate and named in its own docstring: it is a sanity check on the constants as actually computed. Unlike the two cases `tests/test_unversioned_data_scan.py` guards against, it does not claim to be testing a *default*, which is why it is that scan's one registered exception rather than a fixed test |
 | `bench/repro_check.py` has no test module | It self-checks instead. `self_check()` runs from `main()` on every invocation, with nine assertions proving the detector can see a difference before a zero from it is believed. It is a deliberate answer to `bench/` sitting outside coverage, stated in its own docstring |

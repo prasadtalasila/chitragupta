@@ -27,7 +27,7 @@ stage by stage, see [RAG.md](RAG.md).
 | Unit of a hit | a whole document, or **one paragraph**; the caller picks ([below](#-the-passage-unit)) | a 200-word chunk | a whole document |
 | Corpus | ledger rows only, so every hit is citable | *the same* | *the same* |
 | Needs | stdlib, bare `python` | venv + `enrich` group + a model download | venv + `enrich` group |
-| Used by | every genre skill, by default | `survey-writer`, `deep-research` (only if built) | **nothing in this repository** |
+| Used by | every genre skill, by default | `survey-writer`, `deep-research` (only if built) | **no genre skill**; the `converge` stage and `corpus discover` read it |
 
 ```mermaid
 flowchart TB
@@ -43,7 +43,7 @@ flowchart TB
   subgraph SURVEY["<b>SURVEYING</b> — no query at all"]
     direction TB
     BERT["<b>chitragupta/enrich/topic_model.py</b> · BERTopic<br/><small>clusters the whole corpus at once</small>"]
-    TOP[/"<b>content/topics.json</b><br/><small>read by you, not by any code here</small>"/]
+    TOP[/"<b>content/topics.json</b><br/><small>read by you, the converge stage and corpus discover; no genre skill</small>"/]
     BERT --> TOP
   end
 
@@ -905,15 +905,16 @@ skills use BM25 only.
 
 ## 🗂 Topic model -- a different question
 
-`chitragupta/enrich/topic_model.py` takes no query. It embeds each
-document once as a whole, reduces with UMAP, clusters with HDBSCAN, and writes
-`content/topics.json`: one topic assignment per document, plus a topic
+`chitragupta/enrich/topic_model.py` takes no query. It embeds each document as
+the mean of its chunk vectors, reduces with UMAP, clusters with HDBSCAN, and
+writes `content/topics.json`: one topic assignment per document, plus a topic
 table. It needs at least two documents with text.
 
 Three things to know before you run it:
 
-- **Nothing in this repository reads `content/topics.json`.** No module,
-  no genre skill. It is written for you to read when deciding what a
+- **No genre skill reads `content/topics.json`.** The `converge`
+  enrichment stage and `corpus discover` do, for topic terms. It is
+  written for you to read when deciding what a
   survey should even be about. `survey-writer` groups its themes by
   judgement over the evidence it retrieved, and says so explicitly.
 - **All-outliers is a correct answer on a small corpus.** HDBSCAN's
@@ -924,7 +925,7 @@ Three things to know before you run it:
 - **It is the one stage that cannot be incremental.** Clustering is
   whole-corpus by nature: adding a document can move every assignment.
   Only the encoding is cached (`content/topic_embed_cache.json`, keyed by
-  text hash and model name), never the clustering.
+  text hash, embedding model and pooling method), never the clustering.
 
 ## ⚖ Which should I build?
 

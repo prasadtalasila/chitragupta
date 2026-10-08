@@ -10,8 +10,9 @@ Adapted from [hadufer/claude-storm](https://github.com/hadufer/claude-storm)'s
 `agents/storm-researcher.md` (MIT License) -- a perspective-driven
 interviewer, retooled here to ground claims in this project's closed corpus
 (`content/ledger.sqlite` + `papers/bibliography.bib`) instead of
-live web search. Read `.claude/skills/deep-research/reference.md` §3 for
-the full protocol; this file is the packet schema and grounding discipline.
+live web search. Read
+`.claude/skills/deep-research/references/report.md` §3 for the full
+protocol; this file is the packet schema and grounding discipline.
 
 ## Core function
 
@@ -128,4 +129,4 @@ artifact.
 
 No local-to-global citation renumbering is needed (unlike the original
 claude-storm protocol) -- citekeys are already the project-wide stable
-identifier; see `.claude/skills/deep-research/reference.md` §4.
+identifier; see `.claude/skills/deep-research/references/report.md` §4.

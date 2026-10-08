@@ -26,62 +26,23 @@ layer: deterministic, safe to run unattended).
 
 ## Collection scoping (#195): draft from the shelf, not the library
 
-A Zotero library usually spans several topics, and its owner has already
-sorted it -- "these are the modelling papers". `chitragupta/bib_collections.py`
-carries that judgement into the ledger and `search()` can honour it.
-
-Use it. BM25 over a whole library and BM25 over one shelf do not return
-the same papers, and the shelf is **not** a subset of the library's
-ranking: measured over a 642-item corpus, a 19-item shelf surfaced ten
-papers the whole-corpus search never returned at all, because a small
-pool promotes what a large pool's competition buries
-(`bench/RESULTS.md`, 2026-08-19).
-
-**At step 0, before any retrieval, offer the choice once:**
+At step 0, before any retrieval, check whether the library is sorted
+into collections:
 
 ```bash
 python -m chitragupta.corpus ledger --collections     # what exists, with counts
 ```
 
-Show what exists, ask which one this draft belongs to, and accept "none,
-search everything" as an answer. Record the result in `scope.md`'s
-header, beside `language:`:
+Paths in this skill are from the project root, not from this skill's
+own folder.
 
-```text
-- collection: Digital twins > Modelling
-- collection: (whole corpus)      # user declined, or the library has none
-```
-
-**Then pass it on every retrieval call in the run:**
-
-```bash
-python -m chitragupta.draft retrieve search "<query>" --k 15 \
-    --collection "<the recorded name>" --log <draft>
-```
-
-Three rules, none of them negotiable:
-
-- **Every call, or none.** One unflagged call silently widens the scope
-  for that search: `retrieval.md`'s `collection` column (#254) will show
-  it read as corpus-wide after the fact, but by then the run has already
-  read outside the shelf -- the discipline has to hold while the run is
-  happening, not just be checkable afterwards.
-- **`retrieve evidence` takes no `--collection`.** The flag is on
-  `search` only, and rightly: `evidence` zooms into one citekey you have
-  already chosen, so there is nothing left for a collection to filter.
-  Use it as normal.
-- **Degrade silently.** Most exports carry no collections at all --
-  plain Zotero's BibTeX exporter drops them, and only Better BibTeX's
-  JabRef-fields option keeps them (`docs/ZOTERO.md`). If
-  `ledger --collections` reports none, say nothing, ask nothing, record
-  `- collection: (whole corpus)`, and behave exactly as this skill did
-  before this section existed.
-
-Scoping is a **narrowing**, and a narrowing cannot surface a paper the
-shelf does not hold. If retrieval inside the shelf comes back thin for a
-sub-theme, say so -- in the draft and in `rejected.md` -- rather than
-quietly widening mid-run. The honest fix to offer is a whole-corpus pass
-with `corpus-reviser-opencode`, which is the one skill allowed to widen.
+If it reports none, say nothing, ask nothing, record
+`- collection: (whole corpus)` in `scope.md`'s header, and skip the rest
+of this section. Otherwise read
+`.claude/skills-common/references/collection-scoping.md` now and follow
+it for the whole run. If retrieval inside the shelf comes back thin, the
+honest fix to offer is a whole-corpus pass with `corpus-reviser-opencode`, which
+is the one skill allowed to widen.
 
 ## The dossier: write down what produced the draft
 
@@ -488,63 +449,36 @@ collapse them for the sake of a cleaner narrative.
     deterministic check -- nothing in this pipeline scores this
     automatically.
 
-    **A sub-theme the corpus could not answer is a fourth kind of gap,
-    and reading it costs one command.** Before listing anything, where
-    the dossier has an `outline.md`:
+    **Run this step: it is never a condition of presenting, but it is not done
+    until you have run its commands.** Read
+    `.claude/skills-common/references/critique.md` now, before listing
+    anything, and work it through with `content/drafts/<slug>.md` as
+    `<draft>`. In outline:
 
-    ```bash
-    python -m chitragupta.draft dossier status content/drafts/<slug>.md
-    ```
+    1. Where the dossier has an `outline.md`, read what the corpus could not
+       answer:
 
-    Its `Outline:` block reports each declared query as run, `no
-    evidence` (it ran and returned nothing) or `not run` (nobody issued
-    it). Every sentence resting on a `no evidence` sub-theme is
-    ungrounded, and the repair is to **cut the sentence, never to
-    re-point it at whichever citekey ranked nearest**. Against a closed,
-    human-curated bibliography an empty result set is information: it
-    means the claim cannot be grounded here. A re-pointed citation is
-    invisible to the gate, because that citekey is real. Cut inside the
-    same accept-or-revert cycle as every other repair below -- the 90%
-    floor is what stops a cut becoming a rewrite that deletes its way to
-    a lower count. Where there is no `outline.md` there is no declared
-    list, so skip this and the closing report below rather than
-    inventing either.
+       ```bash
+       python -m chitragupta.draft dossier status content/drafts/<slug>.md
+       ```
 
-    Take the baseline before touching anything:
+    2. Take the baseline:
 
-    ```bash
-    python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
-    python -m chitragupta.review verbatim scan content/drafts/<slug>.md --write --json
-    python -m chitragupta.draft style content/drafts/<slug>.md --json
-    ```
+       ```bash
+       python -m chitragupta.draft dossier sections content/drafts/<slug>.md --citekeys --write
+       python -m chitragupta.review verbatim scan content/drafts/<slug>.md --write --json
+       python -m chitragupta.draft style content/drafts/<slug>.md --json
+       ```
 
-    The first two are `agenda-reviser-opencode`'s own baseline discipline
-    (uncapped, never `--limit`): they file
-    `content/review/<topic>/<stem>.verbatim.json`, the file every edit
-    below is rechecked against. The third's finding count -- not the
-    file, `style` never writes one -- is the number you compare after
-    each edit; note it down. Take all three fresh now rather than
-    reusing anything on disk from an earlier run. If the scan's
-    `tiers_not_run` is not empty, quote the reason: **genuine
-    restatement is only detected where the embedding tier can run**, so
-    the recheck below only ever compares what the tiers that did run
-    can see.
-    `style` reports only what WRITING-STANDARDS.md §9 marks
-    decidable, and this step -- like every other -- is told to fix
-    none of them: its count is a proxy for whether the edit
-    introduced a new defect, not a work list to act on.
+       If the scan's `tiers_not_run` is not empty, quote the reason: **genuine
+       restatement is only detected where the embedding tier can run**.
+       `style` reports only what WRITING-STANDARDS.md §9 marks decidable, and
+       this step is told to fix none of them: its count is a proxy for a new
+       defect, not a work list.
 
-    Work the top of your list, **at most three items, one edit each, no
-    retry and no second critique pass** once the three are done or the
-    list runs out first. For each:
-
-    1. Keep the pre-edit text of the section you are about to touch.
-    2. Edit with `edit`, inside that section only. Preserve the citekey;
-       reword the claim to match what `claim:` says, or drop a sentence
-       that overstates it. Never add a claim `evidence.md` does not
-       already record, and never touch a `quote:` span -- a quotation is
-       captured when the evidence is judged, never rewritten here.
-    3. Check, all three required:
+    3. Repair at most three items, each edit with `edit`, inside that section
+       only. Keep an edit only if all three checks pass the reference's test;
+       otherwise restore the text you kept:
 
        ```bash
        python -m chitragupta.draft gate content/drafts/<slug>.md
@@ -553,35 +487,13 @@ collapse them for the sake of a cleaner narrative.
        python -m chitragupta.draft style content/drafts/<slug>.md --json
        ```
 
-       Accept the edit only if: the gate exits `OK`; the recheck's
-       `objective_delta` is not positive; and the fresh `style` finding
-       count -- read only as a number, since `style` reports what §9
-       marks decidable and this step is told to fix none of them -- is
-       no higher than the count noted before editing. Also check the
-       edited section did not fall under 90% of its own pre-edit length
-       -- a secondary sanity floor against a rewrite that deletes its
-       way to a lower count, never itself a reason to accept one that
-       the three checks above already failed.
-    4. If any check fails, restore the text you kept in step 1 and move
-       to the next item. Do not retry the same item.
-    5. Log the attempt in the dossier's `revisions.md`: which gap, what
-       you changed, and the outcome -- accepted or reverted. Never write
-       any of this to `rejected.md`.
+       Read `style`'s count only as a number: it reports what §9 marks
+       decidable, and you fix none of them here.
 
-    **Then say whether the declared queries are exhausted**, from the
-    `Outline:` block you read before starting -- no second call. The
-    declared list is exhausted when every query ran and none was
-    reported `no evidence` or `not run`. Say so in one sentence, naming
-    the ones that are not. This is a **real termination condition**,
-    available because the corpus is closed and the declared list is
-    finite, where an open-web tool has only a fixed round count. It
-    bounds nothing above: the three-repair cap stands, and an
-    unexhausted list never withholds a draft.
+    4. Log every attempt, kept or reverted, in the dossier's `revisions.md`.
 
-    If nothing on the list clears the bar, or the list was empty,
-    continue to the gate exactly as if this step had not run -- the
-    gate remains the only thing that blocks a draft, and this step is
-    never a condition of presenting.
+    If nothing on the list clears the bar, or the list was empty, say so and
+    continue to the gate.
 11. **Gate before presenting.** Save the draft as `content/drafts/<slug>.md`
     (this is the canonical, source-of-truth format), then run:
 
@@ -672,25 +584,10 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.draft style content/drafts/<slug>.md
     ```
 
-    **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-    — §2's defect markers, an acronym never expanded at first use, a
-    glossary acronym whose expansion has drifted from the vocabulary,
-    and §8's dialect against `scope.md`'s `language:` line. It says nothing
-    about whether a paragraph leads with its point or whether a hedge
-    carries information, and it cannot tell a quotation from the draft's own
-    voice, so a marker inside a quoted passage reports and is correct as
-    it stands.
-
-    **Report every finding and fix none of them.** A finding is a place to
-    look, not a defect: the first pass of this check over this
-    repository's own docs kept 59 of its 73 marker hits on inspection. If
-    the user wants any of them acted on, that is `draft-reviser-opencode`'s
-    copy-edit mode, which reads the recorded dialect and logs one
-    `revisions.md` entry — never an edit made here. Report the header
-    lines too: `dialect: not checked` means nobody ever recorded one, so a
-    short list is not a clean draft. A review aid, not a gate — it
-    exits 0 whatever it finds, and a missing `vale` binary is a one-line
-    warning that blocks nothing.
+    Read `.claude/skills-common/references/prose-check.md` now and follow
+    it: what the check can and cannot see, and how to report what it
+    finds. If the user wants any finding acted on, that is
+    `draft-reviser-opencode`'s copy-edit mode, never an edit made here.
 17. **Run the verbatim scan.** Before presenting, rebuild the section map
     and scan:
 
@@ -699,32 +596,15 @@ collapse them for the sake of a cleaner narrative.
     python -m chitragupta.review verbatim scan content/drafts/<slug>.md
     ```
 
-    The first command is not optional and not a repeat of step 8. The
-    embedding tier compares each section against the citekeys that
-    section's `sections.md` row records, so a table written ten steps ago
-    describes a draft you have since edited. If it exits 1 for a missing
-    dossier, say so and scan anyway.
+    The first command is not optional and not a repeat of step 8: a
+    section map written ten steps ago describes a draft you have since
+    edited. **A review aid, not a gate: it is never a condition of
+    presenting.**
 
-    It reports wording the draft shares with **any** parsed source, cited or
-    not — including a source the citing paragraph never names, and reuse in
-    connective prose that cites nothing. **A review aid, not a gate: it
-    exits 0 either way, it cannot block the draft, and it is never a
-    condition of presenting.** Show what it found rather than summarising
-    it away, and lead with the `long` and `short` buckets — a `quoted` run
-    that also cites its source is a legitimate attributed quotation, so
-    give those a count rather than a list.
-
-    **Say what it did not check.** If `tiers_not_run` is not empty, quote
-    each reason as the scan wrote it, and where the reason names a fix
-    (`poetry install --with enrich`, `python -m chitragupta.enrich`) pass
-    that on once. It sees verbatim and near-verbatim reuse only, and
-    **genuine restatement is only detected where the embedding tier can
-    run**, so a clean scan is not a clean bill of health
-    (`docs/PLAGIARISM.md`). Repairing a finding is `agenda-reviser-opencode`'s job,
-    and only if the user asks. If the user wants the
-    finding kept, add `--write`: the report goes to `content/review/`,
-    mirroring the draft's path, beside any provenance and coverage reports for
-    the same draft.
+    Read `.claude/skills-common/references/verbatim-scan.md`
+    now and follow it: what to show, what the scan could not check, and
+    how to keep the report. Repairing a finding is `agenda-reviser-opencode`'s
+    job, and only if the user asks.
 18. **Stamp the draft fingerprint, then present.** Nothing edits the draft's
     text after this point, so this is where `dossier status` records the
     baseline a later hand edit is compared against (#454):

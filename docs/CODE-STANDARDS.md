@@ -169,9 +169,9 @@ a function *does*, and is blind to how well it is explained. On that
 measure the codebase is in good shape: 26 offenders in `chitragupta/`,
 not 128, and the tests hold the bar almost perfectly at 1 in 1926.
 
-The same correction applies to files: `chitragupta/config.py` is 941
-physical lines and 453 lines of code, the difference being 488 lines of
-per-setting rationale. The file rule counts code lines (non-blank,
+The same correction applies to files: `chitragupta/config.py` is 696
+physical lines and 246 lines of code (2026-10-07), the difference being
+450 lines of per-setting rationale. The file rule counts code lines (non-blank,
 non-comment) for the same reason.
 
 **This is a re-expression, not a relaxation.** One outlier got stricter
@@ -235,7 +235,7 @@ hold it (1 offender in 1926), so including them locks in a bar that is
 met rather than declaring one that is not. C2 does not cover the tests
 because a test module here is one-per-source-module by convention, and
 its length tracks the surface of the module under test rather than a count
-of responsibilities; `tests/test_pdf_text.py` at 1806 code lines is
+of responsibilities; `tests/test_pdf_text.py` at 2044 code lines (2026-10-07) is
 thorough, not overloaded. (`tests/test_enrich_real_libraries.py` is the
 one exception to the convention rather than to the rule: it is a second
 module against `chitragupta/enrich/embed_index.py`, split out because it
@@ -475,7 +475,7 @@ agree or disagree with.
 | Smell | What it looks like here |
 | --- | --- |
 | **Rigidity**: a small change cascades | Adding a parse failure cause that requires touching every caller, instead of adding a mark on the exception |
-| **Fragility**: one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than seven aids each writing their own path |
+| **Fragility**: one change breaks many places | The reason the review layer has one output contract in `review/__init__.py` rather than ten aids each writing their own path |
 | **Immobility**: code cannot be reused | The reason `chitragupta/passages.py` is a module and not logic inlined into `verbatim_check` |
 | **Needless complexity** | Speculative configurability, an abstraction with one call site, defensive handling for an impossible state |
 | **Needless repetition** | Two similar blocks are a coincidence; three are a pattern. Extracting from two call sites is as likely to produce a wrongly-shaped abstraction as to remove real duplication |

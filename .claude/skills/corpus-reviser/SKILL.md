@@ -84,6 +84,9 @@ nothing to fall back on.
 
 ## The loop
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop`, steps 1
 through 7, unchanged except for the two steps below. Read that file; do
 not reconstruct it from memory. It is the same scope check, the same
@@ -192,13 +195,9 @@ turn a wide pass into the re-run this skill exists to avoid.
   content/drafts/<path>` -- after the gate and before presenting.
   `draft-reviser`'s numbered steps 1-7 do not reach its unnumbered riders,
   so this is written out here for the same reason the scan offer is.
-  **It checks only what `docs/WRITING-STANDARDS.md` §9 marks decidable**
-  -- §2's defect markers, an acronym never expanded at first use, a
-  glossary acronym whose expansion has drifted from the vocabulary, and
-  §8's dialect against `scope.md`'s `language:` line -- and it cannot
-  tell a quotation from the draft's own voice. **Report every finding and fix
-  none of them:** a wide pass rewrites against sources the draft never
-  cited, which makes it the pass most able to import another author's
+  Read `.claude/skills-common/references/prose-check.md` now and follow
+  it. **Fix none of the findings:** a wide pass rewrites against sources
+  the draft never cited, which makes it the pass most able to import another author's
   spelling along with their point, and also the pass least entitled to
   tidy prose nobody asked about. Findings go to `draft-reviser`'s
   copy-edit mode, not into this pass.
@@ -214,29 +213,18 @@ turn a wide pass into the re-run this skill exists to avoid.
   the draft may never have cited, so it is the pass most likely to have
   changed which section leans on which paper -- and the embedding tier
   compares each section against the citekeys that section's `sections.md`
-  row records. If it exits 1 for a missing dossier, say so and scan
-  anyway.
+  row records.
 
-  The scan reports wording the draft shares with
-  **any** parsed source, cited or not, which earns its place after a wide pass
-  in particular: this skill re-reads the whole corpus and rewrites against
-  sources the draft may never have cited, so it is the pass most able to import
-  someone else's phrasing into a paragraph that credits no one. **A review aid,
-  not a gate: it exits 0 either way, and it is never a condition of
-  presenting.** Show what it found rather than summarising it away, and lead
-  with the `long` and `short` buckets -- a `quoted` run that also cites its
-  source is a legitimate attributed quotation, so give those a count rather
-  than a list. **Say what it did not check:** if `tiers_not_run` is not empty,
-  quote each reason as the scan wrote it, and where the reason names a fix
-  (`poetry install --with enrich`, `python -m chitragupta.enrich`) pass that on
-  once. It sees
-  verbatim and near-verbatim reuse only, and **genuine restatement is only
-  detected where the embedding tier can run**, so a clean scan is not a clean
-  bill of health (`docs/PLAGIARISM.md`). Repairing a finding is
-  `agenda-reviser`'s job, and only if the user asks. If the user wants the
-  finding kept,
-  add `--write`: the report goes to `content/review/`, mirroring the draft's
-  path, beside any provenance and coverage reports for the same draft.
+  It earns its place after a wide pass in particular: this skill rewrites
+  against sources the draft may never have cited, so it is the pass most
+  able to import someone else's phrasing into a paragraph that credits no
+  one. **A review aid, not a gate: it is never a condition of
+  presenting.**
+
+  Read `.claude/skills-common/references/verbatim-scan.md`
+  now and follow it: what to show, what the scan could not check, and
+  how to keep the report. Repairing a finding is `agenda-reviser`'s
+  job, and only if the user asks.
 
 ## Guardrails
 

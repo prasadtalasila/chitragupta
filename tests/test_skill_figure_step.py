@@ -72,7 +72,7 @@ def test_the_drawer_runs_the_existing_checks_in_order():
 
 
 def test_the_reference_file_has_the_sections_the_procedure_points_at():
-    ref = (SKILLS_DIR / DRAWER / "reference.md").read_text(encoding="utf-8")
+    ref = (SKILLS_DIR / DRAWER / "references" / "figures.md").read_text(encoding="utf-8")
     for heading in (
         "## 1. Choosing a metaphor",
         "## 2. Panels",
@@ -81,7 +81,7 @@ def test_the_reference_file_has_the_sections_the_procedure_points_at():
     ):
         assert heading in ref, heading
     for section in ("§1", "§2", "§3", "§4"):
-        assert f"reference.md {section}" in _text(DRAWER), section
+        assert f"references/figures.md` {section}" in _text(DRAWER), section
 
 
 _GENRES = {

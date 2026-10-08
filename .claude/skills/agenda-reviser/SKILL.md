@@ -109,6 +109,9 @@ decision, asked rather than taken.
 
 ## The loop
 
+Paths in this skill are from the project root, not from this skill's
+own folder.
+
 Follow `.claude/skills/draft-reviser/SKILL.md`'s `## The loop` for the
 parts this skill does not restate -- reading `scope.md` and `steering.md`
 first, mapping a change onto sections, editing with `Edit` rather than
@@ -209,78 +212,16 @@ chitragupta.draft dossier sections content/drafts/<path>` gives the line
 ranges. Keep the pre-edit text; step 5 needs it if the repair is
 rejected.
 
-**Repair a `missing-citekey` item.** The only unattended repair available
-is a deletion: this skill may not run `corpus sync` (the user's write
-lock) and may not fabricate a citekey. Remove the `[@citekey]` marker with
-`Edit`, leaving the sentence standing -- never delete the sentence itself.
-**Also drop the citekey from `evidence.md`** (and from `sections.md`'s row
-for the section, on the next `dossier sections --citekeys --write`) --
-`missing-citekey` is detected off the dossier's own record of what it
-cites, not off the draft's live markers, so a repair that only edits the
-draft leaves the item unresolved on the next agenda. This is the "writing
-the dossier back" half of `draft-reviser`'s loop, referenced above, made
-explicit here because it is easy to miss for this one class. The now-
-uncited claim becomes an `uncited-claim` item on the next agenda, a
-**surfaced** class, so it is reported rather than silently dropped. Where
-the sentence carries another surviving citation, only the marker for the
-missing one goes, and `evidence.md` keeps that citekey's entry.
+**Then repair by class**, reading only the reference for the class of
+the item in hand:
 
-If the `evidence.md` entry is left in place -- because dropping it is a
-judgement about evidence rather than a mechanical edit -- the next
-agenda reports it as a `recorded-but-uncited` item, which is the state
-the repair manufactures by construction. That is the intended outcome
-and not a failure of the repair: it is now visible, surfaced for a
-person, and removable with `dossier prune`. Before #701 it was
-reported on no surface at all unless the dossier happened to carry a
-`dossier stamp` baseline.
+- `missing-citekey`: `.claude/skills/agenda-reviser/references/repair-missing-citekey.md`
+- `prose`: `.claude/skills/agenda-reviser/references/repair-prose.md`
+- `verbatim-run` at severity `short`: `.claude/skills/agenda-reviser/references/repair-verbatim-run.md`
 
-**Repair a `prose` item.** Apply the fix `draft style`'s rule names: expand
-an acronym at first use, add the `<!-- table: -->`, `<!-- tableref: -->` or
-`<!-- figureref: -->` marker a `TableNoCaption`/`TableUnreferenced`/
-`FigureNoCaption`/`FigureUnreferenced` finding names, correct a glossary
-term drifted from `scope.md`'s vocabulary, fix a dialect slip against
-`scope.md`'s `language:` line. `Edit` the exact span `detail.message` or
-the item's `summary` names.
-
-**`ChapterSelfNumbered`** (a `.tex` draft only) is the one rule whose
-repair is a deletion rather than an addition: drop the `Chapter N:`
-prefix from inside the `\chapter{...}` braces and leave the title, so
-the document the fragment is `\input` into supplies the number once. Do
-not touch the heading's `\label`, and do not reach for
-`\setcounter{secnumdepth}{-2}` -- that is a book-wide decision belonging
-to `content/specs/<book>/preamble.tex`, and it would cost every section
-and table number in the book (docs/WRITING-STANDARDS.md §15).
-
-Two equation rules repair differently from their table/figure siblings.
-**`EquationOrphanMarker`** -- delete the stray `<!-- equation: id -->`
-marker rather than hunting for a `<!-- math -->` block to reattach it to:
-the marker's own text cannot tell this skill which block the author
-meant, and guessing wrong either drops intended numbering or leaves the
-finding standing, so deletion is the one repair that is never wrong.
-**`EquationUnreferenced`** -- the fix is not a marker addition but a
-sentence: insert prose that names the equation via
-`<!-- equationref: id -->` (docs/WRITING-STANDARDS.md §12). This is a
-larger edit than a caption line, and the likeliest of this section's
-repairs to trip the `objective_delta` check in step 5 by introducing its
-own new acronym or wording drift -- treat that as the check doing its
-job, not a reason to loosen it.
-
-**Repair a `verbatim-run` item at severity `short`.** Look up
-`detail.verbatim_id` in `content/review/<topic>/<stem>.verbatim.json`'s
-`findings` for `draft_text`, the exact passage including casing,
-punctuation and any mid-run citation marker -- use it as `Edit`'s
-`old_string`. If it does not match, the draft almost certainly has CRLF
-line endings and the run spans a line break: the payload carries the
-`\n` the file was read with, not the `\r\n` on disk. Re-read the line and
-edit it by hand rather than widening the search.
-
-**Paraphrase** -- the default, and the only option for a `short` run:
-
-- Preserve the claim. This is a rewording, not a retraction.
-- Preserve the citation.
-- Leave no run of `min_run` consecutive source words (the looked-up
-  finding's own field).
-- Prefer the smaller diff.
+Remove a marker with `Edit`, leaving the sentence standing. `Edit` the
+exact span an item names. For a verbatim run, look up `draft_text` as its
+reference says and use it as `Edit`'s `old_string`.
 
 A `long` verbatim-run is surfaced, not unattended -- it is never repaired
 here without the human first choosing paraphrase or quotation, same as
@@ -460,20 +401,15 @@ python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
 
 Take the step-2 baseline the same way, so the baseline and the final
-scan are measured against the same table. If the first command exits 1
-for a missing dossier, say so and scan anyway.
+scan are measured against the same table.
 
-It reports verbatim and near-verbatim reuse against any parsed source, cited or
-not, and **genuine restatement is only detected where the embedding tier can
-run** -- these drafts are LLM-written and literal paraphrase is an LLM's normal
-failure mode -- so a clean scan, and a clean `recheck`, is not a clean bill of
-health (`docs/PLAGIARISM.md`). Say that plainly rather than letting a zero read
-as an all-clear. **Say what it did not check:** if `tiers_not_run` is not
-empty, quote each reason as the scan wrote it, and where the reason names a
-fix (`poetry install --with enrich`, `python -m chitragupta.enrich`) pass that
-on once -- on this skill above all, because a repair loop reporting "all
-findings fixed" from two tiers of three is the most misleading sentence in
-this pipeline. **A review aid, not a gate: it exits 0 either way, and it is
+Read `.claude/skills-common/references/verbatim-scan.md` now and follow
+it. Its "say what it did not check" matters on this skill above all: these
+drafts are LLM-written, literal paraphrase is an LLM's normal failure mode,
+and a repair loop reporting "all findings fixed" from two tiers of three is
+the most misleading sentence in this pipeline. A clean `recheck` is no more
+a clean bill of health than a clean scan: say that plainly rather than
+letting a zero read as an all-clear. **A review aid, not a gate: it is
 never a condition of presenting.**
 
 ### Close the pass with one full-format run

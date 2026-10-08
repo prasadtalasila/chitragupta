@@ -184,7 +184,7 @@ proves:
 
 | What | Where | Who reads it |
 | --- | --- | --- |
-| The bibliographic data | `papers/bibliography.bib`: `config.BIB_FILE_PATH` (`chitragupta/config.py:221`), your own Zotero/JabRef export | pandoc's `--citeproc` at render time; or, for a `--fragment` render, an aliased copy written beside the output for `bibtex` |
+| The bibliographic data | `papers/bibliography.bib`: `config.BIB_FILE_PATH` (`chitragupta/config.py`), your own Zotero/JabRef export | pandoc's `--citeproc` at render time; or, for a `--fragment` render, an aliased copy written beside the output for `bibtex` |
 | The verification record | `content/ledger.sqlite` | `python -m chitragupta.draft gate`, `references.py`, retrieval; never the render itself |
 | The rendered bibliography | generated fresh into `content/rendered/...` on every render | a preview artefact; nothing downstream reads it back |
 | The real bibliography, for a `.tex` fragment specifically | your own thesis's `\bibliography{...}`/biblatex resource, outside this repository entirely | your own `pdflatex`+`bibtex` run, at submission |
@@ -198,7 +198,7 @@ thesis to resolve: `\input`ed into your own document, your own
 `\bibliography{}`/biblatex run numbers it consistently with your other
 chapters. The `.md`/`.pdf` preview this pipeline renders from that same
 fragment (`--format md`/`--format pdf`, both run by
-`thesis-chapter-writer` step 11) still goes through row three (citeproc
+`thesis-chapter-writer` step 12) still goes through row three (citeproc
 against `papers/bibliography.bib`), because a preview has to resolve
 citations to be readable at all. That preview is not the deliverable and
 nothing downstream reads it back; the fragment on disk, unresolved
@@ -209,9 +209,9 @@ nothing downstream reads it back; the fragment on disk, unresolved
 Four of the five prose genres run `python -m chitragupta.draft references
 <draft>` after the gate, which writes a citekey-labelled `## References`
 section built from exactly the citekeys the draft cites
-(`references.py:90`'s `section_start` finds it by heading text). At
+(`references_section.py`'s `section_start` finds it by heading text). At
 render time, `_swap_manual_refs_for_citeproc`
-(`chitragupta/render_output/_citeproc.py:142`) replaces that section's
+(`chitragupta/render_output/_citeproc.py`) replaces that section's
 *entries* with pandoc's own placement anchor (`::: {#refs}\n:::\n`) while
 keeping the heading. Citeproc's bibliography, which is the one
 numbered consistently with the inline markers and the one with authors
@@ -229,7 +229,7 @@ where the bibliography is.
 
 `thesis-chapter-writer` skips the `references` step entirely
 ([ARCHITECTURE.md:192](ARCHITECTURE.md)). That is by design, and
-mechanically it could not run anyway: `references.py:529`'s CLI takes
+mechanically it could not run anyway: `references.py`'s CLI takes
 "Path to the draft file (Markdown)", and `section_start` scans for a
 Markdown heading a `.tex` fragment never has. Because the fragment
 carries no `## References` section, `section_start` returns `None` and
@@ -240,7 +240,7 @@ no exemption of its own.
 
 ## 🖼 Figure substitution: four combinations, one real no-op
 
-`_with_figures_for` (`chitragupta/render_output/_figures.py:324`) switches
+`_with_figures_for` (`chitragupta/render_output/_figures.py`) switches
 every figure marker to the form the target format can draw, one of four
 ways depending on the draft's own kind and whether the output is
 LaTeX-bound (`tex`/`latex`/`pdf`):

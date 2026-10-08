@@ -24,11 +24,11 @@ record of how the two images are built and verified.
 bash scripts/install_full_pipeline.sh dev-deps
 
 # Run the full suite with coverage
-.venv-full/bin/python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing
+.venv-full/bin/python -m pytest --cov --cov-report=term-missing
 
 # Same, on a host without pandoc/TeX Live/poppler: the render tests skip,
 # so opt out of the 100% bar (pyproject's fail_under) rather than lower it
-.venv-full/bin/python -m pytest --cov=chitragupta --cov=scripts --cov-report=term-missing \
+.venv-full/bin/python -m pytest --cov --cov-report=term-missing \
     --cov-fail-under=0
 ```
 
@@ -236,7 +236,10 @@ assets/                   data files the pipeline reads at runtime, tracked and 
                           attribute this project needs is injected into a temp copy at render
                           time (see assets/csl/README.md and render_output._collapsed_csl)
   csl/README.md             the vendoring policy, upstream URL and sha256
-.github/workflows/        ci.yml (test suite + coverage + poetry check, on push/PR) and release.yml
+.github/workflows/        ci.yml (on push/PR: test suite + coverage + poetry check on Linux and
+                          Windows, the hook launchers, the lint job, a Docker build and
+                          SonarQube), commit-message.yml (checks a PR's squash-commit fence),
+                          docs.yml (builds the documentation site) and release.yml
                           (on a v* tag: verifies tag matches pyproject.toml's version, builds
                           scripts/release.py's zip, publishes it to a GitHub Release)
 config.toml.example       tracked template for the central config -- paths, parser backend, worker
@@ -362,20 +365,27 @@ logs/                     gitignored -- pipeline.log, rotated at 5MB x 5 backups
 .claude/skills/           drafting layer: five that write a draft (survey-writer,
                           thesis-chapter-writer, textbook-chapter-writer, tutorial-writer,
                           deep-research), three that revise one that already exists
-                          (draft-reviser, corpus-reviser, agenda-reviser), and one that
-                          assembles accepted units into a book (book-assembler)
+                          (draft-reviser, corpus-reviser, agenda-reviser), one that
+                          assembles accepted units into a book (book-assembler), and one
+                          that draws a figure for the others (figure-drawer). Each has a
+                          SKILL.md and, where it needs one, a references/ folder read on
+                          demand
+.claude/skills-common/    references/ shared by several skills (critique, prose check,
+                          verbatim scan, collection scoping), kept once for all harnesses
 .claude/agents/           deep-research's subagents: deep-research-interviewer, deep-research-writer, peer-reviewer
-.claude/hooks/            citation_gate_hook.py, style_check_hook.py and code_standards_hook.py -- PostToolUse hooks,
+.claude/hooks/            citation_gate_hook.py and style_check_hook.py -- PostToolUse hooks,
                           mechanically enforcing the citation gate and the prose style check on
                           every Write/Edit under content/drafts/*.md and *.tex (see AGENTS.md);
+                          code_standards_hook.py reports C1/C2 on a .py write in a checkout;
                           session_start_hook.py checks the project can draft at all; draft_target.py
                           is the shared "which file did this tool call touch" helper both PostToolUse
                           hooks use; safe_path.py decides whether their children may import
                           chitragupta from the project root (checkout) or not (installed project);
                           patch_paths.py reads the drafts an apply_patch payload touches (Codex, OpenCode)
 .claude/settings.json     wires the four hooks above into PostToolUse/SessionStart
-.agents/skills/           Codex's copy of the ten skills; .codex/hooks.json runs the same hooks on apply_patch
-.opencode/                OpenCode's copy of the skills (-opencode suffix), its gate plugin, and
+.agents/skills/           Codex's copy of each skill's SKILL.md (references stay in .claude/);
+                          .codex/hooks.json runs the same hooks on apply_patch
+.opencode/                OpenCode's copy of each SKILL.md (-opencode suffix), its gate plugin, and
                           opencode.json's deny list for the unsuffixed names (docs/HARNESS.md)
 docker/                   Dockerfile (TeX Live/Pandoc/Poetry), Dockerfile.claude + docker-compose.yml +
                           entrypoint.sh + .env.example (the Claude Code agent container, cpu/gpu profiles)

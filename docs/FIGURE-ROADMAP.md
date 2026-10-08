@@ -1,6 +1,7 @@
 # 🖼 Figure quality: where it stands, and where it should go
 
-Status: **discussion notes, nothing implemented.** Written 2026-09-04
+Status: **discussion notes, partly implemented** (see the 2026-10-05/06
+updates in Part V). Written 2026-09-04
 against `c4ee19a`; revised 2026-09-05 to fold in material borrowed from
 `cathrynlavery/diagram-design` (see
 [Borrowed, with attribution](#-borrowed-with-attribution)). Nothing here
@@ -739,8 +740,9 @@ second is easier and noisier.
 
 ### VI.4 Replace the skeletons with exemplars
 
-`assets/tikz/` ships six structurally-correct, deliberately minimal
-scaffolds. Skeletons produce skeletal figures: an author who copies a
+`assets/tikz/` ships seven structurally-correct, deliberately minimal
+scaffolds, and since #1026 three finished figures in `exemplars/` (not yet one
+per metaphor). Skeletons produce skeletal figures: an author who copies a
 three-node pipeline tends to ship a three-node pipeline.
 
 **Proposal.** Alongside each scaffold, one **finished** figure per
@@ -929,8 +931,10 @@ makes derivation worth building.
 ### Adjacent: the unconsumed crops
 
 `plans/651-multimodal-drafting-access.md` measured 8,769 figure crops and
-497 `figures.json` indices on the real 497-PDF corpus, with **zero
-consumers**. Source figures reach no draft. Two routes that respect the
+497 `figures.json` indices on the real 497-PDF corpus, then with **zero
+consumers**. That plan has since shipped `draft figures <citekey>`, which
+surfaces a source's crops to a drafting skill; page-image retrieval is
+the route still open. Two routes that respect the
 layer boundary:
 
 - Surface the crops at the **drafting** layer, where a model is already
@@ -947,8 +951,9 @@ filed against the multimodal-drafting-access issue, not here.
 
 ## 🔍 Part IX: Figure-similarity provenance
 
-Written up in full separately as a candidate issue; summarised here so
-the roadmap is complete.
+Benchmarked since (#659): `bench/bench_figure_similarity.py` ran, and
+`plans/659-figure-similarity-tier.md` records the recommendation.
+Summarised here so the roadmap is complete.
 
 **The hole.** `TIKZ-STYLE.md` states it directly: a figure can launder
 borrowed material past every detector in `PLAGIARISM.md`, because a
@@ -1352,7 +1357,8 @@ most of its scope.
 
 ## 📏 What needs measuring first
 
-Following the bench self-check convention (`plans/356`), and the
+Following the bench self-check convention
+(`plans/356-bench-self-check-convention.md`), and the
 precedent of `bench_overlap_gate.py`, which killed a proposed gate on its
 own numbers:
 

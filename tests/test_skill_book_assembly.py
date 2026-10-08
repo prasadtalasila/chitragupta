@@ -21,8 +21,9 @@ own tests (tests/test_registry.py, tests/test_unit.py, tests/test_spec.py);
 this pins only that the skill still tells anyone to run them.
 """
 
-import re
 from pathlib import Path
+
+from tests.skill_text import skill_text
 
 SKILL = (
     Path(__file__).resolve().parent.parent / ".claude" / "skills" / "book-assembler" / "SKILL.md"
@@ -32,8 +33,9 @@ SKILL = (
 def _body() -> str:
     """The skill, whitespace collapsed -- these files are hand-wrapped, so
     a command can sit across a line break without being a different
-    command."""
-    return re.sub(r"\s+", " ", SKILL.read_text(encoding="utf-8"))
+    command -- with its references spliced in where it names them (#997):
+    the LaTeX conventions live in `references/latex-conventions.md`."""
+    return skill_text(SKILL)
 
 
 def test_the_assembler_runs_the_consistency_check():

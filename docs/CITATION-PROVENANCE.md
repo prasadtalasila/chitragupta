@@ -582,7 +582,9 @@ never exotic. No draft in this repository used it until the sample
 project arrived, and so no committed report showed the dangling "of" to
 a reader.
 
-## 📊 Sizing (as built)
+## 📊 Sizing (as first built)
+
+The figures below are from the first build and are not kept current.
 
 | Piece | Actual |
 | --- | --- |

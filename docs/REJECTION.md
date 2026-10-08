@@ -254,7 +254,8 @@ defaults (3 windows of 700 characters) lost to one-stage in *every*
 scenario and nobody had checked. That check has no pinning test of its
 own any more; it was removed along with the `triage` two-stage path
 itself, and only a historical comment survives at
-`chitragupta/retrieval_cli.py`'s "It is a lookup, not a stage" passage,
+`chitragupta/retrieval_cli.py`'s "a lookup rather than a mandatory
+stage" passage,
 pointing back here.
 
 ## ✍ Recording how a rejection was made
@@ -360,8 +361,9 @@ is still the wrong call, for four reasons.
 `TRIAGE_CHARS`, `EVIDENCE_CHARS`, `EVIDENCE_WINDOWS` and `k` together.
 Exposing them separately invites combinations that silently invert the
 design's purpose. This has happened: the 3-windows-of-700 default did
-exactly that. A test pins the documented arithmetic today; a
-config value cannot be pinned by a test.
+exactly that. No test pins the documented arithmetic any more (it went
+with the `triage` path), and a config value could not be pinned by one
+anyway.
 
 **The flexibility already exists at a better granularity.** `--chars`,
 `--windows` and `--k` are per-call: explicit at the call site, visible in

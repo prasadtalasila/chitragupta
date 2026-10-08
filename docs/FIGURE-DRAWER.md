@@ -131,9 +131,10 @@ Each step names the document that owns its rule.
 9. **Returns** the two paths, whether the probe passed, and whether it
    checked the rendered page.
 
-The skill folder also holds a `reference.md` that it reads only when a
-step sends it there: which metaphor fits, a worked panelled figure,
-fitting a figure without scaling it, and an annotated exemplar.
+The skill reads `.claude/skills/figure-drawer/references/figures.md` (one
+copy, whichever harness runs it) only when a step sends it there: which
+metaphor fits, a worked panelled figure, fitting a figure without scaling it,
+and an annotated exemplar.
 
 ## 🌱 A worked example
 
@@ -222,8 +223,9 @@ thesis, so two things are yours to act on:
 
 - **TikZ libraries.** When the render prints a `[tikz-libraries]` line,
   add the `\usetikzlibrary{...}` it names to your thesis preamble,
-  beside `\usepackage{tikz}`. A figure file must never load a library
-  itself inside the float ([TIKZ-STYLE.md](TIKZ-STYLE.md) says why).
+  beside `\usepackage{tikz}`. Keep the figure's own `\usetikzlibrary`
+  line and add nothing else about loading, such as flag-clearing or a
+  hook save and restore ([TIKZ-STYLE.md](TIKZ-STYLE.md) says why).
 - **Unicode.** When it prints a `[unicode]` line, copy
   `chitragupta-unicode.sty` next to your thesis and load it.
 

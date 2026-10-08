@@ -112,7 +112,7 @@ flowchart TB
 
 Every module, every file it writes, and the exact edges between them are in
 [DIAGRAMS.md's full workflow](DIAGRAMS.md#-3-the-full-workflow), which shows
-the same system at source-reading detail, plus ten other views of it.
+the same system at source-reading detail, plus twelve other views of it.
 
 Two properties carry the safety argument, and both are visible above:
 
@@ -172,6 +172,7 @@ draws the figures the others hand it and presents no draft of its own.
 | `corpus-reviser` | the same edit discipline over a full retrieval pass, when you ask for the whole corpus to be re-searched |
 | `agenda-reviser` | a repaired draft after a review agenda found unattended findings, one item at a time |
 | `book-assembler` | a composed book from already-accepted units: front matter, `\part`, `\chapter`, back matter |
+| `figure-drawer` | one figure for a draft that asked for it: a TikZ picture and its ASCII twin, compiled and reviewed, returned to the calling skill |
 
 The two teaching genres are deliberately separate: a textbook chapter
 explains, a tutorial is verified to run. `draft-reviser` and
@@ -323,8 +324,9 @@ is why it lives in `chitragupta/` and not in the package.
 
 A skill must not run this layer. A skill runs inline with the same Bash
 access as the session that invoked it, so it *can* shell out to
-`chitragupta/enrich/__main__.py`; AGENTS.md and eight of the nine
-`SKILL.md` files say it must not.
+`chitragupta/enrich/__main__.py`; AGENTS.md and eight of the ten
+`SKILL.md` files say it must not (the other two, `book-assembler` and
+`figure-drawer`, never touch the corpus).
 
 There are two reasons. This layer takes the same write lock as `sync`, so a skill
 invoking it can block or be blocked by the user's own run. And a first
@@ -490,7 +492,7 @@ a specific span of a specific source.
 | `content/parsed/<citekey>.passages.json` | **No**, and this is the one that matters (see below) |
 | `content/rendered/*.md`, `*.tex` | **Yes**: byte-identical, measured |
 | `content/rendered/*.pdf`, `content/review/*.pdf` | **No.** The TeX engine embeds a creation timestamp and a trailer `/ID`; two renders of identical input differ. `SOURCE_DATE_EPOCH`/`FORCE_SOURCE_DATE` does *not* make them identical |
-| `content/review/*.md` (the seven review reports, and a `.json` sibling beside each) | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries: `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
+| `content/review/*.md` (the review aids' reports, and a `.json` sibling beside each) | **Yes on unchanged input**, deliberately: they carry no wall-clock line, because the reason to write one is that it diffs against the next revision's. The qualification is the same one the passage-sidecar row carries: `citation_provenance` *quotes* passages, so a re-parse that moved a span moves the report with it |
 | `content/topics.json` | **Yes** on unchanged input: UMAP is seeded (`random_state=42`) and HDBSCAN is deterministic, verified as identical assignments over three runs on identical embeddings. But **a topic id is not a stable identifier**: clustering is whole-corpus, so adding or removing one document can renumber every other document's topic. Stable across a re-run, not across a corpus change: those are two different questions |
 | `content/retrieval_index.json` | A cache, not an output: term-frequency stats keyed by a per-item fingerprint, rebuilt for any document whose parsed text changed. Delete it and the next search rebuilds it |
 | `content/retrieval_passage_index.json` | The same, one unit down: per-*passage* term-frequency stats for `retrieve search --unit passage`. Its own file rather than a second key in the one above, because the two are invalidated by different things: that one by the parsed `.txt`, this one by the `.passages.json` sidecar beside it, which is why its fingerprint carries the sidecar's own stat and `min_passage_tokens`. Inherits the sidecar's instability, so see the row above it and the section below |
@@ -591,23 +593,16 @@ a post-mortem on a parse configuration that was not held fixed.
   not that the sentence attached to it is *right*. The review aids above
   are for that, and they are only aids: reading the source remains your
   job.
-- **It does not take an outline from you, except for a book.** The book
-  track has one: you write `spec.md`, sign it, and each unit is
-  generated from its slice ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)). At
-  *single-draft* scale there is no equivalent: all five genre skills
-  manufacture their own retrieval queries from a one-line topic, and
-  there is nowhere to hand them a structure, a per-section brief, or the
-  queries you want run. `deep-research` writes section-to-citekey rows into `sections.md`
-  at its Phase 4 and dispatches writers through `dossier brief
-  --section`, so the *mechanism* exists at this scale, but the model
-  writes the rows, and the other four genres never use them.
-- **It does not notice that you edited the draft by hand.** `scope.md`
-  fingerprints the *corpus*; nothing fingerprints the draft. So after a
-  manual edit, `sections.md`, `evidence.md` and `math.md` describe a
-  document that no longer exists, and `draft-reviser` reads them as
-  current. The book track does detect this for a unit
-  (`unit status` reports `stale: draft changed since accepted`); the
-  dossier has no counterpart.
+- **It takes an outline from you only if you write one.** The book
+  track has `spec.md`. A single draft can have an `outline.md` in its
+  dossier, with a `brief:` or `claim:` per section and the queries you
+  want run (#455, [DOSSIER.md](DOSSIER.md)); without one, the genre
+  skills manufacture their own queries from the topic.
+- **It notices a hand edit, but does not adapt to it on its own.**
+  `dossier stamp` fingerprints the draft, and `dossier status` reports
+  `CHANGED since last stamp` with what the edit put out of step (#462,
+  [USER-EDITS.md](USER-EDITS.md)). Bringing the dossier back in line is
+  `draft-reviser`'s job when you hand the draft back.
 - **It does not record who wrote a sentence, and will not.** Prose you
   write into a draft yourself is measured by every review aid as though a
   skill produced it. That is deliberate, not an omission: a draft gets
@@ -618,9 +613,9 @@ a post-mortem on a parse configuration that was not held fixed.
   [DESIGN.md](DESIGN.md#-what-happens-to-prose-a-person-supplies) has the
   argument and what is declared instead.
 
-The outline and hand-edit gaps are the subject of
-`plans/outline-driven-drafting-and-manual-edits.md`, which is a proposal
-and not built. Not recording authorship is a settled decision.
+The outline and hand-edit work was planned in
+`plans/outline-driven-drafting-and-manual-edits.md` and has shipped. Not
+recording authorship is a settled decision.
 
 [SECURITY.md](SECURITY.md) is the same list read from the security side,
 and it is longer: this pipeline does not sandbox a PDF, a TeX run or
@@ -713,14 +708,14 @@ done nothing. That is a trap, but a silent and harmless one, and it is
 the price of there being exactly one `--help` per layer.
 
 The drafting layer's twelve commands carry the same trap without moving
-into a package. `citation_gate.py`, `dossier.py`, `references.py`,
-`evidence_appendix.py`, `render_output.py`, `retrieval.py`,
-`style_check.py`, `spec.py`, `unit.py`, `registry.py`, `tldr.py` and
-`draft_figures.py` stayed flat in `chitragupta/`. Each is a top-level
+into a package. `citation_gate.py`, `dossier/`, `references.py`,
+`evidence_appendix.py`, `render_output/`, `retrieval.py`,
+`style_check.py`, `spec/`, `unit/`, `registry/`, `tldr.py` and
+`draft_figures.py` stayed in `chitragupta/` itself. Each is a top-level
 module or package there, never gathered into a shared drafting
 subpackage the way `enrich/`'s stages are. `chitragupta/draft.py` beside
 them is what dropped their `__main__` blocks and gave the layer its one front door.
-So `python -m chitragupta.dossier`, or any of the other ten, is the same
+So `python -m chitragupta.dossier`, or any of the other eleven, is the same
 silent no-op as the nested form above.
 
 One module refuses instead: `chitragupta/sync.py`. Silence is the right price
@@ -765,7 +760,7 @@ output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 
 The dependencies also run the wrong way for one. `chitragupta/review/` imports
-four of the five, and `chitragupta/enrich/__main__.py` imports `citation_gate`.
+four of the five, and `chitragupta/enrich/_scope.py` imports `citation_gate`.
 A `chitragupta/draft/` package would therefore have the review and
 enrichment layers importing the drafting layer by name, the shape of the
 cycle that keeping `provenance` and `render` out of the stage list prevents.

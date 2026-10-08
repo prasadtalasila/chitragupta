@@ -112,7 +112,7 @@ panels of about 48mm each overflow an ordinary text block by 71.8pt, and
 
 **Do not reach for `subcaption`, `subfig` or `subfigure`.** A figure
 file can load its own TikZ library but never its own package
-(`\usepackage` is preamble-only), and `thesis-chapter-writer-opencode`'s
+(`\usepackage` is preamble-only), and a thesis chapter's
 fragment is `\input` into a thesis whose preamble this project never
 sees. Drawn letters work in every genre and change no preamble.
 

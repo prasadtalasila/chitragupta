@@ -192,7 +192,7 @@ point at where a claim came from.
 
 | System | Lexical | Dense | Other |
 | --- | --- | --- | --- |
-| **Chitragupta** | **Okapi BM25**, `k1=1.5`, `b=0.75`, stdlib | optional Chroma, `all-MiniLM-L6-v2` | BERTopic (UMAP + HDBSCAN), read by humans only |
+| **Chitragupta** | **Okapi BM25**, `k1=1.5`, `b=0.75`, stdlib | optional Chroma, `all-MiniLM-L6-v2` | BERTopic (UMAP + HDBSCAN), read by the `converge` stage and `corpus discover`; no drafting skill reads it |
 | RAGFlow | custom term weighting into an engine DSL | yes | knowledge graph, RAPTOR |
 | AutoRAG | `rank_bm25`'s `BM25Okapi` | yes | -- |
 | papersgpt | **none** | FAISS (HNSW / IVFPQ / IVFFlat) | -- |
@@ -249,11 +249,10 @@ STORM: one or two broad calls to discover what the corpus holds, *then*
 corpus-specific personas derived from that, then rounds of
 persona-driven interviews.
 That is better query manufacture than any of the six. The other four
-genre skills have nothing: `survey-writer` step 1 is the prose
-instruction *"break the requested topic into 2-4 sub-themes"*. The gap is
-distribution, not invention, and Theme E in
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-theme-e-the-humans-own-structure)
-is the plan.
+genre skills run the queries a person declares in `outline.md` (Theme E
+in [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md#-theme-e-the-humans-own-structure),
+shipped), and fall back to splitting the topic into 2-4 sub-themes only
+when there is none.
 
 **The one published method whose query costs no LLM call.**
 ITER-RETGEN (Shao et al., *Findings of EMNLP 2023*) forms the next
@@ -462,8 +461,9 @@ Cheap to change and unmeasured here, so it is named rather than claimed.
 design intent is that the drafter holds `claim:` lines it wrote itself,
 not 500-character source windows, because a model writing with a
 source's sentences in front of it will track those sentences.
-[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s Theme A exists because the
-current arrangement does not yet fully achieve this.
+[FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s Theme A (A1-A4, shipped) moved
+the arrangement toward this; raw windows still reach the drafter in the
+cases its declined half covers.
 
 ### 🌲 The synthesis shape: how N passages become one section
 
@@ -508,9 +508,10 @@ genres write in a single context, which is `simple_summarize`'s shape with a
 human-sized context window instead of a token budget: nothing truncates, but
 nothing checks either. No genre currently verifies that the citekeys it was
 handed are the citekeys it used. [FEATURE-ROADMAP.md](FEATURE-ROADMAP.md)'s C5
-is the item that names this exact gap, the union invariant above, and remains
-unbuilt; A3 and B2 addressed adjacent context-leak and synthesis problems and
-have since shipped.
+is the item that names this exact gap, the union invariant above. It shipped
+as `review union` for an assembled book; nothing yet checks a single genre
+draft this way. A3 and B2 addressed adjacent context-leak and synthesis
+problems and have since shipped.
 
 ## ✅ Stage 10: citation and verification
 
@@ -740,6 +741,6 @@ because documents are the unit; the gate means one thing because it only ever
 checks one thing. Each buys a property you can state in a sentence and test, at
 the cost of capability the other six have.
 
-Where this pipeline is behind: no hybrid fusion, query manufacture in one skill
-of five, no draft fingerprint, and evidence that still reaches the drafter as
+Where this pipeline is behind: no hybrid fusion, persona-driven query
+manufacture in one skill of five, and evidence that still reaches the drafter as
 raw windows more often than as written claims.
