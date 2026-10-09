@@ -66,6 +66,7 @@ the Status line. This plan argues from them; read both.
 ## 🧭 Table of contents
 
 - [Decisions this plan makes](#-decisions-this-plan-makes)
+- [Where the survey workflow is inverted](#-where-the-survey-workflow-is-inverted)
 - [Global constraints](#-global-constraints)
 - [File structure](#-file-structure)
 - [Review focus](#-review-focus)
@@ -95,7 +96,7 @@ discussion's wording it says so and why.
 | **Headline metric** (revised) | **Unsupported fraction** = words in sentences carrying at least one finding (`unsupported-text`, `copy-mismatch` or `unquoted-text`, a sentence counted once) ÷ total words. The copied fraction (verified copied words ÷ total) is kept as the second line, and the not-checkable share as the third, so the three account for the whole digest | The author's call: the number a repair pass drives down is the one to lead with. `--baseline` reports it before and after, and `fell` requires it not to rise |
 | **Writes unconditionally** | `.md` and `.json` are filed on every run, as `agenda` does; `--json` only picks stdout; `--formats` as every aid | The `.json` is the next pass's `--baseline`, which is the reason `agenda` has no `--write` flag either (`agenda/__init__.py`'s `run` docstring) |
 | **Page mismatch** (open question 2, revised to explain) | A note on the copied span (`cited p. 4-5, found on p. 7`), never a class and never a finding; the guide gets a section on what a page is here and why a note arises | The three classes are what a person watches fall. A page note is a locator to correct, not unsupported text. What "page" means (the parse's physical page, not the printed folio), why a run can report two pages, and how to repair it are in `docs/VERBATIM-DIGEST.md`, Task 9 |
-| **Draft and render workflow** (open question 3, revised) | The skill follows `survey-writer`'s process step for step: dossier, retrieval, gate, references, `draft render` to `tex`/`pdf`/`md`, read-as-the-reader, steering, prose check, fingerprint stamp, present. Three survey steps are replaced by `review digest` with the reason stated in the skill: the critique against the evidence packet, the verbatim scan, and the evidence sidecar | The author's call. Reuses the chain every genre runs and the hook already enforces; a digest renders like any draft. The three replaced steps would each report the digest's defining property as a defect: the scan flags every run, the critique reads a `claim:`/`quote:` packet the digest never drafts from, and a sidecar would print the digest back |
+| **Draft and render workflow** (open question 3, revised) | The skill follows `survey-writer`'s process step for step: dossier, retrieval, gate, references, `draft render` to `tex`/`pdf`/`md`, read-as-the-reader, steering, prose check, fingerprint stamp, present. Three survey steps are replaced by `review digest` with the reason stated in the skill: the critique against the evidence packet, the verbatim scan, and the evidence sidecar | The author's call. Reuses the chain every genre runs and the hook already enforces; a digest renders like any draft. The three replaced steps would each report the digest's defining property as a defect: the scan flags every run, the critique reads a `claim:`/`quote:` packet the digest never drafts from, and a sidecar would print the digest back. The survey minimises copying and the digest maximises it, so the reuse is of the *mechanical chain* only; every step and rule that carries the survey's anti-copying posture is listed and inverted in [Where the survey workflow is inverted](#-where-the-survey-workflow-is-inverted) |
 | **Support tier** (open question 4, revised to explain) | `unsupported-text` stays lexical (`citation_provenance.score_claim` under `config.PROVENANCE_WEAK_SCORE`), and the guide explains what `review support`'s NLI entailment model adds, how to run it on a digest by hand, and why it is not wired in | Reuses a threshold that ships and is documented; needs no optional dependency; keeps the aid at interpreter tier 1. The explanation is in `docs/VERBATIM-DIGEST.md`, Task 9, and the skill's step 14 names the command |
 | **`copy-mismatch` boundary** | `MISMATCH_SHARE = 0.8`: a sentence `locate` cannot find whose distinctive words are at least 80% present on one page of the source | "Nearly matches" needs a number. `near_miss` already computes this share; the constant is published with its reason and is not to be tuned (docs/CODE-STANDARDS.md R3). Below it the sentence is the drafter's own and is `unquoted-text` |
 | **A sentence is its own whole** | A finding carries the whole sentence; a half-copied sentence is a `copy-mismatch` with the missing words listed | The discussion's stated con. Splitting a sentence into copied and original halves is a second matcher this plan does not build |
@@ -107,6 +108,41 @@ discussion's wording it says so and why.
 | **Item identity** | `agenda/_identity.item_id("digest", cls, section, first citekey, sentence)` and `section_anchor`, imported | The one place agenda items get an id; a copy here is what `tests/test_duplicate_helper_scan.py` exists to catch |
 | **`review/__init__.py` at the C2 ceiling** | `require_reviewable` and `report_dir` move to `chitragupta/review/_paths.py` and are re-imported into `review/__init__.py` under their names | The module holds 250 code lines today and `AIDS` needs one more. The split is forced and lands at the boundary the module's own docstring draws; `report_path` stays because it needs `AIDS`. No caller changes |
 | **No sample-project report** | `docs/examples/sample-project/content/review/` gains nothing | A digest is per-host data; REVIEW.md's sentence about the sample set gets the exception named |
+
+## 🔄 Where the survey workflow is inverted
+
+`survey-writer` is built to **minimise** copying: it drafts from
+`claim:` lines written in the drafter's own words, fuses two or more
+sources per paragraph so no paragraph can be a transcription, critiques
+the draft against the evidence packet, and runs the verbatim scan. The
+digest is built to **maximise** copying. Reusing the survey workflow
+therefore means reusing its mechanical chain (dossier, retrieval, gate,
+references, render, prose check, stamp) and inverting, step by step,
+everything in it that exists to keep source wording out of the draft.
+The skill (Task 8) says so at each step, and the global rules that state
+the survey's posture get a carve-out naming the digest (Task 9), so a
+reader of either file meets a decision rather than a contradiction.
+
+| Survey step or rule | Carries the anti-copying posture? | In the digest |
+| --- | --- | --- |
+| Step 0 dossier, reader, scope, dialect | no | kept. Dialect governs only the connecting sentences; copied text keeps its source's spelling |
+| Step 1 retrieval per sub-theme, `outline.md` queries verbatim | no | kept |
+| Step 2 evidence packet: `claim:` in your own words, `quote:` "only when a quotation is genuinely warranted", "`claim:` is the only field you may draft prose from" | **yes**, the heart of it | **inverted, inside the contract rather than against it.** Every passage the digest will copy is recorded as a `quote:`, since in a digest every run *is* an intended quotation; the block's `claim:` still says in the drafter's words what the passage establishes, which is what a later `draft-reviser` reads. The connecting sentences are the only prose drafted from `claim:`. `docs/DOSSIER.md`'s "`quote:` is usable in a draft only inside quotation marks with an attribution" gains the digest as the one named exception: attributed per run, no quotation marks, never a drafting source |
+| "Prose standards" section and `docs/WRITING-STANDARDS.md` §4 sentence craft | partly: it governs the drafter's voice | applies to the connecting sentences only. The skill says the copied text is exempt by definition and the prose check (step 16) will flag it; report and fix none |
+| Step 6 draft, and `docs/WRITING-STANDARDS.md` §11 "a paragraph closes on more than one citekey; you cannot transcribe two sources simultaneously" | **yes** | **inverted.** One source per run, by rule; a run is a transcription by design. §11's table gets a `digest` row: unit "document", "every run is one source's words; the rule has no paragraph to bind at, and `review digest` is the check that applies". `_units.UNITS["digest"] = "document"` (Task 7) is the code half |
+| Step 7 never write a citekey you did not retrieve | no | kept unchanged |
+| Step 8 section map | no | kept |
+| Step 9 figure | no (none drawn) | dropped, with the reason |
+| Step 10 critique against the evidence packet (shared `critique.md`, which itself runs the verbatim scan and edits toward less overlap) | **yes** | **replaced** by `review digest` (step 14); named in `_EXCLUDED_SKILLS` |
+| Steps 11-12 gate, references, render | no | kept verbatim |
+| Step 13 evidence sidecar | yes: it is where verbatim wording goes *instead of* the draft | **replaced**: the digest is the sidecar's content, cited per run |
+| Step 14 read as the reader | no | kept, with digest-specific checks |
+| Step 16 prose check | partly | kept, report-only, with the expectation stated that copied text is flagged |
+| Step 17 verbatim scan (shared `verbatim-scan.md`) | **yes** | **replaced** by `review digest`; named in the scan's `_HELPERS` |
+| Step 18 stamp and present | no | kept |
+| `AGENTS.md` "Verbatim source wording has one legitimate home, and it is not the draft ... never copy a span out of one back into body prose" | **yes**, and it binds every skill | gets the carve-out: *one genre, the verbatim digest, is that wording with a citation closing every run, and it is never a source for any other draft* (Task 9 step 2) |
+| `docs/GENRE.md` "What all N have in common": the verbatim scan is run, the critique is shared by the genre skills | **yes** | the section names the digest's two exemptions and why (Task 9 step 2) |
+| `agenda-reviser`'s `verbatim-run` repair, which paraphrases short runs unattended | **yes**, and the discussion forbids changing it | the `agenda` never reads the digest aid, but `review agenda` run by hand on a digest would still queue every run from `review verbatim scan`'s report if someone had filed one, and `agenda-reviser` would then paraphrase the digest away. Guarded in prose only, since the two skills are frozen: the digest skill, `docs/VERBATIM-DIGEST.md` and one sentence in `docs/AGENDA.md` say never to run `agenda-reviser` on a digest. Recorded as the one residual hazard this PR cannot close in code |
 
 ## 🔒 Global constraints
 
@@ -2440,6 +2476,17 @@ records `- genre: digest`, rendered beside the other drafts in the
 topic, and per-host data like every file under `content/`. Nothing in
 its name marks it as a digest; the dossier does.
 
+**This skill runs `survey-writer`'s workflow with its purpose turned
+round.** A survey minimises copying: it drafts from `claim:` lines in
+the drafter's own words, fuses sources so no paragraph can be a
+transcription, and scans for verbatim reuse. A digest maximises copying.
+The mechanical chain below is the survey's; every step of the survey's
+that exists to keep source wording out of the draft is inverted here and
+says so where it stands. `docs/WRITING-STANDARDS.md` §4 and §11 govern
+the connecting sentences only. **Never run `agenda-reviser` on a
+digest**: its `verbatim-run` repair paraphrases copied text unattended,
+which would undo the digest.
+
 Paths in this skill are from the project root, not from this skill's
 own folder.
 
@@ -2542,11 +2589,18 @@ steps are replaced by `review digest` and say so below.
    `python -m chitragupta.draft retrieve search "<query>" --k 15 --log <draft>`,
    then read the candidates' parsed text.
 
-2. **Score every candidate before it counts.** Record every candidate
-   you read in `evidence.md` as the dossier contract asks (`relevance:`
-   and `claim:` per block; see `docs/DOSSIER.md`), and every candidate
-   you turn down in `rejected.md` with why. A `quote:` field is not
-   needed: the digest itself is the quotation, attributed in place.
+2. **Score every candidate before it counts, and record the passage
+   you will copy as a `quote:`.** Record every candidate you read in
+   `evidence.md` as the dossier contract asks (`docs/DOSSIER.md`): one
+   block per citekey with `relevance:`, a `claim:` saying in your own
+   words what the passage establishes, and a `quote:` holding the exact
+   passage you intend to copy. This is the survey's contract read the
+   other way round: a survey captures a `quote:` only when a quotation
+   is genuinely warranted, and in a digest every run is one, so every
+   passage you will copy is a `quote:` and `claim:` is drafted from only
+   for the connecting sentences. The `quote:` is what a later
+   `draft-reviser` or `review quotation` checks against the source.
+   Every candidate you turn down goes in `rejected.md` with why.
 
 3. **Re-search a thin sub-theme** with a reformulated query before
    settling for a weak passage.
@@ -2561,9 +2615,12 @@ steps are replaced by `review digest` and say so below.
    both, each under its own citation, and let a connecting sentence of
    yours name the disagreement.
 
-6. **Draft, copying exactly.** Open `content/parsed/<citekey>.txt` and
-   copy each passage character for character, including the parse's
-   own noise. Do not fix hyphenation, ligatures, a dropped word or a
+6. **Draft, copying exactly.** This is where the survey's rule is
+   inverted: a survey paragraph must rest on two or more sources so it
+   cannot be a transcription of any one (`docs/WRITING-STANDARDS.md`
+   §11); a digest run rests on exactly one source and is a transcription
+   of it by design. Open `content/parsed/<citekey>.txt` and copy each
+   passage character for character, including the parse's own noise. Do not fix hyphenation, ligatures, a dropped word or a
    reference marker; do not reorder; do not shorten. If the parse is too
    broken to read, pick another passage or another paper. Close each
    run with its citation and page. Where two runs need a bridge, write
@@ -2919,6 +2976,29 @@ Add to `mkdocs.yml` under `Writing:`, after the figure-drawer line:
   text in the sources' own words, checked by
   `python -m chitragupta.review digest`; it is never a source for any
   other draft, and `draft-reviser` is still the way to change one.*
+  **The carve-out**, at lines 221-233 ("Verbatim source wording has one
+  legitimate home, and it is not the draft ... never copy a span out of
+  one back into body prose"): append *One genre is the exception by
+  construction: a verbatim digest (`review-digest`) is that wording,
+  with a citation closing every copied run, recorded as `quote:` in its
+  dossier and never a source for any other draft; `docs/VERBATIM-DIGEST.md`
+  carries its rule, and `agenda-reviser` is never run on one.*
+- `docs/DOSSIER.md:134` ("Only `claim:` may be drafted prose from") and
+  `:292` ("`quote:` is ... usable in a draft only inside quotation
+  marks with an attribution"): after each, one sentence naming the
+  digest as the exception: in a digest every copied run is a recorded
+  `quote:` rendered in place with its citation and no quotation marks,
+  and `claim:` is drafted from only for the connecting sentences.
+- `docs/WRITING-STANDARDS.md` §11's unit table: a `digest` row, unit
+  "document", meaning "every run is one source's own words, closed by
+  its citation; the rule has no paragraph to bind at, and
+  `python -m chitragupta.review digest` is the check that applies".
+  §4: one sentence that in a digest the sentence-level rules bind the
+  connecting sentences only.
+- `docs/AGENDA.md`: one sentence, where the item classes are
+  introduced: the agenda never reads `review digest`, and
+  `agenda-reviser` must never be run on a digest, because its
+  `verbatim-run` repair paraphrases copied text unattended.
 
 - [ ] **Step 3: Everywhere else the counts moved**
 
@@ -2961,12 +3041,15 @@ Grep for the claims the change touches, not the files:
 grep -rn -i 'never a source\|passing off\|own words\|quotation marks' SOUL.md docs/WRITING-STANDARDS.md docs/PLAGIARISM.md AGENTS.md
 ```
 
-Read each hit against the digest. The expected result: nothing
-contradicts it, because every copied run is cited and the digest is
-never a drafting source. If `docs/WRITING-STANDARDS.md` §9 says verbatim
-wording "has one legitimate home, and it is not the draft", add a
-sentence there: a verbatim digest is the exception whose dossier states
-its nature, and `docs/VERBATIM-DIGEST.md` carries its rule.
+Read each hit against the digest. Three contradict it and are the
+carve-outs Step 2 already makes (AGENTS.md's "one legitimate home",
+DOSSIER.md's "only `claim:` may be drafted from", WRITING-STANDARDS
+§11's "cannot be a transcription"). Anything else the grep finds that
+states the survey's posture as a rule for *every* draft gets the same
+one-sentence exception; `SOUL.md` itself should need none, because the
+digest keeps its rule (every run attributed, never passed off, never a
+drafting source), and if a sentence there reads otherwise, say so in the
+PR rather than editing SOUL.md in a feature PR.
 
 - [ ] **Step 5: Run the doc pins**
 
@@ -3100,6 +3183,7 @@ the rest of the cycle: green CI, one Copilot round, re-check `main`,
 | Revision 3: skill named `review-digest` | Task 8; `.opencode/opencode.json`; every doc row in Task 9 |
 | Revision 4: page mismatch explained | Guide section "Pages, and what a page note means" (Task 9 step 1); CLI.md paragraph; skill step 14 and format rule |
 | Revision 5: the survey's draft and render workflow | Task 8 process, steps 0-18 mirroring `survey-writer`, with the three replaced steps named in place |
+| The survey minimises copying, the digest maximises it | [Where the survey workflow is inverted](#-where-the-survey-workflow-is-inverted): every survey step and global rule carrying the posture, and what the digest does with each; the skill's opening paragraph and steps 2 and 6 (Task 8); the AGENTS.md, DOSSIER.md, WRITING-STANDARDS §11 and AGENDA.md carve-outs (Task 9 step 2); the `agenda-reviser` hazard, guarded in prose |
 | Revision 6: NLI support explained | Guide section "Lexical support, and what the NLI `support` aid adds" (Task 9 step 1); skill step 14 |
 | Genre entry `digest` in the dossier's registry and `docs/GENRE.md` | Task 7; Task 9 step 2 |
 | Review aid `digest` in `chitragupta/review/verbatim_digest.py` plus its renderer | Tasks 2-6 |
