@@ -13,7 +13,7 @@ set -u
 
 SELF="$(readlink -f "$0")"
 RC_ENV_FILE="${RC_ENV_FILE:-${SELF%.sh}.env}"
-# shellcheck source=rc-daemon.env
+# shellcheck source-path=SCRIPTDIR source=rc-daemon.env.example
 . "$RC_ENV_FILE" || { echo "cannot read $RC_ENV_FILE" >&2; exit 1; }
 : "${RC_DIR:?} ${RC_NAME:?} ${RC_PREFIX:?} ${RC_PERMISSION_MODE:?} ${TMUX_SESSION:?} ${RC_LOG:?}"
 LOG="$RC_LOG"

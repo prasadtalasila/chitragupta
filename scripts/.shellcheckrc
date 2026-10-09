@@ -1,0 +1,4 @@
+# Let a `# shellcheck source=` directive be followed without -x, so
+# rc-daemon.sh is checked against the committed rc-daemon.env.example
+# rather than the gitignored rc-daemon.env it sources at run time.
+external-sources=true
