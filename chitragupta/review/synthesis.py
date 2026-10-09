@@ -159,7 +159,7 @@ def findings(report: Report) -> list[dict]:
     saying so twice tells a reader nothing the first finding did not.
 
     An uncited unit is **never** a finding. Original prose is the genre
-    working correctly in three of the five genres, and reporting it would
+    working correctly in four of the six genres, and reporting it would
     bury what this report is actually for.
 
     Undeclared first, then by line: a drafter who stated their reason has

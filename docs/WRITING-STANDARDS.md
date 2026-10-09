@@ -75,6 +75,10 @@ out they were missing background.
 consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
 Precision" and §7.7 "Writing Style" on the passive-voice failure.*
 
+In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
+rules bind the drafter's connecting sentences only; copied text keeps
+its source's style.
+
 - Short sentences, one idea each. If a sentence must be reread to parse,
   split it.
 - Active voice with a named actor: "the scheduler discards the packet", not
@@ -541,6 +545,7 @@ rather than a default.
 | `survey`, `thesis-chapter`, `deep-research` | paragraph | A body paragraph closes on more than one citekey |
 | `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* (see below). Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
 | `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |
+| `digest` | document | Every run is one source's own words, closed by its citation ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)). The rule has no paragraph to bind at: a digest is a transcription by design, and `python -m chitragupta.review digest` is the check that applies |
 
 **For the section unit, spread is not enough.** A section that cites
 three papers by running one out before starting the next spans three

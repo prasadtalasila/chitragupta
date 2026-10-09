@@ -58,8 +58,8 @@ _POINTER_CHARS = 2000
 # The five skills this step belongs to -- drafting fresh prose from a
 # claim:/quote: evidence packet, as distinct from a reviser (which edits
 # an existing draft section by section) or book-assembler (writes no
-# prose at all). docs/GENRE.md's "What all ten have in common" section
-# states this same five-of-ten split in the same words.
+# prose at all). docs/GENRE.md's "What all eleven have in common" section
+# states this same five-of-eleven split in the same words.
 _GENRE_SKILLS = {
     "survey-writer",
     "thesis-chapter-writer",

@@ -559,7 +559,9 @@ not its sequence.
 2. **`--json`, widened** to every aid. Hard prerequisite for everything
    below. *Done: `verbatim scan` in 5.4.0, then `provenance` and
    `coverage` in 6.16.0, and `synthesis`/`uncited` from the day
-   each landed. All ten aids now emit JSON on the same
+   each landed, and `digest` (#991) emits one too, though it is the one
+   aid the agenda deliberately does not read. All ten aids it reads now
+   emit JSON on the same
    layer-level plumbing.*
 3. **Severity buckets and the boilerplate allowlist.** *Done in
    5.5.0. The allowlist shipped as per-host, gitignored data (like

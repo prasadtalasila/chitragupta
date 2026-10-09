@@ -97,6 +97,12 @@ person to decide.
 - Prose (style_check): read
 - Dossier drift: read
 
+One aid is never listed here: `review digest`, whose classes describe a
+verbatim digest and nothing else, so the agenda never reads it. For the
+same reason `agenda-reviser` must never be run on a digest: its
+`verbatim-run` repair paraphrases copied text unattended, which on a
+digest is the whole text ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)).
+
 ## Summary
 
 - 11 verbatim-run

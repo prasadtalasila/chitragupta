@@ -50,7 +50,7 @@ Related reading:
 
 - [Picking one](#-picking-one)
 - [At a glance](#-at-a-glance)
-- [The five drafting genres](#-the-five-drafting-genres)
+- [The six drafting genres](#-the-six-drafting-genres)
 - [Assembling a book](#-assembling-a-book)
 - [Drawing a figure: figure-drawer](#-drawing-a-figure-figure-drawer)
 - [Revising: draft-reviser](#-revising-draft-reviser)
@@ -79,6 +79,7 @@ skill.
 | a student, studying the topic (reading, not typing) | explaining with worked examples | `textbook-chapter-writer` |
 | a learner at a keyboard, following you to a working result | a hands-on lesson | `tutorial-writer` |
 | someone who needs several perspectives on the topic reconciled, and where the corpus disagrees with itself | multi-perspective research report | `deep-research` |
+| someone studying privately, who wants the papers' own words with a citation on every run | verbatim digest | `review-digest` |
 
 The pair that gets confused is the teaching pair, and the skills say so
 themselves. If the request is "write something teaching X", ask *will the
@@ -98,20 +99,21 @@ document that fails at both.
 | `textbook-chapter-writer` | `content/drafts/<slug>.md` | sparse: background only | none | one run |
 | `tutorial-writer` | `content/drafts/<slug>.md` | closing section only | none | one run, plus running the lesson |
 | `deep-research` | `content/drafts/deep-research-<slug>.md` | every claim | 6 interviewers, N writers, 4 reviewers | heaviest by design |
+| `review-digest` | `content/drafts/<topic>/<name>.md`, mostly the sources' own words | every copied run | none | one run, plus `review digest` |
 | `draft-reviser` | edits an existing draft in place | inherits the draft's | none | cheapest path there is |
 | `corpus-reviser` | edits an existing draft in place | inherits the draft's | none | a full retrieval pass, by request only |
 | `agenda-reviser` | edits an existing draft in place | inherits the draft's | none | one agenda run, then one edit per unattended item |
 | `book-assembler` | `content/rendered/<book>/book.tex` | writes none of its own | none | one composition pass over accepted units |
 | `figure-drawer` | one `figures/<name>.tex` + `.txt` pair beside a draft | none: no citekey in a figure file | none | one figure, compiled and reviewed |
 
-All five drafting skills also write `content/dossiers/<draft path minus
+All six drafting skills also write `content/dossiers/<draft path minus
 suffix>/`; `deep-research` and `thesis-chapter-writer` additionally write
 a machine-readable `provenance.json` in that same directory. Nothing under
 `content/` is tracked by
 git; see [DRAFT-ITERATION.md](DRAFT-ITERATION.md#-backup-and-restore)
 for how a draft and its dossier get backed up.
 
-## ✍ The five drafting genres
+## ✍ The six drafting genres
 
 Four of the five have a committed, gate-passed sample under a thousand
 words each, drafted by the real pipeline over the five-paper sample
@@ -236,6 +238,26 @@ want is a single-pass literature survey, `survey-writer` is faster and
 the skill will point you there. Its own cost structure, and the one
 remaining thing that could reduce it, is
 [TOKENS.md](TOKENS.md#-example-2-six-interview-packets-from-phase-3-to-phase-7f).
+
+### 📋 `review-digest`
+
+The sixth genre, and the one that turns the others' first rule round. A
+verbatim digest is private study text: most of it is copied exactly from
+parsed PDFs in the corpus, each copied run ends with a citation, there
+are no quotation marks, and a few short sentences of the drafter's own
+connect the runs. Its reader is the user, studying. It is never a
+deliverable and never a source for any other draft.
+
+It runs `survey-writer`'s draft-and-render workflow step for step and
+inverts, in place, every step that exists to keep source wording out of
+a draft: every passage to be copied is recorded as a `quote:` in the
+dossier, one source per run replaces multi-source synthesis, and the
+pre-gate critique, the verbatim scan and the evidence sidecar are
+replaced by `python -m chitragupta.review digest`, which leads with the
+unsupported fraction and lists every sentence that is not verified
+source text. It does run the prose check, reporting and fixing nothing.
+[VERBATIM-DIGEST.md](VERBATIM-DIGEST.md) has the whole of it, including
+the one prohibition: never run `agenda-reviser` on a digest.
 
 ## ✏ Revising: `draft-reviser`
 
@@ -426,7 +448,7 @@ wrong.
 ## 🔑 What all eleven have in common
 
 These are not per-skill choices. They are the same rules, stated in each
-of the ten `SKILL.md` files or, where several skills share the wording
+of the eleven `SKILL.md` files or, where several skills share the wording
 (the critique loop, the prose check, the verbatim scan, collection
 scoping), once in a reference under `.claude/skills-common/references/`
 that each skill's step names (#997). A skill that broke one would be the
@@ -440,7 +462,7 @@ to differ; `tests/test_skill_harness_copies.py` fails on anything else
 and names the copy that moved ([HARNESS.md](HARNESS.md)). A reference
 exists once, under `.claude/`, and names no skill and no harness tool.
 
-Two of the ten are not drafting skills. `book-assembler` composes units
+Two of the eleven are not drafting skills. `book-assembler` composes units
 other skills already wrote, so where a rule below is about *writing*
 (the dossier, the acronym vocabulary), it says how that skill differs and
 why instead of leaving it silently exempt. `figure-drawer` presents no
@@ -510,6 +532,10 @@ python -m chitragupta.review verbatim scan content/drafts/<path>
 ```
 
 That reports wording the draft shares with *any* parsed source, cited or not.
+One skill does not run it: `review-digest` presents a draft that is the
+sources' wording by design, so the scan would flag every run, and
+`python -m chitragupta.review digest` is the check that replaces it (and
+the critique loop) there. It does run the prose check below.
 **It cannot block a draft, and no skill treats it as a condition of
 presenting**. When the scan became a standing step, what changed was who may
 invoke a review aid, not what one may do to a draft. `python -m

@@ -55,7 +55,7 @@ def drafts_dir_for(assembled: Path) -> Path:
 def review_dir_for(draft: Path) -> "Path | None":
     """`draft`'s place under `config.REVIEW_DIR`, or None if it has none.
 
-    `content/drafts/` first, which is every draft the other nine aids
+    `content/drafts/` first, which is every draft the other ten aids
     read. `content/rendered/` second, for the one input that is an
     assembly rather than a draft: without it `book.tex` mirrors to
     nothing and every book in the project shares one flat

@@ -132,7 +132,10 @@ drafting run had already been handed with nothing anywhere saying so.
 Each block carries `relevance:` (why this source bears on the
 sub-theme), `claim:` (what it establishes, in the drafter's own words)
 and an optional `quote:` (its exact wording). **Only `claim:` may be
-drafted prose from**, and the ordering is the whole mechanism: it is
+drafted prose from** (the verbatim digest,
+[VERBATIM-DIGEST.md](VERBATIM-DIGEST.md), is the one genre that copies
+its `quote:`s into the draft, each with its citation and no quotation
+marks), and the ordering is the whole mechanism: it is
 written at the moment the evidence is judged, before any sentence of the
 draft exists, so it cannot be a lightly-edited copy of the passage.
 `quote:` is absent by default, because a quotation is a deliberate act
@@ -290,7 +293,10 @@ quote: an optional verbatim span, quotable-only
   passage is no longer the thing on screen, cannot be a lightly-edited
   copy of it.
 - **`quote:`** is optional, verbatim, and usable in a draft **only**
-  inside quotation marks with an attribution. It is absent by default: a
+  inside quotation marks with an attribution, except in a verbatim
+  digest, where every copied run is a recorded `quote:` rendered in place
+  with its citation and `claim:` is drafted from only for the connecting
+  sentences. It is absent by default: a
   captured quote is a quote in the drafter's context, which is the thing
   this contract removes, so one is captured only when a quotation is
   intended.
@@ -328,7 +334,7 @@ decision and `tests/test_evidence_appendix.py` pins it.
 
 ### 📖 The evidence sidecar, decided per genre
 
-Four of the five drafting skills also render an **evidence sidecar**,
+Four of the six drafting skills also render an **evidence sidecar**,
 `content/rendered/<topic>/<name>.evidence.{md,pdf}`, listing each cited
 source and the verbatim spans its dossier marked quotable
 ([CLI.md](CLI.md#-chitragupta-draft-evidence)). It changes what a
@@ -342,12 +348,13 @@ nothing are decisions on the record, not omissions:
 | `survey-writer` | **yes** | Citation-dense, and its reader is mapping a field |
 | `thesis-chapter-writer` | **yes** | An examiner reading adversarially is the ideal reader for one. A sidecar is standalone and is never `\input` into the thesis, so none of the objections that keep a References section out of the fragment apply |
 | `textbook-chapter-writer` | **yes, and usually empty** | Deliberately citation-thin, sources cited for motivation, `evidence.md` kept thin by design, so most chapters capture no `quote:` and nothing is written |
+| `review-digest` | **no** | Every copied run is already the source's own words with its citation closing it, and a sidecar would print the digest back |
 | `tutorial-writer` | **no** | It cites only in "Where to go next", and a quotation has no use in a lesson: a learner at a keyboard needs the next command, and pausing to attribute a sentence is the digression this genre refuses |
 
 A sidecar is never committed: `.gitignore` excludes it even under the
 example topic whose renders are tracked, because it carries verbatim
 wording from copyrighted sources. See
-[GENRE.md](GENRE.md#-the-five-drafting-genres) for what each of the five
+[GENRE.md](GENRE.md#-the-six-drafting-genres) for what each of the six
 drafting genres otherwise produces.
 
 **The self-check.**
@@ -376,7 +383,7 @@ module exists to avoid.
 
 Its own template says the file is "rebuildable from the draft", and it is:
 a heading owns a line range, a citekey is cited on a line, and the
-relation falls out of the intersection. Five genre skills nonetheless
+relation falls out of the intersection. Six genre skills nonetheless
 had a model read the outline and attribute each key by hand. That is a
 mechanical step with a wrong answer available, and a `sections.md` that
 disagrees with the draft hands `draft-reviser` the wrong section for a
@@ -494,7 +501,7 @@ or, before the first stamp:
 Unlike the corpus fingerprint, nothing writes this at `init` time:
 `init` often runs before the draft is finished, and stamping a
 half-written draft would make every dossier read as changed on its first
-real `status`. Each of the five genre skills stamps at its own finishing
+real `status`. Each of the six genre skills stamps at its own finishing
 step, and `draft-reviser`/`corpus-reviser` re-stamp after their own
 edits, in every case after `python -m chitragupta.draft gate` passes,
 never before:

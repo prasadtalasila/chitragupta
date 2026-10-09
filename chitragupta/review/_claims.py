@@ -161,7 +161,7 @@ def _body(text: str) -> list[str]:
     """The draft's lines up to its reference list, code already blanked.
 
     To the *end* of the draft, not to the next heading. That is right for
-    all five genres as they stand -- every one puts its bibliography last
+    all six genres as they stand -- every one puts its bibliography last
     -- and it is the assumption the roadmap's A4 evidence appendix has to
     check before deciding where it sits.
 
