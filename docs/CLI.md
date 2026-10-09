@@ -2074,7 +2074,7 @@ the next pass's baseline.
 | --- | --- | --- |
 | `-h`, `--help` | -- | Show help and exit |
 | `<draft>` | required | The digest to check |
-| `--formats FORMATS` | `md,tex,pdf` | The additional formats to render beside the Markdown report. The `.md` and `.json` are always written |
+| `--formats FORMATS` | `md,tex,pdf` | The additional formats to render beside the Markdown report. The `.md` and `.json` are always written; `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
 | `--json` | off | Print the payload (or, with `--baseline`, the comparison) as JSON instead of the summary |
 | `--baseline PATH` | -- | Compare this run against a previously filed `<stem>.digest.json`: resolved, persisting and new items, counts and fractions before and after, and whether unsupported text fell |
 

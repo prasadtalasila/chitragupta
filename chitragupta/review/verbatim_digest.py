@@ -90,12 +90,7 @@ def build_parser(parser=None) -> argparse.ArgumentParser:
             description="How much of a verbatim digest is not the sources' own words.",
         )
     parser.add_argument("draft", help="The digest to check, under content/drafts/")
-    parser.add_argument(
-        "--formats",
-        default="md,tex,pdf",
-        help="Additional formats to render beside the Markdown report "
-        "(default: md,tex,pdf). The .md and .json are always written.",
-    )
+    _emit.add_formats(parser)
     parser.add_argument(
         "--json",
         action="store_true",

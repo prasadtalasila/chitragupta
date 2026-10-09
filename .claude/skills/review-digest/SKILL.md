@@ -227,7 +227,8 @@ steps are replaced by `review digest` and say so below.
     ```
 
     All three land at `content/rendered/<topic>/<name>.{tex,pdf,md}`.
-    This needs only bare `python` plus `pandoc`/`pdflatex` on PATH. If
+    This needs only bare `python` plus `pandoc` (and, for pdf, LuaLaTeX)
+    on PATH. If
     either command reports `[missing-binary]` or `[error]`, print a
     one-line warning in chat with that message and continue; a
     rendering failure never blocks presenting the `.md`.
