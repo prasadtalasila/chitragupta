@@ -157,7 +157,7 @@ paragraph that hides it.
 
 The output is a standalone `.tex` fragment using `\citep`/`\citet`, with
 no document preamble, meant to be `\input` by your own thesis document.
-It also renders `.md` and `.pdf` previews when pandoc and pdflatex are
+It also renders `.md` and `.pdf` previews when pandoc and LuaLaTeX are
 present.
 
 Its genre boundary: a chapter that only summarises papers in sequence is

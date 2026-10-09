@@ -94,7 +94,7 @@ preamble is the block above, written inline into `book.tex`; the
 `bibtex` pass.** A unit converted `--fragment` emits `\citep{...}` and no
 reference list of its own; `bibtex` numbers every citation in the
 assembled document at once, against `IEEEtran.bst` for IEEE numeric
-markers. `scripts/install_full_pipeline.sh` installs `bibtex` and
+markers. `chitragupta install os-deps` installs `bibtex` and
 `IEEEtran.bst` for exactly this.
 
 **Why not resolve per unit and move the list.** Citeproc assigns numbers

@@ -237,11 +237,13 @@ expect rather than a defect: every line is shifted by the same four
 spaces, so the diagram's alignment is intact and `^ \ < >` come through
 literally.
 
-Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged:
-this pipeline renders PDF with `pdflatex`, which does not have those
-glyphs set up and fails the whole render with `Unicode character ┌
-(U+250C) not set up for use with LaTeX`. That was verified against this
-project's own `render_output` call and is not a general pandoc claim. A
+Unicode box-drawing (`┌─┐│└─┘`) is excluded, not merely discouraged.
+chitragupta's own pdf render runs LuaLaTeX and prints them (#996), but a
+`.tex` output or a `--fragment` is compiled later by the author's own
+document, and a `pdflatex` build has no such glyphs set up: it fails the
+whole build with `Unicode character ┌ (U+250C) not set up for use with
+LaTeX`. That was verified against this project's own `render_output`
+call when it still ran `pdflatex`, and is not a general pandoc claim. A
 diagram that renders one figure and breaks every other one downstream
 in the same draft is worse than no diagram.
 

@@ -65,14 +65,28 @@ class TestCheckPdfFonts:
             )
             return SimpleNamespace(returncode=0, stdout="", stderr=message)
 
-        monkeypatch.setattr(doctor.subprocess, "run", fake_run)
+        monkeypatch.setattr(doctor.pdf_fonts.subprocess, "run", fake_run)
         lines = doctor._check_pdf_fonts()
         assert len(lines) == len(doctor.pdf_fonts.all_families())
         assert "[ok] pdf font found: STIX Two Text" in lines
         assert "[ok] pdf font found: Noto Serif" in lines
         missing = [line for line in lines if line.startswith("[missing] pdf font")]
         assert len(missing) == len(lines) - 2
-        assert all("install_full_pipeline.sh os-deps" in line for line in missing)
+        assert all("chitragupta install os-deps" in line for line in missing)
+
+    def test_a_missing_required_font_says_no_pdf_renders(self, monkeypatch):
+        # #1022: a missing STIX Two stops every render, not only a draft
+        # with an unusual character, and the line said the latter.
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
+        monkeypatch.setattr(doctor.pdf_fonts, "font_installed", lambda name: False)
+        lines = dict(zip(doctor.pdf_fonts.all_families(), doctor._check_pdf_fonts()))
+        assert "no pdf renders" in lines["STIX Two Text"]
+        assert "a draft with a character only it has" in lines["Noto Serif"]
+
+    def test_no_line_names_a_scripts_path(self, monkeypatch):
+        # A `chitragupta init` project has no scripts/ directory (#1022).
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
+        assert not any("scripts/" in line for line in doctor._check_pdf_fonts())
 
 
 class TestCheckEnrichExtra:

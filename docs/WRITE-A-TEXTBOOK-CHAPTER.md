@@ -473,5 +473,5 @@ now.
 | The chapter is citation-heavy and reads like a survey | the wrong genre ran | ask for a textbook chapter explicitly, or revise toward worked examples |
 | Worked examples feel abstract | the motivating scenario was never fixed | give one concrete scenario and ask `draft-reviser` to carry it through |
 | `gate` says `FAIL` | a citekey is not in the corpus | correct it or drop the claim |
-| `[missing-binary]` from `render` | no `pandoc`/`pdflatex` | install them; the `.md` chapter is unaffected |
+| `[missing-binary]` from `render` | no `pandoc`, or for pdf no LuaLaTeX or its fonts (`chitragupta doctor` says which) | install them; the `.md` chapter is unaffected |
 | Students need to *do* rather than study | you want the other genre | see [WRITE-A-TUTORIAL.md](WRITE-A-TUTORIAL.md) |

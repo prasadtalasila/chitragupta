@@ -65,7 +65,7 @@ class TestGenreOf:
 
 
 class TestResolveUnit:
-    """Three sources, most specific first -- style_check.resolve_language's
+    """Three sources, most specific first -- style_language.resolve_language's
     policy, because the report has to name where the unit came from."""
 
     def test_every_genre_resolves_its_own_unit(self, isolated_config):

@@ -1,8 +1,9 @@
 """The fonts chitragupta's own pdf renders use (#996), in one place.
 
-Standard library only, and importing nothing from `chitragupta`, so
-`chitragupta/doctor.py` can ask whether they are installed without
-loading the render stage or its config. `render_output/_pandoc.py`
+Standard library only, and importing nothing from `chitragupta` but
+`programs` (itself standard library only), so `chitragupta/doctor.py`
+can ask whether they are installed without loading the render stage or
+its config. `render_output/_pandoc.py`
 turns these into pandoc variables.
 
 A pdf render runs LuaLaTeX with STIX Two for text and math -- the only
@@ -12,6 +13,10 @@ included. Code stays in Latin Modern Mono, so the 79-column width
 `style_typeset.py` checks fenced code against is still the width it is
 set at. plans/996-unicode-pdf-engine.md has the measurements.
 """
+
+import subprocess
+
+from chitragupta import programs
 
 MAIN_FONT = "STIX Two Text"
 MATH_FONT = "STIX Two Math"
@@ -56,6 +61,29 @@ FONT_FALLBACKS = (
 # Code quotes the same characters prose does (`x ≤ y`). DejaVu Sans Mono
 # first, so a fallback glyph in code stays monospaced where it can.
 MONO_FALLBACKS = ("DejaVu Sans Mono:mode=node", *FONT_FALLBACKS)
+
+
+# The three the shipped header sets with \setmainfont, \setmathfont and
+# \setmonofont. Without any one of them every pdf render fails inside
+# fontspec ("The font ... cannot be found", measured, #1022); the
+# fallbacks only matter to a draft holding a character only they have.
+REQUIRED_FONTS = (MAIN_FONT, MATH_FONT, MONO_FONT)
+
+
+def font_installed(name: str) -> bool | None:
+    """Whether LuaLaTeX's font loader finds the family `name`, or None
+    when there is no `luaotfload-tool` on PATH to ask.
+
+    `luaotfload-tool --find` exits 0 whether or not the font exists
+    (measured, luaotfload 3.26); only its message tells them apart.
+    """
+    luaotfload = programs.resolve_program("luaotfload-tool")
+    if luaotfload is None:
+        return None
+    probe = subprocess.run(
+        [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
+    )
+    return f'Font "{name}" found!' in probe.stdout + probe.stderr
 
 
 _FALLBACK = "chitraguptafallback"

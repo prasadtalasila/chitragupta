@@ -216,7 +216,7 @@ skills read it directly at drafting time (`docs/GENRE.md`).
 - The `vale` binary itself is **not** configured here; it is looked up
   on `PATH`. Without it the command reports missing-binary and every
   other command is unaffected, the same bargain `render` makes with
-  pandoc. `bash scripts/install_full_pipeline.sh os-deps` installs the
+  pandoc. `chitragupta install os-deps` installs the
   pinned version.
 - **`language`**: a fallback dialect for a draft whose dossier records
   none. **A fallback, never an override**: the `language:` line in a

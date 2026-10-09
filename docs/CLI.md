@@ -2691,7 +2691,7 @@ command says so in the report header and still runs the two Python
 checks (the glossary drift and the table findings above), neither of
 which ever needed the binary. This is the same bargain `render` makes
 with pandoc, narrowed to the part that depends on the tool.
-`bash scripts/install_full_pipeline.sh os-deps` installs the pinned
+`chitragupta install os-deps` installs the pinned
 version. The rules live in `assets/vale/`, vendored rather than
 fetched, and `assets/vale/README.md` documents what they deliberately
 leave out: `licence`/`license` and `practice`/`practise` are decided by

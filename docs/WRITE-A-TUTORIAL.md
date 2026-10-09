@@ -439,4 +439,4 @@ chitragupta draft dossier export labs/first-twin
 | A learner gets stuck at one step every time | a prerequisite is implicit | walk the path on a clean machine, then add what you find to "What you need" |
 | The lesson takes twice the stated time | too much in one sitting | split it into two lessons, each with its own working result |
 | `gate` says `FAIL` | a citekey in "Where to go next" is not in the corpus | correct it or drop it |
-| `[missing-binary]` from `render` | no `pandoc`/`pdflatex` | install them; the `.md` lesson is unaffected |
+| `[missing-binary]` from `render` | no `pandoc`, or for pdf no LuaLaTeX or its fonts (`chitragupta doctor` says which) | install them; the `.md` lesson is unaffected |

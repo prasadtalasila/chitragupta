@@ -197,3 +197,18 @@ class TestMain:
         for stage in ("os-deps", "gpu-torch", *install.REFUSED):
             assert stage in out
         assert "refuse" in out
+
+
+class TestRemedy:
+    """#1022: the one spelling a message uses to say how to install
+    something. A `chitragupta init` project has no `scripts/`, and the
+    wheel ships the script `chitragupta install` runs, so this command
+    is right in both project shapes."""
+
+    def test_names_the_shipped_command(self):
+        assert install.remedy("os-deps") == "`chitragupta install os-deps`"
+
+    @pytest.mark.parametrize("stage", ["python-deps", "nonsense"])
+    def test_a_stage_that_does_not_run_is_refused(self, stage):
+        with pytest.raises(ValueError):
+            install.remedy(stage)
