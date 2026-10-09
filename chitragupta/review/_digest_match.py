@@ -49,7 +49,10 @@ CLASSES = ("unsupported-text", "copy-mismatch", "unquoted-text")
 # the drafter's own words.
 MISMATCH_SHARE = 0.8
 
-_NO_READING_ORDER = "no reading-ordered passages -- only page-level text"
+_NO_READING_ORDER = (
+    "no reading-ordered passages -- run `chitragupta enrich --stages docling` "
+    "so the source has a Docling sidecar to match against"
+)
 
 Lookup = Callable[[str], tuple[list[Passage], str | None]]
 

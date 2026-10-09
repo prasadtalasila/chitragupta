@@ -168,7 +168,7 @@ class TestMarkdown:
 
     def test_lists_copied_spans_and_unverifiable_runs(self):
         checked = a_checked()
-        reason = f"{KEY}: no reading-ordered passages -- only page-level text"
+        reason = f"{KEY}: no reading-ordered passages -- run the Docling stage"
         checked.unverifiable.append({"line": 9, "citekeys": [KEY], "words": 4, "reason": reason})
         text = render.render_markdown(
             a_digest(DIGEST), "cmd", checked, render.items(checked, DIGEST)
@@ -429,27 +429,16 @@ class TestRun:
         )
         assert "notes.digest.md" in capsys.readouterr().out
 
-    def test_a_page_level_parse_is_matched_against_its_own_text(self):
-        """A source `pdftotext` parsed has no reading-ordered passages,
-        and `review quotation` rightly refuses to quote from spliced
-        columns. A digest is copied from that parsed text itself, so for
-        this aid the parser's page text is the thing to match against:
-        the run is a copied span, not "not checkable"."""
+    def test_a_page_level_parse_is_not_checkable_and_names_the_stage(self):
+        """A `pdftotext` parse has no reading order, and a run copied from
+        one can be a collage of two columns, so the aid does not match
+        against it: the run is not checkable, and the reason says which
+        enrichment stage gives the source a sidecar."""
         add_item(KEY, parsed_text=f"Front matter only.\f{SOURCE}")
-        draft = a_digest(DIGEST)
-        checked, _ = verbatim_digest.build_report(draft)
-        assert checked.unverifiable == []
-        assert [(s.pages, s.note) for s in checked.spans] == [
-            ((2,), "cited p. 4, found on p. 2"),
-            ((2,), "cited p. 4, found on p. 2"),
-        ]
-        assert checked.words_copied == 17
-
-    def test_a_ledger_row_whose_parsed_file_is_gone_stays_not_checkable(self):
-        add_item(KEY, parsed_text="x")
-        config.PARSED_DIR.joinpath(f"{KEY}.txt").unlink()
         checked, _ = verbatim_digest.build_report(a_digest(DIGEST))
         assert checked.spans == [] and len(checked.unverifiable) == 2
+        assert "enrich --stages docling" in checked.unverifiable[0]["reason"]
+        assert checked.words_unverifiable == 23 and checked.words_copied == 0
 
     def test_the_standalone_parser_carries_the_same_defaults(self):
         """`tests/test_review_entrypoint.py` already pins that every aid

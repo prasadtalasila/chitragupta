@@ -2031,13 +2031,13 @@ what every such sentence is. A digest
 from the corpus, each copied run closed by a citation; this aid finds
 each run in the source it cites, using the same matcher
 [`review quotation`](#-chitragupta-review-quotation) uses, and reports
-what it could not find. Unlike `quotation`, it will match against a
-`pdftotext` parse's own pages when no reading-ordered passages exist,
-because that parsed text is what a digest is copied from. **Advisory,
-exits 0 whatever it finds.** The digest's genre is recorded in its
-dossier, not its name: any draft under `content/drafts/` can be given to
-this aid, and one that is not a digest will simply report most of its
-prose as not copied.
+what it could not find. Like `quotation`, it matches only reading-ordered
+passages, so it needs the Docling sidecars `chitragupta enrich --stages
+docling` writes; a source without one is reported as not checkable,
+with the stage named. **Advisory, exits 0 whatever it finds.** The
+digest's genre is recorded in its dossier, not its name: any draft under
+`content/drafts/` can be given to this aid, and one that is not a digest
+will simply report most of its prose as not copied.
 
 The report leads with three fractions that account for the whole
 digest:
@@ -2046,7 +2046,7 @@ digest:
 | --- | --- | --- |
 | Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once, over all words | down: the headline |
 | Copied fraction | the words of every verified copied span, over all words | up |
-| Not checkable | the words of every run whose cited source has no text to match at all: no passage sidecar and no parsed file | a fact about the corpus |
+| Not checkable | the words of every run whose cited source has no Docling sidecar; the reason names the stage to run | a fact about the corpus |
 
 A run found whole in its source is one copied span and no finding; a
 run whose sentences are all found but not contiguously is one span

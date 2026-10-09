@@ -6,10 +6,11 @@
 > use checkbox (`- [ ]`) syntax for tracking.
 
 Status: **built on branch `worktree-bridge-cse_01C6bspGKiyF8JQyyV8aAMCr`, PR pending.**
-What changed on the way: a page-text fallback in `verbatim_digest.py`,
-because on a `pdftotext` corpus every run was "not checkable" (the
-passage ladder gives a page-level parse no text, and a digest is copied
-from exactly that text); the `review/__init__.py` split and the
+What changed on the way: on a `pdftotext` corpus every run is "not
+checkable", and the author chose to restrict the aid to the enriched
+corpus (a Docling sidecar per cited source) rather than match against
+unordered page text, so the skill copies from the sidecar and the
+report names the stage to run; the `review/__init__.py` split and the
 registry entries moved into Task 4, since `review.header` needs the
 `AIDS` key; the "assembled" fixture needed a passage between its two
 sentences, since adjacent passages are legitimately an `exact-pair`

@@ -46,11 +46,15 @@ own folder.
 ## Shared corpus layer (read, don't regenerate)
 
 - `content/ledger.sqlite` -- per-citekey status, populated by `sync`
-- `content/parsed/<citekey>.txt` -- the extracted PDF text **you copy
-  from**. Copy from this file, or from `content/parsed/<citekey>.passages.json`
-  when it exists, never from memory and never from a snippet you
-  tidied: the aid matches what you wrote against this text, and a
-  faithful copy of a bad parse is still a match
+- `content/parsed/<citekey>.passages.json` -- the Docling sidecar, the
+  reading-ordered text **you copy from**, never from memory and never
+  from a snippet you tidied: the aid matches what you wrote against this
+  text, and a faithful copy of a bad parse is still a match. A source
+  with no sidecar cannot be checked: `pdftotext` text has no reading
+  order and a run copied from it can splice two columns, so do not copy
+  from `content/parsed/<citekey>.txt`. Tell the user which cited sources
+  lack a sidecar and that `chitragupta enrich --stages docling` (the
+  user's to run, never yours) gives them one
 - `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`
   finds candidates; `... evidence "<q>" --citekey <key> --log <draft>`
   reads more of one document
@@ -172,8 +176,9 @@ steps are replaced by `review digest` and say so below.
    inverted: a survey paragraph must rest on two or more sources so it
    cannot be a transcription of any one (`docs/WRITING-STANDARDS.md`
    §11); a digest run rests on exactly one source and is a transcription
-   of it by design. Open `content/parsed/<citekey>.txt` and copy each
-   passage character for character, including the parse's own noise.
+   of it by design. Open `content/parsed/<citekey>.passages.json` and
+   copy each passage's text character for character, including the
+   parse's own noise.
    Do not fix hyphenation, ligatures, a dropped word or a reference
    marker; do not reorder; do not shorten. If the parse is too broken to
    read, pick another passage or another paper. Close each run with its

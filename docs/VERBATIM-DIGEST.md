@@ -102,18 +102,19 @@ for the whole digest, in the order a reader should take them:
 | --- | --- | --- |
 | Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once however many classes it carries, over all words | down: the headline, the number a repair pass drives |
 | Copied fraction | the words of every verified copied span, over all words | up |
-| Not checkable | the words of every run whose cited source has no text to match at all: no passage sidecar and no parsed file | a fact about the corpus, not the digest |
+| Not checkable | the words of every run whose cited source has no reading-ordered passages: no Docling sidecar. The reason names the stage to run | a fact about the corpus, not the digest |
 
 Each run is matched whole against the cited source, with the same
 matcher `review quotation` uses: both sides flattened to one character
 stream, an inline reference marker stripped from the source, and the
 run looked for in each passage and each adjacent pair. The passages
-are a Docling sidecar's where one exists; otherwise the parser's own
-pages from `content/parsed/<citekey>.txt`, which is the text the skill
-copies from. (`review quotation` refuses to quote from a `pdftotext`
-page, because its columns can be spliced; a digest copied from that
-page matches it, splicing and all, so here the page is the right thing
-to match against.) A run found
+are a Docling sidecar's, `content/parsed/<citekey>.passages.json`,
+which `chitragupta enrich --stages docling` writes. **The aid needs the
+enriched corpus.** A `pdftotext` parse has no reading order, and a run
+copied from one can be a collage of two columns, which is the hazard
+`review quotation` refuses to quote from; this aid refuses the same
+way, reports the run as not checkable, and names the stage to run. A
+run found
 whole is one **copied span** and raises nothing. A run whose sentences
 are all found but not contiguously is one span with the note
 *assembled from N places*, which is information rather than a finding.
@@ -140,8 +141,7 @@ command exits 0 whatever it finds.
 
 A page here is the **parser's physical page index, counted from 1 over
 the PDF as parsed**: the `page` a Docling passage sidecar records, or
-the form feed `pdftotext` emits between pages in
-`content/parsed/<citekey>.txt`. It is not the printed
+the form feed `pdftotext` emits between pages. It is not the printed
 folio. A paper whose first page is numbered 1203 in the journal is still
 p. 1 here, and the skill's format rule says to cite pages that way.
 
@@ -159,10 +159,9 @@ A note is not a finding. It does not move any fraction, it does not
 appear in the item list, and the repair is to correct the locator in
 the citation. It can also mislead in one case worth knowing: the
 passages a source yields depend on which rung of
-[CITATION-PROVENANCE.md](CITATION-PROVENANCE.md)'s ladder answered (a
-Docling sidecar, the parser's own page-split text, or `pdftotext`), and
-a re-parse can change the rung, so a note that appears after a `sync`
-is worth a look before an edit.
+[CITATION-PROVENANCE.md](CITATION-PROVENANCE.md)'s ladder answered, and
+a re-run of the Docling stage can renumber them, so a note that
+appears after one is worth a look before an edit.
 
 ## 🔁 The repair loop and `--baseline`
 
@@ -227,11 +226,12 @@ the agenda's `claim-support` class is the shape it would take.
   reported as not copied. Two papers copied under one citation show the
   second paper's text as unmatched. The fix is to cite each paper at the
   end of its own part.
-- **Parse quality bounds matching.** A faithful copy of a badly parsed
-  passage matches, because the aid matches the parse; a copy made from
-  the PDF itself that the parse mangled or column-spliced does not, and
-  shows as `copy-mismatch` with the mangled words missing. Copy from
-  the parsed text, not the PDF.
+- **It needs the enriched corpus.** Without a Docling sidecar for a
+  cited source, every run citing it is not checkable; the report names
+  the stage to run. Within a sidecar, parse quality still bounds
+  matching: a faithful copy of a mangled passage matches, a copy made
+  from the PDF that the parse mangled shows as `copy-mismatch`. Copy
+  from the sidecar's text, not the PDF.
 - **A half-copied sentence is reported whole**, as a `copy-mismatch`
   naming the words that are not on the page, not split into a copied
   part and an original part.

@@ -158,7 +158,7 @@ def test_a_source_without_reading_order_is_unverifiable():
             "line": 3,
             "citekeys": [KEY],
             "words": run.words,
-            "reason": f"{KEY}: no reading-ordered passages -- only page-level text",
+            "reason": f"{KEY}: {match._NO_READING_ORDER}",
         }
     ]
     assert checked.words_total == run.words

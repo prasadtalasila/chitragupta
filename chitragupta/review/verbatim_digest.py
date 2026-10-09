@@ -27,6 +27,14 @@ Exits 0 whatever it finds. The digest is never a drafting source for any
 other genre; `review verbatim scan` already catches its wording if it
 reaches one.
 
+**Needs the enriched corpus.** A run is matched against reading-ordered
+passages only -- the Docling sidecar `chitragupta enrich --stages
+docling` writes. A `pdftotext` parse has no reading order, and a run
+copied from one can be a collage of two columns, which is the hazard
+`review quotation` refuses to quote from and the reason this aid does
+not fall back to page text: it reports the run as not checkable and
+names the stage to run.
+
 **Files its report unconditionally**, like `agenda` and for the same
 reason: the `.json` is the next pass's `--baseline`. `--json` only
 decides what prints to stdout.
@@ -40,36 +48,10 @@ import shlex
 import sys
 from pathlib import Path
 
-from chitragupta import config, ledger, ledger_paths, passages, review
-from chitragupta.passages import Passage, distinctive
+from chitragupta import config, ledger, passages, review
 from chitragupta.review import _digest_match, _digest_recheck, _digest_render, _digest_runs, _emit
 
 AID = "digest"
-
-
-def _page_text(con, citekey: str) -> list[Passage]:
-    """The parser's own pages of `citekey`, *with* their text.
-
-    `passages.source_passages` hands back a `pdftotext` parse as pages
-    without text, because a window cut from column-spliced text reads as
-    a quotation while being a collage, and `review quotation` must not
-    quote from one. A digest is the other way round: the skill copies
-    from `content/parsed/<citekey>.txt` itself, so the parse *is* what
-    the run should match, splicing and all, and refusing it would make
-    every digest on a `pdftotext` corpus "not checkable". Only reached
-    when the ladder found no reading-ordered passages; a Docling sidecar
-    still wins where it exists.
-    """
-    rows = ledger.rows_for_citekeys(con, "parsed_path", [citekey])
-    path = ledger_paths.parsed_file(rows[0][0]) if rows else None
-    if path is None or not path.is_file():
-        return []
-    raw = path.read_text(encoding="utf-8", errors="replace")
-    return [
-        Passage(page=i, words=distinctive(page), text=page)
-        for i, page in enumerate(raw.split("\f"), 1)
-        if page.strip()
-    ]
 
 
 def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
@@ -85,11 +67,7 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
 
         def lookup(citekey: str) -> tuple[list, str | None]:
             if citekey not in cache:
-                found, reason = passages.source_passages(con, citekey)
-                if not any(p.quotable for p in found):
-                    pages = _page_text(con, citekey)
-                    found, reason = (pages, None) if pages else (found, reason)
-                cache[citekey] = (found, reason)
+                cache[citekey] = passages.source_passages(con, citekey)
             return cache[citekey]
 
         for run in _digest_runs.runs(text):
