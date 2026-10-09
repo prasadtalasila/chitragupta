@@ -5,7 +5,18 @@
 > superpowers:executing-plans to carry out this plan task by task. Steps
 > use checkbox (`- [ ]`) syntax for tracking.
 
-Status: **designed, unbuilt.** Written 2026-10-09 against `main` at
+Status: **built on branch `worktree-bridge-cse_01C6bspGKiyF8JQyyV8aAMCr`, PR pending.**
+What changed on the way: a page-text fallback in `verbatim_digest.py`,
+because on a `pdftotext` corpus every run was "not checkable" (the
+passage ladder gives a page-level parse no text, and a digest is copied
+from exactly that text); the `review/__init__.py` split and the
+registry entries moved into Task 4, since `review.header` needs the
+`AIDS` key; the "assembled" fixture needed a passage between its two
+sentences, since adjacent passages are legitimately an `exact-pair`
+match; and the agenda's registry-copy heuristic moved from three names
+to four, because the exclusion tuple now names three.
+
+Written 2026-10-09 against `main` at
 `8b588b5` (#1039), for
 [discussion 991](https://github.com/prasadtalasila/chitragupta/discussions/991),
 and revised the same day on the author's six changes: no `.digest` in a
