@@ -36,6 +36,16 @@ _BRACKET = re.compile(r"\[[^\[\]]*@[^\[\]]*\]")
 # the text was actually found on.
 _PAGES = re.compile(r"\b(?:pp?\.|pages?)\s*(\d+)(?:\s*[-–—]+\s*(\d+))?")
 
+# A citekey inside the bracket, blanked before the locator is searched
+# for: `[@page2020web]` would otherwise read as "page 2020".
+_CITEKEY_TOKEN = re.compile(r"@[^\s,;\]]+")
+
+# A sentence with no word character in it -- the `.` left after
+# `[@key].`, which is pandoc's and the survey's convention -- is
+# punctuation belonging to the run just closed, not a sentence of the
+# next one.
+_HAS_WORD = re.compile(r"\w")
+
 
 @dataclass(frozen=True)
 class Run:
@@ -58,7 +68,7 @@ class Run:
 
 def cited_pages(citation: str) -> tuple[int, int] | None:
     """`(first, last)` from the bracket's page locator, or None."""
-    match = _PAGES.search(citation)
+    match = _PAGES.search(_CITEKEY_TOKEN.sub(" ", citation))
     if match is None:
         return None
     first = int(match.group(1))
@@ -85,7 +95,7 @@ def runs(text: str) -> list[Run]:
     found = []
     for start, raw_block, block in _claims.claim_blocks(text):
         for offset, segment, citation in _segments(block):
-            spans = sentences.spans(segment)
+            spans = [(a, b) for a, b in sentences.spans(segment) if _HAS_WORD.search(segment[a:b])]
             if not spans:
                 continue
             keys = tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else ()

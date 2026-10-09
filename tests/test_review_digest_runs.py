@@ -64,6 +64,16 @@ def test_an_at_sign_in_a_bracket_is_not_a_citation_unless_the_extractor_says_so(
     assert [r.sentences for r in found] == [("Shown [@ 3] earlier.", "Copied.")]
 
 
+def test_a_citation_before_the_full_stop_leaves_no_bare_punctuation_run():
+    """`... text [@key].` is pandoc's and the survey's convention; the
+    stop after the bracket must not become a one-word uncited run."""
+    found = runs_mod.runs(f"Copied sentence [@{KEY}]. Another one [@{OTHER}].\n")
+    assert [(r.sentences, r.citekeys) for r in found] == [
+        (("Copied sentence",), (KEY,)),
+        (("Another one",), (OTHER,)),
+    ]
+
+
 def test_several_citekeys_in_one_bracket_close_one_run():
     found = runs_mod.runs(f"Copied. [@{KEY}; @{OTHER}]\n")
     assert found[0].citekeys == (KEY, OTHER)
@@ -99,3 +109,8 @@ class TestCitedPages:
 
     def test_no_locator(self):
         assert runs_mod.cited_pages("[@k]") is None
+
+    def test_digits_inside_a_citekey_are_not_a_locator(self):
+        assert runs_mod.cited_pages("[@page2020web]") is None
+        assert runs_mod.cited_pages("[@pages2021x; @p2019]") is None
+        assert runs_mod.cited_pages("[@page2020web, p. 7]") == (7, 7)
