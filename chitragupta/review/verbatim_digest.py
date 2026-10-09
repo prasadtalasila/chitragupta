@@ -40,10 +40,36 @@ import shlex
 import sys
 from pathlib import Path
 
-from chitragupta import config, ledger, passages, review
+from chitragupta import config, ledger, ledger_paths, passages, review
+from chitragupta.passages import Passage, distinctive
 from chitragupta.review import _digest_match, _digest_recheck, _digest_render, _digest_runs, _emit
 
 AID = "digest"
+
+
+def _page_text(con, citekey: str) -> list[Passage]:
+    """The parser's own pages of `citekey`, *with* their text.
+
+    `passages.source_passages` hands back a `pdftotext` parse as pages
+    without text, because a window cut from column-spliced text reads as
+    a quotation while being a collage, and `review quotation` must not
+    quote from one. A digest is the other way round: the skill copies
+    from `content/parsed/<citekey>.txt` itself, so the parse *is* what
+    the run should match, splicing and all, and refusing it would make
+    every digest on a `pdftotext` corpus "not checkable". Only reached
+    when the ladder found no reading-ordered passages; a Docling sidecar
+    still wins where it exists.
+    """
+    rows = ledger.rows_for_citekeys(con, "parsed_path", [citekey])
+    path = ledger_paths.parsed_file(rows[0][0]) if rows else None
+    if path is None or not path.is_file():
+        return []
+    raw = path.read_text(encoding="utf-8", errors="replace")
+    return [
+        Passage(page=i, words=distinctive(page), text=page)
+        for i, page in enumerate(raw.split("\f"), 1)
+        if page.strip()
+    ]
 
 
 def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
@@ -59,7 +85,11 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
 
         def lookup(citekey: str) -> tuple[list, str | None]:
             if citekey not in cache:
-                cache[citekey] = passages.source_passages(con, citekey)
+                found, reason = passages.source_passages(con, citekey)
+                if not any(p.quotable for p in found):
+                    pages = _page_text(con, citekey)
+                    found, reason = (pages, None) if pages else (found, reason)
+                cache[citekey] = (found, reason)
             return cache[citekey]
 
         for run in _digest_runs.runs(text):

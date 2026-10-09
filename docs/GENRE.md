@@ -1,6 +1,6 @@
 # 🎭 Genres
 
-Status: **reference.** Written 2026-08-08. Updated 2026-08-24, describing `.claude/skills/`
+Status: **reference.** Written 2026-08-08. Updated 2026-10-09, describing `.claude/skills/`
 as it stands.
 
 **Written for** anyone choosing which skill to ask for, and anyone
@@ -10,7 +10,7 @@ wondering why a skill refused something. **Assumed:**
 `DEVELOPER-AGENTS.md` (git checkout only).
 
 Which skill writes what, how to pick between them, and what each one
-refuses to do. Ten skills live in `.claude/`: five write a new draft,
+refuses to do. Eleven skills live in `.claude/`: six write a new draft,
 three change an existing one, one assembles a book from units the
 others wrote, and one draws the figures the others hand it. Of the
 three revisers, one is cheap and scoped, one goes back to the whole
@@ -115,7 +115,7 @@ for how a draft and its dossier get backed up.
 
 ## ✍ The six drafting genres
 
-Four of the five have a committed, gate-passed sample under a thousand
+Four of the six have a committed, gate-passed sample under a thousand
 words each, drafted by the real pipeline over the five-paper sample
 corpus, each with its dossier beside it under `content/dossiers/`:
 [`survey.md`](examples/sample-project/content/drafts/dt-overview/survey.md)
@@ -173,7 +173,7 @@ An undergraduate chapter: learning objectives, motivation, worked
 examples, exercises. Diátaxis-wise this is *explanation with worked
 application*.
 
-It is the least citation-dense of the five. Most of its content is
+It is the least citation-dense of the six. Most of its content is
 original worked examples; the corpus is cited for motivation and
 background, and the citation gate still applies to whatever it does cite.
 
@@ -261,7 +261,7 @@ the one prohibition: never run `agenda-reviser` on a digest.
 
 ## ✏ Revising: `draft-reviser`
 
-Not a genre. The skill that changes a draft one of the five already
+Not a genre. The skill that changes a draft one of the six already
 wrote, including in a session that has never seen it.
 
 It reads the dossier instead of the corpus. `scope.md` and `steering.md`
@@ -297,7 +297,7 @@ It does not invent evidence entries to fill the file. An empty
 `evidence.md` is honest; a fabricated one is the same failure class as a
 fabricated citekey.
 
-**Every one of the five drafting skills routes here for changes.** Each
+**Every one of the six drafting skills routes here for changes.** Each
 carries the rule twice. Once as a row in its own routing table: *user
 asks to change something that already exists -> use `draft-reviser`,
 never re-run this skill*. Once as a clause in its frontmatter

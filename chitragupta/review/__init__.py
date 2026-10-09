@@ -5,7 +5,8 @@ Eleven commands make up the review layer -- `chitragupta/review/citation_provena
 `chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/`,
 `chitragupta/review/uncited_prose.py`, `chitragupta/review/quotation.py`,
 `chitragupta/review/agenda/`, `chitragupta/review/claim_support.py`,
-`chitragupta/review/citekey_union.py` and `chitragupta/review/verbatim_digest.py`. Each reads a draft -- plus
+`chitragupta/review/citekey_union.py` and
+`chitragupta/review/verbatim_digest.py`. Each reads a draft -- plus
 the corpus, or in `figure_layout`'s case the figures the draft references, in
 `uncited_prose`'s case nothing else at all, in `citekey_union`'s case the
 acceptance records the book's units were accepted under, or in `agenda`'s
@@ -73,7 +74,7 @@ from pathlib import Path
 from typing import TextIO
 
 from chitragupta import config
-from chitragupta.review._paths import report_dir, require_reviewable  # noqa: F401
+from chitragupta.review._paths import report_dir, require_reviewable
 
 # One place per aid, so a caller cannot invent a report kind by
 # typo. The value is the suffix that goes between the draft's stem and

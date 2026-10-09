@@ -761,7 +761,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all ten review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all eleven review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 

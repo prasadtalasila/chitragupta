@@ -17,7 +17,7 @@ These are drawn from the technical-communication literature, primarily the
 [Diátaxis](https://diataxis.fr/) framework, Google's
 [Technical Writing courses](https://developers.google.com/tech-writing), and
 Suzan Last's *Technical Writing Essentials* (BCcampus). What follows is the
-part that transfers across all five genres. **Diátaxis's genre-specific rules
+part that transfers across all six genres. **Diátaxis's genre-specific rules
 do not all transfer**: "one path, no options, minimal explanation" is
 correct for `tutorial-writer` and actively wrong for `survey-writer`, where
 weighing alternatives *is* the deliverable. Take the audience discipline and
@@ -1101,6 +1101,6 @@ from scratch. A verbatim n-gram check against all three sources above
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
 *ideas*, credited above; what is added is their translation into
-operational rules for this pipeline's five genres, the decision about which
+operational rules for this pipeline's six genres, the decision about which
 principles transfer across genres and which do not (§5's warning), and the
 handling of failure modes specific to multi-agent drafting.

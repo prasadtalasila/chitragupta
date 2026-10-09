@@ -21,6 +21,7 @@ from chitragupta.review import _digest_recheck as recheck
 from chitragupta.review import _digest_render as render
 from chitragupta.review import verbatim_digest
 from chitragupta.review._digest_runs import Run
+from tests.conftest import add_item
 from tests.test_review_quotation import a_source
 from tests.test_review_units import draft_at
 
@@ -120,7 +121,9 @@ class TestPayload:
         data = render.payload(draft, "cmd", a_checked(), render.items(a_checked(), DIGEST))
         assert data["aid"] == "digest" and data["draft"] == str(draft) and data["command"] == "cmd"
         assert data["notice"] == review.notice()
-        assert data["words_total"] == 25 and data["words_copied"] == 9 and data["words_flagged"] == 12
+        assert (
+            data["words_total"] == 25 and data["words_copied"] == 9 and data["words_flagged"] == 12
+        )
         assert data["unsupported_fraction"] == 0.48
         assert data["copied_fraction"] == 0.36
         assert data["unverifiable_fraction"] == 0.0 and data["words_unverifiable"] == 0
@@ -167,7 +170,9 @@ class TestMarkdown:
         checked = a_checked()
         reason = f"{KEY}: no reading-ordered passages -- only page-level text"
         checked.unverifiable.append({"line": 9, "citekeys": [KEY], "words": 4, "reason": reason})
-        text = render.render_markdown(a_digest(DIGEST), "cmd", checked, render.items(checked, DIGEST))
+        text = render.render_markdown(
+            a_digest(DIGEST), "cmd", checked, render.items(checked, DIGEST)
+        )
         assert "## Copied spans" in text and f"line 5, `{KEY}`, p. 4, exact" in text
         assert "## Not checkable" in text and "line 9" in text
 
@@ -211,7 +216,9 @@ class TestLoadBaseline:
 
     def test_another_aids_payload_is_refused(self, tmp_path):
         path = tmp_path / "notes.agenda.json"
-        path.write_text(json.dumps({"aid": "agenda", "items": [], "command": "x"}), encoding="utf-8")
+        path.write_text(
+            json.dumps({"aid": "agenda", "items": [], "command": "x"}), encoding="utf-8"
+        )
         with pytest.raises(ValueError, match="not a digest payload"):
             recheck.load_baseline(path)
 
@@ -230,14 +237,20 @@ class TestCompare:
         assert [i["detail"]["text"] for i in result["persisting"]] == ["Stays sentence."]
         assert [i["detail"]["text"] for i in result["new"]] == ["Fresh sentence."]
         assert result["counts_before"]["unquoted-text"] == 2
-        assert result["counts_after"] == {"unsupported-text": 0, "copy-mismatch": 1, "unquoted-text": 1}
+        assert result["counts_after"] == {
+            "unsupported-text": 0,
+            "copy-mismatch": 1,
+            "unquoted-text": 1,
+        }
         assert result["fell"] is False
 
     def test_fell_means_no_class_rose_one_fell_nothing_new_and_the_fraction_did_not_rise(self):
         draft = a_digest(DIGEST)
         gone = match.Finding("unquoted-text", 6, "Gone sentence.", (KEY,))
         stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
-        assert recheck.compare(a_payload(draft, stays), a_payload(draft, gone, stays))["fell"] is True
+        assert (
+            recheck.compare(a_payload(draft, stays), a_payload(draft, gone, stays))["fell"] is True
+        )
         assert recheck.compare(a_payload(draft, stays), a_payload(draft, stays))["fell"] is False
         # One item gone but the digest shrank more: the fraction rose.
         shrunk = a_payload(draft, stays, total=2)
@@ -246,7 +259,9 @@ class TestCompare:
     def test_both_fractions_travel(self):
         draft = a_digest(DIGEST)
         stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
-        result = recheck.compare(a_payload(draft, stays, total=10), a_payload(draft, stays, total=20))
+        result = recheck.compare(
+            a_payload(draft, stays, total=10), a_payload(draft, stays, total=20)
+        )
         assert (result["unsupported_before"], result["unsupported_after"]) == (0.1, 0.2)
         assert (result["copied_before"], result["copied_after"]) == (0.0, 0.0)
 
@@ -335,11 +350,15 @@ class TestRun:
     def test_a_missing_draft_exits_one(self, capsys):
         assert review_main.main(["digest", str(config.DRAFTS_DIR / "nope.md")]) == 1
 
-    def test_a_bad_baseline_exits_two_before_reading_the_ledger(self, tmp_path, capsys, monkeypatch):
+    def test_a_bad_baseline_exits_two_before_reading_the_ledger(
+        self, tmp_path, capsys, monkeypatch
+    ):
         draft = a_digest(DIGEST)
         bad = tmp_path / "notes.agenda.json"
         bad.write_text(json.dumps({"aid": "agenda", "items": []}), encoding="utf-8")
-        monkeypatch.setattr(verbatim_digest, "build_report", lambda *_: pytest.fail("built a report"))
+        monkeypatch.setattr(
+            verbatim_digest, "build_report", lambda *_: pytest.fail("built a report")
+        )
         assert review_main.main(["digest", str(draft), "--baseline", str(bad)]) == 2
         assert "not a digest payload" in capsys.readouterr().err
 
@@ -350,7 +369,9 @@ class TestRun:
         js = config.REVIEW_DIR / "dt" / "notes.digest.json"
         # The repair: delete the closing thought.
         draft.write_text(DIGEST.replace("And a closing thought of mine.\n", ""), encoding="utf-8")
-        assert review_main.main(["digest", str(draft), "--baseline", str(js), "--formats", "md"]) == 0
+        assert (
+            review_main.main(["digest", str(draft), "--baseline", str(js), "--formats", "md"]) == 0
+        )
         out = capsys.readouterr().out
         assert "resolved: 2" in out and "new: 0" in out and "fell: yes" in out
         assert json.loads(js.read_text(encoding="utf-8"))["counts"]["unquoted-text"] == 1
@@ -407,6 +428,28 @@ class TestRun:
             f"python -m chitragupta.review digest {draft}"
         )
         assert "notes.digest.md" in capsys.readouterr().out
+
+    def test_a_page_level_parse_is_matched_against_its_own_text(self):
+        """A source `pdftotext` parsed has no reading-ordered passages,
+        and `review quotation` rightly refuses to quote from spliced
+        columns. A digest is copied from that parsed text itself, so for
+        this aid the parser's page text is the thing to match against:
+        the run is a copied span, not "not checkable"."""
+        add_item(KEY, parsed_text=f"Front matter only.\f{SOURCE}")
+        draft = a_digest(DIGEST)
+        checked, _ = verbatim_digest.build_report(draft)
+        assert checked.unverifiable == []
+        assert [(s.pages, s.note) for s in checked.spans] == [
+            ((2,), "cited p. 4, found on p. 2"),
+            ((2,), "cited p. 4, found on p. 2"),
+        ]
+        assert checked.words_copied == 17
+
+    def test_a_ledger_row_whose_parsed_file_is_gone_stays_not_checkable(self):
+        add_item(KEY, parsed_text="x")
+        config.PARSED_DIR.joinpath(f"{KEY}.txt").unlink()
+        checked, _ = verbatim_digest.build_report(a_digest(DIGEST))
+        assert checked.spans == [] and len(checked.unverifiable) == 2
 
     def test_the_standalone_parser_carries_the_same_defaults(self):
         """`tests/test_review_entrypoint.py` already pins that every aid

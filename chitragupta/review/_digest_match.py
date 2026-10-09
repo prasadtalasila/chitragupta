@@ -131,7 +131,9 @@ def page_note(cited: tuple[int, int] | None, pages: list[int] | tuple[int, ...])
 
 
 def _span(run: Run, text: str, tier: str, pages: list[int]) -> Span:
-    return Span(run.line, run.citekeys, text, tier, tuple(pages), run.pages, page_note(run.pages, pages))
+    return Span(
+        run.line, run.citekeys, text, tier, tuple(pages), run.pages, page_note(run.pages, pages)
+    )
 
 
 def _own(run: Run, sentence: str, passages: list[Passage]) -> list[Finding]:
@@ -152,11 +154,17 @@ def _mismatch(run: Run, sentence: str, quotable: list[Passage]) -> Finding | Non
     if share < MISMATCH_SHARE:
         return None
     on_page: set[str] = set().union(*(p.words for p in quotable if p.page == page))
-    detail = {"page": page, "share": round(share, 3), "missing": sorted(distinctive(sentence) - on_page)}
+    detail = {
+        "page": page,
+        "share": round(share, 3),
+        "missing": sorted(distinctive(sentence) - on_page),
+    }
     return Finding("copy-mismatch", run.line, sentence, run.citekeys, detail)
 
 
-def _sentence_level(run: Run, quotable: list[Passage], passages: list[Passage], checked: Checked) -> None:
+def _sentence_level(
+    run: Run, quotable: list[Passage], passages: list[Passage], checked: Checked
+) -> None:
     """The diagnosis for a run not found whole."""
     spans, findings = [], []
     for sentence in run.sentences:
@@ -201,7 +209,12 @@ def check_run(run: Run, lookup: Lookup, checked: Checked) -> None:
     passages, quotable, reasons = _sources(run, lookup)
     if not quotable:
         checked.unverifiable.append(
-            {"line": run.line, "citekeys": list(run.citekeys), "words": run.words, "reason": "; ".join(reasons)}
+            {
+                "line": run.line,
+                "citekeys": list(run.citekeys),
+                "words": run.words,
+                "reason": "; ".join(reasons),
+            }
         )
         return
     located = _quotation_match.locate(run.text, quotable)

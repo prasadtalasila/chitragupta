@@ -2,7 +2,7 @@
 
 `review.AIDS` (`review/__init__.py`) names the aids and owns their report
 suffixes, and stays import-light so `dossier` can read it without loading
-ten aids. This is the other half: the module that runs each one, and the
+eleven aids. This is the other half: the module that runs each one, and the
 one-line description its subcommand shows in `--help`. It used to live
 in `review/__main__.py`, which made it unreachable from
 `agenda/_refresh.py` without a cycle -- `__main__` imports `agenda`,

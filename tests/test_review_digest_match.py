@@ -197,7 +197,11 @@ def test_two_citekeys_pool_their_passages():
 
 def test_an_empty_digest_has_fractions_zero():
     checked = match.Checked()
-    assert (checked.unsupported_fraction, checked.copied_fraction, checked.unverifiable_fraction) == (
+    assert (
+        checked.unsupported_fraction,
+        checked.copied_fraction,
+        checked.unverifiable_fraction,
+    ) == (
         0.0,
         0.0,
         0.0,

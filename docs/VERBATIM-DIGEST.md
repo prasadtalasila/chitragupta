@@ -102,12 +102,18 @@ for the whole digest, in the order a reader should take them:
 | --- | --- | --- |
 | Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once however many classes it carries, over all words | down: the headline, the number a repair pass drives |
 | Copied fraction | the words of every verified copied span, over all words | up |
-| Not checkable | the words of every run whose cited source has no reading-ordered text, over all words | a fact about the parse, not the digest |
+| Not checkable | the words of every run whose cited source has no text to match at all: no passage sidecar and no parsed file | a fact about the corpus, not the digest |
 
 Each run is matched whole against the cited source, with the same
 matcher `review quotation` uses: both sides flattened to one character
 stream, an inline reference marker stripped from the source, and the
-run looked for in each passage and each adjacent pair. A run found
+run looked for in each passage and each adjacent pair. The passages
+are a Docling sidecar's where one exists; otherwise the parser's own
+pages from `content/parsed/<citekey>.txt`, which is the text the skill
+copies from. (`review quotation` refuses to quote from a `pdftotext`
+page, because its columns can be spliced; a digest copied from that
+page matches it, splicing and all, so here the page is the right thing
+to match against.) A run found
 whole is one **copied span** and raises nothing. A run whose sentences
 are all found but not contiguously is one span with the note
 *assembled from N places*, which is information rather than a finding.
@@ -134,7 +140,8 @@ command exits 0 whatever it finds.
 
 A page here is the **parser's physical page index, counted from 1 over
 the PDF as parsed**: the `page` a Docling passage sidecar records, or
-the form feed `pdftotext` emits between pages. It is not the printed
+the form feed `pdftotext` emits between pages in
+`content/parsed/<citekey>.txt`. It is not the printed
 folio. A paper whose first page is numbered 1203 in the journal is still
 p. 1 here, and the skill's format rule says to cite pages that way.
 
@@ -221,9 +228,10 @@ the agenda's `claim-support` class is the shape it would take.
   second paper's text as unmatched. The fix is to cite each paper at the
   end of its own part.
 - **Parse quality bounds matching.** A faithful copy of a badly parsed
-  passage matches, because the aid matches the parse; a copy from the
-  PDF that the parse mangled does not, and shows as `copy-mismatch`
-  with the mangled words missing.
+  passage matches, because the aid matches the parse; a copy made from
+  the PDF itself that the parse mangled or column-spliced does not, and
+  shows as `copy-mismatch` with the mangled words missing. Copy from
+  the parsed text, not the PDF.
 - **A half-copied sentence is reported whole**, as a `copy-mismatch`
   naming the words that are not on the page, not split into a copied
   part and an original part.

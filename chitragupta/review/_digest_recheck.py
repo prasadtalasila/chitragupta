@@ -94,7 +94,9 @@ def format_recheck(baseline: str | Path, comparison: dict) -> str:
         ]
     lines.append("")
     for cls in CLASSES:
-        lines.append(f"{cls}: {comparison['counts_before'][cls]} -> {comparison['counts_after'][cls]}")
+        lines.append(
+            f"{cls}: {comparison['counts_before'][cls]} -> {comparison['counts_after'][cls]}"
+        )
     lines.append(
         f"unsupported fraction: {comparison['unsupported_before']} -> "
         f"{comparison['unsupported_after']}"
