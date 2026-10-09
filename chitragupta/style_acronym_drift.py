@@ -39,7 +39,7 @@ def findings(draft: Path) -> list[dict]:
 
     `[]` for a draft with no dossier to compute a path for -- the same
     "a draft outside content/ has no dossier path to compute" case
-    `style_check.language_of()` already guards against, not an error
+    `style_language.language_of()` already guards against, not an error
     specific to this check.
     """
     try:

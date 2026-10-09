@@ -54,7 +54,8 @@ A handful of tests run real dependencies end to end rather than mocking
 them, and skip automatically when the dependency is absent:
 `tests/test_feature_workflows.py` and the `TestRenderReal`/
 `TestExtractTextReal` classes elsewhere probe for the
-`pdftotext`/`pandoc`/`pdflatex` binaries on `PATH`;
+`pdftotext`, `pandoc` and `lualatex` binaries on `PATH` (and
+`test_feature_workflows.py` for `pdflatex`, to build a fixture PDF);
 `tests/test_enrich_real_libraries.py` probes for an importable library
 instead, which is the same idiom against a different kind of absence.
 

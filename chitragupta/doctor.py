@@ -54,11 +54,10 @@ import argparse
 import importlib.metadata
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
 
-from chitragupta import launcher_configs, pdf_fonts, programs
+from chitragupta import install, launcher_configs, pdf_fonts, programs
 from chitragupta.progname import prog_for
 
 DESCRIPTION = (
@@ -66,8 +65,9 @@ DESCRIPTION = (
     "extra, torch vs. the GPU driver, a competing distribution, hook launchers."
 )
 
-# What python -m chitragupta.draft render/style already probe for
-# themselves, per call. Doctor probes the same five, once, up front.
+# What `draft render`/`draft style` and `review figure` (pdflatex, for
+# its layout probe) already probe for themselves, per call. Doctor probes
+# the same five, once, up front.
 BINARIES = ("pandoc", "lualatex", "pdflatex", "pdftotext", "vale")
 
 THIS_DISTRIBUTION = "chitragupta-cli"
@@ -211,28 +211,27 @@ def _check_opencode_skills(root: Path) -> list[str]:
 
 def _check_pdf_fonts() -> list[str]:
     """One line per font family a pdf render names (#996)."""
-    luaotfload = programs.resolve_program("luaotfload-tool")
-    if luaotfload is None:
+    if programs.resolve_program("luaotfload-tool") is None:  # one line, not one per font
         return [
             "[missing-binary] luaotfload-tool not found on PATH: LuaLaTeX's font "
             "loader (texlive-luatex) is not installed, so no pdf renders; "
-            "`bash scripts/install_full_pipeline.sh os-deps` installs it"
+            f"{install.remedy('os-deps')} installs it"
         ]
     lines = []
     for name in pdf_fonts.all_families():
-        probe = subprocess.run(
-            [luaotfload, f"--find={name}"], capture_output=True, text=True, check=False
-        )
-        # Its exit status is 0 whether or not the font exists (measured,
-        # luaotfload 3.26); only the message tells them apart.
-        if f'Font "{name}" found!' in probe.stdout + probe.stderr:
+        if pdf_fonts.font_installed(name):
             lines.append(f"[ok] pdf font found: {name}")
-        else:
-            lines.append(
-                f"[missing] pdf font {name}: a draft with a character only it has "
-                "will not render to pdf; `bash scripts/install_full_pipeline.sh "
-                "os-deps` installs it"
-            )
+            continue
+        # A required font stops every render; a fallback only a draft
+        # holding a character no earlier font in the chain has (#1022).
+        effect = (
+            "no pdf renders without it"
+            if name in pdf_fonts.REQUIRED_FONTS
+            else "a draft with a character only it has will not render to pdf"
+        )
+        lines.append(
+            f"[missing] pdf font {name}: {effect}; {install.remedy('os-deps')} installs it"
+        )
     return lines
 
 

@@ -31,7 +31,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from chitragupta import _pandoc_cites, config, programs
+from chitragupta import _pandoc_cites, config, install, programs
 from chitragupta.render_output._errors import MissingBinary
 from chitragupta.render_output._figure_captions import warnings as _caption_warnings
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
@@ -204,8 +204,8 @@ def _require_tikz() -> None:
         raise MissingBinary(
             "This draft has a TikZ figure, but tikz.sty is not installed. On "
             "Debian/Ubuntu it is the 'texlive-pictures' package, which is "
-            "separate from the texlive-latex-* packages pdflatex itself needs "
-            "-- run scripts/install_full_pipeline.sh, which installs both."
+            "separate from the texlive-latex-* packages the TeX engine itself "
+            f"needs -- {install.remedy('os-deps')} installs both."
         )
 
 

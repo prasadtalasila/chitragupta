@@ -501,7 +501,7 @@ through `getattr` and never imports the library. See
 | `md` from a `.md`/`.markdown` draft | nothing | done in-process; citation numbering is not a format conversion, and pandoc's Markdown writer mangles it |
 | `md` from a `.tex` draft | pandoc | a real conversion, so it goes to pandoc after all |
 | `tex`, `docx` | pandoc | |
-| `pdf` | pandoc + `pdflatex` | |
+| `pdf` | pandoc + LuaLaTeX ([what it needs](CLI.md#-chitragupta-draft-render)) | |
 
 **If a binary is missing:** reported as `missing-binary`, never a
 traceback, and never silently downgraded to a format that would have

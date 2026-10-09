@@ -218,8 +218,10 @@ def test_the_registers_are_the_size_this_document_says():
     asks for.
     """
     text = (REPO_ROOT / "docs" / "CODE-STANDARDS.md").read_text(encoding="utf-8")
+    files = len(LEGACY_LONG_FILES)
     expected = (
-        f"**{len(LEGACY_LONG_FUNCTIONS)}\nfunctions** and **{len(LEGACY_LONG_FILES)} modules**"
+        f"**{len(LEGACY_LONG_FUNCTIONS)}\nfunctions** and "
+        f"**{files} module{'' if files == 1 else 's'}**"
     )
     assert " ".join(expected.split()) in " ".join(text.split()), (
         "docs/CODE-STANDARDS.md no longer states the register sizes correctly. "

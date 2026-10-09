@@ -56,7 +56,7 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
 
     Without this, pandoc's LaTeX writer emits `\\includegraphics{path}`
     verbatim, unresolved and uncopied -- the `pdf` format only looks fine
-    because pandoc's own internal pdflatex pass reads the image directly
+    because pandoc's own internal LaTeX pass reads the image directly
     via `--resource-path` below, in a temp dir this function never touches.
     A relative `path` an image reference doesn't resolve to a real file
     under `input_path`'s own directory is silently skipped here (letting
@@ -76,7 +76,7 @@ def _copy_local_images(input_path: Path, dest_dir: Path) -> None:
 def _escapes(draft_dir: Path, ref: str) -> bool:
     """Whether `ref` is spelled inside `draft_dir` but lands outside it.
 
-    The case `_resolve_sibling` refuses and pandoc/pdflatex would not:
+    The case `_resolve_sibling` refuses and pandoc/the TeX engine would not:
     both open the spelled name themselves, and `openin_any=p` judges the
     name, not where a symlink on the way takes it (#823). Absolute and
     `..` spellings are not this question -- TeX's paranoid mode refuses
@@ -91,10 +91,10 @@ def _escapes(draft_dir: Path, ref: str) -> bool:
 
 def _refuse_escaping_refs(input_path: Path, text: str) -> None:
     """Raises `OutsideContentDir` when the draft names a file that is a
-    symlink out of its own directory, before pandoc or pdflatex runs.
+    symlink out of its own directory, before pandoc or the TeX engine runs.
 
     The copiers above skip such a file, but skipping is not enough on the
-    render itself: pandoc embeds a draft's images and pdflatex `\\input`s
+    render itself: pandoc embeds a draft's images and the TeX engine `\\input`s
     its figures by the name the draft spells, so `figures/x.tex -> /anywhere`
     was compiled into the PDF anyway (#823's review, measured). Refused
     rather than skipped because the draft really does ask for the file --
@@ -107,7 +107,7 @@ def _refuse_escaping_refs(input_path: Path, text: str) -> None:
         if any(_escapes(input_path.parent, spelling) for spelling in spellings):
             raise config.OutsideContentDir(
                 f"{input_path} references {ref}, which resolves outside "
-                f"{input_path.parent} through a symlink. pandoc and pdflatex "
+                f"{input_path.parent} through a symlink. pandoc and the TeX engine "
                 "would read it wherever it points; copy the file into the "
                 "draft's directory instead."
             )

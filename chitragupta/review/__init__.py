@@ -258,7 +258,7 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
 
     `md` is produced directly. `tex`/`pdf` go through
     `chitragupta/render_output.py`, the same path every genre draft uses -- it
-    needs pandoc/pdflatex on PATH, so a missing binary is reported and
+    needs pandoc, and LuaLaTeX for pdf, so a missing binary is reported and
     skipped rather than failing the whole run, matching how every other
     stage in this project treats an absent optional tool. So is every
     other failure in `render_output._failures.RENDER_FAILURES`, the
@@ -293,8 +293,8 @@ def write(draft: Path, aid: str, body: str, formats: list[str]) -> dict[str, Pat
             written[fmt] = render_output.render(str(md_path), fmt, output_dir=md_path.parent)
         except subprocess.CalledProcessError as exc:
             # A quoted excerpt can carry characters straight from the
-            # source PDF (e.g. circled digits) that pdflatex's default
-            # fonts can't set -- a real rendering failure, not a bug in
+            # source PDF (e.g. circled digits) that no font in the
+            # render's chain can set -- a real rendering failure, not a bug in
             # this report. Its own branch only for pandoc's stderr.
             print(
                 f"  WARNING: skipped {fmt} -- pandoc failed: {exc.stderr or exc}", file=sys.stderr

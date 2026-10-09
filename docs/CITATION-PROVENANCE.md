@@ -125,7 +125,7 @@ python -m chitragupta.review provenance content/drafts/<slug>.md
 ```
 
 Writes `content/review/<slug>.provenance.md`, plus `.tex` and `.pdf`
-renders of the same report beside it when `pandoc`/`pdflatex` are
+renders of the same report beside it when `pandoc` (and, for `.pdf`, LuaLaTeX) are
 available. It needs no venv.
 ([`survey.provenance.md`](examples/sample-project/content/review/dt-overview/survey.provenance.md)
 in the committed sample project is one such report, written over the

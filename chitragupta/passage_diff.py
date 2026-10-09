@@ -45,7 +45,7 @@ _WORD = re.compile(r"[A-Za-z0-9]+")
 # added); `*` for one the source had and the draft dropped.
 #
 # Emphasis and strong emphasis, and nothing else, because every one of
-# these reports is rendered to PDF through pandoc and pdflatex. `~~` was
+# these reports is rendered to PDF through pandoc and LuaLaTeX. `~~` was
 # the obvious mark for a dropped word and is the wrong one: pandoc
 # compiles strikeout to `\st{}`, which needs `soul.sty` (or `ulem` on
 # older pandoc), and a TeX install carrying neither is not exotic --

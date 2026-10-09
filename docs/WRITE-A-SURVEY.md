@@ -609,6 +609,6 @@ That writes a `.tar.gz` holding the draft and its dossier. Add
 | The ledger has entries but 0 parsed | the bib has no PDF paths | re-export with file paths attached, then `corpus sync` |
 | The skill says the ledger is empty and refuses | no corpus yet | `chitragupta corpus sync` |
 | `gate` says `FAIL` | a citekey is not in the corpus | correct it, or drop the claim; never add it by hand |
-| `[missing-binary]` from `render` | no `pandoc`/`pdflatex` | install them; the `.md` draft is unaffected |
+| `[missing-binary]` from `render` | no `pandoc`, or for pdf no LuaLaTeX or its fonts (`chitragupta doctor` says which) | install them; the `.md` draft is unaffected |
 | The survey reads thin in one theme | the corpus is thin there | add papers to the bib, `corpus sync`, then ask `corpus-reviser` for a whole-corpus pass |
 | You want a change and are tempted to re-run the skill | -- | ask for a revision instead; see step 8 |

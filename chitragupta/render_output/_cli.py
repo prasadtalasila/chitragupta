@@ -39,7 +39,7 @@ def _figure_repair_hint(input_arg: str) -> str:
     r"""The `draft-reviser` pointer to append to a failed render, or "".
 
     A malformed TikZ figure fails the *whole* pdf, not just the figure,
-    and pdflatex's own error names a file rather than saying what to do
+    and the TeX engine's own error names a file rather than saying what to do
     about it. Only added for a draft that actually has a figure, so an
     unrelated pandoc failure is not sent chasing one.
 
