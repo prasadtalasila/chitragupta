@@ -183,36 +183,41 @@ def _body(text: str) -> list[str]:
     return lines
 
 
-def claim_sentences(text: str) -> list[Sentence]:
-    """Every sentence of `text` that carries a claim, in document order.
+def claim_blocks(text: str) -> list[tuple[int, list[str], str]]:
+    """(first line, raw lines, prose text) for every block of `text`
+    that carries a claim, in document order.
 
-    The split is `chitragupta/sentences.py`'s, shared with tier 3 of the
-    overlap scan and with `citation_provenance` -- C1's roadmap entry
-    asks for a splitter "somewhere C2 can reuse it", and that module has
-    been it since before C1 was planned. The blocks are `_blocks.spans`,
-    so a table row and a list item are each their own claim rather than
-    fragments of one paragraph, and a block left empty by stripping its
-    list marker is no claim at all.
+    The per-block half of `claim_sentences`, exposed on its own because
+    the verbatim digest (`_digest_runs.py`) splits a block at its
+    citation brackets rather than at sentence boundaries, and it must
+    read exactly the blocks every other aid reads -- code blanked,
+    headings and captions out, the reference list cut -- or two aids
+    would disagree about what the draft's prose is.
     """
     lines = _body(text)
     found = []
     for start, end, block in _blocks.spans(lines):
         after = lines[end] if end < len(lines) else ""
         raw_block = lines[start - 1 : end]
-        if not block.strip() or _excluded(raw_block, after):
-            continue
+        if block.strip() and not _excluded(raw_block, after):
+            found.append((start, raw_block, block))
+    return found
+
+
+def claim_sentences(text: str) -> list[Sentence]:
+    """Every sentence of `text` that carries a claim, in document order.
+
+    The split is `chitragupta/sentences.py`'s, shared with tier 3 of the
+    overlap scan and with `citation_provenance` -- C1's roadmap entry
+    asks for a splitter "somewhere C2 can reuse it", and that module has
+    been it since before C1 was planned. The blocks are `claim_blocks`,
+    so a table row and a list item are each their own claim rather than
+    fragments of one paragraph, and a block left empty by stripping its
+    list marker is no claim at all.
+    """
+    found = []
+    for start, raw_block, block in claim_blocks(text):
         block_cites = bool(citation_gate.extract_citekeys(block))
-        # No empty-sentence guard: `sentences.spans` tightens past a
-        # span's leading and trailing whitespace and drops any that come
-        # back empty, so a block with any content in it yields only
-        # non-empty spans. The `block.strip()` test above is what rules
-        # out the other case.
-        #
-        # Offsets, not `sentences.split`, so each sentence maps to its
-        # own line via `_blocks.line_of_offset` (#496) -- every sentence
-        # in a block used to carry the block's first line, which could
-        # point a finding several lines above the sentence quoted beside
-        # it.
         for sent_start, sent_end in sentences.spans(block):
             found.append(
                 Sentence(
