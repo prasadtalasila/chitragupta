@@ -20,7 +20,6 @@ Nothing here imports from `chitragupta.review.agenda` -- `run()` hands
 its own `build_agenda()` result to `compare` as plain data.
 """
 
-import shlex
 from pathlib import Path
 
 from chitragupta import review
@@ -135,8 +134,7 @@ def recheck_command(draft: str | Path, baseline: str | Path) -> str:
     must name a command regenerating an agenda, not a comparison
     against itself.
     """
-    parts = ["python", "-m", "chitragupta.review", "agenda", str(draft)]
-    return shlex.join([*parts, "--baseline", str(baseline), "--json"])
+    return _emit.recheck_command("agenda", draft, baseline)
 
 
 def recheck_payload(

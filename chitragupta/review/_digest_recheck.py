@@ -16,7 +16,6 @@ Mirrors `agenda/_recheck.py`'s payload keys where the two say the same
 thing, because the skill reading this already reads that one.
 """
 
-import shlex
 from pathlib import Path
 
 from chitragupta import review
@@ -56,8 +55,7 @@ def compare(payload: dict, baseline: dict) -> dict:
 
 
 def recheck_command(draft: str | Path, baseline: str | Path) -> str:
-    parts = ["python", "-m", "chitragupta.review", "digest", str(draft)]
-    return shlex.join([*parts, "--baseline", str(baseline), "--json"])
+    return _emit.recheck_command("digest", draft, baseline)
 
 
 def recheck_payload(draft: Path, baseline: str | Path, comparison: dict) -> dict:
