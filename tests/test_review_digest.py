@@ -193,3 +193,90 @@ class TestMarkdown:
 
         text = render.render_markdown(a_digest(DIGEST), "cmd", match.Checked(), [])
         assert str(datetime.date.today().year) not in text.replace(review.version(), "")
+
+
+def a_payload(draft: Path, *findings: match.Finding, total: int = 20) -> dict:
+    checked = match.Checked()
+    checked.findings.extend(findings)
+    checked.words_total = total
+    return render.payload(draft, "cmd", checked, render.items(checked, DIGEST))
+
+
+class TestLoadBaseline:
+    def test_reads_a_digest_payload_back(self, tmp_path):
+        data = a_payload(a_digest(DIGEST))
+        path = tmp_path / "notes.digest.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        assert recheck.load_baseline(path)["aid"] == "digest"
+
+    def test_an_unreadable_path_is_refused(self, tmp_path):
+        with pytest.raises(ValueError, match="Cannot read the baseline"):
+            recheck.load_baseline(tmp_path / "missing.json")
+
+    def test_non_json_is_refused(self, tmp_path):
+        path = tmp_path / "x.json"
+        path.write_text("not json", encoding="utf-8")
+        with pytest.raises(ValueError, match="not valid JSON"):
+            recheck.load_baseline(path)
+
+    def test_another_aids_payload_is_refused(self, tmp_path):
+        path = tmp_path / "notes.agenda.json"
+        path.write_text(json.dumps({"aid": "agenda", "items": [], "command": "x"}), encoding="utf-8")
+        with pytest.raises(ValueError, match="not a digest payload"):
+            recheck.load_baseline(path)
+
+
+class TestCompare:
+    def test_resolved_persisting_new_by_id_and_the_counts(self):
+        draft = a_digest(DIGEST)
+        gone = match.Finding("unquoted-text", 6, "Gone sentence.", (KEY,))
+        stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
+        detail = {"page": 4, "share": 0.9, "missing": []}
+        fresh = match.Finding("copy-mismatch", 9, "Fresh sentence.", (KEY,), detail)
+        before = a_payload(draft, gone, stays)
+        after = a_payload(draft, stays, fresh)
+        result = recheck.compare(after, before)
+        assert [i["detail"]["text"] for i in result["resolved"]] == ["Gone sentence."]
+        assert [i["detail"]["text"] for i in result["persisting"]] == ["Stays sentence."]
+        assert [i["detail"]["text"] for i in result["new"]] == ["Fresh sentence."]
+        assert result["counts_before"]["unquoted-text"] == 2
+        assert result["counts_after"] == {"unsupported-text": 0, "copy-mismatch": 1, "unquoted-text": 1}
+        assert result["fell"] is False
+
+    def test_fell_means_no_class_rose_one_fell_nothing_new_and_the_fraction_did_not_rise(self):
+        draft = a_digest(DIGEST)
+        gone = match.Finding("unquoted-text", 6, "Gone sentence.", (KEY,))
+        stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
+        assert recheck.compare(a_payload(draft, stays), a_payload(draft, gone, stays))["fell"] is True
+        assert recheck.compare(a_payload(draft, stays), a_payload(draft, stays))["fell"] is False
+        # One item gone but the digest shrank more: the fraction rose.
+        shrunk = a_payload(draft, stays, total=2)
+        assert recheck.compare(shrunk, a_payload(draft, gone, stays))["fell"] is False
+
+    def test_both_fractions_travel(self):
+        draft = a_digest(DIGEST)
+        stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
+        result = recheck.compare(a_payload(draft, stays, total=10), a_payload(draft, stays, total=20))
+        assert (result["unsupported_before"], result["unsupported_after"]) == (0.1, 0.2)
+        assert (result["copied_before"], result["copied_after"]) == (0.0, 0.0)
+
+
+class TestRecheckOutput:
+    def test_command_names_the_baseline_and_json(self):
+        assert recheck.recheck_command("content/drafts/t/notes.md", "b.json") == (
+            "python -m chitragupta.review digest content/drafts/t/notes.md --baseline b.json --json"
+        )
+
+    def test_payload_and_text_say_the_same_thing(self):
+        draft = a_digest(DIGEST)
+        stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
+        comparison = recheck.compare(a_payload(draft, stays), a_payload(draft, stays))
+        data = recheck.recheck_payload(draft, "b.json", comparison)
+        text = recheck.format_recheck("b.json", comparison)
+        assert data["aid"] == "digest" and data["baseline"] == "b.json"
+        assert data["fell"] is False and "fell: no" in text
+        assert "baseline: b.json" in text
+        assert "persisting: 1" in text and "resolved: 0" in text and "new: 0" in text
+        assert "unquoted-text: 1 -> 1" in text
+        assert "unsupported fraction: 0.1 -> 0.1" in text
+        assert "copied fraction: 0.0 -> 0.0" in text
