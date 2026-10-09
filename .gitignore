@@ -47,6 +47,9 @@ content/rendered/**/*.evidence.*
 # .log.
 logs/
 
+# The claude remote control session can be created using scripts/rc-daemon.sh
+# It's config file
+scripts/rc-daemon.env
 
 __pycache__/
 *.pyc

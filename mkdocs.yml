@@ -231,6 +231,7 @@ nav:
       - Zotero groups without Better BibTeX: docs/EXPORT-ZOTERO-GROUPS.md
       - Developing: DEVELOPER.md
       - Docker build verification: DOCKER-DEVELOPER.md
+      - "Claude Remote Control": docs/DEV-ENV.md
       - Changing this repo: DEVELOPER-AGENTS.md
       - Code standards: docs/CODE-STANDARDS.md
       - Hooks: docs/HOOKS.md
