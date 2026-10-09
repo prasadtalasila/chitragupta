@@ -259,6 +259,17 @@ class TestInit:
         dossier.init(draft, "thesis-chapter")
         assert "genre: thesis-chapter" in (dossier.dossier_dir(draft) / "scope.md").read_text()
 
+    def test_digest_is_a_genre_init_records(self, isolated_config):
+        """A digest is a draft named like any other; the genre line in
+        scope.md is what makes it one (#991)."""
+        draft = config.DRAFTS_DIR / "t" / "notes.md"
+        draft.parent.mkdir(parents=True)
+        draft.write_text("x\n", encoding="utf-8")
+        assert "digest" in dossier.GENRES
+        assert dossier.main(["init", str(draft), "--genre", "digest"]) == 0
+        scope = (dossier.dossier_dir(draft) / "scope.md").read_text(encoding="utf-8")
+        assert "- genre: digest" in scope
+
     def test_scope_carries_a_language_line_marked_unsettled(self, draft):
         """The dialect field #104 adds, and the fact that `init` cannot know it.
 

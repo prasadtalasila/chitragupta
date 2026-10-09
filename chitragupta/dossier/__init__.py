@@ -34,9 +34,11 @@ SCOPE_MD = "scope.md"
 # validated against -- `init` takes the value it is given, because a
 # refusal here would block a draft over a label -- but named, so that
 # `review/_units.py`'s genre-to-unit table can be checked against the
-# same list instead of restating it. A sixth genre added without a unit
-# would otherwise be measured at the fallback in silence.
-GENRES = ("survey", "thesis-chapter", "textbook-chapter", "tutorial", "deep-research")
+# same list instead of restating it. A genre added without a unit would
+# otherwise be measured at the fallback in silence. `digest` (#991) is
+# the sixth: a verbatim digest, private study text in the sources' own
+# words, with its own review aid rather than a place on the agenda.
+GENRES = ("survey", "thesis-chapter", "textbook-chapter", "tutorial", "deep-research", "digest")
 
 
 EVIDENCE_MD = "evidence.md"
