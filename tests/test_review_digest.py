@@ -59,11 +59,7 @@ DIGEST = (
 def a_checked() -> match.Checked:
     checked = match.Checked()
     run = Run(
-        5,
-        ("Layered twins separate the physical entity from its models.",),
-        (KEY,),
-        f"[@{KEY}, p. 4]",
-        (4, 4),
+        5, (5,), ("Layered twins separate the physical entity from its models.",), (KEY,), (4, 4)
     )
     checked.spans.append(match.Span(5, (KEY,), run.text, "exact", (4,), (4, 4), None))
     bridge = "My own bridge sentence about pelicans."
@@ -106,6 +102,28 @@ class TestItems:
         (row,) = render.items(checked, DIGEST)
         assert "missing: blueprints" in row["summary"]
         assert "p. 4" in row["summary"]
+
+    @pytest.mark.parametrize(
+        ("finding", "suffix"),
+        [
+            (
+                match.Finding(
+                    "unsupported-text", 5, "Own words.", (), {"support_score": 0.0, "page": None}
+                ),
+                "no citation covers it",
+            ),
+            (
+                match.Finding(
+                    "unsupported-text", 5, "Own words.", (KEY,), {"support_score": 0.1, "page": 4}
+                ),
+                "lexical support 0.1 in the cited source",
+            ),
+            (match.Finding("unquoted-text", 5, "Own words.", (KEY,)), "not verified as copied"),
+        ],
+    )
+    def test_each_class_has_its_own_summary_suffix(self, finding, suffix):
+        (row,) = render.items(a_payload_checked(finding), DIGEST)
+        assert row["summary"].endswith(suffix)
 
     def test_a_long_sentence_is_excerpted_on_the_line_and_whole_in_detail(self):
         checked = match.Checked()
@@ -170,7 +188,7 @@ class TestMarkdown:
     def test_lists_copied_spans_and_unverifiable_runs(self):
         checked = a_checked()
         reason = f"{KEY}: no reading-ordered passages -- run the Docling stage"
-        checked.unverifiable.append({"line": 9, "citekeys": [KEY], "words": 4, "reason": reason})
+        checked.unverifiable.append(match.Unverifiable(9, (KEY,), 4, reason))
         text = render.render_markdown(
             a_digest(DIGEST), "cmd", checked, render.items(checked, DIGEST)
         )
@@ -179,10 +197,17 @@ class TestMarkdown:
 
     def test_a_clean_digest_says_so(self):
         checked = match.Checked()
+        checked.words_total = 12
         text = render.render_markdown(a_digest(DIGEST), "cmd", checked, [])
         assert "No findings." in text
-        assert "- Unsupported fraction: 0.0 (0 of 0 words)" in text
+        assert "- Unsupported fraction: 0.0 (0 of 12 words)" in text
         assert "None." in text
+        assert "No prose found" not in text
+
+    def test_an_empty_digest_says_there_was_nothing_to_check(self):
+        text = render.render_markdown(a_digest(DIGEST), "cmd", match.Checked(), [])
+        assert "- Unsupported fraction: 0.0 (0 of 0 words)" in text
+        assert "- No prose found: nothing to check" in text
 
     def test_carries_no_date(self):
         import datetime
@@ -198,7 +223,26 @@ def a_payload(draft: Path, *findings: match.Finding, total: int = 20) -> dict:
     return render.payload(draft, "cmd", checked, render.items(checked, DIGEST))
 
 
+def a_payload_checked(*findings: match.Finding) -> match.Checked:
+    checked = match.Checked()
+    checked.findings.extend(findings)
+    return checked
+
+
 class TestLoadBaseline:
+    def test_a_payload_missing_a_metric_is_refused(self, tmp_path):
+        """A truncated or hand-edited baseline that passed the shared
+        loader but lacks what `compare` reads is a usage error, not a
+        comparison against zeros that reads as a regression."""
+        data = a_payload(a_digest(DIGEST))
+        for key in ("counts", "unsupported_fraction", "copied_fraction"):
+            path = tmp_path / f"no-{key}.json"
+            path.write_text(
+                json.dumps({k: v for k, v in data.items() if k != key}), encoding="utf-8"
+            )
+            with pytest.raises(ValueError, match=f"lacks '{key}'"):
+                recheck.load_baseline(path)
+
     def test_reads_a_digest_payload_back(self, tmp_path):
         data = a_payload(a_digest(DIGEST))
         path = tmp_path / "notes.digest.json"
@@ -257,20 +301,35 @@ class TestCompare:
         shrunk = a_payload(draft, stays, total=2)
         assert recheck.compare(shrunk, a_payload(draft, gone, stays))["fell"] is False
 
-    def test_a_baseline_without_counts_reads_as_zeros(self):
-        """An older or hand-edited baseline that carries `items` but no
-        `counts` compares as if every class were zero rather than
-        raising; the ids still decide resolved and persisting."""
+    def test_fell_is_false_when_a_new_item_appeared_even_if_counts_fell(self):
+        """Two items resolved and one fresh one in the same class: the
+        counts fall and the fraction falls, and the pass still does not
+        count, because `new` is not empty."""
         draft = a_digest(DIGEST)
+        gone = match.Finding("unquoted-text", 6, "Gone sentence.", (KEY,))
+        gone_too = match.Finding("unquoted-text", 7, "Gone as well.", (KEY,))
         stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
-        bare = {k: v for k, v in a_payload(draft, stays).items() if k != "counts"}
-        result = recheck.compare(a_payload(draft, stays), bare)
-        assert result["counts_before"] == {
-            "unsupported-text": 0,
-            "copy-mismatch": 0,
-            "unquoted-text": 0,
-        }
-        assert len(result["persisting"]) == 1
+        fresh = match.Finding("unquoted-text", 9, "Fresh sentence.", (KEY,))
+        after, before = a_payload(draft, stays, fresh), a_payload(draft, gone, gone_too, stays)
+        result = recheck.compare(after, before)
+        assert result["counts_after"]["unquoted-text"] < result["counts_before"]["unquoted-text"]
+        assert len(result["new"]) == 1
+        assert result["fell"] is False
+
+    def test_two_identical_sentences_in_one_section_share_an_id(self):
+        """The id hashes the sentence, never its line, as agenda's does:
+        a repeated bridge sentence yields two rows with one id, and the
+        baseline comparison then sees one item. Pinned so the behaviour
+        is a documented limit rather than a surprise."""
+        draft = a_digest(DIGEST)
+        twice = (
+            match.Finding("unquoted-text", 6, "In summary.", (KEY,)),
+            match.Finding("unquoted-text", 8, "In summary.", (KEY,)),
+        )
+        rows = render.items(a_payload_checked(*twice), DIGEST)
+        assert rows[0]["id"] == rows[1]["id"]
+        result = recheck.compare(a_payload(draft, twice[0]), a_payload(draft, *twice))
+        assert (len(result["resolved"]), len(result["persisting"])) == (0, 1)
 
     def test_both_fractions_travel(self):
         draft = a_digest(DIGEST)
@@ -343,6 +402,8 @@ class TestRun:
         assert data["command"] == shlex.join(expected)
         assert data["counts"]["unquoted-text"] == 2
         assert data["counts"]["unsupported-text"] == 2
+        # Copied: the two source sentences, 9 + 8 words. Flagged: the two
+        # bridge sentences, 6 + 6 words, each counted once despite two classes.
         assert data["words_copied"] == 17 and data["words_flagged"] == 12
         assert data["unsupported_fraction"] == round(12 / data["words_total"], 3)
         assert "Unsupported fraction" in md.read_text(encoding="utf-8")
@@ -456,7 +517,9 @@ class TestRun:
         add_item(KEY, parsed_text=f"Front matter only.\f{SOURCE}")
         checked, _ = verbatim_digest.build_report(a_digest(DIGEST))
         assert checked.spans == [] and len(checked.unverifiable) == 2
-        assert "enrich --stages docling" in checked.unverifiable[0]["reason"]
+        assert "enrich --stages docling" in checked.unverifiable[0].reason
+        # Both cited runs, 9 + 14 words: the bridge sentence sits inside
+        # the second run, before its citation, so it is part of that run.
         assert checked.words_unverifiable == 23 and checked.words_copied == 0
 
     def test_the_standalone_parser_carries_the_same_defaults(self):

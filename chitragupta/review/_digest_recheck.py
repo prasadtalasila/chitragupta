@@ -24,21 +24,34 @@ from chitragupta.review._digest_match import CLASSES
 
 
 def load_baseline(path: str | Path) -> dict:
-    """A previously filed `digest` payload, refused if it cannot serve;
-    `_emit.read_baseline` owns the two refusals, shared with `agenda`."""
-    return _emit.read_baseline(path, "digest", "a digest payload")
+    """A previously filed `digest` payload, refused if it cannot serve.
+
+    `_emit.read_baseline` owns the two refusals shared with `agenda`;
+    the three keys `compare` reads are checked here, so a truncated or
+    hand-edited file is a usage error rather than a comparison against
+    zeros that reads as a regression.
+    """
+    payload = _emit.read_baseline(path, "digest", "a digest payload")
+    for key in ("counts", "unsupported_fraction", "copied_fraction"):
+        if key not in payload:
+            raise ValueError(
+                f"{path} is not a complete digest payload: it lacks {key!r}. "
+                "Write one with `review digest <draft>`, which files it as the "
+                "report's .json sibling."
+            )
+    return payload
 
 
 def compare(payload: dict, baseline: dict) -> dict:
     new_items, old_items = payload["items"], baseline["items"]
     new_ids = {item["id"] for item in new_items}
     old_ids = {item["id"] for item in old_items}
-    before = {cls: baseline.get("counts", {}).get(cls, 0) for cls in CLASSES}
+    before = {cls: baseline["counts"].get(cls, 0) for cls in CLASSES}
     after = {cls: payload["counts"].get(cls, 0) for cls in CLASSES}
     appeared = [item for item in new_items if item["id"] not in old_ids]
     rose = any(after[cls] > before[cls] for cls in CLASSES)
     fell = any(after[cls] < before[cls] for cls in CLASSES)
-    unsupported_before = baseline.get("unsupported_fraction", 0.0)
+    unsupported_before = baseline["unsupported_fraction"]
     unsupported_after = payload["unsupported_fraction"]
     return {
         "resolved": [item for item in old_items if item["id"] not in new_ids],
@@ -48,7 +61,7 @@ def compare(payload: dict, baseline: dict) -> dict:
         "counts_after": after,
         "unsupported_before": unsupported_before,
         "unsupported_after": unsupported_after,
-        "copied_before": baseline.get("copied_fraction", 0.0),
+        "copied_before": baseline["copied_fraction"],
         "copied_after": payload["copied_fraction"],
         "fell": fell and not rose and not appeared and unsupported_after <= unsupported_before,
     }

@@ -49,13 +49,21 @@ _HAS_WORD = re.compile(r"\w")
 
 @dataclass(frozen=True)
 class Run:
-    """One citation-terminated run, or the uncited tail of a block."""
+    """One citation-terminated run, or the uncited tail of a block.
+
+    `lines` carries one line per sentence (#496's rule: a finding names
+    the line the sentence is on, not the block's first line), and `line`
+    is the first of them, for the whole-run outcomes. `citekeys` is
+    empty exactly for an uncited tail, and `cited` is the citation's page
+    hint, `(first, last)`, or None where the bracket carried none or
+    there was no bracket.
+    """
 
     line: int
+    lines: tuple[int, ...]
     sentences: tuple[str, ...]
     citekeys: tuple[str, ...]
-    citation: str | None
-    pages: tuple[int, int] | None
+    cited: tuple[int, int] | None
 
     @property
     def text(self) -> str:
@@ -98,13 +106,14 @@ def runs(text: str) -> list[Run]:
             spans = [(a, b) for a, b in sentences.spans(segment) if _HAS_WORD.search(segment[a:b])]
             if not spans:
                 continue
+            lines = tuple(_blocks.line_of_offset(start, raw_block, offset + a) for a, _ in spans)
             keys = tuple(citation_gate.extract_citekeys_from_line(citation)) if citation else ()
             found.append(
                 Run(
-                    _blocks.line_of_offset(start, raw_block, offset + spans[0][0]),
+                    lines[0],
+                    lines,
                     tuple(segment[a:b] for a, b in spans),
                     keys,
-                    citation,
                     cited_pages(citation) if citation else None,
                 )
             )

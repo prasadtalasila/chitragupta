@@ -2046,7 +2046,7 @@ digest:
 | --- | --- | --- |
 | Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once, over all words | down: the headline |
 | Copied fraction | the words of every verified copied span, over all words | up |
-| Not checkable | the words of every run whose cited source has no Docling sidecar; the reason names the stage to run | a fact about the corpus |
+| Not checkable | the words of every run any of whose cited sources has no Docling sidecar; the reason names the source and the stage to run | a fact about the corpus |
 
 A run found whole in its source is one copied span and no finding; a
 run whose sentences are all found but not contiguously is one span

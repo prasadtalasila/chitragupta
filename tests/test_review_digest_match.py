@@ -44,9 +44,9 @@ def a_lookup(*passages: Passage, reason: str | None = None):
     return lookup
 
 
-def a_run(*sentences: str, citekeys=(KEY,), pages=None, line=3) -> Run:
-    citation = f"[@{KEY}]" if citekeys else None
-    return Run(line, tuple(sentences), tuple(citekeys), citation, pages)
+def a_run(*sentences: str, citekeys=(KEY,), cited=None, line=3) -> Run:
+    lines = tuple(range(line, line + len(sentences)))
+    return Run(line, lines, tuple(sentences), tuple(citekeys), cited)
 
 
 def test_a_run_found_whole_is_one_span_and_no_finding():
@@ -54,7 +54,7 @@ def test_a_run_found_whole_is_one_span_and_no_finding():
     run = a_run(
         "Layered twins separate the physical entity from its models.",
         "Each layer exposes one interface to the next.",
-        pages=(4, 4),
+        cited=(4, 4),
     )
     match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
     assert checked.findings == []
@@ -69,7 +69,7 @@ def test_a_run_found_whole_is_one_span_and_no_finding():
 
 def test_a_page_hint_the_text_is_not_on_becomes_a_note():
     checked = match.Checked()
-    run = a_run("Operators can start developing against the interface alone.", pages=(4, 5))
+    run = a_run("Operators can start developing against the interface alone.", cited=(4, 5))
     match.check_run(run, a_lookup(passage(7, SOURCE_P7)), checked)
     assert checked.spans[0].note == "cited p. 4-5, found on p. 7"
 
@@ -89,6 +89,44 @@ def test_sentences_found_in_different_places_are_one_assembled_span():
     assert checked.spans[0].pages == (4, 7)
     assert checked.spans[0].tier == "assembled"
     assert checked.spans[0].note == "assembled from 2 places"
+
+
+def test_an_assembled_span_keeps_the_page_note_and_says_within_for_one_page():
+    """Both sentences on one page but not adjacent: the note says so in
+    words that make sense for one place, and the page hint's
+    disagreement travels with it rather than being lost."""
+    checked = match.Checked()
+    run = a_run(
+        "Each layer exposes one interface to the next.",
+        "Layered twins separate the physical entity from its models.",
+        cited=(9, 9),
+    )
+    match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
+    (span,) = checked.spans
+    assert span.note == "cited p. 9, found on p. 4; assembled within p. 4"
+
+
+def test_findings_carry_each_sentences_own_line():
+    checked = match.Checked()
+    run = a_run(
+        "Each layer exposes one interface to the next.",
+        "Pelicans migrate in autumn along the coast.",
+        line=10,
+    )
+    match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
+    assert [s.line for s in checked.spans] == [10]
+    assert {f.line for f in checked.findings} == {11}
+
+
+def test_a_sentence_exactly_at_the_mismatch_share_is_a_copy_mismatch():
+    """`share < MISMATCH_SHARE` is the drafter's-own side, so a share of
+    exactly 0.8 is a mismatch: pinned so a later `<=` cannot slip in."""
+    words = "alpha bravo charlie delta echo foxtrot golf hotel india juliet"
+    on_page = passage(2, words.replace("india juliet", "kilo lima"))
+    checked = match.Checked()
+    match.check_run(a_run(f"{words}."), a_lookup(on_page), checked)
+    assert [f.cls for f in checked.findings] == ["copy-mismatch"]
+    assert checked.findings[0].detail["share"] == match.MISMATCH_SHARE
 
 
 def test_a_nearly_matching_sentence_is_a_copy_mismatch_naming_the_missing_words():
@@ -113,13 +151,13 @@ def test_the_drafters_own_supported_sentence_is_unquoted_only():
     assert [f.cls for f in checked.findings] == ["unquoted-text"]
 
 
-def test_an_unsupported_sentence_carries_both_classes_and_is_counted_once(monkeypatch):
-    monkeypatch.setattr(config, "PROVENANCE_WEAK_SCORE", 0.5)
+def test_an_unsupported_sentence_carries_both_classes_and_is_counted_once():
     checked = match.Checked()
     run = a_run("Pelicans migrate in autumn along the coast.")
     match.check_run(run, a_lookup(passage(4, SOURCE_P4)), checked)
     assert [f.cls for f in checked.findings] == ["unquoted-text", "unsupported-text"]
-    assert checked.findings[1].detail["support_score"] < 0.5
+    # No word of it is on the page, so it is weak at the real default too.
+    assert checked.findings[1].detail["support_score"] < config.PROVENANCE_WEAK_SCORE
     assert checked.words_flagged == run.words
 
 
@@ -154,12 +192,7 @@ def test_a_source_without_reading_order_is_unverifiable():
     match.check_run(run, a_lookup(page_only), checked)
     assert checked.spans == [] and checked.findings == []
     assert checked.unverifiable == [
-        {
-            "line": 3,
-            "citekeys": [KEY],
-            "words": run.words,
-            "reason": f"{KEY}: {match._NO_READING_ORDER}",
-        }
+        match.Unverifiable(3, (KEY,), run.words, f"{KEY}: {match._NO_READING_ORDER}")
     ]
     assert checked.words_total == run.words
     assert checked.words_unverifiable == run.words
@@ -171,7 +204,7 @@ def test_a_citekey_the_ledger_lacks_carries_the_lookups_reason():
     checked = match.Checked()
     lookup = a_lookup(reason="not in the ledger -- run `python -m chitragupta.corpus sync`")
     match.check_run(a_run("Anything."), lookup, checked)
-    assert checked.unverifiable[0]["reason"].startswith(f"{KEY}: not in the ledger")
+    assert checked.unverifiable[0].reason.startswith(f"{KEY}: not in the ledger")
 
 
 def test_two_citekeys_pool_their_passages():
@@ -182,17 +215,39 @@ def test_two_citekeys_pool_their_passages():
         seen[citekey] = True
         return ([passage(4, SOURCE_P4)] if citekey == KEY else [passage(2, SOURCE_P7)]), None
 
-    run = Run(
-        3,
-        ("Operators can start developing against the interface alone.",),
-        (KEY, "smith_example_2024"),
-        f"[@{KEY}; @smith_example_2024]",
-        None,
+    run = a_run(
+        "Operators can start developing against the interface alone.",
+        citekeys=(KEY, "smith_example_2024"),
     )
     match.check_run(run, lookup, checked)
     assert set(seen) == {KEY, "smith_example_2024"}
     assert checked.spans[0].pages == (2,)
     assert checked.spans[0].citekeys == (KEY, "smith_example_2024")
+
+
+def test_a_run_with_one_unreadable_source_is_not_checkable_as_a_whole():
+    """`[@a; @b]` where only `a` has reading-ordered passages: matching
+    against `a` alone would report text copied from `b` as the drafter's
+    own. The run is not checkable, and the reason names `b`."""
+    checked = match.Checked()
+
+    def lookup(citekey):
+        if citekey == KEY:
+            return [passage(4, SOURCE_P4)], None
+        return [Passage(1, distinctive(SOURCE_P7), None)], None
+
+    run = a_run(SOURCE_P7, citekeys=(KEY, "smith_example_2024"))
+    match.check_run(run, lookup, checked)
+    assert checked.spans == [] and checked.findings == []
+    (entry,) = checked.unverifiable
+    assert entry.citekeys == (KEY, "smith_example_2024")
+    assert entry.reason.startswith("smith_example_2024: no reading-ordered passages")
+    assert checked.words_unverifiable == run.words
+
+
+def test_a_finding_outside_the_three_classes_is_refused_at_construction():
+    with pytest.raises(ValueError, match="unknown digest class"):
+        match.Finding("made-up", 1, "x", ())
 
 
 def test_an_empty_digest_has_fractions_zero():

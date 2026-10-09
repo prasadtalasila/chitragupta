@@ -22,11 +22,10 @@ def test_a_citation_covers_back_to_the_previous_citation():
         f"Four. [@{OTHER}, p. 12]\n"
     )
     found = runs_mod.runs(text)
-    assert [(r.sentences, r.citekeys, r.pages) for r in found] == [
+    assert [(r.sentences, r.citekeys, r.cited) for r in found] == [
         (("One.", "Two.", "Three."), (KEY,), (4, 5)),
         (("A connecting sentence of my own.", "Four."), (OTHER,), (12, 12)),
     ]
-    assert found[0].citation == f"[@{KEY}, p. 4-5]"
     assert found[0].text == "One. Two. Three."
     assert found[0].words == 3
 
@@ -40,8 +39,7 @@ def test_sentences_after_the_last_citation_are_an_uncited_tail():
     text = f"Copied. [@{KEY}] My own closing thought. And another.\n"
     found = runs_mod.runs(text)
     assert found[1].citekeys == ()
-    assert found[1].citation is None
-    assert found[1].pages is None
+    assert found[1].cited is None
     assert found[1].sentences == ("My own closing thought.", "And another.")
 
 
@@ -87,6 +85,27 @@ def test_a_mid_sentence_citation_closes_the_run_there():
 def test_lines_are_the_drafts_own():
     text = f"# Title\n\nLine three. [@{KEY}]\n\nLine five. [@{OTHER}]\nLine six.\n"
     assert [r.line for r in runs_mod.runs(text)] == [3, 5, 6]
+
+
+def test_each_sentence_of_a_wrapped_paragraph_keeps_its_own_line():
+    """Hard-wrapped Markdown is the normal shape of a draft: a sentence
+    that spans a line break is joined with a space, and every sentence
+    carries the line it starts on (#496), not the block's first line."""
+    text = (
+        "# Title\n\n"
+        "First sentence here.\n"
+        "Second one, continued\n"
+        "across lines. Third one.\n"
+        f"[@{KEY}]\n"
+    )
+    (run,) = runs_mod.runs(text)
+    assert run.sentences == (
+        "First sentence here.",
+        "Second one, continued across lines.",
+        "Third one.",
+    )
+    assert run.lines == (3, 4, 5)
+    assert run.line == 3
 
 
 def test_headings_code_and_the_reference_list_are_not_runs():

@@ -227,15 +227,25 @@ the agenda's `claim-support` class is the shape it would take.
   second paper's text as unmatched. The fix is to cite each paper at the
   end of its own part.
 - **It needs the enriched corpus.** Without a Docling sidecar for a
-  cited source, every run citing it is not checkable; the report names
-  the stage to run. Within a sidecar, parse quality still bounds
-  matching: a faithful copy of a mangled passage matches, a copy made
+  cited source, every run citing it is not checkable, including a run
+  whose bracket also names a source that does have one (matching
+  against the readable source alone would report text copied from the
+  other as the drafter's own); the report names the stage to run.
+  Within a sidecar, parse quality still bounds matching: a faithful
+  copy of a mangled passage matches, a copy made
   from the PDF that the parse mangled shows as `copy-mismatch`. Copy
   from the sidecar's text, not the PDF.
 - **A half-copied sentence is reported whole**, as a `copy-mismatch`
   naming the words that are not on the page, not split into a copied
   part and an original part.
 - **Lexical support is weak evidence**, as the section above says.
+- **An item's id is its sentence**, as an agenda item's is, so the same
+  connecting sentence written twice in one section is one id, and a
+  baseline comparison sees one item until both copies are gone.
+- **A citation closes a run wherever it sits.** The format puts it
+  after the last copied sentence; a narrative citation mid-sentence
+  (`[-@key]`, or `@key` in prose) splits the sentence across two runs
+  and is outside what the aid reads.
 - **The agenda does not read it, and `agenda-reviser` never touches
   it.** The digest's classes mean nothing outside a digest, and wiring
   them into the agenda would add a line to every existing agenda for a

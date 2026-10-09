@@ -10,7 +10,7 @@ Eleven commands make up the review layer -- `chitragupta/review/citation_provena
 the corpus, or in `figure_layout`'s case the figures the draft references, in
 `uncited_prose`'s case nothing else at all, in `citekey_union`'s case the
 acceptance records the book's units were accepted under, or in `agenda`'s
-case the other seven aids' own reports -- and produces evidence for a human
+case the other eight aids' own reports -- and produces evidence for a human
 judgement. None gates, none blocks a draft, none takes the write lock,
 and all eleven are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4:
 the review layer" is the definition; this module is what makes the
@@ -49,8 +49,8 @@ Markdown through `chitragupta/render_output.py`, and this is not a render of
 anything. All eleven aids emit one now -- `verbatim scan` since #127,
 `provenance` and `coverage` since #309, and `synthesis`, `figure`,
 `uncited`, `quotation`, `agenda`, `support`, `union` and `digest` from the
-day each landed -- which is why `agenda` itself can read each of the other seven
-aids' JSON as optional rather than required.
+day each landed -- which is why `agenda` itself can read each of the other
+eight aids' JSON as optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
 becomes reviewable later and diffable across revisions, and a wall-clock

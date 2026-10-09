@@ -16,6 +16,7 @@ it is what the next run's `--baseline` reads. No timestamp, for the
 reason `review/__init__.py` gives.
 """
 
+from dataclasses import asdict
 from pathlib import Path
 
 from chitragupta import dossier, review
@@ -97,7 +98,7 @@ def payload(draft: Path, command: str, checked: Checked, rows: list[dict]) -> di
                 }
                 for span in checked.spans
             ],
-            "unverifiable": list(checked.unverifiable),
+            "unverifiable": [asdict(run) for run in checked.unverifiable],
         }
     )
     return data
@@ -116,6 +117,13 @@ def _summary_lines(checked: Checked, rows: list[dict]) -> list[str]:
         f"- Copied spans: {len(checked.spans)}",
     ]
     lines += [f"- {cls}: {count}" for cls, count in _counts(rows).items()]
+    if total == 0:
+        # The fractions are 0.0 by construction, not by merit: say so
+        # where a reader skimming the first line would read success.
+        lines.append(
+            "- No prose found: nothing to check (a digest is Markdown prose with "
+            "`[@citekey]` brackets closing each copied run)."
+        )
     return lines + [""]
 
 
@@ -150,8 +158,7 @@ def _spans_lines(checked: Checked) -> list[str]:
     if checked.unverifiable:
         lines += ["## Not checkable", ""]
         lines += [
-            f"- line {run['line']}: {run['reason']} ({run['words']} words)"
-            for run in checked.unverifiable
+            f"- line {run.line}: {run.reason} ({run.words} words)" for run in checked.unverifiable
         ]
         lines.append("")
     return lines
