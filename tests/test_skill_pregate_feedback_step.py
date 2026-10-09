@@ -68,16 +68,19 @@ _GENRE_SKILLS = {
     "deep-research",
 }
 
-# The five skills that must never carry this step -- checked by name,
-# not merely "everything but the five," so an eleventh skill landing later
+# The six skills that must never carry this step -- checked by name,
+# not merely "everything but the five," so a twelfth skill landing later
 # fails loudly here rather than silently joining whichever side of the
-# split its file happens to sort into.
+# split its file happens to sort into. `review-digest` copies from the
+# sources rather than drafting from a `claim:`/`quote:` packet (#991),
+# so the critique loop has nothing to read; `review digest` replaces it.
 _EXCLUDED_SKILLS = {
     "draft-reviser",
     "corpus-reviser",
     "agenda-reviser",
     "book-assembler",
     "figure-drawer",
+    "review-digest",
 }
 
 _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")

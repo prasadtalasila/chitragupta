@@ -56,7 +56,7 @@ Related reading:
 - [Revising: draft-reviser](#-revising-draft-reviser)
 - [Revising widely: corpus-reviser](#-revising-widely-corpus-reviser)
 - [Working the agenda: agenda-reviser](#-working-the-agenda-agenda-reviser)
-- [What all ten have in common](#-what-all-ten-have-in-common)
+- [What all eleven have in common](#-what-all-eleven-have-in-common)
 - [The boundaries, and why they are enforced](#-the-boundaries-and-why-they-are-enforced)
 - [Genres this project does not have](#-genres-this-project-does-not-have)
 
@@ -423,7 +423,7 @@ fails if a rule that moved to `figure-drawer` reappears in one (#1027).
 requests, what it writes, a worked figure, and what to do when one goes
 wrong.
 
-## 🔑 What all ten have in common
+## 🔑 What all eleven have in common
 
 These are not per-skill choices. They are the same rules, stated in each
 of the ten `SKILL.md` files or, where several skills share the wording

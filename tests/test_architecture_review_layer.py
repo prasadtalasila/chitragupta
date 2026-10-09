@@ -54,6 +54,7 @@ _NUMBER_WORDS = {
     8: "Eight",
     9: "Nine",
     10: "Ten",
+    11: "Eleven",
 }
 
 _SECTION_HEADING = "## Layer 4: the review layer"
