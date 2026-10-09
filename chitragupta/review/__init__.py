@@ -72,7 +72,7 @@ from pathlib import Path
 from typing import TextIO
 
 from chitragupta import config
-from chitragupta.review import _book_paths
+from chitragupta.review._paths import report_dir, require_reviewable  # noqa: F401
 
 # One place per aid, so a caller cannot invent a report kind by
 # typo. The value is the suffix that goes between the draft's stem and
@@ -88,6 +88,7 @@ AIDS = {
     "agenda": "Agenda",
     "support": "Claim support",
     "union": "Citekey union",
+    "digest": "Verbatim digest",
 }
 
 # Deliberately names its sources rather than linking to them: this text
@@ -114,61 +115,6 @@ def version() -> str:
             return tomllib.load(handle)["tool"]["poetry"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return "unknown"
-
-
-def require_reviewable(draft: Path, what: str = "draft") -> Path:
-    """Returns `draft`, having refused it if it is missing or outside `content/`.
-
-    The layer's input contract in one place. The containment half is the
-    tier-1 rule 3.17.0 set for `citation_gate`, `references` and
-    `render_output` and did not then apply to the three review aids --
-    everything this pipeline touches lives under `content/`, so that one
-    directory is the whole record of the work. The existence half is here
-    so all three commands fail the same way on a mistyped path, instead
-    of one returning 1 and two raising `FileNotFoundError`.
-    """
-    path = config.require_inside_content(Path(draft), what)
-    if not path.is_file():
-        raise FileNotFoundError(f"No such {what}: {draft}")
-    return path
-
-
-def report_dir(draft: Path) -> Path:
-    """Where `draft`'s review reports go: `config.REVIEW_DIR` with the
-    draft's own place under `config.DRAFTS_DIR` mirrored into it.
-
-    An assembled book is mirrored from `config.RENDERED_DIR` instead --
-    `_book_paths.review_dir_for` owns both cases and why.
-
-    Falls back to a flat `REVIEW_DIR` for a draft under `content/` but
-    under neither, matching `render_output._output_dir`'s policy rather
-    than `dossier.dossier_dir`'s raise: a review aid that refuses to run
-    is a worse answer than one that writes flat, and unlike a dossier,
-    nothing later goes looking for the report by its mirrored path.
-    """
-    for label, directory in (("review", config.REVIEW_DIR), ("drafts", config.DRAFTS_DIR)):
-        if not config.resolves_inside(directory, config.CONTENT_DIR):
-            raise config.OutsideContentDir(
-                f"{directory} resolves to {directory.resolve()}, outside the content "
-                f"directory {config.CONTENT_DIR.resolve()}. A review report mirrors "
-                f"the draft's path from content/drafts/ into content/review/, so a "
-                f"'{label}' that points out of the content directory has no mirror to "
-                "compute and would write where nothing else in this pipeline looks. "
-                "Move it back, or point [content].dir (config.toml) at wherever it "
-                "really lives."
-            )
-
-    mirrored = _book_paths.review_dir_for(draft)
-    if mirrored is None:
-        return config.REVIEW_DIR
-    if not config.resolves_inside(mirrored, config.REVIEW_DIR):
-        raise config.OutsideContentDir(
-            f"{mirrored} resolves to {mirrored.resolve()}, outside "
-            f"{config.REVIEW_DIR.resolve()}. A draft's own path is never a reason to "
-            "write outside the content directory -- remove the symlink, or review a "
-            "draft from a topic directory that isn't one."
-        )
-    return mirrored
 
 
 def report_path(draft: Path, aid: str, suffix: str = "md") -> Path:

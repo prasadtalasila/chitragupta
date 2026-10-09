@@ -23,6 +23,7 @@ from chitragupta.review import (
     synthesis,
     uncited_prose,
     verbatim_check,
+    verbatim_digest,
 )
 
 # Keyed by review.AIDS, so a new aid cannot appear here without also
@@ -38,6 +39,7 @@ AIDS = {
     "agenda": (agenda, "one ranked, deduplicated worklist across every other aid"),
     "support": (claim_support, "does the cited source entail this claim?"),
     "union": (citekey_union, "does the assembly still carry every unit's citekeys?"),
+    "digest": (verbatim_digest, "how much of a verbatim digest is not the sources' own words?"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this
