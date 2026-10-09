@@ -56,7 +56,13 @@ from chitragupta.review.agenda import _accept
 # (docs/CODE-STANDARDS.md) is not in tension with reading it here.
 # `synthesis` and `figure` carry no item class (see `_items.py`) but are
 # still named in the header as read, not silently dropped.
-AID_NAMES = tuple(aid for aid in review.AIDS if aid not in ("agenda", "union"))
+# `digest` is excluded because its classes mean nothing outside a
+# verbatim digest (#991): wired in, every existing agenda would carry a
+# "digest: read" line for a report no survey or chapter ever has, and
+# `--baseline`'s refresh would run the digest aid over prose that is
+# not a digest. The digest's report is its own worklist, worked by the
+# `review-digest` skill, never by `agenda-reviser`.
+AID_NAMES = tuple(aid for aid in review.AIDS if aid not in ("agenda", "union", "digest"))
 
 # The item classes raised from an aid's `.json`, and which aid. The three
 # classes missing here (`missing-citekey`, `recorded-but-uncited`,

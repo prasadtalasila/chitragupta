@@ -1,6 +1,6 @@
 """The review layer's single entry point: `python -m chitragupta.review <aid>`.
 
-Ten aids, read over a finished draft -- by a person, or by a skill that
+Eleven aids, read over a finished draft -- by a person, or by a skill that
 runs one on your behalf. None of them is a gate, none takes the write
 lock, and none of them can block a draft:
 
@@ -44,6 +44,11 @@ lock, and none of them can block a draft:
         does the assembled book still carry every citekey its accepted
         units stand on? Set arithmetic against the acceptance records.
 
+    python -m chitragupta.review digest <draft>
+        for a verbatim digest: which runs are really in the source they
+        cite, every sentence that is not, and the unsupported fraction.
+        --baseline compares against an earlier run.
+
 **One entry point, one level deep**, like `python -m chitragupta.corpus sync` for the
 corpus layer. The aid modules beside this one have no `__main__` block,
 so `python -m chitragupta.review.verbatim_check` imports a module and exits 0
@@ -55,7 +60,7 @@ The subcommand names are not invented here. They are the keys of
 `review.AIDS`, which are also the suffixes a written report is filed
 under (`survey.provenance.md`, `.verbatim.md`, `.coverage.md`,
 `.synthesis.md`, `.figure.md`, `.uncited.md`, `.quotation.md`,
-`.agenda.md`, `.support.md`, `book.union.md`) -- so the command a reader
+`.agenda.md`, `.support.md`, `book.union.md`, `.digest.md`) -- so the command a reader
 types and the file they get back share one vocabulary.
 
 Each aid declares its own flags in its own `build_parser(parser)` and
@@ -79,7 +84,7 @@ from chitragupta.review._registry import AIDS
 # What `--help` prints, deliberately *not* this module's docstring (#152)
 # -- see chitragupta/corpus.py's DESCRIPTION for the reasoning, which is the same
 # at every entry point in this project.
-DESCRIPTION = "The review layer: ten read-only aids over a finished draft. No gate."
+DESCRIPTION = "The review layer: eleven read-only aids over a finished draft. No gate."
 
 
 def build_parser() -> argparse.ArgumentParser:

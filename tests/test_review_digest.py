@@ -280,3 +280,133 @@ class TestRecheckOutput:
         assert "unquoted-text: 1 -> 1" in text
         assert "unsupported fraction: 0.1 -> 0.1" in text
         assert "copied fraction: 0.0 -> 0.0" in text
+
+
+class TestRegistration:
+    def test_digest_is_an_aid_with_a_module_and_a_label(self):
+        assert review.AIDS["digest"] == "Verbatim digest"
+        from chitragupta.review import _registry
+
+        assert _registry.AIDS["digest"][0] is verbatim_digest
+
+    def test_the_report_lands_under_the_ordinary_rule(self, isolated_config):
+        draft = config.DRAFTS_DIR / "t" / "notes.md"
+        assert review.report_path(draft, "digest") == config.REVIEW_DIR / "t" / "notes.digest.md"
+
+    def test_agenda_does_not_read_it(self):
+        from chitragupta.review.agenda import _sources
+
+        assert "digest" not in _sources.AID_NAMES
+
+    def test_the_moved_path_helpers_keep_their_names(self):
+        from chitragupta.review import _paths
+
+        assert review.require_reviewable is _paths.require_reviewable
+        assert review.report_dir is _paths.report_dir
+
+
+class TestRun:
+    def test_files_md_and_json_and_prints_the_summary(self, capsys):
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        assert review_main.main(["digest", str(draft), "--formats", "md"]) == 0
+        out = capsys.readouterr().out
+        md = config.REVIEW_DIR / "dt" / "notes.digest.md"
+        js = config.REVIEW_DIR / "dt" / "notes.digest.json"
+        assert md.is_file() and js.is_file()
+        assert str(md) in out and str(js) in out
+        data = json.loads(js.read_text(encoding="utf-8"))
+        assert data["command"] == f"python -m chitragupta.review digest {draft} --formats md"
+        assert data["counts"]["unquoted-text"] == 2
+        assert data["counts"]["unsupported-text"] == 2
+        assert data["words_copied"] == 17 and data["words_flagged"] == 12
+        assert data["unsupported_fraction"] == round(12 / data["words_total"], 3)
+        assert "Unsupported fraction" in md.read_text(encoding="utf-8")
+
+    def test_json_goes_to_stdout_and_the_summary_to_stderr(self, capsys):
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        assert review_main.main(["digest", str(draft), "--json", "--formats", "md"]) == 0
+        captured = capsys.readouterr()
+        assert json.loads(captured.out)["aid"] == "digest"
+        assert "notes.digest.json" in captured.err
+
+    def test_a_digest_with_no_prose_exits_zero(self, capsys):
+        draft = a_digest("# Only a heading\n")
+        assert review_main.main(["digest", str(draft), "--json", "--formats", "md"]) == 0
+        assert json.loads(capsys.readouterr().out)["unsupported_fraction"] == 0.0
+
+    def test_a_draft_outside_content_exits_one(self, tmp_path, capsys):
+        outside = tmp_path / "notes.md"
+        outside.write_text("x\n", encoding="utf-8")
+        assert review_main.main(["digest", str(outside)]) == 1
+        assert "content" in capsys.readouterr().err
+
+    def test_a_missing_draft_exits_one(self, capsys):
+        assert review_main.main(["digest", str(config.DRAFTS_DIR / "nope.md")]) == 1
+
+    def test_a_bad_baseline_exits_two_before_reading_the_ledger(self, tmp_path, capsys, monkeypatch):
+        draft = a_digest(DIGEST)
+        bad = tmp_path / "notes.agenda.json"
+        bad.write_text(json.dumps({"aid": "agenda", "items": []}), encoding="utf-8")
+        monkeypatch.setattr(verbatim_digest, "build_report", lambda *_: pytest.fail("built a report"))
+        assert review_main.main(["digest", str(draft), "--baseline", str(bad)]) == 2
+        assert "not a digest payload" in capsys.readouterr().err
+
+    def test_baseline_prints_the_comparison_and_refiles_the_report(self, capsys):
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        review_main.main(["digest", str(draft), "--formats", "md"])
+        js = config.REVIEW_DIR / "dt" / "notes.digest.json"
+        # The repair: delete the closing thought.
+        draft.write_text(DIGEST.replace("And a closing thought of mine.\n", ""), encoding="utf-8")
+        assert review_main.main(["digest", str(draft), "--baseline", str(js), "--formats", "md"]) == 0
+        out = capsys.readouterr().out
+        assert "resolved: 2" in out and "new: 0" in out and "fell: yes" in out
+        assert json.loads(js.read_text(encoding="utf-8"))["counts"]["unquoted-text"] == 1
+
+    def test_baseline_with_json_prints_the_comparison_payload(self, capsys):
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        review_main.main(["digest", str(draft), "--formats", "md"])
+        js = config.REVIEW_DIR / "dt" / "notes.digest.json"
+        capsys.readouterr()
+        argv = ["digest", str(draft), "--baseline", str(js), "--json", "--formats", "md"]
+        assert review_main.main(argv) == 0
+        captured = capsys.readouterr()
+        data = json.loads(captured.out)
+        assert data["baseline"] == str(js) and data["fell"] is False
+        assert data["command"].endswith("--json")
+        assert "notes.digest.md" in captured.err
+
+    def test_the_filed_command_is_the_bare_one_even_under_baseline(self, capsys):
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        review_main.main(["digest", str(draft), "--formats", "md"])
+        js = config.REVIEW_DIR / "dt" / "notes.digest.json"
+        review_main.main(["digest", str(draft), "--baseline", str(js), "--formats", "md"])
+        assert "--baseline" not in json.loads(js.read_text(encoding="utf-8"))["command"]
+
+    def test_passages_are_looked_up_once_per_citekey(self, monkeypatch):
+        from chitragupta import passages as passages_mod
+
+        calls = []
+        real = passages_mod.source_passages
+
+        def counting(con, citekey):
+            calls.append(citekey)
+            return real(con, citekey)
+
+        monkeypatch.setattr(verbatim_digest.passages, "source_passages", counting)
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        verbatim_digest.build_report(draft)
+        assert calls == [KEY]
+
+    def test_the_standalone_parser_carries_the_same_defaults(self):
+        """`tests/test_review_entrypoint.py` already pins that every aid
+        declares its flags on the subparser and has no `__main__` block;
+        this only covers `build_parser(None)`, the shape `main()` uses."""
+        parser = verbatim_digest.build_parser()
+        args = parser.parse_args(["x.md"])
+        assert (args.formats, args.json, args.baseline) == ("md,tex,pdf", False, None)
