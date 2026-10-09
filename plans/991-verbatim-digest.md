@@ -2936,7 +2936,7 @@ Add to `mkdocs.yml` under `Writing:`, after the figure-drawer line:
   `review union`'s: *for a verbatim digest, which runs are really in the
   source they cite, the unsupported fraction, and every sentence that
   is not verified source text, as a worklist of its own; it never
-  reaches the agenda. [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md).* In the
+  reaches the agenda. `VERBATIM-DIGEST.md`.* In the
   output contract block add
   `content/review/<topic>/survey.digest.md (+ .tex/.pdf, .json)`.
   "`review provenance` and `review agenda` write by default" →
