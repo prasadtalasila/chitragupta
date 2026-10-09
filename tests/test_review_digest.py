@@ -257,6 +257,21 @@ class TestCompare:
         shrunk = a_payload(draft, stays, total=2)
         assert recheck.compare(shrunk, a_payload(draft, gone, stays))["fell"] is False
 
+    def test_a_baseline_without_counts_reads_as_zeros(self):
+        """An older or hand-edited baseline that carries `items` but no
+        `counts` compares as if every class were zero rather than
+        raising; the ids still decide resolved and persisting."""
+        draft = a_digest(DIGEST)
+        stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))
+        bare = {k: v for k, v in a_payload(draft, stays).items() if k != "counts"}
+        result = recheck.compare(a_payload(draft, stays), bare)
+        assert result["counts_before"] == {
+            "unsupported-text": 0,
+            "copy-mismatch": 0,
+            "unquoted-text": 0,
+        }
+        assert len(result["persisting"]) == 1
+
     def test_both_fractions_travel(self):
         draft = a_digest(DIGEST)
         stays = match.Finding("unquoted-text", 8, "Stays sentence.", (KEY,))

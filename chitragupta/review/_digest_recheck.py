@@ -16,43 +16,25 @@ Mirrors `agenda/_recheck.py`'s payload keys where the two say the same
 thing, because the skill reading this already reads that one.
 """
 
-import json
 import shlex
 from pathlib import Path
 
 from chitragupta import review
+from chitragupta.review import _emit
 from chitragupta.review._digest_match import CLASSES
 
 
 def load_baseline(path: str | Path) -> dict:
-    """A previously filed `digest` payload, refused if it cannot serve.
-
-    Two confident-wrong-answer failures are named: unreadable JSON, and
-    another aid's payload (every aid's `.json` has a `command`, and the
-    likeliest typo is the agenda's beside it).
-    """
-    try:
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ValueError(f"Cannot read the baseline {path}: {exc}") from None
-    except json.JSONDecodeError:
-        raise ValueError(
-            f"{path} is not a digest payload -- it is not valid JSON. "
-            "Write one with `review digest <draft>`, which files it as the report's .json sibling."
-        ) from None
-    if not isinstance(payload, dict) or payload.get("aid") != "digest" or "items" not in payload:
-        raise ValueError(
-            f"{path} is not a digest payload. Write one with `review digest <draft>`, "
-            "which files it as the report's .json sibling."
-        )
-    return payload
+    """A previously filed `digest` payload, refused if it cannot serve;
+    `_emit.read_baseline` owns the two refusals, shared with `agenda`."""
+    return _emit.read_baseline(path, "digest", "a digest payload")
 
 
 def compare(payload: dict, baseline: dict) -> dict:
     new_items, old_items = payload["items"], baseline["items"]
     new_ids = {item["id"] for item in new_items}
     old_ids = {item["id"] for item in old_items}
-    before = {cls: baseline["counts"].get(cls, 0) for cls in CLASSES}
+    before = {cls: baseline.get("counts", {}).get(cls, 0) for cls in CLASSES}
     after = {cls: payload["counts"].get(cls, 0) for cls in CLASSES}
     appeared = [item for item in new_items if item["id"] not in old_ids]
     rose = any(after[cls] > before[cls] for cls in CLASSES)
