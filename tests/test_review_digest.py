@@ -10,6 +10,7 @@ whatever it finds, no lock, no draft blocked.
 """
 
 import json
+import shlex
 from pathlib import Path
 
 import pytest
@@ -321,7 +322,10 @@ class TestRun:
         assert md.is_file() and js.is_file()
         assert str(md) in out and str(js) in out
         data = json.loads(js.read_text(encoding="utf-8"))
-        assert data["command"] == f"python -m chitragupta.review digest {draft} --formats md"
+        # `shlex.join`, not an f-string: on Windows the draft path carries
+        # backslashes, which `shlex.join` quotes and a bare f-string does not.
+        expected = ["python", "-m", "chitragupta.review", "digest", str(draft), "--formats", "md"]
+        assert data["command"] == shlex.join(expected)
         assert data["counts"]["unquoted-text"] == 2
         assert data["counts"]["unsupported-text"] == 2
         assert data["words_copied"] == 17 and data["words_flagged"] == 12
@@ -424,8 +428,8 @@ class TestRun:
         draft = a_digest(DIGEST)
         assert verbatim_digest.main([str(draft)]) == 0
         js = config.REVIEW_DIR / "dt" / "notes.digest.json"
-        assert json.loads(js.read_text(encoding="utf-8"))["command"] == (
-            f"python -m chitragupta.review digest {draft}"
+        assert json.loads(js.read_text(encoding="utf-8"))["command"] == shlex.join(
+            ["python", "-m", "chitragupta.review", "digest", str(draft)]
         )
         assert "notes.digest.md" in capsys.readouterr().out
 
