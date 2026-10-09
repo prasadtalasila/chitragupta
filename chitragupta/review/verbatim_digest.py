@@ -57,7 +57,7 @@ def build_report(draft: Path) -> tuple[_digest_match.Checked, list[dict]]:
     cache: dict[str, tuple[list, str | None]] = {}
     with ledger.reading() as con:
 
-        def lookup(citekey: str):
+        def lookup(citekey: str) -> tuple[list, str | None]:
             if citekey not in cache:
                 cache[citekey] = passages.source_passages(con, citekey)
             return cache[citekey]

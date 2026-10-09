@@ -21,6 +21,7 @@ from chitragupta.review import _digest_recheck as recheck
 from chitragupta.review import _digest_render as render
 from chitragupta.review import verbatim_digest
 from chitragupta.review._digest_runs import Run
+from tests.test_review_quotation import a_source
 from tests.test_review_units import draft_at
 
 KEY = "shao_analysis_2023"
@@ -35,17 +36,6 @@ def _a_synced_ledger(isolated_config):
     """An empty, current ledger: the aid reads read-only (#843) and a
     missing one is refused, so every test has to say it synced."""
     ledger.connect().close()
-
-
-def a_source(citekey: str, *records: tuple[int, str]) -> Path:
-    """A rung-2 passage sidecar: reading-ordered text with a page each."""
-    path = config.PARSED_DIR / f"{citekey}.passages.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps([{"text": t, "page": p, "label": "text"} for p, t in records]),
-        encoding="utf-8",
-    )
-    return path
 
 
 def a_digest(body: str, name: str = "notes.md") -> Path:
@@ -402,6 +392,21 @@ class TestRun:
         draft = a_digest(DIGEST)
         verbatim_digest.build_report(draft)
         assert calls == [KEY]
+
+    def test_main_with_default_formats_files_the_bare_command(self, capsys):
+        """`main()` is the standalone entry the entry-point tests do not
+        reach, and the default `--formats` is the one branch of
+        `_command` a run that names its formats never takes. Rendering
+        `tex`/`pdf` needs pandoc; without it each is skipped with a
+        warning, which is the documented behaviour, not a failure."""
+        a_source(KEY, (4, SOURCE))
+        draft = a_digest(DIGEST)
+        assert verbatim_digest.main([str(draft)]) == 0
+        js = config.REVIEW_DIR / "dt" / "notes.digest.json"
+        assert json.loads(js.read_text(encoding="utf-8"))["command"] == (
+            f"python -m chitragupta.review digest {draft}"
+        )
+        assert "notes.digest.md" in capsys.readouterr().out
 
     def test_the_standalone_parser_carries_the_same_defaults(self):
         """`tests/test_review_entrypoint.py` already pins that every aid

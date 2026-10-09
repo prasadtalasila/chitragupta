@@ -57,6 +57,13 @@ def test_a_bracket_without_a_citekey_does_not_close_a_run():
     assert found[0].sentences == ("Shown [see 3] earlier.", "More [sic] text.")
 
 
+def test_an_at_sign_in_a_bracket_is_not_a_citation_unless_the_extractor_says_so():
+    """`[@ 3]` has the `@` the bracket pattern looks for and no citekey
+    pandoc would read; the extractor, not the pattern, decides."""
+    found = runs_mod.runs(f"Shown [@ 3] earlier. Copied. [@{KEY}]\n")
+    assert [r.sentences for r in found] == [("Shown [@ 3] earlier.", "Copied.")]
+
+
 def test_several_citekeys_in_one_bracket_close_one_run():
     found = runs_mod.runs(f"Copied. [@{KEY}; @{OTHER}]\n")
     assert found[0].citekeys == (KEY, OTHER)
