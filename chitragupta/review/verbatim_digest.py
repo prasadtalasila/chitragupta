@@ -43,7 +43,6 @@ Stdlib only, interpreter tier 1. Reads the ledger read-only (#843).
 """
 
 import argparse
-import json
 import shlex
 import sys
 from pathlib import Path
@@ -150,8 +149,7 @@ def run(args: argparse.Namespace) -> int:
     comparison = _digest_recheck.compare(payload, baseline)
     if args.json:
         recheck = _digest_recheck.recheck_payload(draft, args.baseline, comparison)
-        print(json.dumps(recheck, indent=2))
-        review.print_written(written, stream=sys.stderr)
+        _emit.announce(recheck, written, as_json=True)
     else:
         print(_digest_recheck.format_recheck(args.baseline, comparison))
         review.print_written(written)

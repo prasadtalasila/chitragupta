@@ -78,7 +78,7 @@ def emit(
     return 0
 
 
-def recheck_command(aid: str, draft: "str | Path", baseline: "str | Path") -> str:
+def recheck_command(aid: str, draft: str | Path, baseline: str | Path) -> str:
     """`python -m chitragupta.review <aid> <draft> --baseline <file> --json`:
     the invocation a `--baseline` comparison records in its envelope so a
     reader holding it can regenerate it. Always `--json`, since only the
@@ -88,7 +88,7 @@ def recheck_command(aid: str, draft: "str | Path", baseline: "str | Path") -> st
     return shlex.join([*parts, "--baseline", str(baseline), "--json"])
 
 
-def read_baseline(path: "str | Path", aid: str, label: str) -> dict:
+def read_baseline(path: str | Path, aid: str, label: str) -> dict:
     """A filed `<stem>.<aid>.json`, read back as a comparison basis for
     `--baseline` and refused if it cannot serve as one.
 
