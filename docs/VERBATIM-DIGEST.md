@@ -45,6 +45,7 @@ it out of git without a rule of its own.
 - [Pages, and what a page note means](#-pages-and-what-a-page-note-means)
 - [The repair loop and `--baseline`](#-the-repair-loop-and---baseline)
 - [Lexical support, and what the NLI `support` aid adds](#-lexical-support-and-what-the-nli-support-aid-adds)
+- [Figures and equations](#-figures-and-equations)
 - [What it does not do](#-what-it-does-not-do)
 - [The rule it lives under](#-the-rule-it-lives-under)
 
@@ -218,6 +219,30 @@ report beside the digest's, and treat an `unsupported-text` item the
 model marks entailed as "cite it correctly" rather than "delete it". A
 later change could add a `--support` flag that runs the two together;
 the agenda's `claim-support` class is the shape it would take.
+
+## 🖼 Figures and equations
+
+Where the corpus was enriched with the Docling stage and
+`[enrich].docling_images` on, `python -m chitragupta.draft figures
+<citekey>` lists a paper's figures with a caption, a page, a crop and
+the exact string to cite each by. The skill looks at them while choosing
+passages, and the repository's rule for every genre holds here without
+exception: **a figure is consulted, never reproduced**. A digest may
+carry a figure's caption, copied verbatim as a run of the source's own
+words, and a connecting sentence of the drafter's that names the figure
+by its cite string; that sentence is the drafter's and is listed as
+`unquoted-text` like any other.
+
+A decoded equation is text. With `[parser].formulas` on, the Docling
+parse writes each formula as LaTeX into the passage sidecar, and the
+skill copies it inside its run exactly as it copies the words around
+it; the matcher flattens both sides to one character stream, so a
+copied formula matches its source like any sentence.
+
+Neither is a precondition. A corpus parsed without images or without
+formulas has no crops and no decoded equations; the figures command
+says which of the two it is and exits 0, the skill tells the user in
+one line, and the digest is built from the prose alone.
 
 ## 🚧 What it does not do
 

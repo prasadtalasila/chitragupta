@@ -58,6 +58,11 @@ own folder.
 - `python -m chitragupta.draft retrieve search "<q>" --k 15 --log <draft>`
   finds candidates; `... evidence "<q>" --citekey <key> --log <draft>`
   reads more of one document
+- `python -m chitragupta.draft figures <citekey>` lists one paper's
+  figures when the Docling stage extracted them: caption, page, the
+  exact string to cite each by, and the path to the crop. A reading aid
+  only; it exits 0 whether the paper has figures, has none, or was never
+  enriched, and says which
 
 **Read-only means read-only: never run `python -m chitragupta.corpus sync`,
 and never run `python -m chitragupta.enrich` or any `chitragupta/enrich/*`
@@ -168,6 +173,24 @@ steps are replaced by `review digest` and say so below.
    a run found whole is one clean span; one assembled from several
    places is reported as such.
 
+   **Figures and equations, where the Docling stage extracted them.**
+   Run `python -m chitragupta.draft figures <citekey>` for each kept
+   source and open the crops it lists; a figure often says what a
+   paragraph circles around. A figure is **never reproduced**: having
+   the paper grants no right to its images. What a digest may carry is
+   its caption, copied verbatim as a run like any other sentence of the
+   source, and a connecting sentence of your own that names the figure
+   by the exact cite string the command prints ("Figure 3 of
+   [@key], p. 7"); that sentence is yours and will be listed as
+   `unquoted-text`, which is the honest reading. A decoded equation is
+   text: it sits in the sidecar as LaTeX, and you copy it exactly,
+   inside its run, as you copy any other words of the source. None of
+   this is a precondition. A corpus parsed without `docling_images` or
+   without `[parser].formulas` has no crops and no decoded equations;
+   the command says so, you note it to the user in one line, and the
+   digest goes on from the prose alone. Never run the enrichment
+   stage yourself to change that.
+
 5. **Note disagreement.** Where two papers say opposite things, copy
    both, each under its own citation, and let a connecting sentence of
    yours name the disagreement.
@@ -181,8 +204,9 @@ steps are replaced by `review digest` and say so below.
    parse's own noise.
    Do not fix hyphenation, ligatures, a dropped word or a reference
    marker; do not reorder; do not shorten. If the parse is too broken to
-   read, pick another passage or another paper. Close each run with its
-   citation and page. Where two runs need a bridge, write one short
+   read, pick another passage or another paper. A decoded equation
+   inside a passage is copied with it, LaTeX and all. Close each run
+   with its citation and page. Where two runs need a bridge, write one short
    sentence of your own between them; every such sentence will be
    listed as `unquoted-text`, and one no source supports is also
    `unsupported-text`. Fewer is better.
