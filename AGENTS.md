@@ -274,6 +274,15 @@ enrichment layer is optional and nothing above it needs it.
   the part that belongs in your prose. This is the same boundary the
   `quote:` field draws for wording, applied to images.
 
+  **The one exception is the verbatim digest.** `review-digest` (and
+  `review-digest-opencode`) builds private study text that is the
+  sources' own words, and it may place a source figure's crop in the
+  digest the same way: copied beside the draft and shown with its cite
+  string, a caption of the drafter's own under it (docs/VERBATIM-DIGEST.md).
+  That licence stops at the digest. A digest is never a source for any
+  other draft, and a copied figure, like a copied sentence, never
+  travels from one into a survey or a chapter.
+
   It lists figures, not every picture: an uncaptioned scrap smaller than
   about 12mm is a publisher logo, not a figure, and is not indexed. If it
   reports **no figure index** for a citekey, the optional enrichment

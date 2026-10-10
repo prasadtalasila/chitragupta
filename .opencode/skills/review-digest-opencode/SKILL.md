@@ -173,23 +173,29 @@ steps are replaced by `review digest` and say so below.
    a run found whole is one clean span; one assembled from several
    places is reported as such.
 
-   **Figures and equations, where the Docling stage extracted them.**
-   Run `python -m chitragupta.draft figures <citekey>` for each kept
-   source and open the crops it lists; a figure often says what a
-   paragraph circles around. A figure is **never reproduced**: having
-   the paper grants no right to its images. What a digest may carry is
-   its caption, copied verbatim as a run like any other sentence of the
-   source, and a connecting sentence of your own that names the figure
-   by the exact cite string the command prints ("Figure 3 of
-   [@key], p. 7"); that sentence is yours and will be listed as
-   `unquoted-text`, which is the honest reading. A decoded equation is
-   text: it sits in the sidecar as LaTeX, and you copy it exactly,
-   inside its run, as you copy any other words of the source. None of
-   this is a precondition. A corpus parsed without `docling_images` or
-   without `[parser].formulas` has no crops and no decoded equations;
-   the command says so, you note it to the user in one line, and the
-   digest goes on from the prose alone. Never run the enrichment
-   stage yourself to change that.
+   **Figures, where the Docling stage extracted them.** Run
+   `python -m chitragupta.draft figures <citekey>` for each kept source
+   and open the crops it lists; a figure often says what a paragraph
+   circles around. A digest is the one draft that may carry a source
+   figure itself (`AGENTS.md` records the exception): copy the crop the
+   command names into `content/drafts/<topic>/figures/` and place it
+   directly after the run it belongs to, as ordinary Markdown:
+
+   ```markdown
+   ![Your caption, with the cite string: Figure 3 of [@key], p. 7](figures/<file>)
+   ```
+
+   The caption is written afresh from the copied text around it, with
+   the source's caption (the command prints it) as a hint, never copied
+   as the caption; it ends with the cite string so the figure is
+   attributed where it stands. An image line is not prose: `review
+   digest` neither counts nor flags it. A topic directory is required
+   (a flat `content/drafts/<slug>.md` has nowhere of its own for
+   `figures/`). Every crop stays private with the digest and never
+   travels into another draft. None of this is a precondition: a corpus
+   parsed without `docling_images` has no crops, the command says so,
+   you note it to the user in one line, and the digest goes on from the
+   prose alone. Never run the enrichment stage yourself to change that.
 
 5. **Note disagreement.** Where two papers say opposite things, copy
    both, each under its own citation, and let a connecting sentence of
@@ -204,9 +210,8 @@ steps are replaced by `review digest` and say so below.
    parse's own noise.
    Do not fix hyphenation, ligatures, a dropped word or a reference
    marker; do not reorder; do not shorten. If the parse is too broken to
-   read, pick another passage or another paper. A decoded equation
-   inside a passage is copied with it, LaTeX and all. Close each run
-   with its citation and page. Where two runs need a bridge, write one short
+   read, pick another passage or another paper. Close each run with
+   its citation and page. Where two runs need a bridge, write one short
    sentence of your own between them; every such sentence will be
    listed as `unquoted-text`, and one no source supports is also
    `unsupported-text`. Fewer is better.
@@ -222,7 +227,8 @@ steps are replaced by `review digest` and say so below.
    python -m chitragupta.draft dossier sections content/drafts/<topic>/<name>.md --citekeys --write
    ```
 
-9. **No figure, and no pre-gate critique.** A digest draws nothing.
+9. **No drawn figure, and no pre-gate critique.** A digest draws
+   nothing of its own; its figures are the sources', placed in step 4.
    `survey-writer-opencode`'s critique loop reads the `claim:`/`quote:` packet to
    check prose it wrote from it; a digest is not written from the packet
    but copied from the sources, and the check that applies to it is

@@ -139,7 +139,7 @@ reader of either file meets a decision rather than a contradiction.
 | Step 6 draft, and `docs/WRITING-STANDARDS.md` §11 "a paragraph closes on more than one citekey; you cannot transcribe two sources simultaneously" | **yes** | **inverted.** One source per run, by rule; a run is a transcription by design. §11's table gets a `digest` row: unit "document", "every run is one source's words; the rule has no paragraph to bind at, and `review digest` is the check that applies". `_units.UNITS["digest"] = "document"` (Task 7) is the code half |
 | Step 7 never write a citekey you did not retrieve | no | kept unchanged |
 | Step 8 section map | no | kept |
-| Step 9 figure | no (none drawn) | dropped, with the reason |
+| Step 9 figure | no (none drawn) | nothing drawn; a source's figure crop may be placed beside its run, the one exception AGENTS.md records |
 | Step 10 critique against the evidence packet (shared `critique.md`, which itself runs the verbatim scan and edits toward less overlap) | **yes** | **replaced** by `review digest` (step 14); named in `_EXCLUDED_SKILLS` |
 | Steps 11-12 gate, references, render | no | kept verbatim |
 | Step 13 evidence sidecar | yes: it is where verbatim wording goes *instead of* the draft | **replaced**: the digest is the sidecar's content, cited per run |

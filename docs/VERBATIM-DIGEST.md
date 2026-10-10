@@ -45,7 +45,7 @@ it out of git without a rule of its own.
 - [Pages, and what a page note means](#-pages-and-what-a-page-note-means)
 - [The repair loop and `--baseline`](#-the-repair-loop-and---baseline)
 - [Lexical support, and what the NLI `support` aid adds](#-lexical-support-and-what-the-nli-support-aid-adds)
-- [Figures and equations](#-figures-and-equations)
+- [Figures](#-figures)
 - [What it does not do](#-what-it-does-not-do)
 - [The rule it lives under](#-the-rule-it-lives-under)
 
@@ -220,28 +220,27 @@ model marks entailed as "cite it correctly" rather than "delete it". A
 later change could add a `--support` flag that runs the two together;
 the agenda's `claim-support` class is the shape it would take.
 
-## 🖼 Figures and equations
+## 🖼 Figures
 
 Where the corpus was enriched with the Docling stage and
 `[enrich].docling_images` on, `python -m chitragupta.draft figures
 <citekey>` lists a paper's figures with a caption, a page, a crop and
-the exact string to cite each by. The skill looks at them while choosing
-passages, and the repository's rule for every genre holds here without
-exception: **a figure is consulted, never reproduced**. A digest may
-carry a figure's caption, copied verbatim as a run of the source's own
-words, and a connecting sentence of the drafter's that names the figure
-by its cite string; that sentence is the drafter's and is listed as
-`unquoted-text` like any other.
+the exact string to cite each by. Every other genre may only look at a
+crop; [AGENTS.md](../AGENTS.md) records the one exception for the
+digest. Private study text in the sources' own words may show the
+sources' own figures: the skill copies the crop into the topic's
+`figures/` directory and places it directly after the run it belongs
+to, as an ordinary Markdown image whose caption is written afresh from
+the copied text, with the source's caption as a hint, and ends with the
+cite string. An image line is not prose, so `review digest` neither
+counts nor flags it, and the renderer carries the image into the PDF
+as it does for any draft.
 
-A decoded equation is text. With `[parser].formulas` on, the Docling
-parse writes each formula as LaTeX into the passage sidecar, and the
-skill copies it inside its run exactly as it copies the words around
-it; the matcher flattens both sides to one character stream, so a
-copied formula matches its source like any sentence.
+The licence stops at the digest. A copied figure, like a copied
+sentence, never travels into a survey or a chapter.
 
-Neither is a precondition. A corpus parsed without images or without
-formulas has no crops and no decoded equations; the figures command
-says which of the two it is and exits 0, the skill tells the user in
+It is not a precondition. A corpus parsed without images has no crops;
+the figures command says so and exits 0, the skill tells the user in
 one line, and the digest is built from the prose alone.
 
 ## 🚧 What it does not do

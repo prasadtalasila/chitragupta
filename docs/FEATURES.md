@@ -387,7 +387,10 @@ one artefact retrieval indexes, and a bitmap cannot live in a text file.
 
 **Consider, never replicate.** The crops are a reading aid: having a
 paper in your library grants no right to reproduce its figures, and no
-source image is ever placed in a draft. It reads the enrichment layer's
+source image is ever placed in a draft, with one exception: a verbatim
+digest, private study text in the sources' own words, may carry a
+source's figure beside the words it belongs to
+([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)). It reads the enrichment layer's
 `content/docling/` index as a path rather than importing that layer, so
 an ordinary drafting run pulls in none of its optional dependencies.
 It also distinguishes a paper with no figures from one the docling stage

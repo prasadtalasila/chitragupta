@@ -256,8 +256,10 @@ pre-gate critique, the verbatim scan and the evidence sidecar are
 replaced by `python -m chitragupta.review digest`, which leads with the
 unsupported fraction and lists every sentence that is not verified
 source text. It does run the prose check, reporting and fixing nothing.
-[VERBATIM-DIGEST.md](VERBATIM-DIGEST.md) has the whole of it, including
-the one prohibition: never run `agenda-reviser` on a digest.
+It is also the one genre that may place a source's figure in the draft,
+beside the copied run it belongs to, where the Docling stage extracted
+one. [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md) has the whole of it,
+including the one prohibition: never run `agenda-reviser` on a digest.
 
 ## ✏ Revising: `draft-reviser`
 
