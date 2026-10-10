@@ -17,7 +17,7 @@ These are drawn from the technical-communication literature, primarily the
 [Diátaxis](https://diataxis.fr/) framework, Google's
 [Technical Writing courses](https://developers.google.com/tech-writing), and
 Suzan Last's *Technical Writing Essentials* (BCcampus). What follows is the
-part that transfers across all five genres. **Diátaxis's genre-specific rules
+part that transfers across all six genres. **Diátaxis's genre-specific rules
 do not all transfer**: "one path, no options, minimal explanation" is
 correct for `tutorial-writer` and actively wrong for `survey-writer`, where
 weighing alternatives *is* the deliverable. Take the audience discipline and
@@ -74,6 +74,10 @@ out they were missing background.
 *Source: Google, Technical Writing One (short sentences, active voice,
 consistent terms, defining terms once); Last, TWE §2.2 "Communicating with
 Precision" and §7.7 "Writing Style" on the passive-voice failure.*
+
+In a verbatim digest ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) these
+rules bind the drafter's connecting sentences only; copied text keeps
+its source's style.
 
 - Short sentences, one idea each. If a sentence must be reread to parse,
   split it.
@@ -541,6 +545,7 @@ rather than a default.
 | `survey`, `thesis-chapter`, `deep-research` | paragraph | A body paragraph closes on more than one citekey |
 | `textbook-chapter` | section | A section's citations span two or more citekeys, *and do not arrive in blocks* (see below). Individual paragraphs are free to be single-source; multi-source paragraphs are a distraction in a genre whose job is explanation |
 | `tutorial` | document | The body carries no citations at all, by design. The floor is on the lesson's derivation: it must not be a walkthrough of one source's procedure, and two or more distinct citekeys in "Where to go next" are the evidence that it is not |
+| `digest` | document | Every run is one source's own words, closed by its citation ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)). The rule has no paragraph to bind at: a digest is a transcription by design, and `python -m chitragupta.review digest` is the check that applies |
 
 **For the section unit, spread is not enough.** A section that cites
 three papers by running one out before starting the next spans three
@@ -1096,6 +1101,6 @@ from scratch. A verbatim n-gram check against all three sources above
 `cmd_overlap`) reports **0% overlap at an 8-word threshold**, and nothing
 above five consecutive shared words anywhere. What is borrowed is the
 *ideas*, credited above; what is added is their translation into
-operational rules for this pipeline's five genres, the decision about which
+operational rules for this pipeline's six genres, the decision about which
 principles transfer across genres and which do not (§5's warning), and the
 handling of failure modes specific to multi-agent drafting.

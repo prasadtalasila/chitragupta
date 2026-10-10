@@ -32,8 +32,9 @@ documentation gets easier.
 
 ## ✍ Writing
 
-- **Genre skill**: one of the five drafting skills (survey, thesis
-  chapter, textbook chapter, tutorial, deep research). The other five
+- **Genre skill**: one of the six drafting skills (survey, thesis
+  chapter, textbook chapter, tutorial, deep research, verbatim digest).
+  The other five
   work on drafts those produce: three revisers, the book assembler, and
   `figure-drawer`, which draws a figure for whichever skill hands it
   one. You never invoke one by name; you ask in ordinary words and the
@@ -71,7 +72,7 @@ documentation gets easier.
 
 ## 🔍 Checking
 
-- **Review aid**: one of the ten read-only reports you can run over a
+- **Review aid**: one of the eleven read-only reports you can run over a
   finished draft (provenance, verbatim overlap, coverage, and so on).
   Every aid is **advisory**: it reports for you to judge and never
   blocks anything ([REVIEW.md](REVIEW.md)).

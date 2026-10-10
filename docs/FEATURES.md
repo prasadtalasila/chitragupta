@@ -1,7 +1,7 @@
 # ✨ Features
 
-Status: **reference.** Written 2026-08-22. Updated 2026-10-07,
-describing the pipeline as it stands at 6.138.
+Status: **reference.** Written 2026-08-22. Updated 2026-10-09,
+describing the pipeline as it stands at 6.139.
 
 **Written for** you: someone who writes technical documents (a
 survey, a thesis chapter, a textbook, a report) and is deciding whether
@@ -33,7 +33,7 @@ pipeline over five sample papers.
 - [Corpus layer: turning a library into a ledger](#-corpus-layer-turning-a-library-into-a-ledger)
 - [Finding what to write about: topic discovery](#-finding-what-to-write-about-topic-discovery)
 - [Drafting layer: writing something grounded](#-drafting-layer-writing-something-grounded)
-- [Review layer: ten advisory aids](#-review-layer-ten-advisory-aids)
+- [Review layer: eleven advisory aids](#-review-layer-eleven-advisory-aids)
 - [Enrichment layer: optional depth](#-enrichment-layer-optional-depth)
 - [Cross-cutting features](#-cross-cutting-features)
 - [What this deliberately does not do](#-what-this-deliberately-does-not-do)
@@ -211,9 +211,9 @@ the lookup itself is instant and works wherever the corpus does.
 
 ## ✍ Drafting layer: writing something grounded
 
-### 🤖 Ten skills
+### 🤖 Eleven skills
 
-Five write a new draft, three change one that already exists, one
+Six write a new draft, three change one that already exists, one
 assembles a book from units the others wrote, and one draws the figures
 the others hand it. You never invoke them by
 name: each declares its triggers, and asking in ordinary words selects
@@ -226,6 +226,7 @@ one ([GENRE.md](GENRE.md)).
 | `textbook-chapter-writer` | undergraduate chapter with worked examples | a student studying, not typing |
 | `tutorial-writer` | a hands-on lesson to a working result | a learner at a keyboard |
 | `deep-research` | multi-perspective report, heaviest by design | someone who needs perspectives reconciled |
+| `review-digest` | a verbatim digest: the papers' own words, a citation on every run, checked by `review digest` | someone studying privately ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) |
 | `draft-reviser` | edits an existing draft, from its dossier | (the cheap, default path for any change) |
 | `corpus-reviser` | edits an existing draft, re-searching everything | (by explicit request only) |
 | `agenda-reviser` | repairs the unattended findings a review agenda found | (one item at a time) |
@@ -324,7 +325,7 @@ draft exists cannot be a lightly-edited copy of the source.
 `chitragupta draft evidence` then renders those quoted spans into an
 **evidence sidecar** beside the render (attributed, in quotation marks,
 grouped by the section that leans on them), so verbatim material has one
-legitimate home and the body prose has none. Four of the five genres emit
+legitimate home and the body prose has none. Four of the six genres emit
 one; `tutorial-writer` does not, and
 [DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre) records
 why for each. A sidecar is never committed: it carries wording from
@@ -386,7 +387,10 @@ one artefact retrieval indexes, and a bitmap cannot live in a text file.
 
 **Consider, never replicate.** The crops are a reading aid: having a
 paper in your library grants no right to reproduce its figures, and no
-source image is ever placed in a draft. It reads the enrichment layer's
+source image is ever placed in a draft, with one exception: a verbatim
+digest, private study text in the sources' own words, may carry a
+source's figure beside the words it belongs to
+([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)). It reads the enrichment layer's
 `content/docling/` index as a path rather than importing that layer, so
 an ordinary drafting run pulls in none of its optional dependencies.
 It also distinguishes a paper with no figures from one the docling stage
@@ -394,7 +398,7 @@ has not reached, because only the second is something you can act on.
 [docs/TLDR.md](TLDR.md) has the design, and the unattended-generation
 proposal parked in the issue tracker.
 
-## 🔍 Review layer: ten advisory aids
+## 🔍 Review layer: eleven advisory aids
 
 Run by hand on a finished draft. **None of them gates anything, and none
 may be promoted to a gate**; [SOUL.md](../SOUL.md) has why. Each
@@ -413,11 +417,12 @@ produces evidence for a human judgement, never a verdict, and each exits
 | `review agenda` | merges the eight draft-level aids' reports into one ranked, deduplicated worklist |
 | `review support` | does the cited source actually entail this claim, scored by a real NLI entailment model |
 | `review union` | does an assembled book still cite every citekey its accepted units stand on? The one aid that reads a book rather than a draft |
+| `review digest` | how much of a verbatim digest is not the sources' own words, and what each such sentence is. The one aid over a genre of its own, and the one the agenda never reads |
 
 Why they are not gates, stated once because it is the design and not an
 omission: the gate answers a question with one correct answer (is this
-citekey in the ledger?), so it can be automatic and absolute. Seven of
-the ten answer questions of judgement, where a machine verdict would
+citekey in the ledger?), so it can be automatic and absolute. Eight of
+the eleven answer questions of judgement, where a machine verdict would
 be either wrong often enough to be ignored, or trusted more than it
 deserves. `quotation` is binary and deterministic and still not a gate,
 because what it is measured against is the parse rather than the ledger
@@ -486,7 +491,7 @@ decision rather than a gap:
   manager. There is no auto-download and no auto-sync.
 - **It does not rewrite a citekey**, ever, whether to sanitise it or
   to deduplicate it.
-- **It does not promote a review aid to a gate.** Ten advisory aids
+- **It does not promote a review aid to a gate.** Eleven advisory aids
   and one gate is the design, and `review quotation` is the case that
   proves it, not an exception: binary, deterministic, and still
   advisory. See [SOUL.md](../SOUL.md).

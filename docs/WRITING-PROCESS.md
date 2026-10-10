@@ -55,7 +55,7 @@ PDFs attached, turned into a ledger this pipeline can search.
 | 1 | Optional: declare your own structure | `chitragupta draft dossier init content/drafts/<slug>.md --genre <genre> --outline`, then edit the `outline.md` it writes | you |
 | 2 | Ask for the draft, in plain words | e.g. "write a survey section on digital twin composability" | you |
 | 3 | Retrieve evidence, write the draft, and run its own gate -> references -> render chain | `chitragupta draft gate`, `chitragupta draft references`, `chitragupta draft render`: the same three commands as [CLI.md](CLI.md#-the-full-first-run-step-by-step) step 9, which you can also run by hand | the matching skill |
-| 4 | Read what it wrote | the draft under `content/drafts/`, its dossier under `content/dossiers/`, and (for four of the five genres) its evidence sidecar | you |
+| 4 | Read what it wrote | the draft under `content/drafts/`, its dossier under `content/dossiers/`, and (for four of the six genres) its evidence sidecar | you |
 
 Ask for the draft in plain words; you do not invoke a skill by name.
 For example: "write a survey section on digital twin composability",
@@ -65,7 +65,7 @@ a tutorial that builds a minimal digital twin asset from scratch", "do
 deep research on fault injection for digital twin testbeds". The
 matching skill picks the request up and runs step 3 above for you.
 
-Which of the five genres matches what you asked for is
+Which of the six genres matches what you asked for is
 [GENRE.md](GENRE.md#-picking-one)'s whole job. Read it if you're not
 sure whether what you want is a survey, a thesis chapter, a textbook
 chapter, a tutorial, or a deep-research report. In short, the choice
@@ -81,7 +81,7 @@ skill runs those verbatim instead of inventing sub-themes.
 
 Every finished draft gets a **dossier** in `content/dossiers/`, the
 working state a later session reloads instead of re-running everything.
-Four of the five genres also get an **evidence sidecar** listing what
+Four of the six genres also get an **evidence sidecar** listing what
 each cited source said
 ([DOSSIER.md](DOSSIER.md#-the-evidence-sidecar-decided-per-genre)).
 Neither is committed to git.

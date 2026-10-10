@@ -183,7 +183,7 @@ exists:
   Zotero-exported PDF library that drafts surveys, thesis chapters,
   textbook chapters, tutorials and multi-perspective deep-research
   reports, assembles accepted units into a book, and draws figures for
-  them (ten skills total, five of which draft; see
+  them (eleven skills total, six of which draft; see
   [GENRE.md](GENRE.md)). Distinctive properties: bibliography file as
   the sole citekey admission point; deterministic, LLM-free
   parse-and-ledger corpus layer; a **blocking** citation gate
@@ -779,7 +779,7 @@ production. As of v5.29.0:
 | Closed-world gate (`chitragupta.draft gate` on the only draft->render path; failed drafts regenerate; PostToolUse hook enforces it mechanically too) | Built, and, per the declined `overlap_gate` row below, still the *only* blocking check anywhere in the pipeline, by measured decision rather than by omission |
 | Bibliography as sole source-admission point | Built |
 | Local-first, auditable, open source | Built, by construction |
-| Genre conventions as data (skills) | Built: ten skills, five of which draft ([GENRE.md](GENRE.md)) |
+| Genre conventions as data (skills) | Built: eleven skills, six of which draft ([GENRE.md](GENRE.md)) |
 | Content-hash caching / "second run costs nothing" | Built, and load-bearing for the overlap index specifically |
 | Verbatim overlap checking, exact tier | Built: corpus-wide n-gram index, disk-cached and ledger-keyed; whole-draft scan, not just citing paragraphs; severity buckets; boilerplate allowlist; `--json` output |
 | Overlap remediation loop | Built: the `agenda-reviser` skill (rewrite, re-scan, re-gate, log) |

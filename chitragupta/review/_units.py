@@ -44,6 +44,9 @@ UNITS = {
     "deep-research": "paragraph",
     "textbook-chapter": "section",
     "tutorial": "document",
+    # A digest fuses nothing: every run is one source's own words, so
+    # the multi-source rule has no paragraph to bind at (#991).
+    "digest": "document",
 }
 
 KINDS = ("paragraph", "section", "document")
@@ -68,6 +71,9 @@ UNCITED_PROSE = {
     "deep-research": "exceptional",
     "textbook-chapter": "ordinary",
     "tutorial": "ordinary",
+    # A digest's connecting sentences carry no citation by design; the
+    # `digest` aid is what judges them, sentence by sentence (#991).
+    "digest": "ordinary",
 }
 
 STANDINGS = ("exceptional", "ordinary")

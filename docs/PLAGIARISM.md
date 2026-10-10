@@ -596,6 +596,9 @@ set to.
   review-aid step of [The full first run, step by
   step](CLI.md#-the-full-first-run-step-by-step). `scan` is also offered
   by each of the nine skills' own final-check steps.
+- [VERBATIM-DIGEST.md](VERBATIM-DIGEST.md): the one genre where verbatim
+  reuse is the design, with a citation closing every copied run, and
+  what keeps its wording out of every other draft.
 - [LADDERS.md](LADDERS.md): *ladder*, *rung* and *tier* as this project
   uses them, and the other three tier sets these sit beside.
 - [ARCHITECTURE.md](ARCHITECTURE.md): `content/overlap/`'s place in the

@@ -32,7 +32,7 @@ because three OS packages have no apt to install them from.
 | | Native Windows | WSL2 (Debian/Ubuntu) |
 | --- | --- | --- |
 | Corpus sync, drafting, the citation gate | yes | yes |
-| The review layer's ten aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only four of its nine checks without `pdflatex` | yes |
+| The review layer's eleven aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only four of its nine checks without `pdflatex` | yes |
 | `draft render` to PDF | needs Pandoc + a TeX distribution installed by hand | yes, via `os-deps` |
 | `chitragupta enrich` | yes | yes |
 | GPU acceleration | CPU only | yes; see [below](#-gpu-features-under-wsl2) |
@@ -126,7 +126,7 @@ nothing. Always write `${CLAUDE_PROJECT_DIR}`.
 Without step 4, `draft render` and the `verbatim` aid report a missing
 binary rather than failing obscurely, and the corresponding tests
 self-skip. The citation gate, `corpus sync`, every genre skill and eight
-of the ten review aids need no OS package at all.
+of the eleven review aids need no OS package at all.
 
 **The second exception is `figure`, and it is the one to watch**,
 because unlike `verbatim` it neither refuses nor reports a missing

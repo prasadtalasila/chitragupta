@@ -183,6 +183,7 @@ nav:
       - "Tutorial: write a deep-research report": docs/WRITE-A-DEEP-RESEARCH-REPORT.md
       - "Tutorial: write a book": docs/WRITE-A-BOOK.md
       - "Drawing a figure: figure-drawer": docs/FIGURE-DRAWER.md
+      - "Study notes in the sources' words: review-digest": docs/VERBATIM-DIGEST.md
       - Iterating on a draft: docs/DRAFT-ITERATION.md
       - Hand-editing a draft: docs/USER-EDITS.md
       - Drafting with it: AGENTS.md

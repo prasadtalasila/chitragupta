@@ -118,7 +118,7 @@ def test_every_drafting_skill_runs_the_prose_check():
     assert not missing, (
         f"these skills never mention `-m chitragupta.draft style`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
-        'docs/GENRE.md\'s "What all ten have in common" claims otherwise, '
+        'docs/GENRE.md\'s "What all eleven have in common" claims otherwise, '
         "and #183 is the issue this leaves half-built: the hook would still "
         "report per write, but nothing would report the finished draft."
     )

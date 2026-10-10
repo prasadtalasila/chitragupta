@@ -206,7 +206,7 @@ nothing downstream reads it back; the fragment on disk, unresolved
 
 ## 📄 The manual References section, and why citeproc replaces it
 
-Four of the five prose genres run `python -m chitragupta.draft references
+Five of the six prose genres run `python -m chitragupta.draft references
 <draft>` after the gate, which writes a citekey-labelled `## References`
 section built from exactly the citekeys the draft cites
 (`references_section.py`'s `section_start` finds it by heading text). At

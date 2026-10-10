@@ -141,7 +141,7 @@ used as given.
   the same as the enrichment caches below it. The directory is also what
   every tier-1 command that takes a path will *accept*:
   `citation_gate`, `references` and `render_output` each refuse a path
-  that resolves outside it, and so do all ten of `chitragupta.review`'s
+  that resolves outside it, and so do all eleven of `chitragupta.review`'s
   aids. `ledger` is the one that takes no path argument at all (its CLI
   only ever addresses rows by citekey or status), so the rule applies to
   it vacuously and needs no check. This one directory is then the whole
@@ -196,7 +196,7 @@ citation gate.
 `vale_config` and `language` are used only by `python -m chitragupta.draft
 style`, which is a **review aid**: it exits 0 whatever it finds, and
 nothing in this pipeline blocks on it. `acronyms`, below, is the one key
-in this section that command does not read: the five genre-writing
+in this section that command does not read: the genre-writing
 skills read it directly at drafting time (`docs/GENRE.md`).
 
 | Key | Env var | Accepts | Default |

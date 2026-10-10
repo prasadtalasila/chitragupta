@@ -41,8 +41,9 @@ Rule: a citekey may only be used if it appears in `papers/bibliography.bib`
 (the source of truth; see below) and was picked up into `content/ledger.sqlite`
 by `python -m chitragupta.corpus sync`.
 
-All five genre skills (`survey-writer`, `thesis-chapter-writer`,
-`textbook-chapter-writer`, `tutorial-writer`, `deep-research`) must run
+All six genre skills (`survey-writer`, `thesis-chapter-writer`,
+`textbook-chapter-writer`, `tutorial-writer`, `deep-research`,
+`review-digest`) must run
 `python -m chitragupta.draft gate <file>` on its own output and only
 present the draft once it exits 0. So must
 `book-assembler`, which writes no prose but does write a document: the
@@ -206,6 +207,11 @@ enrichment layer is optional and nothing above it needs it.
   passes and the `python -m chitragupta.review agenda --baseline`
   recheck lists it as resolved with no new objective finding. Never
   re-run a genre skill to change an existing draft; see docs/DRAFT-ITERATION.md.
+  A **verbatim digest** (`review-digest`) is private study text in the
+  sources' own words, a citation closing every copied run, checked by
+  `python -m chitragupta.review digest` (docs/VERBATIM-DIGEST.md); it is
+  never a source for any other draft, `draft-reviser` is still the way
+  to change one, and `agenda-reviser` is never run on one.
 
   **The human's own prose is a first-class input, not an obstacle.** An
   `outline.md` in the dossier can declare, per section, a brief the
@@ -224,13 +230,18 @@ enrichment layer is optional and nothing above it needs it.
   never the residue of retrieval. `python -m chitragupta.draft evidence`
   then renders those spans into an **evidence sidecar** beside the draft's
   render (`content/rendered/<topic>/<name>.evidence.pdf`), attributed and
-  in quotation marks. Four of the five genres emit one;
-  `tutorial-writer` does not, and docs/GENRE.md records why for each. A
+  in quotation marks. Four of the six genres emit one;
+  `tutorial-writer` and `review-digest` do not, and docs/GENRE.md records
+  why for each. A
   sidecar is never committed and never shipped (`.gitignore` excludes
   it, and `scripts/release.py` archives only git-tracked paths), because
   it carries wording from copyrighted sources. Never add a `quote:` after
   the fact to make one appear, and never copy a span out of one back into
-  body prose.
+  body prose. One genre is the exception by construction: a verbatim
+  digest (`review-digest`) *is* that wording, with a citation closing
+  every copied run, each passage recorded as a `quote:` in its dossier,
+  and never a source for any other draft; docs/VERBATIM-DIGEST.md carries
+  its rule.
 
   **A per-citekey TL;DR is a separate, smaller feature for browsing, not
   drafting.** `python -m chitragupta.draft tldr write <citekey>` (summary
@@ -263,6 +274,15 @@ enrichment layer is optional and nothing above it needs it.
   the part that belongs in your prose. This is the same boundary the
   `quote:` field draws for wording, applied to images.
 
+  **The one exception is the verbatim digest.** `review-digest` (and
+  `review-digest-opencode`) builds private study text that is the
+  sources' own words, and it may place a source figure's crop in the
+  digest the same way: copied beside the draft and shown with its cite
+  string, a caption of the drafter's own under it (docs/VERBATIM-DIGEST.md).
+  That licence stops at the digest. A digest is never a source for any
+  other draft, and a copied figure, like a copied sentence, never
+  travels from one into a survey or a chapter.
+
   It lists figures, not every picture: an uncaptioned scrap smaller than
   about 12mm is a publisher logo, not a figure, and is not indexed. If it
   reports **no figure index** for a citekey, the optional enrichment
@@ -278,7 +298,7 @@ enrichment layer is optional and nothing above it needs it.
   keeps this picture free of a cycle; a per-draft stage wrapping
   either one would reintroduce it.
 - **Layer 4, the review layer, advisory** (`python -m chitragupta.review`,
-  owned by `chitragupta/review/`): ten aids that read over a finished
+  owned by `chitragupta/review/`): eleven aids that read over a finished
   draft, run by you or by a skill on your behalf. Never a
   gate. By subcommand: `provenance` (does the cited paper say this),
   `verbatim` (how much wording came along from the sources), `coverage`

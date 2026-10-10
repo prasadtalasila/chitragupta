@@ -534,3 +534,27 @@ class TestTheCommandLine:
         draft = a_draft("A bare claim.\n")
         assert review_main.main(["uncited", str(draft)]) == 0
         assert "A bare claim." in capsys.readouterr().out
+
+
+class TestClaimBlocks:
+    def test_yields_the_blocks_claim_sentences_is_built_from(self):
+        """`claim_blocks` is the per-block half of `claim_sentences`:
+        headings and the reference list are out, prose paragraphs are in,
+        and the raw lines are the draft's own so a caller can map an
+        offset back to a line."""
+        text = (
+            "# Title\n\nFirst para one. First para two.\n\n"
+            "## Second\n\nSecond para [@smith_example_2024].\n\n"
+            "## References\n\n[1] S. Smith, 2024.\n"
+        )
+        blocks = _claims.claim_blocks(text)
+        assert [(line, prose) for line, _, prose in blocks] == [
+            (3, "First para one. First para two."),
+            (7, "Second para [@smith_example_2024]."),
+        ]
+        assert blocks[0][1] == ["First para one. First para two."]
+        assert [s.text for s in _claims.claim_sentences(text)] == [
+            "First para one.",
+            "First para two.",
+            "Second para [@smith_example_2024].",
+        ]

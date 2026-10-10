@@ -20,7 +20,7 @@ Related reading:
   fidelity, and why two other candidates were evaluated and dropped.
 - [PARALLELISM.md](PARALLELISM.md): how the parallel parse is built:
   architecture diagrams, what each component does, and the roadmap.
-- [REVIEW.md](REVIEW.md): what the ten review aids do; this document
+- [REVIEW.md](REVIEW.md): what the eleven review aids do; this document
   prices the nine that were measured.
 - `bench/RESULTS.md`: the raw measurement record with per-PDF timings.
   Developer-only: `bench/` is excluded from the release archive, so it is
@@ -534,7 +534,8 @@ including the conclusions later ones overturned.
 ## 🔍 What a review pass costs
 
 Everything above is the corpus layer. This is the **review layer**
-([REVIEW.md](REVIEW.md)), nine of the ten aids. Eight are deterministic Python
+([REVIEW.md](REVIEW.md)), ten of the eleven aids (`digest` reads a digest,
+not a draft, and is not timed here). Eight are deterministic Python
 with no model call at all. The ninth, `support`, scores every citation
 with a real NLI entailment model ([CONFIG.md](CONFIG.md)). It uses no
 LLM, so **the token cost of every figure here is still zero**, but it is
