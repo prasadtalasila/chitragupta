@@ -24,9 +24,13 @@ from chitragupta.render_output._figures import (
 # space: ![alt](<my figure.png>). `[^)\s]+` alone (the bare form) can never
 # match a space at all, so a path saved with one -- a screenshot's default
 # name, say -- needs this second alternative or it is never even found
-# (m-58).
+# (m-58). The alt text admits one level of nested brackets: a verbatim
+# digest's caption ends in its cite string, `Figure 3 of [@key], p.7`
+# (#991), and `[^\]]*` stopped at that citation's `]`, so the figure was
+# never found and never copied beside the `tex` output.
 _MD_IMAGE_RE = re.compile(
-    r'!\[[^\]]*\]\((?:<(?P<angled>[^>]*)>|(?P<bare>[^)\s]+))(?:\s+"[^"]*")?\)'
+    r"!\[(?:[^\[\]]|\[[^\[\]]*\])*\]"
+    r'\((?:<(?P<angled>[^>]*)>|(?P<bare>[^)\s]+))(?:\s+"[^"]*")?\)'
 )
 # A URI scheme prefix (http:, https:, data:, ...) -- pandoc fetches these
 # itself; nothing local to copy.

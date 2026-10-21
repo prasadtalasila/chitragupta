@@ -51,6 +51,21 @@ class TestLocalImageRefs:
         text = '![alt](<my figure.png> "A title").\n'
         assert render_output._local_image_refs(text) == ["my figure.png"]
 
+    def test_a_caption_ending_in_a_cite_string_is_matched(self):
+        # The verbatim digest (#991) places a source figure with a caption
+        # that ends in its cite string, so the alt text carries a
+        # bracketed citation; `[^\]]*` stopped at the citation's `]` and
+        # the image was never found, so `tex` output shipped without it.
+        text = (
+            "![Layers of a twin-as-a-service platform: Figure 2 of "
+            "[@zech_digital-twins-as--service_2024], p.4](figures/zech-fig2.png)\n"
+        )
+        assert render_output._local_image_refs(text) == ["figures/zech-fig2.png"]
+
+    def test_a_caption_with_several_bracket_groups_is_matched(self):
+        text = "![A [sic] caption, [@zech_digital-twins-as--service_2024; p.4]](fig.png)\n"
+        assert render_output._local_image_refs(text) == ["fig.png"]
+
 
 class TestCopyLocalImages:
     def test_copies_an_existing_local_image(self, tmp_path):
@@ -65,6 +80,22 @@ class TestCopyLocalImages:
         render_output._copy_local_images(draft, dest_dir)
 
         assert (dest_dir / "figure.png").read_bytes() == b"fake png bytes"
+
+    def test_copies_a_digest_figure_whose_caption_cites_its_source(self, tmp_path):
+        src_dir = tmp_path / "drafts"
+        (src_dir / "figures").mkdir(parents=True)
+        (src_dir / "figures" / "zech-fig2.png").write_bytes(b"fake png bytes")
+        draft = src_dir / "draft.md"
+        draft.write_text(
+            "![Platform layers: Figure 2 of [@zech_digital-twins-as--service_2024], p.4]"
+            "(figures/zech-fig2.png)\n"
+        )
+        dest_dir = tmp_path / "rendered"
+        dest_dir.mkdir()
+
+        render_output._copy_local_images(draft, dest_dir)
+
+        assert (dest_dir / "figures" / "zech-fig2.png").read_bytes() == b"fake png bytes"
 
     def test_skips_a_reference_that_does_not_resolve_to_a_real_file(self, tmp_path):
         src_dir = tmp_path / "drafts"
