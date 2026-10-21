@@ -930,7 +930,7 @@ documented, and therefore liable to change.
 antipattern in general, but is the wrong shape here**, for three reasons.
 [GENRE.md](GENRE.md) already sets the precedent for shared invariants
 (*"These are not per-skill choices. They are the same rules, stated in
-each of the ten `SKILL.md` files or ... once in a reference ... A skill
+each of the eleven `SKILL.md` files or ... once in a reference ... A skill
 that broke one would be the bug"*)
 and pins them with a text scan over `.claude/skills/`, which is exactly
 what has been proposed for this step. Skills are also matched on *user

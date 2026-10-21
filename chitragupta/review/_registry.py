@@ -2,7 +2,7 @@
 
 `review.AIDS` (`review/__init__.py`) names the aids and owns their report
 suffixes, and stays import-light so `dossier` can read it without loading
-ten aids. This is the other half: the module that runs each one, and the
+eleven aids. This is the other half: the module that runs each one, and the
 one-line description its subcommand shows in `--help`. It used to live
 in `review/__main__.py`, which made it unreachable from
 `agenda/_refresh.py` without a cycle -- `__main__` imports `agenda`,
@@ -23,6 +23,7 @@ from chitragupta.review import (
     synthesis,
     uncited_prose,
     verbatim_check,
+    verbatim_digest,
 )
 
 # Keyed by review.AIDS, so a new aid cannot appear here without also
@@ -38,6 +39,7 @@ AIDS = {
     "agenda": (agenda, "one ranked, deduplicated worklist across every other aid"),
     "support": (claim_support, "does the cited source entail this claim?"),
     "union": (citekey_union, "does the assembly still carry every unit's citekeys?"),
+    "digest": (verbatim_digest, "how much of a verbatim digest is not the sources' own words?"),
 }
 
 # A raise rather than an assert: `python -O` strips assertions, and this

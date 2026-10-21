@@ -1,7 +1,7 @@
 # 🔍 The review layer
 
-Status: **reference.** Written 2026-08-22. Updated 2026-08-31, describing the
-ten aids as they stand.
+Status: **reference.** Written 2026-08-22. Updated 2026-10-09, describing the
+eleven aids as they stand.
 
 **Written for** you, after a draft is finished: someone deciding
 whether it is good enough to hand over. **Assumed:**
@@ -43,7 +43,7 @@ accusation.** Both are input to your judgement.
 They also take no lock, so any of them runs while
 `chitragupta corpus sync` is rebuilding the corpus.
 
-## 🧩 The ten aids
+## 🧩 The eleven aids
 
 **`review provenance`: does the cited paper say this?** The gate
 answers "is this citekey real?" exactly, and that is all it can answer.
@@ -220,6 +220,19 @@ Run it once the outstanding units are accepted for an answer. It also
 names every non-unit file it read and every include it could not find on
 disk, so a report cannot be misread as covering prose it never opened.
 
+**`review digest`: how much of a verbatim digest is not the sources'
+own words?** The one aid over a genre of its own. A digest
+([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text copied
+from the corpus, each copied run closed by a citation. The aid finds
+each run in the source it cites with the quotation matcher, leads with
+the unsupported fraction (the words of every sentence that is not
+verified source text, over all words), and lists each such sentence as
+a `[surfaced]` item in the agenda's own line format, in three classes:
+`unsupported-text`, `copy-mismatch` and `unquoted-text`. `--baseline`
+compares a run with an earlier one, so a repair pass is a number that
+fell or did not. It is the digest's own worklist: the agenda never reads
+it, because its classes mean nothing for any other genre.
+
 ## 📋 What every report looks like
 
 There is one output contract, and it mirrors the draft's own path
@@ -238,6 +251,7 @@ content/drafts/<topic>/survey.md
      content/review/<topic>/survey.quotation.md    (+ .tex/.pdf, .json)
      content/review/<topic>/survey.agenda.md       (+ .tex/.pdf, .json)
      content/review/<topic>/survey.support.md      (+ .tex/.pdf, .json)
+     content/review/<topic>/survey.digest.md       (+ .tex/.pdf, .json)
 ```
 
 `union` is the one aid this example cannot show, because it reads a book
@@ -249,14 +263,15 @@ content/rendered/<book>/book.tex
   -> content/review/<book>/book.union.md           (+ .tex/.pdf, .json)
 ```
 
-`review provenance` and `review agenda` write by default. The rest
+`review provenance`, `review agenda` and `review digest` write by default. The rest
 print, and write only under `--write`, because printing is the usual
 use.
 
 The full written set exists to read:
 `docs/examples/sample-project/content/review/dt-overview/` holds every
 draft-reading aid's `.md` and `.json` for four real drafts, except
-`figure`'s: the sample drafts carry no TikZ figure. Open
+`figure`'s and `digest`'s: the sample drafts carry no TikZ figure, and
+none of them is a digest. Open
 [`trust-chapter.agenda.md`](examples/sample-project/content/review/dt-overview/trust-chapter.agenda.md)
 there to see what a merged worklist looks like on a draft that mostly
 passes, which is the common case and the one examples rarely show, and
@@ -279,7 +294,7 @@ report, not a render of it; `.tex`/`.pdf` are another document.
 
 ## ⏱ What the layer costs
 
-The layer costs zero tokens, always. Nine of the ten aids are
+The layer costs zero tokens, always. Ten of the eleven aids are
 deterministic Python with no model call at all. `support`'s real NLI
 entailment model has no token cost either, because it scores and does
 not generate, but it is a real model load, and the only aid besides

@@ -432,7 +432,7 @@ Tuning knobs on unmeasured defaults is premature.
   the remaining four genre skills to the dossier *and* two-stage
   retrieval" is closed as not planned: it bundled a good idea with a bad
   one. The dossier half survives and needs re-planning on its own, since
-  `draft-reviser` is unusable for four of five genres without it.
+  `draft-reviser` is unusable for five of six genres without it.
 - **`triage` is removed**, along with `TRIAGE_CHARS`, its CLI subcommand,
   and the reject-hard instruction in every skill. `search()` plus the
   subagent boundary is the drafting path. `evidence` remains as a lookup

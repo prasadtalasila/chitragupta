@@ -158,12 +158,12 @@ its advisory checks:
   imperfect (a parse, a retrieval ranking), and a check like that must
   inform you instead of blocking you ([docs/REVIEW.md](docs/REVIEW.md)).
 
-Ten skills sit behind phase 3, all obeying the same grounding rules:
-five that write a draft (survey, thesis chapter, undergraduate textbook
-chapter, hands-on tutorial, and a heavier multi-perspective
-deep-research mode), three that change a draft that already exists,
-one that assembles accepted units into a book, and one that draws the
-figures the others hand it
+Eleven skills sit behind phase 3, all obeying the same grounding rules:
+six that write a draft (survey, thesis chapter, undergraduate textbook
+chapter, hands-on tutorial, a heavier multi-perspective deep-research
+mode, and a verbatim digest in the papers' own words), three that
+change a draft that already exists, one that assembles accepted units
+into a book, and one that draws the figures the others hand it
 ([docs/GENRE.md](docs/GENRE.md)). Before any draft exists,
 `chitragupta corpus discover` maps what your corpus is about: its
 topics, their papers, and the links between them
@@ -269,7 +269,7 @@ chitragupta corpus ledger
 ```
 
 Every command that chain runs, every way to re-run one by hand, and all
-ten review-layer commands for checking a finished draft against its
+eleven review-layer commands for checking a finished draft against its
 sources are in
 [docs/CLI.md](docs/CLI.md). Its section [The full first run, step by
 step](docs/CLI.md#-the-full-first-run-step-by-step) walks the whole
@@ -370,8 +370,9 @@ one-screen router for that.
 | [docs/GLOSSARY.md](docs/GLOSSARY.md) | The working vocabulary (citekey, ledger, dossier, gate, topic, review aid), each defined by what it is *to you*, grouped by when you first meet it. Read it once and every other document gets easier |
 | [docs/MIGRATION.md](docs/MIGRATION.md) | How do I back up my drafts, restore them, or move a project to another directory, another computer or a container without parsing my library again? |
 | [docs/ZOTERO.md](docs/ZOTERO.md) | How do I get my library and its PDFs into the shape this expects? Includes the attachment-path trap that silently leaves every entry without a PDF |
-| [docs/GENRE.md](docs/GENRE.md) | Which of the ten skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
+| [docs/GENRE.md](docs/GENRE.md) | Which of the eleven skills writes what? How to pick a genre, what each one refuses to do, and why changing an existing draft never goes back through the genre skill |
 | [docs/FIGURE-DRAWER.md](docs/FIGURE-DRAWER.md) | How do I get a figure into a draft? What to ask for, what the `figure-drawer` skill writes, a worked example, and what to do when a figure breaks the PDF |
+| [docs/VERBATIM-DIGEST.md](docs/VERBATIM-DIGEST.md) | How do I get the papers' own words on a topic into one private study file, and how do I know which sentences in it are not the papers'? The `review-digest` skill and the `review digest` aid |
 | [docs/WRITING-PROCESS.md](docs/WRITING-PROCESS.md) | How do I go from a bare corpus to a finished draft, or a whole book, in order? The step-by-step walkthrough tying the rest of this table together |
 | [docs/CLI.md](docs/CLI.md) | What commands are there, what flags does each take, and which interpreter does it need? |
 | [docs/CONFIG.md](docs/CONFIG.md) | What settings exist, what values does each accept, and what is the default? Starts with a minimal `config.toml`. Includes `[parser].backend`, which decides how faithfully your PDFs are read |

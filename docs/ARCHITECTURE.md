@@ -72,7 +72,7 @@ flowchart TB
 
   subgraph J2["<b>LAYER 2 · DRAFTING</b> — generative, on demand, you review it"]
     direction TB
-    SKILL["<b>.claude/skills/</b> — five genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
+    SKILL["<b>.claude/skills/</b> — six genre skills<br/><small>read the corpus layer · never write the ledger</small>"]
     CHAIN["<b>the chain, on every draft</b><br/><code>chitragupta draft gate</code> — <b>hard gate</b><br/><code>chitragupta draft references</code><br/><code>chitragupta draft render</code><br/><small><b>bare python, no venv</b> — by design</small>"]
     SKILL --> CHAIN
   end
@@ -341,7 +341,7 @@ not. Reading an artefact does not count as calling a layer.
 
 ## 🔍 Layer 4: the review layer
 
-Ten aids behind one command, run over a finished draft (or, in
+Eleven aids behind one command, run over a finished draft (or, in
 `union`'s case, over a book assembled from finished drafts).
 [REVIEW.md](REVIEW.md) covers what each one answers, what a report looks
 like, and how to read one. This section covers only the layer's
@@ -373,7 +373,7 @@ Output lands in `content/review/`, mirroring the draft's path exactly as
 refused, the same tier-1 rule the gate chain follows.
 
 The gate answers a question with one correct answer (is this citekey in the
-ledger?), and can therefore be automatic and absolute. Seven of the ten aids
+ledger?), and can therefore be automatic and absolute. Eight of the eleven aids
 answer questions of judgement (the original six, plus `support`, which scores
 a claim against its cited source's passage but never calls the verdict
 itself), where a machine verdict would be either wrong often enough to be
@@ -397,6 +397,12 @@ and `agenda` has not concluded it.
 `union` is the tenth. It reads an assembled book instead of a single
 draft, which is why the agenda does not merge it; [REVIEW.md](REVIEW.md)
 covers what it reports.
+
+`digest` is the eleventh, and the first over a genre of its own: it
+reads a verbatim digest, private study text copied from the corpus, and
+reports how much of it is *not* the sources' words. Its classes mean
+nothing for any other genre, so it is the one aid the agenda never
+reads ([REVIEW.md](REVIEW.md)).
 
 **Which side a check falls on is decided by what it is measured against,
 not by how decidable its answer is.** The two are easy to conflate, and
@@ -650,7 +656,7 @@ tier each command is in; this is the reason there are tiers at all.
 
 | Tier | Needs | Commands |
 | --- | --- | --- |
-| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands; `style` also probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all ten aids) |
+| 1 | bare `python`, stdlib only | `chitragupta.draft` (all twelve commands; `style` also probes for the optional `vale` binary), `chitragupta.corpus ledger`, `chitragupta.review` (all eleven aids) |
 | 2 | venv + `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | venv + the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -755,7 +761,7 @@ satisfy it.
 
 What makes `chitragupta/enrich/` and `chitragupta/review/` packages is that their
 submodules form clusters. `topic_model` imports `embed_index` imports
-`corpus`, and all ten review aids share `chitragupta/review/__init__.py`'s
+`corpus`, and all eleven review aids share `chitragupta/review/__init__.py`'s
 output contract. The five drafting modules share little beyond
 `chitragupta/config.py`, so there is no cluster to name a package after.
 

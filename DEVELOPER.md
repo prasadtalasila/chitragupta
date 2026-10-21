@@ -221,7 +221,7 @@ docs/                     reference docs that ship in the release zip -- everyth
                             re-running the pipeline that produced it
   TOKENS.md                 where a run's tokens go -- the resident/one-shot pools, two worked
                             examples, and how to measure it without paying for a full run
-  GENRE.md                  the ten skills in .claude/: which writes what, how to pick, and what
+  GENRE.md                  the eleven skills in .claude/: which writes what, how to pick, and what
                             each one refuses to do
   LADDERS.md                every automatic fallback chain the code walks, and every tier you pick
                             yourself -- and what the bottom rung of each costs
@@ -316,10 +316,10 @@ chitragupta/                      the corpus and drafting layers (sync needs bib
                           needed, which is why it sits here and not in chitragupta/enrich/. `--format md` on a
                           Markdown draft skips pandoc entirely and emits references.numbered_markdown's
                           plain numbered copy instead
-chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, ten aids
+chitragupta/review/                the review layer -- one command, `python -m chitragupta.review <aid>`, eleven aids
   __init__.py               the layer's shared output contract -- report path (content/review/,
                           mirroring the draft), the "not a gate" banner, the header, and the
-                          write-md-then-render routine all ten aids use. No timestamp, so a
+                          write-md-then-render routine all eleven aids use. No timestamp, so a
                           report diffs across revisions
   __main__.py               the layer's single entry point: one parser, ten subcommands, each
                           wired to its aid's own build_parser()/run(). The aids below carry no

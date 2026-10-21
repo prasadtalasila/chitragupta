@@ -9,6 +9,7 @@
       "deep-research": "deny",
       "draft-reviser": "deny",
       "figure-drawer": "deny",
+      "review-digest": "deny",
       "survey-writer": "deny",
       "textbook-chapter-writer": "deny",
       "thesis-chapter-writer": "deny",

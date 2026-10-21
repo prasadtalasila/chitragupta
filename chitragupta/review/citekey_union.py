@@ -43,7 +43,7 @@ longer exists -- comparing against them reports a drop that is not one.
 Those units are named in the report instead, never silently skipped,
 and so is any include that resolved to no file on disk.
 
-One of the ten commands in the **review layer**: read over a finished
+One of the eleven commands in the **review layer**: read over a finished
 assembly, by a person or by a driver, never a gate, never holding the
 write lock. chitragupta/review/__init__.py owns where a written report
 goes (`content/review/<book>/book.union.md`) and what its header says.

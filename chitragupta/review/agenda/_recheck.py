@@ -20,11 +20,10 @@ Nothing here imports from `chitragupta.review.agenda` -- `run()` hands
 its own `build_agenda()` result to `compare` as plain data.
 """
 
-import json
-import shlex
 from pathlib import Path
 
 from chitragupta import review
+from chitragupta.review import _emit
 from chitragupta.review.agenda._sources import AID_NAMES, unverified_classes
 
 
@@ -40,26 +39,10 @@ def load_baseline(path: str | Path) -> dict:
     answer rather than an error: a file that is not readable JSON, and
     JSON that is some other aid's payload. The layer's aids share
     `envelope()`, so another aid's `.json` is a dict with a `command` too,
-    and comparing against one reports every agenda item as new.
+    and comparing against one reports every agenda item as new. The
+    loader itself is `_emit.read_baseline`, shared with `digest`.
     """
-    try:
-        payload = json.loads(Path(path).read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ValueError(f"Cannot read the baseline {path}: {exc}") from None
-    except json.JSONDecodeError:
-        raise ValueError(
-            f"{path} is not an agenda payload -- it is not valid JSON. "
-            "Write one with `review agenda <draft>`, which files it as "
-            "the report's .json sibling."
-        ) from None
-
-    if not isinstance(payload, dict) or payload.get("aid") != "agenda" or "items" not in payload:
-        raise ValueError(
-            f"{path} is not an agenda payload. Write one with `review "
-            "agenda <draft>`, which files it as the report's .json "
-            "sibling."
-        )
-    return payload
+    return _emit.read_baseline(path, "agenda", "an agenda payload")
 
 
 def not_refreshed(payload: dict) -> list[str]:
@@ -151,8 +134,7 @@ def recheck_command(draft: str | Path, baseline: str | Path) -> str:
     must name a command regenerating an agenda, not a comparison
     against itself.
     """
-    parts = ["python", "-m", "chitragupta.review", "agenda", str(draft)]
-    return shlex.join([*parts, "--baseline", str(baseline), "--json"])
+    return _emit.recheck_command("agenda", draft, baseline)
 
 
 def recheck_payload(

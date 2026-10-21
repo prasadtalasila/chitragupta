@@ -16,6 +16,7 @@ A submodule rather than more of `review/__init__.py`, which sits at the
 
 import argparse
 import json
+import shlex
 import sys
 from collections.abc import Callable
 from pathlib import Path
@@ -75,6 +76,46 @@ def emit(
         written["json"] = review.write_json(draft, aid, data)
         review.print_written(written, stream=sys.stderr if args.json else sys.stdout)
     return 0
+
+
+def recheck_command(aid: str, draft: str | Path, baseline: str | Path) -> str:
+    """`python -m chitragupta.review <aid> <draft> --baseline <file> --json`:
+    the invocation a `--baseline` comparison records in its envelope so a
+    reader holding it can regenerate it. Always `--json`, since only the
+    JSON form has an envelope; one shape for every aid that compares
+    against its own earlier report."""
+    parts = ["python", "-m", "chitragupta.review", aid, str(draft)]
+    return shlex.join([*parts, "--baseline", str(baseline), "--json"])
+
+
+def read_baseline(path: str | Path, aid: str, label: str) -> dict:
+    """A filed `<stem>.<aid>.json`, read back as a comparison basis for
+    `--baseline` and refused if it cannot serve as one.
+
+    One loader for every aid that compares against its own earlier
+    report (`agenda`, `digest`), so the two refusals worth naming are
+    named once: a file that is not readable JSON, and JSON that is some
+    other aid's payload -- every aid's `.json` carries `envelope()`'s
+    `command`, so another aid's file is a dict too, and comparing against
+    one would report every item as new. `label` is the noun phrase the
+    refusal uses ("an agenda payload"), since the article differs.
+    """
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise ValueError(f"Cannot read the baseline {path}: {exc}") from None
+    except json.JSONDecodeError:
+        raise ValueError(
+            f"{path} is not {label} -- it is not valid JSON. "
+            f"Write one with `review {aid} <draft>`, which files it as "
+            "the report's .json sibling."
+        ) from None
+    if not isinstance(payload, dict) or payload.get("aid") != aid or "items" not in payload:
+        raise ValueError(
+            f"{path} is not {label}. Write one with `review {aid} <draft>`, "
+            "which files it as the report's .json sibling."
+        )
+    return payload
 
 
 def announce(data: dict, written: dict[str, Path], *, as_json: bool) -> None:

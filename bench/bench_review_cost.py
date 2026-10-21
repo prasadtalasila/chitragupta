@@ -1,4 +1,5 @@
-"""What does one review pass cost, at the current version, over all ten aids?
+"""What does one review pass cost, at the current version, over the ten aids
+a draft review runs? (`digest`, #991, reads a digest and is not timed here.)
 
 `docs/PERFORMANCE.md` prices nine aids over five real drafts, measured
 2026-08-27 at 6.53. Two things have happened since: #538 and #548 changed

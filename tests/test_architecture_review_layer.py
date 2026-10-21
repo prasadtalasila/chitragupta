@@ -54,6 +54,7 @@ _NUMBER_WORDS = {
     8: "Eight",
     9: "Nine",
     10: "Ten",
+    11: "Eleven",
 }
 
 _SECTION_HEADING = "## Layer 4: the review layer"
@@ -71,7 +72,7 @@ REVIEW_MD = REPO_ROOT / "docs" / "REVIEW.md"
 REVIEW_TEXT = REVIEW_MD.read_text(encoding="utf-8")
 
 # The draft stem REVIEW.md's output-contract block demonstrates each aid
-# against. Nine of the ten read a single-topic draft and are shown on
+# against. Ten of the eleven read a single-topic draft and are shown on
 # `survey.md`; `union` reads a *book* assembled from units, so showing it
 # as `survey.union.md` would document a path nobody can produce. The
 # exception is listed rather than the assertion loosened to any stem: the

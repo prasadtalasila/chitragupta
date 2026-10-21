@@ -140,8 +140,10 @@ _OLD_OFFER = re.compile(r"Offer the verbatim scan", re.I)
 # Skills that never present a draft, so there is nothing for them to
 # scan. Named, not inferred, so a new drafting skill cannot slip in here
 # by accident. `figure-drawer` draws one figure and returns to the skill
-# that called it, which runs the scan (#1027).
-_HELPERS = {"figure-drawer"}
+# that called it, which runs the scan (#1027). `review-digest` presents a
+# draft that is verbatim by design (#991): the scan would flag every run
+# as reuse, and `review digest` is the check that replaces it there.
+_HELPERS = {"figure-drawer", "review-digest"}
 
 
 def _skill_files():
@@ -185,7 +187,7 @@ def test_every_drafting_skill_runs_the_verbatim_scan():
     assert not missing, (
         "these skills never mention `-m chitragupta.review verbatim scan`, so a draft they "
         f"produce is presented with nobody told the check exists: {missing}. "
-        'docs/GENRE.md\'s "What all ten have in common" claims otherwise.'
+        'docs/GENRE.md\'s "What all eleven have in common" claims otherwise.'
     )
 
 
@@ -301,9 +303,9 @@ def test_no_skill_makes_the_scan_a_condition_of_presenting():
 
 
 def test_genre_doc_still_speaks_for_every_skill_that_exists():
-    """docs/GENRE.md says "all ten" in prose. Prose can't count.
+    """docs/GENRE.md says "all eleven" in prose. Prose can't count.
 
-    If a tenth skill lands, the shared-conventions section silently
+    If a twelfth skill lands, the shared-conventions section silently
     stops covering it -- and that section is where the scan step, the
     gate and the read-only-corpus rules are stated once for all of them.
     This fails on the day the count changes, which is the day GENRE.md
@@ -312,9 +314,9 @@ def test_genre_doc_still_speaks_for_every_skill_that_exists():
     eight.
     """
     count = len(_skill_files())
-    assert count == 10, (
-        f'{count} skills exist but docs/GENRE.md still says "all ten". '
+    assert count == 11, (
+        f'{count} skills exist but docs/GENRE.md still says "all eleven". '
         "Update that section -- and check the new skill carries the gate, "
         "dossier and verbatim-scan conventions it states."
     )
-    assert "What all ten have in common" in GENRE_DOC.read_text(encoding="utf-8")
+    assert "What all eleven have in common" in GENRE_DOC.read_text(encoding="utf-8")

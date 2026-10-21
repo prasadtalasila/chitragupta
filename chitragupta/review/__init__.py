@@ -1,19 +1,20 @@
 """The review layer's shared spine: where a report goes, and what it looks like.
 
-Ten commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
+Eleven commands make up the review layer -- `chitragupta/review/citation_provenance.py`,
 `chitragupta/review/citation_coverage.py`, `chitragupta/review/verbatim_check/`,
 `chitragupta/review/synthesis.py`, `chitragupta/review/figure_layout/`,
 `chitragupta/review/uncited_prose.py`, `chitragupta/review/quotation.py`,
-`chitragupta/review/agenda/`, `chitragupta/review/claim_support.py` and
-`chitragupta/review/citekey_union.py`. Each reads a draft -- plus
+`chitragupta/review/agenda/`, `chitragupta/review/claim_support.py`,
+`chitragupta/review/citekey_union.py` and
+`chitragupta/review/verbatim_digest.py`. Each reads a draft -- plus
 the corpus, or in `figure_layout`'s case the figures the draft references, in
 `uncited_prose`'s case nothing else at all, in `citekey_union`'s case the
 acceptance records the book's units were accepted under, or in `agenda`'s
-case the other seven aids' own reports -- and produces evidence for a human
+case the other eight aids' own reports -- and produces evidence for a human
 judgement. None gates, none blocks a draft, none takes the write lock,
-and all ten are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4:
+and all eleven are interpreter tier 1. docs/ARCHITECTURE.md's "Layer 4:
 the review layer" is the definition; this module is what makes the
-ten obey one output contract instead of ten.
+eleven obey one output contract instead of eleven.
 
 **One directory, mirroring the draft's path**, the same rule
 `content/rendered/` and `content/dossiers/` already follow:
@@ -29,6 +30,7 @@ ten obey one output contract instead of ten.
          content/review/<topic>/survey.agenda.md       (+ .tex/.pdf)
          content/review/<topic>/survey.support.md      (+ .tex/.pdf)
          content/review/<book>/book.union.md           (+ .tex/.pdf)
+         content/review/<topic>/survey.digest.md       (+ .tex/.pdf)
 
 so a draft, its dossier, its renders and its review artefacts are all
 findable from the draft's own path. The `.tex`/`.pdf` land *beside* the
@@ -44,11 +46,11 @@ computation -- so that a caller consuming them programmatically does not
 have to regex the printed form back into data (issue #127). A *sibling*,
 not one of `write()`'s formats: `tex` and `pdf` are renders of the
 Markdown through `chitragupta/render_output.py`, and this is not a render of
-anything. All ten aids emit one now -- `verbatim scan` since #127,
+anything. All eleven aids emit one now -- `verbatim scan` since #127,
 `provenance` and `coverage` since #309, and `synthesis`, `figure`,
-`uncited`, `quotation`, `agenda`, `support` and `union` from the day each
-landed -- which is why `agenda` itself can read each of the other seven
-aids' JSON as optional rather than required.
+`uncited`, `quotation`, `agenda`, `support`, `union` and `digest` from the
+day each landed -- which is why `agenda` itself can read each of the other
+eight aids' JSON as optional rather than required.
 
 **No timestamp in a report.** The reason to write one at all is that it
 becomes reviewable later and diffable across revisions, and a wall-clock
@@ -62,7 +64,7 @@ docs say so too, but a file found on disk months later is exactly the
 case the docs cannot reach.
 
 Stdlib-only, and imports `render_output` lazily so the md-only path
-doesn't pay for it -- same tier as the ten commands it serves.
+doesn't pay for it -- same tier as the eleven commands it serves.
 """
 
 import json
@@ -72,7 +74,7 @@ from pathlib import Path
 from typing import TextIO
 
 from chitragupta import config
-from chitragupta.review import _book_paths
+from chitragupta.review._paths import report_dir, require_reviewable
 
 # One place per aid, so a caller cannot invent a report kind by
 # typo. The value is the suffix that goes between the draft's stem and
@@ -88,6 +90,7 @@ AIDS = {
     "agenda": "Agenda",
     "support": "Claim support",
     "union": "Citekey union",
+    "digest": "Verbatim digest",
 }
 
 # Deliberately names its sources rather than linking to them: this text
@@ -114,61 +117,6 @@ def version() -> str:
             return tomllib.load(handle)["tool"]["poetry"]["version"]
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return "unknown"
-
-
-def require_reviewable(draft: Path, what: str = "draft") -> Path:
-    """Returns `draft`, having refused it if it is missing or outside `content/`.
-
-    The layer's input contract in one place. The containment half is the
-    tier-1 rule 3.17.0 set for `citation_gate`, `references` and
-    `render_output` and did not then apply to the three review aids --
-    everything this pipeline touches lives under `content/`, so that one
-    directory is the whole record of the work. The existence half is here
-    so all three commands fail the same way on a mistyped path, instead
-    of one returning 1 and two raising `FileNotFoundError`.
-    """
-    path = config.require_inside_content(Path(draft), what)
-    if not path.is_file():
-        raise FileNotFoundError(f"No such {what}: {draft}")
-    return path
-
-
-def report_dir(draft: Path) -> Path:
-    """Where `draft`'s review reports go: `config.REVIEW_DIR` with the
-    draft's own place under `config.DRAFTS_DIR` mirrored into it.
-
-    An assembled book is mirrored from `config.RENDERED_DIR` instead --
-    `_book_paths.review_dir_for` owns both cases and why.
-
-    Falls back to a flat `REVIEW_DIR` for a draft under `content/` but
-    under neither, matching `render_output._output_dir`'s policy rather
-    than `dossier.dossier_dir`'s raise: a review aid that refuses to run
-    is a worse answer than one that writes flat, and unlike a dossier,
-    nothing later goes looking for the report by its mirrored path.
-    """
-    for label, directory in (("review", config.REVIEW_DIR), ("drafts", config.DRAFTS_DIR)):
-        if not config.resolves_inside(directory, config.CONTENT_DIR):
-            raise config.OutsideContentDir(
-                f"{directory} resolves to {directory.resolve()}, outside the content "
-                f"directory {config.CONTENT_DIR.resolve()}. A review report mirrors "
-                f"the draft's path from content/drafts/ into content/review/, so a "
-                f"'{label}' that points out of the content directory has no mirror to "
-                "compute and would write where nothing else in this pipeline looks. "
-                "Move it back, or point [content].dir (config.toml) at wherever it "
-                "really lives."
-            )
-
-    mirrored = _book_paths.review_dir_for(draft)
-    if mirrored is None:
-        return config.REVIEW_DIR
-    if not config.resolves_inside(mirrored, config.REVIEW_DIR):
-        raise config.OutsideContentDir(
-            f"{mirrored} resolves to {mirrored.resolve()}, outside "
-            f"{config.REVIEW_DIR.resolve()}. A draft's own path is never a reason to "
-            "write outside the content directory -- remove the symlink, or review a "
-            "draft from a topic directory that isn't one."
-        )
-    return mirrored
 
 
 def report_path(draft: Path, aid: str, suffix: str = "md") -> Path:

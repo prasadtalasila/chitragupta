@@ -1,6 +1,6 @@
 # ⌨ Command reference
 
-Status: **reference.** Written 2026-08-03. Updated 2026-08-24.
+Status: **reference.** Written 2026-08-03. Updated 2026-10-09.
 
 **Written for** anyone running this pipeline, at any level of
 familiarity: it is the reference you keep open beside a terminal.
@@ -41,6 +41,7 @@ short path; this is the full set.
   - [`chitragupta review quotation`](#-chitragupta-review-quotation)
   - [`chitragupta review verbatim`](#-chitragupta-review-verbatim)
   - [`chitragupta review union`](#-chitragupta-review-union)
+  - [`chitragupta review digest`](#-chitragupta-review-digest)
   - [`chitragupta draft render`](#-chitragupta-draft-render)
   - [`chitragupta draft style`](#-chitragupta-draft-style)
   - [`chitragupta draft spec`](#-chitragupta-draft-spec)
@@ -161,7 +162,7 @@ not resolve there fails silently. It says `python`, and
 
 | Tier | Interpreter | Commands |
 | --- | --- | --- |
-| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all ten aids; `support` needs the `enrich` extra and exits 0 with a notice without it) |
+| 1 | **`python`**: stdlib only, no venv | `chitragupta.draft` (all twelve commands), `chitragupta.corpus ledger`, `chitragupta.corpus topics`, `chitragupta.corpus discover` (its semantic rung upgrades itself when tier 3 is installed), `chitragupta.review` (all eleven aids; `support` needs the `enrich` extra and exits 0 with a notice without it) |
 | 2 | **`.venv-full/bin/python`**: venv, for `bibtexparser` | `chitragupta.corpus sync` |
 | 3 | **`.venv-full/bin/python`**: venv with the `enrich` group | `python -m chitragupta.enrich` |
 
@@ -1493,7 +1494,7 @@ with the written-files summary moving to stderr in that case.
 
 What a draft's TikZ figures' own geometry says about them.
 **Informational, not a gate**: it exits 0 whatever it finds, and like
-the other nine aids nothing it reports can block a draft.
+the other ten aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
@@ -1856,7 +1857,7 @@ counts them and does not judge them: there is no threshold here, no
 target proportion, and no per-genre bar. A human reads it and nothing
 acts on it unattended, which is
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s R3. A unit citing *nothing*
-is counted but never itemised, since in three of the five genres
+is counted but never itemised, since in four of the six genres
 original prose is the genre working correctly.
 
 A single-source unit can be declared deliberate, in the draft, adjacent
@@ -2022,6 +2023,81 @@ absent one (`id`, `citekey`, `quote`, `near_miss_page`,
 trust a rendered quotation should be able to see that the check was
 contiguous rather than an alignment around an ellipsis.
 
+### 📋 `chitragupta review digest`
+
+How much of a **verbatim digest** is not the sources' own words, and
+what every such sentence is. A digest
+([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md)) is private study text copied
+from the corpus, each copied run closed by a citation; this aid finds
+each run in the source it cites, using the same matcher
+[`review quotation`](#-chitragupta-review-quotation) uses, and reports
+what it could not find. Like `quotation`, it matches only reading-ordered
+passages, so it needs the Docling sidecars `chitragupta enrich --stages
+docling` writes; a source without one is reported as not checkable,
+with the stage named. **Advisory, exits 0 whatever it finds.** The
+digest's genre is recorded in its dossier, not its name: any draft under
+`content/drafts/` can be given to this aid, and one that is not a digest
+will simply report most of its prose as not copied.
+
+The report leads with three fractions that account for the whole
+digest:
+
+| Line | Counts | Direction |
+| --- | --- | --- |
+| Unsupported fraction | the words of every sentence carrying any finding, a sentence counted once, over all words | down: the headline |
+| Copied fraction | the words of every verified copied span, over all words | up |
+| Not checkable | the words of every run any of whose cited sources has no Docling sidecar; the reason names the source and the stage to run | a fact about the corpus |
+
+A run found whole in its source is one copied span and no finding; a
+run whose sentences are all found but not contiguously is one span
+noted *assembled from N places*. A run that breaks is split into
+sentences, each of which lands in one or two classes:
+
+| Class | Means | Repair |
+| --- | --- | --- |
+| `unsupported-text` | the drafter's own sentence, and either no citation covers it or the cited source does not lexically support it | cite it, replace it with the source's words, or delete it |
+| `copy-mismatch` | not found verbatim, but mostly on one page of the source; the item names the page and the missing words | restore the exact wording |
+| `unquoted-text` | the drafter's own sentence, lexically supported by the cited source | replace it with a copied passage, or delete it |
+
+Every item is `[surfaced]`, with a stable twelve-character id and the
+section it sits in, the way [`review agenda`](#-chitragupta-review-agenda)
+prints its items. A page in a citation is a hint: the aid reports the
+page it found the text on, and notes a disagreement on the copied span
+without raising a finding ([VERBATIM-DIGEST.md](VERBATIM-DIGEST.md#-pages-and-what-a-page-note-means)
+says what a page is here).
+
+The report and its `.json` are filed on every run, like
+[`review agenda`](#-chitragupta-review-agenda)'s, because the `.json` is
+the next pass's baseline.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `-h`, `--help` | -- | Show help and exit |
+| `<draft>` | required | The digest to check |
+| `--formats FORMATS` | `md,tex,pdf` | The additional formats to render beside the Markdown report. The `.md` and `.json` are always written; `tex` needs `pandoc`, and `pdf` needs `pandoc` and LuaLaTeX, on `PATH` |
+| `--json` | off | Print the payload (or, with `--baseline`, the comparison) as JSON instead of the summary |
+| `--baseline PATH` | -- | Compare this run against a previously filed `<stem>.digest.json`: resolved, persisting and new items, counts and fractions before and after, and whether unsupported text fell |
+
+```bash
+chitragupta review digest content/drafts/<topic>/notes.md --formats md
+chitragupta review digest content/drafts/<topic>/notes.md --json > digest.json
+chitragupta review digest content/drafts/<topic>/notes.md \
+    --baseline content/review/<topic>/notes.digest.json
+```
+
+**`--json`** carries the envelope every review aid's JSON carries, plus
+`unsupported_fraction`, `copied_fraction`, `unverifiable_fraction`,
+`words_total`, `words_flagged`, `words_copied`, `words_unverifiable`, a
+`counts` object per class, an `items` list (`id`, `class`,
+`disposition`, `section`, `citekeys`, `line`, `summary`, `detail` with
+the whole sentence), a `spans` list per copied span (`line`,
+`citekeys`, `text`, `tier`, `pages`, `cited`, `note`) and an
+`unverifiable` list per run that could not be checked. Under
+`--baseline` the printed payload carries instead `baseline`,
+`resolved`, `persisting`, `new`, `counts_before`, `counts_after`,
+`unsupported_before`, `unsupported_after`, `copied_before`,
+`copied_after` and `fell`; the filed `.json` is always the bare report.
+
 ### 📋 `chitragupta review verbatim`
 
 Layer 4, the review layer, with four subcommands: verbatim overlap
@@ -2050,7 +2126,7 @@ technique and its literature sources.
 | `recheck` | `<draft> --baseline PATH [--json]` | Re-scans the draft and compares it against a payload `scan --write` filed earlier, reporting each finding as resolved, persisting or new plus the change in the objective count. `--baseline` is required and its `--min-run`/`--gap` are reused, so the two scans are comparable. Prints only; there is no `--write` |
 | `locate` | `<citekey> "<phrase>" [more...]` | Which PDF page each phrase (or its distinctive words) appears on |
 
-**Exit codes**, shared with the other nine review aids. `0` on every
+**Exit codes**, shared with the other ten review aids. `0` on every
 successful invocation, findings or not: these are advisory, never a gate.
 That includes `recheck`: a draft that got worse still exits 0.
 
@@ -2205,7 +2281,7 @@ payloads. With both flags, the written-files summary goes to stderr so
 stdout stays a valid JSON file. `dossier export` carries the payload with
 the report.
 
-All ten review aids now emit one; `provenance` and `coverage` follow
+All eleven review aids now emit one; `provenance` and `coverage` follow
 the same envelope, above.
 [AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)'s `agenda` aid treats each other
 aid's JSON as optional rather than required, though: not every draft has

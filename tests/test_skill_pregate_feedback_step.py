@@ -58,8 +58,8 @@ _POINTER_CHARS = 2000
 # The five skills this step belongs to -- drafting fresh prose from a
 # claim:/quote: evidence packet, as distinct from a reviser (which edits
 # an existing draft section by section) or book-assembler (writes no
-# prose at all). docs/GENRE.md's "What all ten have in common" section
-# states this same five-of-ten split in the same words.
+# prose at all). docs/GENRE.md's "What all eleven have in common" section
+# states this same five-of-eleven split in the same words.
 _GENRE_SKILLS = {
     "survey-writer",
     "thesis-chapter-writer",
@@ -68,16 +68,19 @@ _GENRE_SKILLS = {
     "deep-research",
 }
 
-# The five skills that must never carry this step -- checked by name,
-# not merely "everything but the five," so an eleventh skill landing later
+# The six skills that must never carry this step -- checked by name,
+# not merely "everything but the five," so a twelfth skill landing later
 # fails loudly here rather than silently joining whichever side of the
-# split its file happens to sort into.
+# split its file happens to sort into. `review-digest` copies from the
+# sources rather than drafting from a `claim:`/`quote:` packet (#991),
+# so the critique loop has nothing to read; `review digest` replaces it.
 _EXCLUDED_SKILLS = {
     "draft-reviser",
     "corpus-reviser",
     "agenda-reviser",
     "book-assembler",
     "figure-drawer",
+    "review-digest",
 }
 
 _CRITIQUE = re.compile(r"[Cc]ritique against the evidence packet")

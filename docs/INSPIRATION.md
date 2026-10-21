@@ -152,7 +152,7 @@ came from.
   | Specs, agent files & workflow design | [CLAUDE.md](../CLAUDE.md), [AGENTS.md](../AGENTS.md), `DEVELOPER-AGENTS.md` (git checkout only), `.claude/skills/` |
   | Constraints, guardrails & safe autonomy | The citation gate and its PostToolUse hook; the review layer's rule that it never blocks ([SOUL.md](../SOUL.md)) |
   | Context, memory & working state | The dossier ([DRAFT-ITERATION.md](DRAFT-ITERATION.md)), and [TOKENS.md](TOKENS.md) for what context costs |
-  | Evals & observability | The review layer's ten aids, including the `agenda` worklist ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)) |
+  | Evals & observability | The review layer's eleven aids, including the `agenda` worklist ([AUTO-IMPROVEMENT.md](AUTO-IMPROVEMENT.md)) |
   | Foundations | [SOUL.md](../SOUL.md) and [DESIGN.md](DESIGN.md) |
 
   The gap that list makes most obvious is **evals**: this project has
