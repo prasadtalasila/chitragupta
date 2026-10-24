@@ -1,7 +1,7 @@
 # 🖼 Figure quality: where it stands, and where it should go
 
 Status: **discussion notes, partly implemented** (see the 2026-10-05/06
-updates in Part V). Written 2026-09-04
+updates in Part V). Part XII added 2026-10-24. Written 2026-09-04
 against `c4ee19a`; revised 2026-09-05 to fold in material borrowed from
 `cathrynlavery/diagram-design` (see
 [Borrowed, with attribution](#-borrowed-with-attribution)). Nothing here
@@ -37,6 +37,7 @@ deleted, so nobody has to re-derive the argument.
 - [Part IX: Figure-similarity provenance](#-part-ix-figure-similarity-provenance)
 - [Part X: Output targets](#-part-x-output-targets)
 - [Part XI: Rendered figure images in md, html and docx](#-part-xi-rendered-figure-images-in-md-html-and-docx)
+- [Part XII: figure-drawer v3](#-part-xii-figure-drawer-v3)
 - [Rules that will have to bend](#-rules-that-will-have-to-bend)
 - [Borrowed, with attribution](#-borrowed-with-attribution)
 - [Considered and set aside](#-considered-and-set-aside)
@@ -1159,6 +1160,63 @@ target width. The SVG branch does not.
 
 ---
 
+## 🖍 Part XII: figure-drawer v3
+
+Added 2026-10-24. The design, its measurements and every threshold are in
+[plans/fig-xii-figure-drawer-v3.md](../plans/fig-xii-figure-drawer-v3.md);
+this part says what it is, what it changes here, and where it sits.
+
+### The reported gap
+
+The person using the pipeline reported three things, and the skill's own
+documentation figure (`docs/images/figure-drawer/twin-loop.png`) shows
+all three: figures that take half a page for what fits in a quarter;
+layout defects that reach the PDF (slanted connectors, an edge tag on its
+own line, a lone arrow leaving its box near a corner); and figures that
+carry too much or too little.
+
+### What it is
+
+Three phases under one epic:
+
+1. **Foundations.** A fix for stray width (a `\usetikzlibrary` line run
+   in horizontal mode adds up to 175pt of blank space in front of the
+   picture, so the skill's own probe over-reports width by about 40%);
+   house block v3, which keeps every palette hex as a fill and adds
+   derived `Line` and `Text` shades that clear 3:1 and 4.5:1; compact
+   spacing defaults; `SKILL.md` as a router with a pre-drawing taste
+   gate; and the pattern-to-layout routing with one reference file per
+   layout. This is II.0 and VI.6.
+2. **`chitragupta figure new`, `check` and `look`.** One command per step,
+   in the shape of DTaaS's diagram skill. `check` reports numbered rules:
+   six connector rules, contrast, focal count, wording, twin agreement
+   and size. It also honours `% cg-allow:` lines that carry a reason,
+   figure-scope first and element-scope second. This is VI.5, VI.3 and
+   most of #1016.
+3. **Five scaffolds:** quadrant, comparison, state machine (II.4),
+   sequence (II.2) and timeline.
+
+### What it does not change here
+
+- **Nothing becomes a gate.** `figure check` exits 0, like every aid.
+  The skill's procedure asks the agent to resolve or allow each
+  objective finding. A person can overrule that; no flag blocks a draft.
+- **No numeric cap.** Node and edge counts and height are reported
+  against a per-layout reference range, as VI.3 says, never against a
+  maximum.
+- **Relative placement and the `cgsoft` shadow stay.** The 4px grid and
+  "shadows are out" were considered and declined again.
+- **The palette's hex values stay.** The derived shades are mixes of a
+  palette hue with `cgInk`, named in the block, so the greyscale and
+  Okabe-Ito arguments in "The house palette" still hold.
+
+### Tracking
+
+Epic and sub-issues are listed in the plan's
+[Tracking](../plans/fig-xii-figure-drawer-v3.md#tracking) section.
+
+---
+
 ## ⚖ Rules that will have to bend
 
 Three existing rules collide with proposals above. Each needs a decision
@@ -1257,6 +1315,19 @@ medium.
 | Bounding-box geometry is an unreliable oracle for clipping and clearance | VI.5's false-positive warning |
 | Behaviour patterns kept separate from layout types so the type count does not inflate | II.7 demoted from a metaphor to a primitive |
 | No golden images in the repository, so there is nothing to re-record and nothing to go stale | Part XI's hash-keyed render cache, treated as build output, not source |
+| The six connector rules as numbered rules, with the lone edge attached at the side's midpoint (2026-10-24) | Part XII, `c1` to `c6` |
+| Every geometric rule ships with a checker and fixtures in both polarities (its ADR 0005, 2026-10-24) | Part XII, phase 2 |
+| SKILL.md as a router under a byte cap, with a check that moved sections keep their links (its ADR 0004, 2026-10-24) | Part XII, phase 1 |
+
+**A second source, 2026-10-24.**
+[`INTO-CPS-Association/DTaaS`](https://github.com/INTO-CPS-Association/DTaaS),
+the `update-docs-diagrams` agent skill on its `feature/distributed-demo`
+branch. It restyles and exports drawio diagrams. Taken, as ideas only:
+one idempotent command per step with the skill reduced to running them;
+exceptions recorded with a reason instead of a rule silently skipped;
+WCAG contrast thresholds of 4.5:1 for text and 3:1 for lines; and a last
+look at every changed image. All four landed in Part XII. Its dark
+variant has no counterpart in print and was not taken.
 
 **What was rejected, and why**, so nobody re-derives it: brand-token
 onboarding (this project has a fixed palette by design, for greyscale
@@ -1351,7 +1422,13 @@ most of its scope.
     since the shared `pic` library plants a known false-positive source.
 15. **Part VII: quantitative panels.** Real, lower priority for this
     genre mix. Reuses II.3's encoding check.
-16. **Part VIII: the informativeness critique.** Now much smaller than
+16. **Part XII: figure-drawer v3**, added 2026-10-24 on a user report
+    and placed here only for numbering: its phase 1 is cheap and
+    should go first, since it absorbs II.0 and VI.6 (steps 3 and 4)
+    and fixes a probe defect. Phase 2 absorbs VI.3 and VI.5 (steps 2
+    and 7) and should keep VI.5's bench-first order. Phase 3 carries
+    II.2 and II.4 (step 10).
+17. **Part VIII: the informativeness critique.** Now much smaller than
     it was. It judges quality instead of creating it, so it lands
     better once there is more quality to judge.
 
