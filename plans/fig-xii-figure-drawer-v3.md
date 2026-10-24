@@ -20,6 +20,12 @@ is therefore governed by `DEVELOPER-AGENTS.md` and
 `review figure` the house vocabulary) and #1037 (run the figure probe on
 LuaLaTeX).
 
+**Integration branch.** All of this work lands on `improve-figures`,
+one PR per item, with CI enabled for PRs into that branch and docs never
+published from it. An item's issue is not closed when its PR merges; it
+gets a comment recording the lessons and decisions that bear on the items
+after it.
+
 **Not covered here:** Part X output targets (this plan uses the render's
 default text width and a `--width` override until Part X lands), Part XI
 rendered images in `md`/`html`/`docx`, any vision critique (Part VIII),
@@ -45,6 +51,28 @@ two tags on their lines (`water`, `ingest`), the `Decide -> Pot` arrow
 leaving `Decide` near its right corner although it is the only arrow on
 that edge, and an inter-zone gap as tall as a zone, so four nodes take
 roughly half a page.
+
+## The reference book
+
+The sample book attached to
+[#1045](https://github.com/prasadtalasila/chitragupta/issues/1045)
+("Digital Twins for Software Engineers", 294 A4 pages, 37 figures in
+chapters 1 to 7, built with pdfTeX before #996) is the reference every
+item measures against. What it shows:
+
+- **Narrow, stacked layouts.** Most figures use 35% to 50% of the text
+  width and grow downwards: Fig. 2.5 stacks its two panels vertically
+  where side by side would take a third of the height; Figs. 2.1, 4.2
+  and 4.5 are single tall columns.
+- **Float-only pages.** A tall figure is moved to a page of its own and
+  centred, with blank space above it (Fig. 2.5 on p. 38). That is the
+  render's float placement, not the figure, and is item 1f.
+- **Off-centre lone arrows** (Fig. 4.5's "state, digital events").
+- **Type below the body size**, from before the type floor existed.
+
+Only the PDF exists today; the book's figure sources are to be supplied.
+Until they are, items measure on the scaffolds and exemplars, and the
+bench in 2c waits for them.
 
 ## Inputs, and what was taken from each
 
@@ -262,9 +290,8 @@ whatever they find, except on a usage error or a missing toolchain.
   `content/rendered/`. With `--draft`, renders the draft instead and
   crops the page that holds the figure. Replaces step 9.
 
-The probe engine follows #1037: `check` and `look` use whatever engine
-the probe uses when they land, so the look and the measurement agree with
-each other even before they agree with the PDF.
+The probe engine is LuaLaTeX with the render's fonts, which #1037 (done
+in phase 1) makes true before these commands land.
 
 ## The skill
 
@@ -340,6 +367,13 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 - **1e.** Fix the scaffolds and exemplars that break a rule today:
   `rag-stages`' width, and every lone edge re-anchored to a side
   midpoint.
+- **1f.** Float placement: measure which figures land on float-only
+  pages in the reference book, and set the render preamble's placement
+  default and float fractions so a figure that fits stays in the text.
+- **#1037, whole.** Move every remaining pdflatex path to LuaLaTeX: the
+  figure-layout probe (so `check` and `look` measure in the fonts that
+  print), the thesis-chapter path and the book build. It lands before
+  phase 2, which measures with the probe.
 
 ### Phase 2: `figure new`, `check` and `look`
 
@@ -390,6 +424,6 @@ with a sub-issue per phase and a sub-issue per item under each phase.
 
 | Phase | Issue | Items |
 | --- | --- | --- |
-| 1 Foundations | [#1045](https://github.com/prasadtalasila/chitragupta/issues/1045) | 1a [#1046](https://github.com/prasadtalasila/chitragupta/issues/1046) (bug), 1b [#1047](https://github.com/prasadtalasila/chitragupta/issues/1047), 1c [#1048](https://github.com/prasadtalasila/chitragupta/issues/1048), 1d [#1049](https://github.com/prasadtalasila/chitragupta/issues/1049), 1e [#1050](https://github.com/prasadtalasila/chitragupta/issues/1050) |
+| 1 Foundations | [#1045](https://github.com/prasadtalasila/chitragupta/issues/1045) | 1a [#1046](https://github.com/prasadtalasila/chitragupta/issues/1046) (bug), 1b [#1047](https://github.com/prasadtalasila/chitragupta/issues/1047), 1c [#1048](https://github.com/prasadtalasila/chitragupta/issues/1048), 1d [#1049](https://github.com/prasadtalasila/chitragupta/issues/1049), 1e [#1050](https://github.com/prasadtalasila/chitragupta/issues/1050), 1f [#1065](https://github.com/prasadtalasila/chitragupta/issues/1065), [#1037](https://github.com/prasadtalasila/chitragupta/issues/1037) (LuaLaTeX everywhere) |
 | 2 `figure new`, `check`, `look` | [#1051](https://github.com/prasadtalasila/chitragupta/issues/1051) | 2a [#1052](https://github.com/prasadtalasila/chitragupta/issues/1052), 2b [#1053](https://github.com/prasadtalasila/chitragupta/issues/1053), 2c [#1054](https://github.com/prasadtalasila/chitragupta/issues/1054), 2d [#1055](https://github.com/prasadtalasila/chitragupta/issues/1055), 2e [#1056](https://github.com/prasadtalasila/chitragupta/issues/1056), 2f [#1057](https://github.com/prasadtalasila/chitragupta/issues/1057), 2g [#1058](https://github.com/prasadtalasila/chitragupta/issues/1058) |
 | 3 Five scaffolds | [#1059](https://github.com/prasadtalasila/chitragupta/issues/1059) | 3a [#1060](https://github.com/prasadtalasila/chitragupta/issues/1060), 3b [#1061](https://github.com/prasadtalasila/chitragupta/issues/1061), 3c [#1062](https://github.com/prasadtalasila/chitragupta/issues/1062), 3d [#1063](https://github.com/prasadtalasila/chitragupta/issues/1063), 3e [#1064](https://github.com/prasadtalasila/chitragupta/issues/1064) |

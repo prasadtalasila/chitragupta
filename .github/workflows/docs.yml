@@ -24,7 +24,10 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # Build and link-check PRs into the figure-drawer v3 integration
+    # branch (#1044). Never published from it: `deploy` runs only for a
+    # push to main, and improve-figures is deliberately not under push.
+    branches: [main, improve-figures]
   workflow_dispatch:
 
 concurrency:
