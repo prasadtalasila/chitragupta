@@ -4,8 +4,9 @@ Status: **design, not built.** Written 2026-10-24 against `main` at
 `12302d2`, from a brainstorming session that read two outside skills
 (below) and measured the scaffolds on this host. Part XII of
 [docs/FIGURE-ROADMAP.md](../docs/FIGURE-ROADMAP.md) summarises it and
-places it in the build order. Tracked by the epic and sub-issues listed
-under [Tracking](#tracking).
+places it in the build order. Tracked by epic
+[#1044](https://github.com/prasadtalasila/chitragupta/issues/1044)
+and the sub-issues listed under [Tracking](#tracking).
 
 **Written for** whoever builds any phase of this: a session that changes
 `assets/tikz/`, `chitragupta/figure/`, `chitragupta/review/figure_layout/`,
@@ -383,5 +384,12 @@ figure. No sweep of `content/drafts/` is part of this work.
 
 ## Tracking
 
-Filed 2026-10-24 as one epic with a sub-issue per phase and a sub-issue
-per item. The numbers are recorded in FIGURE-ROADMAP Part XII.
+Filed 2026-10-24 as one epic,
+[#1044](https://github.com/prasadtalasila/chitragupta/issues/1044),
+with a sub-issue per phase and a sub-issue per item under each phase.
+
+| Phase | Issue | Items |
+| --- | --- | --- |
+| 1 Foundations | [#1045](https://github.com/prasadtalasila/chitragupta/issues/1045) | 1a [#1046](https://github.com/prasadtalasila/chitragupta/issues/1046) (bug), 1b [#1047](https://github.com/prasadtalasila/chitragupta/issues/1047), 1c [#1048](https://github.com/prasadtalasila/chitragupta/issues/1048), 1d [#1049](https://github.com/prasadtalasila/chitragupta/issues/1049), 1e [#1050](https://github.com/prasadtalasila/chitragupta/issues/1050) |
+| 2 `figure new`, `check`, `look` | [#1051](https://github.com/prasadtalasila/chitragupta/issues/1051) | 2a [#1052](https://github.com/prasadtalasila/chitragupta/issues/1052), 2b [#1053](https://github.com/prasadtalasila/chitragupta/issues/1053), 2c [#1054](https://github.com/prasadtalasila/chitragupta/issues/1054), 2d [#1055](https://github.com/prasadtalasila/chitragupta/issues/1055), 2e [#1056](https://github.com/prasadtalasila/chitragupta/issues/1056), 2f [#1057](https://github.com/prasadtalasila/chitragupta/issues/1057), 2g [#1058](https://github.com/prasadtalasila/chitragupta/issues/1058) |
+| 3 Five scaffolds | [#1059](https://github.com/prasadtalasila/chitragupta/issues/1059) | 3a [#1060](https://github.com/prasadtalasila/chitragupta/issues/1060), 3b [#1061](https://github.com/prasadtalasila/chitragupta/issues/1061), 3c [#1062](https://github.com/prasadtalasila/chitragupta/issues/1062), 3d [#1063](https://github.com/prasadtalasila/chitragupta/issues/1063), 3e [#1064](https://github.com/prasadtalasila/chitragupta/issues/1064) |

@@ -1212,7 +1212,13 @@ Three phases under one epic:
 
 ### Tracking
 
-Epic and sub-issues are listed in the plan's
+Epic
+[#1044](https://github.com/prasadtalasila/chitragupta/issues/1044);
+phases
+[#1045](https://github.com/prasadtalasila/chitragupta/issues/1045),
+[#1051](https://github.com/prasadtalasila/chitragupta/issues/1051) and
+[#1059](https://github.com/prasadtalasila/chitragupta/issues/1059).
+The items under each are listed in the plan's
 [Tracking](../plans/fig-xii-figure-drawer-v3.md#tracking) section.
 
 ---
