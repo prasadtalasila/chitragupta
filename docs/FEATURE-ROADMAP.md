@@ -23,8 +23,10 @@ numeral in prose is a claim too) has left it the same way and for a
 different reason: not falsified but **mis-specified**, defining the
 complement of the finding it was commissioned for, which its own plan
 found while measuring it. **The build order is empty today**: D5 was
-the last item in it. Anything added later is outstanding work, which is
-what makes the list usable.
+the last item in it, and **D6** (figure-drawer v3,
+[#1044](https://github.com/prasadtalasila/chitragupta/issues/1044)), added
+2026-10-24, is the one item in it now. Anything added later is
+outstanding work, which is what makes the list usable.
 
 **For what the pipeline does today, read [FEATURES.md](FEATURES.md).**
 That is this document's counterpart: the capability surface as built,
@@ -742,6 +744,22 @@ future book whose figures are denser than this corpus's, where
 `review figure` and this section's checklist come back clean but a
 reader still disagrees.
 
+### 🖍 D6: figure-drawer v3
+
+Added 2026-10-24 on a user report: figures sprawl, routing defects reach
+the PDF, and figures carry too much or too little. It is specified in
+full as [FIGURE-ROADMAP.md Part XII](FIGURE-ROADMAP.md#-part-xii-figure-drawer-v3)
+and `plans/fig-xii-figure-drawer-v3.md`,
+and listed here only so this build order is not read as empty. It
+reaches D4's own unanswered half from the cheap end: the routing veto
+D2 skipped becomes six numbered connector rules computed from source and
+probe geometry, still advisory, with no vision model.
+
+Size: large, in three phases. Depends on: nothing outside it; follows
+[#1037](https://github.com/prasadtalasila/chitragupta/issues/1037)
+for the probe engine and reconciles with
+[#1016](https://github.com/prasadtalasila/chitragupta/issues/1016).
+
 ## 🧭 Theme E: the human's own structure
 
 Themes A-D are about what the pipeline does with what it retrieved. This
@@ -863,9 +881,13 @@ closed it and in `plans/`. A roadmap that accumulates its own
 history stops being a list of what to do next, which is the only thing it
 is for.
 
-**Nothing is listed.** The last item, D5, was closed unbuilt (below).
 A new item goes here as one row of `#`, `PR`, `Theme`, `Size` and
-`Depends on` once it has been proposed and costed.
+`Depends on` once it has been proposed and costed. D5, the previous
+last item, was closed unbuilt (below).
+
+| # | PR | Theme | Size | Depends on |
+| --- | --- | --- | --- | --- |
+| [D6](#-d6-figure-drawer-v3) [#1044](https://github.com/prasadtalasila/chitragupta/issues/1044) | -- | D | large, three phases | [#1037](https://github.com/prasadtalasila/chitragupta/issues/1037) (probe engine), reconciles with [#1016](https://github.com/prasadtalasila/chitragupta/issues/1016) |
 
 Withdrawn: [A1b](#-a1b-auto-route-findings-into-agenda-reviser----declined).
 Already answered: [F4](#-f4-the-gating-decision----already-answered).

@@ -20,9 +20,11 @@ name: CI
 # filter, which is the original intent stated positively.
 on:
   push:
-    branches: [main]
+    # improve-figures is the integration branch for the figure-drawer v3
+    # epic (#1044): its PRs and merges get the same checks as main's.
+    branches: [main, improve-figures]
   pull_request:
-    branches: [main]
+    branches: [main, improve-figures]
   workflow_dispatch:
 
 # A push to the same branch/PR while a previous run is still going
