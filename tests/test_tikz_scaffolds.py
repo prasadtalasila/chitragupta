@@ -194,6 +194,204 @@ class TestMetaphorCoverage:
         assert {path.stem for path in _scaffolds()} == expected
 
 
+# #1049: the figure-drawer skill routes a pattern to a layout in
+# patterns.md, and each layout has one reference file carrying its
+# reference ranges. The skill's references live once, under .claude/
+# (#1039), whichever harness reads them.
+REFERENCES = REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "references"
+PATTERNS = REFERENCES / "patterns.md"
+LAYOUT_DIR = REFERENCES / "layouts"
+SKILL_COPIES = [
+    REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "SKILL.md",
+    REPO_ROOT / ".agents" / "skills" / "figure-drawer" / "SKILL.md",
+    REPO_ROOT / ".opencode" / "skills" / "figure-drawer-opencode" / "SKILL.md",
+]
+
+# A row of a layout file's range table: the source it was measured from,
+# then nodes, edges, width, height and slack.
+_RANGE_ROW_RE = re.compile(
+    r"^\| `(?P<source>assets/tikz/[\w/-]+\.tex)` \| (?P<nodes>\d+) \| (?P<edges>\d+) \| "
+    r"(?P<width>[\d.]+) \| (?P<height>[\d.]+) \| (?P<slack>[\d.]+) \|$",
+    re.MULTILINE,
+)
+_PATTERN_LINK_RE = re.compile(r"\]\(layouts/(?P<slug>[\w-]+)\.md\)")
+
+# What the fractions are of: the render's 12pt A4 1in page. The probe
+# sets the figure at article's 10pt, so the fractions it yields are a
+# lower bound until #1037 moves it to the render's engine and fonts.
+_TEXT_WIDTH_PT = 453.0
+_TEXT_HEIGHT_PT = 700.0
+# Two decimals are written, and the probe's numbers move by a little with
+# the TeX installation; more than this is the source having changed.
+_FRACTION_TOLERANCE = 0.02
+
+
+class RangeRow(NamedTuple):
+    source: str
+    nodes: int
+    edges: int
+    width: float
+    height: float
+    slack: float
+
+
+def _layout_file(slug: str) -> Path:
+    return LAYOUT_DIR / f"{slug}.md"
+
+
+def _range_rows(text: str) -> list[RangeRow]:
+    """Every measured row of one layout file's reference-range table."""
+    return [
+        RangeRow(
+            m["source"],
+            int(m["nodes"]),
+            int(m["edges"]),
+            float(m["width"]),
+            float(m["height"]),
+            float(m["slack"]),
+        )
+        for m in _RANGE_ROW_RE.finditer(text)
+    ]
+
+
+def _all_range_rows() -> list[RangeRow]:
+    return [
+        row
+        for path in sorted(LAYOUT_DIR.glob("*.md"))
+        for row in _range_rows(path.read_text(encoding="utf-8"))
+    ]
+
+
+def _counted(source: Path) -> tuple[int, int]:
+    """Nodes and edges, read from the source the way `review figure` reads them."""
+    text = source.read_text(encoding="utf-8")
+    return len(figure_layout.node_names(text)), len(figure_layout.edge_list(text))
+
+
+def _leaves(boxes: list) -> list:
+    """The nodes that wholly enclose no other node: zone cards dropped."""
+
+    def encloses(outer, inner) -> bool:
+        return (
+            outer[0] - 1 <= inner[0]
+            and outer[1] - 1 <= inner[1]
+            and inner[2] <= outer[2] + 1
+            and inner[3] <= outer[3] + 1
+        )
+
+    return [
+        box
+        for index, box in enumerate(boxes)
+        if not any(
+            encloses(box, other) for other_index, other in enumerate(boxes) if other_index != index
+        )
+    ]
+
+
+def _measured(source: Path) -> tuple[float, float, float]:
+    """Width and height as fractions of the text block, and slack: the
+    share of the picture no leaf node fills, zone cards excluded."""
+    boxes = figure_layout.node_boxes(source)
+    bx1, by1, bx2, by2 = boxes.pop(figure_layout.BBOX_NAME)
+    width, height = bx2 - bx1, by2 - by1
+    filled = sum((x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in _leaves(list(boxes.values())))
+    return width / _TEXT_WIDTH_PT, height / _TEXT_HEIGHT_PT, 1 - filled / (width * height)
+
+
+def _count_mismatch(row: RangeRow) -> str | None:
+    nodes, edges = _counted(REPO_ROOT / row.source)
+    if (nodes, edges) == (row.nodes, row.edges):
+        return None
+    return f"{row.source}: written {row.nodes} nodes, {row.edges} edges; measured {nodes}, {edges}"
+
+
+def _extent_mismatch(row: RangeRow) -> str | None:
+    measured = _measured(REPO_ROOT / row.source)
+    written = (row.width, row.height, row.slack)
+    if all(abs(a - b) <= _FRACTION_TOLERANCE for a, b in zip(written, measured)):
+        return None
+    shown = " | ".join(f"{value:.2f}" for value in measured)
+    return f"{row.source}: written {written}; measured | {shown} |"
+
+
+class TestEveryLayoutHasAReferenceFile:
+    """#1049: one reference file per layout, and patterns.md routing
+    only to layouts that exist. The layout list is TIKZ-STYLE.md's table,
+    the same one the scaffolds are held to above."""
+
+    def test_every_metaphor_has_a_reference_file(self):
+        missing = [m for m in _metaphors() if not _layout_file(_slug(m)).exists()]
+
+        assert missing == []
+
+    def test_no_reference_file_for_a_layout_the_doc_dropped(self):
+        assert {path.stem for path in LAYOUT_DIR.glob("*.md")} == {_slug(m) for m in _metaphors()}
+
+    @pytest.mark.parametrize("metaphor", _metaphors(), ids=_slug)
+    def test_each_file_states_its_anti_patterns(self, metaphor):
+        text = _layout_file(_slug(metaphor)).read_text(encoding="utf-8")
+
+        assert "\n## Anti-patterns\n\n- " in text
+
+    @pytest.mark.parametrize("metaphor", _metaphors(), ids=_slug)
+    def test_each_file_measures_its_own_scaffold(self, metaphor):
+        rows = _range_rows(_layout_file(_slug(metaphor)).read_text(encoding="utf-8"))
+
+        assert f"assets/tikz/{_slug(metaphor)}.tex" in [row.source for row in rows]
+
+    def test_every_exemplar_is_measured_under_exactly_one_layout(self):
+        sources = [row.source for row in _all_range_rows()]
+        exemplars = [path.relative_to(REPO_ROOT).as_posix() for path in EXEMPLAR_DIR.glob("*.tex")]
+
+        assert exemplars
+        assert sorted(s for s in sources if s in exemplars) == sorted(exemplars)
+
+    def test_patterns_route_to_every_layout_and_only_to_layouts(self):
+        routed = set(_PATTERN_LINK_RE.findall(PATTERNS.read_text(encoding="utf-8")))
+
+        assert routed == {_slug(m) for m in _metaphors()}
+
+    def test_the_style_doc_points_at_the_routing(self):
+        text = STYLE_DOC.read_text(encoding="utf-8")
+
+        assert ".claude/skills/figure-drawer/references/patterns.md" in text
+        assert ".claude/skills/figure-drawer/references/layouts/" in text
+
+    @pytest.mark.parametrize("skill", SKILL_COPIES, ids=lambda p: p.parent.parent.parent.name)
+    def test_every_harness_copy_points_at_the_routing(self, skill):
+        text = skill.read_text(encoding="utf-8")
+
+        assert ".claude/skills/figure-drawer/references/patterns.md" in text
+
+
+class TestTheReferenceRangesAreMeasured:
+    """#1049's criterion that a reference range is derived from the
+    scaffold and exemplar, not typed by hand: every written number is
+    re-measured here, so a range moves only when its source does. A
+    failure prints the measured row to paste back."""
+
+    def test_the_tables_were_read(self):
+        assert len(_all_range_rows()) > len(_metaphors())
+
+    def test_a_doctored_count_is_caught(self):
+        row = _all_range_rows()[0]
+
+        assert _count_mismatch(row._replace(nodes=row.nodes + 1)) is not None
+
+    def test_counts_match_the_source(self):
+        assert [m for m in map(_count_mismatch, _all_range_rows()) if m] == []
+
+    @needs_tikz
+    def test_a_doctored_extent_is_caught(self):
+        row = _all_range_rows()[0]
+
+        assert _extent_mismatch(row._replace(slack=row.slack + 0.1)) is not None
+
+    @needs_tikz
+    def test_extents_match_the_probe(self):
+        assert [m for m in map(_extent_mismatch, _all_range_rows()) if m] == []
+
+
 class TestTheWellSizeIsStatedOnce:
     """The probe reads the well's size out of `cgwell`'s style, so a
     resized well moves the test with it. These two sentences state the

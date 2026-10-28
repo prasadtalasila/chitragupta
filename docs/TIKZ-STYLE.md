@@ -64,6 +64,17 @@ project by `chitragupta init`, so they are already beside a scaffolded
 draft and there is nothing to download. `assets/tikz/README.md` says
 what each one is for.
 
+**Choose the pattern before the layout.** What a figure argues (a
+bottleneck, a lifecycle, a trust boundary, a comparison) is not the same
+choice as how it is laid out, and several patterns share one layout.
+The `figure-drawer` skill's
+`.claude/skills/figure-drawer/references/patterns.md` routes a pattern
+to the nearest layout, and each layout has one reference file,
+`.claude/skills/figure-drawer/references/layouts/<layout>.md` (the
+layout's name as its scaffold spells it), with its anti-patterns and the
+reference ranges measured from its scaffold and exemplars.
+A new pattern never adds a layout; only a new way of placing nodes does.
+
 **Every scaffold places its nodes relative to one another, and none of
 them places a node at a coordinate in millimetres.** That is the property
 to keep when you edit one. A figure laid out in hand-computed absolute
