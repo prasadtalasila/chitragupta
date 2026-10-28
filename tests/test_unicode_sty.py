@@ -15,6 +15,11 @@ from tests.conftest import pdflatex_available, pdftotext_available
 
 
 def test_the_committed_sty_is_what_the_generator_writes():
+    if unicodedata.unidata_version != gen.UNICODE_VERSION:
+        pytest.skip(
+            f"this Python's Unicode is {unicodedata.unidata_version}, the .sty is "
+            f"written from {gen.UNICODE_VERSION}; CI's Python checks it"
+        )
     assert gen.STY_PATH.read_text(encoding="utf-8") == gen.render(), (
         "assets/latex/chitragupta-unicode.sty is stale or hand-edited. "
         "Run `python -m scripts.generate_unicode_sty` and commit the result."
@@ -90,9 +95,21 @@ def test_a_style_pdflatex_lacks_keeps_the_letter():
 def test_main_writes_the_file(tmp_path, monkeypatch, capsys):
     target = tmp_path / "latex" / "chitragupta-unicode.sty"
     monkeypatch.setattr(gen, "STY_PATH", target)
+    monkeypatch.setattr(gen, "UNICODE_VERSION", unicodedata.unidata_version)
     assert gen.main() == 0
     assert target.read_text(encoding="utf-8") == gen.render()
     assert "characters" in capsys.readouterr().out
+
+
+def test_main_refuses_another_unicode(tmp_path, monkeypatch, capsys):
+    """Regenerating under a Python whose Unicode differs writes a file
+    CI's Python rejects, so it is refused before anything is written."""
+    target = tmp_path / "latex" / "chitragupta-unicode.sty"
+    monkeypatch.setattr(gen, "STY_PATH", target)
+    monkeypatch.setattr(gen, "UNICODE_VERSION", "0.0.0")
+    assert gen.main() == 1
+    assert not target.exists()
+    assert "0.0.0" in capsys.readouterr().err
 
 
 def _compile_every_entry(tmp_path):
