@@ -49,7 +49,8 @@ end
 
 local function directory_of(path)
   if not is_absolute(path) then
-    path = lfs.currentdir() .. "/" .. path
+    -- kpathsea answers `./probe.tex` for a main file named relatively.
+    path = lfs.currentdir() .. "/" .. path:gsub("^%./", "")
   end
   return path:match("^(.*[/\\])")
 end
