@@ -134,7 +134,10 @@ Each step names the document that owns its rule.
 The skill reads `.claude/skills/figure-drawer/references/figures.md` (one
 copy, whichever harness runs it) only when a step sends it there: which
 metaphor fits, a worked panelled figure, fitting a figure without scaling it,
-and an annotated exemplar.
+and an annotated exemplar. Beside it, `references/patterns.md` routes what a
+figure argues to a layout, and `references/layouts/` holds one file per
+layout with its anti-patterns and the reference ranges (node and edge counts,
+width, height, slack) measured from its scaffold and exemplars.
 
 ## 🌱 A worked example
 

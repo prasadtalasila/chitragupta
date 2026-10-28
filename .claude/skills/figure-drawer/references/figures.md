@@ -7,6 +7,12 @@ bug.
 
 ## 1. Choosing a metaphor
 
+Decide what the figure argues first: `patterns.md`, beside this file,
+routes a pattern (a bottleneck, a lifecycle, a trust boundary, a
+comparison) to a layout. Each layout then has one file under `layouts/`
+with its anti-patterns and the node count, edge count, width, height
+and slack a typical figure of it has.
+
 The scaffolds in `assets/tikz/`, from `assets/tikz/README.md` (which
 wins if the two disagree):
 

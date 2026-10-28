@@ -102,9 +102,19 @@ so they are this skill's to state:
    overlong node, literal copying) before keeping the figure. No label
    goes below the body size, and the figure is `\input` bare, never
    inside `\resizebox`: if it does not fit, change the layout, not the
-   scale. For which metaphor fits, see
-   `.claude/skills/figure-drawer/references/figures.md` §1 (paths in this
-   skill are from the project root); for a figure that does not fit the
+   scale. For which metaphor fits, name what the figure argues and route
+   it through `.claude/skills/figure-drawer/references/patterns.md` (paths
+   in this skill are from the project root), then read that layout's own
+   file, one of
+   `.claude/skills/figure-drawer/references/layouts/pipeline.md`,
+   `.claude/skills/figure-drawer/references/layouts/map.md`,
+   `.claude/skills/figure-drawer/references/layouts/layered-stack.md`,
+   `.claude/skills/figure-drawer/references/layouts/control-loop.md`,
+   `.claude/skills/figure-drawer/references/layouts/branching-tree.md`,
+   `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`, or
+   `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`;
+   then `.claude/skills/figure-drawer/references/figures.md` §1; for a
+   figure that does not fit the
    width, `.claude/skills/figure-drawer/references/figures.md` §3; for
    what the house block's zone cards, badges and legend are for,
    `.claude/skills/figure-drawer/references/figures.md` §4.
