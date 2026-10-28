@@ -81,10 +81,10 @@ def _escapes(draft_dir: Path, ref: str) -> bool:
     """Whether `ref` is spelled inside `draft_dir` but lands outside it.
 
     The case `_resolve_sibling` refuses and pandoc/the TeX engine would not:
-    both open the spelled name themselves, and `openin_any=p` judges the
-    name, not where a symlink on the way takes it (#823). Absolute and
-    `..` spellings are not this question -- TeX's paranoid mode refuses
-    those itself -- so they answer False here.
+    both open the spelled name themselves, and the TeX read fence
+    (`tex_engine`, #823, #1037) judges the name, not where a symlink on
+    the way takes it. Absolute and `..` spellings are not this question
+    -- the fence refuses those itself -- so they answer False here.
     """
     ref_path = Path(ref)
     if ref_path.is_absolute() or ".." in ref_path.parts:

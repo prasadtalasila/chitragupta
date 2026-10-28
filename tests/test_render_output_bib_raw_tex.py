@@ -3,7 +3,7 @@ as text and never runs in LuaLaTeX (#996).
 
 pandoc's BibTeX reader turns a command it does not understand into raw
 LaTeX, and citeproc carries it into the reference list. Under LuaLaTeX
-`\\directlua{...}` there runs Lua, which `openin_any=p` does not fence
+`\\directlua{...}` there runs Lua, which the TeX read fence does not fence
 (plans/996-unicode-pdf-engine.md, Q2). The fixture key is `smith_2024`,
 the one tests/test_render_output.py already uses; no new key is made up.
 """

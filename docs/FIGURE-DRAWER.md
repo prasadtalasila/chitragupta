@@ -114,15 +114,16 @@ Each step names the document that owns its rule.
 6. **Probes and compiles.** `kpsewhich tikz.sty` first. If TikZ is
    missing, it writes no pair: the ASCII goes inline instead (a fence in
    Markdown, `verbatim` in a thesis fragment), with no marker. Otherwise
-   it compiles the figure alone in a minimal document with `pdflatex`,
-   because a broken figure fails the whole PDF render.
+   it compiles the figure alone in a minimal document with `lualatex`,
+   the pdf render's engine, because a broken figure fails the whole PDF
+   render.
 7. **Reads the geometry.** `python -m chitragupta.review figure <draft>`
    reports overlaps, protrusions and hand-loaded libraries. It is a
    review aid, never a gate ([REVIEW.md](REVIEW.md)).
-8. **Looks at the real render.** The probe is a bare article class
-   under `pdflatex`, but the pipeline's own PDF is LuaLaTeX at the
-   draft's body font, so labels can wrap and gaps close differently
-   there. Once the draft carries the marker, it renders the PDF and
+8. **Looks at the real render.** The probe is a bare article class,
+   but the pipeline's own PDF is the draft's whole document, with its
+   floats and neighbouring text, so labels can wrap and gaps close
+   differently there. Once the draft carries the marker, it renders the PDF and
    checks the page that holds the figure against the same pre-flight
    list. This needs `pandoc`, LuaLaTeX and `pdftoppm` (poppler), which
    `chitragupta install os-deps` installs on Linux; without them, or in

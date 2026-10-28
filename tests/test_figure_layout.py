@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import review
+from chitragupta import review, tex_engine
 from chitragupta.review import figure_layout
 from chitragupta.review.figure_layout import _probe
 from tests.conftest import needs_tikz
@@ -424,7 +424,7 @@ class TestScaffold:
         was."""
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
-        assert "\\documentclass{article}" in scaffold
+        assert "{article}" in scaffold
         assert "standalone" not in scaffold
 
     def test_it_uses_the_public_coordinate_accessor(self):
@@ -443,6 +443,15 @@ class TestScaffold:
         scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
 
         assert "current bounding box" in scaffold
+
+    def test_it_sets_type_as_the_pdf_render_does(self):
+        """#1037: node boxes are measured in the size and fonts the pdf
+        render prints, not pdflatex's 10pt Computer Modern. The render
+        is `article` at 12pt with chitragupta-lualatex.tex's fonts."""
+        scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
+
+        assert "\\documentclass[12pt]{article}" in scaffold
+        assert "\\setmainfont{STIX Two Text}" in scaffold
 
 
 class TestProbePlacement:
@@ -670,14 +679,22 @@ class TestProbeTexHardening:
         cmd, _ = self._run(tmp_path, monkeypatch)
         assert "-no-shell-escape" in cmd
 
+    def test_it_compiles_with_lualatex_as_the_pdf_render_does(self, tmp_path, monkeypatch):
+        cmd, _ = self._run(tmp_path, monkeypatch)
+        assert Path(cmd[0]).name == "lualatex"
+
     def test_reads_are_paranoid_even_if_the_host_says_otherwise(self, tmp_path, monkeypatch):
         monkeypatch.setenv("openin_any", "a")
         _, kwargs = self._run(tmp_path, monkeypatch)
-        assert kwargs["env"]["openin_any"] == "p"
+        assert kwargs["env"]["openin_any"] == "r"
+
+    def test_it_loads_the_same_read_fence_as_the_pdf_render(self, tmp_path, monkeypatch):
+        cmd, _ = self._run(tmp_path, monkeypatch)
+        assert f"--lua={tex_engine.READ_FENCE}" in cmd
 
 
 @needs_tikz
-class TestProbeAgainstRealPdflatex:
+class TestProbeAgainstRealLualatex:
     """The one assumption everything else rests on, pinned against a real
     compile rather than a fixture -- plans/d2-tikz-layout-check.md's own
     instruction, and what caught the `standalone`/`\\makeatletter`
@@ -744,6 +761,18 @@ class TestProbeAgainstRealPdflatex:
         figure_layout.node_boxes(figure)
 
         assert sorted(p.name for p in tmp_path.iterdir()) == ["fig.tex"]
+
+    def test_a_label_only_unicode_fonts_set_is_measured(self, tmp_path):
+        """A node whose label pdflatex cannot typeset without
+        chitragupta-unicode.sty (#948) compiles and is measured, because
+        the probe runs the render's own engine and font chain (#1037)."""
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\begin{tikzpicture}\\node (a) {x \u2264 y, \u03b1};\\end{tikzpicture}\n",
+            encoding="utf-8",
+        )
+
+        assert "a" in figure_layout.node_boxes(figure)
 
     def test_a_figure_that_does_not_compile_raises_rather_than_returning_junk(self, tmp_path):
         figure = tmp_path / "broken.tex"
@@ -949,7 +978,7 @@ class TestCheckDraft:
         assert results[0].boxes is None
         assert results[0].skipped
 
-    def test_a_host_with_no_pdflatex_skips_geometry_rather_than_crashing(
+    def test_a_host_with_no_lualatex_skips_geometry_rather_than_crashing(
         self, tmp_path, monkeypatch
     ):
         """`_require_tikz()` says nothing where `kpsewhich` is absent, by
@@ -958,16 +987,16 @@ class TestCheckDraft:
         Windows leg is that host, and this is the regression test for
         what it caught."""
 
-        def _no_pdflatex(binary):
+        def _no_lualatex(binary):
             raise figure_layout.MissingBinary(f"'{binary}' is not on PATH.")
 
-        monkeypatch.setattr(figure_layout, "_require", _no_pdflatex)
+        monkeypatch.setattr(figure_layout, "_require", _no_lualatex)
         draft = _draft_with_figure(tmp_path, "\\node (a) {A};\n")
 
         results = figure_layout.check_draft(draft)
 
         assert results[0].boxes is None
-        assert "pdflatex" in results[0].skipped
+        assert "lualatex" in results[0].skipped
 
     @needs_tikz
     def test_a_broken_figure_does_not_stop_the_others(self, tmp_path):

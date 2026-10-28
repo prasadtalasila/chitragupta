@@ -329,7 +329,8 @@ candidate for the chapter.
      `figure-drawer` was not loaded, run `kpsewhich tikz.sty`
      yourself: if it finds nothing, write the ASCII inline in
      a fence instead, no pair and no marker, and say so in
-     chat. A figure you keep compiles on its own first: a malformed
+     chat. A figure you keep compiles on its own
+     first, with `lualatex`, the engine the pdf render uses: a malformed
      one fails the whole pdf render, not just the figure.
    - **No citekey inside either figure file.** Step 12's gate reads the
      draft and does not follow `\input`, so a citekey in a node label

@@ -27,8 +27,12 @@ it by hand. `tests/test_unicode_sty.py` fails when the two disagree.
 LuaLaTeX, which prints these characters from its font chain
 (`tests/test_render_output_fonts.py` renders all 1,873), so a pdf render
 no longer loads this file. It is kept because a `.tex` output or a
-`--fragment` is compiled later by someone else's document, and most
-university thesis templates are pdflatex.
+`--fragment` is compiled later by someone else's document, and many
+university thesis templates are pdflatex. Since #1037 it is the opt-in
+for that case: LuaLaTeX is the recommended engine for a document that
+assembles a fragment, and a fragment that needs either file gets
+`chitragupta-lualatex.tex` beside it too, for that document to
+`\input` after `fontspec` and `unicode-math`.
 `chitragupta draft render` copies it beside such an output when the
 draft contains one of these characters
 (`chitragupta/render_output/_unicode.py`); the document that `\input`s a

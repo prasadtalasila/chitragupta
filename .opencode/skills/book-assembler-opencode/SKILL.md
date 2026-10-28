@@ -199,20 +199,30 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
 
    ```bash
    cd content/rendered/<book>
-   pdflatex -interaction=nonstopmode book.tex
-   bibtex book
-   pdflatex -interaction=nonstopmode book.tex
-   pdflatex -interaction=nonstopmode book.tex
+   lualatex -interaction=nonstopmode book.tex
+   bibtexu book
+   lualatex -interaction=nonstopmode book.tex
+   lualatex -interaction=nonstopmode book.tex
    ```
 
-   **Four passes, and the `bibtex` one is not optional.** The first
-   `pdflatex` records which keys the document cites; `bibtex` turns those
-   into `book.bbl`; the third pass pulls the bibliography in and the
-   fourth resolves `\cref`, the table of contents and the citation
-   numbers now that the entries exist. Skip `bibtex` and every citation
-   renders as `[?]` -- with `pdflatex` still exiting 0.
+   **LuaLaTeX and `bibtexu`, the engine the pdf render uses** (#1037).
+   Measured on the reference book (287 pages): the four passes take
+   about 86 s against pdflatex's 26 s, and two things pdflatex got
+   wrong come out right. Classic `bibtex` abbreviates a first name by
+   its first *byte*, so `Ö. Babur` and `É. Poirier` lost their initials
+   under pdflatex and are an invalid-UTF-8 error under LuaLaTeX;
+   `bibtexu` abbreviates by character. It exits 1 when the `.bib` has
+   only warnings (an empty `booktitle`); read `book.blg` for an
+   `error`, not the exit code.
 
-   **Read `book.log` before believing the PDF.** A `pdflatex` run that
+   **Four passes, and the `bibtexu` one is not optional.** The first
+   `lualatex` records which keys the document cites; `bibtexu` turns
+   those into `book.bbl`; the third pass pulls the bibliography in and
+   the fourth resolves `\cref`, the table of contents and the citation
+   numbers now that the entries exist. Skip it and every citation
+   renders as `[?]` -- with `lualatex` still exiting 0.
+
+   **Read `book.log` before believing the PDF.** A `lualatex` run that
    exits 0 can still be missing something -- a dropped citation is
    reported as a warning, not an error:
 
@@ -246,8 +256,9 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
    `docs/WRITING-STANDARDS.md` §13's markers, which the conversion turns
    into `\caption{...\label{tab:<id>}}`, so the `book` class numbers them
    itself. **Which shape it uses follows the `\setcounter{secnumdepth}`
-   the skeleton sets**, and both were measured with `pdflatex` rather
-   than assumed: at the skeleton's `2`, tables read "1.1", "2.1", "2.2"
+   the skeleton sets**, and both were measured rather than assumed
+   (with pdflatex, and again under LuaLaTeX for #1037, the same): at
+   the skeleton's `2`, tables read "1.1", "2.1", "2.2"
    -- reset per chapter, which is what a book gets by default; at `-2`
    (a book whose units number their own headings, overriding in
    `preamble.tex`), they read "1", "2", "3" -- flat and continuous.
@@ -316,7 +327,7 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
    the wrong lever for it** (#804). A unit headed `# Chapter 1: Why
    Anyone Pays` is numbered twice by the `book` class, but
    `secnumdepth{-2}` pays a document-level price for a chapter-level
-   problem. Measured on one real book, four `pdflatex` passes each:
+   problem. Measured on one real book, four passes each:
 
    | | `secnumdepth{2}` (the skeleton) | `secnumdepth{-2}` |
    | --- | --- | --- |

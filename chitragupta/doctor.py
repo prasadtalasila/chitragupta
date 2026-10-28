@@ -11,12 +11,14 @@ for a toolchain; never assume one, in either direction"
 
 Seven checks, none of them fatal to run without:
 
-1. **OS binaries pip cannot supply** -- pandoc, lualatex, pdflatex,
-   pdftotext, vale. `python -m chitragupta.draft render`/`style` already
+1. **OS binaries pip cannot supply** -- pandoc, lualatex, pdftotext,
+   vale. `python -m chitragupta.draft render`/`style` already
    probe these themselves and report per-call; this is the same probe,
    run once, up front, so a user finds out before their first render
-   rather than at it. `lualatex` renders a pdf (#996); `pdflatex` is the
-   figure-layout probe's compiler.
+   rather than at it. `lualatex` renders a pdf (#996) and compiles the
+   figure-layout probe (#1037); nothing in the pipeline runs pdflatex.
+   It still gets one line, `[optional]` when absent, because a thesis
+   template that forces pdflatex needs it on the author's host.
 2. **Is the `enrich` extra importable?** `pip install chitragupta-cli`
    alone gives tier 1 and tier 2 (docs/CLI.md); this says whether tier 3
    is there too, without importing anything from `chitragupta.enrich`
@@ -65,10 +67,10 @@ DESCRIPTION = (
     "extra, torch vs. the GPU driver, a competing distribution, hook launchers."
 )
 
-# What `draft render`/`draft style` and `review figure` (pdflatex, for
+# What `draft render`/`draft style` and `review figure` (lualatex, for
 # its layout probe) already probe for themselves, per call. Doctor probes
-# the same five, once, up front.
-BINARIES = ("pandoc", "lualatex", "pdflatex", "pdftotext", "vale")
+# the same four, once, up front.
+BINARIES = ("pandoc", "lualatex", "pdftotext", "vale")
 
 THIS_DISTRIBUTION = "chitragupta-cli"
 CONSOLE_SCRIPTS = ("chitragupta", "cg")
@@ -83,6 +85,19 @@ def _check_binaries() -> list[str]:
         else:
             found.append(f"[missing-binary] {binary} not found on PATH")
     return found
+
+
+def _check_optional_pdflatex() -> str:
+    """pdflatex, which the pipeline no longer runs (#1037) but a thesis
+    author whose template forces it does, with chitragupta-unicode.sty
+    beside the fragment. Absent is said plainly and is not a problem."""
+    path = programs.resolve_program("pdflatex")
+    if path:
+        return f"[ok] pdflatex found: {path} (optional: only a pdflatex thesis template uses it)"
+    return (
+        "[optional] pdflatex not found on PATH -- only needed if your thesis "
+        "template forces pdflatex; the pipeline itself uses lualatex"
+    )
 
 
 # Every top-level import name the `enrich` extra installs, in
@@ -243,6 +258,7 @@ def main(argv=None) -> int:
     build_parser().parse_args(sys.argv[1:] if argv is None else argv)
     lines = [
         *_check_binaries(),
+        _check_optional_pdflatex(),
         _check_enrich_extra(),
         _check_gpu_torch(),
         _check_competing_distribution(),

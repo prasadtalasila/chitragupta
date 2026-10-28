@@ -370,7 +370,7 @@ class TestTheBookBibliographyBesideAFragment:
 class TestRenderRefusesEscapingReferences:
     """#823 review: `_resolve_sibling` guards only chitragupta's own reads.
     pandoc and pdflatex open a draft's `\\input` and image references
-    themselves, and `openin_any=p` checks the name as TeX spells it, so a
+    themselves, and the TeX read fence checks the name as TeX spells it, so a
     `figures/x.tex` that is a symlink out of the draft was still compiled
     into the PDF. The render refuses such a draft before either tool runs."""
 

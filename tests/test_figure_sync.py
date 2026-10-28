@@ -236,7 +236,7 @@ class TestRoundTrip:
             encoding="utf-8",
         )
         result = subprocess.run(
-            [shutil.which("pdflatex"), "-interaction=nonstopmode", "-halt-on-error", doc.name],
+            [shutil.which("lualatex"), "-interaction=nonstopmode", "-halt-on-error", doc.name],
             cwd=tmp_path,
             capture_output=True,
             text=True,

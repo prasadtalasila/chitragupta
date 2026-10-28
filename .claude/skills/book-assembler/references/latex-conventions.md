@@ -28,14 +28,15 @@ The document skeleton, in order:
 
 ```latex
 \documentclass[11pt,a4paper]{book}
-\usepackage[T1]{fontenc}\usepackage{lmodern}\usepackage{textcomp}
+\usepackage{amsmath}                         % before unicode-math and cleveref
+\usepackage{fontspec}\usepackage{unicode-math}
+\input{chitragupta-lualatex}                 % see "Unicode characters" below
 \usepackage[a4paper,margin=80pt]{geometry}   % see "Margins" below
 \usepackage{longtable,booktabs,array,calc}   % what the converted units use
 \setlength{\LTcapwidth}{\textwidth}          % see "Table captions" below
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
-\usepackage{chitragupta-unicode}             % see "Unicode characters" below
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
@@ -164,7 +165,7 @@ the book skips the load and finds no macros. Every per-figure workaround
 for that is worse, because `tikzlibrarypositioning.code.tex` appends to
 `\tikz@node@reset@hook` *globally* on every load, so N loads apply every
 node's placement shift N times. Measured on a three-float document:
-71.26pt, then 128.17pt, then 185.07pt, with `pdflatex` exiting 0 and
+71.26pt, then 128.17pt, then 185.07pt, with the engine exiting 0 and
 nothing but `Overfull \hbox` in the log. That is how figures that fit in
 their single-chapter PDF spilled off the page of this project's own
 assembled book (#781).
@@ -192,31 +193,39 @@ clearing of `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
 one as `loads-library-by-hand`.
 
-**Unicode characters: the book loads `chitragupta-unicode` once.** A
-unit's text reaches LaTeX as its author wrote it (`H₂O`, `𝑡`, `≤`, `Ⅳ`),
-and pdflatex's default fonts cannot print those (#948). The shipped
-`chitragupta-unicode.sty` tells it how. Every unit rendered with
-`--fragment` that contains such a character prints one line and gets
-the file copied beside it, into the book's directory under
-`content/rendered/`:
+**Unicode characters: the book is LuaLaTeX, with the render's fonts**
+(#1037). A unit's text reaches LaTeX as its author wrote it (`H₂O`,
+`𝑡`, `≤`, `Ⅳ`), and the book prints it from the same font chain as a
+unit's own pdf (#996), so a chapter looks the same in both. Every unit
+rendered with `--fragment` that contains such a character prints one
+line and gets the font header copied beside it, into the book's
+directory under `content/rendered/`:
 
 ```text
-[unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+[unicode] chitragupta-lualatex.tex and chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; in the assembling document, under lualatex: \usepackage{fontspec}\usepackage{unicode-math}\input{chitragupta-lualatex}; under pdflatex: \usepackage{chitragupta-unicode}
 ```
 
-If any unit printed it, keep the `\usepackage{chitragupta-unicode}` line
-in the skeleton above; if none did, drop it. Under XeLaTeX or LuaLaTeX
-the package does nothing, so it is safe to keep either way. A book
-compiled with `lualatex` instead of `pdflatex` prints these characters
-from its fonts without the package, and Telugu or Chinese names in the
-bibliography too; chitragupta's own pdf renders use LuaLaTeX for that
-reason (#996). The engine is the author's choice: mention it, never
-switch it for them. Never
-rewrite a unit's characters to get the book through. A character the
-package does not map still stops the build and names itself. Ask the
-author which fix they want: a `\DeclareUnicodeCharacter` line in the
-book's own `preamble.tex`, or the character written as LaTeX in the
+If any unit printed it, keep the `\input{chitragupta-lualatex}` line in
+the skeleton above; if none did, drop it, and the book sets in
+LuaLaTeX's default Latin Modern. `amsmath` comes before `unicode-math`
+because `unicode-math` must load after it. Never rewrite a unit's
+characters to get the book through. A character no font in the chain
+has stops the build and names itself. Ask the author which fix they
+want: a font that has it, or the character written as LaTeX in the
 unit, through the revising skill the step that sent you here names.
+
+**Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
+`lualatex` twice, from the book's own directory, as SKILL.md's step 9
+gives them. The skeleton above is written for that engine and no
+other: `fontspec` and `unicode-math` exist only under LuaLaTeX (and
+XeLaTeX), and the font header is LuaLaTeX's.
+
+`chitragupta-unicode.sty` and `\DeclareUnicodeCharacter` are pdflatex
+tools, and a LuaLaTeX book uses neither. `\DeclareUnicodeCharacter` is
+undefined under LuaLaTeX, so a line of it left in a book's
+`preamble.tex` stops the build with "Undefined control sequence" and
+then "Missing `\begin{document}`". The character prints from the fonts
+without it: tell the author to delete the line, never guard it.
 
 **No `citeproc-defs.def`, and no `CSLReferences` block.** A fragment
 used to carry citeproc's own bibliography environment, which

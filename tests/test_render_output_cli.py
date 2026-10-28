@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 import pytest
-from chitragupta import render_output
+from chitragupta import render_output, tex_engine
 from chitragupta.render_output._cli import _unicode_repair_hint
 from tests.conftest import content_draft
 from tests.conftest import MARKED_MD
@@ -527,9 +527,10 @@ class TestTikzLibraryPreamble:
 
 class TestPdfEngineHardening:
     """#823, on the engine #996 moved to. TeX's own `\\input` of an
-    absolute path is refused by kpathsea's `openin_any=p`, which limits
-    reads to the working directory and TEXINPUTS, and `-no-shell-escape`
-    also turns off the restricted `\\write18` allow-list."""
+    absolute path is refused by the read fence (`tex_engine`, #1037),
+    which limits reads to the compile directory and TEXINPUTS, and
+    `-no-shell-escape` also turns off the restricted `\\write18`
+    allow-list."""
 
     def _cmd(self, output_format):
         return render_output._pandoc_command(
@@ -558,9 +559,12 @@ class TestPdfEngineHardening:
         engines = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--pdf-engine"]
         assert engines == ["lualatex"]
 
-    def test_a_pdf_render_runs_the_engine_paranoid_about_reads(self):
-        _, env = self._cmd("pdf")
-        assert env["openin_any"] == "p"
+    def test_a_pdf_render_runs_the_engine_behind_the_read_fence(self):
+        # #1037: `tex_engine`'s rules, the same as the figure probe's.
+        cmd, env = self._cmd("pdf")
+        assert env["openin_any"] == "r"
+        assert f"--pdf-engine-opt=--lua={tex_engine.READ_FENCE}" in cmd
+        assert "--pdf-engine-opt=-no-shell-escape" in cmd
 
     def test_a_pdf_render_includes_the_strict_glyph_and_font_header_last(self):
         # The fonts are set inside this header (not as pandoc variables),
@@ -587,7 +591,7 @@ class TestPdfEngineHardening:
     def test_the_hosts_own_openin_any_does_not_win(self, monkeypatch):
         monkeypatch.setenv("openin_any", "a")
         _, env = self._cmd("pdf")
-        assert env["openin_any"] == "p"
+        assert env["openin_any"] == "r"
 
     @pytest.mark.parametrize("output_format", ["html", "docx", "tex"])
     def test_a_format_that_runs_no_engine_is_untouched(self, output_format):
@@ -681,7 +685,7 @@ class TestRequirePdfToolchain:
 
 class TestTexReadableTmpdir:
     """#823 review: pandoc hands pdflatex `$TMPDIR/tex2pdf.-XXXX/input.tex`
-    as an absolute name, and `openin_any=p` refuses any name with a
+    as an absolute name, and `openin_any=r` refuses any name with a
     dot-directory in it -- so `TMPDIR=~/.cache/tmp` would fail every pdf
     render with what reads as a security refusal. Said up front instead."""
 

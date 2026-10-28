@@ -623,9 +623,10 @@ def programs_on_path(monkeypatch):
 # than in each of them so the kpsewhich subprocess below runs once per
 # session instead of eight times at import.
 pandoc_available = shutil.which("pandoc") is not None
-# pdflatex is still what the figure-layout probe compiles with, and what a
-# fragment's own pdflatex document is tested against (#948). A `pdf`
-# render is LuaLaTeX (#996): see lualatex_available below.
+# pdflatex is what a thesis fragment's own pdflatex document is tested
+# against (#948), the opt-in path for a template that forces it. The pdf
+# render (#996) and the figure-layout probe (#1037) are LuaLaTeX: see
+# lualatex_available below.
 pdflatex_available = shutil.which("pdflatex") is not None
 # The `lualatex` binary alone is not enough: it ships in texlive-binaries
 # and its format in texlive-latex-base, while its font loader is
@@ -666,7 +667,7 @@ def pdf_text(pdf) -> str:
 # failure, because CI's Windows leg installs no `os-deps`. One marker for
 # the three geometry modules that each used to probe for it themselves.
 needs_tikz = pytest.mark.skipif(
-    not (pdflatex_available and tikz_available), reason="needs pdflatex with tikz.sty"
+    not (lualatex_available and tikz_available), reason="needs lualatex with tikz.sty"
 )
 
 # A figure is two forms -- a TikZ picture and the same diagram in

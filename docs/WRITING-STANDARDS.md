@@ -402,10 +402,12 @@ pipeline.
   makes every later `tex`/`pdf` render of that draft fail with
   `[missing-binary]`, because the renderer refuses rather than silently falling
   back: the same draft has to produce the same output on every host. If
-  it is present, wrap the figure in a minimal `\documentclass{article}` +
-  `\usepackage{tikz}` document, run `pdflatex` on it, and never keep one that
-  fails. **Copy the figure's own `\usetikzlibrary` line into that probe**, or
-  the check fails for a reason the figure does not have: a bare
+  it is present, wrap the figure in a minimal
+  `\documentclass[12pt]{article}` + `\usepackage{fontspec}` +
+  `\usepackage{tikz}` document, run `lualatex` on it (the pdf render's
+  engine, #1037), and never keep one that fails. **Copy the figure's
+  own `\usetikzlibrary` line into that probe**, or the check fails for a
+  reason the figure does not have: a bare
   `\usepackage{tikz}` preamble loads no library, so anything using
   `positioning`, `matrix`, `fit` or `tree` errors there whether or not it is
   sound. The renderer loads the union of a draft's `\usetikzlibrary` lines in
@@ -908,7 +910,7 @@ with its own `\caption` and `\label`, and refers to it with
 ```
 
 Same carve-out as §10's inline TikZ, and the same reason: that fragment
-is `\input` into the user's own thesis, where their own `pdflatex`
+is `\input` into the user's own thesis, where their own LaTeX
 numbers it consistently with their other chapters. Nothing this pipeline
 does may get between them.
 

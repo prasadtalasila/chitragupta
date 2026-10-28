@@ -21,7 +21,6 @@ reasoning for both, and both were arrived at by compiling rather than by
 reading documentation.
 """
 
-import os
 import re
 
 # `_run` is the one patch point for this module's external launches
@@ -33,7 +32,7 @@ from subprocess import run as _run
 import tempfile
 from pathlib import Path
 
-from chitragupta import programs
+from chitragupta import pdf_fonts, programs, tex_engine
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
@@ -52,18 +51,6 @@ _CGBOX_RE = re.compile(
 # ever needs the name -- while the declaration's own spelling comes from
 # there, so widening it stays one edit rather than two that can drift.
 _NODE_NAME_RE = re.compile(_NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
-
-
-# pdflatex wraps every log line -- `\typeout`'s CGBOX lines included --
-# at `max_print_line` (~79 columns by default), which breaks the
-# one-line `_CGBOX_RE` parse for a node whose name runs long (#496): the
-# node then reads as declared but not measured, and can raise a false
-# protrusion finding on a figure that compiled fine. kpathsea overrides
-# a texmf.cnf setting with a same-named environment variable, so setting
-# this in the subprocess env (below) is enough -- no texmf.cnf edit, and
-# no `-max-print-line` flag, which pdflatex/web2c does not offer. 1000 is
-# comfortably past any real node name this project's figures use.
-_MAX_PRINT_LINE = "1000"
 
 
 class FigureCompileError(RuntimeError):
@@ -118,8 +105,16 @@ def scaffold(source: str, names: list[str]) -> str:
     accessor, rather than the internal `\\pgf@x`/`\\pgf@y` registers.
     Reading those directly needs `\\makeatletter`, and *without* it the
     `\\typeout` silently degrades to the literal text `\\the \\pgf`
-    while pdflatex still exits 0 -- a wrong answer that looks like a
+    while the engine still exits 0 -- a wrong answer that looks like a
     right one.
+
+    **It sets type as the pdf render does (#1037)**: `article` at
+    12pt, with `chitragupta-lualatex.tex`'s fonts, written from
+    `pdf_fonts.latex_fonts()` so the two cannot drift, under LuaLaTeX.
+    A node's box is its label's width, so a box measured in pdflatex's
+    10pt Computer Modern was a box the reader never saw, and a label
+    only the render's font chain can set (`≤`, `α`) did not compile at
+    all without chitragupta-unicode.sty.
 
     The picture's own extent is read the same way, from TikZ's
     `current bounding box` pseudo-node, so protrusion and emptiness need
@@ -142,7 +137,10 @@ def scaffold(source: str, names: list[str]) -> str:
         for name in [*names, BBOX_NAME]
     )
     return (
-        "\\documentclass{article}\n"
+        "\\documentclass[12pt]{article}\n"
+        "\\usepackage{fontspec}\n"
+        "\\usepackage{unicode-math}\n"
+        f"{pdf_fonts.latex_fonts()}"
         "\\usepackage{tikz}\n"
         "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
         "\\begin{document}\n"
@@ -191,7 +189,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
     """Compile `figure_path` in a temp directory and return its geometry.
 
     **The compile is a side effect and must not litter.** Everything
-    pdflatex writes -- `.aux`, `.log`, `.pdf` -- lands in a
+    the engine writes -- `.aux`, `.log`, `.pdf` -- lands in a
     `TemporaryDirectory` and is gone when this returns, so running a
     review aid never leaves build artefacts beside a user's draft.
 
@@ -199,7 +197,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
     a finding for the caller to report, not a crash: the draft's other
     figures are still worth checking.
     """
-    # Every line below needs a real pdflatex, which CI's Windows leg does
+    # Every line below needs a real lualatex, which CI's Windows leg does
     # not install (`os-deps` is apt-only) -- the same `no cover-windows`
     # marking render_output.py's own toolchain tail carries, and for the
     # same reason. The Linux leg measures all of it for real.
@@ -209,8 +207,8 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
         result = _run(
             [
-                programs.require_program("pdflatex"),
-                "-no-shell-escape",
+                programs.require_program("lualatex"),
+                *tex_engine.engine_opts(),
                 "-interaction=nonstopmode",
                 "-halt-on-error",
                 probe.name,
@@ -219,11 +217,12 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
             capture_output=True,
             text=True,
             check=False,
-            # `openin_any=p` and `-no-shell-escape`: the figure file is
-            # draft text, and a shared tree's draft text is someone
-            # else's (#823). Same two settings, same reasons, as
-            # render_output/_pandoc.py's pdf path.
-            env={**os.environ, "max_print_line": _MAX_PRINT_LINE, "openin_any": "p"},
+            # The figure file is draft text, and a shared tree's draft
+            # text is someone else's (#823): the same engine flags, read
+            # fence and environment as the pdf render (`tex_engine`),
+            # whose `max_print_line` also keeps a long node name's CGBOX
+            # line whole (#496).
+            env=tex_engine.engine_env(),
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))
@@ -233,10 +232,10 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
 def _compile_error_detail(log: str) -> str:
     """The first TeX error line from a failed run, for the report.
 
-    A whole pdflatex log is far too much to put in a review report, and
+    A whole TeX log is far too much to put in a review report, and
     its first `!` line is the one a human would look at anyway.
     """
     for line in log.splitlines():
         if line.startswith("!"):
             return line.strip()
-    return "pdflatex failed without reporting an error line"
+    return "lualatex failed without reporting an error line"

@@ -1,8 +1,10 @@
 % chitragupta's LuaLaTeX preamble for its own pdf renders (#996).
 % Passed to pandoc with --include-in-header, after the template's own
-% font setup, which the lines below override. Not a package: a
-% `--fragment` or `.tex` output never gets it, because the document that
-% compiles those chooses its own engine.
+% font setup, which the lines below override. Not a package. A
+% `--fragment` render copies it beside the fragment when the fragment
+% needs these fonts (#1037), for a LuaLaTeX document that assembles it to
+% \input after fontspec and unicode-math; the engine stays that
+% document's to choose.
 %
 % A character no font in the chain has must stop the build, not leave a
 % silent gap in the PDF. LuaTeX's default is a log warning and a dropped

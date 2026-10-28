@@ -138,7 +138,8 @@ so they are this skill's to state:
 4. **Write the ASCII twin** in `figures/<name>.txt`, in
    `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet, depicting the same
    thing as the TikZ: the same boxes, the same arrows, the same panel
-   letters. A Unicode box character hard-fails `pdflatex`. Nothing
+   letters. A Unicode box character hard-fails a thesis template that
+   compiles with `pdflatex`. Nothing
    checks that the two forms agree, so check it yourself before going
    on.
 
@@ -156,8 +157,9 @@ so they are this skill's to state:
    return to the caller, whose figure step names its inline ASCII
    fallback (on direct use, "On direct use" above), and say so in
    chat.** If it is present, wrap
-   `figures/<name>.tex` in a minimal `\documentclass{article}` +
-   `\usepackage{tikz}` document and run `pdflatex` on it. A malformed
+   `figures/<name>.tex` in a minimal `\documentclass[12pt]{article}` +
+   `\usepackage{fontspec}` + `\usepackage{tikz}` document and run
+   `lualatex` on it, the engine the pdf render uses (#1037). A malformed
    figure fails the *whole* pdf render, not just the figure. If the
    figure uses `positioning`, `matrix`, `fit` or `tree`, put its
    `\usetikzlibrary` line at the top of `figures/<name>.tex` and copy
@@ -173,23 +175,24 @@ so they are this skill's to state:
 
    ```bash
    kpsewhich tikz.sty
-   pdflatex probe.tex   # \documentclass{article}\usepackage{tikz} + \input{figures/flow}
+   lualatex probe.tex   # \documentclass[12pt]{article}\usepackage{fontspec}\usepackage{tikz} + \input{figures/flow}
    ```
 
 8. **Read what the geometry says.** `python -m chitragupta.review figure
    <draft>` reports what each figure's own geometry shows: overlaps,
-   protrusions, a library loaded by hand. It is a review aid, never a
+   protrusions, a library loaded by hand, measured in the render's own
+   fonts and size. It is a review aid, never a
    gate. Read each finding, fix the ones that are real defects against
    the pre-flight list, and leave the rest. It measures only nodes the
    source names, so name every node you draw.
 
-9. **Look at it in the real render.** The probe is a bare article class
-   under `pdflatex`; the pipeline's own pdf is LuaLaTeX at the draft's
-   body font, where labels wrap and the gaps between layers close
-   differently, so a figure that passes the probe can still print with
-   a hyphenated label or an arrow through a zone title. Once the draft
-   carries the figure's marker, render it and look at the page that
-   holds the figure:
+9. **Look at it in the real render.** The probe is a bare article
+   class; the pipeline's own pdf is LuaLaTeX over the draft's whole
+   document, with its floats, captions and neighbouring text, where
+   labels wrap and the gaps between layers close differently, so a
+   figure that passes the probe can still print with a hyphenated label
+   or an arrow through a zone title. Once the draft carries the figure's
+   marker, render it and look at the page that holds the figure:
 
    ```bash
    python -m chitragupta.draft render <draft> --format pdf

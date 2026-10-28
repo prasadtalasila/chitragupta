@@ -66,6 +66,20 @@ class TestPreambleFiles:
         assert err.startswith("[unicode] ")
         assert "\\usepackage{chitragupta-unicode}" in err
 
+    def test_a_fragment_also_gets_the_lualatex_font_header(self, tmp_path, capsys):
+        """#1037: LuaLaTeX is the recommended engine for the document that
+        `\\input`s a fragment, so the fragment takes the font setup the
+        pdf preview uses, beside the opt-in `.sty` for a pdflatex
+        template, and the notice gives the LuaLaTeX lines first."""
+        out = tmp_path / "out"
+        out.mkdir()
+        assert _unicode.preamble_files("CO₂", "tex", True, tmp_path, out) == []
+        header = out / "chitragupta-lualatex.tex"
+        assert header.read_bytes() == _unicode.font_header_path().read_bytes()
+        err = capsys.readouterr().err
+        assert "\\input{chitragupta-lualatex}" in err
+        assert err.index("lualatex") < err.index("pdflatex")
+
     def test_a_fragment_without_a_mapped_character_is_silent(self, tmp_path, capsys):
         out = tmp_path / "out"
         out.mkdir()
