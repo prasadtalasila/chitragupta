@@ -438,8 +438,9 @@ solid blue with your label lost inside it. Between 6 and 12 is the band
 the house block's cards and zones use. Strokes and coloured text do not
 take the palette colour at all, because several hues are too light to be
 seen as a line on their own tint (`cgWarm` on `cgWarm!12` is 1.9:1,
-where WCAG 2 asks 3:1 of a line) and none but `cgFlow` reaches the 4.5:1 that text needs.
-So each hue, and `cgMute`, has two darker shades mixed towards `cgInk`:
+where WCAG 2 asks 3:1 of a line) and none but `cgFlow` reaches the
+4.5:1 that text needs. So each hue, and `cgMute`, has two darker shades
+mixed towards `cgInk`:
 
 | Hue | Border, edge, rule | Coloured text |
 | --- | --- | --- |
