@@ -14,7 +14,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from chitragupta import config, install, pdf_fonts, programs
+from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
@@ -295,7 +295,9 @@ def _pandoc_command(
         # execution chosen by the document (#823). The one casualty is
         # graphicx's `.eps` -> `repstopdf` conversion; docs/SECURITY.md
         # says to use PDF or PNG figures instead.
-        cmd += ["--pdf-engine-opt=-no-shell-escape"]
+        # The read fence rides along: `tex_engine` (#1037) has why it is a
+        # LuaTeX callback and no longer kpathsea's `openin_any=p` alone.
+        cmd += [f"--pdf-engine-opt={opt}" for opt in tex_engine.engine_opts()]
         # LaTeX's own \input/\include search path is separate from
         # --resource-path above (that's pandoc's, for images pandoc
         # reads itself). Without TEXINPUTS, the engine looks for
@@ -311,35 +313,28 @@ def _pandoc_command(
         # the subprocess can't find pandoc at all. chitragupta-unicode.sty
         # is not on it: it does nothing under LuaLaTeX, so a pdf render
         # no longer loads it (#996; `_unicode.preamble_files`).
-        env = {
-            **os.environ,
-            "TEXINPUTS": f"{input_path.resolve().parent}{os.pathsep}",
-            # kpathsea's paranoid read mode: no absolute paths, no `..`,
-            # no dotfiles, only the working directory and TEXINPUTS
-            # (#823). Without it, a `.bib` title of
-            # `\input{/home/alice/.netrc}` reaches the engine as raw LaTeX
-            # through citeproc and the file is typeset into the reference
-            # list. pandoc's own `--sandbox` does not help: it confines
-            # pandoc's reads, not the engine's, and it drops a docx
-            # render's images (measured on pandoc 3.6.4; see
-            # plans/823-tex-read-hardening.md). Paranoid mode checks the
-            # name as TeX spells it, so the draft's `figures/x.tex`,
-            # found through TEXINPUTS above, still loads -- and so a
-            # symlink is invisible to it, which is why `render()` refuses
-            # an escaping one first (`_refuse_escaping_refs`), and why a
-            # dotted TMPDIR is refused up front
-            # (`_require_tex_readable_tmpdir`). Set after `os.environ` so
-            # a host's own `openin_any` cannot loosen it.
-            #
-            # It fences TeX's own reads, not Lua's. Under LuaLaTeX,
-            # `\directlua` in a draft or a figure file can read and write
-            # any file the user can, and read the environment; that is
-            # an accepted residual (docs/SECURITY.md). A `.bib` field,
-            # which is a collaborator's text rather than the author's,
-            # cannot reach it: bib_raw_tex_as_text.lua prints its raw
-            # TeX as text.
-            "openin_any": "p",
-        }
+        env = tex_engine.engine_env({"TEXINPUTS": f"{input_path.resolve().parent}{os.pathsep}"})
+        # Reads outside the draft are refused (#823): without that, a
+        # `.bib` title of `\input{/home/alice/.netrc}` reaching the engine
+        # as raw LaTeX would typeset the file into the reference list.
+        # pandoc's own `--sandbox` does not help: it confines pandoc's
+        # reads, not the engine's, and it drops a docx render's images
+        # (measured on pandoc 3.6.4; plans/823-tex-read-hardening.md).
+        # The fence checks the name as TeX spells it, so the draft's
+        # `figures/x.tex`, found through TEXINPUTS above, still loads --
+        # and so a symlink is invisible to it, which is why `render()`
+        # refuses an escaping one first (`_refuse_escaping_refs`), and
+        # why a dotted TMPDIR is refused up front
+        # (`_require_tex_readable_tmpdir`). `tex_engine` sets the rules
+        # after the host's environment, so a host cannot loosen them.
+        #
+        # It fences TeX's own reads, not Lua's. Under LuaLaTeX,
+        # `\directlua` in a draft or a figure file can read and write
+        # any file the user can, and read the environment; that is
+        # an accepted residual (docs/SECURITY.md). A `.bib` field,
+        # which is a collaborator's text rather than the author's,
+        # cannot reach it: bib_raw_tex_as_text.lua prints its raw
+        # TeX as text.
     cmd += ["-o", str(out_path)]
     return cmd, env
 
@@ -391,19 +386,20 @@ def _require_tex_readable_tmpdir() -> None:
     own temp copy of the draft.
 
     pandoc compiles in `$TMPDIR/tex2pdf.-XXXX/` and names `input.tex` to
-    the engine absolutely. `openin_any=p` (below, #823) refuses any name
-    with a dot-directory in it, so `TMPDIR=~/.cache/tmp` -- common on
-    HPC and quota'd homes -- failed every pdf render with an exit 43 that
-    reads as a security refusal. `MissingBinary` for `_render_csl`'s
-    reason: a render input this host does not have, with the same
-    warn-and-continue handling in every genre skill.
+    the engine absolutely, and kpathsea's `openin_any=r` (`tex_engine`,
+    #823) refuses that name when a directory in it starts with a dot,
+    so `TMPDIR=~/.cache/tmp` -- common on HPC and quota'd homes -- failed
+    every pdf render with an exit 43 that reads as a security refusal.
+    `MissingBinary` for `_render_csl`'s reason: a render input this host
+    does not have, with the same warn-and-continue handling in every
+    genre skill.
     """
     tmp = Path(tempfile.gettempdir())
     dotted = [part for part in tmp.parts if part.startswith(".")]
     if dotted:
         raise MissingBinary(
             f"pdf rendering cannot use the temp directory {tmp}: {PDF_ENGINE} runs "
-            "with openin_any=p (docs/SECURITY.md), which refuses any path with a "
+            "with openin_any=r (docs/SECURITY.md), which refuses any path with a "
             f"dot-directory in it ({', '.join(dotted)}), and pandoc compiles "
             "there. Set TMPDIR to a directory without one, e.g. TMPDIR=/tmp."
         )

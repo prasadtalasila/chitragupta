@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from chitragupta import review
+from chitragupta import review, tex_engine
 from chitragupta.review import figure_layout
 from chitragupta.review.figure_layout import _probe
 from tests.conftest import needs_tikz
@@ -686,7 +686,11 @@ class TestProbeTexHardening:
     def test_reads_are_paranoid_even_if_the_host_says_otherwise(self, tmp_path, monkeypatch):
         monkeypatch.setenv("openin_any", "a")
         _, kwargs = self._run(tmp_path, monkeypatch)
-        assert kwargs["env"]["openin_any"] == "p"
+        assert kwargs["env"]["openin_any"] == "r"
+
+    def test_it_loads_the_same_read_fence_as_the_pdf_render(self, tmp_path, monkeypatch):
+        cmd, _ = self._run(tmp_path, monkeypatch)
+        assert f"--lua={tex_engine.READ_FENCE}" in cmd
 
 
 @needs_tikz

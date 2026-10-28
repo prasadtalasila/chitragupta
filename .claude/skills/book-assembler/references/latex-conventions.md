@@ -214,6 +214,12 @@ has stops the build and names itself. Ask the author which fix they
 want: a font that has it, or the character written as LaTeX in the
 unit, through the revising skill the step that sent you here names.
 
+**Build the book with LuaLaTeX** (#1037): `lualatex`, `bibtexu`, then
+`lualatex` twice, from the book's own directory, as SKILL.md's step 9
+gives them. The skeleton above is written for that engine and no
+other: `fontspec` and `unicode-math` exist only under LuaLaTeX (and
+XeLaTeX), and the font header is LuaLaTeX's.
+
 `chitragupta-unicode.sty` and `\DeclareUnicodeCharacter` are pdflatex
 tools, and a LuaLaTeX book uses neither. `\DeclareUnicodeCharacter` is
 undefined under LuaLaTeX, so a line of it left in a book's

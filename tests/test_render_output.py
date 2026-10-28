@@ -271,9 +271,9 @@ class TestRenderReal:
         assert "\\input{" in text
 
     def test_tex_in_the_draft_still_cannot_input_a_file_outside_it(self, isolated_config, tmp_path):
-        # #823's `openin_any=p`, on the engine #996 moved to: TeX's own
-        # `\input` of an absolute path is refused, so the render fails
-        # closed rather than typesetting the file.
+        # #823's fence, on the engine #996 moved to and in the form #1037
+        # gave it: TeX's own `\input` of an absolute path is refused, so
+        # the render fails closed rather than typesetting the file.
         secret = tmp_path / "outside" / "secret.txt"
         secret.parent.mkdir()
         secret.write_text("NOT-FOR-THE-PDF\n")
@@ -284,7 +284,9 @@ class TestRenderReal:
         with pytest.raises(subprocess.CalledProcessError) as raised:
             render_output.render(str(draft), output_format="pdf")
 
-        assert "openin_any" in raised.value.stderr
+        # pandoc relays TeX's `!` line; the fence's own log line stays in
+        # pandoc's temp directory (tests/test_tex_engine.py reads it).
+        assert f"I can't find file `{secret}" in raised.value.stderr
         assert not (isolated_config.RENDERED_DIR / "draft.pdf").exists()
 
     def test_a_dotted_tmpdir_is_reported_not_run_into(self, isolated_config, tmp_path, monkeypatch):

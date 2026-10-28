@@ -21,7 +21,6 @@ reasoning for both, and both were arrived at by compiling rather than by
 reading documentation.
 """
 
-import os
 import re
 
 # `_run` is the one patch point for this module's external launches
@@ -33,7 +32,7 @@ from subprocess import run as _run
 import tempfile
 from pathlib import Path
 
-from chitragupta import pdf_fonts, programs
+from chitragupta import pdf_fonts, programs, tex_engine
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
@@ -52,20 +51,6 @@ _CGBOX_RE = re.compile(
 # ever needs the name -- while the declaration's own spelling comes from
 # there, so widening it stays one edit rather than two that can drift.
 _NODE_NAME_RE = re.compile(_NODE_KEYWORD + r"\s*(?:\[[^\]]*\])?\s*\((?P<name>[^)]+)\)")
-
-
-# TeX wraps every log line -- `\typeout`'s CGBOX lines included --
-# at `max_print_line` (~79 columns by default), which breaks the
-# one-line `_CGBOX_RE` parse for a node whose name runs long (#496): the
-# node then reads as declared but not measured, and can raise a false
-# protrusion finding on a figure that compiled fine. kpathsea overrides
-# a texmf.cnf setting with a same-named environment variable, so setting
-# this in the subprocess env (below) is enough -- no texmf.cnf edit, and
-# no `-max-print-line` flag, which web2c does not offer. LuaTeX honours
-# the variable too (measured: a 150-character `\typeout` wraps at 104
-# columns without it and stays whole with it). 1000 is
-# comfortably past any real node name this project's figures use.
-_MAX_PRINT_LINE = "1000"
 
 
 class FigureCompileError(RuntimeError):
@@ -223,7 +208,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         result = _run(
             [
                 programs.require_program("lualatex"),
-                "-no-shell-escape",
+                *tex_engine.engine_opts(),
                 "-interaction=nonstopmode",
                 "-halt-on-error",
                 probe.name,
@@ -232,11 +217,12 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
             capture_output=True,
             text=True,
             check=False,
-            # `openin_any=p` and `-no-shell-escape`: the figure file is
-            # draft text, and a shared tree's draft text is someone
-            # else's (#823). Same two settings, same reasons, as
-            # render_output/_pandoc.py's pdf path.
-            env={**os.environ, "max_print_line": _MAX_PRINT_LINE, "openin_any": "p"},
+            # The figure file is draft text, and a shared tree's draft
+            # text is someone else's (#823): the same engine flags, read
+            # fence and environment as the pdf render (`tex_engine`),
+            # whose `max_print_line` also keeps a long node name's CGBOX
+            # line whole (#496).
+            env=tex_engine.engine_env(),
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))

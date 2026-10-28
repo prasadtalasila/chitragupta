@@ -10,6 +10,17 @@ reports a `TMPDIR` with a dot-directory up front
 (`_require_tex_readable_tmpdir`), because paranoid mode refuses pandoc's
 own temp copy of the draft there.
 
+**Superseded in part by #1037 (2026-10-28).** `openin_any=p` is no
+longer the fence. TeX Live 2024 restricted `p`'s absolute reads to
+`TEXMFOUTPUT`, which `luaotfload` trips over on every LuaLaTeX run, and
+TeX Live 2026 drops the read check entirely; pandoc sets `TEXMFOUTPUT`
+itself, so no variable could widen it. The fence is now a LuaTeX
+`find_read_file` callback (`assets/latex/chitragupta-read-fence.lua`,
+loaded by `chitragupta/tex_engine.py` for both the render and the
+figure probe) over `openin_any=r`. The threat model, the symlink and
+`TMPDIR` refusals and the `.bib` filter below are unchanged;
+docs/SECURITY.md has the current mechanism.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task by task. Steps

@@ -193,27 +193,42 @@ a string literal.
 
 Every TeX engine this codebase starts (LuaLaTeX, for a `pdf` render
 through Pandoc and for the figure-layout aid's probe) runs with
-`-no-shell-escape` and with kpathsea's `openin_any=p`. The first turns
-off `\write18` entirely, including TeX Live's default restricted
-allow-list. The second is kpathsea's paranoid read mode: TeX may not
-open a name with a `..` or a dot-directory in it, nor an absolute name
-outside the output directory, though a relative name it finds on its
-search paths (`TEXINPUTS`, the TeX installation) is still allowed. A
-draft whose raw LaTeX says `\input{/home/alice/.netrc}` therefore fails
-to render and names the file instead of printing it. Pandoc's own
+`-no-shell-escape` and behind a read fence, both set in one place,
+`chitragupta/tex_engine.py`. The first turns off `\write18` entirely,
+including TeX Live's default restricted allow-list. The second is a
+LuaTeX `find_read_file` callback, `assets/latex/chitragupta-read-fence.lua`,
+loaded with `--lua`: after the main file, TeX may not `\input` or
+`\openin` a name with a `..` component or a component starting with a
+dot, nor an absolute name outside the directory the main file is in
+(pandoc's own temp directory, where it copies a draft's images); a
+relative name found on the search paths (`TEXINPUTS`, the TeX
+installation) is still allowed. A refusal is written to the log as
+`chitragupta: refused TeX read of <name>`. A draft whose raw LaTeX says
+`\input{/home/alice/.netrc}` therefore fails to render and names the
+file instead of printing it. Underneath it, kpathsea's `openin_any=r`
+refuses dot files too.
+
+**Why a callback and not kpathsea's `openin_any=p` (#1037).** Until
+then the fence was `openin_any=p`. TeX Live 2024 changed `p` to restrict
+absolute paths to `TEXMFOUTPUT`, and `luaotfload` opens
+`ScriptExtensions.txt` by absolute path from texmf-dist on every LuaLaTeX
+run, so under `p` every render failed on a current distribution before
+TeX printed a line; pandoc sets `TEXMFOUTPUT` itself, so no variable
+could widen it. TeX Live 2026's kpathsea drops the read check entirely,
+so `p` would then fence nothing while appearing set. The callback is in
+the engine, so it behaves the same on every TeX Live, and Lua's own
+`io.open`, which the font loader uses, does not pass through it. Pandoc's own
 `--sandbox` is deliberately not used: it confines Pandoc's reads, not
 the engine's, and it drops a `docx` render's images.
 
-**Accepted gap: MiKTeX ignores `openin_any`.** `openin_any` is a
-kpathsea variable, and MiKTeX, the TeX distribution
-[docs/WINDOWS.md](WINDOWS.md) installs, does not use kpathsea. On a
-MiKTeX host the variable is set and nothing reads it, so the paranoid
-read mode above does not apply there: nothing this codebase sets stops
-a draft's raw `\input{C:/Users/alice/secret.txt}`, and whether
-MiKTeX's own configuration does has not been measured. The `.bib` path
-stays closed, because the Lua filter below does not depend on the
-engine. A Windows host that renders drafts someone else can write
-should use TeX Live, which honours the variable.
+**Not measured: MiKTeX.** MiKTeX, the TeX distribution
+[docs/WINDOWS.md](WINDOWS.md) installs, does not use kpathsea, so
+`openin_any` means nothing there. The fence is a LuaTeX callback and
+recognises a `C:\` name as absolute, so it should hold there too, but
+whether MiKTeX's `lualatex` honours `--lua` has not been measured. The
+`.bib` path stays closed regardless, because the Lua filter below does
+not depend on the engine. A Windows host that renders drafts someone
+else can write should use TeX Live until it has been.
 
 **A `.bib` field's TeX does not reach the engine as code.** pandoc's
 BibTeX reader turns a command it does not understand into raw LaTeX, and
@@ -232,8 +247,9 @@ plain mathematics such as `$\alpha \leq \beta$` are left exactly as the
 reader produced them.
 
 **Accepted residual: Lua in the author's own TeX.** A `pdf` render runs
-LuaLaTeX (#996), which embeds a Lua interpreter, and `openin_any` and
-`-no-shell-escape` fence TeX's own file access, not Lua's. TeX in a
+LuaLaTeX (#996), which embeds a Lua interpreter, and the read fence and
+`-no-shell-escape` fence TeX's own file access, not Lua's. (That Lua
+could also unregister the fence's callback.) TeX in a
 draft body or in a `figures/*.tex` file can run Lua with `\directlua`,
 or with an equivalent built through `\csname`, so a blocklist on the
 text cannot catch it. That Lua can read any file the user can read,
@@ -247,9 +263,13 @@ running their code. Two possible follow-ups are recorded and not
 implemented: confining Lua inside LuaTeX, and running the engine under
 a Landlock ruleset (available on this host: Linux 5.15, Landlock ABI 1).
 
-Paranoid mode judges a name as TeX spells it and follows symlinks, which
+The fence judges a name as TeX spells it and follows symlinks, which
 is why the render refuses a draft's own symlinked references itself
-(above). Four limits follow:
+(above). Five limits follow:
+
+- LaTeX's `\IfFileExists` tests whether a file exists through Lua's
+  file system library, not the callback, so a draft can still learn
+  *whether* a file outside it exists, though not what it says.
 
 - A name that is not in the draft's text (one in a bibliography field,
   say) that points at a symlink someone planted in the draft's

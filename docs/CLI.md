@@ -2542,11 +2542,13 @@ image reference that is absolute or contains `..` is not copied beside
 the output. One that is a symlink landing outside the draft's own
 directory fails the render with `[error]`, naming it, because pandoc and
 the TeX engine would otherwise read it wherever it points. A `pdf`
-render also runs LuaLaTeX without shell escape and with `openin_any=p`,
-so TeX's own `\input` of an absolute path fails the render and names the
-file. That same setting needs a `TMPDIR` with no dot-directory in its
-path, and says so if it has one. A shared `.bib` field's raw TeX
-(`\input{...}`, `\directlua{...}`) is printed in the reference list as
+render also runs LuaLaTeX without shell escape and behind a read fence
+(`chitragupta/tex_engine.py`, #1037), so TeX's own `\input` of an
+absolute path outside the draft fails the render and names the file.
+kpathsea's `openin_any=r` underneath it needs a `TMPDIR` with no
+dot-directory in its path, and the render says so if it has one. A
+shared `.bib` field's raw TeX (`\input{...}`, `\directlua{...}`) is
+printed in the reference list as
 literal text, never run. Lua in the draft's own TeX, or in its figure
 files, is not fenced: [SECURITY.md](SECURITY.md) has what this does and
 does not cover.
