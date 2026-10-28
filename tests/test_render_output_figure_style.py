@@ -75,6 +75,16 @@ class TestWarnings:
         monkeypatch.setattr(_figure_style, "load_house", lambda: 1 / 0)
         assert _figure_style.warnings("No figure.\n", draft(tmp_path, "d.md", "x")) == []
 
+    def test_a_hand_edited_v2_block_still_warns(self, tmp_path):
+        """The hand-edit warning survives the v3 bump (#1047): an edited
+        copy of the real v2 block matches no released digest."""
+        figure_pair(tmp_path)
+        v2 = Path(__file__).parent / "fixtures" / "figure" / "cg-figstyle-v2.tex"
+        edited = v2.read_text(encoding="utf-8").replace("0.95pt", "0.9pt", 1)
+        (tmp_path / "figures" / "fig1.tex").write_text(edited + TIKZ_FIGURE, encoding="utf-8")
+        [line] = _figure_style.warnings(MARKED_MD, draft(tmp_path, "d.md", MARKED_MD))
+        assert "edited inside its markers" in line
+
 
 class TestItReachesTheRenderWarnings:
     def test_draft_warnings_carries_it_under_the_figure_tag(self, tmp_path):

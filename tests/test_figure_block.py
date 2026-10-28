@@ -13,6 +13,9 @@ from chitragupta.figure import State
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BLOCK = REPO_ROOT / "assets" / "tikz" / "cg-figstyle.tex"
 REGISTER = REPO_ROOT / "assets" / "tikz" / "cg-figstyle.versions.toml"
+# The v2 block exactly as it shipped, so the upgrade is tested against a
+# real past release rather than only against `old_block`'s stand-in.
+V2_BLOCK = REPO_ROOT / "tests" / "fixtures" / "figure" / "cg-figstyle-v2.tex"
 
 LIBS = "\\usetikzlibrary{arrows.meta,positioning}%\n"
 PICTURE = "\\begin{tikzpicture}[cg]\n  \\node[cgbox] (a) {A};\n\\end{tikzpicture}%\n"
@@ -74,6 +77,34 @@ class TestTheRegisterAndTheBlockAgree:
     def test_the_block_file_is_one_whole_region(self, house):
         region = figure.classify(house.text, house)
         assert (region.state, region.start, region.end) == (State.CURRENT, 0, len(house.text))
+
+
+class TestTheV2Release:
+    """v3 changed colours, spacing and the edge tag (#1047). Every figure
+    drawn before it carries v2, and `figure sync` must upgrade that in
+    place while still refusing one somebody edited."""
+
+    @pytest.fixture
+    def v2(self):
+        return V2_BLOCK.read_text(encoding="utf-8")
+
+    def test_the_fixture_is_the_registered_v2(self, v2):
+        register = tomllib.loads(REGISTER.read_text(encoding="utf-8"))
+        assert figure.digest(v2) == register["v2"]
+
+    def test_a_v2_figure_is_upgraded_and_nothing_else_moves(self, house, v2):
+        assert house.version == 3
+        assert figure.stamp(HEAD + v2 + LIBS + PICTURE, house) == HEAD + house.text + LIBS + PICTURE
+
+    def test_a_v2_figure_is_reported_as_stale(self, house, v2):
+        message = figure.finding(v2 + PICTURE, house)
+        assert "is v2, current is v3" in message
+
+    def test_a_hand_edited_v2_figure_is_left_alone(self, house, v2):
+        edited = v2.replace("0.95pt", "0.9pt", 1) + PICTURE
+        assert edited != v2 + PICTURE
+        assert figure.stamp(edited, house) is None
+        assert "will not touch" in figure.finding(edited, house)
 
 
 class TestClassify:

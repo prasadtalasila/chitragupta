@@ -66,6 +66,13 @@ class TestSync:
         assert outcome.action == "modified" and "newer than this install" in outcome.detail
         assert path.read_text(encoding="utf-8") == newer
 
+    def test_a_figure_on_the_real_v2_block_is_refreshed_to_v3(self, figures, house):
+        v2 = REPO_ROOT / "tests" / "fixtures" / "figure" / "cg-figstyle-v2.tex"
+        path = write(figures / "a.tex", v2.read_text(encoding="utf-8") + PICTURE)
+        [outcome] = figure.run([figures], house, check=False)
+        assert outcome.action == "refreshed"
+        assert path.read_text(encoding="utf-8") == house.text + PICTURE
+
     def test_check_writes_nothing(self, figures, house):
         path = write(figures / "a.tex", PICTURE)
         [outcome] = figure.run([figures], house, check=True)

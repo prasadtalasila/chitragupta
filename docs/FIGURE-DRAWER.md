@@ -174,7 +174,7 @@ carries:
   \draw[cgedge] (sensor) -- node[cgtag] {ingest} (twin);
   \draw[cgedge] (twin) to[bend right=12] node[cgtag] {forecast} (decide);
   \draw[cgback] ([xshift=13mm]decide.south)
-    -- node[cgtag, text=cgAccent, pos=0.3] {water}
+    -- node[cgtag, text=cgAccentText, pos=0.3] {water}
     ([xshift=13mm]pot.north);
   \begin{scope}[on background layer]
     \node[cgzone=cgFlow, fit=(pot)(sensor)] (zp) {};
