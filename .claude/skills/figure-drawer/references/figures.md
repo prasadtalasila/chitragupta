@@ -113,7 +113,7 @@ keeps §10's ~70-column cap.
 
 **When a row stops fitting, wrap into another row; never scale.** Three
 panels of about 48mm each overflow an ordinary text block by 71.8pt, and
-`pdflatex` only warns (`Overfull \hbox`). Four of the same panels as a
+TeX only warns (`Overfull \hbox`). Four of the same panels as a
 2x2 grid fit with no warning.
 
 **Do not reach for `subcaption`, `subfig` or `subfigure`.** A figure

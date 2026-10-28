@@ -49,7 +49,6 @@ The document skeleton, in order:
 \title{<the outline's own title>}
 \author{<ask the user; never invent one>}
 \date{}
-\providecommand{\DeclareUnicodeCharacter}[2]{}% pdflatex-only; see below
 \input{preamble}                             % only if the book has one
 
 \begin{document}
@@ -216,14 +215,11 @@ want: a font that has it, or the character written as LaTeX in the
 unit, through the revising skill the step that sent you here names.
 
 `chitragupta-unicode.sty` and `\DeclareUnicodeCharacter` are pdflatex
-tools. The `.sty` is copied for a book an author insists on building
-with pdflatex: swap the font lines for `\usepackage{chitragupta-unicode}`
-and `\usepackage[T1]{fontenc}\usepackage{lmodern}`, and use `bibtex`.
-`\DeclareUnicodeCharacter` does not exist under LuaLaTeX, so the
-skeleton's `\providecommand` makes a line of it in an older
-`preamble.tex` harmless rather than a "Missing `\begin{document}`"
-error two lines later (measured on the reference book, whose preamble
-carries one).
+tools, and a LuaLaTeX book uses neither. `\DeclareUnicodeCharacter` is
+undefined under LuaLaTeX, so a line of it left in a book's
+`preamble.tex` stops the build with "Undefined control sequence" and
+then "Missing `\begin{document}`". The character prints from the fonts
+without it: tell the author to delete the line, never guard it.
 
 **No `citeproc-defs.def`, and no `CSLReferences` block.** A fragment
 used to carry citeproc's own bibliography environment, which

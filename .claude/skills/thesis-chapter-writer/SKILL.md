@@ -318,7 +318,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      `figure-drawer` was not loaded, run `kpsewhich tikz.sty`
      yourself: if it finds nothing, write the ASCII inline in
      a `verbatim` environment instead, no pair and no marker, and say so in
-     chat. A figure you keep compiles on its own first: a malformed
+     chat. A figure you keep compiles on its own
+     first, with `lualatex`, the engine the pdf render uses: a malformed
      one fails the whole pdf render, not just the figure.
    - **A topic directory is required.** If step 0 settled on a flat
      `content/drafts/<slug>.tex`, move the draft and its dossier before
