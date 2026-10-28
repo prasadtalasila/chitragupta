@@ -70,9 +70,45 @@ item measures against. What it shows:
 - **Off-centre lone arrows** (Fig. 4.5's "state, digital events").
 - **Type below the body size**, from before the type floor existed.
 
-Only the PDF exists today; the book's figure sources are to be supplied.
-Until they are, items measure on the scaffolds and exemplars, and the
-bench in 2c waits for them.
+### The reference sources
+
+The drafts behind that PDF are on the development host under
+`content/drafts/` (gitignored, never committed), with their pdfTeX
+renders of 2026-09-17 under `content/rendered/`. Every item measures on
+them, not only on the scaffolds:
+
+| Draft | Figure pairs (`.tex` + `.txt`) |
+| --- | --- |
+| `books/digital-twins-for-software-engineers` (chapters 1 to 7, appendix A1) | 40 |
+| `tutorials/digital-twins-for-software-engineers` | 6 |
+| `book-chapters/state-estimator` | 3 |
+
+None of the 49 carries the house style block: they predate it, which
+makes them an honest "before" set. `review figure` on them, 2026-10-28:
+8 `nothing-measurable` (unnamed nodes or plots), 6 `content-protrusion`,
+2 `node-overlap`, 3 `stranded-arrowhead`, and 1 `does-not-compile`
+(`run-modes`, chapter 7), which is #1037's first test case.
+
+**Baseline extents**, from `review figure`'s own probe (pdflatex, 10pt
+Computer Modern, so a lower bound for the 12pt STIX render), as fractions
+of the render's 453pt text width and 700pt text height, over the 48 that
+compile. Slack is `1 - leaf node area / picture area`, zone cards
+excluded:
+
+| Measure | Median | Min | Max |
+| --- | --- | --- | --- |
+| Width | 0.81 | 0.44 | 1.03 |
+| Height | 0.24 | 0.13 | 0.50 |
+| Slack | 0.70 | 0.27 | 0.95 |
+| Named nodes | 8 | 0 | 16 |
+| Edges | 6 | 0 | 18 |
+
+Over the width: `ensemble-fan` (1.03). Narrow and tall (under 0.6 wide,
+over 0.3 high): `watering-strategies` (Fig. 2.5, 0.44 by 0.45),
+`two-transport-layers` (0.59 by 0.41), `pump-markov-chain` (0.51 by
+0.33). Nine figures have slack above 0.75. These numbers are what 1b's
+compact defaults, 2f's reference ranges and 1f's float placement are
+judged against, re-measured with the LuaLaTeX probe once #1037 lands.
 
 ## Inputs, and what was taken from each
 
@@ -159,13 +195,16 @@ already satisfied by the preamble, adds blank width before the picture:
 | the house line, all six | about 175pt |
 
 Preloaded, every one adds 0pt, and the house style block itself adds 0pt.
-The renderer is therefore unaffected. Three places are not: the skill's
-step-7 probe (`\documentclass{article}\usepackage{tikz}` and `\input`),
-which reports a figure about 40% wider than it prints and so pushes the
-agent towards a taller re-layout; any `standalone` preview; and a thesis
-author who `\input`s a fragment without hoisting the libraries the render
-names on its `[tikz-libraries]` line. `review figure` is unaffected,
-because it reads the picture's own `current bounding box`.
+**Corrected 2026-10-28:** the spaces are set only in horizontal mode. A
+figure `\input` in vertical mode, which is where the skill's step-7 probe
+(`\documentclass{article}\usepackage{tikz}` then `\input`) and every
+`figure` float put it, loses them: measured, the leftmost glyph lands at
+the same x with and without the libraries preloaded. An earlier version
+of this plan, and #1046, said the step-7 probe over-reports width by
+about 40%; that was wrong. What is affected is narrower: a `standalone`
+preview (which boxes its content), a width measured with `\sbox` or
+`\hbox`, and an `\input` inline in running text. The renderer and
+`review figure` are unaffected.
 
 **Palette contrast**, WCAG 2 relative luminance, against white, `cgPaper`
 and every zone tint the house block defines:
@@ -351,10 +390,11 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 
 ### Phase 1: foundations
 
-- **1a (bug).** Stray width: the probes and previews preload the
-  libraries; the step-7 wrapper is replaced by one that does;
-  TIKZ-STYLE.md and the thesis guidance state why. Test: every scaffold
-  `\input` in horizontal mode under a preloaded preamble adds 0pt.
+- **1a (bug).** Stray width, narrowed (see the correction above):
+  TIKZ-STYLE.md says a preview or a box measurement must preload the
+  libraries, and a characterization test pins both halves (a body load
+  inside a box adds width; a preloaded one adds none), so `figure look`
+  (2a) cannot reintroduce it.
 - **1b.** House block v3: derived shades, `cgtag` beside the line,
   compact defaults, a contrast test over the palette and every scaffold,
   and `figure sync` to v3.
@@ -373,7 +413,13 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 - **#1037, whole.** Move every remaining pdflatex path to LuaLaTeX: the
   figure-layout probe (so `check` and `look` measure in the fonts that
   print), the thesis-chapter path and the book build. It lands before
-  phase 2, which measures with the probe.
+  phase 2, which measures with the probe. It starts with a regression
+  found on the development host: under TeX Live 2025, `openin_any=p`
+  (#823) restricts absolute paths to `$TEXMFOUTPUT`, and `luaotfload`
+  opens `ScriptExtensions.txt` by absolute path, so every LuaLaTeX
+  render fails there (CI's older TeX Live hides it). The fix keeps
+  `openin_any=p` and lets only the TeX distribution's own trees through,
+  with a regression test.
 
 ### Phase 2: `figure new`, `check` and `look`
 
@@ -382,7 +428,7 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
   format, figure-scope rules (`size-width`, `size-stray`, `focal-count`)
   and figure-scope `cg-allow`.
 - **2c.** Edge geometry and `c1` to `c6`. **Bench first**, per VI.5:
-  run each rule over the scaffolds, the exemplars and the 43 book
+  run each rule over the scaffolds, the exemplars and the 49 draft
   figures before fixing thresholds, with the must-not-fire cases (a
   legitimate crossing, an automaton self-loop, a lifeline with many
   arrows at one x) as the majority of the fixtures.
@@ -408,6 +454,77 @@ its reference file and an exemplar, and each clean under `figure check`:
 `quadrant`, `comparison`, `state-machine` (II.4), `sequence` (II.2) and
 `timeline`. `tests/test_tikz_scaffolds.py`'s table-to-directory
 cross-check covers them.
+
+## Dependencies and value
+
+An arrow reads "must land before". Value is to the person who reported
+the problem: how much of the sprawl, the defects reaching the PDF, and
+the too-much-or-too-little each item removes from the reference book.
+
+```mermaid
+flowchart LR
+  L37["#1037 LuaLaTeX + TL2025 fix"]
+  I1b["1b #1047 house block v3"]
+  I1d["1d #1049 patterns + ranges"]
+  I1a["1a #1046 stray width"]
+  I1e["1e #1050 scaffolds clean"]
+  I1f["1f #1065 float placement"]
+  I1c["1c #1048 SKILL.md router"]
+  I2a["2a #1052 new + look"]
+  I2b["2b #1053 check skeleton"]
+  I2c["2c #1054 connector rules"]
+  I2d["2d #1055 contrast + wording"]
+  I2e["2e #1056 twin agreement"]
+  I2f["2f #1057 size reporting"]
+  I2g["2g #1058 element cg-allow"]
+  S3["3a-3e #1060-#1064 five scaffolds"]
+  L37 --> I1f
+  L37 --> I2a
+  L37 --> I2b
+  I1b --> I1e
+  I1d --> I1e
+  I1b --> I2d
+  I1d --> I2f
+  I2b --> I2c
+  I2b --> I2d
+  I2b --> I2e
+  I2b --> I2f
+  I2a --> I1c
+  I2b --> I1c
+  I1d --> I1c
+  I2c --> I2g
+  I2d --> I2g
+  I1e --> S3
+  I2c --> S3
+  I2e --> S3
+  I2f --> S3
+```
+
+| Rank | Item | Why it is worth this much | Depends on |
+| --- | --- | --- | --- |
+| 1 | #1037 LuaLaTeX everywhere, with the TL2025 `openin_any` fix | Every render fails on a current distribution; every measurement after it needs the fonts that print | none |
+| 2 | 1b #1047 house block v3 | Compact spacing attacks the sprawl directly; derived shades fix five contrast failures | none |
+| 3 | 2b #1053 `figure check` skeleton | Carries every rule after it; on its own, width overflow and focal count | #1037 |
+| 4 | 2c #1054 connector rules | The defects that reach the PDF today: slants, tags on lines, off-centre arrows | 2b |
+| 5 | 2f #1057 size reporting | Makes the sprawl visible per figure against a range: 9 drafts above 0.75 slack | 2b, 1d |
+| 6 | 1f #1065 float placement | Whole pages lost to float-only placement, with no figure change | #1037 |
+| 7 | 3b #1061 comparison scaffold | Fig. 2.5's stacked panels are the book's worst sprawl case | 1e, 2c, 2e, 2f |
+| 8 | 1d #1049 patterns and reference ranges | Too much or too little: what a figure should hold, per layout | none |
+| 9 | 2a #1052 `figure new` and `look` | The look that catches what geometry cannot | #1037 |
+| 10 | 1c #1048 SKILL.md router and taste gate | The remove test acts before a figure is drawn | 1d, 2a, 2b |
+| 11 | 2e #1056 twin agreement | The md, docx and html readers' only figure | 2b |
+| 12 | 1e #1050 scaffolds and exemplars clean | Copying a scaffold no longer imports a defect | 1b, 1d |
+| 13 | 2d #1055 contrast and wording | Consistency; overlaps #1016 | 2b, 1b |
+| 14 | 3c #1062 state machine | Ch. 6's automata; curved transitions by convention | 1e, 2c, 2e, 2f |
+| 15 | 3d #1063 sequence | Protocol figures | 1e, 2c, 2e, 2f |
+| 16 | 3e #1064 timeline | Ch. 7's time-axis figures | 1e, 2c, 2e, 2f |
+| 17 | 3a #1060 quadrant | No figure in the reference book needs it yet | 1e, 2c, 2e, 2f |
+| 18 | 2g #1058 element-scope `cg-allow` | Precision for exceptions; figure-scope already works | 2c, 2d |
+| 19 | 1a #1046 stray width | Narrowed by the correction above to previews and box measurements | none |
+
+The build order follows the ranks wherever the dependencies allow: issue
+1037, then 1b, 2b, 2c, 1d, 2f, 1f, 2a, 2e, 1e, 3b, 1c, 2d, 3c, 3d, 3e,
+3a, 2g and 1a.
 
 ## Migration
 
