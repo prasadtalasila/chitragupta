@@ -21,6 +21,7 @@ figure style".
 
 import argparse
 import json
+import math
 import sys
 from collections import Counter
 from pathlib import Path
@@ -68,14 +69,18 @@ def _points(text: str) -> float:
         value = float(text)
     except ValueError:
         value = 0.0
-    if value <= 0:
+    # `nan` and `inf` parse as floats, and every comparison with `nan` is
+    # false, so `--width nan` would switch size-width off without a word.
+    if not math.isfinite(value) or value <= 0:
         raise argparse.ArgumentTypeError(f"not a positive width in pt: {text!r}")
     return value
 
 
 def _check(args: argparse.Namespace) -> int:
-    if not args.figure.is_file():
-        print(f"figure check: {args.figure} is not a readable file", file=sys.stderr)
+    try:
+        args.figure.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"figure check: {args.figure} is not a readable UTF-8 file: {exc}", file=sys.stderr)
         return 2
     try:
         _require("lualatex")

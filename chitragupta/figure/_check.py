@@ -22,6 +22,7 @@ from pathlib import Path
 
 from chitragupta._tex_comments import strip_comments
 from chitragupta.figure._allow import Allow, Malformed, parse_allows
+from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.figure._rules import RULES
 from chitragupta.review.figure_layout import (
     BBOX_NAME,
@@ -29,7 +30,6 @@ from chitragupta.review.figure_layout import (
     FigureResult,
     check_figure,
 )
-from chitragupta.review.figure_layout._source import _NODE_KEYWORD
 
 # The render's text width: A4 (8.27in) less two 1in margins, at
 # 72.27pt/in, for `render_output.render`'s `a4` and `1in` defaults. A
@@ -42,21 +42,21 @@ FIGURE = "figure"
 _HFUZZ_PT = 0.1
 _STRAY_PT = 0.5
 
-# The rules a figure that does not compile has no geometry for.
-_GEOMETRY = ("nothing-measurable", "size-width", "size-stray", "content-protrusion", "node-overlap")
+# The rules that need the compiled geometry, listed as not measured
+# whenever it is missing, so their silence is never read as a pass.
+GEOMETRY = ("nothing-measurable", "size-width", "size-stray", "content-protrusion", "node-overlap")
+
+# Why the geometry is missing. The probe sits inside the figure's last
+# `tikzpicture` environment, so a file with none (a bare `\tikz`, say)
+# has nowhere to put it and is not compiled at all, rather than reported
+# as a compile failure that is the probe's, not the figure's. A picture
+# whose only `\end{tikzpicture}` sits in a macro body that never runs
+# compiles and prints no extent.
+NO_PICTURE = "the file has no tikzpicture environment to measure"
+NO_EXTENT = "the picture's extent was not printed (is its last tikzpicture inside a macro?)"
+_NOT_COMPILED = "the figure does not compile"
 
 _PICTURE_RE = re.compile(r"\\begin\s*\{tikzpicture\}")
-
-# A node declaration's options, before or after its name -- TikZ takes
-# both `\node[opts] (a)` and `\node (a) [opts]` -- and the name if it
-# has one. The declaration's own spelling is `_source.py`'s, so the two
-# cannot drift; only what this rule needs from it differs.
-_KEYED_NODE_RE = re.compile(
-    _NODE_KEYWORD + r"\s*(?:\[(?P<before>[^\]]*)\])?\s*(?:\((?P<name>[^)]+)\))?"
-    r"\s*(?:\[(?P<after>[^\]]*)\])?"
-)
-# `cgkey` as a whole style name: not `cgkeyish`, not `my-cgkey`.
-_CGKEY_RE = re.compile(r"(?<![\w-])cgkey(?![\w-])")
 
 
 @dataclass(frozen=True)
@@ -84,23 +84,28 @@ class CheckResult:
 
 
 def check(path: Path, width_pt: float) -> CheckResult:
-    """Compile `path` once and report every rule. The caller has already
-    established that this host has `lualatex` and `tikz.sty`."""
-    figure = check_figure(path, "", boxed=True)  # pragma: no cover-windows
-    return apply(
-        path, width_pt, figure, path.read_text(encoding="utf-8")
-    )  # pragma: no cover-windows
+    """Compile `path` once, unless it has no picture to measure, and
+    report every rule. The caller has already established that this
+    host has `lualatex` and `tikz.sty`, and that `path` reads as UTF-8."""
+    source = path.read_text(encoding="utf-8")  # pragma: no cover-windows
+    skipped = "" if _pictures(source) else NO_PICTURE  # pragma: no cover-windows
+    figure = check_figure(path, skipped, boxed=True)  # pragma: no cover-windows
+    return apply(path, width_pt, figure, source)  # pragma: no cover-windows
 
 
 def apply(path: Path, width_pt: float, figure: FigureResult, source: str) -> CheckResult:
-    """Every rule over an already-checked figure, with its allows applied."""
-    findings, not_measured = evaluate(source, figure, width_pt)
+    """Every rule over an already-checked figure, with its allows applied.
+
+    Each allow is matched against everything that fired, so two allows
+    for one rule both report what they set aside."""
+    fired, not_measured = evaluate(source, figure, width_pt)
     allows = parse_allows(source)
-    allowed = []
-    for allow in allows.honoured:
-        matched = [finding.measurement for finding in findings if finding.rule == allow.rule]
-        findings = [finding for finding in findings if finding.rule != allow.rule]
-        allowed.append((allow, "; ".join(matched) or None))
+    allowed = [
+        (allow, "; ".join(f.measurement for f in fired if f.rule == allow.rule) or None)
+        for allow in allows.honoured
+    ]
+    excused = {allow.rule for allow in allows.honoured}
+    findings = [finding for finding in fired if finding.rule not in excused]
     return CheckResult(
         path, width_pt, figure, findings, allowed, allows.deferred, allows.malformed, not_measured
     )
@@ -111,15 +116,25 @@ def evaluate(
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`(findings, not_measured)`, the findings in `RULES` order."""
     findings: list[Finding] = []
-    not_measured: list[tuple[str, str]] = []
+    missing = ""
     if figure.failed:
         findings.append(Finding("does-not-compile", FIGURE, figure.failed))
-        not_measured += [(rule, "the figure does not compile") for rule in _GEOMETRY]
-    else:
+        missing = _NOT_COMPILED
+    elif figure.boxes is None:
+        missing = figure.skipped
+    elif BBOX_NAME not in figure.boxes or figure.input_width is None:
+        missing = NO_EXTENT
+    not_measured = [(rule, missing) for rule in GEOMETRY] if missing else []
+    if not missing:
         findings, not_measured = _size(source, figure, width_pt)
-    findings += _focal(source) + _existing(figure)
+        findings += _geometry(figure)
+    findings += _focal(source) + _static(figure)
     order = list(RULES)
     return sorted(findings, key=lambda finding: order.index(finding.rule)), not_measured
+
+
+def _pictures(source: str) -> int:
+    return len(_PICTURE_RE.findall(strip_comments(source)))
 
 
 def _size(
@@ -131,17 +146,14 @@ def _size(
     reader sees side by side, so their width is the whole box, and the
     box's extra width is their spacing rather than stray space.
     """
-    pictures = len(_PICTURE_RE.findall(strip_comments(source)))
-    if not pictures:
-        why = "the file draws no tikzpicture"
-        return [], [("size-width", why), ("size-stray", why)]
+    pictures = _pictures(source)
     x1, _, x2, _ = figure.boxes[BBOX_NAME]
     picture = x2 - x1
     found, not_measured = [], []
     width, whole = (
-        (picture, "")
-        if pictures == 1
-        else (figure.input_width, f" (whole input, {pictures} pictures)")
+        (figure.input_width, f" (whole input, {pictures} pictures)")
+        if pictures > 1
+        else (picture, "")
     )
     if width > width_pt + _HFUZZ_PT:
         found.append(
@@ -164,25 +176,15 @@ def _size(
 
 
 def _focal(source: str) -> list[Finding]:
-    """`focal-count`: at most one `cgkey` node. TIKZ-STYLE.md: "if two
-    things are accented, neither is".
-
-    Read from source, so a `cgkey` reached only through a style the
-    figure defines itself is not seen. That is a limit stated in the
-    rule's documentation rather than a guess made here.
-    """
-    keyed = []
-    for match in _KEYED_NODE_RE.finditer(strip_comments(source)):
-        options = f"{match.group('before') or ''},{match.group('after') or ''}"
-        if _CGKEY_RE.search(options):
-            keyed.append((match.group("name") or "(unnamed)").strip())
+    """`focal-count`: at most one `cgkey` node (`_focal.py`)."""
+    keyed = cgkey_nodes(source)
     if len(keyed) < 2:
         return []
     return [Finding("focal-count", FIGURE, f"{len(keyed)} cgkey nodes: {', '.join(keyed)}")]
 
 
-def _existing(figure: FigureResult) -> list[Finding]:
-    """`review figure`'s findings, under the ids its JSON ships."""
+def _geometry(figure: FigureResult) -> list[Finding]:
+    """`review figure`'s findings that need the compiled boxes."""
     found = []
     if figure.nothing_measurable:
         found.append(
@@ -190,12 +192,19 @@ def _existing(figure: FigureResult) -> list[Finding]:
         )
     if figure.protruding:
         found.append(Finding("content-protrusion", FIGURE, "content protrudes past the main block"))
-    if figure.by_hand:
-        found.append(Finding("loads-library-by-hand", FIGURE, ", ".join(figure.by_hand)))
     found += [
         Finding("node-overlap", f"{one}+{other}", "boxes intersect")
         for one, other in figure.overlapping
     ]
+    return found
+
+
+def _static(figure: FigureResult) -> list[Finding]:
+    """`review figure`'s findings read from source, under the ids its
+    JSON ships; they hold whether or not the figure compiled."""
+    found = []
+    if figure.by_hand:
+        found.append(Finding("loads-library-by-hand", FIGURE, ", ".join(figure.by_hand)))
     found += [
         Finding("node-text-overload", name, f"{count} words (over {MAX_NODE_WORDS})")
         for name, count in figure.overlong

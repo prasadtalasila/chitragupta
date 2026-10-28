@@ -144,6 +144,18 @@ called as `review figure` calls it. `figure check` calls it with:
 One compile per check, through `tex_engine`'s flags, read fence and
 environment, as #1037 requires of every new compile.
 
+**Changed in the build, after review:** a file with no `tikzpicture`
+environment is not compiled at all, since the probe has no picture to
+sit in and its compile failure would be the probe's, not the figure's.
+All five geometry rules (`nothing-measurable`, `size-width`,
+`size-stray`, `content-protrusion`, `node-overlap`) are then listed as
+not measured, as they are when the figure does not compile or when its
+last picture sits in a macro body and no extent comes back. The
+`focal-count` reader became a small scanner rather than one regex, so
+nested options (`label={[red]above:x}`) and options after `at (x,y)`
+are read. A file that is not readable UTF-8, and a `--width` of `nan`
+or `inf`, are usage errors (exit 2).
+
 **Risk, settled by the bench below:** a figure that compiles in a float
 but not inside a box, for instance one carrying a `\caption` or a
 display environment outside its picture. The bench found none once the
@@ -250,6 +262,21 @@ committed). Record per-rule counts in the PR and on #1053, and the
 boxed-versus-unboxed compile result for each figure (see the probe
 risk). The 0.5pt stray tolerance and the multi-picture rule are judged
 against that run, not set ahead of it.
+
+**Result, 2026-10-28** (59 figures: 7 scaffolds, 3 exemplars, 49
+drafts). No figure failed only when boxed. Figures per rule:
+`size-stray` 48, `nothing-measurable` 8, `content-protrusion` 6,
+`size-width` 4, `node-overlap` 4, `does-not-compile` 1 (`run-modes`,
+which fails unboxed too), `stranded-arrowhead` 1, `focal-count` 0.
+`size-width` fires on `rag-stages` (495.0pt, #1050), `ensemble-fan`
+(477.7pt) and two drafts within 1.1pt of the target. No scaffold or
+exemplar fires `size-stray`; 48 of the 49 drafts do, every one by
+19.7pt, from six pre-house-block `\definecolor` and `\usetikzlibrary`
+lines that end without `%`. That space is real for an inline or
+`\sbox` input and invisible in the render's own floats, so whether
+`size-stray` stays objective is a question for the user, recorded on
+the PR rather than decided here. Sub-threshold strays were not logged,
+so the run shows only that nothing reported sat near the 0.5pt line.
 
 ## Build order
 

@@ -790,10 +790,19 @@ or point.
 | `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
 
-The last seven are `review figure`'s findings, under the ids its
-`--json` has always used. The edge list, the declared names that were
-not measured and the emptiness proportion are printed beside the
-findings as diagnostics, never as findings.
+All but `size-width`, `size-stray` and `focal-count` are
+`review figure`'s findings, under the ids its `--json` has always used.
+The edge list, the declared names that were not measured and the
+emptiness proportion are printed beside the findings as diagnostics,
+never as findings.
+
+The five rules that need the compiled geometry (`nothing-measurable`,
+`size-width`, `size-stray`, `content-protrusion`, `node-overlap`) are
+listed under "not measured", with the reason, whenever there is none to
+read: the figure does not compile, the file has no `tikzpicture`
+environment for the probe to sit in (a bare `\tikz` is not compiled at
+all), or its last `tikzpicture` is inside a macro body that never runs.
+A rule that could not run is never reported as a pass.
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

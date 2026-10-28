@@ -8,6 +8,7 @@ real fixture figures and self-skip where TeX is missing.
 
 import inspect
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -83,12 +84,25 @@ class TestSizeWidth:
         assert finding.measurement == "470.0pt wide (whole input, 2 pictures), target 453.0pt"
 
     def test_a_file_with_no_picture_is_not_measured(self):
-        figure = _measured()
-        del figure.boxes[BBOX_NAME]
-        findings, not_measured = _evaluate("\\node (a) {A};\n", figure)
+        """`check()` does not compile such a file (the probe has no
+        picture to sit in), so every geometry rule is listed instead."""
+        figure = FigureResult(path=Path("fig.tex"), skipped=_check.NO_PICTURE)
+        findings, not_measured = _evaluate("\\tikz \\node (a) {A};\n", figure)
 
         assert findings == []
-        assert ("size-width", "the file draws no tikzpicture") in not_measured
+        assert [rule for rule, _ in not_measured] == list(_check.GEOMETRY)
+        assert {why for _, why in not_measured} == {_check.NO_PICTURE}
+
+    def test_a_picture_whose_extent_was_not_printed_is_not_measured(self):
+        """The last `\\end{tikzpicture}` inside a macro body that never
+        runs: the compile succeeds and prints no bounding box."""
+        figure = _measured()
+        del figure.boxes[BBOX_NAME]
+
+        findings, not_measured = _evaluate(figure=figure)
+
+        assert findings == []
+        assert not_measured == [(rule, _check.NO_EXTENT) for rule in _check.GEOMETRY]
 
 
 class TestSizeStray:
@@ -121,6 +135,8 @@ class TestFocalCount:
             ("\\node[cgkey] (a) {A};\n\\node[cgkey, right=of a] (b) {B};\n", "a, b"),
             ("\\node (a) [cgkey] {A};\n\\node[cgkey] {B};\n", "a, (unnamed)"),
             ("\\draw (0,0) node[cgkey] (a) {A} -- (1,0) node[cgkey] (b) {B};\n", "a, b"),
+            ("\\node[label={[red]above:x}, cgkey] (a) {A};\n\\node[cgkey] (b) {B};\n", "a, b"),
+            ("\\node at (0,0) [cgkey] (a) {A};\n\\node (b) at (1,0) [cgkey] {B};\n", "a, b"),
         ],
     )
     def test_two_accented_nodes_fire(self, body, named):
@@ -137,6 +153,7 @@ class TestFocalCount:
             "\\node[cgkey] (a) {A};\n% \\node[cgkey] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n\\node[cgkeyish] (b) {B};\n",
             "\\node[cgbox] (a) {a cgkey in the label};\n\\node[cgkey] (b) {B};\n",
+            "\\node[cgkey] at (cgkey) {A};\n\\node (b) [cgbox] {B};\n",
         ],
     )
     def test_one_accented_node_does_not(self, body):
@@ -209,6 +226,18 @@ class TestAllows:
         [(allow, measurement)] = result.allowed
         assert allow.rule == "size-width" and measurement is None
 
+    def test_a_second_allow_for_the_same_rule_sees_the_same_finding(self):
+        source = (
+            "% cg-allow: size-width -- one reason\n% cg-allow: size-width -- another\n"
+            + ONE_PICTURE
+        )
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source)
+
+        assert [measured for _, measured in result.allowed] == [
+            "475.0pt wide, target 453.0pt",
+            "475.0pt wide, target 453.0pt",
+        ]
+
     def test_a_deferred_allow_leaves_its_finding_in_place(self):
         source = "% cg-allow: node-overlap a+b -- on purpose\n" + ONE_PICTURE
         figure = _measured()
@@ -246,6 +275,27 @@ class TestAgainstRealLualatex:
         result = _check.check(FIXTURES / f"{fixture}.tex", _check.DEFAULT_WIDTH_PT)
 
         assert result.findings == []
+
+    def test_a_file_with_no_picture_environment_is_not_a_compile_failure(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text("\\tikz \\draw (0,0) -- (1,1);%\n", encoding="utf-8")
+
+        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+
+        assert result.findings == []
+        assert [rule for rule, _ in result.not_measured] == list(_check.GEOMETRY)
+
+    def test_a_picture_only_inside_a_macro_body_does_not_crash(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\newcommand{\\cgcheckicon}{\\begin{tikzpicture}\\node (i) {i};"
+            "\\end{tikzpicture}}%\n\\tikz \\node[draw] (a) {A};%\n",
+            encoding="utf-8",
+        )
+
+        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+
+        assert ("size-width", _check.NO_EXTENT) in result.not_measured
 
     def test_two_pictures_say_why_stray_was_not_measured(self):
         result = _check.check(FIXTURES / "two-pictures.tex", _check.DEFAULT_WIDTH_PT)
@@ -408,7 +458,7 @@ class TestJsonPayload:
 class TestCli:
     def test_a_missing_file_is_a_usage_error(self, tmp_path, capsys):
         assert cli.main(["check", str(tmp_path / "absent.tex")]) == 2
-        assert "not a readable file" in capsys.readouterr().err
+        assert "not a readable" in capsys.readouterr().err
 
     def test_a_host_without_lualatex_checks_nothing_and_exits_2(
         self, tmp_path, monkeypatch, capsys
@@ -426,7 +476,25 @@ class TestCli:
         assert captured.out == ""
         assert "lualatex" in captured.err and "chitragupta doctor" in captured.err
 
-    @pytest.mark.parametrize("width", ["0", "-3", "wide"])
+    @pytest.mark.parametrize(
+        "content", [b"\\node (a) {caf\xe9};\n", b"\\begin{tikzpicture}\\end{tikzpicture}\n"]
+    )
+    def test_a_file_that_cannot_be_read_as_utf8_is_a_usage_error(self, tmp_path, capsys, content):
+        path = tmp_path / "fig.tex"
+        path.write_bytes(content)
+        if b"caf" not in content:
+            path.chmod(0)
+            if os.access(path, os.R_OK):  # pragma: no cover - root reads anything
+                pytest.skip("this user can read a mode-000 file")
+
+        assert cli.main(["check", str(path)]) == 2
+        assert "not a readable" in capsys.readouterr().err
+
+    def test_a_directory_is_a_usage_error(self, tmp_path, capsys):
+        assert cli.main(["check", str(tmp_path)]) == 2
+        assert "not a readable" in capsys.readouterr().err
+
+    @pytest.mark.parametrize("width", ["0", "-3", "wide", "nan", "inf"])
     def test_a_width_that_is_not_a_positive_number_is_a_usage_error(self, tmp_path, width):
         with pytest.raises(SystemExit) as exit_info:
             cli.main(["check", str(tmp_path / "fig.tex"), "--width", width])
