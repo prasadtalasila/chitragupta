@@ -68,7 +68,7 @@ and, ultimately, the author remain responsible for those judgements; see
 | `content/ledger.sqlite` | The synced set of citekeys that the gate treats as authoritative | Pipeline-managed local state under the configured content root |
 | Parsed-text, Docling, Chroma, and topic caches | Derived corpus text, embeddings, passages, and topic artefacts | Local derived data; may contain information extracted from the corpus |
 | Drafts, dossiers, renders, and review reports | Research drafts and their supporting records | User-reviewed work product; generated prose is not automatically authoritative |
-| Local executables and libraries | `pdftotext`, Pandoc, LuaLaTeX, `pdflatex`, Docling, Python packages, and GPU tooling process corpus data | Trusted local toolchain chosen and maintained by the operator |
+| Local executables and libraries | `pdftotext`, Pandoc, LuaLaTeX, Docling, Python packages, and GPU tooling process corpus data | Trusted local toolchain chosen and maintained by the operator |
 | GitHub Actions and PyPI release artefacts | Build, documentation, release archives, wheels, and packages | Repository-maintainer and CI trust boundary |
 | Claude Code or another external AI session | A drafting session can receive corpus-derived context or user instructions | Optional external-service boundary; not required by the corpus pipeline |
 
@@ -191,8 +191,8 @@ fails on one whose program is not resolved this way, and fails on any
 `child_process` launch in the repository's JavaScript whose program is
 a string literal.
 
-Every TeX engine this codebase starts (LuaLaTeX for a `pdf` render
-through Pandoc, pdflatex for the figure-layout aid's probe) runs with
+Every TeX engine this codebase starts (LuaLaTeX, for a `pdf` render
+through Pandoc and for the figure-layout aid's probe) runs with
 `-no-shell-escape` and with kpathsea's `openin_any=p`. The first turns
 off `\write18` entirely, including TeX Live's default restricted
 allow-list. The second is kpathsea's paranoid read mode: TeX may not

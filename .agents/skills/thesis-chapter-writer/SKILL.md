@@ -271,7 +271,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    referred to as `Table~\ref{tab:<id>}`. That is
    `docs/WRITING-STANDARDS.md` §13's carve-out, and it exists for the
    same reason §10 keeps this genre's TikZ inline -- the fragment is
-   `\input` into the user's own thesis, where their own `pdflatex`
+   `\input` into the user's own thesis, where their own LaTeX
    numbers the table consistently with their other chapters. The
    Markdown marker vocabulary would be dropped by their build, leaving an
    unnumbered table in a chapter that refers to a number. Introduce the
@@ -298,7 +298,8 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    with both `content/drafts/<topic>/figures/<name>.tex` and
    `content/drafts/<topic>/figures/<name>.txt` written -- the `.txt` in
    §10's 7-bit alphabet, since a Unicode box character hard-fails
-   `pdflatex`. The renderer
+   a thesis that
+   compiles with `pdflatex`. The renderer
    swaps that `\input` for the `.txt` contents when it builds the `.md`
    preview (step 12); `--format tex` and `--format pdf` get the TikZ.
 
@@ -310,7 +311,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
 
    - **The marker is a comment, never a second `\input`.** The fragment
      on disk is what the user `\input`s into their own thesis, and
-     `\input{figures/<name>.txt}` makes their `pdflatex` read ASCII art
+     `\input{figures/<name>.txt}` makes their LaTeX read ASCII art
      as LaTeX source and fail with `! Missing $ inserted.` -- a break in
      their build that our own render would never show us.
    - **Check for TikZ, and that the figure compiles.** If
@@ -358,25 +359,27 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      working around it inside a figure file: clearing the loaded flag
      makes `positioning` append its placement transform to a global hook
      once per figure, so the Nth figure shifts every node N times, with
-     `pdflatex` exiting 0 and nothing in the log.
+     the engine exiting 0 and nothing in the log.
    - **The same goes for Unicode characters** the fragment carries
      (`H₂O`, `𝑡`, `≤`, `Ⅳ`), which pdflatex's default fonts cannot print
      (#948). When the render prints
 
      ```text
-     [unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+     [unicode] chitragupta-lualatex.tex and chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; in the assembling document, under lualatex: \usepackage{fontspec}\usepackage{unicode-math}\input{chitragupta-lualatex}; under pdflatex: \usepackage{chitragupta-unicode}
      ```
 
-     quote it, and tell the user to copy `chitragupta-unicode.sty` next
-     to their thesis and add `\usepackage{chitragupta-unicode}` to its
-     preamble. It never overrides a glyph their preamble already gives a
-     character, and under XeLaTeX or LuaLaTeX it does nothing. A thesis
-     that compiles with LuaLaTeX needs no package for these at all: it
-     prints them from its fonts, and chitragupta's own pdf preview is
-     LuaLaTeX for that reason (#996). Say so if their template allows
-     it, but the engine is theirs to choose; never switch it for them.
-     Never rewrite the characters in the fragment to get the build
-     through.
+     quote it, and tell the user what it means. **LuaLaTeX is the
+     recommended engine for the thesis itself** (#1037), as it is for
+     chitragupta's own pdf preview (#996): copy
+     `chitragupta-lualatex.tex` next to the thesis and load it after
+     `fontspec` and `unicode-math`, and every such character prints from
+     the same fonts the preview used. If their template forces pdflatex,
+     the opt-in is `chitragupta-unicode.sty` next to the thesis and
+     `\usepackage{chitragupta-unicode}` in its preamble; it never
+     overrides a glyph their preamble already gives a character, and
+     under LuaLaTeX it does nothing. The engine is their template's to
+     decide; never edit their thesis to change it. Never rewrite the
+     characters in the fragment to get the build through.
 
    **An equation gets the same carve-out, without the pair-of-files
    ceremony.** Most displayed math in a chapter needs no number at all
@@ -390,7 +393,7 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
    and step 9 gives a figure: `\begin{equation}...\label{eq:<id>}
    \end{equation}`, referred to as `Equation~\ref{eq:<id>}`. The
    fragment is `\input` into the user's own thesis, where their own
-   `pdflatex` numbers it consistently with every other chapter's
+   LaTeX numbers it consistently with every other chapter's
    equations -- a hand-typed number, or a bare `\[...\]` for a result
    the prose later calls "Equation 3", is wrong the moment an earlier
    chapter changes length, the same defect this carve-out already

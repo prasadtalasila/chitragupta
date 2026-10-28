@@ -12,7 +12,7 @@ the mechanical half of it (#314, docs/FEATURE-ROADMAP.md's D2, planned in
 plans/d2-tikz-layout-check.md). Only some of that checklist is decidable
 from geometry, and the split matters:
 
-| Check | Kind | Needs pdflatex |
+| Check | Kind | Needs lualatex |
 |---|---|---|
 | Node text overload (>15 words) | binary | no |
 | Edge list | binary, reported for confirmation | no |
@@ -123,7 +123,7 @@ from chitragupta.review.figure_layout._source import (
 # Re-exported so the aid is one import for a caller and one name in
 # `review.AIDS`, while the three modules behind it stay split by what
 # they need: `_source` compiles nothing, `_geometry` is arithmetic, and
-# only `_probe` shells out to pdflatex.
+# only `_probe` shells out to lualatex.
 __all__ = [
     "BBOX_NAME",
     "Box",
@@ -198,7 +198,7 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
 
     skipped = ""
     try:
-        _require("pdflatex")
+        _require("lualatex")
         _require_tikz()  # pragma: no cover-windows
     except MissingBinary as exc:
         skipped = str(exc)
@@ -212,7 +212,7 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
             edges=edge_list(source),
             stranded=stranded_arrowheads(source),
             by_hand=loads_library_by_hand(source),
-            # What the probe will ask pdflatex about, recorded so the
+            # What the probe will ask TeX about, recorded so the
             # report can say how much of the figure was measurable
             # (#405). The same call `node_boxes()` makes internally over
             # the same file, so the two cannot disagree about what was

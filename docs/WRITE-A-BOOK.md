@@ -87,7 +87,7 @@ sign-offs is mechanical.
 | 4 | `spec align`, then `unit accept` | you, per unit |
 | 5 | `registry build`, `registry check` | you or the assembler |
 | 6 | the `book-assembler` skill composes `book.tex` | skill |
-| 7 | `pdflatex`, `bibtex`, `pdflatex` x2 | you or the assembler |
+| 7 | `lualatex`, `bibtexu`, `lualatex` x2 | you or the assembler |
 | 8 | read it | **you, and only you** |
 
 Steps 3 and 4 repeat per chapter. Steps 5 to 7 are what
@@ -705,20 +705,29 @@ paths are relative to it:
 
 ```bash
 cd content/rendered/twins
-pdflatex -interaction=nonstopmode book.tex
-bibtex book
-pdflatex -interaction=nonstopmode book.tex
-pdflatex -interaction=nonstopmode book.tex
+lualatex -interaction=nonstopmode book.tex
+bibtexu book
+lualatex -interaction=nonstopmode book.tex
+lualatex -interaction=nonstopmode book.tex
 ```
 
-**Four passes, and the `bibtex` one is not optional**: the first
-`pdflatex` records which keys the document cites, `bibtex` turns those
+**LuaLaTeX and `bibtexu`, as the pdf render is** (#1037): a chapter
+prints in the same fonts in the book as in its own pdf, and `bibtexu`
+abbreviates a first name by character where classic `bibtex` took its
+first byte, which dropped initials such as `Ö.` from the bibliography
+under pdflatex. The four passes take about three times as long as they
+did under pdflatex (86 s against 26 s for a 287-page book). `bibtexu`
+exits 1 when the `.bib` has only warnings; read `book.blg` for an
+`error`.
+
+**Four passes, and the `bibtexu` one is not optional**: the first
+`lualatex` records which keys the document cites, `bibtexu` turns those
 into `book.bbl`, the third pulls the bibliography in, and the fourth
 resolves `\cref`, the table of contents and the citation numbers now that
-the entries exist. Skip `bibtex` and every citation renders `[?]` while
-`pdflatex` still exits 0.
+the entries exist. Skip it and every citation renders `[?]` while
+`lualatex` still exits 0.
 
-**Then read the log before believing the PDF.** `pdflatex` exits 0 on a
+**Then read the log before believing the PDF.** `lualatex` exits 0 on a
 book that renders `[?]` where a reference should be, because natbib
 reports a dropped citation as a warning, not an error:
 

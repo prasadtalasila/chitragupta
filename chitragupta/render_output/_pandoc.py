@@ -19,6 +19,7 @@ from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
+from chitragupta.render_output._unicode import font_header_path
 
 # What a table's caption is allowed to be as wide as. pandoc writes every
 # Markdown table as a `longtable`, and `longtable.sty` sets its captions
@@ -286,7 +287,7 @@ def _pandoc_command(
         # has stops the build and is named (see the file's own header).
         cmd += [
             "--include-in-header",
-            str(config.shipped("assets", "latex", "chitragupta-lualatex.tex")),
+            str(font_header_path()),
         ]
         # No `\write18` at all, not even TeX Live's default restricted
         # allow-list (`shell_escape = p`). Nothing a draft legitimately

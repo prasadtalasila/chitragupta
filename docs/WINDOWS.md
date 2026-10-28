@@ -32,7 +32,7 @@ because three OS packages have no apt to install them from.
 | | Native Windows | WSL2 (Debian/Ubuntu) |
 | --- | --- | --- |
 | Corpus sync, drafting, the citation gate | yes | yes |
-| The review layer's eleven aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only four of its nine checks without `pdflatex` | yes |
+| The review layer's eleven aids | yes, bar two: `verbatim` needs `pdftotext`, and `figure` runs but reports only four of its nine checks without `lualatex` | yes |
 | `draft render` to PDF | needs Pandoc + a TeX distribution installed by hand | yes, via `os-deps` |
 | `chitragupta enrich` | yes | yes |
 | GPU acceleration | CPU only | yes; see [below](#-gpu-features-under-wsl2) |
@@ -130,11 +130,11 @@ of the eleven review aids need no OS package at all.
 
 **The second exception is `figure`, and it is the one to watch**,
 because unlike `verbatim` it neither refuses nor reports a missing
-binary: five of its nine checks need `pdflatex`, so without TeX it runs
+binary: five of its nine checks need `lualatex`, so without TeX it runs
 and reports the other four, naming what it skipped. The two checks most
 readers want from a layout check, node overlap and content protrusion,
 are both in the five. See [CLI.md](CLI.md#-chitragupta-review-figure)'s
-own "Needs `pdflatex`" column for the split. On a host without TeX, a
+own "Needs `lualatex`" column for the split. On a host without TeX, a
 green `figure` report covers only four of the nine checks, so it is not
 a clean report.
 

@@ -462,7 +462,7 @@ instead.
 | `pipx install poetry && bash scripts/install_full_pipeline.sh all` | `pip install 'chitragupta-cli[enrich]'` |
 | `bash scripts/install_full_pipeline.sh os-deps` | `chitragupta install os-deps`: the same script, reached a different way |
 | `python-deps`'s `ensure_gpu_torch` reinstall step | `chitragupta install gpu-torch` |
-| Checking pandoc/LuaLaTeX and its fonts/pdflatex/vale/the enrich group by hand | `chitragupta doctor` |
+| Checking pandoc/LuaLaTeX and its fonts/vale/the enrich group (and an optional pdflatex) by hand | `chitragupta doctor` |
 | `.venv-full/bin/python -m chitragupta.<layer> <verb>` | `chitragupta <layer> <verb>`. The module form still works too, and is what hooks and skills keep using ([Which interpreter](#-which-interpreter)) |
 | `python scripts/release.py` (build the zip) | Not needed: `pip install` already gives you the wheel |
 
@@ -1498,7 +1498,7 @@ the other ten aids nothing it reports can block a draft.
 [TIKZ-STYLE.md](TIKZ-STYLE.md) is the standard it checks against, and it
 reaches only the part of that checklist geometry can decide.
 
-| Check | Kind | Needs `pdflatex` |
+| Check | Kind | Needs `lualatex` |
 | --- | --- | --- |
 | Node text over 15 words | binary | no |
 | Edge list, reported for confirmation | binary | no |
@@ -1598,7 +1598,7 @@ appends its placement transform to that hook *globally* on every load,
 so the Nth figure in a document shifts every node N times. It renders
 correctly alone, which is why nothing else catches it: the damage
 appears only once a second figure joins it, in an assembled book that
-`pdflatex` builds with exit 0. Delete the workaround and keep the plain
+TeX builds with exit 0. Delete the workaround and keep the plain
 load line.
 
 | Flag | Default | What it does |
@@ -2606,11 +2606,14 @@ every character the old NFKC fold turned into plain text (a thin space,
 `（`, `⑴`, `‼`, `⅓`), printed as that text. Under LuaLaTeX or XeLaTeX it
 does nothing. A draft with none of them gets no copy. A `tex` output
 gets the file copied beside it. A `--fragment` render has no preamble,
-so it gets the copy
-and prints one line naming what the assembling document must load:
+so it gets the copy and, since #1037, the pdf render's own font header,
+`chitragupta-lualatex.tex`, beside it as well: LuaLaTeX is the
+recommended engine for the document that assembles a fragment, and the
+`.sty` is the opt-in for a template that forces pdflatex. It prints one
+line naming what that document loads under each:
 
 ```text
-[unicode] chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; load it in the assembling document: \usepackage{chitragupta-unicode}
+[unicode] chitragupta-lualatex.tex and chitragupta-unicode.sty copied beside the fragment -- a fragment has no preamble; in the assembling document, under lualatex: \usepackage{fontspec}\usepackage{unicode-math}\input{chitragupta-lualatex}; under pdflatex: \usepackage{chitragupta-unicode}
 ```
 
 **A character no font in the chain has fails the `pdf` build**, by

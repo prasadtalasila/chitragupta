@@ -456,7 +456,7 @@ class TestEverySourceProperty:
 
 @needs_tikz
 class TestEveryGeometryProperty:
-    """The half that needs a real `pdflatex`."""
+    """The half that needs a real `lualatex`."""
 
     @by_carrier
     def test_compiles_and_measures_every_name_it_declares(self, scaffold):
@@ -548,9 +548,10 @@ class TestTheBlockTravelsUnforked:
 _MATH_RGB = (1, 2, 3)
 
 
-def _pdflatex(directory: Path, body: str) -> subprocess.CompletedProcess:
+def _lualatex(directory: Path, body: str) -> subprocess.CompletedProcess:
     """Compile `body` inside the minimal document WRITING-STANDARDS.md
-    §10 tells an author to probe a figure with, plus the math marker."""
+    §10 tells an author to probe a figure with, plus the math marker,
+    under LuaLaTeX, the engine the pdf render uses (#1037)."""
     (directory / "probe.tex").write_text(
         "\\documentclass{article}\n\\usepackage{tikz}\n\\pagestyle{empty}\n"
         "\\everymath\\expandafter{\\the\\everymath\\color[RGB]{%d,%d,%d}}\n"
@@ -559,7 +560,7 @@ def _pdflatex(directory: Path, body: str) -> subprocess.CompletedProcess:
         encoding="utf-8",
     )
     return subprocess.run(
-        [shutil.which("pdflatex"), "-interaction=nonstopmode", "-halt-on-error", "probe.tex"],
+        [shutil.which("lualatex"), "-interaction=nonstopmode", "-halt-on-error", "probe.tex"],
         cwd=directory,
         capture_output=True,
         text=True,
@@ -581,7 +582,7 @@ class TestTheBlockTypesetsNothing:
 
     @staticmethod
     def _width(directory: Path, source: Path) -> str:
-        result = _pdflatex(
+        result = _lualatex(
             directory, f"\\setbox0\\hbox{{\\input{{{source}}}}}\\typeout{{CGWIDTH=\\the\\wd0}}"
         )
         assert result.returncode == 0, result.stdout[-2000:]
@@ -605,11 +606,15 @@ class TestTheBlockTypesetsNothing:
         # The `%` stops the bare file's own last line setting a space.
         bare.write_text(source[start:end] + "%", encoding="utf-8")
         libraries = f"{_LIBRARIES},matrix,trees"
-        result = _pdflatex(
+        result = _lualatex(
             tmp_path,
             f"\\usetikzlibrary{{{libraries}}}\\input{{{BLOCK}}}%\n"
             f"\\setbox0\\hbox{{\\input{{{scaffold}}}}}\\typeout{{CGFULL=\\the\\wd0}}%\n"
-            f"\\setbox0\\hbox{{\\input{{{bare}}}}}\\typeout{{CGBARE=\\the\\wd0}}%",
+            f"\\setbox2\\hbox{{\\input{{{bare}}}}}\\typeout{{CGBARE=\\the\\wd2}}%\n"
+            # Shipped, not dropped: LuaTeX stops a run that wrote pdf
+            # objects (shadows.blur's fadings) but put no page out, which
+            # pdflatex let pass (#1037).
+            "\\box0\\box2",
         )
         assert result.returncode == 0, result.stdout[-2000:]
 
@@ -714,7 +719,7 @@ class TestTheTypeFloor:
     def _floor_and_figure(directory: Path, figure: str) -> tuple[float, list[float]]:
         """The body size, and each figure glyph's size as a fraction of
         the floor it answers to (1.0 is exactly on it)."""
-        result = _pdflatex(directory, f"Body text.\n\\clearpage\n{figure}")
+        result = _lualatex(directory, f"Body text.\n\\clearpage\n{figure}")
         assert result.returncode == 0, result.stdout[-2000:]
         pdf = directory / "probe.pdf"
         floor = min(glyph.size for glyph in _effective_sizes(pdf, 0))
@@ -792,7 +797,7 @@ class TestEveryPicFitsItsWell:
             "\\end{tikzpicture}\n"
             for name in names
         )
-        result = _pdflatex(
+        result = _lualatex(
             directory, f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}{extra}\n{body}"
         )
         assert result.returncode == 0, result.stdout[-2000:]
@@ -849,7 +854,7 @@ class TestEveryPicFitsItsWell:
     def test_a_pic_colour_does_not_leak_to_the_next_pic(self, tmp_path):
         """`cg pic colour` is set per `\\pic`, so the next un-keyed one in
         the same picture is the default again, not the last zone's hue."""
-        result = _pdflatex(
+        result = _lualatex(
             tmp_path,
             f"\\usetikzlibrary{{{_LIBRARIES}}}\\input{{{BLOCK}}}\n"
             "\\begin{tikzpicture}[cg]\\pic[cg pic colour=cgAlt]{cgstore};"
@@ -869,7 +874,7 @@ class TestDrawnAtFinalWidth:
 
     @by_scaffold
     def test_fits_the_text_width_unscaled(self, scaffold, tmp_path):
-        result = _pdflatex(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")
+        result = _lualatex(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")
 
         assert result.returncode == 0, result.stdout[-2000:]
         assert "Overfull \\hbox" not in (tmp_path / "probe.log").read_text(

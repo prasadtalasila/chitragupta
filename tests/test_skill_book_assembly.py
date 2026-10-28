@@ -102,10 +102,14 @@ def test_the_book_carries_one_bibliography_built_by_bibtex():
     assert r"\addcontentsline{toc}{chapter}{Bibliography}" in body, "it is a chapter*"
 
 
-def test_the_build_runs_bibtex_between_the_pdflatex_passes():
-    """Skip it and every citation renders `[?]` while pdflatex exits 0."""
+def test_the_build_runs_bibtexu_between_the_lualatex_passes():
+    """Skip it and every citation renders `[?]` while lualatex exits 0.
+    LuaLaTeX, the pdf render's engine, and `bibtexu`, because classic
+    bibtex abbreviates `Ö.` by its first byte (#1037)."""
     body = _body()
-    assert "bibtex book" in body
+    assert "lualatex -interaction=nonstopmode book.tex" in body
+    assert "pdflatex -interaction" not in body
+    assert "bibtexu book" in body
     assert "Four passes" in body
 
 
@@ -116,7 +120,7 @@ def test_the_assembler_writes_a_markdown_twin_of_the_book():
 
 
 def test_the_assembler_checks_the_build_log_before_believing_the_pdf():
-    """pdflatex exits 0 on a book that is missing something: a dropped
+    """TeX exits 0 on a book that is missing something: a dropped
     citation is a warning, not an error."""
     assert "Read `book.log` before believing the PDF" in _body()
 

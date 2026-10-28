@@ -33,10 +33,10 @@ import textwrap
 import pytest
 
 pytestmark = pytest.mark.skipif(
-    shutil.which("pdflatex") is None, reason="needs a TeX Live installation"
+    shutil.which("lualatex") is None, reason="needs a TeX Live installation"
 )
 
-# `\typeout` rather than a written file: it lands in pdflatex's stdout,
+# `\typeout` rather than a written file: it lands in lualatex's stdout,
 # so the measurement needs no auxiliary parsing and no second run.
 FIGURE = textwrap.dedent(
     r"""
@@ -93,7 +93,7 @@ def _compile(tmp_path, document):
     (tmp_path / "fig.tex").write_text(FIGURE, encoding="utf-8")
     (tmp_path / "doc.tex").write_text(document, encoding="utf-8")
     return subprocess.run(
-        ["pdflatex", "-interaction=nonstopmode", "doc.tex"],
+        ["lualatex", "-interaction=nonstopmode", "doc.tex"],
         cwd=tmp_path,
         capture_output=True,
         text=True,

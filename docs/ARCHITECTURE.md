@@ -647,7 +647,7 @@ unavailable.
 | Citation gate, References section, tex/pdf render | stdlib only, no venv (see [below](#-which-interpreter-and-why)) |
 | Prose conformance report (`chitragupta.draft style`) | stdlib only, plus `vale` on PATH (`os-deps` stage); absent, it reports missing-binary |
 | Docling layout-aware parsing, embeddings/Chroma, BERTopic | venv, `enrich` Poetry group |
-| Compiling generated `.tex` to PDF | `pandoc`, LuaLaTeX (`texlive-luatex`) and the fonts in `chitragupta/pdf_fonts.py`, `latexmk`; `pdflatex` for the figure-layout aid (`os-deps` stage) |
+| Compiling generated `.tex` to PDF | `pandoc`, LuaLaTeX (`texlive-luatex`) and the fonts in `chitragupta/pdf_fonts.py`, `latexmk`; the same LuaLaTeX for the figure-layout aid (`os-deps` stage) |
 
 ## 🐍 Which interpreter, and why
 
@@ -688,8 +688,8 @@ otherwise. It is `chitragupta/review/verbatim_check/` now, and `scripts/`
 holds no layer entry point at all, only genuine dev tooling. Both moves
 corrected a label; neither changed a cost.
 
-What the aid needs is `pandoc` and a TeX engine (LuaLaTeX for a `pdf`
-render, `pdflatex` for the figure-layout probe), which are operating-system
+What the aid needs is `pandoc` and a TeX engine (LuaLaTeX, for a `pdf`
+render and for the figure-layout probe), which are operating-system
 packages, probed at runtime and reported as `missing-binary` when absent.
 That axis (which binaries a command shells out to) is independent of
 which directory it lives in, and always was.

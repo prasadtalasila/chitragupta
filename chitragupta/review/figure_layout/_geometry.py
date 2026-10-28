@@ -2,7 +2,7 @@
 
 Separated from `_probe.py` because none of this needs a toolchain. A box
 is four floats however it was obtained, so every rule here is testable
-without `pdflatex` on the host -- which is most of what makes this aid's
+without TeX on the host -- which is most of what makes this aid's
 own test suite runnable on CI's Windows leg, where no TeX is installed.
 
 Three checks live here, and **one of them is not like the others**:

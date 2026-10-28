@@ -66,7 +66,7 @@ def test_the_drawer_hands_back_and_never_presents():
 
 def test_the_drawer_runs_the_existing_checks_in_order():
     text = _text(DRAWER)
-    order = ["kpsewhich tikz.sty", "run `pdflatex` on it", "python -m chitragupta.review figure"]
+    order = ["kpsewhich tikz.sty", "run `lualatex` on it", "python -m chitragupta.review figure"]
     at = [text.find(s) for s in order]
     assert -1 not in at and at == sorted(at), dict(zip(order, at))
 
@@ -160,14 +160,14 @@ def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
 
 
 def test_the_drawer_checks_the_figure_in_the_real_render():
-    # The probe sets the figure in a bare article class under pdflatex; the
+    # The probe sets the figure in a bare article class, not the render's; the
     # pipeline's own pdf is LuaLaTeX at the document's body font, where
     # labels wrap and gaps close differently. A figure that passed the
     # probe came out with a hyphenated label and an arrow through a zone
     # title in a real render (#1027), so the drawer must look at the page.
     text = _text(DRAWER)
     assert "python -m chitragupta.draft render" in text
-    at_probe = text.find("run `pdflatex` on it")
+    at_probe = text.find("run `lualatex` on it")
     at_render = text.find("python -m chitragupta.draft render")
     at_return = text.find("**Return.**")
     assert at_probe < at_render < at_return, (at_probe, at_render, at_return)

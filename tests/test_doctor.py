@@ -39,6 +39,47 @@ class TestCheckBinaries:
         assert all("[missing-binary]" in line for line in lines)
         assert len(lines) == len(doctor.BINARIES)
 
+    def test_pdflatex_is_not_required_once_every_compile_is_lualatex(self):
+        """#1037: the figure-layout probe was the pipeline's last pdflatex
+        compile. A thesis author whose template forces pdflatex runs it
+        themselves; the pipeline no longer does."""
+        assert "pdflatex" not in doctor.BINARIES
+        assert "lualatex" in doctor.BINARIES
+
+
+class TestCheckOptionalPdflatex:
+    """pdflatex is no longer the pipeline's, but a thesis author whose
+    template forces it still needs it, with chitragupta-unicode.sty
+    (#1037). Doctor says which case this host is in, without calling an
+    absent pdflatex a problem."""
+
+    def test_an_absent_pdflatex_is_optional_not_missing(self, monkeypatch):
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: None)
+        line = doctor._check_optional_pdflatex()
+        assert line.startswith("[optional] pdflatex not found")
+        assert "thesis template" in line
+        assert "[missing-binary]" not in line
+
+    def test_a_present_pdflatex_is_ok_and_said_to_be_optional(self, monkeypatch):
+        monkeypatch.setattr(doctor.programs, "resolve_program", lambda b: f"/usr/bin/{b}")
+        line = doctor._check_optional_pdflatex()
+        assert line.startswith("[ok] pdflatex found: /usr/bin/pdflatex")
+        assert "optional" in line
+
+    def test_main_reports_it(self, monkeypatch, capsys):
+        monkeypatch.setattr(doctor, "_check_optional_pdflatex", lambda: "[optional] marker")
+        for name in (
+            "_check_binaries",
+            "_check_launchers",
+            "_check_opencode_skills",
+            "_check_pdf_fonts",
+        ):
+            monkeypatch.setattr(doctor, name, lambda *a: [])
+        for name in ("_check_enrich_extra", "_check_gpu_torch", "_check_competing_distribution"):
+            monkeypatch.setattr(doctor, name, lambda: "[ok] x")
+        assert doctor.main([]) == 0
+        assert "[optional] marker" in capsys.readouterr().out
+
 
 class TestCheckPdfFonts:
     """#996: every family chitragupta/pdf_fonts.py names, looked up the

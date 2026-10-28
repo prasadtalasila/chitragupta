@@ -41,6 +41,8 @@ from chitragupta import config
 from chitragupta.render_output._tables import _LATEX_BOUND
 
 STY_NAME = "chitragupta-unicode"
+# The pdf render's font setup (#996), shipped for a fragment's assembler.
+FONT_HEADER = "chitragupta-lualatex"
 EXTRA_NAME = "unicode-extra.tex"
 # One entry per line, as scripts/generate_unicode_sty.py writes it:
 # `\chitragupta@char{<char>}{<HEX>}{<LaTeX>}`. The character itself is
@@ -54,6 +56,12 @@ def sty_path() -> Path:
 
 
 @cache
+def font_header_path() -> Path:
+    """The pdf render's LuaLaTeX font header, which a fragment takes
+    with it for the document that assembles it (#1037)."""
+    return config.shipped("assets", "latex", f"{FONT_HEADER}.tex")
+
+
 def mapped_characters() -> frozenset[str]:
     """Every character the shipped `.sty` maps, read from the file itself
     so the generator's output is the one runtime truth."""
@@ -116,10 +124,16 @@ def preamble_files(
         shutil.copyfile(sty_path(), out_dir / f"{STY_NAME}.sty")
     if fragment:
         # pandoc's -H implies --standalone, so a fragment must get none.
+        # LuaLaTeX is the recommended engine for the document that
+        # assembles it (#1037), so the font header goes too, named first;
+        # the `.sty` stays for a template that forces pdflatex.
         if needed:
+            shutil.copyfile(font_header_path(), out_dir / f"{FONT_HEADER}.tex")
             print(
-                f"[unicode] {STY_NAME}.sty copied beside the fragment -- a fragment has "
-                f"no preamble; load it in the assembling document: \\usepackage{{{STY_NAME}}}",
+                f"[unicode] {FONT_HEADER}.tex and {STY_NAME}.sty copied beside the "
+                "fragment -- a fragment has no preamble; in the assembling document, "
+                "under lualatex: \\usepackage{fontspec}\\usepackage{unicode-math}"
+                f"\\input{{{FONT_HEADER}}}; under pdflatex: \\usepackage{{{STY_NAME}}}",
                 file=sys.stderr,
             )
         return []
