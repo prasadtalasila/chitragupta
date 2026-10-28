@@ -1,12 +1,12 @@
 # 🔎 XII-2b: `chitragupta figure check`, the skeleton
 
-Status: **design, not built.** Written 2026-10-28 against `main` at
-`e072bc0`, from a brainstorming session on issue
-[#1053](https://github.com/prasadtalasila/chitragupta/issues/1053).
-The components (section "Components") and the four decisions marked
-*user* were agreed in that session; the rule details, report format,
-probe change and tests below are the session's proposal, put up for
-review with this plan rather than walked through one by one.
+Status: **built.** Written 2026-10-28 against `main` at `e072bc0`, from
+a brainstorming session on issue
+[#1053](https://github.com/prasadtalasila/chitragupta/issues/1053), and
+implemented in the same PR as this plan (the user asked for one PR, not
+a plan PR first). The components and the decisions marked *user* were
+agreed in that session; the rest was the session's proposal. What
+changed on the way is marked **Changed in the build** below.
 
 **Written for** whoever builds #1053: a session that changes
 `chitragupta/figure/`, `chitragupta/review/figure_layout/`, the
@@ -130,24 +130,29 @@ called as `review figure` calls it. `figure check` calls it with:
 - **`preload`**: `\usetikzlibrary{...}` in the preamble with
   `render_output._tikz_libraries.libraries_in(source)`, as the renderer
   does since #781. The figure's own load line then adds nothing.
-- **`boxed`**: the figure is set with `\sbox` into a box, the probe
-  prints `CGWIDTH <wd>`, and the box is then shipped with `\usebox`.
-  The shipping matters: LuaTeX refuses a run that wrote PDF objects
-  (the `shadows.blur` fadings) and shipped no page (#1037's lessons).
+- **`boxed`**: the figure is set into a box with TeX's own
+  `\setbox...\hbox{}`, the probe prints `CGWIDTH <wd>`, and the box is
+  then shipped with `\usebox`. The shipping matters: LuaTeX refuses a
+  run that wrote PDF objects (the `shadows.blur` fadings) and shipped no
+  page (#1037's lessons). **Changed in the build:** the plan said
+  `\sbox`. The bench found the `map` scaffold failed under it, because
+  `\sbox` reads the figure as a macro argument and freezes the catcode
+  of `&` that a TikZ `matrix` changes. `lrbox` compiled it but trims a
+  trailing space, hiding the commonest stray (`\end{tikzpicture}` with
+  no `%`). A primitive `\hbox` does neither, and a test pins each case.
 
 One compile per check, through `tex_engine`'s flags, read fence and
 environment, as #1037 requires of every new compile.
 
 **Risk, settled by the bench below:** a figure that compiles in a float
 but not inside a box, for instance one carrying a `\caption` or a
-display environment outside its picture. If the bench finds any, the
-fallback is a second, unboxed compile for that figure, with
-`size-stray` and the whole-box width reported as not measured.
+display environment outside its picture. The bench found none once the
+box was a primitive `\hbox`, so no fallback compile was built.
 
 ## The report
 
-Text, one line per finding, objective first, in `RULES` order then by
-target:
+Text, one line per finding, in `RULES` order and then in source order
+(every rule in 2b is objective, so there is no advisory section yet):
 
 ```text
 figures/flow.tex
@@ -165,7 +170,7 @@ not measured
 diagnostics (not findings)
   edges (confirm against the prose): a -> b, b -> c
   41% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
-figure check: 3 objective, 0 advisory, 1 allowed, 1 deferred, 1 malformed
+figure check: 3 findings, 1 allowed, 1 deferred, 1 malformed
 ```
 
 A section with nothing in it is left out; the summary line always

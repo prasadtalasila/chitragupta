@@ -1,0 +1,7 @@
+% figure check fixture (#1053): one accented node, one plain one.
+\tikzset{cgkey/.style={draw, thick}}%
+\begin{tikzpicture}
+  \node[cgkey] (retriever) at (0,0) {Retriever};
+  \node[draw] (reranker) at (4cm,0) {Reranker};
+  \draw[->] (retriever) -- (reranker);
+\end{tikzpicture}%

@@ -759,3 +759,63 @@ ones authors get wrong:
 [REVIEW.md](REVIEW.md) has the aid among the other ten;
 [CLI.md](CLI.md#-chitragupta-review-figure) has its flags and the full
 statement of the boundary.
+
+## 🔎 The rules `figure check` reports
+
+`python -m chitragupta figure check <figure.tex>` checks one figure
+file against the rules below and reports each one it breaks, one line
+per finding: `<rule-id> <target> <measurement>`. The id is the contract.
+A finding, a `% cg-allow:` line, this table and the `figure-drawer`
+skill's `references/check.md` all quote it, and a test fails if they
+stop naming the same set. [CLI.md](CLI.md#-chitragupta-figure-check)
+has the flags and the report's layout.
+
+Like `review figure`, it exits 0 whatever it finds. **Objective** is
+what the skill does with a finding (resolve it, or allow it with a
+reason), not an exit code; **advisory** findings are read, not
+resolved. **Scope** is what an allow has to name: a figure-scope rule
+is about the whole picture, an element-scope rule about one node, pair
+or point.
+
+| Id | Scope | Class | What it reports |
+| --- | --- | --- | --- |
+| `does-not-compile` | figure | objective | The figure's own TikZ fails, with TeX's first error line. The geometry rules are then listed as not measured. Cannot be allowed |
+| `nothing-measurable` | figure | objective | The figure names no node, so the geometry rules had nothing to measure. Name the nodes you draw |
+| `size-width` | figure | objective | The picture is wider than the target text width: 453pt by default, the render's A4 at 1in margins, or `--width`. Several pictures in one file are measured together, as they print side by side |
+| `size-stray` | figure | objective | The figure, set as one box, is wider than its picture by more than 0.5pt: a line outside the picture that ends without `%` sets a space when the figure is `\input` inline or measured with `\sbox` (the float the renderer uses drops it). Not measured for a file with several pictures, whose spacing is deliberate |
+| `focal-count` | figure | objective | More than one `cgkey` node: if two things are accented, neither is. Read from the source, so a `cgkey` reached only through a style the figure defines itself is not seen |
+| `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure ("Check the drawn figure against this list" above) |
+| `loads-library-by-hand` | figure | objective | A library loaded through its internal macro instead of `\usetikzlibrary` (#781) |
+| `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap |
+| `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
+| `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
+
+The last seven are `review figure`'s findings, under the ids its
+`--json` has always used. The edge list, the declared names that were
+not measured and the emptiness proportion are printed beside the
+findings as diagnostics, never as findings.
+
+### ✍ Recording a deliberate exception: `cg-allow`
+
+A figure that breaks a rule on purpose says so in its own file, which
+travels with it into the draft, the render and a thesis:
+
+```latex
+% cg-allow: size-width -- a five-stage pipeline the chapter compares stage by stage
+% cg-allow: node-overlap legend+pot -- the legend sits on the pot on purpose
+```
+
+The form is `% cg-allow: <rule-id> [<target>] -- <reason>`, on a line
+of its own.
+
+- **The reason is required.** An allow without one is reported as
+  malformed and allows nothing, so an exception is always a claim
+  someone can read and disagree with.
+- **A figure-scope rule takes no target, and an element-scope rule
+  requires one**, so "allow every overlap" cannot be written.
+- **Every honoured allow is listed in the report**, with the
+  measurement it set aside, or `did not fire` where its rule found
+  nothing, so an exception is never invisible.
+- **Element-scope allows are not honoured yet.** They are checked and
+  listed under "not honoured until #1058", and the finding still
+  prints; edge-level targets need the geometry that issue adds.

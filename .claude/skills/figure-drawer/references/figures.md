@@ -48,7 +48,7 @@ two-column paper does not have, and a layered stack degrades gracefully
 into a narrow column.
 
 Name every node you draw, `\node (a)` or `child { node (a) ... }`.
-`python -m chitragupta.review figure` measures only named nodes, so a
+`python -m chitragupta.figure check` measures only named nodes, so a
 picture that names nothing reports no overlap because nothing was
 measurable, which reads exactly like a clean figure.
 
@@ -182,7 +182,7 @@ What its parts are for:
 
   `\cglab{name}{gloss}` gives the two-tier label: a bold name one step
   up the type ramp, and a gloss at body size. Every node is named, so
-  `review figure` can measure it.
+  `figure check` can measure it.
 - **Node roles, not colours.** `cgbox`, `cgalt`, `cgkey` and `cgopt`
   mark what a node *is* (ordinary, generative, the gate, optional), and
   the palette follows from the role. Pick a role; never set a colour on
@@ -205,5 +205,5 @@ What its parts are for:
 - **Edge tags and edge weights.** `cgedge` for the main path, `cgweak`
   for what happens off to the side, `cgback` for the one loop. A
   `cgtag` node on an edge names what crosses it. Two lines sharing one
-  attach point is a `review figure` finding waiting to happen; the
+  attach point is a `figure check` finding waiting to happen; the
   exemplar offsets one with `xshift` for exactly that reason.

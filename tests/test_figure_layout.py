@@ -1671,3 +1671,145 @@ class TestCompileErrorDetail:
         """pdflatex can exit non-zero without a `!` line -- an empty
         detail would make the finding unreadable."""
         assert "without reporting" in figure_layout._probe._compile_error_detail("")
+
+
+class TestBoxedScaffold:
+    """`figure check`'s probe (#1053): the figure's own libraries loaded
+    in the preamble, and the figure set in a box so the width of the
+    `\\input` itself can be compared with the picture's. The default
+    call, which `review figure` makes, carries neither."""
+
+    SOURCE = (
+        "\\usetikzlibrary{positioning,fit}%\n\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}"
+    )
+
+    def test_the_default_scaffold_neither_preloads_nor_boxes(self):
+        scaffold = figure_layout.scaffold(self.SOURCE, ["a"])
+
+        preamble = scaffold.split("\\begin{document}")[0]
+        assert "\\usetikzlibrary" not in preamble
+        assert "CGWIDTH" not in scaffold and "cgfigbox" not in scaffold
+
+    def test_a_boxed_scaffold_preloads_the_figures_own_libraries(self):
+        scaffold = figure_layout.scaffold(self.SOURCE, ["a"], boxed=True)
+
+        preamble = scaffold.split("\\begin{document}")[0]
+        assert "\\usepackage{tikz}\n\\usetikzlibrary{positioning,fit}\n" in preamble
+
+    def test_a_boxed_scaffold_of_a_figure_loading_nothing_loads_nothing(self):
+        """`\\usetikzlibrary{}` is fatal, so an empty list emits no line."""
+        scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"], boxed=True)
+
+        assert "\\usetikzlibrary" not in scaffold
+
+    def test_a_boxed_scaffold_reports_the_box_width_and_ships_the_box(self):
+        """Shipped, because LuaTeX refuses a run that wrote PDF objects
+        (the `shadows.blur` fadings) and shipped no page (#1037)."""
+        scaffold = figure_layout.scaffold(self.SOURCE, ["a"], boxed=True)
+
+        body = scaffold.split("\\begin{document}")[1]
+        assert (
+            body.index("\\setbox\\cgfigbox=\\hbox") < body.index("CGWIDTH") < body.index("\\usebox")
+        )
+
+    def test_the_box_width_parses_back(self):
+        assert _probe.parse_input_width("x\nCGWIDTH 307.25pt\ny\n") == 307.25
+
+    def test_a_log_without_a_box_width_has_none(self):
+        assert _probe.parse_input_width("CGBOX a 0pt 0pt 1pt 1pt\n") is None
+
+
+class TestCheckFigure:
+    """One figure, checked as `check_draft` checks each of a draft's
+    figures: the body both `review figure` and `figure check` share."""
+
+    def test_a_skipped_host_runs_the_static_checks_only(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text("\\node (a) {A};\n\\draw (a) -- (b);\n", encoding="utf-8")
+
+        result = figure_layout.check_figure(path, "no lualatex here")
+
+        assert result.edges == [("a", "b")]
+        assert result.declared == ["a"]
+        assert result.boxes is None and result.input_width is None
+        assert result.skipped == "no lualatex here"
+
+    @needs_tikz
+    def test_an_unboxed_check_measures_no_input_width(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}%\n", encoding="utf-8"
+        )
+
+        result = figure_layout.check_figure(path, "")
+
+        assert "a" in result.boxes and result.input_width is None
+
+    @needs_tikz
+    def test_a_tight_figures_box_is_as_wide_as_its_picture(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\usetikzlibrary{positioning}%\n"
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
+        assert result.input_width == pytest.approx(x2 - x1, abs=0.5)
+
+    @needs_tikz
+    def test_a_line_end_outside_the_picture_widens_the_box(self, tmp_path):
+        """A line ending without `%` is a space in horizontal mode: what
+        `size-stray` exists to catch."""
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\newcommand{\\cgteststray}{}\n"
+            "\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
+        assert result.input_width > (x2 - x1) + 1.0
+
+    @needs_tikz
+    def test_a_line_end_after_the_picture_widens_the_box_too(self, tmp_path):
+        """The usual stray: `\\end{tikzpicture}` with no `%`. A box that
+        trims its own trailing space (`lrbox` does) would hide it."""
+        path = tmp_path / "fig.tex"
+        path.write_text("\\begin{tikzpicture}\\node (a) {A};\\end{tikzpicture}\n", encoding="utf-8")
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        x1, _, x2, _ = result.boxes[figure_layout.BBOX_NAME]
+        assert result.input_width > (x2 - x1) + 1.0
+
+    @needs_tikz
+    def test_a_matrix_compiles_inside_the_box(self, tmp_path):
+        """A `matrix` changes the catcode of `&`, which a macro argument
+        has already frozen, so the box must not be built with `\\sbox`.
+        The `map` scaffold is drawn as one."""
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\usetikzlibrary{matrix}%\n"
+            "\\begin{tikzpicture}\n"
+            "\\matrix[matrix of nodes] (m) { \\node (a) {A}; & \\node (b) {B}; \\\\ };\n"
+            "\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        assert result.failed is None and {"a", "b"} <= set(result.boxes)
+
+    @needs_tikz
+    def test_a_figure_that_does_not_compile_is_a_finding(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text("\\begin{tikzpicture}\n\\node (a) {\n", encoding="utf-8")
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        assert result.failed and result.boxes is None

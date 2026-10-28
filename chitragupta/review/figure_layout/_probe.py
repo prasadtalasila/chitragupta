@@ -22,6 +22,7 @@ reading documentation.
 """
 
 import re
+from dataclasses import dataclass
 
 # `_run` is the one patch point for this module's external launches
 # (#854), in the shape `render_output._pandoc._run_pandoc` set: a test
@@ -33,6 +34,7 @@ import tempfile
 from pathlib import Path
 
 from chitragupta import pdf_fonts, programs, tex_engine
+from chitragupta.render_output._tikz_libraries import libraries_in
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
@@ -44,6 +46,10 @@ _CGBOX_RE = re.compile(
     r"(?P<x2>-?[\d.]+)pt (?P<y2>-?[\d.]+)pt\s*$",
     re.MULTILINE,
 )
+
+# The boxed scaffold's one extra line: the width of the box the whole
+# figure file was set in.
+_CGWIDTH_RE = re.compile(r"^CGWIDTH (?P<wd>-?[\d.]+)pt\s*$", re.MULTILINE)
 
 # `\node[opts] (name) at (x,y) {label}`, for finding what to probe. The
 # same shape `_source.py` parses for its own checks; the pattern stays
@@ -90,8 +96,24 @@ def node_names(source: str) -> list[str]:
     return [name for name in names if "#" not in name]
 
 
-def scaffold(source: str, names: list[str]) -> str:
+def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     """A minimal document that compiles `source` and prints its geometry.
+
+    `boxed` is `figure check`'s variant (#1053), and changes two things
+    together. The figure's own libraries load in the preamble, as the
+    renderer loads them (#781), and the figure is set in a box whose
+    width is printed as `CGWIDTH`. Together because a box measured
+    without the preload reports a library's load spaces as width
+    (#1046), which is the one stray width that is not the figure's
+    fault. The box is TeX's own `\\setbox...\\hbox{}`, and both LaTeX
+    spellings fail it: `\\sbox` reads the figure as a macro argument,
+    which freezes the catcode of `&` that a TikZ `matrix` changes (the
+    `map` scaffold did not compile), and `lrbox` trims the trailing
+    space a `\\end{tikzpicture}` with no `%` sets, the commonest stray
+    there is. The box is shipped, not dropped: LuaTeX refuses a run that
+    wrote PDF objects (the `shadows.blur` fadings) and shipped no page
+    (#1037). The default call is `review figure`'s, and emits exactly
+    what it always has.
 
     `article`, deliberately, not `standalone`: `standalone.cls` lives in
     `texlive-latex-extra` while `tikz.sty` lives in `texlive-pictures`,
@@ -136,15 +158,25 @@ def scaffold(source: str, names: list[str]) -> str:
         f"\\typeout{{CGBOX {name} \\cgx\\space\\cgy\\space\\cgxx\\space\\cgyy}}%"
         for name in [*names, BBOX_NAME]
     )
+    figure = _with_probes_inside(source, probes)
+    libraries = libraries_in(source) if boxed else []
+    if boxed:
+        figure = (
+            f"\\setbox\\cgfigbox=\\hbox{{%\n{figure}%\n}}%\n"
+            "\\typeout{CGWIDTH \\the\\wd\\cgfigbox}%\n"
+            "\\noindent\\usebox\\cgfigbox"
+        )
     return (
         "\\documentclass[12pt]{article}\n"
         "\\usepackage{fontspec}\n"
         "\\usepackage{unicode-math}\n"
         f"{pdf_fonts.latex_fonts()}"
         "\\usepackage{tikz}\n"
-        "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
-        "\\begin{document}\n"
-        f"{_with_probes_inside(source, probes)}\n"
+        + (f"\\usetikzlibrary{{{','.join(libraries)}}}\n" if libraries else "")
+        + "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
+        + ("\\newsavebox\\cgfigbox\n" if boxed else "")
+        + "\\begin{document}\n"
+        f"{figure}\n"
         "\\end{document}\n"
     )
 
@@ -185,7 +217,28 @@ def parse_boxes(log: str) -> dict[str, Box]:
     }
 
 
+def parse_input_width(log: str) -> float | None:
+    """The boxed scaffold's `CGWIDTH`, or `None` where it printed none."""
+    match = _CGWIDTH_RE.search(log)
+    return float(match.group("wd")) if match else None
+
+
+@dataclass
+class Measurement:
+    """What one compile of a figure returned: its node boxes, and the
+    width of the box the whole file was set in (`None` unless the
+    compile was `boxed`)."""
+
+    boxes: dict[str, Box]
+    input_width: float | None = None
+
+
 def node_boxes(figure_path: Path) -> dict[str, Box]:
+    """`measure(figure_path)`'s boxes: what `review figure` reads."""
+    return measure(figure_path).boxes  # pragma: no cover-windows
+
+
+def measure(figure_path: Path, *, boxed: bool = False) -> Measurement:
     """Compile `figure_path` in a temp directory and return its geometry.
 
     **The compile is a side effect and must not litter.** Everything
@@ -204,7 +257,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
     source = figure_path.read_text(encoding="utf-8")  # pragma: no cover-windows
     with tempfile.TemporaryDirectory() as tmp:  # pragma: no cover-windows
         probe = Path(tmp) / "probe.tex"
-        probe.write_text(scaffold(source, node_names(source)), encoding="utf-8")
+        probe.write_text(scaffold(source, node_names(source), boxed=boxed), encoding="utf-8")
         result = _run(
             [
                 programs.require_program("lualatex"),
@@ -226,7 +279,7 @@ def node_boxes(figure_path: Path) -> dict[str, Box]:
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))
-        return parse_boxes(result.stdout)
+        return Measurement(parse_boxes(result.stdout), parse_input_width(result.stdout))
 
 
 def _compile_error_detail(log: str) -> str:

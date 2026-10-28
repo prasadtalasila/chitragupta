@@ -1,0 +1,8 @@
+% figure check fixture (#1053): two accented nodes. `cgkey` is defined
+% here rather than by the house block so the fixture stays small.
+\tikzset{cgkey/.style={draw, thick}}%
+\begin{tikzpicture}
+  \node[cgkey] (retriever) at (0,0) {Retriever};
+  \node[cgkey] (reranker) at (4cm,0) {Reranker};
+  \draw[->] (retriever) -- (reranker);
+\end{tikzpicture}%

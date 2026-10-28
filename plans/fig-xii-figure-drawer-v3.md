@@ -20,11 +20,13 @@ is therefore governed by `DEVELOPER-AGENTS.md` and
 `review figure` the house vocabulary) and #1037 (run the figure probe on
 LuaLaTeX).
 
-**Integration branch.** All of this work lands on `improve-figures`,
-one PR per item, with CI enabled for PRs into that branch and docs never
-published from it. An item's issue is not closed when its PR merges; it
-gets a comment recording the lessons and decisions that bear on the items
-after it.
+**Integration branch.** All of this work was to land on
+`improve-figures`, one PR per item, with CI enabled for PRs into that
+branch and docs never published from it. **From #1053 on, items branch
+off `main` and PR into `main`** (user, 2026-10-28), once `main` carried
+everything the integration branch had. An item's issue is not closed
+when its PR merges; it gets a comment recording the lessons and
+decisions that bear on the items after it.
 
 **Not covered here:** Part X output targets (this plan uses the render's
 default text width and a `--width` override until Part X lands), Part XI
@@ -244,9 +246,13 @@ exempts is not evaluated for it.
 | `c5-transit` | No edge crosses the box of a node that is neither of its ends. Zone cards that contain an end are not counted | edge | objective |
 | `c6-tag-covered` | No edge tag overlaps a node box | edge | objective |
 
-The existing findings (`overlap`, `content-protrusion`, `emptiness`,
-`stranded-arrowhead`, `overlong-node`, `library-by-hand`) keep their
-names and their current classes.
+The existing findings keep the names `review figure --json` already
+ships as its `kind` strings (`does-not-compile`, `nothing-measurable`,
+`node-overlap`, `node-text-overload`, `stranded-arrowhead`,
+`loads-library-by-hand`, `content-protrusion`) and their current
+classes; emptiness stays a diagnostic, not a finding. **Corrected by
+issue #1053**, which found that this list had named them differently
+from the shipped ids.
 
 ### Contrast, focal and wording
 

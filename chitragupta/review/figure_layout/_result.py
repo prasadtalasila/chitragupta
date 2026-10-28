@@ -39,6 +39,10 @@ class FigureResult:
     boxes: dict[str, Box] | None = None
     skipped: str = ""
     failed: str | None = None
+    # The width of the box the whole file was set in, measured only by
+    # `figure check`'s boxed probe (#1053). `review figure` neither sets
+    # nor reports it.
+    input_width: float | None = None
 
     @property
     def overlapping(self) -> list[tuple[str, str]]:

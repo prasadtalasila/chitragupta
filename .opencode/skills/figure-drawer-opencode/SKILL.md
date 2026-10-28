@@ -179,13 +179,15 @@ so they are this skill's to state:
    lualatex probe.tex   # \documentclass[12pt]{article}\usepackage{fontspec}\usepackage{tikz} + \input{figures/flow}
    ```
 
-8. **Read what the geometry says.** `python -m chitragupta.review figure
-   <draft>` reports what each figure's own geometry shows: overlaps,
-   protrusions, a library loaded by hand, measured in the render's own
-   fonts and size. It is a review aid, never a
-   gate. Read each finding, fix the ones that are real defects against
-   the pre-flight list, and leave the rest. It measures only nodes the
-   source names, so name every node you draw.
+8. **Check it.** `python -m chitragupta.figure check
+   figures/<name>.tex` prints one line per rule the figure breaks, by
+   rule id, measured in the render's own fonts and size, and exits 0
+   whatever it finds. Resolve each finding, or record why it is
+   deliberate with a `% cg-allow: <rule-id> -- <reason>` line in the
+   figure, and run it again until nothing is left unanswered.
+   `.claude/skills/figure-drawer/references/check.md` has every rule,
+   its usual fix and the allow form. It measures only nodes the source
+   names, so name every node you draw.
 
 9. **Look at it in the real render.** The probe is a bare article
    class; the pipeline's own pdf is LuaLaTeX over the draft's whole
@@ -208,11 +210,12 @@ so they are this skill's to state:
    hand-edited. If the marker is not in the draft yet, tell the caller
    to make this check right after its own render. If the render reports
    `[missing-binary]`, `pdftoppm` is not installed, or you cannot view
-   an image, skip the look: keep the probe and `review figure` results,
+   an image, skip the look: keep the probe and `figure check` results,
    and say so in chat. The look is a check, never a condition of
    keeping the figure; `chitragupta install os-deps` brings the tools.
 
 10. **Return.** Tell the caller the two paths, whether the probe
-    passed and whether you checked the rendered page. The caller places
+    passed, what `figure check` reported and allowed, and whether you
+    checked the rendered page. The caller places
     the marker and the caption in its own shape, then gates and renders
     the draft. None of that is this skill's.
