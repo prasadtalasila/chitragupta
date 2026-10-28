@@ -749,7 +749,7 @@ reader still disagrees.
 Added 2026-10-24 on a user report: figures sprawl, routing defects reach
 the PDF, and figures carry too much or too little. It is specified in
 full as [FIGURE-ROADMAP.md Part XII](FIGURE-ROADMAP.md#-part-xii-figure-drawer-v3)
-and [plans/fig-xii-figure-drawer-v3.md](../plans/fig-xii-figure-drawer-v3.md),
+and `plans/fig-xii-figure-drawer-v3.md`,
 and listed here only so this build order is not read as empty. It
 reaches D4's own unanswered half from the cheap end: the routing veto
 D2 skipped becomes six numbered connector rules computed from source and

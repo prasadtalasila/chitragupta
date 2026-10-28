@@ -1163,7 +1163,7 @@ target width. The SVG branch does not.
 ## 🖍 Part XII: figure-drawer v3
 
 Added 2026-10-24. The design, its measurements and every threshold are in
-[plans/fig-xii-figure-drawer-v3.md](../plans/fig-xii-figure-drawer-v3.md);
+`plans/fig-xii-figure-drawer-v3.md`;
 this part says what it is, what it changes here, and where it sits.
 
 ### The reported gap
@@ -1218,8 +1218,8 @@ phases
 [#1045](https://github.com/prasadtalasila/chitragupta/issues/1045),
 [#1051](https://github.com/prasadtalasila/chitragupta/issues/1051) and
 [#1059](https://github.com/prasadtalasila/chitragupta/issues/1059).
-The items under each are listed in the plan's
-[Tracking](../plans/fig-xii-figure-drawer-v3.md#tracking) section.
+The items under each are listed in the "Tracking" section of
+`plans/fig-xii-figure-drawer-v3.md`.
 
 ---
 
