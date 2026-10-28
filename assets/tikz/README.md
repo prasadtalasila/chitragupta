@@ -59,8 +59,10 @@ the same keys to the same values.
 The colour roles, in one line each: `cgInk` borders and labels, `cgFlow`
 the primary path, `cgAccent` the one thing the figure is about, `cgAlt`
 a second class, `cgAux` what happens off to the side, `cgWarm` and
-`cgRose` a third and fourth zone. Fills are tints; strokes take the
-colour undiluted.
+`cgRose` a third and fourth zone. Fills are tints of the palette name;
+strokes and coloured text take its darker shade, `cg<Hue>Line` or
+`cg<Hue>Text` (`draw=cgAltLine`, `text=cgAccentText`), which clear WCAG
+contrast where the light hues do not. docs/TIKZ-STYLE.md has the table.
 
 **Labels never go below the body size.** Node names are
 `\large\bfseries` and everything else is `\normalsize`, which `[cg]`

@@ -432,14 +432,36 @@ is for what happens off to the side, usually dashed as well as coloured.
 `cgAlt` exists so a figure with two node classes does not have to reach
 outside the palette.
 
-**Tints for fills, the named colour for strokes.** `fill=cgFlow!8` is a
-zone wash that text still reads through; `fill=cgFlow` is a block of
-solid blue with your label lost inside it. Between 8 and 15 is the
-usable band, and `draw=` always takes the colour undiluted.
+**A palette name fills; a `Line` or `Text` name draws.** `fill=cgFlow!8`
+is a zone wash that text still reads through; `fill=cgFlow` is a block of
+solid blue with your label lost inside it. Between 6 and 12 is the band
+the house block's cards and zones use. Strokes and coloured text do not
+take the palette colour at all, because several hues are too light to be
+seen as a line on their own tint (`cgWarm` on `cgWarm!12` is 1.9:1,
+where WCAG 2 asks 3:1 of a line) and none but `cgFlow` reaches the
+4.5:1 that text needs. So each hue, and `cgMute`, has two darker shades
+mixed towards `cgInk`:
 
-One contrast caveat: `cgAux` is light. It is fine as a fill and as a `thick`
-stroke, and **not** usable for label text on white. `cgInk`, `cgFlow` and
-`cgAccent` are all safe for text.
+| Hue | Border, edge, rule | Coloured text |
+| --- | --- | --- |
+| `cgFlow` | `cgFlowLine` (100%) | `cgFlowText` (95%) |
+| `cgAccent` | `cgAccentLine` (100%) | `cgAccentText` (75%) |
+| `cgAlt` | `cgAltLine` (95%) | `cgAltText` (70%) |
+| `cgAux` | `cgAuxLine` (75%) | `cgAuxText` (55%) |
+| `cgWarm` | `cgWarmLine` (75%) | `cgWarmText` (55%) |
+| `cgRose` | `cgRoseLine` (90%) | `cgRoseText` (65%) |
+| `cgMute` | `cgMuteLine` (95%) | `cgMuteText` (70%) |
+
+Each percentage is the share of the hue in the mix, and is the largest
+multiple of 5 that clears the threshold over white, `cgPaper` and every
+tint the block fills with, of any hue, since an edge can cross another
+zone. `tests/test_figure_contrast.py` recomputes every one from the hex
+values above, and fails a stroke or label in the block or a scaffold that
+draws in a bare palette name. Every house style already draws this way,
+so the rule only binds what you write yourself: `draw=cgAltLine`, not
+`draw=cgAlt`; `text=cgAccentText`, not `text=cgAccent`. A style that
+takes a colour argument (`cgzone=cgAlt`) takes the palette name and
+finds the shade itself.
 
 ### 📎 The palette travels inside the figure
 
@@ -466,13 +488,13 @@ arrowhead and label structure from nothing each time:
 
 | Group | Keys |
 | --- | --- |
-| Palette | the nine colours above |
-| Picture default | `cg`: `thick`, round caps and joins, `font=\normalsize`, ink colour |
+| Palette | the nine colours above, and the `Line` and `Text` shade of each hue and of `cgMute` |
+| Picture default | `cg`: `thick`, round caps and joins, `font=\normalsize`, ink colour, `node distance=6mm` |
 | Node roles | `cgbox` `cgalt` `cgaux` `cgwarm` `cgrose` `cgplain` `cgkey` `cgnone` `cgopt` |
 | Shadow | `cgsoft` (on in every filled role) and `cgflat` (cancels it; `cgnone` and `cgopt` use it) |
-| Zone card | `cgzone=<colour>` and `\cgzonelabel{<fit node>}{<colour>}{<text>}` |
+| Zone card | `cgzone=<colour>` (3mm inner sep) and `\cgzonelabel{<fit node>}{<colour>}{<text>}` (1.5mm above the card) |
 | Edges | `cgedge` `cgweak` `cgback` `cglead=<colour>` |
-| Annotation | `cgtag` (a word on an arrow, on its own ground), `cgnote` |
+| Annotation | `cgtag` (a word beside an arrow, never on it), `cgnote` |
 | Badges | `cgbadge=<colour>` and `\cgstep{<n>}{<node>}{<colour>}` |
 | Legend | `cgswatch=<colour>`, `\cglegenditem{...}` |
 | Label ramp | `\cglab{<name>}{<gloss>}` |
@@ -480,6 +502,20 @@ arrowhead and label structure from nothing each time:
 
 It also defines five house `pic`s, each drawn into a `cgwell`; see
 [House shapes](#-house-shapes-and-the-well-they-sit-in).
+
+**Its spacing is compact by default.** Two members of one zone sit 6mm
+apart, which `cg`'s `node distance` gives you for `right=of`. Two zones
+sit 8mm apart card to card, which is 14mm member to member once each
+card's 3mm inner sep is counted; say that distance where a placement
+crosses zones. Stacked zones need the lower card's title in the gap as
+well, about 5mm more (`assets/tikz/layered-stack.tex` works the sum).
+The type is not part of this: the floor in "Type and line weight" above
+is what stops a compact figure becoming a squashed one.
+
+**An edge tag sits beside its line.** `cgtag` is unfilled and placed
+with `auto`, on the left of the direction of travel, about 1mm clear of
+the segment; add `swap` to put it on the right. A tag filled over its
+line breaks the line exactly where the eye is following it.
 
 The block needs one library line, at the top of the figure with the
 picture's own:
