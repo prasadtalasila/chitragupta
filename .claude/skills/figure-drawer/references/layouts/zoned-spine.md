@@ -43,7 +43,7 @@ fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
-| `assets/tikz/zoned-spine.tex` | 8 | 5 | 0.71 | 0.17 | 0.69 |
+| `assets/tikz/zoned-spine.tex` | 8 | 5 | 0.74 | 0.16 | 0.68 |
 | `assets/tikz/exemplars/architecture.tex` | 14 | 10 | 0.96 | 0.35 | 0.69 |
 | `assets/tikz/exemplars/retrieval.tex` | 15 | 10 | 0.99 | 0.52 | 0.76 |
 

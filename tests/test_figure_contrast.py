@@ -219,7 +219,7 @@ def test_xcolor_mixes_the_way_this_file_assumes(tmp_path):
         encoding="utf-8",
     )
     result = subprocess.run(
-        [shutil.which("pdflatex"), "-interaction=nonstopmode", "probe.tex"],
+        [shutil.which("lualatex"), "-interaction=nonstopmode", "probe.tex"],
         cwd=tmp_path,
         capture_output=True,
         text=True,
