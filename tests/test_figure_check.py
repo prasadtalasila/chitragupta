@@ -15,6 +15,7 @@ import pytest
 
 from chitragupta.figure import __main__ as cli
 from chitragupta.figure import _check, _check_report
+from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
 from chitragupta.review.figure_layout import BBOX_NAME, FigureResult
@@ -160,6 +161,10 @@ class TestFocalCount:
         findings, _ = _evaluate(f"\\begin{{tikzpicture}}\n{body}\\end{{tikzpicture}}\n")
 
         assert findings == []
+
+    def test_a_declaration_cut_off_before_its_label_is_still_read(self):
+        """The scanner runs to the end of the text rather than past it."""
+        assert cgkey_nodes("\\node[cgkey] (a)") == ["a"]
 
     def test_the_house_blocks_own_style_definition_is_not_a_node(self):
         house = (REPO_ROOT / "assets" / "tikz" / "cg-figstyle.tex").read_text(encoding="utf-8")
@@ -401,6 +406,15 @@ class TestTextReport:
         assert "edges (confirm against the prose): a -> b" in report
         assert "advisory, human-read only -- nothing consumes this" in report
 
+    def test_a_figure_that_does_not_compile_reports_no_geometry_at_all(self):
+        figure = FigureResult(path=Path("fig.tex"), failed="! Missing }")
+
+        report = _check_report.format_text(_result(figure=figure))
+
+        assert "does-not-compile" in report and "! Missing }" in report
+        assert "\nnot measured\n  nothing-measurable: the figure does not compile" in report
+        assert "empty" not in report
+
     def test_declared_names_that_were_not_measured_are_a_diagnostic(self):
         figure = _measured(declared=["a", "ghost"])
 
@@ -484,7 +498,7 @@ class TestCli:
         path.write_bytes(content)
         if b"caf" not in content:
             path.chmod(0)
-            if os.access(path, os.R_OK):  # pragma: no cover - root reads anything
+            if os.access(path, os.R_OK):  # root, or Windows, still reads it
                 pytest.skip("this user can read a mode-000 file")
 
         assert cli.main(["check", str(path)]) == 2
