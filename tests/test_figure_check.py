@@ -356,7 +356,7 @@ class TestTextReport:
     def test_a_clean_figure_says_it_is_not_a_verdict(self):
         report = _check_report.format_text(_result())
 
-        assert report.splitlines()[0] == "figures/flow.tex"
+        assert report.splitlines()[0] == str(Path("figures/flow.tex"))
         assert "No findings. This is not a verdict on the figure." in report
         assert report.splitlines()[-1].startswith("figure check: 0 findings, 0 allowed")
 
@@ -434,7 +434,7 @@ class TestJsonPayload:
 
         body = _check_report.payload(_result(source=source, figure=figure))
 
-        assert body["figure"] == "figures/flow.tex" and body["width_pt"] == 453.0
+        assert body["figure"] == str(Path("figures/flow.tex")) and body["width_pt"] == 453.0
         assert body["findings"] == [
             {
                 "rule": "node-text-overload",
@@ -507,6 +507,9 @@ class TestCli:
     def test_a_directory_is_a_usage_error(self, tmp_path, capsys):
         assert cli.main(["check", str(tmp_path)]) == 2
         assert "not a readable" in capsys.readouterr().err
+
+    def test_a_positive_width_is_taken_in_points(self):
+        assert cli.build_parser().parse_args(["check", "f.tex", "--width", "345.5"]).width == 345.5
 
     @pytest.mark.parametrize("width", ["0", "-3", "wide", "nan", "inf"])
     def test_a_width_that_is_not_a_positive_number_is_a_usage_error(self, tmp_path, width):
