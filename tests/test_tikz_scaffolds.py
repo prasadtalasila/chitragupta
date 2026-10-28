@@ -216,7 +216,9 @@ _RANGE_ROW_RE = re.compile(
 )
 _PATTERN_LINK_RE = re.compile(r"\]\(layouts/(?P<slug>[\w-]+)\.md\)")
 
-# What the fractions are of: the render's 12pt A4 1in page.
+# What the fractions are of: the render's 12pt A4 1in page. The probe
+# sets the figure at article's 10pt, so the fractions it yields are a
+# lower bound until #1037 moves it to the render's engine and fonts.
 _TEXT_WIDTH_PT = 453.0
 _TEXT_HEIGHT_PT = 700.0
 # Two decimals are written, and the probe's numbers move by a little with

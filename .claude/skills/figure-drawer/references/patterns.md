@@ -29,16 +29,14 @@ figure is warranted at all.
 | a trade-off on two axes | [Map](layouts/map.md) | where things sit matters, not how they connect |
 | two alternatives compared | [Map](layouts/map.md), or two panels | one shared pair of axes; else panels (`figures.md` §2) |
 
-## Three that look alike
+## Two that look alike
 
 - **Bottleneck or hub?** A bottleneck is one narrow stage in a sequence
   (a pipeline). A hub is a place every path crosses with no sequence
   (a hub-and-spoke).
-- **Lifecycle or loop?** A lifecycle ends. If the last state returns to
-  the first, the loop is the claim.
-- **Trust boundary or layers?** A trust boundary is crossed in time along
-  a path (a spine). A layered stack states what may call what, with no
-  path.
+
+The layout pairs people confuse (pipeline or loop, pipeline or spine,
+tree or hub, stack or spine) are in `figures.md` §1.
 
 ## When no row fits
 
