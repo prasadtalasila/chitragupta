@@ -57,7 +57,14 @@ def resolves_inside(path: Path, root: Path) -> bool:
     which no caller caught, and 3.14 answers with the link itself, which
     looks inside. `os.path.realpath` stops at a loop on every version
     without raising, so a result that is still a symlink is a loop.
+
+    A NUL byte raises `ValueError`, the refusal every caller catches.
+    `realpath` raises it on POSIX but returns the path untouched on
+    Windows, where `Path.resolve()` used to raise it from a check of its
+    own, so it is raised here rather than left to the platform.
     """
+    if "\0" in os.fspath(path):
+        raise ValueError(f"embedded null byte in {os.fspath(path)!r}")
     resolved = Path(os.path.realpath(path))
     if resolved.is_symlink():
         return False  # pragma: no cover-windows
