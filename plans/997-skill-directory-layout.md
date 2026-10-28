@@ -1,7 +1,48 @@
 # Splitting each skill into `SKILL.md`, `references/`, `scripts/` and `assets/`
 
-Status: **designed, unbuilt.** Written 2026-10-06, for
+Status: **PR 1 built in PR #1039, 6.138.0; PR 2 unbuilt.** Written
+2026-10-06 against `8517f70`, for
 [issue 997](https://github.com/prasadtalasila/chitragupta/issues/997).
+
+**What changed on the way** (recorded 2026-10-21, per
+[plans/README.md](README.md)'s "Record the outcome"; #1039 added this
+file and built most of PR 1 in the same commit, so none of it was
+ticked at the time):
+
+- **Part A and Part D shipped whole** -- Tasks 1, 2, 3 and 15. The
+  layout rule (`SKILL.md` per harness, everything else once under
+  `.claude/`) is pinned by `tests/test_skill_references.py` and
+  `tests/test_skill_harness_copies.py`, and measured by
+  `bench/bench_skill_harnesses.py`. Task 3's step 3 landed as the
+  `chitragupta init` row of `docs/PACKAGING.md` (line 104) rather than
+  a separate paragraph.
+- **Part B shipped four of its seven references** -- `verbatim-scan.md`,
+  `prose-check.md`, `critique.md` and `collection-scoping.md`.
+  `corpus-read-only.md` (Task 7), `figure-handoff.md` (Task 8) and
+  `render-and-references.md` (Task 9) were not written, and those
+  passages are still inline in every skill that carries them.
+- **A measured reversal inside Task 6.** The critique loop's *commands*
+  stayed in each genre's `SKILL.md`, because a pointer-only step was
+  measured being skipped. Only the loop's prose moved to
+  `critique.md`. The same caution applies to Tasks 8 and 9, which move
+  passages that likewise sit next to commands -- do not assume a bare
+  pointer is enough there either.
+- **Part C shipped in part, and Task 11 diverged.** agenda-reviser got
+  three per-class files (`repair-missing-citekey.md`, `repair-prose.md`,
+  `repair-verbatim-run.md`) instead of the planned `classes.md` plus
+  `repairs.md`; the class table stayed in `SKILL.md` under "What may be
+  repaired unattended". Still open: `whole-corpus.md` (Task 10),
+  `assets/book-skeleton.tex` (Task 12 -- the skeleton is still inside
+  `latex-conventions.md`), `depth-presets.md` (Task 13, optional) and
+  the whole of Task 14 (corpus-reviser's copied rules remain at
+  `SKILL.md:124-229`).
+- **The acceptance table was not met.** The ten pre-#1041 skills total
+  5,230 lines against "~4,800 after part B"; book-assembler alone (368)
+  is already past its part C target, while corpus-reviser (251) is
+  above even its part B one. The totals below are the 2026-10-06
+  simulation and have not been re-run.
+- **An eleventh skill now exists.** `review-digest` arrived in #1041
+  after this plan was written; see the inventory note below.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
@@ -97,6 +138,22 @@ which adds scripts, can be declined without stranding anything.
 
 These classifications come from a full read of all ten skills. Line
 numbers are in `.claude/skills/<name>/SKILL.md` at `8517f70`.
+
+> **Stale since #1041.** `review-digest` is an eleventh skill and has no
+> row below. Checked at HEAD, it is already on the new layout: it names
+> `prose-check.md` and `collection-scoping.md` by path, and it does not
+> carry the verbatim-scan rider at all (it *is* the verbatim aid, so
+> Task 4 does not reach it). **One thing it does add: the corpus
+> read-only paragraph is inline at its `SKILL.md:46`, so Task 7's
+> `corpus-read-only.md` covers 6 skills, not 5.** Tasks 4 and 5 keep
+> their `8517f70` counts. `SKILLS` in
+> `tests/test_skill_harness_copies.py` is derived from the directory
+> listing, so the harness tests already cover this skill; the gap was
+> only ever this plan's inventory.
+>
+> #1041 touched no other skill -- its whole diff is `review-digest`'s
+> `SKILL.md` in the three trees -- so the line counts quoted above
+> compare like with like.
 
 | Skill | W | R | S | A | Main R/A blocks to move |
 | --- | ---: | ---: | ---: | ---: | --- |
@@ -211,7 +268,7 @@ once under `.claude/`"*.
   that `.agents/skills/<name>/` and `.opencode/skills/<name>-opencode/`
   hold exactly `SKILL.md`.
 
-- [ ] **Step 1: write the failing tests** in
+- [x] **Step 1: write the failing tests** in
   `tests/test_skill_references.py`:
 
 ```python
@@ -280,12 +337,12 @@ def test_only_skill_md_is_kept_per_harness(name, harness):
 only. A script is named by its caller, which Task 18 pins, and an
 asset by the reference that uses it (Task 12).
 
-- [ ] **Step 2: run it and see it fail.** Run `pytest
+- [x] **Step 2: run it and see it fail.** Run `pytest
   tests/test_skill_references.py -v`. Expect
   `test_only_skill_md_is_kept_per_harness` to FAIL for `deep-research` and
   `figure-drawer`, because both still carry `reference.md` in every tree.
 
-- [ ] **Step 3: make the harness-copy test layout-aware.** In
+- [x] **Step 3: make the harness-copy test layout-aware.** In
   `tests/test_skill_harness_copies.py`, compare only the per-harness
   `SKILL.md`. Do this by replacing `iterdir()` with `glob("*.md")` in
   `test_each_copy_holds_the_same_files` and
@@ -308,25 +365,25 @@ asset by the reference that uses it (Task 12).
   `tests/test_skill_figure_step.py`, wherever it asserts
   `reference.md §N`
 
-- [ ] **Step 1: `git mv` the two `.claude` copies, then `git rm` the
+- [x] **Step 1: `git mv` the two `.claude` copies, then `git rm` the
   other four.** Keep every `§N` heading, because the tests and `SKILL.md`
   cite them by number.
-- [ ] **Step 2: rewrite every mention.** For example,
+- [x] **Step 2: rewrite every mention.** For example,
   `reference.md §1` becomes
   `` `.claude/skills/figure-drawer/references/figures.md` §1 ``.
   On first mention in each skill, add "(paths from the project root)".
   Apply the same edit in all three trees.
-- [ ] **Step 3: make the figures file harness-neutral.** Its line 115
+- [x] **Step 3: make the figures file harness-neutral.** Its line 115
   names `thesis-chapter-writer`, and the OpenCode copy suffixed it. Move
   that sentence into `figure-drawer`'s `SKILL.md`, which is per-harness,
   and leave the reference saying "the thesis genre".
-- [ ] **Step 4: retarget the tests.** In `tests/test_skill_figure_step.py`,
+- [x] **Step 4: retarget the tests.** In `tests/test_skill_figure_step.py`,
   read the reference from its new path, and assert the new
   `references/figures.md §1`–`§4` form.
-- [ ] **Step 5: run `pytest tests/test_skill_references.py
+- [x] **Step 5: run `pytest tests/test_skill_references.py
   tests/test_skill_harness_copies.py tests/test_skill_figure_step.py
   tests/test_skill_frontmatter.py -v`.** Expect every test to PASS.
-- [ ] **Step 6: commit both tasks as one commit.**
+- [x] **Step 6: commit both tasks as one commit.**
   `git add -A .claude .agents .opencode tests && git commit`
 
 #### Task 3: pin the scaffold, then write the layout down
@@ -337,7 +394,7 @@ asset by the reference that uses it (Task 12).
 - Modify: `docs/HARNESS.md` ("Skills: one copy per harness",
   `:137-208`), `docs/PACKAGING.md`, `docs/HOOKS.md` (`:404-479`)
 
-- [ ] **Step 1: write the failing init test.** For each `--agent` in
+- [x] **Step 1: write the failing init test.** For each `--agent` in
   `("claude", "codex", "opencode")`, run the scaffold and assert three
   things:
   - `.claude/skills/figure-drawer/references/figures.md` exists;
@@ -349,7 +406,7 @@ asset by the reference that uses it (Task 12).
   code change. If it fails, the copy filter has changed since this plan
   was written, so fix that rather than the test.
 
-- [ ] **Step 2: update `docs/HARNESS.md`.**
+- [x] **Step 2: update `docs/HARNESS.md`.**
   - Replace the tree at `:150-163` with the new one: `SKILL.md` per
     harness, `references/`, `assets/` and `scripts/` only under `.claude/`,
     and `.claude/skills-common/`.
@@ -359,12 +416,12 @@ asset by the reference that uses it (Task 12).
     against the skill folder first.
   - Drop the stale "(deep-research also has reference.md)".
 
-- [ ] **Step 3: update `docs/PACKAGING.md`.** Add one paragraph: `.claude/`
+- [x] **Step 3: update `docs/PACKAGING.md`.** Add one paragraph: `.claude/`
   is scaffolded for every agent, and the reason is now twofold. It
   registers the hooks, and it holds the only copy of every skill's
   reference files.
 
-- [ ] **Step 4: add the upgrade path to `docs/HOOKS.md`.** Under
+- [x] **Step 4: add the upgrade path to `docs/HOOKS.md`.** Under
   "updating an older scaffold" (`:453-464`), document it as these
   commands:
 
@@ -380,7 +437,7 @@ find .claude/skills .agents/skills .opencode/skills -name reference.md -delete
   issue-890 rule concerns a *root-level* `scripts/` and does not cover
   `.claude/skills*/scripts/`.
 
-- [ ] **Step 5: lint, run the tests and commit.**
+- [x] **Step 5: lint, run the tests and commit.**
   - Run `markdownlint-cli2` with DEVELOPER-AGENTS.md's glob.
   - Run `pytest tests/test_init.py tests/test_skill_references.py -v`.
   - Commit.
@@ -422,7 +479,7 @@ suffix, which the existing `SUFFIXED` normalisation absorbs.
 - Create: `.claude/skills-common/references/verbatim-scan.md`
 - Modify: 9 skills × 3 trees, and `tests/test_skill_verbatim_scan_step.py`
 
-- [ ] **Step 1: retarget the test before moving anything.**
+- [x] **Step 1: retarget the test before moving anything.**
   - For each of the 9 skills, `SKILL.md` keeps the `dossier sections …
     --write` followed by `review verbatim scan` (200 chars) until PR 2.
   - It names `.claude/skills-common/references/verbatim-scan.md` within
@@ -432,20 +489,25 @@ suffix, which the existing `SUFFIXED` normalisation absorbs.
     presenting".
   - Keep the existing "Offer the verbatim scan must be absent" check, and
     the `docs/GENRE.md` count.
-- [ ] **Step 2: run it and see it fail.** The reference file does not
+- [x] **Step 2: run it and see it fail.** The reference file does not
   exist yet.
-- [ ] **Step 3: write the reference from survey-writer's step 17**
+- [x] **Step 3: write the reference from survey-writer's step 17**
   (`.claude/skills/survey-writer/SKILL.md:707-731`), minus the
   `agenda-reviser` sentence. Diff it against the other 8 copies, and
   where they differ, keep the union and record the choice in the commit
   body.
-- [ ] **Step 4: swap the passage for the pointer** in 27 files.
-- [ ] **Step 5: run the tests.** Run `pytest
+- [x] **Step 4: swap the passage for the pointer** in 27 files.
+- [x] **Step 5: run the tests.** Run `pytest
   tests/test_skill_verbatim_scan_step.py tests/test_skill_references.py
   tests/test_skill_harness_copies.py -v`. Expect them to PASS.
-- [ ] **Step 6: commit.**
+- [x] **Step 6: commit.**
 
 #### Task 5: `prose-check.md` (8 skills)
+
+> **Shipped in #1039, and still true after #1041.**
+> `.claude/skills-common/references/prose-check.md` exists, and
+> `review-digest` names it too, so the later skill arrived already on
+> the new layout. Nothing to do here.
 
 The same five steps as Task 4.
 
@@ -459,6 +521,12 @@ The same five steps as Task 4.
   names a skill.
 
 #### Task 6: `critique.md` (5 genres)
+
+> **Shipped in #1039, with one reversal.** The reference exists and
+> holds the loop's prose, but **the baseline commands and the per-edit
+> cycle stayed in each genre's `SKILL.md`**: a pointer-only step was
+> measured being skipped. The bullet list below therefore overstates
+> what moved. Read the shipped `critique.md` before trusting it.
 
 The same steps, with one difference: this passage varies by genre. The
 reference holds the shared core:
@@ -493,11 +561,25 @@ In `tests/test_skill_pregate_feedback_step.py`:
 - **Corpus read-only** covers the five genres. The revisers' short forms
   stay.
 
+> **Half shipped in #1039.** `collection-scoping.md` exists and the four
+> genres point at it, pinned by
+> `test_each_scoping_genre_points_at_the_collection_reference`.
+> **`corpus-read-only.md` was never written** -- the "Shared corpus
+> layer" section is still inline in 6 skills (the 5 genres plus
+> `review-digest`), and it is *not* byte-identical across them: the four
+> genre copies hash four different ways. Establish what the shared core
+> actually is before moving anything.
+
 No step test reads either passage today. Add one assertion to
 `tests/test_skill_references.py`: each of the four genres names
 `collection-scoping.md` within its collection step.
 
 #### Task 8: `figure-handoff.md` (4 figure genres)
+
+> **Not built.** No `figure-handoff.md` exists; the stub is still inline
+> in all four genres. Heed Task 6's reversal: this passage also sits
+> next to commands (`kpsewhich`, the compile check), so a bare pointer
+> may be skipped the same way.
 
 The figure stub is the largest conditional passage per genre, at about
 80 lines.
@@ -522,6 +604,11 @@ the reference. Keep the "no riders in the genre" check, now applied to
 `SKILL.md` *and* to the reference.
 
 #### Task 9: `render-and-references.md` (4 genres plus deep-research)
+
+> **Not built.** No `render-and-references.md` exists. The `draft
+> render`, `draft references` and `draft evidence` commands are still
+> inline in all five skills. Task 6's reversal applies here most
+> sharply: this task is almost entirely commands.
 
 This task covers the shared paragraphs on render, references and the
 evidence sidecar:
@@ -589,6 +676,20 @@ of the pointers. Part C is where the context saving is.
 Each skill below is one task, and each follows Task 4's five steps.
 Within a skill, a reference's file name is the mode or topic it covers.
 
+> **Part-shipped in #1039.** Per task, at HEAD:
+>
+> | Task | Shipped | Still open |
+> | --- | --- | --- |
+> | 10 draft-reviser | `copy-edit.md`, `acronyms.md`, `re-grounding.md` | `whole-corpus.md` -- "When a whole-corpus pass is what's wanted" (`SKILL.md:526`) and "When there is no dossier" (`:547`) are both still inline |
+> | 11 agenda-reviser | **diverged:** three per-class files (`repair-missing-citekey.md`, `repair-prose.md`, `repair-verbatim-run.md`) instead of `repairs.md` | `classes.md` -- the class table stayed inline at `SKILL.md:66`. Decide whether that was deliberate before moving it |
+> | 12 book-assembler | `latex-conventions.md` | `assets/book-skeleton.tex` -- the skeleton is still *inside* the reference, so **no skill has an `assets/` directory yet** and that leg of the issue is wholly unproven |
+> | 13 deep-research | `references/report.md` (renamed from `reference.md`) | `depth-presets.md`; the plan marks the further split optional |
+> | 14 corpus-reviser | nothing | all of it -- the rules copied from draft-reviser are still at `SKILL.md:124-229` |
+>
+> The three `repair-*.md` files mean Task 11's naming is settled by
+> precedent: a conditional reference is named for the case that triggers
+> it. Follow that, not the `classes.md`/`repairs.md` split above.
+
 | Task | Skill | Moves to | Test retargeted |
 | --- | --- | --- | --- |
 | 10 | draft-reviser | `references/copy-edit.md` (493–567), `references/acronyms.md` (568–610), `references/re-grounding.md` (611–760), `references/whole-corpus.md` (761–802) | `tests/test_skill_figure_step.py`'s three draft-reviser headings stay in `SKILL.md`, so it is unchanged. `tests/test_skill_acronym_step.py` is unchanged too, because it covers the genres only |
@@ -613,6 +714,9 @@ part C, from the same simulation as part B's table:
 | corpus-reviser | ~225 | ~155 |
 | deep-research | ~735 | ~725 |
 | **all ten** | **~4,800** | **~4,000** |
+
+(Simulated 2026-10-06 and never re-run. At HEAD the ten total 5,230;
+`review-digest` adds a further 370, which no row here anticipates.)
 
 Text shared between skills ends at about 17% of words, down from 32%.
 The extra lines held in the second and third harness copies end at
@@ -717,24 +821,24 @@ the right step:
   `docs/examples/opencode/` from before this change. Compare the gate
   outcome and the dossier, not the prose, which differs run to run.
 
-- [ ] **Step 1: write the bench script.** Use one entry per harness that
+- [x] **Step 1: write the bench script.** Use one entry per harness that
   holds the three things that differ: how to launch the harness, its
   load call and its read call. The 10 skills and their named paths come
   from `tests/test_skill_references.py`'s helpers, so the bench and the
   unit test cannot disagree about which files exist.
-- [ ] **Step 2: run Tier 1 on `main`'s scaffold first.** The two
+- [x] **Step 2: run Tier 1 on `main`'s scaffold first.** The two
   existing `reference.md` files make this a non-empty baseline, and a
   failure here is the harness or the script, not this PR.
-- [ ] **Step 3: run Tier 1 on this branch's scaffold.** Expect 30 of 30
+- [x] **Step 3: run Tier 1 on this branch's scaffold.** Expect 30 of 30
   to pass. Fix the cause of any failure, not the bench, and rerun.
-- [ ] **Step 4: run Tier 2, one harness at a time.**
-- [ ] **Step 5: record the results.** Put a 30-row Tier 1 table and a
+- [x] **Step 4: run Tier 2, one harness at a time.**
+- [x] **Step 5: record the results.** Put a 30-row Tier 1 table and a
   6-row Tier 2 table (harness × skill: references read, gate outcome,
   wall time, token cost where known) in the PR's test plan. In
   `docs/HARNESS.md`, add the dated measured facts: each harness loads
   references on demand, and Codex and OpenCode read `.claude/` paths
   without a prompt.
-- [ ] **Step 6: commit** the bench script and the docs change.
+- [x] **Step 6: commit** the bench script and the docs change.
 
 **PR 1 is done when** DEVELOPER-AGENTS.md's full local-check list passes
 (the full suite with coverage, pylint under Python 3.13, ruff, both
