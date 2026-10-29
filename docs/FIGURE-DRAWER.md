@@ -117,9 +117,13 @@ Each step names the document that owns its rule.
    it compiles the figure alone in a minimal document with `lualatex`,
    the pdf render's engine, because a broken figure fails the whole PDF
    render.
-7. **Reads the geometry.** `python -m chitragupta.review figure <draft>`
-   reports overlaps, protrusions and hand-loaded libraries. It is a
-   review aid, never a gate ([REVIEW.md](REVIEW.md)).
+7. **Checks it.** `python -m chitragupta.figure check figures/<name>.tex`
+   reports every rule the figure breaks, by rule id: width, stray
+   space, more than one accented node, overlaps, protrusions and the
+   rest. The skill fixes each finding or records why it is deliberate
+   with a `% cg-allow:` line in the figure
+   ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)).
+   It exits 0 whatever it finds; it is an aid, never a gate.
 8. **Looks at the real render.** The probe is a bare article class,
    but the pipeline's own PDF is the draft's whole document, with its
    floats and neighbouring text, so labels can wrap and gaps close
@@ -129,8 +133,9 @@ Each step names the document that owns its rule.
    `chitragupta install os-deps` installs on Linux; without them, or in
    a harness that cannot view an image, the skill skips the look and
    says so.
-9. **Returns** the two paths, whether the probe passed, and whether it
-   checked the rendered page.
+9. **Returns** the two paths, whether the probe passed, what
+   `figure check` reported and allowed, and whether it checked the
+   rendered page.
 
 The skill reads `.claude/skills/figure-drawer/references/figures.md` (one
 copy, whichever harness runs it) only when a step sends it there: which
@@ -245,7 +250,8 @@ covers the rest of putting a fragment into a thesis.
 - **Never reproduces a source figure**, in either notation.
 - **Never scales a figure to fit.** No `\resizebox`, no `scale=`. A
   figure that does not fit gets a different layout.
-- **Never gates.** `review figure` and `figure sync --check` report;
+- **Never gates.** `figure check`, `review figure` and
+  `figure sync --check` report;
   `python -m chitragupta.draft gate` stays the only gate.
 - **Never presents a draft.** It returns to its caller.
 
@@ -275,7 +281,7 @@ that moved comes back into a genre skill.
 | The whole PDF render fails | a figure file does not compile | ask to fix that figure; the skill re-runs the probe |
 | A label hyphenates or an arrow crosses a title in the PDF, though the probe looked fine | the PDF sets labels in the draft's body font, larger than the probe's | widen the boxes or move the edge, and check the rendered page again |
 | Labels look small in the PDF | the draft wraps the figure in `\resizebox` | remove the wrapper and ask for a re-layout ([TIKZ-STYLE.md](TIKZ-STYLE.md)) |
-| `review figure` reports nothing for a busy figure | its nodes have no names, so nothing was measured | name every node |
+| `figure check` reports `nothing-measurable` for a busy figure | its nodes have no names, so nothing was measured | name every node |
 | A render warns that the figure's style block is stale | the block predates the installed one | `python -m chitragupta.figure sync <file>` |
 | Your thesis build fails on `of` in a node position | the TikZ library is not loaded in your preamble | add the `[tikz-libraries]` line's libraries to it |
 | A survey asked for a figure and got none | the survey's threshold: the comparison table usually carries that structure | ask directly if you still want one |

@@ -1,0 +1,9 @@
+% figure check fixture (#1053): two panels set side by side. The gap
+% between them is deliberate, so size-stray is not measured, and the
+% whole input stays inside the text width.
+\begin{tikzpicture}
+  \node[draw] (a) at (0,0) {A};
+\end{tikzpicture}\hspace{2em}%
+\begin{tikzpicture}
+  \node[draw] (b) at (0,0) {B};
+\end{tikzpicture}%

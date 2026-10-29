@@ -66,9 +66,23 @@ def test_the_drawer_hands_back_and_never_presents():
 
 def test_the_drawer_runs_the_existing_checks_in_order():
     text = _text(DRAWER)
-    order = ["kpsewhich tikz.sty", "run `lualatex` on it", "python -m chitragupta.review figure"]
+    order = ["kpsewhich tikz.sty", "run `lualatex` on it", "python -m chitragupta.figure check"]
     at = [text.find(s) for s in order]
     assert -1 not in at and at == sorted(at), dict(zip(order, at))
+
+
+def test_the_drawer_resolves_or_allows_what_figure_check_reports():
+    # #1053: the geometry step is `figure check` on the one file, and its
+    # rule ids and the cg-allow form live once, in references/check.md,
+    # which every harness copy names by its project-root path.
+    for copy in (
+        REPO_ROOT / ".claude" / "skills" / DRAWER / "SKILL.md",
+        REPO_ROOT / ".agents" / "skills" / DRAWER / "SKILL.md",
+        REPO_ROOT / ".opencode" / "skills" / f"{DRAWER}-opencode" / "SKILL.md",
+    ):
+        text = re.sub(r"\s+", " ", copy.read_text(encoding="utf-8"))
+        assert "`.claude/skills/figure-drawer/references/check.md`" in text, copy
+        assert "cg-allow" in text, copy
 
 
 def test_the_reference_file_has_the_sections_the_procedure_points_at():

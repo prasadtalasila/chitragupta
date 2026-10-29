@@ -98,6 +98,7 @@ from chitragupta.review.figure_layout._geometry import (
     overlaps,
     protrudes,
 )
+from chitragupta.review.figure_layout._check_one import check_figure
 from chitragupta.review.figure_layout._result import FigureResult
 from chitragupta.review.figure_layout._report import (
     EMPTINESS_LABEL,
@@ -107,9 +108,12 @@ from chitragupta.review.figure_layout._report import (
 )
 from chitragupta.review.figure_layout._probe import (
     FigureCompileError,
+    Measurement,
+    measure,
     node_boxes,
     node_names,
     parse_boxes,
+    parse_input_width,
     scaffold,
 )
 from chitragupta.review.figure_layout._source import (
@@ -131,18 +135,22 @@ __all__ = [
     "FigureCompileError",
     "FigureResult",
     "MAX_NODE_WORDS",
+    "Measurement",
     "MissingBinary",
     "check_draft",
+    "check_figure",
     "edge_list",
     "emptiness",
     "figures_in",
     "format_report",
     "loads_library_by_hand",
+    "measure",
     "node_boxes",
     "node_names",
     "overlaps",
     "overlong_nodes",
     "parse_boxes",
+    "parse_input_width",
     "payload",
     "protrudes",
     "render_markdown",
@@ -203,32 +211,7 @@ def check_draft(draft_path: Path) -> list[FigureResult]:
     except MissingBinary as exc:
         skipped = str(exc)
 
-    results = []
-    for path in figures:
-        source = path.read_text(encoding="utf-8")
-        result = FigureResult(
-            path=path,
-            overlong=overlong_nodes(source),
-            edges=edge_list(source),
-            stranded=stranded_arrowheads(source),
-            by_hand=loads_library_by_hand(source),
-            # What the probe will ask TeX about, recorded so the
-            # report can say how much of the figure was measurable
-            # (#405). The same call `node_boxes()` makes internally over
-            # the same file, so the two cannot disagree about what was
-            # attempted -- which is the whole point of recording it.
-            declared=node_names(source),
-            skipped=skipped,
-        )
-        # Unreachable on a host with no TeX, where `skipped` is always
-        # set above -- CI's Windows leg, which installs no `os-deps`.
-        if not skipped:  # pragma: no cover-windows
-            try:
-                result.boxes = node_boxes(path)
-            except FigureCompileError as exc:
-                result.failed = str(exc)
-        results.append(result)
-    return results
+    return [check_figure(path, skipped) for path in figures]
 
 
 # Said the same way in the text report, the Markdown and the JSON, so a

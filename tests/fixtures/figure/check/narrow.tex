@@ -1,0 +1,8 @@
+% figure check fixture (#1053): the same picture, well inside the text
+% width.
+\usetikzlibrary{positioning}%
+\begin{tikzpicture}
+  \node[draw] (left) at (0,0) {Left};
+  \node[draw] (right) at (5cm,0) {Right};
+  \draw[->] (left) -- (right);
+\end{tikzpicture}%

@@ -50,6 +50,7 @@ short path; this is the full set.
   - [`chitragupta draft tldr`](#-chitragupta-draft-tldr)
   - [`chitragupta draft figures`](#-chitragupta-draft-figures)
   - [`chitragupta figure sync`](#-chitragupta-figure-sync)
+  - [`chitragupta figure check`](#-chitragupta-figure-check)
   - [`chitragupta enrich`](#-chitragupta-enrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
@@ -3055,6 +3056,51 @@ included, and running it twice changes nothing the second time.
 developer checkout, `git-hooks/pre-commit` runs `--check` on staged
 figure files and reports without blocking the commit
 ([HOOKS.md](HOOKS.md)).
+
+### 🔎 `chitragupta figure check`
+
+Reports every rule one figure file breaks, by rule id, and every
+deliberate exception the file records. One compile, in the render's
+own fonts at 12pt with the figure's TikZ libraries loaded in the
+preamble, as the renderer loads them. The rules, their ids and the
+`% cg-allow:` form are in
+[TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports); the
+`figure-drawer` skill runs this as its geometry step.
+
+```bash
+chitragupta figure check content/drafts/rag/figures/flow.tex
+chitragupta figure check figures/flow.tex --width 345    # a narrower target, in pt
+chitragupta figure check figures/flow.tex --json
+```
+
+One line per finding, `<rule-id> <target> <measurement>`, then a
+section for each kind of thing that is not a finding, left out when it
+is empty: honoured allows, allows not honoured until #1058, malformed
+allows, rules that could not be measured, and the diagnostics. Over
+`assets/tikz/exemplars/rag-stages.tex`, which is wider than the text:
+
+```text
+assets/tikz/exemplars/rag-stages.tex
+  size-width            figure     495.0pt wide, target 453.0pt
+diagnostics (not findings)
+  edges (confirm against the prose): s4.south -> [yshift=4.5mm]s5.north, ...
+  71% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
+figure check: 1 finding, 0 allowed, 0 deferred, 0 malformed
+```
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--width PT` | `453` | Target text width in pt for `size-width`: the render's A4 page less 1in margins |
+| `--json` | off | The same report as JSON: `findings` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed`, `deferred`, `malformed`, `not_measured` and `diagnostics` |
+
+| Exit | When |
+| --- | --- |
+| **0** | after any run, whatever it found; it is an aid |
+| **2** | a usage error, a path that is not a readable file, or no `lualatex` or `tikz.sty` on the host. It then checks nothing rather than report the source-only rules, whose silence would read as a clean figure (`chitragupta doctor`) |
+
+`review figure` reads the same geometry over every figure a draft
+references and keeps its own report; this command is the per-file
+form the skill acts on.
 
 ### 🧠 `chitragupta enrich`
 

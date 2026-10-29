@@ -1,0 +1,9 @@
+% figure check fixture (#1053): wide.tex with a reasoned figure-scope
+% allow, so the overflow is listed as allowed rather than found.
+% cg-allow: size-width -- the two stages are compared at full width
+\usetikzlibrary{positioning}%
+\begin{tikzpicture}
+  \node[draw] (left) at (0,0) {Left};
+  \node[draw] (right) at (17cm,0) {Right};
+  \draw[->] (left) -- (right);
+\end{tikzpicture}%

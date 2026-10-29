@@ -1,0 +1,9 @@
+% figure check fixture (#1053): a picture wider than the 453pt text
+% width. Every line outside the picture ends in `%`, so nothing but
+% size-width can fire.
+\usetikzlibrary{positioning}%
+\begin{tikzpicture}
+  \node[draw] (left) at (0,0) {Left};
+  \node[draw] (right) at (17cm,0) {Right};
+  \draw[->] (left) -- (right);
+\end{tikzpicture}%
