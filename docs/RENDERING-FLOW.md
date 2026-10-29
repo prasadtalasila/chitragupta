@@ -281,6 +281,17 @@ code:
   document skips the load and finds no macros. A `--fragment` render has
   no preamble for this to land in and prints the union instead, for the
   book that `\input`s it ([WRITE-A-BOOK.md](WRITE-A-BOOK.md)).
+- **Where a figure may float is set in the preamble too** (#1065).
+  Every standalone `tex`/`latex`/`pdf` render includes
+  `assets/latex/chitragupta-floats.tex`, whose float fractions keep a
+  figure that fits on a text page off a page of its own; a `--fragment`
+  that draws a figure gets the file copied beside it and a `[floats]`
+  line instead. Under LuaLaTeX the file also notes each figure that
+  still lands on a float-only page, and `_run_pandoc` prints one
+  `[float-page]` line per such page once pandoc returns. The note
+  travels in the pdf's Info dictionary, because pandoc has deleted the
+  log by then and the engine may not write a file outside pandoc's
+  temp directory (`plans/1065-float-placement.md`).
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 

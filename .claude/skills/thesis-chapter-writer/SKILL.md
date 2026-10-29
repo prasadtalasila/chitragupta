@@ -381,6 +381,14 @@ job -- see `docs/WRITING-STANDARDS.md` §5.
      under LuaLaTeX it does nothing. The engine is their template's to
      decide; never edit their thesis to change it. Never rewrite the
      characters in the fragment to get the build through.
+   - **Float placement is theirs to opt into** (#1065). A fragment
+     whose figures the render saw prints a `[floats]` line and gets
+     `chitragupta-floats.tex` beside it: the float fractions the pdf
+     preview used, which keep a figure that fits on a text page off a
+     page of its own. Tell the user `\input{chitragupta-floats}` in their
+     thesis preamble gives the same placement, and that leaving it out
+     keeps their template's. It is a choice, not a fix, so never add it
+     to their thesis yourself.
 
    **An equation gets the same carve-out, without the pair-of-files
    ceremony.** Most displayed math in a chapter needs no number at all

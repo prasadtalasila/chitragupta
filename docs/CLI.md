@@ -2629,6 +2629,26 @@ preamble of every standalone `pdf` and `tex` render, behind a shim that
 defines `\DeclareUnicodeCharacter` on top of `newunicodechar` where the
 engine lacks it, so the same line works under LuaLaTeX and pdflatex.
 
+**A figure that fits on a text page stays on one** (#1065). Every
+standalone `pdf` and `tex` render includes
+`assets/latex/chitragupta-floats.tex`, which raises
+`\floatpagefraction` to 0.8 (with `\topfraction` 0.85 and placement
+`htbp`), so LaTeX no longer moves a half-page figure onto a page of its
+own and centres it there. A `--fragment` that draws a figure gets the
+file copied beside it instead, and one line naming the `\input`:
+
+```text
+[floats] chitragupta-floats.tex copied beside the fragment -- a fragment has no preamble; \input{chitragupta-floats} in the assembling document's preamble
+```
+
+A figure that still lands alone on a float-only page in a `pdf` is
+reported after the render, one line per page, and the render still
+succeeds:
+
+```text
+[float-page] p. 3 holds Figure 1 and no text. A figure taller than 0.85 of the text height cannot share a page with text; a shorter one lands alone when figures queue up before a page break.
+```
+
 ```bash
 chitragupta draft render content/drafts/survey.md --format pdf
 # chitragupta draft render content/drafts/survey.md --format tex

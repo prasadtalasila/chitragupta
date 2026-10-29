@@ -17,6 +17,7 @@ from pathlib import Path
 from chitragupta import config, install, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._csl import _collapsed_csl, _resolve_csl
 from chitragupta.render_output._errors import MissingBinary, _require
+from chitragupta.render_output import _floats
 from chitragupta.render_output._tables import _LATEX_BOUND
 from chitragupta.render_output._tikz_libraries import header_include, preamble_libraries
 from chitragupta.render_output._unicode import font_header_path
@@ -274,6 +275,9 @@ def _pandoc_command(
     # which the template loads).
     for path in preamble_files or []:
         cmd += ["--include-in-header", str(path)]
+    # Where a figure may float (#1065): every standalone LaTeX-bound render,
+    # and a copy beside a fragment that draws one. `_floats` has why.
+    cmd += _floats.preamble_args(output_format, fragment, figure_refs, out_path.parent)
     if output_format in _LATEX_BOUND:  # pragma: no cover-windows
         cmd += ["--variable", _LONGTABLE_CAPTION_WIDTH]
     env = None
@@ -428,3 +432,8 @@ def _run_pandoc(cmd: list[str], env: dict[str, str] | None) -> None:
     if result.stderr.strip():
         for line in result.stderr.splitlines():
             print(f"[pandoc] {line}", file=sys.stderr)
+    # A figure still alone on a float-only page, which the pdf records
+    # itself because its log is gone by now (#1065). Advisory: printed,
+    # never raised.
+    if "--pdf-engine" in argv:
+        _floats.print_report(Path(argv[argv.index("-o") + 1]))
