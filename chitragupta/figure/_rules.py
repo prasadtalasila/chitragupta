@@ -83,6 +83,11 @@ RULES: dict[str, Rule] = {
         Rule("k1-stroke", "element", "objective"),
         Rule("k2-text", "element", "objective"),
         Rule("w4-pictograph", "element", "objective"),
+        # A figure without its twin is fixed, never excused (#1056).
+        Rule("twin-missing", "figure", "objective", allowable=False),
+        Rule("t1-labels", "element", "objective"),
+        Rule("t2-tags", "element", "objective"),
+        Rule("t3-panels", "figure", "objective"),
         Rule("size-height", "figure", "advisory", allowable=False),
         Rule("size-slack", "figure", "advisory", allowable=False),
         Rule("size-squash", "element", "advisory", allowable=False),

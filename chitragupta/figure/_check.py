@@ -32,6 +32,7 @@ from chitragupta.figure._layout import declared_layout, reference
 from chitragupta.figure._overlap import drawn_overlaps
 from chitragupta.figure._rules import RULES, Finding
 from chitragupta.figure._wording import wording_rules
+from chitragupta.figure._twin import agree
 from chitragupta.review.figure_layout import (
     BBOX_NAME,
     MAX_NODE_WORDS,
@@ -107,19 +108,37 @@ def check(path: Path, width_pt: float, layout: str = "") -> CheckResult:
     source = path.read_text(encoding="utf-8")  # pragma: no cover-windows
     skipped = "" if _pictures(source) else NO_PICTURE  # pragma: no cover-windows
     figure = check_figure(path, skipped, boxed=True)  # pragma: no cover-windows
-    return apply(path, width_pt, figure, source, layout)  # pragma: no cover-windows
+    twin = _twin_text(path)  # pragma: no cover-windows
+    return apply(path, width_pt, figure, source, layout, twin)  # pragma: no cover-windows
+
+
+def _twin_text(path: Path) -> str | None:
+    """The ASCII twin beside `path`, or `None` where there is none. A
+    byte that is not UTF-8 is replaced, not raised: the twin's alphabet
+    is WRITING-STANDARDS §10's to police, and a check must not crash on
+    the file it is reporting about."""
+    twin = path.with_suffix(".txt")
+    return twin.read_text(encoding="utf-8", errors="replace") if twin.is_file() else None
 
 
 def apply(
-    path: Path, width_pt: float, figure: FigureResult, source: str, layout: str = ""
+    path: Path,
+    width_pt: float,
+    figure: FigureResult,
+    source: str,
+    layout: str = "",
+    twin: str | None = None,
 ) -> CheckResult:
     """Every rule over an already-checked figure, with its allows applied.
 
     Each allow is matched against everything that fired, so two allows
     for one rule both report what they set aside. `layout` overrides the
-    figure's own `% cg-layout:` line."""
+    figure's own `% cg-layout:` line. `twin` is the ASCII twin's text,
+    `None` where the figure has none (#1056)."""
     layout = layout or declared_layout(source)
     fired, not_measured = evaluate(source, figure, width_pt, layout)
+    paired, unpaired = agree(source, twin, path.with_suffix(".txt").name)
+    fired, not_measured = _in_rule_order(fired + paired), not_measured + unpaired
     advisory, unmeasured = advise(
         figure, source, layout, reference(layout), _unmeasurable(source, figure)
     )
@@ -170,8 +189,12 @@ def evaluate(
         findings += contrasted
         not_measured += unmeasured
     findings += _focal(source) + _static(figure) + wording_rules(source)[0]
+    return _in_rule_order(findings), not_measured
+
+
+def _in_rule_order(findings: list[Finding]) -> list[Finding]:
     order = list(RULES)
-    return sorted(findings, key=lambda finding: order.index(finding.rule)), not_measured
+    return sorted(findings, key=lambda finding: order.index(finding.rule))
 
 
 def _missing(figure: FigureResult) -> str:

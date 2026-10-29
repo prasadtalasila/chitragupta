@@ -26,6 +26,8 @@ from tests.figure_drawn_fixtures import drawn, line, node
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "figure" / "check"
 ONE_PICTURE = "\\begin{tikzpicture}[cg]\n\\node[cgbox] (a) {A};\n\\end{tikzpicture}%\n"
+# Its ASCII twin, so the twin rules (#1056) are quiet unless a test asks.
+ONE_TWIN = "+---+\n| A |\n+---+\n"
 
 
 def _measured(width=300.0, input_width=None, **fields):
@@ -221,10 +223,52 @@ class TestExistingFindings:
         assert ("size-stray", "the figure does not compile") in not_measured
 
 
+class TestTwinAgreement:
+    """#1056: the twin rules ride in `apply()` beside every other rule.
+    What they read and compare is tests/test_figure_twin.py's."""
+
+    def test_no_twin_is_a_finding_and_the_comparisons_are_not_measured(self):
+        result = _check.apply(Path("figures/flow.tex"), 453.0, _measured(), ONE_PICTURE)
+
+        assert [(f.rule, f.measurement) for f in result.findings] == [
+            ("twin-missing", "no flow.txt beside the figure")
+        ]
+        assert [why for rule, why in result.not_measured if rule.startswith("t")] == ["no twin"] * 3
+
+    def test_a_missing_twin_cannot_be_allowed(self):
+        source = "% cg-allow: twin-missing -- the PDF is all anyone reads\n" + ONE_PICTURE
+
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source)
+
+        assert _rules(result.findings) == ["twin-missing"]
+        assert [bad.problem for bad in result.malformed] == ["cannot be allowed"]
+
+    def test_a_figure_that_does_not_compile_is_still_compared(self):
+        figure = FigureResult(path=Path("fig.tex"), failed="! Missing }")
+
+        result = _check.apply(Path("fig.tex"), 453.0, figure, ONE_PICTURE, twin="[ B ]")
+
+        assert _rules(result.findings) == ["does-not-compile", "t1-labels"]
+
+    def test_the_twin_rules_report_in_registry_order(self):
+        source = "\\node (a) {(a) A};\\node (b) {(b) B};" + ONE_PICTURE
+
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, twin="(a) A")
+
+        assert _rules(result.findings) == ["t1-labels", "t3-panels"]
+
+    def test_the_twin_beside_the_figure_is_read(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.with_suffix(".txt").write_bytes(b"[ A ]\xff\n")
+
+        assert _check._twin_text(path) == "[ A ]\ufffd\n"
+        assert _check._twin_text(tmp_path / "other.tex") is None
+
+
 class TestAllows:
     def test_an_honoured_allow_moves_its_finding_out_of_the_findings(self):
         source = "% cg-allow: size-width -- five stages compared\n" + ONE_PICTURE
-        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source)
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source, twin=ONE_TWIN)
 
         assert result.findings == []
         [(allow, measurement)] = result.allowed
@@ -233,7 +277,7 @@ class TestAllows:
 
     def test_an_allow_for_a_rule_that_did_not_fire_is_still_listed(self):
         source = "% cg-allow: size-width -- wide on purpose\n" + ONE_PICTURE
-        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source)
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, twin=ONE_TWIN)
 
         [(allow, measurement)] = result.allowed
         assert allow.rule == "size-width" and measurement is None
@@ -243,7 +287,7 @@ class TestAllows:
             "% cg-allow: size-width -- one reason\n% cg-allow: size-width -- another\n"
             + ONE_PICTURE
         )
-        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source)
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source, twin=ONE_TWIN)
 
         assert [measured for _, measured in result.allowed] == [
             "475.0pt wide, target 453.0pt",
@@ -255,14 +299,14 @@ class TestAllows:
         figure = _measured(drawn=None)
         figure.boxes["b"] = (5.0, 5.0, 15.0, 15.0)
 
-        result = _check.apply(Path("fig.tex"), 453.0, figure, source)
+        result = _check.apply(Path("fig.tex"), 453.0, figure, source, twin=ONE_TWIN)
 
         assert _rules(result.findings) == ["node-overlap"]
         assert [allow.target for allow in result.deferred] == ["a+b"]
 
     def test_a_malformed_allow_honours_nothing(self):
         source = "% cg-allow: size-width\n" + ONE_PICTURE
-        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source)
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(width=475.0), source, twin=ONE_TWIN)
 
         assert _rules(result.findings) == ["size-width"]
         assert [bad.problem for bad in result.malformed] == ["no reason"]
@@ -291,6 +335,7 @@ class TestAgainstRealLualatex:
     def test_a_file_with_no_picture_environment_is_not_a_compile_failure(self, tmp_path):
         path = tmp_path / "fig.tex"
         path.write_text("\\tikz \\draw (0,0) -- (1,1);%\n", encoding="utf-8")
+        path.with_suffix(".txt").write_text("o-------o\n", encoding="utf-8")
 
         result = _check.check(path, _check.DEFAULT_WIDTH_PT)
 
@@ -311,6 +356,24 @@ class TestAgainstRealLualatex:
         result = _check.check(path, _check.DEFAULT_WIDTH_PT)
 
         assert ("size-width", _check.NO_EXTENT) in result.not_measured
+
+    def test_a_figure_without_its_twin_is_reported(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text((FIXTURES / "narrow.tex").read_text(encoding="utf-8"), encoding="utf-8")
+
+        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+
+        assert _rules(result.findings) == ["twin-missing"]
+        assert result.findings[0].measurement == "no fig.txt beside the figure"
+
+    def test_a_twin_that_disagrees_is_reported(self, tmp_path):
+        path = tmp_path / "fig.tex"
+        path.write_text((FIXTURES / "narrow.tex").read_text(encoding="utf-8"), encoding="utf-8")
+        path.with_suffix(".txt").write_text("[ Left ] --> [ Rite ]\n", encoding="utf-8")
+
+        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+
+        assert [(f.rule, f.target) for f in result.findings] == [("t1-labels", "right")]
 
     def test_two_pictures_say_why_stray_was_not_measured(self):
         result = _check.check(FIXTURES / "two-pictures.tex", _check.DEFAULT_WIDTH_PT)
@@ -365,7 +428,8 @@ def _result(**fields):
     """A `CheckResult` over the 300pt `_measured()` figure."""
     source = fields.pop("source", ONE_PICTURE)
     figure = fields.pop("figure", _measured())
-    return _check.apply(Path("figures/flow.tex"), 453.0, figure, source)
+    twin = fields.pop("twin", ONE_TWIN)
+    return _check.apply(Path("figures/flow.tex"), 453.0, figure, source, twin=twin)
 
 
 class TestTextReport:
@@ -569,7 +633,7 @@ class TestAdvisorySizeReports:
     def test_the_caller_can_name_the_layout_instead(self):
         source = "% cg-layout: pipeline\n" + ONE_PICTURE
 
-        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, "control-loop")
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, "control-loop", ONE_TWIN)
 
         assert result.layout == "control-loop"
         assert "control-loop reference" in result.advisory[-1].measurement
