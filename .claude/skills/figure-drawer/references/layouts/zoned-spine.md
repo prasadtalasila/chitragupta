@@ -19,7 +19,7 @@ are gated, an architecture with a single entrance and a single exit.
 - **Overlapping zone cards.** A member belongs to one zone.
 - **A card painted over a member.** Cards go on the background layer.
 - **A wide grid at acmart width pasted into a narrow column.** The
-  exemplars are set at 506pt; re-lay them out, never scale.
+  exemplars are set at 453pt; re-lay them out, never scale.
 
 ## Reference ranges
 
@@ -47,8 +47,8 @@ fractions are the ones that print.
 | `assets/tikz/exemplars/architecture.tex` | 14 | 10 | 0.96 | 0.35 | 0.69 |
 | `assets/tikz/exemplars/retrieval.tex` | 15 | 10 | 0.99 | 0.52 | 0.76 |
 
-The exemplars are set at acmart's 506pt text width, which is why they
-come close to the full 453pt here, and they carry one paper's content.
+The exemplars are set at the render's 453pt text width, which is why
+they come close to the full width here, and they carry one paper's content.
 Start from the scaffold; read the exemplars for what a figure of this
 size holds. `retrieval` is the two-storyline edge case: two zones, each
 with its own route, that never meet.

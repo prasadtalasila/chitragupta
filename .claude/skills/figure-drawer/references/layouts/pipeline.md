@@ -44,13 +44,14 @@ fractions are the ones that print.
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
 | `assets/tikz/pipeline.tex` | 5 | 3 | 0.68 | 0.10 | 0.55 |
-| `assets/tikz/exemplars/rag-stages.tex` | 11 | 4 | 1.09 | 0.35 | 0.71 |
+| `assets/tikz/exemplars/rag-stages.tex` | 11 | 4 | 0.91 | 0.37 | 0.68 |
 
 A bottleneck is the stage the pipeline narrows at; mark it `cgkey` and
 say why in the stage's gloss, not in a callout.
 
 `rag-stages` is eleven stages wrapped into three rows of a chain, set at
-acmart's 506pt text width: what a long pipeline looks like once it wraps
-rather than shrinks. Its eight in-row edges are drawn in a `\foreach`,
+the render's 453pt text width: what a long pipeline looks like once it
+wraps rather than shrinks. Its legend wraps too, two entries broken by
+hand inside the grid's width, rather than one long row that overflowed. Its eight in-row edges are drawn in a `\foreach`,
 which the source parser does not read, so its edge count is the two
 wraps, each counted once per leg.

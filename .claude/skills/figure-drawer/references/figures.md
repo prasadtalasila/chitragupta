@@ -165,7 +165,7 @@ So, in order:
 
 `assets/tikz/exemplars/architecture.tex` is the house style at work.
 Read it, but start your own figure from a scaffold, not from an
-exemplar: the exemplars are set at acmart's 506pt text width, wider than
+exemplar: the exemplars are set at the render's 453pt text width, wider than
 most drafts, and carry one paper's content.
 
 What its parts are for:
