@@ -247,7 +247,7 @@ LaTeX-bound (`tex`/`latex`/`pdf`):
 
 | Draft carries | Output wants | What happens |
 | --- | --- | --- |
-| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes `\input{figures/<name>.tex}` |
+| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes `\input{figures/<name>.tex}`; for `pdf`, followed by the figure's page mark (below) |
 | Markdown `figure:` marker + ASCII twin | non-LaTeX | `_substitute_ascii_for_marker`: marker becomes a fenced ASCII block |
 | `.tex` fragment's inline `\input` + ASCII twin | non-LaTeX (`.md` preview) | `_substitute_ascii_for_tikz`: `\input{...}` becomes a `\begin{verbatim}` block of the ASCII twin |
 | `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | documented no-op: the TikZ is real and already inline, so nothing is substituted |
@@ -292,6 +292,15 @@ code:
   travels in the pdf's Info dictionary, because pandoc has deleted the
   log by then and the engine may not write a file outside pandoc's
   temp directory (`plans/1065-float-placement.md`).
+- **A `pdf` render marks each figure's page** (#1052). In a Markdown
+  draft the `\input` is followed, inside the figure's own paragraph, by
+  a PDF named destination, `cgfig:<marker base>`
+  (`render_output/_figure_anchor.py`): no ink, no bookmark, and no word
+  moved, which a test checks. `draft render` then reads the marks with
+  `pdfinfo -dests` and writes each figure's `figure look` pictures and a
+  PNG of its page under `content/rendered/`, as `[figure-look]` notes
+  that never fail the render. A `.tex` draft gets no mark: pandoc's
+  LaTeX reader would print one as text.
 
 ## 🔢 Figure numbering: a caption wraps the marker, in two passes
 
