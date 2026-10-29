@@ -123,7 +123,11 @@ Each step names the document that owns its rule.
    rest. The skill fixes each finding or records why it is deliberate
    with a `% cg-allow:` line in the figure
    ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)).
-   It exits 0 whatever it finds; it is an aid, never a gate.
+   Beside them it prints advisory size reports (height, slack, short
+   arrows, node and edge counts), each against the reference range of
+   the layout the figure's `% cg-layout:` line names; those are read,
+   never resolved. It exits 0 whatever it finds; it is an aid, never a
+   gate.
 8. **Looks at the real render.** The probe is a bare article class,
    but the pipeline's own PDF is the draft's whole document, with its
    floats and neighbouring text, so labels can wrap and gaps close

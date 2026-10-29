@@ -3090,18 +3090,27 @@ preamble, as the renderer loads them. The rules, their ids and the
 ```bash
 chitragupta figure check content/drafts/rag/figures/flow.tex
 chitragupta figure check figures/flow.tex --width 345    # a narrower target, in pt
+chitragupta figure check figures/flow.tex --layout map   # read sizes against another layout
 chitragupta figure check figures/flow.tex --json
 ```
 
 One line per finding, `<rule-id> <target> <measurement>`, then a
 section for each kind of thing that is not a finding, left out when it
-is empty: honoured allows, allows not honoured until #1058, malformed
-allows, rules that could not be measured, and the diagnostics. Over
+is empty: the advisory size reports (#1057), honoured allows, allows
+not honoured until #1058, malformed allows, rules that could not be
+measured, and the diagnostics. The advisory reports are the same
+one-line shape, each beside the reference range of the layout the
+figure's `% cg-layout:` line names; they never count as findings. Over
 `assets/tikz/exemplars/rag-stages.tex`, which is wider than the text:
 
 ```text
 assets/tikz/exemplars/rag-stages.tex
   size-width            figure     495.0pt wide, target 453.0pt
+advisory (read; never resolved, allowed or capped)
+  size-height           figure     0.35 of the text height (243pt); pipeline reference 0.10 to 0.35
+  size-slack            figure     0.71; pipeline reference 0.55 to 0.71
+  budget-nodes          figure     11 nodes; pipeline reference 5 to 11
+  budget-edges          figure     4 edges; pipeline reference 3 to 4
 diagnostics (not findings)
   edges (confirm against the prose): s4.south -> [yshift=4.5mm]s5.north, ...
   71% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
@@ -3111,7 +3120,8 @@ figure check: 1 finding, 0 allowed, 0 deferred, 0 malformed
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `--width PT` | `453` | Target text width in pt for `size-width`: the render's A4 page less 1in margins |
-| `--json` | off | The same report as JSON: `findings` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed`, `deferred`, `malformed`, `not_measured` and `diagnostics` |
+| `--layout NAME` | the figure's `% cg-layout:` line | Read the advisory size reports against this layout's reference ranges. One of the layouts with a file under `.claude/skills/figure-drawer/references/layouts/`; any other name is a usage error |
+| `--json` | off | The same report as JSON: `layout` (or `null`), `findings` and `advisory` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed`, `deferred`, `malformed`, `not_measured` and `diagnostics` |
 
 | Exit | When |
 | --- | --- |

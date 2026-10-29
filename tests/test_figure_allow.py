@@ -31,10 +31,21 @@ class TestRules:
 
     def test_the_element_rules_are_the_ones_with_a_target(self):
         element = {rule.id for rule in RULES.values() if rule.scope == "element"}
-        assert element == {"node-overlap", "node-text-overload", "stranded-arrowhead"}
+        assert element == {
+            "node-overlap",
+            "node-text-overload",
+            "stranded-arrowhead",
+            "size-squash",
+        }
 
-    def test_only_a_compile_failure_cannot_be_allowed(self):
-        assert [rule.id for rule in RULES.values() if not rule.allowable] == ["does-not-compile"]
+    def test_a_compile_failure_and_the_advisory_reports_cannot_be_allowed(self):
+        """An advisory report is read, so there is nothing for an allow
+        to set aside (#1057)."""
+        refused = [rule.id for rule in RULES.values() if not rule.allowable]
+        advisory = [rule.id for rule in RULES.values() if rule.cls == "advisory"]
+
+        assert refused == ["does-not-compile", *advisory]
+        assert len(advisory) == 5
 
     def test_each_rule_is_keyed_by_its_own_id(self):
         assert all(key == rule.id for key, rule in RULES.items())

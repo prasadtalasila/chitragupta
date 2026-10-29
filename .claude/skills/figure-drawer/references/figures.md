@@ -13,6 +13,11 @@ comparison) to a layout. Each layout then has one file under `layouts/`
 with its anti-patterns and the node count, edge count, width, height
 and slack a typical figure of it has.
 
+Every scaffold's first line names its layout, `% cg-layout: pipeline`.
+Keep that line when you copy a scaffold, and change it if you change the
+layout: `figure check` reads it to print your figure's numbers beside
+that layout's (see `check.md`).
+
 The scaffolds in `assets/tikz/`, from `assets/tikz/README.md` (which
 wins if the two disagree):
 

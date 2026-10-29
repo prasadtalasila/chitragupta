@@ -105,7 +105,7 @@ and redesigns nothing.
 | `chitragupta doctor` | Probe and report: OS binaries, the `enrich` extra, torch against the GPU driver, a competing `chitragupta` distribution, a hook launcher on any harness that cannot start. Exits 0 on findings; an aid, never a gate |
 | `chitragupta install os-deps\|gpu-torch\|enrich` | Run the shipped `install_full_pipeline.sh` for the stages pip cannot do, or install the `enrich` extra at the running version. `all`, `dev-deps` and `python-deps` are refused by name with the pip equivalent |
 | `chitragupta figure sync [PATH ...] [--check]` | Stamp the house figure-style block into each figure file that lacks it and refresh a stale one, never touching a block edited by hand ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-house-figure-style)). Exits 0 on findings; `--check` writes nothing and exits 1 if any file is not current; 2 if the installed block cannot be read |
-| `chitragupta figure check <figure.tex> [--width PT] [--json]` | Report every rule one figure file breaks, by rule id, and the deliberate exceptions it records as `% cg-allow:` lines ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)). Exits 0 whatever it finds; 2 on a usage error or with no `lualatex` or `tikz.sty` |
+| `chitragupta figure check <figure.tex> [--width PT] [--layout NAME] [--json]` | Report every rule one figure file breaks, by rule id, the deliberate exceptions it records as `% cg-allow:` lines, and its size beside its layout's reference ranges ([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)). Exits 0 whatever it finds; 2 on a usage error or with no `lualatex` or `tikz.sty` |
 | `chitragupta --version` | The installed distribution's version, from `importlib.metadata` |
 
 ### 📚 `corpus` -- the deterministic run

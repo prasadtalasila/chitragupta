@@ -11,7 +11,9 @@ whole picture and takes no target; an element-scope rule is about one
 node, pair or point and requires one, so "allow every overlap" cannot be
 written. **Class** says what the skill does with a finding: an objective
 one is resolved or allowed with a reason, an advisory one is read.
-Neither is an exit code. `figure check` exits 0 whatever it finds,
+Neither is an exit code. An advisory report has nothing an allow could
+set aside, so none is allowable, and none is ever a finding: they are
+reported apart, under their own heading (#1057). `figure check` exits 0 whatever it finds,
 because SOUL.md allows one gate and this is not it.
 
 The seven ids from `review figure` are the `kind` strings its `--json`
@@ -19,7 +21,8 @@ already ships, kept rather than renamed so one finding has one name
 across both commands. Each is binary, so each is objective.
 
 Order here is report order: a figure that does not compile, or names
-nothing to measure, says so before anything measured.
+nothing to measure, says so before anything measured, and the advisory
+reports come last.
 """
 
 from dataclasses import dataclass
@@ -30,10 +33,20 @@ class Rule:
     id: str
     scope: str  # "figure" or "element"
     cls: str  # "objective" or "advisory"
-    # Only a compile failure is false: it is not a property of the
-    # drawing that could be deliberate, and nothing else can be checked
-    # until it is fixed.
+    # False for a compile failure, which is not a property of the drawing
+    # that could be deliberate (nothing else can be checked until it is
+    # fixed), and for every advisory report, which is read, not resolved.
     allowable: bool = True
+
+
+@dataclass(frozen=True)
+class Finding:
+    """One rule's report on one target. Here rather than in `_check.py`
+    so `_advisory.py` builds the same thing without importing it."""
+
+    rule: str
+    target: str
+    measurement: str
 
 
 RULES: dict[str, Rule] = {
@@ -49,5 +62,10 @@ RULES: dict[str, Rule] = {
         Rule("node-overlap", "element", "objective"),
         Rule("node-text-overload", "element", "objective"),
         Rule("stranded-arrowhead", "element", "objective"),
+        Rule("size-height", "figure", "advisory", allowable=False),
+        Rule("size-slack", "figure", "advisory", allowable=False),
+        Rule("size-squash", "element", "advisory", allowable=False),
+        Rule("budget-nodes", "figure", "advisory", allowable=False),
+        Rule("budget-edges", "figure", "advisory", allowable=False),
     )
 }

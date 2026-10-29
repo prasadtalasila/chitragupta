@@ -51,6 +51,9 @@ from typing import NamedTuple
 
 import pytest
 
+from chitragupta.figure._advisory import TEXT_HEIGHT_PT, slack
+from chitragupta.figure._check import DEFAULT_WIDTH_PT
+from chitragupta.figure._layout import LAYOUT_DIR, RangeRow, declared_layout, range_rows
 from chitragupta.review import figure_layout
 from tests.conftest import needs_tikz
 
@@ -200,65 +203,33 @@ class TestMetaphorCoverage:
 # (#1039), whichever harness reads them.
 REFERENCES = REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "references"
 PATTERNS = REFERENCES / "patterns.md"
-LAYOUT_DIR = REFERENCES / "layouts"
 SKILL_COPIES = [
     REPO_ROOT / ".claude" / "skills" / "figure-drawer" / "SKILL.md",
     REPO_ROOT / ".agents" / "skills" / "figure-drawer" / "SKILL.md",
     REPO_ROOT / ".opencode" / "skills" / "figure-drawer-opencode" / "SKILL.md",
 ]
 
-# A row of a layout file's range table: the source it was measured from,
-# then nodes, edges, width, height and slack.
-_RANGE_ROW_RE = re.compile(
-    r"^\| `(?P<source>assets/tikz/[\w/-]+\.tex)` \| (?P<nodes>\d+) \| (?P<edges>\d+) \| "
-    r"(?P<width>[\d.]+) \| (?P<height>[\d.]+) \| (?P<slack>[\d.]+) \|$",
-    re.MULTILINE,
-)
 _PATTERN_LINK_RE = re.compile(r"\]\(layouts/(?P<slug>[\w-]+)\.md\)")
 
-# What the fractions are of: the render's 12pt A4 1in page. The probe
-# sets the figure at article's 10pt, so the fractions it yields are a
-# lower bound until #1037 moves it to the render's engine and fonts.
-_TEXT_WIDTH_PT = 453.0
-_TEXT_HEIGHT_PT = 700.0
+# What the fractions are of: the render's 12pt A4 1in page, the same
+# constants `figure check` divides by, so a reference row and a checked
+# figure are measured alike (#1057).
+_TEXT_WIDTH_PT = DEFAULT_WIDTH_PT
+_TEXT_HEIGHT_PT = TEXT_HEIGHT_PT
 # Two decimals are written, and the probe's numbers move by a little with
 # the TeX installation; more than this is the source having changed.
 _FRACTION_TOLERANCE = 0.02
-
-
-class RangeRow(NamedTuple):
-    source: str
-    nodes: int
-    edges: int
-    width: float
-    height: float
-    slack: float
 
 
 def _layout_file(slug: str) -> Path:
     return LAYOUT_DIR / f"{slug}.md"
 
 
-def _range_rows(text: str) -> list[RangeRow]:
-    """Every measured row of one layout file's reference-range table."""
-    return [
-        RangeRow(
-            m["source"],
-            int(m["nodes"]),
-            int(m["edges"]),
-            float(m["width"]),
-            float(m["height"]),
-            float(m["slack"]),
-        )
-        for m in _RANGE_ROW_RE.finditer(text)
-    ]
-
-
 def _all_range_rows() -> list[RangeRow]:
     return [
         row
         for path in sorted(LAYOUT_DIR.glob("*.md"))
-        for row in _range_rows(path.read_text(encoding="utf-8"))
+        for row in range_rows(path.read_text(encoding="utf-8"))
     ]
 
 
@@ -268,34 +239,12 @@ def _counted(source: Path) -> tuple[int, int]:
     return len(figure_layout.node_names(text)), len(figure_layout.edge_list(text))
 
 
-def _leaves(boxes: list) -> list:
-    """The nodes that wholly enclose no other node: zone cards dropped."""
-
-    def encloses(outer, inner) -> bool:
-        return (
-            outer[0] - 1 <= inner[0]
-            and outer[1] - 1 <= inner[1]
-            and inner[2] <= outer[2] + 1
-            and inner[3] <= outer[3] + 1
-        )
-
-    return [
-        box
-        for index, box in enumerate(boxes)
-        if not any(
-            encloses(box, other) for other_index, other in enumerate(boxes) if other_index != index
-        )
-    ]
-
-
 def _measured(source: Path) -> tuple[float, float, float]:
     """Width and height as fractions of the text block, and slack: the
     share of the picture no leaf node fills, zone cards excluded."""
     boxes = figure_layout.node_boxes(source)
-    bx1, by1, bx2, by2 = boxes.pop(figure_layout.BBOX_NAME)
-    width, height = bx2 - bx1, by2 - by1
-    filled = sum((x2 - x1) * (y2 - y1) for x1, y1, x2, y2 in _leaves(list(boxes.values())))
-    return width / _TEXT_WIDTH_PT, height / _TEXT_HEIGHT_PT, 1 - filled / (width * height)
+    bx1, by1, bx2, by2 = boxes[figure_layout.BBOX_NAME]
+    return (bx2 - bx1) / _TEXT_WIDTH_PT, (by2 - by1) / _TEXT_HEIGHT_PT, slack(boxes)
 
 
 def _count_mismatch(row: RangeRow) -> str | None:
@@ -335,7 +284,7 @@ class TestEveryLayoutHasAReferenceFile:
 
     @pytest.mark.parametrize("metaphor", _metaphors(), ids=_slug)
     def test_each_file_measures_its_own_scaffold(self, metaphor):
-        rows = _range_rows(_layout_file(_slug(metaphor)).read_text(encoding="utf-8"))
+        rows = range_rows(_layout_file(_slug(metaphor)).read_text(encoding="utf-8"))
 
         assert f"assets/tikz/{_slug(metaphor)}.tex" in [row.source for row in rows]
 
@@ -362,6 +311,33 @@ class TestEveryLayoutHasAReferenceFile:
         text = skill.read_text(encoding="utf-8")
 
         assert ".claude/skills/figure-drawer/references/patterns.md" in text
+
+
+class TestEveryReferenceFigureDeclaresItsLayout:
+    """#1057: `figure check` reads a figure's reference range through its
+    `% cg-layout:` line, so every file a range is measured from declares
+    the layout whose file measures it, and a figure copied from a
+    scaffold starts out declaring the right one."""
+
+    @pytest.mark.parametrize("metaphor", _metaphors(), ids=_slug)
+    def test_each_scaffold_declares_its_own_layout(self, metaphor):
+        source = (SCAFFOLD_DIR / f"{_slug(metaphor)}.tex").read_text(encoding="utf-8")
+
+        assert declared_layout(source) == _slug(metaphor)
+
+    def test_each_measured_source_declares_the_layout_that_measures_it(self):
+        wrong = [
+            f"{row.source}: measured under {path.stem}, declares "
+            f"{declared_layout((REPO_ROOT / row.source).read_text(encoding='utf-8'))!r}"
+            for path in sorted(LAYOUT_DIR.glob("*.md"))
+            for row in range_rows(path.read_text(encoding="utf-8"))
+            if declared_layout((REPO_ROOT / row.source).read_text(encoding="utf-8")) != path.stem
+        ]
+
+        assert wrong == []
+
+    def test_the_layout_directory_is_the_one_the_skill_reads(self):
+        assert LAYOUT_DIR.resolve() == (REFERENCES / "layouts").resolve()
 
 
 class TestTheReferenceRangesAreMeasured:

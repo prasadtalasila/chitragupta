@@ -21,9 +21,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from chitragupta._tex_comments import strip_comments
+from chitragupta.figure._advisory import advise
 from chitragupta.figure._allow import Allow, Malformed, parse_allows
 from chitragupta.figure._focal import cgkey_nodes
-from chitragupta.figure._rules import RULES
+from chitragupta.figure._layout import declared_layout, reference
+from chitragupta.figure._rules import RULES, Finding
 from chitragupta.review.figure_layout import (
     BBOX_NAME,
     MAX_NODE_WORDS,
@@ -59,19 +61,15 @@ _NOT_COMPILED = "the figure does not compile"
 _PICTURE_RE = re.compile(r"\\begin\s*\{tikzpicture\}")
 
 
-@dataclass(frozen=True)
-class Finding:
-    rule: str
-    target: str
-    measurement: str
-
-
 @dataclass
 class CheckResult:
     """One file's report. `allowed` pairs each honoured allow with the
     measurement it suppressed, or `None` where its rule did not fire;
     `not_measured` pairs a rule with why it could not run. `figure` is
-    kept for the diagnostics the report prints beside the findings."""
+    kept for the diagnostics the report prints beside the findings.
+    `advisory` is #1057's size reports, kept out of `findings` because
+    nothing is to be resolved or allowed about them, and `layout` the
+    name they were read against (`""` for none)."""
 
     path: Path
     width_pt: float
@@ -81,24 +79,33 @@ class CheckResult:
     deferred: list[Allow] = field(default_factory=list)
     malformed: list[Malformed] = field(default_factory=list)
     not_measured: list[tuple[str, str]] = field(default_factory=list)
+    advisory: list[Finding] = field(default_factory=list)
+    layout: str = ""
 
 
-def check(path: Path, width_pt: float) -> CheckResult:
+def check(path: Path, width_pt: float, layout: str = "") -> CheckResult:
     """Compile `path` once, unless it has no picture to measure, and
     report every rule. The caller has already established that this
     host has `lualatex` and `tikz.sty`, and that `path` reads as UTF-8."""
     source = path.read_text(encoding="utf-8")  # pragma: no cover-windows
     skipped = "" if _pictures(source) else NO_PICTURE  # pragma: no cover-windows
     figure = check_figure(path, skipped, boxed=True)  # pragma: no cover-windows
-    return apply(path, width_pt, figure, source)  # pragma: no cover-windows
+    return apply(path, width_pt, figure, source, layout)  # pragma: no cover-windows
 
 
-def apply(path: Path, width_pt: float, figure: FigureResult, source: str) -> CheckResult:
+def apply(
+    path: Path, width_pt: float, figure: FigureResult, source: str, layout: str = ""
+) -> CheckResult:
     """Every rule over an already-checked figure, with its allows applied.
 
     Each allow is matched against everything that fired, so two allows
-    for one rule both report what they set aside."""
+    for one rule both report what they set aside. `layout` overrides the
+    figure's own `% cg-layout:` line."""
     fired, not_measured = evaluate(source, figure, width_pt)
+    layout = layout or declared_layout(source)
+    advisory, unmeasured = advise(
+        figure, source, layout, reference(layout), _unmeasurable(source, figure)
+    )
     allows = parse_allows(source)
     allowed = [
         (allow, "; ".join(f.measurement for f in fired if f.rule == allow.rule) or None)
@@ -107,7 +114,16 @@ def apply(path: Path, width_pt: float, figure: FigureResult, source: str) -> Che
     excused = {allow.rule for allow in allows.honoured}
     findings = [finding for finding in fired if finding.rule not in excused]
     return CheckResult(
-        path, width_pt, figure, findings, allowed, allows.deferred, allows.malformed, not_measured
+        path,
+        width_pt,
+        figure,
+        findings,
+        allowed,
+        allows.deferred,
+        allows.malformed,
+        not_measured + unmeasured,
+        advisory,
+        layout,
     )
 
 
@@ -116,14 +132,9 @@ def evaluate(
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`(findings, not_measured)`, the findings in `RULES` order."""
     findings: list[Finding] = []
-    missing = ""
     if figure.failed:
         findings.append(Finding("does-not-compile", FIGURE, figure.failed))
-        missing = _NOT_COMPILED
-    elif figure.boxes is None:
-        missing = figure.skipped
-    elif BBOX_NAME not in figure.boxes or figure.input_width is None:
-        missing = NO_EXTENT
+    missing = _missing(figure)
     not_measured = [(rule, missing) for rule in GEOMETRY] if missing else []
     if not missing:
         findings, not_measured = _size(source, figure, width_pt)
@@ -131,6 +142,27 @@ def evaluate(
     findings += _focal(source) + _static(figure)
     order = list(RULES)
     return sorted(findings, key=lambda finding: order.index(finding.rule)), not_measured
+
+
+def _missing(figure: FigureResult) -> str:
+    """Why the compiled geometry cannot be read, or `""` where it can."""
+    if figure.failed:
+        return _NOT_COMPILED
+    if figure.boxes is None:
+        return figure.skipped
+    if BBOX_NAME not in figure.boxes or figure.input_width is None:
+        return NO_EXTENT
+    return ""
+
+
+def _unmeasurable(source: str, figure: FigureResult) -> str:
+    """Why #1057's size reports cannot read the boxes, or `""`. The probe
+    reads the last picture's extent, and an earlier picture's nodes sit
+    in another picture's frame, so several pictures are not measured."""
+    pictures = _pictures(source)
+    if pictures > 1 and not _missing(figure):
+        return f"{pictures} tikzpictures; only the last one's extent is read"
+    return _missing(figure)
 
 
 def _pictures(source: str) -> int:

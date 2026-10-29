@@ -1,0 +1,9 @@
+% figure check fixture (#1057): two nodes joined by an arrow whose
+% boxes are 1mm apart, too short to read, and a third far enough away.
+\begin{tikzpicture}
+  \node[draw, minimum width=1cm] (a) at (0,0) {A};
+  \node[draw, minimum width=1cm] (b) at (11mm,0) {B};
+  \node[draw, minimum width=1cm] (c) at (4cm,0) {C};
+  \draw[->] (a) -- (b);
+  \draw[->] (b) -- (c);
+\end{tikzpicture}%

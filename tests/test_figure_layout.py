@@ -1847,3 +1847,77 @@ class TestCheckFigure:
 
         assert result.failed is None
         assert result.unmeasured == ["s\\i"]
+
+
+class TestLeavesAndEdgeGap:
+    """#1057's two geometry helpers: the nodes that are not zones, which
+    slack counts as filled, and how far apart two joined nodes are."""
+
+    def test_a_zone_is_not_a_leaf_and_its_children_are(self):
+        boxes = {
+            "zone": (0.0, 0.0, 100.0, 50.0),
+            "a": (10.0, 10.0, 30.0, 20.0),
+            "b": (50.0, 10.0, 70.0, 20.0),
+            "far": (200.0, 0.0, 210.0, 10.0),
+            figure_layout.BBOX_NAME: (0.0, 0.0, 210.0, 50.0),
+        }
+
+        assert sorted(figure_layout.leaves(boxes)) == ["a", "b", "far"]
+
+    def test_two_nodes_side_by_side_are_both_leaves(self):
+        boxes = {"a": (0.0, 0.0, 10.0, 10.0), "b": (10.0, 0.0, 20.0, 10.0)}
+
+        assert sorted(figure_layout.leaves(boxes)) == ["a", "b"]
+
+    def test_the_gap_is_edge_to_edge_along_one_axis(self):
+        assert figure_layout.edge_gap((0.0, 0.0, 10.0, 10.0), (14.0, 2.0, 24.0, 8.0)) == 4.0
+
+    def test_a_diagonal_gap_is_the_corner_to_corner_distance(self):
+        gap = figure_layout.edge_gap((0.0, 0.0, 10.0, 10.0), (13.0, 14.0, 20.0, 20.0))
+
+        assert gap == pytest.approx(5.0)
+
+    def test_touching_boxes_are_zero_apart(self):
+        assert figure_layout.edge_gap((0.0, 0.0, 10.0, 10.0), (10.0, 0.0, 20.0, 10.0)) == 0.0
+
+    @pytest.mark.parametrize(
+        "other",
+        [
+            (5.0, 5.0, 15.0, 15.0),  # intersects: node-overlap's to report
+            (2.0, 2.0, 8.0, 8.0),  # inside: a zone and its child
+            (20.0, 5.0, 20.0, 5.0),  # a coordinate: a point, not a node
+        ],
+        ids=["intersecting", "enclosed", "zero-area"],
+    )
+    def test_there_is_no_gap_to_measure(self, other):
+        assert figure_layout.edge_gap((0.0, 0.0, 10.0, 10.0), other) is None
+
+
+class TestAmbiguousEdges:
+    """#1057: the paths whose consecutive tokens are not the two ends of
+    one line, which `figure check`'s squash lists instead of measuring."""
+
+    def test_an_edge_chain_is_ambiguous(self):
+        source = "\\draw (hub) edge (s1) edge (s2);\n"
+
+        assert figure_layout.ambiguous_edges(source) == [("hub", "s1"), ("s1", "s2")]
+
+    @pytest.mark.parametrize(
+        "label", ["node[midway, above] (l) {x}", "node (l) {x}", "node (l) [above] {x}"]
+    )
+    def test_a_named_node_on_a_path_is_ambiguous(self, label):
+        source = f"\\draw (a) -- {label} (b);\n"
+
+        assert figure_layout.ambiguous_edges(source) == [("a", "l"), ("l", "b")]
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "\\draw[cgedge] (a) -- (b);\n",
+            "\\draw (a) -- node[above] {f(x)} (b);\n",
+            "\\node (a) {A};\n\\node (b) [right=of a] {B};\n\\draw (a) -- (b);\n",
+        ],
+        ids=["house-edge-style", "unnamed-label", "node-statements"],
+    )
+    def test_a_plain_path_is_not(self, source):
+        assert figure_layout.ambiguous_edges(source) == []

@@ -444,7 +444,9 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 - **2e.** Twin agreement `t1` to `t3`, and a `.txt` twin for every
   existing scaffold, which the fixtures need.
 - **2f.** Size: `size-height`, `size-slack`, `size-squash`, the budgets
-  and the reference ranges from 1d.
+  and the reference ranges from 1d. Built by #1057; its plan,
+  `plans/1057-figure-check-size.md`, records where it parted from this
+  list (the reports are kept out of the findings, and none is allowable).
 - **2g.** Element-scope `cg-allow` and stale-allow detection.
 
 How edges are measured: the source parser recovers each `\draw` between

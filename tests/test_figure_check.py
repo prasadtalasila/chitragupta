@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 
 from chitragupta.figure import __main__ as cli
-from chitragupta.figure import _check, _check_report
+from chitragupta.figure import _advisory, _check, _check_report
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
@@ -288,7 +288,10 @@ class TestAgainstRealLualatex:
         result = _check.check(path, _check.DEFAULT_WIDTH_PT)
 
         assert result.findings == []
-        assert [rule for rule, _ in result.not_measured] == list(_check.GEOMETRY)
+        assert [rule for rule, _ in result.not_measured] == [
+            *_check.GEOMETRY,
+            *_advisory.GEOMETRY,
+        ]
 
     def test_a_picture_only_inside_a_macro_body_does_not_crash(self, tmp_path):
         path = tmp_path / "fig.tex"
@@ -305,7 +308,8 @@ class TestAgainstRealLualatex:
     def test_two_pictures_say_why_stray_was_not_measured(self):
         result = _check.check(FIXTURES / "two-pictures.tex", _check.DEFAULT_WIDTH_PT)
 
-        assert [rule for rule, _ in result.not_measured] == ["size-stray"]
+        assert [rule for rule, _ in result.not_measured] == ["size-stray", *_advisory.GEOMETRY]
+        assert _rules(result.advisory) == ["budget-nodes", "budget-edges"]
 
     def test_an_allowed_overflow_is_listed_not_found(self):
         result = _check.check(FIXTURES / "allowed-wide.tex", _check.DEFAULT_WIDTH_PT)
@@ -538,3 +542,122 @@ class TestCli:
 
         assert result.returncode == 0, result.stderr
         assert "No findings" in result.stdout
+
+
+class TestAdvisorySizeReports:
+    """#1057: the size reports ride beside the findings, never in them."""
+
+    def test_the_figures_own_layout_line_picks_the_reference(self):
+        result = _result(source="% cg-layout: pipeline\n" + ONE_PICTURE)
+
+        assert result.layout == "pipeline"
+        assert "pipeline reference" in result.advisory[-1].measurement
+
+    def test_the_caller_can_name_the_layout_instead(self):
+        source = "% cg-layout: pipeline\n" + ONE_PICTURE
+
+        result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, "control-loop")
+
+        assert result.layout == "control-loop"
+        assert "control-loop reference" in result.advisory[-1].measurement
+
+    def test_no_layout_still_reports_the_numbers(self):
+        result = _result()
+
+        assert result.layout == ""
+        assert _rules(result.advisory) == [
+            "size-height",
+            "size-slack",
+            "budget-nodes",
+            "budget-edges",
+        ]
+        assert result.findings == []
+
+    def test_an_advisory_rule_cannot_be_allowed(self):
+        result = _result(source="% cg-allow: size-slack -- roomy on purpose\n" + ONE_PICTURE)
+
+        assert [(bad.problem) for bad in result.malformed] == ["cannot be allowed"]
+        assert "size-slack" in _rules(result.advisory)
+
+
+class TestAdvisoryReport:
+    def test_the_text_has_its_own_section_and_still_says_no_findings(self):
+        report = _check_report.format_text(_result(source="% cg-layout: pipeline\n" + ONE_PICTURE))
+
+        assert "\nadvisory (read; never resolved, allowed or capped)\n  size-height" in report
+        assert "budget-nodes          figure     1 node; pipeline reference" in report
+        assert "No findings. This is not a verdict on the figure." in report
+
+    def test_json_carries_the_layout_and_the_advisory_reports(self):
+        body = _check_report.payload(_result(source="% cg-layout: pipeline\n" + ONE_PICTURE))
+
+        assert body["layout"] == "pipeline"
+        assert body["findings"] == []
+        assert body["advisory"][0] == {
+            "rule": "size-height",
+            "class": "advisory",
+            "scope": "figure",
+            "target": "figure",
+            "measurement": body["advisory"][0]["measurement"],
+        }
+        assert [entry["rule"] for entry in body["advisory"]] == [
+            "size-height",
+            "size-slack",
+            "budget-nodes",
+            "budget-edges",
+        ]
+
+    def test_json_says_null_for_no_layout(self):
+        assert _check_report.payload(_result())["layout"] is None
+
+
+class TestLayoutFlag:
+    def test_a_layout_with_a_reference_file_is_taken(self):
+        args = cli.build_parser().parse_args(["check", "f.tex", "--layout", "pipeline"])
+
+        assert args.layout == "pipeline"
+
+    def test_the_default_is_the_figures_own_line(self):
+        assert cli.build_parser().parse_args(["check", "f.tex"]).layout == ""
+
+    def test_a_layout_with_no_reference_file_is_a_usage_error(self, tmp_path):
+        with pytest.raises(SystemExit) as exit_info:
+            cli.main(["check", str(tmp_path / "fig.tex"), "--layout", "no-such-layout"])
+
+        assert exit_info.value.code == 2
+
+    @needs_tikz
+    def test_it_reaches_the_report(self, capsys):
+        assert cli.main(["check", str(FIXTURES / "tight.tex"), "--layout", "map"]) == 0
+        assert "map reference" in capsys.readouterr().out
+
+
+@needs_tikz
+class TestAdvisoryAgainstRealLualatex:
+    @pytest.mark.parametrize(
+        "name",
+        [
+            "pipeline",
+            "zoned-spine",
+            "branching-tree",
+            "hub-and-spoke-network",
+            "map",
+            "control-loop",
+            "layered-stack",
+        ],
+    )
+    def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):
+        result = _check.check(
+            REPO_ROOT / "assets" / "tikz" / f"{name}.tex", _check.DEFAULT_WIDTH_PT
+        )
+
+        assert result.layout == name
+        assert "size-squash" not in _rules(result.advisory)
+        assert all(f"{name} reference" in r.measurement for r in result.advisory)
+
+    def test_a_short_arrow_squashes(self):
+        result = _check.check(FIXTURES / "squash.tex", _check.DEFAULT_WIDTH_PT)
+
+        squashed = [r for r in result.advisory if r.rule == "size-squash"]
+        assert [r.target for r in squashed] == ["a+b"]
+        assert result.findings == []
