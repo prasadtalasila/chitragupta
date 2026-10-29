@@ -217,3 +217,71 @@ What its parts are for:
   a third of it each, which is why `draft` and `gate` name their
   `1/3` and `2/3` points as coordinates and place `review` and `pub`
   under the edges that reach them.
+
+## 5. Looking at a source's figures
+
+`python -m chitragupta.draft figures <citekey>` lists a synced paper's
+figures and hands back a crop of each, for any citekey the draft already
+cites. Seeing how a concept is conventionally drawn, and seeing several
+versions of it, is legitimate input to a diagram you then draw yourself.
+It is not a licence to reproduce one. The source image never enters the
+draft, and a close redraw of any single one is the same violation, per
+`docs/WRITING-STANDARDS.md` §10: the TikZ must be as original as the
+ASCII, whichever notation it is drawn in. AGENTS.md states the boundary
+in full.
+
+## 6. Libraries and compiling
+
+A malformed figure fails the *whole* pdf render, not just the figure.
+`figure check` compiles it once with LuaLaTeX, the engine the pdf render
+uses, in the render's fonts at 12pt, and reports `does-not-compile`
+when a `tikzpicture` fails. Fix that first: until it compiles, the
+rules that need the compiled geometry are listed as not measured. A bare
+`\tikz` is not compiled at all, and its geometry rules are listed the
+same way.
+
+If the figure uses `positioning`, `matrix`, `fit` or `tree`, put its
+`\usetikzlibrary` line at the top of `figures/<name>.tex`. Keep the line
+in the figure file and write nothing else about loading: no clearing of
+`\tikz@library@...@loaded`, and no saving or restoring of
+`\tikz@node@reset@hook`. The renderer collects those lines and loads the
+union in its own preamble (#781). A load *inside* the figure float is
+the bug that multiplied node spacing in this project's own book.
+`docs/TIKZ-STYLE.md` has the detail.
+
+Before keeping the figure, read it against that document's pre-flight
+defect list: occlusion, chaotic routing, illegible type, non-rectangular
+protrusion, an overlong node, literal copying. No label goes below the
+body size, and the figure is `\input` bare, never inside `\resizebox`.
+If it does not fit, change the layout, not the scale (§3).
+
+## 7. Looking at the render
+
+`figure check` measures geometry. It cannot see a hyphenated label, or
+an arrow through a zone title, in the page the reader gets. The
+pipeline's own pdf is LuaLaTeX over the draft's whole document, with its
+floats, captions and neighbouring text, where labels wrap and the gaps
+between layers close differently.
+
+`python -m chitragupta.figure look figures/<name>.tex` sets the figure
+alone on the render's own page (12pt, its fonts, its text width),
+cropped to the figure, as `<name>.look.png` at 300 dpi and
+`<name>.look.pdf`, with a red line at the text width if the figure is
+wider. Once the draft carries the figure's marker, `--draft <draft>`
+renders the draft too and writes `<name>.page.png`, the page that holds
+the figure. It writes only under `content/rendered/`, never the draft.
+
+Open the PNGs and read them against the pre-flight list (§6). Fix the
+layout (wider boxes, more room, a moved edge, never a smaller scale),
+and look again until it reads cleanly. Edit only below the house style
+block: a change inside it makes the render warn that the block was
+hand-edited. If the marker is not in the draft yet, look at the figure
+alone and tell the caller to look at its page after its own render,
+which refreshes these pictures.
+
+If `figure look` exits 2 for a missing tool (`lualatex`, `tikz.sty`,
+`pdftoppm`, or `pandoc` with `--draft`), if the render reports
+`[missing-binary]`, or if you cannot view an image, skip the look. Keep
+the `figure check` result, and say so in chat. The look is a check,
+never a condition of keeping the figure; `chitragupta install os-deps`
+brings the tools.

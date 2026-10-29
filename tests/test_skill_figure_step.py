@@ -39,10 +39,20 @@ def _text(name: str) -> str:
     return re.sub(r"\s+", " ", (SKILLS_DIR / name / "SKILL.md").read_text(encoding="utf-8"))
 
 
+def _drawer_and_references() -> str:
+    """The drawer's `SKILL.md` and every reference it routes to (#1048)."""
+    folder = SKILLS_DIR / DRAWER
+    paths = [folder / "SKILL.md", *sorted((folder / "references").rglob("*.md"))]
+    return " ".join(re.sub(r"\s+", " ", p.read_text(encoding="utf-8")) for p in paths)
+
+
 def test_the_drawer_carries_every_rider():
-    text = _text(DRAWER)
-    missing = [r for r in _RIDERS + (_NO_CITEKEY,) if r not in text]
+    # #1048 moved the detail behind a rider into references/, so a rider
+    # may sit in either; the no-citekey rule stays in SKILL.md itself.
+    text = _drawer_and_references()
+    missing = [r for r in _RIDERS if r not in text]
     assert not missing, f"figure-drawer lost: {missing}"
+    assert _NO_CITEKEY in _text(DRAWER)
 
 
 def test_the_drawer_knows_both_placement_shapes():
@@ -65,8 +75,15 @@ def test_the_drawer_hands_back_and_never_presents():
 
 
 def test_the_drawer_runs_the_existing_checks_in_order():
+    # #1048: `figure check` compiles the figure in the render's engine, so
+    # the hand-built probe went; `kpsewhich` still comes before any file.
     text = _text(DRAWER)
-    order = ["kpsewhich tikz.sty", "run `lualatex` on it", "python -m chitragupta.figure check"]
+    order = [
+        "kpsewhich tikz.sty",
+        "python -m chitragupta.figure new",
+        "python -m chitragupta.figure check",
+        "python -m chitragupta.figure look",
+    ]
     at = [text.find(s) for s in order]
     assert -1 not in at and at == sorted(at), dict(zip(order, at))
 
@@ -105,10 +122,13 @@ def test_the_reference_file_has_the_sections_the_procedure_points_at():
         "## 2. Panels",
         "## 3. Fit without scaling",
         "## 4. An annotated exemplar",
+        "## 5. Looking at a source's figures",
+        "## 6. Libraries and compiling",
+        "## 7. Looking at the render",
     ):
         assert heading in ref, heading
-    for section in ("§1", "§2", "§3", "§4"):
-        assert f"references/figures.md` {section}" in _text(DRAWER), section
+    # That every section is cited by every copy, and every citation lands,
+    # is tests/test_skill_figure_router.py's (#1048).
 
 
 _GENRES = {
@@ -174,11 +194,13 @@ def test_every_stub_probes_for_tikz_and_guards_originality_itself():
 def test_the_drawer_covers_what_direct_use_has_no_genre_step_for():
     # On direct use the caller is draft-reviser, which has no figure step,
     # so the drawer itself must name the TikZ fallback per shape, the flat
-    # draft case and the thesis fragment's preamble warnings.
-    text = _text(DRAWER)
+    # draft case and the thesis fragment's preamble warnings. Since #1048
+    # they sit in references/placement.md, which SKILL.md points at.
+    assert "`.claude/skills/figure-drawer/references/placement.md`" in _text(DRAWER)
+    text = _drawer_and_references()
     for needle in (
         "a `verbatim` environment",
-        "A flat draft** (",
+        "## 3. A flat draft",
         "[tikz-libraries]",
         "[unicode]",
         "\\renewcommand{\\thefigure}",
@@ -195,11 +217,11 @@ def test_the_drawer_checks_the_figure_in_the_real_render():
     # Since #1052 one command does the look, alone and in the draft.
     text = _text(DRAWER)
     assert "python -m chitragupta.figure look" in text and "--draft" in text
-    at_probe = text.find("run `lualatex` on it")
+    at_check = text.find("python -m chitragupta.figure check")
     at_look = text.find("python -m chitragupta.figure look")
     at_return = text.find("**Return.**")
-    assert at_probe < at_look < at_return, (at_probe, at_look, at_return)
-    assert "LuaLaTeX" in text
+    assert -1 < at_check < at_look < at_return, (at_check, at_look, at_return)
+    assert "LuaLaTeX" in _drawer_and_references()
 
 
 def test_the_drawer_starts_a_figure_with_figure_new():
@@ -214,7 +236,9 @@ def test_the_drawer_starts_a_figure_with_figure_new():
 def test_the_render_check_says_what_to_do_without_the_tools():
     # The look needs pandoc, LuaLaTeX and pdftoppm, which a bare pip
     # install does not bring, and a harness that can view an image. Without
-    # them the step must degrade to the probe and say so, never block.
+    # them the step must degrade to `figure check`'s result and say so,
+    # never block. The tool list is reference detail since #1048.
+    references = _drawer_and_references()
+    assert "[missing-binary]" in references and "pdftoppm" in references
     text = _text(DRAWER)
-    assert "[missing-binary]" in text and "pdftoppm" in text
-    assert "say so in chat" in text[text.find("Look at it in the real render") :]
+    assert "say so in chat" in text[text.find("python -m chitragupta.figure look") :]

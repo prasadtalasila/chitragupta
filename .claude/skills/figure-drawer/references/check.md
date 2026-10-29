@@ -55,7 +55,7 @@ own heading, never count as findings and cannot be allowed.
 | `k1-stroke` | element | Draw in the hue's `Line` shade (`draw=cgAuxLine`, not `draw=cgAux`); a palette name fills, a `Line` name draws |
 | `k2-text` | element | Write in the hue's `Text` shade (`text=cgAccentText`, `\textcolor{cgAccentText}{...}`), or `cgInk` |
 | `w4-pictograph` | element | Delete the character; draw the idea as a house `pic` or say it in words |
-| `twin-missing` | figure | Write `<name>.txt` beside the figure (step 4 of the skill). Cannot be allowed |
+| `twin-missing` | figure | Write `<name>.txt` beside the figure (the twin step of the skill). Cannot be allowed |
 | `t1-labels` | element | Use the TikZ's words for that name in the twin: `4-ch relay` for `4-channel relay` drops `channel`. A gloss is not compared, so reword those freely |
 | `t2-tags` | element | Put the tag on the twin's arrow, in the TikZ's words |
 | `t3-panels` | figure | Letter the twin's panels as the TikZ's: the same `(a)`, `(b)` |
