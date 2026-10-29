@@ -39,7 +39,8 @@ def check_figure(path: Path, skipped: str, *, boxed: bool = False) -> FigureResu
         # say how much of the figure was measurable (#405). The same call
         # `measure()` makes internally over the same file, so the two
         # cannot disagree about what was attempted -- which is the whole
-        # point of recording it.
+        # point of recording it. (A name spelled with a macro is declared
+        # here and never probed, so it reads as unmeasured: #1072.)
         declared=node_names(source),
         skipped=skipped,
     )

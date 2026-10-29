@@ -133,7 +133,8 @@ scaffolds and the exemplars alike:
 One gap to know about: a node drawn by a macro, such as
 `\cglegenditem`'s swatch, is never measured, because the source never
 spells its name. A legend colliding with a card is therefore yours to
-catch by eye.
+catch by eye. A node named inside a `\foreach`, such as `(s\i)`, is the
+same gap: the check lists it as declared but not measured.
 
 **Every node is named**, and that is load-bearing rather than tidy. The
 aid measures geometry only for a node with an explicit `(name)`, so a
