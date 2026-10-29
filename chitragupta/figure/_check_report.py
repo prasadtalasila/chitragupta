@@ -16,7 +16,7 @@ drive to zero.
 
 from chitragupta.figure._check import FIGURE, CheckResult
 from chitragupta.figure._rules import RULES, Finding
-from chitragupta.review.figure_layout import EMPTINESS_LABEL, FigureResult
+from chitragupta.review.figure_layout import EMPTINESS_LABEL
 
 
 def format_text(result: CheckResult) -> str:
@@ -42,7 +42,7 @@ def format_text(result: CheckResult) -> str:
         [f"  line {bad.line}: {bad.text}  ({bad.problem})" for bad in result.malformed],
     )
     lines += _section("not measured", [f"  {rule}: {why}" for rule, why in result.not_measured])
-    lines += _section("diagnostics (not findings)", _diagnostics(result.figure))
+    lines += _section("diagnostics (not findings)", _diagnostics(result))
     if not result.findings:
         lines.append("No findings. This is not a verdict on the figure.")
     found = len(result.findings)
@@ -67,13 +67,16 @@ def _section(heading: str, rows: list[str]) -> list[str]:
     return [heading, *rows] if rows else []
 
 
-def _diagnostics(figure: FigureResult) -> list[str]:
+def _diagnostics(result: CheckResult) -> list[str]:
+    figure = result.figure
     rows = []
     if figure.edges:
         drawn = ", ".join(f"{one} -> {other}" for one, other in figure.edges)
         rows.append(f"  edges (confirm against the prose): {drawn}")
     if figure.unmeasured:
         rows.append(f"  declared but not measured: {', '.join(figure.unmeasured)}")
+    if result.loose_lines:
+        rows.append(f"  lines not between two nodes, not checked by c1 to c7: {result.loose_lines}")
     if figure.empty_fraction is not None:
         rows.append(
             f"  {figure.empty_fraction * 100:.0f}% of the figure's box is empty ({EMPTINESS_LABEL})"
@@ -102,6 +105,7 @@ def payload(result: CheckResult) -> dict:
             "empty_fraction": figure.empty_fraction,
             "empty_fraction_note": EMPTINESS_LABEL,
             "names_unmeasured": figure.unmeasured,
+            "lines_not_between_nodes": result.loose_lines,
         },
     }
 

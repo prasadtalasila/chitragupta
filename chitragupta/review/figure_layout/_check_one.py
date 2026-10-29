@@ -54,4 +54,5 @@ def check_figure(path: Path, skipped: str, *, boxed: bool = False) -> FigureResu
         else:
             result.boxes = measured.boxes
             result.input_width = measured.input_width
+            result.drawn = measured.drawn
     return result

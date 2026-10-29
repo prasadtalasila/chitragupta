@@ -9,6 +9,19 @@ from chitragupta.figure._allow import parse_allows
 from chitragupta.figure._rules import RULES
 
 
+# The connector rules (#1054), `c1-` to `c7-`, each about one edge, pair,
+# side, tag or point.
+_CONNECTOR_NAMES = (
+    "orthogonal",
+    "tag-clearance",
+    "coincident",
+    "attach",
+    "transit",
+    "tag-covered",
+    "dangling-tip",
+)
+
+
 class TestRules:
     def test_the_three_new_figure_scope_rules_are_objective(self):
         for rule_id in ("size-width", "size-stray", "focal-count"):
@@ -31,12 +44,17 @@ class TestRules:
 
     def test_the_element_rules_are_the_ones_with_a_target(self):
         element = {rule.id for rule in RULES.values() if rule.scope == "element"}
-        assert element == {
-            "node-overlap",
-            "node-text-overload",
-            "stranded-arrowhead",
-            "size-squash",
-        }
+        connector = {f"c{n}-{name}" for n, name in enumerate(_CONNECTOR_NAMES, start=1)}
+        assert (
+            element
+            == {
+                "node-overlap",
+                "node-text-overload",
+                "stranded-arrowhead",
+                "size-squash",
+            }
+            | connector
+        )
 
     def test_a_compile_failure_and_the_advisory_reports_cannot_be_allowed(self):
         """An advisory report is read, so there is nothing for an allow

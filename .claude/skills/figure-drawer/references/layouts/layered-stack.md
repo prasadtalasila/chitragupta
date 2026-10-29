@@ -39,7 +39,7 @@ fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
-| `assets/tikz/layered-stack.tex` | 6 | 1 | 0.42 | 0.22 | 0.65 |
+| `assets/tikz/layered-stack.tex` | 6 | 1 | 0.42 | 0.21 | 0.65 |
 
 The scaffold's edge count is one: the rule is drawn once, layer to
 layer.

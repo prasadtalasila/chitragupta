@@ -12,7 +12,7 @@
 % edit it: every figure in a book carries the same copy, and an edited
 % one forks the house style. A style this figure alone needs goes in the
 % picture's own options.
-% >>> chitragupta figure style v3 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% >>> chitragupta figure style v4 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
 %
@@ -40,20 +40,18 @@
 % verified, which is what makes the soft shadow portable into a foreign
 % thesis.
 %
-% THE TYPE RAMP, AND ITS FLOOR. Three sizes, and the floor is the rule:
-%
-%   \normalsize  the document's own body size. The SMALLEST type any
-%                figure may use. Glosses, edge tags, notes, legend text,
-%                badge digits -- everything that is not a name.
-%   \large       node names (bold) and zone titles (bold). One step up.
-%   ---          nothing smaller than \normalsize exists in this block,
-%                and nothing in a figure should reach past it for one.
+% ONE TYPE SIZE: THE DOCUMENT'S OWN. Every word in a figure is set at
+% \normalsize, the body size of the paragraph beside it -- glosses, edge
+% tags, notes, legend text, badge digits, node names and zone titles
+% alike. Roles are told apart by weight and colour, not size: a name or a
+% zone title is bold, a gloss is muted.
 %
 % A figure whose labels run smaller than the paragraph beside them reads
 % as an afterthought, and shrinking type is never the fix for a box with
 % too many words in it -- that is the conciseness defect, and the fix is
-% fewer words. Going the other way is free: a larger name costs nothing
-% and gives the figure a hierarchy the flat version has to spell out.
+% fewer words. Larger is not free either (v4): v3 set names and titles
+% at \large, and a figure then read louder than its text and a title
+% grew past its zone into the next one.
 %
 % DRAW AT FINAL WIDTH. \resizebox NEVER. This is the same rule from the
 % other end, and it is the one that actually gets broken, because a
@@ -111,11 +109,10 @@
 \tikzset{
   % --- Picture-wide defaults ----------------------------------------------
   % Set once as a picture option: \begin{tikzpicture}[cg]
-  % `font=\normalsize` is the floor, and it is load-bearing rather than a
-  % default: the SMALLEST type in a figure must equal the document's body
-  % size, and every other size in the ramp is larger. Set it explicitly
+  % `font=\normalsize` is load-bearing rather than a default: every word
+  % in a figure is set at the document's body size. Set it explicitly
   % rather than inheriting it, so a picture that lands inside a float,
-  % a table cell or a \small group does not quietly drop below the floor.
+  % a table cell or a \small group does not quietly drop below it.
   %
   % This only holds if the figure is drawn at its final width. A picture
   % set at natural size and then wrapped in \resizebox prints its type at
@@ -177,7 +174,7 @@
   cgzone/.style={rounded corners=5pt, inner sep=3mm, draw=#1Line, fill=#1!6,
                  dash pattern=on 3.4pt off 2.6pt, line width=0.9pt},
   cgzone/.default=cgFlow,
-  cgzonetitle/.style={anchor=south west, font=\large\bfseries, text=#1Text,
+  cgzonetitle/.style={anchor=south west, font=\normalsize\bfseries, text=#1Text,
                       inner sep=0pt, yshift=1.5mm},
   cgzonetitle/.default=cgFlow,
   % --- Edges --------------------------------------------------------------
@@ -241,19 +238,16 @@
   \node[cgzonetitle=#2] at (#1.north west) {#3};}%
 
 % --- The two-tier label ----------------------------------------------------
-% `\cglab{<name>}{<gloss>}` -- a bold name over a smaller gloss line.
+% `\cglab{<name>}{<gloss>}` -- a bold name over a muted gloss line.
 %
-% This is the one thing here that bends an existing rule.
-% docs/TIKZ-STYLE.md forbids shrinking node text to cram more words in,
-% and it is right to: that is the conciseness defect wearing a disguise.
-% A *type ramp* is the opposite move -- a name and a gloss are two roles,
-% and setting two roles at one size is what makes a box of text out of a
-% label. The rule to keep is one size per role, held across the figure,
-% which this enforces by being the only way a gloss gets set. Keep the
-% gloss under about eight words; past that it is prose in a box and the
-% conciseness defect is real again.
+% A name and a gloss are two roles, and setting them alike is what makes
+% a box of text out of a label. They are told apart by weight and colour
+% at one size, the body's: bold ink for the name, muted for the gloss.
+% This is the only way a gloss gets set, which holds the roles apart
+% across the figure. Keep the gloss under about eight words; past that it
+% is prose in a box and the conciseness defect is real again.
 \providecommand{\cglab}[2]{%
-  {\large\bfseries #1}\\[1.5pt]{\normalsize\textcolor{cgMuteText}{#2}}}%
+  {\normalsize\bfseries #1}\\[1.5pt]{\normalsize\textcolor{cgMuteText}{#2}}}%
 
 % ===========================================================================
 % Domain `pic`s -- V.2's "a few house shapes, not an icon set".

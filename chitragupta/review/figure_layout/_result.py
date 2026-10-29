@@ -12,6 +12,7 @@ else is computed from it.
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from chitragupta.review.figure_layout._drawn import Drawn
 from chitragupta.review.figure_layout._geometry import (
     Box,
     emptiness,
@@ -43,6 +44,9 @@ class FigureResult:
     # `figure check`'s boxed probe (#1053). `review figure` neither sets
     # nor reports it.
     input_width: float | None = None
+    # Every line and node TikZ drew, from the same boxed probe (#1054),
+    # for `figure check`'s connector rules.
+    drawn: Drawn | None = None
 
     @property
     def overlapping(self) -> list[tuple[str, str]]:

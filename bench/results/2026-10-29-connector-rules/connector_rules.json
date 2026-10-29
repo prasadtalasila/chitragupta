@@ -1,0 +1,1579 @@
+{
+  "summary": {
+    "figures": 59,
+    "connectors": 279,
+    "loose": 244,
+    "fired": {
+      "c1-orthogonal": 32,
+      "c2-tag-clearance": 29,
+      "c3-coincident": 0,
+      "c4-attach": 7,
+      "c5-transit": 0,
+      "c6-tag-covered": 2,
+      "c7-dangling-tip": 1,
+      "node-overlap": 21
+    },
+    "fired_on_house_figures": {
+      "c1-orthogonal": 0,
+      "c2-tag-clearance": 1,
+      "c3-coincident": 0,
+      "c4-attach": 0,
+      "c5-transit": 0,
+      "c6-tag-covered": 2,
+      "c7-dangling-tip": 0,
+      "node-overlap": 0
+    },
+    "files": {
+      "c1-orthogonal": [
+        "closing-the-loop.tex",
+        "demonstrator-architecture.tex",
+        "demonstrator-today.tex",
+        "dosing-today.tex",
+        "i2c-addresses.tex",
+        "mock-vs-rig.tex",
+        "physical-interface.tex",
+        "pump-markov-chain.tex",
+        "three-layers.tex",
+        "turbine-mode-machine.tex",
+        "twin-pgm.tex",
+        "twinning-loop-data.tex",
+        "two-transport-layers.tex",
+        "types-of-twins.tex",
+        "watering-strategies.tex"
+      ],
+      "c2-tag-clearance": [
+        "command-path.tex",
+        "control-loop.tex",
+        "demonstrator-architecture.tex",
+        "paper-twin-loop.tex",
+        "pump-markov-chain.tex",
+        "three-digital-objects.tex",
+        "three-layers.tex",
+        "turbine-mode-machine.tex",
+        "two-transport-layers.tex",
+        "watering-strategies.tex"
+      ],
+      "c3-coincident": [],
+      "c4-attach": [
+        "model-anatomy.tex",
+        "simulator-anatomy.tex",
+        "three-digital-objects.tex"
+      ],
+      "c5-transit": [],
+      "c6-tag-covered": [
+        "architecture.tex"
+      ],
+      "c7-dangling-tip": [
+        "paper-twin-loop.tex"
+      ],
+      "node-overlap": [
+        "gain-as-fraction.tex",
+        "mock-vs-rig.tex",
+        "pctrl-blocks.tex",
+        "physical-interface.tex",
+        "residual-doses.tex",
+        "rtf-regimes.tex",
+        "simulator-anatomy.tex",
+        "three-windows.tex",
+        "two-time-advances.tex",
+        "zero-crossing.tex"
+      ]
+    },
+    "not_measured": {},
+    "c2_gap_by_node_box_mm": {
+      "<0.1": 95,
+      "0.1-0.8": 0,
+      "0.8-3": 6,
+      ">3": 0
+    },
+    "c2_gap_by_text_box_mm": {
+      "<0.1": 8,
+      "0.1-0.8": 19,
+      "0.8-3": 71,
+      ">3": 3
+    },
+    "c2_tags_without_text_box": 0
+  },
+  "figures": [
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/estimator-loop.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.5462614639546102
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.5462684931506876
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/gain-as-fraction.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(0.0,-20.3)+tb",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(0.0,10.7)+ta",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(90.0,-20.2)+tb",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [
+        [
+          "c4-attach",
+          "round nodes, which have no sides: pa, za, pb, zb"
+        ]
+      ],
+      "connectors": 2,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/hidden-markov-chain.tex",
+      "findings": [],
+      "not_measured": [
+        [
+          "c4-attach",
+          "round nodes, which have no sides: x0, x1, x2, x3, z1, z2, z3"
+        ]
+      ],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.5462684931506827
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748734
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/aliasing.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 6,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/beam-lumps-and-mesh.tex",
+      "findings": [],
+      "not_measured": [
+        [
+          "c4-attach",
+          "round nodes, which have no sides: m1, m2, m3"
+        ]
+      ],
+      "connectors": 2,
+      "loose": 32,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/closing-the-loop.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "pt->state",
+          "off by 16.0mm in x and 1.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "decide->guard",
+          "off by 6.9mm in x and 1.4mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 5,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.4890485169546486
+        ],
+        [
+          0.0,
+          1.272330178497303
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/configuration-ladder.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 2,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/data-flow-test.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 5,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.5462720077487202
+        ],
+        [
+          0.0,
+          1.5462755223467552
+        ],
+        [
+          0.0,
+          1.5462720077487189
+        ],
+        [
+          0.0,
+          1.546272007748714
+        ],
+        [
+          0.0,
+          1.546272007748714
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/decision-latency.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 3,
+      "loose": 6,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/demonstrator-architecture.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "pi->core",
+          "off by 3.5mm in x and 7.5mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "di->alert",
+          "off by 2.3mm in x and 6.9mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "pi->core",
+          "tag 0.6mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.6437212016094622
+        ],
+        [
+          0.0,
+          1.4362496715637119
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/demonstrator-climb.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.5462684931506876
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/dosing-today.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "vessel->sensor",
+          "off by 19.7mm in x and 9.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "pump->vessel",
+          "off by 20.5mm in x and 9.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          2.4647640642967086e-06,
+          2.049434480279084
+        ],
+        [
+          0.0,
+          2.03689035531236
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/ensemble-fan.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 11,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/euler-step-sizes.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 22,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/four-timestamps.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 3,
+      "loose": 1,
+      "tag_gaps": [
+        [
+          0.9999945205479451,
+          2.5462630136986304
+        ],
+        [
+          0.9999945205479451,
+          2.5462630136986304
+        ],
+        [
+          0.9999945205479451,
+          2.5462630136986304
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/hidden-markov-model.tex",
+      "findings": [],
+      "not_measured": [
+        [
+          "c4-attach",
+          "round nodes, which have no sides: x0, x1, x2, x3, z1, z2, z3"
+        ]
+      ],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.5462684931506827
+        ],
+        [
+          0.0,
+          1.546272007748714
+        ],
+        [
+          0.0,
+          1.5462684931506876
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/i2c-addresses.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "mux->s1",
+          "off by 31.8mm in x and 16.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "mux->s3",
+          "off by 31.8mm in x and 16.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 9,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          2.076381599730004
+        ],
+        [
+          0.0,
+          1.546272007748714
+        ],
+        [
+          0.0,
+          2.07637762174914
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/ingestion-pipeline.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/modbus-addresses.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 4,
+      "loose": 6,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/model-anatomy.tex",
+      "findings": [
+        [
+          "c4-attach",
+          "x.south",
+          "2 ends up to 2.1mm off even spacing"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54626497855265
+        ],
+        [
+          0.0,
+          1.546268493150684
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/model-simulator-simulation.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 3,
+      "loose": 3,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/non-physical-referents.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.5462720077487195
+        ],
+        [
+          0.0,
+          1.5462684931506852
+        ],
+        [
+          0.0,
+          1.5462720077487189
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.5462649785526414
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/pctrl-blocks.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(78.0,-8.6)+(78.9,-16.0)",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 11,
+      "loose": 5,
+      "tag_gaps": [
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748724
+        ],
+        [
+          0.0,
+          1.546272007748714
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/physical-interface.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(-6.9,35.4)+sw",
+          "boxes intersect"
+        ],
+        [
+          "c1-orthogonal",
+          "sensors->modbus",
+          "off by 2.2mm in x and 11.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "bus->sw",
+          "off by 3.3mm in x and 4.5mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "person->api",
+          "off by 9.4mm in x and 9.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "dt->api",
+          "off by 9.4mm in x and 9.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/pump-markov-chain.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "on->flt",
+          "off by 21.6mm in x and 25.6mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "flt->off",
+          "off by 16.3mm in x and 24.5mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "on->flt",
+          "tag 0.6mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "flt->off",
+          "tag 0.6mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 4,
+      "loose": 3,
+      "tag_gaps": [
+        [
+          8.786495090653904e-07,
+          1.5462728863982294
+        ],
+        [
+          8.786495090653904e-07,
+          1.5462728863982294
+        ],
+        [
+          0.0,
+          0.6440227946735644
+        ],
+        [
+          0.0,
+          0.6138258306707759
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/residual-doses.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(14.0,-12.6)+legmodel",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(44.0,-12.6)+legmodel",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(74.0,-12.6)+legmodel",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "legmodel+legsensor",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 10,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/rtf-regimes.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(18.0,-17.7)+(45.0,-26.7)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(45.0,-26.7)+(84.0,-18.1)",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 7,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/run-modes.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 10,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/seven-blocks.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.5462720077487189
+        ],
+        [
+          0.0,
+          1.54627200774872
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/shadowing-pipeline.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 8,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/simulator-anatomy.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "io+solver",
+          "boxes intersect"
+        ],
+        [
+          "c4-attach",
+          "engine.south",
+          "2 ends up to 5.0mm off even spacing"
+        ],
+        [
+          "c4-attach",
+          "step.north",
+          "2 ends up to 5.9mm off even spacing"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.54627200774872
+        ],
+        [
+          0.0,
+          1.5462614639546177
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/surrogate-campaign.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.5462684931506776
+        ],
+        [
+          0.0,
+          1.5814144735021405
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/three-layers.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "pi->core",
+          "off by 6.6mm in x and 7.7mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "core->di",
+          "off by 6.8mm in x and 7.7mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "di->svc",
+          "off by 7.1mm in x and 8.8mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "pi->core",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "core->di",
+          "tag 0.0mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.004175715632437006
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/three-windows.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(19.6,-19.0)+(29.6,-19.0)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(19.6,-19.0)+(9.6,-19.0)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(29.6,-19.0)+(39.6,-19.0)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(39.6,-19.0)+(49.6,-19.0)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(49.6,-19.0)+(59.6,-19.0)",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 1,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/turbine-mode-machine.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "prod->fault",
+          "off by 34.4mm in x and 16.0mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "idle->start",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "start->prod",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "prod->curt",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "curt->prod",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "prod->idle",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "start->fault",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "curt->fault",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "fault->maint",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "maint->idle",
+          "tag 0.5mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 10,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.4920402103224021
+        ],
+        [
+          0.0,
+          0.4920402103224022
+        ],
+        [
+          0.0,
+          0.49203845302336985
+        ],
+        [
+          8.786495085659359e-06,
+          0.4920454822194424
+        ],
+        [
+          0.0,
+          0.49204021032240297
+        ],
+        [
+          0.0,
+          0.49204021032240297
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.49204021032240297
+        ],
+        [
+          0.0,
+          0.49204372492043424
+        ],
+        [
+          0.0,
+          0.4920366957243692
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/twin-pgm.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "d0->s1",
+          "off by 23.6mm in x and 25.1mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "d1->s2",
+          "off by 23.6mm in x and 25.1mm in y"
+        ]
+      ],
+      "not_measured": [
+        [
+          "c4-attach",
+          "round nodes, which have no sides: s0, s1, s2, d0, d1, d2"
+        ]
+      ],
+      "connectors": 10,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          2.4023540666257226
+        ],
+        [
+          0.0,
+          2.4023554319618823
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/twinning-loop-data.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "cmd->pt",
+          "off by 5.7mm in x and 61.3mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          1.5462513594852634
+        ],
+        [
+          0.0,
+          1.4115841439079346
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/two-time-advances.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(-6.0,15.0)+(24.0,13.5)",
+          "boxes intersect"
+        ],
+        [
+          "node-overlap",
+          "(-6.0,15.0)+(6.0,13.5)",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 38,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/two-transport-layers.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "dev->gw",
+          "off by 1.1mm in x and 16.4mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "gw->sys",
+          "off by 1.0mm in x and 16.8mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "dev->gw",
+          "tag 3.4mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "gw->sys",
+          "tag 3.4mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "sys->twin",
+          "tag 3.4mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 3,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          1.7768036506518259,
+          3.4206252849885788
+        ],
+        [
+          1.7958667829977082,
+          3.431751815420226
+        ],
+        [
+          1.7595863714567261,
+          3.410514066920033
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/types-of-twins.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "product->hub",
+          "off by 14.7mm in x and 8.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "process->hub",
+          "off by 15.6mm in x and 8.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "eco->hub",
+          "off by 14.8mm in x and 8.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "socio->hub",
+          "off by 14.0mm in x and 8.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/value-ladder.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 1,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/watering-strategies.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "dbB->ruleB",
+          "off by 21.8mm in x and 13.6mm in y"
+        ],
+        [
+          "c2-tag-clearance",
+          "dbB->ruleB",
+          "tag 0.3mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 9,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.33535443523182734
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/zero-crossing.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "(71.3,-5.5)+(84.4,-4.5)",
+          "boxes intersect"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 10,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/command-path.tex",
+      "findings": [
+        [
+          "c2-tag-clearance",
+          "stale->dose",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "dose->run",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "run->put",
+          "tag 0.5mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 4,
+      "loose": 5,
+      "tag_gaps": [
+        [
+          0.0,
+          0.49204372492043724
+        ],
+        [
+          0.0,
+          0.49204372492043724
+        ],
+        [
+          0.0,
+          0.49204372492043724
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/demonstrator-today.tex",
+      "findings": [
+        [
+          "c1-orthogonal",
+          "pot->sensor",
+          "off by 17.7mm in x and 9.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "pump->pot",
+          "off by 17.6mm in x and 9.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 7,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          2.3361608949072337e-06,
+          2.0792122041375785
+        ],
+        [
+          0.0,
+          2.0806967989482934
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/mock-vs-rig.tex",
+      "findings": [
+        [
+          "node-overlap",
+          "mock+rig",
+          "boxes intersect"
+        ],
+        [
+          "c1-orthogonal",
+          "client->apiA",
+          "off by 20.0mm in x and 10.0mm in y"
+        ],
+        [
+          "c1-orthogonal",
+          "client->apiB",
+          "off by 20.0mm in x and 10.0mm in y"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/one-day-two-strategies.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 24,
+      "tag_gaps": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/paper-twin-loop.tex",
+      "findings": [
+        [
+          "c2-tag-clearance",
+          "ctrl->pump",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "pump->pot",
+          "tag 0.5mm from its line"
+        ],
+        [
+          "c7-dangling-tip",
+          "(0.0,28.6)",
+          "arrow tip lands on no node or line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 2,
+      "loose": 3,
+      "tag_gaps": [
+        [
+          0.0,
+          0.4920437249204372
+        ],
+        [
+          0.0,
+          0.492040210322402
+        ]
+      ]
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/three-digital-objects.tex",
+      "findings": [
+        [
+          "c2-tag-clearance",
+          "aPT->aDO",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "bPT->bDO",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "bDO->bPT",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "cPT->cDO",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c2-tag-clearance",
+          "cDO->cPT",
+          "tag 0.0mm from its line"
+        ],
+        [
+          "c4-attach",
+          "bPT.north",
+          "2 ends up to 2.3mm off even spacing"
+        ],
+        [
+          "c4-attach",
+          "bDO.south",
+          "2 ends up to 2.3mm off even spacing"
+        ],
+        [
+          "c4-attach",
+          "cPT.north",
+          "2 ends up to 2.3mm off even spacing"
+        ],
+        [
+          "c4-attach",
+          "cDO.south",
+          "2 ends up to 2.3mm off even spacing"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 5,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/branching-tree.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 6,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/control-loop.tex",
+      "findings": [
+        [
+          "c2-tag-clearance",
+          "plant->sensor",
+          "tag 0.6mm from its line"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 4,
+      "loose": 0,
+      "tag_gaps": [
+        [
+          0.0,
+          0.5875097421806597
+        ]
+      ]
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/hub-and-spoke-network.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 4,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/layered-stack.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 1,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/map.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 0,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/pipeline.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 3,
+      "loose": 7,
+      "tag_gaps": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/zoned-spine.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 5,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/architecture.tex",
+      "findings": [
+        [
+          "c6-tag-covered",
+          "sync->draft",
+          "tag under z1"
+        ],
+        [
+          "c6-tag-covered",
+          "sync->draft",
+          "tag under z2"
+        ]
+      ],
+      "not_measured": [],
+      "connectors": 8,
+      "loose": 25,
+      "tag_gaps": [
+        [
+          0.0,
+          0.9999910059499102
+        ],
+        [
+          0.0,
+          0.9999874913518713
+        ],
+        [
+          0.0,
+          0.9999874913518763
+        ],
+        [
+          0.0,
+          0.9999910059499075
+        ],
+        [
+          0.0,
+          0.99999100594991
+        ]
+      ]
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/rag-stages.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 10,
+      "loose": 0,
+      "tag_gaps": []
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/retrieval.tex",
+      "findings": [],
+      "not_measured": [],
+      "connectors": 9,
+      "loose": 18,
+      "tag_gaps": [
+        [
+          0.0,
+          0.9999874913518713
+        ]
+      ]
+    }
+  ]
+}

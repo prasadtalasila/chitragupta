@@ -43,8 +43,8 @@ fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
-| `assets/tikz/pipeline.tex` | 5 | 3 | 0.68 | 0.10 | 0.55 |
-| `assets/tikz/exemplars/rag-stages.tex` | 11 | 4 | 0.91 | 0.37 | 0.68 |
+| `assets/tikz/pipeline.tex` | 5 | 3 | 0.68 | 0.10 | 0.56 |
+| `assets/tikz/exemplars/rag-stages.tex` | 11 | 4 | 0.91 | 0.37 | 0.69 |
 
 A bottleneck is the stage the pipeline narrows at; mark it `cgkey` and
 say why in the stage's gloss, not in a callout.

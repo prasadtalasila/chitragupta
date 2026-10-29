@@ -37,8 +37,9 @@ cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
 
 Its first line, `% cg-layout: pipeline`, names the layout, and
 `chitragupta figure check` reads it to print the figure's size and
-counts beside that layout's reference ranges. Keep it, and change it if
-you change the layout.
+counts beside that layout's reference ranges, and to skip the connector
+rules that layout exempts (a hub's diagonal spokes, say). Keep it, and
+change it if you change the layout.
 
 ## 🎨 The house style comes with the file
 
@@ -69,9 +70,9 @@ strokes and coloured text take its darker shade, `cg<Hue>Line` or
 `cg<Hue>Text` (`draw=cgAltLine`, `text=cgAccentText`), which clear WCAG
 contrast where the light hues do not. docs/TIKZ-STYLE.md has the table.
 
-**Labels never go below the body size.** Node names are
-`\large\bfseries` and everything else is `\normalsize`, which `[cg]`
-sets explicitly. Each scaffold is laid out to fit the `article` class's
+**Labels are set at the body size, all of them.** Node names and zone
+titles are `\normalsize\bfseries` and everything else is `\normalsize`,
+which `[cg]` sets explicitly. Each scaffold is laid out to fit the `article` class's
 text width at that size, so `\input` it bare: a `\resizebox` around it
 prints the type at whatever the scale factor happens to be.
 
