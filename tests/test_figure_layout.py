@@ -453,6 +453,21 @@ class TestScaffold:
         assert "\\documentclass[12pt]{article}" in scaffold
         assert "\\setmainfont{STIX Two Text}" in scaffold
 
+    def test_a_name_spelled_with_a_macro_is_declared_but_not_probed(self):
+        """#1072: `\\node (s\\i)` inside a `\\foreach` names a node only
+        while the loop runs. The probes sit after the loop, where `\\i`
+        is undefined, so probing `s\\i` took the compile down with
+        `! Missing \\endcsname inserted.` The name is still declared, so
+        the report can say it went unmeasured."""
+        source = "\\foreach \\i in {1,2} { \\node (s\\i) at (\\i,0) {S}; }\n\\node (a) {A};\n"
+
+        names = figure_layout.node_names(source)
+        scaffold = figure_layout.scaffold(source, names)
+
+        assert names == ["s\\i", "a"]
+        assert "\\pgfpointanchor{a}" in scaffold
+        assert "\\pgfpointanchor{s\\i}" not in scaffold
+
 
 class TestProbePlacement:
     """Where the probes are spliced in, and which nodes get probed.
@@ -1813,3 +1828,22 @@ class TestCheckFigure:
         result = figure_layout.check_figure(path, "", boxed=True)
 
         assert result.failed and result.boxes is None
+
+    @needs_tikz
+    def test_a_loop_named_node_is_reported_unmeasured_not_broken(self, tmp_path):
+        """#1072, end to end: the sample book's `run-modes.tex` names its
+        nodes `(s\\i)` in a `\\foreach` and compiles on its own, yet was
+        reported as `does-not-compile`."""
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\begin{tikzpicture}\n"
+            "\\foreach \\i in {1,2} { \\node (s\\i) at (\\i,0) {S}; }\n"
+            "\\node (a) at (0,1) {A};\n"
+            "\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        result = figure_layout.check_figure(path, "", boxed=True)
+
+        assert result.failed is None
+        assert result.unmeasured == ["s\\i"]

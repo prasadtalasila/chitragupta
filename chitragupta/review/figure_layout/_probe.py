@@ -152,11 +152,17 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     extent. That sentinel has a vast positive area, so emptiness came out
     as "100% empty" for every real figure, which is how this was found.
     """
+    # A name spelled with a macro (`(s\i)` in a `\foreach`) names a node
+    # only while that macro is defined; at the probes, after the loop,
+    # it is not, and the compile dies on `Missing \endcsname` (#1072).
+    # Left out here but kept in `names`, so it reads as declared but not
+    # measured rather than vanishing from the report.
     probes = "\n".join(
         f"\\pgfpointanchor{{{name}}}{{south west}}\\pgfgetlastxy{{\\cgx}}{{\\cgy}}%\n"
         f"\\pgfpointanchor{{{name}}}{{north east}}\\pgfgetlastxy{{\\cgxx}}{{\\cgyy}}%\n"
         f"\\typeout{{CGBOX {name} \\cgx\\space\\cgy\\space\\cgxx\\space\\cgyy}}%"
         for name in [*names, BBOX_NAME]
+        if "\\" not in name
     )
     figure = _with_probes_inside(source, probes)
     libraries = libraries_in(source) if boxed else []
