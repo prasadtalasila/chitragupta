@@ -419,9 +419,15 @@ class TestAgainstRealLualatex:
             REPO_ROOT / "assets" / "tikz" / f"{name}.tex", _check.DEFAULT_WIDTH_PT
         )
 
-        assert not {"does-not-compile", "focal-count", "size-stray", "size-width"} & set(
-            _rules(result.findings)
-        )
+        assert not {
+            "does-not-compile",
+            "focal-count",
+            "size-stray",
+            "size-width",
+            # The bench left control-loop's `output` tag 0.6mm from its
+            # bend; a scaffold is copied, so it starts a figure clean.
+            "c2-tag-clearance",
+        } & set(_rules(result.findings))
 
 
 def _result(**fields):
