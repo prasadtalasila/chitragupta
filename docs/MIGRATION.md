@@ -293,11 +293,12 @@ cd ~/thesis
 chitragupta doctor
 ```
 
-`doctor` reports missing programs (pdftotext, pandoc, LuaLaTeX, Vale), a
-missing `enrich` extra, a PyTorch build that does not match the GPU, and
-agent hooks that cannot start, and exits normally either way. Install
-what it names before you need it: `sync` with the default parser
-needs pdftotext, and `render` needs pandoc and LuaLaTeX.
+`doctor` reports missing programs (pdftotext, pdftoppm, pdfinfo, pandoc,
+LuaLaTeX, Vale), a missing `enrich` extra, a PyTorch build that does not
+match the GPU, and agent hooks that cannot start, and exits normally
+either way. Install what it names before you need it: `sync` with the
+default parser needs pdftotext, `render` needs pandoc and LuaLaTeX, and
+`figure look` needs pdftoppm and pdfinfo.
 
 ### 5. Sync and look at the result
 

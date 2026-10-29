@@ -91,12 +91,13 @@ so they are this skill's to state:
    scaffold for it rather than from an empty picture.** `assets/tikz/`
    holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names --
    pipeline, map, layered stack, control loop, branching tree,
-   hub-and-spoke, zoned spine. Copy the one that fits and re-label it,
-   leaving the house style block it carries unedited. Then run
-   `python -m chitragupta.figure sync <the figure file>`, which
-   refreshes the block if the scaffold's copy is older than the
-   installed one, and reports instead of overwriting if you edited
-   inside it. Each places its
+   hub-and-spoke, zoned spine. Start from the one that fits with
+   `python -m chitragupta.figure new <figures dir> <name> --layout <id>`,
+   which copies it (and its ASCII twin, where the layout ships one),
+   keeps its `% cg-layout:` line, brings its house style block up to
+   date as `python -m chitragupta.figure sync` would, and never
+   overwrites a figure that exists. Then re-label it,
+   leaving the house style block unedited. Each places its
    nodes relative to one another, which is the property worth keeping:
    a figure laid out in hand-computed millimetres re-opens every
    adjacency in it the moment any label changes length. Then check the
@@ -123,8 +124,7 @@ so they are this skill's to state:
    `.claude/skills/figure-drawer/references/figures.md` §4.
 
    ```bash
-   cp assets/tikz/zoned-spine.tex content/drafts/rag/figures/flow.tex
-   python -m chitragupta.figure sync content/drafts/rag/figures/flow.tex
+   python -m chitragupta.figure new content/drafts/rag/figures flow --layout zoned-spine
    ```
 
 3. **Panels get lettered sub-captions, in both forms.** A figure with
@@ -197,22 +197,29 @@ so they are this skill's to state:
    document, with its floats, captions and neighbouring text, where
    labels wrap and the gaps between layers close differently, so a
    figure that passes the probe can still print with a hyphenated label
-   or an arrow through a zone title. Once the draft carries the figure's
-   marker, render it and look at the page that holds the figure:
+   or an arrow through a zone title. `figure look` sets the figure alone
+   on the render's own page (12pt, its fonts, its text width), cropped
+   to the figure, as `<name>.look.png` at 300 dpi and `<name>.look.pdf`,
+   with a red line at the text width if the figure is wider. Once the
+   draft carries the figure's marker, `--draft` renders the draft too
+   and writes `<name>.page.png`, the page that holds the figure. Open
+   the PNGs and look at them:
 
    ```bash
-   python -m chitragupta.draft render <draft> --format pdf
-   pdftoppm -png -r 100 -f <page> -l <page> -singlefile <the rendered pdf> page
+   python -m chitragupta.figure look content/drafts/rag/figures/flow.tex
+   python -m chitragupta.figure look content/drafts/rag/figures/flow.tex --draft content/drafts/rag/survey.md
    ```
 
-   Rendering writes only under `content/rendered/`, never the draft.
+   It writes only under `content/rendered/`, never the draft.
    Check the page against the same pre-flight list, fix the layout
    (wider boxes, more room, a moved edge, never a smaller scale), and
-   render again until it reads cleanly. Edit only below the house style
+   look again until it reads cleanly. Edit only below the house style
    block: a change inside it makes the render warn that the block was
-   hand-edited. If the marker is not in the draft yet, tell the caller
-   to make this check right after its own render. If the render reports
-   `[missing-binary]`, `pdftoppm` is not installed, or you cannot view
+   hand-edited. If the marker is not in the draft yet, look at the
+   figure alone and tell the caller to look at its page after its own
+   render, which refreshes these pictures. If `figure look` exits 2 for
+   a missing tool (`lualatex`, `tikz.sty`, `pdftoppm`, or `pandoc` with
+   `--draft`), the render reports `[missing-binary]`, or you cannot view
    an image, skip the look: keep the probe and `figure check` results,
    and say so in chat. The look is a check, never a condition of
    keeping the figure; `chitragupta install os-deps` brings the tools.

@@ -1,12 +1,13 @@
 # 🖼 XII-2a: `chitragupta figure new` and `chitragupta figure look`
 
-Status: **planned.** Written 2026-10-29 against `main` at `227d7e6`,
+Status: **built.** Written 2026-10-29 against `main` at `227d7e6`,
 from a brainstorming session on issue
 [#1052](https://github.com/prasadtalasila/chitragupta/issues/1052), and
 built in the same PR as this plan (the user asked for one PR, not a plan
 PR first, as for #1053). Decisions marked *user* were put to the user
 and answered in that session; the rest were the session's proposals,
-approved section by section.
+approved section by section. What changed on the way is in **Changed in
+the build** at the end.
 
 **Written for** whoever builds #1052: a session that changes
 `chitragupta/figure/`, `chitragupta/render_output/`,
@@ -300,3 +301,32 @@ Test first at each step, red before green.
 6. `look --draft`.
 7. `doctor`, docs, the skill copies, the version bump (MINOR: two new
    commands).
+
+## Changed in the build
+
+- **The `% cg-layout:` lines were already there.** #1057 landed between
+  the design and the build and gave every scaffold its line, with the
+  file stem as the id, and `figure/_layout.declared_layout` to read it.
+  `figure new` reuses both rather than adding either.
+- **The mark goes after the figure, not before it.** Placed before the
+  `\input`, it sat alone in the main vertical list with no glue between
+  it and the paragraph above, which removes a page break TeX could
+  take. Inside the figure's own paragraph it rides on the figure's last
+  line. `tests/test_render_output_figure_anchor.py` compares every
+  word's position, over three placements, with and without marks.
+- **The mark travels in a raw ` ```{=latex} ` block, with the
+  `\input`.** In Markdown text pandoc escapes the braces of a command it
+  does not know, which breaks the mark.
+- **No mark in a `.tex` draft.** Pandoc reads one through its LaTeX
+  reader, which turns an unknown command into printed text (checked with
+  pandoc 3.7). A `.tex` draft's figures get a look and no page picture,
+  and the note says so.
+- **The hook is in `draft render`'s CLI**, as the plan's "Why in the CLI"
+  says, through a split of its `main` into `_rendered` and `main`, so
+  `figure look --draft` renders through exactly the same refusals.
+- **A look and a page are independent.** A figure whose look fails still
+  gets its page picture, and the reverse.
+- **`figure new` creates a missing `figures/`** whose parent exists, so
+  a draft's first figure needs no `mkdir`.
+- **A page is 2481 x 3508 px**, not 2480: pdftoppm rounds a page's pixel
+  size up, and A4's 595.28pt is 2480.3 px at 300 dpi.

@@ -57,7 +57,7 @@ from chitragupta.render_output._figures import _require_tikz
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog=prog_for("figure"),
-        description="Keep the house figure-style block current, and check one figure.",
+        description="Start, check and look at one figure, and keep the house block current.",
     )
     verbs = parser.add_subparsers(dest="verb", required=True)
     sync = verbs.add_parser("sync", help="stamp, refresh and report the block in figure files")

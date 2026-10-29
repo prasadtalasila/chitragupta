@@ -46,6 +46,12 @@ class TestCheckBinaries:
         assert "pdflatex" not in doctor.BINARIES
         assert "lualatex" in doctor.BINARIES
 
+    def test_the_tools_figure_look_needs_are_checked(self):
+        """#1052: `figure look` rasterizes with pdftoppm, and a pdf render
+        finds each figure's page with pdfinfo; both are poppler-utils,
+        beside the pdftotext already here."""
+        assert {"pdftotext", "pdftoppm", "pdfinfo"} <= set(doctor.BINARIES)
+
 
 class TestCheckOptionalPdflatex:
     """pdflatex is no longer the pipeline's, but a thesis author whose

@@ -68,9 +68,10 @@ DESCRIPTION = (
 )
 
 # What `draft render`/`draft style` and `review figure` (lualatex, for
-# its layout probe) already probe for themselves, per call. Doctor probes
-# the same four, once, up front.
-BINARIES = ("pandoc", "lualatex", "pdftotext", "vale")
+# its layout probe) already probe for themselves, per call, plus the two
+# poppler tools `figure look` and a pdf render's figure pictures use
+# (pdftoppm, pdfinfo; #1052). Doctor probes them once, up front.
+BINARIES = ("pandoc", "lualatex", "pdftotext", "pdftoppm", "pdfinfo", "vale")
 
 THIS_DISTRIBUTION = "chitragupta-cli"
 CONSOLE_SCRIPTS = ("chitragupta", "cg")

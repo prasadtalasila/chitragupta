@@ -15,6 +15,8 @@ installed rather than cloned (#258):
     chitragupta install <stage> ...  os-deps or gpu-torch, the two pip cannot do itself (#265)
     chitragupta figure sync [PATH] ... stamp the house figure-style block (#1013)
     chitragupta figure check FILE  ... report every rule one figure breaks (#1053)
+    chitragupta figure new DIR NAME --layout ID ... start a figure from a scaffold (#1052)
+    chitragupta figure look FILE [--draft DRAFT] ... see one figure as it will print (#1052)
 
 **This adds a front door, not a command surface.** Every verb, flag and
 exit code below belongs to the layer it dispatches to, unchanged. Like
@@ -93,7 +95,8 @@ COMMANDS = {
     ),
     "figure": (
         "chitragupta.figure.__main__",
-        "keep the house figure-style block current, and check one figure -- sync, check",
+        "start, check and look at one figure, and keep the house block current"
+        " -- sync, check, new, look",
     ),
 }
 

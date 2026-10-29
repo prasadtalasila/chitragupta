@@ -27,7 +27,7 @@ TOP_LEVEL = {"corpus", "draft", "review", "enrich", "init", "doctor", "install",
 # The package-level commands among them. Three are one atomic command
 # each; `figure` is a command with verbs of its own (#1013).
 PACKAGE_COMMANDS = {"init", "doctor", "install", "figure"}
-FIGURE_VERBS = {"sync", "check"}
+FIGURE_VERBS = {"sync", "check", "new", "look"}
 
 # Every drafting-layer verb that has its own subcommands, and what
 # docs/PACKAGING.md's "draft" table row lists for it.
@@ -116,7 +116,7 @@ def _leaf_terms() -> tuple[int, ...]:
     subcommand leaves, enrich.
     """
     return (
-        # init, doctor, install, and figure's own verbs (sync, check)
+        # init, doctor, install, and figure's own verbs (sync, check, new, look)
         len(PACKAGE_COMMANDS) - 1 + len(FIGURE_VERBS),
         len(CORPUS_VERBS),
         len(DRAFT_FLAT_VERBS),
