@@ -52,6 +52,12 @@ class TestRules:
                 "node-text-overload",
                 "stranded-arrowhead",
                 "size-squash",
+                "k1-stroke",
+                "k2-text",
+                "w1-case",
+                "w2-tag",
+                "w3-gloss",
+                "w4-pictograph",
             }
             | connector
         )
@@ -63,7 +69,7 @@ class TestRules:
         advisory = [rule.id for rule in RULES.values() if rule.cls == "advisory"]
 
         assert refused == ["does-not-compile", *advisory]
-        assert len(advisory) == 5
+        assert len(advisory) == 8
 
     def test_each_rule_is_keyed_by_its_own_id(self):
         assert all(key == rule.id for key, rule in RULES.items())

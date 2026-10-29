@@ -78,10 +78,18 @@ RULES: dict[str, Rule] = {
         Rule("c5-transit", "element", "objective"),
         Rule("c6-tag-covered", "element", "objective"),
         Rule("c7-dangling-tip", "element", "objective"),
+        # Contrast and wording (#1055): k1 and k2 from the probe's
+        # colours, w4 from the source.
+        Rule("k1-stroke", "element", "objective"),
+        Rule("k2-text", "element", "objective"),
+        Rule("w4-pictograph", "element", "objective"),
         Rule("size-height", "figure", "advisory", allowable=False),
         Rule("size-slack", "figure", "advisory", allowable=False),
         Rule("size-squash", "element", "advisory", allowable=False),
         Rule("budget-nodes", "figure", "advisory", allowable=False),
         Rule("budget-edges", "figure", "advisory", allowable=False),
+        Rule("w1-case", "element", "advisory", allowable=False),
+        Rule("w2-tag", "element", "advisory", allowable=False),
+        Rule("w3-gloss", "element", "advisory", allowable=False),
     )
 }

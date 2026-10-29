@@ -798,22 +798,30 @@ or point.
 | `c5-transit` | element | objective | A connector crosses a node that is neither of its ends. A zone containing an end, a marker under 2mm and an unframed group (an undrawn `fit`) are not counted |
 | `c6-tag-covered` | element | objective | A tag overlaps a node. A zone containing the tag and an unframed group are not counted |
 | `c7-dangling-tip` | element | objective | An arrow leaving a node has its tip land more than 1mm from any node or other line; the target is the point, `(x,y)` in mm. An axis or a two-headed dimension line, which leaves no node, is not read |
+| `k1-stroke` | element | objective | A box's border, or a connector, under WCAG's 3:1 against its ground; the target is the node or the edge, `a->b`, and the measurement names both colours and the ratio. The ground is the box's own fill, else the innermost filled box that contains it, else white; a connector's, the innermost filled box that holds both its ends. Colours are what pgf drew with, so a style or `#1` argument is resolved. The fix is the hue's `Line` shade. A translucent fill is read as opaque, a shadow is not a ground, and a connector crossing a third zone is measured against its ends' ground |
+| `k2-text` | element | objective | A run of a node's text under 4.5:1 against the same ground, or under 3:1 where it is WCAG's large text (14pt bold, 18pt), measured from the typeset size; the target is the node, or `tag on a->b`. Read from the glyphs, so `text=`, `\textcolor`, `\color` and a macro are all seen. The fix is the hue's `Text` shade |
+| `w4-pictograph` | element | objective | An emoji or pictograph (U+1F000 to U+1FAFF, U+2600 to U+27BF, U+2B00 to U+2BFF, U+FE0F) in a label; the target is the node, or `figure` for one outside any label. The render prints it from a fallback font unlike the rest, and a thesis without that font chain drops it. Arrows, `©`, `™`, math and icon commands are not read |
 | `size-height` | figure | advisory | The picture's height as a share of the 700pt text height, beside the layout's reference range |
 | `size-slack` | figure | advisory | `1 -` the area of the nodes that enclose no other node, over the picture's area (a zone card is not filled area), beside the layout's reference range |
 | `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured; a path with an `edge` operator or a named node on it, or a point built from two nodes (`b.north \|- a`), is listed as not measured rather than guessed at |
 | `budget-nodes` | figure | advisory | The named node count, beside the layout's reference range. Never a cap |
 | `budget-edges` | figure | advisory | The count of edges the source parser reads, beside the layout's reference range. Never a cap |
+| `w1-case` | element | advisory | A `\cglab` name that starts lower-case, or is in Title Case (every later word of four letters or more capitalised); the target is the name. Acronyms, `\texttt{}`, math and a program name that is lower-case by convention (`pdflatex`) are left alone, so `Extended Kalman filter` passes |
+| `w2-tag` | element | advisory | A tag on a `\draw` or `\path` that joins two points, over three words or with a capitalised word (acronyms aside); the target is the tag's text |
+| `w3-gloss` | element | advisory | A `\cglab` gloss over six words; the target is its name. A formula counts as one word |
 
 Of the objective rules, all but `size-width`, `size-stray`,
-`focal-count` and the connector rules `c1` to `c7` are `review
-figure`'s findings, under the ids its `--json` has always used. The
+`focal-count`, the connector rules `c1` to `c7`, `k1`, `k2` and `w4`
+are `review figure`'s findings, under the ids its `--json` has always used. The
 edge list, the declared names that were not measured, the emptiness
 proportion and the count of lines not between two nodes are printed
 beside the findings as diagnostics, never as findings.
 
-**The five advisory rules are reports, not findings** (#1057). They
-print under their own heading whatever the numbers are, never change
-the "No findings" line and cannot be allowed. FIGURE-ROADMAP VI.3 is
+**The eight advisory rules are reports, not findings** (#1057, #1055).
+They print under their own heading, never change the "No findings"
+line and cannot be allowed. The wording ones (`w1` to `w3`) are matters
+of house style for the author to weigh, read only from `\cglab`, where
+a name and a gloss are certain. For the size ones FIGURE-ROADMAP VI.3 is
 why: a bare count means little, so each sits beside the range its
 layout's scaffold and exemplars measure, and a range describes those
 figures and never caps yours. A forty-cell DP trace is not over budget.
@@ -823,9 +831,9 @@ layout from the figure's own `% cg-layout: <layout>` line, on a line
 of its own (`--layout` overrides it). Every scaffold and exemplar
 carries one; a figure without one gets the numbers and no range.
 
-The fifteen rules that need the compiled geometry (`nothing-measurable`,
+The seventeen rules that need the compiled geometry (`nothing-measurable`,
 `size-width`, `size-stray`, `content-protrusion`, `node-overlap`, `c1`
-to `c7`, `size-height`, `size-slack`, `size-squash`) are listed under
+to `c7`, `k1`, `k2`, `size-height`, `size-slack`, `size-squash`) are listed under
 "not measured", with the reason, whenever there is none to read: the figure
 does not compile, the file has no `tikzpicture` environment for the
 probe to sit in (a bare `\tikz` is not compiled at all), or its last

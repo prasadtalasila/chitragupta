@@ -26,6 +26,8 @@ plotted path never reaches `max_print_line`):
   four sides, its `text` anchor (`- -` where the shape has none), and the
   two rotation entries of its transform, printed at the end of the
   picture.
+- `CGPAINT`, `CGTEXT` and `CGTEXTCOLOR`: the colours paths and text were
+  set in (#1055), whose grammar `_paint.py` documents and reads.
 
 **Names come last**, after a fixed count of fields, because a shape
 (`circle split`, `regular polygon`) or a node (`(data store)`) may have a
@@ -35,6 +37,8 @@ space in its name; split on spaces, it shifted every field after it and
 A node is framed when a node path (`N`) after its `CGNODE` line, made
 while it was being built, was drawn or filled: the hook logs a node
 before building it, so its text box can be read before the node uses it.
+Its colours are its **last** such path's: `cgsoft`'s blur shadow is a
+score of node paths stroked and filled in greys before the frame.
 
 **A node logged before an `E` path is that path's label.** TikZ makes a
 node on a path before it strokes the path, and a `\\node` statement is a
@@ -43,17 +47,19 @@ is never mistaken for the next line's tag.
 """
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from chitragupta.review.figure_layout._geometry import Box
+from chitragupta.review.figure_layout._paint import Colours, Paint, TextRun, frame_paint
 
 Point = tuple[float, float]
 
 # Points per Bézier piece when a curve is flattened into straight ones.
 _CURVE_STEPS = 8
 
-_LINE_RE = re.compile(r"^(CGNODE|CGPATH|CGSEG|CGNB) (.*)$", re.MULTILINE)
-
+_LINE_RE = re.compile(
+    r"^(CGNODE|CGPATH|CGSEG|CGNB|CGPAINT|CGTEXT|CGTEXTCOLOR) (.*)$", re.MULTILINE
+)
 
 @dataclass(frozen=True)
 class DrawnNode:
@@ -70,6 +76,12 @@ class DrawnNode:
     # Turned by its transform (`sloped`, `rotate=`), so its box and text
     # box, read square to the page, are not where it was set.
     rotated: bool = False
+    # Its frame's colours (#1055), `None` where it was not filled or not
+    # drawn; its text's runs, and the `text=` it was given.
+    fill: Paint | None = None
+    stroke: Paint | None = None
+    runs: tuple[TextRun, ...] = ()
+    text_written: str = ""
 
 
 @dataclass(frozen=True)
@@ -87,6 +99,8 @@ class DrawnLine:
     start_tip: bool
     end_tip: bool
     labels: tuple[str, ...]
+    # What it was stroked in (#1055); `None` from a log without paint.
+    stroke: Paint | None = None
 
 
 @dataclass
@@ -104,6 +118,8 @@ class _Path:
     painted: bool
     labels: tuple[str, ...]
     segments: list[tuple[str, Point]] = field(default_factory=list)
+    paint: tuple[Paint, Paint] | None = None
+    action: str = ""
 
 
 def parse_drawn(log: str) -> Drawn | None:
@@ -131,8 +147,9 @@ class _Reader:
     texts: dict[str, tuple[str, float, float, float]] = field(default_factory=dict)
     nodes: dict[str, DrawnNode] = field(default_factory=dict)
     pending: list[str] = field(default_factory=list)
-    # The nodes a painted frame was drawn for.
-    framed: set[str] = field(default_factory=set)
+    # The nodes a painted frame was drawn for, and that frame's paths.
+    framed: dict[str, _Path] = field(default_factory=dict)
+    colours: Colours = field(default_factory=Colours)
 
     def take(self, kind: str, rest: str) -> None:
         if kind == "CGNODE":
@@ -142,25 +159,42 @@ class _Reader:
             self.pending.append(name)
         elif kind == "CGPATH":
             fields = rest.split()
-            path = _path(fields, tuple(self.pending))
+            path = _path(fields, tuple(self.pending), self.colours.paints.get(int(fields[0])))
             if not path.in_node:
                 self.pending = []
             elif path.painted and self.pending:
-                self.framed.add(self.pending[-1])
+                self.framed[self.pending[-1]] = path
             self.paths[int(fields[0])] = path
         elif kind == "CGSEG":
             index, op, x, y = rest.split()
             self.paths[int(index)].segments.append((op, (float(x), float(y))))
-        else:
+        elif kind == "CGNB":
             *fields, name = rest.split(None, 8)
-            self.nodes[name] = _node(name, fields, self.texts, name in self.framed)
+            node = _node(name, fields, self.texts, name in self.framed)
+            self.nodes[name] = self._coloured(node)
+        else:
+            self.colours.take(kind, rest)
+
+    def _coloured(self, node: DrawnNode) -> DrawnNode:
+        """`node` with its frame's paint and its text's runs (#1055)."""
+        frame = self.framed.get(node.name)
+        stroke, fill = frame_paint(frame.paint, frame.action) if frame else (None, None)
+        return replace(
+            node,
+            fill=fill,
+            stroke=stroke,
+            runs=tuple(self.colours.runs.get(node.name, ())),
+            text_written=self.colours.written.get(node.name, ""),
+        )
 
 
 def _pt(dimension: str) -> float:
     return float(dimension.removesuffix("pt"))
 
 
-def _path(fields: list[str], labels: tuple[str, ...]) -> _Path:
+def _path(
+    fields: list[str], labels: tuple[str, ...], paint: tuple[Paint, Paint] | None
+) -> _Path:
     _, where, start, end, *action = fields
     words = " ".join(action)
     return _Path(
@@ -170,6 +204,8 @@ def _path(fields: list[str], labels: tuple[str, ...]) -> _Path:
         stroked="draw" in words or "stroke" in words,
         painted="draw" in words or "stroke" in words or "fill" in words,
         labels=labels if where == "E" else (),
+        paint=paint,
+        action=words,
     )
 
 
@@ -200,6 +236,7 @@ def _lines(index: int, path: _Path) -> list[DrawnLine]:
                 start_tip=path.start_tip and number == 0,
                 end_tip=path.end_tip and number == len(pieces) - 1,
                 labels=path.labels,
+                stroke=path.paint[0] if path.paint else None,
             )
         )
     return lines

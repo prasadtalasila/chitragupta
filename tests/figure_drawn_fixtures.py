@@ -7,11 +7,33 @@ a test needs one, is given explicitly.
 from chitragupta.review.figure_layout import Drawn, DrawnLine, DrawnNode
 
 
-def node(name, box, *, shape="rectangle", text_box=None, framed=True, rotated=False):
-    return DrawnNode(name, shape, tuple(float(v) for v in box), text_box, framed, rotated)
+def node(
+    name,
+    box,
+    *,
+    shape="rectangle",
+    text_box=None,
+    framed=True,
+    rotated=False,
+    fill=None,
+    stroke=None,
+    runs=(),
+):
+    """`fill` and `stroke` are `Paint`s and `runs` `TextRun`s (#1055)."""
+    return DrawnNode(
+        name,
+        shape,
+        tuple(float(v) for v in box),
+        text_box,
+        framed,
+        rotated,
+        fill=fill,
+        stroke=stroke,
+        runs=tuple(runs),
+    )
 
 
-def line(*points, start_tip=False, end_tip=False, labels=(), curved=False, index=1):
+def line(*points, start_tip=False, end_tip=False, labels=(), curved=False, index=1, stroke=None):
     return DrawnLine(
         index=index,
         points=tuple((float(x), float(y)) for x, y in points),
@@ -19,6 +41,7 @@ def line(*points, start_tip=False, end_tip=False, labels=(), curved=False, index
         start_tip=start_tip,
         end_tip=end_tip,
         labels=tuple(labels),
+        stroke=stroke,
     )
 
 

@@ -9,6 +9,7 @@ import pytest
 
 from chitragupta.review import figure_layout
 from chitragupta.review.figure_layout._drawn import parse_drawn
+from chitragupta.review.figure_layout._paint import Paint, TextRun
 from tests.conftest import needs_tikz
 
 
@@ -172,6 +173,115 @@ class TestScaffold:
 
         assert "\\cgdumpnodes" not in scaffold
         assert "cgoldusepath" not in scaffold
+
+
+class TestColours:
+    """`CGPAINT`, `CGTEXT` and `CGTEXTCOLOR` (#1055), `_paint.py`'s."""
+
+    def test_a_line_carries_what_it_was_stroked_in(self):
+        drawn = parse_drawn(
+            _log(
+                "CGPAINT 1 0.3,0.7,0.9 0,0,0 cgAux|",
+                "CGPATH 1 E 0 1 draw,",
+                "CGSEG 1 M 0.0 0.0",
+                "CGSEG 1 L 10.0 0.0",
+            )
+        )
+
+        (line,) = drawn.lines
+        assert line.stroke == Paint((0.3, 0.7, 0.9), "cgAux")
+
+    def test_a_frame_gives_its_node_both_colours(self):
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
+                "CGPAINT 1 0.3,0.7,0.9 0.9,0.9,0.9 cgAux|cgAux!10",
+                "CGPATH 1 N 0 0 fill,draw,",
+                "CGNB 0 0 10 10 - - 0 0 a",
+            )
+        )
+
+        node = drawn.nodes["a"]
+        assert node.stroke == Paint((0.3, 0.7, 0.9), "cgAux")
+        assert node.fill == Paint((0.9, 0.9, 0.9), "cgAux!10")
+
+    def test_the_last_painted_node_path_is_the_frame(self):
+        """`cgsoft`'s shadow paths come first, in greys."""
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
+                "CGPAINT 1 0.2,0.2,0.2 0.2,0.2,0.2 cgFlowLine|cgFlow!7",
+                "CGPATH 1 N 0 0 fill",
+                "CGPAINT 2 0,0.4,0.7 0.9,0.96,0.98 cgFlowLine|cgFlow!7",
+                "CGPATH 2 N 0 0 fill,draw,",
+                "CGNB 0 0 10 10 - - 0 0 a",
+            )
+        )
+
+        assert drawn.nodes["a"].fill.colour == (0.9, 0.96, 0.98)
+
+    def test_a_frame_only_drawn_has_no_fill(self):
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
+                "CGPAINT 1 0,0,0 0,0,0 |",
+                "CGPATH 1 N 0 0 draw,",
+                "CGNB 0 0 10 10 - - 0 0 a",
+            )
+        )
+
+        node = drawn.nodes["a"]
+        assert (node.stroke, node.fill) == (Paint((0.0, 0.0, 0.0), ""), None)
+
+    def test_a_frame_only_filled_has_no_stroke(self):
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
+                "CGPAINT 1 0,0,0 1,1,1 |white",
+                "CGPATH 1 N 0 0 fill,",
+                "CGNB 0 0 10 10 - - 0 0 a",
+            )
+        )
+
+        assert drawn.nodes["a"].stroke is None
+
+    def test_an_unframed_node_has_no_colours(self):
+        drawn = parse_drawn(
+            _log("CGNODE 0.0pt 0.0pt 0.0pt rectangle/a", "CGNB 0 0 10 10 - - 0 0 a")
+        )
+
+        assert (drawn.nodes["a"].stroke, drawn.nodes["a"].fill) == (None, None)
+
+    def test_a_log_without_paint_leaves_a_frame_uncoloured(self):
+        """#1054's grammar alone, as a fixture written before #1055."""
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/a",
+                "CGPATH 1 N 0 0 fill,draw,",
+                "CGNB 0 0 10 10 - - 0 0 a",
+            )
+        )
+
+        assert drawn.nodes["a"].fill is None and drawn.nodes["a"].framed
+
+    def test_text_runs_and_the_text_key_reach_their_node(self):
+        """A name with a space survives: it comes last."""
+        drawn = parse_drawn(
+            _log(
+                "CGTEXT 0.1,0.1,0.1 12.00 1 12 data store",
+                "CGTEXT 0.4,0.4,0.4 12.00 0 9 data store",
+                "CGTEXTCOLOR cgInk|data store",
+                "CGNODE 0.0pt 0.0pt 0.0pt rectangle/data store",
+                "CGNB 0 0 10 10 - - 0 0 data store",
+            )
+        )
+
+        node = drawn.nodes["data store"]
+        assert node.runs == (
+            TextRun((0.1, 0.1, 0.1), 12.0, True, 12),
+            TextRun((0.4, 0.4, 0.4), 12.0, False, 9),
+        )
+        assert node.text_written == "cgInk"
 
 
 @needs_tikz
@@ -355,3 +465,34 @@ def test_spaced_shape_and_node_names_compile_and_measure(tmp_path):
     assert drawn.nodes["a"].shape == "circle split"
     assert drawn.nodes["p"].shape == "regular polygon"
     assert "data store" in drawn.nodes and len(drawn.lines) == 2
+
+    def test_the_probe_reports_colours_as_xcolor_resolves_them(self, tmp_path):
+        """#1055. pgf's own stroke colour goes stale under `[draw, red]`,
+        so the frame must come out red; the text's runs must see
+        `text=`, `\\textcolor` inside a macro, and `\\textbf`."""
+        path = tmp_path / "fig.tex"
+        path.write_text(
+            "\\definecolor{hot}{HTML}{D55E00}%\n"
+            "\\newcommand{\\warm}[1]{\\textcolor{hot}{#1}}%\n"
+            "\\begin{tikzpicture}\n"
+            "\\node[fill=hot!10, text=hot, draw=blue] (a) at (0,0) {ab};\n"
+            "\\node[draw, red] (b) at (3,0) {x \\warm{yz} \\textbf{w}};\n"
+            "\\draw[->, draw=hot] (a) -- (b);\n"
+            "\\end{tikzpicture}%\n",
+            encoding="utf-8",
+        )
+
+        drawn = figure_layout.check_figure(path, "", boxed=True).drawn
+
+        a, b = drawn.nodes["a"], drawn.nodes["b"]
+        assert a.fill.written == "hot!10"
+        assert a.fill.colour == pytest.approx((0.98353, 0.93686, 0.9), abs=1e-3)
+        assert (a.stroke.colour, a.text_written) == ((0.0, 0.0, 1.0), "hot")
+        assert [run.colour for run in a.runs] == [pytest.approx((0.8353, 0.36864, 0.0), abs=1e-3)]
+        assert b.stroke.colour == (1.0, 0.0, 0.0) and b.fill is None
+        hot = [run for run in b.runs if run.colour[1] > 0.3 and run.colour[0] < 0.9]
+        assert [(run.glyphs, run.bold) for run in hot] == [(2, False)]
+        assert any(run.bold and run.colour == (1.0, 0.0, 0.0) for run in b.runs)
+        assert {run.size_pt for run in b.runs} == {12.0}
+        (line,) = drawn.lines
+        assert line.stroke.written == "hot"

@@ -318,6 +318,7 @@ class TestAgainstRealLualatex:
         assert [rule for rule, _ in result.not_measured] == [
             "size-stray",
             *_check.CONNECTOR,
+            *_check.CONTRAST,
             *_advisory.GEOMETRY,
         ]
         assert _rules(result.advisory) == ["budget-nodes", "budget-edges"]
@@ -701,7 +702,7 @@ class TestConnectorRules:
         _, not_measured = _evaluate(figure=_measured(drawn=None))
 
         assert [(rule, why) for rule, why in not_measured] == [
-            (rule, _connector_check.NO_DRAWN) for rule in _check.CONNECTOR
+            (rule, _connector_check.NO_DRAWN) for rule in (*_check.CONNECTOR, *_check.CONTRAST)
         ]
 
     def test_they_are_not_measured_for_several_pictures(self):
@@ -727,6 +728,10 @@ class TestConnectorRules:
 
     def test_every_connector_rule_is_a_geometry_rule(self):
         assert set(_check.CONNECTOR) <= set(_check.GEOMETRY)
+
+    def test_k1_and_k2_are_geometry_rules(self):
+        """A figure that does not compile has no colours to read (#1055)."""
+        assert set(_check.CONTRAST) <= set(_check.GEOMETRY)
 
     def test_the_report_counts_the_lines_not_between_nodes(self):
         axis = line((0, -10), (200, -10))
