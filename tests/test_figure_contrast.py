@@ -16,6 +16,8 @@ hue.
 Without a toolchain the mixing is assumed to be xcolor's: `A!p!B` is
 `p` percent of A plus the rest of B, channel by channel in RGB. The one
 TeX test at the bottom checks that assumption against xcolor itself.
+The calculator is `chitragupta/figure/_colour.py`'s, which `figure
+check`'s k1 and k2 hold every figure to (#1055).
 """
 
 import re
@@ -25,15 +27,14 @@ from pathlib import Path
 
 import pytest
 
+from chitragupta.figure._colour import LINE, TEXT, WHITE, contrast
+from chitragupta.figure._colour import mix as _mix
 from tests.conftest import needs_tikz
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TIKZ = REPO_ROOT / "assets" / "tikz"
 BLOCK = TIKZ / "cg-figstyle.tex"
 _REGION_END = "% >>> end chitragupta figure style <<<\n"
-
-LINE, TEXT = 3.0, 4.5
-WHITE = (1.0, 1.0, 1.0)
 
 _DEFINE_RE = re.compile(r"\\definecolor\{(\w+)\}\{HTML\}\{([0-9A-Fa-f]{6})\}")
 _SHADE_RE = re.compile(r"\\colorlet\{(cg\w+?)(Line|Text)\}\{(cg\w+)!(\d+)!cgInk\}")
@@ -58,23 +59,6 @@ def _palette(text: str) -> dict[str, tuple[float, float, float]]:
 def _shades(text: str) -> dict[tuple[str, str], tuple[str, int]]:
     """`(hue, "Line" | "Text") -> (base colour, share)`, as the block writes them."""
     return {(hue, kind): (base, int(share)) for hue, kind, base, share in _SHADE_RE.findall(text)}
-
-
-def _mix(one, other, share: float):
-    return tuple(share * a + (1 - share) * b for a, b in zip(one, other))
-
-
-def _luminance(colour) -> float:
-    def linear(channel):
-        return channel / 12.92 if channel <= 0.04045 else ((channel + 0.055) / 1.055) ** 2.4
-
-    red, green, blue = (linear(channel) for channel in colour)
-    return 0.2126 * red + 0.7152 * green + 0.0722 * blue
-
-
-def contrast(one, other) -> float:
-    light, dark = sorted((_luminance(one), _luminance(other)), reverse=True)
-    return (light + 0.05) / (dark + 0.05)
 
 
 def _hues(text: str) -> list[str]:
