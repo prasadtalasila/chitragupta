@@ -308,18 +308,18 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
 **Files:** every `assets/tikz/*.tex` except `cg-figstyle.tex`, every
 `assets/tikz/exemplars/*.tex`; test in `tests/test_tikz_scaffolds.py`.
 
-- [ ] Write `class TestEveryFigureNamesItsLayout` with
-  `test_each_scaffold_names_its_own_layout` (parametrized over
-  `_scaffolds()`: `lines[0] == f"% cg-layout: {path.stem}"` and the
-  marker occurs once), `test_each_exemplar_names_the_layout_that_measures_it`
-  (the stem of the one layout file whose range rows list the exemplar),
+- [x] Write `class TestEveryFigureNamesItsLayout` with
+  `test_line_one_names_the_layout` (parametrized over every scaffold and
+  exemplar: line 1 is the only `% cg-layout:` line, naming a scaffold's
+  own stem or the one layout file whose range rows list the exemplar),
   `test_a_doctored_layout_line_is_caught` (the helper rejects
-  `% cg-layout: pipeline` for `branching-tree.tex`), and
-  `test_sync_still_finds_the_block_below_it` (`_block.region` state is
-  `CURRENT` for every carrier).
-- [ ] Run them: the first two fail on every file.
-- [ ] Add the line to all ten files.
-- [ ] Run `tests/test_tikz_scaffolds.py`: pass. Commit.
+  `% cg-layout: pipeline` for `branching-tree.tex`),
+  `test_a_second_layout_line_is_caught`, and
+  `test_figure_sync_still_finds_the_block_below_it` (`_block.classify`
+  state is `CURRENT` for every carrier).
+- [x] Run them: the first two fail on every file.
+- [x] Add the line to all ten files.
+- [x] Run `tests/test_tikz_scaffolds.py`: pass. Commit.
 
 ### Task 2: `rag-stages` legend and header
 
@@ -327,41 +327,41 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
 `.claude/skills/figure-drawer/references/layouts/pipeline.md`,
 `assets/tikz/exemplars/retrieval.tex` (header only).
 
-- [ ] Re-lay the legend as section 2 says; rewrite both headers' WIDTH
+- [x] Re-lay the legend as section 2 says; rewrite both headers' WIDTH
   paragraphs to the render's 453pt.
-- [ ] `figure check` it: no finding. Probe: still clean.
-- [ ] Paste the re-measured row and fix the 506pt prose in `pipeline.md`;
+- [x] `figure check` it: no finding. Probe: still clean.
+- [x] Paste the re-measured row and fix the 506pt prose in `pipeline.md`;
   `TestTheReferenceRangesAreMeasured` passes. Commit.
 
 ### Task 3: `control-loop` anchors
 
-- [ ] Anchor both bends as section 3 says; probe: four ends within
+- [x] Anchor both bends as section 3 says; probe: four ends within
   0.5mm. Re-measure the `control-loop.md` row if it moved. Commit.
 
 ### Task 4: `retrieval` fork
 
-- [ ] Split the two `q.east` starts as section 5 says; probe: `q.E` at
+- [x] Split the two `q.east` starts as section 5 says; probe: `q.E` at
   about ±1.9mm, no shared run. Re-measure the `zoned-spine.md` row.
   Commit.
 
 ### Task 5: `architecture`
 
-- [ ] Apply section 4; `figure check` under 453pt; probe: every side
+- [x] Apply section 4; `figure check` under 453pt; probe: every side
   clean. Re-measure the `zoned-spine.md` row. Commit.
 
 ### Task 6: `branching-tree`
 
-- [ ] Add the `edge from parent path` as section 6 says and rewrite the
+- [x] Add the `edge from parent path` as section 6 says and rewrite the
   idiom paragraph; probe: 0 diagonals, every side clean; check a
   three-child throwaway copy. Re-measure `branching-tree.md` and fix its
   edge prose. Commit.
 
 ### Task 7: verification and records
 
-- [ ] Correct the v3 plan's `c1` row to `hub-and-spoke-network`.
-- [ ] `figure check` over all ten files; probe over all ten; write the
+- [x] Correct the v3 plan's `c1` row to `hub-and-spoke-network`.
+- [x] `figure check` over all ten files; probe over all ten; write the
   after table into this plan's status and outcome.
-- [ ] Full suite (`.venv-full`, `PYTHONPATH` set to the worktree), ruff,
+- [x] Full suite (`.venv-full`, `PYTHONPATH` set to the worktree), ruff,
   markdownlint, `scripts/` local checks DEVELOPER-AGENTS.md names.
   Commit, push, open the PR into `main`, send the before/after PNGs,
   and wait for the user's approval before merging and releasing.

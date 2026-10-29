@@ -165,8 +165,8 @@ So, in order:
 
 `assets/tikz/exemplars/architecture.tex` is the house style at work.
 Read it, but start your own figure from a scaffold, not from an
-exemplar: the exemplars are set at the render's 453pt text width, wider
-than most drafts, and carry one paper's content.
+exemplar: the exemplars come close to the render's full 453pt text
+width, wider than the scaffolds' 345pt, and carry one paper's content.
 
 What its parts are for:
 

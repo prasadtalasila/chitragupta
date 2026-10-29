@@ -333,9 +333,10 @@
   % ---- the spine, left to right -------------------------------------------
   \node[cgbox, text width=23mm] (bib)
     {\cglab{Curate}{.bib export + PDFs}};
-  % 7mm inside a zone, 17mm across one: the wider gap is what keeps the
-  % two zone cards apart once `enrich` is wide enough for its name and
-  % `review` sits left of `draft`'s centre.
+  % 7mm from `bib` to `sync`, inside one zone; 17mm from `sync` to
+  % `draft`, across two: that wider gap is what keeps the two zone cards
+  % apart once `enrich` is wide enough for its name and `review` sits
+  % left of `draft`'s centre.
   \node[cgbox, right=7mm of bib, text width=23mm] (sync)
     {\cglab{Corpus}{parse, ledger}};
   \node[cgalt, right=17mm of sync, text width=23mm] (draft)

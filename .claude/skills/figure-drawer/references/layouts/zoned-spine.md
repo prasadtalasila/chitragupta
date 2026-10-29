@@ -18,7 +18,7 @@ are gated, an architecture with a single entrance and a single exit.
   carry what the caption would otherwise say.
 - **Overlapping zone cards.** A member belongs to one zone.
 - **A card painted over a member.** Cards go on the background layer.
-- **A wide grid at acmart width pasted into a narrow column.** The
+- **A wide grid at the render's full width pasted into a narrow column.** The
   exemplars are set at 453pt; re-lay them out, never scale.
 
 ## Reference ranges
