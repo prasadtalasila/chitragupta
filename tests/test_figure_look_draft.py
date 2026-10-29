@@ -10,8 +10,9 @@ import pytest
 
 from chitragupta import config, render_output
 from chitragupta.figure import _look_draft
-from chitragupta.figure._look import Look
+from chitragupta.figure._look import Look, lines
 from chitragupta.render_output import _cli
+from chitragupta.render_output._errors import MissingBinary
 from tests.conftest import content_draft, lualatex_available, pandoc_available, tikz_available
 from tests.test_figure_look import needs_poppler, png_bytes
 
@@ -219,3 +220,101 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     }
     # A4 at 300 dpi, rounded up as pdftoppm rounds: 595.28pt is 2480.3 px.
     assert _look_draft._png_size(out / "flow.page.png") == (2481, 3508)
+
+
+class TestLookDraftCli:
+    """`figure look <figure> --draft <draft>`, with the render and the
+    refresh faked at the CLI's own names."""
+
+    @pytest.fixture
+    def figure_cli(self, draft, monkeypatch):
+        from chitragupta.figure import __main__ as cli
+
+        monkeypatch.setattr(cli, "_require", lambda binary: None)
+        monkeypatch.setattr(cli, "_require_tikz", lambda: None)
+        monkeypatch.setattr(cli, "look", fake_look)
+        return cli
+
+    def run(self, cli, figure, draft) -> int:
+        return cli.main(["look", str(figure), "--draft", str(draft)])
+
+    def test_it_prints_the_render_the_look_and_the_page(
+        self, figure_cli, draft, monkeypatch, capsys
+    ):
+        flow = draft.parent / "figures" / "flow.tex"
+        pdf = rendered("rag", "survey.pdf")
+        page = _look_draft.Page(rendered("rag", "figures", "flow.page.png"), 4, (2481, 3508))
+        refreshed = _look_draft.Refresh([_look_draft.DraftFigure(flow, fake_look(flow), page)])
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: pdf)
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: refreshed)
+        assert self.run(figure_cli, flow, draft) == 0
+        captured = capsys.readouterr()
+        assert captured.out.splitlines() == [
+            f"wrote    {pdf}",
+            *lines(fake_look(flow), flow),
+            _look_draft.page_line(page, pdf),
+        ]
+        assert captured.err == "[figure-look] 1 wrote; 1 page PNGs\n"
+
+    def test_the_render_s_own_arguments_are_a_pdf_of_the_draft(
+        self, figure_cli, draft, monkeypatch
+    ):
+        seen = []
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: seen.append(args))
+        self.run(figure_cli, draft.parent / "figures" / "flow.tex", draft)
+        assert (seen[0].input, seen[0].output_format) == (str(draft), "pdf")
+
+    def test_a_draft_that_does_not_render_still_writes_the_look(
+        self, figure_cli, draft, monkeypatch, capsys
+    ):
+        flow = draft.parent / "figures" / "flow.tex"
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: None)
+        assert self.run(figure_cli, flow, draft) == 0
+        assert capsys.readouterr().out.splitlines() == lines(fake_look(flow), flow)
+
+    def test_a_figure_the_draft_does_not_name_gets_its_look_and_a_note(
+        self, figure_cli, draft, monkeypatch, capsys
+    ):
+        loose = draft.parent / "figures" / "loose.tex"
+        loose.write_text("\\begin{tikzpicture}\\end{tikzpicture}", encoding="utf-8")
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: Path("survey.pdf"))
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: _look_draft.Refresh())
+        assert self.run(figure_cli, loose, draft) == 0
+        assert capsys.readouterr().out.splitlines()[-1] == (
+            f"note     {loose}: no figure marker in {draft} names it, so no page PNG"
+        )
+
+    @pytest.mark.parametrize(
+        ("item", "skipped", "note"),
+        [
+            ({"note": _look_draft.NO_MARK}, "", _look_draft.NO_MARK),
+            ({}, "page PNGs: pdfinfo not found", "page PNGs: pdfinfo not found"),
+            ({"look": None, "note": "no look: gone"}, "", "no look: gone"),
+        ],
+        ids=["no-mark", "no-pdfinfo", "no-look"],
+    )
+    def test_whatever_is_missing_is_one_note(
+        self, figure_cli, draft, monkeypatch, capsys, item, skipped, note
+    ):
+        flow = draft.parent / "figures" / "flow.tex"
+        fields = {"look": fake_look(flow), **item}
+        refreshed = _look_draft.Refresh([_look_draft.DraftFigure(flow, **fields)], skipped)
+        monkeypatch.setattr(figure_cli, "_rendered", lambda args: Path("survey.pdf"))
+        monkeypatch.setattr(figure_cli, "refresh", lambda d, p: refreshed)
+        self.run(figure_cli, flow, draft)
+        out = capsys.readouterr().out.splitlines()
+        assert out[-1] == f"note     {flow}: {note}"
+        assert (len(out) == 2) == (fields["look"] is None)
+
+    def test_no_pandoc_exits_two(self, draft, monkeypatch, capsys):
+        from chitragupta.figure import __main__ as cli
+
+        def missing(binary):
+            if binary == "pandoc":
+                raise MissingBinary("pandoc not found on PATH.")
+
+        monkeypatch.setattr(cli, "_require", missing)
+        monkeypatch.setattr(cli, "_require_tikz", lambda: None)
+        flow = draft.parent / "figures" / "flow.tex"
+        assert cli.main(["look", str(flow), "--draft", str(draft)]) == 2
+        assert "pandoc not found" in capsys.readouterr().err
