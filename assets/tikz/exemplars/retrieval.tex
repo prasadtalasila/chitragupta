@@ -10,7 +10,7 @@
 % and narrower than it was, which is the shape a fixed width and a fixed
 % type size force. Changing the layout is the correct response to that;
 % changing the scale is the defect docs/TIKZ-STYLE.md names.
-% >>> chitragupta figure style v4 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% >>> chitragupta figure style v5 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
 %
@@ -242,8 +242,9 @@
 % a box of text out of a label. They are told apart by weight and colour
 % at one size, the body's: bold ink for the name, muted for the gloss.
 % This is the only way a gloss gets set, which holds the roles apart
-% across the figure. Keep the gloss under about eight words; past that it
-% is prose in a box and the conciseness defect is real again.
+% across the figure. Keep the gloss to six words or fewer (v5; `figure
+% check`'s w3-gloss); past that it is prose in a box and the conciseness
+% defect is real again.
 \providecommand{\cglab}[2]{%
   {\normalsize\bfseries #1}\\[1.5pt]{\normalsize\textcolor{cgMuteText}{#2}}}%
 
@@ -331,19 +332,19 @@
   % fixed type size a long gloss is a width problem, and the two fixes
   % are a wider box or fewer words -- never smaller type.
   \node[rt, cgalt, right=of bm, text width=34mm]
-    (fwd) {\cglab{forward index}{DF at query time}};
+    (fwd) {\cglab{Forward index}{DF at query time}};
   \node[rt, cgkey, right=of fwd, text width=26mm]
-    (one) {\cglab{one hit}{per document}};
+    (one) {\cglab{One hit}{per document}};
   \node[cgwell, above=2.5mm of fwd] (ifwd) {};
   \pic[cg pic colour=cgAlt] at (ifwd) {cgstore};
 
   % ---- dense route, two rows -----------------------------------------------
-  \node[rt, below=33mm of bm]         (emb)  {\cglab{bi-encoder}{200 / 40 chunks}};
-  \node[rt, right=of emb]             (chr)  {\cglab{vector store}{40{,}741 chunks}};
-  \node[rt, right=of chr]             (pool) {\cglab{pool}{$k{\times}4 = 20$}};
-  \node[rt, cgopt, below=14mm of emb] (rr)   {\cglab{cross-encoder}{rerank --- off}};
-  \node[rt, right=of rr]              (cap)  {\cglab{cap}{3 per source}};
-  \node[rt, right=of cap]             (topk) {\cglab{top $k$}{$k = 5$}};
+  \node[rt, below=33mm of bm]         (emb)  {\cglab{Bi-encoder}{200 / 40 chunks}};
+  \node[rt, right=of emb]             (chr)  {\cglab{Vector store}{40{,}741 chunks}};
+  \node[rt, right=of chr]             (pool) {\cglab{Pool}{$k{\times}4 = 20$}};
+  \node[rt, cgopt, below=14mm of emb] (rr)   {\cglab{Cross-encoder}{rerank --- off}};
+  \node[rt, right=of rr]              (cap)  {\cglab{Cap}{3 per source}};
+  \node[rt, right=of cap]             (topk) {\cglab{Top $k$}{$k = 5$}};
   \node[cgwell, above=2.5mm of emb] (iemb) {};
   \node[cgwell, above=2.5mm of chr] (ichr) {};
   \pic[cg pic colour=cgFlow] at (iemb) {cgchip};

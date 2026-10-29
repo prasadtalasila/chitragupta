@@ -30,7 +30,7 @@ def connector_rules(
     """c1 to c7 over what the probe drew, or each listed as not measured
     with the reason the lines and the boxes are not in one frame.
     `pictures` is the file's `tikzpicture` count, which the caller has."""
-    why = _unconnectable(source, figure, pictures)
+    why = unconnectable(source, figure, pictures)
     if why:
         return [], [(rule, why) for rule in CONNECTOR]
     drawn = figure.drawn
@@ -50,8 +50,9 @@ def connector_rules(
     return found, [("c4-attach", f"round nodes, which have no sides: {', '.join(round_nodes)}")]
 
 
-def _unconnectable(source: str, figure: FigureResult, pictures: int) -> str:
-    """Why the connector rules cannot run on this figure, or `""`."""
+def unconnectable(source: str, figure: FigureResult, pictures: int) -> str:
+    """Why the connector rules cannot run on this figure, or `""`. k1 and
+    k2 read the same lines and boxes, so share it (#1055)."""
     if figure.drawn is None:
         return NO_DRAWN
     if pictures > 1:

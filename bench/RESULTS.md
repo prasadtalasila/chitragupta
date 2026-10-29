@@ -7647,3 +7647,77 @@ house figures apart, and that the histogram bands a value where the
 rule's thresholds do. Record:
 `bench/results/2026-10-29-connector-rules/connector_rules.json` (the last
 run; figure paths are relative to `--drafts` or to the repository).
+
+## 2026-10-29 (#1055): the contrast and wording rules, before they shipped
+
+**The question.** `figure check`'s `k1-stroke` and `k2-text` hold a
+figure's borders, connectors and text to WCAG 2's 3:1 and 4.5:1, and
+the user ruled them objective everywhere, so a false positive costs an
+author an allow. `w1` to `w3` are advisory and `w4` objective. Do they
+fire on sound figures, and is the fix for what they find the one rename
+their documentation gives?
+
+**The corpus.** The same 59 figures as #1054's run: the 49 under this
+host's `content/drafts/`, the 7 scaffolds and the 3 exemplars, compiled
+once each through the probe, which now logs every path's paint and every
+run of a node's glyphs.
+
+**Findings, all 59 figures (scaffolds and exemplars in brackets).**
+
+| Rule | Findings | Figures |
+| --- | --- | --- |
+| `k1-stroke` | 57 (0) | 24 |
+| `k2-text` | 52 (0) | 25 |
+| `w4-pictograph` | 0 (0) | 0 |
+| `w1-case` | 0 (0) | 0 |
+| `w2-tag` | 12 (0) | 10 |
+| `w3-gloss` | 0 (0) | 0 |
+
+37 of the 49 drafted figures have a `k1` or `k2` finding. Every one is a
+plain hue drawn or written where its shade belongs, and every one
+measures what the arithmetic says it must:
+
+| Colour, on | Rule | Count | Ratio |
+| --- | --- | --- | --- |
+| `cgAux` on white | k1 | 57 (50 on white, 7 on a white fill) | 2.31:1 |
+| `cgAccent` on white | k2 | 34 | 3.87:1 |
+| `cgAux` on white | k2 | 13 | 2.31:1 |
+| `cgAlt` on white | k2 | 5 | 3.42:1 |
+
+These figures predate the house block's `Line` and `Text` shades (#1047)
+and draw in the five-hue palette, so the fix in each case is the rename
+the rule documents (`cgAuxLine`, `cgAccentText`). None of the `cgAccent`
+text was large enough for WCAG's 3:1: the size is read from the glyphs,
+and these labels are 12pt.
+
+**What changed, each from a false positive read in a figure:**
+
+- **A border drawn in its own fill's colour is not measured.** The first
+  run reported every step badge (`cgbadge` draws and fills its disc in one
+  `Text` shade) at 1.00:1: 16 findings on the exemplars, none real.
+- **A colour written through a macro is shown by its hex code.**
+  `rag-stages.tex` colours its stages from a `\foreach` variable, which the
+  probe logged as `\c Text`; the colour itself was measured correctly.
+- **A node TikZ named itself is shown by its centre.** An unnamed `fit`
+  arrives as `tikz@f@1`.
+- **A single letter is not a capitalised word.** `w2` first read `12 V`
+  and `A+ and B-` as capitalised tags. The 12 left are tags of four
+  words or more (`a register becomes a number`, eleven words in
+  `four-timestamps.tex`) and one proper noun (`Euler, step 1 min`).
+- **`w1` fired 8 times on `retrieval.tex`**, whose names were lower case
+  (`vector store`). The exemplar now writes them in sentence case; its
+  boxes have a fixed text width, so no measurement moved.
+
+**Reproducing.**
+
+```bash
+.venv-full/bin/python bench/bench_contrast_wording.py \
+  --drafts content/drafts \
+  --json bench/results/2026-10-29-contrast-wording/contrast_wording.json
+```
+
+`self_check` plants findings in a draft and a scaffold and checks that
+`tally` counts what it is given, house figures apart, and that a k1 or
+k2 measurement is read back as its colour pair. Record:
+`bench/results/2026-10-29-contrast-wording/contrast_wording.json`
+(figure paths are relative to `--drafts` or to the repository).

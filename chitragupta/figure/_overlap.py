@@ -29,7 +29,7 @@ def drawn_overlaps(drawn: Drawn) -> list[tuple[str, str]]:
     tags = {name for line in drawn.lines for name in line.labels}
     groups = zones(drawn.nodes)
     boxes = {
-        _shown_as(name, node): node.box
+        shown_as(name, node): node.box
         for name, node in drawn.nodes.items()
         if name not in tags and _is_ink(name, node, groups)
     }
@@ -45,7 +45,9 @@ def _is_ink(name: str, node: DrawnNode, groups: set[str]) -> bool:
     return has_text and name not in groups
 
 
-def _shown_as(name: str, node: DrawnNode) -> str:
+def shown_as(name: str, node: DrawnNode) -> str:
+    """A node's name in a finding: its own, or an unnamed one's centre.
+    Shared with k1 and k2 (#1055)."""
     if not name.startswith(LABEL_PREFIX):
         return name
     x = (node.box[0] + node.box[2]) / 2

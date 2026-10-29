@@ -271,10 +271,10 @@ from the shipped ids.
 
 | Id | Rule | Scope | Class |
 | --- | --- | --- | --- |
-| `k1-stroke` | A `draw=` colour clears 3:1 against the node's ground (its own fill, or the zone it sits in, or white) | element | objective |
-| `k2-text` | A `text=` colour clears 4.5:1 against its ground; bold text at `\large` or above clears 3:1 | element | objective |
+| `k1-stroke` | A box's border or a connector clears 3:1 against its ground (its own fill, or the innermost filled box holding it, or white; a connector's, the innermost filled box holding both ends), as pgf drew it. **Changed by #1055** from "a `draw=` colour", and to take connectors in (*user*) | element | objective |
+| `k2-text` | Each run of a node's typeset text clears 4.5:1 against its ground; WCAG's large text (14pt bold, 18pt, measured from the glyphs) clears 3:1. **Changed by #1055** from "a `text=` colour" and "`\large`": block v4 has no `\large`, and `\cglab` colours its gloss with `\textcolor` | element | objective |
 | `focal-count` | At most one `cgkey` node per figure (TIKZ-STYLE.md: "if two things are accented, neither is"; #1016's `accent-not-unique`) | figure | objective |
-| `w1-case` | A node name is in sentence case. `\texttt{}`, math and a name whose first word is all lower-case by convention (`tikz`, `pdflatex`) are left alone | node | advisory |
+| `w1-case` | A `\cglab` name is in sentence case (only `\cglab` is read, *user*, #1055). `\texttt{}`, math and a name whose first word is all lower-case by convention (`tikz`, `pdflatex`) are left alone | node | advisory |
 | `w2-tag` | An edge tag is lower-case and at most three words | edge | advisory |
 | `w3-gloss` | A gloss is at most six words (this supersedes the eight in #1016's `gloss-too-long`) | node | advisory |
 | `w4-pictograph` | No emoji or pictographic character in any label | element | objective |
@@ -452,9 +452,13 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
   figures before fixing thresholds, with the must-not-fire cases (a
   legitimate crossing, an automaton self-loop, a lifeline with many
   arrows at one x) as the majority of the fixtures.
-- **2d.** `k1`, `k2`, `w1` to `w4`. Coordinate with #1016, which proposes
-  overlapping source findings; whichever lands second reuses the first's
-  parser.
+- **2d.** `k1`, `k2`, `w1` to `w4` (#1055, built; see
+  `plans/1055-contrast-and-wording.md`). Coordinate with #1016, which
+  proposes overlapping source findings; whichever lands second reuses the
+  first's parser. #1055 landed first: its colours come from the probe
+  (`CGPAINT`, `CGTEXT`), not a source parser, so #1016's colour findings
+  should read those; its `accent-not-unique` is `focal-count` and its
+  `gloss-too-long` is `w3-gloss`.
 - **2e.** Twin agreement `t1` to `t3`, and a `.txt` twin for every
   existing scaffold, which the fixtures need.
 - **2f.** Size: `size-height`, `size-slack`, `size-squash`, the budgets

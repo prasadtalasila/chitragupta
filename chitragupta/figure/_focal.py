@@ -32,14 +32,16 @@ def cgkey_nodes(source: str) -> list[str]:
     text = strip_comments(source)
     keyed = []
     for match in _NODE_START_RE.finditer(text):
-        options, name = _declaration(text, match.end())
+        options, name, _ = declaration(text, match.end())
         if _CGKEY_RE.search(options):
             keyed.append(name or "(unnamed)")
     return keyed
 
 
-def _declaration(text: str, start: int) -> tuple[str, str]:
-    """`(options, name)` of the node declared from `start` up to its label.
+def declaration(text: str, start: int) -> tuple[str, str, int]:
+    """`(options, name, end)` of the node declared from `start` up to its
+    label, `end` being where the label's `{` (or the statement's `;`, or
+    the text's end) is. Shared with `_wording.py`, which reads the label.
 
     Every bracketed option list is collected, however deeply it nests,
     and the first parenthesised group not introduced by `at` is the
@@ -62,4 +64,4 @@ def _declaration(text: str, start: int) -> tuple[str, str]:
         elif char in "{;":
             break
         i += 1
-    return "".join(options), name
+    return "".join(options), name, i

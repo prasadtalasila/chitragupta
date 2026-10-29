@@ -7,10 +7,82 @@
 % and never into review figure's. chitragupta/review/figure_layout/
 % _drawn.py documents the log grammar and reads it.
 %
-% It wraps two pgf internals, \pgfusepath and \pgfmultipartnode. A pgf
-% release that renames either breaks it; tests/test_figure_drawn.py
-% compiles against the installed TeX Live and fails if so.
+% It wraps two pgf internals, \pgfusepath and \pgfmultipartnode, and
+% reads three TikZ ones, \tikz@strokecolor, \tikz@fillcolor and
+% \tikz@textcolor (#1055). A pgf release that renames any of them breaks
+% it; tests/test_figure_drawn.py compiles against the installed TeX Live
+% and fails if so.
 \makeatletter
+% `\cgrgb{<colour expression>}\macro`: the colour as `r,g,b`. xcolor's
+% two commands do not expand, so this runs before a \typeout, never in one.
+\def\cgrgb#1#2{\extractcolorspecs{#1}\cgmodel\cgspec
+  \convertcolorspec\cgmodel\cgspec{rgb}#2}
+% `\cgpaint{<TikZ's expression>}\macro`: what a path is stroked or filled
+% in. TikZ keeps the `draw=` and `fill=` colours as written; where it has
+% none the path takes the current colour. pgf's own `pgfstrokecolor` is
+% not read: `\node[draw, red]` sets the current colour and leaves it stale.
+\def\cgpaint#1#2{\ifx#1\pgfutil@empty\cgrgb{.}#2\else\cgrgb{#1}#2\fi}
+\def\cgexpr#1{\pgfutil@ifundefined{tikz@#1color}{}%
+  {\detokenize\expandafter\expandafter\expandafter{\csname tikz@#1color\endcsname}}}
+% The colours of a node's typeset text (#1055), read from its box: runs of
+% glyphs that share a fill colour, a size and a weight, as
+% `CGTEXT <r,g,b> <size> <bold> <glyphs> <name>`. A colour change inside
+% the box is a colorstack whatsit (xcolor's \color, push/pop/set) or a
+% literal `rg` (pgf's own); the box starts in the colour current at the
+% node. Inlined with `%` and `#` as other characters, which Lua's
+% patterns and length operator need; it holds no `~`, which is active,
+% and no Lua comment, since TeX joins the lines into one.
+\begingroup\catcode`\%=12 \catcode`\#=12
+\directlua{
+cgprobe = {}
+local GLYPH, DISC, HLIST, VLIST, WHATSIT = node.id('glyph'), node.id('disc'),
+  node.id('hlist'), node.id('vlist'), node.id('whatsit')
+local STACK, LITERAL = node.subtype('pdf_colorstack'), node.subtype('pdf_literal')
+local function fill(data, current)
+  local r, g, b = data:match('([%d.]+) ([%d.]+) ([%d.]+) rg')
+  if r then return r .. ',' .. g .. ',' .. b end
+  local c, m, y, k = data:match('([%d.]+) ([%d.]+) ([%d.]+) ([%d.]+) k')
+  if c then
+    return string.format('%.5f,%.5f,%.5f', (1 - c) * (1 - k), (1 - m) * (1 - k), (1 - y) * (1 - k))
+  end
+  local grey = data:match('([%d.]+) g')
+  if grey then return grey .. ',' .. grey .. ',' .. grey end
+  return current
+end
+local function weight(id)
+  local f = font.getfont(id) or {}
+  local name = string.lower(f.fullname or f.name or '')
+  local heavy = name:find('bold') or name:find('black') or name:find('heavy')
+  local light = name:find('semibold') or name:find('demibold')
+  return (heavy and not light) and 1 or 0, (f.size or 0) / 65536
+end
+function cgprobe.runs(box, start, name)
+  local counts, order, stack, current = {}, {}, {}, start
+  local function visit(head)
+    for n in node.traverse(head) do
+      if n.id == GLYPH then
+        local bold, size = weight(n.font)
+        local key = current .. ' ' .. string.format('%.2f', size) .. ' ' .. bold
+        if not counts[key] then counts[key] = 0; order[#order + 1] = key end
+        counts[key] = counts[key] + 1
+      elseif n.id == HLIST or n.id == VLIST then visit(n.head)
+      elseif n.id == DISC then visit(n.replace)
+      elseif n.id == WHATSIT and n.subtype == STACK then
+        if n.command == 1 then stack[#stack + 1] = current; current = fill(n.data, current)
+        elseif n.command == 2 then current = stack[#stack] or start; stack[#stack] = nil
+        elseif n.command == 0 then current = fill(n.data, current) end
+      elseif n.id == WHATSIT and n.subtype == LITERAL then current = fill(n.data, current)
+      end
+    end
+  end
+  if tex.box[box] then visit(tex.box[box].head) end
+  for _, key in ipairs(order) do
+    texio.write_nl('CGTEXT ' .. key .. ' ' .. counts[key] .. ' ' .. name)
+  end
+  texio.write_nl('')
+end
+}
+\endgroup
 \newif\ifcginnode
 \newcount\cgunnamed
 \newcount\cgpathcount
@@ -25,6 +97,11 @@
     \global\advance\cgunnamed 1
     \edef\cgname{cgu-\the\cgunnamed}%
   \fi
+  % Its text's colours, and the `text=` TikZ was given, by name (#1055).
+  \cgrgb{.}\cgcurrent
+  \directlua{cgprobe.runs(\number\pgfnodeparttextbox, "\cgcurrent",
+    "\luaescapestring{\cgname}")}%
+  \typeout{CGTEXTCOLOR \cgexpr{text}|\cgname}%
   % Names last: a shape (`circle split`) or a node name may hold spaces.
   \typeout{CGNODE \the\wd\pgfnodeparttextbox\space
     \the\ht\pgfnodeparttextbox\space\the\dp\pgfnodeparttextbox\space #1/\cgname}%
@@ -41,6 +118,10 @@
 \def\pgfusepath#1{%
   \global\advance\cgpathcount 1
   \pgfsyssoftpath@getcurrentpath\cgpath
+  % What it is stroked and filled in (#1055), resolved and as written.
+  \cgpaint\tikz@strokecolor\cgstroke\cgpaint\tikz@fillcolor\cgfill
+  \typeout{CGPAINT \the\cgpathcount\space\cgstroke\space\cgfill\space
+    \cgexpr{stroke}|\cgexpr{fill}}%
   \typeout{CGPATH \the\cgpathcount\space\ifcginnode N\else E\fi\space
     \cgtip\pgf@start@tip@sequence\space\cgtip\pgf@end@tip@sequence\space#1}%
   \begingroup

@@ -70,7 +70,9 @@ a second class, `cgAux` what happens off to the side, `cgWarm` and
 `cgRose` a third and fourth zone. Fills are tints of the palette name;
 strokes and coloured text take its darker shade, `cg<Hue>Line` or
 `cg<Hue>Text` (`draw=cgAltLine`, `text=cgAccentText`), which clear WCAG
-contrast where the light hues do not. docs/TIKZ-STYLE.md has the table.
+contrast where the light hues do not. docs/TIKZ-STYLE.md has the table,
+and `figure check`'s `k1-stroke` and `k2-text` report a figure that
+draws or writes in a light hue instead.
 
 **Labels are set at the body size, all of them.** Node names and zone
 titles are `\normalsize\bfseries` and everything else is `\normalsize`,

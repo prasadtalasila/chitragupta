@@ -26,10 +26,12 @@ from chitragupta.figure._allow import Allow, Malformed, parse_allows
 
 from chitragupta.figure._connector_check import CONNECTOR, connector_rules
 from chitragupta.figure._connectors import connectors
+from chitragupta.figure._contrast import CONTRAST, contrast_check
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.figure._layout import declared_layout, reference
 from chitragupta.figure._overlap import drawn_overlaps
 from chitragupta.figure._rules import RULES, Finding
+from chitragupta.figure._wording import wording_rules
 from chitragupta.review.figure_layout import (
     BBOX_NAME,
     MAX_NODE_WORDS,
@@ -57,6 +59,7 @@ GEOMETRY = (
     "content-protrusion",
     "node-overlap",
     *CONNECTOR,
+    *CONTRAST,
 )
 
 # Why the geometry is missing. The probe sits inside the figure's last
@@ -120,6 +123,7 @@ def apply(
     advisory, unmeasured = advise(
         figure, source, layout, reference(layout), _unmeasurable(source, figure)
     )
+    advisory += wording_rules(source)[1]
     allows = parse_allows(source)
     allowed = [
         (allow, "; ".join(f.measurement for f in fired if f.rule == allow.rule) or None)
@@ -162,7 +166,10 @@ def evaluate(
         )
         findings += connected
         not_measured += unmeasured
-    findings += _focal(source) + _static(figure)
+        contrasted, unmeasured = contrast_check(source, figure, _pictures(source))
+        findings += contrasted
+        not_measured += unmeasured
+    findings += _focal(source) + _static(figure) + wording_rules(source)[0]
     order = list(RULES)
     return sorted(findings, key=lambda finding: order.index(finding.rule)), not_measured
 
