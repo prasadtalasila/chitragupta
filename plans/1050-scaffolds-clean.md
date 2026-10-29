@@ -391,10 +391,11 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
   62mm text width hyphenated "com-pared" and left "such" on a line of
   its own; a `\\` where the sense breaks, with `align=left`, keeps the
   entries whole and the legend inside the grid's width.
-- **A width test for every file.** `TestDrawnAtFinalWidth` held only
+- **A width test for the exemplars.** `TestDrawnAtFinalWidth` held only
   the scaffolds, to the article class's 345pt; it now also runs
-  `figure check`'s `size-width` over every scaffold and exemplar at the
-  render's 453pt, which is the issue's first criterion pinned.
+  `figure check`'s `size-width` over each exemplar at the render's
+  453pt. With #1080's test that every scaffold compiles boxed with no
+  `size-width`, that pins the issue's first criterion for every file.
 - **The firing case #1080 pinned on `rag-stages` moved.**
   `tests/test_figure_check.py` used the exemplar's overflow as its real
   figure that breaks `size-width`, and `docs/CLI.md` quoted that report.

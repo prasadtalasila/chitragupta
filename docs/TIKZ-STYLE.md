@@ -675,7 +675,8 @@ Six figures, six effective type sizes, none of them chosen. Laid out
 again to fit 506.3pt unscaled, every label printed at 8.97pt or above.
 Expect the floor to *change layouts*, not just sizes: `rag-stages` went
 from two rows to three, and `retrieval`'s dense route wrapped. Three of
-those redrawn figures ship as `assets/tikz/exemplars/`.
+those redrawn figures ship as `assets/tikz/exemplars/`, since laid out
+again to the render's 453pt (#1050).
 
 The renderer is already clean here: `render_output/_figure_captions.py`
 emits a bare `\begin{figure}` around the marker with no scale knob, so a

@@ -846,7 +846,8 @@ class TestDrawnAtFinalWidth:
     """Every scaffold fits the article class's text width as drawn, so it
     is `\\input` bare and never scaled. Every exemplar fits the render's
     453pt at 12pt (#1050), which is what a figure copied from one is
-    checked against."""
+    checked against; the scaffolds' own `figure check` run is in
+    tests/test_figure_check.py."""
 
     @by_scaffold
     def test_fits_the_text_width_unscaled(self, scaffold, tmp_path):
@@ -857,9 +858,9 @@ class TestDrawnAtFinalWidth:
             encoding="utf-8", errors="replace"
         )
 
-    @by_carrier
-    def test_fits_the_render_width(self, scaffold):
-        result = check(scaffold, DEFAULT_WIDTH_PT)
+    @pytest.mark.parametrize("exemplar", sorted(EXEMPLAR_DIR.glob("*.tex")), ids=lambda p: p.stem)
+    def test_each_exemplar_fits_the_render_width(self, exemplar):
+        result = check(exemplar, DEFAULT_WIDTH_PT)
 
         assert [f.measurement for f in result.findings if f.rule == "size-width"] == []
         assert "size-width" not in dict(result.not_measured)

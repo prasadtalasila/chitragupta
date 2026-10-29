@@ -320,7 +320,7 @@ class TestAgainstRealLualatex:
     def test_a_wide_exemplar_overflows_a_narrower_target(self):
         """`rag-stages` fits the render's 453pt since #1050 (411.5pt) but
         not the article class's 345pt, so a real house figure still pins
-        the firing case, through `--width`'s path."""
+        the firing case at a narrower target, as `--width 345` asks for."""
         path = REPO_ROOT / "assets" / "tikz" / "exemplars" / "rag-stages.tex"
 
         result = _check.check(path, 345.0)

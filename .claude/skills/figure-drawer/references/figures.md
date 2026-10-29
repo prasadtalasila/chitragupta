@@ -148,7 +148,8 @@ Six figures, six type sizes, none of them chosen. Laid out again to fit
 506.3pt unscaled, every label printed at 8.97pt or above, and the floor
 changed layouts, not just sizes: `rag-stages` went from two rows to
 three, and `retrieval`'s dense route wrapped. Three of those redrawn
-figures are `assets/tikz/exemplars/`.
+figures are `assets/tikz/exemplars/`, since laid out again to the
+render's 453pt (#1050).
 
 So, in order:
 
