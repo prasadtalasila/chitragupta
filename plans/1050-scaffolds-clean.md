@@ -308,7 +308,8 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
 **Files:** every `assets/tikz/*.tex` except `cg-figstyle.tex`, every
 `assets/tikz/exemplars/*.tex`; test in `tests/test_tikz_scaffolds.py`.
 
-- [x] Write `class TestEveryFigureNamesItsLayout` with
+- [x] Write `class TestEveryFigureNamesItsLayout` (dropped on the
+  rebase onto #1084; see **Changed in the build**) with
   `test_line_one_names_the_layout` (parametrized over every scaffold and
   exemplar: line 1 is the only `% cg-layout:` line, naming a scaffold's
   own stem or the one layout file whose range rows list the exemplar),
@@ -398,8 +399,19 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
   `tests/test_figure_check.py` used the exemplar's overflow as its real
   figure that breaks `size-width`, and `docs/CLI.md` quoted that report.
   Both now check it against the article class's 345pt with `--width`,
-  which it still overflows (411.5pt). `assets/tikz/README.md` says to
-  keep the `% cg-layout:` line when copying a scaffold.
+  which it still overflows (411.5pt).
+- **#1084 (2f) landed the `% cg-layout:` lines first.** It merged while
+  this PR was open, with the same line 1 in all ten files, a reader
+  (`chitragupta/figure/_layout.py`'s `declared_layout`, which takes the
+  first such line anywhere in the file) and a test that every measured
+  source declares the layout whose file measures it. On the rebase this
+  branch kept that test and dropped its own `TestEveryFigureNamesItsLayout`
+  (Task 1 above), whose line-1-only rule protected nothing the reader
+  needs; its README sentence gave way to #1084's, and section 1 stands
+  as the design both agree on. #1084's examples of the advisory size
+  reports (`docs/CLI.md`, `references/check.md`) quoted the pipeline
+  ranges this branch moves; they now show 0.10 to 0.37 and 0.55 to
+  0.68. The version is 6.144.1, a PATCH on #1084's 6.144.0.
 - **Left for #1054's bench.** Two tag placements in the exemplars still
   cross a zone border or touch a card in the render's fonts:
   `architecture`'s "ledger" spans the 3mm gap between two zone cards,

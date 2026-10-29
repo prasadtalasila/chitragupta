@@ -9,8 +9,8 @@ figures/flow.tex
   size-width            figure     475.2pt wide, target 453.0pt
   node-overlap          legend+pot boxes intersect
 advisory (read; never resolved, allowed or capped)
-  size-height           figure     0.24 of the text height (168pt); pipeline reference 0.10 to 0.35
-  size-slack            figure     0.82; pipeline reference 0.55 to 0.71
+  size-height           figure     0.24 of the text height (168pt); pipeline reference 0.10 to 0.37
+  size-slack            figure     0.82; pipeline reference 0.55 to 0.68
   size-squash           load+parse 1.2mm apart edge to edge, under 3mm
   budget-nodes          figure     9 nodes; pipeline reference 5 to 11
   budget-edges          figure     8 edges; pipeline reference 3 to 4
