@@ -421,6 +421,7 @@ Measured on the PR branch with the same probe and `figure check`:
 - Diagonals: 0 in every file (the tree's 6 are gone). A throwaway
   three-child copy of the tree fans at `L/4`, `L/2` and `3L/4` with no
   edit.
-- Reference rows re-measured: `rag-stages` (width 1.09 to 0.91) and
+- Reference rows re-measured: `rag-stages` (width 1.09 to 0.91),
   `architecture` (10 edges to 9, the FAIL route now one source-parser
-  leg fewer; width 0.96 to 0.99).
+  leg fewer; width 0.96 to 0.99) and `retrieval` (10 edges to 12, the
+  fork out of `query` now two paths the parser reads leg by leg).
