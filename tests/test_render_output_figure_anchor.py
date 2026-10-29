@@ -127,5 +127,7 @@ class TestRealRender:
         draft = _draft(isolated_config, ["one", "two", "three", "four"], between)
         marked = _words(render_output.render(str(draft), output_format="pdf"))
         unmarked = _figure_anchor.figure_block
-        monkeypatch.setattr(_figures, "figure_block", lambda ref, base, _: unmarked(ref, base, False))
+        monkeypatch.setattr(
+            _figures, "figure_block", lambda ref, base, _: unmarked(ref, base, False)
+        )
         assert _words(render_output.render(str(draft), output_format="pdf")) == marked

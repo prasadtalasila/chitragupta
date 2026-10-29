@@ -16,13 +16,6 @@ def house():
 
 
 @pytest.fixture
-def figures(tmp_path):
-    directory = tmp_path / "drafts" / "topic" / "figures"
-    directory.mkdir(parents=True)
-    return directory
-
-
-@pytest.fixture
 def with_twin(tmp_path, monkeypatch):
     """A scaffold directory where one layout ships a twin, which no
     shipped layout does until #1056."""
@@ -102,6 +95,17 @@ class TestNew:
     def test_an_unknown_layout_lists_the_ids(self, figures, house):
         with pytest.raises(_new.Refused, match="zoned-spine"):
             _new.new_figure(figures, "flow", "spiral", house)
+
+
+class TestCopy:
+    def test_a_file_that_appears_after_the_check_is_refused_not_replaced(self, tmp_path):
+        source = tmp_path / "source.tex"
+        source.write_text("scaffold", encoding="utf-8")
+        target = tmp_path / "flow.tex"
+        target.write_text("mine", encoding="utf-8")
+        with pytest.raises(_new.Refused, match="already exists"):
+            _new._copy(source, target)
+        assert target.read_text(encoding="utf-8") == "mine"
 
 
 class TestCli:

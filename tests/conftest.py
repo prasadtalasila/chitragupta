@@ -690,6 +690,14 @@ MARKED_INPUT = "Before.\n\n\\input{figures/fig1.tex}\n%figure: figures/fig1\n\nA
 CAPTIONED_MD = "Before.\n\n<!-- figure: figures/fig1 -->\nOne reading path.\n\nAfter.\n"
 
 
+@pytest.fixture
+def figures(tmp_path):
+    """An empty `figures/` directory under a draft, for the figure commands."""
+    directory = tmp_path / "drafts" / "topic" / "figures"
+    directory.mkdir(parents=True)
+    return directory
+
+
 def figure_pair(draft_dir, name="fig1"):
     """Both halves of a figure on disk, returning the draft's directory."""
     (draft_dir / "figures").mkdir(parents=True, exist_ok=True)

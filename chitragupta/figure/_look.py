@@ -37,6 +37,7 @@ import tempfile
 
 # `_run` is this module's one patch point for its external launches
 # (#854), in the shape the probe and the renderer use.
+from subprocess import CompletedProcess
 from subprocess import run as _run
 from dataclasses import dataclass
 from pathlib import Path
@@ -163,12 +164,13 @@ def _failed(figure: Path, detail: str) -> Look:
     return Look(*paths, "failed", detail=detail)
 
 
-def _engine(tmp: Path, *args: str):
+def _engine(tmp: Path, program: str, *args: str) -> CompletedProcess[str]:
+    """Run `program`, resolved on PATH, in `tmp`."""
     # The figure file is draft text, and a shared tree's draft text is
     # someone else's (#823): the pdf render's own engine flags, read fence
     # and environment, as the probe uses.
     return _run(
-        list(args),
+        [programs.require_program(program), *args],
         cwd=tmp,
         capture_output=True,
         text=True,
@@ -182,14 +184,14 @@ def _build(figure: Path, source: str, key: str) -> Look:
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
         (work / "look.tex").write_text(document(source), encoding="utf-8")
-        lualatex = programs.require_program("lualatex")
         opts = ("-interaction=nonstopmode", "-halt-on-error", "look.tex")
-        result = _engine(work, lualatex, *tex_engine.engine_opts(), *opts)
+        result = _engine(work, "lualatex", *tex_engine.engine_opts(), *opts)
         match = _LOOK_RE.search(result.stdout)
         if result.returncode != 0 or match is None:
             return _failed(figure, _compile_error_detail(result.stdout))
-        pdftoppm = programs.require_program("pdftoppm")
-        raster = _engine(work, pdftoppm, "-r", str(DPI), "-png", "-singlefile", "look.pdf", "look")
+        raster = _engine(
+            work, "pdftoppm", "-r", str(DPI), "-png", "-singlefile", "look.pdf", "look"
+        )
         if raster.returncode != 0:
             return _failed(figure, f"pdftoppm: {raster.stderr.strip()}")
         sizes = (float(match["wd"]), float(match["ht"]) + float(match["dp"]), float(match["tw"]))

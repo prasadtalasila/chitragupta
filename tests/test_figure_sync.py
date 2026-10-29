@@ -25,13 +25,6 @@ def house():
     return figure.load_house()
 
 
-@pytest.fixture
-def figures(tmp_path):
-    directory = tmp_path / "drafts" / "topic" / "figures"
-    directory.mkdir(parents=True)
-    return directory
-
-
 def write(path: Path, text: str) -> Path:
     path.write_bytes(text.encode("utf-8"))
     return path

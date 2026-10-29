@@ -230,9 +230,7 @@ def test_a_figure_is_centred_on_the_text_block(isolated_config, caption):
     picture = "\\begin{tikzpicture}\\node[draw] {CENTREME};\\end{tikzpicture}%\n"
     (draft.parent / "figures" / "one.tex").write_text(picture, encoding="utf-8")
     (draft.parent / "figures" / "one.txt").write_text("[ CENTREME ]\n", encoding="utf-8")
-    draft.write_text(
-        f"Text.\n\n<!-- figure: figures/one -->\n{caption}\nMore.\n", encoding="utf-8"
-    )
+    draft.write_text(f"Text.\n\n<!-- figure: figures/one -->\n{caption}\nMore.\n", encoding="utf-8")
     pdf = render_output.render(str(draft), output_format="pdf")
     html = subprocess.run(
         ["pdftotext", "-bbox", str(pdf), "-"], capture_output=True, text=True, check=True
