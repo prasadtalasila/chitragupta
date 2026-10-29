@@ -52,15 +52,6 @@ Keep it that way: the moment something here computes where a node ought
 to sit, this stops being a check on TikZ's output and becomes a second,
 worse implementation of it that the real one will silently disagree with.
 
-**The thresholds are this module's, not TikZ's and not the standard's.**
-`_geometry.py`'s `_TOLERANCE_PT` and `_PROTRUSION_BAND_FRACTION` are
-chosen generously so ordinary layouts pass, and they do shape what
-passes -- a generously spread two-row diagram trips protrusion with
-nothing wrong with it. They are calibration for an advisory report, so a
-finding is a claim to agree or disagree with rather than a number to
-drive down; docs/AUTO-IMPROVEMENT.md's R3 is the same instinct applied to
-`emptiness()`, the one continuous value here.
-
 **The edge list is the point.** Every published PaperBanana diagram
 failure is a wrong or missing edge -- semantics, not layout -- and every
 one is invisible to a check over pixels. In TikZ an edge is
@@ -75,6 +66,15 @@ Usage:
     python -m chitragupta.review figure <draft.md> --json
     python -m chitragupta.review figure <draft.md> --write
 """
+
+# **The thresholds are this module's, not TikZ's and not the standard's.**
+# `_geometry.py`'s `_TOLERANCE_PT` and `_PROTRUSION_BAND_FRACTION` are
+# chosen generously so ordinary layouts pass, and they do shape what
+# passes -- a generously spread two-row diagram trips protrusion with
+# nothing wrong with it. They are calibration for an advisory report, so a
+# finding is a claim to agree or disagree with rather than a number to
+# drive down; docs/AUTO-IMPROVEMENT.md's R3 is the same instinct applied to
+# `emptiness()`, the one continuous value here.
 
 import argparse
 import json
@@ -97,10 +97,13 @@ from chitragupta.review.figure_layout._geometry import (
     edge_gap,
     emptiness,
     leaves,
+    contains,
+    intersects,
     overlaps,
     protrudes,
 )
 from chitragupta.review.figure_layout._check_one import check_figure
+from chitragupta.review.figure_layout._drawn import Drawn, DrawnLine, DrawnNode, Point
 from chitragupta.review.figure_layout._result import FigureResult
 from chitragupta.review.figure_layout._report import (
     EMPTINESS_LABEL,
@@ -134,6 +137,9 @@ from chitragupta.review.figure_layout._source import (
 __all__ = [
     "BBOX_NAME",
     "Box",
+    "Drawn",
+    "DrawnLine",
+    "DrawnNode",
     "EMPTINESS_LABEL",
     "FigureCompileError",
     "FigureResult",
@@ -141,14 +147,17 @@ __all__ = [
     "ambiguous_edges",
     "Measurement",
     "MissingBinary",
+    "Point",
     "check_draft",
     "check_figure",
     "edge_gap",
+    "contains",
     "edge_list",
     "emptiness",
     "figures_in",
     "format_report",
     "leaves",
+    "intersects",
     "loads_library_by_hand",
     "measure",
     "node_boxes",

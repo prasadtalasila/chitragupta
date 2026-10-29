@@ -235,16 +235,29 @@ judgement.
 
 Metaphor-aware: a layout declares itself with a `% cg-layout: <id>` line
 that every scaffold carries, and `figure new` keeps. A rule a layout
-exempts is not evaluated for it.
+exempts is not evaluated for it. **Corrected by issue #1050**, which
+added the line: an id is the scaffold's file stem, so the hub's is
+`hub-and-spoke-network`, not the `hub-and-spoke` this table first said,
+and an exemplar's is the layout whose reference file measures it.
 
 | Id | Rule | Scope | Class |
 | --- | --- | --- | --- |
-| `c1-orthogonal` | An edge between nodes whose centres differ in both x and y by more than 1mm is an elbow (`-\|`, `\|-`), not a straight or bent segment. Exempt: `state-machine` (curved transitions and self-loops are its convention), `hub-and-spoke-network` (radial spokes) | edge | objective |
-| `c2-tag-clearance` | An edge tag sits beside its segment, 0.8mm to 3mm clear of it: not on the line, not floating away from it | edge | objective |
-| `c3-coincident` | No two edges share a collinear stretch longer than 2mm | edge pair | objective |
-| `c4-attach` | A lone edge on a node side attaches at that side's midpoint, within 0.5mm. N edges on one side attach at `L*k/(N+1)`, within 1mm, and at least 2mm apart | node side | objective |
-| `c5-transit` | No edge crosses the box of a node that is neither of its ends. Zone cards that contain an end are not counted | edge | objective |
-| `c6-tag-covered` | No edge tag overlaps a node box | edge | objective |
+| `c1-orthogonal` | An edge between nodes whose ends differ in both x and y by more than 1mm is an elbow (`-\|`, `\|-`), not a straight or bent segment. Exempt: `state-machine` (curved transitions and self-loops are its convention), `hub-and-spoke-network` (radial spokes) | edge | objective |
+| `c2-tag-clearance` | An edge tag's text sits beside its segment, 0.8mm to 3mm clear of it: not on the line, not floating away from it. A `sloped` tag is not measured | edge | objective |
+| `c3-coincident` | No two edges share a collinear stretch longer than 2mm, unless they share an end point (a fork) | edge pair | objective |
+| `c4-attach` | A lone edge on a node side attaches at that side's midpoint, within 1mm. N edges on one side attach at `L*k/(N+1)`, within 1mm, and at least 2mm apart. Only a straight edge meeting its side square on; round nodes and zones are not measured; exempt where `c1` is | node side | objective |
+| `c5-transit` | No edge crosses the box of a node that is neither of its ends. Zone cards that contain an end, markers under 2mm and unframed groups are not counted | edge | objective |
+| `c6-tag-covered` | No edge tag overlaps a node box, a zone containing the tag or an unframed group aside | edge | objective |
+| `c7-dangling-tip` | An arrow that leaves a node lands its tip within 1mm of a node or another line | point | objective |
+
+**Changed by issue #1054** (2026-10-29), where the bench over this
+repository's figures found the plan's first statement firing on sound
+figures: `c2` measures the tag's text, `c3`
+skips a fork, `c4` narrowed to square ends of straight edges with a 1mm
+lone-end tolerance (the plan's 0.5mm contradicted `c1`'s 1mm), `c5` and
+`c6` skip markers and unframed groups, and `c7` was added for the arrow
+that points at nothing. `bench/RESULTS.md` has each with the figure that
+prompted it.
 
 The existing findings keep the names `review figure --json` already
 ships as its `kind` strings (`does-not-compile`, `nothing-measurable`,
@@ -433,7 +446,8 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
 - **2b.** `figure check` skeleton: probe, existing findings, report
   format, figure-scope rules (`size-width`, `size-stray`, `focal-count`)
   and figure-scope `cg-allow`.
-- **2c.** Edge geometry and `c1` to `c6`. **Bench first**, per VI.5:
+- **2c.** Edge geometry and `c1` to `c7` (#1054, built; see
+  `plans/1054-connector-rules.md`). **Bench first**, per VI.5:
   run each rule over the scaffolds, the exemplars and the 49 draft
   figures before fixing thresholds, with the must-not-fire cases (a
   legitimate crossing, an automaton self-loop, a lifeline with many
@@ -449,11 +463,62 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
   list (the reports are kept out of the findings, and none is allowable).
 - **2g.** Element-scope `cg-allow` and stale-allow detection.
 
-How edges are measured: the source parser recovers each `\draw` between
-named nodes (its anchors, its `--`, `-|`, `|-` or `to[...]` operators,
-and any `node` on the path), and the probe supplies the node boxes. A
-path the parser cannot read is listed as not measured, the same honesty
-as the measured-nothing rule, never silently skipped.
+How edges are measured: **TeX reports the lines it draws**, rather
+than Python re-deriving them from the source. `figure check`'s probe
+wraps `\pgfusepath` and `\pgfmultipartnode`, so the compile logs every
+stroked path's segments in canvas coordinates, flagged when it is part
+of a node, and every node it creates, labels on a path included. A
+connector is a line whose two ends touch two different nodes. A stroked
+line that does not is listed as not between two nodes, the same honesty
+as the measured-nothing rule, never silently skipped. This replaces the
+earlier design, a source parser over `\draw`; the spike below is why.
+
+#### What the 2c spike found (2026-10-29)
+
+A throwaway spike compared the two designs over the 49 draft figures,
+the 7 scaffolds and the 3 exemplars. The source parser was scored at its
+best case: an edge counted if both its ends named a declared node, even
+though the parser would still have to evaluate the path between them.
+
+- **TeX-reported lines measure more, and are never wrong where the
+  parser is right.** All 59 figures compiled with the hook. It found
+  279 lines between two nodes, against the parser's 218 at best, and
+  more on 17 figures: `\foreach` loops (`run-modes.tex`, 10 against 0),
+  `child` trees, `pic`s and curves. Each of the 5 figures where it found
+  fewer is explained: a `\path` the parser listed that draws nothing (2
+  figures), self-loops counted separately (1), lines that end on a bus
+  line rather than a node (1), and arrows that end in empty space (1).
+  A computed end such as `(pot.north |- twin.south)` comes back as the
+  exact point drawn, with no TikZ grammar in Python.
+- **A label's node box touches its line by construction.** 141 of the
+  160 labels on a stroked line have a node-box gap of 0.0mm: `above`,
+  `left` and the rest anchor the box edge on the line, and the space a
+  reader sees is the inner sep inside it. `c2-tag-clearance` measured
+  on the node box would fire on almost every label, so it must measure
+  the text box (the node box less its inner and outer sep). This is the
+  box-against-paint question VI.5 raised, answered for labels.
+- **`c1-orthogonal` fires on a scaffold.** `branching-tree` has 6
+  diagonal edges by design, which the exemptions above do not cover.
+  Across the drafts, 33 straight lines between nodes on 12 figures are
+  diagonal. No figure carries a `% cg-layout:` line yet, so this item
+  is the first to read one. (#1083 since redrew the tree with fanned
+  orthogonal edges, so trees are held to `c1` after all.)
+- **The shipped probe under-measures circles.** It reads a node's box
+  from its `south west` and `north east` anchors, which on a circle lie
+  on the curve, not at the corners, so a circle's box is about 30% too
+  small. The spike read `west`, `east`, `south` and `north` instead.
+  `review figure`'s overlap and protrusion checks have the same gap
+  today.
+- **One defect is outside c1 to c6.** In `paper-twin-loop.tex` the
+  `reading` and `dose` arrows end at the twin's height but about 13mm
+  beside its box, pointing at nothing.
+- **What the hook costs and risks.** No second compile: it rides the
+  probe `figure check` already runs. It wraps two pgf internals, so a
+  pgf release that renames either breaks it, which a test against the
+  installed TeX Live catches. `transform canvas` moves a line outside
+  the canvas coordinates the hook reads, and `\graph` was not in the
+  corpus; both need a fixture. Long plotted paths need a raised
+  `max_print_line`, or their log line wraps.
 
 ### Phase 3: five scaffolds
 

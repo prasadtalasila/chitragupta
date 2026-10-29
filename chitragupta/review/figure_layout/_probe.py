@@ -33,8 +33,9 @@ from subprocess import run as _run
 import tempfile
 from pathlib import Path
 
-from chitragupta import pdf_fonts, programs, tex_engine
+from chitragupta import config, pdf_fonts, programs, tex_engine
 from chitragupta.render_output._tikz_libraries import libraries_in
+from chitragupta.review.figure_layout._drawn import Drawn, parse_drawn
 from chitragupta.review.figure_layout._geometry import BBOX_NAME, Box
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD, strip_comments
 
@@ -112,8 +113,10 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     space a `\\end{tikzpicture}` with no `%` sets, the commonest stray
     there is. The box is shipped, not dropped: LuaTeX refuses a run that
     wrote PDF objects (the `shadows.blur` fadings) and shipped no page
-    (#1037). The default call is `review figure`'s, and emits exactly
-    what it always has.
+    (#1037). `boxed` also inlines the drawing hook (#1054), which logs
+    every line and node TikZ draws for the connector rules; `_drawn.py`
+    has the log's grammar. The default call is `review figure`'s, and
+    carries no hook.
 
     `article`, deliberately, not `standalone`: `standalone.cls` lives in
     `texlive-latex-extra` while `tikz.sty` lives in `texlive-pictures`,
@@ -157,13 +160,21 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     # it is not, and the compile dies on `Missing \endcsname` (#1072).
     # Left out here but kept in `names`, so it reads as declared but not
     # measured rather than vanishing from the report.
+    # Four sides, not two corners: `south west` and `north east` are
+    # corners only on a rectangle, and on a circle they lie on the curve,
+    # which measured it about 30% too small (#1054). `\cgunused` takes
+    # the coordinate each side does not fix.
     probes = "\n".join(
-        f"\\pgfpointanchor{{{name}}}{{south west}}\\pgfgetlastxy{{\\cgx}}{{\\cgy}}%\n"
-        f"\\pgfpointanchor{{{name}}}{{north east}}\\pgfgetlastxy{{\\cgxx}}{{\\cgyy}}%\n"
+        f"\\pgfpointanchor{{{name}}}{{west}}\\pgfgetlastxy{{\\cgx}}{{\\cgunused}}%\n"
+        f"\\pgfpointanchor{{{name}}}{{south}}\\pgfgetlastxy{{\\cgunused}}{{\\cgy}}%\n"
+        f"\\pgfpointanchor{{{name}}}{{east}}\\pgfgetlastxy{{\\cgxx}}{{\\cgunused}}%\n"
+        f"\\pgfpointanchor{{{name}}}{{north}}\\pgfgetlastxy{{\\cgunused}}{{\\cgyy}}%\n"
         f"\\typeout{{CGBOX {name} \\cgx\\space\\cgy\\space\\cgxx\\space\\cgyy}}%"
         for name in [*names, BBOX_NAME]
         if "\\" not in name
     )
+    if boxed:
+        probes += "\n\\cgdumpnodes%"
     figure = _with_probes_inside(source, probes)
     libraries = libraries_in(source) if boxed else []
     if boxed:
@@ -179,12 +190,20 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
         f"{pdf_fonts.latex_fonts()}"
         "\\usepackage{tikz}\n"
         + (f"\\usetikzlibrary{{{','.join(libraries)}}}\n" if libraries else "")
+        + (_drawing_hook() if boxed else "")
         + "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
         + ("\\newsavebox\\cgfigbox\n" if boxed else "")
         + "\\begin{document}\n"
         f"{figure}\n"
         "\\end{document}\n"
     )
+
+
+def _drawing_hook() -> str:
+    """`assets/latex/cg-figure-probe.tex`, inlined: the probe compiles
+    behind the `openin_any=p` read fence (#823), so it cannot `\\input`
+    a file outside its own directory (#1054)."""
+    return config.shipped("assets", "latex", "cg-figure-probe.tex").read_text(encoding="utf-8")
 
 
 # Where the probes go: immediately before the figure's last
@@ -237,6 +256,8 @@ class Measurement:
 
     boxes: dict[str, Box]
     input_width: float | None = None
+    # What TikZ drew (#1054), from the boxed compile's hook only.
+    drawn: Drawn | None = None
 
 
 def node_boxes(figure_path: Path) -> dict[str, Box]:
@@ -285,7 +306,9 @@ def measure(figure_path: Path, *, boxed: bool = False) -> Measurement:
         )
         if result.returncode != 0:
             raise FigureCompileError(_compile_error_detail(result.stdout))
-        return Measurement(parse_boxes(result.stdout), parse_input_width(result.stdout))
+        log = result.stdout
+        drawn = parse_drawn(log) if boxed else None
+        return Measurement(parse_boxes(log), parse_input_width(log), drawn)
 
 
 def _compile_error_detail(log: str) -> str:

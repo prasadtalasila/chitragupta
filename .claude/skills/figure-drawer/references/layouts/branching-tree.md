@@ -44,3 +44,10 @@ fractions are the ones that print.
 
 `child` draws its edges internally, so the edge count of a tree is 0
 here and the wiring is read from the nesting.
+
+The scaffold's edges are square and fanned: its `edge from parent path`
+leaves the parent's bottom side at `k/(N+1)` of its width for the k-th
+of N children, drops half-way, runs across and comes down into the
+middle of the child's top side. Keep it when you copy the scaffold. The
+default `child` edge is a slant from centre to centre, which meets both
+boxes off the middle of their sides.

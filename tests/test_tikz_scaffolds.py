@@ -52,7 +52,7 @@ from typing import NamedTuple
 import pytest
 
 from chitragupta.figure._advisory import TEXT_HEIGHT_PT, slack
-from chitragupta.figure._check import DEFAULT_WIDTH_PT
+from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._layout import LAYOUT_DIR, RangeRow, declared_layout, range_rows
 from chitragupta.review import figure_layout
 from tests.conftest import needs_tikz
@@ -682,7 +682,8 @@ def _floor_ratios(floor: float, glyphs: list[_Glyph]) -> list[float]:
 
 @needs_tikz
 class TestTheTypeFloor:
-    """Nothing in a figure prints smaller than the paragraph beside it.
+    """Nothing in a figure prints smaller than the paragraph beside it,
+    and, since house block v4, nothing prints larger either.
 
     Body text on page 1 is the reference, measured from the same PDF so
     no number here depends on a class or a unit; the figure alone is on
@@ -701,6 +702,18 @@ class TestTheTypeFloor:
         floor = min(glyph.size for glyph in _effective_sizes(pdf, 0))
         return floor, _floor_ratios(floor, _effective_sizes(pdf, 1))
 
+    @staticmethod
+    def _largest(directory: Path, figure: str) -> float:
+        """The figure's largest printed glyph as a fraction of the body
+        size. Raw sizes, not `_floor_ratios`: that measures a math glyph
+        beside a subscript against the script size, which is right for a
+        floor and would read a full-size `k` as 1.4 times too large."""
+        result = _lualatex(directory, f"Body text.\n\\clearpage\n{figure}")
+        assert result.returncode == 0, result.stdout[-2000:]
+        pdf = directory / "probe.pdf"
+        floor = min(glyph.size for glyph in _effective_sizes(pdf, 0))
+        return max(glyph.size for glyph in _effective_sizes(pdf, 1)) / floor
+
     @by_carrier
     def test_no_glyph_is_set_below_the_body_size(self, scaffold, tmp_path):
         _, sizes = self._floor_and_figure(
@@ -709,6 +722,21 @@ class TestTheTypeFloor:
 
         assert sizes, "the figure printed no text, so the floor was never tested"
         assert min(sizes) >= 1 - _SIZE_TOLERANCE
+
+    @by_carrier
+    def test_no_glyph_is_set_above_the_body_size(self, scaffold, tmp_path):
+        """House block v4 (#1054): one size, the body's. Names and titles
+        are told apart by weight, so a figure never reads louder than the
+        paragraph beside it."""
+        largest = self._largest(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")
+
+        assert largest <= 1 + _SIZE_TOLERANCE
+
+    def test_a_larger_name_is_caught(self, tmp_path):
+        """The shape the ceiling exists for: v3's `\\large\\bfseries` name."""
+        largest = self._largest(tmp_path, "\\tikz\\node[font=\\large\\bfseries]{Intake};")
+
+        assert largest > 1 + _SIZE_TOLERANCE
 
     def test_the_floor_holds_inside_a_smaller_group(self, tmp_path):
         """`[cg]` sets `\\normalsize` as a picture option rather than
@@ -844,9 +872,10 @@ class TestEveryPicFitsItsWell:
 @needs_tikz
 class TestDrawnAtFinalWidth:
     """Every scaffold fits the article class's text width as drawn, so it
-    is `\\input` bare and never scaled. The exemplars are laid out to a
-    wider page (acmart's 506pt, stated in each one's header) and are not
-    held to this one."""
+    is `\\input` bare and never scaled. Every exemplar fits the render's
+    453pt at 12pt (#1050), which is what a figure copied from one is
+    checked against; the scaffolds' own `figure check` run is in
+    tests/test_figure_check.py."""
 
     @by_scaffold
     def test_fits_the_text_width_unscaled(self, scaffold, tmp_path):
@@ -856,3 +885,10 @@ class TestDrawnAtFinalWidth:
         assert "Overfull \\hbox" not in (tmp_path / "probe.log").read_text(
             encoding="utf-8", errors="replace"
         )
+
+    @pytest.mark.parametrize("exemplar", sorted(EXEMPLAR_DIR.glob("*.tex")), ids=lambda p: p.stem)
+    def test_each_exemplar_fits_the_render_width(self, exemplar):
+        result = check(exemplar, DEFAULT_WIDTH_PT)
+
+        assert [f.measurement for f in result.findings if f.rule == "size-width"] == []
+        assert "size-width" not in dict(result.not_measured)

@@ -14,12 +14,14 @@ from pathlib import Path
 import pytest
 
 from chitragupta.figure import __main__ as cli
-from chitragupta.figure import _advisory, _check, _check_report
+from chitragupta.figure import _advisory, _check, _check_report, _connector_check
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
-from chitragupta.review.figure_layout import BBOX_NAME, FigureResult
+from chitragupta.review.figure_layout import BBOX_NAME, Drawn, FigureResult
 from tests.conftest import needs_tikz, run_python
+from chitragupta.figure._connectors import MM
+from tests.figure_drawn_fixtures import drawn, line, node
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "tests" / "fixtures" / "figure" / "check"
@@ -28,9 +30,11 @@ ONE_PICTURE = "\\begin{tikzpicture}[cg]\n\\node[cgbox] (a) {A};\n\\end{tikzpictu
 
 def _measured(width=300.0, input_width=None, **fields):
     """A compiled figure whose picture is `width` wide, and only as tall
-    as its node so nothing protrudes."""
+    as its node so nothing protrudes. It drew nothing the connector
+    rules could measure, unless `drawn` says otherwise."""
     boxes = {"a": (0.0, 0.0, 10.0, 10.0), BBOX_NAME: (0.0, 0.0, width, 12.0)}
     fields.setdefault("declared", ["a"])
+    fields.setdefault("drawn", Drawn())
     return FigureResult(
         path=Path("fig.tex"),
         boxes=boxes,
@@ -176,10 +180,13 @@ class TestFocalCount:
 
 class TestExistingFindings:
     def test_each_review_figure_finding_maps_to_its_rule_and_target(self):
+        # `drawn=None`: the named boxes `review figure` reads, which is
+        # where an overlap comes from when the probe drew nothing.
         figure = _measured(
             overlong=[("a", 17)],
             stranded=["3,2"],
             by_hand=["\\tikz@library@fit@loaded"],
+            drawn=None,
         )
         figure.boxes["b"] = (5.0, 5.0, 15.0, 15.0)
 
@@ -245,7 +252,7 @@ class TestAllows:
 
     def test_a_deferred_allow_leaves_its_finding_in_place(self):
         source = "% cg-allow: node-overlap a+b -- on purpose\n" + ONE_PICTURE
-        figure = _measured()
+        figure = _measured(drawn=None)
         figure.boxes["b"] = (5.0, 5.0, 15.0, 15.0)
 
         result = _check.apply(Path("fig.tex"), 453.0, figure, source)
@@ -308,7 +315,11 @@ class TestAgainstRealLualatex:
     def test_two_pictures_say_why_stray_was_not_measured(self):
         result = _check.check(FIXTURES / "two-pictures.tex", _check.DEFAULT_WIDTH_PT)
 
-        assert [rule for rule, _ in result.not_measured] == ["size-stray", *_advisory.GEOMETRY]
+        assert [rule for rule, _ in result.not_measured] == [
+            "size-stray",
+            *_check.CONNECTOR,
+            *_advisory.GEOMETRY,
+        ]
         assert _rules(result.advisory) == ["budget-nodes", "budget-edges"]
 
     def test_an_allowed_overflow_is_listed_not_found(self):
@@ -317,13 +328,13 @@ class TestAgainstRealLualatex:
         assert result.findings == []
         assert [allow.rule for allow, _ in result.allowed] == ["size-width"]
 
-    def test_the_wide_exemplar_overflows_the_text_width(self):
-        """`rag-stages` is 1.09 of the text width in the render's fonts
-        (#1037's measurement; #1050 owns the fix), so a real house
-        figure pins the firing case too."""
+    def test_a_wide_exemplar_overflows_a_narrower_target(self):
+        """`rag-stages` fits the render's 453pt since #1050 (411.5pt) but
+        not the article class's 345pt, so a real house figure still pins
+        the firing case at a narrower target, as `--width 345` asks for."""
         path = REPO_ROOT / "assets" / "tikz" / "exemplars" / "rag-stages.tex"
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, 345.0)
 
         assert "size-width" in _rules(result.findings)
 
@@ -470,6 +481,7 @@ class TestJsonPayload:
             "empty_fraction",
             "empty_fraction_note",
             "names_unmeasured",
+            "lines_not_between_nodes",
         }
 
 
@@ -661,3 +673,171 @@ class TestAdvisoryAgainstRealLualatex:
         squashed = [r for r in result.advisory if r.rule == "size-squash"]
         assert [r.target for r in squashed] == ["a+b"]
         assert result.findings == []
+
+
+A = node("a", (0, 0, 40, 20))
+HIGH_B = node("b", (100, 60, 140, 80))
+
+
+class TestConnectorRules:
+    """#1054: the connector rules run over what the probe drew, and say
+    why wherever they could not."""
+
+    def test_they_report_from_the_drawn_lines(self):
+        figure = _measured(drawn=drawn([A, HIGH_B], [line((40, 10), (100, 70))]))
+
+        findings, _ = _evaluate(figure=figure)
+
+        assert "c1-orthogonal" in _rules(findings)
+
+    def test_a_declared_layout_exempts_its_rules(self):
+        figure = _measured(drawn=drawn([A, HIGH_B], [line((40, 10), (100, 70))]))
+
+        findings, _ = _evaluate("% cg-layout: hub-and-spoke-network\n" + ONE_PICTURE, figure)
+
+        assert "c1-orthogonal" not in _rules(findings)
+
+    def test_they_are_not_measured_without_drawn_lines(self):
+        _, not_measured = _evaluate(figure=_measured(drawn=None))
+
+        assert [(rule, why) for rule, why in not_measured] == [
+            (rule, _connector_check.NO_DRAWN) for rule in _check.CONNECTOR
+        ]
+
+    def test_they_are_not_measured_for_several_pictures(self):
+        """Nodes from an earlier picture are not in the last one's frame."""
+        _, not_measured = _evaluate(ONE_PICTURE + ONE_PICTURE, _measured(input_width=320.0))
+
+        assert ("c5-transit", "2 tikzpictures; their nodes are not in one frame") in not_measured
+
+    def test_they_are_not_measured_under_transform_canvas(self):
+        source = ONE_PICTURE.replace("[cg]", "[cg,transform canvas={scale=0.8}]")
+
+        _, not_measured = _evaluate(source)
+
+        assert ("c1-orthogonal", _connector_check.CANVAS) in not_measured
+
+    def test_a_round_node_is_listed_as_not_measured_for_c4(self):
+        circle = node("b", (100, 0, 140, 20), shape="circle")
+        figure = _measured(drawn=drawn([A, circle], [line((40, 10), (100, 10))]))
+
+        _, not_measured = _evaluate(figure=figure)
+
+        assert not_measured == [("c4-attach", "round nodes, which have no sides: b")]
+
+    def test_every_connector_rule_is_a_geometry_rule(self):
+        assert set(_check.CONNECTOR) <= set(_check.GEOMETRY)
+
+    def test_the_report_counts_the_lines_not_between_nodes(self):
+        axis = line((0, -10), (200, -10))
+        figure = _measured(drawn=drawn([A], [axis]))
+        result = _result(figure=figure)
+
+        report = _check_report.format_text(result)
+        body = _check_report.payload(result)
+
+        assert "lines not between two nodes, not checked by c1 to c7: 1" in report
+        assert body["diagnostics"]["lines_not_between_nodes"] == 1
+
+    def test_no_drawn_figure_has_no_line_count(self):
+        result = _result(figure=_measured(drawn=None))
+
+        assert "lines not between" not in _check_report.format_text(result)
+        assert _check_report.payload(result)["diagnostics"]["lines_not_between_nodes"] is None
+
+
+@needs_tikz
+class TestConnectorRulesAgainstRealLualatex:
+    def test_the_dangling_fixture_fires_c7_and_c2(self):
+        """`paper-twin-loop.tex`'s defects, cut down: an arrow stopping
+        beside the box it points at, and a tag set on its line."""
+        result = _check.check(FIXTURES / "dangling.tex", _check.DEFAULT_WIDTH_PT)
+
+        rules = _rules(result.findings)
+        assert "c7-dangling-tip" in rules and "c2-tag-clearance" in rules
+
+    def test_a_clean_two_node_figure_fires_no_connector_rule(self):
+        result = _check.check(FIXTURES / "narrow.tex", _check.DEFAULT_WIDTH_PT)
+
+        assert not set(_check.CONNECTOR) & set(_rules(result.findings))
+        assert result.not_measured == []
+
+
+class TestOverlapOfEveryDrawnNode:
+    """`node-overlap` in `figure check` measures every node TikZ drew, not
+    only the ones the source names: `architecture.tex`'s zone titles,
+    unnamed and drawn by a macro, ran into each other unreported."""
+
+    @staticmethod
+    def _overlaps(*nodes, lines=()):
+        figure = _measured(drawn=drawn(list(nodes), list(lines)))
+        findings, _ = _evaluate(figure=figure)
+        return [f.target for f in findings if f.rule == "node-overlap"]
+
+    def test_two_unnamed_titles_that_collide_are_reported_by_position(self):
+        first = node("cgu-1", (0, 0, 100, 14), text_box=(2, 2, 98, 12))
+        second = node("cgu-2", (80, 0, 140, 14), text_box=(82, 2, 138, 12))
+
+        assert self._overlaps(first, second) == [
+            f"({50 / MM:.1f},{7 / MM:.1f})+({110 / MM:.1f},{7 / MM:.1f})"
+        ]
+
+    def test_a_named_pair_is_reported_by_name(self):
+        assert self._overlaps(node("a", (0, 0, 40, 20)), node("b", (30, 5, 70, 25))) == ["a+b"]
+
+    def test_a_tag_on_a_line_is_left_to_c6(self):
+        a, b = node("a", (0, 0, 40, 20)), node("b", (100, 0, 140, 20))
+        tag = node("cgu-1", (30, 5, 60, 15), text_box=(31, 6, 59, 14))
+        on_line = line((40, 10), (100, 10), labels=("cgu-1",))
+
+        assert self._overlaps(a, b, tag, lines=[on_line]) == []
+
+    def test_a_zone_around_its_members_is_not_an_overlap(self):
+        zone = node("zone", (-10, -10, 60, 30))
+
+        assert self._overlaps(zone, node("a", (0, 0, 40, 20))) == []
+
+    def test_an_empty_unframed_node_overlaps_nothing(self):
+        """A `\\node (p) {};` with no frame is a placeholder, not ink."""
+        empty = node("cgu-1", (30, 5, 50, 15), text_box=(40, 10, 40, 10), framed=False)
+
+        assert self._overlaps(node("a", (0, 0, 40, 20)), empty) == []
+
+    def test_a_step_badge_on_a_node_is_not_an_overlap(self):
+        """`\\cgstep` sets a 5.8mm disc over a node's corner on purpose
+        (`rag-stages.tex`, `architecture.tex`)."""
+        badge = node("cgu-1", (-8, 12, 9.3, 29.3), shape="circle", text_box=(-2, 18, 2, 23))
+
+        assert self._overlaps(node("a", (0, 0, 40, 20)), badge) == []
+
+    def test_a_large_circle_over_a_node_is_still_an_overlap(self):
+        state = node("s", (30, 5, 70, 45), shape="circle")
+
+        assert self._overlaps(node("a", (0, 0, 40, 20)), state) == ["a+s"]
+
+    def test_without_drawn_lines_the_named_boxes_are_used(self):
+        figure = _measured(drawn=None, overlong=[])
+        figure.boxes.update({"b": (5.0, 5.0, 15.0, 15.0)})
+        figure.boxes["a"] = (0.0, 0.0, 10.0, 10.0)
+        figure.declared = ["a", "b"]
+
+        findings, _ = _evaluate(figure=figure)
+
+        assert [f.target for f in findings if f.rule == "node-overlap"] == ["a+b"]
+
+
+@needs_tikz
+def test_colliding_unnamed_titles_are_found_in_a_real_figure(tmp_path):
+    path = tmp_path / "fig.tex"
+    path.write_text(
+        "\\begin{tikzpicture}\n"
+        "\\node[draw] (a) at (0,0) {A};\n"
+        "\\node at (0,1) {Deterministic -- no model is called};\n"
+        "\\node at (2.5,1) {Generative};\n"
+        "\\end{tikzpicture}%\n",
+        encoding="utf-8",
+    )
+
+    result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+
+    assert [f.rule for f in result.findings if f.rule == "node-overlap"] == ["node-overlap"]

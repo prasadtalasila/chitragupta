@@ -7502,3 +7502,148 @@ CONFIG_PATH=<config with [content].dir at the live corpus> \
 
 Record:
 `bench/results/2026-09-17-abstract-passage-selection/abstract_passage_selection.json`.
+
+## 2026-10-29 (#1054): the connector rules, benched before their thresholds were fixed
+
+**The question.** `figure check`'s connector rules `c1` to `c7` measure
+the lines TikZ drew (the probe hook, `review/figure_layout/_drawn.py`).
+The v3 plan set starting thresholds and said to run them over the house
+figures and the drafted ones first, because a rule that fires on sound
+figures teaches an author to allow it rather than read it. This is that
+run, and what it changed.
+
+**The corpus.** 59 figures: the 49 under this host's `content/drafts/`
+(a book, a tutorial, a thesis chapter), the 7 scaffolds and the 3
+exemplars. 279 connectors (lines whose ends touch two different nodes),
+and 244 stroked lines that are not (axes, plots, bus lines, self-loops),
+which the rules do not check and the report counts.
+
+**First run, at the plan's thresholds, and the last.** Findings per
+rule, all 59 figures (scaffolds and exemplars in brackets):
+
+| Rule | First run | After the rulings below |
+| --- | --- | --- |
+| `c1-orthogonal` | 32 (0) | 32 (0) |
+| `c2-tag-clearance` | 30 (1) | 29 (1) |
+| `c3-coincident` | 1 (1) | 0 (0) |
+| `c4-attach` | 79 (17) | 10 (3) |
+| `c5-transit` | 2 (0) | 0 (0) |
+| `c6-tag-covered` | 7 (2) | 2 (2) |
+| `c7-dangling-tip` | 12 (0) | 1 (0) |
+
+**How a firing was judged.** Every firing on a scaffold or exemplar,
+and every firing of `c3`, `c5` and `c7`, was read in the rendered figure,
+with a sample of `c1`, `c2`, `c4` and `c6` in the drafts (13 figures in
+all). A firing is a false positive when the figure is sound and the rule
+misread it; each false-positive shape became a must-not-fire test before
+the rule changed.
+
+**`c2` must measure the text, not the node box.** Over the 101 tags on a
+connector:
+
+| Gap to the tag's own line | Node box | Text box |
+| --- | --- | --- |
+| under 0.1mm | 95 | 8 |
+| 0.1 to 0.8mm | 0 | 19 |
+| 0.8 to 3mm | 6 | 71 |
+| over 3mm | 0 | 3 |
+
+`above`, `left` and the rest anchor the node box on the line, so by the
+box nearly every tag is "on" it. The house `cgtag` sets its text 1.0mm
+from the line (measured), which TIKZ-STYLE.md describes as "about 1mm
+clear", so the plan's 0.8mm lower bound stands. The 19 at 0.1 to 0.8mm
+are figures' own filled `lbl` styles (`inner sep=1pt`), the "tag filled
+over its line" TIKZ-STYLE.md rules out, and the 8 under 0.1mm sit on
+their lines. Both are true positives.
+
+**What changed, each from a false positive read in the figure:**
+
+- **`c3` skips two connectors that share an end point.** `retrieval.tex`
+  forks one trunk from the query into two routes; the reader follows it.
+- **`c4` measures only a straight connector's end whose last piece meets
+  its side square on, counts ends at one point once, skips zones, and is
+  exempt where `c1` is.** 69 of its 79 findings were ends of diagonal or
+  bent edges (the branching tree, the control loop's bends,
+  `types-of-twins.tex`), which land off a midpoint by geometry and are
+  `c1`'s finding or a `bend`'s construction; or ends on zone cards
+  (`pctrl-blocks.tex`, `three-layers.tex`, 29mm "off").
+- **`c4`'s lone-end tolerance is 1mm, not 0.5mm.** `c1` accepts a line up
+  to 1mm off level, which then lands up to 1mm off one midpoint; six
+  findings at 0.5 to 0.7mm were the two rules disagreeing.
+- **`c5` ignores a node under 2mm in both dimensions, and an unframed
+  zone.** `gain-as-fraction.tex` sets a dot on a number line on purpose.
+- **`c6` ignores an unframed zone, and `c2` and `c6` skip a turned tag.**
+  `data-flow-test.tex`'s tag runs past an undrawn `fit`, which hides
+  nothing; `twin-pgm.tex`'s `sloped` tag measured square to the page is
+  not where it was set. The hook reads each node's transform for this,
+  and whether a frame was painted for it; a `fit` node's text box is its
+  whole area, so text width cannot tell a group from a label.
+- **`c7` reads only an arrow that leaves a node, and a tip lands within
+  1mm.** Its 11 false positives were axes (`value-ladder.tex`,
+  `two-time-advances.tex`), a two-headed dimension line
+  (`four-timestamps.tex`) and arrows that stop just short of the axis
+  they point at (`residual-doses.tex`, 0.6 to 1.0mm). The one left is the
+  defect it was added for: `paper-twin-loop.tex`'s `reading` arrow, which
+  stops 7.4mm beside the twin.
+
+**What still fires, and whose it is.**
+
+- `c1`, 32 on 15 drafted figures: straight diagonals between offset
+  nodes, read in `three-layers.tex` and `twin-pgm.tex`. The two automata
+  (`pump-markov-chain.tex`, `turbine-mode-machine.tex`) are 12 of them
+  and are what `% cg-layout: state-machine` exempts once declared.
+- `c4`, 10: `architecture.tex`'s `review.north` (6.0mm, visibly off) and
+  `simulator-anatomy.tex`'s two ends bunched on one half are true
+  positives; two ends 2.3mm off even spacing on a 50mm side
+  (`three-digital-objects.tex`) are the rule as specified and arguable.
+- `c6`, 2: `architecture.tex`'s `ledger` tag straddles two zone borders.
+- On the scaffolds and exemplars, 6 findings remain: `control-loop.tex`'s
+  `output` tag 0.6mm from its bend (a near-touch, though it is the house
+  `cgtag`), and `architecture.tex`'s three `c4` and two `c6`. Clearing
+  them is #1050's (1e) work, not this item's.
+
+**Then `node-overlap`, over every drawn node, and house block v4.**
+After the run above, `figure check`'s `node-overlap` was widened to every
+node the probe drew, because `architecture.tex`'s zone titles (unnamed,
+drawn by a macro) collided with nothing reporting it, and the house block
+moved to one type size (v4). The last run, all 59 figures:
+
+| Rule | Findings (house figures) |
+| --- | --- |
+| `c1-orthogonal` | 32 (0) |
+| `c2-tag-clearance` | 29 (1) |
+| `c3-coincident` | 0 (0) |
+| `c4-attach` | 7 (0) |
+| `c5-transit` | 0 (0) |
+| `c6-tag-covered` | 2 (2) |
+| `c7-dangling-tip` | 1 (0) |
+| `node-overlap` | 21 (0) |
+
+Its first run fired 16 times on the house figures, every one a step
+badge, the 5.8mm disc `\cgstep` sets over a node's corner on purpose; a
+round node under 7mm is now left out. Of the 21 left, all in drafted
+figures, the ones read in the figure are real (`two-time-advances.tex`'s
+panel title over `e1`, `simulator-anatomy.tex`'s `io` and `solver`) or
+cramped (`rtf-regimes.tex`, `mock-vs-rig.tex`'s two panels), and
+`three-windows.tex`'s sliding windows, drawn edge to edge, are arguable.
+This last run is over the scaffolds and exemplars as #1083 (#1050)
+redrew them, which cleared every `c4` on them and drew the tree with
+orthogonal edges, so `c1` no longer exempts `branching-tree`. What still
+fires on them is `control-loop.tex`'s `output` tag, 0.6mm from its bend
+(`c2`), and `architecture.tex`'s `ledger` tag across two zone borders
+(`c6`), the placement #1083 left for this bench.
+
+**Reproducing.**
+
+```bash
+.venv-full/bin/python bench/bench_connector_rules.py \
+  --drafts content/drafts \
+  --json bench/results/2026-10-29-connector-rules/connector_rules.json
+```
+
+`self_check` plants one diagonal connector with a tag and checks that
+the gap is measured both ways, that `tally` counts what it is given,
+house figures apart, and that the histogram bands a value where the
+rule's thresholds do. Record:
+`bench/results/2026-10-29-connector-rules/connector_rules.json` (the last
+run; figure paths are relative to `--drafts` or to the repository).

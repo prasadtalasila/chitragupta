@@ -23,8 +23,12 @@ from pathlib import Path
 from chitragupta._tex_comments import strip_comments
 from chitragupta.figure._advisory import advise
 from chitragupta.figure._allow import Allow, Malformed, parse_allows
+
+from chitragupta.figure._connector_check import CONNECTOR, connector_rules
+from chitragupta.figure._connectors import connectors
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.figure._layout import declared_layout, reference
+from chitragupta.figure._overlap import drawn_overlaps
 from chitragupta.figure._rules import RULES, Finding
 from chitragupta.review.figure_layout import (
     BBOX_NAME,
@@ -46,7 +50,14 @@ _STRAY_PT = 0.5
 
 # The rules that need the compiled geometry, listed as not measured
 # whenever it is missing, so their silence is never read as a pass.
-GEOMETRY = ("nothing-measurable", "size-width", "size-stray", "content-protrusion", "node-overlap")
+GEOMETRY = (
+    "nothing-measurable",
+    "size-width",
+    "size-stray",
+    "content-protrusion",
+    "node-overlap",
+    *CONNECTOR,
+)
 
 # Why the geometry is missing. The probe sits inside the figure's last
 # `tikzpicture` environment, so a file with none (a bare `\tikz`, say)
@@ -74,6 +85,9 @@ class CheckResult:
     path: Path
     width_pt: float
     figure: FigureResult
+    # Stroked lines the connector rules did not check, because they do
+    # not run between two nodes; `None` where nothing was drawn.
+    loose_lines: int | None = None
     findings: list[Finding] = field(default_factory=list)
     allowed: list[tuple[Allow, str | None]] = field(default_factory=list)
     deferred: list[Allow] = field(default_factory=list)
@@ -101,8 +115,8 @@ def apply(
     Each allow is matched against everything that fired, so two allows
     for one rule both report what they set aside. `layout` overrides the
     figure's own `% cg-layout:` line."""
-    fired, not_measured = evaluate(source, figure, width_pt)
     layout = layout or declared_layout(source)
+    fired, not_measured = evaluate(source, figure, width_pt, layout)
     advisory, unmeasured = advise(
         figure, source, layout, reference(layout), _unmeasurable(source, figure)
     )
@@ -113,10 +127,12 @@ def apply(
     ]
     excused = {allow.rule for allow in allows.honoured}
     findings = [finding for finding in fired if finding.rule not in excused]
+    loose = len(connectors(figure.drawn)[1]) if figure.drawn else None
     return CheckResult(
         path,
         width_pt,
         figure,
+        loose,
         findings,
         allowed,
         allows.deferred,
@@ -128,9 +144,11 @@ def apply(
 
 
 def evaluate(
-    source: str, figure: FigureResult, width_pt: float
+    source: str, figure: FigureResult, width_pt: float, layout: str = ""
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
-    """`(findings, not_measured)`, the findings in `RULES` order."""
+    """`(findings, not_measured)`, the findings in `RULES` order. `layout`
+    is the one the connector rules' exemptions read; `""` reads the
+    figure's own `% cg-layout:` line."""
     findings: list[Finding] = []
     if figure.failed:
         findings.append(Finding("does-not-compile", FIGURE, figure.failed))
@@ -139,6 +157,11 @@ def evaluate(
     if not missing:
         findings, not_measured = _size(source, figure, width_pt)
         findings += _geometry(figure)
+        connected, unmeasured = connector_rules(
+            source, figure, layout or declared_layout(source), _pictures(source)
+        )
+        findings += connected
+        not_measured += unmeasured
     findings += _focal(source) + _static(figure)
     order = list(RULES)
     return sorted(findings, key=lambda finding: order.index(finding.rule)), not_measured
@@ -224,10 +247,10 @@ def _geometry(figure: FigureResult) -> list[Finding]:
         )
     if figure.protruding:
         found.append(Finding("content-protrusion", FIGURE, "content protrudes past the main block"))
-    found += [
-        Finding("node-overlap", f"{one}+{other}", "boxes intersect")
-        for one, other in figure.overlapping
-    ]
+    # Every drawn node where the probe logged them (#1054), so unnamed
+    # text such as a zone title is measured; the named ones otherwise.
+    pairs = drawn_overlaps(figure.drawn) if figure.drawn else figure.overlapping
+    found += [Finding("node-overlap", f"{one}+{other}", "boxes intersect") for one, other in pairs]
     return found
 
 

@@ -752,8 +752,8 @@ full as [FIGURE-ROADMAP.md Part XII](FIGURE-ROADMAP.md#-part-xii-figure-drawer-v
 and `plans/fig-xii-figure-drawer-v3.md`,
 and listed here only so this build order is not read as empty. It
 reaches D4's own unanswered half from the cheap end: the routing veto
-D2 skipped becomes six numbered connector rules computed from source and
-probe geometry, still advisory, with no vision model.
+D2 skipped becomes seven numbered connector rules measured from the
+lines TeX draws, still advisory, with no vision model.
 
 Size: large, in three phases. Depends on: nothing outside it; follows
 [#1037](https://github.com/prasadtalasila/chitragupta/issues/1037)
