@@ -41,7 +41,7 @@ and panel letters, and reports a figure with no twin at all.
 | What `t2-tags` compares | Every node placed on a `\draw` or `\path` statement, whatever its style. The drafts tag edges with `cgtag`, `lbl` and plain `node[midway]`, so a style test would miss most of them. Every line of a tag is compared |
 | What `t3-panels` compares | The set of `(a)`, `(b)`, ... letters opening a label line in the `.tex`, against the set of `(<letter>)` tokens in the `.txt` |
 | How a name is "present" | **Every word of it appears in the twin as a whole word**, case-insensitively, in any order. Words are runs of `[a-z0-9]`. Not ordered and not a substring, because ASCII boxes wrap a label across lines and interleave neighbouring boxes (see Bench) |
-| TeX markup | Stripped before comparison: `\\` (with any `[len]`) splits lines, `~` and `\,` `\;` `\:` `\!` `\ ` are spaces, `\&` `\%` `\_` `\#` are their character, any other control word is dropped with its braces kept as text. **Maths (`$...$`, `\(...\)`) is dropped**: ASCII cannot spell `\hat{x}`. A name left empty is not compared |
+| TeX markup | Stripped before comparison: `\\` (with any `[len]`) splits lines, `~`, `\,`, `\;`, `\:`, `\!` and a backslash-space are spaces, `\&` `\%` `\_` `\#` are their character, any other control word is dropped with its braces kept as text. **Maths (`$...$`, `\(...\)`) is dropped**: ASCII cannot spell `\hat{x}`. A name left empty is not compared |
 | Skipped labels | Empty labels, labels inside the house block, labels carrying a macro parameter (`#1`), and labels carrying a `\foreach` variable anywhere (`{e\n}`): each pass sets a different label, so the source text is none of them |
 | No twin | **A fourth rule, `twin-missing`** (*user*): figure-scope, objective, **not allowable** (*user*: it is fixed, never excused). When it fires, `t1` to `t3` are listed under "not measured" with "no twin", not reported three times. This adds a rule the v3 plan's table did not list; the plan records it |
 | Targets | `t1`: the node's TikZ name, the zone's fit-node name or the legend item's name; the name's text where the node is unnamed. `t2`: `<from>-><to>` from the path's first and last named node, or the tag's text where either is missing. `t3` and `twin-missing`: `figure`. So #1058 can name them in an allow |
@@ -128,7 +128,7 @@ drift or a twin's spelling of maths, and no `t3`.
 
 ---
 
-# Implementation plan
+## Implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
@@ -179,10 +179,12 @@ change.
 ### Task 1: The twin reader, `_twin.py`
 
 **Files:**
+
 - Create: `chitragupta/figure/_twin.py`
 - Test: `tests/test_figure_twin.py`
 
 **Interfaces:**
+
 - Consumes: `strip_comments` (`chitragupta/_tex_comments.py`),
   `_NODE_KEYWORD` (`review/figure_layout/_source.py`), `Finding`
   (`_rules.py`), and the house block's end marker as `_block.py`
@@ -194,7 +196,8 @@ change.
   - `words(text: str) -> set[str]`: lower-cased `[a-z0-9]+` runs.
   - `names(source: str) -> list[Text]`, `tags(source: str) -> list[Text]`.
   - `panels_tex(source: str) -> set[str]`, `panels_twin(twin: str) -> set[str]`.
-  - `agree(source: str, twin: str | None) -> tuple[list[Finding], list[tuple[str, str]]]`.
+  - `agree(source: str, twin: str | None, twin_name: str)`, returning
+    `(findings, not_measured)`.
   - `NO_TWIN = "no twin"` (the not-measured reason).
 
 - [x] **Step 1: Write the failing tests.** Source-only, no TeX:
@@ -231,17 +234,23 @@ change.
   arguments. Module docstring states the Decisions rows it implements.
 - [x] **Step 4: Run** the tests; expect pass, and 100% coverage of
   `_twin.py` (`--cov=chitragupta.figure._twin --cov-branch`).
-- [x] **Step 5: Commit** `Read a figure's names, tags and panels for twin agreement (#1056)`.
+- [x] **Step 5: Commit** `Read a figure's names, tags and panels for
+  twin agreement (#1056)`.
 
 ### Task 2: The four rules in `figure check`
 
 **Files:**
+
 - Modify: `chitragupta/figure/_rules.py`, `chitragupta/figure/_check.py`
-- Modify: `docs/TIKZ-STYLE.md` (rules table), `.claude/skills/figure-drawer/references/check.md` (table)
-- Create: `tests/fixtures/figure/check/*.txt` (a twin for each existing fixture), `tests/fixtures/figure/twin/` (`agrees`, `renamed`, `untagged`, `panels`, `no-twin`, each `.tex` with its `.txt` but the last)
+- Modify: `docs/TIKZ-STYLE.md` (rules table),
+  `.claude/skills/figure-drawer/references/check.md` (table)
+- Create: `tests/fixtures/figure/check/*.txt` (a twin for each
+  existing fixture), `tests/fixtures/figure/twin/` (`agrees`,
+  `renamed`, `untagged`, `panels`, each a `.tex` with its `.txt`)
 - Test: `tests/test_figure_check.py`, `tests/test_figure_twin.py`
 
 **Interfaces:**
+
 - Consumes: `agree()`, `NO_TWIN` from Task 1.
 - Produces: `apply(path, width_pt, figure, source, layout="", twin=None)`;
   `check()` reads `path.with_suffix(".txt")` when it exists.
@@ -261,7 +270,9 @@ change.
   - The `TestAgainstRealLualatex` clean fixtures stay clean once each
     has its twin; the firing fixtures still fire only their own rule.
   - The `tests/fixtures/figure/twin/` pairs fire their rule and only it.
-- [x] **Step 2: Run** `pytest tests/test_figure_check.py tests/test_figure_rule_ids.py tests/test_figure_twin.py`; expect the new tests to fail.
+- [x] **Step 2: Run** `pytest tests/test_figure_check.py
+  tests/test_figure_rule_ids.py tests/test_figure_twin.py`; expect the
+  new tests to fail.
 - [x] **Step 3: Implement.** Registry order: `twin-missing`, `t1-labels`,
   `t2-tags`, `t3-panels` after `stranded-arrowhead`. `apply()` takes
   `twin` and adds `agree()`'s findings to `evaluate()`'s, re-sorted; its
@@ -269,14 +280,20 @@ change.
   usual fix ("write the twin"; "use the TikZ's words for the name in the
   twin"; "put the tag on the twin's arrow"; "letter the twin's panels as
   the TikZ's").
-- [x] **Step 4: Run** the three test files, then the whole `tests/test_figure_*.py`; expect pass.
-- [x] **Step 5: Commit** `Report twin agreement in figure check: t1-t3 and twin-missing (#1056)`.
+- [x] **Step 4: Run** the three test files, then the whole
+  `tests/test_figure_*.py`; expect pass.
+- [x] **Step 5: Commit** `Report twin agreement in figure check: t1-t3
+  and twin-missing (#1056)`.
 
 ### Task 3: Skill, docs and the v3 plan
 
 **Files:**
-- Modify: `.claude/skills/figure-drawer/SKILL.md`, `.agents/skills/figure-drawer/SKILL.md`, `.opencode/skills/figure-drawer-opencode/SKILL.md` (step 4)
-- Modify: `plans/fig-xii-figure-drawer-v3.md` (2e row, Twin agreement table), `docs/CLI.md` if it lists rule ids
+
+- Modify: `.claude/skills/figure-drawer/SKILL.md`,
+  `.agents/skills/figure-drawer/SKILL.md`,
+  `.opencode/skills/figure-drawer-opencode/SKILL.md` (step 4)
+- Modify: `plans/fig-xii-figure-drawer-v3.md` (2e row, Twin agreement
+  table), `docs/CLI.md` if it lists rule ids
 - Test: `tests/test_skill_figure_step.py`
 
 - [x] **Step 1: Write the failing test**: every `SKILL.md` copy names
@@ -285,12 +302,15 @@ change.
 - [x] **Step 3: Edit** the three copies and the v3 plan.
 - [x] **Step 4: Run** `tests/test_skill_figure_step.py` and the skill
   byte-cap test; expect pass.
-- [x] **Step 5: Commit** `Tell the figure-drawer skill that figure check compares the twin (#1056)`.
+- [x] **Step 5: Commit** `Tell the figure-drawer skill that figure
+  check compares the twin (#1056)`.
 
 ### Task 4: Ten twins
 
 **Files:**
-- Create: `assets/tikz/{pipeline,zoned-spine,branching-tree,hub-and-spoke-network,map,control-loop,layered-stack}.txt`, `assets/tikz/exemplars/{architecture,rag-stages,retrieval}.txt`
+
+- Create: a `.txt` beside each of the seven scaffolds in `assets/tikz/`
+  and the three exemplars in `assets/tikz/exemplars/`
 - Modify: `assets/tikz/README.md`
 - Test: `tests/test_tikz_scaffolds.py`
 

@@ -816,7 +816,8 @@ or point.
 
 Of the objective rules, all but `size-width`, `size-stray`,
 `focal-count`, the connector rules `c1` to `c7`, `k1`, `k2`, `w4` and
-the twin rules (`twin-missing`, `t1` to `t3`) are `review figure`'s findings, under the ids its `--json` has always used. The
+the twin rules (`twin-missing`, `t1` to `t3`) are `review figure`'s
+findings, under the ids its `--json` has always used. The
 edge list, the declared names that were not measured, the emptiness
 proportion and the count of lines not between two nodes are printed
 beside the findings as diagnostics, never as findings.

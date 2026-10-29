@@ -94,8 +94,8 @@ pair here clean under those rules.
 panel into a single `tikzpicture` -- or two different ones, if the panels
 are different shapes -- and give each panel a `(<letter>) <short title>`
 label node, lettered by its position in reading order: `(a)` first,
-`(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s "Panels in one figure" section has the
-worked example and the rule for a row that stops fitting. These files
+`(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s "Panels
+in one figure" section has the worked example and the rule for a row that stops fitting. These files
 carry no `figure` float, so the float and the `\caption` are added to
 your copy, not found in it.
 
