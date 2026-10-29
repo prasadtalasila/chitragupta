@@ -801,6 +801,10 @@ or point.
 | `k1-stroke` | element | objective | A box's border, or a connector, under WCAG's 3:1 against its ground; the target is the node or the edge, `a->b`, and the measurement names both colours and the ratio. The ground is the box's own fill, else the innermost filled box that contains it, else white; a connector's, the innermost filled box that holds both its ends. Colours are what pgf drew with, so a style or `#1` argument is resolved. The fix is the hue's `Line` shade. A translucent fill is read as opaque, a shadow is not a ground, and a connector crossing a third zone is measured against its ends' ground |
 | `k2-text` | element | objective | A run of a node's text under 4.5:1 against the same ground, or under 3:1 where it is WCAG's large text (14pt bold, 18pt), measured from the typeset size; the target is the node, or `tag on a->b`. Read from the glyphs, so `text=`, `\textcolor`, `\color` and a macro are all seen. The fix is the hue's `Text` shade |
 | `w4-pictograph` | element | objective | An emoji or pictograph (U+1F000 to U+1FAFF, U+2600 to U+27BF, U+2B00 to U+2BFF, U+FE0F) in a label; the target is the node, or `figure` for one outside any label. The render prints it from a fallback font unlike the rest, and a thesis without that font chain drops it. Arrows, `©`, `™`, math and icon commands are not read |
+| `twin-missing` | figure | objective | No `<name>.txt` beside the figure: the `md`, `docx` and `html` renders have nothing to show. `t1` to `t3` are then listed as not measured. Cannot be allowed: write the twin |
+| `t1-labels` | element | objective | A name in the TikZ is not in the twin: a node label's first line (`\cglab`'s name), a zone title or a legend entry. Every word of it must appear in the twin, as a whole word and in any order, case aside; markup is stripped and maths dropped first. A gloss is not compared. The target is the node, or the name's text for an unnamed node |
+| `t2-tags` | element | objective | A line of a node placed on a `\draw` or `\path` (a tag, whatever its style) is not in the twin, word for word as `t1`; the target is the edge, `a->b`, or the tag's text where it joins no two names |
+| `t3-panels` | figure | objective | The panel letters opening a label line in the TikZ, `(a)`, `(b)`, are not the set of `(<letter>)` tokens in the twin |
 | `size-height` | figure | advisory | The picture's height as a share of the 700pt text height, beside the layout's reference range |
 | `size-slack` | figure | advisory | `1 -` the area of the nodes that enclose no other node, over the picture's area (a zone card is not filled area), beside the layout's reference range |
 | `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured; a path with an `edge` operator or a named node on it, or a point built from two nodes (`b.north \|- a`), is listed as not measured rather than guessed at |
@@ -811,8 +815,9 @@ or point.
 | `w3-gloss` | element | advisory | A `\cglab` gloss over six words; the target is its name. A formula counts as one word |
 
 Of the objective rules, all but `size-width`, `size-stray`,
-`focal-count`, the connector rules `c1` to `c7`, `k1`, `k2` and `w4`
-are `review figure`'s findings, under the ids its `--json` has always used. The
+`focal-count`, the connector rules `c1` to `c7`, `k1`, `k2`, `w4` and
+the twin rules (`twin-missing`, `t1` to `t3`) are `review figure`'s
+findings, under the ids its `--json` has always used. The
 edge list, the declared names that were not measured, the emptiness
 proportion and the count of lines not between two nodes are printed
 beside the findings as diagnostics, never as findings.

@@ -3153,7 +3153,7 @@ form the skill acts on.
 
 Starts a figure from a layout's scaffold in `assets/tikz/`: copies it to
 `<figures-dir>/<name>.tex`, keeping its `% cg-layout:` line, copies the
-layout's ASCII twin to `<name>.txt` where the layout ships one, and runs
+layout's ASCII twin to `<name>.txt` (every shipped layout has one), and runs
 [`figure sync`](#-chitragupta-figure-sync) on the copy. It never
 overwrites: a `<name>.tex` or `<name>.txt` that exists, or a symlink at
 either, is refused and nothing is written. The `figure-drawer` skill
@@ -3165,7 +3165,7 @@ chitragupta figure new content/drafts/rag/figures flow --layout zoned-spine
 
 ```text
 created  content/drafts/rag/figures/flow.tex   (from zoned-spine)
-no twin  zoned-spine ships no .txt twin; write content/drafts/rag/figures/flow.txt
+created  content/drafts/rag/figures/flow.txt   (from zoned-spine)
 figure sync: 1 current
 ```
 

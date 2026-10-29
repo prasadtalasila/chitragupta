@@ -58,17 +58,20 @@ class TestRules:
                 "w2-tag",
                 "w3-gloss",
                 "w4-pictograph",
+                "t1-labels",
+                "t2-tags",
             }
             | connector
         )
 
-    def test_a_compile_failure_and_the_advisory_reports_cannot_be_allowed(self):
+    def test_a_compile_failure_a_missing_twin_and_the_advisory_reports_cannot_be_allowed(self):
         """An advisory report is read, so there is nothing for an allow
-        to set aside (#1057)."""
+        to set aside (#1057). A missing twin is written, never excused
+        (#1056)."""
         refused = [rule.id for rule in RULES.values() if not rule.allowable]
         advisory = [rule.id for rule in RULES.values() if rule.cls == "advisory"]
 
-        assert refused == ["does-not-compile", *advisory]
+        assert refused == ["does-not-compile", "twin-missing", *advisory]
         assert len(advisory) == 8
 
     def test_each_rule_is_keyed_by_its_own_id(self):

@@ -83,14 +83,19 @@ prints the type at whatever the scale factor happens to be.
 Then write the ASCII twin at `figures/<name>.txt` and reference the pair
 from the draft with a single marker line -- `docs/WRITING-STANDARDS.md`
 §10 owns that contract, and your genre skill's figure step spells the
-marker for your draft's language.
+marker for your draft's language. Every scaffold and exemplar here ships
+as such a pair: copy its `.txt` beside the `.tex` and edit both.
+`chitragupta figure check` reports a twin that is missing or that lacks a
+name, tag or panel letter the TikZ has (`twin-missing`, `t1-labels`,
+`t2-tags`, `t3-panels`), and `tests/test_tikz_scaffolds.py` holds every
+pair here clean under those rules.
 
 **A panelled figure is still one file.** Copy the same scaffold once per
 panel into a single `tikzpicture` -- or two different ones, if the panels
 are different shapes -- and give each panel a `(<letter>) <short title>`
 label node, lettered by its position in reading order: `(a)` first,
-`(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s "Panels in one figure" section has the
-worked example and the rule for a row that stops fitting. These files
+`(b)` next, on through the alphabet. `docs/TIKZ-STYLE.md`'s "Panels
+in one figure" section has the worked example and the rule for a row that stops fitting. These files
 carry no `figure` float, so the float and the `\caption` are added to
 your copy, not found in it.
 

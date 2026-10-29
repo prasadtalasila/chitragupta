@@ -302,6 +302,15 @@ moves only when an exemplar does.
 | `t2-tags` | Every edge tag in the `.tex` appears in the `.txt` | edge | objective |
 | `t3-panels` | The panel letters in the two files are the same set | figure | objective |
 
+**Corrected by issue #1056.** `t1` compares names only (a label's first
+line, a zone title, a legend entry), never a gloss, and a name is present
+when each of its words is, in any order: on the reference book's 49
+pairs, whole-line matching missed 140 of 651 lines on the ASCII's
+reflow alone. Maths is dropped before comparing. A fourth rule,
+`twin-missing` (figure, objective, not allowable), reports a figure with
+no `.txt`; `t1` to `t3` are then not measured.
+`plans/1056-twin-agreement.md` has the rest.
+
 ## Exceptions: `cg-allow`
 
 A figure that breaks an objective rule on purpose says so in its own
@@ -460,7 +469,9 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
   should read those; its `accent-not-unique` is `focal-count` and its
   `gloss-too-long` is `w3-gloss`.
 - **2e.** Twin agreement `t1` to `t3`, and a `.txt` twin for every
-  existing scaffold, which the fixtures need.
+  existing scaffold, which the fixtures need. Built by #1056, which
+  added `twin-missing` and gave the three exemplars twins too; its plan,
+  `plans/1056-twin-agreement.md`, records the matching it settled on.
 - **2f.** Size: `size-height`, `size-slack`, `size-squash`, the budgets
   and the reference ranges from 1d. Built by #1057; its plan,
   `plans/1057-figure-check-size.md`, records where it parted from this

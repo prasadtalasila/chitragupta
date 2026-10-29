@@ -54,6 +54,7 @@ import pytest
 from chitragupta.figure._advisory import TEXT_HEIGHT_PT, slack
 from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._layout import LAYOUT_DIR, RangeRow, declared_layout, range_rows
+from chitragupta.figure._twin import agree
 from chitragupta.review import figure_layout
 from tests.conftest import needs_tikz
 
@@ -428,6 +429,17 @@ class TestEverySourceProperty:
         source = scaffold.read_text(encoding="utf-8")
 
         assert figure_layout.overlong_nodes(source) == []
+
+    @by_carrier
+    def test_its_ascii_twin_agrees_with_it(self, scaffold):
+        """#1056: a figure copied from here starts as a pair, so every
+        carrier ships its `.txt`, in WRITING-STANDARDS §10's 7-bit
+        alphabet and about 70 columns, naming what its TikZ names."""
+        twin = scaffold.with_suffix(".txt")
+        text = twin.read_bytes().decode("ascii") if twin.is_file() else None
+
+        assert agree(scaffold.read_text(encoding="utf-8"), text, twin.name) == ([], [])
+        assert max(len(line) for line in text.splitlines()) <= 72
 
 
 @needs_tikz

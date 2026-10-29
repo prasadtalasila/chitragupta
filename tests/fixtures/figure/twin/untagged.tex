@@ -1,0 +1,6 @@
+% Twin agreement (#1056): a tag the twin's arrow does not carry.
+\begin{tikzpicture}
+  \node[draw] (state) {state};
+  \node[draw, right=of state] (services) {services};
+  \draw[->] (state) -- node[above] {reads} (services);
+\end{tikzpicture}%

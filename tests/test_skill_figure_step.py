@@ -85,6 +85,19 @@ def test_the_drawer_resolves_or_allows_what_figure_check_reports():
         assert "cg-allow" in text, copy
 
 
+def test_the_drawer_knows_figure_check_compares_the_twin():
+    # #1056: the twin step no longer says that nothing checks the pair;
+    # it names the rules that do, and what is still the drawer's to see.
+    for copy in (
+        REPO_ROOT / ".claude" / "skills" / DRAWER / "SKILL.md",
+        REPO_ROOT / ".agents" / "skills" / DRAWER / "SKILL.md",
+        REPO_ROOT / ".opencode" / "skills" / f"{DRAWER}-opencode" / "SKILL.md",
+    ):
+        text = re.sub(r"\s+", " ", copy.read_text(encoding="utf-8"))
+        assert "Nothing checks that the two forms agree" not in text, copy
+        assert "`t1-labels`" in text and "`twin-missing`" in text, copy
+
+
 def test_the_reference_file_has_the_sections_the_procedure_points_at():
     ref = (SKILLS_DIR / DRAWER / "references" / "figures.md").read_text(encoding="utf-8")
     for heading in (
