@@ -9,8 +9,10 @@ and a node's options do (`label={[red]above:x}`), and a `;` or the word
 node keyword is `review/figure_layout/_source.py`'s, widened only for a
 node after a path operator its lookbehind cannot see (`to node`).
 
-`_twin.py` compares what this finds against a figure's ASCII twin; the
-wording rules (#1055) read the same names, glosses and tags.
+`_twin.py` compares what this finds against a figure's ASCII twin. The
+wording rules (#1055, `_wording.py`) landed first with a reader of
+their own, over `_focal.declaration`; folding the two into one is left
+to a follow-up rather than done under a feature.
 """
 
 import re

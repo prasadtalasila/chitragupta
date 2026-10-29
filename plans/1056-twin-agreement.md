@@ -1,7 +1,7 @@
 # 🪞 XII-2e: twin agreement in `figure check`
 
 Status: **built.** Written 2026-10-29 against `main` at `227d7e6`, built
-on `9175cbf`, from a brainstorming session on issue
+on `16b7e97`, from a brainstorming session on issue
 [#1056](https://github.com/prasadtalasila/chitragupta/issues/1056), and
 implemented in the same PR as this plan, as #1053 and #1057 were. The
 decisions marked *user* were agreed in that session; the rest was the
@@ -49,7 +49,7 @@ and panel letters, and reports a figure with no twin at all.
 | Compile | None of their own. All four read source only, like `focal-count`, so they hold whether or not the figure compiles; `figure check` itself still needs `lualatex` for the rest |
 | Where the twin is read | `check()` reads `<path>.with_suffix(".txt")` as UTF-8 with `errors="replace"`, so a stray non-ASCII byte is a WRITING-STANDARDS matter and not a crash. `apply()` takes it as `twin: str \| None` (`None`: absent) |
 | Scaffolds and exemplars | **All ten get a twin** (*user*: the three exemplars too), so every figure in `assets/tikz/` is a pair and one test holds it, at 7-bit ASCII and at most 72 columns. Written **after #1083 (1e) and #1054 (2c, shipped as #1086) merged** (*user*), because both rewrote every scaffold's labels; both had merged by the time the code was done |
-| Reuse | The label reader is its own module, `chitragupta/figure/_twin.py`, so #1055 (wording rules `w1` to `w3`, which also need names, glosses and tags) reuses it rather than writing a second |
+| Reuse | The label reader is its own module, `chitragupta/figure/_labels.py`, meant for #1055 (wording rules) to reuse. #1055 merged first (#1089) with a reader of its own in `_wording.py`; folding the two is a follow-up |
 
 ## Bench
 
@@ -117,7 +117,7 @@ drift or a twin's spelling of maths, and no `t3`.
 | Unit | Does |
 | --- | --- |
 | `chitragupta/figure/_twin.py` | `Text` (target, text); `names(source)`, `tags(source)`, `panels_tex(source)`, `panels_twin(twin)`, `plain(label) -> list[str]`, `words(text) -> set[str]`, and `agree(source, twin, twin_name) -> (findings, not_measured)` |
-| `chitragupta/figure/_labels.py` | Where a figure's labels are in its source: `nodes(text)`, `drawing(source)`, `macro_calls(...)`, `arguments(...)`, `braced(...)`. Split from `_twin.py` to keep both under C2, and for #1055 to reuse |
+| `chitragupta/figure/_labels.py` | Where a figure's labels are in its source: `nodes(text)`, `drawing(source)`, `macro_calls(...)`, `arguments(...)`, `braced(...)`. Split from `_twin.py` to keep both under C2 |
 | `chitragupta/figure/_rules.py` | `twin-missing` (figure, objective, not allowable), `t1-labels`, `t2-tags` (element, objective), `t3-panels` (figure, objective), after `stranded-arrowhead` |
 | `chitragupta/figure/_check.py` | `check()` reads the twin; `apply(..., twin=None)` adds `agree()`'s findings and not-measured rows and re-sorts into registry order |
 | `docs/TIKZ-STYLE.md`, `references/check.md` | The four rows; the test in `tests/test_figure_rule_ids.py` keeps them and the registry one set |
