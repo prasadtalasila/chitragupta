@@ -235,11 +235,14 @@ judgement.
 
 Metaphor-aware: a layout declares itself with a `% cg-layout: <id>` line
 that every scaffold carries, and `figure new` keeps. A rule a layout
-exempts is not evaluated for it.
+exempts is not evaluated for it. **Corrected by issue #1050**, which
+added the line: an id is the scaffold's file stem, so the hub's is
+`hub-and-spoke-network`, not the `hub-and-spoke` this table first said,
+and an exemplar's is the layout whose reference file measures it.
 
 | Id | Rule | Scope | Class |
 | --- | --- | --- | --- |
-| `c1-orthogonal` | An edge between nodes whose centres differ in both x and y by more than 1mm is an elbow (`-\|`, `\|-`), not a straight or bent segment. Exempt: `state-machine` (curved transitions and self-loops are its convention), `hub-and-spoke` (radial spokes) | edge | objective |
+| `c1-orthogonal` | An edge between nodes whose centres differ in both x and y by more than 1mm is an elbow (`-\|`, `\|-`), not a straight or bent segment. Exempt: `state-machine` (curved transitions and self-loops are its convention), `hub-and-spoke-network` (radial spokes) | edge | objective |
 | `c2-tag-clearance` | An edge tag sits beside its segment, 0.8mm to 3mm clear of it: not on the line, not floating away from it | edge | objective |
 | `c3-coincident` | No two edges share a collinear stretch longer than 2mm | edge pair | objective |
 | `c4-attach` | A lone edge on a node side attaches at that side's midpoint, within 0.5mm. N edges on one side attach at `L*k/(N+1)`, within 1mm, and at least 2mm apart | node side | objective |

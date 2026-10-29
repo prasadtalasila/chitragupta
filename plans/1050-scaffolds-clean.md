@@ -1,12 +1,13 @@
 # 🧹 XII-1e: the scaffolds and exemplars, clean under the v3 rules
 
-Status: **designed, not built.** Written 2026-10-29 against `main` at
-`d1ab339`, from a brainstorming session on issue
-[#1050](https://github.com/prasadtalasila/chitragupta/issues/1050). The
+Status: **built.** Written 2026-10-29 against `main` at `d1ab339`,
+from a brainstorming session on issue
+[#1050](https://github.com/prasadtalasila/chitragupta/issues/1050), and
+implemented in the same PR as this plan, the way #1080 was. The
 decisions marked *user* were put to the user in that session and
 answered; the rest is the session's proposal, which the user approved
-as a whole. This plan and the change it describes ship in one PR, the
-way #1080 did.
+as a whole. What changed on the way is in **Changed in the build** and
+**Outcome** at the end.
 
 **Written for** whoever builds #1050: a session that changes
 `assets/tikz/`, the `figure-drawer` skill's layout reference files and
@@ -254,3 +255,166 @@ line.
 
 Nothing here generates, guesses or rewrites a citekey, and no check is
 promoted into a gate.
+
+## Implementation plan
+
+> **For agentic workers:** run this in order in one session (the user
+> chose to proceed directly). Steps use checkbox (`- [ ]`) syntax.
+
+**Goal:** every file in `assets/tikz/` fits 453pt at 12pt, every edge
+end sits where `c4-attach` wants it, no tree edge is diagonal, and each
+file names its layout.
+
+**Architecture:** figure-source edits only, plus one new test class.
+No product code changes.
+
+**Tech stack:** TikZ (`positioning`, `calc`, `trees` via `child`),
+LuaLaTeX through `python -m chitragupta.figure check`, pytest.
+
+**Spec:** the sections above.
+
+### Global constraints
+
+- Width at most 453pt at 12pt, measured by `figure check`; never
+  `\resizebox`, never a smaller font.
+- A lone edge within 0.5mm of its side's midpoint; N edges on a side at
+  `L*k/(N+1)` within 1mm and at least 2mm apart; no straight edge whose
+  ends differ by more than 1mm in both x and y.
+- The house block stays byte-identical to `assets/tikz/cg-figstyle.tex`
+  (`test_carries_the_block_once_and_verbatim`).
+- `% cg-layout: <id>` is line 1 of every scaffold and exemplar.
+- No citekey anywhere in a figure file.
+
+### Review focus
+
+- **`figure sync` on a file whose first line is `% cg-layout:`.** The
+  start marker must still be found and the block upgraded in place;
+  `_block.py` searches for it anywhere, so add a sync round-trip over
+  every carrier to Task 1's tests.
+- **A copier adds a third child to the tree.** The `edge from parent
+  path` must fan at `L/4`, `L/2`, `3L/4` without edits; check it once
+  with the probe on a throwaway three-child copy in Task 6.
+- **A draft started from a scaffold** still reports no finding
+  (`test_a_draft_that_starts_from_a_scaffold_reports_no_finding` covers
+  it; it must stay green).
+- **`size-stray`.** A leading comment line adds no width; `figure check`
+  over all ten files in Task 7 shows it.
+- **Rendered PDF, not only the probe.** The before/after PNGs are
+  rendered from the real files, so a fix that the probe accepts but that
+  looks wrong is caught by eye.
+
+### Task 1: the `% cg-layout:` line
+
+**Files:** every `assets/tikz/*.tex` except `cg-figstyle.tex`, every
+`assets/tikz/exemplars/*.tex`; test in `tests/test_tikz_scaffolds.py`.
+
+- [ ] Write `class TestEveryFigureNamesItsLayout` with
+  `test_each_scaffold_names_its_own_layout` (parametrized over
+  `_scaffolds()`: `lines[0] == f"% cg-layout: {path.stem}"` and the
+  marker occurs once), `test_each_exemplar_names_the_layout_that_measures_it`
+  (the stem of the one layout file whose range rows list the exemplar),
+  `test_a_doctored_layout_line_is_caught` (the helper rejects
+  `% cg-layout: pipeline` for `branching-tree.tex`), and
+  `test_sync_still_finds_the_block_below_it` (`_block.region` state is
+  `CURRENT` for every carrier).
+- [ ] Run them: the first two fail on every file.
+- [ ] Add the line to all ten files.
+- [ ] Run `tests/test_tikz_scaffolds.py`: pass. Commit.
+
+### Task 2: `rag-stages` legend and header
+
+**Files:** `assets/tikz/exemplars/rag-stages.tex`,
+`.claude/skills/figure-drawer/references/layouts/pipeline.md`,
+`assets/tikz/exemplars/retrieval.tex` (header only).
+
+- [ ] Re-lay the legend as section 2 says; rewrite both headers' WIDTH
+  paragraphs to the render's 453pt.
+- [ ] `figure check` it: no finding. Probe: still clean.
+- [ ] Paste the re-measured row and fix the 506pt prose in `pipeline.md`;
+  `TestTheReferenceRangesAreMeasured` passes. Commit.
+
+### Task 3: `control-loop` anchors
+
+- [ ] Anchor both bends as section 3 says; probe: four ends within
+  0.5mm. Re-measure the `control-loop.md` row if it moved. Commit.
+
+### Task 4: `retrieval` fork
+
+- [ ] Split the two `q.east` starts as section 5 says; probe: `q.E` at
+  about ±1.9mm, no shared run. Re-measure the `zoned-spine.md` row.
+  Commit.
+
+### Task 5: `architecture`
+
+- [ ] Apply section 4; `figure check` under 453pt; probe: every side
+  clean. Re-measure the `zoned-spine.md` row. Commit.
+
+### Task 6: `branching-tree`
+
+- [ ] Add the `edge from parent path` as section 6 says and rewrite the
+  idiom paragraph; probe: 0 diagonals, every side clean; check a
+  three-child throwaway copy. Re-measure `branching-tree.md` and fix its
+  edge prose. Commit.
+
+### Task 7: verification and records
+
+- [ ] Correct the v3 plan's `c1` row to `hub-and-spoke-network`.
+- [ ] `figure check` over all ten files; probe over all ten; write the
+  after table into this plan's status and outcome.
+- [ ] Full suite (`.venv-full`, `PYTHONPATH` set to the worktree), ruff,
+  markdownlint, `scripts/` local checks DEVELOPER-AGENTS.md names.
+  Commit, push, open the PR into `main`, send the before/after PNGs,
+  and wait for the user's approval before merging and releasing.
+
+## Changed in the build
+
+- **`architecture` went further than section 4.** Rendered in the
+  render's own fonts (STIX Two, 12pt), it had three defects no rule
+  measures, because zone titles and tags are unnamed nodes: the zone
+  title "Deterministic --- no model is called" (83.0mm) ran 9mm into
+  "Generative" over a 71.2mm card; "Enrichment" broke as "Enrich-ment"
+  in its 27mm box (the name is 28.9mm); and the `finished` and FAIL
+  tags overlapped. All three are fixed, since the figure was being
+  re-laid there anyway: the title breaks onto two lines (a picture-local
+  `cgzonetitle/.append style={align=left}`, the block untouched),
+  `enrich` is 29.5mm, and the two tags sit either side of the FAIL
+  channel inside the `Generative` card.
+- **`finished` is straight, not an elbow.** Section 4's elbow crowded
+  the 18mm channel once both tags were inside the card. Instead
+  `review` narrows to 24mm and sits under `finished`'s third of
+  `draft`, level with `enrich`; `bib` to `sync` closes from 10mm to 7mm
+  and `sync` to `draft` opens from 13mm to 17mm, so the zone cards stay
+  apart. `pub` still moves under `gate`'s right third. Width 433.1pt
+  becomes 448.8pt.
+- **`rag-stages`' legend breaks by hand, not by `text width`.** A
+  62mm text width hyphenated "com-pared" and left "such" on a line of
+  its own; a `\\` where the sense breaks, with `align=left`, keeps the
+  entries whole and the legend inside the grid's width.
+- **A width test for every file.** `TestDrawnAtFinalWidth` held only
+  the scaffolds, to the article class's 345pt; it now also runs
+  `figure check`'s `size-width` over every scaffold and exemplar at the
+  render's 453pt, which is the issue's first criterion pinned.
+- **Left for #1054's bench.** Two tag placements in the exemplars still
+  cross a zone border or touch a card in the render's fonts:
+  `architecture`'s "ledger" spans the 3mm gap between two zone cards,
+  and `retrieval`'s "off" touches the cross-encoder card. They are
+  `c2-tag-clearance` and `c6-tag-covered` cases, outside this item's
+  scope, and the bench will measure them.
+
+## Outcome
+
+Measured on the PR branch with the same probe and `figure check`:
+
+- `figure check` over all ten files: no finding.
+- Widths at 12pt: `rag-stages` 495.0pt to 411.5pt, `architecture`
+  433.1pt to 448.8pt, `retrieval` 445.1pt (unchanged).
+- Edge attachment: 94 node sides carry an edge across the ten files;
+  every lone edge is within 0.5mm of its side's midpoint and every
+  two-edge side is at `L/3` and `2L/3` within 1mm. The 19 off-rule
+  sides in the table above are all fixed.
+- Diagonals: 0 in every file (the tree's 6 are gone). A throwaway
+  three-child copy of the tree fans at `L/4`, `L/2` and `3L/4` with no
+  edit.
+- Reference rows re-measured: `rag-stages` (width 1.09 to 0.91) and
+  `architecture` (10 edges to 9, the FAIL route now one source-parser
+  leg fewer; width 0.96 to 0.99).

@@ -9,6 +9,16 @@
 % of landing on a neighbour, and the source's own indentation is the
 % structure rather than a comment about it.
 %
+% Edges: square, and fanned. `child`'s own edge runs from centre to
+% centre, a slant that meets each box off its side's middle. The `edge
+% from parent path` below replaces it: each edge leaves the parent's
+% bottom side at its own share of the width (k/(N+1) for the k-th of N
+% children, so 1/3 and 2/3 of it here), drops half-way to the child, runs
+% across, and comes down into the middle of the child's top side. It is
+% written once, in the picture's options, and reads the child count from
+% `child` itself, so adding a third child or a third level needs no edit
+% here.
+%
 % One thing this idiom costs, worth knowing before you confirm the
 % figure: `child` draws its edges internally rather than as `\draw`, so
 % `python -m chitragupta.review figure` reports no edge list for this
@@ -345,7 +355,12 @@
                     level 1/.style={sibling distance=52mm},
                     level 2/.style={sibling distance=26mm},
                     every child node/.style={cgbox, text width=18mm},
-                    edge from parent/.style={draw=cgFlowLine, line width=0.85pt}]
+                    edge from parent/.style={draw=cgFlowLine, line width=0.85pt},
+                    edge from parent path={
+                      let \p1 = ($(\tikzparentnode.south west)!{\tikznumberofcurrentchild
+                                   /(\tikznumberofchildren+1)}!(\tikzparentnode.south east)$),
+                          \p2 = ($(\tikzparentnode.south)!0.5!(\tikzchildnode.north)$)
+                      in (\p1) -- (\x1,\y2) -| (\tikzchildnode.north)}]
   \node[cgkey, text width=18mm] (source) {source}
     child { node (batch) {batch}
       child { node (nightly) {nightly} }

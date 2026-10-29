@@ -165,8 +165,8 @@ So, in order:
 
 `assets/tikz/exemplars/architecture.tex` is the house style at work.
 Read it, but start your own figure from a scaffold, not from an
-exemplar: the exemplars are set at the render's 453pt text width, wider than
-most drafts, and carry one paper's content.
+exemplar: the exemplars are set at the render's 453pt text width, wider
+than most drafts, and carry one paper's content.
 
 What its parts are for:
 
@@ -182,7 +182,7 @@ What its parts are for:
 
   ```latex
   \node[cgbox, text width=23mm] (bib) {\cglab{Curate}{.bib export + PDFs}};
-  \node[cgbox, right=of bib, text width=23mm] (sync) {\cglab{Corpus}{parse, ledger}};
+  \node[cgbox, right=7mm of bib, text width=23mm] (sync) {\cglab{Corpus}{parse, ledger}};
   ```
 
   `\cglab{name}{gloss}` gives the two-tier label: a bold name one step
@@ -198,17 +198,21 @@ What its parts are for:
   \begin{scope}[on background layer]
     \node[cgzone=cgFlow, fit=(ibib)(bib)(isync)(sync)(enrich)] (z1) {};
   \end{scope}
-  \cgzonelabel{z1}{cgFlow}{Deterministic --- no model is called}
+  \cgzonelabel{z1}{cgFlow}{Deterministic ---\\no model is called}
   ```
 
   The card is a `fit` node on the background layer, so it never paints
   over a member, and re-wording a member widens the card instead of
   escaping it. The zone titles carry the figure's claim, which a flat
-  version leaves to the caption.
+  version leaves to the caption. A title longer than its card breaks
+  onto a second line (the picture sets `cgzonetitle/.append
+  style={align=left}`) rather than running into the next card's title.
 - **Step badges** (`\cgstep{1}{bib}{cgFlow}`) number the reading path,
   so the prose can say "step 3" and the reader finds it.
 - **Edge tags and edge weights.** `cgedge` for the main path, `cgweak`
   for what happens off to the side, `cgback` for the one loop. A
-  `cgtag` node on an edge names what crosses it. Two lines sharing one
-  attach point is a `figure check` finding waiting to happen; the
-  exemplar offsets one with `xshift` for exactly that reason.
+  `cgtag` node on an edge names what crosses it. An edge alone on a
+  node's side meets it at the side's middle; two edges on one side take
+  a third of it each, which is why `draft` and `gate` name their
+  `1/3` and `2/3` points as coordinates and place `review` and `pub`
+  under the edges that reach them.

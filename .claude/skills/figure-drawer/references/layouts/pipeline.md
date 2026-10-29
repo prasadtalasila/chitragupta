@@ -52,6 +52,7 @@ say why in the stage's gloss, not in a callout.
 `rag-stages` is eleven stages wrapped into three rows of a chain, set at
 the render's 453pt text width: what a long pipeline looks like once it
 wraps rather than shrinks. Its legend wraps too, two entries broken by
-hand inside the grid's width, rather than one long row that overflowed. Its eight in-row edges are drawn in a `\foreach`,
-which the source parser does not read, so its edge count is the two
-wraps, each counted once per leg.
+hand inside the grid's width, rather than one long row that overflowed.
+Its eight in-row edges are drawn in a `\foreach`, which the source
+parser does not read, so its edge count is the two wraps, each counted
+once per leg.

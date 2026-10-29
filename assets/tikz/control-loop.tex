@@ -339,10 +339,14 @@
   % `bend right` on both horizontal edges, so each bows *away* from the
   % centre. Bending them the other way is the easy slip: the two curves
   % then lean into the middle of the loop and read as one lens-shaped
-  % blob rather than as a cycle going round.
-  \draw[cgedge] (plant) to[bend right=12] node[cgtag] {output} (sensor);
+  % blob rather than as a cycle going round. Name the side each bend
+  % leaves and enters: between bare node names a bend aims at the centre
+  % and meets the border about 3mm off the side's midpoint, which is
+  % where an arrow on a box should land.
+  \draw[cgedge] (plant.east) to[bend right=12] node[cgtag] {output}
+    (sensor.west);
   \draw[cgedge] (sensor) -- (estimate);
-  \draw[cgedge] (estimate) to[bend right=12] (control);
+  \draw[cgedge] (estimate.west) to[bend right=12] (control.east);
   % The returning edge is the feedback: `cgweak`, dashed and light, so
   % the loop's forward path stays the thing the eye follows first.
   \draw[cgweak] (control) -- (plant);
