@@ -178,8 +178,7 @@ class TestCli:
         assert out == [
             f"wrote    {rendered('rag', 'figures', 'flow.look.pdf')}"
             "   (431 x 180pt; text width 453pt)",
-            f"wrote    {rendered('rag', 'figures', 'flow.look.png')}"
-            "   (1804 x 758 px at 300 dpi)",
+            f"wrote    {rendered('rag', 'figures', 'flow.look.png')}   (1804 x 758 px at 300 dpi)",
         ]
 
     def test_a_wide_figure_says_how_far_past(self, monkeypatch, flow, capsys):
@@ -199,9 +198,7 @@ class TestCli:
         assert "not a readable UTF-8 file" in capsys.readouterr().err
 
     @pytest.mark.parametrize("tool", ["lualatex", "pdftoppm"])
-    def test_a_missing_tool_exits_two_and_writes_nothing(
-        self, flow, monkeypatch, capsys, tool
-    ):
+    def test_a_missing_tool_exits_two_and_writes_nothing(self, flow, monkeypatch, capsys, tool):
         def missing(binary):
             if binary == tool:
                 raise MissingBinary(f"{binary} not found on PATH.")

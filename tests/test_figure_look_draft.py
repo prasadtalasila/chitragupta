@@ -27,7 +27,9 @@ def draft(isolated_config):
     path = content_draft(isolated_config, "drafts/rag/survey.md")
     (path.parent / "figures").mkdir()
     for name in ("flow", "stack"):
-        (path.parent / "figures" / f"{name}.tex").write_text("\\begin{tikzpicture}\\end{tikzpicture}")
+        (path.parent / "figures" / f"{name}.tex").write_text(
+            "\\begin{tikzpicture}\\end{tikzpicture}"
+        )
     path.write_text(
         "Text.\n\n<!-- figure: figures/flow -->\n\n<!-- figure: figures/stack -->\n\n"
         "<!-- figure: figures/absent -->\n",
@@ -42,8 +44,16 @@ def rendered(*parts: str) -> Path:
 
 def fake_look(figure: Path) -> Look:
     out = rendered("rag", "figures")
-    return Look(out / f"{figure.stem}.look.pdf", out / f"{figure.stem}.look.png",
-                out / f"{figure.stem}.look.json", "wrote", 431.0, 180.0, 452.97, (1804, 758))
+    return Look(
+        out / f"{figure.stem}.look.pdf",
+        out / f"{figure.stem}.look.png",
+        out / f"{figure.stem}.look.json",
+        "wrote",
+        431.0,
+        180.0,
+        452.97,
+        (1804, 758),
+    )
 
 
 class Poppler:
@@ -59,7 +69,9 @@ class Poppler:
         if cmd[0] == "pdfinfo":
             return subprocess.CompletedProcess(cmd, self.info_code, stdout=self.dests, stderr="")
         if self.raster_code:
-            return subprocess.CompletedProcess(cmd, self.raster_code, stdout="", stderr="bad page\n")
+            return subprocess.CompletedProcess(
+                cmd, self.raster_code, stdout="", stderr="bad page\n"
+            )
         Path(f"{cmd[-1]}.png").write_bytes(png_bytes(2480, 3508))
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
@@ -68,7 +80,9 @@ class Poppler:
 def tools(monkeypatch):
     """Every tool present, and `look` itself faked."""
     present = {"pdftoppm", "pdfinfo"}
-    monkeypatch.setattr(_look_draft.programs, "resolve_program", lambda n: n if n in present else None)
+    monkeypatch.setattr(
+        _look_draft.programs, "resolve_program", lambda n: n if n in present else None
+    )
     monkeypatch.setattr(_look_draft.programs, "require_program", lambda n: n)
     monkeypatch.setattr(_look_draft, "look", fake_look)
     poppler = Poppler()
@@ -174,7 +188,9 @@ class TestRefresh:
 
 
 class TestDraftRender:
-    def test_a_pdf_render_prints_the_notes_and_then_its_path(self, draft, tools, monkeypatch, capsys):
+    def test_a_pdf_render_prints_the_notes_and_then_its_path(
+        self, draft, tools, monkeypatch, capsys
+    ):
         pdf = rendered("rag", "survey.pdf")
         monkeypatch.setattr(render_output, "render", lambda *a, **k: pdf)
         assert _cli.main([str(draft), "--format", "pdf"]) == 0
@@ -216,7 +232,11 @@ def test_a_real_pdf_render_leaves_every_figure_looked_at(isolated_config, capsys
     out = rendered("rag", "figures")
     # flow.tex is the render's own copy of the source, as it always was.
     assert {p.name for p in out.iterdir()} == {
-        "flow.tex", "flow.look.pdf", "flow.look.png", "flow.look.json", "flow.page.png"
+        "flow.tex",
+        "flow.look.pdf",
+        "flow.look.png",
+        "flow.look.json",
+        "flow.page.png",
     }
     # A4 at 300 dpi, rounded up as pdftoppm rounds: 595.28pt is 2480.3 px.
     assert _look_draft._png_size(out / "flow.page.png") == (2481, 3508)

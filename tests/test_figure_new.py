@@ -91,9 +91,7 @@ class TestNew:
         with pytest.raises(_new.Refused, match="named `figures`"):
             _new.new_figure(tmp_path, "flow", "pipeline", house)
 
-    def test_a_missing_figures_directory_is_created_under_an_existing_parent(
-        self, tmp_path, house
-    ):
+    def test_a_missing_figures_directory_is_created_under_an_existing_parent(self, tmp_path, house):
         created = _new.new_figure(tmp_path / "figures", "flow", "pipeline", house)
         assert created.figure.is_file()
 

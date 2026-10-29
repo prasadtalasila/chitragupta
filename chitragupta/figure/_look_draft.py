@@ -153,7 +153,8 @@ def notes(refreshed: Refresh) -> list[str]:
     if not refreshed.figures:
         return [f"[figure-look] skipped: {refreshed.skipped}"] if refreshed.skipped else []
     actions = [item.look.action for item in refreshed.figures if item.look]
-    counts = ", ".join(f"{actions.count(a)} {a}" for a in ("wrote", "current", "failed") if a in actions)
+    kinds = [kind for kind in ("wrote", "current", "failed") if kind in actions]
+    counts = ", ".join(f"{actions.count(kind)} {kind}" for kind in kinds)
     paged = sum(item.page is not None for item in refreshed.figures)
     lines = [f"[figure-look] {counts or 'no looks'}; {paged} page PNGs"]
     for item in refreshed.figures:
