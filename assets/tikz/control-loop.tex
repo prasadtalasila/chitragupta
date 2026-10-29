@@ -337,8 +337,10 @@
   % blob rather than as a cycle going round. Name the side each bend
   % leaves and enters: between bare node names a bend aims at the centre
   % and meets the border about 3mm off the side's midpoint, which is
-  % where an arrow on a box should land.
-  \draw[cgedge] (plant.east) to[bend right=12] node[cgtag] {output}
+  % where an arrow on a box should land. A tag at a bend's apex sits
+  % closer to the curve than `cgtag`'s 1mm on a straight line (0.6mm
+  % here), so this one asks for 1mm of outer sep (`c2-tag-clearance`).
+  \draw[cgedge] (plant.east) to[bend right=12] node[cgtag, outer sep=1mm] {output}
     (sensor.west);
   \draw[cgedge] (sensor) -- (estimate);
   \draw[cgedge] (estimate.west) to[bend right=12] (control.east);
