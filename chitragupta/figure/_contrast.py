@@ -60,7 +60,7 @@ def contrast_rules(source: str, drawn: Drawn) -> list[Finding]:
     tags = {label: f"tag on {con.name}" for con in cons for label in con.line.labels}
     found = []
     for name, node in drawn.nodes.items():
-        target = tags.get(name) or shown_as(name, node)
+        target = tags.get(name) or _target(name, node)
         ground = _node_ground(node, filled, names)
         found += _text(target, node, ground, names)
         if _border(node):
@@ -74,6 +74,12 @@ def contrast_rules(source: str, drawn: Drawn) -> list[Finding]:
         ground = _ground(ends, {con.start, con.end}, filled, names)
         found += _stroke("line", con.name, con.line.stroke, ground, names)
     return found
+
+
+def _target(name: str, node: DrawnNode) -> str:
+    """A node's name, or its centre where TikZ named it internally (an
+    unnamed `fit`'s `tikz@f@1`), which the source never says."""
+    return shown_as(f"{LABEL_PREFIX}{name}" if "@" in name else name, node)
 
 
 def _border(node: DrawnNode) -> bool:

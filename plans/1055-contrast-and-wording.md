@@ -1,6 +1,6 @@
 # 🎨 XII-2d: contrast and wording rules
 
-Status: **planned.** Written 2026-10-29 against `main` at `060b424`
+Status: **built.** Written 2026-10-29 against `main` at `060b424`
 (#1054 merged as #1086), from a brainstorming session on issue
 [#1055](https://github.com/prasadtalasila/chitragupta/issues/1055) and a
 spike recorded under **What the spike found**. Implemented in the same PR
@@ -72,8 +72,10 @@ predate the shades.
   four or more letters is capitalised (Title Case). Mixed names
   (`Extended Kalman filter`) pass; acronyms never count as capitalised; a
   short list holds words lower-case by convention (`tikz`, `pdflatex`).
-- **w4 is objective**: the house fonts lack emoji, so LuaLaTeX drops the
-  glyph with a log warning and the reader sees a gap. It flags U+1F000 to
+- **w4 is objective**: the render prints an emoji or a dingbat from a
+  fallback font that matches nothing else in the figure (Unifont's bitmap
+  glyphs, for an emoji), and a thesis that `\input`s the figure without
+  that font chain drops it with only a log warning. It flags U+1F000 to
   U+1FAFF, U+2600 to U+27BF, U+2B00 to U+2BFF and U+FE0F in any label;
   arrows, `©`, `™` and math symbols pass; `\ding` and fontawesome commands
   are out of scope, since they print when their package is loaded.
@@ -179,4 +181,35 @@ Each task is test-first, and ends in a commit.
 
 ## Changed in the build
 
-*(Filled in as the build goes.)*
+The bench (task 6) ran twice; `bench/RESULTS.md` (2026-10-29, #1055) has
+the counts. In order:
+
+- **w4's reason, corrected before it shipped.** This plan first said the
+  house fonts lack emoji, so the glyph is dropped. The render's font
+  chain (`assets/latex/chitragupta-lualatex.tex`) falls back to DejaVu,
+  Noto Sans Symbols 2 and Unifont, so it prints them; the defect is a
+  glyph in a foreign face, and a missing one in a thesis without that
+  chain. The rule is unchanged.
+- **A border drawn in its own fill's colour is not measured.** `cgbadge`
+  draws and fills its disc in one `Text` shade, and the first run
+  reported all 16 badges on the exemplars at 1.00:1. A border is measured
+  against its own fill, as decided; one in that fill's colour draws no
+  line between them.
+- **A colour written through a macro is named by its hex.** `rag-stages`
+  colours its stages from a `\foreach` variable, logged as `\c Text`.
+  A colour is named by what the figure wrote, else by its own
+  `\definecolor` or a `\colorlet` of one, else by hex.
+- **An unnamed `fit` is named by its centre**, as `node-overlap` names
+  unnamed text; TikZ calls it `tikz@f@1`.
+- **A single letter is not a capitalised word**, for `w1` and `w2`: `12 V`
+  and `A+ and B-` are a unit and two symbols.
+- **`retrieval.tex`'s names are now in sentence case.** It fired `w1`
+  eight times; its boxes have a fixed text width, so nothing it measures
+  moved.
+- **The colour parsing is its own module**, `review/figure_layout/_paint.py`,
+  since `_drawn.py` would have passed C2. `_overlap.shown_as`,
+  `_focal.declaration` and `_connector_check.unconnectable` became public
+  for k1, k2 and the wording rules to share.
+- **k1 and k2 are not measured where the connector rules are not**: no
+  probe lines, several pictures, `transform canvas`. The test list named
+  these; the reasons are the connector rules' own.

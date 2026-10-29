@@ -3109,11 +3109,14 @@ chitragupta figure check figures/flow.tex --json
 
 One line per finding, `<rule-id> <target> <measurement>`, then a
 section for each kind of thing that is not a finding, left out when it
-is empty: the advisory size reports (#1057), honoured allows, allows
-not honoured until #1058, malformed allows, rules that could not be
-measured, and the diagnostics. The advisory reports are the same
-one-line shape, each beside the reference range of the layout the
-figure's `% cg-layout:` line names; they never count as findings. Over
+is empty: the advisory reports, honoured allows, allows not honoured
+until #1058, malformed allows, rules that could not be measured, and
+the diagnostics. The advisory reports are the same one-line shape: the
+size reports (#1057), each beside the reference range of the layout the
+figure's `% cg-layout:` line names, and the wording reports `w1` to `w3`
+(#1055); they never count as findings. The contrast rules `k1` and `k2`
+name both colours and the ratio, as in
+`text cgAccent on fill cgAccent!10: 3.42:1, needs 4.5:1`. Over
 `assets/tikz/exemplars/rag-stages.tex`, which fits the render's 453pt
 but not the article class's 345pt, with `--width 345`:
 

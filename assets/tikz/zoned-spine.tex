@@ -15,7 +15,7 @@
 % edit it: every figure in a book carries the same copy, and an edited
 % one forks the house style. A style this figure alone needs goes in the
 % picture's own options.
-% >>> chitragupta figure style v4 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% >>> chitragupta figure style v5 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
 %
@@ -247,8 +247,9 @@
 % a box of text out of a label. They are told apart by weight and colour
 % at one size, the body's: bold ink for the name, muted for the gloss.
 % This is the only way a gloss gets set, which holds the roles apart
-% across the figure. Keep the gloss under about eight words; past that it
-% is prose in a box and the conciseness defect is real again.
+% across the figure. Keep the gloss to six words or fewer (v5; `figure
+% check`'s w3-gloss); past that it is prose in a box and the conciseness
+% defect is real again.
 \providecommand{\cglab}[2]{%
   {\normalsize\bfseries #1}\\[1.5pt]{\normalsize\textcolor{cgMuteText}{#2}}}%
 

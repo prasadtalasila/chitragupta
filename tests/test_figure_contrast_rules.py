@@ -83,6 +83,12 @@ class TestText:
 
         assert found[0][1] == "(5.0,5.0)"
 
+    def test_a_node_tikz_named_itself_is_named_by_its_centre(self):
+        """An unnamed `fit` is `tikz@f@1` inside TikZ."""
+        found = _findings(_box("tikz@f@1", box=(0, 0, 28.45, 28.45), stroke=Paint(AUX, "cgAux")))
+
+        assert found[0][1] == "(5.0,5.0)"
+
     def test_a_colour_no_source_names_is_shown_as_hex(self):
         found = _findings(_box("a", runs=[_run((0.8, 0.8, 0.8))]))
 

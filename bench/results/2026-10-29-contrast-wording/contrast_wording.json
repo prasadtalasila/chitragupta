@@ -1,0 +1,1106 @@
+{
+  "summary": {
+    "figures": 59,
+    "fired": {
+      "k1-stroke": 57,
+      "k2-text": 52,
+      "w4-pictograph": 0,
+      "w1-case": 0,
+      "w2-tag": 12,
+      "w3-gloss": 0
+    },
+    "fired_on_house_figures": {
+      "k1-stroke": 0,
+      "k2-text": 0,
+      "w4-pictograph": 0,
+      "w1-case": 0,
+      "w2-tag": 0,
+      "w3-gloss": 0
+    },
+    "files": {
+      "k1-stroke": 24,
+      "k2-text": 25,
+      "w4-pictograph": 0,
+      "w1-case": 0,
+      "w2-tag": 10,
+      "w3-gloss": 0
+    },
+    "pairs": {
+      "k1-stroke: cgAux on white": 50,
+      "k2-text: cgAccent on white": 31,
+      "k2-text: cgAux on white": 12,
+      "k1-stroke: cgAux on fill white": 7,
+      "k2-text: cgAlt on white": 5,
+      "k2-text: cgAccent on fill white": 3,
+      "k2-text: cgAux on fill white": 1
+    },
+    "not_measured": {}
+  },
+  "figures": [
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/estimator-loop.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "services->plant",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "estimate->predict",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on services->plant",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on estimate->predict",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/gain-as-fraction.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/book-chapters/figures/hidden-markov-chain.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "(54.9,0.0)",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "dots",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x0->x1",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x1->x2",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x2->x3",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(54.9,12.7)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/aliasing.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/beam-lumps-and-mesh.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/closing-the-loop.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "refuse",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "guard->refuse",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on guard->pt",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/configuration-ladder.tex",
+      "findings": [
+        [
+          "k2-text",
+          "e1",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "e2",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "e3",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/data-flow-test.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "ptA->doA",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "doB->ptB",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on doC->ptC",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/decision-latency.tex",
+      "findings": [
+        [
+          "k2-text",
+          "det",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "twin",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/demonstrator-architecture.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "pi",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "core",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "di",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "mgr",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "mgr->core",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/demonstrator-climb.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "human",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "pt1->do1",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "do2->human",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "human->pt2",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on do3->pt3",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/dosing-today.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "controller",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on store->timer",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"X no link: the decision never reads the reading\"",
+          "9 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/ensemble-fan.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(59.7,32.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(108.0,-5.4)",
+          "text cgAlt on white: 3.42:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/euler-step-sizes.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(15.1,3.8)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"Euler, step 1 min\"",
+          "4 words, over 3; capitalised; a tag is lower-case"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/four-timestamps.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(65.7,-31.6)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"time discrepancy: ingest time minus event time, kept as a measurement\"",
+          "11 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/hidden-markov-model.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "(57.9,0.0)",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "dots",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x0->x1",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x1->x2",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on x2->x3",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(57.9,12.7)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/i2c-addresses.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/ingestion-pipeline.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "ver->derive",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/modbus-addresses.tex",
+      "findings": [
+        [
+          "k2-text",
+          "tag on relay->pumps",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"one twisted pair: A+ and B-\"",
+          "6 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/model-anatomy.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/model-simulator-simulation.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/non-physical-referents.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "doB->ptB",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "doC->ptC",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on doA->ptA",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/pctrl-blocks.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "ctl",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "sens",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "act",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "rpipsu->rpi",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "psu12->relay",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on pump->pot",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "tag on sens->pot",
+          "text cgAlt on white: 3.42:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/physical-interface.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "hw",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "bus",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "sw",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "(44.2,77.2)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/pump-markov-chain.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(24.8,-62.9)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/residual-doses.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/rtf-regimes.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(18.0,-17.7)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(45.0,-26.7)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(84.0,-18.1)",
+          "text cgAlt on white: 3.42:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/run-modes.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/seven-blocks.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "manager",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "manager->state",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"about the twin, not the asset\"",
+          "6 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/shadowing-pipeline.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "model",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "fns",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "model->shadow",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "fns->augment",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/simulator-anatomy.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "solver->sched",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "sched->either",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/surrogate-campaign.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "check->doe",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/three-layers.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "pi",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "core",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "di",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "mgr",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "mgr->core",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"state and digital events out\"",
+          "5 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/three-windows.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(52.2,4.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/turbine-mode-machine.tex",
+      "findings": [],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"wind below cut-in or above cut-out\"",
+          "6 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/twin-pgm.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "d0->s1",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "d1->s2",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/twinning-loop-data.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "cmd",
+          "border cgAux on fill white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "store->cmd",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "cmd->pt",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/two-time-advances.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(6.0,13.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(24.0,13.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(59.0,13.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(71.0,13.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(103.0,13.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(24.2,-0.5)",
+          "text cgAlt on white: 3.42:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(25.2,-24.0)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/two-transport-layers.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "dev",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "sys",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"a register becomes a number\"",
+          "5 words, over 3"
+        ],
+        [
+          "w2-tag",
+          "tag \"a number becomes a message\"",
+          "5 words, over 3"
+        ],
+        [
+          "w2-tag",
+          "tag \"a message becomes a tuple\"",
+          "5 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/types-of-twins.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/value-ladder.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "person",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "twin",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "standin",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"cost, and how much the model must get right\"",
+          "9 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/watering-strategies.tex",
+      "findings": [
+        [
+          "k2-text",
+          "tag on dbB->ruleB",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/books/digital-twins-for-software-engineers/figures/zero-crossing.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(23.0,-4.8)",
+          "text cgAux on white: 2.31:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(71.3,-5.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(56.0,22.9)",
+          "text cgAlt on white: 3.42:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(84.4,-4.5)",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/command-path.tex",
+      "findings": [
+        [
+          "k2-text",
+          "(30.3,-10.2)",
+          "text cgAccent on fill white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(62.6,-10.2)",
+          "text cgAccent on fill white: 3.87:1, needs 4.5:1"
+        ],
+        [
+          "k2-text",
+          "(94.8,-10.2)",
+          "text cgAccent on fill white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/demonstrator-today.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "controller",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on store->timer",
+          "text cgAccent on white: 3.87:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [
+        [
+          "w2-tag",
+          "tag \"X no link: the decision never reads the reading\"",
+          "9 words, over 3"
+        ]
+      ],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/mock-vs-rig.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "mock",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k1-stroke",
+          "rig",
+          "border cgAux on white: 2.31:1, needs 3:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/one-day-two-strategies.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/paper-twin-loop.tex",
+      "findings": [
+        [
+          "k1-stroke",
+          "pump->pot",
+          "line cgAux on white: 2.31:1, needs 3:1"
+        ],
+        [
+          "k2-text",
+          "tag on pump->pot",
+          "text cgAux on fill white: 2.31:1, needs 4.5:1"
+        ]
+      ],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "draft",
+      "file": "drafts/tutorials/digital-twins-for-software-engineers/figures/three-digital-objects.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/branching-tree.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/control-loop.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/hub-and-spoke-network.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/layered-stack.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/map.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/pipeline.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "scaffold",
+      "file": "assets/tikz/zoned-spine.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/architecture.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/rag-stages.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    },
+    {
+      "kind": "exemplar",
+      "file": "assets/tikz/exemplars/retrieval.tex",
+      "findings": [],
+      "advisory": [],
+      "not_measured": []
+    }
+  ]
+}

@@ -471,7 +471,7 @@ the last stage derives and the discovery feature being built on it;
 | `chitragupta init` | scaffolds a project directory to draft in | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
 | `chitragupta figure sync` | keeps the house figure-style block current in every figure file, and never overwrites one you edited | [CLI.md](CLI.md#-chitragupta-figure-sync) |
-| `chitragupta figure check` | reports every rule one figure file breaks, by rule id, and the exceptions it records with a reason, with the figure's size beside its layout's reference ranges; exits 0 whatever it finds | [CLI.md](CLI.md#-chitragupta-figure-check) |
+| `chitragupta figure check` | reports every rule one figure file breaks, by rule id, and the exceptions it records with a reason, with the figure's size beside its layout's reference ranges; its contrast rules measure the colours TikZ drew against WCAG 2's thresholds; exits 0 whatever it finds | [CLI.md](CLI.md#-chitragupta-figure-check) |
 | `chitragupta figure new` | starts a figure from a layout's scaffold, its house block synced, and never overwrites a figure | [CLI.md](CLI.md#-chitragupta-figure-new) |
 | `chitragupta figure look` | shows one figure as it will print, cropped to itself, as a PDF and a 300 dpi PNG, and with `--draft` the page of the draft that holds it; a pdf render refreshes these for every figure | [CLI.md](CLI.md#-chitragupta-figure-look) |
 | Config in one file | `config.toml`, every key overridable by environment variable | [CONFIG.md](CONFIG.md) |

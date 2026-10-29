@@ -79,9 +79,10 @@ class _Word:
 
     @property
     def capitalised(self) -> bool:
-        """Starts with a capital and is no acronym."""
+        """Starts with a capital and is neither an acronym nor a single
+        letter, which is a symbol or a unit (`12 V`, `A+`)."""
         letters = self.letters
-        return bool(letters) and letters[0].isupper() and sum(map(str.isupper, letters)) < 2
+        return len(letters) > 1 and letters[0].isupper() and sum(map(str.isupper, letters)) < 2
 
 
 def wording_rules(source: str) -> tuple[list[Finding], list[Finding]]:
@@ -117,7 +118,8 @@ def _case(name: str) -> list[Finding]:
     if not found:
         return []
     first = found[0]
-    if first.letters and first.letters[0].islower() and first.text.lower() not in _LOWER_BY_CONVENTION:
+    lower = len(first.letters) > 1 and first.letters[0].islower()
+    if lower and first.text.lower() not in _LOWER_BY_CONVENTION:
         return [Finding("w1-case", _shown(name), "starts lower-case; sentence case capitalises it")]
     later = [word for word in found[1:] if len(word.letters) >= _TITLE_LETTERS and not _acronym(word)]
     if later and all(word.capitalised for word in later):

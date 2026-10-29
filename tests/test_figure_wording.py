@@ -124,6 +124,11 @@ class TestW2Tag:
             )
         ]
 
+    def test_a_unit_or_a_symbol_is_not_a_capitalised_word(self):
+        assert _advisory("\\draw (a) -- node {12 V} (b);") == []
+        assert _advisory("\\draw (a) -- node {A+ and B-} (b);") == []
+        assert _advisory(_named("x position")) == []
+
     def test_an_acronym_in_a_tag_passes(self):
         assert _advisory("\\draw (a) to node {via HTTP} (b);") == []
 
