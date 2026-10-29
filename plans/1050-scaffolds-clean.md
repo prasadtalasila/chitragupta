@@ -394,6 +394,12 @@ LuaLaTeX through `python -m chitragupta.figure check`, pytest.
   the scaffolds, to the article class's 345pt; it now also runs
   `figure check`'s `size-width` over every scaffold and exemplar at the
   render's 453pt, which is the issue's first criterion pinned.
+- **The firing case #1080 pinned on `rag-stages` moved.**
+  `tests/test_figure_check.py` used the exemplar's overflow as its real
+  figure that breaks `size-width`, and `docs/CLI.md` quoted that report.
+  Both now check it against the article class's 345pt with `--width`,
+  which it still overflows (411.5pt). `assets/tikz/README.md` says to
+  keep the `% cg-layout:` line when copying a scaffold.
 - **Left for #1054's bench.** Two tag placements in the exemplars still
   cross a zone border or touch a card in the render's fonts:
   `architecture`'s "ledger" spans the 3mm gap between two zone cards,

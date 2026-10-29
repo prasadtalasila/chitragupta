@@ -3101,19 +3101,20 @@ not honoured until #1058, malformed allows, rules that could not be
 measured, and the diagnostics. The advisory reports are the same
 one-line shape, each beside the reference range of the layout the
 figure's `% cg-layout:` line names; they never count as findings. Over
-`assets/tikz/exemplars/rag-stages.tex`, which is wider than the text:
+`assets/tikz/exemplars/rag-stages.tex`, which fits the render's 453pt
+but not the article class's 345pt, with `--width 345`:
 
 ```text
 assets/tikz/exemplars/rag-stages.tex
-  size-width            figure     495.0pt wide, target 453.0pt
+  size-width            figure     411.5pt wide, target 345.0pt
 advisory (read; never resolved, allowed or capped)
-  size-height           figure     0.35 of the text height (243pt); pipeline reference 0.10 to 0.35
-  size-slack            figure     0.71; pipeline reference 0.55 to 0.71
+  size-height           figure     0.37 of the text height (262pt); pipeline reference 0.10 to 0.37
+  size-slack            figure     0.68; pipeline reference 0.55 to 0.68
   budget-nodes          figure     11 nodes; pipeline reference 5 to 11
   budget-edges          figure     4 edges; pipeline reference 3 to 4
 diagnostics (not findings)
   edges (confirm against the prose): s4.south -> [yshift=4.5mm]s5.north, ...
-  71% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
+  68% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
 figure check: 1 finding, 0 allowed, 0 deferred, 0 malformed
 ```
 
