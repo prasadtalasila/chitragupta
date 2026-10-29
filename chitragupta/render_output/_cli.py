@@ -3,6 +3,7 @@
 import argparse
 import re
 import subprocess
+import sys
 
 from pathlib import Path
 
@@ -165,18 +166,13 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    """CLI entry point -- deliberately independent of chitragupta/enrich/__main__.py.
+def _rendered(args: argparse.Namespace) -> Path | None:
+    """`render()` for `args`, every refusal printed as the `[error]` or
+    `[missing-binary]` line a skill reacts to; `None` when it refused.
 
-    That script imports docling/embed/topic_model at module load and
-    builds the whole corpus before any stage runs, which drags in the
-    multi-GB `.venv-full` for a stage that itself only needs stdlib +
-    `chitragupta.config` + `chitragupta.citation_gate`. Genre skills that just want a
-    tex/pdf rendering of a draft should be able to run this with bare
-    `python`, no enrich group required.
+    Split from `main` so `figure look --draft` (#1052) renders a draft
+    through exactly this, refusals and all, rather than a copy of it.
     """
-    args = _build_parser().parse_args(argv)
-
     # Deferred, and it has to be: the package root imports this module at
     # its top, before `render` is defined, so a module-scope import here
     # would be a genuine circular-import failure rather than a style
@@ -186,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     from chitragupta.render_output._gate import UngatedDraft
 
     try:
-        out_path = render(
+        return render(
             args.input,
             args.output_format,
             args.documentclass,
@@ -200,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except MissingBinary as exc:
         print(f"[missing-binary] {exc}")
-        return 1
+        return None
     except MathMappingError as exc:
         # Non-zero, and deliberately so. A `<!-- math -->` marker is the
         # author stating a displayed equation is here; rendering it as
@@ -209,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         # a skill may carry on past is not enough to stop it shipping.
         # The heuristic gaps stay warnings -- only this is certain.
         print(f"[error] {exc}")
-        return 1
+        return None
     except OutsideContentDir as exc:
         # Reported like any other render failure rather than as a
         # traceback, same as the KeyError below: a genre skill's
@@ -218,25 +214,25 @@ def main(argv: list[str] | None = None) -> int:
         # fine, and it is the place this copy would have gone that is
         # wrong.
         print(f"[error] {exc}")
-        return 1
+        return None
     except subprocess.CalledProcessError as exc:  # pragma: no cover-windows
         print(
             f"[error] pandoc failed: {exc.stderr or exc}"
             f"{_figure_repair_hint(args.input)}{_unicode_repair_hint(exc.stderr)}"
         )
-        return 1
+        return None
     except ledger.NoLedger as exc:
         # `--format md` numbers a citing draft from the ledger; with none
         # to read, the same `[error]` a skill warns on and carries past.
         print(f"[error] {exc}")
-        return 1
+        return None
     except UngatedDraft as exc:
         # The gate refused the draft before any format was produced
         # (#812): reported like every other render failure, `[error]` and
         # the gate's own report naming each key and line, so a skill
         # reacts to it exactly as it does to a failed `draft gate`.
         print(f"[error] {exc}")
-        return 1
+        return None
     except reference_entries.MissingCitekey as exc:
         # `--format md` builds its reference list from the ledger, so a
         # cited key that isn't there stops it (references.build_section's
@@ -252,7 +248,36 @@ def main(argv: list[str] | None = None) -> int:
         # genuine bug elsewhere in the pipeline surfaces as itself instead
         # of being reported as though it were this refusal (m-60).
         print(f"[error] {exc.args[0] if exc.args else exc}")
-        return 1
+        return None
 
+
+def _report_looks(draft: Path, pdf: Path) -> None:
+    """Refresh the looks and page pictures of `draft`'s figures (#1052),
+    as `[figure-look]` notes. After the render succeeded, and never a
+    reason it fails: see `figure/_look_draft.py`."""
+    # Deferred for the reason `_rendered`'s imports are: `figure` imports
+    # from this package, so a module-scope import back would be a cycle.
+    from chitragupta.figure._look_draft import notes, refresh
+
+    for line in notes(refresh(draft, pdf)):
+        print(line, file=sys.stderr)
+
+
+def main(argv: list[str] | None = None) -> int:
+    """CLI entry point -- deliberately independent of chitragupta/enrich/__main__.py.
+
+    That script imports docling/embed/topic_model at module load and
+    builds the whole corpus before any stage runs, which drags in the
+    multi-GB `.venv-full` for a stage that itself only needs stdlib +
+    `chitragupta.config` + `chitragupta.citation_gate`. Genre skills that just want a
+    tex/pdf rendering of a draft should be able to run this with bare
+    `python`, no enrich group required.
+    """
+    args = _build_parser().parse_args(argv)
+    out_path = _rendered(args)
+    if out_path is None:
+        return 1
+    if args.output_format == "pdf":
+        _report_looks(Path(args.input), out_path)
     print(str(out_path))
     return 0

@@ -7,11 +7,23 @@ caption that wraps around it), the way `tests/test_enrich_*.py` mirrors
 `chitragupta/enrich/`.
 """
 
+import re
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from chitragupta import render_output
 from chitragupta.render_output import _substitution
-from tests.conftest import CAPTIONED_MD, MARKED_MD
+from tests.conftest import (
+    CAPTIONED_MD,
+    MARKED_MD,
+    content_draft,
+    lualatex_available,
+    pandoc_available,
+    pdftotext_available,
+    tikz_available,
+)
 
 
 class TestFigures:
@@ -200,3 +212,31 @@ class TestWarnings:
         )
         warnings = render_output._figure_captions.warnings(text)
         assert not any("non-blank line" in w for w in warnings)
+
+
+@pytest.mark.skipif(
+    not (pandoc_available and lualatex_available and tikz_available and pdftotext_available),
+    reason="needs pandoc, lualatex with tikz.sty, and pdftotext",
+)
+@pytest.mark.parametrize("caption", ["One node.\n", ""], ids=["captioned", "uncaptioned"])
+def test_a_figure_is_centred_on_the_text_block(isolated_config, caption):
+    """#1085: nothing set `\\centering`, so a figure sat at the left margin,
+    and a captioned one under a caption LaTeX had centred on its own.
+    Measured on the printed page: a one-node picture's label is centred on
+    the text block, with a caption and without one."""
+    isolated_config.BIB_FILE_PATH.write_text("")
+    draft = content_draft(isolated_config, "drafts/rag/survey.md")
+    (draft.parent / "figures").mkdir()
+    picture = "\\begin{tikzpicture}\\node[draw] {CENTREME};\\end{tikzpicture}%\n"
+    (draft.parent / "figures" / "one.tex").write_text(picture, encoding="utf-8")
+    (draft.parent / "figures" / "one.txt").write_text("[ CENTREME ]\n", encoding="utf-8")
+    draft.write_text(f"Text.\n\n<!-- figure: figures/one -->\n{caption}\nMore.\n", encoding="utf-8")
+    pdf = render_output.render(str(draft), output_format="pdf")
+    html = subprocess.run(
+        ["pdftotext", "-bbox", str(pdf), "-"], capture_output=True, text=True, check=True
+    ).stdout
+    words = re.findall(r'xMin="([\d.]+)" yMin="[\d.]+" xMax="([\d.]+)" yMax="[\d.]+">(\w+)<', html)
+    [label] = [(float(x0), float(x1)) for x0, x1, word in words if word == "CENTREME"]
+    # A4 is 595.28bp wide with 1in (72bp) margins, so the text block's
+    # centre is half the page; the label's own centre is the picture's.
+    assert (label[0] + label[1]) / 2 == pytest.approx(595.28 / 2, abs=1.0)

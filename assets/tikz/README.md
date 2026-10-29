@@ -29,10 +29,12 @@ Two more things live here that are not scaffolds:
 
 ## 🚀 Using one
 
-Copy it beside the draft that needs it and re-label the nodes:
+Start a figure from it beside the draft that needs it, then re-label
+the nodes. `figure new` copies the scaffold, syncs its house block and
+never overwrites a figure that exists:
 
 ```bash
-cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
+chitragupta figure new content/drafts/<topic>/figures <name> --layout pipeline
 ```
 
 Its first line, `% cg-layout: pipeline`, names the layout, and

@@ -179,13 +179,23 @@ def test_the_drawer_checks_the_figure_in_the_real_render():
     # labels wrap and gaps close differently. A figure that passed the
     # probe came out with a hyphenated label and an arrow through a zone
     # title in a real render (#1027), so the drawer must look at the page.
+    # Since #1052 one command does the look, alone and in the draft.
     text = _text(DRAWER)
-    assert "python -m chitragupta.draft render" in text
+    assert "python -m chitragupta.figure look" in text and "--draft" in text
     at_probe = text.find("run `lualatex` on it")
-    at_render = text.find("python -m chitragupta.draft render")
+    at_look = text.find("python -m chitragupta.figure look")
     at_return = text.find("**Return.**")
-    assert at_probe < at_render < at_return, (at_probe, at_render, at_return)
+    assert at_probe < at_look < at_return, (at_probe, at_look, at_return)
     assert "LuaLaTeX" in text
+
+
+def test_the_drawer_starts_a_figure_with_figure_new():
+    # #1052: one command copies the scaffold, keeps its `% cg-layout:`
+    # line and syncs the block, and never overwrites a figure; the hand
+    # `cp` it replaced did none of the last.
+    text = _text(DRAWER)
+    assert "python -m chitragupta.figure new" in text
+    assert "cp assets/tikz" not in text
 
 
 def test_the_render_check_says_what_to_do_without_the_tools():

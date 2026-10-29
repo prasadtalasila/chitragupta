@@ -99,12 +99,15 @@ Each step names the document that owns its rule.
    how a concept is usually drawn is fine. Reproducing one is not
    ([AGENTS.md](../AGENTS.md), [WRITING-STANDARDS.md](WRITING-STANDARDS.md)
    §10).
-2. **Commits to a layout metaphor and copies its scaffold** from
+2. **Commits to a layout metaphor and starts from its scaffold** in
    `assets/tikz/`: pipeline, map, layered stack, control loop, branching
-   tree, hub-and-spoke or zoned spine. It re-labels the scaffold, leaves
-   the house style block alone, and runs
-   `python -m chitragupta.figure sync` on the copy to keep that block
-   current ([TIKZ-STYLE.md](TIKZ-STYLE.md)).
+   tree, hub-and-spoke or zoned spine.
+   `python -m chitragupta.figure new <figures-dir> <name> --layout <id>`
+   copies it, keeps its `% cg-layout:` line, runs `figure sync` on the
+   copy to keep the house style block current, and never overwrites a
+   figure ([CLI.md](CLI.md#-chitragupta-figure-new)). The skill then
+   re-labels it and leaves the house style block alone
+   ([TIKZ-STYLE.md](TIKZ-STYLE.md)).
 3. **Letters the panels** `(a)`, `(b)`, `(c)` in both forms, if the
    figure has more than one.
 4. **Writes the ASCII twin** in §10's 7-bit alphabet, showing the same
@@ -131,12 +134,15 @@ Each step names the document that owns its rule.
 8. **Looks at the real render.** The probe is a bare article class,
    but the pipeline's own PDF is the draft's whole document, with its
    floats and neighbouring text, so labels can wrap and gaps close
-   differently there. Once the draft carries the marker, it renders the PDF and
-   checks the page that holds the figure against the same pre-flight
-   list. This needs `pandoc`, LuaLaTeX and `pdftoppm` (poppler), which
-   `chitragupta install os-deps` installs on Linux; without them, or in
-   a harness that cannot view an image, the skill skips the look and
-   says so.
+   differently there. `python -m chitragupta.figure look` sets the
+   figure alone on the render's own page, cropped to it, as a PDF and a
+   300 dpi PNG; once the draft carries the marker, `--draft` renders the
+   PDF too and writes a PNG of the page that holds the figure
+   ([CLI.md](CLI.md#-chitragupta-figure-look)). The skill checks both
+   against the same pre-flight list. This needs LuaLaTeX and `pdftoppm`
+   (poppler), and `pandoc` for the page, which `chitragupta install
+   os-deps` installs on Linux; without them, or in a harness that cannot
+   view an image, the skill skips the look and says so.
 9. **Returns** the two paths, whether the probe passed, what
    `figure check` reported and allowed, and whether it checked the
    rendered page.

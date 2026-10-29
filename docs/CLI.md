@@ -51,6 +51,8 @@ short path; this is the full set.
   - [`chitragupta draft figures`](#-chitragupta-draft-figures)
   - [`chitragupta figure sync`](#-chitragupta-figure-sync)
   - [`chitragupta figure check`](#-chitragupta-figure-check)
+  - [`chitragupta figure new`](#-chitragupta-figure-new)
+  - [`chitragupta figure look`](#-chitragupta-figure-look)
   - [`chitragupta enrich`](#-chitragupta-enrich)
   - [`scripts/install_full_pipeline.sh`](#-scriptsinstall_full_pipelinesh)
   - [`scripts/release.py`](#-scriptsreleasepy)
@@ -2649,6 +2651,17 @@ succeeds:
 [float-page] p. 3 holds Figure 1 and no text. A figure taller than 0.85 of the text height cannot share a page with text; a shorter one lands alone when figures queue up before a page break.
 ```
 
+After a `pdf` render succeeds, every figure the draft references gets
+the pictures [`figure look`](#-chitragupta-figure-look) writes: its
+`.look.pdf` and `.look.png`, rebuilt only where the figure changed, and
+a 300 dpi `.page.png` of the page it printed on, rebuilt every time.
+They are notes on stderr, after the render, and never a reason it
+fails; with no `pdftoppm` or `pdfinfo` the notes say what was skipped:
+
+```text
+[figure-look] 1 wrote, 1 current; 2 page PNGs
+```
+
 ```bash
 chitragupta draft render content/drafts/survey.md --format pdf
 # chitragupta draft render content/drafts/survey.md --format tex
@@ -3132,6 +3145,89 @@ figure check: 1 finding, 0 allowed, 0 deferred, 0 malformed
 `review figure` reads the same geometry over every figure a draft
 references and keeps its own report; this command is the per-file
 form the skill acts on.
+
+### 🌱 `chitragupta figure new`
+
+Starts a figure from a layout's scaffold in `assets/tikz/`: copies it to
+`<figures-dir>/<name>.tex`, keeping its `% cg-layout:` line, copies the
+layout's ASCII twin to `<name>.txt` where the layout ships one, and runs
+[`figure sync`](#-chitragupta-figure-sync) on the copy. It never
+overwrites: a `<name>.tex` or `<name>.txt` that exists, or a symlink at
+either, is refused and nothing is written. The `figure-drawer` skill
+starts every figure with it.
+
+```bash
+chitragupta figure new content/drafts/rag/figures flow --layout zoned-spine
+```
+
+```text
+created  content/drafts/rag/figures/flow.tex   (from zoned-spine)
+no twin  zoned-spine ships no .txt twin; write content/drafts/rag/figures/flow.txt
+figure sync: 1 current
+```
+
+| Argument | What it is |
+| --- | --- |
+| `<figures-dir>` | A directory named `figures`, the name `figure sync`'s walk and the render's markers look in. Created if its parent exists |
+| `<name>` | The figure's file stem: no path, no suffix |
+| `--layout ID` | A scaffold whose own `% cg-layout:` line names its file stem: `branching-tree`, `control-loop`, `hub-and-spoke-network`, `layered-stack`, `map`, `pipeline` or `zoned-spine` |
+
+| Exit | When |
+| --- | --- |
+| **0** | the figure was written |
+| **2** | a refusal (a name with a path in it, a directory not named `figures`, an unknown layout, a file already there), or an installed scaffold or house block that cannot be read (`chitragupta doctor`). Nothing is written |
+
+### 👁 `chitragupta figure look`
+
+Shows one figure as it will print, for the defects no rule measures: a
+label that wrapped badly, an arrow through a zone title, a figure that
+reads as cramped. It sets the figure alone on the render's own page,
+`article` at 12pt with the render's fonts and its 453pt text width,
+with the figure's TikZ libraries loaded in the preamble as the renderer
+loads them, and writes:
+
+| File | What it is |
+| --- | --- |
+| `<name>.look.pdf` | The page, cropped to the figure plus 1pt. A figure wider than the text width gets a red line at the text width, measured from its left edge |
+| `<name>.look.png` | That page at 300 dpi, never scaled, so pixel size is proportional to the figure's real size |
+| `<name>.look.json` | A digest of what the look was built from, and what was measured |
+| `<name>.page.png` | With `--draft`: the draft's page that holds the figure, at 300 dpi |
+
+All of them go where the render puts output, under `content/rendered/`
+with the figure's place under `content/drafts/` mirrored:
+`content/drafts/rag/figures/flow.tex` looks to
+`content/rendered/rag/figures/`. A figure whose source, fonts and
+document have not changed since its last look is not compiled again.
+
+```bash
+chitragupta figure look content/drafts/rag/figures/flow.tex
+chitragupta figure look content/drafts/rag/figures/flow.tex --draft content/drafts/rag/survey.md
+```
+
+```text
+wrote    content/rendered/rag/survey.pdf
+current  content/rendered/rag/figures/flow.look.pdf   (336 x 114pt; text width 453pt)
+current  content/rendered/rag/figures/flow.look.png   (1405 x 484 px at 300 dpi)
+wrote    content/rendered/rag/figures/flow.page.png   (page 1 of survey.pdf; 2481 x 3508 px)
+```
+
+With `--draft` it renders the draft to pdf exactly as
+[`draft render`](#-chitragupta-draft-render) does, refusals included,
+and finds the figure's page from a mark the pdf render leaves at every
+figure in a Markdown draft: a PDF named destination, `cgfig:<marker
+base>`, which adds nothing to the page or to a viewer's bookmarks. A
+`.tex` draft's figures carry no mark, so they get a look and no page
+picture. A figure that does not compile prints TeX's first error line,
+and its old look files are deleted so none passes for current.
+
+| Flag | Default | What it does |
+| --- | --- | --- |
+| `--draft DRAFT` | none | Also render this draft and write `<name>.page.png` |
+
+| Exit | When |
+| --- | --- |
+| **0** | after any look, a figure that does not compile and a draft that does not render included |
+| **2** | a figure that is not a readable UTF-8 file, no `lualatex`, `tikz.sty` or `pdftoppm` (or `pandoc`, with `--draft`), or a rendered directory that resolves outside the content directory. Nothing is written (`chitragupta doctor`) |
 
 ### 🧠 `chitragupta enrich`
 
