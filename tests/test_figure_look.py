@@ -181,6 +181,15 @@ class TestLook:
 
 
 class TestCli:
+    @pytest.fixture(autouse=True)
+    def toolchain(self, monkeypatch):
+        """The CLI's own check for the tools, passed, so these run where
+        there is no TeX at all (CI's Windows leg): `_run` is faked, and
+        the check is the one thing that would still see the host. The
+        missing-tool test below sets its own."""
+        monkeypatch.setattr(cli, "_require", lambda binary: None)
+        monkeypatch.setattr(cli, "_require_tikz", lambda: None)
+
     def test_it_prints_both_files_and_their_sizes(self, fake, flow, capsys):
         assert cli.main(["look", str(flow)]) == 0
         out = capsys.readouterr().out.splitlines()
