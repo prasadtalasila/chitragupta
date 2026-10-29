@@ -242,7 +242,7 @@ or in the unit through `draft-reviser-opencode` -- never by this skill.
 
    ```bash
    python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='replace'); \
-       print(re.findall(r'chitragupta float page: \S+ holds Figure \S+', log))"
+       print(re.findall(r'chitragupta float page: .+', log))"
    ```
 
    Tell the user every line it prints, as a finding about the figure, not

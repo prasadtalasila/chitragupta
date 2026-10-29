@@ -50,10 +50,12 @@ One shipped file, `assets/latex/chitragupta-floats.tex`:
 | `\bottomfraction` | .3 | .5 | the same at the foot of a page |
 | `\textfraction` | .2 | .1 | let a page be mostly figure and still hold text |
 | `topnumber`, `totalnumber` | 2, 3 | 3, 4 | a run of small figures need not queue |
-| placement default | `tbp` | `htbp` | what pandoc's own template already gives an image figure |
+| placement default | `tbp` | `htbp` | a figure may stay where it is written |
 
-`htbp` measured the same as `tbp` on this book. It is kept so a TikZ
-figure and an image figure place alike.
+`htbp` measured the same as `tbp` on this book. It is set here rather
+than left to pandoc, whose template set it for an image figure up to
+3.1 and no longer does by 3.7, so every figure places the same way
+whichever pandoc runs.
 
 ## The report
 
@@ -62,7 +64,12 @@ figure shipped on a float-only page. A `shipout/before` hook copies
 `\if@fcolmade` into Lua. An `env/figure/end` hook puts a `\latelua` node
 holding the figure's number (frozen when the figure is set) into the
 float, and that node runs when the page ships. It writes
-`chitragupta float page: <page> holds Figure <n>` to the log.
+`chitragupta float page: <page> holds Figure <n>` to the log. A figure
+with no `\caption` steps no counter, so the counter is read again at
+the figure's start and an unchanged one is reported as "an uncaptioned
+figure" rather than under the previous figure's number (found in
+review). Only `figure` is watched: a float-only page of tables, or of
+`figure*`, is not reported.
 
 - **The book** reads `book.log`, in SKILL.md's existing "read the log
   before believing the PDF" step.

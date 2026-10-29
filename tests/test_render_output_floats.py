@@ -90,6 +90,17 @@ class TestPrintReport:
         ]
         assert all("0.85" in line for line in lines), "says what may share a page"
 
+    def test_an_uncaptioned_figure_is_not_given_another_figure_s_number(self, tmp_path, capsys):
+        """No `\\caption` steps no counter, so the number field is empty."""
+        pdf = tmp_path / "out.pdf"
+        pdf.write_bytes(_info("6\t\n7\t3\n7\t\n7\t\n"))
+        _floats.print_report(pdf)
+        lines = capsys.readouterr().err.splitlines()
+        assert [line.split(" and no text")[0] for line in lines] == [
+            "[float-page] p. 6 holds an uncaptioned figure",
+            "[float-page] p. 7 holds Figure 3 and 2 uncaptioned figures",
+        ]
+
     def test_a_pdf_without_the_key_is_silent(self, tmp_path, capsys):
         # LuaLaTeX writes the key only when a figure lands on a float page.
         pdf = tmp_path / "out.pdf"
@@ -166,6 +177,15 @@ class TestUnderLuaLaTeX:
         page = re.search(_FLOAT_PAGE_RE, self._compile(tmp_path, body)).group(1)
         _floats.print_report(tmp_path / "doc.pdf")
         assert capsys.readouterr().err.startswith(f"[float-page] p. {page} holds Figure 1 ")
+
+    def test_an_uncaptioned_figure_is_reported_as_one(self, tmp_path):
+        """Reproduced in review: it was logged under the last captioned
+        figure's number, which sat in the text pages earlier."""
+        bare = "\\begin{figure}\\rule{1pt}{0.9\\textheight}\\end{figure}\n"
+        body = _figure("0.2", "Small") + _TEXT + bare + _TEXT
+        log = self._compile(tmp_path, body)
+        assert re.search(r"chitragupta float page: \d+ holds an uncaptioned figure", log)
+        assert "holds Figure 1" not in log
 
 
 @pytest.mark.skipif(

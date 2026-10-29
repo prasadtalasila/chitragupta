@@ -59,11 +59,23 @@ def preamble_args(
     return []
 
 
+def _join(items: list[str]) -> str:
+    """`a`, `a and b`, `a, b and c`."""
+    return items[0] if len(items) == 1 else f"{', '.join(items[:-1])} and {items[-1]}"
+
+
 def _figures(numbers: list[str]) -> str:
-    """`Figure 2.5`, `Figures 3.1 and 3.2`, `Figures A.1, A.2 and A.3`."""
-    if len(numbers) == 1:
-        return f"Figure {numbers[0]}"
-    return f"Figures {', '.join(numbers[:-1])} and {numbers[-1]}"
+    """`Figure 2.5`, `Figures 3.1 and 3.2`, `Figure 3 and an uncaptioned
+    figure`. An empty number is a figure with no `\\caption`, which steps
+    no counter and so has no number of its own to give."""
+    named = [number for number in numbers if number]
+    uncaptioned = len(numbers) - len(named)
+    parts = [f"Figure{'s' if len(named) > 1 else ''} {_join(named)}"] if named else []
+    if uncaptioned:
+        parts.append(
+            "an uncaptioned figure" if uncaptioned == 1 else f"{uncaptioned} uncaptioned figures"
+        )
+    return " and ".join(parts)
 
 
 def print_report(pdf: Path) -> None:

@@ -22,8 +22,10 @@
 \renewcommand{\floatpagefraction}{0.8}
 \setcounter{topnumber}{3}
 \setcounter{totalnumber}{4}
-% `h` first: what pandoc's own template already sets for an image figure,
-% so a TikZ figure places the way an image figure does.
+% `h` first, so a figure may stay exactly where it is written when it
+% fits. Set here, not left to pandoc: its template set `htbp` for an image
+% figure up to 3.1 and no longer does by 3.7, so this line is the only
+% one that gives every figure the same placement whichever pandoc runs.
 \makeatletter
 \def\fps@figure{htbp}
 \makeatother
@@ -37,7 +39,11 @@
 % shipped; a shipout/before hook hands that, with the page's number, to
 % Lua. Each figure carries a \latelua node holding its own number, frozen
 % when the figure is set, which runs as its page ships. The line goes to
-% the log, where a book build reads it.
+% the log, where a book build reads it. A figure with no \caption steps
+% no counter, so it would carry the last captioned figure's number: the
+% counter is read again at the figure's start, and an unchanged one is
+% reported as an uncaptioned figure instead. Only `figure` is watched; a
+% float-only page of tables, or of `figure*`, is not reported.
 %
 % A `draft render` cannot read the log: pandoc deletes it when a pdf
 % succeeds. Nor can Lua write a file beside the render, because
@@ -59,7 +65,9 @@
   function chitragupta_floats.figure(number)
     local page = chitragupta_floats.page
     if page == nil then return end
-    texio.write_nl("log", "chitragupta float page: " .. page .. " holds Figure " .. number)
+    local what = "Figure " .. number
+    if number == "" then what = "an uncaptioned figure" end
+    texio.write_nl("log", "chitragupta float page: " .. page .. " holds " .. what)
     texio.write_nl("log", "")
     chitragupta_floats.count = chitragupta_floats.count + 1
     chitragupta_floats.lines = chitragupta_floats.lines .. page .. string.char(9) .. number .. string.char(10)
@@ -76,10 +84,12 @@
   \else
     \directlua{chitragupta_floats.page = nil}%
   \fi}
+\AddToHook{env/figure/begin}{\edef\chitragupta@figurestart{\the\c@figure}}
 \AddToHook{env/figure/end}{%
   \begingroup
   \edef\chitragupta@floatnode{\endgroup
-    \noexpand\latelua{chitragupta_floats.figure("\luaescapestring{\thefigure}")}}%
+    \noexpand\latelua{chitragupta_floats.figure("%
+      \ifnum\c@figure=\chitragupta@figurestart\space\else\luaescapestring{\thefigure}\fi")}}%
   \chitragupta@floatnode}
 \AddToHook{enddocument/afterlastpage}{%
   \ifnum\directlua{tex.sprint(chitragupta_floats.count)}>0
