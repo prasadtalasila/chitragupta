@@ -7,227 +7,123 @@ tags: [figure, tikz, drafting]
 # figure-drawer
 
 This skill owns *how* a figure is drawn. Whether a draft wants one, and
-what shape it takes in that draft, belongs to the genre skill that
-called you; its figure step has already decided both.
-`docs/WRITING-STANDARDS.md` §10 is the contract for every figure, and
-`docs/TIKZ-STYLE.md` is the detail behind each step below.
-
-This skill **never presents a draft.** When the figure is drawn and
-checked, return to the step that sent you here.
+its shape there, is the calling genre skill's. `docs/WRITING-STANDARDS.md`
+§10 is the contract for every figure. Paths in this skill are from the
+project root. This skill **never presents a draft**: it returns to the
+step that sent it.
 
 ## Who called you
 
 - **A genre skill** (`survey-writer-opencode`,
   `tutorial-writer-opencode`, `textbook-chapter-writer-opencode` or
-  `thesis-chapter-writer-opencode`). It has decided a figure is
-  warranted and named its shape. Draw, check, and return to
-  its next step.
-- **`draft-reviser-opencode`**, redrawing or fixing one figure. The same, and it
-  logs the change when you return.
-- **The user, directly** ("draw a figure for section 3 of
-  rag/survey.md showing how a query moves through retrieval"). That
-  changes an existing draft, so it is a revision. Read the draft's
-  `scope.md` for its genre and house style, and the draft's extension
-  for its shape (the table below). Draw and check. Then continue in
-  `draft-reviser-opencode`'s loop at "6. Write the dossier back" and its
-  "7. Gate, reference, render" onward: those log the change in
-  `revisions.md`, run the gate, render, and re-stamp the fingerprint.
-  The genre's when-to-draw threshold does not apply here, because the
-  person asked for the figure. A `deep-research-opencode` draft takes no figure
-  (its skill says why); say so and stop. With no draft to put it in,
-  there is nothing for this skill to place a figure into; say so.
+  `thesis-chapter-writer-opencode`): draw, check, and return to its next
+  step.
+- **`draft-reviser-opencode`**, redrawing or fixing one figure: the
+  same, and it logs the change.
+- **The user, directly.** That is a revision. Read the draft's
+  `scope.md` for its genre and house style, then draw and check, and
+  continue in `draft-reviser-opencode`'s loop at "6. Write the dossier back" and
+  "7. Gate, reference, render". The genre's when-to-draw threshold does
+  not apply: the person asked. A `deep-research-opencode` draft takes no figure,
+  and with no draft there is nowhere to put one: say so and stop.
 
 ## Where it goes
 
-| Draft | In the draft | Files |
-| --- | --- | --- |
-| `.md` (survey, tutorial, textbook chapter) | a line of its own, `<!-- figure: figures/<name> -->`; if the figure warrants a caption, a caption line directly below it (no blank line), and an inline `<!-- figureref: <name> -->` wherever prose points at it | `figures/<name>.tex` and `figures/<name>.txt` |
-| `.tex` (thesis chapter) | `\input{figures/<name>.tex}` then `%figure: figures/<name>` on the next line; a captioned figure goes inside a hand-written `figure` float with `\caption{...}` and `\label{fig:<id>}` | the same pair |
-
-Both files sit under the draft's topic directory,
-`content/drafts/<topic>/figures/`. A flat draft has no topic directory
-of its own; the caller's figure step says what to do about that, and on
-direct use the section below does. Never write the word "Figure" or a
-number yourself: the renderer, or the thesis's own LaTeX, assigns both.
-
-### On direct use
-
-A genre skill's figure step covers the cases below for its own drafts.
-On direct use the caller is `draft-reviser-opencode`, which has no figure step,
-so they are this skill's to state:
-
-- **No TikZ** (step 7's probe finds nothing): write no pair. Write the
-  ASCII inline instead, in a fence in a `.md` draft or in a `verbatim`
-  environment in a `.tex` one, with no marker, and say so in chat.
-- **A flat draft** (`content/drafts/<slug>.md` or `.tex`, no topic
-  directory): figures beside it would land in `content/drafts/figures/`,
-  shared with every other flat draft. Ask whether to move the draft and
-  its dossier into a topic directory first, or drop the figure.
-- **A thesis fragment.** The fragment is `\input` into the user's own
-  thesis, so two things are theirs to know. When the render prints a
-  `[tikz-libraries]` line, quote it and tell them that
-  `\usetikzlibrary{...}` with those names belongs in their thesis
-  preamble; never work around it inside a figure file. When it prints a
-  `[unicode]` line, tell them to copy `chitragupta-unicode.sty` beside
-  their thesis and load it. A `[floats]` line is optional for them:
-  `\input{chitragupta-floats}` gives their thesis the float placement
-  the pdf preview used, and leaving it out keeps their template's own.
-  And never write `\renewcommand{\thefigure}`: their thesis's own
-  counter numbers the figure.
+A `.md` draft takes `<!-- figure: figures/<name> -->` on a line of its
+own; a `.tex` one takes `\input{figures/<name>.tex}` then
+`%figure: figures/<name>`. The pair, `figures/<name>.tex` and `.txt`,
+sits in `content/drafts/<topic>/figures/`. The caption, the
+`figureref` marker, and on direct use no TikZ, a flat draft or a thesis
+fragment: `.claude/skills/figure-drawer/references/placement.md` §1,
+§2, §3 and §4.
 
 ## The procedure
 
-1. **Look before you draw.** `python -m chitragupta.draft figures
-   <citekey>` lists a synced paper's figures and hands back a crop of
-   each, for any citekey the draft already cites. Seeing how a concept
-   is conventionally drawn, and seeing several versions of it, is
-   legitimate input to a diagram you then draw yourself. It is not a
-   licence to reproduce one: the source image never enters the draft,
-   and a close redraw of any single one is the same violation, per
-   `docs/WRITING-STANDARDS.md` §10. AGENTS.md states the boundary in
-   full.
+1. **Look, never copy (optional).** `python -m chitragupta.draft figures
+   <citekey>` shows a cited paper's figures. They are input to a diagram
+   you draw yourself; the TikZ must be as original as the ASCII:
+   `.claude/skills/figure-drawer/references/figures.md` §5.
 
-2. **Commit to a layout metaphor before drawing, and start from the
-   scaffold for it rather than from an empty picture.** `assets/tikz/`
-   holds one known-good file per metaphor `docs/TIKZ-STYLE.md` names --
-   pipeline, map, layered stack, control loop, branching tree,
-   hub-and-spoke, zoned spine. Start from the one that fits with
-   `python -m chitragupta.figure new <figures dir> <name> --layout <id>`,
-   which copies it and its ASCII twin,
-   keeps its `% cg-layout:` line, brings its house style block up to
-   date as `python -m chitragupta.figure sync` would, and never
-   overwrites a figure that exists. Then re-label it,
-   leaving the house style block unedited. Each places its
-   nodes relative to one another, which is the property worth keeping:
-   a figure laid out in hand-computed millimetres re-opens every
-   adjacency in it the moment any label changes length. Then check the
-   result against that document's pre-flight defect list (occlusion,
-   chaotic routing, illegible type, non-rectangular protrusion, an
-   overlong node, literal copying) before keeping the figure. No label
-   goes below the body size, and the figure is `\input` bare, never
-   inside `\resizebox`: if it does not fit, change the layout, not the
-   scale. For which metaphor fits, name what the figure argues and route
-   it through `.claude/skills/figure-drawer/references/patterns.md` (paths
-   in this skill are from the project root), then read that layout's own
-   file, one of
+2. **Pattern, then layout.** Commit to a layout metaphor before drawing.
+   Name what the figure argues, route it through
+   `.claude/skills/figure-drawer/references/patterns.md`, then read that
+   layout's file:
    `.claude/skills/figure-drawer/references/layouts/pipeline.md`,
    `.claude/skills/figure-drawer/references/layouts/map.md`,
    `.claude/skills/figure-drawer/references/layouts/layered-stack.md`,
    `.claude/skills/figure-drawer/references/layouts/control-loop.md`,
    `.claude/skills/figure-drawer/references/layouts/branching-tree.md`,
-   `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`, or
-   `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`;
-   then `.claude/skills/figure-drawer/references/figures.md` §1; for a
-   figure that does not fit the
-   width, `.claude/skills/figure-drawer/references/figures.md` §3; for
-   what the house block's zone cards, badges and legend are for,
-   `.claude/skills/figure-drawer/references/figures.md` §4.
+   `.claude/skills/figure-drawer/references/layouts/hub-and-spoke-network.md`
+   or `.claude/skills/figure-drawer/references/layouts/zoned-spine.md`.
+   Metaphors, panels, fit and the exemplar:
+   `.claude/skills/figure-drawer/references/figures.md` §1, §2, §3 and §4.
+
+3. **The taste gate.** Before anything is written, answer, in
+   `.claude/skills/figure-drawer/references/taste.md` §1, §2, §3, §4, §5
+   and §6:
+   - Would a sentence or a table do this?
+   - The remove test: which node, edge or label can go?
+   - Which two nodes always travel together, and become one?
+   - Is there one focal node?
+   - Is this one figure or two figures (overview and detail)?
+
+   Make the trims yourself. A structural verdict (a sentence, a table, or
+   two figures): draw nothing, and return the verdict and its reason to
+   the caller, who decides. On direct use, ask the user.
+
+4. **Start from the scaffold.** `kpsewhich tikz.sty`: if it finds
+   nothing, write no pair (`.claude/skills/figure-drawer/references/placement.md`
+   §2) and return. Otherwise:
 
    ```bash
    python -m chitragupta.figure new content/drafts/rag/figures flow --layout zoned-spine
    ```
 
-3. **Panels get lettered sub-captions, in both forms.** A figure with
-   more than one panel is still one figure and one marker; each panel
-   carries a `(<letter>) <short title>` node -- `(a)` for the first
-   panel in reading order, `(b)` for the second, on through the
-   alphabet -- and the same letters appear in the `.txt` -- `docx`,
-   `html` and `md` render only that form, so letters left out of it are
-   letters the reader never sees. Which lettering to use is `scope.md`'s
-   to say, when it records one. The worked three-panel example, the
-   row-wrapping rule for a row that stops fitting, and why the
-   `subcaption` package is not the answer are in
-   `.claude/skills/figure-drawer/references/figures.md` §2.
+   It copies the scaffold and its twin, keeps `% cg-layout:`, brings the
+   house block up to date as `python -m chitragupta.figure sync` would,
+   and never overwrites a figure.
 
-4. **Redraw the ASCII twin** `figure new` copied to `figures/<name>.txt`, in
-   `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet, depicting the same
-   thing as the TikZ: the same boxes, the same arrows, the same panel
-   letters. A Unicode box character hard-fails a thesis template that
-   compiles with `pdflatex`. Name each box, tag and panel in the TikZ's
-   own words: `figure check` (step 8) reports a missing twin
-   (`twin-missing`) and any name, tag or panel letter the twin lacks
-   (`t1-labels`, `t2-tags`, `t3-panels`). Whether the arrows join the
-   same boxes is still yours to check by eye.
+5. **Draw below the house block**, never inside it. Re-label; name every
+   node; nodes placed relative to one another. More than one panel gets
+   lettered sub-captions, `(a)`, `(b)`, in both forms, or the lettering
+   `scope.md` records. A library goes in
+   one `\usetikzlibrary` line at the top and nothing else about loading:
+   `.claude/skills/figure-drawer/references/figures.md` §6, §7.
+   **No citekey inside either figure file**: the gate does not follow
+   `\input`, so attribute in the prose beside the figure.
 
-5. **No citekey inside either figure file.** The gate reads the draft
-   and does not follow `\input`, so a citekey in a node label evades the
-   one check this pipeline exists for. Attribute in the prose beside the
-   figure, where the gate can see the key.
+6. **Redraw the ASCII twin** at `figures/<name>.txt`, in
+   `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet: the same boxes,
+   arrows and panel letters, named in the TikZ's own words. `figure check`
+   reports `twin-missing`, `t1-labels`, `t2-tags` and `t3-panels`;
+   whether the arrows join the same boxes is yours to see.
 
-6. **The TikZ must be as original as the ASCII.** A picture redrawn from
-   a source paper's figure is the same violation in different pixels,
-   whichever notation it is drawn in.
-
-7. **Verify the TikZ compiles before keeping it.** Run
-   `kpsewhich tikz.sty` first. **If it finds nothing, write no pair:
-   return to the caller, whose figure step names its inline ASCII
-   fallback (on direct use, "On direct use" above), and say so in
-   chat.** If it is present, wrap
-   `figures/<name>.tex` in a minimal `\documentclass[12pt]{article}` +
-   `\usepackage{fontspec}` + `\usepackage{tikz}` document and run
-   `lualatex` on it, the engine the pdf render uses (#1037). A malformed
-   figure fails the *whole* pdf render, not just the figure. If the
-   figure uses `positioning`, `matrix`, `fit` or `tree`, put its
-   `\usetikzlibrary` line at the top of `figures/<name>.tex` and copy
-   that line into the probe too: the probe's own preamble loads `tikz`
-   and no library, so a picture that relies on one errors there whether
-   or not it is sound. Keep the line in the figure file and write
-   nothing else about loading -- no clearing of
-   `\tikz@library@...@loaded`, no saving or restoring of
-   `\tikz@node@reset@hook`. The renderer collects those lines and loads
-   the union in its own preamble (#781); a load *inside* the figure
-   float is the bug that multiplied node spacing in this project's own
-   book. `docs/TIKZ-STYLE.md` has the detail.
+7. **Check it.**
 
    ```bash
-   kpsewhich tikz.sty
-   lualatex probe.tex   # \documentclass[12pt]{article}\usepackage{fontspec}\usepackage{tikz} + \input{figures/flow}
+   python -m chitragupta.figure check content/drafts/rag/figures/flow.tex
    ```
 
-8. **Check it.** `python -m chitragupta.figure check
-   figures/<name>.tex` prints one line per rule the figure breaks, by
-   rule id, measured in the render's own fonts and size, and exits 0
-   whatever it finds. Resolve each finding, or record why it is
-   deliberate with a `% cg-allow: <rule-id> -- <reason>` line in the
-   figure, and run it again until nothing is left unanswered.
-   `.claude/skills/figure-drawer/references/check.md` has every rule,
-   its usual fix and the allow form. It measures only nodes the source
-   names, so name every node you draw.
+   Resolve each objective finding, or record why it is deliberate with
+   `% cg-allow: <rule-id> -- <reason>`, and run it again until none is
+   unanswered. Read the advisory lines; they are references, not
+   findings. If it exits 2 it checked nothing: say so. It never blocks.
+   Rules, fixes and the allow form:
+   `.claude/skills/figure-drawer/references/check.md`.
 
-9. **Look at it in the real render.** The probe is a bare article
-   class; the pipeline's own pdf is LuaLaTeX over the draft's whole
-   document, with its floats, captions and neighbouring text, where
-   labels wrap and the gaps between layers close differently, so a
-   figure that passes the probe can still print with a hyphenated label
-   or an arrow through a zone title. `figure look` sets the figure alone
-   on the render's own page (12pt, its fonts, its text width), cropped
-   to the figure, as `<name>.look.png` at 300 dpi and `<name>.look.pdf`,
-   with a red line at the text width if the figure is wider. Once the
-   draft carries the figure's marker, `--draft` renders the draft too
-   and writes `<name>.page.png`, the page that holds the figure. Open
-   the PNGs and look at them:
+8. **Look at it.**
 
    ```bash
    python -m chitragupta.figure look content/drafts/rag/figures/flow.tex
    python -m chitragupta.figure look content/drafts/rag/figures/flow.tex --draft content/drafts/rag/survey.md
    ```
 
-   It writes only under `content/rendered/`, never the draft.
-   Check the page against the same pre-flight list, fix the layout
-   (wider boxes, more room, a moved edge, never a smaller scale), and
-   look again until it reads cleanly. Edit only below the house style
-   block: a change inside it makes the render warn that the block was
-   hand-edited. If the marker is not in the draft yet, look at the
-   figure alone and tell the caller to look at its page after its own
-   render, which refreshes these pictures. If `figure look` exits 2 for
-   a missing tool (`lualatex`, `tikz.sty`, `pdftoppm`, or `pandoc` with
-   `--draft`), the render reports `[missing-binary]`, or you cannot view
-   an image, skip the look: keep the probe and `figure check` results,
-   and say so in chat. The look is a check, never a condition of
-   keeping the figure; `chitragupta install os-deps` brings the tools.
+   Open the PNGs and read them against the pre-flight defect list
+   (`.claude/skills/figure-drawer/references/figures.md` §6); fix the
+   layout, never the scale. If it exits 2 or you cannot
+   view an image, skip the look and say so in chat.
 
-10. **Return.** Tell the caller the two paths, whether the probe
-    passed, what `figure check` reported and allowed, and whether you
-    checked the rendered page. The caller places
-    the marker and the caption in its own shape, then gates and renders
-    the draft. None of that is this skill's.
+9. **Return.** Tell the caller the two paths, or the gate's verdict;
+   what the taste gate cut; what `figure check` reported and allowed;
+   and whether the look was done. The caller places the marker and the
+   caption, then gates and renders.
