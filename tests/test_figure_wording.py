@@ -190,3 +190,21 @@ class TestW4Pictograph:
 
     def test_one_in_a_comment_is_not_read(self):
         assert _objective("\\node (a) {x}; % ✓ done") == []
+
+
+class TestOddSource:
+    """Source the scanner must read without a crash or a misreading."""
+
+    def test_a_cglab_with_spaces_before_its_arguments_is_read(self):
+        assert [f[0] for f in _advisory("\\node (n) {\\cglab {feature store} {x}};")] == ["w1-case"]
+
+    def test_a_cglab_with_no_gloss_is_read_as_a_name(self):
+        assert [f[0] for f in _advisory("\\node (n) {\\cglab{feature store}};")] == ["w1-case"]
+
+    def test_a_node_with_no_label_is_passed_over(self):
+        assert _objective("\\coordinate (c) at (0,0); \\node (a) at (1,0);") == []
+
+    def test_an_unclosed_label_runs_to_the_end(self):
+        found = wording_rules("\\node (a) {✓ never closed")[0]
+
+        assert [(f.rule, f.target) for f in found] == [("w4-pictograph", "a")]
