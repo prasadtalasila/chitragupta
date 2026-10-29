@@ -37,6 +37,8 @@ class Rule:
     # that could be deliberate (nothing else can be checked until it is
     # fixed), and for every advisory report, which is read, not resolved.
     allowable: bool = True
+    # The layouts (`% cg-layout:`) the rule is not evaluated for (#1054).
+    exempt: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -48,6 +50,11 @@ class Finding:
     target: str
     measurement: str
 
+
+# Diagonal edges are a tree's and a radial network's grammar, and curved
+# transitions an automaton's; orthogonal routing, and the attach points
+# it puts at a side's midpoint, are everyone else's.
+_NOT_ORTHOGONAL = frozenset({"state-machine", "hub-and-spoke-network", "branching-tree"})
 
 RULES: dict[str, Rule] = {
     rule.id: rule
@@ -62,6 +69,14 @@ RULES: dict[str, Rule] = {
         Rule("node-overlap", "element", "objective"),
         Rule("node-text-overload", "element", "objective"),
         Rule("stranded-arrowhead", "element", "objective"),
+        # The connector rules (#1054), measured from the lines TikZ drew.
+        Rule("c1-orthogonal", "element", "objective", exempt=_NOT_ORTHOGONAL),
+        Rule("c2-tag-clearance", "element", "objective"),
+        Rule("c3-coincident", "element", "objective"),
+        Rule("c4-attach", "element", "objective", exempt=_NOT_ORTHOGONAL),
+        Rule("c5-transit", "element", "objective"),
+        Rule("c6-tag-covered", "element", "objective"),
+        Rule("c7-dangling-tip", "element", "objective"),
         Rule("size-height", "figure", "advisory", allowable=False),
         Rule("size-slack", "figure", "advisory", allowable=False),
         Rule("size-squash", "element", "advisory", allowable=False),

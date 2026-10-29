@@ -682,7 +682,8 @@ def _floor_ratios(floor: float, glyphs: list[_Glyph]) -> list[float]:
 
 @needs_tikz
 class TestTheTypeFloor:
-    """Nothing in a figure prints smaller than the paragraph beside it.
+    """Nothing in a figure prints smaller than the paragraph beside it,
+    and, since house block v4, nothing prints larger either.
 
     Body text on page 1 is the reference, measured from the same PDF so
     no number here depends on a class or a unit; the figure alone is on
@@ -701,6 +702,18 @@ class TestTheTypeFloor:
         floor = min(glyph.size for glyph in _effective_sizes(pdf, 0))
         return floor, _floor_ratios(floor, _effective_sizes(pdf, 1))
 
+    @staticmethod
+    def _largest(directory: Path, figure: str) -> float:
+        """The figure's largest printed glyph as a fraction of the body
+        size. Raw sizes, not `_floor_ratios`: that measures a math glyph
+        beside a subscript against the script size, which is right for a
+        floor and would read a full-size `k` as 1.4 times too large."""
+        result = _lualatex(directory, f"Body text.\n\\clearpage\n{figure}")
+        assert result.returncode == 0, result.stdout[-2000:]
+        pdf = directory / "probe.pdf"
+        floor = min(glyph.size for glyph in _effective_sizes(pdf, 0))
+        return max(glyph.size for glyph in _effective_sizes(pdf, 1)) / floor
+
     @by_carrier
     def test_no_glyph_is_set_below_the_body_size(self, scaffold, tmp_path):
         _, sizes = self._floor_and_figure(
@@ -709,6 +722,21 @@ class TestTheTypeFloor:
 
         assert sizes, "the figure printed no text, so the floor was never tested"
         assert min(sizes) >= 1 - _SIZE_TOLERANCE
+
+    @by_carrier
+    def test_no_glyph_is_set_above_the_body_size(self, scaffold, tmp_path):
+        """House block v4 (#1054): one size, the body's. Names and titles
+        are told apart by weight, so a figure never reads louder than the
+        paragraph beside it."""
+        largest = self._largest(tmp_path, f"\\begin{{center}}\\input{{{scaffold}}}\\end{{center}}")
+
+        assert largest <= 1 + _SIZE_TOLERANCE
+
+    def test_a_larger_name_is_caught(self, tmp_path):
+        """The shape the ceiling exists for: v3's `\\large\\bfseries` name."""
+        largest = self._largest(tmp_path, "\\tikz\\node[font=\\large\\bfseries]{Intake};")
+
+        assert largest > 1 + _SIZE_TOLERANCE
 
     def test_the_floor_holds_inside_a_smaller_group(self, tmp_path):
         """`[cg]` sets `\\normalsize` as a picture option rather than

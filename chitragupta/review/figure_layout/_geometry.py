@@ -65,12 +65,12 @@ def overlaps(boxes: dict[str, Box]) -> list[tuple[str, str]]:
     found = []
     for index, (name, box) in enumerate(nodes):
         for other_name, other in nodes[index + 1 :]:
-            if _intersects(box, other) and not _either_contains(box, other):
+            if intersects(box, other) and not _either_contains(box, other):
                 found.append((name, other_name))
     return found
 
 
-def _intersects(one: Box, other: Box) -> bool:
+def intersects(one: Box, other: Box) -> bool:
     """Whether two boxes overlap on *both* axes.
 
     Both, not either: two nodes sharing an x range but stacked vertically
@@ -86,10 +86,13 @@ def _intersects(one: Box, other: Box) -> bool:
 
 def _either_contains(one: Box, other: Box) -> bool:
     """Whether one box wholly encloses the other -- a zone, not a clash."""
-    return _contains(one, other) or _contains(other, one)
+    return contains(one, other) or contains(other, one)
 
 
-def _contains(outer: Box, inner: Box) -> bool:
+def contains(outer: Box, inner: Box) -> bool:
+    """Whether `outer` encloses `inner`, to `_TOLERANCE_PT`. Shared with
+    `figure check`'s connector rules (#1054), so a zone is one thing to
+    both."""
     ox1, oy1, ox2, oy2 = outer
     ix1, iy1, ix2, iy2 = inner
     return (
@@ -112,7 +115,7 @@ def leaves(boxes: dict[str, Box]) -> list[str]:
     return [
         name
         for name, box in nodes.items()
-        if not any(_contains(box, other) for key, other in nodes.items() if key != name)
+        if not any(contains(box, other) for key, other in nodes.items() if key != name)
     ]
 
 
@@ -127,7 +130,7 @@ def edge_gap(one: Box, other: Box) -> float | None:
     """
     if not (_area(one) and _area(other)):
         return None
-    if _either_contains(one, other) or _intersects(one, other):
+    if _either_contains(one, other) or intersects(one, other):
         return None
     ax1, ay1, ax2, ay2 = one
     bx1, by1, bx2, by2 = other

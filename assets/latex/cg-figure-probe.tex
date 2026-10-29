@@ -1,0 +1,82 @@
+% figure check's probe hook (#1054): log every path pgf uses and every
+% node it makes, so the connector rules measure what TikZ drew rather
+% than what Python can re-derive from the source.
+%
+% Inlined into figure check's probe document after \usepackage{tikz}
+% (never \input: the probe runs behind the openin_any=p read fence),
+% and never into review figure's. chitragupta/review/figure_layout/
+% _drawn.py documents the log grammar and reads it.
+%
+% It wraps two pgf internals, \pgfusepath and \pgfmultipartnode. A pgf
+% release that renames either breaks it; tests/test_figure_drawn.py
+% compiles against the installed TeX Live and fails if so.
+\makeatletter
+\newif\ifcginnode
+\newcount\cgunnamed
+\newcount\cgpathcount
+\gdef\cgnodelist{}
+% Every node. Paths used while it is built are its own (its frame), and
+% an unnamed one gets a name so its box can be read at the end. Its
+% text's size is logged first: the node consumes the box.
+\let\cgoldmpn\pgfmultipartnode
+\def\pgfmultipartnode#1#2#3#4{%
+  \edef\cgname{#3}%
+  \ifx\cgname\pgfutil@empty
+    \global\advance\cgunnamed 1
+    \edef\cgname{cgu-\the\cgunnamed}%
+  \fi
+  % Names last: a shape (`circle split`) or a node name may hold spaces.
+  \typeout{CGNODE \the\wd\pgfnodeparttextbox\space
+    \the\ht\pgfnodeparttextbox\space\the\dp\pgfnodeparttextbox\space #1/\cgname}%
+  \edef\cgcall{\noexpand\cgoldmpn{\unexpanded{#1}}{\unexpanded{#2}}{\cgname}}%
+  \begingroup\cginnodetrue\cgcall{#4}\endgroup
+  \xdef\cgnodelist{\unexpanded\expandafter{\cgnodelist}\noexpand\cgdo{\cgname}}%
+}
+% Every path, before its tips shorten it: a header, then one line per
+% point, so a long plotted path never reaches max_print_line.
+\def\cgtip#1{\ifx#1\pgfutil@empty 0\else 1\fi}
+\def\cgseg#1#2#3{\typeout{CGSEG \the\cgpathcount\space#1
+  \strip@pt\dimexpr#2\relax\space\strip@pt\dimexpr#3\relax}}
+\let\cgoldusepath\pgfusepath
+\def\pgfusepath#1{%
+  \global\advance\cgpathcount 1
+  \pgfsyssoftpath@getcurrentpath\cgpath
+  \typeout{CGPATH \the\cgpathcount\space\ifcginnode N\else E\fi\space
+    \cgtip\pgf@start@tip@sequence\space\cgtip\pgf@end@tip@sequence\space#1}%
+  \begingroup
+    \def\pgfsyssoftpath@movetotoken##1##2{\cgseg M{##1}{##2}}%
+    \def\pgfsyssoftpath@linetotoken##1##2{\cgseg L{##1}{##2}}%
+    \def\pgfsyssoftpath@curvetosupportatoken##1##2{\cgseg C{##1}{##2}}%
+    \def\pgfsyssoftpath@curvetosupportbtoken##1##2{\cgseg C{##1}{##2}}%
+    \def\pgfsyssoftpath@curvetotoken##1##2{\cgseg C{##1}{##2}}%
+    \def\pgfsyssoftpath@closepath##1##2{\cgseg Z{##1}{##2}}%
+    \def\pgfsyssoftpath@closepathtoken##1##2{\cgseg Z{##1}{##2}}%
+    \def\pgfsyssoftpath@rectcornertoken##1##2{\cgseg R{##1}{##2}}%
+    \def\pgfsyssoftpath@rectsizetoken##1##2{\cgseg S{##1}{##2}}%
+    \def\pgfsyssoftpath@specialroundtoken##1##2{}%
+    \cgpath
+  \endgroup
+  \cgoldusepath{#1}%
+}
+% At the end of the picture: every node's box from its four sides, in
+% canvas coordinates, its text anchor where its shape has one, and the
+% rotation entries (b, c) of the transform it was set with.
+\def\cgdumpnodes{%
+  \begingroup\pgftransformreset
+  \def\cgdo##1{%
+    \pgfpointanchor{##1}{west}\edef\cgw{\strip@pt\pgf@x}%
+    \pgfpointanchor{##1}{south}\edef\cgs{\strip@pt\pgf@y}%
+    \pgfpointanchor{##1}{east}\edef\cge{\strip@pt\pgf@x}%
+    \pgfpointanchor{##1}{north}\edef\cgn{\strip@pt\pgf@y}%
+    \pgfutil@ifundefined{pgf@anchor@\csname pgf@sh@ns@##1\endcsname @text}%
+      {\def\cgt{- -}}%
+      {\pgfpointanchor{##1}{text}\edef\cgt{\strip@pt\pgf@x\space\strip@pt\pgf@y}}%
+    \begingroup
+      \pgfsettransform{\csname pgf@sh@nt@##1\endcsname}%
+      \pgfgettransformentries{\cgta}{\cgtb}{\cgtc}{\cgtd}{\cgtx}{\cgty}%
+      \xdef\cgturn{\cgtb\space\cgtc}%
+    \endgroup
+    \typeout{CGNB \cgw\space\cgs\space\cge\space\cgn\space\cgt\space\cgturn\space ##1}}%
+  \cgnodelist
+  \endgroup}
+\makeatother

@@ -41,4 +41,4 @@ fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
-| `assets/tikz/control-loop.tex` | 4 | 4 | 0.50 | 0.13 | 0.53 |
+| `assets/tikz/control-loop.tex` | 4 | 4 | 0.50 | 0.13 | 0.52 |

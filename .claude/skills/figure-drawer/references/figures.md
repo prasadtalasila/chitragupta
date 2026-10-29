@@ -186,8 +186,8 @@ What its parts are for:
   \node[cgbox, right=7mm of bib, text width=23mm] (sync) {\cglab{Corpus}{parse, ledger}};
   ```
 
-  `\cglab{name}{gloss}` gives the two-tier label: a bold name one step
-  up the type ramp, and a gloss at body size. Every node is named, so
+  `\cglab{name}{gloss}` gives the two-tier label: a bold name over a
+  muted gloss, both at body size. Every node is named, so
   `figure check` can measure it.
 - **Node roles, not colours.** `cgbox`, `cgalt`, `cgkey` and `cgopt`
   mark what a node *is* (ordinary, generative, the gate, optional), and

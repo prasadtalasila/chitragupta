@@ -1199,7 +1199,7 @@ Three phases under one epic:
    layout. This is II.0 and VI.6.
 2. **`chitragupta figure new`, `check` and `look`.** One command per step,
    in the shape of DTaaS's diagram skill. `check` reports numbered rules:
-   six connector rules, contrast, focal count, wording, twin agreement
+   seven connector rules, contrast, focal count, wording, twin agreement
    and size. It also honours `% cg-allow:` lines that carry a reason,
    figure-scope first and element-scope second. This is VI.5, VI.3 and
    most of #1016.

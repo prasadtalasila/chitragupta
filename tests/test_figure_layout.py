@@ -453,6 +453,16 @@ class TestScaffold:
         assert "\\documentclass[12pt]{article}" in scaffold
         assert "\\setmainfont{STIX Two Text}" in scaffold
 
+    def test_a_box_is_read_from_its_four_sides(self):
+        """#1054: `south west` and `north east` are corners only on a
+        rectangle. On a circle they lie on the curve, so the box came
+        back about 30% too small."""
+        scaffold = figure_layout.scaffold("\\node (a) {A};", ["a"])
+
+        for side in ("west", "east", "south", "north"):
+            assert f"\\pgfpointanchor{{a}}{{{side}}}" in scaffold
+        assert "{south west}" not in scaffold
+
     def test_a_name_spelled_with_a_macro_is_declared_but_not_probed(self):
         """#1072: `\\node (s\\i)` inside a `\\foreach` names a node only
         while the loop runs. The probes sit after the loop, where `\\i`
@@ -732,6 +742,22 @@ class TestProbeAgainstRealLualatex:
         for name in ("a", "b"):
             x1, y1, x2, y2 = boxes[name]
             assert x1 < x2 and y1 < y2, f"{name} has a degenerate box"
+
+    def test_a_circle_is_measured_at_its_diameter(self, tmp_path):
+        """#1054: a 2cm circle, line width included, is 2cm wide."""
+        figure = tmp_path / "fig.tex"
+        figure.write_text(
+            "\\begin{tikzpicture}\n"
+            "\\node[circle,draw,minimum size=2cm,inner sep=0pt] (c) at (0,0) {};\n"
+            "\\end{tikzpicture}\n",
+            encoding="utf-8",
+        )
+
+        x1, y1, x2, y2 = figure_layout.node_boxes(figure)["c"]
+
+        two_cm = 2 * 72.27 / 2.54
+        assert x2 - x1 == pytest.approx(two_cm, abs=1.0)
+        assert y2 - y1 == pytest.approx(two_cm, abs=1.0)
 
     def test_the_picture_bounding_box_is_reported_too(self, tmp_path):
         figure = tmp_path / "fig.tex"

@@ -348,20 +348,21 @@ Concrete defects, not taste:
 Two conventions, both about a figure looking like a native part of the
 document rather than something pasted in:
 
-- **The smallest type in a figure equals the document's body size.** That
-  is a floor, not a target: nothing in a picture may be set smaller than
-  the paragraph beside it, and a figure is free to go *up* from there.
-  The house ramp is two steps: `\normalsize` for every gloss, edge tag,
-  note, legend entry and badge, and `\large\bfseries` for node names and
-  zone titles. Set the floor explicitly as a picture option
+- **Every word in a figure is set at the document's body size.** Nothing
+  in a picture is smaller than the paragraph beside it, and nothing is
+  larger either: node names and zone titles are told apart from glosses,
+  tags and notes by weight and colour (bold names, muted glosses), not
+  by size. Set the size explicitly as a picture option
   (`\begin{tikzpicture}[cg]` does it), rather than inheriting it, so a
   picture that lands inside a float, a table cell or a `\small` group
-  does not quietly drop below it.
+  does not quietly drop below it. House block v4 made this one size
+  (#1054): v3 set names and titles a step up, at `\large\bfseries`,
+  and the figures then read louder than the text around them, and a
+  zone title grew past its zone into the next one.
 
   Shrinking type is never the fix for a box with too many words in it:
   that is the conciseness defect, and the fixes are fewer words or a
-  wider box. Going the other way costs nothing: a larger name gives the
-  figure a hierarchy the flat version has to spell out in the caption.
+  wider box.
   Two exceptions, both automatic and both correct: a mathematical
   subscript or superscript set by TeX's own script style, and the
   `\caption`, which is the document's, not the figure's.
@@ -787,20 +788,28 @@ or point.
 | `focal-count` | figure | objective | More than one `cgkey` node: if two things are accented, neither is. Read from the source, so a `cgkey` reached only through a style the figure defines itself is not seen |
 | `content-protrusion` | figure | objective | An empty horizontal band taller than a third of the figure ("Check the drawn figure against this list" above) |
 | `loads-library-by-hand` | figure | objective | A library loaded through its internal macro instead of `\usetikzlibrary` (#781) |
-| `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap |
+| `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap. Every node TikZ drew is measured, an unnamed one (a zone title, a note) named by its centre, `(x,y)` in mm; a tag on a line is `c6`'s, and a round node under 7mm (a step badge) is left out |
 | `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
+| `c1-orthogonal` | element | objective | A connector between nodes whose ends differ by more than 1mm in both x and y is drawn straight or bent instead of as an elbow (`-\|`, `\|-`); the target is the edge, `a->b`. Not evaluated for the `branching-tree`, `hub-and-spoke-network` and `state-machine` layouts |
+| `c2-tag-clearance` | element | objective | A tag's text is under 0.8mm or over 3mm from its own line. Measured from the text, not the node box, which `above` and the rest put on the line; the house `cgtag` sits 1mm clear. A `sloped` tag is not measured |
+| `c3-coincident` | element | objective | Two connectors run together for more than 2mm, so one hides the other; the target is the pair, `a->b+c->d`. Two that share an end point are a fork, and are not counted |
+| `c4-attach` | element | objective | One end on a side over 1mm off its midpoint, several over 1mm off even spacing (`L*k/(N+1)`) or under 2mm apart; the target is the side, `a.north`. Measured only where a straight connector meets the side square on, so an angled or bent end is left to `c1`. Round nodes and zones are not measured, and the layouts `c1` exempts are exempt |
+| `c5-transit` | element | objective | A connector crosses a node that is neither of its ends. A zone containing an end, a marker under 2mm and an unframed group (an undrawn `fit`) are not counted |
+| `c6-tag-covered` | element | objective | A tag overlaps a node. A zone containing the tag and an unframed group are not counted |
+| `c7-dangling-tip` | element | objective | An arrow leaving a node has its tip land more than 1mm from any node or other line; the target is the point, `(x,y)` in mm. An axis or a two-headed dimension line, which leaves no node, is not read |
 | `size-height` | figure | advisory | The picture's height as a share of the 700pt text height, beside the layout's reference range |
 | `size-slack` | figure | advisory | `1 -` the area of the nodes that enclose no other node, over the picture's area (a zone card is not filled area), beside the layout's reference range |
 | `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured; a path with an `edge` operator or a named node on it, or a point built from two nodes (`b.north \|- a`), is listed as not measured rather than guessed at |
 | `budget-nodes` | figure | advisory | The named node count, beside the layout's reference range. Never a cap |
 | `budget-edges` | figure | advisory | The count of edges the source parser reads, beside the layout's reference range. Never a cap |
 
-Of the objective rules, all but `size-width`, `size-stray` and
-`focal-count` are `review figure`'s findings, under the ids its `--json`
-has always used. The edge list,
-the declared names that were not measured and the emptiness proportion
-are printed beside the findings as diagnostics, never as findings.
+Of the objective rules, all but `size-width`, `size-stray`,
+`focal-count` and the connector rules `c1` to `c7` are `review
+figure`'s findings, under the ids its `--json` has always used. The
+edge list, the declared names that were not measured, the emptiness
+proportion and the count of lines not between two nodes are printed
+beside the findings as diagnostics, never as findings.
 
 **The five advisory rules are reports, not findings** (#1057). They
 print under their own heading whatever the numbers are, never change
@@ -814,10 +823,10 @@ layout from the figure's own `% cg-layout: <layout>` line, on a line
 of its own (`--layout` overrides it). Every scaffold and exemplar
 carries one; a figure without one gets the numbers and no range.
 
-The eight rules that need the compiled geometry (`nothing-measurable`,
-`size-width`, `size-stray`, `content-protrusion`, `node-overlap`,
-`size-height`, `size-slack`, `size-squash`) are listed under "not
-measured", with the reason, whenever there is none to read: the figure
+The fifteen rules that need the compiled geometry (`nothing-measurable`,
+`size-width`, `size-stray`, `content-protrusion`, `node-overlap`, `c1`
+to `c7`, `size-height`, `size-slack`, `size-squash`) are listed under
+"not measured", with the reason, whenever there is none to read: the figure
 does not compile, the file has no `tikzpicture` environment for the
 probe to sit in (a bare `\tikz` is not compiled at all), or its last
 `tikzpicture` is inside a macro body that never runs. A rule that could
@@ -829,6 +838,24 @@ it, whose consecutive tokens are not the two ends of one line, and one
 with an end that is no measured node (`chan -| gate.west`). The edges it
 could read are still measured, so `size-squash` can appear both among
 the advisory reports and under "not measured" in one report.
+
+**The connector rules measure the lines TikZ drew**, not the source:
+the probe logs every stroked line and every node, a `\foreach` body's,
+a `child`'s and a tag's included, so a computed end such as
+`(a.north |- b.south)` is measured where it landed. A connector is a
+line whose two ends touch two different nodes; a line that does not
+(an axis, a plot, a bus line, a self-loop) is not checked, and the
+report counts it. They are listed as not measured where a line and the
+node boxes are not in one frame: a file with several `tikzpicture`s, or
+one that uses `transform canvas`. Their thresholds were set over this
+repository's own figures (`bench/RESULTS.md`, 2026-10-29).
+
+**The layout line also decides which connector rules apply.** A rule a
+layout exempts is not evaluated for a figure that declares it (or is
+given it with `--layout`): a tree's and a hub's edges are diagonal by
+design, and an automaton's transitions curve, so `c1-orthogonal` and
+`c4-attach` are exempt for `branching-tree`, `hub-and-spoke-network`
+and `state-machine`.
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

@@ -40,7 +40,7 @@ fractions are the ones that print.
 
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
-| `assets/tikz/map.tex` | 9 | 0 | 0.50 | 0.18 | 0.47 |
+| `assets/tikz/map.tex` | 9 | 0 | 0.50 | 0.18 | 0.48 |
 
 The scaffold draws no edges, so its edge count is 0 by construction
 (`matrix` rows are not `\draw` paths).
