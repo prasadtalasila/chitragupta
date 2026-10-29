@@ -33,6 +33,7 @@ from pathlib import Path
 
 from chitragupta import _pandoc_cites, config, install, programs
 from chitragupta.render_output._errors import MissingBinary
+from chitragupta.render_output._figure_anchor import anchored_input
 from chitragupta.render_output._figure_captions import warnings as _caption_warnings
 from chitragupta.render_output._paths import _MARKDOWN_SUFFIXES
 
@@ -209,8 +210,11 @@ def _require_tikz() -> None:
         )
 
 
-def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
+def _substitute_tikz_for_ascii(text: str, draft_dir: Path, anchored: bool = False) -> str:
     """Markdown draft, LaTeX-bound output: `figure:` marker -> `\\input`.
+
+    `anchored` (pdf output) marks each figure's page for
+    `_figure_anchor.pages` to read back.
 
     A marker naming something that isn't a readable file under the
     draft's own directory is left exactly as it was, so the draft still
@@ -222,7 +226,7 @@ def _substitute_tikz_for_ascii(text: str, draft_dir: Path) -> str:
         ref = _tikz_path(match.group(1))
         if _resolve_sibling(draft_dir, ref) is None:
             return match.group(0)
-        return f"\\input{{{ref}}}\n"
+        return anchored_input(ref, match.group(1)) if anchored else f"\\input{{{ref}}}\n"
 
     return _FIGURE_MARKER_MD_RE.sub(replace, text)
 
@@ -348,7 +352,7 @@ def _with_figures_for(text: str, input_path: Path, output_format: str) -> str:
     is_markdown = input_path.suffix.lower() in _MARKDOWN_SUFFIXES
     wants_latex = output_format in _TEX_FORMATS
     if is_markdown and wants_latex:
-        return _substitute_tikz_for_ascii(text, input_path.parent)
+        return _substitute_tikz_for_ascii(text, input_path.parent, output_format == "pdf")
     if is_markdown and not wants_latex:
         return _substitute_ascii_for_marker(text, input_path.parent)
     if not is_markdown and not wants_latex:
