@@ -1,11 +1,16 @@
 """`python -m chitragupta figure sync [PATH ...] [--check]` (#1013),
 `python -m chitragupta figure check <figure.tex> [--width PT] [--layout NAME]
 [--json]` (#1053, #1057) and `python -m chitragupta figure new
-<figures-dir> <name> --layout ID` (#1052).
+<figures-dir> <name> --layout ID` and `python -m chitragupta figure look
+<figure.tex>` (#1052).
 
 `figure new` exits 0 once it has written the figure, and 2 for anything
 it refused (a name with a path in it, a file already there, an unknown
 layout) or could not read from the install; it never writes half.
+`figure look` exits 0 whatever the figure does, a failed compile
+included, and 2 only for an unreadable figure, a missing `lualatex`,
+`tikz.sty` or `pdftoppm`, or a rendered directory outside the content
+directory: the cases where it looked at nothing.
 
 `figure check` exits 0 whatever it finds: an objective finding is the
 skill's to resolve or allow, never an exit code's to enforce. 2 is a
@@ -35,8 +40,10 @@ from chitragupta.figure._block import House, load_house
 from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._check_report import format_text, payload
 from chitragupta.figure._layout import layout_names
+from chitragupta.figure._look import lines, look
 from chitragupta.figure._new import Refused, layouts, new_figure
 from chitragupta.figure._sync import Outcome, run
+from chitragupta.config_path import OutsideContentDir
 from chitragupta.progname import prog_for
 from chitragupta.render_output._errors import MissingBinary, _require
 from chitragupta.render_output._figures import _require_tikz
@@ -62,6 +69,8 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("figures_dir", type=Path, help="the draft's figures/ directory")
     new.add_argument("name", help="the figure's file stem, e.g. flow for flow.tex")
     new.add_argument("--layout", required=True, choices=list(layouts()), help="the scaffold")
+    figure_look = verbs.add_parser("look", help="see one figure as it will print")
+    figure_look.add_argument("figure", type=Path, help="the figure's .tex file")
     figure_check = verbs.add_parser("check", help="report every rule one figure file breaks")
     figure_check.add_argument("figure", type=Path, help="the figure's .tex file")
     figure_check.add_argument(
@@ -128,6 +137,31 @@ def _print(outcomes: list[Outcome]) -> None:
     print("figure sync: " + ", ".join(f"{n} {a}" for a, n in sorted(counts.items())))
 
 
+def _look(args: argparse.Namespace) -> int:
+    try:
+        args.figure.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        print(f"figure look: {args.figure} is not a readable UTF-8 file: {exc}", file=sys.stderr)
+        return 2
+    try:
+        _require("lualatex")
+        _require_tikz()  # pragma: no cover-windows
+        _require("pdftoppm")  # pragma: no cover-windows
+    except MissingBinary as exc:
+        print(
+            f"figure look: {exc} Nothing was written. `chitragupta doctor` checks the install.",
+            file=sys.stderr,
+        )
+        return 2
+    try:  # pragma: no cover-windows
+        result = look(args.figure)
+    except OutsideContentDir as exc:  # pragma: no cover-windows
+        print(f"figure look: {exc}", file=sys.stderr)
+        return 2
+    print("\n".join(lines(result, args.figure)))  # pragma: no cover-windows
+    return 0  # pragma: no cover-windows
+
+
 def _new(args: argparse.Namespace, house: House) -> int:
     try:
         created = new_figure(args.figures_dir, args.name, args.layout, house)
@@ -151,6 +185,8 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     if args.verb == "check":
         return _check(args)
+    if args.verb == "look":
+        return _look(args)
     try:
         house = load_house()
     except (OSError, ValueError) as exc:
