@@ -87,7 +87,8 @@ predate the shades.
   "about eight words", which w3 makes six. v4 shipped in 6.145.0, so the
   word cannot change without a version (the user had preferred fixing it
   on #1054's branch, which merged before this began).
-- One PR: this plan, the code, the bench and the docs. MINOR, 6.147.0 (6.146.0 went to #1088, which merged first).
+- One PR: this plan, the code, the bench and the docs. MINOR, 6.147.0
+  (6.146.0 went to #1088, which merged first).
   The PR body says "Part of #1055", never "Closes".
 
 ## What the spike found
