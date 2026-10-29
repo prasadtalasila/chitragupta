@@ -1,0 +1,7 @@
+% Twin agreement (#1056): a pair whose names, tag and panel letters agree.
+\begin{tikzpicture}
+  \node[draw] (ingest) {\textbf{Ingest}\\[1pt]reads the PDFs};
+  \node[draw, right=of ingest] (ledger) {Ledger};
+  \draw[->] (ingest) -- node[above] {parsed} (ledger);
+  \node[below=of ingest] {(a) the pipeline};
+\end{tikzpicture}%
