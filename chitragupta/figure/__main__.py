@@ -1,6 +1,6 @@
 """`python -m chitragupta figure sync [PATH ...] [--check]` (#1013) and
-`python -m chitragupta figure check <figure.tex> [--width PT] [--json]`
-(#1053).
+`python -m chitragupta figure check <figure.tex> [--width PT] [--layout NAME]
+[--json]` (#1053, #1057).
 
 `figure check` exits 0 whatever it finds: an objective finding is the
 skill's to resolve or allow, never an exit code's to enforce. 2 is a
@@ -29,6 +29,7 @@ from pathlib import Path
 from chitragupta.figure._block import load_house
 from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._check_report import format_text, payload
+from chitragupta.figure._layout import layout_names
 from chitragupta.figure._sync import Outcome, run
 from chitragupta.progname import prog_for
 from chitragupta.render_output._errors import MissingBinary, _require
@@ -58,6 +59,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=_points,
         default=DEFAULT_WIDTH_PT,
         help=f"target text width in pt (default: {DEFAULT_WIDTH_PT:g}, the render's A4 at 1in)",
+    )
+    figure_check.add_argument(
+        "--layout",
+        choices=layout_names(),
+        default="",
+        help="read the size reports against this layout's reference ranges "
+        "(default: the figure's own `%% cg-layout:` line)",
     )
     figure_check.add_argument("--json", action="store_true", help="print the report as JSON")
     return parser
@@ -91,7 +99,7 @@ def _check(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    result = check(args.figure, args.width)  # pragma: no cover-windows
+    result = check(args.figure, args.width, args.layout)  # pragma: no cover-windows
     print(
         json.dumps(payload(result), indent=2) if args.json else format_text(result)
     )  # pragma: no cover-windows

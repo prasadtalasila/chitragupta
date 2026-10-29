@@ -471,7 +471,7 @@ the last stage derives and the discovery feature being built on it;
 | `chitragupta init` | scaffolds a project directory to draft in | [PACKAGING.md](PACKAGING.md) |
 | `chitragupta doctor` | tells you what is missing and what to type next | [CLI.md](CLI.md) |
 | `chitragupta figure sync` | keeps the house figure-style block current in every figure file, and never overwrites one you edited | [CLI.md](CLI.md#-chitragupta-figure-sync) |
-| `chitragupta figure check` | reports every rule one figure file breaks, by rule id, and the exceptions it records with a reason; exits 0 whatever it finds | [CLI.md](CLI.md#-chitragupta-figure-check) |
+| `chitragupta figure check` | reports every rule one figure file breaks, by rule id, and the exceptions it records with a reason, with the figure's size beside its layout's reference ranges; exits 0 whatever it finds | [CLI.md](CLI.md#-chitragupta-figure-check) |
 | Config in one file | `config.toml`, every key overridable by environment variable | [CONFIG.md](CONFIG.md) |
 | Hooks | the citation gate enforced on every draft write | [HOOKS.md](HOOKS.md) |
 | Docker | two images: one that installs the Pandoc/TeX toolchain when you lack root, one that hosts a Claude Code agent with the published package | [DOCKER.md](../DOCKER.md) |

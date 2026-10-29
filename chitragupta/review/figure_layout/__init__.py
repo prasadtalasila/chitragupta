@@ -94,7 +94,9 @@ from chitragupta.render_output._figures import (
 from chitragupta.review.figure_layout._geometry import (
     BBOX_NAME,
     Box,
+    edge_gap,
     emptiness,
+    leaves,
     overlaps,
     protrudes,
 )
@@ -139,10 +141,12 @@ __all__ = [
     "MissingBinary",
     "check_draft",
     "check_figure",
+    "edge_gap",
     "edge_list",
     "emptiness",
     "figures_in",
     "format_report",
+    "leaves",
     "loads_library_by_hand",
     "measure",
     "node_boxes",

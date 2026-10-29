@@ -7,19 +7,25 @@ because that is what a drafting agent quotes back in a `% cg-allow:`
 line or to its caller. Everything that is not a finding -- an allow,
 a rule that could not run, the edge list, the emptiness proportion --
 sits under its own heading, so nothing is read as a finding that is
-not one. The emptiness proportion keeps `review figure`'s label for the
-reason that module gives: R3 keeps a continuous score out of anything
-something could drive to zero.
+not one. The advisory size reports (#1057) are the same one-line shape
+under theirs, and never change the "No findings" line. The emptiness
+proportion keeps `review figure`'s label for the reason that module
+gives: R3 keeps a continuous score out of anything something could
+drive to zero.
 """
 
 from chitragupta.figure._check import FIGURE, CheckResult
-from chitragupta.figure._rules import RULES
+from chitragupta.figure._rules import RULES, Finding
 from chitragupta.review.figure_layout import EMPTINESS_LABEL, FigureResult
 
 
 def format_text(result: CheckResult) -> str:
     lines = [str(result.path)]
     lines += [_row(f.rule, f.target, f.measurement) for f in result.findings]
+    lines += _section(
+        "advisory (read; never resolved, allowed or capped)",
+        [_row(f.rule, f.target, f.measurement) for f in result.advisory],
+    )
     lines += _section(
         "allowed",
         [
@@ -80,16 +86,9 @@ def payload(result: CheckResult) -> dict:
     return {
         "figure": str(result.path),
         "width_pt": result.width_pt,
-        "findings": [
-            {
-                "rule": f.rule,
-                "class": RULES[f.rule].cls,
-                "scope": RULES[f.rule].scope,
-                "target": f.target,
-                "measurement": f.measurement,
-            }
-            for f in result.findings
-        ],
+        "layout": result.layout or None,
+        "findings": [_finding(f) for f in result.findings],
+        "advisory": [_finding(f) for f in result.advisory],
         "allowed": [
             {**_allow(allow), "measurement": measured} for allow, measured in result.allowed
         ],
@@ -104,6 +103,16 @@ def payload(result: CheckResult) -> dict:
             "empty_fraction_note": EMPTINESS_LABEL,
             "names_unmeasured": figure.unmeasured,
         },
+    }
+
+
+def _finding(finding: Finding) -> dict:
+    return {
+        "rule": finding.rule,
+        "class": RULES[finding.rule].cls,
+        "scope": RULES[finding.rule].scope,
+        "target": finding.target,
+        "measurement": finding.measurement,
     }
 
 

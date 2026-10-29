@@ -789,20 +789,41 @@ or point.
 | `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap |
 | `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
+| `size-height` | figure | advisory | The picture's height as a share of the 700pt text height, beside the layout's reference range |
+| `size-slack` | figure | advisory | `1 -` the area of the nodes that enclose no other node, over the picture's area (a zone card is not filled area), beside the layout's reference range |
+| `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured |
+| `budget-nodes` | figure | advisory | The named node count, beside the layout's reference range. Never a cap |
+| `budget-edges` | figure | advisory | The count of edges the source parser reads, beside the layout's reference range. Never a cap |
 
-All but `size-width`, `size-stray` and `focal-count` are
-`review figure`'s findings, under the ids its `--json` has always used.
-The edge list, the declared names that were not measured and the
-emptiness proportion are printed beside the findings as diagnostics,
-never as findings.
+Of the objective rules, all but `size-width`, `size-stray` and
+`focal-count` are `review figure`'s findings, under the ids its `--json`
+has always used. The edge list,
+the declared names that were not measured and the emptiness proportion
+are printed beside the findings as diagnostics, never as findings.
 
-The five rules that need the compiled geometry (`nothing-measurable`,
-`size-width`, `size-stray`, `content-protrusion`, `node-overlap`) are
-listed under "not measured", with the reason, whenever there is none to
-read: the figure does not compile, the file has no `tikzpicture`
-environment for the probe to sit in (a bare `\tikz` is not compiled at
-all), or its last `tikzpicture` is inside a macro body that never runs.
-A rule that could not run is never reported as a pass.
+**The five advisory rules are reports, not findings** (#1057). They
+print under their own heading whatever the numbers are, never change
+the "No findings" line and cannot be allowed. FIGURE-ROADMAP VI.3 is
+why: a bare count means little, so each sits beside the range its
+layout's scaffold and exemplars measure, and a range describes those
+figures and never caps yours. A forty-cell DP trace is not over budget.
+The range is read from the `## Reference ranges` table in
+`.claude/skills/figure-drawer/references/layouts/<layout>.md`, and the
+layout from the figure's own `% cg-layout: <layout>` line, on a line
+of its own (`--layout` overrides it). Every scaffold and exemplar
+carries one; a figure without one gets the numbers and no range.
+
+The eight rules that need the compiled geometry (`nothing-measurable`,
+`size-width`, `size-stray`, `content-protrusion`, `node-overlap`,
+`size-height`, `size-slack`, `size-squash`) are listed under "not
+measured", with the reason, whenever there is none to read: the figure
+does not compile, the file has no `tikzpicture` environment for the
+probe to sit in (a bare `\tikz` is not compiled at all), or its last
+`tikzpicture` is inside a macro body that never runs. A rule that could
+not run is never reported as a pass. A file with several pictures has
+its height, slack and squash listed there too, since the probe reads
+only the last picture's extent, and so is each edge `size-squash`
+cannot resolve to a measured node (`chan -| gate.west`).
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

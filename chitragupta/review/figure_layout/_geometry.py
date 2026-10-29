@@ -13,6 +13,8 @@ keeps them separate functions so a caller cannot accidentally treat the
 proportion as a verdict.
 """
 
+import math
+
 # The name the picture's own bounding box is reported under. TikZ's
 # `current bounding box` is a real pseudo-node, so it is read through the
 # identical mechanism as a real node -- but it is not one, and every
@@ -96,6 +98,47 @@ def _contains(outer: Box, inner: Box) -> bool:
         and ix2 - ox2 <= _TOLERANCE_PT
         and iy2 - oy2 <= _TOLERANCE_PT
     )
+
+
+def leaves(boxes: dict[str, Box]) -> list[str]:
+    """The nodes that wholly enclose no other node: zone cards dropped.
+
+    What `figure check`'s slack counts as filled (#1057), and what the
+    layout reference tables were measured with. A zone is mostly the
+    ground its children sit on, so counting its area would call a
+    sprawling zoned figure full.
+    """
+    nodes = _without_bbox(boxes)
+    return [
+        name
+        for name, box in nodes.items()
+        if not any(_contains(box, other) for key, other in nodes.items() if key != name)
+    ]
+
+
+def edge_gap(one: Box, other: Box) -> float | None:
+    """How far apart two boxes joined by an edge are, edge to edge.
+
+    The distance between the nearest points of the two boxes, so a
+    diagonal pair is measured corner to corner. `None` where the pair
+    has no gap for an arrow to cross: a zero-area box (a coordinate, a
+    bend point), one box enclosing the other (a zone and its child), or
+    two boxes that intersect, which `overlaps()` already reports.
+    """
+    if not (_area(one) and _area(other)):
+        return None
+    if _either_contains(one, other) or _intersects(one, other):
+        return None
+    ax1, ay1, ax2, ay2 = one
+    bx1, by1, bx2, by2 = other
+    dx = max(bx1 - ax2, ax1 - bx2, 0.0)
+    dy = max(by1 - ay2, ay1 - by2, 0.0)
+    return math.hypot(dx, dy)
+
+
+def _area(box: Box) -> float:
+    x1, y1, x2, y2 = box
+    return (x2 - x1) * (y2 - y1)
 
 
 def protrudes(boxes: dict[str, Box]) -> bool:

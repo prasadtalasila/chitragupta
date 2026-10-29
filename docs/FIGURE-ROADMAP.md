@@ -739,6 +739,14 @@ when a figure exceeds it, and it must never become a gate.
 members only or every colour expression appearing in the source. The
 second is easier and noisier.
 
+**Built for nodes and edges (#1057).** `figure check` prints
+`budget-nodes` and `budget-edges`, with `size-height` and `size-slack`,
+beside the range the layout's scaffold and exemplars measure, as
+advisory reports that are never findings and never caps
+([TIKZ-STYLE.md](TIKZ-STYLE.md#-the-rules-figure-check-reports)). The
+range is per layout rather than per exemplar, and the figure names its
+layout in a `% cg-layout:` line. Colours and words are not counted yet.
+
 ### VI.4 Replace the skeletons with exemplars
 
 `assets/tikz/` ships seven structurally-correct, deliberately minimal

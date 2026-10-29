@@ -35,6 +35,11 @@ Copy it beside the draft that needs it and re-label the nodes:
 cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
 ```
 
+Its first line, `% cg-layout: pipeline`, names the layout, and
+`chitragupta figure check` reads it to print the figure's size and
+counts beside that layout's reference ranges. Keep it, and change it if
+you change the layout.
+
 ## 🎨 The house style comes with the file
 
 Every scaffold carries the house figure-style block
