@@ -35,6 +35,9 @@ class TestPlain:
     def test_a_line_break_splits_the_label_and_a_spacing_is_dropped(self):
         assert _twin.plain(r"\textbf{Plan}\\[2pt]the gloss") == ["Plan", "the gloss"]
 
+    def test_a_newline_in_the_source_is_a_space_not_a_line(self):
+        assert _twin.plain("the one\n   blocking check") == ["the one blocking check"]
+
     def test_maths_is_dropped(self):
         assert _twin.plain(r"$x_1$ state") == ["state"]
         assert _twin.plain(r"estimate \(\hat{x}\)") == ["estimate"]

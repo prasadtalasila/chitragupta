@@ -82,7 +82,8 @@ def plain(label: str) -> list[str]:
     dropped, whitespace collapsed, empty lines left out."""
     # Breaks first: in `\\\\$x$` the `$` follows a backslash and would
     # read as an escaped dollar.
-    text = _MATH_RE.sub(" ", _BREAK_RE.sub("\n", _two_tier(label)))
+    # A newline in the source is a space to TeX; only `\\\\` breaks a line.
+    text = _MATH_RE.sub(" ", _BREAK_RE.sub("\n", _two_tier(label.replace("\n", " "))))
     text = _SPACE_RE.sub(" ", text)
     text = _NOT_TEXT_RE.sub("", text)
     text = _ESCAPED_RE.sub(r"\1", text)
@@ -98,7 +99,7 @@ def _two_tier(text: str) -> str:
     if call is None:
         return text
     args, end = _arguments(text, call.end(), 2)
-    return text[: call.start()] + "\n".join(args) + _two_tier(text[end:])
+    return text[: call.start()] + "\\\\".join(args) + _two_tier(text[end:])
 
 
 def words(text: str) -> set[str]:
