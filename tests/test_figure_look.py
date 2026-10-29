@@ -140,6 +140,15 @@ class TestLook:
         _look.look(flow).record.write_text("{not json", encoding="utf-8")
         assert _look.look(flow).action == "wrote"
 
+    @pytest.mark.parametrize("record", ["[]", "{}", "missing-fields"])
+    def test_a_record_of_the_wrong_shape_rebuilds(self, fake, flow, record):
+        built = _look.look(flow)
+        text = (
+            json.dumps({"digest": _look.digest(NARROW)}) if record == "missing-fields" else record
+        )
+        built.record.write_text(text, encoding="utf-8")
+        assert _look.look(flow).action == "wrote"
+
     def test_a_figure_past_the_text_width_says_so(self, monkeypatch, flow):
         monkeypatch.setattr(_look, "_run", FakeTeX(width=470.0))
         monkeypatch.setattr(_look.programs, "require_program", lambda name: name)
@@ -208,6 +217,14 @@ class TestCli:
         assert cli.main(["look", str(flow)]) == 2
         assert f"{tool} not found" in capsys.readouterr().err
         assert not config.RENDERED_DIR.exists()
+
+    def test_an_unwritable_rendered_directory_exits_two(self, fake, flow, monkeypatch, capsys):
+        def read_only(path, data):
+            raise PermissionError(f"[Errno 13] Permission denied: '{path}'")
+
+        monkeypatch.setattr(_look, "write_atomically", read_only)
+        assert cli.main(["look", str(flow)]) == 2
+        assert "Permission denied" in capsys.readouterr().err
 
     def test_an_output_directory_outside_content_exits_two(self, fake, flow, monkeypatch, capsys):
         def outside(_path):

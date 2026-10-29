@@ -137,3 +137,26 @@ class TestCli:
         monkeypatch.setattr(_new, "_copy", unreadable)
         assert cli.main(["new", str(figures), "flow", "--layout", "pipeline"]) == 2
         assert "chitragupta doctor" in capsys.readouterr().err
+
+
+class TestABrokenInstall:
+    """#1052 review: the scaffolds are read when `figure new` runs, never
+    while the parser is built, so a broken one cannot take `sync` and
+    `check` down with it."""
+
+    @pytest.fixture
+    def broken(self, tmp_path, monkeypatch):
+        (tmp_path / "pipeline.tex").write_bytes(b"% cg-layout: pipeline\n\xff\xfe")
+        monkeypatch.setattr(_new, "SCAFFOLD_DIR", tmp_path)
+
+    def test_figure_sync_still_runs(self, figures, broken):
+        assert cli.main(["sync", "--check", str(figures)]) == 0
+
+    def test_figure_new_exits_two_naming_doctor(self, figures, broken, capsys):
+        assert cli.main(["new", str(figures), "flow", "--layout", "pipeline"]) == 2
+        assert "chitragupta doctor" in capsys.readouterr().err
+
+    def test_no_scaffolds_at_all_says_so(self, figures, tmp_path, monkeypatch, capsys):
+        monkeypatch.setattr(_new, "SCAFFOLD_DIR", tmp_path / "absent")
+        assert cli.main(["new", str(figures), "flow", "--layout", "pipeline"]) == 2
+        assert "no layouts are installed" in capsys.readouterr().err

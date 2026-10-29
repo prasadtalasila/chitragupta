@@ -298,7 +298,8 @@ LuaLaTeX, Vale), a missing `enrich` extra, a PyTorch build that does not
 match the GPU, and agent hooks that cannot start, and exits normally
 either way. Install what it names before you need it: `sync` with the
 default parser needs pdftotext, `render` needs pandoc and LuaLaTeX, and
-`figure look` needs pdftoppm and pdfinfo.
+`figure look` needs pdftoppm, and pdfinfo for a figure's page in a
+rendered draft.
 
 ### 5. Sync and look at the result
 

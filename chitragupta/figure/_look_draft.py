@@ -101,6 +101,15 @@ def _page(pdf: Path, number: int, png: Path) -> Page | str:
     return Page(png, number, _png_size(png))
 
 
+def _drop_page(figure: Path) -> None:
+    """Delete `figure`'s old page picture, which no longer matches the
+    PDF just rendered; a cleanup, so a failure to is no failure."""
+    try:
+        (_output_dir(figure) / f"{figure.stem}.page.png").unlink(missing_ok=True)
+    except (OSError, OutsideContentDir):
+        pass
+
+
 def _page_of(base: str, figure: Path, pdf: Path, marks: dict[str, int]) -> Page | str:
     """`figure`'s page picture, or why there is none."""
     png = _output_dir(figure) / f"{figure.stem}.page.png"
@@ -120,7 +129,9 @@ def _one(base: str, figure: Path, pdf: Path, marks: dict[str, int] | None) -> Dr
         result = None
         notes.append(f"no look: {exc}")
     page = None
-    if marks is not None:
+    if marks is None:
+        _drop_page(figure)
+    else:
         try:
             found = _page_of(base, figure, pdf, marks)
         except (OSError, OutsideContentDir) as exc:
@@ -141,6 +152,8 @@ def refresh(draft: Path, pdf: Path) -> Refresh:
     if not found:
         return Refresh()
     if programs.resolve_program("pdftoppm") is None:
+        for figure in found.values():
+            _drop_page(figure)
         return Refresh(skipped=f"pdftoppm not found on PATH ({_INSTALL})")
     marks = _marks(pdf)
     figures = [_one(base, figure, pdf, marks) for base, figure in found.items()]

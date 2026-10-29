@@ -66,6 +66,8 @@ def _check(figures_dir: Path, name: str, layout: str, available: dict[str, Path]
         raise Refused(f"{figures_dir} is not a directory named `figures`")
     if not figures_dir.parent.is_dir():
         raise Refused(f"{figures_dir.parent} does not exist")
+    if not available:
+        raise Refused("no layouts are installed; `chitragupta doctor` checks the install")
     if layout not in available:
         raise Refused(f"no layout {layout!r}; the layouts are: {', '.join(available)}")
     for target in (figures_dir / f"{name}.tex", figures_dir / f"{name}.txt"):

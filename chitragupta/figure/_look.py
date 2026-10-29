@@ -140,10 +140,19 @@ def _current(figure: Path, key: str) -> Look | None:
         data = json.loads(record.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    if data.get("digest") != key or not (pdf.is_file() and png.is_file()):
+    if not isinstance(data, dict) or data.get("digest") != key:
         return None
-    sizes = (data["width"], data["height"], data["text_width"])
-    return Look(pdf, png, record, "current", *sizes, tuple(data["pixels"]))
+    if not (pdf.is_file() and png.is_file()):
+        return None
+    # A record of any other shape is one this module did not write, and is
+    # rebuilt rather than trusted: a pdf render calls this after its PDF
+    # is written, and must not fail on it.
+    try:
+        sizes = (float(data["width"]), float(data["height"]), float(data["text_width"]))
+        columns, rows = data["pixels"]
+    except (KeyError, TypeError, ValueError):
+        return None
+    return Look(pdf, png, record, "current", *sizes, (int(columns), int(rows)))
 
 
 def _failed(figure: Path, detail: str) -> Look:

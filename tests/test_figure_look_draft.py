@@ -144,6 +144,29 @@ class TestRefresh:
             "(chitragupta install os-deps)",
         ]
 
+    @pytest.mark.parametrize("tool", ["pdfinfo", "pdftoppm"])
+    def test_an_old_page_picture_goes_when_no_new_one_can_be_made(self, draft, tools, tool):
+        stale = rendered("rag", "figures", "flow.page.png")
+        stale.parent.mkdir(parents=True)
+        stale.write_bytes(b"old")
+        tools[0].discard(tool)
+        _look_draft.refresh(draft, Path("x.pdf"))
+        assert not stale.exists()
+
+    @pytest.mark.parametrize("pdfinfo", [True, False])
+    def test_a_rendered_directory_outside_content_is_a_note_not_a_crash(
+        self, draft, tools, monkeypatch, pdfinfo
+    ):
+        def outside(_path):
+            raise _look_draft.OutsideContentDir("content/rendered resolves outside content")
+
+        monkeypatch.setattr(_look_draft, "_output_dir", outside)
+        if not pdfinfo:
+            tools[0].discard("pdfinfo")
+        flow = _look_draft.refresh(draft, Path("x.pdf")).figures[0]
+        assert flow.page is None
+        assert ("resolves outside content" in flow.note) == pdfinfo
+
     def test_pdfinfo_failing_is_no_marks(self, draft, tools, monkeypatch):
         monkeypatch.setattr(_look_draft, "_run", Poppler(info_code=1))
         notes = [item.note for item in _look_draft.refresh(draft, Path("x.pdf")).figures]

@@ -44,7 +44,7 @@ from chitragupta.figure._check_report import format_text, payload
 from chitragupta.figure._layout import layout_names
 from chitragupta.figure._look import lines, look
 from chitragupta.figure._look_draft import notes, page_line, refresh
-from chitragupta.figure._new import Refused, layouts, new_figure
+from chitragupta.figure._new import Refused, new_figure
 from chitragupta.figure._sync import Outcome, run
 from chitragupta.config_path import OutsideContentDir
 from chitragupta.progname import prog_for
@@ -73,7 +73,10 @@ def build_parser() -> argparse.ArgumentParser:
     new = verbs.add_parser("new", help="start a figure from a layout's scaffold")
     new.add_argument("figures_dir", type=Path, help="the draft's figures/ directory")
     new.add_argument("name", help="the figure's file stem, e.g. flow for flow.tex")
-    new.add_argument("--layout", required=True, choices=list(layouts()), help="the scaffold")
+    # Not `choices=`: that would read every scaffold while the parser is
+    # built, so one unreadable file would take `sync` and `check` down
+    # too. `figure new` refuses an unknown id itself, listing the ids.
+    new.add_argument("--layout", required=True, help="the scaffold's layout id, e.g. pipeline")
     figure_look = verbs.add_parser("look", help="see one figure as it will print")
     figure_look.add_argument("figure", type=Path, help="the figure's .tex file")
     figure_look.add_argument(
@@ -169,7 +172,8 @@ def _look(args: argparse.Namespace) -> int:
         if args.draft:
             return _look_in_draft(args.figure, args.draft)
         print("\n".join(lines(look(args.figure), args.figure)))
-    except OutsideContentDir as exc:  # pragma: no cover-windows
+    except (OutsideContentDir, OSError) as exc:  # pragma: no cover-windows
+        # Nowhere to write the look is the host's problem, not the figure's.
         print(f"figure look: {exc}", file=sys.stderr)
         return 2
     return 0  # pragma: no cover-windows
@@ -208,7 +212,7 @@ def _new(args: argparse.Namespace, house: House) -> int:
     except Refused as exc:
         print(f"figure new: {exc}", file=sys.stderr)
         return 2
-    except OSError as exc:
+    except (OSError, UnicodeDecodeError) as exc:
         print(f"figure new: {exc}. `chitragupta doctor` checks the install.", file=sys.stderr)
         return 2
     print(f"created  {created.figure}   (from {args.layout})")
