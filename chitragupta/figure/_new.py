@@ -11,9 +11,9 @@ figure declares, what `figure check` reads its reference range by, and
 what this command was asked for, with nothing to translate between
 them; and `cg-figstyle.tex`, which declares no layout, is not one.
 
-The twin is copied only where the layout ships one (none does before
-#1056). A twin always has to be redrawn to match the relabelled figure,
-so a missing one costs a starting point, not a figure.
+The twin is copied where the layout ships one, as every shipped scaffold
+has since #1056. A twin always has to be redrawn to match the relabelled
+figure, so a missing one costs a starting point, not a figure.
 """
 
 import re

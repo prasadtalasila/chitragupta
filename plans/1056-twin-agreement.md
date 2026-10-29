@@ -1,7 +1,7 @@
 # 🪞 XII-2e: twin agreement in `figure check`
 
 Status: **built.** Written 2026-10-29 against `main` at `227d7e6`, built
-on `060b424`, from a brainstorming session on issue
+on `9175cbf`, from a brainstorming session on issue
 [#1056](https://github.com/prasadtalasila/chitragupta/issues/1056), and
 implemented in the same PR as this plan, as #1053 and #1057 were. The
 decisions marked *user* were agreed in that session; the rest was the
@@ -89,6 +89,13 @@ found four reading defects, each fixed with a test first:
   see a node after `edge`, so the tag was never read. `_twin.py` adds
   that form to its own pattern rather than widening the shared one,
   which the probe also uses.
+
+`figure new` (#1052, merged as #1088 while this was being built) already
+copied a twin where a layout shipped one, and said "no twin" otherwise.
+With every shipped layout now a pair, its tests reach the "no twin" path
+through a scaffold directory of their own, a test pins that every
+shipped layout's twin is copied, and the skill's step 4 says to redraw
+the copied twin rather than to write one.
 
 After the fixes the 49 pairs give 5 `t1` and 6 `t2` findings, all real
 drift or a twin's spelling of maths, and no `t3`.

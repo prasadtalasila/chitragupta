@@ -92,7 +92,7 @@ so they are this skill's to state:
    pipeline, map, layered stack, control loop, branching tree,
    hub-and-spoke, zoned spine. Start from the one that fits with
    `python -m chitragupta.figure new <figures dir> <name> --layout <id>`,
-   which copies it (and its ASCII twin, where the layout ships one),
+   which copies it and its ASCII twin,
    keeps its `% cg-layout:` line, brings its house style block up to
    date as `python -m chitragupta.figure sync` would, and never
    overwrites a figure that exists. Then re-label it,
@@ -138,7 +138,7 @@ so they are this skill's to state:
    `subcaption` package is not the answer are in
    `.claude/skills/figure-drawer/references/figures.md` §2.
 
-4. **Write the ASCII twin** in `figures/<name>.txt`, in
+4. **Redraw the ASCII twin** `figure new` copied to `figures/<name>.txt`, in
    `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet, depicting the same
    thing as the TikZ: the same boxes, the same arrows, the same panel
    letters. A Unicode box character hard-fails a thesis template that

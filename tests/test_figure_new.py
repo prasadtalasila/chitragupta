@@ -17,12 +17,23 @@ def house():
 
 @pytest.fixture
 def with_twin(tmp_path, monkeypatch):
-    """A scaffold directory where one layout ships a twin, which no
-    shipped layout does until #1056."""
+    """A scaffold directory where one layout ships a twin of its own."""
     directory = tmp_path / "scaffolds"
     directory.mkdir()
     (directory / "pipeline.tex").write_bytes((SHIPPED / "pipeline.tex").read_bytes())
     (directory / "pipeline.txt").write_text("[ Parse ] --> [ Index ]\n", encoding="utf-8")
+    monkeypatch.setattr(_new, "SCAFFOLD_DIR", directory)
+    return directory
+
+
+@pytest.fixture
+def without_twin(tmp_path, monkeypatch):
+    """A scaffold directory where a layout ships no twin. Every shipped
+    layout has had one since #1056, so only a directory like this one
+    still reaches the "no twin" path."""
+    directory = tmp_path / "scaffolds"
+    directory.mkdir()
+    (directory / "zoned-spine.tex").write_bytes((SHIPPED / "zoned-spine.tex").read_bytes())
     monkeypatch.setattr(_new, "SCAFFOLD_DIR", directory)
     return directory
 
@@ -50,8 +61,10 @@ class TestNew:
         assert declared_layout(text) == layout
         assert created.sync.action in {"current", "refreshed"}
         assert figure.classify(text, house).state is figure.State.CURRENT
+        # #1056: every shipped layout ships its twin, and it is copied.
+        assert created.twin.read_bytes() == (SHIPPED / f"{layout}.txt").read_bytes()
 
-    def test_no_twin_is_written_when_the_layout_ships_none(self, figures, house):
+    def test_no_twin_is_written_when_the_layout_ships_none(self, figures, house, without_twin):
         created = _new.new_figure(figures, "flow", "zoned-spine", house)
         assert created.twin is None and not (figures / "flow.txt").exists()
 
@@ -109,7 +122,7 @@ class TestCopy:
 
 
 class TestCli:
-    def test_it_reports_what_it_created_and_the_missing_twin(self, figures, capsys):
+    def test_it_reports_what_it_created_and_the_missing_twin(self, figures, capsys, without_twin):
         args = ["new", str(figures), "flow", "--layout", "zoned-spine"]
         assert cli.main(args) == 0
         out = capsys.readouterr().out
