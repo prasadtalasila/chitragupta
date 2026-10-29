@@ -8,11 +8,13 @@
 % for, at the same rule weight and tint, rather than filled squares that
 % merely share a hue.
 %
-% WIDTH. Laid out to acmart sigconf's \textwidth (506.3pt = 178mm) and
-% \input bare -- no \resizebox, so the gloss line prints at the body
-% size. That is what decided the grid: at the type floor, six cards in a
-% row measure 682pt and do not fit. Four do. The row count follows from
-% the type size, which is the right direction for that decision to run.
+% WIDTH. Laid out to the render's \textwidth (453pt, A4 at 12pt with 1in
+% margins) and \input bare -- no \resizebox, so the gloss line prints at
+% the body size. That is what decided the grid: at the type floor, six
+% cards in a row measure 682pt and do not fit. Four do, at 412pt. The row
+% count follows from the type size, which is the right direction for that
+% decision to run, and the legend wraps inside the grid's width for the
+% same reason.
 % >>> chitragupta figure style v3 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
@@ -375,13 +377,21 @@
   % ---- legend, two rows ----------------------------------------------------
   % Two rows rather than one, for the same reason the stages are in three:
   % at the type floor the four entries measure past the target width, and
-  % the answer to that is a wrap, never a smaller size.
-  \coordinate (lg) at ($(s9.south west)+(1mm,-10mm)$);
-  \cglegenditem{lgA}{lg}{cgAlt}{a guarantee none of the six compared
-                                systems has}
-  \cglegenditem{lgB}{$(lgA-t.east)+(8mm,0)$}{cgAccent}{the one blocking check}
-  \cglegenditem{lgC}{$(lgA.center)+(0,-6.5mm)$}{cgFlow}{standard practice}
-  \cglegenditem{lgD}{$(lgB.center)+(0,-6.5mm)$}{cgMute}{absent or partial,
-                                                        and named as such}
+  % the answer to that is a wrap, never a smaller size. Two columns, each
+  % starting 1mm inside a card column (the first and the third), so the
+  % legend lines up with the grid above it. The two long entries break by
+  % hand, where the sense breaks, so each stays inside its two card
+  % columns and the legend is never what makes the figure wide. A broken
+  % entry is two lines tall, which sets the rows 11.5mm apart.
+  \begin{scope}[cglegendtext/.append style={align=left}]
+    \coordinate (lg) at ($(s9.south west)+(1mm,-10mm)$);
+    \cglegenditem{lgA}{lg}{cgAlt}{a guarantee none of the six\\
+                                  compared systems has}
+    \cglegenditem{lgB}{$(lg -| s3.west)+(1mm,0)$}{cgAccent}{the one
+                                                             blocking check}
+    \cglegenditem{lgC}{$(lgA.center)+(0,-11.5mm)$}{cgFlow}{standard practice}
+    \cglegenditem{lgD}{$(lgB.center)+(0,-11.5mm)$}{cgMute}{absent or partial,\\
+                                                          and named as such}
+  \end{scope}
 
 \end{tikzpicture}%

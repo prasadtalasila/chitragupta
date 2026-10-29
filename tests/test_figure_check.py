@@ -317,13 +317,13 @@ class TestAgainstRealLualatex:
         assert result.findings == []
         assert [allow.rule for allow, _ in result.allowed] == ["size-width"]
 
-    def test_the_wide_exemplar_overflows_the_text_width(self):
-        """`rag-stages` is 1.09 of the text width in the render's fonts
-        (#1037's measurement; #1050 owns the fix), so a real house
-        figure pins the firing case too."""
+    def test_a_wide_exemplar_overflows_a_narrower_target(self):
+        """`rag-stages` fits the render's 453pt since #1050 (411.5pt) but
+        not the article class's 345pt, so a real house figure still pins
+        the firing case at a narrower target, as `--width 345` asks for."""
         path = REPO_ROOT / "assets" / "tikz" / "exemplars" / "rag-stages.tex"
 
-        result = _check.check(path, _check.DEFAULT_WIDTH_PT)
+        result = _check.check(path, 345.0)
 
         assert "size-width" in _rules(result.findings)
 

@@ -3,8 +3,8 @@
 % tier. The zone cards say the thing the flat version only implied: these
 % are two routes, not one branching one, and they never meet.
 %
-% WIDTH. Laid out to acmart sigconf's \textwidth (506.3pt = 178mm) and
-% \input bare -- no \resizebox, so every label prints at the size it is
+% WIDTH. Laid out to the render's \textwidth (453pt, A4 at 12pt with 1in
+% margins) and \input bare -- no \resizebox, so every label prints at the size it is
 % set in. That is what wrapped the dense route into two rows: at the type
 % floor its five cards in one line measured 667pt. The picture is taller
 % and narrower than it was, which is the shape a fixed width and a fixed
@@ -360,8 +360,13 @@
         left=17mm of $(bm.west)!0.5!(emb.west)$] (q) {{\large\bfseries query}};
 
   % ---- edges ---------------------------------------------------------------
-  \draw[cgedge, draw=cgAltLine] (q.east) -- ++(7mm,0) |- (bm.west);
-  \draw[cgedge]             (q.east) -- ++(7mm,0) |- (emb.west);
+  % Two edges leave `q`, so each takes its own third of the side. Both
+  % leaving `q.east` would run together for the first 7mm, one line that
+  % forks somewhere a reader cannot see.
+  \draw[cgedge, draw=cgAltLine] ($(q.north east)!1/3!(q.south east)$)
+    -- ++(7mm,0) |- (bm.west);
+  \draw[cgedge] ($(q.north east)!2/3!(q.south east)$)
+    -- ++(7mm,0) |- (emb.west);
   \draw[cgedge, draw=cgAltLine] (bm) -- (fwd);
   \draw[cgedge, draw=cgAltLine] (fwd) -- (one);
   \draw[cgedge] (emb) -- (chr);

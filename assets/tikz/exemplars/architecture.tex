@@ -321,28 +321,51 @@
 }%
 % >>> end chitragupta figure style <<<
 \usetikzlibrary{arrows.meta,positioning,fit,backgrounds,calc,shadows.blur}%
-% Laid out to a 178mm target (acmart sigconf \textwidth = 506.3pt), and
-% \input bare -- no \resizebox, so \normalsize in the picture is
+% Laid out to the render's \textwidth (453pt, A4 at 12pt with 1in margins),
+% and \input bare -- no \resizebox, so \normalsize in the picture is
 % \normalsize on the page.
-\begin{tikzpicture}[cg, node distance=7mm and 10mm]
+% A zone title that names a claim can be longer than its card is wide;
+% `align` lets it break onto a second line instead of running into the
+% next card's title.
+\begin{tikzpicture}[cg, node distance=7mm and 10mm,
+                    cgzonetitle/.append style={align=left}]
 
   % ---- the spine, left to right -------------------------------------------
   \node[cgbox, text width=23mm] (bib)
     {\cglab{Curate}{.bib export + PDFs}};
-  \node[cgbox, right=of bib, text width=23mm] (sync)
+  % 7mm from `bib` to `sync`, inside one zone; 17mm from `sync` to
+  % `draft`, across two: that wider gap is what keeps the two zone cards
+  % apart once `enrich` is wide enough for its name and `review` sits
+  % left of `draft`'s centre.
+  \node[cgbox, right=7mm of bib, text width=23mm] (sync)
     {\cglab{Corpus}{parse, ledger}};
-  \node[cgalt, right=13mm of sync, text width=23mm] (draft)
+  \node[cgalt, right=17mm of sync, text width=23mm] (draft)
     {\cglab{Draft}{retrieve, write}};
   \node[cgkey, right=13mm of draft, text width=27mm] (gate)
     {\cglab{Gate}{every cited document in the ledger}};
 
   % ---- what hangs below it ------------------------------------------------
-  \node[cgopt, below=18mm of sync, text width=27mm] (enrich)
+  % 29.5mm: `Enrichment` set bold at \large is 28.9mm, and a name broken
+  % by a hyphen is a name the reader has to reassemble.
+  \node[cgopt, below=18mm of sync, text width=29.5mm] (enrich)
     {\cglab{Enrichment}{vectors, topics}};
-  \node[cgopt, below=18mm of draft, text width=27mm] (review)
+  % `draft`'s bottom side carries two edges, `finished` out and the FAIL
+  % return in, so each takes a third of it.
+  \coordinate (draft-out) at ($(draft.south west)!1/3!(draft.south east)$);
+  \coordinate (draft-in)  at ($(draft.south west)!2/3!(draft.south east)$);
+  % Under `finished`'s third of `draft`, so that edge drops straight into
+  % the middle of `review.north`; and level with `enrich` rather than 18mm
+  % below `draft`, since the two cards are not the same height and placing
+  % each below its parent leaves the edge between them off level.
+  \node[cgopt, text width=24mm] (review) at (draft-out |- enrich)
     {\cglab{Review}{ten aids, none blocks}};
-  \node[cgbox, below=18mm of gate, text width=26mm] (pub)
-    {\cglab{Publish}{LaTeX, PDF, \textsc{md}}};
+  % Under the right third of `gate`'s bottom side, where the OK edge
+  % leaves: two edges share that side, so each takes a third of it, and
+  % `pub` sits under its own edge so the edge stays straight.
+  \coordinate (gate-ok)   at ($(gate.south west)!2/3!(gate.south east)$);
+  \coordinate (gate-fail) at ($(gate.south west)!1/3!(gate.south east)$);
+  \node[cgbox, text width=26mm, anchor=north] (pub)
+    at ([yshift=-18mm]gate-ok) {\cglab{Publish}{LaTeX, PDF, \textsc{md}}};
 
   % ---- house shapes, each in a named well so the zones enclose them -------
   \node[cgwell, above=3mm of bib]   (ibib)   {};
@@ -358,25 +381,23 @@
   \draw[cgedge] (bib) -- (sync);
   \draw[cgedge] (sync) -- node[cgtag] {ledger} (draft);
   \draw[cgedge] (draft) -- (gate);
-  \draw[cgedge] (gate) -- node[cgtag, pos=0.42] {\textsc{ok}} (pub);
+  \draw[cgedge] (gate-ok) -- node[cgtag, pos=0.42] {\textsc{ok}} (pub.north);
 
   % ---- what happens off to the side ---------------------------------------
   \draw[cgweak] (sync) -- node[cgtag] {vectors} (enrich);
   \draw[cgweak] (enrich) -- (review);
-  % Offset left of centre, so the FAIL riser has the right half of the
-  % channel to itself. Two lines sharing a node's attach point is the
-  % "shared attach point" finding waiting to happen.
-  \draw[cgweak] ([xshift=-6mm]draft.south) -- node[cgtag] {finished}
-    ([xshift=-6mm]review.north);
+  % Its tag goes on the right, below the FAIL channel, whose own tag sits
+  % above it: both stay inside the card, and neither crosses a border.
+  \coordinate (chan) at ($(draft.south)!0.4!(review.north)$);
+  \draw[cgweak] (draft-out) -- node[cgtag, pos=0.67] {finished}
+    (review.north);
 
   % ---- the one loop --------------------------------------------------------
-  % The one loop. Drawn as a curve through the channel between the rows,
-  % rather than over the top: the back edge is the figure's second-most
+  % The one loop. Drawn through the channel between the rows, rather than
+  % over the top: the back edge is the figure's second-most
   % important fact and a route over the icons would read as a detour.
-  \coordinate (chan) at ($(draft.south)!0.5!(review.north)$);
-  \draw[cgback] ([xshift=-5mm]gate.south) |- (chan -| gate.west)
-    -- node[cgtag, text=cgAccentText, pos=0.62] {\textsc{fail}}
-       ([xshift=7mm]draft.south |- chan) -- ([xshift=7mm]draft.south);
+  \draw[cgback] (gate-fail) |- node[cgtag, swap, text=cgAccentText, pos=0.9]
+    {\textsc{fail}} (draft-in |- chan) -- (draft-in);
 
   % ---- step badges ---------------------------------------------------------
   \cgstep{1}{bib}{cgFlow}   \cgstep{2}{sync}{cgFlow}
@@ -389,7 +410,7 @@
     \node[cgzone=cgAlt,    fit=(idraft)(draft)(review)]          (z2) {};
     \node[cgzone=cgAccent, fit=(igate)(gate)(pub)]               (z3) {};
   \end{scope}
-  \cgzonelabel{z1}{cgFlow}{Deterministic --- no model is called}
+  \cgzonelabel{z1}{cgFlow}{Deterministic ---\\no model is called}
   \cgzonelabel{z2}{cgAlt}{Generative}
   \cgzonelabel{z3}{cgAccent}{Gated}
 

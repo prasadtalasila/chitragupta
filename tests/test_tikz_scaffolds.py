@@ -52,7 +52,7 @@ from typing import NamedTuple
 import pytest
 
 from chitragupta.figure._advisory import TEXT_HEIGHT_PT, slack
-from chitragupta.figure._check import DEFAULT_WIDTH_PT
+from chitragupta.figure._check import DEFAULT_WIDTH_PT, check
 from chitragupta.figure._layout import LAYOUT_DIR, RangeRow, declared_layout, range_rows
 from chitragupta.review import figure_layout
 from tests.conftest import needs_tikz
@@ -844,9 +844,10 @@ class TestEveryPicFitsItsWell:
 @needs_tikz
 class TestDrawnAtFinalWidth:
     """Every scaffold fits the article class's text width as drawn, so it
-    is `\\input` bare and never scaled. The exemplars are laid out to a
-    wider page (acmart's 506pt, stated in each one's header) and are not
-    held to this one."""
+    is `\\input` bare and never scaled. Every exemplar fits the render's
+    453pt at 12pt (#1050), which is what a figure copied from one is
+    checked against; the scaffolds' own `figure check` run is in
+    tests/test_figure_check.py."""
 
     @by_scaffold
     def test_fits_the_text_width_unscaled(self, scaffold, tmp_path):
@@ -856,3 +857,10 @@ class TestDrawnAtFinalWidth:
         assert "Overfull \\hbox" not in (tmp_path / "probe.log").read_text(
             encoding="utf-8", errors="replace"
         )
+
+    @pytest.mark.parametrize("exemplar", sorted(EXEMPLAR_DIR.glob("*.tex")), ids=lambda p: p.stem)
+    def test_each_exemplar_fits_the_render_width(self, exemplar):
+        result = check(exemplar, DEFAULT_WIDTH_PT)
+
+        assert [f.measurement for f in result.findings if f.rule == "size-width"] == []
+        assert "size-width" not in dict(result.not_measured)
