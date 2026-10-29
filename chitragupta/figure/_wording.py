@@ -60,6 +60,18 @@ _CGLAB_RE = re.compile(r"\\cglab\s*(?=\{)")
 _NODE_RE = re.compile(r"(?:\\|(?<![\w\\]))node\b(?![\w\s]*=)")
 # A path that joins two points: `--`, `-|`, `|-`, `to`, `edge`, `..`.
 _JOINS_RE = re.compile(r"--|-\||\|-|\bto\b|\bedge\b|\.\.")
+# A command's arguments that are not text a reader sees: a colour, a
+# length, a key. Dropped before a label is read (`\textcolor{cgAccent}`
+# is not the word `cgAccent`).
+_NOT_TEXT_RE = re.compile(
+    r"\\fontsize\s*\{[^{}]*\}\s*\{[^{}]*\}"
+    r"|\\(?:textcolor|color|colorbox|hspace|vspace|cite[pt]?|ref|label)\*?"
+    r"\s*(?:\[[^\]]*\])?\s*\{[^{}]*\}"
+)
+# A brace group or a parenthesised point, blanked before asking whether
+# a path joins two points, so `to` in a label or `|-` in a coordinate
+# does not count.
+_GROUP_RE = re.compile(r"\{[^{}]*\}|\([^()]*\)")
 # One piece of a label: a formula, `\texttt{}`, a line break with its
 # optional skip, any other control sequence, a brace or space, or text.
 _TOKEN_RE = re.compile(
@@ -96,9 +108,15 @@ def wording_rules(source: str) -> tuple[list[Finding], list[Finding]]:
 
 
 def words(label: str) -> list[_Word]:
-    """What a reader sees in `label`, one entry per word."""
+    """What a reader sees in `label`, one entry per word.
+
+    Not `review/figure_layout/_source._label_words`, which only counts:
+    the case rules need each word, and which ones are a formula or
+    `\\texttt{}` that is never case-read. It also counts `$x + 1$` as
+    three words and a line break's `[-1pt]` as one, which a fifteen-word
+    ceiling absorbs and a six-word one does not."""
     found = []
-    for match in _TOKEN_RE.finditer(label):
+    for match in _TOKEN_RE.finditer(_NOT_TEXT_RE.sub(" ", label)):
         if match.group("math"):
             found.append(_Word(match.group("math"), verbatim=True))
         elif match.group("tt") is not None:
@@ -198,15 +216,28 @@ def _tags(text: str) -> list[str]:
     tags = []
     for statement in _PATH_STATEMENT_RE.finditer(text):
         body = statement.group("body")
-        if _JOINS_RE.search(body):
+        if _JOINS_RE.search(_blanked(body)):
             tags += [label for _, label, _ in _labels(body) if not label.startswith("\\cglab")]
     return tags
 
 
+def _blanked(body: str) -> str:
+    """`body` with every brace group and parenthesised point emptied,
+    innermost first, so only the path's own operations are left."""
+    while True:
+        emptied = _GROUP_RE.sub(" ", body)
+        if emptied == body:
+            return body
+        body = emptied
+
+
 def _labels(text: str) -> list[tuple[str, str, tuple[int, int]]]:
-    """`(name, label, (start, end))` of every node in `text`."""
-    found = []
+    """`(name, label, (start, end))` of every node in `text`. The word
+    `node` inside a label already read is text, not a node."""
+    found, close = [], 0
     for match in _NODE_RE.finditer(text):
+        if match.start() < close:
+            continue
         _, name, end = declaration(text, match.end())
         if end < len(text) and text[end] == "{":
             label, close = _group(text, end)

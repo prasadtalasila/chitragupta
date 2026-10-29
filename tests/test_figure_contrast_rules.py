@@ -184,6 +184,15 @@ class TestConnectors:
 
         assert len(_findings(*ends, lines=pieces)) == 1
 
+    def test_a_second_line_between_the_pair_in_another_colour_is_measured(self):
+        ends = [_box("a", box=self.A), _box("b", box=self.B)]
+        lines = [
+            line((20, 10), (60, 10), stroke=Paint(AUX_LINE, "cgAuxLine")),
+            line((20, 12), (60, 12), stroke=Paint(AUX, "cgAux")),
+        ]
+
+        assert [f[2][:14] for f in _findings(*ends, lines=lines)] == ["line cgAux on "]
+
     def test_a_line_from_a_log_without_paint_is_not_measured(self):
         assert self._figure(None) == []
 

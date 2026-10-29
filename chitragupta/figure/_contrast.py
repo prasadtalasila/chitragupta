@@ -67,9 +67,12 @@ def contrast_rules(source: str, drawn: Drawn) -> list[Finding]:
             found += _stroke("border", target, node.stroke, ground, names)
     seen = set()
     for con in cons:
-        if con.line.stroke is None or con.name in seen:
+        # Subpaths of one line repeat it; another line between the
+        # same pair, in another colour, is its own measurement.
+        key = (con.name, con.line.stroke and hex_code(con.line.stroke.colour))
+        if con.line.stroke is None or key in seen:
             continue
-        seen.add(con.name)
+        seen.add(key)
         ends = (drawn.nodes[con.start].box, drawn.nodes[con.end].box)
         ground = _ground(ends, {con.start, con.end}, filled, names)
         found += _stroke("line", con.name, con.line.stroke, ground, names)

@@ -46,6 +46,14 @@ class TestWords:
             ("now", False),
         ]
 
+    def test_a_commands_colour_or_length_is_not_a_word(self):
+        found = words(
+            "\\textcolor{cgAccent}{Feature} \\hspace*{2pt}store\\color{red}"
+            "\\fontsize{9}{11}x \\citep[p.~3]{key}"
+        )
+
+        assert [w.text for w in found] == ["Feature", "store", "x"]
+
     def test_punctuation_alone_is_not_a_word(self):
         assert [w.text for w in words("in / out --- done")] == ["in", "out", "done"]
 
@@ -143,6 +151,14 @@ class TestW2Tag:
     def test_a_label_on_a_path_that_joins_nothing_is_not_a_tag(self):
         assert _advisory("\\draw (0,0) node {Origin Point Here Now};") == []
 
+    def test_to_in_a_label_or_a_coordinate_does_not_make_a_join(self):
+        assert _advisory("\\draw (0,0) node[right] {Add To Cart Now Please};") == []
+        assert _advisory("\\draw (a.north |- b.south) node {Some Long Label Here};") == []
+        assert _advisory("\\draw (0,0) node {Loading Data Right Now};") == []
+
+    def test_a_join_outside_any_group_still_counts(self):
+        assert [f[0] for f in _advisory("\\draw (a) to[bend left] node {Go} (b);")] == ["w2-tag"]
+
     def test_node_distance_is_not_a_node(self):
         assert _advisory("\\draw[node distance=6mm] (a) -- (b) {Not A Label At All};") == []
 
@@ -166,6 +182,11 @@ class TestW4Pictograph:
         found = _objective("\\cgzonelabel{z}{cgAlt}{🚀 launch}")
 
         assert found == [("w4-pictograph", "figure", '"🚀" (U+1F680) outside any node\'s label')]
+
+    def test_the_word_node_in_a_label_starts_no_second_label(self):
+        found = _objective("\\node (leaf) {Leaf node {✓}};")
+
+        assert found == [("w4-pictograph", "leaf", '"✓" (U+2713) in the label')]
 
     def test_one_in_a_comment_is_not_read(self):
         assert _objective("\\node (a) {x}; % ✓ done") == []
