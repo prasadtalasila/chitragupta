@@ -142,9 +142,11 @@ so they are this skill's to state:
    `docs/WRITING-STANDARDS.md` §10's 7-bit alphabet, depicting the same
    thing as the TikZ: the same boxes, the same arrows, the same panel
    letters. A Unicode box character hard-fails a thesis template that
-   compiles with `pdflatex`. Nothing
-   checks that the two forms agree, so check it yourself before going
-   on.
+   compiles with `pdflatex`. Name each box, tag and panel in the TikZ's
+   own words: `figure check` (step 8) reports a missing twin
+   (`twin-missing`) and any name, tag or panel letter the twin lacks
+   (`t1-labels`, `t2-tags`, `t3-panels`). Whether the arrows join the
+   same boxes is still yours to check by eye.
 
 5. **No citekey inside either figure file.** The gate reads the draft
    and does not follow `\input`, so a citekey in a node label evades the
