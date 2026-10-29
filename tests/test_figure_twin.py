@@ -57,6 +57,12 @@ class TestPlain:
     def test_a_two_tier_label_is_a_name_over_a_gloss(self):
         assert _twin.plain(r"\cglab{Plan}{a gloss}") == ["Plan", "a gloss"]
 
+    def test_an_optional_argument_or_an_angle_is_not_text(self):
+        assert _twin.plain(r"\textcolor[HTML]{FF0000}{red} \rotatebox{90}{up}") == ["red up"]
+
+    def test_an_accent_is_dropped_from_its_letter(self):
+        assert _twin.plain(r"Caf\'e na\"ive") == ["Cafe naive"]
+
     def test_a_loop_variable_alone_is_empty(self):
         assert _twin.plain(r"\x") == []
 
@@ -72,6 +78,11 @@ class TestWords:
             "x",
             "1",
         }
+
+    def test_a_word_no_ascii_twin_can_spell_is_not_required(self):
+        """WRITING-STANDARDS §10 holds the twin to 7-bit, so `µs` and
+        `Δt` are words it could never carry."""
+        assert _twin.words("5 µs, Δt and café") == {"5", "and"}
 
 
 class TestNames:
@@ -101,6 +112,22 @@ class TestNames:
     @pytest.mark.parametrize("label", ["", "$x_1$", r"\x", "  "])
     def test_a_label_with_no_text_is_not_a_name(self, label):
         assert _twin.names(_picture(f"\\node (a) {{{label}}};")) == []
+
+    def test_the_word_node_inside_a_label_declares_nothing(self):
+        source = _picture(
+            r"\node[cgbox] (a) {\cglab{node}{a vertex}}; \node (b) {multi-node graph};"
+            r"\draw (a) -- node {node {count}} (b);"
+        )
+
+        assert _twin.names(source) == [Text("a", "node"), Text("b", "multi-node graph")]
+        assert _twin.tags(source) == [Text("a->b", "node count")]
+
+    @pytest.mark.parametrize("label", [r"\cglab{$x$}{estimate}", r"$\hat{x}$\\estimate"])
+    def test_a_name_that_is_maths_alone_does_not_promote_its_gloss(self, label):
+        assert _twin.names(_picture(f"\\node (a) {{{label}}};")) == []
+
+    def test_a_calc_position_is_not_a_name(self):
+        assert _twin.names(_picture(r"\node at ($(a)+(1,0)$) {X};")) == [Text("X", "X")]
 
     def test_a_label_carrying_a_loop_variable_is_not_compared(self):
         """Each pass sets a different label (`e1`, `e2`), so the text in
@@ -183,6 +210,12 @@ class TestTags:
         source = _picture(r"\draw (a) -- node {in; out} (b);")
 
         assert _twin.tags(source) == [Text("a->b", "in; out")]
+
+    @pytest.mark.parametrize(
+        "path", [r"(a) to node {x} (b)", r"(a) .. controls (c) .. node {x} (b)"]
+    )
+    def test_a_tag_after_any_path_operator_is_a_tag(self, path):
+        assert _twin.tags(_picture(f"\\draw {path};")) == [Text("a->b", "x")]
 
     def test_an_edge_operators_tag_is_a_tag(self):
         source = _picture(r"\draw (hub) edge node {ask} (s1);")

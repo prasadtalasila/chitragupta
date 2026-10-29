@@ -45,8 +45,8 @@ and panel letters, and reports a figure with no twin at all.
 | Skipped labels | Empty labels, labels inside the house block, labels carrying a macro parameter (`#1`), and labels carrying a `\foreach` variable anywhere (`{e\n}`): each pass sets a different label, so the source text is none of them |
 | No twin | **A fourth rule, `twin-missing`** (*user*): figure-scope, objective, **not allowable** (*user*: it is fixed, never excused). When it fires, `t1` to `t3` are listed under "not measured" with "no twin", not reported three times. This adds a rule the v3 plan's table did not list; the plan records it |
 | Targets | `t1`: the node's TikZ name, the zone's fit-node name or the legend item's name; the name's text where the node is unnamed. `t2`: `<from>-><to>` from the path's first and last named node, or the tag's text where either is missing. `t3` and `twin-missing`: `figure`. So #1058 can name them in an allow |
-| Measurement | `t1`/`t2`: `missing "<words>"` (the words not found). `t3`: `tex (a),(b); twin (a)`. `twin-missing`: `no <name>.txt beside <name>.tex` |
-| Compile | None. All four read source only, like `focal-count`, so they run on a host without TeX and hold whether or not the figure compiles |
+| Measurement | `t1`/`t2`: `missing "<words>"` (the words not found). `t3`: `tex (a), (b); twin (a)`. `twin-missing`: `no <name>.txt beside the figure` |
+| Compile | None of their own. All four read source only, like `focal-count`, so they hold whether or not the figure compiles; `figure check` itself still needs `lualatex` for the rest |
 | Where the twin is read | `check()` reads `<path>.with_suffix(".txt")` as UTF-8 with `errors="replace"`, so a stray non-ASCII byte is a WRITING-STANDARDS matter and not a crash. `apply()` takes it as `twin: str \| None` (`None`: absent) |
 | Scaffolds and exemplars | **All ten get a twin** (*user*: the three exemplars too), so every figure in `assets/tikz/` is a pair and one test holds it, at 7-bit ASCII and at most 72 columns. Written **after #1083 (1e) and #1054 (2c, shipped as #1086) merged** (*user*), because both rewrote every scaffold's labels; both had merged by the time the code was done |
 | Reuse | The label reader is its own module, `chitragupta/figure/_twin.py`, so #1055 (wording rules `w1` to `w3`, which also need names, glosses and tags) reuses it rather than writing a second |
@@ -97,16 +97,29 @@ through a scaffold directory of their own, a test pins that every
 shipped layout's twin is copied, and the skill's step 4 says to redraw
 the copied twin rather than to write one.
 
-After the fixes the 49 pairs give 5 `t1` and 6 `t2` findings, all real
+An independent review of the branch then found five more, each fixed
+with a test first: the word `node` inside a label (`\cglab{node}{a
+vertex}`) read as a second node, so a gloss was compared; a name that
+was maths alone (`\cglab{$x$}{estimate}`) promoted its gloss to the
+name; a letter outside ASCII (`µs`, `Δt`) split a word into fragments,
+and an optional argument or an angle (`\textcolor[HTML]{FF0000}`,
+`\rotatebox{90}`) leaked in as words; a tag after `to` or `..` was not
+read; and a calc position (`at ($(a)+(1,0)$)`) became the node's
+target. A word no 7-bit twin could spell is now not required. Those
+fixes took `_twin.py` past C2's 250 lines, so the source scanning moved
+to `_labels.py`.
+
+After the fixes the 49 pairs give 4 `t1` and 5 `t2` findings, all real
 drift or a twin's spelling of maths, and no `t3`.
 
 ## Components
 
 | Unit | Does |
 | --- | --- |
-| `chitragupta/figure/_twin.py` | `Text` (target, text); `names(source)`, `tags(source)`, `panels_tex(source)`, `panels_twin(twin)`, `plain(label) -> list[str]`, `words(text) -> set[str]`, and `agree(source, twin) -> (findings, not_measured)` |
+| `chitragupta/figure/_twin.py` | `Text` (target, text); `names(source)`, `tags(source)`, `panels_tex(source)`, `panels_twin(twin)`, `plain(label) -> list[str]`, `words(text) -> set[str]`, and `agree(source, twin, twin_name) -> (findings, not_measured)` |
+| `chitragupta/figure/_labels.py` | Where a figure's labels are in its source: `nodes(text)`, `drawing(source)`, `macro_calls(...)`, `arguments(...)`, `braced(...)`. Split from `_twin.py` to keep both under C2, and for #1055 to reuse |
 | `chitragupta/figure/_rules.py` | `twin-missing` (figure, objective, not allowable), `t1-labels`, `t2-tags` (element, objective), `t3-panels` (figure, objective), after `stranded-arrowhead` |
-| `chitragupta/figure/_check.py` | `check()` reads the twin; `apply(..., twin=None)` and `evaluate()` add `agree()`'s findings and not-measured rows |
+| `chitragupta/figure/_check.py` | `check()` reads the twin; `apply(..., twin=None)` adds `agree()`'s findings and not-measured rows and re-sorts into registry order |
 | `docs/TIKZ-STYLE.md`, `references/check.md` | The four rows; the test in `tests/test_figure_rule_ids.py` keeps them and the registry one set |
 | `SKILL.md` step 4, three copies | "Nothing checks..." becomes "`figure check` compares them (`t1` to `t3`); edge topology is still yours to check by eye" |
 | `assets/tikz/*.txt`, `assets/tikz/exemplars/*.txt` | Ten twins |
@@ -204,7 +217,7 @@ change.
   - `agree`, each rule in both polarities: agreeing pair gives `([], [])`;
     renamed box fires `t1-labels relay missing "channel"`
     (`4-channel` vs `4-ch`); dropped tag fires `t2-tags`; panel `(b)`
-    absent from the twin fires `t3-panels` with `tex (a),(b); twin (a)`;
+    absent from the twin fires `t3-panels` with `tex (a), (b); twin (a)`;
     `twin=None` gives one `twin-missing` finding and `t1`/`t2`/`t3`
     under not measured with `NO_TWIN`; `twin=""` fires `t1` once per name.
 - [x] **Step 2: Run** `pytest tests/test_figure_twin.py -v`; expect
@@ -250,8 +263,8 @@ change.
   - The `tests/fixtures/figure/twin/` pairs fire their rule and only it.
 - [x] **Step 2: Run** `pytest tests/test_figure_check.py tests/test_figure_rule_ids.py tests/test_figure_twin.py`; expect the new tests to fail.
 - [x] **Step 3: Implement.** Registry order: `twin-missing`, `t1-labels`,
-  `t2-tags`, `t3-panels` after `stranded-arrowhead`. `evaluate()` takes
-  `twin` and appends `agree()`'s findings before the sort; its
+  `t2-tags`, `t3-panels` after `stranded-arrowhead`. `apply()` takes
+  `twin` and adds `agree()`'s findings to `evaluate()`'s, re-sorted; its
   not-measured rows join the others. Add the four table rows with their
   usual fix ("write the twin"; "use the TikZ's words for the name in the
   twin"; "put the tag on the twin's arrow"; "letter the twin's panels as
