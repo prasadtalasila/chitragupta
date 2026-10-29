@@ -91,7 +91,9 @@ class TestW1Case:
         assert _advisory("\\node[draw] (n) {physical twin\\\\pot, pump};") == []
 
     def test_the_cglab_definition_is_not_a_name(self):
-        assert _advisory("\\providecommand{\\cglab}[2]{x}\\newcommand{\\lab}{\\cglab{#1}{#2}}") == []
+        assert (
+            _advisory("\\providecommand{\\cglab}[2]{x}\\newcommand{\\lab}{\\cglab{#1}{#2}}") == []
+        )
 
 
 class TestW3Gloss:

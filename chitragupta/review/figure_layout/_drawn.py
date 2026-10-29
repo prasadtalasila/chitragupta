@@ -57,9 +57,8 @@ Point = tuple[float, float]
 # Points per Bézier piece when a curve is flattened into straight ones.
 _CURVE_STEPS = 8
 
-_LINE_RE = re.compile(
-    r"^(CGNODE|CGPATH|CGSEG|CGNB|CGPAINT|CGTEXT|CGTEXTCOLOR) (.*)$", re.MULTILINE
-)
+_LINE_RE = re.compile(r"^(CGNODE|CGPATH|CGSEG|CGNB|CGPAINT|CGTEXT|CGTEXTCOLOR) (.*)$", re.MULTILINE)
+
 
 @dataclass(frozen=True)
 class DrawnNode:
@@ -192,9 +191,7 @@ def _pt(dimension: str) -> float:
     return float(dimension.removesuffix("pt"))
 
 
-def _path(
-    fields: list[str], labels: tuple[str, ...], paint: tuple[Paint, Paint] | None
-) -> _Path:
+def _path(fields: list[str], labels: tuple[str, ...], paint: tuple[Paint, Paint] | None) -> _Path:
     _, where, start, end, *action = fields
     words = " ".join(action)
     return _Path(

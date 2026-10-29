@@ -133,7 +133,9 @@ def _ground(
     return holder.fill.colour, f"{holder.name}'s fill {_shown(holder.fill, names)}"
 
 
-def _text(target: str, node: DrawnNode, ground: tuple[RGB, str], names: dict[str, str]) -> list[Finding]:
+def _text(
+    target: str, node: DrawnNode, ground: tuple[RGB, str], names: dict[str, str]
+) -> list[Finding]:
     """One k2 finding per colour of `node`'s text that does not clear its
     threshold. Runs of one colour at several sizes report the worst."""
     failing: dict[RGB, tuple[float, float]] = {}
@@ -157,7 +159,9 @@ def _stroke(
     ratio = contrast(paint.colour, ground[0])
     if ratio >= LINE:
         return []
-    return [Finding("k1-stroke", target, _measured(what, _shown(paint, names), ground, ratio, LINE))]
+    return [
+        Finding("k1-stroke", target, _measured(what, _shown(paint, names), ground, ratio, LINE))
+    ]
 
 
 def _shown(paint: Paint, names: dict[str, str]) -> str:

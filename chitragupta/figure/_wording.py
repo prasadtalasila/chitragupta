@@ -121,9 +121,15 @@ def _case(name: str) -> list[Finding]:
     lower = len(first.letters) > 1 and first.letters[0].islower()
     if lower and first.text.lower() not in _LOWER_BY_CONVENTION:
         return [Finding("w1-case", _shown(name), "starts lower-case; sentence case capitalises it")]
-    later = [word for word in found[1:] if len(word.letters) >= _TITLE_LETTERS and not _acronym(word)]
+    later = [
+        word for word in found[1:] if len(word.letters) >= _TITLE_LETTERS and not _acronym(word)
+    ]
     if later and all(word.capitalised for word in later):
-        return [Finding("w1-case", _shown(name), "Title Case; sentence case capitalises only the first word")]
+        return [
+            Finding(
+                "w1-case", _shown(name), "Title Case; sentence case capitalises only the first word"
+            )
+        ]
     return []
 
 
@@ -136,7 +142,9 @@ def _gloss(name: str, gloss: str) -> list[Finding]:
     count = len(words(gloss))
     if count <= GLOSS_WORDS:
         return []
-    return [Finding("w3-gloss", _shown(name), f"{_shown(gloss)}: {count} words, over {GLOSS_WORDS}")]
+    return [
+        Finding("w3-gloss", _shown(name), f"{_shown(gloss)}: {count} words, over {GLOSS_WORDS}")
+    ]
 
 
 def _tag(tag: str) -> list[Finding]:

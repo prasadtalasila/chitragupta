@@ -36,10 +36,7 @@ def _box(name, box=(0, 0, 40, 20), **kw):
 
 
 def _findings(*nodes, lines=()):
-    return [
-        (f.rule, f.target, f.measurement)
-        for f in contrast_rules(SOURCE, drawn(nodes, lines))
-    ]
+    return [(f.rule, f.target, f.measurement) for f in contrast_rules(SOURCE, drawn(nodes, lines))]
 
 
 class TestText:
@@ -53,7 +50,9 @@ class TestText:
         ]
 
     def test_its_text_shade_passes(self):
-        assert _findings(_box("decide", fill=Paint(ACCENT_TINT, "x"), runs=[_run(ACCENT_TEXT)])) == []
+        assert (
+            _findings(_box("decide", fill=Paint(ACCENT_TINT, "x"), runs=[_run(ACCENT_TEXT)])) == []
+        )
 
     def test_large_bold_text_needs_only_3(self):
         """The same colour at 12pt fails: the size is measured, not read
@@ -76,7 +75,9 @@ class TestText:
 
     def test_a_badges_white_digit_on_its_text_fill_passes(self):
         flow_text = mix((0.0, 0x72 / 255, 0xB2 / 255), INK, 0.95)
-        assert _findings(_box("cgu-1", fill=Paint(flow_text, "cgFlowText"), runs=[_run(WHITE)])) == []
+        assert (
+            _findings(_box("cgu-1", fill=Paint(flow_text, "cgFlowText"), runs=[_run(WHITE)])) == []
+        )
 
     def test_an_unnamed_node_is_named_by_its_centre(self):
         found = _findings(_box("cgu-3", box=(0, 0, 28.45, 28.45), runs=[_run(AUX)]))
@@ -122,30 +123,31 @@ class TestGround:
 
 class TestBorder:
     def test_aux_drawn_on_its_own_tint_fails(self):
-        found = _findings(
-            _box("a", fill=Paint(AUX_TINT, "cgAux!10"), stroke=Paint(AUX, "cgAux"))
-        )
+        found = _findings(_box("a", fill=Paint(AUX_TINT, "cgAux!10"), stroke=Paint(AUX, "cgAux")))
 
         assert found == [("k1-stroke", "a", "border cgAux on fill cgAux!10: 2.13:1, needs 3:1")]
 
     def test_its_line_shade_passes(self):
-        assert _findings(_box("a", fill=Paint(AUX_TINT, "t"), stroke=Paint(AUX_LINE, "cgAuxLine"))) == []
+        assert (
+            _findings(_box("a", fill=Paint(AUX_TINT, "t"), stroke=Paint(AUX_LINE, "cgAuxLine")))
+            == []
+        )
 
 
 class TestBadge:
     def test_a_border_in_its_own_fill_colour_is_not_measured(self):
         """`cgbadge` draws and fills its disc in one Text shade."""
         flow_text = mix((0.0, 0x72 / 255, 0xB2 / 255), INK, 0.95)
-        disc = _box("cgu-1", fill=Paint(flow_text, "cgFlowText"), stroke=Paint(flow_text, "cgFlowText"))
+        disc = _box(
+            "cgu-1", fill=Paint(flow_text, "cgFlowText"), stroke=Paint(flow_text, "cgFlowText")
+        )
 
         assert _findings(disc) == []
 
 
 class TestWrittenThroughAMacro:
     def test_a_foreach_variable_is_named_by_its_colour(self):
-        found = _findings(
-            _box("a", fill=Paint(AUX_TINT, "\\c !10"), stroke=Paint(AUX, "\\c "))
-        )
+        found = _findings(_box("a", fill=Paint(AUX_TINT, "\\c !10"), stroke=Paint(AUX, "\\c ")))
 
         assert found[0][2].startswith("border cgAux on fill #EEF8FD:")
 

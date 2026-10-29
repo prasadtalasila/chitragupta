@@ -114,7 +114,10 @@ def self_check() -> None:
     ]
     counted = tally(rows)
     assert counted["fired"]["k2-text"] == 2 and counted["fired"]["w1-case"] == 1
-    assert counted["fired_on_house_figures"] == {**dict.fromkeys(OBJECTIVE + ADVISORY, 0), "k2-text": 1}
+    assert counted["fired_on_house_figures"] == {
+        **dict.fromkeys(OBJECTIVE + ADVISORY, 0),
+        "k2-text": 1,
+    }
     assert counted["files"]["k2-text"] == 2
     assert counted["pairs"] == {"k2-text: cgAux on white": 2}
     assert counted["not_measured"] == {"why": 1}
