@@ -238,6 +238,12 @@ thesis, so two things are yours to act on:
 - **Unicode.** When it prints a `[unicode]` line, copy
   `chitragupta-unicode.sty` next to your thesis and load it.
 
+A third line, `[floats]`, is a choice rather than a fix. It copies
+`chitragupta-floats.tex` beside the fragment: `\input` it in your thesis
+preamble to get the float placement the pdf preview used, which keeps a
+figure that fits on a text page out of a page of its own (#1065), or
+leave it out to keep your template's.
+
 The fragment never writes `\renewcommand{\thefigure}`: your thesis's
 own counter numbers the figure. [WRITE-A-THESIS-CHAPTER.md](WRITE-A-THESIS-CHAPTER.md)
 covers the rest of putting a fragment into a thesis.

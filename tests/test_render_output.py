@@ -78,18 +78,25 @@ class TestRunPandoc:
         with pytest.raises(subprocess.CalledProcessError):
             render_output._run_pandoc(["pandoc"], {})
 
-    def test_pandoc_and_its_engine_are_launched_by_absolute_path(self, monkeypatch):
+    def test_pandoc_and_its_engine_are_launched_by_absolute_path(self, monkeypatch, tmp_path):
         """#974: pandoc starts the engine by the name `--pdf-engine`
         gives, which on Windows is looked up in cwd before PATH."""
         launched = []
+        # The pdf a successful run leaves, which `_floats` reads (#1065).
+        pdf = tmp_path / "out.pdf"
+        pdf.write_bytes(b"")
 
         def fake_run(argv, **kwargs):  # pylint: disable=unused-argument
             launched.append(argv)
             return self._fake_completed()
 
         monkeypatch.setattr(subprocess, "run", fake_run)
-        render_output._run_pandoc(["pandoc", "in.md", "--pdf-engine", "lualatex"], {})
-        assert launched == [["/usr/bin/pandoc", "in.md", "--pdf-engine", "/usr/bin/lualatex"]]
+        render_output._run_pandoc(
+            ["pandoc", "in.md", "--pdf-engine", "lualatex", "-o", str(pdf)], {}
+        )
+        assert launched == [
+            ["/usr/bin/pandoc", "in.md", "--pdf-engine", "/usr/bin/lualatex", "-o", str(pdf)]
+        ]
 
 
 class TestRenderMarkdown:

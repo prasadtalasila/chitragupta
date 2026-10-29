@@ -37,6 +37,7 @@ The document skeleton, in order:
 \usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit}             % see "TikZ libraries" below
+\input{chitragupta-floats}                    % see "Figure placement" below
 \usepackage[hidelinks]{hyperref}
 \usepackage{cleveref}
 \usepackage{fvextra}                         % see "Wide code lines" below
@@ -192,6 +193,25 @@ What a figure file must **never** contain is a hand-rolled load -- no
 clearing of `\tikz@library@...@loaded`, no saving or restoring of
 `\tikz@node@reset@hook`. `python -m chitragupta.review figure` reports
 one as `loads-library-by-hand`.
+
+**Figure placement: `chitragupta-floats.tex`, for the same `--fragment`
+reason** (#1065). LaTeX's class defaults move a figure about half a
+page tall onto a page of its own, centred with blank space above and
+below. On this project's reference book that cost three pages, and
+`draft render` now sets different float fractions for a standalone
+draft. A unit rendered with `--fragment` that draws a figure prints one
+line and gets the file copied beside it:
+
+```text
+[floats] chitragupta-floats.tex copied beside the fragment -- a fragment has no preamble; \input{chitragupta-floats} in the assembling document's preamble
+```
+
+If any unit printed it, keep the `\input{chitragupta-floats}` line in the
+skeleton above; if none did, drop it. Never edit the copied file, and
+never give one figure `[H]` to get it out of a float page: the file's own
+header says why each number is what it is, and a forced figure leaves a
+ragged page bottom instead. A book that wants other fractions sets them
+in its `preamble.tex`, which loads after.
 
 **Unicode characters: the book is LuaLaTeX, with the render's fonts**
 (#1037). A unit's text reaches LaTeX as its author wrote it (`H₂O`,

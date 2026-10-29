@@ -69,8 +69,11 @@ so they are this skill's to state:
   `\usetikzlibrary{...}` with those names belongs in their thesis
   preamble; never work around it inside a figure file. When it prints a
   `[unicode]` line, tell them to copy `chitragupta-unicode.sty` beside
-  their thesis and load it. And never write `\renewcommand{\thefigure}`:
-  their thesis's own counter numbers the figure.
+  their thesis and load it. A `[floats]` line is optional for them:
+  `\input{chitragupta-floats}` gives their thesis the float placement
+  the pdf preview used, and leaving it out keeps their template's own.
+  And never write `\renewcommand{\thefigure}`: their thesis's own
+  counter numbers the figure.
 
 ## The procedure
 

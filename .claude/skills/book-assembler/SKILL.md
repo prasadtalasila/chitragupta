@@ -237,6 +237,22 @@ or in the unit through `draft-reviser` -- never by this skill.
    book: before that, citeproc had already resolved every citation and
    there was nothing for this warning to report.
 
+   **Then report any figure that landed on a float-only page.** The same
+   log names each one (#1065):
+
+   ```bash
+   python3 -c "import re,pathlib; log=pathlib.Path('book.log').read_text(errors='replace'); \
+       print(re.findall(r'chitragupta float page: \S+ holds Figure \S+', log))"
+   ```
+
+   Tell the user every line it prints, as a finding about the figure, not
+   a failure of the build: a figure taller than 0.85 of the text height
+   cannot share a page with text, so the fix, if they want one, is a
+   shorter figure, drawn through `figure-drawer`. Never edit
+   `chitragupta-floats.tex` or a unit to make the list empty. `[]` means
+   no figure is alone on a page, but only if the skeleton loads that
+   file: it is what writes these lines.
+
    **A citekey containing `--` is the case worth knowing about.** The
    render aliases it (`state---art` becomes `state-x2d-x2d-art`) on both
    sides -- the `\citep{...}` and the copied `.bib` -- so it resolves.

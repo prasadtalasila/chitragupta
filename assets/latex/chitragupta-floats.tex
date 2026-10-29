@@ -1,0 +1,89 @@
+% Where chitragupta's renders let a figure float (#1065). Not a package.
+% A standalone `tex` or `pdf` render gets it through pandoc's
+% --include-in-header; a `--fragment` whose unit draws a figure gets it
+% copied beside it, and a book built from fragments \input-s it in the
+% preamble (.claude/skills/book-assembler/references/latex-conventions.md).
+%
+% Measured on the reference book of #1045 (287 pages, 40 figures): the
+% class defaults put three figures each alone on a page of their own,
+% centred with blank space above and below; these settings put all three
+% in the text, and moved no figure later than its old page.
+% plans/1065-float-placement.md has the table.
+%
+% The cause was \floatpagefraction at .5. LaTeX tries to build a float
+% page before it tries the top of a text page, so a figure half a page
+% tall qualified for a page of its own even though \topfraction would
+% have let it sit above text. At .8, a float page has to be mostly
+% figure. \topfraction must stay above it, or a figure between the two
+% fits neither a text page nor a float page and waits for \clearpage.
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.5}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
+% `h` first: what pandoc's own template already sets for an image figure,
+% so a TikZ figure places the way an image figure does.
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+%
+% The report, LuaLaTeX only: every pdf chitragupta builds is LuaLaTeX
+% (#996, #1037), and a pdflatex document that \input-s this file gets the
+% settings above and nothing below.
+%
+% A figure that still lands on a float-only page is noted, not refused.
+% The kernel's \if@fcolmade is true while a float-only page is being
+% shipped; a shipout/before hook hands that, with the page's number, to
+% Lua. Each figure carries a \latelua node holding its own number, frozen
+% when the figure is set, which runs as its page ships. The line goes to
+% the log, where a book build reads it.
+%
+% A `draft render` cannot read the log: pandoc deletes it when a pdf
+% succeeds. Nor can Lua write a file beside the render, because
+% kpathsea's openout_any=p refuses an absolute path outside the
+% TEXMFOUTPUT pandoc sets (measured: io.open answers nil). So after the
+% last page the same pages go into the pdf's own Info dictionary, as
+% /ChitraguptaFloatPages, hex-encoded so no figure number can end the
+% string early: one `page TAB figure` line each. LuaTeX writes that
+% dictionary uncompressed, and chitragupta/render_output/_floats.py reads
+% it back. The key is written only when there is something in it.
+%
+% The Lua is written for \directlua, which reads it as one line: no Lua
+% comments, and no `#`, `~` or backslash, which TeX would act on first.
+\ifdefined\directlua
+\begingroup
+\catcode`\%=12
+\directlua{
+  chitragupta_floats = {count = 0, lines = ""}
+  function chitragupta_floats.figure(number)
+    local page = chitragupta_floats.page
+    if page == nil then return end
+    texio.write_nl("log", "chitragupta float page: " .. page .. " holds Figure " .. number)
+    texio.write_nl("log", "")
+    chitragupta_floats.count = chitragupta_floats.count + 1
+    chitragupta_floats.lines = chitragupta_floats.lines .. page .. string.char(9) .. number .. string.char(10)
+  end
+  function chitragupta_floats.hex()
+    return (chitragupta_floats.lines:gsub(".", function(c) return string.format("%02X", c:byte()) end))
+  end
+}
+\endgroup
+\makeatletter
+\AddToHook{shipout/before}{%
+  \if@fcolmade
+    \directlua{chitragupta_floats.page = "\luaescapestring{\thepage}"}%
+  \else
+    \directlua{chitragupta_floats.page = nil}%
+  \fi}
+\AddToHook{env/figure/end}{%
+  \begingroup
+  \edef\chitragupta@floatnode{\endgroup
+    \noexpand\latelua{chitragupta_floats.figure("\luaescapestring{\thefigure}")}}%
+  \chitragupta@floatnode}
+\AddToHook{enddocument/afterlastpage}{%
+  \ifnum\directlua{tex.sprint(chitragupta_floats.count)}>0
+    \pdfextension info{/ChitraguptaFloatPages <\directlua{tex.sprint(chitragupta_floats.hex())}>}%
+  \fi}
+\makeatother
+\fi

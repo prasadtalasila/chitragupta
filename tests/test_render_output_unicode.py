@@ -7,7 +7,7 @@ import subprocess
 import pytest
 
 from chitragupta import render_output
-from chitragupta.render_output import _unicode
+from chitragupta.render_output import _floats, _unicode
 from tests.conftest import (
     content_draft,
     lualatex_available,
@@ -193,4 +193,5 @@ def test_each_preamble_file_becomes_an_include_in_header(tmp_path):
         "tex", "article", "12pt", "a4", "1in", [], False, False, [header, extra],
     )  # fmt: skip
     flagged = [cmd[i + 1] for i, arg in enumerate(cmd) if arg == "--include-in-header"]
-    assert flagged == [str(header), str(extra)]
+    # Then the float settings, which every standalone LaTeX render takes (#1065).
+    assert flagged == [str(header), str(extra), str(_floats.path())]

@@ -181,3 +181,13 @@ def test_the_brace_protection_requirement_is_documented():
     )
     assert "Brace-protect acronyms" in book_doc
     assert "{IoT}" in book_doc
+
+
+def test_the_book_loads_the_float_settings_and_reports_a_lone_figure():
+    """#1065: a fragment has no preamble, so the book carries the float
+    fractions `draft render` gives a standalone draft, and the build step
+    reads back the figures that still landed on a float-only page."""
+    body = _body()
+    assert r"\input{chitragupta-floats}" in body
+    assert "chitragupta float page:" in body, "the line the shipped file writes to book.log"
+    assert "not a failure of the build" in body, "a tall figure is the author's call"
