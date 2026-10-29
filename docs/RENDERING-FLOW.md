@@ -247,7 +247,7 @@ LaTeX-bound (`tex`/`latex`/`pdf`):
 
 | Draft carries | Output wants | What happens |
 | --- | --- | --- |
-| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes `\input{figures/<name>.tex}`; for `pdf`, followed by the figure's page mark (below) |
+| Markdown `figure:` marker + ASCII twin | LaTeX-bound | `_substitute_tikz_for_ascii`: marker becomes a centred paragraph, `{\centering\input{figures/<name>.tex}\par}` (#1085); for `pdf`, with the figure's page mark before the `\par` (below) |
 | Markdown `figure:` marker + ASCII twin | non-LaTeX | `_substitute_ascii_for_marker`: marker becomes a fenced ASCII block |
 | `.tex` fragment's inline `\input` + ASCII twin | non-LaTeX (`.md` preview) | `_substitute_ascii_for_tikz`: `\input{...}` becomes a `\begin{verbatim}` block of the ASCII twin |
 | `.tex` fragment's inline `\input` | LaTeX-bound (`tex`/`pdf`) | documented no-op: the TikZ is real and already inline, so nothing is substituted |

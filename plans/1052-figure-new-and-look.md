@@ -330,3 +330,8 @@ Test first at each step, red before green.
   a draft's first figure needs no `mkdir`.
 - **A page is 2481 x 3508 px**, not 2480: pdftoppm rounds a page's pixel
   size up, and A4's 595.28pt is 2480.3 px at 300 dpi.
+- **Figures are centred, #1085 folded in** (*user*). `figure look
+  --draft`'s first page picture showed a captioned figure at the left
+  margin under a centred caption. The render never set `\centering`;
+  the figure's own paragraph, the one the mark already rides in, is
+  now `{\centering\input{...}\par}`, captioned or not.

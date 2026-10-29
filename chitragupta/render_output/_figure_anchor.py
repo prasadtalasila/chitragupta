@@ -44,13 +44,21 @@ _SAFE_BASE_RE = re.compile(r"[\w./-]+")
 _DEST_RE = re.compile(r'^\s*(?P<page>\d+)\s+\[[^\]]*\]\s+"' + PREFIX + r'(?P<base>.*)"\s*$', re.M)
 
 
-def anchored_input(ref: str, base: str) -> str:
-    """`\\input{ref}` followed by the mark for `base`, as one raw block;
-    the bare `\\input` line for a base a mark cannot carry."""
-    if not _SAFE_BASE_RE.fullmatch(base):
-        return f"\\input{{{ref}}}\n"
-    mark = f"\\unskip\\pdfextension dest name{{{PREFIX}{base}}} xyz\\relax"
-    return f"```{{=latex}}\n\\input{{{ref}}}{mark}\n```\n"
+def figure_block(ref: str, base: str, marked: bool) -> str:
+    """The figure's own paragraph, centred, as one raw block: `\\input{ref}`,
+    then the mark for `base` when `marked` (pdf output) and the base can
+    carry one.
+
+    Centred here, for a captioned figure and an uncaptioned one alike
+    (#1085): the paragraph is the figure's in both, inside the caption's
+    float or in the text, and nothing else set `\\centering`, so a figure
+    sat at the left margin, under a caption LaTeX had centred on its own.
+    The group keeps `\\centering` to this one paragraph.
+    """
+    mark = ""
+    if marked and _SAFE_BASE_RE.fullmatch(base):
+        mark = f"\\unskip\\pdfextension dest name{{{PREFIX}{base}}} xyz\\relax"
+    return f"```{{=latex}}\n{{\\centering\\input{{{ref}}}{mark}\\par}}\n```\n"
 
 
 def pages(dests: str) -> dict[str, int]:

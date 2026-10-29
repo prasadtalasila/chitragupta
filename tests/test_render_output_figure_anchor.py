@@ -28,16 +28,22 @@ needs_pdf_render = pytest.mark.skipif(
 _PARAGRAPH = "word " * 90 + "\n\n"
 
 
-class TestAnchoredInput:
-    def test_the_mark_follows_the_input_in_one_raw_block(self):
-        assert _figure_anchor.anchored_input("figures/flow.tex", "figures/flow") == (
-            "```{=latex}\n\\input{figures/flow.tex}"
-            "\\unskip\\pdfextension dest name{cgfig:figures/flow} xyz\\relax\n```\n"
+class TestFigureBlock:
+    def test_the_mark_follows_the_input_in_one_centred_raw_block(self):
+        assert _figure_anchor.figure_block("figures/flow.tex", "figures/flow", True) == (
+            "```{=latex}\n{\\centering\\input{figures/flow.tex}"
+            "\\unskip\\pdfextension dest name{cgfig:figures/flow} xyz\\relax\\par}\n```\n"
+        )
+
+    def test_unmarked_it_is_the_centred_input_alone(self):
+        assert _figure_anchor.figure_block("figures/flow.tex", "figures/flow", False) == (
+            "```{=latex}\n{\\centering\\input{figures/flow.tex}\\par}\n```\n"
         )
 
     @pytest.mark.parametrize("base", ["figures/a#b", "figures/a%b", "figures/a{b}", "f\\x"])
     def test_a_base_tex_would_act_on_gets_no_mark(self, base):
-        assert _figure_anchor.anchored_input(f"{base}.tex", base) == f"\\input{{{base}.tex}}\n"
+        block = _figure_anchor.figure_block(f"{base}.tex", base, True)
+        assert "pdfextension" not in block and f"\\input{{{base}.tex}}" in block
 
     def test_pages_reads_only_its_own_marks(self):
         dests = (
@@ -60,7 +66,7 @@ class TestWhereTheMarkGoes:
     def test_a_tex_output_is_not_marked(self, tmp_path, fmt):
         draft = figure_pair(tmp_path) / "draft.md"
         out = render_output._with_figures_for(MARKED_MD, draft, fmt)
-        assert "\\input{figures/fig1.tex}\n" in out and "pdfextension" not in out
+        assert "\\input{figures/fig1.tex}\\par}" in out and "pdfextension" not in out
 
     def test_a_tex_draft_is_left_as_it_is(self, tmp_path):
         draft = figure_pair(tmp_path) / "draft.tex"
@@ -120,5 +126,6 @@ class TestRealRender:
     def test_the_marks_move_no_word_on_any_page(self, isolated_config, monkeypatch, between):
         draft = _draft(isolated_config, ["one", "two", "three", "four"], between)
         marked = _words(render_output.render(str(draft), output_format="pdf"))
-        monkeypatch.setattr(_figures, "anchored_input", lambda ref, _base: f"\\input{{{ref}}}\n")
+        unmarked = _figure_anchor.figure_block
+        monkeypatch.setattr(_figures, "figure_block", lambda ref, base, _: unmarked(ref, base, False))
         assert _words(render_output.render(str(draft), output_format="pdf")) == marked
