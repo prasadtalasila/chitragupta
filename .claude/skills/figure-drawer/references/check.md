@@ -10,7 +10,7 @@ figures/flow.tex
   node-overlap          legend+pot boxes intersect
 advisory (read; never resolved, allowed or capped)
   size-height           figure     0.24 of the text height (168pt); pipeline reference 0.10 to 0.37
-  size-slack            figure     0.82; pipeline reference 0.55 to 0.68
+  size-slack            figure     0.82; pipeline reference 0.56 to 0.69
   size-squash           load+parse 1.2mm apart edge to edge, under 3mm
   budget-nodes          figure     9 nodes; pipeline reference 5 to 11
   budget-edges          figure     8 edges; pipeline reference 3 to 4
@@ -68,9 +68,9 @@ under "diagnostics (not findings)". Read the edge list against the prose
 the figure illustrates: it is the check nothing else makes.
 
 Keep the scaffold's `% cg-layout: <id>` line. `c1-orthogonal` and
-`c4-attach` are not evaluated for a `branching-tree`,
-`hub-and-spoke-network` or `state-machine` figure, whose edges are
-diagonal or curved by design; a figure with no line is held to both.
+`c4-attach` are not evaluated for a `hub-and-spoke-network` or
+`state-machine` figure, whose edges are diagonal or curved by design; a
+tree, and a figure with no line, is held to both.
 
 ## Recording a deliberate exception
 

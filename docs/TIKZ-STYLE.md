@@ -791,7 +791,7 @@ or point.
 | `node-overlap` | element | objective | Two nodes' boxes intersect; the target is the pair, `a+b`. A zone containing its nodes is not an overlap. Every node TikZ drew is measured, an unnamed one (a zone title, a note) named by its centre, `(x,y)` in mm; a tag on a line is `c6`'s, and a round node under 7mm (a step badge) is left out |
 | `node-text-overload` | element | objective | A node's text runs past 15 words; the target is the node |
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
-| `c1-orthogonal` | element | objective | A connector between nodes whose ends differ by more than 1mm in both x and y is drawn straight or bent instead of as an elbow (`-\|`, `\|-`); the target is the edge, `a->b`. Not evaluated for the `branching-tree`, `hub-and-spoke-network` and `state-machine` layouts |
+| `c1-orthogonal` | element | objective | A connector between nodes whose ends differ by more than 1mm in both x and y is drawn straight or bent instead of as an elbow (`-\|`, `\|-`); the target is the edge, `a->b`. Not evaluated for the `hub-and-spoke-network` and `state-machine` layouts; a tree is held to it |
 | `c2-tag-clearance` | element | objective | A tag's text is under 0.8mm or over 3mm from its own line. Measured from the text, not the node box, which `above` and the rest put on the line; the house `cgtag` sits 1mm clear. A `sloped` tag is not measured |
 | `c3-coincident` | element | objective | Two connectors run together for more than 2mm, so one hides the other; the target is the pair, `a->b+c->d`. Two that share an end point are a fork, and are not counted |
 | `c4-attach` | element | objective | One end on a side over 1mm off its midpoint, several over 1mm off even spacing (`L*k/(N+1)`) or under 2mm apart; the target is the side, `a.north`. Measured only where a straight connector meets the side square on, so an angled or bent end is left to `c1`. Round nodes and zones are not measured, and the layouts `c1` exempts are exempt |
@@ -852,10 +852,10 @@ repository's own figures (`bench/RESULTS.md`, 2026-10-29).
 
 **The layout line also decides which connector rules apply.** A rule a
 layout exempts is not evaluated for a figure that declares it (or is
-given it with `--layout`): a tree's and a hub's edges are diagonal by
-design, and an automaton's transitions curve, so `c1-orthogonal` and
-`c4-attach` are exempt for `branching-tree`, `hub-and-spoke-network`
-and `state-machine`.
+given it with `--layout`): a hub's spokes are diagonal by design and an
+automaton's transitions curve, so `c1-orthogonal` and `c4-attach` are
+exempt for `hub-and-spoke-network` and `state-machine`. A tree is not:
+the house tree fans its edges out orthogonally.
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

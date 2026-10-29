@@ -51,10 +51,11 @@ class Finding:
     measurement: str
 
 
-# Diagonal edges are a tree's and a radial network's grammar, and curved
-# transitions an automaton's; orthogonal routing, and the attach points
-# it puts at a side's midpoint, are everyone else's.
-_NOT_ORTHOGONAL = frozenset({"state-machine", "hub-and-spoke-network", "branching-tree"})
+# Diagonal spokes are a radial network's grammar, and curved transitions
+# an automaton's; orthogonal routing, and the attach points it puts at a
+# side's midpoint, are everyone else's. A tree is held to it: #1083 drew
+# the house tree with fanned orthogonal edges.
+_NOT_ORTHOGONAL = frozenset({"state-machine", "hub-and-spoke-network"})
 
 RULES: dict[str, Rule] = {
     rule.id: rule

@@ -42,8 +42,10 @@ layout itself (#1062).
 - **`c2` measures the text box**, the node's `text` anchor plus the text's
   width, height and depth. 141 of 160 node boxes touch their line by
   construction.
-- **`c1` exempts `branching-tree`** as well as `state-machine` and
-  `hub-and-spoke-network`, and a figure declares its layout with a
+- **`c1` exempts `state-machine` and `hub-and-spoke-network`** (a first
+  draft added `branching-tree`; #1083 then redrew the house tree with
+  orthogonal edges, so trees are held to it), and a figure declares its
+  layout with a
   `% cg-layout: <id>` line, which every scaffold and exemplar carries.
   The id names a file under the skill's `references/layouts/`.
 - **`c4` does not measure round nodes** (circle, ellipse, diamond and the

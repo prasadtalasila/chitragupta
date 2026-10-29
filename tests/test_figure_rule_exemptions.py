@@ -2,8 +2,8 @@
 
 A figure names its layout with `% cg-layout:` (#1057's reader,
 `chitragupta/figure/_layout.py`); a rule a layout exempts is skipped for
-it. Orthogonal routing and midpoint attach points are wrong for a tree's
-and a hub's diagonal edges and an automaton's curves.
+it. Orthogonal routing and midpoint attach points are wrong for a hub's
+diagonal spokes and an automaton's curves; a tree is held to them.
 """
 
 from chitragupta.figure._layout import layout_names
@@ -13,7 +13,7 @@ from chitragupta.figure._rules import RULES
 # its scaffold and reference file exist.
 PLANNED = {"state-machine", "sequence", "timeline", "quadrant", "comparison"}
 
-NOT_ORTHOGONAL = {"state-machine", "hub-and-spoke-network", "branching-tree"}
+NOT_ORTHOGONAL = {"state-machine", "hub-and-spoke-network"}
 
 
 def test_every_exempt_layout_is_a_known_or_planned_layout():

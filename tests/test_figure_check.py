@@ -693,7 +693,7 @@ class TestConnectorRules:
     def test_a_declared_layout_exempts_its_rules(self):
         figure = _measured(drawn=drawn([A, HIGH_B], [line((40, 10), (100, 70))]))
 
-        findings, _ = _evaluate("% cg-layout: branching-tree\n" + ONE_PICTURE, figure)
+        findings, _ = _evaluate("% cg-layout: hub-and-spoke-network\n" + ONE_PICTURE, figure)
 
         assert "c1-orthogonal" not in _rules(findings)
 

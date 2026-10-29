@@ -7,7 +7,7 @@
       "c1-orthogonal": 32,
       "c2-tag-clearance": 29,
       "c3-coincident": 0,
-      "c4-attach": 12,
+      "c4-attach": 7,
       "c5-transit": 0,
       "c6-tag-covered": 2,
       "c7-dangling-tip": 1,
@@ -17,7 +17,7 @@
       "c1-orthogonal": 0,
       "c2-tag-clearance": 1,
       "c3-coincident": 0,
-      "c4-attach": 5,
+      "c4-attach": 0,
       "c5-transit": 0,
       "c6-tag-covered": 2,
       "c7-dangling-tip": 0,
@@ -55,7 +55,6 @@
       ],
       "c3-coincident": [],
       "c4-attach": [
-        "architecture.tex",
         "model-anatomy.tex",
         "simulator-anatomy.tex",
         "three-digital-objects.tex"
@@ -1463,7 +1462,7 @@
       "tag_gaps": [
         [
           0.0,
-          0.5842549790720948
+          0.5875097421806597
         ]
       ]
     },
@@ -1517,31 +1516,6 @@
       "file": "assets/tikz/exemplars/architecture.tex",
       "findings": [
         [
-          "c4-attach",
-          "gate.south",
-          "2 ends up to 5.1mm off even spacing"
-        ],
-        [
-          "c4-attach",
-          "enrich.east",
-          "1 end 1.6mm off the side's midpoint"
-        ],
-        [
-          "c4-attach",
-          "review.west",
-          "1 end 1.6mm off the side's midpoint"
-        ],
-        [
-          "c4-attach",
-          "draft.south",
-          "2 ends up to 2.6mm off even spacing"
-        ],
-        [
-          "c4-attach",
-          "review.north",
-          "1 end 6.0mm off the side's midpoint"
-        ],
-        [
           "c6-tag-covered",
           "sync->draft",
           "tag under z1"
@@ -1562,11 +1536,11 @@
         ],
         [
           0.0,
-          0.9999910059499175
+          0.9999874913518713
         ],
         [
           0.0,
-          0.9999874913518713
+          0.9999874913518763
         ],
         [
           0.0,

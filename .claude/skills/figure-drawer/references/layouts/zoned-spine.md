@@ -44,8 +44,8 @@ fractions are the ones that print.
 | Source | Nodes | Edges | Width | Height | Slack |
 | --- | --- | --- | --- | --- | --- |
 | `assets/tikz/zoned-spine.tex` | 8 | 5 | 0.74 | 0.16 | 0.68 |
-| `assets/tikz/exemplars/architecture.tex` | 14 | 9 | 0.99 | 0.36 | 0.72 |
-| `assets/tikz/exemplars/retrieval.tex` | 15 | 12 | 0.99 | 0.52 | 0.76 |
+| `assets/tikz/exemplars/architecture.tex` | 14 | 9 | 0.99 | 0.35 | 0.72 |
+| `assets/tikz/exemplars/retrieval.tex` | 15 | 12 | 0.98 | 0.51 | 0.76 |
 
 The exemplars are set at the render's 453pt text width, which is why
 they come close to the full width here, and they carry one paper's content.

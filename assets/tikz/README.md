@@ -38,7 +38,7 @@ cp assets/tikz/pipeline.tex content/drafts/<topic>/figures/<name>.tex
 Its first line, `% cg-layout: pipeline`, names the layout, and
 `chitragupta figure check` reads it to print the figure's size and
 counts beside that layout's reference ranges, and to skip the connector
-rules that layout exempts (diagonal edges in a tree, say). Keep it, and
+rules that layout exempts (a hub's diagonal spokes, say). Keep it, and
 change it if you change the layout.
 
 ## 🎨 The house style comes with the file

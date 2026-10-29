@@ -43,7 +43,7 @@ class TestOrthogonal:
     def test_c1_holds_in_an_exempt_layout(self):
         diagonal = line((40, 10), (100, 70))
 
-        assert orthogonal(_cons([A, HIGH_B], [diagonal]), "branching-tree") == []
+        assert orthogonal(_cons([A, HIGH_B], [diagonal]), "hub-and-spoke-network") == []
 
     def test_c1_holds_within_1mm_of_level(self):
         nearly = line((40, 10), (100, 10 + 0.9 * MM))
@@ -283,7 +283,7 @@ class TestBenchedShapes:
     def test_c4_holds_in_an_exempt_layout(self):
         cons = _cons([A, B], [line((40, 2), (100, 2))])
 
-        assert attach_points(cons, drawn([A, B], []).nodes, "branching-tree") == ([], [])
+        assert attach_points(cons, drawn([A, B], []).nodes, "hub-and-spoke-network") == ([], [])
 
     def test_c7_holds_on_an_axis_arrow(self):
         """`value-ladder.tex`: an axis points along itself, at nothing."""

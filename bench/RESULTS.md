@@ -7613,7 +7613,7 @@ moved to one type size (v4). The last run, all 59 figures:
 | `c1-orthogonal` | 32 (0) |
 | `c2-tag-clearance` | 29 (1) |
 | `c3-coincident` | 0 (0) |
-| `c4-attach` | 12 (5) |
+| `c4-attach` | 7 (0) |
 | `c5-transit` | 0 (0) |
 | `c6-tag-covered` | 2 (2) |
 | `c7-dangling-tip` | 1 (0) |
@@ -7626,8 +7626,12 @@ figures, the ones read in the figure are real (`two-time-advances.tex`'s
 panel title over `e1`, `simulator-anatomy.tex`'s `io` and `solver`) or
 cramped (`rtf-regimes.tex`, `mock-vs-rig.tex`'s two panels), and
 `three-windows.tex`'s sliding windows, drawn edge to edge, are arguable.
-v4 moved `c4` from 10 to 12: two ends in `architecture.tex` sit 1.6mm
-off a midpoint once its nodes are no longer sized by `\large` names.
+This last run is over the scaffolds and exemplars as #1083 (#1050)
+redrew them, which cleared every `c4` on them and drew the tree with
+orthogonal edges, so `c1` no longer exempts `branching-tree`. What still
+fires on them is `control-loop.tex`'s `output` tag, 0.6mm from its bend
+(`c2`), and `architecture.tex`'s `ledger` tag across two zone borders
+(`c6`), the placement #1083 left for this bench.
 
 **Reproducing.**
 
