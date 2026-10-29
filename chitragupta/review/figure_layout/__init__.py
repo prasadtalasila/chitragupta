@@ -120,6 +120,7 @@ from chitragupta.review.figure_layout._probe import (
 )
 from chitragupta.review.figure_layout._source import (
     MAX_NODE_WORDS,
+    ambiguous_edges,
     edge_list,
     loads_library_by_hand,
     overlong_nodes,
@@ -137,6 +138,7 @@ __all__ = [
     "FigureCompileError",
     "FigureResult",
     "MAX_NODE_WORDS",
+    "ambiguous_edges",
     "Measurement",
     "MissingBinary",
     "check_draft",

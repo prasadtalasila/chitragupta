@@ -38,8 +38,8 @@ def _figure(boxes=None, edges=(), declared=None, picture=(0.0, 0.0, 200.0, 70.0)
     )
 
 
-def _advise(figure=None, layout="pipeline", rows=ROWS, unmeasurable=""):
-    return _advisory.advise(figure or _figure(), layout, rows, unmeasurable)
+def _advise(figure=None, layout="pipeline", rows=ROWS, unmeasurable="", source=""):
+    return _advisory.advise(figure or _figure(), source, layout, rows, unmeasurable)
 
 
 def _by_rule(reports):
@@ -207,8 +207,83 @@ class TestSquash:
             ("size-squash", "1 edge ends at no measured node: chan -| a.west -> b")
         ]
 
+    def test_a_name_the_probe_did_not_measure_is_listed(self):
+        found, not_measured = self._squash(None, [("a", "ghost.west"), ("ghost", "b")])
+
+        assert found == []
+        assert not_measured == [
+            ("size-squash", "2 edges end at no measured node: a -> ghost.west, ghost -> b")
+        ]
+
+    @pytest.mark.parametrize("token", ["b.north |- a", "a -| b.west", "$(a)!0.5!(b)$"])
+    def test_a_point_built_from_two_nodes_is_not_one_of_them(self, token):
+        """`(b.north |- a)` is at `a`'s height under `b`: it is neither
+        node, so measuring it as `b` would be a guess (#1057 review)."""
+        boxes = {"a": (0.0, 0.0, 20.0, 20.0), "b": (25.0, 0.0, 45.0, 20.0)}
+
+        found, not_measured = self._squash(boxes, [("a", token)])
+
+        assert found == []
+        assert [rule for rule, _ in not_measured] == ["size-squash"]
+
+    def test_a_named_label_on_a_path_is_not_an_end_of_it(self):
+        """`edge_list` pairs consecutive tokens, so a named mid-path label
+        reads as two edges, `a -> l` and `l -> b`. Neither is an arrow;
+        the path is listed, not guessed at (#1057 review)."""
+        boxes = {
+            "a": (0.0, 0.0, 20.0, 20.0),
+            "l": (22.0, 22.0, 30.0, 30.0),
+            "b": (46.0, 0.0, 66.0, 20.0),
+        }
+        source = "\\draw[->] (a) -- node[midway, above] (l) {x} (b);\n"
+        reports, not_measured = _advise(
+            _figure(boxes=boxes, edges=[("a", "l"), ("l", "b")]), source=source
+        )
+
+        assert "size-squash" not in [r.rule for r in reports]
+        assert not_measured == [
+            (
+                "size-squash",
+                "2 edges sit on a path with `edge` or a named node, "
+                "so what it joins is not read: a -> l, l -> b",
+            )
+        ]
+
+    def test_an_edge_chain_is_not_read_as_spoke_to_spoke(self):
+        boxes = {
+            "hub": (0.0, 0.0, 20.0, 20.0),
+            "s1": (60.0, 0.0, 80.0, 20.0),
+            "s2": (82.0, 0.0, 102.0, 20.0),
+        }
+        source = "\\draw (hub) edge (s1) edge (s2);\n"
+
+        reports, not_measured = _advise(
+            _figure(boxes=boxes, edges=[("hub", "s1"), ("s1", "s2")]), source=source
+        )
+
+        assert "size-squash" not in [r.rule for r in reports]
+        assert not_measured[0][1].startswith("2 edges sit on a path with `edge`")
+
+    def test_a_plain_path_beside_an_unreadable_one_is_still_measured(self):
+        boxes = {"a": (0.0, 0.0, 20.0, 20.0), "b": (25.0, 0.0, 45.0, 20.0)}
+        source = "\\draw (a) -- (b);\n\\draw (b) edge (a);\n"
+
+        reports, _ = _advise(_figure(boxes=boxes, edges=[("a", "b"), ("b", "a")]), source=source)
+
+        assert [r.target for r in reports if r.rule == "size-squash"] == ["a+b"]
+
 
 class TestWhatCannotBeMeasured:
+    def test_an_empty_pictures_placeholder_extent_is_no_area(self):
+        """TikZ reports an empty picture as (16000,16000,-16000,-16000):
+        both sides negative, so their product is positive (#1057 review)."""
+        figure = _figure(boxes={}, declared=[], picture=(16000.0, 16000.0, -16000.0, -16000.0))
+
+        reports, not_measured = _advise(figure)
+
+        assert "size-height" not in [r.rule for r in reports]
+        assert ("size-height", _advisory.NO_AREA) in not_measured
+
     def test_no_geometry_leaves_the_counts_only(self):
         figure = FigureResult(path=Path("fig.tex"), declared=["a"], edges=[("a", "b")])
 

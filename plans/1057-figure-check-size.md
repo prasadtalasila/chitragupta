@@ -44,7 +44,7 @@ allowed, never a gate, and a range is never a cap.
 | Slack | `1 - (leaf node area) / (picture area)`, where a leaf is a node that wholly encloses no other (a zone card is not filled area). This is the reference tables' definition; `_geometry.leaves()` is the one implementation both use. `review figure`'s emptiness diagnostic, which counts zones, is unchanged |
 | Height | Picture height over 700pt, the render's 12pt A4 1in text height that the reference tables already divide by. `--width` does not move it |
 | Squash | A pair joined by an edge whose boxes are under 3mm (8.54pt) apart, edge to edge (Euclidean between the boxes). Skipped: a self-edge, a zero-area endpoint (a coordinate, a bend point), a pair where one box encloses the other (a zone and its child), and a pair whose boxes intersect (`node-overlap` already reports that). An endpoint carrying a leading option (`[xshift=6mm]a.south`) or an anchor resolves to its node |
-| Unreadable edges | An edge with an endpoint that resolves to no measured box (a perpendicular coordinate such as `chan -\| gate.west`) is listed under "not measured" for `size-squash`, never silently skipped |
+| Unreadable edges | Listed under "not measured" for `size-squash`, never silently skipped: an edge with an end that resolves to no measured box, a point built from two nodes (`b.north -\| a`, a calc `$...$`), which is neither of them, and every pair from a path with an `edge` operator or a named node on it, since `edge_list` pairs consecutive tokens and `(hub) edge (s1) edge (s2)` would otherwise read as `s1` joined to `s2`. `edge_list` itself, and so `budget-edges`, is unchanged, because the reference tables were measured with it |
 | Several pictures | Height, slack and squash are not measured, with the reason, as `size-stray` already is: the probe reads the last picture's extent, and an earlier picture's boxes are in another frame. The counts are read from source and still print |
 
 ## Bench
@@ -55,27 +55,41 @@ fixed:
 
 - No scaffold or exemplar squashes; the smallest edge gap among them is
   6mm (`pipeline`, `zoned-spine`).
-- Three draft figures squash: `demonstrator-today` (`timer`/`gap`,
-  0.3mm), `dosing-today` (same pair, 2.0mm) and `three-layers`
-  (`mgr`/`core`, 2.9mm). Each is a short arrow a reader would squint at.
+- One draft figure squashes: `three-layers` (`mgr`/`core`, 2.9mm), a
+  short arrow a reader would squint at. The first cut also reported
+  `timer`/`gap` in `demonstrator-today` (0.3mm) and `dosing-today`
+  (2.0mm); `gap` is a label placed on the `store -> timer` path, so
+  both were pairs nothing joins (see "Changed in the build").
 - The next-smallest draft gap is 3.7mm (`model-anatomy`), so 3mm does
   not sit on a cluster.
-- 15 of the 59 files list at least one edge under "not measured" for
+- 18 of the 59 files list at least one edge under "not measured" for
   `size-squash`: perpendicular coordinates (`chan -| gate.west`), loop
-  macros (`s\i`), and math the parser took for a node (`z_1 \mid x_1`).
-  Listed, as the v3 plan asks, rather than skipped.
+  macros (`s\i`), math the parser took for a node (`z_1 \mid x_1`),
+  and paths with `edge` or a named label. Listed, as the v3 plan asks,
+  rather than skipped.
+
+## Changed in the build
+
+An independent review of the first cut found three defects, each fixed
+with a test before the PR: an empty picture's placeholder extent
+(`(16000,16000,-16000,-16000)`, negative on both axes) passed a
+`width * height <= 0` test and printed a negative height; a perpendicular
+coordinate `b.north |- c` resolved to `b`; and an `edge` chain or a named
+mid-path label made `size-squash` measure pairs nothing joins. The last
+is `ambiguous_edges()` in `review/figure_layout/_source.py`.
 
 ## Components
 
 | Unit | Does |
 | --- | --- |
 | `chitragupta/figure/_layout.py` | `declared_layout(source)`, `layout_names()`, `RangeRow`, `range_rows(text)` and `reference(layout)`: the reference file's rows, or `None` where there is no file |
-| `chitragupta/figure/_advisory.py` | `advise(figure, layout, unmeasurable)`: the five advisory reports and what could not be measured. `TEXT_HEIGHT_PT`, `SQUASH_PT`, `slack(boxes)` |
+| `chitragupta/figure/_advisory.py` | `advise(figure, source, layout, rows, unmeasurable)`: the five advisory reports and what could not be measured. `TEXT_HEIGHT_PT`, `SQUASH_PT`, `slack(boxes)` |
 | `chitragupta/figure/_rules.py` | Five advisory rules, not allowable; `Finding` moves here so `_advisory` and `_check` share it without a cycle |
 | `chitragupta/figure/_check.py` | `apply()` and `check()` take `layout`; `CheckResult` gains `advisory` and `layout` |
 | `chitragupta/figure/_check_report.py` | The advisory section and JSON key, and the layout used |
 | `chitragupta/figure/__main__.py` | `--layout NAME`, its choices the reference files present |
-| `chitragupta/review/figure_layout/_geometry.py` | `leaves(boxes)`, beside `_contains`, which it reuses |
+| `chitragupta/review/figure_layout/_geometry.py` | `leaves(boxes)` and `edge_gap(one, other)`, beside `_contains` and `_intersects`, which they reuse |
+| `chitragupta/review/figure_layout/_source.py` | `ambiguous_edges(source)`: the `edge_list` pairs from a path with `edge` or a named node on it |
 
 ## Tests
 

@@ -791,7 +791,7 @@ or point.
 | `stranded-arrowhead` | element | objective | An arrowhead lands mid-line where another path continues; the target is the point, `(x,y)` |
 | `size-height` | figure | advisory | The picture's height as a share of the 700pt text height, beside the layout's reference range |
 | `size-slack` | figure | advisory | `1 -` the area of the nodes that enclose no other node, over the picture's area (a zone card is not filled area), beside the layout's reference range |
-| `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured |
+| `size-squash` | element | advisory | Two nodes joined by an edge are under 3mm apart edge to edge, so the arrow is too short to read; the target is the pair, `a+b`. A pair that overlaps, a zone and its child, and a bend coordinate are not measured; a path with an `edge` operator or a named node on it, or a point built from two nodes (`b.north \|- a`), is listed as not measured rather than guessed at |
 | `budget-nodes` | figure | advisory | The named node count, beside the layout's reference range. Never a cap |
 | `budget-edges` | figure | advisory | The count of edges the source parser reads, beside the layout's reference range. Never a cap |
 
@@ -823,7 +823,11 @@ probe to sit in (a bare `\tikz` is not compiled at all), or its last
 not run is never reported as a pass. A file with several pictures has
 its height, slack and squash listed there too, since the probe reads
 only the last picture's extent, and so is each edge `size-squash`
-cannot resolve to a measured node (`chan -| gate.west`).
+cannot read: one on a path with an `edge` operator or a named node on
+it, whose consecutive tokens are not the two ends of one line, and one
+with an end that is no measured node (`chan -| gate.west`). The edges it
+could read are still measured, so `size-squash` can appear both among
+the advisory reports and under "not measured" in one report.
 
 ### ✍ Recording a deliberate exception: `cg-allow`
 

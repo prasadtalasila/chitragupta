@@ -23,6 +23,7 @@ from chitragupta.review.figure_layout import (
     BBOX_NAME,
     Box,
     FigureResult,
+    ambiguous_edges,
     edge_gap,
     leaves,
 )
@@ -47,22 +48,31 @@ _NO_NODES = "the figure names no node"
 # shifted point on node `a`, so the node is what the arrow leaves.
 _LEADING_OPTION_RE = re.compile(r"^\[[^\]]*\]\s*")
 
+# A perpendicular or calc coordinate: a point derived from two nodes.
+_BUILT_POINT_MARKS = ("|-", "-|", "$")
+
 
 def advise(
-    figure: FigureResult, layout: str, rows: list[RangeRow] | None, unmeasurable: str
+    figure: FigureResult,
+    source: str,
+    layout: str,
+    rows: list[RangeRow] | None,
+    unmeasurable: str,
 ) -> tuple[list[Finding], list[tuple[str, str]]]:
     """`(reports, not_measured)` for one figure, in registry order.
 
-    `layout` is the name the figure declared (or `--layout` gave), `rows`
-    its reference file's rows or `None` where it has none, and
-    `unmeasurable` why the boxes cannot be read, or `""` where they can.
-    The counts are read from source, so they print either way."""
+    `source` is the figure file's text, `layout` the name it declared (or
+    `--layout` gave), `rows` that layout's reference rows or `None` where
+    it has none, and `unmeasurable` why the boxes cannot be read, or `""`
+    where they can. The counts are read from source, so they print
+    either way."""
     reports: list[Finding] = []
     not_measured: list[tuple[str, str]] = []
     if unmeasurable:
         not_measured += [(rule, unmeasurable) for rule in GEOMETRY]
     else:
         reports, not_measured = _measured(figure, layout, rows)
+        not_measured += _squash(figure, ambiguous_edges(source), reports)
     nodes, edges = len(figure.declared), len(figure.edges)
     reports.append(
         Finding(
@@ -85,7 +95,9 @@ def _measured(
     x1, y1, x2, y2 = boxes[BBOX_NAME]
     width, height = x2 - x1, y2 - y1
     reports, not_measured = [], []
-    if width * height <= 0:
+    # Both sides, not their product: an empty picture's placeholder
+    # extent is (16000,16000,-16000,-16000), negative on both axes.
+    if width <= 0 or height <= 0:
         not_measured += [("size-height", NO_AREA), ("size-slack", NO_AREA)]
     else:
         share = height / TEXT_HEIGHT_PT
@@ -107,14 +119,37 @@ def _measured(
                     f"{slack(boxes):.2f}; {_beside(layout, rows, 'slack')}",
                 )
             )
-    squashed, unreadable = _squashed(boxes, figure.edges)
-    reports += squashed
-    if unreadable:
-        shown = ", ".join(f"{one} -> {other}" for one, other in unreadable)
-        not_measured.append(
-            ("size-squash", f"{_count(len(unreadable), 'edge')} {_ends(unreadable)}: {shown}")
-        )
     return reports, not_measured
+
+
+def _squash(
+    figure: FigureResult, ambiguous: list[tuple[str, str]], reports: list[Finding]
+) -> list[tuple[str, str]]:
+    """Append each squashed pair to `reports`, and return what squash
+    could not read: edges on a path whose pairs are not its ends, then
+    edges with an end that is no measured node."""
+    plain = [edge for edge in figure.edges if edge not in ambiguous]
+    on_path = [edge for edge in figure.edges if edge in ambiguous]
+    found, unreadable = _squashed(figure.boxes, plain)
+    reports += found
+    not_measured = []
+    if on_path:
+        not_measured.append(
+            (
+                "size-squash",
+                f"{_count(len(on_path), 'edge')} {_verb(on_path, 'sits', 'sit')} on a path "
+                f"with `edge` or a named node, so what it joins is not read: {_shown(on_path)}",
+            )
+        )
+    if unreadable:
+        not_measured.append(
+            (
+                "size-squash",
+                f"{_count(len(unreadable), 'edge')} {_verb(unreadable, 'ends', 'end')} "
+                f"at no measured node: {_shown(unreadable)}",
+            )
+        )
+    return not_measured
 
 
 def slack(boxes: dict[str, Box]) -> float:
@@ -154,7 +189,10 @@ def _squashed(
 
 def _node(token: str, boxes: dict[str, Box]) -> str | None:
     """The measured node a path coordinate names, anchor and leading
-    option set aside, or `None`."""
+    option set aside, or `None`. A point built from two nodes
+    (`b.north |- a`, `$(a)!0.5!(b)$`) is neither of them."""
+    if any(mark in token for mark in _BUILT_POINT_MARKS):
+        return None
     token = _LEADING_OPTION_RE.sub("", token)
     for name in (token, token.rsplit(".", 1)[0]):
         if name in boxes and name != BBOX_NAME:
@@ -179,8 +217,12 @@ def _count(n: int, noun: str) -> str:
     return f"{n} {noun}{'' if n == 1 else 's'}"
 
 
-def _ends(unreadable: list) -> str:
-    return "ends at no measured node" if len(unreadable) == 1 else "end at no measured node"
+def _verb(edges: list, one: str, many: str) -> str:
+    return one if len(edges) == 1 else many
+
+
+def _shown(edges: list[tuple[str, str]]) -> str:
+    return ", ".join(f"{one} -> {other}" for one, other in edges)
 
 
 def _area(box: Box) -> float:

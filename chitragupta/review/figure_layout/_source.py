@@ -66,6 +66,12 @@ _PATH_STATEMENT_RE = re.compile(r"\\(?:draw|path)\b(?P<body>[^;]*);", re.DOTALL)
 # Every parenthesised token in such a statement, in source order.
 _PAREN_TOKEN_RE = re.compile(r"\(([^)]*)\)")
 
+# An `edge` operator, or a node placed on a path and named, options
+# first or not (`node[midway] (l)`, `node (l)`): either makes consecutive
+# tokens something other than the two ends of one line. `cgedge` has no
+# word boundary before `edge`, so a style name does not match.
+_ON_PATH_RE = re.compile(r"\bedge\b|\bnode\b\s*(?:\[[^\]]*\]\s*)?\(")
+
 # A bare coordinate rather than a node name: `(0,0)`, `(1.5, -2)`,
 # `(2cm,0)`. `\draw (0,0) -- (2,0);` draws a line between two points and
 # claims nothing about what connects to what, so reporting it as an edge
@@ -177,15 +183,35 @@ def edge_list(source: str) -> list[tuple[str, str]]:
     """
     edges = []
     for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source)):
-        names = [
-            token.strip()
-            for token in _PAREN_TOKEN_RE.findall(statement.group("body"))
-            if token.strip()
-            and not _COORDINATE_RE.match(token)
-            and not _MACRO_TOKEN_RE.match(token)
-        ]
-        edges += list(zip(names, names[1:]))
+        edges += _pairs(statement.group("body"))
     return edges
+
+
+def ambiguous_edges(source: str) -> list[tuple[str, str]]:
+    """The `edge_list` pairs whose path has an `edge` operator or a
+    named node placed on it, where consecutive tokens are not ends of one
+    line: `(hub) edge (s1) edge (s2)` joins the hub to each spoke, not
+    `s1` to `s2`, and `(a) -- node (l) {x} (b)` joins `a` to `b`, not
+    either to the label. `figure check`'s `size-squash` (#1057) lists
+    these rather than measure a pair nothing joins; the edge list itself
+    keeps them, as its docstring above says.
+    """
+    return [
+        pair
+        for statement in _PATH_STATEMENT_RE.finditer(strip_comments(source))
+        if _ON_PATH_RE.search(statement.group("body"))
+        for pair in _pairs(statement.group("body"))
+    ]
+
+
+def _pairs(body: str) -> list[tuple[str, str]]:
+    """Consecutive named tokens of one path statement's body."""
+    names = [
+        token.strip()
+        for token in _PAREN_TOKEN_RE.findall(body)
+        if token.strip() and not _COORDINATE_RE.match(token) and not _MACRO_TOKEN_RE.match(token)
+    ]
+    return list(zip(names, names[1:]))
 
 
 # The leading option group of a path statement -- `\draw[thick,->] ...`.

@@ -103,7 +103,9 @@ def apply(
     figure's own `% cg-layout:` line."""
     fired, not_measured = evaluate(source, figure, width_pt)
     layout = layout or declared_layout(source)
-    advisory, unmeasured = advise(figure, layout, reference(layout), _unmeasurable(source, figure))
+    advisory, unmeasured = advise(
+        figure, source, layout, reference(layout), _unmeasurable(source, figure)
+    )
     allows = parse_allows(source)
     allowed = [
         (allow, "; ".join(f.measurement for f in fired if f.rule == allow.rule) or None)

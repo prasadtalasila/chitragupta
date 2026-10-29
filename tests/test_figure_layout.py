@@ -1891,3 +1891,33 @@ class TestLeavesAndEdgeGap:
     )
     def test_there_is_no_gap_to_measure(self, other):
         assert figure_layout.edge_gap((0.0, 0.0, 10.0, 10.0), other) is None
+
+
+class TestAmbiguousEdges:
+    """#1057: the paths whose consecutive tokens are not the two ends of
+    one line, which `figure check`'s squash lists instead of measuring."""
+
+    def test_an_edge_chain_is_ambiguous(self):
+        source = "\\draw (hub) edge (s1) edge (s2);\n"
+
+        assert figure_layout.ambiguous_edges(source) == [("hub", "s1"), ("s1", "s2")]
+
+    @pytest.mark.parametrize(
+        "label", ["node[midway, above] (l) {x}", "node (l) {x}", "node (l) [above] {x}"]
+    )
+    def test_a_named_node_on_a_path_is_ambiguous(self, label):
+        source = f"\\draw (a) -- {label} (b);\n"
+
+        assert figure_layout.ambiguous_edges(source) == [("a", "l"), ("l", "b")]
+
+    @pytest.mark.parametrize(
+        "source",
+        [
+            "\\draw[cgedge] (a) -- (b);\n",
+            "\\draw (a) -- node[above] {f(x)} (b);\n",
+            "\\node (a) {A};\n\\node (b) [right=of a] {B};\n\\draw (a) -- (b);\n",
+        ],
+        ids=["house-edge-style", "unnamed-label", "node-statements"],
+    )
+    def test_a_plain_path_is_not(self, source):
+        assert figure_layout.ambiguous_edges(source) == []
