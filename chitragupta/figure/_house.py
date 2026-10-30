@@ -118,14 +118,17 @@ class _Palette:
         whole-number share (100 for the colour itself), nearest `colour`
         within xcolor's rounding, or `None`. Nearest, because a grey
         tint of `cgMute` is also near some tint of `cgInk`."""
-        best = None
+        near = []
         for rgb, name in self.colours:
             share = _share(rgb, colour)
             tint = mix(rgb, WHITE, share / 100)
             error = max(abs(a - b) for a, b in zip(tint, colour))
-            if error <= _SAME and (best is None or error < best[0]):
-                best = (error, name, share)
-        return None if best is None else (best[1], best[2])
+            if error <= _SAME:
+                near.append((error, name, share))
+        if not near:
+            return None
+        _, name, share = min(near, key=lambda candidate: candidate[0])
+        return name, share
 
     def has(self, colour: RGB) -> bool:
         return self.find(colour) is not None
