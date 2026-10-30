@@ -556,7 +556,6 @@ def _lualatex(directory: Path, body: str) -> subprocess.CompletedProcess:
     )
 
 
-@needs_tikz
 class TestALoopKeepsTheHouseArrow:
     """pgf's `topaths` sets `every loop/.style={->,shorten >=1pt}`, and a
     `loop` applies it after the edge's own options, so a self-loop drawn
@@ -571,6 +570,7 @@ class TestALoopKeepsTheHouseArrow:
         assert "every loop/.style={}" in cg
 
 
+@needs_tikz
 class TestTheBlockTypesetsNothing:
     """`\\input` of the block adds no material to the page, and `\\input`
     of a figure adds nothing beyond its picture.
