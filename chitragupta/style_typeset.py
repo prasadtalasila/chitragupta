@@ -9,7 +9,9 @@ about whether a line will fit the page it is printed on
 - a **bare URL** shown as prose, where a `[descriptive text](url)` link
   reads better and gives the PDF something clickable,
 - a **fenced code-block line wider than the page**, which is the one
-  overflow class nothing downstream can fix.
+  overflow class in code that nothing downstream can fix. (A matrix
+  set inline is another one; docs/WRITING-STANDARDS.md §12 guards it
+  with a rule, not a check.)
 
 **Why Vale cannot do either.** Vale matches patterns inside prose, and
 its Markdown scoping deliberately excludes code spans and fenced blocks

@@ -496,9 +496,11 @@ true on any corpus.
 *Two of the three traceable origins have no instances.* Across all 22
 dossiers in `content/dossiers/` and both snapshots under
 `content/backup/`: **zero** carry a `math.md`, and **zero** carry a
-`quote:` line. §12's mapped form has never been used on a real draft,
+`quote:` line. §12's mapped form had never been used on a real draft,
 and A2's quote contract is the one `review quotation` already reports as
-empty.
+empty. (Since then, as of 2026-10-30, the eight units of the sample book
+under `content/dossiers/books/` and one book chapter each carry a
+`math.md`; the deferral above was not revisited.)
 
 *The gate never fires, and the base rate is zero.* A numeral is a claim
 only in the genres where prose is expected to be sourced. Counted over

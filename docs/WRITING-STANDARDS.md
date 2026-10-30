@@ -191,6 +191,7 @@ means they are checked only when someone remembers to.
 | A numbered equation's id is unique and kebab-case, and every `equationref` resolves | §12 | yes | no: the fix is an author decision, same as a table's or figure's |
 | Some sentence refers to each numbered equation | §12 | yes | no; and **whether that sentence explains the equation is not decidable**, same split as a table's or figure's |
 | Whether an equation should have been numbered at all (standalone, final-of-derivation, reused) | §12 | **no** | no: unlike every other row in this table, there is no mechanical proxy for this one at all; only the reference half above is checked |
+| A matrix with two or more columns is displayed, not set inline | §12 | yes: a `math.md` row whose LaTeX holds a matrix, keyed on an inline span | **no, and it is not checked at all**: the proxy is easy, but it would fire on seven inline matrices in the sample book that all fit, and whether one overflows depends on the math font. The rule is the guard |
 | A URL is written as a `[text](https://…)` link rather than printed raw | §14 | yes | yes: the repair is the link, which is wording, and there is no evidential claim for it to misrepresent |
 | A code line fits the page's column limit | §14 | yes | no: reported with `repair: "review"` since #836, so a person decides: a wide line may be deliberate, a URL or a literal in a block verified to run. The class it used to inherit from `prose` was the wrong one, because the repair edits a code sample rather than prose, and dropping an argument to fit the width leaves a command that still reads plausibly and no longer works. In a Markdown draft the stake is only the `,→` a wrap leaves behind; in a `.tex` fragment, whose preamble this pipeline may not touch, it is a real overflow |
 | A heading does not state its own chapter number | §15 | yes | yes: but only in a `.tex` unit, and only because nothing else can reach it: the repair is deleting a prefix the enclosing document supplies, which changes no claim. A Markdown unit is never reported, because the `--fragment` render already drops the prefix from what it emits and the authored heading is still what titles the standalone pdf |
@@ -960,7 +961,8 @@ records the split.
 A draft is read on paper, or on a screen shaped like paper. Three
 things run into the margin there and nowhere else, so they are invisible
 until someone opens the PDF, which is usually after the draft has been
-reviewed.
+reviewed. A fourth, a matrix set inline, is [§12's](#-12-mathematics)
+rule, because it is mathematics before it is layout.
 
 ### 🔗 Link the text, don't print the URL
 
