@@ -28,6 +28,7 @@ figure is warranted at all.
 | levels of abstraction | [Layered stack](layouts/layered-stack.md) | reads top to bottom |
 | a taxonomy, a decision, cases | [Branching tree](layouts/branching-tree.md) | one thing divides and no case rejoins another |
 | a single point everything crosses | [Hub-and-spoke network](layouts/hub-and-spoke-network.md) | removing the centre disconnects the rest |
+| a protocol, a handshake, an exchange in order | [Sequence](layouts/sequence.md) | a reply comes back to the party that asked |
 | a trade-off on two axes | [Map](layouts/map.md) | where things sit matters, not how they connect |
 | two alternatives compared on shared axes | [Map](layouts/map.md) | one pair of named axes places both |
 | a before and an after, or two approaches part by part | [Comparison](layouts/comparison.md) | each part has a match on the other side, and one differs |
@@ -43,9 +44,13 @@ figure is warranted at all.
 - **Pipeline or state machine?** One retry arrow drawn back is still a
   pipeline (`figures.md` §1). A state that stays put, or several ways
   back, make it a state machine: the moves are the claim, not the path.
+- **Request path or exchange?** A request's path through stages that
+  never answer is a pipeline. Parties that answer each other, where who
+  asked first matters, are a sequence.
 
 The layout pairs people confuse (pipeline or loop, pipeline or spine,
-tree or hub, stack or spine) are in `figures.md` §1.
+pipeline or sequence, tree or hub, stack or spine) are in `figures.md`
+§1.
 
 ## When no row fits
 

@@ -18,6 +18,7 @@ how the skill applies them and when it runs.
 - [Three ways it runs](#-three-ways-it-runs)
 - [What you get](#-what-you-get)
 - [What it does, step by step](#-what-it-does-step-by-step)
+- [What `figure check` looks for in lines and colours](#-what-figure-check-looks-for-in-lines-and-colours)
 - [A worked example](#-a-worked-example)
 - [Thesis fragments](#-thesis-fragments)
 - [What it never does](#-what-it-never-does)
@@ -154,6 +155,217 @@ and an annotated exemplar. Beside it, `references/patterns.md` routes what a
 figure argues to a layout, and `references/layouts/` holds one file per
 layout with its anti-patterns and the reference ranges (node and edge counts,
 width, height, slack) measured from its scaffold and exemplars.
+
+## 🔬 What `figure check` looks for in lines and colours
+
+Most of what `figure check` reports is about the whole picture: its
+width, its one accented node, nodes that overlap. Nine rules look
+closer. **c1 to c7** measure the *connectors*, the lines TikZ drew
+between two nodes, and **k1 and k2** measure *contrast*, whether a
+line or a word can be told apart from the colour behind it. Each one
+names a defect a reader sees in the PDF and that no one notices in the
+`.tex`.
+
+This section explains them. The thresholds, and the exact wording of
+what each reports, are in [TIKZ-STYLE.md's
+table](TIKZ-STYLE.md#-the-rules-figure-check-reports), which is the one
+place a number is stated. Each **Fix** below is the line
+`references/check.md` gives the skill, word for word;
+`tests/test_figure_rule_ids.py` holds the two to the same text.
+
+In each picture the left panel fires the rule and the right one passes
+it. `tests/test_figure_rule_gallery.py` re-checks both pictures, so
+they stay true when a threshold moves.
+
+![The connector rules c1 to c7: each drawn once firing, on the left, and once passing, on the right](images/figure-drawer/connector-rules.png)
+
+![The contrast rules k1 and k2: each drawn once firing, on the left, and once passing, on the right](images/figure-drawer/contrast-rules.png)
+
+### Which rules matter for which layout
+
+A rule that *applies* is measured on every figure of that layout.
+*Exempt* means `figure check` skips the rule for a figure whose
+`% cg-layout:` line names that layout, because the layout's grammar
+breaks it on purpose. *Rare* means the rule is measured, but the
+layout seldom gives it anything to find.
+
+| Rule | Pipeline | Map | Layered stack | Control loop | Branching tree | Hub-and-spoke | Zoned spine | Comparison | State machine | Sequence |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| c1-orthogonal | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | applies |
+| c2-tag-clearance | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
+| c3-coincident | applies | rare | applies | applies | applies | applies | applies | applies | applies | rare |
+| c4-attach | applies | rare | applies | applies | applies | exempt | applies | applies | exempt | exempt |
+| c5-transit | applies | rare | applies | applies | applies | applies | applies | applies | applies | exempt |
+| c6-tag-covered | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
+| c7-dangling-tip | applies | rare | applies | applies | applies | applies | applies | applies | applies | applies |
+| k1-stroke | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
+| k2-text | applies | applies | applies | applies | applies | applies | applies | applies | applies | applies |
+
+A map argues by where things sit, so its scaffold draws no line, and
+c1 to c7 seldom have anything to measure. A comparison's lines run
+inside each panel, never between them, and are held to every rule. A
+state machine is exempt from c1 and c4 like the hub, because an
+automaton's transitions curve and loop back on their own state.
+
+### c1-orthogonal: lines run level, upright, or as an elbow
+
+**The rule.** A connector between two nodes that are offset both
+across and down the page must turn a corner (`-|` or `|-`), not cut
+across on a slant or a curve.
+
+**Why it matters.** A slanted line between boxes on a grid reads as a
+different kind of relation, and two of them cross at angles the eye has
+to untangle.
+
+**Where.** Every layout built on a grid: pipelines, stacks, spines,
+trees (the house tree fans its edges out square) and sequences, whose
+messages are level by construction. A hub is exempt, because its spokes
+are diagonal by design, and so is a state machine, whose transitions
+curve. A control loop's `bend` passes only between nodes that are level
+with each other, which is how its scaffold draws it.
+
+**Fix.** Route the edge as an elbow, `-|` or `|-`, or line the two
+nodes up.
+
+### c2-tag-clearance: a tag sits just beside its line
+
+**The rule.** The words on a line (its tag) sit between 0.8mm and 3mm
+from it: not on it, and not floating away from it.
+
+**Why it matters.** A tag on its line cuts the line where the eye is
+following it; a tag far from its line is read as belonging to the next
+one.
+
+**Where.** Wherever lines carry words: a control loop's output, a
+spine's hand-offs, and above all a sequence, where every message is
+tagged.
+
+**Fix.** Use `cgtag` (unfilled, `auto`), which sits 1mm clear; never a
+filled tag over its line.
+
+### c3-coincident: two lines never share a stretch
+
+**The rule.** Two connectors may not run on top of each other for more
+than 2mm. Two that leave the same point are a fork and are allowed.
+
+**Why it matters.** Where two lines coincide the reader sees one, and
+cannot tell where either goes.
+
+**Where.** Where several lines head the same way: into a hub, between
+the layers of a stack, along a spine. A sequence rarely meets it, since
+each message has its own moment.
+
+**Fix.** Give each edge its own lane: attach at a different point, or
+offset one.
+
+### c4-attach: a line meets the middle of a side
+
+**The rule.** One line arriving at a side meets it at the midpoint;
+several arriving at one side are spread evenly along it, at least 2mm
+apart.
+
+**Why it matters.** A line that lands near a corner looks as if it
+belongs to the next box, and lines bunched at one end of a side read as
+a single wider line.
+
+**Where.** Every grid layout. A hub is exempt, because its spokes meet
+the centre at every angle, and so is a state machine, whose curved
+transitions leave a state wherever the bend takes them. A sequence is
+exempt, because messages meet a lifeline wherever time puts them, not
+at even spacing. A curve's ends, like a control loop's bends, are not
+measured.
+
+**Fix.** Attach a lone edge at the side's midpoint (`a.east`); spread
+several evenly along the side, at least 2mm apart.
+
+### c5-transit: a line goes round, not through
+
+**The rule.** A connector may not pass through a node that is neither
+of its two ends. A zone card around one of its ends does not count.
+
+**Why it matters.** A line through a box reads as passing through that
+stage, which is a claim the figure did not mean to make.
+
+**Where.** Wherever a long line has boxes in its way: a spine whose
+lines cross zone members, a stack whose calls skip a layer. A sequence
+is exempt: a message that passes over the lifelines between its ends is
+how the diagram says "these parties are not involved".
+
+**Fix.** Re-route the edge around the node it crosses, or move the
+node.
+
+### c6-tag-covered: a tag stays clear of other boxes
+
+**The rule.** A line's tag may not lie over a node.
+
+**Why it matters.** A tag under a box is half hidden, and a tag over a
+box reads as part of that box's label.
+
+**Where.** Wherever tagged lines run close to other boxes: tight
+control loops, spines with zone members near the path, sequences with
+short gaps between parties.
+
+**Fix.** Move the tag clear of the node it sits under.
+
+### c7-dangling-tip: every arrow lands on something
+
+**The rule.** An arrow that leaves a node must end on a node or on
+another line, within 1mm. An axis or a dimension line, which leaves no
+node, is not read.
+
+**Why it matters.** An arrow ending in empty space points at nothing,
+and the reader looks for the box that is missing.
+
+**Where.** Every layout with arrows. It is most often a computed end
+point, `(a.north |- b.south)`, that lands beside the box it was aimed at
+instead of on it.
+
+**Fix.** End the arrow on the node it points to (`(b)`, `(b.north)`),
+not on a computed point beside it.
+
+### k1-stroke: borders and lines stand out from their ground
+
+**The rule.** A box's border, and every connector, meets WCAG's 3:1
+contrast against what is behind it: the box's own fill, or the paper or
+zone under the line.
+
+**Why it matters.** A border drawn in the same pale tint as its fill
+vanishes in print and on a projector, and a pale line looks like a
+gap.
+
+**Where.** Every layout, most of all those that lean on tinted cards:
+zone cards in a spine, layer bands in a stack, the accented `cgkey`
+node, and the dashed return lines (`cgweak`, `cgback`) of a loop or a
+sequence.
+
+**Fix.** Draw in the hue's `Line` shade (`draw=cgAuxLine`, not
+`draw=cgAux`); a palette name fills, a `Line` name draws.
+
+### k2-text: words are readable on their fill
+
+**The rule.** A node's text meets 4.5:1 contrast against its fill, or
+3:1 where it is large text (14pt bold, or 18pt).
+
+**Why it matters.** Grey or tinted words on a tinted box are the first
+thing lost when a page is printed, photocopied or read by someone with
+low vision.
+
+**Where.** Every layout, wherever a gloss line or a coloured label sits
+on a tinted card: the accented node, warm and rose cards, zone titles.
+
+**Fix.** Write in the hue's `Text` shade (`text=cgAccentText`,
+`\textcolor{cgAccentText}{...}`), or `cgInk`.
+
+### Re-rendering the pictures
+
+Each picture's TikZ source is beside its PNG in
+`docs/images/figure-drawer/`. After changing one, re-render it and copy
+the PNG over:
+
+```bash
+chitragupta figure look docs/images/figure-drawer/connector-rules.tex
+cp content/rendered/connector-rules.look.png docs/images/figure-drawer/connector-rules.png
+```
 
 ## 🌱 A worked example
 

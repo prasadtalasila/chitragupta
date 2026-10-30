@@ -57,6 +57,12 @@ class Finding:
 # the house tree with fanned orthogonal edges.
 _NOT_ORTHOGONAL = frozenset({"state-machine", "hub-and-spoke-network"})
 
+# A sequence's messages are level, so c1 holds them; but they meet a
+# lifeline at heights time sets, not at even spacing along its side, and
+# a message skipping the lifelines between its ends is the diagram's
+# grammar, not a line through a box (#1063).
+_LIFELINES = frozenset({"sequence"})
+
 RULES: dict[str, Rule] = {
     rule.id: rule
     for rule in (
@@ -74,8 +80,8 @@ RULES: dict[str, Rule] = {
         Rule("c1-orthogonal", "element", "objective", exempt=_NOT_ORTHOGONAL),
         Rule("c2-tag-clearance", "element", "objective"),
         Rule("c3-coincident", "element", "objective"),
-        Rule("c4-attach", "element", "objective", exempt=_NOT_ORTHOGONAL),
-        Rule("c5-transit", "element", "objective"),
+        Rule("c4-attach", "element", "objective", exempt=_NOT_ORTHOGONAL | _LIFELINES),
+        Rule("c5-transit", "element", "objective", exempt=_LIFELINES),
         Rule("c6-tag-covered", "element", "objective"),
         Rule("c7-dangling-tip", "element", "objective"),
         # Contrast and wording (#1055): k1 and k2 from the probe's

@@ -419,6 +419,7 @@ class TestAgainstRealLualatex:
             "layered-stack",
             "state-machine",
             "comparison",
+            "sequence",
         ],
     )
     def test_every_scaffold_compiles_boxed_with_one_focal_node_and_no_stray(self, name):
@@ -736,6 +737,7 @@ class TestAdvisoryAgainstRealLualatex:
             "layered-stack",
             "state-machine",
             "comparison",
+            "sequence",
         ],
     )
     def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):
@@ -839,6 +841,16 @@ class TestConnectorRulesAgainstRealLualatex:
 
         rules = _rules(result.findings)
         assert "c7-dangling-tip" in rules and "c2-tag-clearance" in rules
+
+    def test_lifelines_fire_no_connector_rule_in_a_sequence(self):
+        """Many messages meeting one lifeline, and one skipping a lifeline,
+        are a sequence's grammar (#1063). The same figure read as a
+        pipeline fires both, so the exemption is what holds it clean."""
+        path = FIXTURES / "lifelines.tex"
+
+        assert not set(_check.CONNECTOR) & set(_rules(_check.check(path, 453.0).findings))
+        as_pipeline = _rules(_check.check(path, 453.0, "pipeline").findings)
+        assert {"c4-attach", "c5-transit"} <= set(as_pipeline)
 
     def test_a_clean_two_node_figure_fires_no_connector_rule(self):
         result = _check.check(FIXTURES / "narrow.tex", _check.DEFAULT_WIDTH_PT)
