@@ -3173,7 +3173,7 @@ figure sync: 1 current
 | --- | --- |
 | `<figures-dir>` | A directory named `figures`, the name `figure sync`'s walk and the render's markers look in. Created if its parent exists |
 | `<name>` | The figure's file stem: no path, no suffix |
-| `--layout ID` | A scaffold whose own `% cg-layout:` line names its file stem: `branching-tree`, `comparison`, `control-loop`, `hub-and-spoke-network`, `layered-stack`, `map`, `pipeline` or `zoned-spine` |
+| `--layout ID` | A scaffold whose own `% cg-layout:` line names its file stem: `branching-tree`, `comparison`, `control-loop`, `hub-and-spoke-network`, `layered-stack`, `map`, `pipeline`, `state-machine` or `zoned-spine` |
 
 | Exit | When |
 | --- | --- |

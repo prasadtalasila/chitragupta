@@ -555,6 +555,14 @@ cross-check covers them.
   on a tinted card show a pale offset box where `cgflat` fails to cancel
   the shadow; `retrieval.tex` shows it too.
 
+- **3c, `state-machine`** (#1062, built; see
+  `plans/1062-state-machine-scaffold.md`). States are circles from
+  house block v6 (`cgstate`, `cgaccept`, `cgkeystate`, `cgstart`), in
+  core TikZ with no `automata` library, and `focal-count` counts
+  `cgkeystate`. Its twin is a transition table, the first twin that is
+  not a drawing. The exemplar is the reference book's pump chain, which
+  is in appendix A1, not Ch. 6 as the ranking below says.
+
 ## Dependencies and value
 
 An arrow reads "must land before". Value is to the person who reported

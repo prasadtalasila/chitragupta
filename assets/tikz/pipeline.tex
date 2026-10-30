@@ -12,7 +12,7 @@
 % edit it: every figure in a book carries the same copy, and an edited
 % one forks the house style. A style this figure alone needs goes in the
 % picture's own options.
-% >>> chitragupta figure style v5 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
+% >>> chitragupta figure style v6 -- copy of assets/tikz/cg-figstyle.tex, do not edit <<<
 % ===========================================================================
 % chitragupta house figure style -- the "presentation tier" prelude block.
 %
@@ -122,10 +122,14 @@
   % `node distance=6mm` is the gap between two members of one zone. Two
   % zones sit 8mm apart card to card, which with `cgzone`'s 3mm inner sep
   % is 14mm member to member: say that distance where you place across.
+  % `every loop` is emptied because pgf sets it to `->` and applies it
+  % after an edge's own options, so a self-loop would end in pgf's default
+  % tip beside every other edge's house arrowhead.
   cg/.style={
     thick, line cap=round, line join=round,
     font=\normalsize, node distance=6mm,
     every node/.append style={text=cgInk},
+    every loop/.style={},
   },
   % --- Soft shadow --------------------------------------------------------
   % The single largest contributor to "drawn, not assembled". Kept very
@@ -177,6 +181,24 @@
   cgzonetitle/.style={anchor=south west, font=\normalsize\bfseries, text=#1Text,
                       inner sep=0pt, yshift=1.5mm},
   cgzonetitle/.default=cgFlow,
+  % --- States -------------------------------------------------------------
+  % An automaton's states are circles, not cards: that is the convention a
+  % reader of one expects, and what tells a state from a stage at a
+  % glance. One fixed size, so the states of one machine read as equals;
+  % a longer name grows its circle, which is the hint to shorten it.
+  % Pure TikZ: a self-loop is core `loop above` and the initial arrow is
+  % `cgstart` from a point beside the state, so no `automata` library.
+  % `cgaccept` is the accepting state's double ring. `cgkeystate` is the
+  % accented state: `cgkey` itself is built on the card and would set a
+  % circle's text width to a card's, so a state has its own accent, and
+  % `figure check`'s focal-count counts it as one.
+  cgstate/.style={circle, draw=cgFlowLine, fill=cgFlow!7, align=center,
+                  inner sep=1.5pt, minimum size=18mm,
+                  font=\normalsize\bfseries, cgsoft},
+  cgaccept/.style={cgstate, double=cgFlow!7, double distance=1.2pt},
+  cgkeystate/.style={cgstate, draw=cgAccentLine, fill=cgAccent!11,
+                     line width=1.15pt},
+  cgstart/.style={cgedge, shorten <=0pt},
   % --- Edges --------------------------------------------------------------
   cgedge/.style={draw=cgFlowLine, line width=0.85pt,
                  -{Latex[length=2.6mm, width=2.1mm]}, shorten >=1.5pt,
