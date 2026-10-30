@@ -285,6 +285,21 @@ class TestBenchedShapes:
 
         assert attach_points(cons, drawn([A, B], []).nodes, "hub-and-spoke-network") == ([], [])
 
+    def test_c4_holds_on_lifelines_in_a_sequence(self):
+        """`sequence.tex`: messages meet a lifeline at heights time sets,
+        not at even spacing along its side. The same lines in a pipeline
+        fire on both lifelines."""
+        lifelines = [node("one", (0, 0, 6, 200)), node("two", (100, 0, 106, 200))]
+        messages = [line((6, y), (100, y)) for y in (150, 160, 185)]
+        cons = _cons(lifelines, messages)
+        nodes = drawn(lifelines, []).nodes
+
+        assert attach_points(cons, nodes, "sequence") == ([], [])
+        assert [f.target for f in attach_points(cons, nodes, "pipeline")[0]] == [
+            "one.east",
+            "two.west",
+        ]
+
     def test_c7_holds_on_an_axis_arrow(self):
         """`value-ladder.tex`: an axis points along itself, at nothing."""
         figure = drawn([A], [line((0, -20), (0, 100), end_tip=True)])

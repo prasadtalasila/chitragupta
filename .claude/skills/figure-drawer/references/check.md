@@ -80,7 +80,10 @@ the figure illustrates: it is the check nothing else makes.
 Keep the scaffold's `% cg-layout: <id>` line. `c1-orthogonal` and
 `c4-attach` are not evaluated for a `hub-and-spoke-network` or
 `state-machine` figure, whose edges are diagonal or curved by design; a
-tree, and a figure with no line, is held to both.
+tree, and a figure with no line, is held to both. A `sequence` figure is
+held to `c1-orthogonal` but not to `c4-attach` or `c5-transit`: its
+messages meet a lifeline wherever time puts them, and may pass over the
+lifelines between their ends.
 
 ## Recording a deliberate exception
 

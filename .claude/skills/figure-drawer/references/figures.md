@@ -32,6 +32,7 @@ wins if the two disagree):
 | `zoned-spine.tex` | Zoned spine | one storyline, with parallel commentaries on points along it |
 | `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 | `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
+| `sequence.tex` | Sequence | parties exchange messages and the order of the exchanges is the claim |
 
 The choices people get wrong:
 
@@ -45,6 +46,10 @@ The choices people get wrong:
 - **Branching tree or hub-and-spoke?** A tree divides and never rejoins.
   If the branches all route back through one centre, the centre is the
   claim and it is a hub.
+- **Pipeline or sequence?** Does anything come back? A request that
+  passes through stages and never returns is a pipeline. If parties
+  answer each other and the order of the exchanges is the point, it is
+  a sequence.
 - **Layered stack or zoned spine?** A stack answers "what may depend on
   what" and reads top to bottom. A spine answers "what happens, in
   order" and reads left to right.
