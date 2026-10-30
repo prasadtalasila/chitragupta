@@ -1,0 +1,9 @@
+% figure check fixture (#1058): two overlaps on one node, one allowed by
+% its pair (written in the other order from the
+% finding's `legend+pot`) and one left to be found.
+% cg-allow: node-overlap pot+legend -- the legend sits on the pot on purpose
+\begin{tikzpicture}
+  \node[draw] (pot) at (0,0) {Pot};
+  \node[draw] (legend) at (0.3cm,0.2cm) {Legend};
+  \node[draw] (note) at (-0.2cm,-0.45cm) {Note};
+\end{tikzpicture}%

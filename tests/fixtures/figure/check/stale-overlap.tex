@@ -1,0 +1,7 @@
+% figure check fixture (#1058): allowed-overlap.tex with the legend
+% removed, so its allow names a node that is no longer drawn.
+% cg-allow: node-overlap pot+legend -- the legend sits on the pot on purpose
+\begin{tikzpicture}
+  \node[draw] (pot) at (0,0) {Pot};
+  \node[draw] (note) at (3cm,0) {Note};
+\end{tikzpicture}%

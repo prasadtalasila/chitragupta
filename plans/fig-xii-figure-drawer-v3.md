@@ -487,7 +487,11 @@ loses its link, as diagram-design's `verify-docs-sync.py` does.
   and the reference ranges from 1d. Built by #1057; its plan,
   `plans/1057-figure-check-size.md`, records where it parted from this
   list (the reports are kept out of the findings, and none is allowable).
-- **2g.** Element-scope `cg-allow` and stale-allow detection.
+- **2g.** Element-scope `cg-allow` and stale-allow detection. Built by
+  #1058; its plan, `plans/1058-element-allow.md`, records what it added
+  (quoted targets, and an "unchecked" bucket for an allow whose rule did
+  not run) and that a figure-scope allow whose rule no longer fires is
+  stale too.
 
 How edges are measured: **TeX reports the lines it draws**, rather
 than Python re-deriving them from the source. `figure check`'s probe

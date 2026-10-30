@@ -940,9 +940,15 @@ of its own.
   someone can read and disagree with.
 - **A figure-scope rule takes no target, and an element-scope rule
   requires one**, so "allow every overlap" cannot be written.
+- **An element-scope allow covers its one target**, spelt as the
+  finding prints it (`decide.south`, not `decide`), so a later defect
+  of the same kind elsewhere is still found. A pair matches in either
+  order. A target with a space in it is written in double quotes, as
+  the report prints it: `k2-text "tag on parse->ledger"`.
 - **Every honoured allow is listed in the report**, with the
-  measurement it set aside, or `did not fire` where its rule found
-  nothing, so an exception is never invisible.
-- **Element-scope allows are not honoured yet.** They are checked and
-  listed under "not honoured until #1058", and the finding still
-  prints; edge-level targets need the geometry that issue adds.
+  measurement it set aside, so an exception is never invisible.
+- **An allow that sets nothing aside is stale**, whatever its scope:
+  its target is gone (`no node named decide`) or no longer breaks its
+  rule. Delete it, or fix its target. An allow whose rule could not run
+  (the figure does not compile, or its layout exempts the rule) is
+  listed as unchecked instead, since nothing was measured.
