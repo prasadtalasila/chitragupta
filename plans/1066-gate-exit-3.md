@@ -97,3 +97,19 @@ journal, a locked ledger or a damaged file.
 | `ledger_cli`, `overlap_index_ledger` | exit 3 and re-raise respectively |
 | every other reader | each ledger-reading CLI verb run against a hot-journal ledger prints the message and no `Traceback` |
 | docs | `docs/CLI.md`'s gate and `corpus ledger` exit codes, `draft.py`'s module docstring, `docs/HOOKS.md` |
+
+## Found in review, and folded in
+
+- `sqlite3.connect` sat outside `read_connection`'s `try`, so a file
+  that cannot be opened at all still escaped as a raw error. It is
+  converted too now.
+- `corpus ledger` crashed on a ledger damaged past its header: the first
+  read passes and the summary query fails. Since the session-start hook
+  reads its exit, it now turns any `sqlite3.Error` from its queries
+  into the same exit 3. The gate already did that for its citekey query.
+
+**Not covered:** the other readers (`references`, `tldr`,
+`render`'s gate read and the rest) still raise a raw `sqlite3.Error`
+when a ledger opens cleanly but a later page is damaged. Their command
+boundaries cannot tell a ledger error from any other sqlite file's, and
+the gate, the one reader whose answer is a verdict, is covered.

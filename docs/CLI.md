@@ -745,9 +745,11 @@ chitragupta corpus ledger
 
 Exits `0` with no ledger yet, or one that needs a sync to migrate it,
 printing the instruction: those are steps in clone -> sync, not faults.
-Exits `3` with the cause on stderr when the ledger is there but cannot be
-read (the same cases as the gate's exit 3), which the session-start hook
-reports as that rather than as a missing `config.toml`.
+Exits `3` with the cause on stderr when the ledger is there but SQLite
+will not read it (an interrupted write's journal, a lock held past the
+timeout, a damaged or unopenable file). The session-start hook reports
+that as a fault of its own rather than as a missing `config.toml`. A
+stale ledger still exits `0` here, unlike the gate.
 
 Collections need a Better BibTeX export with JabRef fields enabled.
 Zotero's own exporter drops them, in which case `--collections` prints

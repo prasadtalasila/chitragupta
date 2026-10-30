@@ -28,8 +28,9 @@ substring match, the two suffixes this pipeline writes -- are recorded
 there, each learned from a real near-miss. What is left in this file is
 the gate and nothing else.
 
-**A non-zero gate exit means two different things, and only one of them
-is a citekey problem.** #563: in an `init`-ed project whose harness
+**A non-zero gate exit means three different things, and only one of them
+is a citekey problem.** The gate's own exit 3, a ledger it could not
+read (#1066), is told apart by its code. #563 is the other: in an `init`-ed project whose harness
 started from a shell that never activated the venv, `sys.executable` is
 some `python` that resolves on `PATH` but cannot `import chitragupta` --
 `python -m chitragupta.draft gate` then exits non-zero with a

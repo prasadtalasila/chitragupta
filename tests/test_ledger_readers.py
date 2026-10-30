@@ -37,7 +37,7 @@ from chitragupta.enrich import __main__ as enrich_script
 from chitragupta.review import __main__ as review_main
 
 from tests.conftest import content_draft
-from tests.ledger_faults import leave_hot_journal
+from tests.ledger_faults import damage_past_the_header, leave_hot_journal
 
 
 @pytest.fixture
@@ -267,6 +267,13 @@ class TestAnUnreadableLedgerIsRefusedNotATraceback:
         captured = capsys.readouterr()
         assert captured.out == ""
         assert hot_ledger.name in captured.err
+
+    def test_corpus_ledger_exits_3_on_damage_its_first_read_missed(self, isolated_config, capsys):
+        # The schema version reads; the summary query is what fails.
+        ledger.connect().close()
+        damage_past_the_header(isolated_config.LEDGER_PATH)
+        assert ledger_cli.main([]) == ledger.EXIT_UNREADABLE
+        assert "or it is damaged" in capsys.readouterr().err
 
     def test_the_overlap_index_raises_it(self, hot_ledger):
         # Not folded into "nothing fingerprintable", for the reason a

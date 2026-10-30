@@ -243,7 +243,7 @@ class TestAnUnreadableLedger:
         ledger_con.close()
         journal = leave_hot_journal(isolated_config.LEDGER_PATH)
         context = PreflightRepo.context(synced.run())
-        assert "The ledger cannot be read" in context
+        assert "BROKEN: The ledger cannot be read" in context
         assert journal.name in context
         assert "cp config.toml.example" not in context
 

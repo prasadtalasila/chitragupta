@@ -133,6 +133,23 @@ class TestUnreadableLedger:
             ledger.read_connection()
         assert "Move it aside" in str(caught.value)
 
+    def test_a_file_it_cannot_open_is_refused_before_any_connection(
+        self, isolated_config, monkeypatch
+    ):
+        # The open itself fails (a file this user cannot read), so there
+        # is no connection to close. Raised by connect() here because a
+        # chmod does not stop root or bite on Windows.
+        ledger.connect().close()
+
+        def refuse(*_args, **_kwargs):
+            error = sqlite3.OperationalError("unable to open database file")
+            error.sqlite_errorname = "SQLITE_CANTOPEN"
+            raise error
+
+        monkeypatch.setattr(sqlite3, "connect", refuse)
+        with pytest.raises(ledger.UnreadableLedger, match="could not open the file"):
+            ledger.read_connection()
+
     @pytest.mark.parametrize(
         ("errorname", "cause"),
         [

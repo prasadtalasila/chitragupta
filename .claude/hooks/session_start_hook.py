@@ -177,7 +177,7 @@ def corpus_stage() -> str | None:
     # names its own cause; the fresh-clone advice below would be wrong.
     if result.returncode == LEDGER_UNREADABLE:
         return (
-            "The ledger cannot be read, so no draft can be grounded or gated:\n\n"
+            "BROKEN: The ledger cannot be read, so no draft can be grounded or gated:\n\n"
             f"{result.stderr.strip()}"
         )
     if result.returncode != 0:

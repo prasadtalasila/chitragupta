@@ -229,7 +229,12 @@ def read_connection() -> sqlite3.Connection:
     when SQLite will not read it; creates nothing."""
     if not config.LEDGER_PATH.exists():
         raise NoLedger()
-    con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
+    # A file this user cannot open fails here, before there is a
+    # connection to close.
+    try:
+        con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
+    except sqlite3.Error as exc:
+        raise UnreadableLedger(config.LEDGER_PATH, exc) from exc
     # Closed on every way out but the return.
     try:
         (version,) = con.execute("PRAGMA user_version").fetchone()

@@ -526,7 +526,7 @@ class TestCorpusStage:
             preflight, "_run", lambda *a, **k: completed(3, stderr="ledger.sqlite-journal ...")
         )
         stage = preflight.corpus_stage()
-        assert stage.startswith("The ledger cannot be read")
+        assert stage.startswith("BROKEN: The ledger cannot be read")
         assert "ledger.sqlite-journal" in stage
         assert "config.toml" not in stage
 
