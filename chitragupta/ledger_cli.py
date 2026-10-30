@@ -23,6 +23,7 @@ check.
 """
 
 import sqlite3
+import sys
 
 from chitragupta import bib_collections, config, ledger
 
@@ -88,8 +89,16 @@ def main(argv: "list[str] | None" = None) -> int:
     # it -- exit 0 with the instruction on stdout: they are positions in
     # clone -> config -> sync -> draft, not faults, and the session-start
     # hook reads a non-zero exit here as "the corpus layer will not start".
+    #
+    # A ledger that is there but SQLite will not read is the exception
+    # (#1066): a fault, not a position, so it exits 3 with the cause on
+    # stderr, and the session-start hook reports that code as itself
+    # rather than as a missing config file.
     try:
         con = ledger.read_connection()
+    except ledger.UnreadableLedger as exc:
+        print(exc, file=sys.stderr)
+        return ledger.EXIT_UNREADABLE
     except ledger.NoLedger as exc:
         print(exc)
         return 0
@@ -97,15 +106,25 @@ def main(argv: "list[str] | None" = None) -> int:
     # so that adding one doesn't silently shift the output.
     con.row_factory = sqlite3.Row
     try:
-        if args.collections:
-            return _list_collections(con)
-        if args.citekey:
-            return _show_item(con, args.citekey)
-        if args.status or args.list or args.collection:
-            return _list_items(con, args.status, args.collection)
-        return _show_summary(con)
+        return _show(con, args)
+    except sqlite3.Error as exc:
+        # A damaged page the first read did not reach (#1066): the same
+        # fault as one it did, so the same refusal and the same exit.
+        print(ledger.UnreadableLedger(config.LEDGER_PATH, exc), file=sys.stderr)
+        return ledger.EXIT_UNREADABLE
     finally:
         con.close()
+
+
+def _show(con, args) -> int:
+    """The one view `args` asks for."""
+    if args.collections:
+        return _list_collections(con)
+    if args.citekey:
+        return _show_item(con, args.citekey)
+    if args.status or args.list or args.collection:
+        return _list_items(con, args.status, args.collection)
+    return _show_summary(con)
 
 
 def _show_item(con, citekey) -> int:

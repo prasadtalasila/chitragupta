@@ -743,6 +743,14 @@ chitragupta corpus ledger
 # chitragupta corpus ledger --collection "Digital twins"
 ```
 
+Exits `0` with no ledger yet, or one that needs a sync to migrate it,
+printing the instruction: those are steps in clone -> sync, not faults.
+Exits `3` with the cause on stderr when the ledger is there but SQLite
+will not read it (an interrupted write's journal, a lock held past the
+timeout, a damaged or unopenable file). The session-start hook reports
+that as a fault of its own rather than as a missing `config.toml`. A
+stale ledger still exits `0` here, unlike the gate.
+
 Collections need a Better BibTeX export with JabRef fields enabled.
 Zotero's own exporter drops them, in which case `--collections` prints
 nothing and says why. See
@@ -902,7 +910,8 @@ chitragupta draft gate content/drafts/survey.md
 
 # Exit codes: 0 = every citation verified,
 #             1 = at least one unresolved citekey, or a file outside content/,
-#             2 = no files given.
+#             2 = no files given,
+#             3 = the ledger could not be read, so nothing was checked.
 ```
 
 A file that resolves outside `content/` is reported as a `FAIL` for that
@@ -911,6 +920,19 @@ you hand this command several drafts and get a verdict on each, so one
 unusable path must not hide the others. It exits 1 rather than the usage
 code 2 for the same reason: this is a document that did not pass,
 alongside the rest.
+
+**Exit 3 is never a verdict.** It means the ledger is there but could
+not be read: a journal left by an interrupted write (a killed `corpus
+sync`), another process holding the write lock, a damaged file, or a
+ledger that needs a sync to migrate it. The gate then checks no draft at
+all, citation-free ones included, prints nothing on stdout, and says on
+stderr what happened and what to do. It only reports, and never repairs:
+rolling back an interrupted write changes your data, so that happens
+when you run `chitragupta corpus sync`, whose writer does it on opening
+the ledger. Before #1066 these cases crashed with a traceback and exit 1,
+which looked exactly like a refusal. A *missing* ledger is different and
+unchanged: every key is then unsourced, so a cited key fails with exit 1
+and a citation-free draft passes.
 
 **Check the spelling in any script or CI step that runs this.**
 `chitragupta/citation_gate.py` carries no `__main__` block, because the
@@ -1322,9 +1344,9 @@ isn't under `content/drafts/`, or a filesystem error while writing, is
 reported on stderr and skipped; the measurement never fails the search
 it was measuring.
 
-Exits 1 with the fix if there is no ledger, or one that predates the
-current schema and needs a sync to migrate it; an empty result set is not
-an error.
+Exits 1 with the fix if there is no ledger, one that predates the
+current schema and needs a sync to migrate it, or one that is there but
+cannot be read; an empty result set is not an error.
 
 A single-character query word never reaches ranking on either side of the
 index, so either subcommand warns on stderr, naming each such word,

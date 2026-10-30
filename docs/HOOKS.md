@@ -221,10 +221,15 @@ It makes three checks, of which **only the first two are faults**:
 | --- | --- | --- |
 | Can each registered hook's launcher start, and can it import `chitragupta`? | `settings.json` parsed, each command looked up (a bare name on `PATH`'s absolute entries only), unbraced placeholders flagged, then one short `<program> -c "import chitragupta"` per distinct launcher **whose bare name (no path separators) names a Python interpreter**, run by the absolute path `chitragupta/programs.py` resolves from `PATH`'s absolute entries | fault |
 | Does the gate still refuse a fabricated citekey? | run it in a throwaway tree | fault |
-| Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage** |
+| Has the corpus been synced? | `python -m chitragupta.corpus ledger` | **stage**; a ledger that is there but cannot be read (its exit 3) is a fault |
 | all three fine | -- | says nothing at all |
 
 Note the inversion in the second: the alarm is the bad probe *passing*.
+It has three answers, not two (#1066). Refused is healthy. Accepted
+(exit 0) is the alarm that the invariant is unenforced. Anything else,
+a crash or the gate's own exit 3, is reported as a gate that could not
+run its self-test, with the exit code and what it printed, because it
+said nothing about the key either way.
 
 #### 💡 Why a pre-sync corpus is a stage and not a fault
 
@@ -673,6 +678,14 @@ measured: the gate is linear in draft length, well under a
 second at 100k lines, and the largest real draft here is under 3k
 (#824).
 
+**Tell "could not check" from "checked and failed".** The gate exits 3
+when the ledger is there but cannot be read (#1066), and checks nothing.
+`citation_gate_hook.py` still blocks on it, because nothing passed, but
+says the gate could not read the ledger and passes on the gate's
+diagnosis, never "fix the offending citekey(s)". The hook does not import
+`chitragupta`, so it spells the code as `GATE_COULD_NOT_RUN`, and a test
+pins that to `chitragupta.ledger_refusals.EXIT_UNREADABLE`.
+
 **Emit only the field this host consumes.** A hook written for several
 harnesses has to branch: Claude Code reads
 `hookSpecificOutput.additionalContext`, Cursor reads a top-level
@@ -772,7 +785,8 @@ preflight, each before it was relied on:
   liveness probe runnable before a first sync.
 - **`python -m chitragupta.corpus ledger` exits 0 whether the corpus is
   synced or not**, and prints a different sentence for each of the two
-  pre-sync states. It is read-only and takes no lock, so the preflight
+  pre-sync states. Only a ledger that is there but cannot be read makes
+  it exit non-zero, with 3 (#1066). It is read-only and takes no lock, so the preflight
   can call it at every session start without contending with anything.
 
 ### 💬 How much an advisory hook would actually say

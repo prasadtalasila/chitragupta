@@ -19,6 +19,8 @@ import pytest
 
 from chitragupta import config, ledger, ledger_paths
 
+from tests.ledger_faults import leave_hot_journal
+
 # The original, schema-version-0 table: what a ledger written before any
 # migration looks like on disk.
 _V0_TABLE = """
@@ -92,6 +94,81 @@ class TestReadConnection:
             assert ledger.known_citekeys(con) == set()
         with pytest.raises(sqlite3.ProgrammingError):
             con.execute("SELECT 1")
+
+
+class TestUnreadableLedger:
+    """A ledger that exists but SQLite will not read (#1066): refused by
+    name, with what happened and what to do, never a raw sqlite error."""
+
+    def test_a_hot_journal_is_refused_by_name_and_left_alone(self, isolated_config):
+        ledger.connect().close()
+        journal = leave_hot_journal(isolated_config.LEDGER_PATH)
+        before = isolated_config.LEDGER_PATH.read_bytes(), journal.read_bytes()
+        with pytest.raises(ledger.UnreadableLedger) as caught:
+            ledger.read_connection()
+        # Refused wherever NoLedger is, which is what reaches every
+        # command's existing `[error]` line.
+        assert isinstance(caught.value, ledger.NoLedger)
+        what, fix = str(caught.value).split("\n")
+        assert what.startswith(f"The ledger at {isolated_config.LEDGER_PATH} exists but")
+        assert journal.name in what
+        assert "python -m chitragupta.corpus sync" in fix
+        # Reported, not healed: rolling back is a write to the user's data.
+        assert (isolated_config.LEDGER_PATH.read_bytes(), journal.read_bytes()) == before
+
+    def test_the_writer_sync_opens_rolls_the_interrupted_write_back(self, isolated_config):
+        # The fix the refusal names, proven rather than promised.
+        ledger.connect().close()
+        journal = leave_hot_journal(isolated_config.LEDGER_PATH)
+        ledger.connect().close()
+        assert not journal.exists()
+        with ledger.reading() as con:
+            tables = {row[0] for row in con.execute("SELECT name FROM sqlite_master")}
+        assert "interrupted" not in tables
+
+    def test_a_file_that_is_not_a_database_is_to_be_moved_aside(self, isolated_config):
+        isolated_config.CONTENT_DIR.mkdir(parents=True)
+        isolated_config.LEDGER_PATH.write_bytes(b"not a database, just bytes" * 40)
+        with pytest.raises(ledger.UnreadableLedger, match="not a SQLite database") as caught:
+            ledger.read_connection()
+        assert "Move it aside" in str(caught.value)
+
+    def test_a_file_it_cannot_open_is_refused_before_any_connection(
+        self, isolated_config, monkeypatch
+    ):
+        # The open itself fails (a file this user cannot read), so there
+        # is no connection to close. Raised by connect() here because a
+        # chmod does not stop root or bite on Windows.
+        ledger.connect().close()
+
+        def refuse(*_args, **_kwargs):
+            error = sqlite3.OperationalError("unable to open database file")
+            error.sqlite_errorname = "SQLITE_CANTOPEN"
+            raise error
+
+        monkeypatch.setattr(sqlite3, "connect", refuse)
+        with pytest.raises(ledger.UnreadableLedger, match="could not open the file"):
+            ledger.read_connection()
+
+    @pytest.mark.parametrize(
+        ("errorname", "cause"),
+        [
+            ("SQLITE_BUSY", "another process is writing to it"),
+            ("SQLITE_CANTOPEN", "could not open the file"),
+            ("SQLITE_CORRUPT", "not a SQLite database, or it is damaged"),
+            ("SQLITE_IOERR_READ", "SQLite says: disk I/O error"),
+        ],
+    )
+    def test_each_cause_is_named(self, tmp_path, errorname, cause):
+        # Diagnosed from the error's name, not its wording; the last row
+        # is the fallback for a name with no reading of its own.
+        error = sqlite3.OperationalError("disk I/O error")
+        error.sqlite_errorname = errorname
+        refusal = ledger.UnreadableLedger(tmp_path / "ledger.sqlite", error)
+        assert cause in str(refusal).split("\n")[0]
+
+    def test_its_exit_code_is_neither_a_verdict_nor_bad_usage(self):
+        assert ledger.EXIT_UNREADABLE == 3
 
 
 class TestMigrationIsOneTransaction:

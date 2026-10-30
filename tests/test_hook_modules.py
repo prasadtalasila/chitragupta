@@ -38,6 +38,9 @@ import sys
 from pathlib import Path
 
 import pytest
+
+from chitragupta import ledger
+
 from tests.conftest import load_hook
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -224,6 +227,29 @@ class TestCitationGateHookModule:
         assert response["decision"] == "block"
         assert "Citation gate FAILED" in response["reason"]
         assert "@nope_2026" in response["reason"]
+
+    def test_a_gate_that_could_not_read_the_ledger_blocks_without_blaming_a_citekey(
+        self, rooted, monkeypatch, capsys
+    ):
+        # #1066: no import probe either -- the gate ran, so the
+        # environment is not what failed.
+        hook, root = rooted
+        draft = root / "content" / "drafts" / "bad.md"
+        draft.write_text("A claim [@nope_2026].\n")
+        monkeypatch.setattr(
+            hook.subprocess,
+            "run",
+            self.gate_and_probe(
+                completed(3, stderr="ERROR: the citation gate could not read the ledger"),
+                probe_error=AssertionError("the import probe must not run"),
+            ),
+        )
+        self.feed(monkeypatch, {"tool_input": {"file_path": str(draft)}})
+        assert hook.main() == 0
+        reason = emitted(capsys)["reason"]
+        assert reason.startswith("The citation gate could not read the ledger")
+        assert "ERROR: the citation gate could not read the ledger" in reason
+        assert "Citation gate FAILED" not in reason
 
     def test_an_interpreter_that_cannot_import_chitragupta_is_named_not_blamed_on_the_citekey(
         self, rooted, monkeypatch, capsys
@@ -414,7 +440,7 @@ class TestLauncherFaults:
             "faults",
             lambda root: ["`python` is not on an absolute PATH entry, so a hook cannot start."],
         )
-        monkeypatch.setattr(preflight, "gate_is_live", lambda: True)
+        monkeypatch.setattr(preflight, "gate_fault", lambda: None)
         monkeypatch.setattr(preflight, "corpus_stage", lambda: None)
         assert preflight.main() == 0
         context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
@@ -494,6 +520,20 @@ class TestCorpusStage:
         )
         assert "corpus layer will not start" in preflight.corpus_stage()
 
+    def test_a_ledger_it_cannot_read_is_reported_with_its_cause(self, preflight, monkeypatch):
+        # #1066: exit 3 is not a missing config, so not that advice.
+        monkeypatch.setattr(
+            preflight, "_run", lambda *a, **k: completed(3, stderr="ledger.sqlite-journal ...")
+        )
+        stage = preflight.corpus_stage()
+        assert stage.startswith("BROKEN: The ledger cannot be read")
+        assert "ledger.sqlite-journal" in stage
+        assert "config.toml" not in stage
+
+    def test_its_unreadable_code_is_the_package_s(self, preflight):
+        # Spelled in the hook, which may not be able to import chitragupta.
+        assert preflight.LEDGER_UNREADABLE == ledger.EXIT_UNREADABLE
+
     @pytest.mark.parametrize(
         "stdout",
         [
@@ -530,11 +570,11 @@ class TestGateLiveness:
                 1, stdout=f"FAIL @{preflight.FABRICATED} not found in ledger"
             ),
         )
-        assert preflight.gate_is_live() is True
+        assert preflight.gate_fault() is None
 
     def test_a_gate_that_passes_the_probe_is_not_live(self, preflight, monkeypatch):
         monkeypatch.setattr(preflight, "_run", lambda *a, **k: completed(0, stdout="OK"))
-        assert preflight.gate_is_live() is False
+        assert "did not refuse a fabricated citekey" in preflight.gate_fault()
 
     def test_a_failure_that_never_names_the_key_is_not_live(self, preflight, monkeypatch):
         """A gate rejecting the probe for its *location* also exits
@@ -544,7 +584,23 @@ class TestGateLiveness:
             "_run",
             lambda *a, **k: completed(1, stderr="resolves outside the content directory"),
         )
-        assert preflight.gate_is_live() is False
+        fault = preflight.gate_fault()
+        assert "could not run its self-test (exit 1)" in fault
+        assert "resolves outside the content directory" in fault
+
+    def test_a_gate_that_could_not_read_its_ledger_is_not_said_to_accept(
+        self, preflight, monkeypatch
+    ):
+        """#1066: exit 3 said nothing about the key, so it is reported as
+        a gate that could not run, never as one that let the key through."""
+        monkeypatch.setattr(
+            preflight,
+            "_run",
+            lambda *a, **k: completed(3, stderr="ERROR: the citation gate could not read"),
+        )
+        fault = preflight.gate_fault()
+        assert "could not run its self-test (exit 3)" in fault
+        assert "did not refuse" not in fault
 
     def test_the_probe_writes_nothing_that_outlives_it(self, preflight, monkeypatch):
         """The temporary tree is the point: a probe that left a draft with a
@@ -558,7 +614,7 @@ class TestGateLiveness:
             return completed(1, stdout=preflight.FABRICATED)
 
         monkeypatch.setattr(preflight, "_run", capture)
-        assert preflight.gate_is_live() is True
+        assert preflight.gate_fault() is None
         assert not seen["draft"].exists()
         assert REPO_ROOT not in seen["content"].parents
 
@@ -572,19 +628,21 @@ class TestRunAndMain:
 
     def test_main_says_nothing_when_all_three_checks_pass(self, preflight, monkeypatch, capsys):
         monkeypatch.setattr(preflight, "launcher_faults", list)
-        monkeypatch.setattr(preflight, "gate_is_live", lambda: True)
+        monkeypatch.setattr(preflight, "gate_fault", lambda: None)
         monkeypatch.setattr(preflight, "corpus_stage", lambda: None)
         assert preflight.main() == 0
         assert capsys.readouterr().out == ""
 
     def test_main_reports_every_note_in_one_json_document(self, preflight, monkeypatch, capsys):
         monkeypatch.setattr(preflight, "launcher_faults", lambda: ["a launcher is wrong"])
-        monkeypatch.setattr(preflight, "gate_is_live", lambda: False)
+        monkeypatch.setattr(
+            preflight, "gate_fault", lambda: "the gate did not refuse a fabricated citekey"
+        )
         monkeypatch.setattr(preflight, "corpus_stage", lambda: "not synced yet")
         assert preflight.main() == 0
         context = emitted(capsys)["hookSpecificOutput"]["additionalContext"]
         assert "BROKEN: a launcher is wrong" in context
-        assert "did not refuse a fabricated citekey" in context
+        assert "BROKEN: the gate did not refuse a fabricated citekey" in context
         assert "not synced yet" in context
 
 

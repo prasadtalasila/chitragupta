@@ -32,6 +32,16 @@ from chitragupta.ledger_upsert import upsert_reference  # noqa: F401  # pylint: 
 # unchanged.
 from chitragupta.ledger_paths import mark_parsed  # noqa: F401  # pylint: disable=unused-import
 
+# read_connection's refusals moved to ledger_refusals when the third,
+# UnreadableLedger, would have taken this module past the C2 limit
+# (#1066); re-exported so `ledger.NoLedger` and the rest are unchanged.
+from chitragupta.ledger_refusals import (  # noqa: F401  # pylint: disable=unused-import
+    EXIT_UNREADABLE,
+    NoLedger,
+    StaleLedger,
+    UnreadableLedger,
+)
+
 # A column holding a path is named `*_path` and is stored through
 # `ledger_paths` (#966), never as `str(path)`;
 # tests/test_ledger_relocation.py scans for both.
@@ -186,25 +196,6 @@ def connection() -> Iterator[sqlite3.Connection]:
         con.close()
 
 
-class NoLedger(RuntimeError):
-    """There is no ledger to read: `read_connection`'s refusal."""
-
-    # The default message is the two lines `corpus ledger` has always
-    # printed, which the genre skills and the session-start hook tell
-    # apart from "the ledger is empty".
-
-    def __init__(self, detail: str | None = None) -> None:
-        super().__init__(
-            detail
-            or f"No ledger at {config.LEDGER_PATH}.\n"
-            "Run `python -m chitragupta.corpus sync` to build it from your bib file."
-        )
-
-
-class StaleLedger(NoLedger):
-    """The ledger predates this version's schema; refused wherever `NoLedger` is."""
-
-
 # The one read-only opener (#843). `ledger_cli`, `overlap_index_ledger`
 # and `discover/_data` each carried an identical copy, each with its own
 # docstring on why `connect()` is wrong for a reader: it mkdirs content/,
@@ -227,14 +218,24 @@ class StaleLedger(NoLedger):
 # say "run sync" until one sync has run, which is also what brings the new
 # column's data in. A zero-byte file reads as user_version 0 and gets the
 # same answer, which is the right one for it too.
+#
+# A file SQLite will not read at all -- a hot journal from an interrupted
+# write, a damaged page, a writer holding the lock past the timeout --
+# fails on this first read too, and is refused as `UnreadableLedger`
+# with its cause rather than escaping as a raw `sqlite3.Error` (#1066).
 def read_connection() -> sqlite3.Connection:
-    """The ledger, read-only. Raises `NoLedger` when there is no file and
-    `StaleLedger` when it needs a sync to migrate; creates nothing."""
+    """The ledger, read-only. Raises `NoLedger` when there is no file,
+    `StaleLedger` when it needs a sync to migrate and `UnreadableLedger`
+    when SQLite will not read it; creates nothing."""
     if not config.LEDGER_PATH.exists():
         raise NoLedger()
-    con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
-    # Closed on every way out but the return -- the refusal below, and a
-    # file that is not a database at all, which fails on this first read.
+    # A file this user cannot open fails here, before there is a
+    # connection to close.
+    try:
+        con = sqlite3.connect(ledger_paths.read_only_uri(config.LEDGER_PATH), uri=True, timeout=5.0)
+    except sqlite3.Error as exc:
+        raise UnreadableLedger(config.LEDGER_PATH, exc) from exc
+    # Closed on every way out but the return.
     try:
         (version,) = con.execute("PRAGMA user_version").fetchone()
         if version < len(_MIGRATIONS):
@@ -242,8 +243,10 @@ def read_connection() -> sqlite3.Connection:
                 f"The ledger at {config.LEDGER_PATH} predates this version's schema.\n"
                 "Run `python -m chitragupta.corpus sync` to migrate it."
             )
-    except BaseException:
+    except BaseException as exc:
         con.close()
+        if isinstance(exc, sqlite3.Error):
+            raise UnreadableLedger(config.LEDGER_PATH, exc) from exc
         raise
     return con
 

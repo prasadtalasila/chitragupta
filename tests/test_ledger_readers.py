@@ -37,6 +37,7 @@ from chitragupta.enrich import __main__ as enrich_script
 from chitragupta.review import __main__ as review_main
 
 from tests.conftest import content_draft
+from tests.ledger_faults import damage_past_the_header, leave_hot_journal
 
 
 @pytest.fixture
@@ -88,7 +89,7 @@ class TestLibraryReaders:
             return opened[-1]
 
         monkeypatch.setattr(sqlite3, "connect", tracked)
-        with pytest.raises(sqlite3.DatabaseError):
+        with pytest.raises(ledger.UnreadableLedger):
             ledger.read_connection()
         # Closed on the way out, not leaked with the exception.
         with pytest.raises(sqlite3.ProgrammingError):
@@ -193,3 +194,93 @@ class TestRenderingNeedsALedgerOnlyToCite:
         assert render_output.main([str(path), "--format", "md"]) == 1
         assert "[error] No ledger at" in capsys.readouterr().out
         assert not isolated_config.LEDGER_PATH.exists()
+
+
+@pytest.fixture
+def hot_ledger(isolated_config):
+    """A synced ledger with an interrupted write's journal beside it (#1066)."""
+    ledger.connect().close()
+    return leave_hot_journal(isolated_config.LEDGER_PATH)
+
+
+class TestAnUnreadableLedgerIsRefusedNotATraceback:
+    """#1066's follow-up: every reader above, against a ledger SQLite will
+    not read. `UnreadableLedger` is a `NoLedger`, so each command's
+    existing refusal reports it -- with its cause, where it used to be a
+    raw `sqlite3.OperationalError` -- and the readers that fold
+    `NoLedger` into "nothing there" are each pinned to do what they
+    should with a ledger that *is* there."""
+
+    def test_the_gate_exits_3_through_the_draft_dispatch(self, hot_ledger, isolated_config, capsys):
+        path = content_draft(isolated_config, "drafts/cited.md")
+        path.write_text("Claim [@smith_2024].\n", encoding="utf-8")
+        assert draft.main(["gate", str(path)]) == ledger.EXIT_UNREADABLE
+        assert hot_ledger.name in capsys.readouterr().err
+
+    def test_draft_dispatch_turns_it_into_an_error_line(self, hot_ledger, capsys):
+        assert draft.main(["tldr", "show", "smith_2024"]) == 1
+        err = capsys.readouterr().err
+        assert err.startswith("[error] The ledger at")
+        assert hot_ledger.name in err
+
+    def test_review_dispatch_turns_it_into_an_error_line(self, hot_ledger, capsys):
+        path = config.DRAFTS_DIR / "topic" / "survey.md"
+        path.parent.mkdir(parents=True)
+        path.write_text("A claim [@smith_2024].\n", encoding="utf-8")
+        assert review_main.main(["provenance", str(path)]) == 1
+        assert capsys.readouterr().err.startswith("[error] The ledger at")
+
+    def test_references_reports_it(self, hot_ledger, isolated_config, capsys):
+        path = content_draft(isolated_config, "draft.md")
+        path.write_text("See [@smith_2024].\n", encoding="utf-8")
+        assert references.main([str(path)]) == 1
+        assert "[error] The ledger at" in capsys.readouterr().err
+
+    def test_retrieve_reports_it(self, hot_ledger, capsys):
+        assert retrieval_cli.main(["search", "digital twin"]) == 1
+        assert hot_ledger.name in capsys.readouterr().err
+
+    def test_render_refuses_a_citing_draft(self, hot_ledger, isolated_config, capsys):
+        path = content_draft(isolated_config, "drafts/cited.md")
+        path.write_text("See [@smith_2024].\n", encoding="utf-8")
+        assert render_output.main([str(path), "--format", "md"]) == 1
+        assert "[error] The ledger at" in capsys.readouterr().out
+
+    def test_enrich_refuses(self, hot_ledger, monkeypatch, capsys):
+        monkeypatch.setattr(sys, "argv", ["enrich.py", "--stages", "docling"])
+        assert enrich_script.main() == 1
+        assert hot_ledger.name in capsys.readouterr().out
+
+    def test_discover_names_the_cause(self, hot_ledger):
+        with pytest.raises(discover_data.MissingArtefact, match=hot_ledger.name):
+            discover_data.read_only_connection()
+
+    def test_search_raises_it_to_a_library_caller(self, hot_ledger):
+        with pytest.raises(ledger.UnreadableLedger):
+            retrieval.search("digital twin")
+
+    def test_corpus_ledger_exits_3_on_stderr(self, hot_ledger, capsys):
+        # Not the 0 a missing or stale ledger gets: that is a position in
+        # clone -> sync, this is a fault, and the session-start hook
+        # reports it by this code.
+        assert ledger_cli.main([]) == ledger.EXIT_UNREADABLE
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        assert hot_ledger.name in captured.err
+
+    def test_corpus_ledger_exits_3_on_damage_its_first_read_missed(self, isolated_config, capsys):
+        # The schema version reads; the summary query is what fails.
+        ledger.connect().close()
+        damage_past_the_header(isolated_config.LEDGER_PATH)
+        assert ledger_cli.main([]) == ledger.EXIT_UNREADABLE
+        assert "or it is damaged" in capsys.readouterr().err
+
+    def test_the_overlap_index_raises_it(self, hot_ledger):
+        # Not folded into "nothing fingerprintable", for the reason a
+        # stale ledger is not: a silent pass on the verbatim check.
+        with pytest.raises(ledger.UnreadableLedger):
+            overlap_index_ledger.ledger_item("smith_2024")
+
+    def test_the_dossier_drift_scan_is_skipped(self, hot_ledger):
+        # Unchanged, and right: it already skips on any sqlite3.Error.
+        assert dossier._corpus_rows() is None
