@@ -204,6 +204,13 @@ def test_chapter_draft_refuses_an_absolute_id(book, tmp_path):
         chapter_draft(book, str(tmp_path / "evil"))
 
 
+def test_chapter_draft_refuses_an_id_the_platform_cannot_resolve(book):
+    """A NUL byte raises `ValueError` out of resolving rather than
+    answering, and must come back as the same named refusal."""
+    with pytest.raises(spec.SpecError, match="does not resolve inside"):
+        chapter_draft(book, "ch\x00what")
+
+
 def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, capsys):
     """The one shape that reaches the join through `spec align` itself,
     since the id is clean and only the file it names is not. Refused on
@@ -218,9 +225,9 @@ def test_a_chapter_symlinked_out_of_the_book_is_refused_by_name(book, tmp_path, 
 
 
 def test_a_chapter_file_in_a_symlink_loop_is_refused_rather_than_crashing(book, capsys):
-    """Python 3.12 resolves a loop with `RuntimeError`, which is neither
-    `OSError` nor `ValueError`; it must still be a named refusal and not a
-    traceback out of `spec align`."""
+    """Python 3.12 and 3.13 raise `RuntimeError` resolving a loop and 3.14
+    resolves it silently to the link; either way it must be a named
+    refusal, not a traceback or an accepted chapter out of `spec align`."""
     (book / "ch-what.md").symlink_to(book / "loop")
     (book / "loop").symlink_to(book / "ch-what.md")
     assert spec.main(["align", str(book)]) == 1

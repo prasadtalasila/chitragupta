@@ -1,0 +1,10 @@
+# actionlint 1.7.12, the newest release and the one install_full_pipeline.sh
+# pins, predates GitHub's ubuntu-26.04 hosted image, so it reports the
+# label as unknown. The workflows name that image rather than
+# `ubuntu-latest`, because `ubuntu-latest` moving to it under a venv cache
+# keyed without the image broke every PR (see ci.yml's cache step).
+# Listing it here is actionlint's own documented way to accept a label it
+# does not know. Remove it once an actionlint release knows the label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

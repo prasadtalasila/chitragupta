@@ -51,7 +51,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-26.04, windows-latest]
     runs-on: ${{ matrix.os }}
     # windows-latest was exploratory (docs/DESIGN.md's cross-platform-CI
     # recommendation) and carried `continue-on-error` while real gaps were
@@ -112,12 +112,25 @@ jobs:
       # that the script still works on a clean host, and poetry's own
       # up-to-date check is what makes a hit fast (nothing left to
       # install) without this workflow needing to know that.
+      #
+      # **The runner image is in the key.** A venv's `bin/python` points at
+      # the image's own interpreter, so a venv cannot move between images.
+      # Keyed by OS and lock alone, the ubuntu-24.04 venv was restored onto
+      # ubuntu-26.04 when `ubuntu-latest` moved, its Python was not there,
+      # and every PR failed in `cpu-torch` before a test ran. `ImageOS`
+      # (`ubuntu26`, `win25`) is a runner variable, which `env.` cannot
+      # read, so a step hands it over.
+      - name: Name the runner image for the venv cache key
+        id: image
+        shell: bash
+        run: echo "os=${ImageOS:-unknown}" >> "$GITHUB_OUTPUT"
+
       - name: Restore the .venv-full cache
         id: venv-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .venv-full
-          key: venv-${{ runner.os }}-${{ hashFiles('poetry.lock') }}
+          key: venv-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ hashFiles('poetry.lock') }}
 
       # Dogfoods the project's own single install path (DEVELOPER-AGENTS.md: "don't
       # add a second install path") rather than hand-rolling equivalent
@@ -377,7 +390,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-26.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -419,7 +432,7 @@ jobs:
   # source rather than its behaviour on a platform, so a second leg would
   # re-report the same findings and halve nothing.
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -670,7 +683,7 @@ jobs:
   # can exercise anyway.
   docker-build:
     name: Docker build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -688,7 +701,7 @@ jobs:
     # without coverage data on a commit whose tests are red is not a
     # signal worth the added complexity of running it anyway.
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       # fetch-depth: 0, against the default depth-1 clone, because Sonar
       # attributes each issue to the commit that introduced it by reading

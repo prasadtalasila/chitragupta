@@ -26,6 +26,15 @@ from pathlib import Path
 
 STY_PATH = Path(__file__).resolve().parent.parent / "assets" / "latex" / "chitragupta-unicode.sty"
 
+# The `unicodedata` tables the committed `.sty` was written from: the
+# Python 3.14 that ubuntu-26.04 ships, which CI's Linux test leg runs
+# (the runner's own; ci.yml pins none) and docker/Dockerfile ships too.
+# Each Python ships its own Unicode, and a newer one maps more characters
+# (3.14's Unicode 16 adds the outlined Latin letters at U+1CCD6), so a
+# file regenerated under another is one CI then rejects. Moves with CI's
+# Python, and the `.sty` is regenerated in the same change.
+UNICODE_VERSION = "16.0.0"
+
 # Greek letter names as `unicodedata` spells them (note LAMDA), to the
 # math command amsmath/amssymb draw them with. U+03C6 GREEK SMALL LETTER
 # PHI is the loopy form, which LaTeX calls \varphi; U+03D5 PHI SYMBOL is
@@ -306,6 +315,10 @@ def render() -> str:
 
 
 def main() -> int:
+    if (found := unicodedata.unidata_version) != UNICODE_VERSION:
+        hint = "regenerate it under CI's Python, or move UNICODE_VERSION with it"
+        print(f"Unicode {found} here, the .sty is from {UNICODE_VERSION}: {hint}", file=sys.stderr)
+        return 1
     STY_PATH.parent.mkdir(parents=True, exist_ok=True)
     STY_PATH.write_text(render(), encoding="utf-8")
     print(f"wrote {len(entries())} characters to {STY_PATH}")

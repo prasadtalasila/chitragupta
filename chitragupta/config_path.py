@@ -28,6 +28,7 @@ Deferring the import until the function actually runs sidesteps the
 partial-initialization window entirely.
 """
 
+import os
 import sys
 from pathlib import Path
 
@@ -49,8 +50,25 @@ def resolves_inside(path: Path, root: Path) -> bool:
     Resolving both sides is the whole point: it is what makes a symlink
     and a `..` component answer for where they actually land rather than
     for how they are spelled.
+
+    A symlink loop lands nowhere, so it is not inside anything. That is
+    said here rather than left to `Path.resolve()`, which disagrees with
+    itself across supported Pythons: 3.12 and 3.13 raise `RuntimeError`,
+    which no caller caught, and 3.14 answers with the link itself, which
+    looks inside. `os.path.realpath` stops at a loop on every version
+    without raising, so a result that is still a symlink is a loop.
+
+    A NUL byte raises `ValueError`, the refusal every caller catches.
+    `realpath` raises it on POSIX but returns the path untouched on
+    Windows, where `Path.resolve()` used to raise it from a check of its
+    own, so it is raised here rather than left to the platform.
     """
-    return Path(path).resolve().is_relative_to(Path(root).resolve())
+    if "\0" in os.fspath(path):
+        raise ValueError(f"embedded null byte in {os.fspath(path)!r}")
+    resolved = Path(os.path.realpath(path))
+    if resolved.is_symlink():
+        return False  # pragma: no cover-windows
+    return resolved.is_relative_to(Path(os.path.realpath(root)))
 
 
 def confined_path(value: "str | Path | None", root: Path) -> "Path | None":
