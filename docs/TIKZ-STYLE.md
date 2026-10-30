@@ -59,9 +59,10 @@ escaping it. If nothing comments on the path, it is a pipeline.
 same parts, with each part on the same row as its match. Reach for it
 for a before and an after, or two approaches to one job, where the point
 is the part that differs: that part is the `cgkey`, and a part one side
-lacks keeps its row as `cgnone`. Panel (b)'s parts are placed
-`at (<column> |- <match>)` rather than beside or below a neighbour, so
-re-wording a part cannot move it off its match's row. Nothing is drawn
+lacks keeps its row as `cgnone`. Panel (b)'s first part sets its
+column, and every other part is placed `at (<column> |- <match>)`
+rather than beside or below a neighbour, so re-wording a part cannot
+move it off its match's row. Nothing is drawn
 between the panels; if the two sides share a pair of named axes instead,
 it is a map.
 

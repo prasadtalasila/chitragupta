@@ -24,7 +24,7 @@ Two more things live here that are not scaffolds:
   label ramp. Every scaffold carries a verbatim copy of it, so you never
   copy it by hand; see below.
 - **`exemplars/`** holds three figures from one paper redrawn with that
-  block, and a comparison drawn for it, at a wider page (the render's
+  block, and one comparison drawn for this project, at a wider page (the render's
   453pt) than the scaffolds. They show what the vocabulary is for: zone
   cards, step badges, a legend, the house `pic`s and lettered panels.
   Read them; start from a scaffold.

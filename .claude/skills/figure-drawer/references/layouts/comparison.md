@@ -19,10 +19,11 @@ without one component.
 
 - **Lines between the panels.** The shared row is the match. A line
   across the gap reads as a flow from one approach into the other.
-- **Placing panel (b) by its own neighbours.** A part placed `below=`
-  the part above it, or `right=` of its match, drifts off its match's
-  row as soon as one part is re-worded. Place each at
-  `(<column> |- <match>)`, as the scaffold does.
+- **Placing panel (b) by its own neighbours.** As soon as one part is
+  re-worded, a part placed `right=` of its match drifts off panel (b)'s
+  column, and one placed `below=` the part above it drifts off its
+  match's row. Let the first part set the column and place every other
+  at `(<column> |- <match>)`, as the scaffold does.
 - **Dropping a missing part.** A part one side lacks keeps its row as
   `cgnone`, or every row below it slides out of line and the gap the
   figure is about disappears.

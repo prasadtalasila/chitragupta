@@ -2,7 +2,9 @@
 % Where a citekey is checked: a typical retrieval-augmented writer beside
 % this pipeline, part by part. The rows carry the comparison: three of
 % the four parts are the same kind of thing in both panels, so the eye
-% runs across each row and stops at the one where (a) has nothing.
+% runs across each row and stops at the one where (a) has nothing. The
+% sources differ in content, not in kind, so the accent stays on the
+% check. The pipeline never publishes: it presents a gated draft.
 %
 % WIDTH. Laid out to the render's \textwidth (453pt, A4 at 12pt with 1in
 % margins) and \input bare. Two panels side by side take about three
@@ -328,12 +330,12 @@
   \node[cgbox, pt]                     (src-a)   {\cglab{Web search}{live pages}};
   \node[cgbox, pt, below=of src-a]     (draft-a) {\cglab{Draft}{the model writes}};
   \node[cgnone, pt, below=of draft-a]  (check-a) {\cglab{No check}{keys as written}};
-  \node[cgbox, pt, below=of check-a]   (out-a)   {\cglab{Publish}{anything cited}};
+  \node[cgbox, pt, below=of check-a]   (out-a)   {\cglab{Output}{anything cited}};
   % ---- panel (b): its column, each part on its match's row -----------------
   \node[cgbox, pt, right=16mm of src-a] (src-b)  {\cglab{Corpus}{your parsed PDFs}};
   \node[cgbox, pt] (draft-b) at (src-b |- draft-a) {\cglab{Draft}{the model writes}};
   \node[cgkey, pt] (check-b) at (src-b |- check-a) {\cglab{Verify}{every citekey}};
-  \node[cgbox, pt] (out-b)   at (src-b |- out-a)   {\cglab{Publish}{only what passed}};
+  \node[cgbox, pt] (out-b)   at (src-b |- out-a)   {\cglab{Output}{the gated draft}};
   % ---- the two columns -----------------------------------------------------
   \draw[cgedge] (src-a) -- (draft-a);
   \draw[cgedge] (draft-a) -- (check-a);
