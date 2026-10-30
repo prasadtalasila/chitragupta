@@ -543,6 +543,18 @@ its reference file and an exemplar, and each clean under `figure check`:
 `timeline`. `tests/test_tikz_scaffolds.py`'s table-to-directory
 cross-check covers them.
 
+- **3b, `comparison`.** Built by #1061. Panel (a) is one column; each
+  part of panel (b) is placed `at (<column> |- <match>)`, centre on
+  centre, because `right=` of its match shifted with the match's width
+  and `below=` its neighbour with the neighbour's height: the first
+  exemplar draft slanted two edges (`c1`) that way. Each card fits every
+  part of its panel, not just the ends (`node-overlap` caught a wider
+  middle part). Nothing is drawn between the panels. A part one side
+  lacks keeps its row as `cgnone`. The exemplar is
+  `assets/tikz/exemplars/grounding.tex`. Left open: `cgnone` and `cgopt`
+  on a tinted card show a pale offset box where `cgflat` fails to cancel
+  the shadow; `retrieval.tex` shows it too.
+
 ## Dependencies and value
 
 An arrow reads "must land before". Value is to the person who reported

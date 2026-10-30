@@ -27,7 +27,8 @@ figure is warranted at all.
 | a taxonomy, a decision, cases | [Branching tree](layouts/branching-tree.md) | one thing divides and no case rejoins another |
 | a single point everything crosses | [Hub-and-spoke network](layouts/hub-and-spoke-network.md) | removing the centre disconnects the rest |
 | a trade-off on two axes | [Map](layouts/map.md) | where things sit matters, not how they connect |
-| two alternatives compared | [Map](layouts/map.md), or two panels | one shared pair of axes; else panels (`figures.md` §2) |
+| two alternatives compared on shared axes | [Map](layouts/map.md) | one pair of named axes places both |
+| a before and an after, or two approaches part by part | [Comparison](layouts/comparison.md) | each part has a match on the other side, and one differs |
 
 ## Two that look alike
 
