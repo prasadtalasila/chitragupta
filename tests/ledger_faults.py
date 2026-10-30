@@ -5,9 +5,9 @@ is under test is SQLite's own refusal: a read-only handle meeting a hot
 journal it would have to roll back, and a page that is not a b-tree.
 """
 
-import subprocess
-import sys
 from pathlib import Path
+
+from tests.conftest import run_python
 
 # A write killed mid-transaction, which is what leaves a hot journal: a
 # one-page cache forces the transaction to spill into the database file,
@@ -27,7 +27,7 @@ os._exit(0)
 
 def leave_hot_journal(ledger_path: Path) -> Path:
     """Interrupt a write to the existing ledger at `ledger_path`; returns the journal."""
-    subprocess.run([sys.executable, "-c", _INTERRUPTED_WRITE, str(ledger_path)], check=True)
+    run_python("-c", _INTERRUPTED_WRITE, str(ledger_path), check=True)
     journal = ledger_path.with_name(ledger_path.name + "-journal")
     assert journal.stat().st_size > 0, "the interrupted write left no journal"
     return journal
