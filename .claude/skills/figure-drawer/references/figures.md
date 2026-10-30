@@ -253,7 +253,11 @@ in the figure file and write nothing else about loading: no clearing of
 `\tikz@library@...@loaded`, and no saving or restoring of
 `\tikz@node@reset@hook`. The renderer collects those lines and loads the
 union in its own preamble (#781). A load *inside* the figure float is
-the bug that multiplied node spacing in this project's own book.
+the bug that multiplied node spacing in this project's own book. A
+load while TeX is setting a line (the figure inside `\sbox`, inline in
+text, or in a `standalone` preview) also prints the library files' line
+ends as 135pt to 147pt of blank width before the picture (#1046), so any
+preview you build loads the libraries in its preamble.
 `docs/TIKZ-STYLE.md` has the detail.
 
 Before keeping the figure, read it against that document's pre-flight
