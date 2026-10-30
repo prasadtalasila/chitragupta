@@ -4,7 +4,8 @@ One compile, through `review figure`'s own probe in its boxed form
 (`review/figure_layout/_probe.py` has why the box and the preload go
 together), then every rule in `_rules.RULES`: the three this command
 adds, and `review figure`'s seven findings under the ids its JSON
-already ships. Then the figure's own `% cg-allow:` lines are applied.
+already ships. Then the figure's own `% cg-allow:` lines are settled
+against what fired (`_allow.py`).
 
 **It measures; it never places**, for the reason
 `review/figure_layout/__init__.py` gives: every number here is read
@@ -22,7 +23,7 @@ from pathlib import Path
 
 from chitragupta._tex_comments import strip_comments
 from chitragupta.figure._advisory import advise
-from chitragupta.figure._allow import Allow, Malformed, parse_allows
+from chitragupta.figure._allow import Allow, Malformed, parse_allows, settle
 
 from chitragupta.figure._connector_check import CONNECTOR, connector_rules
 from chitragupta.figure._connectors import connectors
@@ -79,9 +80,10 @@ _PICTURE_RE = re.compile(r"\\begin\s*\{tikzpicture\}")
 @dataclass
 class CheckResult:
     """One file's report. `allowed` pairs each honoured allow with the
-    measurement it suppressed, or `None` where its rule did not fire;
-    `not_measured` pairs a rule with why it could not run. `figure` is
-    kept for the diagnostics the report prints beside the findings.
+    measurements it set aside, and `stale` and `unchecked` each other
+    allow with why (#1058); `not_measured` pairs a rule with why it
+    could not run. `figure` is kept for the diagnostics the report
+    prints beside the findings.
     `advisory` is #1057's size reports, kept out of `findings` because
     nothing is to be resolved or allowed about them, and `layout` the
     name they were read against (`""` for none)."""
@@ -93,8 +95,9 @@ class CheckResult:
     # not run between two nodes; `None` where nothing was drawn.
     loose_lines: int | None = None
     findings: list[Finding] = field(default_factory=list)
-    allowed: list[tuple[Allow, str | None]] = field(default_factory=list)
-    deferred: list[Allow] = field(default_factory=list)
+    allowed: list[tuple[Allow, str]] = field(default_factory=list)
+    stale: list[tuple[Allow, str]] = field(default_factory=list)
+    unchecked: list[tuple[Allow, str]] = field(default_factory=list)
     malformed: list[Malformed] = field(default_factory=list)
     not_measured: list[tuple[str, str]] = field(default_factory=list)
     advisory: list[Finding] = field(default_factory=list)
@@ -132,7 +135,7 @@ def apply(
     """Every rule over an already-checked figure, with its allows applied.
 
     Each allow is matched against everything that fired, so two allows
-    for one rule both report what they set aside. `layout` overrides the
+    for one target both report what they set aside. `layout` overrides the
     figure's own `% cg-layout:` line. `twin` is the ASCII twin's text,
     `None` where the figure has none (#1056)."""
     layout = layout or declared_layout(source)
@@ -144,21 +147,17 @@ def apply(
     )
     advisory += wording_rules(source)[1]
     allows = parse_allows(source)
-    allowed = [
-        (allow, "; ".join(f.measurement for f in fired if f.rule == allow.rule) or None)
-        for allow in allows.honoured
-    ]
-    excused = {allow.rule for allow in allows.honoured}
-    findings = [finding for finding in fired if finding.rule not in excused]
+    settled = settle(allows.wellformed, fired, not_measured, layout, _names(figure))
     loose = len(connectors(figure.drawn)[1]) if figure.drawn else None
     return CheckResult(
         path,
         width_pt,
         figure,
         loose,
-        findings,
-        allowed,
-        allows.deferred,
+        settled.findings,
+        settled.allowed,
+        settled.stale,
+        settled.unchecked,
         allows.malformed,
         not_measured + unmeasured,
         advisory,
@@ -206,6 +205,14 @@ def _missing(figure: FigureResult) -> str:
     if BBOX_NAME not in figure.boxes or figure.input_width is None:
         return NO_EXTENT
     return ""
+
+
+def _names(figure: FigureResult) -> set[str] | None:
+    """Every node the probe measured, by name, for a stale allow to be
+    looked up in; `None` where the geometry is missing."""
+    if _missing(figure):
+        return None
+    return set(figure.boxes) | set(figure.drawn.nodes if figure.drawn else ())
 
 
 def _unmeasurable(source: str, figure: FigureResult) -> str:

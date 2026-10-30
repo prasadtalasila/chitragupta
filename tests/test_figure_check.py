@@ -280,12 +280,13 @@ class TestAllows:
         assert allow.reason == "five stages compared"
         assert measurement == "475.0pt wide, target 453.0pt"
 
-    def test_an_allow_for_a_rule_that_did_not_fire_is_still_listed(self):
+    def test_an_allow_for_a_rule_that_no_longer_fires_is_stale(self):
         source = "% cg-allow: size-width -- wide on purpose\n" + ONE_PICTURE
         result = _check.apply(Path("fig.tex"), 453.0, _measured(), source, twin=ONE_TWIN)
 
-        [(allow, measurement)] = result.allowed
-        assert allow.rule == "size-width" and measurement is None
+        assert result.allowed == []
+        [(allow, why)] = result.stale
+        assert allow.rule == "size-width" and why == "no longer fires"
 
     def test_a_second_allow_for_the_same_rule_sees_the_same_finding(self):
         source = (
@@ -299,15 +300,35 @@ class TestAllows:
             "475.0pt wide, target 453.0pt",
         ]
 
-    def test_a_deferred_allow_leaves_its_finding_in_place(self):
-        source = "% cg-allow: node-overlap a+b -- on purpose\n" + ONE_PICTURE
+    def test_an_element_allow_sets_aside_its_own_target_only(self):
+        source = "% cg-allow: node-overlap b+a -- on purpose\n" + ONE_PICTURE
         figure = _measured(drawn=None)
         figure.boxes["b"] = (5.0, 5.0, 15.0, 15.0)
+        figure.boxes["c"] = (8.0, 8.0, 18.0, 18.0)
 
         result = _check.apply(Path("fig.tex"), 453.0, figure, source, twin=ONE_TWIN)
 
-        assert _rules(result.findings) == ["node-overlap"]
-        assert [allow.target for allow in result.deferred] == ["a+b"]
+        assert [f.target for f in result.findings] == ["a+c", "b+c"]
+        assert [(allow.target, measured) for allow, measured in result.allowed] == [
+            ("b+a", "boxes intersect")
+        ]
+
+    def test_an_allow_naming_a_node_that_is_not_drawn_is_stale(self):
+        source = "% cg-allow: c1-orthogonal twin->decide -- a loop\n" + ONE_PICTURE
+        figure = _measured(drawn=drawn([node("a", (0, 0, 10, 10))], []))
+
+        result = _check.apply(Path("fig.tex"), 453.0, figure, source, twin=ONE_TWIN)
+
+        assert [why for _, why in result.stale] == ["no node named twin"]
+
+    def test_an_allow_for_a_rule_that_could_not_run_is_unchecked(self):
+        source = "% cg-allow: k2-text a -- pale on purpose\n" + ONE_PICTURE
+        figure = FigureResult(path=Path("fig.tex"), failed="! Missing }")
+
+        result = _check.apply(Path("fig.tex"), 453.0, figure, source, twin=ONE_TWIN)
+
+        assert [why for _, why in result.unchecked] == ["the figure does not compile"]
+        assert result.stale == []
 
     def test_a_malformed_allow_honours_nothing(self):
         source = "% cg-allow: size-width\n" + ONE_PICTURE
@@ -397,6 +418,19 @@ class TestAgainstRealLualatex:
         assert result.findings == []
         assert [allow.rule for allow, _ in result.allowed] == ["size-width"]
 
+    def test_an_allowed_overlap_is_set_aside_for_its_pair_only(self):
+        result = _check.check(FIXTURES / "allowed-overlap.tex", _check.DEFAULT_WIDTH_PT)
+
+        assert [(f.rule, f.target) for f in result.findings] == [("node-overlap", "note+pot")]
+        assert [allow.target for allow, _ in result.allowed] == ["pot+legend"]
+        assert result.stale == [] and result.unchecked == []
+
+    def test_an_allow_for_a_node_that_is_gone_is_stale(self):
+        result = _check.check(FIXTURES / "stale-overlap.tex", _check.DEFAULT_WIDTH_PT)
+
+        assert result.findings == [] and result.allowed == []
+        assert [why for _, why in result.stale] == ["no node named legend"]
+
     def test_a_wide_exemplar_overflows_a_narrower_target(self):
         """`rag-stages` fits the render's 453pt since #1050 (411.5pt) but
         not the article class's 345pt, so a real house figure still pins
@@ -473,21 +507,31 @@ class TestTextReport:
         source = (
             "% cg-allow: size-width -- compared at full width\n"
             "% cg-allow: focal-count -- two keys on purpose\n"
-            "% cg-allow: node-overlap a+b -- the legend sits on purpose\n"
-            "% cg-allow: size-width\n" + ONE_PICTURE
+            '% cg-allow: k2-text "tag on a->b" -- greyed on purpose\n'
+            "% cg-allow: size-width\n" + ONE_PICTURE + ONE_PICTURE
         )
+        figure = _measured(width=200.0, input_width=475.0)
 
-        report = _check_report.format_text(_result(source=source, figure=_measured(width=475.0)))
+        report = _check_report.format_text(_result(source=source, figure=figure))
 
         assert "\nallowed\n" in report
-        assert "475.0pt wide, target 453.0pt -- compared at full width (line 1)" in report
-        assert "did not fire -- two keys on purpose (line 2)" in report
-        assert "\nnot honoured until #1058\n" in report
-        assert "node-overlap" in report and "-- the legend sits on purpose (line 3)" in report
+        assert (
+            "pt wide (whole input, 2 pictures), target 453.0pt -- compared at full width (line 1)"
+            in report
+        )
+        assert "\nstale allows\n" in report
+        assert "no longer fires -- two keys on purpose (line 2)" in report
+        assert "\nunchecked allows\n" in report
+        assert '"tag on a->b"' in report and "-- greyed on purpose (line 3)" in report
         assert "\nmalformed allows\n  line 4: % cg-allow: size-width  (no reason)" in report
         assert report.splitlines()[-1] == (
-            "figure check: 0 findings, 2 allowed, 1 deferred, 1 malformed"
+            "figure check: 0 findings, 1 allowed, 1 stale, 1 unchecked, 1 malformed"
         )
+
+    def test_a_target_with_a_space_is_printed_as_an_allow_must_write_it(self):
+        assert _check_report._quoted("tag on a->b") == '"tag on a->b"'
+        assert _check_report._quoted('"Raw PDF"') == '"Raw PDF"'
+        assert _check_report._quoted("a+b") == "a+b"
 
     def test_what_was_not_measured_and_the_diagnostics_are_kept_apart(self):
         source = ONE_PICTURE + ONE_PICTURE
@@ -547,9 +591,16 @@ class TestJsonPayload:
                 "measurement": "470.0pt wide (whole input, 2 pictures), target 453.0pt",
             }
         ]
-        assert body["deferred"] == [
-            {"rule": "node-overlap", "target": "a+b", "reason": "on purpose", "line": 2}
+        assert body["stale"] == [
+            {
+                "rule": "node-overlap",
+                "target": "a+b",
+                "reason": "on purpose",
+                "line": 2,
+                "why": "no node named b",
+            }
         ]
+        assert body["unchecked"] == []
         assert body["malformed"] == [
             {"line": 3, "text": "% cg-allow: nope -- typo", "problem": "unknown rule `nope`"}
         ]

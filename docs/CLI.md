@@ -3131,8 +3131,9 @@ chitragupta figure check figures/flow.tex --json
 
 One line per finding, `<rule-id> <target> <measurement>`, then a
 section for each kind of thing that is not a finding, left out when it
-is empty: the advisory reports, honoured allows, allows not honoured
-until #1058, malformed allows, rules that could not be measured, and
+is empty: the advisory reports, honoured allows, stale allows (they set
+nothing aside), unchecked allows (their rule did not run, #1058),
+malformed allows, rules that could not be measured, and
 the diagnostics. The advisory reports are the same one-line shape: the
 size reports (#1057), each beside the reference range of the layout the
 figure's `% cg-layout:` line names, and the wording reports `w1` to `w3`
@@ -3153,14 +3154,14 @@ advisory (read; never resolved, allowed or capped)
 diagnostics (not findings)
   edges (confirm against the prose): s4.south -> [yshift=4.5mm]s5.north, ...
   69% of the figure's box is empty (advisory, human-read only -- nothing consumes this)
-figure check: 1 finding, 0 allowed, 0 deferred, 0 malformed
+figure check: 1 finding, 0 allowed, 0 stale, 0 unchecked, 0 malformed
 ```
 
 | Flag | Default | What it does |
 | --- | --- | --- |
 | `--width PT` | `453` | Target text width in pt for `size-width`: the render's A4 page less 1in margins |
 | `--layout NAME` | the figure's `% cg-layout:` line | Read the advisory size reports against this layout's reference ranges. One of the layouts with a file under `.claude/skills/figure-drawer/references/layouts/`; any other name is a usage error |
-| `--json` | off | The same report as JSON: `layout` (or `null`), `findings` and `advisory` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed`, `deferred`, `malformed`, `not_measured` and `diagnostics` |
+| `--json` | off | The same report as JSON: `layout` (or `null`), `findings` and `advisory` (each with `rule`, `class`, `scope`, `target`, `measurement`), `allowed` (each with the `measurement` it set aside), `stale` and `unchecked` (each with `why`), `malformed`, `not_measured` and `diagnostics` |
 
 | Exit | When |
 | --- | --- |

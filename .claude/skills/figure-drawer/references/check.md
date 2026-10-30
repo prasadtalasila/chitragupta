@@ -14,7 +14,7 @@ advisory (read; never resolved, allowed or capped)
   size-squash           load+parse 1.2mm apart edge to edge, under 3mm
   budget-nodes          figure     9 nodes; pipeline reference 5 to 11
   budget-edges          figure     8 edges; pipeline reference 3 to 4
-figure check: 2 findings, 0 allowed, 0 deferred, 0 malformed
+figure check: 2 findings, 0 allowed, 0 stale, 0 unchecked, 0 malformed
 ```
 
 Each line is `<rule-id> <target> <measurement>`. It exits 0 whatever it
@@ -97,12 +97,15 @@ line of its own:
 
 - The reason after `--` is required; without one the line is reported
   under "malformed allows" and allows nothing.
-- A figure-scope rule takes no target. An element-scope rule needs one:
-  a node (`decide`), a pair (`legend+pot`) or a point (`(3,2)`).
+- A figure-scope rule takes no target. An element-scope rule needs one,
+  copied from the finding: a node (`decide`), an edge (`decide->pot`), a
+  pair (`legend+pot`, either order), a side (`decide.south`) or a point
+  (`(3.0,2.0)`). It covers that target only. A target the report prints
+  in double quotes keeps them: `k2-text "tag on parse->ledger"`.
 - An honoured allow is listed under "allowed" with the measurement it
-  set aside, or `did not fire`. An element-scope allow is listed under
-  "not honoured until #1058" and its finding still prints; leave it in
-  place, it is honoured once that lands.
+  set aside. One under "stale allows" set nothing aside: delete it, or
+  fix its target if the node was renamed. One under "unchecked allows"
+  is for a rule that did not run; leave it.
 
 Run `check` again after every change until each objective finding is
 fixed or allowed, then tell the caller what was allowed and why.
