@@ -1581,7 +1581,7 @@ The practical consequence for an author: fix a finding by changing what
 you asked TikZ for (a `sibling distance`, a `row sep`, which library
 you reached for), not by nudging a coordinate until the number moves.
 `assets/tikz/` exists so that starting point is a file rather than a
-blank picture, and none of those ten scaffolds places a node at a
+blank picture, and none of those eleven scaffolds places a node at a
 coordinate.
 
 **Do not tune a figure to the thresholds.** The numbers behind
@@ -3196,7 +3196,7 @@ figure sync: 1 current
 | --- | --- |
 | `<figures-dir>` | A directory named `figures`, the name `figure sync`'s walk and the render's markers look in. Created if its parent exists |
 | `<name>` | The figure's file stem: no path, no suffix |
-| `--layout ID` | A scaffold whose own `% cg-layout:` line names its file stem: `branching-tree`, `comparison`, `control-loop`, `hub-and-spoke-network`, `layered-stack`, `map`, `pipeline`, `sequence`, `state-machine` or `zoned-spine` |
+| `--layout ID` | A scaffold whose own `% cg-layout:` line names its file stem: `branching-tree`, `comparison`, `control-loop`, `hub-and-spoke-network`, `layered-stack`, `map`, `pipeline`, `sequence`, `state-machine`, `timeline` or `zoned-spine` |
 
 | Exit | When |
 | --- | --- |

@@ -97,9 +97,10 @@ def tag_covered(cons: list[Connector], drawn: Drawn) -> list[Finding]:
 
 def _tags(con: Connector, drawn: Drawn) -> list[tuple[Box, str]]:
     """`(box, note)` per tag on the connector: its text box, or its node
-    box, noted, where its shape has no `text` anchor. A turned tag
-    (`sloped`) is skipped: its boxes, read square to the page, are not
-    where it was set."""
+    box, noted, where its shape has no `text` anchor. A tag turned
+    other than a quarter (`sloped` on a slanted line) is skipped: its
+    boxes, read square to the page, are not where it was set. One on an
+    upright line is turned a quarter and measured (#1064)."""
     tags = []
     for name in con.line.labels:
         node = drawn.nodes.get(name)

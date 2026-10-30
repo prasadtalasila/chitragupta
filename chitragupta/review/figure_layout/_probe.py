@@ -97,6 +97,26 @@ def node_names(source: str) -> list[str]:
     return [name for name in names if "#" not in name]
 
 
+# `\cgsides{<node>}` sets `\cgx`, `\cgy`, `\cgxx` and `\cgyy` to a node's
+# box: the min and max over the points of its four side anchors. Four
+# sides, not two corners: `south west` and `north east` are corners only
+# on a rectangle, and on a circle they lie on the curve, which measured
+# it about 30% too small (#1054). Min and max, not one coordinate from
+# each side: turned a quarter, a node's `west` and `east` share an x, so
+# reading x from them alone logged a turned label as a point (#1064).
+# Both probes use it; `cg-figure-probe.tex`'s `\cgdumpnodes` is the other.
+_SIDES = (
+    "\\def\\cgside#1#2{\\pgfpointanchor{#1}{#2}\\pgfgetlastxy{\\cgpx}{\\cgpy}%\n"
+    "  \\ifdim\\cgpx<\\cgx\\relax\\let\\cgx\\cgpx\\fi\n"
+    "  \\ifdim\\cgpx>\\cgxx\\relax\\let\\cgxx\\cgpx\\fi\n"
+    "  \\ifdim\\cgpy<\\cgy\\relax\\let\\cgy\\cgpy\\fi\n"
+    "  \\ifdim\\cgpy>\\cgyy\\relax\\let\\cgyy\\cgpy\\fi}\n"
+    "\\def\\cgsides#1{\\pgfpointanchor{#1}{west}\\pgfgetlastxy{\\cgx}{\\cgy}%\n"
+    "  \\let\\cgxx\\cgx\\let\\cgyy\\cgy\n"
+    "  \\cgside{#1}{south}\\cgside{#1}{east}\\cgside{#1}{north}}\n"
+)
+
+
 def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     """A minimal document that compiles `source` and prints its geometry.
 
@@ -160,15 +180,8 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
     # it is not, and the compile dies on `Missing \endcsname` (#1072).
     # Left out here but kept in `names`, so it reads as declared but not
     # measured rather than vanishing from the report.
-    # Four sides, not two corners: `south west` and `north east` are
-    # corners only on a rectangle, and on a circle they lie on the curve,
-    # which measured it about 30% too small (#1054). `\cgunused` takes
-    # the coordinate each side does not fix.
     probes = "\n".join(
-        f"\\pgfpointanchor{{{name}}}{{west}}\\pgfgetlastxy{{\\cgx}}{{\\cgunused}}%\n"
-        f"\\pgfpointanchor{{{name}}}{{south}}\\pgfgetlastxy{{\\cgunused}}{{\\cgy}}%\n"
-        f"\\pgfpointanchor{{{name}}}{{east}}\\pgfgetlastxy{{\\cgxx}}{{\\cgunused}}%\n"
-        f"\\pgfpointanchor{{{name}}}{{north}}\\pgfgetlastxy{{\\cgunused}}{{\\cgyy}}%\n"
+        f"\\cgsides{{{name}}}%\n"
         f"\\typeout{{CGBOX {name} \\cgx\\space\\cgy\\space\\cgxx\\space\\cgyy}}%"
         for name in [*names, BBOX_NAME]
         if "\\" not in name
@@ -191,7 +204,7 @@ def scaffold(source: str, names: list[str], *, boxed: bool = False) -> str:
         "\\usepackage{tikz}\n"
         + (f"\\usetikzlibrary{{{','.join(libraries)}}}\n" if libraries else "")
         + (_drawing_hook() if boxed else "")
-        + "\\newdimen\\cgx \\newdimen\\cgy \\newdimen\\cgxx \\newdimen\\cgyy\n"
+        + _SIDES
         + ("\\newsavebox\\cgfigbox\n" if boxed else "")
         + "\\begin{document}\n"
         f"{figure}\n"

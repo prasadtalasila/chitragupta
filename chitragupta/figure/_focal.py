@@ -1,6 +1,7 @@
 """`focal-count`'s reading of a figure's source: which nodes carry an
-accent, the `cgkey` style or the accented state `cgkeystate` (#1053,
-#1062). docs/TIKZ-STYLE.md: "if two things are accented, neither is".
+accent, the `cgkey` style, the accented state `cgkeystate` or the
+accented timeline tick `cgfocus` (#1053, #1062, #1064).
+docs/TIKZ-STYLE.md: "if two things are accented, neither is".
 
 A scanner rather than one regex, because a node's options are not a
 regular language. They nest (`label={[red]above:x}`), so a `[^\\]]*`
@@ -20,10 +21,12 @@ from chitragupta._tex_comments import strip_comments
 from chitragupta.review.figure_layout._source import _NODE_KEYWORD
 
 _NODE_START_RE = re.compile(_NODE_KEYWORD)
-# `cgkey` or `cgkeystate` as a whole style name: not `cgkeyish`, not
-# `my-cgkey`. A state cannot take `cgkey` itself, which is built on the
-# card, so the state has its own accent and both count (#1062).
-_CGKEY_RE = re.compile(r"(?<![\w-])cgkey(?:state)?(?![\w-])")
+# `cgkey`, `cgkeystate` or `cgfocus` as a whole style name: not
+# `cgkeyish`, not `my-cgkey`. A state cannot take `cgkey` itself, which
+# is built on the card, so the state has its own accent and both count
+# (#1062); nor can a 0.9mm timeline tick, which takes `cgfocus`, a style
+# the timeline scaffold defines in its picture options (#1064).
+_CGKEY_RE = re.compile(r"(?<![\w-])(?:cgkey(?:state)?|cgfocus)(?![\w-])")
 # `at` as a word, which makes the next parenthesised group a position.
 _AT_RE = re.compile(r"at\b")
 

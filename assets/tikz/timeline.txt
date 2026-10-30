@@ -1,0 +1,7 @@
+                        page acked                       all clear
+      fault         alarm                         fix shipped
+  |---|-------------|---|-------------------------|------|------> time
+
+      [ undetected ] [============= repair ==============]
+
+  Each tick sits where its event happened: the long gaps are the claim.

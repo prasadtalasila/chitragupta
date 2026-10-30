@@ -1,0 +1,8 @@
+                           2 arrives              2 leaves
+   1 arrives      1 leaves     : 3 arrives, waits     :      3 leaves
+  |-|-------------|-------|--|--------------|-------------|----> time
+
+    [ server busy ][ idle ][====== server busy =======]
+
+  The clock jumps from one event to the next: the long gaps cost
+  nothing, and the server's state changes only at an event.

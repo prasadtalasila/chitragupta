@@ -13,7 +13,8 @@ path through a system.
   path (use [the zoned spine](zoned-spine.md)); a stage can stay put or
   be sent back by more than one event (use [the state
   machine](state-machine.md)); the stages answer each other (use [the
-  sequence](sequence.md)).
+  sequence](sequence.md)), or when things happen and how far apart is
+  the claim (use [the timeline](timeline.md)).
 
 ## Anti-patterns
 

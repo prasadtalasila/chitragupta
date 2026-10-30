@@ -18,6 +18,7 @@ empty `tikzpicture`.
 | `state-machine.tex` | State machine | it is in one state at a time, and a state can recur, stay put or be sent back |
 | `comparison.tex` | Comparison | two things made of the same parts, and the point is the part that differs |
 | `sequence.tex` | Sequence | parties exchange messages and the order of the exchanges is the claim |
+| `timeline.tex` | Timeline | when things happen, and how far apart, is the claim |
 
 Two more things live here that are not scaffolds:
 
@@ -25,12 +26,12 @@ Two more things live here that are not scaffolds:
   roles, zone cards, edges, tags, badges, a legend swatch and a two-step
   label ramp. Every scaffold carries a verbatim copy of it, so you never
   copy it by hand; see below.
-- **`exemplars/`** holds six figures drawn with that block, at a wider
-  page (the render's 453pt) than the scaffolds: three from one paper
-  redrawn, and a comparison, a Markov chain and a sequence drawn for
-  this project. They show what the vocabulary is for: zone cards, step
-  badges, a legend, the house `pic`s, lettered panels, an accented
-  state and lifelines. `pump-markov-chain.tex` is the reference book's
+- **`exemplars/`** holds seven figures drawn with that block, at a
+  wider page (the render's 453pt) than the scaffolds: three from one
+  paper redrawn, and a comparison, a Markov chain, a sequence and a
+  timeline drawn for this project. They show what the vocabulary is
+  for: zone cards, step badges, a legend, the house `pic`s, lettered
+  panels, an accented state, lifelines and eras placed in time. `pump-markov-chain.tex` is the reference book's
   pump as a Markov chain, the state-machine layout with an accented
   state and no initial or accepting one. Read them; start from a
   scaffold.

@@ -8,8 +8,9 @@ runs over all of them. An unnamed node is named in a finding by its
 centre, `(x,y)` in mm, as `c7-dangling-tip` names a point.
 
 Four kinds of node are left out, each because a reader sees no
-collision: a tag on a drawn line (that is `c6-tag-covered`'s), a turned
-node (its box, read square to the page, is not where it was set), a
+collision: a tag on a drawn line (that is `c6-tag-covered`'s), a node
+turned other than a quarter (its box, read square to the page, is not
+where it was set; a quarter turn is measured, #1064), a
 round node under 7mm (a step badge `\\cgstep` sets over a node's corner on
 purpose, or a dot on a line), and an unframed node with no text or that
 only groups others (a placeholder, an undrawn `fit`).

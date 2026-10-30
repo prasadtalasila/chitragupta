@@ -18,7 +18,7 @@ from chitragupta.figure import _advisory, _check, _check_report, _connector_chec
 from chitragupta.figure._focal import cgkey_nodes
 from chitragupta.render_output import render
 from chitragupta.render_output import MissingBinary
-from chitragupta.review.figure_layout import BBOX_NAME, Drawn, FigureResult
+from chitragupta.review.figure_layout import BBOX_NAME, Drawn, FigureResult, measure
 from tests.conftest import needs_tikz, run_python
 from chitragupta.figure._connectors import MM
 from tests.figure_drawn_fixtures import drawn, line, node
@@ -147,6 +147,9 @@ class TestFocalCount:
             # An accented state is an accent too (#1062).
             ("\\node[cgkeystate] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
             ("\\node[cgkey] (a) {A};\n\\node[cgkeystate] (b) {B};\n", "a, b"),
+            # An accented timeline tick is an accent too (#1064).
+            ("\\node[cgfocus] (a) {};\n\\node[cgfocus] (b) {};\n", "a, b"),
+            ("\\node[cgkey] (a) {A};\n\\node[cgfocus] (b) {};\n", "a, b"),
         ],
     )
     def test_two_accented_nodes_fire(self, body, named):
@@ -164,6 +167,7 @@ class TestFocalCount:
             "\\node[cgkey] (a) {A};\n\\node[cgkeyish] (b) {B};\n",
             "\\node[cgkey] (a) {A};\n\\node[cgkeystateish] (b) {B};\n",
             "\\node[cgkeystate] (a) {A};\n\\node[my-cgkeystate] (b) {B};\n",
+            "\\node[cgfocus] (a) {};\n\\node[cgfocusish] (b) {};\n",
             "\\node[cgbox] (a) {a cgkey in the label};\n\\node[cgkey] (b) {B};\n",
             "\\node[cgkey] at (cgkey) {A};\n\\node (b) [cgbox] {B};\n",
         ],
@@ -454,6 +458,7 @@ class TestAgainstRealLualatex:
             "state-machine",
             "comparison",
             "sequence",
+            "timeline",
         ],
     )
     def test_every_scaffold_compiles_boxed_with_one_focal_node_and_no_stray(self, name):
@@ -789,6 +794,7 @@ class TestAdvisoryAgainstRealLualatex:
             "state-machine",
             "comparison",
             "sequence",
+            "timeline",
         ],
     )
     def test_every_scaffold_reads_its_own_reference_and_squashes_nothing(self, name):
@@ -910,6 +916,49 @@ class TestConnectorRulesAgainstRealLualatex:
         assert result.not_measured == []
 
 
+@needs_tikz
+class TestTurnedAndCoveringNodesAgainstRealLualatex:
+    """A label turned a quarter, and a title over a coordinate, are
+    measured like any other node (#1064). Before, the probe logged a
+    turned label as a point and the overlap test set it aside, and a
+    title covering a coordinate was taken for a zone card."""
+
+    @staticmethod
+    def _overlaps(name):
+        result = _check.check(FIXTURES / name, _check.DEFAULT_WIDTH_PT)
+        return {f.target for f in result.findings if f.rule == "node-overlap"}
+
+    def test_turned_labels_that_collide_fire_node_overlap(self):
+        targets = self._overlaps("turned-collide.tex")
+
+        assert "e1-n+e2-n" in targets
+        assert any("band-card" in target and "-n" in target for target in targets)
+
+    def test_turned_labels_clear_of_each_other_fire_nothing(self):
+        result = _check.check(FIXTURES / "turned-clean.tex", _check.DEFAULT_WIDTH_PT)
+
+        assert not {"node-overlap", "content-protrusion"} & set(_rules(result.findings))
+
+    def test_a_title_leaving_its_card_fires_node_overlap(self):
+        targets = self._overlaps("title-over-coordinate.tex")
+
+        assert {"busy+busy-t", "busy-t+quiet"} <= targets
+
+    def test_an_unturned_node_keeps_its_box(self):
+        """Read from four side anchors' points, an unturned box is the box
+        the one-coordinate-per-side read gave: 10mm is 28.453pt."""
+        boxes = measure(FIXTURES / "unturned-shapes.tex", boxed=True).boxes
+
+        expected = {
+            "round": (-14.226, -14.226, 14.226, 14.226),
+            "box": (31.298, -14.226, 88.203, 14.226),
+            "split": (105.275, -20.654, 146.582, 20.654),
+            "drum": (163.654, -4.296, 204.834, 4.298),
+        }
+        for name, box in expected.items():
+            assert boxes[name] == pytest.approx(box, abs=0.05), name
+
+
 class TestOverlapOfEveryDrawnNode:
     """`node-overlap` in `figure check` measures every node TikZ drew, not
     only the ones the source names: `architecture.tex`'s zone titles,
@@ -920,6 +969,21 @@ class TestOverlapOfEveryDrawnNode:
         figure = _measured(drawn=drawn(list(nodes), list(lines)))
         findings, _ = _evaluate(figure=figure)
         return [f.target for f in findings if f.rule == "node-overlap"]
+
+    def test_a_title_wider_than_its_card_is_reported(self):
+        """The title covers a coordinate, which once made it a zone card
+        that `node-overlap` skipped (#1064)."""
+        busy = node("busy", (5.7, -42.0, 31.3, -18.3))
+        quiet = node("quiet", (39.7, -42.0, 302.8, -18.3))
+        title = node(
+            "busy-t",
+            (-18.7, -37.1, 55.7, -23.2),
+            framed=False,
+            text_box=(-18.7, -37.1, 55.7, -23.2),
+        )
+        band = node("band", (0, -30.2, 0, -30.2), shape="coordinate")
+
+        assert {"busy+busy-t", "busy-t+quiet"} <= set(self._overlaps(busy, quiet, title, band))
 
     def test_two_unnamed_titles_that_collide_are_reported_by_position(self):
         first = node("cgu-1", (0, 0, 100, 14), text_box=(2, 2, 98, 12))

@@ -98,12 +98,16 @@ def shown_as(name: str, node: DrawnNode) -> str:
 
 
 def zones(nodes: dict[str, DrawnNode]) -> set[str]:
-    """The nodes that contain another: zone cards and `fit` groups."""
+    """The nodes that contain another: zone cards and `fit` groups. A
+    `coordinate` is never a member: a point inside a box does not make
+    it a group, and a title that covered one was skipped by
+    `node-overlap` as if it were a card (#1064)."""
     return {
         name
         for name, node in nodes.items()
         if any(
             other is not node
+            and other.shape != "coordinate"
             and _area(other.box) < _area(node.box)
             and contains(node.box, other.box)
             for other in nodes.values()

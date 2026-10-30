@@ -155,6 +155,32 @@ class TestParse:
 
         assert drawn.nodes["p"].text_box is None
 
+    @pytest.mark.parametrize(
+        ("turn", "text_box"),
+        [("1.0 -1.0", (-6.0, 0.0, 2.0, 20.0)), ("-1.0 1.0", (-2.0, -20.0, 6.0, 0.0))],
+    )
+    def test_a_quarter_turned_text_box_is_turned_about_its_anchor(self, turn, text_box):
+        """`rotate=90` reads bottom to top and `rotate=-90` top to bottom;
+        both are measured, and neither is set aside (#1064)."""
+        drawn = parse_drawn(
+            _log(
+                "CGNODE 20.0pt 6.0pt 2.0pt rectangle/e3-n",
+                f"CGNB -7.0 -1.0 3.0 21.0 0.0 0.0 {turn} e3-n",
+            )
+        )
+
+        node = drawn.nodes["e3-n"]
+        assert node.rotated is False
+        assert node.text_box == text_box
+
+    @pytest.mark.parametrize("turn", ["0.70711 -0.70711", "2.0 -2.0"])
+    def test_a_slanted_or_scaled_turn_is_still_set_aside(self, turn):
+        drawn = parse_drawn(
+            _log("CGNODE 20.0pt 6.0pt 2.0pt rectangle/t", f"CGNB 0 0 10 10 0.0 0.0 {turn} t")
+        )
+
+        assert drawn.nodes["t"].rotated is True
+
     def test_no_hook_lines_is_none(self):
         assert parse_drawn("CGBOX a 0.0pt 0.0pt 1.0pt 1.0pt\n") is None
 

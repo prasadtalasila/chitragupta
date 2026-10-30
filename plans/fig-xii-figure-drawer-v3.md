@@ -581,6 +581,19 @@ cross-check covers them.
   explains c1 to c7, k1 and k2 in `docs/FIGURE-DRAWER.md`, beside two
   pictures a test re-checks. Left open: self-messages and activation
   bars, neither of which a connector rule could measure as drawn.
+- **3e, `timeline`.** Built by #1064 (`plans/1064-timeline-scaffold.md`).
+  Each event is a thin tick placed by fraction of the axis,
+  `($(t0)!<f>!(tend.west)$)`, so the gaps mean time and no node sits at
+  a millimetre coordinate. The axis is drawn tick to tick; drawn as one
+  line under the ticks it crossed every one (`c5`), so the layout
+  exempts no rule. Labels are turned to read bottom to top
+  (`rotate=90, anchor=east`) and eras are cards fitted between two
+  times in a band below. The same PR fixed two measurement gaps the
+  layout exposed: the probe logged a quarter-turned label as a point,
+  and `zones()` took a title that covered a coordinate for a card, so
+  `node-overlap` saw neither. The exemplar is
+  `assets/tikz/exemplars/next-event.tex`. Left open: a duration bracket
+  between two events, and a log-scaled axis.
 
 - **3c, `state-machine`** (#1062, built; see
   `plans/1062-state-machine-scaffold.md`). States are circles from
